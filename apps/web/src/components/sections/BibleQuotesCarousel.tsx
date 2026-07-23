@@ -107,7 +107,7 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between pb-2">
       {heading && (
-        <h3 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+        <h3 className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
           {heading}
         </h3>
       )}

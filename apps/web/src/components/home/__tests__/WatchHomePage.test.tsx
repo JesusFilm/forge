@@ -447,9 +447,21 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-share-button"]'),
     ).toBeNull()
-    expect(
-      container.querySelector('[data-testid="watch-home-card-text-gradient"]'),
-    ).not.toBeNull()
+    const cardText = container.querySelector(
+      '[data-testid="watch-home-card-text-gradient"]',
+    )
+    const cardTitle = cardText?.querySelector("h3")
+    const cardLabel = cardTitle?.previousElementSibling
+    expect(cardText).not.toBeNull()
+    expect(cardLabel?.className).toContain("tracking-media-label")
+    expect(cardLabel?.className).not.toContain("tracking-wider")
+    expect(cardTitle?.className).toContain("font-media-card-title")
+    expect(cardTitle?.className).not.toContain("font-bold")
+    const sectionEyebrow = container.querySelector(
+      '[data-section-id="home-video-gospels"] p',
+    )
+    expect(sectionEyebrow?.className).toContain("tracking-eyebrow")
+    expect(sectionEyebrow?.className).not.toContain("tracking-wider")
     act(() => {
       root.render(
         <WatchHomePage
@@ -573,6 +585,8 @@ describe("WatchHomePage", () => {
     )
     expect(section?.textContent).toContain("Collection")
     expect(section?.textContent).not.toContain("61 episodes")
+    expect(section?.className).toContain("py-10")
+    expect(section?.className).toContain("md:py-16")
   })
 
   it("softens section card hover by crossfading the backdrop without clearing between cards", async () => {

@@ -459,7 +459,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
       {(subtitle || title || carouselDescription) && (
         <div className="flex flex-col gap-1" data-testid="carousel-copy">
           {subtitle && (
-            <h4 className="mb-0 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <h4 className="mb-0 text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </h4>
           )}

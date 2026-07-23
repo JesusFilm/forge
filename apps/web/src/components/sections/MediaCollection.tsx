@@ -36,6 +36,7 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import { WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS } from "@/components/watch/watch-section-styles"
 
 // Hoisted so the throwing constructor runs once at module load, not per card.
 const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
@@ -67,6 +68,17 @@ const MEDIA_COLLECTION_TINTS: Record<string, string> = {
   green: "#14532d",
   amber: "#92400e",
 }
+
+const MOBILE_CAROUSEL_LAYOUT = {
+  horizontal: {
+    columns: "auto-cols-[56%] gap-4 sm:auto-cols-[42%] md:gap-5",
+    imageSizes: "(max-width: 639px) 56vw, (max-width: 767px) 42vw, 360px",
+  },
+  vertical: {
+    columns: "auto-cols-[34%] gap-3 sm:auto-cols-[26%] md:gap-4",
+    imageSizes: "(max-width: 639px) 34vw, (max-width: 767px) 26vw, 220px",
+  },
+} as const
 
 function backgroundImageStyle(imageUrl: string | null) {
   return imageUrl ? { backgroundImage: `url("${imageUrl}")` } : undefined
@@ -266,6 +278,23 @@ function WatchHomeMediaCollection({
   const isRail = variant === "carousel"
   const isVerticalGrid = variant === "collection"
   const isVertical = isRail || isVerticalGrid
+  const usesMobileCarousel = !isRail && items.length > 1
+  const needsKeyboardScrollableCarousel =
+    usesMobileCarousel &&
+    items.some(
+      (item) => !item.videoSlug || tryAsContentSlug(item.videoSlug) == null,
+    )
+  const desktopGridColumns = isVerticalGrid
+    ? "md:grid-cols-4 xl:grid-cols-4"
+    : variant === "hero" || variant === "player"
+      ? "md:grid-cols-2"
+      : "md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+  const mobileCarouselLayout = isVerticalGrid
+    ? MOBILE_CAROUSEL_LAYOUT.vertical
+    : MOBILE_CAROUSEL_LAYOUT.horizontal
+  const staticGridColumns = isVerticalGrid
+    ? "grid-cols-2 gap-4"
+    : "grid-cols-1 gap-5"
   const defaultBackgroundUrl =
     items.map(mediaItemBackdropImageUrl).find((imageUrl) => imageUrl) ?? null
   const latestHoveredBackgroundUrlRef = useRef<string | null>(null)
@@ -296,7 +325,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+    <p className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
       {categoryLabel}
     </p>
   ) : null
@@ -393,7 +422,8 @@ function WatchHomeMediaCollection({
         }
       }}
       className={cn(
-        "scroll-mt-24 relative overflow-hidden py-16 text-white",
+        "scroll-mt-24 relative overflow-hidden text-white",
+        WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
         !backgroundColor &&
           (isRail
             ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.22),rgba(88,28,135,0.2),rgba(145,33,74,0.94))]"
@@ -544,17 +574,33 @@ function WatchHomeMediaCollection({
           </Carousel>
         </div>
       ) : (
-        <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
+        <div
+          data-testid={
+            usesMobileCarousel ? "media-collection-mobile-carousel" : undefined
+          }
+          role={usesMobileCarousel ? "region" : undefined}
+          tabIndex={needsKeyboardScrollableCarousel ? 0 : undefined}
+          aria-label={
+            usesMobileCarousel ? (title ?? t("mediaCollection")) : undefined
+          }
+          className={cn(
+            "relative z-[3]",
+            usesMobileCarousel
+              ? `${CONTENT_WIDTH_ALIGN_CLASSES} snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 md:snap-none md:overflow-visible [&::-webkit-scrollbar]:hidden`
+              : WATCH_PAGE_CONTENT_CLASSES,
+          )}
+        >
           <div
             data-testid="media-collection-grid"
             className={cn(
               "grid",
-              isVerticalGrid ? "gap-4" : "gap-5",
-              isVerticalGrid
-                ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
-                : variant === "hero" || variant === "player"
-                  ? "grid-cols-1 md:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
+              usesMobileCarousel
+                ? "grid-flow-col px-5 pb-1 md:grid-flow-row md:auto-cols-auto md:px-16 xl:px-24"
+                : null,
+              usesMobileCarousel
+                ? mobileCarouselLayout.columns
+                : staticGridColumns,
+              desktopGridColumns,
             )}
           >
             {items.map((item: EnrichedMediaItem, index: number) => (
@@ -565,6 +611,12 @@ function WatchHomeMediaCollection({
                 orientation={isVertical ? "vertical" : "horizontal"}
                 showItemNumbers={showItemNumbers}
                 fallbackLanguageSlug={fallbackLanguageSlug}
+                compactImageSizes={
+                  usesMobileCarousel
+                    ? mobileCarouselLayout.imageSizes
+                    : undefined
+                }
+                className={usesMobileCarousel ? "snap-start" : undefined}
                 onHover={() =>
                   updateHoverBackground(mediaItemBackdropImageUrl(item))
                 }
@@ -602,6 +654,8 @@ function VideoCard({
   orientation,
   showItemNumbers,
   fallbackLanguageSlug,
+  compactImageSizes,
+  className,
   onHover,
 }: {
   item: EnrichedMediaItem
@@ -609,6 +663,8 @@ function VideoCard({
   orientation: "horizontal" | "vertical"
   showItemNumbers: boolean | null
   fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
+  compactImageSizes?: string
+  className?: string
   onHover?: () => void
 }) {
   const t = useTranslations("WatchHome")
@@ -628,6 +684,20 @@ function VideoCard({
   const blurDataUrl = item.blurDataUrl ?? undefined
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
   const isVertical = orientation === "vertical"
+  const compactOnMobile = compactImageSizes != null
+  const compactFrameSizeClasses = isVertical
+    ? "aspect-[2/3] min-h-0 md:min-h-[16rem]"
+    : "aspect-video min-h-0 md:min-h-[10rem]"
+  const defaultFrameSizeClasses = isVertical
+    ? "aspect-[2/3] min-h-[13rem] sm:min-h-[16rem]"
+    : "aspect-video min-h-[10rem]"
+  const frameSizeClasses = compactOnMobile
+    ? compactFrameSizeClasses
+    : defaultFrameSizeClasses
+  const defaultImageSizes = isVertical
+    ? "(max-width: 768px) 46vw, 220px"
+    : "(max-width: 768px) 100vw, 360px"
+  const responsiveImageSizes = compactImageSizes ?? defaultImageSizes
   const [isMuxPreviewLoaded, setIsMuxPreviewLoaded] = useState(false)
   const accessibleTitle =
     item.title || [item.label, item.videoSlug].filter(Boolean).join(" ")
@@ -641,6 +711,7 @@ function VideoCard({
           ? "group cursor-pointer hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]"
           : "cursor-default",
         isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+        className,
       )}
       aria-label={
         isInteractive ? t("showVideo", { title: accessibleTitle }) : undefined
@@ -652,9 +723,7 @@ function VideoCard({
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-lg bg-black/50",
-          isVertical
-            ? "aspect-[2/3] min-h-[13rem] sm:min-h-[16rem]"
-            : "aspect-video min-h-[10rem]",
+          frameSizeClasses,
         )}
       >
         {imageSrc ? (
@@ -662,11 +731,7 @@ function VideoCard({
             src={imageSrc}
             alt={item.title}
             fill
-            sizes={
-              isVertical
-                ? "(max-width: 768px) 46vw, 220px"
-                : "(max-width: 768px) 100vw, 360px"
-            }
+            sizes={responsiveImageSizes}
             placeholder={blurDataUrl ? "blur" : "empty"}
             blurDataURL={blurDataUrl}
             className="poster-hover-zoom object-cover"
@@ -690,11 +755,7 @@ function VideoCard({
         )}
         <MuxHoverPreview
           previewUrl={muxPreviewUrl}
-          sizes={
-            isVertical
-              ? "(max-width: 768px) 46vw, 220px"
-              : "(max-width: 768px) 100vw, 360px"
-          }
+          sizes={responsiveImageSizes}
           imageClassName={isVertical ? undefined : "object-left-top"}
           onPreviewLoadedChange={setIsMuxPreviewLoaded}
         />
@@ -710,13 +771,25 @@ function VideoCard({
           style={textScrimStyle(item, orientation)}
         />
         {showItemNumbers ? (
-          <span className="absolute top-2 left-2 z-10 text-5xl leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]">
+          <span
+            className={cn(
+              "absolute top-2 left-2 z-10 leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]",
+              compactOnMobile ? "text-3xl md:text-5xl" : "text-5xl",
+            )}
+          >
             {index + 1}
           </span>
         ) : null}
         <WatchProgressBar videoId={item.id} />
         {item.collectionSize ? (
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+          <div
+            className={cn(
+              "absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 font-semibold text-white backdrop-blur-sm",
+              compactOnMobile
+                ? "px-1.5 py-0.5 text-xs md:px-2 md:py-1 md:text-sm"
+                : "px-2 py-1 text-sm",
+            )}
+          >
             {item.collectionSize}
           </div>
         ) : null}
@@ -731,17 +804,35 @@ function VideoCard({
             className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           />
         ) : null}
-        <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
+        <div
+          className={cn(
+            "absolute inset-0 z-30 flex flex-col justify-end",
+            compactOnMobile
+              ? "px-2.5 pt-2.5 pb-3 md:px-4 md:pt-4 md:pb-5"
+              : "px-4 pt-4 pb-5",
+          )}
+        >
           {item.label ? (
-            <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+            <div
+              className={cn(
+                "truncate font-semibold tracking-media-label text-stone-300/70 uppercase mix-blend-screen",
+                compactOnMobile
+                  ? "text-[10px] leading-5 md:text-xs md:leading-8"
+                  : "text-xs leading-8",
+              )}
+            >
               {formatLabel(item.label)}
             </div>
           ) : null}
           {item.title ? (
             <h3
               className={cn(
-                "line-clamp-2 -mt-1 text-left leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
-                isVertical ? "text-xl" : "text-lg md:text-xl",
+                "line-clamp-2 -mt-1 text-left leading-tight font-media-card-title text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
+                compactOnMobile
+                  ? "text-sm sm:text-base md:text-xl"
+                  : isVertical
+                    ? "text-xl"
+                    : "text-lg md:text-xl",
               )}
             >
               {item.title}

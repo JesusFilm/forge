@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
 import { WatchHomeCard } from "@/components/home/WatchHomeCard"
+import { WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS } from "@/components/watch/watch-section-styles"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
@@ -191,7 +192,8 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
         }
       }}
       className={cn(
-        "scroll-mt-24 relative overflow-hidden py-16 text-white",
+        "scroll-mt-24 relative overflow-hidden text-white",
+        WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
         isRail
           ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.22),rgba(88,28,135,0.2),rgba(145,33,74,0.94))]"
           : "bg-[#050505]",
@@ -252,7 +254,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
       <div className={cn("relative z-[3] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 max-w-4xl flex-1 flex-col gap-1">
-            <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+            <p className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
               {eyebrow}
             </p>
             <h2 className="text-2xl leading-tight font-bold tracking-normal xl:text-3xl 2xl:text-4xl">

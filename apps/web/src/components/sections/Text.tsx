@@ -155,7 +155,7 @@ export function Text({ data }: TextProps) {
       >
         <div className="pt-2 2xl:pt-4">
           {subtitle && (
-            <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <p className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </p>
           )}

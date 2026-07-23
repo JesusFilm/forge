@@ -180,10 +180,10 @@ export function WatchHomeCard({
           className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-end px-4 pt-10 pb-5"
           style={textScrimStyle(card)}
         >
-          <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+          <div className="truncate text-xs leading-8 font-semibold tracking-media-label text-stone-300/70 uppercase mix-blend-screen">
             {videoLabels(videoLabelMessageKey(card.label))}
           </div>
-          <h3 className="line-clamp-2 -mt-1 text-left text-xl leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
+          <h3 className="line-clamp-2 -mt-1 text-left text-xl leading-tight font-media-card-title text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
             {card.title}
           </h3>
         </div>

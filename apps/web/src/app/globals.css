@@ -8,6 +8,10 @@
 @theme {
   --color-brand-red: #ef3340;
 
+  --font-weight-media-card-title: 500;
+  --tracking-media-label: 0.2px;
+  --tracking-eyebrow: 0.2px;
+
   --color-section-default: 41 37 36;
   --color-section-light: 245 245 244;
   --color-section-dark: 28 25 23;
