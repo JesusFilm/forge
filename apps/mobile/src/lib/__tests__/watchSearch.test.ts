@@ -243,3 +243,30 @@ describe("parseSearchError", () => {
     )
   })
 })
+
+// A page that returns nothing cannot advance the fallback cursor, so offering
+// "Load more" would refetch the same offset forever, spending a fleet-key token
+// on every tap. Found by delta review of the cursor fix, not by the first pass.
+describe("mapWatchSearchResponse cursor cannot stall", () => {
+  it("refuses hasMore when admin returns an empty page", () => {
+    const page = mapWatchSearchResponse(
+      { query: null, hasMore: true, nextOffset: null, results: [] },
+      "jesus",
+      40,
+    )
+    expect(page.results).toHaveLength(0)
+    expect(page.nextOffset).toBe(40)
+    // hasMore:true + a cursor that can't move = an infinite refetch loop.
+    expect(page.hasMore).toBe(false)
+  })
+
+  it("still honours admin's own cursor on an empty page", () => {
+    const page = mapWatchSearchResponse(
+      { query: null, hasMore: true, nextOffset: 60, results: [] },
+      "jesus",
+      40,
+    )
+    expect(page.nextOffset).toBe(60)
+    expect(page.hasMore).toBe(false)
+  })
+})

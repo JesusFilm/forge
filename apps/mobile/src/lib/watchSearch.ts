@@ -105,7 +105,9 @@ export function mapWatchSearchResponse(
   })
   return {
     query: response?.query ?? requestedQuery,
-    hasMore: response?.hasMore ?? false,
+    // An empty page can't advance the fallback cursor, so honouring hasMore
+    // would refetch the same offset forever, spending a token each tap.
+    hasMore: returned.length === 0 ? false : (response?.hasMore ?? false),
     // Advance by rows RETURNED, not rows kept — a dropped row would otherwise
     // shift the cursor back and re-fetch duplicates.
     nextOffset: response?.nextOffset ?? requestedOffset + returned.length,

@@ -142,6 +142,10 @@ export default function DiscoverScreen() {
   // Term the VISIBLE results belong to. loadMore must page this, not the live
   // input, which can drift ahead during the debounce window.
   const submittedTermRef = useRef("")
+  // Generation that produced the visible results. loadMore pages on THIS, not
+  // the live one — borrowing the live id let a page started after a newer
+  // search began pass the staleness guard and append to the wrong results.
+  const submittedRequestIdRef = useRef(0)
   // Synchronous re-entrancy latch: `loadingMore` state is a render-time snapshot,
   // so two presses in one frame both read false and double-append.
   const loadingMoreRef = useRef(false)
@@ -239,6 +243,11 @@ export default function DiscoverScreen() {
       // stays stuck on "Loading..." for the rest of the session.
       loadingMoreRef.current = false
       setLoadingMore(false)
+      // Retire the pager before any await — the footer stays mounted and
+      // hit-testable through animateOut's fade, and a tap there would page the
+      // old term onto whatever replaces it.
+      submittedTermRef.current = ""
+      setHasMore(false)
       abortRef.current?.abort()
       abortRef.current = new AbortController()
       const signal = abortRef.current.signal
@@ -304,6 +313,7 @@ export default function DiscoverScreen() {
           0,
         )
         submittedTermRef.current = trimmed
+        submittedRequestIdRef.current = thisRequest
         setResults([...page.results])
         setHasMore(page.hasMore)
         setNextOffset(page.nextOffset)
@@ -387,10 +397,13 @@ export default function DiscoverScreen() {
   }
 
   const loadMore = useCallback(async () => {
+    // A search in flight (or already superseded) owns a different generation
+    // than the visible results — paging now would splice two queries.
+    if (submittedRequestIdRef.current !== requestIdRef.current) return
     if (loadingMoreRef.current || !hasMore) return
     loadingMoreRef.current = true
 
-    const thisRequest = requestIdRef.current
+    const thisRequest = submittedRequestIdRef.current
     setLoadingMore(true)
     setError(null)
 
@@ -449,8 +462,13 @@ export default function DiscoverScreen() {
         search_request_id: searchRequestId,
       })
     } finally {
-      loadingMoreRef.current = false
-      if (requestIdRef.current === thisRequest) setLoadingMore(false)
+      // Only the owning page releases the latch; an orphaned one would
+      // otherwise free a slot a newer page already claimed. search() resets
+      // both flags, so a superseded page can never strand them.
+      if (requestIdRef.current === thisRequest) {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      }
     }
   }, [hasMore, nextOffset])
 
