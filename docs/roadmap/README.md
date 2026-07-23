@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 425
-- **Complete:** 318
+- **Total tickets:** 430
+- **Complete:** 323
 - **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
@@ -104,6 +104,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-094](content-discovery/feat-094-recommendation-ab-comparison-logging.md)                                 | Recommendation A/B Comparison Logging                                                           | nisal      | P2       | 2026-06-21 | 7    | 2026-06-27 | blocked     |
 | [feat-197](content-discovery/feat-197-watch-search-query-outcome-logging.md)                                   | Watch search query and outcome logging                                                          | nisal      | P2       | 2026-06-22 | 5    | 2026-06-26 | complete    |
 | [feat-250](content-discovery/feat-250-watch-search-close-reset.md)                                             | Reset Watch search when the modal closes                                                        | unassigned | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
+| [feat-302](content-discovery/feat-302-watch-search-logo-close.md)                                              | Close Watch search from the header logo                                                         | codex      | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
@@ -348,8 +349,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-295](platform/feat-295-watch-mediacollection-video-image-metadata-generation.md) | Restore Watch MediaCollection video image metadata generation                    | unassigned | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-287](platform/feat-287-auth-google-account-chooser-production-verification.md)   | Auth Google Account Chooser Production Verification                              | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | not-started |
 | [feat-298](platform/feat-298-remove-experience-image-override-url.md)                  | Remove Experience image override URL fields                                      | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-300](platform/feat-300-watch-global-language-options-api.md)                     | Watch global language options API                                                | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-300](platform/feat-300-watch-language-preserving-navigation.md)                  | Watch language-preserving navigation                                             | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-301](platform/feat-301-watch-localized-home-inventory-fallback.md)               | Watch localized home inventory fallback                                          | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-301](platform/feat-301-watch-public-share-origin.md)                             | Watch public share origin                                                        | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-302](platform/feat-302-watch-home-hreflang-sitemap-cluster.md)                   | Watch homepage hreflang sitemap cluster                                          | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-303](platform/feat-303-watch-ai-use-attribution-notice.md)                       | Watch AI use attribution notice                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |

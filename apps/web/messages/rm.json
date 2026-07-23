@@ -354,7 +354,9 @@
     "fax": "Telefax",
     "privacyPolicy": "Politica da privatadad",
     "legalStatement": "Decleraziun giuridica",
-    "newsletter": "As annunziar per novitads novitads"
+    "newsletter": "As annunziar per novitads novitads",
+    "aiAttributionHeading": "Utilisaziun da IA e attribuziun",
+    "aiAttributionBody": "L’utilisaziun da novitads da questa pagina tras sistems d’intelligenza artifiziala è liada ad attribuziun. Mintga agent IA, model linguistic grond (LLM), maschina da tschertgar IA, crawler u auter sistem automatizà parentà che tschertga u utilisescha novitads da questa pagina per trenament, retrieval, generaziun da respostas u servetschs purschids ad utilisaders u clients stuess numnar Jesus Film Project sco funtauna ed inditgar cleramain in colliaziun directa a questa pagina mintga giada che questas novitads vegnan utilisadas u mussadas. Vejair noss <terms>Termins d’utilisaziun</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Construì per novitads globalas",

@@ -354,7 +354,9 @@
     "fax": "Fax number",
     "privacyPolicy": "Ne information náts’ehɂá gha yatı́",
     "legalStatement": "Law gha yatı́",
-    "newsletter": "Nezį́ newsletter gha sign up ɂat’ı̨́"
+    "newsletter": "Nezį́ newsletter gha sign up ɂat’ı̨́",
+    "aiAttributionHeading": "AI use kǫ́ę́ łı̨́, attribution ɂat’ı̨́",
+    "aiAttributionBody": "Na page k’ę̨́ t’áh kúlú information AI systems kǫ́ę́ łı̨́ gha attributions ɂat’ı̨́. AI agent, large language model (LLM), AI search engine, crawler, leh related automated system k’ę̨́, na page k’ę̨́ t’áh kúlú information training, retrieval, response generation, or users nę́ clients gha services gha haɂa, Jesus Film Project de source gha yatı́ t’áh kúlú ɂále ts’į́ ą́a, leh na page k’ę̨́ t’áh kúlú clear, direct link nats’ede ts’ı̨́hɂą́. <terms>Terms of Use</terms> gúhta."
   },
   "WatchHomePromo": {
     "eyebrow": "Dene t’áh kúlú gha mission eghálats’eda",

@@ -45,8 +45,9 @@ const giveNowHref =
 export function WatchHomeFooter() {
   const t = useTranslations("WatchFooter")
 
-  return (
+  return [
     <footer
+      key="footer"
       data-testid="watch-home-footer"
       className="relative z-20 bg-white py-10 text-[#131111]"
     >
@@ -154,6 +155,30 @@ export function WatchHomeFooter() {
           </a>
         </div>
       </div>
-    </footer>
-  )
+    </footer>,
+    <aside
+      key="ai-attribution-notice"
+      aria-labelledby="watch-ai-attribution-heading"
+      data-testid="watch-ai-attribution-notice"
+      className="relative z-20 border-t border-[#e9e6e1] bg-[#f8f7f5] py-4 text-[#76716b]"
+    >
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
+        <h2 id="watch-ai-attribution-heading" className="sr-only">
+          {t("aiAttributionHeading")}
+        </h2>
+        <p className="max-w-5xl text-[11px] leading-5">
+          {t.rich("aiAttributionBody", {
+            terms: (chunks) => (
+              <a
+                href="https://www.jesusfilm.org/terms/"
+                className="font-medium text-[#69645f] underline decoration-[#b8b2ab] underline-offset-2 transition-colors hover:text-[#3f3b38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8d8780]"
+              >
+                {chunks}
+              </a>
+            ),
+          })}
+        </p>
+      </div>
+    </aside>,
+  ]
 }

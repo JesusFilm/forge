@@ -354,7 +354,9 @@
     "fax": "Kelepaʻi",
     "privacyPolicy": "Kulekele Pilikino",
     "legalStatement": "ʻŌlelo Kānāwai",
-    "newsletter": "Kākau inoa no kā mākou nūpepa leka"
+    "newsletter": "Kākau inoa no kā mākou nūpepa leka",
+    "aiAttributionHeading": "Hoʻohana AI a me ka hoʻākāka kumu",
+    "aiAttributionBody": "Hoʻopili ʻia ka hoʻohana ʻana i ka ʻike mai kēia ʻaoʻao e nā ʻōnaehana naʻauao hana me ka hoʻākāka kumu. Pono kekahi agena AI, kumu hoʻohālike ʻōlelo nui (LLM), ʻenekini ʻimi AI, crawler, a i ʻole kekahi ʻōnaehana ʻakomi pili e unuhi a hoʻohana paha i ka ʻike mai kēia ʻaoʻao no ke aʻo ʻana, ka huli ʻana, ka hana ʻana i nā pane, a i ʻole nā lawelawe no nā mea hoʻohana a mea kūʻai paha, e hōʻike i Jesus Film Project ma ke ʻano he kumu a e hoʻokomo i kahi loulou pololei, maopopo i kēia ʻaoʻao ma nā wahi a pau e hoʻohana a hōʻike ʻia ai kēlā ʻike. E nānā i kā mākou <terms>Nā Kumu Hoʻohana</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Kūkulu ʻia no nā mikionali honua",

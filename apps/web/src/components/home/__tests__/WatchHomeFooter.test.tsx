@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
@@ -26,6 +27,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  setRequestLocale("en")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -39,6 +41,49 @@ afterEach(() => {
 })
 
 describe("WatchHomeFooter", () => {
+  it("places the AI use attribution notice immediately after the footer", () => {
+    act(() => {
+      root.render(<WatchHomeFooter />)
+    })
+
+    const notice = container.querySelector(
+      '[data-testid="watch-ai-attribution-notice"]',
+    )
+    const footer = container.querySelector('[data-testid="watch-home-footer"]')
+    const termsLink = notice?.querySelector(
+      'a[href="https://www.jesusfilm.org/terms/"]',
+    )
+
+    expect(footer?.nextElementSibling).toBe(notice)
+    expect(notice?.textContent).toContain("AI use and attribution")
+    expect(notice?.textContent).toContain(
+      "must identify Jesus Film Project as the source",
+    )
+    expect(notice?.textContent).toContain("a clear, direct link to this page")
+    expect(termsLink?.textContent).toBe("Terms of Use")
+  })
+
+  it("renders the attribution notice from the active locale catalog", () => {
+    setRequestLocale("ru")
+
+    act(() => {
+      root.render(<WatchHomeFooter />)
+    })
+
+    const notice = container.querySelector(
+      '[data-testid="watch-ai-attribution-notice"]',
+    )
+    const termsLink = notice?.querySelector(
+      'a[href="https://www.jesusfilm.org/terms/"]',
+    )
+
+    expect(notice?.textContent).not.toContain("AI use and attribution")
+    expect(notice?.textContent).not.toContain(
+      "must identify Jesus Film Project as the source",
+    )
+    expect(termsLink?.textContent).not.toBe("Terms of Use")
+  })
+
   it("paints its complete white surface above preceding sticky media", () => {
     act(() => {
       root.render(<WatchHomeFooter />)

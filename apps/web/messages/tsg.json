@@ -354,7 +354,9 @@
     "fax": "Paks",
     "privacyPolicy": "Patakaran han Privacy",
     "legalStatement": "Legal nga Pahayag",
-    "newsletter": "Mag-sign Up Para han Amon Newsletter"
+    "newsletter": "Mag-sign Up Para han Amon Newsletter",
+    "aiAttributionHeading": "Paggamit han AI ngan pag-akos",
+    "aiAttributionBody": "An paggamit han impormasyon tikang hini nga pahina han mga sistema han artificial intelligence kinahanglan may akos. An bisan ano nga AI agent, large language model (LLM), AI search engine, crawler, o kahalintulad nga automated system nga nagkuha o nagamit hin impormasyon tikang hini nga pahina para ha training, retrieval, pag-genera hin baton, o mga serbisyo para ha mga tiggamit o kliyente kinahanglan mag-ila han Jesus Film Project sugad nga tinubdan ngan mag-upod hin klaro, direkta nga link hini nga pahina ha bisan diin nga gamiton o ipakita an nasiring nga impormasyon. Tan-awa an amon <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Ginbuhat para ha kalibutanon nga misyon",

@@ -354,7 +354,9 @@
     "fax": "Ifeksi",
     "privacyPolicy": "Inqubomgomo Yemfihlo",
     "legalStatement": "Isitatimende Sezomthetho",
-    "newsletter": "Bhalisela incwadi yethu yezindaba"
+    "newsletter": "Bhalisela incwadi yethu yezindaba",
+    "aiAttributionHeading": "Ukusetjentiswa kwe-AI nekucashunwa",
+    "aiAttributionBody": "Kusetjentiswa kwelwati kulekhasi ngemasistimu e-intelligensi lengemvelo kutoncika ekucashunweni. Noma nguyiphi i-AI agent, large language model (LLM), AI search engine, crawler, nome sikhatsi lesihlobene lesisebentisa ngotomatiki lelikhipha nome lelikushaya sisebentise lwati kulelikhasi lekuceqesha, kulanda, kukhicita tindzaba, nome kusebentisa emasevisi etiniketwa basebentisi nome kumakhasimende kufanele ichaze i-Jesus Film Project njengekucala bese ifaka isixhumanisi lesicacile, lesiqondile salelikhasi nomakuphi lolwati lusetjentiswa khona nome lukhonjiswa khona. Buka <terms>Imigomo Yekusebentisa</terms> yetfu."
   },
   "WatchHomePromo": {
     "eyebrow": "Yakhiwe ngomsebenzi womhlaba wonke",

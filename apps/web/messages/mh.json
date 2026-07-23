@@ -354,7 +354,9 @@
     "fax": "Fax eo",
     "privacyPolicy": "Kien in Kōjparok Meḷeḷe",
     "legalStatement": "Kōnono eo an kien",
-    "newsletter": "Sign Up ñan Newsletter eo Am"
+    "newsletter": "Sign Up ñan Newsletter eo Am",
+    "aiAttributionHeading": "AI kojerbal im attribution",
+    "aiAttributionBody": "Kojerbal an melele ilo ien ia ej aikuj bwe AI system ro ren jeje in attribution. Aolep AI agent, large language model (LLM), AI search engine, crawler, ak eo an system eo emoj kōjerbale im automated eo ej lale men ko jen page kein, ñan training, retrieval, response generation, ak services ko rej lewaj ñan joñan ak clients, aikuj in am kōnono Jesus Film Project eo elap an source im kōjjeḷā in juon link eo emṃṃan, direct ñan page kein kwoj kōjerbale ak lewaj. Lale <terms>Terms of Use</terms> ko an kōm."
   },
   "WatchHomePromo": {
     "eyebrow": "Kar kōmman ñan mission ko ipeḷaakin laḷ",

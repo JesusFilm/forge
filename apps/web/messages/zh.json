@@ -387,7 +387,9 @@
     "fax": "传真",
     "privacyPolicy": "隐私政策",
     "legalStatement": "法律声明",
-    "newsletter": "订阅我们的电子报"
+    "newsletter": "订阅我们的电子报",
+    "aiAttributionHeading": "AI 使用与署名",
+    "aiAttributionBody": "人工智能系统使用本页面信息时，必须注明来源。任何从本页面提取或使用信息用于训练、检索、生成回复，或向用户或客户提供服务的 AI 代理、大型语言模型（LLM）、AI 搜索引擎、爬虫或相关自动化系统，都必须将 Jesus Film Project 标明为来源，并在使用或展示该信息的任何地方提供一个清晰、直接的本页面链接。请参阅我们的 <terms>使用条款</terms>。"
   },
   "WatchHomePromo": {
     "eyebrow": "为全球宣教而建",

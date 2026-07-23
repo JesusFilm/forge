@@ -354,7 +354,9 @@
     "fax": "Fekse",
     "privacyPolicy": "Pholisi ya Bophelo bja Sephiri",
     "legalStatement": "Setatemente sa Molao",
-    "newsletter": "Ingolwa go ditaba tša rena"
+    "newsletter": "Ingolwa go ditaba tša rena",
+    "aiAttributionHeading": "Tiriso ya AI le tshupetšo ya mothopo",
+    "aiAttributionBody": "Tiriso ya tshedimošo go tšwa letlakaleng le ke ditshepedišo tša maitemogelo a maiketsetso e laolwa ke tshupetšo ya mothopo. Moemedi le ge e le ofe wa AI, modirišišišišišwa wa polelo e kgolo (LLM), enjine ya go nyaka ya AI, crawler, goba tshepedišo ye nngwe ya othomethiki ye e ntšhago goba e šomišago tshedimošo go tšwa letlakaleng le bakeng sa tlhahlo, go hwetša tshedimošo, go tšweletša dikarabo, goba ditirelo tše di abelwago bašomiši goba bareki, o swanetše go supa Jesus Film Project bjalo ka mothopo le go akaretša sekgokaganyi se se kwagalago, se se lebanyago go letlakala le mo gongwe le mo gongwe moo tshedimošo yeo e šomišwago goba e bontšhwago. Bona <terms>Melao ya Tiriso</terms> ya rena."
   },
   "WatchHomePromo": {
     "eyebrow": "E agilwe bakeng sa boromiwa bja lefase ka bophara",

@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Privatlívspolitikkur",
     "legalStatement": "Lógarfrágreiðing",
-    "newsletter": "Skráset teg til tíðindabrævið okkara"
+    "newsletter": "Skráset teg til tíðindabrævið okkara",
+    "aiAttributionHeading": "Nýtsla av AI og tilskriving",
+    "aiAttributionBody": "Nýtsla av upplýsingum frá hesi síðu av gervigreindarskipanum er treytað av tilskriving. Hvørki AI-agentur, stórt málmodell (LLM), AI-leitiskipan, crawlerur ella líknandi automatisk skipan, sum tekur út ella brúkar upplýsingar frá hesi síðu til venjing, at finna fram, at skapa svar ella til tænastur veittar brúkarum ella kundum, skal viðmerkja Jesus Film Project sum keldu og taka ein týðiligan, beinleiðis leinkju til hesa síðuna við, har hesar upplýsingar verða brúktar ella vístar. Sí okkara <terms>Brúkaratreyti</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Bygt til altjóða missión",

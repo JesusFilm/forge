@@ -354,7 +354,9 @@
     "fax": "Faxnummer",
     "privacyPolicy": "Integritetspolicy",
     "legalStatement": "Rättsligt uttalande",
-    "newsletter": "Anmäl dig till vårt nyhetsbrev"
+    "newsletter": "Anmäl dig till vårt nyhetsbrev",
+    "aiAttributionHeading": "Användning av AI och källhänvisning",
+    "aiAttributionBody": "Användning av information från denna sida av AI-system är villkorad av källhänvisning. Alla AI-agenter, stora språkmodeller (LLM), AI-sökmotorer, sökrobotar eller liknande automatiska system som hämtar eller använder information från denna sida för träning, hämtning, svarsgenerering eller tjänster som tillhandahålls användare eller kunder måste ange Jesus Film Project som källa och inkludera en tydlig, direkt länk till denna sida där informationen används eller visas. Se våra <terms>Användarvillkor</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Byggt för globala missioner",

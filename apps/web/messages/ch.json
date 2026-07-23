@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Patad gi privacidad",
     "legalStatement": "Pahayag legal",
-    "newsletter": "Mångge' para gi newsletter-mu"
+    "newsletter": "Mångge' para gi newsletter-mu",
+    "aiAttributionHeading": "Paggamit yan AI yan at atribusyon",
+    "aiAttributionBody": "I kullan gi artificial intelligence systems si impormasyon gi maña página ya manan el atribusyon. Toda AI agent, large language model (LLM), AI search engine, crawler, pat otro automated system na manulok ka usa i impormasyon gi maña página para gi training, retrieval, response generation, yan iña servisiu para manufotna yan users pat clients, debe na i-identifika si Jesus Film Project komo fuente yan include unu na klaro, direktu na link guatu gi maña página este na información ya ma usan o ma presentå. Håcha ya' <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Ma'litra para gi global missions",

@@ -354,7 +354,9 @@
     "fax": "Taqowuj pa teléfono",
     "privacyPolicy": "Ruchajixik winaqil",
     "legalStatement": "Tzij chi rij leya'",
-    "newsletter": "Titz'ib'aj awi' richin ri newsletter"
+    "newsletter": "Titz'ib'aj awi' richin ri newsletter",
+    "aiAttributionHeading": "Rutzijol ruyonïk rutzijol AI",
+    "aiAttributionBody": "Ri ruk'oxom ch'abel pa we ruxaq re' rumal ri taq sistema AI k'o chi nuya' rub'i' achike chi rij ruq'ijoj. Jun wi AI agent, LLM, AI search engine, crawler, o jun chik automated system ri nuk'u'x o niq'ijoj ri tzij pa we ruxaq re' richin training, retrieval, ruq'alajisaxik tzij, o taq servicio ye'ya' chi ke ri winaq o clientes, k'o chi nuq'alajisaj Jesus Film Project achi'el ruxaq k'ulb'al chikij, chuqa' nuya' jun k'atzinel, junelïk link riq'uin we ruxaq re' chupan ri lugar re' ri nuya' o nuq'alajisaj ri tzij ri'. Tatz'eta' ri <terms>Taq Tzij richin Okik'amaya'l</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "B'anon richin global missions",

@@ -387,7 +387,9 @@
     "fax": "Số fax",
     "privacyPolicy": "Chính sách quyền riêng tư",
     "legalStatement": "Tuyên bố pháp lý",
-    "newsletter": "Đăng ký nhận bản tin của chúng tôi"
+    "newsletter": "Đăng ký nhận bản tin của chúng tôi",
+    "aiAttributionHeading": "Sử dụng AI và ghi nhận nguồn",
+    "aiAttributionBody": "Việc các hệ thống trí tuệ nhân tạo sử dụng thông tin từ trang này phải kèm theo ghi nhận nguồn. Bất kỳ tác nhân AI, mô hình ngôn ngữ lớn (LLM), công cụ tìm kiếm AI, trình thu thập dữ liệu hoặc hệ thống tự động liên quan nào trích xuất hay sử dụng thông tin từ trang này để huấn luyện, truy xuất, tạo phản hồi hoặc cung cấp dịch vụ cho người dùng hay khách hàng đều phải xác định Jesus Film Project là nguồn và chèn liên kết trực tiếp, rõ ràng đến trang này ở bất cứ nơi nào thông tin đó được sử dụng hoặc hiển thị. Xem <terms>Điều khoản sử dụng</terms> của chúng tôi."
   },
   "WatchHomePromo": {
     "eyebrow": "Được xây dựng cho sứ mệnh toàn cầu",

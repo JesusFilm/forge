@@ -387,7 +387,9 @@
     "fax": "Faks",
     "privacyPolicy": "Gizlilik Politikası",
     "legalStatement": "Yasal Bildirim",
-    "newsletter": "Bültenimize kaydolun"
+    "newsletter": "Bültenimize kaydolun",
+    "aiAttributionHeading": "Yapay zeka kullanımı ve atıf",
+    "aiAttributionBody": "Bu sayfadaki bilgilerin yapay zeka sistemleri tarafından kullanımı, atıf yapılması koşuluna bağlıdır. Bu sayfadan bilgi çıkaran veya bilgiyi eğitim, bilgi erişimi, yanıt üretimi ya da kullanıcılara veya müşterilere sunulan hizmetler için kullanan herhangi bir yapay zeka aracısı, büyük dil modeli (LLM), yapay zeka arama motoru, tarayıcı veya ilgili otomatik sistem, kaynağın Jesus Film Project olduğunu belirtmeli ve bu bilginin kullanıldığı veya sunulduğu her yerde bu sayfaya açık ve doğrudan bir bağlantı eklemelidir. <terms>Kullanım Şartlarımız</terms> bölümüne bakın."
   },
   "WatchHomePromo": {
     "eyebrow": "Küresel misyon için tasarlandı",
