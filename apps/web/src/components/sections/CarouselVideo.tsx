@@ -23,6 +23,10 @@ import {
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
 import {
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
@@ -422,12 +426,10 @@ function ThumbnailCard({
       />
 
       <div className="p-4">
-        <span className="text-xs font-medium tracking-wider text-white/60 uppercase">
+        <VideoThumbnailEyebrow>
           {videoLabels("shortFilm")}
-        </span>
-        <h3 className="line-clamp-3 text-base leading-tight font-bold text-white/90">
-          {title}
-        </h3>
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle lines={3}>{title}</VideoThumbnailTitle>
       </div>
     </div>
   )

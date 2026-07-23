@@ -61,7 +61,7 @@ current authored carousel path and desktop grid layouts.
 - **Requirements:** R1-R6
 - **Files:**
   - Modify `apps/web/src/components/sections/MediaCollection.test.tsx`
-  - Modify `docs/roadmap/platform/feat-288-watch-grid-mobile-carousels.md`
+  - Modify `docs/roadmap/platform/feat-299-watch-grid-mobile-carousels.md`
   - Add `docs/solutions/ui-bugs/watch-experience-grid-mobile-carousel.md`
 - **Approach:** Lock the responsive structure in focused tests, then verify a
   real grid-backed Experience section below and above `md`. Prove horizontal
@@ -81,7 +81,7 @@ current authored carousel path and desktop grid layouts.
 - Multi-item grid, collection, hero, and player variants share one responsive
   card tree: native horizontal scroll snap below `md`, variant-correct grids at
   `md+`. Single-item and authored carousel behavior remain separate.
-- Focused `MediaCollection` coverage passed 39 tests, including horizontal,
+- Focused `MediaCollection` coverage passed 43 tests, including horizontal,
   portrait, special desktop-column, single-item, and authored-carousel
   contracts. Full Web TypeScript and ESLint checks passed.
 - Browser proof at 390px showed approximately two 188x106px horizontal cards or

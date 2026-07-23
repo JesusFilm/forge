@@ -1,40 +1,42 @@
 "use client"
 
-import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { useTranslations } from "next-intl"
+import type { Ref } from "react"
+import { createPortal } from "react-dom"
 
-import { cn } from "@/lib/utils"
+export const WATCH_MODAL_CLOSE_INSET_STYLE = {
+  top: "max(1rem, env(safe-area-inset-top, 0px))",
+  right: "max(1rem, env(safe-area-inset-right, 0px))",
+} as const
 
 export function WatchModalViewportCloseButton({
   open,
   onClose,
   testId,
+  buttonRef,
+  ariaLabel,
   portalContainer,
-  positionClassName = "top-12 right-10",
-  className,
 }: {
   open: boolean
   onClose: () => void
   testId: string
+  buttonRef?: Ref<HTMLButtonElement>
+  ariaLabel?: string
   portalContainer?: HTMLElement | null
-  positionClassName?: string
-  className?: string
 }) {
   const t = useTranslations("WatchModal")
   if (!open || typeof document === "undefined") return null
 
   return createPortal(
     <button
+      ref={buttonRef}
       type="button"
-      aria-label={t("close")}
+      aria-label={ariaLabel ?? t("close")}
       data-testid={testId}
       onClick={onClose}
-      className={cn(
-        "fixed z-[60] flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 focus-visible:outline-none",
-        positionClassName,
-        className,
-      )}
+      style={WATCH_MODAL_CLOSE_INSET_STYLE}
+      className="fixed z-[1100] flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 focus-visible:outline-none"
     >
       <X aria-hidden className="h-6 w-6" />
     </button>,

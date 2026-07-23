@@ -27,8 +27,8 @@ src/
     page.tsx             Resolves the seeker gate (resolveSeekerGate, surface "page"; force-dynamic) → <AppShell seekerEnabled> (server)
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
-      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame; the SESSION stubs never-persisted conversations, feat-281 Ruling 3). Testable core handleSeekerProxyRequest
-      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, the shared hostAllowed (lib/server/mastra-upstream), [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
+      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard via the shared transport (lib/server/mastra-upstream — fetch shape, signal composition, failure classifier), timeout-bounded, normalizes every failure to one terminal error{reason} frame; the 503 error-body read is byte-capped (64 KiB, feat-282's hardening delta). feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame; the SESSION stubs never-persisted conversations, feat-281 Ruling 3). Testable core handleSeekerProxyRequest
+      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, the shared transport (lib/server/mastra-upstream: hostAllowed, fetch shape, signal composition, failure classifier, readJsonCapped), [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (the 2/8 MiB cap sizes stay here), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
       history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
@@ -72,7 +72,7 @@ src/
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
-    server/mastra-upstream.ts feat-282: shared Mastra upstream primitives both proxy families import — hostAllowed (the SSRF guard: https floor with loopback + *.railway.internal http carve-outs, optional host allowlist) + MAX_CONVERSATION_ID_CHARS. Pure (no env reads), `import "server-only"`-guarded; deny ladders, budgets, and response channels stay per-proxy. Its test file carries the railway.internal label-boundary matrix as direct unit coverage
+    server/mastra-upstream.ts feat-282: the shared Mastra upstream transport both proxy families import — hostAllowed (the SSRF guard: https floor with loopback + *.railway.internal http carve-outs, optional host allowlist), MAX_CONVERSATION_ID_CHARS, postMastraUpstream (the fetch shape: URL-from-path+base, POST, bearer, JSON content-type, per-proxy accept, redirect:"error", signal), composeUpstreamAbortSignal (skips absent sources; single source passes through as-is), classifyUpstreamFailure (timeout | cancelled | network — seeker's check precedence, budget → caller-abort → error name, canonical for both proxies; each proxy keeps its own wire mapping), readJsonCapped + undefinedOnAbort (the byte-capped read + abort-race helper). Pure (no env reads), `import "server-only"`-guarded; deny ladders, budgets, byte-cap SIZES, response channels, and the gate stay per-proxy. Its test file carries the railway.internal label-boundary matrix + direct unit coverage of every transport helper
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
@@ -172,7 +172,10 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   WireGuard-encrypted mesh, and Mastra has no public domain),
   `redirect:"error"`, bounds the call with `SEEKER_TIMEOUT_MS` (95s > Mastra's
   90s ceiling), and normalizes every failure to one terminal `error{reason}` SSE
-  frame. Plain-string logging only.
+  frame; since feat-282 the transport mechanics (fetch shape, signal
+  composition, failure classifier, the byte-capped 503 error-body read) come
+  from the shared `lib/server/mastra-upstream`, while the SSE wire mapping
+  and budgets stay here. Plain-string logging only.
 - **Access posture (feat-233; supersedes the feat-205/feat-208 "open proxy"
   framing):** an inbound per-user auth gate now EXISTS — the seeker dogfood
   gate is enforced on every request before config checks or any upstream
@@ -222,14 +225,16 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
   (since feat-250 the send path presents the same lane bearer — chat holds no
   pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the shared
-  `hostAllowed` from `lib/server/mastra-upstream` (feat-282 — both proxy
-  families import it; the seeker route no longer exports SSRF primitives). Read budget = `seekerTimeoutMs()` clamped to [9 s, 10 s]
+  transport from `lib/server/mastra-upstream` (feat-282 — `hostAllowed`, the
+  fetch shape, signal composition, the failure classifier, `readJsonCapped`;
+  both proxy families import it and the seeker route no longer exports SSRF
+  primitives). Read budget = `seekerTimeoutMs()` clamped to [9 s, 10 s]
   (`composeHistoryTimeoutMs` — the 9 s floor keeps the budget above Mastra's
   8 s `historyRead` even when the send-path `SEEKER_TIMEOUT_MS` escape hatch
   lowers the send budget); upstream status classified before any body parse;
-  byte-capped buffered reads (2 MiB list /
-  8 MiB thread — sized for the worst-case UTF-8 inflation of the 8,192
-  UTF-16-unit per-message text cap). Deny wire (KTD8): 401 `invalid_session` (anonymous ≡ expired
+  byte-capped buffered reads via the shared `readJsonCapped` (2 MiB list /
+  8 MiB thread — cap sizes stay in this proxy, sized for the worst-case UTF-8
+  inflation of the 8,192 UTF-16-unit per-message text cap). Deny wire (KTD8): 401 `invalid_session` (anonymous ≡ expired
   ≡ tampered), 403 `gate_denied` / `thread_forbidden`, 404 `thread_not_found`
   (only when the upstream body carries the reason — a reasonless 404 is
   `unavailable`, so config outages never read as data loss), 502/504.

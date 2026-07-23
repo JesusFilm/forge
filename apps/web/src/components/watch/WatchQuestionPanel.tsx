@@ -109,11 +109,6 @@ export function WatchQuestionPanel({
 
   return (
     <>
-      <WatchModalViewportCloseButton
-        open={modalOpen}
-        onClose={closeChatModal}
-        testId="watch-question-panel-close"
-      />
       <div
         aria-hidden={modalOpen ? undefined : true}
         data-testid="watch-question-panel-modal"
@@ -124,6 +119,11 @@ export function WatchQuestionPanel({
             : "pointer-events-none opacity-0"
         }`}
       >
+        <WatchModalViewportCloseButton
+          open={modalOpen}
+          onClose={closeChatModal}
+          testId="watch-question-panel-close"
+        />
         <div
           aria-hidden="true"
           data-testid="watch-question-panel-backdrop"

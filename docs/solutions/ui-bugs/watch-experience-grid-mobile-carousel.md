@@ -154,4 +154,4 @@ an invisible desktop tab stop is worse than the small extra labeled-region stop.
 
 - [Responsive authored carousel density](watch-authored-media-collection-responsive-card-density.md)
 - [Implementation plan](../../plans/2026-07-22-001-watch-grid-mobile-carousels-plan.md)
-- [Roadmap ticket](../../roadmap/platform/feat-288-watch-grid-mobile-carousels.md)
+- [Roadmap ticket](../../roadmap/platform/feat-299-watch-grid-mobile-carousels.md)

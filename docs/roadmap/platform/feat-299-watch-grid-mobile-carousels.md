@@ -1,5 +1,5 @@
 ---
-id: "feat-288"
+id: "feat-299"
 title: "Watch Experience grids become mobile carousels"
 owner: "vlad"
 priority: "P2"
@@ -78,7 +78,7 @@ browsable there, while retaining their authored desktop grid layouts.
   a native scroll-snap rail below `md` and resets to the existing
   variant-specific grid at `md+`. Horizontal and portrait cards use separate
   mobile widths; single-item and authored carousel paths remain unchanged.
-- Focused `MediaCollection` coverage passed 39 tests. Full Web typecheck and
+- Focused `MediaCollection` coverage passed 43 tests. Full Web typecheck and
   ESLint passed, and the changed files passed Prettier plus `git diff --check`.
 - At a 390px browser viewport, horizontal thumbnails measured approximately
   188x106px with two cards visible and portrait thumbnails approximately

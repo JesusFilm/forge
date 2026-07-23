@@ -572,6 +572,33 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
     ])
   })
 
+  // feat-282 hardening delta: the 503 read is byte-capped (OOM-guard law).
+  // An over-cap body aborts the socket and maps to the existing
+  // config_missing outcome — same as any parse failure.
+  it("503 with an over-cap body → config_missing, socket cancelled", async () => {
+    let cancelled = false
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(256 * 1024))
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response(endless, { status: 503 }))
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "config_missing" } },
+    ])
+    expect(cancelled).toBe(true)
+  })
+
   it("404 (route disabled upstream) → config_missing", async () => {
     const fetchImpl = vi
       .fn()
@@ -740,14 +767,17 @@ describe("handleSeekerProxyRequest — mid-stream read failures", () => {
   })
 
   // The composed signal bounds fetch(), not a body read on an already-received
-  // 503 — a never-resolving json() must still terminate via the abort race.
-  it("503 whose json() outlives the budget → config_missing (abort race)", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue({
-      status: 503,
-      ok: false,
-      json: () => new Promise(() => {}),
-      body: null,
-    } as unknown as Response)
+  // 503 — a stalled 503 body must still terminate via the abort race.
+  it("503 whose body outlives the budget → config_missing (abort race)", async () => {
+    const stalled = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"reason": '))
+        // never closes
+      },
+    })
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response(stalled, { status: 503 }))
     const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, timeoutMs: 5 },

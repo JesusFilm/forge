@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Languages, LoaderCircle, RefreshCw, X } from "lucide-react"
+import { Check, Languages, LoaderCircle, RefreshCw } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPublicWatchLanguageSlug } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
@@ -245,8 +246,15 @@ export function GlobalLanguagePickerModal({
         finalFocus={returnFocusRef}
         showCloseButton={false}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
         className="w-[min(608px,calc(100vw-1.5rem))] max-w-[608px] gap-8 border-white/10 bg-stone-950 p-6 text-stone-100 ring-white/10 sm:p-8"
       >
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={requestClose}
+          testId="global-language-picker-modal-close"
+          ariaLabel={t("close")}
+        />
         <DialogTitle className="flex items-center gap-3 text-xl font-semibold">
           <Languages aria-hidden className="size-5" />
           {t("dialogTitle")}
@@ -323,7 +331,6 @@ export function GlobalLanguagePickerModal({
             onClick={requestClose}
             className={`rounded-full px-5 py-3 text-xs font-bold tracking-wider text-stone-300 uppercase ${MODAL_FOCUS_RING_CLASS}`}
           >
-            <X aria-hidden className="size-4" />
             {t("close")}
           </Button>
           <Button

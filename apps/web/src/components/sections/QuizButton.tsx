@@ -1,10 +1,11 @@
 "use client"
 
 import { type ReactElement, useState } from "react"
-import { Loader2, XIcon } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
+import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 
 type QuizButtonData = {
   id: string
@@ -57,13 +58,16 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           overlayClassName="bg-black/80 backdrop-blur-sm"
+          viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-hidden"
           showCloseButton={false}
-          className="top-0 left-0 h-dvh w-dvw max-w-none translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-transparent p-2 pt-14 ring-0 sm:max-w-none md:p-14 md:pt-0"
+          className="h-dvh w-dvw max-w-none gap-0 rounded-none border-0 bg-transparent p-2 pt-14 ring-0 sm:max-w-none md:p-14 md:pt-0"
         >
-          <DialogClose className="absolute top-4 right-4 z-10 rounded-full p-2 text-white transition-colors hover:bg-white/20 [&_svg]:size-8">
-            <XIcon />
-            <span className="sr-only">{modalT("close")}</span>
-          </DialogClose>
+          <WatchModalViewportCloseButton
+            open={open}
+            onClose={() => setOpen(false)}
+            testId="watch-quiz-modal-close"
+            ariaLabel={modalT("close")}
+          />
           <div className="absolute inset-0 -z-1 flex items-center justify-center">
             <div className="scale-200 text-white">
               <Loader2 className="animate-spin" />

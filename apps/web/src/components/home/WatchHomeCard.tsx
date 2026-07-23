@@ -5,6 +5,11 @@ import type { CSSProperties } from "react"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
 import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
@@ -175,18 +180,16 @@ export function WatchHomeCard({
             className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           />
         ) : null}
-        <div
+        <VideoThumbnailCaption
           data-testid="watch-home-card-text-gradient"
-          className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-end px-4 pt-10 pb-5"
+          className="z-30"
           style={textScrimStyle(card)}
         >
-          <div className="truncate text-xs leading-8 font-semibold tracking-media-label text-stone-300/70 uppercase mix-blend-screen">
+          <VideoThumbnailEyebrow as="div">
             {videoLabels(videoLabelMessageKey(card.label))}
-          </div>
-          <h3 className="line-clamp-2 -mt-1 text-left text-xl leading-tight font-media-card-title text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
-            {card.title}
-          </h3>
-        </div>
+          </VideoThumbnailEyebrow>
+          <VideoThumbnailTitle size="large">{card.title}</VideoThumbnailTitle>
+        </VideoThumbnailCaption>
       </div>
     </CardFrame>
   )

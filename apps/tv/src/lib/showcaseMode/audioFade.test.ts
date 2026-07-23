@@ -3,6 +3,7 @@ import {
   AUDIO_FADE_OUT_ARM_SECONDS,
   AUDIO_FADE_OUT_SECONDS,
   AUDIO_FADE_TICK_MS,
+  crossfadeGainsAt,
   fadeOutVolumeAt,
   shouldArmFadeOut,
   shouldDriveFadeOut,
@@ -268,5 +269,57 @@ describe("shouldDriveFadeOut — the token-keyed re-arm gate", () => {
         window: w,
       }),
     ).toBe(true)
+  })
+})
+
+describe("crossfadeGainsAt — hop language crossfade", () => {
+  it("starts fully on the outgoing dub and ends fully on the incoming", () => {
+    expect(crossfadeGainsAt({ elapsedMs: 0, durationMs: 500 })).toEqual({
+      outgoing: 1,
+      incoming: 0,
+    })
+    const end = crossfadeGainsAt({ elapsedMs: 500, durationMs: 500 })
+    expect(end.outgoing).toBeCloseTo(0, 6)
+    expect(end.incoming).toBeCloseTo(1, 6)
+  })
+
+  it("keeps constant total power throughout, so there is no midpoint loudness dip", () => {
+    for (const elapsedMs of [0, 60, 125, 250, 375, 440, 500]) {
+      const g = crossfadeGainsAt({ elapsedMs, durationMs: 500 })
+      // Equal-power: the two gains' SQUARES sum to 1 at every instant (no gap, no dip).
+      expect(g.outgoing ** 2 + g.incoming ** 2).toBeCloseTo(1, 6)
+      // And both tracks are audible together through the whole crossfade — never silence.
+      if (elapsedMs > 0 && elapsedMs < 500) {
+        expect(g.outgoing).toBeGreaterThan(0)
+        expect(g.incoming).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it("moves monotonically — outgoing only falls, incoming only rises", () => {
+    let prevOut = Infinity
+    let prevIn = -Infinity
+    for (let elapsedMs = 0; elapsedMs <= 500; elapsedMs += 50) {
+      const g = crossfadeGainsAt({ elapsedMs, durationMs: 500 })
+      expect(g.outgoing).toBeLessThanOrEqual(prevOut + 1e-9)
+      expect(g.incoming).toBeGreaterThanOrEqual(prevIn - 1e-9)
+      prevOut = g.outgoing
+      prevIn = g.incoming
+    }
+  })
+
+  it("clamps out-of-range and degenerate inputs to the endpoints without throwing", () => {
+    expect(crossfadeGainsAt({ elapsedMs: -100, durationMs: 500 })).toEqual({
+      outgoing: 1,
+      incoming: 0,
+    })
+    const past = crossfadeGainsAt({ elapsedMs: 999, durationMs: 500 })
+    expect(past.outgoing).toBeCloseTo(0, 6)
+    expect(past.incoming).toBeCloseTo(1, 6)
+    // Non-positive / non-finite duration collapses straight to the incoming.
+    expect(crossfadeGainsAt({ elapsedMs: 10, durationMs: 0 })).toEqual({
+      outgoing: 0,
+      incoming: 1,
+    })
   })
 })

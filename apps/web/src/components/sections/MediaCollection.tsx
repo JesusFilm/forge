@@ -36,6 +36,11 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 import { WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS } from "@/components/watch/watch-section-styles"
 
 // Hoisted so the throwing constructor runs once at module load, not per card.
@@ -171,6 +176,11 @@ export function MediaCollection({
     footerText: rawFooterText,
     items,
   } = data
+  const thumbnailOrientation = (
+    data as typeof data & {
+      thumbnailOrientation?: "vertical" | "horizontal" | null
+    }
+  ).thumbnailOrientation
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
@@ -217,6 +227,7 @@ export function MediaCollection({
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}
+      thumbnailOrientation={thumbnailOrientation ?? null}
       backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
@@ -255,6 +266,7 @@ function WatchHomeMediaCollection({
   ctaLabel,
   footerText,
   variant,
+  thumbnailOrientation,
   backgroundColor,
   showItemNumbers,
   items,
@@ -269,6 +281,7 @@ function WatchHomeMediaCollection({
   ctaLabel: string | null
   footerText: string | null
   variant: string | null
+  thumbnailOrientation: "vertical" | "horizontal" | null
   backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
@@ -276,23 +289,25 @@ function WatchHomeMediaCollection({
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
-  const isVerticalGrid = variant === "collection"
-  const isVertical = isRail || isVerticalGrid
+  const orientation =
+    thumbnailOrientation ??
+    (isRail || variant === "collection" ? "vertical" : "horizontal")
+  const isVertical = orientation === "vertical"
   const usesMobileCarousel = !isRail && items.length > 1
   const needsKeyboardScrollableCarousel =
     usesMobileCarousel &&
     items.some(
       (item) => !item.videoSlug || tryAsContentSlug(item.videoSlug) == null,
     )
-  const desktopGridColumns = isVerticalGrid
+  const desktopGridColumns = isVertical
     ? "md:grid-cols-4 xl:grid-cols-4"
     : variant === "hero" || variant === "player"
       ? "md:grid-cols-2"
       : "md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-  const mobileCarouselLayout = isVerticalGrid
+  const mobileCarouselLayout = isVertical
     ? MOBILE_CAROUSEL_LAYOUT.vertical
     : MOBILE_CAROUSEL_LAYOUT.horizontal
-  const staticGridColumns = isVerticalGrid
+  const staticGridColumns = isVertical
     ? "grid-cols-2 gap-4"
     : "grid-cols-1 gap-5"
   const defaultBackgroundUrl =
@@ -325,7 +340,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+    <p className="text-xs font-semibold tracking-eyebrow text-red-100/60 uppercase xl:text-sm 2xl:text-base">
       {categoryLabel}
     </p>
   ) : null
@@ -334,7 +349,10 @@ function WatchHomeMediaCollection({
       {subtitle ? (
         <p
           data-testid="media-collection-supporting-title"
-          className="w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl"
+          className={cn(
+            "w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
+            title && "pt-1",
+          )}
         >
           {subtitle}
         </p>
@@ -548,12 +566,15 @@ function WatchHomeMediaCollection({
                 <CarouselItem
                   key={`${item.id}-${index}`}
                   data-testid="media-collection-carousel-item"
-                  className="max-w-[200px] py-1 pl-5"
+                  className={cn(
+                    "py-1 pl-5",
+                    isVertical ? "max-w-[200px]" : "max-w-[360px]",
+                  )}
                 >
                   <VideoCard
                     item={item}
                     index={index}
-                    orientation="vertical"
+                    orientation={orientation}
                     showItemNumbers={showItemNumbers}
                     fallbackLanguageSlug={fallbackLanguageSlug}
                     onHover={() =>
@@ -608,7 +629,7 @@ function WatchHomeMediaCollection({
                 key={`${item.id}-${index}`}
                 item={item}
                 index={index}
-                orientation={isVertical ? "vertical" : "horizontal"}
+                orientation={orientation}
                 showItemNumbers={showItemNumbers}
                 fallbackLanguageSlug={fallbackLanguageSlug}
                 compactImageSizes={
@@ -630,7 +651,7 @@ function WatchHomeMediaCollection({
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p
             data-testid="media-collection-footer"
-            className="mt-8 max-w-5xl text-lg leading-relaxed font-normal text-stone-200/80 xl:text-xl"
+            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
           >
             {footerText}
           </p>
@@ -804,41 +825,38 @@ function VideoCard({
             className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           />
         ) : null}
-        <div
+        <VideoThumbnailCaption
+          inset={compactOnMobile ? "compact" : "default"}
           className={cn(
-            "absolute inset-0 z-30 flex flex-col justify-end",
+            "z-30",
             compactOnMobile
-              ? "px-2.5 pt-2.5 pb-3 md:px-4 md:pt-4 md:pb-5"
-              : "px-4 pt-4 pb-5",
+              ? "px-2.5 pt-2.5 pb-3 md:px-4 md:pt-10 md:pb-4"
+              : null,
           )}
         >
           {item.label ? (
-            <div
-              className={cn(
-                "truncate font-semibold tracking-media-label text-stone-300/70 uppercase mix-blend-screen",
-                compactOnMobile
-                  ? "text-[10px] leading-5 md:text-xs md:leading-8"
-                  : "text-xs leading-8",
-              )}
+            <VideoThumbnailEyebrow
+              as="div"
+              size={compactOnMobile ? "compact-sm" : "regular"}
             >
               {formatLabel(item.label)}
-            </div>
+            </VideoThumbnailEyebrow>
           ) : null}
           {item.title ? (
-            <h3
-              className={cn(
-                "line-clamp-2 -mt-1 text-left leading-tight font-media-card-title text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
+            <VideoThumbnailTitle
+              size={
                 compactOnMobile
-                  ? "text-sm sm:text-base md:text-xl"
+                  ? "compact-sm"
                   : isVertical
-                    ? "text-xl"
-                    : "text-lg md:text-xl",
-              )}
+                    ? "large"
+                    : "prominent"
+              }
+              className={compactOnMobile ? "md:text-xl" : undefined}
             >
               {item.title}
-            </h3>
+            </VideoThumbnailTitle>
           ) : null}
-        </div>
+        </VideoThumbnailCaption>
       </div>
     </Wrapper>
   )

@@ -22,6 +22,7 @@ export const adminMediaCollectionFragment = adminGraphql(
       mediaDefaultCollectionSlug: defaultCollectionSlug
       showItemNumbers
       mediaCollectionVariant: variant
+      thumbnailOrientation
       footerText
       imageUrl
       imageAssetId

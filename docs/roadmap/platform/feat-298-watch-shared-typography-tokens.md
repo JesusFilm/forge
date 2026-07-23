@@ -1,5 +1,5 @@
 ---
-id: "feat-287"
+id: "feat-298"
 title: "Watch shared card and eyebrow typography tokens"
 owner: "vlad"
 priority: "P2"
