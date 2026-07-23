@@ -11,8 +11,8 @@ export function normalizePublicShareableOrigin(origin: string): string | null {
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null
     if (parsed.username || parsed.password) return null
 
-    const hostname = parsed.hostname.toLowerCase()
-    if (hostname === "localhost") return null
+    const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "")
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) return null
     if (hostname.endsWith(".local")) return null
     if (hostname === "0.0.0.0") return null
     const ipv6Hostname = hostname.replace(/^\[|\]$/g, "")

@@ -12,6 +12,9 @@ describe("resolveWatchShareUrl", () => {
     "http://192.168.1.20:3000",
     "http://169.254.1.2:3000",
     "http://forge.local:3000",
+    "http://forge.local.:3000",
+    "http://tenant.localhost:3000",
+    "http://localhost.:3000",
     "http://[::1]:3000",
     "http://[fd00::1]:3000",
   ])("uses the indexed public origin for %s", (origin) => {
@@ -88,11 +91,26 @@ describe("resolveWatchShareUrlFromPathname", () => {
     ).toBe(`https://www.jesusfilm.org${publicPath}`)
   })
 
-  it("returns null for non-video Watch routes", () => {
+  it("preserves known non-video Watch routes on the public origin", () => {
+    expect(
+      resolveWatchShareUrlFromPathname({
+        origin: "http://localhost:3000",
+        pathname: "/watch",
+      }),
+    ).toBe("https://www.jesusfilm.org/watch")
     expect(
       resolveWatchShareUrlFromPathname({
         origin: "http://localhost:3000",
         pathname: "/watch/english.html",
+      }),
+    ).toBe("https://www.jesusfilm.org/watch/english.html")
+  })
+
+  it("returns null for unknown Watch routes", () => {
+    expect(
+      resolveWatchShareUrlFromPathname({
+        origin: "http://localhost:3000",
+        pathname: "/watch/not/a/recognized/route",
       }),
     ).toBeNull()
   })

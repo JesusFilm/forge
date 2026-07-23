@@ -335,6 +335,28 @@ describe("ShareModal — local origin fallback", () => {
     expect($('[data-testid="watch-share-modal-embed-copy"]')).not.toBeNull()
     expect($('[data-testid="watch-share-modal-close"]')).not.toBeNull()
   })
+
+  it("shows only Close when both share and embed identities are invalid", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug=""
+          currentLanguageSlug="english"
+          playbackId={null}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect($('[data-testid="watch-share-modal-facebook"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-x"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-input"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-input"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-copy"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-copy"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-close"]')).not.toBeNull()
+  })
 })
 
 describe("ShareModal — clipboard failure", () => {

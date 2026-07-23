@@ -656,6 +656,24 @@ describe("SeriesPageClient — passthrough to children", () => {
     expect(modal?.getAttribute("data-title")).toBe("StoryClubs")
     expect(modal?.getAttribute("data-language-slug")).toBe("english")
   })
+
+  it("uses the validated route language when the series inventory is empty", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({
+            slug: "storyclubs",
+            childDubLanguages: [],
+          })}
+          selectedVariant={null}
+          locale="english"
+        />,
+      )
+    })
+
+    const modal = container.querySelector('[data-testid="share-modal-mock"]')
+    expect(modal?.getAttribute("data-language-slug")).toBe("english")
+  })
 })
 
 describe("SeriesPageClient — edge cases", () => {

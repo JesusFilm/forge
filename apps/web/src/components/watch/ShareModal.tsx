@@ -87,8 +87,21 @@ export function ShareModal({
     ? buildXShareUrl(shareableUrl, videoTitle ?? undefined)
     : null
 
-  const isEmbed = tab === "embed" || shareableUrl == null
-  const currentValue = isEmbed ? embedSnippet : shareableUrl
+  const activeMode =
+    tab === "embed" && embedSnippet
+      ? "embed"
+      : shareableUrl
+        ? "link"
+        : embedSnippet
+          ? "embed"
+          : null
+  const isEmbed = activeMode === "embed"
+  const currentValue =
+    activeMode === "embed"
+      ? embedSnippet
+      : activeMode === "link"
+        ? shareableUrl
+        : null
   const copyLabel = isEmbed ? t("copyCode") : t("copyLink")
 
   // Reset the "Copied" pill back to the default label after 2s so a second
@@ -294,7 +307,7 @@ export function ShareModal({
                 {t("copyFailed")}
               </p>
             ) : null}
-            {isEmbed ? (
+            {activeMode === "embed" ? (
               <textarea
                 ref={embedRef}
                 data-testid="watch-share-modal-embed-input"
@@ -307,12 +320,12 @@ export function ShareModal({
                 onFocus={(e) => e.currentTarget.select()}
                 className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
-            ) : shareableUrl ? (
+            ) : activeMode === "link" ? (
               <input
                 type="text"
                 data-testid="watch-share-modal-link-input"
                 readOnly
-                value={shareableUrl}
+                value={currentValue ?? ""}
                 onFocus={(e) => e.currentTarget.select()}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />

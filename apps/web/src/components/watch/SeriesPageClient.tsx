@@ -207,7 +207,8 @@ export function SeriesPageClient({
     )?.slug ??
     slugByBcp47.get(locale.toLowerCase()) ??
     languageOptions[0]?.slug ??
-    ""
+    selectedVariant?.language?.slug ??
+    locale
   const currentLanguageCode = languageCodeFor(
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )

@@ -58,7 +58,10 @@ export function resolveWatchShareUrlFromPathname({
       : pathname.startsWith(`${WATCH_BASE_PATH}/`)
         ? pathname.slice(WATCH_BASE_PATH.length)
         : pathname
-  const parsed = parseWatchPath(watchPathname)
+  const normalizedWatchPathname = watchPathname.startsWith("/")
+    ? watchPathname
+    : `/${watchPathname}`
+  const parsed = parseWatchPath(normalizedWatchPathname)
 
   if (parsed.kind === "video") {
     return resolveWatchShareUrl({
@@ -74,7 +77,12 @@ export function resolveWatchShareUrlFromPathname({
       languageSlug: parsed.lang,
     })
   }
-  return null
+  if (parsed.kind === "reserved" || parsed.kind === "unknown") return null
+
+  const normalizedOrigin =
+    normalizePublicShareableOrigin(origin) ?? WATCH_PUBLIC_METADATA_ORIGIN
+  const suffix = parsed.kind === "home" ? "" : normalizedWatchPathname
+  return `${normalizedOrigin}${WATCH_BASE_PATH}${suffix}`
 }
 
 // Mux playback ids are URL-safe (alphanumeric + `_-`), and currently 8-64
