@@ -9,6 +9,7 @@ import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { resolveMediaCollectionThumbnailOrientation } from "../../lib/mediaCollectionThumbnailOrientation"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -41,8 +42,10 @@ export interface MediaCollectionRendererProps {
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const CARD_WIDTH_RATIO = 0.37
-const CARD_ASPECT = 3 / 4
+const VERTICAL_CARD_WIDTH_RATIO = 0.37
+const HORIZONTAL_CARD_WIDTH_RATIO = 0.72
+const VERTICAL_CARD_ASPECT = 3 / 4
+const HORIZONTAL_CARD_ASPECT = 16 / 9
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -59,8 +62,21 @@ export function MediaCollectionRenderer({
   const mcSubtitle = s.subtitle as string | null
   const categoryLabel = s.categoryLabel as string | null
   const items = (s.items as MediaItem[] | undefined) ?? []
+  const thumbnailOrientation = resolveMediaCollectionThumbnailOrientation(
+    s.thumbnailOrientation,
+    "vertical",
+  )
 
-  const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
+  const cardWidth = Math.round(
+    screenWidth *
+      (thumbnailOrientation === "horizontal"
+        ? HORIZONTAL_CARD_WIDTH_RATIO
+        : VERTICAL_CARD_WIDTH_RATIO),
+  )
+  const cardAspect =
+    thumbnailOrientation === "horizontal"
+      ? HORIZONTAL_CARD_ASPECT
+      : VERTICAL_CARD_ASPECT
 
   if (items.length === 0) return null
 
@@ -89,7 +105,7 @@ export function MediaCollectionRenderer({
         accessibilityLabel={`${label ?? ""} ${title}`.trim()}
         accessibilityHint="Opens this video"
         style={[card.surface, { width: cardWidth }]}
-        surfaceStyle={styles.cardInner}
+        surfaceStyle={[styles.cardInner, { aspectRatio: cardAspect }]}
         background={
           thumbnailUrl != null ? (
             <Image
@@ -194,7 +210,6 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     width: "100%",
-    aspectRatio: CARD_ASPECT,
   },
   textContent: {
     position: "absolute",

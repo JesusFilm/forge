@@ -118,6 +118,7 @@ describe("normalizeExperienceDraft", () => {
           t: "mediaCollection",
           title: "Keep exploring",
           variant: "collection",
+          thumbnailOrientation: "horizontal",
           items: [
             {
               candidateRef: "v02",
@@ -145,6 +146,7 @@ describe("normalizeExperienceDraft", () => {
     })
     expect(normalized.blocks[3]).toMatchObject({
       t: "mediaCollection",
+      thumbnailOrientation: "horizontal",
       items: [{ videoId: "video-2", linkToSectionKey: "ai-s02" }],
     })
     expect(normalized.blocks[3]).not.toMatchObject({
