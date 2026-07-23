@@ -305,6 +305,53 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     expect(new Set(sections.map((s) => s.id)).size).toBe(2)
   })
 
+  it("gives blocks that SHARE a sectionKey unique ids (FlashList key safety)", () => {
+    // Admin does not enforce uniqueness: the prod watch-home Experience ships
+    // "Seven Days With Jesus" and "Creation to Christ" both keyed
+    // `media-collection-15`, which collided the HomeScreen FlashList keys.
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "media-collection-15", title: "Seven" }),
+      mediaCollection({ sectionKey: "media-collection-15", title: "Creation" }),
+    ])
+    expect(sections).toHaveLength(2)
+    expect(sections[0].id).toBe("media-collection-15")
+    expect(new Set(sections.map((s) => s.id)).size).toBe(2)
+  })
+
+  it("keeps ids unique across a duplicate-heavy Experience", () => {
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: null }),
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: "dup" }),
+    ])
+    expect(sections).toHaveLength(4)
+    expect(new Set(sections.map((s) => s.id)).size).toBe(4)
+  })
+
+  it("gives a dropped block's sectionKey to the surviving twin", () => {
+    // Only surviving shelves reserve an id: the dropped block must not push the
+    // first survivor off "dup", and the second survivor forces a real collision
+    // (the pre-fix adapter produced ["dup","dup"], so this now discriminates).
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "dup", items: [] }),
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: "dup" }),
+    ])
+    expect(sections.map((s) => s.id)).toEqual(["dup", "dup-2"])
+  })
+
+  it("escalates past a synthesized id that collides with an authored key", () => {
+    // An authored "dup-2" already holds the id the second "dup" block would
+    // synthesize, so uniqueSectionId must escalate again to "dup-2-2".
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "dup-2" }),
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: "dup" }),
+    ])
+    expect(sections.map((s) => s.id)).toEqual(["dup-2", "dup", "dup-2-2"])
+  })
+
   it("gives a repeated video in one collection unique card ids (recyclingKey safety)", () => {
     const [section] = buildWatchHomeSectionsFromExperience([
       mediaCollection({

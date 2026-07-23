@@ -124,10 +124,27 @@ function itemToCard(
   }
 }
 
+// Admin does not enforce `sectionKey` uniqueness within an Experience — prod
+// watch-home ships two blocks keyed `media-collection-15` — and the id becomes
+// the shelf's FlashList key, so a collision must resolve to a distinct id.
+function uniqueSectionId(
+  preferred: string,
+  taken: ReadonlySet<string>,
+  index: number,
+): string {
+  if (!taken.has(preferred)) return preferred
+  let candidate = `${preferred}-${index}`
+  for (let n = 2; taken.has(candidate); n += 1) {
+    candidate = `${preferred}-${index}-${n}`
+  }
+  return candidate
+}
+
 function blockToSection(
   block: ExperienceBlock,
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
+  takenSectionIds: ReadonlySet<string>,
 ): WatchHomeSection | null {
   const b = block as Record<string, unknown>
   const sectionKey = (b.sectionKey as string | null) ?? null
@@ -147,8 +164,13 @@ function blockToSection(
   const thumbnailOrientation = mapThumbnailOrientation(b.thumbnailOrientation)
   return {
     // index disambiguates the FlashList key when a block omits sectionKey — the
-    // fallback would otherwise collapse to one constant for every such block.
-    id: sectionKey ?? `home-experience-section-${index}`,
+    // fallback would otherwise collapse to one constant for every such block —
+    // and uniqueSectionId covers blocks that SHARE an authored key.
+    id: uniqueSectionId(
+      sectionKey ?? `home-experience-section-${index}`,
+      takenSectionIds,
+      index,
+    ),
     eyebrow: categoryLabel,
     // Empty admin title falls back to the category label so a shelf is never headless.
     title: blockTitle || categoryLabel,
@@ -167,11 +189,22 @@ export function buildWatchHomeSectionsFromExperience(
   videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
 ): WatchHomeSection[] {
   const sections: WatchHomeSection[] = []
+  // Only shelves that survive reserve an id, so a dropped block can't push its
+  // surviving twin off the authored key.
+  const takenSectionIds = new Set<string>()
   ;(blocks ?? []).forEach((block, index) => {
     const typename = block.__typename
     if (typename === "MediaCollectionBlock") {
-      const section = blockToSection(block, index, videoByCoreId)
-      if (section) sections.push(section)
+      const section = blockToSection(
+        block,
+        index,
+        videoByCoreId,
+        takenSectionIds,
+      )
+      if (section) {
+        sections.push(section)
+        takenSectionIds.add(section.id)
+      }
     } else if (typename === "WatchHomeHeroBlock") {
       // Expected placeholder — the hero stays client-owned; render nothing.
     } else if (__DEV__) {
