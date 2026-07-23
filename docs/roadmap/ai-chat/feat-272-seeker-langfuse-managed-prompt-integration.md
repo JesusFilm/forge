@@ -6,7 +6,8 @@ priority: "P2"
 status: "not-started"
 start_date: "2026-08-17"
 duration: 3
-depends_on: []
+depends_on:
+  - "feat-296"
 blocks: []
 tags:
   - "ai-pipeline"
@@ -46,7 +47,9 @@ account, project, or keys exist anywhere in this repo or its deploy config.
 Someone must decide Langfuse Cloud (EU vs US region — keys and base URLs are
 region-bound) vs self-hosted, and own provisioning the per-environment
 projects, key pairs, and the seeded smoke prompt. This gates BOTH the first
-real run of the opt-in smoke and this integration.
+real run of the opt-in smoke and this integration. That provisioning +
+safe-env-rollout checklist is tracked in **feat-296** (this ticket
+`depends_on` it).
 
 ## Entry Points — Read These First
 
