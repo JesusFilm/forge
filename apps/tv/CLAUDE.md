@@ -103,8 +103,9 @@ search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
 `bash scripts/setup-sim-env.sh tv` first.** Fresh git worktrees don't inherit
 `.env.local` (gitignored), and this app's `.env.local` historically ships only
 `EXPO_PUBLIC_GRAPHQL_URL` — missing `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`, the
-consumer bearer without which admin's `Query.search` returns `UNAUTHENTICATED`
-and search silently breaks.
+consumer bearer scoped to the `WatchSearch` op. Since #1622 replaced
+`Query.search` with the PUBLIC `watchSearch`, an unset token no longer breaks
+search — it just drops the device into admin's coarse per-IP rate-limit bucket.
 
 The script is idempotent: it seeds `apps/tv/.env.local` from the main checkout
 and guarantees the search token is present (LOCAL DEV may seed a shared dev
@@ -123,8 +124,10 @@ restart to take effect.
 - Search token (production/preview): set `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` to TV's OWN fleet key —
   a dedicated entry in admin's `FLEET_ADMIN_API_KEYS` CSV (NOT `WEB_ADMIN_API_KEYS`, never mobile's
   value). Provision per EAS environment (`eas env:create`); it's baked in at build time, so a token
-  change needs a rebuild. Receiver-first: the key must be live in admin's `FLEET_ADMIN_API_KEYS`
-  before the build ships, or the first `Query.search` calls return `UNAUTHENTICATED`.
+  change needs a rebuild. Receiver-first: the key should be live in admin's `FLEET_ADMIN_API_KEYS`
+  before the build ships — but since #1622 an unrecognized bearer is IGNORED, not rejected
+  (`context.ts` falls through to the public principal), so a stale key degrades the device to
+  admin's coarse per-IP rate-limit bucket rather than breaking search.
 
 ## Observability (Datadog)
 
@@ -150,7 +153,7 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 - **Instrumentation depth (feat-226):** route changes become pattern-named RUM views via
   `DatadogRouteTracker` (name = route pattern e.g. `series/[slug]`, key = literal pathname;
   mounted in `app/_layout.tsx`); GraphQL resources carry the SDK's operation-name headers via
-  an ApolloLink before HttpLink (spread-merge preserves the SemanticSearch bearer); the series
+  an ApolloLink before HttpLink (spread-merge preserves the WatchSearch bearer); the series
   screen reports a `series_first_rail_ready` view timing once per slug instance (latch in
   `seriesScreenState.ts`, partial-data safe); a one-shot-per-process dev watchdog warns when a
   provisioned mount never completes SDK init within ~10s (`createDatadogInitWatchdog`).

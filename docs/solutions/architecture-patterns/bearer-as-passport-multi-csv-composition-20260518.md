@@ -24,6 +24,18 @@ related:
 
 # Bearer-as-passport multi-CSV composition pattern
 
+> **Superseded on the search surface, 2026-07-23 (admin #1622 + Plan 003).** The
+> worked instance below no longer exists: `isAnyKnownBearer`, the
+> `/api/search` route, `Query.search`, `SEARCH_AUTH_REQUIRED`, and the
+> `SEARCH_API_KEYS` env-CSV branch are all deleted. Its replacement,
+> `watchSearch`, is unconditionally public — no passport is checked, and a
+> presented bearer now only selects rate-limit bucket identity.
+>
+> The **pattern** stands and is still the right shape for a surface that needs
+> "are you a known caller?" without "what may you do?"; only this instantiation
+> is gone. `isValidConsumerBearer` survives as the single-branch descendant.
+> Read the composition mechanics below as history, not as current admin code.
+
 ## Problem
 
 When adding bearer-key authentication to a public API surface (e.g.,
