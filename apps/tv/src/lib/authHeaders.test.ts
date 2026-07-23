@@ -15,7 +15,7 @@ describe("buildAuthHeaders", () => {
 })
 
 describe("authHeadersForOperation (fleet-protection contract)", () => {
-  it("attaches the bearer to the SemanticSearch operation", () => {
+  it("attaches the bearer to the WatchSearch operation", () => {
     expect(authHeadersForOperation(SEARCH_OPERATION_NAME, "k")).toEqual({
       Authorization: "Bearer k",
     })
@@ -40,9 +40,12 @@ describe("authHeadersForOperation (fleet-protection contract)", () => {
     )
   })
 
-  it("scopes to TV's operation name, not mobile's 'Search'", () => {
-    expect(SEARCH_OPERATION_NAME).toBe("SemanticSearch")
-    // Guards the copy-the-wrong-literal trap: mobile's name must not match.
+  it("scopes to the current operation name, not the retired ones", () => {
+    expect(SEARCH_OPERATION_NAME).toBe("WatchSearch")
+    // The #1622 rename trap: the bearer kept riding "SemanticSearch" after the
+    // query became WatchSearch, so it attached to nothing and every device fell
+    // back to admin's coarse per-IP bucket.
+    expect(authHeadersForOperation("SemanticSearch", "k")).toEqual({})
     expect(authHeadersForOperation("Search", "k")).toEqual({})
   })
 

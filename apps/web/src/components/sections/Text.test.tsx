@@ -106,6 +106,14 @@ describe("Text promotional Markdown", () => {
     ).toBe("https://www.jesusfilm.org/")
   })
 
+  it("normalizes promotional Markdown root links to the watch base path", () => {
+    const { container } = renderText({
+      contentParagraphs: ["[Read more](/)"],
+    })
+
+    expect(container.querySelector("a")?.getAttribute("href")).toBe("/watch")
+  })
+
   it("does not parse Markdown for legacy Text variants", () => {
     const { container } = renderText({
       heading: "Legacy text",

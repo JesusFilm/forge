@@ -30,7 +30,7 @@ describe("findMediaAssetUsages", () => {
     ])
   })
 
-  it("finds legacy URL references in metadata and blocks", () => {
+  it("finds legacy URL references in metadata and media fields", () => {
     const matches = findMediaAssetUsages(
       {
         assetId: "asset-1",
@@ -44,14 +44,7 @@ describe("findMediaAssetUsages", () => {
           title: "Landing",
           ogImageUrl: "/api/media-assets/asset-1/preview",
           blocks: [
-            {
-              t: "bibleQuotesCarousel",
-              quotes: [
-                {
-                  backgroundImageUrl: "/api/media-assets/asset-1/preview",
-                },
-              ],
-            },
+            { t: "card", mediaUrl: "/api/media-assets/asset-1/preview" },
           ],
         },
       ],
@@ -59,7 +52,7 @@ describe("findMediaAssetUsages", () => {
 
     expect(matches.map((item) => item.fieldPath)).toEqual([
       "$.ogImageUrl",
-      "$.blocks[0].quotes[0].backgroundImageUrl",
+      "$.blocks[0].mediaUrl",
     ])
     expect(matches.every((item) => item.match === "url")).toBe(true)
   })
@@ -79,8 +72,8 @@ describe("findMediaAssetUsages", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },
@@ -89,7 +82,7 @@ describe("findMediaAssetUsages", () => {
 
     expect(matches).toHaveLength(1)
     expect(matches[0]).toMatchObject({
-      fieldName: "imageUrl",
+      fieldName: "mediaUrl",
       match: "object-key",
     })
   })

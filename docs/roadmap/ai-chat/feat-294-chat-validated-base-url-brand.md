@@ -3,7 +3,7 @@ id: "feat-294"
 title: "Branded ValidatedBaseUrl input for the shared Mastra transport"
 owner: "jian wei"
 priority: "P3"
-status: "not-started"
+status: "complete"
 start_date: "2026-07-27"
 duration: 1
 depends_on:
@@ -12,6 +12,18 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-23 via [PR #1702](https://github.com/JesusFilm/forge/pull/1702) (`feat(chat): brand ValidatedBaseUrl for the shared Mastra transport (feat-294)`).
+
+**What landed.** The `ValidatedBaseUrl` branded type (a module-private phantom `unique symbol`) plus the `validateBaseUrl` mint — the only production source of the brand, holding the sole `as ValidatedBaseUrl` cast behind the `hostAllowed` success path — now live in `apps/chat/src/lib/server/mastra-upstream.ts`, and `MastraUpstreamRequest.baseUrl` demands the brand. Both proxies swapped their boolean `hostAllowed` check for `validateBaseUrl`, mapping `null` onto the unchanged per-proxy deny (seeker `ssrf_blocked` SSE frame; history 502 `unavailable`) in the same order relative to the `config_missing` check, and thread the branded value into `postMastraUpstream`. `hostAllowed` + its SSRF matrix suite, the origin pin, and both proxy test suites are byte-unchanged; zero wire-behavior change. Tier-2 review softened a JSDoc/doc overclaim (a TS brand blocks an _accidental_ skip, not a deliberate `as`-cast or an `any`-typed base) and moved two new test fixtures to `satisfies`.
+
+**Compound docs.** No new doc — the fix is a refinement of the existing [guard-then-use extraction learning](../../solutions/best-practices/guard-then-use-extraction-act-half-pins-invariant-20260722.md): a dated shipped-note in "Scope and limits" and a one-sentence "by accident, not tamper-proof" sharpening of its "When to Apply" type-level bullet.
+
+**Residual risk / follow-ups.** The brand is unforgeable only _by accident_: a deliberate `as ValidatedBaseUrl` cast outside the mint, or an `any`-typed base, still forges it (backstops: code review, the repo's no-`any` rule, the greppable single-cast invariant). Surfaced follow-up (not built here — touches eslint config, out of scope for a zero-behavior-change PR): an eslint `no-restricted-syntax` ban on that cast outside the minting module would mechanize the invariant.
+
+**Unblocked.** None.
 
 ## Problem
 

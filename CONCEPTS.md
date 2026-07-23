@@ -32,7 +32,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 ### Language
 
-A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons — persisting or re-selecting a user's chosen language — key on the slug; the BCP-47 tag is only for best-effort device-locale matching.
+A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution.
 
 ### Watch Language Inventory
 
@@ -230,6 +230,10 @@ The language semantic search uses to interpret and match a query. Search Languag
 
 Search Language identity should travel as the public language slug selected or confirmed by the viewer. Locale tags are useful for fallback negotiation and search execution, but they are not the exact identity of the viewer's chosen search language.
 
+### Search Watchability
+
+The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+
 ### Query Language Suggestion
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
@@ -315,13 +319,16 @@ healthy embeddings and continue from missing, legacy, or incomplete rows.
 
 ## Known-caller auth
 
-### Search Passport
+### Known-Caller Check
 
-The request-level check on the public search surface that asks "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — a passport identifies the caller class, nothing more. Distinct from editor/session auth.
+The request-level question "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — it identifies the caller class, nothing more. Distinct from editor/session auth.
+_Avoid:_ Search Passport
+
+Which surfaces apply it as an admission gate is a per-surface decision. Public read surfaces admit anonymous callers regardless, and use a presented key only to select the Rate-Limit Identity — so a missing or unrecognised key on such a surface changes the caller's budget, never their access.
 
 ### Consumer Bearer
 
-A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Search Passport while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
+A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Known-Caller Check while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
 
 A Consumer Bearer doubles as the request's Rate-Limit Identity: every request presenting the same key spends one shared budget. That is correct for a single-egress server and hazardous for a Fleet Client — on a fleet, the key must ride only on the operations the server actually gates.
 
@@ -575,3 +582,4 @@ A system prompt whose tunable text lives in Langfuse — versioned, label-addres
 ## Flagged ambiguities
 
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
+- "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.

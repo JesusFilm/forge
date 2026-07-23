@@ -187,7 +187,7 @@ export const DraftMediaCollectionBlockSchema = z
     variant: z
       .enum(["carousel", "grid", "collection", "hero", "player"])
       .default("collection"),
-    cardOrientation: z.enum(["horizontal", "vertical"]).optional(),
+    thumbnailOrientation: z.enum(["horizontal", "vertical"]).optional(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
     description: z.string().optional(),

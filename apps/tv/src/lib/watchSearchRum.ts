@@ -1,11 +1,10 @@
 import { type SearchResult } from "./queries"
+import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 
-// TV search surface constants. Locale is hardcoded "en" (apps/tv CLAUDE.md), and
-// TV renders only semantic/keyword-fallback hits as one kind, so result_source
-// is the constant "semantic" — the client can't distinguish server retrievers.
+// TV search surface constants. TV renders only semantic/keyword-fallback hits as
+// one kind, so result_source is the constant "semantic" — the client can't
+// distinguish server retrievers.
 const RESULT_SOURCE = "semantic"
-const ROUTE_LANGUAGE_SLUG = "en"
-const SEARCH_LANGUAGE_SLUG = "en"
 const SEARCH_LANGUAGE_ENGLISH_NAME = "English"
 const MAX_TITLE_LENGTH = 160
 
@@ -34,7 +33,8 @@ export function buildWatchSearchResultClickContext(
     "watch_search.result_type": result.type,
     "watch_search.search_request_id": searchRequestId,
     "watch_search.result_source": RESULT_SOURCE,
-    "watch_search.route_language_slug": ROUTE_LANGUAGE_SLUG,
+    // route_language_slug is deliberately absent: buildWatchSearchInput never
+    // sends routeLanguageSlug, so reporting one would fabricate a request field.
     "watch_search.search_language_slug": SEARCH_LANGUAGE_SLUG,
     "watch_search.search_language_english_name": SEARCH_LANGUAGE_ENGLISH_NAME,
   }

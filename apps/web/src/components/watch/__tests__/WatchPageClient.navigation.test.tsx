@@ -75,6 +75,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     onPlayerReady,
     onChapterNavigateIntent,
     modalCallbacks,
+    shareHref,
   }: {
     pendingChapter?: {
       targetVideoDocumentId: string
@@ -96,6 +97,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       sourceCarouselIndex?: number | null
     }) => void
     modalCallbacks: { openShare: () => void }
+    shareHref?: string
   }) => (
     <>
       <button
@@ -123,6 +125,25 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       </button>
       <button
         type="button"
+        data-testid="watch-section-renderer-selectable-parent"
+        onClick={() => {
+          onChapterNavigateIntent?.({
+            href: "/second-parent.html/shared-child/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "video-1",
+            targetVideoDocumentId: "shared-child",
+            title: "Shared Child",
+            slug: "shared-child",
+            label: "SEGMENT",
+            posterUrl: null,
+            sourceCarouselIndex: 1,
+          })
+        }}
+      >
+        Selectable parent chapter
+      </button>
+      <button
+        type="button"
         data-testid="activate-player"
         onClick={() => onPlayerActivated?.()}
       >
@@ -138,6 +159,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       <button
         type="button"
         data-testid="open-share"
+        data-share-href={shareHref ?? ""}
         onClick={modalCallbacks.openShare}
       >
         Share
@@ -159,7 +181,7 @@ import {
   usePauseForWatchModal,
 } from "@/components/watch/WatchModalActivityProvider"
 import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
-import type { MergedWatchBlock } from "@/lib/content"
+import type { MergedWatchBlock, WatchSiblingCarouselBlock } from "@/lib/content"
 
 let container: HTMLDivElement
 let root: Root
@@ -248,21 +270,49 @@ function makeBlocks(): MergedWatchBlock[] {
   ]
 }
 
+function makeSelectableBlocks(): MergedWatchBlock[] {
+  const blocks = makeBlocks()
+  const carousel = blocks[0] as WatchSiblingCarouselBlock
+  const sharedChild = {
+    documentId: "shared-child",
+    slug: "shared-child",
+    title: "Shared Child",
+    label: "SEGMENT",
+    images: [],
+  }
+  carousel.canonicalParent.children.push(sharedChild as never)
+  carousel.selectableParents = [
+    carousel.canonicalParent,
+    {
+      documentId: "parent-2",
+      slug: "second-parent",
+      title: "Second Parent",
+      children: [carousel.canonicalParent.children[0]!, sharedChild as never],
+    },
+  ]
+  return blocks
+}
+
 function SharedWatchPlayerOwner() {
   usePauseForWatchModal(watchPlayer)
   return null
 }
 
-function renderWatchPage(video = makeVideo()) {
+function renderWatchPage(
+  video = makeVideo(),
+  mergedBlocks: MergedWatchBlock[] = makeBlocks(),
+  collectionSlug: string | null = null,
+) {
   act(() => {
     root.render(
       <WatchModalActivityProvider>
         <SharedWatchPlayerOwner />
         <WatchPageClient
-          mergedBlocks={makeBlocks()}
+          mergedBlocks={mergedBlocks}
           variant={makeVariant()}
           video={video}
           languageSlug="english"
+          collectionSlug={collectionSlug}
         />
       </WatchModalActivityProvider>,
     )
@@ -291,6 +341,39 @@ async function clickChapterAndFlushNavigation() {
 }
 
 describe("WatchPageClient chapter navigation", () => {
+  it("accepts an exact pending route from a non-default selectable parent", async () => {
+    renderWatchPage(makeVideo(), makeSelectableBlocks())
+
+    const renderer = () =>
+      container.querySelector('[data-testid="watch-section-renderer"]')
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-section-renderer-selectable-parent"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(renderer()?.getAttribute("data-pending-target")).toBe("shared-child")
+    expect(window.fetch).toHaveBeenCalledWith(
+      "/second-parent.html/shared-child/english.html",
+      expect.objectContaining({ credentials: "same-origin" }),
+    )
+    expect(routerPrefetchMock).toHaveBeenCalledWith(
+      "/second-parent.html/shared-child/english.html",
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/second-parent.html/shared-child/english.html",
+      { scroll: false },
+    )
+  })
+
   it("validates pending chapter state and self-invalidates after route commit", async () => {
     renderWatchPage()
 
@@ -441,7 +524,7 @@ describe("WatchPageClient chapter navigation", () => {
 
   it("opens Share through the page modal and restores active playback", () => {
     vi.useFakeTimers()
-    renderWatchPage()
+    renderWatchPage(makeVideo(), makeBlocks(), "parent")
 
     act(() => {
       ;(
@@ -459,6 +542,13 @@ describe("WatchPageClient chapter navigation", () => {
       open: true,
       videoSlug: "current-video",
     })
+    expect(
+      container
+        .querySelector('[data-testid="open-share"]')
+        ?.getAttribute("data-share-href"),
+    ).toBe(
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fjesusfilm.org%2Fwatch%2Fcurrent-video.html%2Fenglish.html",
+    )
 
     act(() => {
       ;(

@@ -76,11 +76,45 @@ export function hostAllowed(
   return allowed.has(host)
 }
 
+// Phantom brand — never exists at runtime; only validateBaseUrl attaches it.
+declare const validatedBaseUrlBrand: unique symbol
+
+/**
+ * A base URL proven to pass `hostAllowed` (the https/scheme floor with its
+ * loopback + `*.railway.internal` carve-outs and optional host allowlist).
+ * `postMastraUpstream` demands this brand, so a caller cannot hand it an
+ * unvalidated base and egress the bearer to an unchecked host — skipping the
+ * guard is a compile error, not a calling convention (feat-294; the
+ * guard-then-use extraction law). Obtainable only via `validateBaseUrl`.
+ */
+export type ValidatedBaseUrl = string & {
+  readonly [validatedBaseUrlBrand]: true
+}
+
+/**
+ * Mint the branded base iff `hostAllowed` passes; `null` otherwise. The ONLY
+ * SANCTIONED source of `ValidatedBaseUrl` — the sole `as ValidatedBaseUrl` cast
+ * lives here, behind the guard. The brand stops an unvalidated string from
+ * reaching `postMastraUpstream` by ACCIDENT; it is not tamper-proof (a
+ * deliberate `as ValidatedBaseUrl` elsewhere, or an `any`-typed base, still
+ * forges it — keep the single-cast invariant under review). Callers map `null`
+ * onto their OWN deny wire (seeker `ssrf_blocked` frame; history 502
+ * `unavailable`); the per-proxy deny ladder stays at the call site by design.
+ */
+export function validateBaseUrl(
+  baseUrl: string,
+  allowedHostsCsv: string | undefined,
+): ValidatedBaseUrl | null {
+  return hostAllowed(baseUrl, allowedHostsCsv)
+    ? (baseUrl as ValidatedBaseUrl)
+    : null
+}
+
 /** The shared shape of an outbound Mastra call. `accept` is the one header
  * the proxies legitimately differ on (SSE relay vs JSON read); everything
  * else — method, bearer, content-type, redirect policy — is fixed here. */
 export type MastraUpstreamRequest = {
-  baseUrl: string
+  baseUrl: ValidatedBaseUrl
   apiKey: string
   path: string
   accept: string
@@ -91,9 +125,11 @@ export type MastraUpstreamRequest = {
 /**
  * The shared fetch shape for every chat → Mastra call: `new URL(path, base)`,
  * POST, `Bearer` auth, JSON content-type, `redirect:"error"` (no off-host
- * hops with the bearer attached), and the composed abort signal. Callers run
- * `hostAllowed` on the base BEFORE this; the helper itself only pins the
- * composed URL to the base's origin (below) — it never re-runs the guard.
+ * hops with the bearer attached), and the composed abort signal. The base is a
+ * `ValidatedBaseUrl` — the type forces every caller through `validateBaseUrl`,
+ * so an unguarded base cannot even be passed. The helper additionally pins the
+ * composed URL to the base's origin (below) to close the path-escapes-the-base
+ * gap the base guard never covered; it never re-runs the guard itself.
  */
 export function postMastraUpstream(
   fetchImpl: typeof fetch,

@@ -122,7 +122,7 @@ export function stripLanguageFromSearchQuery(
   return query.replace(new RegExp(normalizedLanguage, "gi"), "").trim()
 }
 
-function publicSlugForLocale(locale: string): string {
+export function publicSlugForLocale(locale: string): string {
   return publicWatchAudioLanguageSlugForLocale(locale) ?? ENGLISH_PUBLIC_SLUG
 }
 

@@ -27,9 +27,6 @@ export const mediaCollectionFragment = graphql(`
       labelOverride
       collectionSize
       imageUrl
-      imageOverride {
-        url
-      }
       video {
         documentId
         title

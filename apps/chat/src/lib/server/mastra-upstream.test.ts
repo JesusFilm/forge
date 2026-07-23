@@ -4,14 +4,25 @@ import {
   classifyUpstreamFailure,
   composeUpstreamAbortSignal,
   hostAllowed,
+  type MastraUpstreamRequest,
   postMastraUpstream,
   readJsonCapped,
   undefinedOnAbort,
+  validateBaseUrl,
+  type ValidatedBaseUrl,
 } from "./mastra-upstream"
 
 // Direct unit coverage of the shared transport — the SSRF label-boundary
 // matrix (Ruling 2 PR 1) and the PR 2 helpers live HERE, at the functions'
 // home, never only transitively; proxy suites keep their own wiring cases.
+
+// Mint a ValidatedBaseUrl for the transport tests — the ONLY way to obtain the
+// brand, mirroring production (no `as ValidatedBaseUrl` cast in test code).
+function validBase(url: string): ValidatedBaseUrl {
+  const minted = validateBaseUrl(url, undefined)
+  if (minted === null) throw new Error(`test base rejected: ${url}`)
+  return minted
+}
 
 describe("hostAllowed — scheme floor + loopback", () => {
   it("allows an https base with no allowlist set", () => {
@@ -131,12 +142,69 @@ describe("hostAllowed — allowlist", () => {
   })
 })
 
+describe("validateBaseUrl — mint on the guard's success path, null otherwise", () => {
+  it("mints the branded base when hostAllowed passes (value === input string)", () => {
+    expect(validateBaseUrl("https://mastra.internal", undefined)).toBe(
+      "https://mastra.internal",
+    )
+  })
+
+  it("mints for a loopback http base (carve-out preserved through the mint)", () => {
+    expect(validateBaseUrl("http://localhost:4111", undefined)).toBe(
+      "http://localhost:4111",
+    )
+  })
+
+  it("returns null for an http public host (bearer-in-cleartext guard)", () => {
+    expect(validateBaseUrl("http://evil.com", undefined)).toBeNull()
+  })
+
+  it("returns null when the host is not in a set allowlist", () => {
+    expect(
+      validateBaseUrl("https://mastra.internal", "trusted.internal"),
+    ).toBeNull()
+  })
+
+  it("returns null for an unparseable base URL", () => {
+    expect(validateBaseUrl("not a url", undefined)).toBeNull()
+  })
+})
+
+describe("MastraUpstreamRequest.baseUrl — branded-input compile guard (feat-294)", () => {
+  it("rejects a raw string where a ValidatedBaseUrl is required", () => {
+    const request = {
+      // @ts-expect-error a raw string is not a ValidatedBaseUrl — only validateBaseUrl mints the brand, so skipping the guard cannot compile (feat-294)
+      baseUrl: "https://mastra.internal",
+      apiKey: "svc-key",
+      path: "/forge-seeker",
+      accept: "application/json",
+      body: {},
+      signal: new AbortController().signal,
+    } satisfies MastraUpstreamRequest
+    // Runtime value is still the string — the guard is type-level; the pin's
+    // real assertion is that typecheck fails without the @ts-expect-error.
+    expect(request.baseUrl).toBe("https://mastra.internal")
+  })
+
+  it("accepts a validateBaseUrl-minted base (anti-vacuous positive companion)", () => {
+    const request = {
+      baseUrl: validBase("https://mastra.internal"),
+      apiKey: "svc-key",
+      path: "/forge-seeker",
+      accept: "application/json",
+      body: {},
+      signal: new AbortController().signal,
+    } satisfies MastraUpstreamRequest
+    expect(request.baseUrl).toBe("https://mastra.internal")
+  })
+})
+
 describe("postMastraUpstream — the shared fetch shape", () => {
   it("builds the URL from path+base and fixes method/bearer/content-type/redirect", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response("{}"))
     const controller = new AbortController()
     await postMastraUpstream(fetchImpl as unknown as typeof fetch, {
-      baseUrl: "https://mastra.internal",
+      baseUrl: validBase("https://mastra.internal"),
       apiKey: "svc-key",
       path: "/forge-seeker",
       accept: "text/event-stream",
@@ -164,7 +232,7 @@ describe("postMastraUpstream — the shared fetch shape", () => {
       const fetchImpl = vi.fn()
       expect(() =>
         postMastraUpstream(fetchImpl as unknown as typeof fetch, {
-          baseUrl: "https://mastra.internal",
+          baseUrl: validBase("https://mastra.internal"),
           apiKey: "svc-key",
           path,
           accept: "application/json",
@@ -179,7 +247,7 @@ describe("postMastraUpstream — the shared fetch shape", () => {
   it("carries the per-proxy accept header through (JSON read path)", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response("{}"))
     await postMastraUpstream(fetchImpl as unknown as typeof fetch, {
-      baseUrl: "https://mastra.internal",
+      baseUrl: validBase("https://mastra.internal"),
       apiKey: "lane-key",
       path: "/forge-ai-chat-history-list",
       accept: "application/json",

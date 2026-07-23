@@ -88,57 +88,51 @@ describe("resolveMediaItemImageUrl", () => {
     images: [{ mobileCinematicHigh: "https://img/jesus-high.jpg" }],
   }
 
-  it("uses the curated override poster over the video cinematic (the real fix)", () => {
-    // The jesusfilm.org seed is rewritten to the watch app origin — the SAME
-    // portrait poster web renders — not the video's landscape cinematic.
+  it("uses authored item image over the video cinematic", () => {
     expect(
       resolveMediaItemImageUrl(
         {
-          imageOverrideUrl:
+          imageUrl:
             "https://www.jesusfilm.org/images/thumbnails/1_jf-0-0-vertical.png",
         },
         withArt,
       ),
-    ).toBe(
-      "https://watch.jesusfilm.org/watch/images/thumbnails/1_jf-0-0-vertical.png",
-    )
+    ).toBe("https://www.jesusfilm.org/images/thumbnails/1_jf-0-0-vertical.png")
   })
 
-  it("passes a non-jesusfilm override URL through unchanged", () => {
+  it("passes a non-jesusfilm authored image URL through unchanged", () => {
     expect(
       resolveMediaItemImageUrl(
-        { imageOverrideUrl: "https://cdn.example/poster.jpg" },
+        { imageUrl: "https://cdn.example/poster.jpg" },
         withArt,
       ),
     ).toBe("https://cdn.example/poster.jpg")
   })
 
-  it("rewrites a no-www /images seed but leaves a non-/images jesusfilm path alone", () => {
+  it("passes jesusfilm URLs through unchanged", () => {
     expect(
       resolveMediaItemImageUrl(
-        { imageOverrideUrl: "https://jesusfilm.org/images/thumbnails/x.png" },
+        { imageUrl: "https://jesusfilm.org/images/thumbnails/x.png" },
         withArt,
       ),
-    ).toBe("https://watch.jesusfilm.org/watch/images/thumbnails/x.png")
-    // A jesusfilm.org URL NOT under /images is the rewrite boundary — passes through.
+    ).toBe("https://jesusfilm.org/images/thumbnails/x.png")
     expect(
       resolveMediaItemImageUrl(
-        { imageOverrideUrl: "https://www.jesusfilm.org/videos/x.png" },
+        { imageUrl: "https://www.jesusfilm.org/videos/x.png" },
         withArt,
       ),
     ).toBe("https://www.jesusfilm.org/videos/x.png")
   })
 
-  it("prefers the override poster when both override and imageUrl are set", () => {
+  it("uses the authored image when provided", () => {
     expect(
       resolveMediaItemImageUrl(
         {
-          imageOverrideUrl: "https://www.jesusfilm.org/images/o.png",
           imageUrl: "https://img/authored.jpg",
         },
         withArt,
       ),
-    ).toBe("https://watch.jesusfilm.org/watch/images/o.png")
+    ).toBe("https://img/authored.jpg")
   })
 
   it("falls to item.imageUrl, then the video cinematic, when no override", () => {

@@ -4,9 +4,13 @@
 # Seeds apps/<app>/.env.local for a simulator run. Fresh git worktrees never
 # inherit .env.local (it's gitignored), and apps/tv's file historically ships
 # only EXPO_PUBLIC_GRAPHQL_URL — missing EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN, the
-# consumer bearer without which admin's Query.search returns UNAUTHENTICATED
-# (search silently breaks). This copies the env from the main checkout and
-# guarantees the token is present. Idempotent — safe to run before every launch.
+# consumer bearer scoped to the WatchSearch op. Since #1622 replaced Query.search
+# with the PUBLIC watchSearch, its absence no longer breaks search — it drops the
+# device into admin's coarse per-IP rate-limit bucket. This copies the env from
+# the main checkout and guarantees the token is present. Idempotent.
+#
+# TV only: mobile's search hook is still the #1622 no-op shim (its op name is the
+# unmigrated `Search`), so no token makes mobile search work until it migrates.
 #
 # tv and mobile share the SAME consumer-bearer value, so the token is sourced
 # from whichever main-checkout env file has it.
@@ -56,8 +60,10 @@ fi
 # Token absent: borrow a non-empty value, this app's own main env first.
 tok_line="$(grep -hE "^$key=.+" "$src" "$main/apps/mobile/.env.local" "$main/apps/tv/.env.local" 2>/dev/null | head -1 || true)"
 if [ -z "$tok_line" ]; then
-  echo "[setup-sim-env] WARN: $key not found in the main checkout — search will 401." >&2
-  echo "[setup-sim-env] Add it to $main/apps/$app/.env.local (a WEB_ADMIN_API_KEYS consumer bearer)." >&2
+  # Still a hard fail: search itself works unauthenticated, but a sim run against
+  # prod should exercise the per-device rate-limit bucket the real app gets.
+  echo "[setup-sim-env] WARN: $key not found in the main checkout — search will fall back to admin's per-IP rate-limit bucket." >&2
+  echo "[setup-sim-env] Add it to $main/apps/$app/.env.local (this app's OWN entry in admin's FLEET_ADMIN_API_KEYS CSV — never WEB_ADMIN_API_KEYS, which admin buckets per-request and so rate-limits effectively not at all)." >&2
   [ "$app" = mobile ] && echo "[setup-sim-env] Or populate mobile's env from Doppler: pnpm --filter @forge/mobile fetch-secrets" >&2
   exit 1
 fi

@@ -14,7 +14,7 @@ import {
 } from "../../lib/experienceHydration"
 import { FocusableCard } from "../FocusableCard"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
-import { resolveMediaCollectionCardOrientation } from "../../lib/mediaCollectionCardOrientation"
+import { resolveMediaCollectionThumbnailOrientation } from "../../lib/mediaCollectionThumbnailOrientation"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,12 +46,12 @@ export function MediaCollectionRenderer({
 
   const { mcTitle, mcSubtitle, categoryLabel } = section
   const items: MediaItem[] = section.items ?? []
-  const cardOrientation = resolveMediaCollectionCardOrientation(
-    section.cardOrientation,
+  const thumbnailOrientation = resolveMediaCollectionThumbnailOrientation(
+    section.thumbnailOrientation,
     "vertical",
   )
   const cardDimensions =
-    cardOrientation === "horizontal"
+    thumbnailOrientation === "horizontal"
       ? styles.horizontalCard
       : styles.verticalCard
   const cardStyle = useMemo(

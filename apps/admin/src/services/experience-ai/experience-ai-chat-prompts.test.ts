@@ -94,9 +94,9 @@ describe("buildChatPrompt", () => {
     expect(prompt).toContain('"titleOverride":"Optional item title"')
     expect(prompt).toContain('"labelOverride":"Optional eyebrow label"')
     expect(prompt).toContain('DO NOT use "label" on mediaCollection items')
-    expect(prompt).toContain('"cardOrientation":"horizontal"')
+    expect(prompt).toContain('"thumbnailOrientation":"horizontal"')
     expect(prompt).toContain(
-      '"cardOrientation" OPTIONAL: "horizontal" | "vertical"',
+      '"thumbnailOrientation" OPTIONAL: "horizontal" | "vertical"',
     )
     expect(prompt).not.toContain('"items":[{"videoId":"<cuid>","label":"..."}]')
   })

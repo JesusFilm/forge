@@ -1,11 +1,11 @@
-import { resolveMediaCollectionCardOrientation } from "./mediaCollectionCardOrientation"
+import { resolveMediaCollectionThumbnailOrientation } from "./mediaCollectionThumbnailOrientation"
 
-describe("resolveMediaCollectionCardOrientation", () => {
+describe("resolveMediaCollectionThumbnailOrientation", () => {
   it.each(["horizontal", "vertical"] as const)(
     "uses an explicit %s orientation",
     (orientation) => {
       expect(
-        resolveMediaCollectionCardOrientation(orientation, "vertical"),
+        resolveMediaCollectionThumbnailOrientation(orientation, "vertical"),
       ).toBe(orientation)
     },
   )
@@ -14,7 +14,7 @@ describe("resolveMediaCollectionCardOrientation", () => {
     "preserves the legacy fallback for %s",
     (orientation) => {
       expect(
-        resolveMediaCollectionCardOrientation(orientation, "horizontal"),
+        resolveMediaCollectionThumbnailOrientation(orientation, "horizontal"),
       ).toBe("horizontal")
     },
   )

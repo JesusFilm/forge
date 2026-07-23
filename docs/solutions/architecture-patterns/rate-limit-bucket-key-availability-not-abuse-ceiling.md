@@ -36,7 +36,8 @@ tags:
 ## Context
 
 `apps/tv` and `apps/mobile` are untrusted React Native clients that call admin's
-GraphQL `Query.search` directly. Both ship the SAME consumer-bearer key baked
+GraphQL search field directly (`Query.search` when this was written; `watchSearch`
+since admin #1622 — the field was renamed, the bucketing problem is unchanged). Both ship the SAME consumer-bearer key baked
 into every install (`EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`), because there is no
 per-user secret to hand a store binary. Admin rate-limits by principal identity
 (`identifyForRateLimit`), so the naive bucket for that shared key —

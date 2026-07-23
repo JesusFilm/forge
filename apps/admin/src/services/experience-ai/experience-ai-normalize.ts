@@ -309,7 +309,7 @@ function normalizeDraftBlock(
         backgroundColor: block.backgroundColor,
         categoryLabel: block.categoryLabel,
         variant: block.variant,
-        cardOrientation: block.cardOrientation,
+        thumbnailOrientation: block.thumbnailOrientation,
         itemsSource: "manual" as const,
         title: block.title,
         subtitle: block.subtitle,
@@ -322,7 +322,6 @@ function normalizeDraftBlock(
           const candidate = resolveVideoCandidate(item.candidateRef, candidates)
           return compactRecord({
             videoId: candidate.videoId,
-            imageOverrideUrl: candidate.previewImageUrl ?? undefined,
             titleOverride: item.titleOverride ?? candidate.title,
             subtitleOverride:
               item.subtitleOverride ?? candidate.description ?? undefined,
@@ -424,7 +423,6 @@ function normalizeDraftBlock(
           const candidate = resolveVideoCandidate(item.candidateRef, candidates)
           return compactRecord({
             videoId: candidate.videoId,
-            imageOverrideUrl: candidate.previewImageUrl ?? undefined,
             titleOverride: item.titleOverride ?? candidate.title,
             subtitleOverride:
               item.subtitleOverride ?? candidate.description ?? undefined,

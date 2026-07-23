@@ -9,9 +9,8 @@ import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { resolveMediaCollectionThumbnailOrientation } from "../../lib/mediaCollectionThumbnailOrientation"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
-import { rewriteSeedPosterUrl } from "../../lib/mediaImageUrl"
-import { resolveMediaCollectionCardOrientation } from "../../lib/mediaCollectionCardOrientation"
 import { useTypography } from "../../hooks/useTypography"
 import {
   card,
@@ -34,7 +33,6 @@ type MediaItem = {
   labelOverride?: string | null
   collectionSize?: number | null
   imageUrl?: string | null
-  imageOverrideUrl?: string | null
   linkToSectionKey?: string | null
 }
 
@@ -64,19 +62,19 @@ export function MediaCollectionRenderer({
   const mcSubtitle = s.subtitle as string | null
   const categoryLabel = s.categoryLabel as string | null
   const items = (s.items as MediaItem[] | undefined) ?? []
-  const cardOrientation = resolveMediaCollectionCardOrientation(
-    s.cardOrientation,
+  const thumbnailOrientation = resolveMediaCollectionThumbnailOrientation(
+    s.thumbnailOrientation,
     "vertical",
   )
 
   const cardWidth = Math.round(
     screenWidth *
-      (cardOrientation === "horizontal"
+      (thumbnailOrientation === "horizontal"
         ? HORIZONTAL_CARD_WIDTH_RATIO
         : VERTICAL_CARD_WIDTH_RATIO),
   )
   const cardAspect =
-    cardOrientation === "horizontal"
+    thumbnailOrientation === "horizontal"
       ? HORIZONTAL_CARD_ASPECT
       : VERTICAL_CARD_ASPECT
 
@@ -84,12 +82,8 @@ export function MediaCollectionRenderer({
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
     const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
-    // Match TV: the curated override poster (rewritten to the watch origin — the
-    // seed 404s on jesusfilm.org) wins over the video's own landscape thumbnail.
     const thumbnailUrl =
-      resolveThumbnailUrl(rewriteSeedPosterUrl(item.imageOverrideUrl)) ??
-      resolveThumbnailUrl(item.imageUrl) ??
-      resolveThumbnailUrl(resolvedThumb)
+      resolveThumbnailUrl(item.imageUrl) ?? resolveThumbnailUrl(resolvedThumb)
     // Match TV: flat items carry no titleOverride, so fall back to the linked
     // video's localized title before the generic label. `||` so an empty
     // override (admin clears to "") falls through instead of blanking the card.

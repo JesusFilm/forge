@@ -2,9 +2,8 @@
 // hydrating each item by coreId through model.ts's normalizeCard — so meta chips
 // and series routing are exact (TV DIVERGES from mobile's flat, unhydrated render).
 
-import { resolveOverridePosterUrl } from "../experienceHydration"
-import { resolveMediaCollectionCardOrientation } from "../mediaCollectionCardOrientation"
 import { ENGLISH_LANGUAGE_SLUG } from "./config"
+import { resolveImageUrl } from "../resolveImageUrl"
 import type { WatchHomeFallbackReason } from "./logWatchHomeFallback"
 import {
   normalizeCard,
@@ -22,9 +21,6 @@ type ExperienceItem = {
   readonly coreId?: string | null
   // Threaded onto the card for the animated hover-preview (U5); already on the wire.
   readonly muxPlaybackId?: string | null
-  // Authored art. Already on the wire via the SHARED AdminMediaCollection
-  // fragment — TV simply ignored it until portrait rails needed the poster.
-  readonly imageOverrideUrl?: string | null
   readonly imageUrl?: string | null
 }
 
@@ -35,7 +31,7 @@ type MediaCollectionBlockLike = {
   readonly subtitle?: string | null
   readonly categoryLabel?: string | null
   readonly mediaCollectionVariant?: string | null
-  readonly cardOrientation?: "horizontal" | "vertical" | null
+  readonly thumbnailOrientation?: string | null
   readonly showItemNumbers?: boolean | null
   readonly items?: readonly ExperienceItem[] | null
 }
@@ -50,6 +46,12 @@ type LayoutShape = {
 const CORE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
 function isValidCoreId(coreId: string | null | undefined): coreId is string {
   return typeof coreId === "string" && CORE_ID_PATTERN.test(coreId)
+}
+
+function mapThumbnailOrientation(
+  value: unknown,
+): WatchHomeSection["orientation"] | null {
+  return value === "vertical" || value === "horizontal" ? value : null
 }
 
 // KTD7: block types with no TV rail slot. WatchHomeHeroBlock (client-owned banner),
@@ -77,22 +79,11 @@ export function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
-// Every item must resolve an override poster: `imageUrl` can't count (it carries
-// landscape art too), and testing the RESOLVED url — mobile tests the raw field —
-// stops an unusable override handing a portrait frame to landscape fallback art.
-function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
-  return (
-    items.length > 0 &&
-    items.every((item) => resolveOverridePosterUrl(item) != null)
-  )
-}
-
 function itemToCard(
   item: ExperienceItem,
   sectionId: string,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
   languageSlug: string,
-  useAuthoredImageOverride: boolean,
 ): WatchHomeCard | null {
   const coreId = item.coreId
   if (!isValidCoreId(coreId)) return null
@@ -104,9 +95,7 @@ function itemToCard(
     video,
     languageSlug,
     muxPlaybackId: item.muxPlaybackId ?? null,
-    imageUrlOverride: useAuthoredImageOverride
-      ? resolveOverridePosterUrl(item)
-      : null,
+    imageUrlOverride: resolveImageUrl(item.imageUrl ?? null),
   })
 }
 
@@ -118,48 +107,27 @@ function blockToSection(
 ): WatchHomeSection | null {
   const sectionId = block.sectionKey ?? `home-experience-section-${index}`
   const rawItems = block.items ?? []
-  // The legacy poster heuristic remains the fallback for blocks that predate
-  // cardOrientation. An explicit shape must not silently discard authored art.
-  const legacyPosterRail = isPortraitPosterRail(rawItems)
-  const authoredCardOrientation =
-    block.cardOrientation === "horizontal" ||
-    block.cardOrientation === "vertical"
-      ? block.cardOrientation
-      : null
-  const useAuthoredImageOverride =
-    authoredCardOrientation != null || legacyPosterRail
   const cards = rawItems
-    .map((item) =>
-      itemToCard(
-        item,
-        sectionId,
-        videoByCoreId,
-        languageSlug,
-        useAuthoredImageOverride,
-      ),
-    )
+    .map((item) => itemToCard(item, sectionId, videoByCoreId, languageSlug))
     .filter((card): card is WatchHomeCard => card != null)
   if (cards.length === 0) return null // per-section skip: zero renderable cards (R2)
 
   const categoryLabel = block.categoryLabel ?? ""
   const blockTitle = block.title ?? ""
   const { layout, orientation } = mapVariant(block.mediaCollectionVariant)
+  const thumbnailOrientation = mapThumbnailOrientation(
+    block.thumbnailOrientation,
+  )
+  const resolvedOrientation = thumbnailOrientation ?? orientation
   return {
     id: sectionId,
     eyebrow: categoryLabel,
     title: blockTitle || categoryLabel, // never a headless rail
     description: block.subtitle ?? null,
     layout,
-    // Mirrors mobile's model, where an all-poster rail reads "vertical". Kept for
-    // sync-parity ONLY — TV renders off isPosterRail, because `orientation` also
-    // means "vertical grid" for poster-less `collection` blocks.
-    orientation: resolveMediaCollectionCardOrientation(
-      authoredCardOrientation,
-      legacyPosterRail ? "vertical" : orientation,
-    ),
-    cardOrientation: authoredCardOrientation,
+    orientation: resolvedOrientation,
     showSequenceNumbers: block.showItemNumbers ?? false,
-    isPosterRail: legacyPosterRail,
+    isPosterRail: thumbnailOrientation === "vertical",
     cards,
   }
 }

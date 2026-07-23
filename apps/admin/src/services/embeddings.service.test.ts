@@ -61,11 +61,11 @@ describe("buildExperienceEmbeddingText", () => {
 
     const horizontal = buildExperienceEmbeddingSource({
       ...locale,
-      blocks: [{ ...locale.blocks[0], cardOrientation: "horizontal" }],
+      blocks: [{ ...locale.blocks[0], thumbnailOrientation: "horizontal" }],
     })
     const vertical = buildExperienceEmbeddingSource({
       ...locale,
-      blocks: [{ ...locale.blocks[0], cardOrientation: "vertical" }],
+      blocks: [{ ...locale.blocks[0], thumbnailOrientation: "vertical" }],
     })
 
     expect(horizontal.text).toBe(vertical.text)

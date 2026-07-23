@@ -95,6 +95,13 @@ describe("experience editor block helpers", () => {
     expect(BlockSchema.safeParse(routeStarter).success).toBe(true)
   })
 
+  it("starts new media collections with vertical thumbnails", () => {
+    expect(createTemplateBlock("mediaCollection", 5)).toMatchObject({
+      t: "mediaCollection",
+      thumbnailOrientation: "vertical",
+    })
+  })
+
   it("preserves promotional Markdown blocks and legacy line splitting", () => {
     const markdown = [
       "### Why this story matters",
@@ -134,8 +141,7 @@ describe("experience editor block helpers", () => {
         {
           videoId: "",
           streamingUrl: "",
-          imageOverrideUrl: "",
-          imageOverrideAssetId: "",
+          imageUrl: "",
           imageAssetId: "",
           titleOverride: "",
           subtitleOverride: "",
@@ -171,7 +177,6 @@ describe("experience editor block helpers", () => {
       items: [
         {
           videoId: "video-1",
-          imageUrl: "https://example.com/image.jpg",
         },
       ],
     })
@@ -306,7 +311,7 @@ describe("experience editor block helpers", () => {
             {
               videoId: "",
               streamingUrl: "",
-              imageOverrideUrl: "",
+              imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
             },
@@ -320,7 +325,6 @@ describe("experience editor block helpers", () => {
           items: [
             {
               videoId: "",
-              imageOverrideUrl: "",
               imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
@@ -343,7 +347,7 @@ describe("experience editor block helpers", () => {
             {
               reference: "John 3:16",
               text: "For God so loved the world...",
-              backgroundImageUrl: "",
+              backgroundImageAssetId: "",
               imageUrl: "",
               backgroundColor: "",
               ctaEnabled: false,

@@ -23,6 +23,7 @@ export type VideoImageBlurDataUrlTarget = {
   slug: string | null
   imageUrl: string | null
   blurDataUrl: string | null
+  dominantColor: string | null
 }
 
 export type BackfillVideoImageBlurDataUrlResult = {
@@ -87,16 +88,20 @@ export async function selectVideoImageBlurDataUrlTargets(
   const rows = await prisma.videoImage.findMany({
     where: {
       deletedAt: null,
-      blurDataUrl: null,
+      OR: [{ blurDataUrl: null }, { dominantColor: null }],
       ...(args.imageId ? { id: args.imageId } : {}),
       ...(args.videoId ? { videoId: args.videoId } : {}),
       ...(args.slug ? { video: { slug: args.slug, deletedAt: null } } : {}),
-      OR: [
-        { mobileCinematicHigh: { not: null } },
-        { mobileCinematicLow: { not: null } },
-        { videoStill: { not: null } },
-        { thumbnail: { not: null } },
-        { url: { not: null } },
+      AND: [
+        {
+          OR: [
+            { mobileCinematicHigh: { not: null } },
+            { mobileCinematicLow: { not: null } },
+            { videoStill: { not: null } },
+            { thumbnail: { not: null } },
+            { url: { not: null } },
+          ],
+        },
       ],
     },
     select: {
@@ -108,6 +113,7 @@ export async function selectVideoImageBlurDataUrlTargets(
       thumbnail: true,
       url: true,
       blurDataUrl: true,
+      dominantColor: true,
       video: { select: { slug: true } },
     },
     orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
@@ -125,6 +131,7 @@ export async function selectVideoImageBlurDataUrlTargets(
       row.thumbnail ??
       row.url,
     blurDataUrl: row.blurDataUrl,
+    dominantColor: row.dominantColor,
   }))
 }
 
