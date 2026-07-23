@@ -49,7 +49,11 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { parseWatchPath } from "@/lib/routes"
+import {
+  localizedHomePath,
+  parseWatchPath,
+  tryAsLocaleSlug,
+} from "@/lib/routes"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -125,7 +129,12 @@ export function FloatingSearchProvider({
       : defaultLanguageSlug
   const isWatchHome =
     parsedPath.kind === "home" || parsedPath.kind === "localized-home"
-  const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
+  const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
+  const logoHref = isWatchHome
+    ? "https://www.jesusfilm.org/"
+    : currentLocaleSlug && currentLocaleSlug !== "english"
+      ? localizedHomePath(currentLocaleSlug)
+      : "/"
   const logoSlotClass = isWatchHome
     ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
     : FLOATING_HEADER_LOGO_SLOT_CLASS

@@ -34,6 +34,7 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import {
   languagesIndexPath,
   languageVideosIndexPath,
+  localizedLanguagesPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
@@ -356,6 +357,11 @@ export function LanguagePickerModal({
     const slug = tryAsLocaleSlug(draftSlug)
     return slug ? languageVideosIndexPath(slug) : null
   }, [draftSlug])
+  const appliedLanguageSlug = tryAsLocaleSlug(currentLanguageSlug)
+  const allLanguagesPath =
+    appliedLanguageSlug && appliedLanguageSlug !== "english"
+      ? localizedLanguagesPath(appliedLanguageSlug)
+      : languagesIndexPath()
   const excludedTooltipLanguage = useMemo(
     () =>
       tooltipLanguageKeyForCurrentLanguage({
@@ -753,7 +759,7 @@ export function LanguagePickerModal({
                   ) : null}
                 </div>
                 <Link
-                  href={languagesIndexPath()}
+                  href={allLanguagesPath}
                   prefetch={false}
                   data-testid="watch-language-picker-all-languages-link"
                   className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${MODAL_FOCUS_RING_CLASS}`}

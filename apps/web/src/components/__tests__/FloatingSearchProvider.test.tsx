@@ -1946,6 +1946,34 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     )
   })
 
+  it("keeps the current custom language when the compact logo returns to Watch home", () => {
+    navigationMocks.pathname = "/jesus.html/women-disciples/hindi.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="hindi">
+          <main>Hindi episode page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("/hindi.html")
+  })
+
+  it("keeps the default Watch home fallback for a malformed inner-route language", () => {
+    navigationMocks.pathname = "/jesus.html/not!a!language.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Malformed video route</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("/")
+  })
+
   it("renders the language globe as part of the floating header", () => {
     const onLanguageClick = vi.fn()
     act(() => {

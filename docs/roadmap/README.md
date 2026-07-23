@@ -6,9 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 422
-- **Complete:** 315
-
+- **Total tickets:** 423
+- **Complete:** 317
 - **In progress:** 32
 - **Not started:** 25
 - **Blocked:** 49
@@ -348,6 +347,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-295](platform/feat-295-watch-mediacollection-video-image-metadata-generation.md) | Restore Watch MediaCollection video image metadata generation                    | unassigned | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-287](platform/feat-287-auth-google-account-chooser-production-verification.md)   | Auth Google Account Chooser Production Verification                              | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | not-started |
 | [feat-298](platform/feat-298-remove-experience-image-override-url.md)                  | Remove Experience image override URL fields                                      | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-300](platform/feat-300-watch-language-preserving-navigation.md)                  | Watch language-preserving navigation                                             | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -419,7 +419,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                           | AI-Generated Christmas Experience                                                | ekkasit   | P0       | 2026-04-01 | 14   | 2026-04-14 | in-progress |
 | [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                                                 | ekkasit   | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit   | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
-| [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim      | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
 | [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim      | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
 | [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim      | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |
@@ -448,6 +447,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                                     | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
 | [feat-262](topic-experiences/feat-262-tv-showcase-mode.md)                                  | TV Showcase Mode: Settings tab + felt-need excerpt reel                          | urim      | P1       | 2026-07-20 | 10   | 2026-07-29 | in-progress |
 | [feat-279](topic-experiences/feat-279-experience-carousel-empty-copy.md)                    | Experience carousel empty copy rendering                                         | urim      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
