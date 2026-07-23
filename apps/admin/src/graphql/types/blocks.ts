@@ -203,6 +203,8 @@ type VideoImageMetadataSource = {
   videoStill: string | null
   url: string | null
   thumbnail: string | null
+  width: number | null
+  height: number | null
   blurDataUrl: string | null
   dominantColor: string | null
 }
@@ -240,6 +242,24 @@ async function resolveMediaCollectionVideoImageMetadata(
 
   return image
 }
+
+const BlockVideoImageRef = builder
+  .objectRef<VideoImageMetadataSource>("BlockVideoImage")
+  .implement({
+    description:
+      "Public-safe metadata for the linked Video image used by an Experience block item.",
+    fields: (t) => ({
+      id: t.exposeID("id"),
+      previewUrl: t.string({
+        nullable: true,
+        resolve: (row) => videoImageUrl(row),
+      }),
+      blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+      dominantColor: t.exposeString("dominantColor", { nullable: true }),
+      width: t.exposeInt("width", { nullable: true }),
+      height: t.exposeInt("height", { nullable: true }),
+    }),
+  })
 
 /** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
 export class UnknownBlockKindError extends Error {
@@ -459,50 +479,16 @@ MediaCollectionItemRef.implement({
         return video?.slug ?? optionalString(row.videoSlug)
       },
     }),
-    muxPlaybackId: t.string({
+    videoImage: t.field({
+      type: BlockVideoImageRef,
       nullable: true,
       description:
-        "Best playable Mux playback id for this media collection item when it references a Video row.",
-      args: {
-        languageSlug: t.arg.string({ required: false }),
-      },
-      resolve: (row, args, ctx) => {
-        const videoId = optionalString(row.videoId)
-        if (!videoId) return null
-        return ctx.loaders.videoMuxPlaybackIdByIdAndLanguageSlug.load({
-          videoId,
-          languageSlug: args.languageSlug ?? null,
-        })
-      },
-    }),
-    videoImageBlurDataUrl: t.string({
-      nullable: true,
-      description:
-        "Best generated LQIP for the linked Video image. Falls back to null when the item is not linked to a Video or no video image has blur metadata.",
+        "The linked Video image used as the item poster fallback when no block image asset is authored.",
       resolve: async (row, _args, ctx) => {
         const videoId = optionalString(row.videoId)
         if (!videoId) return null
 
-        const image = await resolveMediaCollectionVideoImageMetadata(
-          videoId,
-          ctx,
-        )
-        return image?.blurDataUrl ?? null
-      },
-    }),
-    videoImageDominantColor: t.string({
-      nullable: true,
-      description:
-        "Dominant color for the linked Video image used by this item.",
-      resolve: async (row, _args, ctx) => {
-        const videoId = optionalString(row.videoId)
-        if (!videoId) return null
-
-        const image = await resolveMediaCollectionVideoImageMetadata(
-          videoId,
-          ctx,
-        )
-        return image?.dominantColor ?? null
+        return resolveMediaCollectionVideoImageMetadata(videoId, ctx)
       },
     }),
     titleOverride: t.exposeString("titleOverride", { nullable: true }),

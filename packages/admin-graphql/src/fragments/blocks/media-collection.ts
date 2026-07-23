@@ -43,8 +43,14 @@ export const adminMediaCollectionFragment = adminGraphql(
           ...AdminBlockVideoDub
         }
         videoSlug
-        videoImageBlurDataUrl
-        videoImageDominantColor
+        videoImage {
+          id
+          previewUrl
+          blurDataUrl
+          dominantColor
+          width
+          height
+        }
         titleOverride
         subtitleOverride
         labelOverride

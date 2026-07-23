@@ -15,10 +15,12 @@ type MediaItem = {
       playbackId?: string | null
     } | null
   } | null
-  muxPlaybackId?: string | null
   languageSlug?: string | null
-  videoImageBlurDataUrl?: string | null
-  videoImageDominantColor?: string | null
+  videoImage?: {
+    previewUrl?: string | null
+    blurDataUrl?: string | null
+    dominantColor?: string | null
+  } | null
   resolvedTitle?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
@@ -152,13 +154,17 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
       : null
   const imageUrl =
     authoredUrl ??
+    (typeof item.videoImage?.previewUrl === "string" &&
+    item.videoImage.previewUrl.length > 0
+      ? item.videoImage.previewUrl
+      : null) ??
     localWatchHomeThumbnailUrl(item.coreId) ??
     muxThumbnailUrl(item.videoDub?.muxVideo?.playbackId)
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
-    item.videoImageBlurDataUrl,
+    item.videoImage?.blurDataUrl,
   )
   const assetBlurDataUrl = meaningfulBlurDataUrl(item.imageAsset?.blurDataUrl)
-  const videoDominantColor = meaningfulColor(item.videoImageDominantColor)
+  const videoDominantColor = meaningfulColor(item.videoImage?.dominantColor)
   const assetDominantColor = meaningfulColor(item.imageAsset?.dominantColor)
   // Admin-authored items carry a route slug snapshot when seeded from videos.
   // Renderer skips the `<a href>` when videoSlug is empty (see

@@ -160,6 +160,14 @@ export const MediaCollectionFragment = graphql(`
       imageAsset {
         previewUrl
       }
+      videoImage {
+        previewUrl
+      }
+      videoDub {
+        muxVideo {
+          playbackId
+        }
+      }
       linkToSectionKey
       videoId
       coreId

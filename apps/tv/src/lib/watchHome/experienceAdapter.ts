@@ -19,9 +19,11 @@ export type ExperienceBlock = { readonly __typename?: string | null }
 
 type ExperienceItem = {
   readonly coreId?: string | null
-  // Threaded onto the card for the animated hover-preview (U5); already on the wire.
-  readonly muxPlaybackId?: string | null
-  readonly imageUrl?: string | null
+  readonly imageAsset?: { readonly previewUrl?: string | null } | null
+  readonly videoImage?: { readonly previewUrl?: string | null } | null
+  readonly videoDub?: {
+    readonly muxVideo?: { readonly playbackId?: string | null } | null
+  } | null
 }
 
 type MediaCollectionBlockLike = {
@@ -94,8 +96,10 @@ function itemToCard(
     sourceId: coreId,
     video,
     languageSlug,
-    muxPlaybackId: item.muxPlaybackId ?? null,
-    imageUrlOverride: resolveImageUrl(item.imageUrl ?? null),
+    muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,
+    imageUrlOverride: resolveImageUrl(
+      item.imageAsset?.previewUrl ?? item.videoImage?.previewUrl ?? null,
+    ),
   })
 }
 

@@ -96,6 +96,18 @@ type BlockImageAsset {
   width: Int
 }
 
+"""
+Public-safe metadata for the linked Video image used by an Experience block item.
+"""
+type BlockVideoImage {
+  blurDataUrl: String
+  dominantColor: String
+  height: Int
+  id: ID
+  previewUrl: String
+  width: Int
+}
+
 """Simple title/description card with optional media + link."""
 type CardBlock {
   backgroundColor: String
@@ -717,10 +729,6 @@ type MediaCollectionItem {
   languageSlug: String
   linkToSectionKey: String
   """
-  Best playable Mux playback id for this media collection item when it references a Video row.
-  """
-  muxPlaybackId(languageSlug: String): String
-  """
   Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
   """
   resolvedTitle(locale: String!): String
@@ -732,11 +740,9 @@ type MediaCollectionItem {
   videoDub: VideoDub
   videoId: String
   """
-  Best generated LQIP for the linked Video image. Falls back to null when the item is not linked to a Video or no video image has blur metadata.
+  The linked Video image used as the item poster fallback when no block image asset is authored.
   """
-  videoImageBlurDataUrl: String
-  """Dominant color for the linked Video image used by this item."""
-  videoImageDominantColor: String
+  videoImage: BlockVideoImage
   """
   Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.
   """

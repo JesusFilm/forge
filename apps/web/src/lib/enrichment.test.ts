@@ -62,7 +62,10 @@ describe("enrichMediaItem image resolution", () => {
         previewUrl: ADMIN_FALLBACK,
         blurDataUrl: ADMIN_FALLBACK_BLUR,
       },
-      videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
+      videoImage: {
+        previewUrl: "https://cdn.example/video.jpg",
+        blurDataUrl: ADMIN_VIDEO_BLUR,
+      },
     })
     expect(result.blurDataUrl).toBe(ADMIN_FALLBACK_BLUR)
   })
@@ -74,7 +77,10 @@ describe("enrichMediaItem image resolution", () => {
         previewUrl: ADMIN_FALLBACK,
         blurDataUrl: null,
       },
-      videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
+      videoImage: {
+        previewUrl: "https://cdn.example/video.jpg",
+        blurDataUrl: ADMIN_VIDEO_BLUR,
+      },
     })
     expect(result.blurDataUrl).toBeNull()
   })
@@ -86,7 +92,10 @@ describe("enrichMediaItem image resolution", () => {
         previewUrl: ADMIN_FALLBACK,
         dominantColor: ADMIN_FALLBACK_COLOR,
       },
-      videoImageDominantColor: ADMIN_VIDEO_COLOR,
+      videoImage: {
+        previewUrl: "https://cdn.example/video.jpg",
+        dominantColor: ADMIN_VIDEO_COLOR,
+      },
     })
     expect(result.dominantColor).toBe(ADMIN_FALLBACK_COLOR)
   })
@@ -98,7 +107,10 @@ describe("enrichMediaItem image resolution", () => {
         previewUrl: ADMIN_FALLBACK,
         dominantColor: null,
       },
-      videoImageDominantColor: ADMIN_VIDEO_COLOR,
+      videoImage: {
+        previewUrl: "https://cdn.example/video.jpg",
+        dominantColor: ADMIN_VIDEO_COLOR,
+      },
     })
     expect(result.dominantColor).toBeNull()
   })
@@ -106,12 +118,27 @@ describe("enrichMediaItem image resolution", () => {
   it("ignores the generic fallback dominant color", () => {
     const result = enrichMediaItem({
       ...base,
-      imageAsset: {
-        previewUrl: ADMIN_FALLBACK,
+      videoImage: {
+        previewUrl: "https://cdn.example/video.jpg",
+        dominantColor: "#111827",
       },
-      videoImageDominantColor: "#111827",
     })
     expect(result.dominantColor).toBeNull()
+  })
+
+  it("uses linked video image metadata when no block asset is authored", () => {
+    const result = enrichMediaItem({
+      ...base,
+      videoImage: {
+        previewUrl: "https://cdn.example/video.jpg",
+        blurDataUrl: ADMIN_VIDEO_BLUR,
+        dominantColor: ADMIN_VIDEO_COLOR,
+      },
+    })
+
+    expect(result.imageUrl).toBe("https://cdn.example/video.jpg")
+    expect(result.blurDataUrl).toBe(ADMIN_VIDEO_BLUR)
+    expect(result.dominantColor).toBe(ADMIN_VIDEO_COLOR)
   })
 
   it("carries route related image blur and dominant color metadata", () => {
@@ -183,15 +210,6 @@ describe("enrichMediaItem image resolution", () => {
     })
 
     expect(result.languageSlug).toBe("spanish-latin-american")
-  })
-
-  it("does not use a standalone muxPlaybackId fallback for authored media items", () => {
-    const result = enrichMediaItem({
-      ...base,
-      muxPlaybackId: "mux-page-language-fallback",
-    })
-
-    expect(result.muxPlaybackId).toBeNull()
   })
 })
 
