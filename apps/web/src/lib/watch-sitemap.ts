@@ -1,11 +1,14 @@
 import {
   WATCH_BASE_PATH,
   WATCH_PUBLIC_METADATA_ORIGIN,
+  asLocaleSlug,
+  localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
+import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import type {
   WatchSeoManifest,
   WatchSeoManifestAlternate,
@@ -18,6 +21,10 @@ const URLSET_CLOSE = "</urlset>"
 const SITEMAPINDEX_OPEN =
   '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
 const SITEMAPINDEX_CLOSE = "</sitemapindex>"
+const ENGLISH_BRITISH_LANGUAGE_SLUG = asLocaleSlug("english-british")
+const ENGLISH_BRITISH_HREFLANG = resolveWatchLocaleIdentity(
+  ENGLISH_BRITISH_LANGUAGE_SLUG,
+).htmlLang
 
 export const WATCH_SITEMAP_INDEX_PATH = "/sitemap.xml"
 export const WATCH_SITEMAP_CHUNK_PATH_PREFIX = "/sitemap"
@@ -68,6 +75,35 @@ function xmlEscape(value: string): string {
 
 function absoluteWatchUrl(path: string): string {
   return `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${path}`
+}
+
+function createWatchHomeSitemapEntries(): WatchSitemapEntry[] {
+  const defaultHome = absoluteWatchUrl("")
+  const britishHome = absoluteWatchUrl(
+    localizedHomePath(ENGLISH_BRITISH_LANGUAGE_SLUG),
+  )
+  const alternates: WatchSitemapAlternate[] = [
+    {
+      hreflang: "en",
+      languageSlug: "english",
+      href: defaultHome,
+    },
+    {
+      hreflang: ENGLISH_BRITISH_HREFLANG,
+      languageSlug: ENGLISH_BRITISH_LANGUAGE_SLUG,
+      href: britishHome,
+    },
+    {
+      hreflang: "x-default",
+      languageSlug: "english",
+      href: defaultHome,
+    },
+  ]
+
+  return [
+    { loc: defaultHome, alternates },
+    { loc: britishHome, alternates },
+  ]
 }
 
 function videoHref(contentSlug: string, languageSlug: string): string | null {
@@ -123,7 +159,12 @@ function groupForAlternates(
   alternates: WatchSeoManifestAlternate[],
   hrefForLanguage: (languageSlug: string) => string | null,
 ): ResolvedSitemapGroup | null {
-  const entries = groupEntries(alternates, hrefForLanguage)
+  return groupForEntries(groupEntries(alternates, hrefForLanguage))
+}
+
+function groupForEntries(
+  entries: WatchSitemapEntry[],
+): ResolvedSitemapGroup | null {
   if (!entries.length) return null
   const alternateLinksXml = entries[0]?.alternates.map(renderAlternate).join("")
   if (!alternateLinksXml) return null
@@ -153,6 +194,9 @@ function createWatchSitemapGroups(
     if (sitemapGroup) groups.push(sitemapGroup)
   }
 
+  const homeSitemapGroup = groupForEntries(createWatchHomeSitemapEntries())
+  if (homeSitemapGroup) groups.push(homeSitemapGroup)
+
   return groups
 }
 
@@ -176,6 +220,8 @@ export function createWatchSitemapEntries(
       ),
     )
   }
+
+  entries.push(...createWatchHomeSitemapEntries())
 
   return entries
 }
