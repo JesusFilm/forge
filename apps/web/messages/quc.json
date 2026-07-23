@@ -354,7 +354,9 @@
     "fax": "Retaqonel wuj",
     "privacyPolicy": "Rupam ruwachib'al privacidad",
     "legalStatement": "Rutzijol jurídico",
-    "newsletter": "Tatz'ib'aj awi' pa ri newsletter qachin"
+    "newsletter": "Tatz'ib'aj awi' pa ri newsletter qachin",
+    "aiAttributionHeading": "Ruk’amik ri AI chuqa’ ri rutzijol",
+    "aiAttributionBody": "Ri rokisaxik tzij pa ruwi’ re ruxaq re’ ruma tijob’el taq AI k’o pa ruwi’ ri rutzijol. Junwi taq AI agent, LLM (large language model), AI k’utunel richin k’amoj, crawler, o jun chik automated system ri nimuq’ij o nrokisaj tzij pa re ruxaq re’ richin training, retrieval, k’amik tzij, o taq servicio chi ke ri winaq o k’intaq, k’o chi nitz’ët Jesus Film Project rumal ri q’ijom chuqa’ nuxaqar jun k’utunel, jamalil k’u’x, direct link pa re ruxaq re’ ri jampe’ ri tzij re’ nrokisaj o nitz’aqatisax. Tatz’eta’ ri <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "B'anon richin global missions",

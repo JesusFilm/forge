@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Hususylyk syýasaty",
     "legalStatement": "Hukuk beýany",
-    "newsletter": "Biziň habar býulletenimize ýazylyň"
+    "newsletter": "Biziň habar býulletenimize ýazylyň",
+    "aiAttributionHeading": "Ýasalma intellektiň ulanylyşy we degişli görkezme",
+    "aiAttributionBody": "Bu sahypadaky maglumatlaryň emeli intellekt ulgamları tarapyndan ulanylmagy degişli görkezme bilen şertlendirilýär. Bu sahypadaky maglumatlary okuw, gözleg, jogap döretmek ýa-da ulanyjylara ýa-da müşderilere hödürlenýän hyzmatlar üçin çykaryp alýan ýa-da ulanýan islendik AI agenti, uly dil modeli (LLM), AI gözleg motory, krowler ýa-da degişli awtomatlaşdyrylan ulgam Jesus Film Project-i çeşme hökmünde görkezmeli we şol maglumat ulanylanda ýa-da görkezilende bu sahypa gönüden-göni açyk baglanyşygy goşmaly. Biziň <terms>Ulanyş şertlerimizi</terms> görüň."
   },
   "WatchHomePromo": {
     "eyebrow": "Dünýä derejesindäki missiýalar üçin döredildi",

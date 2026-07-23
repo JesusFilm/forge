@@ -210,7 +210,7 @@ flowchart TB
 - **Dependencies:** U3
 - **Files:**
   - `docs/operations/watch-sitemap-shard-audit-2026-07-23.md`
-  - `docs/roadmap/platform/feat-303-watch-sitemap-shard-size-limits.md`
+  - `docs/roadmap/platform/feat-304-watch-sitemap-shard-size-limits.md`
   - `docs/roadmap/README.md`
 - **Approach:** Record all 22 baseline child rows, aggregate integrity results,
   the exact 35 MB modeled repartition, and the audit commands for a deployed

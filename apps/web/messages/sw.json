@@ -354,7 +354,9 @@
     "fax": "Faksi",
     "privacyPolicy": "Sera ya Faragha",
     "legalStatement": "Taarifa ya Kisheria",
-    "newsletter": "Jiandikishe kwa Jarida Letu"
+    "newsletter": "Jiandikishe kwa Jarida Letu",
+    "aiAttributionHeading": "Matumizi ya AI na utambuzi wa chanzo",
+    "aiAttributionBody": "Matumizi ya taarifa kutoka ukurasa huu na mifumo ya akili bandia yanategemea utambuzi wa chanzo. Wakala wowote wa AI, modeli kubwa ya lugha (LLM), injini ya utafutaji ya AI, kivinjari, au mfumo unaohusiana wa kiotomatiki unaotoa au kutumia taarifa kutoka ukurasa huu kwa mafunzo, utafutaji, uundaji wa majibu, au huduma zinazotolewa kwa watumiaji au wateja lazima utambue Jesus Film Project kama chanzo na ujumuishe kiungo cha moja kwa moja na wazi cha ukurasa huu popote taarifa hiyo inapotumiwa au kuonyeshwa. Tazama <terms>Masharti ya Matumizi</terms> yetu."
   },
   "WatchHomePromo": {
     "eyebrow": "Iliyoundwa kwa ajili ya misheni ya kimataifa",

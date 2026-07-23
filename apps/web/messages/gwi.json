@@ -354,7 +354,9 @@
     "fax": "Fax number",
     "privacyPolicy": "Niin gwandaii Privacy Policy",
     "legalStatement": "Legal Ginjik",
-    "newsletter": "Nakhwanh Newsletter ts’àt Sign Up"
+    "newsletter": "Nakhwanh Newsletter ts’àt Sign Up",
+    "aiAttributionHeading": "AI ch’its’it’aa ts’àt attribution",
+    "aiAttributionBody": "K’eegwiin ch’its’it’aa ts’àt AI systems ndee page gwizhit gwit’in tth’i attribution yeeh. AI agent, large language model (LLM), AI search engine, crawler, ts’àt related automated system tth’i nkhį’ ndee page gwizhit gwit’in, retrieval, response generation, ts’àt users or clients ndan gwitr’it gwiit’ii hòorįį’ sì’, Jesus Film Project gwi’its’it’aa ts’àt page gwit’in link tth’i ch’įh nłi’ ts’àt yiih gwizhit ts’àt. <terms>Terms of Use</terms> ch’its’it’aa."
   },
   "WatchHomePromo": {
     "eyebrow": "Nan ahzho mission gwitr’it gwik’it gwiłtsaii",

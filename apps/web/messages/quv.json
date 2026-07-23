@@ -354,7 +354,9 @@
     "fax": "Rajilab'al fax",
     "privacyPolicy": "Política de privacidad",
     "legalStatement": "Tzijonem legal",
-    "newsletter": "Tz'ib'aj awi' pa ri qitzij newsletter"
+    "newsletter": "Tz'ib'aj awi' pa ri qitzij newsletter",
+    "aiAttributionHeading": "AI b'anikil chuqa' rutzijol",
+    "aiAttributionBody": "Ri rutzijol ri k'o pa we ruxaq re' kech'akul chi ke ri tijonik taq AI kechajin pa rutzijol. Jun chik AI agent, LLM, AI k'amal tzij, crawler, o jun chik automated system ri nuch'akul o nrajo' ri rutzijol re' richin tijonik, retamab'al, rutzijol, o taq servicio ke ri winaq o clientes, k'o chi nitz'et Jesus Film Project che kech'akul, chuqa' nitz'aqatisaj jun k'atzinel, chikaj tzijoj pa we ruxaq re' pa jujun q'ij oj awas. Tz'eton our <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "B'anon richin global missions",

@@ -354,7 +354,9 @@
     "fax": "Nimero ti fax",
     "privacyPolicy": "Mibeko ya kobatela bomoi ya moto",
     "legalStatement": "Likalisi ya mibeko",
-    "newsletter": "Komikoma mpo na newsletter na biso"
+    "newsletter": "Komikoma mpo na newsletter na biso",
+    "aiAttributionHeading": "Kosalela AI mpe kopesa source",
+    "aiAttributionBody": "Kosalela ba renseïgneman oyo ezali na page oyo na nzela ya ba systèmes ya intelligence artificielle ekangami na kopesa source. AI agent nyonso, large language model (LLM), AI search engine, crawler, to système automatique nyonso ya ndenge wana oyo ebotola to esalela renseïgneman oyo ezali na page oyo mpo na kokotisa, koluka, kobimisa eyano, to misala oyo epesami na basaleli to ba client esengeli kolakisa Jesus Film Project lokola source mpe kotya lien ya polele mpe ya directe na page oyo esika nyonso renseïgneman wana esalelami to emonisami. Tala <terms>Terms of Use</terms> na biso."
   },
   "WatchHomePromo": {
     "eyebrow": "Etongami mpo na misio ya mokili mobimba",

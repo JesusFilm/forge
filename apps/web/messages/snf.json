@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Politique de confidentialité",
     "legalStatement": "Mentions légales",
-    "newsletter": "Inscrivez-vous à notre newsletter"
+    "newsletter": "Inscrivez-vous à notre newsletter",
+    "aiAttributionHeading": "Akɔma yi na kaddo",
+    "aiAttributionBody": "Kumɓa wonii piŋgini no waɲi i ze kaddo mba seɓi njaɓa. Buuru AI, LLM, AI n̄gase a kan, crawler, ko ɓeɗe njaɓa-aɲi ɓe diŋgɛ kaddo nɛ kaŋa ɓe gɔrɔ, ɓe fe Jesu Film Project a sɛɓɛlɛ, ta ɓe tuma linki laɗa, noor e yaa njaɓa mo ɓe gɔrɔ ko ɓe nyaa. Woro <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Conçu pour la mission mondiale",

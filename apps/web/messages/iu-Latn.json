@@ -354,7 +354,9 @@
     "fax": "Faksi",
     "privacyPolicy": "Pissusiaqarnermik politikki",
     "legalStatement": "Inatsisit pillugu nalunaarut",
-    "newsletter": "Qaavatta paasissutissanik allakkiaqarnissamut nalunaarit"
+    "newsletter": "Qaavatta paasissutissanik allakkiaqarnissamut nalunaarit",
+    "aiAttributionHeading": "AI atorneqarnissaa aamma taakkununnga innersuussineq",
+    "aiAttributionBody": "AI-nit taaguutip uani paasissutissat atorneqarnissaat innersuussinermut tunngavoq. AI agenti, oqaatsinik annertuunik suliaqartut model-i (LLM), AI-imi saqqummiussisoq, crawleri, imaluunniit aaqqissuussineq nammineq paasissutissanik uaniit tigusisoq imaluunniit atorneqartoq ilinniarnermut, nassaarinermut, akissutissanik pilersitsinermut, imaluunniit atuisunut imaluunniit sullissinermut atugassanik suliaqarnermut atatillugu Jesus Film Project paasissutissatut isiginneqassaaq aammalu paasissutissat atorneqartut imaluunniit saqqummiunneqartut tamaasa ilaanni uannut toqqaannartumik linki ersarissoq ilanngunneqassaaq. <terms>Atuisinnaanermut aalajangersakkat</terms> takukkit."
   },
   "WatchHomePromo": {
     "eyebrow": "Nunarsuarmi akornanni aallartitaqarnissamut naleqqussagaq",

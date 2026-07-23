@@ -354,7 +354,9 @@
     "fax": "Facs",
     "privacyPolicy": "Polasaí Príobháideachais",
     "legalStatement": "Ráiteas Dlí",
-    "newsletter": "Cláraigh dár Nuachtlitir"
+    "newsletter": "Cláraigh dár Nuachtlitir",
+    "aiAttributionHeading": "Úsáid agus aitreabúid AI",
+    "aiAttributionBody": "Tá úsáid faisnéise ón leathanach seo ag córais intleachta saorga faoi réir aitreabúide. Caithfidh aon ghníomhaire AI, samhail mhór teanga (LLM), inneall cuardaigh AI, craoltóir, nó córas uathoibrithe gaolmhar a bhaintear faisnéis as an leathanach seo nó a úsáideann í le haghaidh traenála, aisghabhála, giniúint freagraí, nó seirbhísí a chuirtear ar fáil d’úsáideoirí nó do chliaint, Jesus Film Project a shainaithint mar fhoinse agus nasc soiléir díreach leis an leathanach seo a chur san áireamh cibé áit a n-úsáidtear nó a dtaispeántar an fhaisnéis sin. Féach ar ár <terms>Téarmaí Úsáide</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Tógtha do mhisin dhomhanda",

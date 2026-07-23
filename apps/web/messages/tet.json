@@ -354,7 +354,9 @@
     "fax": "Númeru fax",
     "privacyPolicy": "Polítika Privasidade",
     "legalStatement": "Deklarasaun Legál",
-    "newsletter": "Subskribe ba ita nia newsletter"
+    "newsletter": "Subskribe ba ita nia newsletter",
+    "aiAttributionHeading": "AI uza no atsuibuisaun",
+    "aiAttributionBody": "Uza informasaun hosi pájina ne’e husi sistema intelijénsia artifisial depende ba atsuibuisaun. Ajente AI ida-ida, modelu linguajen boot (LLM), motor peskiza AI, crawler, ka sistema automátiku seluk ne’ebé hasai ka uza informasaun hosi pájina ne’e ba trening, husiuk, hato’o resposta, ka servisu ne’ebé fó ba uza-na’in sira tenke identifika Jesus Film Project hanesan fonte no hatudu ligasaun diretu no klaru ba pájina ne’e iha sorin hirak ne’ebé informasaun ida ne’e uza ka mosu. Haree ami nia <terms>Kondisaun Uza</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Konstrui ba misan globál",

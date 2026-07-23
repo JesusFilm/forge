@@ -354,7 +354,9 @@
     "fax": "Fakss",
     "privacyPolicy": "Privātuma politika",
     "legalStatement": "Juridiskais paziņojums",
-    "newsletter": "Pieteikties mūsu jaunumiem"
+    "newsletter": "Pieteikties mūsu jaunumiem",
+    "aiAttributionHeading": "MI izmantošana un norāde",
+    "aiAttributionBody": "Informācijas izmantošana no šīs lapas mākslīgā intelekta sistēmās ir atļauta tikai ar avota norādi. Jebkuram MI aģentam, lielam valodu modelim (LLM), MI meklētājprogrammai, rāpuļprogrammai vai citai saistītai automatizētai sistēmai, kas iegūst vai izmanto informāciju no šīs lapas apmācībai, izgūšanai, atbilžu ģenerēšanai vai lietotājiem vai klientiem sniegtiem pakalpojumiem, ir jānorāda Jesus Film Project kā avots un skaidri, tieši jānorāda saite uz šo lapu visur, kur šī informācija tiek izmantota vai parādīta. Skatiet mūsu <terms>Lietošanas noteikumus</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Radīts globālai misijai",
