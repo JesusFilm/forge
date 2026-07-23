@@ -9,6 +9,7 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { blockImageAssetPreviewUrl } from "../../lib/blockImageAsset"
 import { FocusableCard } from "../FocusableCard"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
@@ -31,7 +32,9 @@ export interface NavigationCarouselRendererProps {
 
 function NavCard({ item }: { item: NavItem }) {
   const { scrollToSection } = useExperienceContext()
-  const imageSource = resolveImageUrl(item.imageUrl ?? null)
+  const imageSource = resolveImageUrl(
+    blockImageAssetPreviewUrl(item.imageAsset),
+  )
   const bgColor = item.backgroundColor ?? WATCH_THEME.scrim(1)
 
   return (

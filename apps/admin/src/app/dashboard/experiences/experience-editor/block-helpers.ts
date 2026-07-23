@@ -92,7 +92,12 @@ export function editorTextFromContentParagraphs(
   return paragraphs.join(variant === "promotional" ? "\n\n" : "\n")
 }
 
-const legacyEditorOnlyKeys = new Set(["streamingUrl", "videoSlug"])
+const legacyEditorOnlyKeys = new Set([
+  "backgroundImageUrl",
+  "imageUrl",
+  "streamingUrl",
+  "videoSlug",
+])
 
 export type VideoLibraryItem = {
   key: string
@@ -220,7 +225,6 @@ export function containerSlotMarkerIndexes(content: unknown[]) {
 const optionalEmptyStringKeys = new Set([
   "backgroundColor",
   "backgroundImageAssetId",
-  "backgroundImageUrl",
   "buttonLink",
   "category",
   "categoryLabel",
@@ -229,8 +233,6 @@ const optionalEmptyStringKeys = new Set([
   "ctaLabel",
   "ctaLink",
   "footerText",
-  "imageOverrideUrl",
-  "imageOverrideAssetId",
   "imageAssetId",
   "imageUrl",
   "labelOverride",

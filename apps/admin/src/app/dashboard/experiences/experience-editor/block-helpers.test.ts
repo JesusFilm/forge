@@ -141,8 +141,7 @@ describe("experience editor block helpers", () => {
         {
           videoId: "",
           streamingUrl: "",
-          imageOverrideUrl: "",
-          imageOverrideAssetId: "",
+          imageUrl: "",
           imageAssetId: "",
           titleOverride: "",
           subtitleOverride: "",
@@ -178,7 +177,6 @@ describe("experience editor block helpers", () => {
       items: [
         {
           videoId: "video-1",
-          imageUrl: "https://example.com/image.jpg",
         },
       ],
     })
@@ -313,7 +311,7 @@ describe("experience editor block helpers", () => {
             {
               videoId: "",
               streamingUrl: "",
-              imageOverrideUrl: "",
+              imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
             },
@@ -327,7 +325,6 @@ describe("experience editor block helpers", () => {
           items: [
             {
               videoId: "",
-              imageOverrideUrl: "",
               imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
@@ -350,7 +347,7 @@ describe("experience editor block helpers", () => {
             {
               reference: "John 3:16",
               text: "For God so loved the world...",
-              backgroundImageUrl: "",
+              backgroundImageAssetId: "",
               imageUrl: "",
               backgroundColor: "",
               ctaEnabled: false,

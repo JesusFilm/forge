@@ -45,7 +45,6 @@ const baseFragment = {
     {
       streamingUrl: "https://example.com/one.m3u8",
       imageUrl: undefined,
-      imageOverrideUrl: undefined,
       titleOverride: "First",
       backgroundColor: undefined,
       videoId: undefined,

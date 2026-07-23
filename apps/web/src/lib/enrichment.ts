@@ -15,26 +15,22 @@ type MediaItem = {
       playbackId?: string | null
     } | null
   } | null
-  muxPlaybackId?: string | null
   languageSlug?: string | null
-  videoImageBlurDataUrl?: string | null
-  videoImageDominantColor?: string | null
+  videoImage?: {
+    previewUrl?: string | null
+    blurDataUrl?: string | null
+    dominantColor?: string | null
+  } | null
   resolvedTitle?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
   labelOverride: string | null
   collectionSize: string | null
-  imageUrl: string | null
-  imageBlurDataUrl?: string | null
-  imageDominantColor?: string | null
-  // Optional because the caller's TS prop type derives from the legacy
-  // Strapi fragment (nested `imageOverride { url }`), while the admin
-  // runtime payload carries this flat field. The `as unknown as` cast
-  // at the renderer level bridges the gap; at runtime this is always
-  // present on admin data.
-  imageOverrideUrl?: string | null
-  imageOverrideBlurDataUrl?: string | null
-  imageOverrideDominantColor?: string | null
+  imageAsset?: {
+    previewUrl?: string | null
+    blurDataUrl?: string | null
+    dominantColor?: string | null
+  } | null
 }
 
 const WATCH_HOME_LOCAL_THUMBNAILS: Record<string, string> = {
@@ -151,38 +147,25 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const subtitle = item.subtitleOverride ?? ""
   const label = typeof item.labelOverride === "string" ? item.labelOverride : ""
   const collectionSize = item.collectionSize ?? ""
-  // Explicit per-item override wins over the image inherited from the
-  // linked video, matching the seed's authoring intent for collection
-  // cards that point at external poster artwork rather than the video's
-  // own thumbnail. Admin writes an empty string (not null) when an
-  // editor clears the override, so the truthiness check below is what
-  // routes empty strings back to the fallback — `??` would let `""`
-  // shadow a valid imageUrl and produce a blank tile.
-  const overrideUrl =
-    typeof item.imageOverrideUrl === "string" &&
-    item.imageOverrideUrl.length > 0
-      ? item.imageOverrideUrl
-      : null
-  const fallbackUrl =
-    typeof item.imageUrl === "string" && item.imageUrl.length > 0
-      ? item.imageUrl
+  const authoredUrl =
+    typeof item.imageAsset?.previewUrl === "string" &&
+    item.imageAsset.previewUrl.length > 0
+      ? item.imageAsset.previewUrl
       : null
   const imageUrl =
-    overrideUrl ??
-    fallbackUrl ??
+    authoredUrl ??
+    (typeof item.videoImage?.previewUrl === "string" &&
+    item.videoImage.previewUrl.length > 0
+      ? item.videoImage.previewUrl
+      : null) ??
     localWatchHomeThumbnailUrl(item.coreId) ??
     muxThumbnailUrl(item.videoDub?.muxVideo?.playbackId)
-  const hasOverrideImage = overrideUrl != null
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
-    item.videoImageBlurDataUrl,
+    item.videoImage?.blurDataUrl,
   )
-  const overrideBlurDataUrl = meaningfulBlurDataUrl(
-    item.imageOverrideBlurDataUrl,
-  )
-  const fallbackBlurDataUrl = meaningfulBlurDataUrl(item.imageBlurDataUrl)
-  const overrideDominantColor = meaningfulColor(item.imageOverrideDominantColor)
-  const videoDominantColor = meaningfulColor(item.videoImageDominantColor)
-  const fallbackDominantColor = meaningfulColor(item.imageDominantColor)
+  const assetBlurDataUrl = meaningfulBlurDataUrl(item.imageAsset?.blurDataUrl)
+  const videoDominantColor = meaningfulColor(item.videoImage?.dominantColor)
+  const assetDominantColor = meaningfulColor(item.imageAsset?.dominantColor)
   // Admin-authored items carry a route slug snapshot when seeded from videos.
   // Renderer skips the `<a href>` when videoSlug is empty (see
   // MediaCollection.tsx `const href = item.videoSlug ? ...`).
@@ -205,11 +188,9 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     collectionSize,
     imageUrl,
     blurDataUrl:
-      overrideBlurDataUrl ??
-      (hasOverrideImage
-        ? null
+      authoredUrl != null
+        ? assetBlurDataUrl
         : (videoImageBlurDataUrl ??
-          fallbackBlurDataUrl ??
           localWatchHomeBlurDataUrl(item.coreId) ??
           demoBlurDataUrl(
             item.coreId ??
@@ -218,10 +199,9 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
               item.titleOverride ??
               imageUrl ??
               "media-collection",
-          ))),
+          )),
     dominantColor:
-      overrideDominantColor ??
-      (hasOverrideImage ? null : (videoDominantColor ?? fallbackDominantColor)),
+      authoredUrl != null ? assetDominantColor : videoDominantColor,
     videoSlug,
     languageSlug,
     muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,

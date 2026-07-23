@@ -24,6 +24,10 @@ describe("GET_WATCH_EXPERIENCE (public single experience, powers the home)", () 
     // experienceBySlug is public; the bare `experiences` list field is gated.
     expect(experienceSdl).not.toMatch(/\bexperiences\b/)
   })
+
+  it("selects the authored media-collection thumbnail orientation", () => {
+    expect(experienceSdl).toContain("thumbnailOrientation")
+  })
 })
 
 // Restored from the pre-#1622 SEMANTIC_SEARCH suite, retargeted at watchSearch.

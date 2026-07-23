@@ -20,6 +20,7 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { resolveWatchShareUrlFromPathname } from "@/lib/share"
 
 export { bibleQuotesCarouselFragment }
 
@@ -30,6 +31,20 @@ type BibleQuotesCarouselProps = {
 type QuoteItem = NonNullable<
   NonNullable<FragmentOf<typeof bibleQuotesCarouselFragment>["quotes"]>[number]
 >
+
+type ImageAssetBackedQuote = QuoteItem & {
+  imageAsset?: { previewUrl?: string | null } | null
+  backgroundImageAsset?: { previewUrl?: string | null } | null
+}
+
+function quoteImageUrl(quote: QuoteItem) {
+  const assetBackedQuote = quote as ImageAssetBackedQuote
+  return (
+    assetBackedQuote.imageAsset?.previewUrl ??
+    assetBackedQuote.backgroundImageAsset?.previewUrl ??
+    quote.imageUrl
+  )
+}
 
 export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   const { heading, quotes } = data
@@ -84,7 +99,13 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
   const t = useTranslations("BibleQuotes")
 
   async function handleShare() {
-    const shareUrl = new URL(window.location.href)
+    const resolvedUrl = resolveWatchShareUrlFromPathname({
+      origin: window.location.origin,
+      pathname: window.location.pathname,
+    })
+    if (!resolvedUrl) return
+
+    const shareUrl = new URL(resolvedUrl)
     shareUrl.searchParams.set("utm_source", "share")
 
     const shareData = {
@@ -107,7 +128,7 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between pb-2">
       {heading && (
-        <h3 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+        <h3 className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
           {heading}
         </h3>
       )}
@@ -157,7 +178,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
   const hasText = typeof quote.text === "string" && quote.text.trim().length > 0
   return (
     <BibleQuoteCard
-      imageUrl={quote.imageUrl}
+      imageUrl={quoteImageUrl(quote)}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
@@ -184,7 +205,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
 function FreeResourceCard({ quote }: { quote: QuoteItem }) {
   return (
     <BibleQuoteCard
-      imageUrl={quote.imageUrl}
+      imageUrl={quoteImageUrl(quote)}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
