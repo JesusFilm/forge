@@ -9,7 +9,7 @@ completed_date: "2026-06-12"
 duration: 2
 depends_on: []
 blocks:
-  - "feat-301"
+  - "feat-302"
 tags:
   - "platform"
   - "web"

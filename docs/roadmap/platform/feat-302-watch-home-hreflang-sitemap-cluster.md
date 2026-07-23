@@ -1,5 +1,5 @@
 ---
-id: "feat-301"
+id: "feat-302"
 title: "Watch homepage hreflang sitemap cluster"
 owner: "vlad"
 priority: "P1"
