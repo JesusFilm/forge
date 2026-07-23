@@ -36,7 +36,7 @@ tags:
 Admin PR #1622 retired the GraphQL field `Query.search` and replaced it with a
 richer multilingual field. In the current schema only the replacement exists —
 `watchSearch(input: WatchSearchInput!): WatchSearchResponse`
-(`apps/admin/schema.graphql:1023`, input type at `:1936`); `Query.search` is
+(`apps/admin/schema.graphql:1042`, input type at `:1967`); `Query.search` is
 gone.
 
 `apps/web` was migrated in that same PR. `apps/mobile` and `apps/tv` were not.
