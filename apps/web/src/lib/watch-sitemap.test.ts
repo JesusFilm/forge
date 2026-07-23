@@ -39,11 +39,29 @@ const manifest: WatchSeoManifest = {
   skippedHreflangValues: {},
 }
 
+const expectedHomepageAlternates = [
+  {
+    hreflang: "en",
+    languageSlug: "english",
+    href: "https://www.jesusfilm.org/watch",
+  },
+  {
+    hreflang: "en-GB",
+    languageSlug: "english-british",
+    href: "https://www.jesusfilm.org/watch/english-british.html",
+  },
+  {
+    hreflang: "x-default",
+    languageSlug: "english",
+    href: "https://www.jesusfilm.org/watch",
+  },
+]
+
 describe("watch sitemap rendering", () => {
   it("expands route groups into one self-inclusive entry per alternate URL", () => {
     const entries = createWatchSitemapEntries(manifest)
 
-    expect(entries).toHaveLength(3)
+    expect(entries).toHaveLength(5)
     expect(entries[0]).toEqual({
       loc: "https://www.jesusfilm.org/watch/jesus.html/english.html",
       alternates: [
@@ -62,6 +80,22 @@ describe("watch sitemap rendering", () => {
     expect(entries[2]?.loc).toBe(
       "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
+  })
+
+  it("adds reciprocal default and British-English homepage alternates", () => {
+    const entries = createWatchSitemapEntries(manifest)
+    const homepageEntries = entries.slice(-2)
+
+    expect(homepageEntries).toEqual([
+      {
+        loc: "https://www.jesusfilm.org/watch",
+        alternates: expectedHomepageAlternates,
+      },
+      {
+        loc: "https://www.jesusfilm.org/watch/english-british.html",
+        alternates: expectedHomepageAlternates,
+      },
+    ])
   })
 
   it("renders a sitemap index with canonical child sitemap URLs", () => {
@@ -112,8 +146,10 @@ describe("watch sitemap rendering", () => {
   })
 
   it("splits chunks by URL count and serialized byte limits", () => {
-    expect(getWatchSitemapChunks(manifest, { maxUrls: 1 })).toHaveLength(3)
-    expect(getWatchSitemapChunks(manifest, { maxBytes: 600 })).toHaveLength(3)
+    expect(getWatchSitemapChunks(manifest, { maxUrls: 1 })).toHaveLength(5)
+    const byteChunks = getWatchSitemapChunks(manifest, { maxBytes: 600 })
+    expect(byteChunks.length).toBeGreaterThan(1)
+    expect(byteChunks.every((chunk) => chunk.bytes <= 600)).toBe(true)
   })
 
   it("uses safety ceilings below search-engine hard limits", () => {

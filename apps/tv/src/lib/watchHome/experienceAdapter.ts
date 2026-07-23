@@ -103,13 +103,34 @@ function itemToCard(
   })
 }
 
+// Admin does not enforce `sectionKey` uniqueness within an Experience — prod
+// watch-home ships two blocks keyed `media-collection-15` — and the id becomes
+// the rail's React key, so a collision must resolve to a distinct id.
+function uniqueSectionId(
+  preferred: string,
+  taken: ReadonlySet<string>,
+  index: number,
+): string {
+  if (!taken.has(preferred)) return preferred
+  let candidate = `${preferred}-${index}`
+  for (let n = 2; taken.has(candidate); n += 1) {
+    candidate = `${preferred}-${index}-${n}`
+  }
+  return candidate
+}
+
 function blockToSection(
   block: MediaCollectionBlockLike,
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
   languageSlug: string,
+  takenSectionIds: ReadonlySet<string>,
 ): WatchHomeSection | null {
-  const sectionId = block.sectionKey ?? `home-experience-section-${index}`
+  const sectionId = uniqueSectionId(
+    block.sectionKey ?? `home-experience-section-${index}`,
+    takenSectionIds,
+    index,
+  )
   const rawItems = block.items ?? []
   const cards = rawItems
     .map((item) => itemToCard(item, sectionId, videoByCoreId, languageSlug))
@@ -147,6 +168,9 @@ export function buildWatchHomeSectionsFromExperience(
   languageSlug: string = ENGLISH_LANGUAGE_SLUG,
 ): WatchHomeSection[] {
   const sections: WatchHomeSection[] = []
+  // Only rails that survive reserve an id, so a dropped block can't push its
+  // surviving twin off the authored key.
+  const takenSectionIds = new Set<string>()
   ;(blocks ?? []).forEach((block, index) => {
     const typename = block.__typename
     if (typename === "MediaCollectionBlock") {
@@ -155,8 +179,12 @@ export function buildWatchHomeSectionsFromExperience(
         index,
         videoByCoreId,
         languageSlug,
+        takenSectionIds,
       )
-      if (section) sections.push(section)
+      if (section) {
+        sections.push(section)
+        takenSectionIds.add(section.id)
+      }
     } else if (typename != null && SILENT_SKIP_BLOCKS.has(typename)) {
       // Known non-rail block — skip silently (no warning).
     } else if (__DEV__) {

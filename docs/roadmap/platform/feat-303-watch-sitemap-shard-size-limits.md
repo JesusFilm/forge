@@ -1,5 +1,5 @@
 ---
-id: "feat-302"
+id: "feat-303"
 title: "Watch sitemap shard size limits"
 owner: "vlad"
 priority: "P1"
