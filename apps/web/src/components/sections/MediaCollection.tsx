@@ -14,6 +14,7 @@ import {
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
+import { reportWatchHomeSectionCtaClick } from "@/components/watch/watch-home-section-cta-analytics"
 import {
   WATCH_BASE_PATH,
   asLocaleSlug,
@@ -28,6 +29,11 @@ import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { normalizeWatchRootHref } from "@/lib/watch-paths"
+import {
+  resolveWatchHomeMediaCtaHref,
+  watchHomeCtaAccessibleName,
+  type ExperienceSurface,
+} from "@/lib/watch-home-cta"
 import {
   Carousel,
   CarouselContent,
@@ -53,6 +59,7 @@ type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  surface?: ExperienceSurface
 }
 
 type HoverBackdropLayer = {
@@ -160,9 +167,11 @@ export function MediaCollection({
   data,
   routeVideo,
   languageSlug,
+  surface,
 }: MediaCollectionProps) {
   const {
     id,
+    sectionKey,
     title,
     subtitle,
     mediaDescription: description,
@@ -204,6 +213,15 @@ export function MediaCollection({
     : null
   const explicitCtaLink =
     typeof ctaLink === "string" && ctaLink.trim().length > 0 ? ctaLink : null
+  const fallbackCtaLink = `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const resolvedCtaLink =
+    surface === "watch-home"
+      ? resolveWatchHomeMediaCtaHref({
+          authoredHref: explicitCtaLink,
+          inferredHref: inferredCtaLink,
+          fallbackHref: fallbackCtaLink,
+        })
+      : (explicitCtaLink ?? inferredCtaLink)
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -220,11 +238,12 @@ export function MediaCollection({
   return (
     <WatchHomeMediaCollection
       id={id}
+      sectionKey={sectionKey}
       categoryLabel={categoryLabel}
       title={title}
       subtitle={subtitle}
       description={description}
-      ctaLink={explicitCtaLink ?? inferredCtaLink}
+      ctaLink={resolvedCtaLink}
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}
@@ -233,6 +252,7 @@ export function MediaCollection({
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
       fallbackLanguageSlug={resolvedLanguageSlug}
+      surface={surface}
     />
   )
 }
@@ -259,6 +279,7 @@ function PlayIcon({ className }: { className?: string }) {
 
 function WatchHomeMediaCollection({
   id,
+  sectionKey,
   categoryLabel,
   title,
   subtitle,
@@ -272,8 +293,10 @@ function WatchHomeMediaCollection({
   showItemNumbers,
   items,
   fallbackLanguageSlug,
+  surface,
 }: {
   id: string
+  sectionKey: string | null
   categoryLabel: string | null
   title: string | null
   subtitle: string | null
@@ -287,6 +310,7 @@ function WatchHomeMediaCollection({
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
   fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
+  surface?: ExperienceSurface
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
@@ -324,6 +348,35 @@ function WatchHomeMediaCollection({
   >([])
   const watchHref =
     normalizeWatchRootHref(ctaLink) ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const visibleCtaLabel = ctaLabel?.trim() || t("watch")
+  const accessibleCtaName =
+    surface === "watch-home"
+      ? watchHomeCtaAccessibleName(visibleCtaLabel, [
+          title,
+          subtitle,
+          categoryLabel,
+        ])
+      : undefined
+  const handleCtaClick =
+    surface === "watch-home"
+      ? () => {
+          reportWatchHomeSectionCtaClick({
+            href: watchHref,
+            sectionKey: sectionKey ?? id,
+          })
+        }
+      : undefined
+
+  if (
+    process.env.NODE_ENV === "development" &&
+    surface === "watch-home" &&
+    accessibleCtaName === visibleCtaLabel
+  ) {
+    console.warn(
+      "[MediaCollection] Watch-home CTA has no human-facing section context.",
+      sectionKey ?? id,
+    )
+  }
   const sectionBackgroundColor =
     backgroundColor ?? (isRail ? "#5b1537" : "#050505")
   const tintStyle = tintOverlayStyle(backgroundColor, isRail)
@@ -331,14 +384,19 @@ function WatchHomeMediaCollection({
   const watchCta = (
     <a
       href={watchHref}
+      aria-label={accessibleCtaName}
+      onClick={handleCtaClick}
       data-testid="media-collection-cta"
+      data-watch-home-section-cta={
+        surface === "watch-home" ? "media-collection" : undefined
+      }
       className={cn(
         "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
         title && `col-start-2 ${titleRowStart}`,
       )}
     >
       <PlayIcon />
-      {ctaLabel ?? t("watch")}
+      {visibleCtaLabel}
     </a>
   )
   const categoryEyebrow = categoryLabel ? (

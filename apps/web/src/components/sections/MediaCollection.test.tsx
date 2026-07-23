@@ -4,7 +4,15 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const { reportDatadogRumAction } = vi.hoisted(() => ({
+  reportDatadogRumAction: vi.fn(),
+}))
+
+vi.mock("@/components/DatadogRum", () => ({
+  reportDatadogRumAction,
+}))
 
 import type { RouteVideo } from "@/lib/content"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
@@ -18,6 +26,7 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
+  reportDatadogRumAction.mockReset()
 })
 
 afterEach(() => {
@@ -968,13 +977,39 @@ describe("MediaCollection VideoCard href", () => {
     ).not.toBeNull()
   })
 
-  it("normalizes an authored root CTA to the watch base path", () => {
+  it("falls through from an authored root CTA to the inferred collection on Watch home", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          surface="watch-home"
+          languageSlug="english"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            mediaDefaultCollectionSlug: "jfm-collection",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>(
+          "[data-testid='media-collection-cta']",
+        )
+        ?.getAttribute("href"),
+    ).toBe("/watch/jfm-collection.html/english.html")
+  })
+
+  it("keeps root normalization unchanged outside Watch home", () => {
     act(() => {
       root.render(
         <MediaCollection
           data={makeData({
             itemsSource: "manual",
             mediaCtaLink: "/",
+            mediaDefaultCollectionSlug: "jfm-collection",
             items: [makeManualItem()],
           })}
         />,
@@ -988,6 +1023,70 @@ describe("MediaCollection VideoCard href", () => {
         )
         ?.getAttribute("href"),
     ).toBe("/watch")
+  })
+
+  it("adds section context and reports the resolved Watch-home destination", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          surface="watch-home"
+          languageSlug="english"
+          data={makeData({
+            sectionKey: "films-about-jesus",
+            title: "Films About Jesus",
+            mediaCtaLabel: "See all",
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            mediaDefaultCollectionSlug: "jfm-collection",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-watch-home-section-cta='media-collection']",
+    )
+    expect(cta?.getAttribute("aria-label")).toBe("See all: Films About Jesus")
+    cta?.addEventListener("click", (event) => event.preventDefault())
+
+    act(() => {
+      cta?.click()
+    })
+
+    expect(reportDatadogRumAction).toHaveBeenCalledWith(
+      "watch_home.section_cta_clicked",
+      {
+        surface: "watch_home",
+        sectionKey: "films-about-jesus",
+        destination: "/watch/jfm-collection.html/english.html",
+        routeKind: "video",
+      },
+    )
+  })
+
+  it("falls through from an unsupported Watch path to the languages index", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          surface="watch-home"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/watch/featured",
+            mediaDefaultCollectionSlug: null,
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>(
+          "[data-testid='media-collection-cta']",
+        )
+        ?.getAttribute("href"),
+    ).toBe("/watch/languages")
   })
 
   it("uses the current localized collection for route video children", () => {

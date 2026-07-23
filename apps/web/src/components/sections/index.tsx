@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import dynamic from "next/dynamic"
 import type { RouteVideo, Section } from "@/lib/content"
+import type { ExperienceSurface } from "@/lib/watch-home-cta"
 // Heavy section components are split into separate chunks so unused
 // renderers (every block this page doesn't use) stay out of the main
 // route bundle. Default `ssr: true` keeps SSR markup identical.
@@ -129,6 +130,7 @@ function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
   languageSlug: string | null | undefined,
+  surface: ExperienceSurface | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
@@ -139,6 +141,7 @@ function renderAdminBlock(
           }
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "PromoBannerBlock":
@@ -207,6 +210,7 @@ function renderAdminBlock(
           data={block as unknown as Parameters<typeof Container>[0]["data"]}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "SectionBlock":
@@ -215,6 +219,7 @@ function renderAdminBlock(
           data={block as unknown as Parameters<typeof SectionBlock>[0]["data"]}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "RelatedQuestionsBlock":
@@ -223,6 +228,7 @@ function renderAdminBlock(
           data={
             block as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
           }
+          surface={surface}
         />
       )
     case "VideoCarouselBlock":
@@ -299,10 +305,12 @@ export function ExperienceSectionRenderer({
   section,
   routeVideo,
   languageSlug,
+  surface,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  surface?: ExperienceSurface
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -313,6 +321,7 @@ export function ExperienceSectionRenderer({
       section as unknown as AnyBlock,
       routeVideo,
       languageSlug,
+      surface,
     )
   }
 

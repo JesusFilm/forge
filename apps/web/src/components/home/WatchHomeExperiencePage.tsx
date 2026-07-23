@@ -100,6 +100,7 @@ export function WatchHomeExperiencePage({
                 key={blockKey}
                 section={block}
                 languageSlug={languageSlug}
+                surface="watch-home"
               />
             )
 

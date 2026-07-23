@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-07-15"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-304"
 tags:
   - "platform"
   - "admin"

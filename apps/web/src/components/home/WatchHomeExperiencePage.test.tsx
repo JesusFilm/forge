@@ -30,14 +30,17 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: ({
     section,
     languageSlug,
+    surface,
   }: {
     section: { __typename?: string | null }
     languageSlug: string
+    surface?: string
   }) => (
     <section
       data-testid="experience-section"
       data-section-type={section.__typename ?? "unknown"}
       data-language-slug={languageSlug}
+      data-surface={surface}
       data-block-marker={section.__typename ?? "unknown"}
     />
   ),
@@ -159,6 +162,11 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       renderedSections.every(
         (section) => section.dataset.languageSlug === "english",
+      ),
+    ).toBe(true)
+    expect(
+      renderedSections.every(
+        (section) => section.dataset.surface === "watch-home",
       ),
     ).toBe(true)
     expect(

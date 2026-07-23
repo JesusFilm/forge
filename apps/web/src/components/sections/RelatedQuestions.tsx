@@ -9,11 +9,18 @@ import type {
 import Markdown from "react-markdown"
 import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Button } from "@/components/ui/button"
+import { reportWatchHomeSectionCtaClick } from "@/components/watch/watch-home-section-cta-analytics"
+import {
+  resolveWatchHomeSectionCtaHref,
+  watchHomeCtaAccessibleName,
+  type ExperienceSurface,
+} from "@/lib/watch-home-cta"
 
 export { relatedQuestionsFragment }
 
 type RelatedQuestionsProps = {
   data: FragmentOf<typeof relatedQuestionsFragment>
+  surface?: ExperienceSurface
 }
 
 /**
@@ -120,11 +127,20 @@ function QuestionItem({
   )
 }
 
-export function RelatedQuestions({ data }: RelatedQuestionsProps) {
+export function RelatedQuestions({ data, surface }: RelatedQuestionsProps) {
   const t = useTranslations("WatchStudyQuestions")
   const { id, sectionKey, heading, questions } = data
-  const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
+  const ctaLabel = String(
+    (data as Record<string, unknown>).ctaLabel ?? "",
+  ).trim()
   const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
+  const visibleCtaLabel = ctaLabel || t("askYours")
+  const resolvedCtaLink =
+    surface === "watch-home" ? resolveWatchHomeSectionCtaHref(ctaLink) : ctaLink
+  const accessibleCtaName =
+    surface === "watch-home"
+      ? watchHomeCtaAccessibleName(visibleCtaLabel, [heading])
+      : visibleCtaLabel
   // Identify each question by its array index. Admin's
   // `RelatedQuestionItemSchema` (apps/admin/src/domain/blocks.ts) does
   // NOT carry an `id` field on individual items — only `question` +
@@ -143,6 +159,27 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
   const handleToggle = (idx: number) => {
     setOpenIndex(openIndex === idx ? null : idx)
   }
+  const handleCtaClick =
+    surface === "watch-home" && resolvedCtaLink
+      ? () => {
+          reportWatchHomeSectionCtaClick({
+            href: resolvedCtaLink,
+            sectionKey: sectionKey ?? id,
+          })
+        }
+      : undefined
+
+  if (
+    process.env.NODE_ENV === "development" &&
+    surface === "watch-home" &&
+    resolvedCtaLink &&
+    accessibleCtaName === visibleCtaLabel
+  ) {
+    console.warn(
+      "[RelatedQuestions] Watch-home CTA has no human-facing section context.",
+      sectionKey ?? id,
+    )
+  }
 
   return (
     <section
@@ -158,17 +195,25 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
           </h4>
         )}
 
-        {ctaLink && (
+        {resolvedCtaLink && (
           <Button
             variant="pill"
             nativeButton={false}
-            aria-label={ctaLabel || t("askYours")}
+            aria-label={accessibleCtaName}
             render={
-              <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
+              <a
+                href={resolvedCtaLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleCtaClick}
+                data-watch-home-section-cta={
+                  surface === "watch-home" ? "related-questions" : undefined
+                }
+              />
             }
           >
             <MessageCircleIcon />
-            <span>{ctaLabel || t("askYours")}</span>
+            <span>{visibleCtaLabel}</span>
           </Button>
         )}
       </div>

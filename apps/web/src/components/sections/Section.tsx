@@ -4,6 +4,7 @@ import type {
 } from "@/lib/legacy-fragment-types"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
+import type { ExperienceSurface } from "@/lib/watch-home-cta"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import type { containerFragment } from "@/lib/fragments/container"
@@ -75,6 +76,7 @@ type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  surface?: ExperienceSurface
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
@@ -85,7 +87,12 @@ type AssetBackedSectionData = SectionData & {
   backgroundImageAsset?: { previewUrl?: string | null } | null
 }
 
-export function Section({ data, routeVideo, languageSlug }: SectionProps) {
+export function Section({
+  data,
+  routeVideo,
+  languageSlug,
+  surface,
+}: SectionProps) {
   const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
     data
   const backgroundImageUrl =
@@ -108,6 +115,7 @@ export function Section({ data, routeVideo, languageSlug }: SectionProps) {
         item={item as SectionContentItem}
         routeVideo={routeVideo}
         languageSlug={languageSlug}
+        surface={surface}
       />
     ) : null,
   )
@@ -201,10 +209,12 @@ function SectionContentRenderer({
   item,
   routeVideo,
   languageSlug,
+  surface,
 }: {
   item: SectionContentItem
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  surface?: ExperienceSurface
 }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
@@ -217,6 +227,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "ComponentSectionsVideo":
@@ -230,6 +241,7 @@ function SectionContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          surface={surface}
         />
       )
     case "ComponentSectionsBibleQuotesCarousel":
@@ -246,6 +258,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "ComponentSectionsQuizButton":
@@ -282,6 +295,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "VideoBlock":
@@ -329,6 +343,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "NavigationCarouselBlock":
@@ -343,6 +358,7 @@ function SectionContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          surface={surface}
         />
       )
     case "QuizButtonBlock":

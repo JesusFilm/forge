@@ -1,6 +1,7 @@
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { CSSProperties } from "react"
 import type { RouteVideo } from "@/lib/content"
+import type { ExperienceSurface } from "@/lib/watch-home-cta"
 import { containerFragment } from "@/lib/fragments/container"
 import type { textSectionFragment } from "@/lib/fragments/text-section"
 import type { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
@@ -26,6 +27,7 @@ type ContainerProps = {
   data: FragmentOf<typeof containerFragment>
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  surface?: ExperienceSurface
 }
 
 type ContainerData = FragmentOf<typeof containerFragment>
@@ -71,10 +73,12 @@ function SlotContentRenderer({
   item,
   routeVideo,
   languageSlug,
+  surface,
 }: {
   item: SlotContentItem
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  surface?: ExperienceSurface
 }) {
   if (!item || item.__typename === "Error") return null
   // Cast to broader string so the admin typename cases below (which
@@ -104,6 +108,7 @@ function SlotContentRenderer({
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "ComponentSectionsCta":
@@ -123,6 +128,7 @@ function SlotContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          surface={surface}
         />
       )
     // Admin GraphQL typenames inlined directly (rather than bouncing
@@ -153,6 +159,7 @@ function SlotContentRenderer({
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          surface={surface}
         />
       )
     case "CtaBlock":
@@ -172,6 +179,7 @@ function SlotContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          surface={surface}
         />
       )
     case "BibleQuotesCarouselBlock":
@@ -234,7 +242,12 @@ type SlotGroup = {
   items: unknown[]
 }
 
-export function Container({ data, routeVideo, languageSlug }: ContainerProps) {
+export function Container({
+  data,
+  routeVideo,
+  languageSlug,
+  surface,
+}: ContainerProps) {
   const id = (data as { id?: string | null }).id
   const legacySlots = (data as { slots?: readonly unknown[] | null }).slots
   const adminContent = (data as { content?: readonly unknown[] | null }).content
@@ -300,6 +313,7 @@ export function Container({ data, routeVideo, languageSlug }: ContainerProps) {
                 item={item as SlotContentItem}
                 routeVideo={routeVideo}
                 languageSlug={languageSlug}
+                surface={surface}
               />
             )
           })}

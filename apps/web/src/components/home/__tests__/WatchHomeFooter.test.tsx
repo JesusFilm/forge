@@ -51,4 +51,16 @@ describe("WatchHomeFooter", () => {
     expect(footer?.className).toContain("z-20")
     expect(footer?.className).toContain("bg-white")
   })
+
+  it("keeps global Watch navigation outside the content CTA contract", () => {
+    act(() => {
+      root.render(<WatchHomeFooter />)
+    })
+
+    const watchLink = container.querySelector<HTMLAnchorElement>(
+      "a[href='https://www.jesusfilm.org/watch/']",
+    )
+    expect(watchLink).not.toBeNull()
+    expect(watchLink?.hasAttribute("data-watch-home-section-cta")).toBe(false)
+  })
 })
