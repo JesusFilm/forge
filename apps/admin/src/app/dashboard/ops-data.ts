@@ -2509,18 +2509,39 @@ function emptyWatchSearchScoreBreakdown() {
   }
 }
 
-function watchSearchScoreBreakdown(value: Prisma.JsonValue | undefined) {
+function watchSearchAvailabilityScoreForKind(kind: string | null): number {
+  if (kind === "target_audio") return 0.25
+  if (kind === "target_subtitle") return 0.18
+  if (kind === "related_language") return 0.08
+  return 0
+}
+
+function emptyWatchSearchScoreBreakdownForAvailability(kind: string | null) {
+  return {
+    ...emptyWatchSearchScoreBreakdown(),
+    availability: watchSearchAvailabilityScoreForKind(kind),
+  }
+}
+
+function watchSearchScoreBreakdown(
+  value: Prisma.JsonValue | undefined,
+  availabilityKind: string | null,
+) {
   const row = jsonRecord(value)
-  if (!row) return emptyWatchSearchScoreBreakdown()
+  if (!row) {
+    return emptyWatchSearchScoreBreakdownForAvailability(availabilityKind)
+  }
   const total = jsonNumber(row.total)
   const sourceRelevance = jsonNumber(row.sourceRelevance)
   const evidenceBoost = jsonNumber(row.evidenceBoost)
   const relevance = jsonNumber(row.relevance)
-  const availability = jsonNumber(row.availability)
+  const availability =
+    jsonNumber(row.availability) ||
+    watchSearchAvailabilityScoreForKind(availabilityKind)
   const match = jsonNumber(row.match)
   const sourceScore = jsonNumber(row.sourceScore)
   if (total == null || availability == null || sourceScore == null) {
-    return emptyWatchSearchScoreBreakdown()
+    return emptyWatchSearchScoreBreakdownForAvailability(availabilityKind)
   }
   const resolvedEvidenceBoost = evidenceBoost ?? match ?? 0
   const resolvedSourceRelevance = sourceRelevance ?? relevance ?? 0
@@ -2549,6 +2570,7 @@ function watchSearchTraceResults(
     if (!row) return []
     const id = jsonString(row.id)
     if (!id) return []
+    const availabilityKind = jsonString(row.availabilityKind) ?? "unknown"
     return [
       {
         id,
@@ -2558,8 +2580,11 @@ function watchSearchTraceResults(
         description: jsonString(row.description) ?? jsonString(row.snippet),
         imageUrl: normalizeVideoThumbnailUrl(jsonString(row.imageUrl)),
         score: jsonNumber(row.score),
-        scoreBreakdown: watchSearchScoreBreakdown(row.scoreBreakdown),
-        availabilityKind: jsonString(row.availabilityKind) ?? "unknown",
+        scoreBreakdown: watchSearchScoreBreakdown(
+          row.scoreBreakdown,
+          availabilityKind,
+        ),
+        availabilityKind,
         evidenceKind: jsonString(row.evidenceKind) ?? "unknown",
         actionKind: jsonString(row.actionKind) ?? "unknown",
       },

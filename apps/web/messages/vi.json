@@ -7,7 +7,9 @@
     "noContent": "Không có nội dung khả dụng.",
     "homepageMisconfigured": "Trang chủ Watch bị cấu hình sai.",
     "defaultTemplateMisconfigured": "Mẫu Watch mặc định bị cấu hình sai.",
-    "authFailed": "Không thể kết nối với dịch vụ nội dung. Vui lòng liên hệ hỗ trợ nếu lỗi tiếp diễn."
+    "authFailed": "Không thể kết nối với dịch vụ nội dung. Vui lòng liên hệ hỗ trợ nếu lỗi tiếp diễn.",
+    "pageLoadFailed": "Đã xảy ra lỗi.",
+    "tryAgain": "Thử lại"
   },
   "VideosPage": {
     "title": "Tất cả video",
@@ -22,7 +24,8 @@
     "promoHeading": "Bạn muốn hiểu Kinh Thánh sâu hơn?",
     "joinBibleStudy": "Tham gia học Kinh Thánh",
     "previousQuote": "Câu Kinh Thánh trước",
-    "nextQuote": "Câu Kinh Thánh tiếp theo"
+    "nextQuote": "Câu Kinh Thánh tiếp theo",
+    "readPassage": "Đọc phân đoạn này trong Kinh Thánh của bạn."
   },
   "DownloadButton": {
     "checking": "Đang kiểm tra",
@@ -73,7 +76,8 @@
     "selectLanguage": "Chọn ngôn ngữ",
     "searchPlaceholder": "Tìm ngôn ngữ…",
     "languages": "Ngôn ngữ",
-    "noMatches": "Không có kết quả phù hợp"
+    "noMatches": "Không có kết quả phù hợp",
+    "notAvailable": "Không khả dụng"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ngôn ngữ",
@@ -112,7 +116,8 @@
     "questions": "Câu hỏi liên quan",
     "askYours": "Câu hỏi của bạn",
     "chatWithPerson": "Trò chuyện với một người",
-    "askBibleQuestion": "Đặt câu hỏi về Kinh Thánh"
+    "askBibleQuestion": "Đặt câu hỏi về Kinh Thánh",
+    "quiz": "Câu đố"
   },
   "WatchQuestionPanel": {
     "messageType": "Loại tin nhắn",
@@ -170,7 +175,8 @@
     "searchRegion": "Tìm video",
     "clearSearch": "Xóa tìm kiếm",
     "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
-    "home": "Trang chủ JesusFilm"
+    "home": "Trang chủ JesusFilm",
+    "closeSearch": "Đóng tìm kiếm"
   },
   "SearchOverlay": {
     "dialogLabel": "Tìm kiếm và xem video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Xóa",
     "queryLanguageDetected": "Đã phát hiện {language}",
     "searchInLanguage": "Tìm kiếm bằng {language}",
-    "tryDifferentKeywordsOrLanguage": "Thử từ khóa khác hoặc chọn ngôn ngữ tìm kiếm khác"
+    "tryDifferentKeywordsOrLanguage": "Thử từ khóa khác hoặc chọn ngôn ngữ tìm kiếm khác",
+    "useWebsiteDefaultLanguage": "Dùng ngôn ngữ tìm kiếm mặc định của trang web",
+    "removeLanguage": "Xóa {language}",
+    "browseMode": "Chế độ duyệt tìm kiếm"
   },
   "HeroPlayer": {
     "playWithSound": "Xem ngay",
-    "tapToUnmute": "Bật tiếng"
+    "tapToUnmute": "Bật tiếng",
+    "nextEpisode": "Tập tiếp theo"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Đang tải nội dung"
+    "loadingContent": "Đang tải nội dung",
+    "loadingVideo": "Đang tải video"
   },
   "VideoLabels": {
     "video": "Đoạn phim",
@@ -223,7 +234,8 @@
     "series": "Loạt phim",
     "collection": "Bộ sưu tập",
     "trailer": "Đoạn giới thiệu",
-    "behindTheScenes": "Hậu trường"
+    "behindTheScenes": "Hậu trường",
+    "chapter": "Chương"
   },
   "SiblingCarousel": {
     "clipPosition": "Đoạn {current} trong {total}",
@@ -235,11 +247,286 @@
     "noImage": "Không có hình ảnh",
     "playingNow": "Đang phát",
     "previousChapter": "Chương trước",
-    "nextChapter": "Chương tiếp theo"
+    "nextChapter": "Chương tiếp theo",
+    "thumbnailAlt": "Ảnh thu nhỏ {title}",
+    "relatedVideoThumbnail": "Ảnh thu nhỏ video liên quan"
   },
   "SearchResultCard": {
     "experience": "Trải nghiệm",
     "episodeCount": "{count, plural, one {# tập} other {# tập}}",
     "thumbnailAlt": "Ảnh thu nhỏ video"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video Cơ Đốc miễn phí bằng {language} | Jesus Film Project",
+    "metadataDescription": "Khám phá các phim về Chúa Giê-su, câu chuyện Kinh Thánh, loạt video môn đồ hóa và video truyền giảng với âm thanh lồng tiếng hoặc phụ đề bằng {language}.",
+    "heroTitle": "Video Cơ Đốc miễn phí bằng {language}",
+    "heroDescription": "Khám phá các phim về Chúa Giê-su, câu chuyện Kinh Thánh, loạt video môn đồ hóa và video truyền giảng có sẵn bằng {language}. Các video lồng tiếng đầy đủ được hiển thị trước, bên dưới là các tùy chọn chỉ có phụ đề.",
+    "languageCollection": "Bộ sưu tập ngôn ngữ",
+    "itemCount": "{count, plural, one {# mục} other {# mục}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} trong {groupCount, plural, one {# nhóm} other {# nhóm}}",
+    "sectionNavLabel": "Các phần trong kho ngôn ngữ",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Mới",
+    "videoBible": "Kinh Thánh dạng video",
+    "bibleProject": "BibleProject",
+    "sports": "Thể thao",
+    "collections": "Bộ sưu tập",
+    "subtitlesOnly": "Chỉ phụ đề",
+    "newlyAdded": "Mới thêm",
+    "newVideosTitle": "Video Cơ Đốc mới bằng {language}",
+    "newestFirst": "Mới nhất trước",
+    "noPublishedVideos": "Hiện chưa tìm thấy video nào đã xuất bản cho ngôn ngữ này.",
+    "bibleAndGospelFilms": "Phim Kinh Thánh và Phúc Âm",
+    "videoBibleCollectionsTitle": "Các bộ Video Bible bằng {language}",
+    "videoBibleDescription": "Các bộ sưu tập xoay quanh Kinh Thánh gồm LUMO, JESUS, Magdalena và Acts bằng {language}.",
+    "noVideoBibleCollections": "Hiện chưa có bộ Video Bible nào cho ngôn ngữ này.",
+    "bibleProjectCollectionsTitle": "Các bộ BibleProject bằng {language}",
+    "bibleProjectDescription": "Các loạt bài và bài học BibleProject có sẵn bằng {language}.",
+    "noBibleProjectCollections": "Hiện chưa có bộ sưu tập BibleProject nào cho ngôn ngữ này.",
+    "sportsStories": "Câu chuyện thể thao",
+    "sportsTitle": "Câu chuyện về thể thao và vận động viên bằng {language}",
+    "sportsDescription": "Các câu chuyện thể thao xoay quanh đức tin và bộ sưu tập về vận động viên có sẵn bằng {language}.",
+    "noSportsCollections": "Hiện chưa có bộ sưu tập về thể thao hoặc vận động viên nào cho ngôn ngữ này.",
+    "fullyDubbed": "Lồng tiếng đầy đủ",
+    "dubbedVideosTitle": "Video bằng {language} theo bộ sưu tập",
+    "dubbedVideosDescription": "Duyệt các video lồng tiếng đầy đủ bằng {language}, được nhóm theo bộ sưu tập để dễ tìm hơn.",
+    "noDubbedVideos": "Hiện chưa có video lồng tiếng đầy đủ nào cho ngôn ngữ này.",
+    "subtitlesAvailable": "Có phụ đề",
+    "subtitlesTitle": "Video bằng {language} có phụ đề",
+    "subtitlesDescription": "Các video này có phụ đề {language} khi âm thanh gốc bằng {language} chưa có sẵn.",
+    "noSubtitleVideos": "Hiện chưa có video chỉ có phụ đề nào cho ngôn ngữ này.",
+    "dubbed": "Lồng tiếng",
+    "subtitles": "Phụ đề",
+    "newLabel": "Mới",
+    "fromCollection": "Từ {collection}",
+    "standaloneVideos": "Video độc lập",
+    "videosFromCollection": "Video từ {collection}.",
+    "standaloneDescription": "Các video độc lập bằng ngôn ngữ này.",
+    "openCollection": "Mở bộ sưu tập"
+  },
+  "WatchHome": {
+    "pageTitle": "Xem | Jesus Film Project",
+    "watch": "Xem",
+    "watchNow": "Xem ngay",
+    "mutePreview": "Tắt tiếng bản xem trước",
+    "unmutePreview": "Bật tiếng bản xem trước",
+    "nextVideo": "Video tiếp theo",
+    "showVideo": "Hiện {title}",
+    "previousVideoPreview": "Xem trước video trước",
+    "nextVideoPreview": "Xem trước video tiếp theo",
+    "featured": "Nổi bật",
+    "mediaCollection": "Bộ sưu tập truyền thông",
+    "scrollToVideo": "Cuộn đến video {title}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ngôn ngữ",
+    "metadataDescription": "Duyệt video JesusFilm theo ngôn ngữ.",
+    "eyebrow": "Ngôn ngữ xem",
+    "title": "Chọn ngôn ngữ",
+    "description": "Khám phá các ngôn ngữ theo khu vực hoặc duyệt danh sách đầy đủ.",
+    "searchPlaceholder": "Tìm ngôn ngữ hoặc quốc gia...",
+    "searchLabel": "Tìm ngôn ngữ hoặc quốc gia",
+    "clearSearch": "Xóa tìm kiếm",
+    "browse": "Duyệt",
+    "browseByRegion": "Duyệt theo khu vực và quốc gia",
+    "languageCount": "{count, plural, one {# ngôn ngữ} other {# ngôn ngữ}}",
+    "region": "Khu vực",
+    "countryLanguages": "Ngôn ngữ của {country}",
+    "showLess": "Hiện ít hơn",
+    "showMore": "Hiện thêm {count}",
+    "noLanguages": "Không tìm thấy ngôn ngữ nào",
+    "tryAnotherSearch": "Thử một từ khóa khác."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Lịch sử xem | Jesus Film Project",
+    "title": "Lịch sử xem",
+    "loading": "Đang tải lịch sử",
+    "empty": "Chưa có gì ở đây",
+    "emptyDescription": "Các video bạn xem khi đăng nhập sẽ xuất hiện ở đây.",
+    "earlier": "Trước đó",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua"
+  },
+  "AccountControl": {
+    "account": "Tài khoản",
+    "accountMenu": "Menu tài khoản",
+    "signIn": "Đăng nhập",
+    "signOut": "Đăng xuất",
+    "signedIn": "Đã đăng nhập",
+    "history": "Lịch sử",
+    "logOut": "Đăng xuất"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Không tìm thấy trang",
+    "eyebrow": "Không tìm thấy trang",
+    "screenReaderPrefix": "Không tìm thấy trang:",
+    "title": "Cảnh này không ở đây.",
+    "description": "Có thể trang đã được chuyển đi, nhưng câu chuyện vẫn tiếp diễn.",
+    "actionsLabel": "Các hành động khi không tìm thấy trang",
+    "backToWatch": "Quay lại Watch",
+    "browseVideos": "Duyệt video"
+  },
+  "WatchFooter": {
+    "home": "Trang chủ Jesus Film Project",
+    "navigation": "Điều hướng chân trang",
+    "share": "Chia sẻ",
+    "watch": "Xem",
+    "giving": "Quyên góp",
+    "about": "Giới thiệu",
+    "products": "Sản phẩm",
+    "resources": "Tài nguyên",
+    "partners": "Đối tác",
+    "contact": "Liên hệ",
+    "giveNow": "Quyên góp ngay",
+    "resourcesVersion": "Tài nguyên ({version})",
+    "office": "Văn phòng",
+    "fax": "Số fax",
+    "privacyPolicy": "Chính sách quyền riêng tư",
+    "legalStatement": "Tuyên bố pháp lý",
+    "newsletter": "Đăng ký nhận bản tin của chúng tôi"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Được xây dựng cho sứ mệnh toàn cầu",
+    "title": "Sứ điệp không đổi. Cách người ta xem thì có.",
+    "description": "Chúng tôi đang xây dựng lại thư viện video và các công cụ từ đầu, đưa hàng chục năm công sức dịch thuật lên những nền tảng mà mọi người đã quen tụ họp, xem và chia sẻ.",
+    "translatedLibraryTitle": "Thư viện phim được dịch nhiều nhất thế giới",
+    "translatedLibraryDescription": "Hàng chục năm công tác dịch thuật, được các đối tác mục vụ đáng tin cậy đồng hành, đã tạo nên một thư viện với hàng ngàn track ngôn ngữ để mọi người có thể gặp gỡ câu chuyện về Chúa Giê-su bằng chính ngôn ngữ chạm đến họ sâu nhất.",
+    "trustedVoicesTitle": "Đưa những tiếng nói đáng tin cậy vào định dạng mới",
+    "trustedVoicesDescription": "Chúng tôi đang xây dựng lại cách kể các câu chuyện Phúc Âm bằng hình ảnh, kết hợp các bản dịch đáng tin cậy với định dạng hiện đại để sứ điệp có thể lan tỏa tự do qua các nền tảng, nền văn hóa và màn hình.",
+    "missionTeamTitle": "Hơn cả một thư viện. Một đội ngũ hướng đến sứ mệnh.",
+    "missionTeamDescription": "Jesus Film Project là một đội ngũ toàn cầu gồm các dịch giả, chuyên gia truyền thông, biên tập viên và nhà sáng tạo, đang biến hàng chục năm kinh nghiệm mục vụ thành công cụ cho những người môn đồ hóa khắp nơi.",
+    "buildingNext": "Điều chúng tôi đang xây dựng tiếp theo",
+    "nextStepsTitle": "Nền tảng Bước Tiếp Theo",
+    "nextStepsDescription": "Kết nối người xem với những cơ hội thiết thực trên hành trình đức tin của họ, giúp họ bước tiếp vào cộng đồng, Kinh Thánh hoặc sứ mệnh.",
+    "mediaLibraryTitle": "Thư viện Truyền thông Truyền Giảng",
+    "mediaLibraryDescription": "Một thư viện truyền thông Cơ Đốc phong phú với hàng ngàn video, phim và tài nguyên có sẵn bằng nhiều ngôn ngữ cho công tác mục vụ và truyền giảng trên toàn thế giới.",
+    "ministryToolsTitle": "Công cụ số cho các hội thánh và mục vụ",
+    "ministryToolsDescription": "Quản lý video, phân phối nội dung, gắn kết khán giả và phân tích dữ liệu được thiết kế để giúp các mục vụ tiếp cận nhiều người hơn một cách hiệu quả.",
+    "invitationEyebrow": "Bạn được mời",
+    "invitationDescription": "Chúng tôi đang mời các chuyên viên thực hành, nhà sáng tạo và đối tác tham gia truy cập sớm. Hãy thử công cụ mới trước, gửi phản hồi và góp phần định hình các sản phẩm được thiết kế cho công tác truyền giáo thực tế.",
+    "betaTester": "Trở thành người thử nghiệm beta",
+    "invitationTitle": "Hãy giúp xây dựng <highlight>thế hệ công cụ</highlight> sứ mệnh tiếp theo"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Bộ sưu tập Video Bible",
+    "gospelRailTitle": "Khám phá toàn bộ câu chuyện",
+    "videoBibleDescription": "Khám phá bộ sưu tập video và tài nguyên giúp Kinh Thánh trở nên sống động qua những câu chuyện và bài dạy hấp dẫn.",
+    "showcaseTitle": "Kinh Thánh được kể qua phim ảnh",
+    "adventEyebrow": "Mùa Vọng Giáng Sinh",
+    "adventTitle": "Đếm ngược đến Giáng Sinh",
+    "adventDescription": "Hãy cùng đồng hành trong hành trình Mùa Vọng với một video mỗi ngày, giúp nuôi dưỡng sự mong đợi Giáng Sinh và khám phá niềm hy vọng, niềm vui, cùng lời hứa về sự đến của Chúa Giê-su.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Mùa Vọng BibleProject",
+    "nuaEyebrow": "Loạt NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Loạt Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Khóa học video",
+    "journeyWithJesusTitle": "Đồng hành cùng Chúa Giê-su",
+    "gospelsOnVideoEyebrow": "Mỗi sách Phúc Âm, được kể bằng video",
+    "scriptureAsWrittenTitle": "Kinh Thánh, được đọc đúng như đã chép",
+    "merryChristmas": "Chúc mừng Giáng Sinh!",
+    "daysUntilChristmas": "{count, plural, other {Còn # ngày nữa đến Giáng Sinh}}"
+  },
+  "Feedback": {
+    "openForm": "Mở biểu mẫu phản hồi",
+    "label": "Phản hồi",
+    "couldNotLoad": "Không tải được biểu mẫu phản hồi.",
+    "loadingForm": "Đang tải biểu mẫu phản hồi…",
+    "retry": "Thử lại",
+    "openFormShort": "Mở biểu mẫu",
+    "cancel": "Hủy",
+    "title": "Phản hồi beta",
+    "description": "Chia sẻ điều đang hoạt động tốt và điều chúng tôi có thể cải thiện. Biểu mẫu này do Google cung cấp.",
+    "openInNewTab": "Mở biểu mẫu trong tab mới",
+    "closeForm": "Đóng biểu mẫu phản hồi",
+    "loadingGoogleForm": "Đang tải Google Biểu mẫu…",
+    "iframeTitle": "Gửi phản hồi beta"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Xem phim ngắn",
+    "actions": {
+      "joinUs": "Tham gia cùng chúng tôi",
+      "shareMission": "Chung tay trong sứ mệnh của chúng tôi"
+    },
+    "welcomeStart": {
+      "label": "Đức tin & Kinh Thánh",
+      "title": "Các video được chọn hôm nay",
+      "description": "Nội dung video xoay quanh đức tin từ thư viện của chúng tôi để truyền cảm hứng, thách thức và khơi gợi suy ngẫm."
+    },
+    "welcomeMorning": {
+      "label": "Nguồn cảm hứng buổi sáng",
+      "title": "Chào buổi sáng! Những khoảnh khắc Kinh Thánh hôm nay đang chờ bạn.",
+      "description": "Bắt đầu ngày mới với những khoảnh khắc Kinh Thánh đầy khích lệ, giúp truyền cảm hứng và nâng đỡ tâm linh bạn."
+    },
+    "welcomeAfternoon": {
+      "label": "Nguồn cảm hứng buổi chiều",
+      "title": "Chào buổi chiều! Những khoảnh khắc Kinh Thánh cho ngày của bạn.",
+      "description": "Nội dung Kinh Thánh khích lệ, rất phù hợp cho giờ nghỉ chiều hoặc để tiếp thêm cảm hứng cho bạn."
+    },
+    "welcomeEvening": {
+      "label": "Nguồn cảm hứng buổi tối",
+      "title": "Chào buổi tối! Thư giãn với những khoảnh khắc Kinh Thánh.",
+      "description": "Những khoảnh khắc Kinh Thánh bình an giúp bạn suy ngẫm và tìm được sự an ủi khi ngày dần khép lại."
+    },
+    "joinUs": {
+      "label": "Tham gia cùng chúng tôi",
+      "title": "Tỷ tỷ người đang tìm kiếm",
+      "description": "Mùa gặt đã đến. Hãy cùng chúng tôi chia sẻ Tin Mừng cho thế giới bằng phương tiện số."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Cùng nhau tiến bước",
+      "title": "Kể câu chuyện về Chúa Giê-su, cùng nhau",
+      "description": "Để họ có thể nghe và thấy tình yêu của Chúa Giê-su bằng chính ngôn ngữ của mình, ngay tại nơi họ đang sống."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Phù hợp {percent}%",
+    "none": "Không tìm thấy video đề xuất nào cho video này bằng ngôn ngữ này."
+  },
+  "BetaTesterModal": {
+    "title": "Trở thành người thử nghiệm beta",
+    "trigger": "Trở thành người thử nghiệm beta",
+    "loadFailed": "Đã xảy ra lỗi.",
+    "loading": "Đang tải...",
+    "openFormNewTab": "Mở biểu mẫu trong tab mới",
+    "close": "Đóng",
+    "iframeTitle": "Trở thành người thử nghiệm beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

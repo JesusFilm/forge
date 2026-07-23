@@ -67,3 +67,10 @@ apps/mobile/design-mockups/
 
 # Impeccable live copy-edit hook scratch cache (per-session, per-machine)
 .impeccable/
+
+# local whisper.cpp install + models (devo snippet detector)
+.cache/
+
+# Daily-devotional generated artifacts: rendered videos, downloaded clips, audio,
+# manifests, caches, previews. All reproducible output — never committed.
+devo/

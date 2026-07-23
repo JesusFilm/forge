@@ -72,6 +72,16 @@ function mockPrisma() {
   } as any
 }
 
+const activeSearchLanguages = [
+  { bcp47: "zh", slug: "chinese-guiliu" },
+  { bcp47: "en", slug: "english" },
+  { bcp47: "fr", slug: "french" },
+  { bcp47: "de", slug: "german-standard" },
+  { bcp47: "pt-BR", slug: "portuguese-brazil" },
+  { bcp47: "ru", slug: "russian" },
+  { bcp47: "es", slug: "spanish-castilian" },
+]
+
 function targetAudioWatchability(videoId: string) {
   return {
     videoId,
@@ -85,6 +95,95 @@ function targetAudioWatchability(videoId: string) {
     videoSubtitleId: null,
     durationSeconds: 120,
     hrefLanguageSlug: "russian",
+  }
+}
+
+type WatchabilityKind =
+  | "target_audio"
+  | "target_subtitle"
+  | "related_language"
+  | "unavailable"
+
+const WATCHABILITY_LANGUAGE: Record<
+  WatchabilityKind,
+  { languageSlug: string | null; languageEnglishName: string | null }
+> = {
+  target_audio: { languageSlug: "russian", languageEnglishName: "Russian" },
+  target_subtitle: {
+    languageSlug: "russian",
+    languageEnglishName: "Russian",
+  },
+  related_language: {
+    languageSlug: "english",
+    languageEnglishName: "English",
+  },
+  unavailable: { languageSlug: null, languageEnglishName: null },
+}
+
+function watchabilityForKind(videoId: string, kind: WatchabilityKind) {
+  const { languageSlug, languageEnglishName } = WATCHABILITY_LANGUAGE[kind]
+  const audio = kind === "target_audio" || kind === "related_language"
+  const subtitles = kind === "target_subtitle"
+
+  return {
+    videoId,
+    kind,
+    languageSlug,
+    languageEnglishName,
+    audio,
+    subtitles,
+    playbackId: audio ? `mux-${videoId}` : null,
+    videoDubId: audio ? `dub-${videoId}` : null,
+    videoSubtitleId: subtitles ? `sub-${videoId}` : null,
+    durationSeconds: kind === "unavailable" ? null : 120,
+    hrefLanguageSlug: languageSlug,
+  }
+}
+
+function exactTitleResult(resultId: string, videoTitle: string) {
+  return {
+    resultType: "video",
+    resultId,
+    videoCoreId: `core-${resultId}`,
+    videoSlug: resultId,
+    videoTitle,
+    imageUrl: null,
+    description: null,
+    titleLength: videoTitle.length,
+  }
+}
+
+function metadataResult(resultId: string, videoTitle: string) {
+  return {
+    resultType: "video",
+    resultId,
+    videoCoreId: `core-${resultId}`,
+    videoSlug: resultId,
+    videoTitle,
+    imageUrl: null,
+    description: `${videoTitle} metadata`,
+    rank: 1,
+    similarity: 1,
+  }
+}
+
+function semanticResult(
+  resultId: string,
+  videoTitle: string,
+  similarity: number,
+) {
+  return {
+    resultType: "video",
+    resultId,
+    videoCoreId: `core-${resultId}`,
+    videoSlug: resultId,
+    videoTitle,
+    imageUrl: null,
+    sceneDescription: `${videoTitle} transcript`,
+    startSeconds: 12,
+    playbackId: `semantic-${resultId}`,
+    similarity,
+    embeddingText: "[0.2,0.3]",
   }
 }
 
@@ -145,7 +244,7 @@ describe("WatchSearchService", () => {
     prisma = mockPrisma()
     prisma.$executeRaw.mockResolvedValue(1)
     prisma.$queryRaw.mockResolvedValue([])
-    prisma.language.findMany.mockResolvedValue([])
+    prisma.language.findMany.mockResolvedValue(activeSearchLanguages)
     prisma.videoImage.findMany.mockResolvedValue([])
     generateExperienceEmbeddingMock.mockResolvedValue({
       embedding: [0.1, 0.2, 0.3],
@@ -182,7 +281,7 @@ describe("WatchSearchService", () => {
       searchMode: "watch-search",
       degraded: false,
       languageInterpretation: {
-        queryLanguageSlug: "en",
+        queryLanguageSlug: "english",
         queryNamedLanguageSlug: "russian",
         targetLanguageSlug: "spanish-castilian",
         targetLanguageSource: "explicit_target",
@@ -190,11 +289,89 @@ describe("WatchSearchService", () => {
         routeLanguageSlug: "english",
         currentWatchLanguageSlug: "french",
         acceptLanguage: "pt-BR,pt;q=0.9",
-        acceptLanguageSlug: null,
+        acceptLanguageSlug: "portuguese-brazil",
       },
     })
     expect(result.requestId).toEqual(expect.any(String))
     expect(result.latencyMs).toEqual(expect.any(Number))
+  })
+
+  it("returns the same hydrated ranking for locale and canonical target identities", async () => {
+    mockLexicalResults(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("z-whole-title", "JESUS"),
+          exactTitleResult("a-broader-title", "The Life of Jesus"),
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const localeIdentity = await service.search({
+      query: "Jesus",
+      targetLanguageSlug: "en",
+      displayLanguageSlug: "en",
+      limit: 2,
+    })
+    const canonicalIdentity = await service.search({
+      query: "Jesus",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 2,
+    })
+
+    expect(localeIdentity.languageInterpretation.targetLanguageSlug).toBe(
+      "english",
+    )
+    expect(canonicalIdentity.languageInterpretation.targetLanguageSlug).toBe(
+      "english",
+    )
+    expect(localeIdentity.results.map((result) => result.id)).toEqual(
+      canonicalIdentity.results.map((result) => result.id),
+    )
+    expect(hydrateMock.mock.calls).toHaveLength(2)
+    for (const [input] of hydrateMock.mock.calls) {
+      expect(input).toMatchObject({ targetLanguageSlug: "english" })
+    }
+  })
+
+  it("uses the canonical Language BCP-47 value for non-English lexical retrieval", async () => {
+    await service.search({
+      query: "Hoffnung",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "de",
+    })
+    await service.search({
+      query: "Hoffnung",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "german-standard",
+    })
+
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenCalledTimes(2)
+      expect(retriever).toHaveBeenNthCalledWith(
+        1,
+        prisma,
+        expect.objectContaining({ locale: "de" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        2,
+        prisma,
+        expect.objectContaining({ locale: "de" }),
+      )
+    }
   })
 
   it("uses a valid client request id when one is supplied", async () => {
@@ -350,111 +527,52 @@ describe("WatchSearchService", () => {
     ])
   })
 
-  it("orders target-language watchable exact-title results before fallback and unavailable results", async () => {
+  it("uses every watchability tier after whole-title class and relevance tie", async () => {
     mockLexicalResultsOnce(
       lexicalResults({
         exactTitle: [
-          {
-            resultType: "video",
-            resultId: "video-unavailable",
-            videoCoreId: "core-unavailable",
-            videoSlug: "jesus-trailer",
-            videoTitle: "Jesus Trailer",
-            imageUrl: null,
-            description: null,
-            titleLength: 13,
-          },
-          {
-            resultType: "video",
-            resultId: "video-other-language",
-            videoCoreId: "core-other-language",
-            videoSlug: "who-is-jesus",
-            videoTitle: "Who Is Jesus?",
-            imageUrl: null,
-            description: null,
-            titleLength: 13,
-          },
-          {
-            resultType: "video",
-            resultId: "video-russian",
-            videoCoreId: "core-russian",
-            videoSlug: "birth-of-jesus",
-            videoTitle: "Birth of Jesus",
-            imageUrl: null,
-            description: null,
-            titleLength: 14,
-          },
+          exactTitleResult("a-unavailable", "Hope Unavailable"),
+          exactTitleResult("b-related", "Hope Related"),
+          exactTitleResult("c-subtitle", "Hope Subtitle"),
+          exactTitleResult("d-audio", "Hope Audio"),
         ],
       }),
     )
-    hydrateMock.mockResolvedValue(
-      new Map([
-        [
-          "video-unavailable",
-          {
-            videoId: "video-unavailable",
-            kind: "unavailable",
-            languageSlug: null,
-            languageEnglishName: null,
-            audio: false,
-            subtitles: false,
-            playbackId: null,
-            videoDubId: null,
-            videoSubtitleId: null,
-            durationSeconds: null,
-            hrefLanguageSlug: null,
-          },
-        ],
-        [
-          "video-other-language",
-          {
-            videoId: "video-other-language",
-            kind: "related_language",
-            languageSlug: "dhundari",
-            languageEnglishName: "Dhundari",
-            audio: true,
-            subtitles: false,
-            playbackId: "mux-dhundari",
-            videoDubId: "dub-dhundari",
-            videoSubtitleId: null,
-            durationSeconds: 240,
-            hrefLanguageSlug: "dhundari",
-          },
-        ],
-        [
-          "video-russian",
-          {
-            videoId: "video-russian",
-            kind: "target_audio",
-            languageSlug: "russian",
-            languageEnglishName: "Russian",
-            audio: true,
-            subtitles: false,
-            playbackId: "mux-russian",
-            videoDubId: "dub-russian",
-            videoSubtitleId: null,
-            durationSeconds: 300,
-            hrefLanguageSlug: "russian",
-          },
-        ],
-      ]),
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(
+              videoId,
+              videoId === "d-audio"
+                ? "target_audio"
+                : videoId === "c-subtitle"
+                  ? "target_subtitle"
+                  : videoId === "b-related"
+                    ? "related_language"
+                    : "unavailable",
+            ),
+          ]),
+        ),
     )
 
     const result = await service.search({
-      query: "JESUS Russian",
+      query: "Hope",
       targetLanguageSlug: "russian",
-      queryNamedLanguageSlug: "russian",
       displayLanguageSlug: "english",
-      limit: 3,
+      limit: 4,
     })
 
-    expect(result.results.map((row) => row.slug)).toEqual([
-      "birth-of-jesus",
-      "who-is-jesus",
-      "jesus-trailer",
+    expect(result.results.map((row) => row.id)).toEqual([
+      "d-audio",
+      "c-subtitle",
+      "b-related",
+      "a-unavailable",
     ])
     expect(result.results.map((row) => row.availability.kind)).toEqual([
       "target_audio",
+      "target_subtitle",
       "related_language",
       "unavailable",
     ])
@@ -561,6 +679,231 @@ describe("WatchSearchService", () => {
     )
   })
 
+  it("ranks a whole-title match first when capped totals tie and ID favors the broader result", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("z-whole-title", "King of Kings"),
+          exactTitleResult("a-broader-title", "The King of Kings Story"),
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(
+              videoId,
+              videoId === "z-whole-title" ? "unavailable" : "target_audio",
+            ),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "King of Kings",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.id)).toEqual([
+      "z-whole-title",
+      "a-broader-title",
+    ])
+    expect(result.results.map((row) => row.score)).toEqual([1, 1])
+    expect(result.results.map((row) => row.scoreBreakdown.relevance)).toEqual([
+      1, 0.75,
+    ])
+  })
+
+  it("normalizes case and whitespace before assigning whole-title priority", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("z-normalized-whole", "  tHE\n CHOSEN  "),
+          exactTitleResult("a-broader", "The Chosen Story"),
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "  THE   chosen  ",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.id)).toEqual([
+      "z-normalized-whole",
+      "a-broader",
+    ])
+    expect(result.results.map((row) => row.score)).toEqual([1, 1])
+  })
+
+  it("uses relevance before watchability within the same whole-title class", async () => {
+    searchVideoSemanticMock.mockResolvedValueOnce([
+      semanticResult("z-more-relevant", "Faithful Witness", 1),
+      semanticResult("a-more-watchable", "Faithful Journey", 0.6),
+    ])
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(
+              videoId,
+              videoId === "z-more-relevant" ? "unavailable" : "target_audio",
+            ),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Faith",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.id)).toEqual([
+      "z-more-relevant",
+      "a-more-watchable",
+    ])
+    expect(result.results.map((row) => row.scoreBreakdown.relevance)).toEqual([
+      0.63, 0.41,
+    ])
+    expect(result.results.map((row) => row.score)).toEqual([0.63, 0.66])
+  })
+
+  it("uses unrounded relevance before watchability within one display-score bucket", async () => {
+    searchVideoSemanticMock.mockResolvedValueOnce([
+      semanticResult("z-more-relevant", "Faithful Witness", 0.6008),
+      semanticResult("a-more-watchable", "Faithful Journey", 0.6),
+    ])
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(
+              videoId,
+              videoId === "z-more-relevant" ? "unavailable" : "target_audio",
+            ),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Faith",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.id)).toEqual([
+      "z-more-relevant",
+      "a-more-watchable",
+    ])
+    expect(result.results.map((row) => row.scoreBreakdown.relevance)).toEqual([
+      0.41, 0.41,
+    ])
+  })
+
+  it("uses result ID as the final tie-break after semantic priorities tie", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("z-stable", "Hope Story"),
+          exactTitleResult("a-stable", "Hope Journey"),
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "unavailable"),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Hope",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.id)).toEqual([
+      "a-stable",
+      "z-stable",
+    ])
+  })
+
+  it("orders representative non-whole-title exact, metadata, and semantic candidates by relevance", async () => {
+    const metadata = metadataResult("m-metadata", "Faith in Practice")
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [exactTitleResult("z-exact", "Faith Journey")],
+        keywordWeighted: [metadata],
+        trigram: [metadata],
+      }),
+    )
+    searchVideoSemanticMock.mockResolvedValueOnce([
+      semanticResult("a-semantic", "Faith and Life", 1),
+    ])
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(
+              videoId,
+              videoId === "z-exact"
+                ? "unavailable"
+                : videoId === "m-metadata"
+                  ? "target_subtitle"
+                  : "target_audio",
+            ),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Faith",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.id)).toEqual([
+      "z-exact",
+      "m-metadata",
+      "a-semantic",
+    ])
+    expect(result.results.map((row) => row.evidence.kind)).toEqual([
+      "exact_title",
+      "metadata",
+      "transcript_semantic",
+    ])
+    expect(result.results.map((row) => row.scoreBreakdown.relevance)).toEqual([
+      0.75, 0.69, 0.63,
+    ])
+    expect(result.results.map((row) => row.score)).toEqual([0.75, 0.87, 0.88])
+  })
+
   it("does not expose semantic playback ids without a watchable option", async () => {
     searchVideoSemanticMock.mockResolvedValueOnce([
       {
@@ -597,23 +940,14 @@ describe("WatchSearchService", () => {
     })
   })
 
-  it("uses a stable rerank window across pages so pagination does not duplicate fallback rows", async () => {
+  it("keeps a saturated whole-title result on page one without duplicates across adjacent pages", async () => {
     const rows = [
-      "fallback-a",
-      "fallback-b",
-      "fallback-c",
-      "target-d",
-      "target-e",
-    ].map((slug) => ({
-      resultType: "video",
-      resultId: slug,
-      videoCoreId: `core-${slug}`,
-      videoSlug: slug,
-      videoTitle: slug,
-      imageUrl: null,
-      description: null,
-      titleLength: slug.length,
-    }))
+      exactTitleResult("a-broader", "Jesus Stories"),
+      exactTitleResult("b-broader", "Jesus for Children"),
+      exactTitleResult("c-broader", "Who Is Jesus?"),
+      exactTitleResult("d-broader", "The Life of Jesus"),
+      exactTitleResult("z-whole-title", "JESUS"),
+    ]
     searchByExactTitleMock.mockImplementation(
       async (_prisma: unknown, { limit }: { limit: number }) =>
         rows.slice(0, limit),
@@ -623,56 +957,32 @@ describe("WatchSearchService", () => {
         new Map(
           candidates.map(({ videoId }) => [
             videoId,
-            {
-              videoId,
-              kind: videoId.startsWith("target-")
-                ? "target_audio"
-                : "related_language",
-              languageSlug: videoId.startsWith("target-")
-                ? "russian"
-                : "english",
-              languageEnglishName: videoId.startsWith("target-")
-                ? "Russian"
-                : "English",
-              audio: true,
-              subtitles: false,
-              playbackId: `mux-${videoId}`,
-              videoDubId: `dub-${videoId}`,
-              videoSubtitleId: null,
-              durationSeconds: 60,
-              hrefLanguageSlug: videoId.startsWith("target-")
-                ? "russian"
-                : "english",
-            },
+            watchabilityForKind(videoId, "target_audio"),
           ]),
         ),
     )
 
     const firstPage = await service.search({
-      query: "jesus russian",
-      targetLanguageSlug: "russian",
-      queryNamedLanguageSlug: "russian",
+      query: "Jesus",
+      targetLanguageSlug: "english",
       displayLanguageSlug: "english",
       limit: 2,
       offset: 0,
     })
     const secondPage = await service.search({
-      query: "jesus russian",
-      targetLanguageSlug: "russian",
-      queryNamedLanguageSlug: "russian",
+      query: "Jesus",
+      targetLanguageSlug: "english",
       displayLanguageSlug: "english",
       limit: 2,
       offset: 2,
     })
 
-    expect(firstPage.results.map((row) => row.slug)).toEqual([
-      "target-d",
-      "target-e",
-    ])
-    expect(secondPage.results.map((row) => row.slug)).toEqual([
-      "fallback-a",
-      "fallback-b",
-    ])
+    const firstPageIds = firstPage.results.map((row) => row.id)
+    const secondPageIds = secondPage.results.map((row) => row.id)
+    expect(firstPageIds).toEqual(["z-whole-title", "a-broader"])
+    expect(secondPageIds).toEqual(["b-broader", "c-broader"])
+    expect(new Set([...firstPageIds, ...secondPageIds]).size).toBe(4)
+    expect(firstPage.hasMore).toBe(true)
   })
 
   it("fills exact-title results with bounded transcript-semantic results without duplicating videos", async () => {

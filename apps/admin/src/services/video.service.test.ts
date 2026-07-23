@@ -225,6 +225,20 @@ describe("VideoService", () => {
           { label: { in: ["COLLECTION"] } },
         ]),
       )
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({
+        input: { category: "episodes", search: "" },
+        query: {},
+      })
+
+      call = prisma.video.findMany.mock.calls[2][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          { label: { in: ["EPISODE"] } },
+        ]),
+      )
     })
 
     it("does not add a category label filter for the all category", async () => {
@@ -1390,6 +1404,78 @@ describe("VideoService", () => {
       })
 
       expect(result).toEqual([])
+    })
+  })
+
+  describe("getDownloadableChildDubs", () => {
+    it("queries one downloadable Dub per visible direct child in the exact language", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getDownloadableChildDubs({
+        videoId: "series-1",
+        languageSlug: "english",
+        user: VIEWER,
+        query: { include: { downloads: true } },
+      })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call).toMatchObject({
+        include: { downloads: true },
+        where: {
+          deletedAt: null,
+          published: true,
+          downloadable: true,
+          language: { slug: "english", deletedAt: null },
+          downloads: {
+            some: {
+              deletedAt: null,
+              quality: { not: null },
+              url: { not: null },
+            },
+          },
+          video: {
+            deletedAt: null,
+            locales: { some: { status: "PUBLISHED", deletedAt: null } },
+            parents: { some: { parentId: "series-1" } },
+          },
+        },
+        distinct: ["videoId"],
+        orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
+      })
+    })
+
+    it("does not require a published child locale for editors", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getDownloadableChildDubs({
+        videoId: "series-1",
+        languageSlug: "english",
+        user: EDITOR,
+        query: {},
+      })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where.video.deletedAt).toBeNull()
+      expect(call.where.video.locales).toBeUndefined()
+    })
+
+    it("returns the selected Dub rows unchanged", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        { id: "dub-1", videoId: "episode-1" },
+        { id: "dub-2", videoId: "episode-2" },
+      ])
+
+      await expect(
+        service.getDownloadableChildDubs({
+          videoId: "series-1",
+          languageSlug: "english",
+          user: VIEWER,
+          query: {},
+        }),
+      ).resolves.toEqual([
+        { id: "dub-1", videoId: "episode-1" },
+        { id: "dub-2", videoId: "episode-2" },
+      ])
     })
   })
 })

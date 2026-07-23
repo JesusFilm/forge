@@ -10,8 +10,8 @@ import {
   type MediaSignatureType,
 } from "./media-signature-extraction.js"
 import {
-  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
   isVisualFingerprintHash,
+  isVisualMediaSignatureAlgorithmVersion,
   visualFingerprintSimilarity,
 } from "./visual-fingerprint.js"
 import type { Matcher } from "./match-job.service.js"
@@ -77,8 +77,8 @@ export class MediaSignatureMatcher implements Matcher {
       signals.algorithmVersion ??
       OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION
     if (
-      algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION &&
-      !hasV2VisualSourceEvidence(signals)
+      isVisualMediaSignatureAlgorithmVersion(algorithmVersion) &&
+      !hasVisualSourceEvidence(signals)
     ) {
       return []
     }
@@ -89,7 +89,11 @@ export class MediaSignatureMatcher implements Matcher {
       limit,
     })
 
-    const visualSignals = retrieveSourceAnchorSignals(signals, signatures)
+    const visualSignals = retrieveSourceAnchorSignals(
+      signals,
+      signatures,
+      algorithmVersion,
+    )
     const audioSignals = retrieveAudioSignals(signals, signatures)
     const textSignals = retrieveTextSignals(signals, signatures)
     const durationSignals = retrieveDurationSignals(signals, signatures)
@@ -107,7 +111,7 @@ export class MediaSignatureMatcher implements Matcher {
       {
         limit,
         capVisualOnlyVariantConfidence:
-          algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+          isVisualMediaSignatureAlgorithmVersion(algorithmVersion),
       },
     )
   }
@@ -121,8 +125,11 @@ export class MediaSignatureMatcher implements Matcher {
     signals: UploadSignals
     limit: number
   }): Promise<MatchableMediaSignature[]> {
-    const uploadVisualHashes = sourceAnchorUploadHashes(signals)
-    if (algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION) {
+    const uploadVisualHashes = sourceAnchorUploadHashes(
+      signals,
+      algorithmVersion,
+    )
+    if (isVisualMediaSignatureAlgorithmVersion(algorithmVersion)) {
       if (uploadVisualHashes.length === 0) return []
       if (this.repository.listVisualCandidateSignatures) {
         return await this.repository.listVisualCandidateSignatures({
@@ -298,8 +305,9 @@ function sourceAnchorFallbackSignals(
 function retrieveSourceAnchorSignals(
   uploadSignals: UploadSignals,
   officialSignatures: MatchableMediaSignature[],
+  algorithmVersion: string,
 ): RetrievalSignal[] {
-  const uploadHashes = sourceAnchorUploadHashes(uploadSignals)
+  const uploadHashes = sourceAnchorUploadHashes(uploadSignals, algorithmVersion)
   if (uploadHashes.length === 0) return []
 
   const officialSourceAnchors = officialSignatures.flatMap((signature) =>
@@ -523,11 +531,11 @@ function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.filter((value) => value.length > 0))]
 }
 
-function sourceAnchorUploadHashes(uploadSignals: UploadSignals): string[] {
-  if (
-    uploadSignals.algorithmVersion ===
-    OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
-  ) {
+function sourceAnchorUploadHashes(
+  uploadSignals: UploadSignals,
+  algorithmVersion: string,
+): string[] {
+  if (isVisualMediaSignatureAlgorithmVersion(algorithmVersion)) {
     return uniqueStrings(uploadSignals.visualHashes)
   }
 
@@ -537,7 +545,7 @@ function sourceAnchorUploadHashes(uploadSignals: UploadSignals): string[] {
   ])
 }
 
-function hasV2VisualSourceEvidence(uploadSignals: UploadSignals): boolean {
+function hasVisualSourceEvidence(uploadSignals: UploadSignals): boolean {
   return uploadSignals.visualHashes.some(isVisualFingerprintHash)
 }
 

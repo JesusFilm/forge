@@ -43,7 +43,8 @@ vi.mock("@/components/ExperienceError", () => ({
   ExperienceError: experienceErrorMock,
 }))
 
-import HomePage from "@/app/[locale]/[htmlLang]/page"
+import HomePage, { generateMetadata } from "@/app/[locale]/[htmlLang]/page"
+import { WATCH_HOME_CLIENT_MESSAGE_NAMESPACES } from "@/i18n/client-messages"
 
 const heroModel = {
   heroSlides: [{ id: "hero-1", imageUrl: "https://example.com/hero.jpg" }],
@@ -67,6 +68,29 @@ beforeEach(() => {
 })
 
 describe("Watch root homepage", () => {
+  it("uses the fixed seeker-focused page and social metadata", async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+
+    expect(metadata.title).toBe(
+      "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+    )
+    expect(metadata.description).toBe(
+      "Watch free movies about Jesus, Gospel films, Bible videos, and Christian series. Explore faith, prayer, hope, and the story of Jesus in your language.",
+    )
+    expect(metadata.openGraph).toMatchObject({
+      title: "Watch Free Films About Jesus | Jesus Film Project",
+      description:
+        "Explore free films, series, and Bible videos that bring the life of Jesus to every screen and many languages.",
+    })
+    expect(metadata.twitter).toMatchObject({
+      title: "Watch Free Films About Jesus | Jesus Film Project",
+      description:
+        "Explore free films, series, and Bible videos that bring the life of Jesus to every screen and many languages.",
+    })
+  })
+
   it("renders builder-authored homepage blocks under the static hero model", async () => {
     const blocks = [
       { __typename: "WatchHomeHeroBlock", t: "watchHomeHero" },
@@ -86,8 +110,11 @@ describe("Watch root homepage", () => {
 
     expect(resolveWatchHomeMock).toHaveBeenCalledWith("en")
     expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
-    expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({
+    expect(Object.keys(element.props.messages)).toEqual([
+      ...WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+    ])
+    expect(element.props.children.type).toBe(watchHomeExperiencePageMock)
+    expect(element.props.children.props).toEqual({
       heroModel,
       blocks,
       languageSlug: "english",
@@ -99,8 +126,8 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({
+    expect(element.props.children.type).toBe(watchHomeExperiencePageMock)
+    expect(element.props.children.props).toEqual({
       heroModel,
       blocks: [],
       languageSlug: "english",
@@ -122,7 +149,7 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(experienceEmptyMock)
+    expect(element.props.children.type).toBe(experienceEmptyMock)
   })
 
   it("ignores legacy static sections when deciding whether the builder homepage is empty", async () => {
@@ -148,6 +175,6 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(experienceEmptyMock)
+    expect(element.props.children.type).toBe(experienceEmptyMock)
   })
 })

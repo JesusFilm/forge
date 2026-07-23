@@ -661,6 +661,74 @@ describe("loadWatchSearchAnalyticsData", () => {
     )
   })
 
+  it("derives missing Watch search availability scores from stored availability kind", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_availability",
+        requestId: "req_availability",
+        queryText: "Jesus",
+        locale: "english",
+        searchMode: "watch-search",
+        resultCount: 2,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "explicit_target",
+          },
+          results: [
+            {
+              id: "video_audio",
+              type: "video",
+              score: 1,
+              scoreBreakdown: {
+                total: 1,
+                sourceRelevance: 0.55,
+                evidenceBoost: 0.2,
+                relevance: 0.75,
+                availability: 0,
+                match: 0.2,
+                sourceScore: 1,
+              },
+              availabilityKind: "target_audio",
+              evidenceKind: "exact_title",
+              actionKind: "watch",
+            },
+            {
+              id: "video_subtitle",
+              type: "video",
+              score: 0.55,
+              availabilityKind: "target_subtitle",
+              evidenceKind: "metadata",
+              actionKind: "watch",
+            },
+          ],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      requestId: "req_availability",
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.selectedRequest?.results).toEqual([
+      expect.objectContaining({
+        id: "video_audio",
+        availabilityKind: "target_audio",
+        scoreBreakdown: expect.objectContaining({ availability: 0.25 }),
+      }),
+      expect.objectContaining({
+        id: "video_subtitle",
+        availabilityKind: "target_subtitle",
+        scoreBreakdown: expect.objectContaining({ availability: 0.18 }),
+      }),
+    ])
+  })
+
   it("returns an empty visualization model when no Watch search traces exist", async () => {
     searchTraceFindMany.mockResolvedValueOnce([])
 

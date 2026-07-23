@@ -495,6 +495,28 @@ function hasCoreId(video: WatchHomeVideoInput): video is WatchHomeVideoInput & {
   return typeof video.coreId === "string" && video.coreId.length > 0
 }
 
+/**
+ * Index BOTH the top-level records AND every `children[].child` by coreId, so the
+ * Experience adapter can hydrate a curated item that lives only as another
+ * collection's child. On a coreId present both ways the TOP-LEVEL record wins
+ * (inserted last) so its `children` (and real childCount) survive.
+ */
+export function buildVideoByCoreIdIndex(
+  videos: readonly WatchHomeVideoInput[],
+): Map<string, WatchHomeVideoInput> {
+  const index = new Map<string, WatchHomeVideoInput>()
+  for (const video of videos) {
+    for (const rel of video.children ?? []) {
+      const child = rel.child
+      if (child?.coreId) index.set(child.coreId, child)
+    }
+  }
+  for (const video of videos) {
+    if (hasCoreId(video)) index.set(video.coreId, video)
+  }
+  return index
+}
+
 export function buildWatchHomeModelFromVideos(args: {
   videos: readonly WatchHomeVideoInput[]
   languageSlug?: string | null

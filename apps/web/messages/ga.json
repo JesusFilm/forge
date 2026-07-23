@@ -7,7 +7,9 @@
     "noContent": "Níl aon ábhar ar fáil.",
     "homepageMisconfigured": "Tá príomhleathanach an amhairc míchumraithe.",
     "defaultTemplateMisconfigured": "Tá an teimpléad réamhshocraithe amhairc míchumraithe.",
-    "authFailed": "Ní féidir a fhíordheimhniú leis an tseirbhís ábhair. Déan teagmháil leis an tacaíocht má leanann sé seo ar aghaidh."
+    "authFailed": "Ní féidir a fhíordheimhniú leis an tseirbhís ábhair. Déan teagmháil leis an tacaíocht má leanann sé seo ar aghaidh.",
+    "pageLoadFailed": "Chuaigh rud éigin mícheart.",
+    "tryAgain": "Bain triail eile as"
   },
   "VideosPage": {
     "title": "Gach Físeán",
@@ -22,7 +24,8 @@
     "promoHeading": "Ar mhaith leat an Bíobla a thuiscint níos doimhne?",
     "joinBibleStudy": "Glac páirt inár staidéar Bíobla",
     "previousQuote": "An sleacht roimhe seo ón mBíobla",
-    "nextQuote": "An chéad sleacht eile ón mBíobla"
+    "nextQuote": "An chéad sleacht eile ón mBíobla",
+    "readPassage": "Léigh an sliocht seo i do Bhíobla."
   },
   "DownloadButton": {
     "checking": "Ag seiceáil",
@@ -73,7 +76,8 @@
     "selectLanguage": "Roghnaigh teanga",
     "searchPlaceholder": "Cuardaigh teangacha…",
     "languages": "Teangacha",
-    "noMatches": "Gan aon mheaitseáil"
+    "noMatches": "Gan aon mheaitseáil",
+    "notAvailable": "Níl ar fáil"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Teanga",
@@ -112,7 +116,8 @@
     "questions": "Ceisteanna Gaolmhara",
     "askYours": "Cuir do cheann féin",
     "chatWithPerson": "Comhrá le duine",
-    "askBibleQuestion": "Cuir ceist Bhíobla"
+    "askBibleQuestion": "Cuir ceist Bhíobla",
+    "quiz": "Tráth na gCeist"
   },
   "WatchQuestionPanel": {
     "messageType": "Cineál teachtaireachta",
@@ -170,7 +175,8 @@
     "searchRegion": "Cuardaigh físeáin",
     "clearSearch": "Glan cuardach",
     "changeAudioLanguage": "Athraigh teanga an fhuaime",
-    "home": "Baile JesusFilm"
+    "home": "Baile JesusFilm",
+    "closeSearch": "Dún an cuardach"
   },
   "SearchOverlay": {
     "dialogLabel": "Cuardaigh agus brabhsáil físeáin",
@@ -205,14 +211,19 @@
     "clearLanguages": "Glan",
     "queryLanguageDetected": "Aimsíodh {language}",
     "searchInLanguage": "Cuardaigh i {language}",
-    "tryDifferentKeywordsOrLanguage": "Bain triail as eochairfhocail eile nó roghnaigh teanga chuardaigh eile"
+    "tryDifferentKeywordsOrLanguage": "Bain triail as eochairfhocail eile nó roghnaigh teanga chuardaigh eile",
+    "useWebsiteDefaultLanguage": "Úsáid teanga réamhshocraithe chuardaigh an tsuímhéasáin",
+    "removeLanguage": "Bain {language}",
+    "browseMode": "Mód brabhsála cuardaigh"
   },
   "HeroPlayer": {
     "playWithSound": "Féach anois",
-    "tapToUnmute": "Tapáil chun an fhuaim a chasadh air"
+    "tapToUnmute": "Tapáil chun an fhuaim a chasadh air",
+    "nextEpisode": "An chéad eipeasóid eile"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ábhar á luchtú"
+    "loadingContent": "Ábhar á luchtú",
+    "loadingVideo": "Físeán á luchtú"
   },
   "VideoLabels": {
     "video": "Físeán",
@@ -223,7 +234,8 @@
     "series": "Sraith",
     "collection": "Bailiúchán",
     "trailer": "Leantóir",
-    "behindTheScenes": "Taobh thiar den Láthair"
+    "behindTheScenes": "Taobh thiar den Láthair",
+    "chapter": "Caibidil"
   },
   "SiblingCarousel": {
     "clipPosition": "Gearrthóg {current} as {total}",
@@ -235,11 +247,286 @@
     "noImage": "Gan íomhá",
     "playingNow": "Ag seinm anois",
     "previousChapter": "An chaibidil roimhe seo",
-    "nextChapter": "An chéad chaibidil eile"
+    "nextChapter": "An chéad chaibidil eile",
+    "thumbnailAlt": "Mionsamhail {title}",
+    "relatedVideoThumbnail": "Mionsamhail físeáin ghaolmhair"
   },
   "SearchResultCard": {
     "experience": "Taithí",
     "episodeCount": "{count, plural, one {# eipeasóid} other {# eipeasóid}}",
     "thumbnailAlt": "Mionsamhail físeáin"
+  },
+  "Feedback": {
+    "openForm": "Oscail an fhoirm aiseolais",
+    "label": "Aiseolas",
+    "couldNotLoad": "Níorbh fhéidir an fhoirm aiseolais a luchtú.",
+    "loadingForm": "Foirm aiseolais á luchtú…",
+    "retry": "Triail eile",
+    "openFormShort": "Oscail foirm",
+    "cancel": "Cealaigh",
+    "title": "Aiseolas Béite",
+    "description": "Inis dúinn cad atá ag obair agus cad is féidir linn a fheabhsú. Soláthraíonn Google an fhoirm seo.",
+    "openInNewTab": "Oscail an fhoirm i gcluaisín nua",
+    "closeForm": "Dún an fhoirm aiseolais",
+    "loadingGoogleForm": "Google Form á luchtú…",
+    "iframeTitle": "Aiseolas Béite a Chur Isteach"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Físeáin Chríostaí saor in aisce i {language} | Jesus Film Project",
+    "metadataDescription": "Féach ar scannáin Íosa, scéalta ón mBíobla, sraitheanna deisceabhlachta, agus físeáin for-rochtana le fuaim dubáilte nó fotheidil i {language}.",
+    "heroTitle": "Físeáin Chríostaí saor in aisce i {language}",
+    "heroDescription": "Féach ar scannáin Íosa, scéalta ón mBíobla, sraitheanna deisceabhlachta, agus físeáin for-rochtana atá ar fáil i {language}. Cuirtear na físeáin lán-dhubáilte chun cinn ar dtús, agus roghanna le fotheidil thíos.",
+    "languageCollection": "Bailiúchán teanga",
+    "itemCount": "{count, plural, one {# mhír} other {# mhír}}",
+    "videoCount": "{count, plural, one {# fhíseán} other {# fhíseán}}",
+    "videosInGroups": "{videoCount, plural, one {# fhíseán} other {# fhíseán}} i {groupCount, plural, one {# ghrúpa} other {# ngrúpa}}",
+    "sectionNavLabel": "Ranna den fhardal teanga",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nua",
+    "videoBible": "Bíobla Físeáin",
+    "bibleProject": "BibleProject",
+    "sports": "Spóirt",
+    "collections": "Bailiúcháin",
+    "subtitlesOnly": "Fotheidil amháin",
+    "newlyAdded": "Nua-bhreise",
+    "newVideosTitle": "Físeáin Chríostaí nua i {language}",
+    "newestFirst": "Is nuaí ar dtús",
+    "noPublishedVideos": "Níor aimsíodh aon fhíseáin fhoilsithe don teanga seo fós.",
+    "bibleAndGospelFilms": "Scannáin Bíobla agus Soiscéil",
+    "videoBibleCollectionsTitle": "Bailiúcháin Bíobla Físeáin {language}",
+    "videoBibleDescription": "Bailiúcháin atá dírithe ar an Scrioptúr, lena n-áirítear LUMO, JESUS, Magdalena, agus Gníomhartha in {language}.",
+    "noVideoBibleCollections": "Níl aon bhailiúcháin Bíobla Físeáin ar fáil don teanga seo fós.",
+    "bibleProjectCollectionsTitle": "Bailiúcháin BibleProject {language}",
+    "bibleProjectDescription": "Sraitheanna agus staidéir BibleProject atá ar fáil in {language}.",
+    "noBibleProjectCollections": "Níl aon bhailiúcháin BibleProject ar fáil don teanga seo fós.",
+    "sportsStories": "Scéalta spóirt",
+    "sportsTitle": "Scéalta spóirt agus lúthchleasaithe {language}",
+    "sportsDescription": "Scéalta spóirt atá dírithe ar an gcreideamh agus bailiúcháin faoi lúthchleasaithe atá ar fáil in {language}.",
+    "noSportsCollections": "Níl aon bhailiúcháin spóirt ná scéalta lúthchleasaithe ar fáil don teanga seo fós.",
+    "fullyDubbed": "Lán-dubáilte",
+    "dubbedVideosTitle": "Físeáin {language} de réir bailiúcháin",
+    "dubbedVideosDescription": "Brabhsáil físeáin {language} lán-dubáilte grúpáilte lena mbailiúchán ar mhaithe le fáil níos éasca.",
+    "noDubbedVideos": "Níl aon fhíseáin lán-dubáilte ar fáil don teanga seo fós.",
+    "subtitlesAvailable": "Tá fotheidil ar fáil",
+    "subtitlesTitle": "Físeáin {language} le fotheidil",
+    "subtitlesDescription": "Tá fotheidil {language} sna físeáin seo nuair nach bhfuil fuaim labhartha {language} ar fáil fós.",
+    "noSubtitleVideos": "Níl aon fhíseáin le fotheidil amháin ar fáil don teanga seo fós.",
+    "dubbed": "Dubáilte",
+    "subtitles": "Fotheidil",
+    "newLabel": "Nua",
+    "fromCollection": "Ó {collection}",
+    "standaloneVideos": "Físeáin neamhspleácha",
+    "videosFromCollection": "Físeáin ó {collection}.",
+    "standaloneDescription": "Físeáin neamhspleácha sa teanga seo.",
+    "openCollection": "Oscail an bailiúchán"
+  },
+  "WatchHome": {
+    "pageTitle": "Féach ar Jesus Film Project",
+    "watch": "Féach",
+    "watchNow": "Féach Anois",
+    "mutePreview": "Bhalbhaigh an réamhamharc",
+    "unmutePreview": "Díbhalbhaigh an réamhamharc",
+    "nextVideo": "An chéad fhíseán eile",
+    "featured": "Ar taispeáint",
+    "showVideo": "Taispeáin {title}",
+    "previousVideoPreview": "Réamhamharc an fhíseáin roimhe seo",
+    "nextVideoPreview": "Réamhamharc an chéad fhíseáin eile",
+    "mediaCollection": "Bailiúchán meán",
+    "scrollToVideo": "Scrollaigh go físeán {title}"
+  },
+  "WatchFooter": {
+    "home": "Baile Jesus Film Project",
+    "navigation": "Nascleanúint na buntásca",
+    "share": "Comhroinn",
+    "watch": "Féach",
+    "giving": "Tabhartas",
+    "about": "Maidir linn",
+    "products": "Táirgí",
+    "resources": "Acmhainní",
+    "partners": "Comhpháirtithe",
+    "contact": "Teagmháil",
+    "giveNow": "Tabhair Anois",
+    "resourcesVersion": "Acmhainní ({version})",
+    "office": "Oifig",
+    "fax": "Facs",
+    "privacyPolicy": "Polasaí Príobháideachais",
+    "legalStatement": "Ráiteas Dlí",
+    "newsletter": "Cláraigh dár Nuachtlitir"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Tógtha do mhisin dhomhanda",
+    "title": "Ní athraíonn an teachtaireacht. Athraíonn an bealach a bhféachann daoine.",
+    "description": "Táimid ag atógáil ár leabharlann físeáin agus ár n-uirlisí ón mbun aníos, ag tabhairt tiomantas do na blianta d’obair aistriúcháin chuig na hardáin ina mbailíonn, ina bhféachann agus ina roinneann daoine cheana féin.",
+    "translatedLibraryTitle": "An leabharlann scannán is mó aistrithe ar domhan",
+    "translatedLibraryDescription": "Tá blianta d’obair aistriúcháin, arna n-iompar ag comhpháirtithe iontaofa aireachta, tar éis leabharlann a thógáil le mílte rian teanga ionas gur féidir le daoine teacht ar scéal Íosa sa teanga a shroicheann iad is doimhne.",
+    "trustedVoicesTitle": "Guthanna iontaofa a thabhairt isteach i bhformáidí nua",
+    "trustedVoicesDescription": "Táimid ag atógáil an tslí a insítear scéalta an tsoiscéil go físiúil, ag péireáil aistriúcháin iontaofa le formáidí nua-aimseartha ionas gur féidir leis an teachtaireacht gluaiseacht go saor trasna ardáin, cultúr agus scáileán.",
+    "missionTeamTitle": "Níos mó ná leabharlann. Foireann atá tiomáinte ag an misean.",
+    "missionTeamDescription": "Is foireann dhomhanda d’aistritheoirí, speisialtóirí sna meáin, eagarthóirí agus cruthaitheoirí é Jesus Film Project, ag iompú blianta d’eispéireas aireachta ina n-uirlisí do lucht déanta deisceabal i ngach áit.",
+    "buildingNext": "Cad atá á thógáil againn ina dhiaidh seo",
+    "nextStepsTitle": "Ardán na gCéad Chéimeanna Eile",
+    "nextStepsDescription": "Ceangail lucht féachana le deiseanna nithiúla ar a dturas spioradálta, ag cabhrú leo céim eile a ghlacadh isteach sa phobal, sa Scrioptúr nó sa mhisean.",
+    "mediaLibraryTitle": "Leabharlann Meán Soiscéalach",
+    "mediaLibraryDescription": "Leabharlann mhór mheán Críostaí le mílte físeán, scannán agus acmhainní ar fáil i dteangacha éagsúla le haghaidh aireachta agus soiscéalaíochta ar fud an domhain.",
+    "ministryToolsTitle": "Uirlisí Digiteacha d’Aireachtaí",
+    "ministryToolsDescription": "Bainistíocht físeáin, dáileadh ábhair, rannpháirtíocht lucht féachana, agus anailísíocht atá deartha chun cabhrú le haireachtaí níos mó daoine a bhaint amach go héifeachtach.",
+    "invitationEyebrow": "Tá tú tugtha cuireadh",
+    "invitationTitle": "Cuidigh le <highlight>an chéad ghlúin eile</highlight> d’uirlisí misin a thógáil",
+    "invitationDescription": "Táimid ag tabhairt cuireadh do chleachtóirí, do chruthaitheoirí agus do chomhpháirtithe chuig rochtain luath. Tástáil uirlisí nua ar dtús, tabhair aiseolas, agus cuidigh le táirgí a dhearadh do shaothar misin fíor.",
+    "betaTester": "Bí i do thástálaí béite"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Bailiúchán Bíobla Físeáin",
+    "gospelRailTitle": "Faigh amach an scéal iomlán",
+    "videoBibleDescription": "Féach ar ár mbailiúchán físeán agus acmhainní a thugann an Bíobla chun beatha trí scéalta agus teagasc mealltacha.",
+    "showcaseTitle": "An Scrioptúr le hinsint trí scannán",
+    "adventEyebrow": "Aidbhint na Nollag",
+    "adventTitle": "Comhaireamh Siar Aidbhinte na Nollag",
+    "adventDescription": "Bí linn ar thuras Aidbhinte le físeán laethúil a mhéadaíonn súil na Nollag, ag iniúchadh dóchais, áthais agus gealltanas theacht Íosa.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Aidbhint BibleProject",
+    "nuaEyebrow": "Sraith NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Sraith Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cúrsa Físeáin",
+    "journeyWithJesusTitle": "Turas le hÍosa",
+    "gospelsOnVideoEyebrow": "Gach Soiscéal, insithe ar fhíseán",
+    "scriptureAsWrittenTitle": "An Scrioptúr, á labhairt díreach mar atá scríofa",
+    "merryChristmas": "Nollaig Shona!",
+    "daysUntilChristmas": "{count, plural, one {# lá go dtí an Nollaig} two {# lá go dtí an Nollaig} few {# lá go dtí an Nollaig} many {# lá go dtí an Nollaig} other {# lá go dtí an Nollaig}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Teangacha",
+    "metadataDescription": "Brabhsáil físeáin JesusFilm de réir teanga.",
+    "eyebrow": "Teangacha féachana",
+    "title": "Roghnaigh teanga",
+    "description": "Iniúch teangacha de réir réigiúin nó brabhsáil an liosta iomlán.",
+    "searchPlaceholder": "Cuardaigh teangacha nó tíortha...",
+    "searchLabel": "Cuardaigh teangacha nó tíortha",
+    "clearSearch": "Glan cuardach",
+    "browse": "Brabhsáil",
+    "browseByRegion": "Brabhsáil de réir réigiúin agus tíre",
+    "languageCount": "{count, plural, one {# teanga} other {# teangacha}}",
+    "region": "Réigiún",
+    "countryLanguages": "Teangacha {country}",
+    "showLess": "Taispeáin níos lú",
+    "showMore": "Taispeáin {count} níos mó",
+    "noLanguages": "Níor aimsíodh aon teangacha",
+    "tryAnotherSearch": "Bain triail as téarma cuardaigh eile."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Stair Féachana | Jesus Film Project",
+    "title": "Stair Féachana",
+    "loading": "Stair á luchtú",
+    "empty": "Níl aon rud anseo fós",
+    "emptyDescription": "Taispeánfar físeáin a fhéachann tú orthu agus tú sínithe isteach anseo.",
+    "earlier": "Níos luaithe",
+    "today": "Inniu",
+    "yesterday": "Inné"
+  },
+  "AccountControl": {
+    "account": "Cuntas",
+    "accountMenu": "Roghchlár an chuntais",
+    "signIn": "Sínigh isteach",
+    "signOut": "Sínigh amach",
+    "signedIn": "Sínithe isteach",
+    "history": "Stair",
+    "logOut": "Logáil amach"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Níor aimsíodh an leathanach",
+    "eyebrow": "Níor aimsíodh an leathanach",
+    "screenReaderPrefix": "Níor aimsíodh an leathanach:",
+    "title": "Níl an radharc seo anseo.",
+    "description": "Seans go bhfuil an leathanach bogtha, ach leanann an scéal ar aghaidh.",
+    "actionsLabel": "Gníomhartha an leathanaigh nár aimsíodh",
+    "backToWatch": "Ar ais go Watch",
+    "browseVideos": "Brabhsáil físeáin"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Féach ar ghearrscannán",
+    "actions": {
+      "joinUs": "Bígí Linn",
+      "shareMission": "Comhroinn inár Misean"
+    },
+    "welcomeStart": {
+      "label": "Creideamh & an Scrioptúr",
+      "title": "Roghanna Físeáin an Lae Inniu",
+      "description": "Ábhar físe atá dírithe ar an gcreideamh ónár leabharlann chun spreagadh, dúshlán, agus machnamh a mhúscailt."
+    },
+    "welcomeMorning": {
+      "label": "Spreagadh na Maidine",
+      "title": "Maidin mhaith! Tá Nóiméid an Bhíobla inniu ag fanacht leat.",
+      "description": "Tosaigh do lá le nóiméid spreagúla ón mBíobla atá deartha chun do spiorad a spreagadh agus a ardú."
+    },
+    "welcomeAfternoon": {
+      "label": "Spreagadh na hIarnóna",
+      "title": "Tráthnóna maith! Nóiméid ón mBíobla do do lá.",
+      "description": "Ábhar spreagúil ón mBíobla, foirfe do do shos tráthnóna nó mar spreagadh breise."
+    },
+    "welcomeEvening": {
+      "label": "Spreagadh na Tráthnóna",
+      "title": "Oíche mhaith! Lig do scíth le Nóiméid ón mBíobla.",
+      "description": "Nóiméid shíochánta ón mBíobla chun cabhrú leat machnamh a dhéanamh agus sólás a fháil agus do lá ag teacht chun deiridh."
+    },
+    "joinUs": {
+      "label": "Bígí Linn",
+      "title": "Tá billiúin ag cuardach",
+      "description": "Tá an fómhar anseo. Bí linn agus sinn ag roinnt an tsoiscéil leis an domhan trí mheán digiteach."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Téimis le chéile",
+      "title": "Scéal Íosa a insint, le chéile",
+      "description": "Go gcloisfidís agus go bhfeicfidís grá Íosa ina dteanga féin, díreach san áit a bhfuil siad."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Meaitseáil {percent}%",
+    "none": "Níor aimsíodh aon mholtaí don fhíseán seo sa teanga seo."
+  },
+  "BetaTesterModal": {
+    "title": "Bí i do thástálaí béite",
+    "trigger": "Bí i do thástálaí béite",
+    "loadFailed": "Chuaigh rud éigin mícheart.",
+    "loading": "Ag luchtú...",
+    "openFormNewTab": "Oscail an fhoirm i gcluaisín nua",
+    "close": "Dún",
+    "iframeTitle": "Bí i do thástálaí béite"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

@@ -27,6 +27,10 @@ import {
 import { AccountControl } from "@/components/watch/AccountControl"
 import type { GlobalLanguagePickerModalProps } from "@/components/watch/GlobalLanguagePickerModal"
 import {
+  WATCH_MODAL_CLOSE_DELAY_MS,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
+import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
@@ -188,7 +192,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpenState(false)
           setClosing(false)
           closingTimerRef.current = null
-        }, 200)
+        }, WATCH_MODAL_CLOSE_DELAY_MS)
       }
     },
     [invalidateGlobalLanguageIntent, resetSearch],
@@ -507,6 +511,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   }, [closing, headerLanguageSwitcher, open, pathname, routeIdentity])
 
   const modalChromeHidden = open || closing
+  useWatchModalActivity(modalChromeHidden, { releaseDelayMs: 0 })
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
   const pageSpecificLanguageSwitcherActive =
@@ -755,7 +760,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           {modalChromeHidden ? (
             <button
               type="button"
-              aria-label="Close search"
+              aria-label={t("closeSearch")}
               data-testid="floating-header-search-close"
               onClick={() => setOpen(false)}
               className={`pointer-events-auto inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}

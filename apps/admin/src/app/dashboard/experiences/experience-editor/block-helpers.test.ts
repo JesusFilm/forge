@@ -75,6 +75,33 @@ describe("experience editor block helpers", () => {
     expect(BlockSchema.safeParse(starter).success).toBe(true)
   })
 
+  it("leaves public copy unauthored in video carousel starters", () => {
+    const manualStarter = createTemplateBlock("videoCarousel", 2)
+    const routeStarter = createTemplateBlock("routeVideoCarousel", 3)
+
+    expect(manualStarter).toEqual({
+      t: "videoCarousel",
+      sectionKey: "video-carousel-2",
+      itemsSource: "manual",
+      items: [],
+    })
+    expect(routeStarter).toEqual({
+      t: "videoCarousel",
+      sectionKey: "route-video-carousel-3",
+      itemsSource: "routeVideoChildren",
+      items: [],
+    })
+    expect(BlockSchema.safeParse(manualStarter).success).toBe(true)
+    expect(BlockSchema.safeParse(routeStarter).success).toBe(true)
+  })
+
+  it("starts new media collections with vertical thumbnails", () => {
+    expect(createTemplateBlock("mediaCollection", 5)).toMatchObject({
+      t: "mediaCollection",
+      thumbnailOrientation: "vertical",
+    })
+  })
+
   it("preserves promotional Markdown blocks and legacy line splitting", () => {
     const markdown = [
       "### Why this story matters",

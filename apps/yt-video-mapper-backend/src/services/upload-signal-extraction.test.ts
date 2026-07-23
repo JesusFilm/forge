@@ -5,6 +5,7 @@ import {
 } from "./upload-signal-extraction.js"
 import {
   OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
   VISUAL_FRAME_FINGERPRINT_KIND,
 } from "./visual-fingerprint.js"
 
@@ -76,82 +77,92 @@ describe("DeterministicUploadSignalExtractor", () => {
     expect(signals.audioFingerprints).toEqual([])
   })
 
-  it("uses injected v2 visual frame fingerprints for raw video uploads", async () => {
-    const calls: Array<{ bytes: Buffer; contentType: string }> = []
-    const signals = await new DeterministicUploadSignalExtractor({
-      sampleBytes: 4,
-      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
-      visualFrameExtractor: {
-        async extractFromBytes(input) {
-          calls.push({
-            bytes: input.bytes,
-            contentType: input.contentType,
-          })
-          return [
-            {
-              offsetMilliseconds: 1_000,
-              durationMilliseconds: null,
-              payload: {
-                kind: VISUAL_FRAME_FINGERPRINT_KIND,
-                phash: "ffffffff00000000",
-                frameWidth: 8,
-                frameHeight: 8,
+  it.each([
+    OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+  ])(
+    "uses injected %s visual frame fingerprints for raw video uploads",
+    async (algorithmVersion) => {
+      const calls: Array<{ bytes: Buffer; contentType: string }> = []
+      const signals = await new DeterministicUploadSignalExtractor({
+        sampleBytes: 4,
+        algorithmVersion,
+        visualFrameExtractor: {
+          async extractFromBytes(input) {
+            calls.push({
+              bytes: input.bytes,
+              contentType: input.contentType,
+            })
+            return [
+              {
+                offsetMilliseconds: 1_000,
+                durationMilliseconds: null,
+                payload: {
+                  kind: VISUAL_FRAME_FINGERPRINT_KIND,
+                  phash: "ffffffff00000000",
+                  frameWidth: 8,
+                  frameHeight: 8,
+                },
               },
-            },
-          ]
+            ]
+          },
         },
-      },
-    }).extract({
-      bytes: Buffer.from([1, 2, 3, 4, 5, 6]),
-      contentType: "video/mp4",
-    })
-
-    expect(calls).toEqual([
-      {
+      }).extract({
         bytes: Buffer.from([1, 2, 3, 4, 5, 6]),
         contentType: "video/mp4",
-      },
-    ])
-    expect(signals.algorithmVersion).toBe(
-      OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
-    )
-    expect(signals.visualHashes).toEqual(["ffffffff00000000"])
-    expect(signals.visualFingerprints).toEqual([
-      {
-        offsetMilliseconds: 1_000,
-        durationMilliseconds: null,
-        payload: {
-          kind: VISUAL_FRAME_FINGERPRINT_KIND,
-          phash: "ffffffff00000000",
-          frameWidth: 8,
-          frameHeight: 8,
-        },
-      },
-    ])
-    expect(signals.sampledByteHashes).toEqual([
-      "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a",
-    ])
-    expect(signals.audioFingerprints).toEqual([])
-  })
+      })
 
-  it("does not synthesize v2 visual or audio evidence when frame extraction fails", async () => {
-    const signals = await new DeterministicUploadSignalExtractor({
-      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
-      visualFrameExtractor: {
-        async extractFromBytes() {
-          throw new Error("ffmpeg failed")
+      expect(calls).toEqual([
+        {
+          bytes: Buffer.from([1, 2, 3, 4, 5, 6]),
+          contentType: "video/mp4",
         },
-      },
-    }).extract({
-      bytes: Buffer.from("opaque-video-bytes"),
-      contentType: "video/mp4",
-    })
+      ])
+      expect(signals.algorithmVersion).toBe(algorithmVersion)
+      expect(signals.visualHashes).toEqual(["ffffffff00000000"])
+      expect(signals.visualFingerprints).toEqual([
+        {
+          offsetMilliseconds: 1_000,
+          durationMilliseconds: null,
+          payload: {
+            kind: VISUAL_FRAME_FINGERPRINT_KIND,
+            phash: "ffffffff00000000",
+            frameWidth: 8,
+            frameHeight: 8,
+          },
+        },
+      ])
+      expect(signals.sampledByteHashes).toEqual([
+        "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a",
+      ])
+      expect(signals.audioFingerprints).toEqual([])
+    },
+  )
 
-    expect(signals.visualHashes).toEqual([])
-    expect(signals.visualFingerprints).toEqual([])
-    expect(signals.sampledByteHashes).toHaveLength(1)
-    expect(signals.audioFingerprints).toEqual([])
-  })
+  it.each([
+    OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+  ])(
+    "does not synthesize %s visual or audio evidence when frame extraction fails",
+    async (algorithmVersion) => {
+      const signals = await new DeterministicUploadSignalExtractor({
+        algorithmVersion,
+        visualFrameExtractor: {
+          async extractFromBytes() {
+            throw new Error("ffmpeg failed")
+          },
+        },
+      }).extract({
+        bytes: Buffer.from("opaque-video-bytes"),
+        contentType: "video/mp4",
+      })
+
+      expect(signals.visualHashes).toEqual([])
+      expect(signals.visualFingerprints).toEqual([])
+      expect(signals.sampledByteHashes).toHaveLength(1)
+      expect(signals.audioFingerprints).toEqual([])
+    },
+  )
 
   it("extracts normalized transcript text only for subtitle inputs", async () => {
     const signals = await new DeterministicUploadSignalExtractor().extract({

@@ -2,6 +2,16 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { Play } from "lucide-react"
+import { useTranslations } from "next-intl"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
 
@@ -10,6 +20,7 @@ type WatchHomeHeroProps = {
 }
 
 export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
+  const t = useTranslations("WatchHome")
   const featured = slides[0] ?? null
 
   return (
@@ -38,11 +49,12 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
       />
 
       <div className="mx-auto flex min-h-[calc(100svh-7rem)] w-full max-w-[1920px] flex-col justify-end pb-8 sm:pb-10 lg:pb-12">
-        <h1 className="sr-only">Jesus Film Project Watch</h1>
+        <h1 className="sr-only">{t("pageTitle")}</h1>
         <div className="w-full overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-2 px-4 sm:px-6 md:gap-3 lg:px-8">
             {slides.map((slide, index) => {
               const isActive = index === 0
+              const isInteractive = Boolean(slide.href)
               const content = (
                 <>
                   {slide.imageUrl ? (
@@ -61,15 +73,13 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-transparent" />
-                  <div
-                    aria-hidden
-                    className={cn(
-                      "pointer-events-none absolute inset-0 rounded-lg transition",
-                      isActive
-                        ? "shadow-[inset_0_0_0_4px_#fff]"
-                        : "group-hover:shadow-[inset_0_0_0_4px_rgba(255,255,255,0.82)]",
-                    )}
-                  />
+                  {isInteractive || isActive ? (
+                    <VideoThumbnailInteractionFrame
+                      data-testid="watch-home-hero-thumbnail-frame"
+                      interactive={isInteractive && !isActive}
+                      visible={isActive}
+                    />
+                  ) : null}
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <span
                       className={cn(
@@ -80,20 +90,28 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
                       <Play className="h-8 w-8 fill-current" aria-hidden />
                     </span>
                   </div>
-                  <div className="relative flex h-full flex-col justify-end p-3 md:p-4">
-                    <p className="truncate text-[11px] leading-5 font-bold tracking-widest text-stone-100/80 uppercase">
+                  <VideoThumbnailCaption inset="compact">
+                    <VideoThumbnailEyebrow as="p" size="hero">
                       {slide.label}
-                    </p>
-                    <h2 className="line-clamp-3 text-sm leading-tight font-bold text-stone-50 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] md:text-base">
+                    </VideoThumbnailEyebrow>
+                    <VideoThumbnailTitle as="h2" lines={3} size="compact-md">
                       {slide.title}
-                    </h2>
-                  </div>
+                    </VideoThumbnailTitle>
+                  </VideoThumbnailCaption>
                 </>
               )
 
               const className = cn(
-                "beveled group relative block h-[136px] w-[140px] overflow-hidden rounded-lg bg-black text-left no-underline transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:w-[260px]",
-                isActive ? "opacity-100" : "opacity-60 hover:opacity-85",
+                "beveled relative block h-[136px] w-[140px] overflow-hidden rounded-lg bg-black text-left no-underline transition-opacity duration-200 md:w-[260px]",
+                isInteractive && "group",
+                isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+                isActive
+                  ? "opacity-100"
+                  : cn(
+                      "opacity-60",
+                      isInteractive &&
+                        "hover:opacity-85 focus-visible:opacity-85",
+                    ),
               )
 
               return slide.href ? (

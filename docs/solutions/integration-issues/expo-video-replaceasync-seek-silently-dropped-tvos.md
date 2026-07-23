@@ -76,6 +76,8 @@ The bug was **latent in shipped code for weeks**. The seek is gated on `if (targ
 
 ## Solution
 
+> **Extended (2026-07-22):** the heal now fires at TWO sites. The `timeUpdate` backstop below is unchanged, and a second re-seek runs at the `readyToPlay` status event — the first point the item is guaranteed seekable, so the seek lands instead of racing the not-yet-seekable window. Its arming is the pure `windowStartSeekOnReady` (wraps `needsWindowStartSeek`) and it deliberately takes NO confirmed-token guard: `readyToPlay` precedes `playingChange`/`confirmPlayback`, so gating on confirmation there would disarm the heal — porting the `timeUpdate` guard into it is the one refactor that silently reverts this fix.
+
 Stop trusting the one-shot post-`replaceAsync` seek to land, and **self-heal at the choke point** every playing clock already flows through: the `timeUpdate` handler.
 
 A pure, tolerance-guarded predicate decides when a re-seek is owed (`apps/tv/src/components/showcaseMode/reelPlayerGate.ts:113`):

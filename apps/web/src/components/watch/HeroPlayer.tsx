@@ -63,7 +63,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
-import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
+import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import {
@@ -367,6 +367,7 @@ export function HeroPlayer({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null)
   const [nextPlaybackState, setNextPlaybackState] = useState({
     currentTime: 0,
     duration: 0,
@@ -1390,7 +1391,6 @@ export function HeroPlayer({
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-[1000ms]"
-  const posterImageMotionClass = ""
   const coverBlackoutMotionClass =
     coverBlackoutPhase === "revealing"
       ? "watch-hero-cover-black-bridge"
@@ -1422,11 +1422,13 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
-  const languageCode = languageCodeFor({
+  const explicitLanguageCode = languageCodeFor({ slug: languageSlug })
+  const variantLanguageCode = languageCodeFor({
     bcp47: variant.language?.bcp47,
     iso3: variant.language?.iso3,
-    slug: variant.language?.slug ?? languageSlug,
+    slug: variant.language?.slug,
   })
+  const languageCode = explicitLanguageCode ?? variantLanguageCode
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("hero-player-language-switcher"),
   ).current
@@ -1498,6 +1500,8 @@ export function HeroPlayer({
     : 0
   const showWatchNextButton =
     chromeRevealed && nextWatchHref != null && watchNextWindowActive
+  const heroPlayerLoading =
+    playbackFrameActive && playerActivated && (!videoReady || playbackBuffering)
   const cancelWatchNextAutoAdvance = useCallback(() => {
     if (watchNextWindowActive) {
       const nextMode = { videoId: video.documentId, mode: "manual" } as const
@@ -1673,6 +1677,7 @@ export function HeroPlayer({
               onWaiting={handlePlaybackBuffering}
               onStalled={handlePlaybackBuffering}
               onSeeking={handlePlaybackBuffering}
+              onTimeUpdate={handlePlaybackReady}
               onSeeked={handlePlaybackReady}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
@@ -1712,7 +1717,7 @@ export function HeroPlayer({
                       blurDataURL: heroPosterBlurDataURL,
                     }
                   : {})}
-                className={`object-cover ${posterImageMotionClass}`}
+                className="object-cover"
               />
               {!chromeRevealed ? (
                 <div
@@ -1732,6 +1737,13 @@ export function HeroPlayer({
                   aria-hidden="true"
                   data-testid="hero-player-poster-darken-overlay"
                   className="pointer-events-none absolute inset-0 bg-black/50"
+                />
+              ) : null}
+              {coverLoading ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-cover-loading-overlay"
+                  className="pointer-events-none absolute inset-0 animate-pulse bg-white/15 motion-reduce:animate-none"
                 />
               ) : null}
               {showPosterBlackBridge ? (
@@ -1765,17 +1777,6 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {playbackFrameActive &&
-          playerActivated &&
-          (!videoReady || playbackBuffering) ? (
-            <div
-              data-testid="hero-player-loading"
-              className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
-            >
-              <WatchPlayerLoadingIndicator />
-            </div>
-          ) : null}
-
           {!chromeRevealed ? (
             <div
               aria-hidden="true"
@@ -1806,6 +1807,7 @@ export function HeroPlayer({
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
             playbackId={playbackId}
+            playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
             subtitleLanguageCode={subtitleLanguageCode}
@@ -1830,7 +1832,7 @@ export function HeroPlayer({
             data-kind={block.nextWatchItem?.kind ?? "chapter"}
             data-manual={watchNextManual ? "true" : "false"}
             data-auto-armed={watchNextAutoArmed ? "true" : "false"}
-            aria-label="Next Episode"
+            aria-label={t("nextEpisode")}
             onClick={navigateToNextWatchItem}
             className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
               watchNextManual
@@ -1848,7 +1850,7 @@ export function HeroPlayer({
             ) : null}
             <PlayIcon />
             <span className="relative text-base font-bold leading-none">
-              Next Episode
+              {t("nextEpisode")}
             </span>
           </button>
         ) : null}

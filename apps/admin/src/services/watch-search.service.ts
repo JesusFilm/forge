@@ -106,7 +106,9 @@ export type WatchSearchLanguageInterpretation = {
   targetLanguageSlug: string
   targetLanguageSource: SearchLanguageSignalSource
   displayLanguageSlug: string | null
+  displayLanguageBcp47?: string | null
   routeLanguageSlug: string | null
+  routeLanguageBcp47?: string | null
   currentWatchLanguageSlug: string | null
   acceptLanguage: string | null
   acceptLanguageSlug: string | null
@@ -328,7 +330,9 @@ export class WatchSearchService {
     const timelineStartedAt = nowMs()
     const displayLocale =
       localeForLanguageSlug(languageInterpretation.displayLanguageSlug) ??
+      languageInterpretation.displayLanguageBcp47 ??
       localeForLanguageSlug(languageInterpretation.routeLanguageSlug) ??
+      languageInterpretation.routeLanguageBcp47 ??
       "en"
     const titleQuery = queryWithoutLanguageHints(query, [
       languageInterpretation.queryNamedLanguageSlug,
@@ -555,18 +559,37 @@ export class WatchSearchService {
       return semanticPipeline.semanticWatchability.get(entry.candidate.resultId)
     }
     const rankedCandidates = mergedCandidates
-      .map((entry) => ({
-        ...entry,
-        scoreBreakdown: scoreBreakdownForCandidate(
+      .map((entry) => {
+        const watchability = watchabilityFor(entry)
+        const { rankingRelevance, scoreBreakdown } = candidateScores(
           entry,
-          watchabilityFor(entry),
-        ),
-      }))
+          watchability,
+          titleQuery,
+        )
+        return {
+          ...entry,
+          wholeTitleMatch: isWholeTitleMatch(
+            titleQuery,
+            entry.candidate.videoTitle,
+          ),
+          watchability,
+          watchabilityRank: watchabilityRank(watchability),
+          rankingRelevance,
+          scoreBreakdown,
+        }
+      })
       .filter(passesMinimumConfidence)
       .sort((left, right) => {
-        const scoreDelta =
-          right.scoreBreakdown.total - left.scoreBreakdown.total
-        if (scoreDelta !== 0) return scoreDelta
+        const wholeTitleDelta =
+          Number(right.wholeTitleMatch) - Number(left.wholeTitleMatch)
+        if (wholeTitleDelta !== 0) return wholeTitleDelta
+
+        const relevanceDelta = right.rankingRelevance - left.rankingRelevance
+        if (relevanceDelta !== 0) return relevanceDelta
+
+        const watchabilityDelta = left.watchabilityRank - right.watchabilityRank
+        if (watchabilityDelta !== 0) return watchabilityDelta
+
         return left.candidate.resultId.localeCompare(right.candidate.resultId)
       })
     const candidates = rankedCandidates
@@ -578,20 +601,20 @@ export class WatchSearchService {
         return mapSemanticCandidate({
           candidate: entry.candidate,
           scoreBreakdown: entry.scoreBreakdown,
-          watchability: watchabilityFor(entry),
+          watchability: entry.watchability,
         })
       }
       if (entry.kind === "metadata") {
         return mapMetadataCandidate({
           candidate: entry.candidate,
           scoreBreakdown: entry.scoreBreakdown,
-          watchability: watchabilityFor(entry),
+          watchability: entry.watchability,
         })
       }
       return mapExactTitleCandidate({
         candidate: entry.candidate,
         scoreBreakdown: entry.scoreBreakdown,
-        watchability: watchabilityFor(entry),
+        watchability: entry.watchability,
       })
     })
     const imagesByVideoId = await this.imagesForResults(results)
@@ -1236,35 +1259,54 @@ function availabilityScore(
   return 0
 }
 
-function matchScore(kind: RankedWatchCandidate["kind"]): number {
-  if (kind === "exact") return 0.2
-  if (kind === "metadata") return 0.14
+function matchScore(entry: RankedWatchCandidate, query: string): number {
+  if (entry.kind === "exact") {
+    return isWholeTitleMatch(query, entry.candidate.videoTitle) ? 0.45 : 0.2
+  }
+  if (entry.kind === "metadata") return 0.14
   return 0.08
+}
+
+function normalizeWholeTitleMatchText(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase()
+}
+
+function isWholeTitleMatch(query: string, title: string): boolean {
+  const normalizedQuery = normalizeWholeTitleMatchText(query)
+  if (normalizedQuery.length === 0) return false
+  return normalizedQuery === normalizeWholeTitleMatchText(title)
 }
 
 function roundScore(value: number): number {
   return Math.round(value * 1000) / 1000
 }
 
-function scoreBreakdownForCandidate(
+function candidateScores(
   entry: RankedWatchCandidate,
   watchability: SearchWatchability | undefined,
-): WatchSearchScoreBreakdown {
+  query: string,
+): {
+  rankingRelevance: number
+  scoreBreakdown: WatchSearchScoreBreakdown
+} {
   const sourceScore = Math.max(0, Math.min(1, resultCandidateScore(entry)))
   const sourceRelevance = sourceScore * 0.55
-  const evidenceBoost = matchScore(entry.kind)
+  const evidenceBoost = matchScore(entry, query)
   const relevance = sourceRelevance + evidenceBoost
   const availability = availabilityScore(watchability)
   const total = Math.min(1, relevance + availability)
 
   return {
-    total: roundScore(total),
-    sourceRelevance: roundScore(sourceRelevance),
-    evidenceBoost: roundScore(evidenceBoost),
-    relevance: roundScore(relevance),
-    availability: roundScore(availability),
-    match: roundScore(evidenceBoost),
-    sourceScore: roundScore(sourceScore),
+    rankingRelevance: relevance,
+    scoreBreakdown: {
+      total: roundScore(total),
+      sourceRelevance: roundScore(sourceRelevance),
+      evidenceBoost: roundScore(evidenceBoost),
+      relevance: roundScore(relevance),
+      availability: roundScore(availability),
+      match: roundScore(evidenceBoost),
+      sourceScore: roundScore(sourceScore),
+    },
   }
 }
 

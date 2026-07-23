@@ -1,5 +1,7 @@
 export const OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION =
   "official-media-signature-v2"
+export const OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION =
+  "official-media-signature-v3"
 export const VISUAL_FRAME_FINGERPRINT_KIND = "visual_frame_phash_v2"
 export const VISUAL_FRAME_FINGERPRINT_WIDTH = 8
 export const VISUAL_FRAME_FINGERPRINT_HEIGHT = 8
@@ -21,6 +23,15 @@ export type VisualFrameFingerprintInput = {
   bytes: Uint8Array
   width?: number
   height?: number
+}
+
+export function isVisualMediaSignatureAlgorithmVersion(
+  algorithmVersion: string,
+): boolean {
+  return (
+    algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION ||
+    algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION
+  )
 }
 
 export class VisualFingerprintError extends Error {

@@ -43,7 +43,9 @@ import {
 } from "../../lib/showcaseMode/reelState"
 import {
   buildHopSchedule,
+  HOP_TIMING_UNUSABLE,
   hopToStream,
+  type ShowcaseHop,
 } from "../../lib/showcaseMode/hopSchedule"
 import {
   buildFallbackChapters,
@@ -67,10 +69,16 @@ import {
   resolveShowcaseStartSource,
 } from "../../lib/showcaseMode/showcaseTelemetry"
 import {
+  logSentencePlanFallback,
   logShowcaseFallback,
   logShowcaseParseDrops,
 } from "../../lib/showcaseMode/logShowcaseFallback"
 import { createShowcaseVideoFetcher } from "../../lib/showcaseMode/showcaseVideoQuery"
+import {
+  SHOWCASE_SENTENCE_PLAN_BUDGET_MS,
+  createSentenceTimingSource,
+  resolveSentenceTimingWithinBudget,
+} from "../../lib/showcaseMode/sentenceTimingSource"
 import { countDistinctLanguages } from "../../lib/showcaseMode/statLines"
 import type {
   ShowcaseChapter,
@@ -386,6 +394,14 @@ export function ShowcaseScreen() {
         // the screen is the composition root where nondeterminism lives; buildHopSchedule
         // stays pure. A null plan (too few languages / too short) falls through to play
         // the centerpiece as an ordinary excerpt (AE4/AE5 degradation).
+        // KTD-5/R7: launch the sentence-timing acquisition in parallel with the dub probe,
+        // racing it against the total budget so the worst-case plan build stays ~one budget.
+        // Any failure/timeout degrades THIS chapter to the fixed grid, never a stall.
+        const acquireTiming = createSentenceTimingSource(getApolloClient())
+        const timingPromise = resolveSentenceTimingWithinBudget(
+          () => acquireTiming(excerpt.slug),
+          SHOWCASE_SENTENCE_PLAN_BUDGET_MS,
+        )
         let video
         try {
           video = await fetchVideo(excerpt.slug)
@@ -396,7 +412,28 @@ export function ShowcaseScreen() {
           video = null
         }
         if (cancelled || !mountedRef.current) return
-        const plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+        const acquired = await timingPromise
+        if (cancelled || !mountedRef.current) return
+
+        let plan: ShowcaseHop[] | null
+        if (acquired.timing) {
+          const sentencePlan = buildHopSchedule({
+            dubs: video?.dubs,
+            rng: Math.random,
+            sentenceTiming: acquired.timing,
+          })
+          if (sentencePlan === HOP_TIMING_UNUSABLE) {
+            // KTD-6: the reference track had no usable sentence structure.
+            logSentencePlanFallback({ reason: "no-usable-boundaries" })
+            plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+          } else {
+            plan = sentencePlan
+          }
+        } else {
+          logSentencePlanFallback({ reason: acquired.reason })
+          plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+        }
+
         if (plan != null) {
           // The hop projection owns the stream for the whole plan; a held resolved
           // stream would replay as a stale target the moment the plan completes.
@@ -657,7 +694,9 @@ function OverlaySlot({
           languageName={stream?.languageName ?? null}
           // AE4 lives on the resolved stream; re-deriving it here would drift.
           claimsLanguage={stream?.claimsLanguage ?? false}
-          excerptToken={state.excerptToken}
+          // The centerpiece's excerpt id is stable across its dub hops, so the title card
+          // reveals ONCE and the language tag crossfades per hop — no card re-flash.
+          restartKey={excerpt.id}
         />
       )
 

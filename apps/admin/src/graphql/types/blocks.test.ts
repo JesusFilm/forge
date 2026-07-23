@@ -10,12 +10,18 @@
 // Structural drift between Zod and Pothos lives in `blocks.drift.test.ts`.
 
 import { describe, expect, it, vi } from "vitest"
+
+vi.mock("@/services/video-image-blur-data-url.service", () => ({
+  getOrScheduleVideoImageBlurDataUrl: vi.fn().mockResolvedValue(null),
+}))
+
 import {
   T_TO_TYPENAME,
   UnknownBlockKindError,
   type BlockKind,
 } from "@/graphql/types/blocks"
 import { schema } from "@/graphql/schema"
+import { getOrScheduleVideoImageBlurDataUrl } from "@/services/video-image-blur-data-url.service"
 import {
   type GraphQLUnionType,
   type GraphQLObjectType,
@@ -132,6 +138,7 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
   mediaCollection: {
     t: "mediaCollection",
     variant: "grid",
+    thumbnailOrientation: "vertical",
     itemsSource: "manual",
     showItemNumbers: false,
     items: [],
@@ -510,6 +517,313 @@ describe("MediaCollectionItem videoSlug resolver", () => {
   })
 })
 
+describe("MediaCollectionItem video image metadata resolvers", () => {
+  const scheduleBlurGeneration = vi.mocked(getOrScheduleVideoImageBlurDataUrl)
+
+  it("schedules blur metadata generation for linked video images missing metadata", async () => {
+    scheduleBlurGeneration.mockClear()
+    const load = vi.fn().mockResolvedValue([
+      {
+        id: "image-1",
+        mobileCinematicHigh: "https://imagedelivery.net/account/image/w=448",
+        mobileCinematicLow: null,
+        videoStill: null,
+        url: null,
+        thumbnail: null,
+        blurDataUrl: null,
+        dominantColor: null,
+      },
+    ])
+    const prisma = {}
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "videoImageBlurDataUrl",
+    )(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma,
+        loaders: {
+          videoImagesByVideoId: { load },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(load).toHaveBeenCalledWith("video-1")
+    expect(scheduleBlurGeneration).toHaveBeenCalledWith({
+      imageId: "image-1",
+      imageUrl: "https://imagedelivery.net/account/image/w=448",
+      prisma,
+    })
+  })
+
+  it("schedules dominant color repair when blur metadata already exists without color", async () => {
+    scheduleBlurGeneration.mockClear()
+    const load = vi.fn().mockResolvedValue([
+      {
+        id: "image-1",
+        mobileCinematicHigh: null,
+        mobileCinematicLow: null,
+        videoStill: "https://imagedelivery.net/account/still/w=448",
+        url: null,
+        thumbnail: null,
+        blurDataUrl: "data:image/png;base64,LQIP",
+        dominantColor: null,
+      },
+    ])
+    const prisma = {}
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "videoImageDominantColor",
+    )(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma,
+        loaders: {
+          videoImagesByVideoId: { load },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(scheduleBlurGeneration).toHaveBeenCalledWith({
+      imageId: "image-1",
+      imageUrl: "https://imagedelivery.net/account/still/w=448",
+      prisma,
+    })
+  })
+
+  it("returns stored metadata without scheduling when blur and color are complete", async () => {
+    scheduleBlurGeneration.mockClear()
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "videoImageBlurDataUrl",
+    )(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma: {},
+        loaders: {
+          videoImagesByVideoId: {
+            load: vi.fn().mockResolvedValue([
+              {
+                id: "image-1",
+                mobileCinematicHigh:
+                  "https://imagedelivery.net/account/image/w=448",
+                mobileCinematicLow: null,
+                videoStill: null,
+                url: null,
+                thumbnail: null,
+                blurDataUrl: "data:image/png;base64,LQIP",
+                dominantColor: "#123456",
+              },
+            ]),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("data:image/png;base64,LQIP")
+    expect(scheduleBlurGeneration).not.toHaveBeenCalled()
+  })
+})
+
+describe("MediaCollectionItem resolvedTitle resolver", () => {
+  const resolveResolvedTitle = fieldResolver(
+    "MediaCollectionItem",
+    "resolvedTitle",
+  )
+
+  it("returns a trimmed nonblank override without loading the linked video", async () => {
+    const loadVideo = vi.fn()
+    const loadLocales = vi.fn()
+
+    const result = await resolveResolvedTitle(
+      {
+        videoId: "video-1",
+        titleOverride: "  Authored title  ",
+      },
+      { locale: "en" },
+      {
+        loaders: {
+          videoById: { load: loadVideo },
+          videoLocalesByVideoIdAndFilter: { load: loadLocales },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("Authored title")
+    expect(loadVideo).not.toHaveBeenCalled()
+    expect(loadLocales).not.toHaveBeenCalled()
+  })
+
+  it.each(["", "   "])(
+    "falls through a blank override %j to the first nonblank localized title",
+    async (titleOverride) => {
+      const loadVideo = vi.fn().mockResolvedValue({
+        id: "video-1",
+        deletedAt: null,
+      })
+      const loadLocales = vi.fn().mockResolvedValue([
+        { locale: "en", title: "  " },
+        { locale: "en", title: "  Linked title  " },
+      ])
+
+      const result = await resolveResolvedTitle(
+        { videoId: "video-1", titleOverride },
+        { locale: "en" },
+        {
+          loaders: {
+            videoById: { load: loadVideo },
+            videoLocalesByVideoIdAndFilter: { load: loadLocales },
+          },
+        },
+        fakeInfo,
+      )
+
+      expect(result).toBe("Linked title")
+      expect(loadVideo).toHaveBeenCalledWith("video-1")
+      expect(loadLocales).toHaveBeenCalledWith({
+        videoId: "video-1",
+        locale: "en",
+        languageSlug: null,
+        visibleOnly: true,
+      })
+    },
+  )
+
+  it("returns null without loading when the item has no linked video", async () => {
+    const loadVideo = vi.fn()
+    const loadLocales = vi.fn()
+
+    const result = await resolveResolvedTitle(
+      { titleOverride: " " },
+      { locale: "en" },
+      {
+        loaders: {
+          videoById: { load: loadVideo },
+          videoLocalesByVideoIdAndFilter: { load: loadLocales },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(loadVideo).not.toHaveBeenCalled()
+    expect(loadLocales).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["missing", null],
+    [
+      "deleted",
+      {
+        id: "video-1",
+        deletedAt: new Date("2026-07-21T00:00:00.000Z"),
+      },
+    ],
+  ])(
+    "returns null for a %s linked video without loading locales",
+    async (_label, video) => {
+      const loadLocales = vi.fn()
+
+      const result = await resolveResolvedTitle(
+        { videoId: "video-1" },
+        { locale: "en" },
+        {
+          loaders: {
+            videoById: { load: vi.fn().mockResolvedValue(video) },
+            videoLocalesByVideoIdAndFilter: { load: loadLocales },
+          },
+        },
+        fakeInfo,
+      )
+
+      expect(result).toBeNull()
+      expect(loadLocales).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ["missing", []],
+    ["wrong-locale", [{ locale: "es", title: "Titulo" }]],
+    [
+      "blank",
+      [
+        { locale: "en", title: null },
+        { locale: "en", title: "   " },
+      ],
+    ],
+  ])("returns null for %s locale rows", async (_label, locales) => {
+    const result = await resolveResolvedTitle(
+      { videoId: "video-1" },
+      { locale: "en" },
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({
+              id: "video-1",
+              deletedAt: null,
+            }),
+          },
+          videoLocalesByVideoIdAndFilter: {
+            load: vi.fn().mockResolvedValue(locales),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it.each([
+    ["public", null],
+    ["authenticated", { tier: "ADMIN" }],
+  ])(
+    "uses the published exact-locale loader key for %s callers",
+    async (_label, user) => {
+      const loadLocales = vi
+        .fn()
+        .mockResolvedValue([{ locale: "es-419", title: "Titulo" }])
+
+      await resolveResolvedTitle(
+        { videoId: "video-1" },
+        { locale: "es-419" },
+        {
+          user,
+          loaders: {
+            videoById: {
+              load: vi.fn().mockResolvedValue({
+                id: "video-1",
+                deletedAt: null,
+              }),
+            },
+            videoLocalesByVideoIdAndFilter: { load: loadLocales },
+          },
+        },
+        fakeInfo,
+      )
+
+      expect(loadLocales).toHaveBeenCalledWith({
+        videoId: "video-1",
+        locale: "es-419",
+        languageSlug: null,
+        visibleOnly: true,
+      })
+    },
+  )
+})
+
 describe("MediaCollectionBlock defaultCollectionSlug resolver", () => {
   const resolveDefaultCollectionSlug = fieldResolver(
     "MediaCollectionBlock",
@@ -785,6 +1099,7 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.videoSlug).toBeDefined()
+    expect(fields?.languageId).toBeDefined()
     expect(fields?.muxPlaybackId).toBeDefined()
     expect(fields?.coreId).toBeDefined()
     expect(fields?.imageBlurDataUrl).toBeDefined()
@@ -795,6 +1110,15 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionBlock")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.defaultCollectionSlug).toBeDefined()
+  })
+
+  it("exposes thumbnail orientation on MediaCollectionBlock", () => {
+    const type = schema.getType("MediaCollectionBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.thumbnailOrientation).toBeDefined()
+    expect(fields?.thumbnailOrientation?.type.toString()).toBe(
+      "MediaCollectionThumbnailOrientation",
+    )
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

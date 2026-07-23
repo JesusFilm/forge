@@ -39,6 +39,7 @@ import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
+import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
@@ -341,9 +342,16 @@ export default function WatchVideoPage() {
     datadogLog.info("content.resolution", { outcome, content_id: decodedSlug })
   }, [decodedSlug, normalized, offlineSource, hasVideo, seed, loading])
 
-  // Cold deep link with nothing to paint yet → layout-matched skeleton,
-  // never a blank full-screen spinner.
-  if (!hasVideo && seed == null && loading && !offlineSource) {
+  // A seed with no playbackId can't source a stream (series/collection, or no
+  // variant in the target language), so painting 0:00/0:00 player chrome for it
+  // would be a lie. Hold the layout-matched skeleton instead.
+  // The redirect above runs in an effect, so the record resolving would
+  // otherwise paint one frame of this screen before we leave. Hold the skeleton.
+  const seriesRedirectPending = normalized != null && isSeriesRecord(normalized)
+  if (
+    seriesRedirectPending ||
+    (!hasVideo && seed == null && loading && !offlineSource)
+  ) {
     return (
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
@@ -429,15 +437,25 @@ export default function WatchVideoPage() {
               }
         }
       >
-        <VideoPlayer
-          streamingUrl={playerSource}
-          posterUrl={displayPoster}
-          subtitleVttSrc={subtitleVttSrc}
-          onPlayingChange={undefined}
-          fullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          horizontalInset={PLAYER_SIDE_PADDING}
-        />
+        {playerSource == null ? (
+          // No stream yet (series/collection pre-redirect, or no variant in the
+          // target language). Paint the artwork, not transport chrome for
+          // something unplayable.
+          <PlayerPoster
+            posterUrl={displayPoster}
+            horizontalInset={PLAYER_SIDE_PADDING}
+          />
+        ) : (
+          <VideoPlayer
+            streamingUrl={playerSource}
+            posterUrl={displayPoster}
+            subtitleVttSrc={subtitleVttSrc}
+            onPlayingChange={undefined}
+            fullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            horizontalInset={PLAYER_SIDE_PADDING}
+          />
+        )}
       </View>
 
       <ScrollView

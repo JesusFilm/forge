@@ -32,7 +32,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 ### Language
 
-A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons — persisting or re-selecting a user's chosen language — key on the slug; the BCP-47 tag is only for best-effort device-locale matching.
+A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution.
 
 ### Watch Language Inventory
 
@@ -75,6 +75,11 @@ stored for future content-first retrieval.
 A Media Signature is keyed by the source `coreId`, the variant
 `videoVariantId`, signature type, algorithm version, and time offset. It is
 evidence for matching, not catalog metadata.
+
+An algorithm version names the complete extraction and comparison contract.
+Signatures from different versions may coexist but are not interchangeable; a
+project rule requires introducing a new version for sampling or hashing changes
+before readers select it.
 
 ### Media Fingerprint
 
@@ -225,6 +230,10 @@ The language semantic search uses to interpret and match a query. Search Languag
 
 Search Language identity should travel as the public language slug selected or confirmed by the viewer. Locale tags are useful for fallback negotiation and search execution, but they are not the exact identity of the viewer's chosen search language.
 
+### Search Watchability
+
+The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+
 ### Query Language Suggestion
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
@@ -372,9 +381,13 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.
 
+### Media Collection Block
+
+An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
+
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
 
 ### Home Curation
 
@@ -418,7 +431,7 @@ A reel source change performed while a full-screen overlay — a chapter card or
 
 ### Language Centerpiece
 
-The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs roughly every ten seconds, naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
+The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs at the pauses following completed sentences in the video's English subtitle track (every segment plays at least ten seconds and never cuts mid-sentence), naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. A centerpiece whose English track has no usable subtitles degrades to the earlier fixed ~10-second cadence for that video. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
 
 ### Hop Handoff
 
@@ -493,6 +506,12 @@ The TV home's top-of-screen canvas that reflects whatever card currently holds D
 
 ## Watch player UI
 
+### Watch Modal Activity
+
+The aggregate ownership state of every Watch overlay that must suspend route-owned playback, independent of which component renders the overlay or which player is active.
+
+Activity begins when the first owner opens and ends only after the final owner releases through its visible close lifecycle. Resume entitlement belongs to the exact media and source that were playing before activity began; late, replaced, or source-swapped media is paused without inheriting that entitlement.
+
 ### Chrome
 
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
@@ -552,6 +571,10 @@ The server-side read surface over persisted Seeker threads: a signed-in user lis
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
+
+### Managed Prompt
+
+A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI — and each environment gets its own Langfuse project and key pair, so a leaked dev key cannot read tuned production prompt text. Nothing consumes the helper yet; agent wiring is tracked follow-up work (feat-272).
 
 ## Flagged ambiguities
 

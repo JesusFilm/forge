@@ -36,6 +36,44 @@ export const GET_WATCH_SETTING = adminGraphql(
   [adminWatchExperienceFragment],
 )
 
+// ── Watch search query ──────────────────────────────────────────────
+
+// Admin retired the legacy `Query.search` in #1622; `watchSearch` is the
+// multilingual replacement. Selection stays narrow — mobile renders a card grid,
+// so the language/evidence/availability signals web uses are deliberately unread.
+export const WATCH_SEARCH = adminGraphql(`
+  query WatchSearch($input: WatchSearchInput!) {
+    watchSearch(input: $input) {
+      query
+      hasMore
+      nextOffset
+      results {
+        type
+        id
+        slug
+        title
+        imageUrl
+        snippet
+        startSeconds
+        playbackId
+        score
+        label
+        childCount
+      }
+    }
+  }
+`)
+
+/** Whole watchSearch envelope as admin returns it; `undefined` when absent. */
+export type WatchSearchWire =
+  | AdminResultOf<typeof WATCH_SEARCH>["watchSearch"]
+  | undefined
+
+/** One row exactly as admin returns it — every field nullable. */
+export type WatchSearchResultItem = NonNullable<
+  NonNullable<AdminResultOf<typeof WATCH_SEARCH>["watchSearch"]>["results"]
+>[number]
+
 // ── Derived types ───────────────────────────────────────────────────
 
 export type WatchExperience = NonNullable<
@@ -50,8 +88,8 @@ export type AdminBlock = { readonly __typename: string } & Record<
   unknown
 >
 
-// TODO(feat-254): Mobile is outside the P0 Watch web search migration. Keep the
-// UI-facing shape local so Admin can replace Query.search without breaking CI.
+// UI-facing row: narrowed to non-null so cards and routing can read slug/title
+// without guards. `mapWatchSearchResult` drops server rows missing any of them.
 export type SearchResult = {
   readonly type: string
   readonly id: string
@@ -69,6 +107,8 @@ export type SearchResult = {
 export type SearchResponse = {
   readonly query: string
   readonly hasMore: boolean
+  /** Offset to request for the next page; admin owns the cursor arithmetic. */
+  readonly nextOffset: number
   readonly results: readonly SearchResult[]
 }
 

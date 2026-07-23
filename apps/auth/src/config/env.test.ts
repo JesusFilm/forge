@@ -68,6 +68,49 @@ describe("auth env", () => {
     )
   })
 
+  it("allows Admin MCP resource audiences by default", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("AUTH_BASE_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv("AUTH_VALID_AUDIENCES", "")
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret")
+
+    const { getAuthValidAudiences } = await loadEnv()
+
+    expect(getAuthValidAudiences()).toEqual(
+      expect.arrayContaining([
+        "https://auth.jesusfilm.org",
+        "http://localhost:3003/mcp",
+        "https://admin-preview.jesusfilm.org/mcp",
+        "https://admin-stage.jesusfilm.org/mcp",
+        "https://admin.jesusfilm.org/mcp",
+      ]),
+    )
+  })
+
+  it("adds configured OAuth audiences", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("AUTH_BASE_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv(
+      "AUTH_VALID_AUDIENCES",
+      "https://custom.example.test, https://admin.jesusfilm.org/mcp",
+    )
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret")
+
+    const { getAuthValidAudiences } = await loadEnv()
+
+    expect(getAuthValidAudiences()).toEqual(
+      expect.arrayContaining([
+        "https://custom.example.test",
+        "https://admin.jesusfilm.org/mcp",
+      ]),
+    )
+    expect(
+      getAuthValidAudiences().filter(
+        (audience) => audience === "https://admin.jesusfilm.org/mcp",
+      ),
+    ).toHaveLength(1)
+  })
+
   it("fails closed when the production runtime secret is missing", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("NEXT_PHASE", "")

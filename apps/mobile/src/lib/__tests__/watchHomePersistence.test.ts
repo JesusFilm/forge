@@ -256,4 +256,51 @@ describe("parseStoredHomeSnapshot", () => {
     expect(parsed?.videos).toEqual(videos)
     expect(parsed?.blocks).toEqual(blocks)
   })
+
+  it("carries hydrationVideos separately from config videos (v3 top-up cache)", () => {
+    const hydrationVideos = [
+      { coreId: "6_Acts0401", slug: "lumo-acts-1-1-8-3" },
+    ]
+    const blob = JSON.stringify({
+      version: WATCH_HOME_SNAPSHOT_VERSION,
+      persistedAt: NOW.getTime(),
+      videos,
+      hydrationVideos,
+    })
+    expect(parseStoredHomeSnapshot(blob, NOW)?.hydrationVideos).toEqual(
+      hydrationVideos,
+    )
+  })
+
+  it("defaults hydrationVideos to [] when absent (config-only snapshot)", () => {
+    expect(parseStoredHomeSnapshot(valid, NOW)?.hydrationVideos).toEqual([])
+  })
+
+  it("filters non-object hydrationVideos items", () => {
+    const blob = JSON.stringify({
+      version: WATCH_HOME_SNAPSHOT_VERSION,
+      persistedAt: NOW.getTime(),
+      videos,
+      hydrationVideos: [{ coreId: "6_Acts0401" }, "junk", null],
+    })
+    expect(parseStoredHomeSnapshot(blob, NOW)?.hydrationVideos).toEqual([
+      { coreId: "6_Acts0401" },
+    ])
+  })
+
+  it("round-trips hydrationVideos through the JSON serializer", () => {
+    const hydrationVideos = [
+      { coreId: "6_Acts0401", slug: "lumo-acts-1-1-8-3" },
+    ]
+    const parsed = parseStoredHomeSnapshot(
+      serializeHomeSnapshotFromVideosJson(
+        JSON.stringify(videos),
+        NOW,
+        "null",
+        JSON.stringify(hydrationVideos),
+      ),
+      NOW,
+    )
+    expect(parsed?.hydrationVideos).toEqual(hydrationVideos)
+  })
 })

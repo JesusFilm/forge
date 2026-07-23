@@ -180,6 +180,31 @@ describe("BlockSchema — all top-level types validate", () => {
     expect(result.success).toBe(true)
   })
 
+  it("accepts explicit media collection thumbnail orientations without changing legacy blocks", () => {
+    const legacy = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+    })
+    const horizontal = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+    })
+
+    expect(legacy.success).toBe(true)
+    if (legacy.success && legacy.data.t === "mediaCollection") {
+      expect(legacy.data.thumbnailOrientation).toBeUndefined()
+    }
+    expect(horizontal.success).toBe(true)
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        thumbnailOrientation: "square",
+      }).success,
+    ).toBe(false)
+  })
+
   it("videoRecommendations accepts seed + limit overrides", () => {
     const result = VideoRecommendationsBlockSchema.safeParse({
       t: "videoRecommendations",
@@ -602,6 +627,8 @@ describe("videoHero authoring modes", () => {
   it("accepts authored streaming URL", () => {
     const result = VideoHeroBlockSchema.safeParse({
       t: "videoHero",
+      videoId: "video-1",
+      languageId: "english-language",
       streamingUrl: "https://cdn.example/video.m3u8",
       heading: "Watch",
     })

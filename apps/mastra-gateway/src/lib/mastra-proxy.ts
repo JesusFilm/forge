@@ -4,6 +4,7 @@ import { env, getGatewayBaseUrl } from "@/config/env"
 import {
   GATEWAY_SESSION_COOKIE,
   readGatewaySessionCookie,
+  type GatewaySession,
 } from "@/lib/gateway-session"
 
 const hopByHopHeaders = new Set([
@@ -22,8 +23,15 @@ const bodyEncodingHeaders = new Set(["content-encoding", "content-length"])
 export async function proxyMastraRequest(
   request: Request,
   upstreamPath: string,
+  options: {
+    authorizationKey?: string
+    allowedRoles?: readonly string[]
+    revalidateSession?: (
+      session: GatewaySession,
+    ) => Promise<GatewaySession | null>
+  } = {},
 ) {
-  const session = await readGatewaySessionCookie(
+  let session = await readGatewaySessionCookie(
     getCookieValue(request.headers.get("cookie"), GATEWAY_SESSION_COOKIE),
   )
 
@@ -33,7 +41,20 @@ export async function proxyMastraRequest(
     return NextResponse.redirect(loginUrl)
   }
 
-  if (!env.MASTRA_INTERNAL_BASE_URL || !env.MASTRA_INTERNAL_API_KEY) {
+  if (options.revalidateSession) {
+    session = await options.revalidateSession(session)
+    if (!session) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+  }
+
+  if (options.allowedRoles && !options.allowedRoles.includes(session.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const authorizationKey =
+    options.authorizationKey ?? env.MASTRA_INTERNAL_API_KEY
+  if (!env.MASTRA_INTERNAL_BASE_URL || !authorizationKey) {
     return NextResponse.json(
       { error: "Mastra gateway upstream is not configured." },
       { status: 503 },
@@ -50,7 +71,7 @@ export async function proxyMastraRequest(
   headers.delete("cookie")
   headers.delete("host")
   headers.set("accept-encoding", "identity")
-  headers.set("authorization", `Bearer ${env.MASTRA_INTERNAL_API_KEY}`)
+  headers.set("authorization", `Bearer ${authorizationKey}`)
   headers.set("x-forge-user-subject", session.subject)
   if (session.email) headers.set("x-forge-user-email", session.email)
   headers.set("x-forge-studio-role", session.role)

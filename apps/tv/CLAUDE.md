@@ -139,9 +139,9 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
   unprovisioned build boots normally (dev builds log a `[datadog] RUM disabled` warning).
   Provision via `eas env:create` per environment (see `.env.example` and the TV runbook in
   `docs/observability/datadog.md`). `EXPO_PUBLIC_DATADOG_ENV` defaults by build type
-  (`__DEV__` → development, release → production); the preview EAS environment sets
+  (`__DEV__` → development, release → prod); the preview EAS environment sets
   `EXPO_PUBLIC_DATADOG_ENV=preview` explicitly — preview is a release build and would
-  otherwise tag external testers' sessions `env:production`.
+  otherwise tag external testers' sessions `env:prod`.
 - **Client token, never an API key** — RUM creds ship in the bundle (`EXPO_PUBLIC_*`).
 - **Site is the mobile enum** (`US1`, `EU1`, …), NOT web's `datadoghq.com`. Default `US1`.
 - **firstPartyHosts** targets the admin GraphQL host so RUM resources trace-link to admin APM.
@@ -194,7 +194,7 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 
 ## Common Pitfalls
 
-- tvOS silently drops a `player.currentTime` seek issued right after `expo-video`'s `replaceAsync` resolves (item not yet seekable) — no error, playback just starts at 0:00. Any mid-video start needs the self-healing re-seek at the `timeUpdate` choke point (`needsWindowStartSeek` in `reelPlayerGate.ts`); see `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`.
+- tvOS silently drops a `player.currentTime` seek issued right after `expo-video`'s `replaceAsync` resolves (item not yet seekable) — no error, playback just starts at 0:00. Any mid-video start needs the self-healing re-seek, now at TWO sites in `reelPlayerGate.ts`: re-issued at the `readyToPlay` status event (the first guaranteed-seekable point, `windowStartSeekOnReady` — deliberately NOT gated on the confirmed token, which is unset that early) and backstopped at the `timeUpdate` choke point (`needsWindowStartSeek`); see `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`.
 - `replaceAsync` blanks the video surface for the whole HLS re-init on tvOS — no single-player mask can make a mid-play source swap seamless. The showcase reel's language hops therefore run TWO long-lived players (`ReelPlayer.tsx` + `hopHandoff.ts`): standby preloads the next dub (gate readiness on `status === "readyToPlay"` — position/buffer read plausibly off an item wedged in `loading`), the outgoing ROLLS past its window end as the motion cover, and views crossfade only on CONFIRMED playback (event + poll + re-issued `play()`, which tvOS can swallow after a fresh seek). The KTD-2 leak law forbids player/view CHURN, not a second fixed instance. Telemetry: `showcase_hop_handoff` mode=flip\|fallback, `showcase_hop_preload_failed`.
 - Android TV VideoView z-order: renders on top of all RN Views.
 - Focus lost on back-navigation (react-native-tvos #852): Home remembers the focused node (`createFocusMemory`) and re-focuses it via `requestTVFocus()` on `useFocusEffect` re-entry. `hasTVPreferredFocus` is mount-only and does not restore on pop.

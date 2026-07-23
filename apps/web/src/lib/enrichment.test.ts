@@ -15,6 +15,7 @@ const GENERIC_ASSET_BLUR =
 
 const base = {
   videoId: "v-1",
+  resolvedTitle: "Title",
   titleOverride: "Title",
   subtitleOverride: "Subtitle",
   labelOverride: "Feature Film",
@@ -195,7 +196,9 @@ describe("enrichMediaItem image resolution", () => {
     const result = enrichMediaItem({
       ...base,
       coreId: "unknown-core-id",
-      muxPlaybackId: "mux-authored-item",
+      videoDub: {
+        muxVideo: { playbackId: "mux-authored-item" },
+      },
       imageUrl: null,
       imageOverrideUrl: null,
     })
@@ -203,34 +206,87 @@ describe("enrichMediaItem image resolution", () => {
       "https://image.mux.com/mux-authored-item/thumbnail.jpg",
     )
   })
-})
 
-describe("enrichMediaItem other fields", () => {
-  it("uses overrides for title/subtitle/label/collectionSize", () => {
+  it("uses the authored videoDub mux playback id for previews", () => {
     const result = enrichMediaItem({
       ...base,
       imageUrl: null,
+      videoDub: {
+        language: { slug: "spanish-latin-american" },
+        muxVideo: { playbackId: "mux-authored-dub" },
+      },
+    })
+
+    expect(result.muxPlaybackId).toBe("mux-authored-dub")
+  })
+
+  it("uses the authored item language slug when no direct dub exists", () => {
+    const result = enrichMediaItem({
+      ...base,
+      videoSlug: "lumo-the-gospel-of-mark",
+      languageSlug: "spanish-latin-american",
+      videoDub: null,
+      imageUrl: null,
+    })
+
+    expect(result.languageSlug).toBe("spanish-latin-american")
+  })
+
+  it("does not use a standalone muxPlaybackId fallback for authored media items", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: null,
+      muxPlaybackId: "mux-page-language-fallback",
+    })
+
+    expect(result.muxPlaybackId).toBeNull()
+  })
+})
+
+describe("enrichMediaItem other fields", () => {
+  it("uses the Admin-resolved linked title with authored metadata", () => {
+    const result = enrichMediaItem({
+      ...base,
+      resolvedTitle: "  Linked Video Title  ",
+      imageUrl: null,
       imageOverrideUrl: null,
     })
-    expect(result.title).toBe("Title")
+    expect(result.title).toBe("Linked Video Title")
     expect(result.subtitle).toBe("Subtitle")
     expect(result.label).toBe("Feature Film")
     expect(result.collectionSize).toBe("61 chapters")
   })
 
-  it("defaults to empty string when overrides are null", () => {
+  it.each([null, "", "   "])(
+    "leaves the title empty when resolvedTitle is %j",
+    (resolvedTitle) => {
+      const result = enrichMediaItem({
+        videoId: "v-2",
+        resolvedTitle,
+        titleOverride: null,
+        subtitleOverride: null,
+        labelOverride: null,
+        collectionSize: null,
+        imageUrl: null,
+      })
+      expect(result.title).toBe("")
+      expect(result.subtitle).toBe("")
+      expect(result.label).toBe("")
+      expect(result.collectionSize).toBe("")
+    },
+  )
+
+  it("does not reconstruct title precedence from titleOverride", () => {
     const result = enrichMediaItem({
       videoId: "v-2",
-      titleOverride: null,
+      resolvedTitle: null,
+      titleOverride: "Client-side fallback",
       subtitleOverride: null,
       labelOverride: null,
       collectionSize: null,
       imageUrl: null,
     })
     expect(result.title).toBe("")
-    expect(result.subtitle).toBe("")
-    expect(result.label).toBe("")
-    expect(result.collectionSize).toBe("")
   })
 
   it("uses videoId as the id and never populates videoSlug", () => {

@@ -13,6 +13,20 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { collectionDownloadModalMock, resolveDownloadSessionAccessMock } =
+  vi.hoisted(() => ({
+    collectionDownloadModalMock: vi.fn(() => null),
+    resolveDownloadSessionAccessMock: vi.fn(),
+  }))
+
+vi.mock("next/dynamic", () => ({
+  default: () => collectionDownloadModalMock,
+}))
+
+vi.mock("@/components/watch/download-session-access", () => ({
+  resolveDownloadSessionAccess: resolveDownloadSessionAccessMock,
+}))
+
 vi.mock("@/components/watch/SeriesHero", () => ({
   SeriesHero: vi.fn(({ overlay }: { overlay?: React.ReactNode }) => (
     <div data-testid="series-hero-mock">{overlay}</div>
@@ -147,6 +161,13 @@ beforeEach(() => {
   languagePickerModalMock.mockClear()
   pushMock.mockClear()
   writePreferredLanguageSlugMock.mockClear()
+  collectionDownloadModalMock.mockClear()
+  resolveDownloadSessionAccessMock.mockReset()
+  resolveDownloadSessionAccessMock.mockResolvedValue({
+    ok: true,
+    accountGateEnabled: false,
+  })
+  window.history.replaceState({}, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -197,19 +218,33 @@ function makeChildren(count: number): Series["children"] {
   })) as Series["children"]
 }
 
-function makeSelectedVariant(): SelectedVariant {
+function makeSelectedVariant(
+  language: {
+    slug: string
+    bcp47: string
+    name: string
+    coreId?: string
+    nativeName?: string
+  } = {
+    slug: "english",
+    bcp47: "en",
+    name: "English",
+    coreId: "529",
+    nativeName: "English",
+  },
+): SelectedVariant {
   return {
     documentId: "variant-1",
-    slug: "english",
+    slug: language.slug,
     published: true,
     hls: "https://cdn.example/storyclubs.m3u8",
     duration: 30,
     language: {
-      coreId: "529",
-      bcp47: "en",
-      slug: "english",
-      name: "English",
-      nativeName: "English",
+      coreId: language.coreId ?? null,
+      bcp47: language.bcp47,
+      slug: language.slug,
+      name: language.name,
+      nativeName: language.nativeName ?? language.name,
     },
     downloads: [],
     muxVideo: { playbackId: "playback-id-storyclubs" },
@@ -367,6 +402,210 @@ describe("SeriesPageClient — share modal state machine", () => {
   })
 })
 
+describe("SeriesPageClient — collection downloads", () => {
+  it("renders the control only when the collection has episodes", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(2) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="series-page-download-button"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: [] })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="series-page-download-button"]'),
+    ).toBeNull()
+  })
+
+  it("opens the anonymous lazy modal when the account gate is disabled", async () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(2) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(resolveDownloadSessionAccessMock).toHaveBeenCalledTimes(1)
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        collectionSlug: "storyclubs",
+        episodes: [
+          expect.objectContaining({ documentId: "episode-1" }),
+          expect.objectContaining({ documentId: "episode-2" }),
+        ],
+        accountGateEnabled: false,
+        authRequiredLoginUrl: null,
+      }),
+      undefined,
+    )
+  })
+
+  it("passes an enabled account gate to the authenticated modal", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: true,
+    })
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        accountGateEnabled: true,
+        authRequiredLoginUrl: null,
+      }),
+      undefined,
+    )
+  })
+
+  it("passes the sign-in URL to the collection modal", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: false,
+      accountGateEnabled: true,
+      reason: "auth-required",
+      loginUrl: "/login",
+    })
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        accountGateEnabled: true,
+        authRequiredLoginUrl: "/login",
+      }),
+      undefined,
+    )
+  })
+
+  it("does not replace a newer share modal when session checking finishes", async () => {
+    let resolveSession:
+      | ((value: { ok: true; accountGateEnabled: false }) => void)
+      | undefined
+    resolveDownloadSessionAccessMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-share-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    await act(async () => {
+      resolveSession?.({ ok: true, accountGateEnabled: false })
+      await Promise.resolve()
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("share")
+  })
+
+  it("reopens the collection flow after returning from sign-in", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: true,
+    })
+    window.history.replaceState({}, "", "/storyclubs.html/en.html?download=1")
+    await act(async () => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(resolveDownloadSessionAccessMock).toHaveBeenCalledTimes(1)
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ accountGateEnabled: true }),
+      undefined,
+    )
+    expect(window.location.search).toBe("")
+  })
+})
+
 describe("SeriesPageClient — passthrough to children", () => {
   it("passes the resolved audio language slug into the episodes grid", () => {
     const childDubLanguages = makeChildDubLanguages([
@@ -508,7 +747,31 @@ describe("SeriesPageClient — header language switcher + language modal", () =>
     const seriesHeroProps = vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]
     expect(seriesHeroProps?.playableLanguageCount).toBe(2)
     expect(seriesHeroProps?.onLanguageClick).toEqual(expect.any(Function))
+    expect(seriesHeroProps?.languageSlug).toBe("english")
     listener.cleanup()
+  })
+
+  it("passes the route language to the hero when the playable parent trailer has a different language", () => {
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "spanish-castilian" }, { languageSlug: "hindi" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ childDubLanguages })}
+          selectedVariant={makeSelectedVariant({
+            slug: "hindi",
+            bcp47: "hi",
+            name: "Hindi",
+          })}
+          locale="spanish-castilian"
+        />,
+      )
+    })
+
+    const seriesHeroProps = vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]
+    expect(seriesHeroProps?.selectedVariant?.language?.slug).toBe("hindi")
+    expect(seriesHeroProps?.languageSlug).toBe("spanish-castilian")
   })
 
   it("opens the language modal from the global header switcher", () => {

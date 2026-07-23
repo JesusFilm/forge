@@ -10,7 +10,6 @@ import {
   Globe2,
   LogIn,
   Play,
-  X as XIcon,
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -121,7 +120,6 @@ export function DownloadModal({
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
   const fileSizeLabel = t("fileSizeLabel")
-  const tWatchModal = useTranslations("WatchModal")
   // Localized label for a quality tier. `bucketDownloads` carries an English
   // `label` for back-compat, but the rendered text is resolved here so it
   // translates.
@@ -400,18 +398,6 @@ export function DownloadModal({
 
   const modalHeader = (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end sm:hidden">
-        <button
-          type="button"
-          aria-label={tWatchModal("close")}
-          data-testid="watch-download-modal-mobile-close"
-          onClick={() => handleOpenChange(false)}
-          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none sm:hidden"
-        >
-          <XIcon aria-hidden className="h-6 w-6" />
-        </button>
-      </div>
-
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-6">
         <div
           data-testid="watch-download-modal-poster"
@@ -467,18 +453,18 @@ export function DownloadModal({
   if (authRequired) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <WatchModalViewportCloseButton
-          open={open}
-          onClose={() => handleOpenChange(false)}
-          testId="watch-download-modal-close"
-          className="hidden sm:flex"
-        />
         <DialogContent
           data-testid="watch-download-modal"
           className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
           overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+          viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
           showCloseButton={false}
         >
+          <WatchModalViewportCloseButton
+            open={open}
+            onClose={() => handleOpenChange(false)}
+            testId="watch-download-modal-close"
+          />
           <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
           <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
@@ -528,18 +514,18 @@ export function DownloadModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <WatchModalViewportCloseButton
-        open={open}
-        onClose={() => handleOpenChange(false)}
-        testId="watch-download-modal-close"
-        className="hidden sm:flex"
-      />
       <DialogContent
         data-testid="watch-download-modal"
         className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
         showCloseButton={false}
       >
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={() => handleOpenChange(false)}
+          testId="watch-download-modal-close"
+        />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
         <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
