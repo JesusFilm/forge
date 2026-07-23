@@ -91,6 +91,15 @@ pnpm --filter @forge/mobile test
 pnpm --filter @forge/tv test
 ```
 
+> **Added 2026-07-23.** This consumer-side gate cannot detect a consumer left on
+> a compile shim. When #1622 shimmed `apps/tv` and `apps/mobile` search to return
+> an empty array, every command above stayed green while search was entirely dead
+> in both apps — a stub satisfies `typecheck` by construction, and the unit tests
+> that would have caught it were deleted in the same commit. For any consumer not
+> migrating in the same PR, add a behavioral check (a real query against the new
+> surface) and treat a deleted contract assertion as a release blocker. See
+> `docs/solutions/best-practices/compile-shim-empty-return-hides-downstream-contract-drift.md`.
+
 For indexes that must be created through Prisma migrations, avoid this shape:
 
 ```sql

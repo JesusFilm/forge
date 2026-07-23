@@ -25,7 +25,9 @@ Set them as EAS environment variables per environment (do NOT commit them):
 # point preview + production builds at prod admin GraphQL
 npx eas-cli env:create --environment preview    --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
 npx eas-cli env:create --environment production --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
-# prod admin REQUIRES a search token: set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN to TV's OWN fleet key
+# Search token: set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN to TV's OWN fleet key. Since #1622 the
+# watchSearch resolver is PUBLIC, so search works without it — the key buys the per-device
+# rate-limit bucket instead of admin's coarse per-IP one.
 # (a dedicated entry in admin's FLEET_ADMIN_API_KEYS CSV — never mobile's value).
 # Use --visibility sensitive, NOT secret: EAS rejects `secret` for EXPO_PUBLIC_* vars (they inline
 # into the bundle, so the value is extractable by design — the abuse ceiling is the guard, not secrecy).

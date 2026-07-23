@@ -319,13 +319,16 @@ healthy embeddings and continue from missing, legacy, or incomplete rows.
 
 ## Known-caller auth
 
-### Search Passport
+### Known-Caller Check
 
-The request-level check on the public search surface that asks "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — a passport identifies the caller class, nothing more. Distinct from editor/session auth.
+The request-level question "are you a known caller?" rather than "what may you do?". Any key from any known-caller class satisfies it, and it grants no data permissions — it identifies the caller class, nothing more. Distinct from editor/session auth.
+_Avoid:_ Search Passport
+
+Which surfaces apply it as an admission gate is a per-surface decision. Public read surfaces admit anonymous callers regardless, and use a presented key only to select the Rate-Limit Identity — so a missing or unrecognised key on such a surface changes the caller's budget, never their access.
 
 ### Consumer Bearer
 
-A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Search Passport while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
+A known-caller key issued to a consumer-facing app surface (web, mobile, TV) that satisfies the Known-Caller Check while carrying no permissions beyond public access. Each surface holds its own dedicated key so revocation and rotation stay per-surface.
 
 A Consumer Bearer doubles as the request's Rate-Limit Identity: every request presenting the same key spends one shared budget. That is correct for a single-egress server and hazardous for a Fleet Client — on a fleet, the key must ride only on the operations the server actually gates.
 
@@ -579,3 +582,4 @@ A system prompt whose tunable text lives in Langfuse — versioned, label-addres
 ## Flagged ambiguities
 
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
+- "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
