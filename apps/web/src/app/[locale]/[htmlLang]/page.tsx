@@ -36,13 +36,38 @@ type PageProps = {
   params: Promise<{ locale: string; htmlLang: string }>
 }
 
+const WATCH_HOME_TITLE =
+  "Watch Free Jesus Movies & Bible Videos | Jesus Film Project"
+const WATCH_HOME_DESCRIPTION =
+  "Watch free movies about Jesus, Gospel films, Bible videos, and Christian series. Explore faith, prayer, hope, and the story of Jesus in your language."
+const WATCH_HOME_SOCIAL_TITLE =
+  "Watch Free Films About Jesus | Jesus Film Project"
+const WATCH_HOME_SOCIAL_DESCRIPTION =
+  "Explore free films, series, and Bible videos that bring the life of Jesus to every screen and many languages."
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { locale: rawLocale } = await params
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
-  return getWatchPageMetadata(locale)
+  const metadata = await getWatchPageMetadata(locale)
+
+  return {
+    ...metadata,
+    title: WATCH_HOME_TITLE,
+    description: WATCH_HOME_DESCRIPTION,
+    openGraph: {
+      ...metadata.openGraph,
+      title: WATCH_HOME_SOCIAL_TITLE,
+      description: WATCH_HOME_SOCIAL_DESCRIPTION,
+    },
+    twitter: {
+      ...metadata.twitter,
+      title: WATCH_HOME_SOCIAL_TITLE,
+      description: WATCH_HOME_SOCIAL_DESCRIPTION,
+    },
+  }
 }
 
 export default async function HomePage({ params }: PageProps) {

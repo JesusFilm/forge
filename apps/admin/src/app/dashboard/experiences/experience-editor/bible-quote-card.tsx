@@ -102,8 +102,7 @@ export function BibleQuoteCard({
   onSetDragHandleState,
 }: BibleQuoteCardProps) {
   const itemRecord = asRecord(item)
-  const backgroundImageUrl =
-    asString(itemRecord?.backgroundImageUrl) || asString(itemRecord?.imageUrl)
+  const backgroundImageUrl = asString(itemRecord?.backgroundImagePreviewUrl)
   const hasBackgroundImage = backgroundImageUrl.length > 0
   const hasMediaLibraryImage = Boolean(
     asString(itemRecord?.backgroundImageAssetId) ||

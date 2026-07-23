@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { type CSSProperties } from "react"
-import { ChevronDown, ImageIcon, Plus, Trash2 } from "lucide-react"
+import { ChevronDown, Plus, Trash2 } from "lucide-react"
 import { cx } from "@/components/admin-ui"
 import {
   BackgroundColorPicker,
@@ -24,8 +24,7 @@ import {
 
 function slotAccentStyle(slot: BlockRecord): CSSProperties | null {
   const backgroundColor = asString(slot.backgroundColor)
-  const backgroundImageUrl = asString(slot.backgroundImageUrl)
-  if (!isHexColor(backgroundColor) && !backgroundImageUrl) return null
+  if (!isHexColor(backgroundColor)) return null
 
   const style: CSSProperties = {}
 
@@ -33,12 +32,6 @@ function slotAccentStyle(slot: BlockRecord): CSSProperties | null {
     style.background = `linear-gradient(90deg, transparent 0%, ${normalizeHexColor(
       backgroundColor,
     )} 100%)`
-  }
-
-  if (backgroundImageUrl) {
-    style.backgroundImage = `linear-gradient(90deg, transparent 0%, rgba(5,6,10,0.2) 38%, rgba(5,6,10,0.74) 100%), url("${backgroundImageUrl}")`
-    style.backgroundPosition = "center"
-    style.backgroundSize = "cover"
   }
 
   return style
@@ -61,7 +54,7 @@ type ContainerGridEditorProps = {
   onRemoveSlot: (slotIndex: number) => void
   onSlotVisualChange: (
     slotIndex: number,
-    field: "backgroundColor" | "backgroundImageUrl",
+    field: "backgroundColor",
     value: string,
   ) => void
   onOpenSlotContent: (childIndex: number) => void
@@ -74,11 +67,6 @@ const VIEWPORT_LABELS: Record<GridBreakpoint, string> = {
   lg: "LG",
   xl: "XL",
 }
-const selectedMediaButtonClassName =
-  "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
-const idleMediaButtonClassName =
-  "border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
-
 export function ContainerGridEditor({
   blockIndex,
   blockRecord,
@@ -95,16 +83,6 @@ export function ContainerGridEditor({
   const content = readContainerContent(blockRecord)
   const slotMarkerIndexes = containerSlotMarkerIndexes(content)
   const [viewportMenuOpen, setViewportMenuOpen] = useState(false)
-
-  function chooseSlotBackgroundImage(
-    slotIndex: number,
-    slotRecord: BlockRecord,
-  ) {
-    const current = asString(slotRecord.backgroundImageUrl)
-    const nextValue = window.prompt("Background image URL", current)
-    if (nextValue === null) return
-    onSlotVisualChange(slotIndex, "backgroundImageUrl", nextValue.trim())
-  }
 
   return (
     <div className="mt-4 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-4">
@@ -216,24 +194,6 @@ export function ContainerGridEditor({
                       triggerClassName="h-8 w-8"
                       align="right"
                     />
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onActivate()
-                        chooseSlotBackgroundImage(slotIndex, item)
-                      }}
-                      className={cx(
-                        "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border transition-colors duration-[120ms] ease-out",
-                        item.backgroundImageAssetId
-                          ? selectedMediaButtonClassName
-                          : idleMediaButtonClassName,
-                      )}
-                      aria-pressed={Boolean(item.backgroundImageAssetId)}
-                      aria-label={`Choose slot ${slotIndex + 1} background image`}
-                    >
-                      <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
-                    </button>
                     <button
                       type="button"
                       onClick={(event) => {

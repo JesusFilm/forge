@@ -92,9 +92,13 @@ export function formatCitationReference(c: WatchBibleCitation): string | null {
   return `${c.bookName} ${chapter}:${verse}`
 }
 
-type BibleQuoteCard = NonNullable<
+type BibleQuoteBase = NonNullable<
   BibleQuotesCarouselBlockModel["quotes"]
->[number] & { id: string }
+>[number]
+type BibleQuoteCard = BibleQuoteBase & {
+  id: string
+  imageUrl?: string | null
+}
 
 /**
  * BibleQuotesCarouselRenderer input from bible citations, or null when none have
@@ -115,6 +119,8 @@ export function buildBibleQuotesBlock(
         reference,
         text: verses[c.documentId] ?? "",
         attribution: null,
+        imageAsset: null,
+        backgroundImageAsset: null,
         imageUrl: BIBLE_IMAGES[i % BIBLE_IMAGES.length],
         backgroundColor: null,
         ctaLabel: null,
@@ -128,6 +134,8 @@ export function buildBibleQuotesBlock(
     reference: "Free Resources",
     text: "Want to explore life's biggest questions?",
     attribution: null,
+    imageAsset: null,
+    backgroundImageAsset: null,
     imageUrl: PROMO_IMAGE_URL,
     backgroundColor: null,
     ctaLabel: "Join Our Bible Study",

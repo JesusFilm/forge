@@ -3,7 +3,6 @@
  * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
  * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
  */
-import { rewriteSeedPosterUrl } from "../mediaImageUrl"
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
 import {
   buildVideoByCoreIdIndex,
@@ -31,8 +30,9 @@ type ExperienceItem = {
   labelOverride?: string | null
   collectionSize?: string | null
   imageUrl?: string | null
-  imageOverrideUrl?: string | null
 }
+
+type ThumbnailOrientation = WatchHomeSection["orientation"]
 
 // KTD10 parity: item coreIds ride as a $coreIds GraphQL variable, but validate
 // before they reach the top-up union anyway.
@@ -61,18 +61,8 @@ function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
-// A rail whose every item has a poster override renders PORTRAIT regardless of
-// variant: those overrides are vertical posters (curated art) a 16:9 card would
-// crop. Cinematic rails (no override) stay landscape.
-function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
-  return (
-    items.length > 0 &&
-    items.every(
-      (it) =>
-        typeof it.imageOverrideUrl === "string" &&
-        it.imageOverrideUrl.trim() !== "",
-    )
-  )
+function mapThumbnailOrientation(value: unknown): ThumbnailOrientation | null {
+  return value === "vertical" || value === "horizontal" ? value : null
 }
 
 function itemToCard(
@@ -110,7 +100,6 @@ function itemToCard(
   // Curated seed → inline image → linked-video art → the item's mux thumbnail
   // (last resort when hydration is unavailable) → none.
   const imageUrl =
-    rewriteSeedPosterUrl(item.imageOverrideUrl) ??
     item.imageUrl ??
     hydratedImage ??
     muxThumbnailFromPlaybackId(item.muxPlaybackId) ??
@@ -155,6 +144,7 @@ function blockToSection(
   const { layout, orientation } = mapVariant(
     b.mediaCollectionVariant as string | null,
   )
+  const thumbnailOrientation = mapThumbnailOrientation(b.thumbnailOrientation)
   return {
     // index disambiguates the FlashList key when a block omits sectionKey — the
     // fallback would otherwise collapse to one constant for every such block.
@@ -164,7 +154,7 @@ function blockToSection(
     title: blockTitle || categoryLabel,
     description: (b.subtitle as string | null) ?? null,
     layout,
-    orientation: isPortraitPosterRail(rawItems) ? "vertical" : orientation,
+    orientation: thumbnailOrientation ?? orientation,
     showSequenceNumbers: (b.showItemNumbers as boolean | null) ?? false,
     cards,
   }

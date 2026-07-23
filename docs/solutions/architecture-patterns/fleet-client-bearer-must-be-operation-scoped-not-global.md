@@ -34,6 +34,18 @@ tags:
 
 # Fleet-client bearer must be operation-scoped, never global
 
+> **Mechanism updated 2026-07-23 (admin #1622).** The incident below is
+> historical: `Query.search` and `SEARCH_AUTH_REQUIRED` no longer exist, and the
+> replacement `watchSearch` is unconditionally public — a missing or stale bearer
+> is now IGNORED, never rejected, so this failure never presents as
+> `UNAUTHENTICATED` again. The **rule is unchanged and was re-proved on TV**: the
+> bearer must stay scoped to exactly the search operation, and the operation name
+> is now `WatchSearch`. What changed is the symptom — a mismatch is silent, and
+> costs only the per-device rate-limit bucket, which makes it harder to notice.
+> `apps/tv` now pins the constant to the query document with a source-scanning
+> guard test; see
+> `docs/solutions/best-practices/compile-shim-empty-return-hides-downstream-contract-drift.md`.
+
 ## Context
 
 When admin activated `SEARCH_AUTH_REQUIRED` (Plan 002 phased search-auth

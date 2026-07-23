@@ -82,6 +82,15 @@ The mistake to avoid is choosing storage by **credential count** or
 
 ## Worked instance: admin's `/api/search` surface (JFP Forge)
 
+> **Status update 2026-07-23 (admin #1622).** The surface this instance was built
+> on is gone — the `/api/search` route, `isAnyKnownBearer`, and `search-bearer.ts`
+> were all deleted. The `PartnerApiKey` table, the `partner-keys` CLI, and the
+> read-only dashboard still exist, but `verifyPartnerToken` now has **no caller in
+> any request path**: the store is orphaned, not merely idle. Treat the
+> storage-choice reasoning below as sound and still applicable; do not assume a
+> partner token presented today is checked by anything. Whether to re-point the
+> store at `watchSearch` or retire it is an open decision.
+
 Admin's `/api/search` had ONE bearer-key surface (`SEARCH_API_KEYS`
 env CSV, Plan 002, shipped 2026-05-17). Three months later, the
 question was whether to:

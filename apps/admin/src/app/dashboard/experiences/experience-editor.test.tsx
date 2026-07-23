@@ -411,7 +411,7 @@ describe("ExperienceEditor", () => {
         t: "section",
         sectionKey: "story-section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-1",
         content: [
           {
             t: "text",
@@ -430,7 +430,7 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Edit Section")
     expect(html).toContain("Choose Section background color")
     expect(html).toContain("Choose Section image from asset library")
-    expect(html).toContain("https://example.com/section.jpg")
+    expect(html).toContain("/api/media-assets/asset-1/preview")
     expect(html).toContain("Section copy")
     expect(html).toContain("https://example.com/section-card.jpg")
     expect(html).not.toContain("Background Color")
@@ -613,6 +613,49 @@ describe("ExperienceEditor", () => {
     )
   })
 
+  it("switches media collection thumbnails between vertical and horizontal", () => {
+    const view = renderEditorDom([
+      {
+        t: "mediaCollection",
+        sectionKey: "media",
+        variant: "carousel",
+        thumbnailOrientation: "vertical",
+        itemsSource: "manual",
+        title: "Media",
+        items: [],
+      },
+    ])
+
+    try {
+      const orientationSwitch = view.container.querySelector(
+        'button[role="switch"][aria-label="Use horizontal video thumbnails"]',
+      )
+      if (!(orientationSwitch instanceof HTMLButtonElement)) {
+        throw new Error("Thumbnail orientation switch not found")
+      }
+
+      expect(orientationSwitch.getAttribute("aria-checked")).toBe("false")
+      expect(orientationSwitch.textContent).toContain("Vertical")
+
+      act(() => {
+        orientationSwitch.click()
+      })
+
+      expect(orientationSwitch.getAttribute("aria-checked")).toBe("true")
+      expect(orientationSwitch.textContent).toContain("Horizontal")
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(JSON.parse(blocksInput.value)).toMatchObject([
+        { thumbnailOrientation: "horizontal" },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("renders a real empty state for questions and answers", () => {
     const html = renderEditor([
       {
@@ -682,7 +725,6 @@ describe("ExperienceEditor", () => {
           t: "section",
           sectionKey: "story-section",
           backgroundColor: "#26313f",
-          backgroundImageUrl: "",
           content: [],
         },
       ],
@@ -1729,10 +1771,7 @@ describe("ExperienceEditor", () => {
           "child-1",
           "child-2",
         ])
-        expect(blocks[0]?.items?.map((item) => item.imageOverrideUrl)).toEqual([
-          "https://example.com/episode-one.jpg",
-          "https://example.com/episode-two.jpg",
-        ])
+        expect(blocks[0]?.items?.some((item) => "imageUrl" in item)).toBe(false)
       } finally {
         view.cleanup()
       }

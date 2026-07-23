@@ -27,6 +27,7 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
+import { normalizeWatchRootHref } from "@/lib/watch-paths"
 import {
   Carousel,
   CarouselContent,
@@ -164,6 +165,11 @@ export function MediaCollection({
     footerText: rawFooterText,
     items,
   } = data
+  const thumbnailOrientation = (
+    data as typeof data & {
+      thumbnailOrientation?: "vertical" | "horizontal" | null
+    }
+  ).thumbnailOrientation
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
@@ -210,6 +216,7 @@ export function MediaCollection({
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}
+      thumbnailOrientation={thumbnailOrientation ?? null}
       backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
@@ -248,6 +255,7 @@ function WatchHomeMediaCollection({
   ctaLabel,
   footerText,
   variant,
+  thumbnailOrientation,
   backgroundColor,
   showItemNumbers,
   items,
@@ -262,6 +270,7 @@ function WatchHomeMediaCollection({
   ctaLabel: string | null
   footerText: string | null
   variant: string | null
+  thumbnailOrientation: "vertical" | "horizontal" | null
   backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
@@ -269,8 +278,10 @@ function WatchHomeMediaCollection({
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
-  const isVerticalGrid = variant === "collection"
-  const isVertical = isRail || isVerticalGrid
+  const orientation =
+    thumbnailOrientation ??
+    (isRail || variant === "collection" ? "vertical" : "horizontal")
+  const isVertical = orientation === "vertical"
   const defaultBackgroundUrl =
     items.map(mediaItemBackdropImageUrl).find((imageUrl) => imageUrl) ?? null
   const latestHoveredBackgroundUrlRef = useRef<string | null>(null)
@@ -282,7 +293,8 @@ function WatchHomeMediaCollection({
   const [hoverBackdropLayers, setHoverBackdropLayers] = useState<
     HoverBackdropLayer[]
   >([])
-  const watchHref = ctaLink ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const watchHref =
+    normalizeWatchRootHref(ctaLink) ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
   const sectionBackgroundColor =
     backgroundColor ?? (isRail ? "#5b1537" : "#050505")
   const tintStyle = tintOverlayStyle(backgroundColor, isRail)
@@ -526,12 +538,15 @@ function WatchHomeMediaCollection({
                 <CarouselItem
                   key={`${item.id}-${index}`}
                   data-testid="media-collection-carousel-item"
-                  className="max-w-[200px] py-1 pl-5"
+                  className={cn(
+                    "py-1 pl-5",
+                    isVertical ? "max-w-[200px]" : "max-w-[360px]",
+                  )}
                 >
                   <VideoCard
                     item={item}
                     index={index}
-                    orientation="vertical"
+                    orientation={orientation}
                     showItemNumbers={showItemNumbers}
                     fallbackLanguageSlug={fallbackLanguageSlug}
                     onHover={() =>
@@ -557,8 +572,8 @@ function WatchHomeMediaCollection({
             data-testid="media-collection-grid"
             className={cn(
               "grid",
-              isVerticalGrid ? "gap-4" : "gap-5",
-              isVerticalGrid
+              isVertical ? "gap-4" : "gap-5",
+              isVertical
                 ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
                 : variant === "hero" || variant === "player"
                   ? "grid-cols-1 md:grid-cols-2"
@@ -570,7 +585,7 @@ function WatchHomeMediaCollection({
                 key={`${item.id}-${index}`}
                 item={item}
                 index={index}
-                orientation={isVertical ? "vertical" : "horizontal"}
+                orientation={orientation}
                 showItemNumbers={showItemNumbers}
                 fallbackLanguageSlug={fallbackLanguageSlug}
                 onHover={() =>

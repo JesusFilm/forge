@@ -7,11 +7,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (July 22, 2026)
 
 - **Total tickets:** 413
-- **Complete:** 306
-- **In progress:** 33
+- **Complete:** 307
+- **In progress:** 32
 - **Not started:** 25
 - **Blocked:** 49
-- **Overdue and not complete:** 84
+- **Overdue and not complete:** 83
 
 ## Feature Index
 
@@ -85,7 +85,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-198](content-discovery/feat-198-keyword-first-brand-entity-search.md)                                    | Keyword-first transcript relevance and entity search ranking                                    | nisal      | P1       | 2026-06-22 | 4    | 2026-06-25 | blocked     |
 | [feat-193](content-discovery/feat-193-remove-legacy-scene-embedding-pipeline.md)                               | Remove Legacy Scene Embedding Pipeline                                                          | nisal      | P1       | 2026-06-24 | 3    | 2026-06-26 | complete    |
 | [feat-058](content-discovery/feat-058-deploy-semantic-search-architecture.md)                                  | Deploy Semantic Search Architecture                                                             | tataihono  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
-| [feat-232](content-discovery/feat-232-yt-video-mapper-arbitrary-raw-clip-matching.md)                          | YouTube mapper arbitrary raw clip matching                                                      | nisal      | P1       | 2026-07-03 | 10   | 2026-07-12 | in-progress |
+| [feat-232](content-discovery/feat-232-yt-video-mapper-arbitrary-raw-clip-matching.md)                          | YouTube mapper arbitrary raw clip matching                                                      | nisal      | P1       | 2026-07-03 | 10   | 2026-07-12 | complete    |
 | [feat-242](content-discovery/feat-242-watch-search-video-only-default.md)                                      | Watch search video-only default                                                                 | urim       | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
 | [feat-244](content-discovery/feat-244-search-modal-instant-shell.md)                                           | Search modal instant input shell                                                                | urim       | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
 | [feat-244](content-discovery/feat-244-watch-search-modal-focus-alignment.md)                                   | Watch search modal focus alignment                                                              | urim       | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
@@ -343,6 +343,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-289](platform/feat-289-watch-modal-close-position-system.md)                     | Watch Modal Close Position System                                                | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-295](platform/feat-295-watch-mediacollection-video-image-metadata-generation.md) | Restore Watch MediaCollection video image metadata generation                    | unassigned | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-287](platform/feat-287-auth-google-account-chooser-production-verification.md)   | Auth Google Account Chooser Production Verification                              | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | not-started |
+| [feat-298](platform/feat-298-remove-experience-image-override-url.md)                  | Remove Experience image override URL fields                                      | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |

@@ -590,6 +590,100 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
+  it("passes the actual UI locale while preserving an absent route language", async () => {
+    setRequestLocale("es")
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="search-mode-harness-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeLanguageSlug: null,
+        uiLocale: "es",
+      }),
+    )
+  })
+
+  it("preserves a canonical English localized-home route", async () => {
+    navigationMocks.pathname = "/english.html"
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="search-mode-harness-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeLanguageSlug: "english",
+        uiLocale: "en",
+      }),
+    )
+  })
+
+  it.each([
+    "/not-a-language.html",
+    "/jesus.html/not-a-language.html",
+    "/lumo.html/episode/not-a-language.html",
+    "/not-a-language.html/languages",
+    "/not-a-language.html/history",
+    "/not-a-language.html/videos",
+  ])("does not forward an invalid route language from %s", async (pathname) => {
+    navigationMocks.pathname = pathname
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="search-mode-harness-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ routeLanguageSlug: null }),
+    )
+  })
+
   it.each([
     "/french.html/videos",
     "/french.html/languages",

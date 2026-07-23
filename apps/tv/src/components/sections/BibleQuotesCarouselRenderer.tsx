@@ -9,6 +9,7 @@ import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { blockImageAssetPreviewUrl } from "../../lib/blockImageAsset"
 import { FocusableCard } from "../FocusableCard"
 import { LinkModal } from "../LinkModal"
 import { SecondaryPill } from "../watch/DetailsActionRow"
@@ -34,6 +35,8 @@ type QuoteItem = {
   text: string | null
   attribution?: string | null
   imageUrl?: string | null
+  imageAsset?: unknown
+  backgroundImageAsset?: unknown
   backgroundColor?: string | null
   ctaLabel?: string | null
   ctaLink?: string | null
@@ -56,7 +59,12 @@ function QuoteCard({
   onPress: () => void
   focusAnchor: "center" | "left"
 }) {
-  const imageSource = resolveImageUrl(quote.imageUrl ?? null)
+  const imageSource = resolveImageUrl(
+    blockImageAssetPreviewUrl(quote.imageAsset) ??
+      blockImageAssetPreviewUrl(quote.backgroundImageAsset) ??
+      quote.imageUrl ??
+      null,
+  )
   // WATCH cards sit on a near-black surface (mirrors HomeCard), not warm stone.
   // A CMS-supplied color still wins; NEAR_BLACK is a hex so the scrim gradient's
   // hexToRgba(bgColor, 0) fade stays valid.
@@ -116,7 +124,21 @@ export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
   const heading = section.bqcHeading
-  const quotes: QuoteItem[] = section.quotes ?? []
+  const quotes: QuoteItem[] = (section.quotes ?? []).map((quote) => {
+    const localImageUrl = (quote as { imageUrl?: unknown }).imageUrl
+
+    return {
+      reference: quote.reference,
+      text: quote.text,
+      attribution: quote.attribution,
+      imageAsset: quote.imageAsset,
+      backgroundImageAsset: quote.backgroundImageAsset,
+      imageUrl: typeof localImageUrl === "string" ? localImageUrl : null,
+      backgroundColor: quote.backgroundColor,
+      ctaLabel: quote.ctaLabel,
+      ctaLink: quote.ctaLink,
+    }
+  })
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
   // 4+ cards overflow the canvas → the rail left-aligns (listContentLeftAligned).
   // Cards still scale from center: left-anchoring the first card grew it rightward

@@ -58,7 +58,7 @@ function makeManualItem(overrides: Record<string, unknown> = {}) {
     subtitleOverride: null,
     labelOverride: null,
     collectionSize: null,
-    imageUrl: null,
+    imageAsset: null,
     ...overrides,
   }
 }
@@ -226,6 +226,55 @@ describe("MediaCollection VideoCard href", () => {
         ?.querySelector('[data-testid="media-collection-grid"]')
         ?.getAttribute("class"),
     ).toContain("md:grid-cols-3")
+  })
+
+  it("renders an authored horizontal carousel without changing its layout variant", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({ thumbnailOrientation: "horizontal" })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const carouselItem = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-carousel-item"]',
+    )
+    const cardImage = container.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"] > div',
+    )
+
+    expect(carouselItem?.className).toContain("max-w-[360px]")
+    expect(carouselItem?.className).not.toContain("max-w-[200px]")
+    expect(cardImage?.className).toContain("aspect-video")
+    expect(cardImage?.className).not.toContain("aspect-[2/3]")
+  })
+
+  it("renders an authored vertical grid without changing its layout variant", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            thumbnailOrientation: "vertical",
+          })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const grid = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-grid"]',
+    )
+    const cardImage = container.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"] > div',
+    )
+
+    expect(grid?.className).toContain("grid-cols-2")
+    expect(grid?.className).toContain("md:grid-cols-4")
+    expect(cardImage?.className).toContain("aspect-[2/3]")
+    expect(cardImage?.className).not.toContain("aspect-video")
   })
 
   it.each([
@@ -497,8 +546,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                },
               },
               {
                 videoId: "v-blank",
@@ -508,8 +559,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                },
               },
             ],
           })}
@@ -671,6 +724,28 @@ describe("MediaCollection VideoCard href", () => {
     expect(
       container.querySelector<HTMLAnchorElement>("a[href='/watch/featured']"),
     ).not.toBeNull()
+  })
+
+  it("normalizes an authored root CTA to the watch base path", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>(
+          "[data-testid='media-collection-cta']",
+        )
+        ?.getAttribute("href"),
+    ).toBe("/watch")
   })
 
   it("uses the current localized collection for route video children", () => {
@@ -1011,8 +1086,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/poster.jpg",
-                imageOverrideDominantColor: "#787e16",
+                imageAsset: {
+                  previewUrl: "https://example.com/poster.jpg",
+                  dominantColor: "#787e16",
+                },
               },
             ],
           })}
@@ -1044,8 +1121,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/still.jpg",
-                videoImageDominantColor: "#123456",
+                imageAsset: {
+                  previewUrl: "https://example.com/still.jpg",
+                  dominantColor: "#123456",
+                },
               },
             ],
           })}

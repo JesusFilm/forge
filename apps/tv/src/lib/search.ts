@@ -1,9 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { getApolloClient } from "./apolloClient"
 import { datadogLog } from "./datadog"
-import { type SearchResult } from "./queries"
+import { WATCH_SEARCH, type SearchResult } from "./queries"
 import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
 import { meetsMinQueryLength } from "./searchGate"
+import {
+  admitRunSearch,
+  releasesSkipFlag,
+  shouldRefireLiveQuery,
+} from "./searchQueue"
+import {
+  buildWatchSearchInput,
+  mapWatchSearchResponse,
+  parseSearchErrorCode,
+  SEARCH_LANGUAGE_SLUG,
+} from "./watchSearch"
 import {
   generateSearchRequestId,
   resolveWatchSearchOutcome,
@@ -34,6 +46,8 @@ function emitWatchSearchLog(
   resultCount: number,
   startedAt: number,
   searchRequestId: string,
+  // Failure classification only — without it every failure looks like a timeout.
+  errorCode?: string,
 ): void {
   datadogLog.info("watch_search analytics", {
     "watch_search.outcome": outcome,
@@ -41,6 +55,7 @@ function emitWatchSearchLog(
     "watch_search.latency_ms": Date.now() - startedAt,
     "watch_search.request_type": WATCH_SEARCH_REQUEST_TYPE,
     "watch_search.search_request_id": searchRequestId,
+    ...(errorCode ? { "watch_search.error_code": errorCode } : {}),
   })
 }
 
@@ -73,13 +88,14 @@ type UseSemanticSearchResult = {
 
 type UseSemanticSearchOptions = {
   debounceMs?: number
-  locale?: string
+  /** Admin language SLUG ("english"), NOT a BCP-47 tag — see SEARCH_LANGUAGE_SLUG. */
+  displayLanguageSlug?: string
   limit?: number
 }
 
 /**
- * Debounced semantic search. Temporarily shimmed for non-P0 TV while Watch web
- * search v2 lands; the hook contract stays stable for callers. Guards:
+ * Debounced semantic search via getApolloClient().query, fetchPolicy 'no-cache'
+ * (NOT useLazyQuery — fetchMore drops page 1, mobile-search-ui-patterns). Guards:
  * requestIdRef drops stale responses, isSubmittingRef blocks rapid-⏎ dups.
  */
 export function useSemanticSearch(
@@ -88,7 +104,7 @@ export function useSemanticSearch(
 ): UseSemanticSearchResult {
   const {
     debounceMs = DEFAULT_DEBOUNCE_MS,
-    locale = "en",
+    displayLanguageSlug = SEARCH_LANGUAGE_SLUG,
     limit = 40,
   } = options
 
@@ -113,6 +129,13 @@ export function useSemanticSearch(
   // its timer. Otherwise a chip-click setQuery→runQuery flow leaves a
   // queued debounce that fires a duplicate Apollo request 600ms later.
   const skipNextDebounceRef = useRef(false)
+  // Live query mirror, read on settle to chase a query the in-flight guard
+  // dropped. Reading live (not a captured value) is what stops an abandoned
+  // term from resurrecting after the user has moved on.
+  const queryRef = useRef(query)
+  queryRef.current = query
+  // Self-reference for that re-fire; runSearch can't call itself directly.
+  const runSearchRef = useRef<((q: string) => void) | null>(null)
 
   // isSubmittingRef is the sole source of truth for in-flight state. A
   // prior React-state mirror lagged a render, letting two ⏎ in one tick
@@ -138,18 +161,19 @@ export function useSemanticSearch(
 
   const runSearch = useCallback(
     async (q: string) => {
-      // Double-submit guard: if another search is already in-flight,
-      // ignore this call. The stale-response guard below handles the
-      // reverse case (older response after a newer query fires).
-      if (isSubmittingRef.current) {
+      // Double-submit guard; the stale-response guard below covers the reverse.
+      // Trimming happens here, not at the write site, so sanitizeQuery can keep
+      // whitespace and "hello world" isn't eaten mid-stroke.
+      const admission = admitRunSearch(q, isSubmittingRef.current)
+      if (releasesSkipFlag(admission)) skipNextDebounceRef.current = false
+      if (admission.kind === "in-flight") {
         if (__DEV__) console.log("[search] skipped — already submitting:", q)
+        // The settle path re-reads the live query and chases it, so the drop is
+        // recovered without capturing (and later resurrecting) this term.
         return
       }
-      // Trim at the firing site, not the write site: sanitizeQuery keeps
-      // whitespace so typing "hello world" isn't eaten mid-stroke. Only
-      // suppress the call when the trimmed query is empty.
-      const trimmed = q.trim()
-      if (trimmed.length === 0) return
+      if (admission.kind === "empty") return
+      const trimmed = admission.trimmed
 
       const thisRequest = requestIdRef.current + 1
       requestIdRef.current = thisRequest
@@ -166,7 +190,12 @@ export function useSemanticSearch(
       const startedAt = Date.now()
 
       if (__DEV__) {
-        console.log("[search] firing query:", { q, thisRequest, locale, limit })
+        console.log("[search] firing query:", {
+          q,
+          thisRequest,
+          displayLanguageSlug,
+          limit,
+        })
       }
 
       // Safety net: if the search request never settles within
@@ -190,19 +219,37 @@ export function useSemanticSearch(
         setResults([])
         setState("error")
         isSubmittingRef.current = false
-        emitWatchSearchLog("failed", 0, startedAt, requestSearchId)
+        emitWatchSearchLog("failed", 0, startedAt, requestSearchId, "timeout")
         // Bump requestIdRef so any late-arriving response from this
         // request is dropped (treat it as stale).
         requestIdRef.current += 1
       }, SEARCH_SAFETY_TIMEOUT_MS)
 
       try {
-        // TODO(feat-254): Temporary non-P0 compile shim. TV keeps the search
-        // hook contract while Admin replaces the legacy Query.search surface
-        // for Watch web first.
-        void locale
-        void limit
-        const items: SearchResult[] = []
+        const client = getApolloClient()
+        const response = await client.query({
+          query: WATCH_SEARCH,
+          variables: {
+            // Send the trimmed value: sanitizeQuery keeps whitespace at the
+            // write site, so we strip once here rather than shipping
+            // "  hello world  " to the embedding service.
+            input: buildWatchSearchInput({
+              query: trimmed,
+              displayLanguageSlug,
+              clientRequestId: requestSearchId,
+              limit,
+              offset: 0,
+            }),
+          },
+          fetchPolicy: "no-cache",
+        })
+
+        // TV has no "load more" — one page of `limit` results is the whole set,
+        // so hasMore/nextOffset are intentionally dropped here.
+        const items: SearchResult[] = [
+          ...mapWatchSearchResponse(response.data?.watchSearch, trimmed, 0)
+            .results,
+        ]
 
         if (__DEV__) {
           console.log("[search] response received:", {
@@ -236,14 +283,21 @@ export function useSemanticSearch(
           setState("ready")
         }
       } catch (err) {
+        const code = parseSearchErrorCode(err)
         if (__DEV__) {
-          // Keep future request errors dev-only so prod logs never carry raw
-          // query strings.
+          // Apollo errors serialize operation.variables, which contains the user
+          // query — keep this dev-only so prod logs never carry raw queries.
           console.error("[search] request error:", err)
+          // watchSearch is public, so a bad token never surfaces here — it just
+          // costs the per-device rate-limit bucket. rate_limited is the one
+          // code worth calling out, since retrying immediately makes it worse.
+          if (code === "rate_limited") {
+            console.warn("[search] rate limited by admin — back off and retry")
+          }
         }
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
-        emitWatchSearchLog("failed", 0, startedAt, requestSearchId)
+        emitWatchSearchLog("failed", 0, startedAt, requestSearchId, code)
         setResults([])
         setState("error")
       } finally {
@@ -262,11 +316,27 @@ export function useSemanticSearch(
           setLastSubmittedQuery(trimmed)
           // Pair the id with the visible results so a click reuses it.
           setSearchRequestId(requestSearchId)
+
+          // Chase a query the in-flight guard dropped. A still-scheduled
+          // debounce owns its own retry, so only recover the already-fired case.
+          if (
+            shouldRefireLiveQuery(
+              queryRef.current,
+              trimmed,
+              timerRef.current != null,
+            )
+          ) {
+            runSearchRef.current?.(queryRef.current)
+          }
         }
       }
     },
-    [locale, limit],
+    [displayLanguageSlug, limit],
   )
+
+  useEffect(() => {
+    runSearchRef.current = (q: string) => void runSearch(q)
+  }, [runSearch])
 
   // Debounced auto-submit on query change. Empty queries reset state
   // to idle and clear any pending timer.

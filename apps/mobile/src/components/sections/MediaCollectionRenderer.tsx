@@ -10,7 +10,6 @@ import { useRouter } from "expo-router"
 
 import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
-import { rewriteSeedPosterUrl } from "../../lib/mediaImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
   card,
@@ -33,7 +32,6 @@ type MediaItem = {
   labelOverride?: string | null
   collectionSize?: number | null
   imageUrl?: string | null
-  imageOverrideUrl?: string | null
   linkToSectionKey?: string | null
 }
 
@@ -68,12 +66,8 @@ export function MediaCollectionRenderer({
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
     const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
-    // Match TV: the curated override poster (rewritten to the watch origin — the
-    // seed 404s on jesusfilm.org) wins over the video's own landscape thumbnail.
     const thumbnailUrl =
-      resolveThumbnailUrl(rewriteSeedPosterUrl(item.imageOverrideUrl)) ??
-      resolveThumbnailUrl(item.imageUrl) ??
-      resolveThumbnailUrl(resolvedThumb)
+      resolveThumbnailUrl(item.imageUrl) ?? resolveThumbnailUrl(resolvedThumb)
     // Match TV: flat items carry no titleOverride, so fall back to the linked
     // video's localized title before the generic label. `||` so an empty
     // override (admin clears to "") falls through instead of blanking the card.
