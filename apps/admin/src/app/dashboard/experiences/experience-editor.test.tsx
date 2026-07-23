@@ -411,7 +411,7 @@ describe("ExperienceEditor", () => {
         t: "section",
         sectionKey: "story-section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-1",
         content: [
           {
             t: "text",
@@ -430,7 +430,7 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Edit Section")
     expect(html).toContain("Choose Section background color")
     expect(html).toContain("Choose Section image from asset library")
-    expect(html).toContain("https://example.com/section.jpg")
+    expect(html).toContain("/api/media-assets/asset-1/preview")
     expect(html).toContain("Section copy")
     expect(html).toContain("https://example.com/section-card.jpg")
     expect(html).not.toContain("Background Color")
@@ -725,7 +725,6 @@ describe("ExperienceEditor", () => {
           t: "section",
           sectionKey: "story-section",
           backgroundColor: "#26313f",
-          backgroundImageUrl: "",
           content: [],
         },
       ],

@@ -20,24 +20,27 @@ const base = {
 }
 
 describe("enrichMediaItem image resolution", () => {
-  it("uses imageUrl when set", () => {
+  it("uses the image asset preview URL when set", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: ADMIN_FALLBACK,
+      imageAsset: {
+        previewUrl:
+          "https://admin.example.test/api/public/media-assets/asset-1/preview",
+      },
     })
-    expect(result.imageUrl).toBe(ADMIN_FALLBACK)
+    expect(result.imageUrl).toBe(
+      "https://admin.example.test/api/public/media-assets/asset-1/preview",
+    )
   })
 
-  it("returns null when imageUrl and fallbacks are missing or empty", () => {
-    expect(enrichMediaItem({ ...base, imageUrl: null }).imageUrl).toBeNull()
-    expect(enrichMediaItem({ ...base, imageUrl: "" }).imageUrl).toBeNull()
+  it("returns null when no image asset, local thumbnail, or mux fallback exists", () => {
+    expect(enrichMediaItem(base).imageUrl).toBeNull()
   })
 
   it("falls back to known local watch-home thumbnails by coreId", () => {
     const result = enrichMediaItem({
       ...base,
       coreId: "GOMattCollection",
-      imageUrl: null,
     })
     expect(result.imageUrl).toBe(
       "/watch/images/thumbnails/GOMattCollection-vertical.png",
@@ -48,47 +51,54 @@ describe("enrichMediaItem image resolution", () => {
     const result = enrichMediaItem({
       ...base,
       coreId: "GOMattCollection",
-      imageUrl: null,
     })
     expect(result.blurDataUrl).toMatch(/^data:image\/jpeg;base64,/)
   })
 
-  it("prefers authored image blur data over linked video blur data", () => {
+  it("prefers asset image blur data over linked video blur data", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: ADMIN_FALLBACK,
+      imageAsset: {
+        previewUrl: ADMIN_FALLBACK,
+        blurDataUrl: ADMIN_FALLBACK_BLUR,
+      },
       videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
-      imageBlurDataUrl: ADMIN_FALLBACK_BLUR,
     })
     expect(result.blurDataUrl).toBe(ADMIN_FALLBACK_BLUR)
   })
 
-  it("does not pair linked video blur data with an authored image", () => {
+  it("does not pair linked video blur data with an asset image", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: ADMIN_FALLBACK,
+      imageAsset: {
+        previewUrl: ADMIN_FALLBACK,
+        blurDataUrl: null,
+      },
       videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
-      imageBlurDataUrl: null,
     })
     expect(result.blurDataUrl).toBeNull()
   })
 
-  it("prefers authored image dominant color over linked video dominant color", () => {
+  it("prefers asset image dominant color over linked video dominant color", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: ADMIN_FALLBACK,
+      imageAsset: {
+        previewUrl: ADMIN_FALLBACK,
+        dominantColor: ADMIN_FALLBACK_COLOR,
+      },
       videoImageDominantColor: ADMIN_VIDEO_COLOR,
-      imageDominantColor: ADMIN_FALLBACK_COLOR,
     })
     expect(result.dominantColor).toBe(ADMIN_FALLBACK_COLOR)
   })
 
-  it("does not pair linked video dominant color with an authored image", () => {
+  it("does not pair linked video dominant color with an asset image", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: ADMIN_FALLBACK,
+      imageAsset: {
+        previewUrl: ADMIN_FALLBACK,
+        dominantColor: null,
+      },
       videoImageDominantColor: ADMIN_VIDEO_COLOR,
-      imageDominantColor: null,
     })
     expect(result.dominantColor).toBeNull()
   })
@@ -96,7 +106,9 @@ describe("enrichMediaItem image resolution", () => {
   it("ignores the generic fallback dominant color", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: ADMIN_FALLBACK,
+      imageAsset: {
+        previewUrl: ADMIN_FALLBACK,
+      },
       videoImageDominantColor: "#111827",
     })
     expect(result.dominantColor).toBeNull()
@@ -129,8 +141,10 @@ describe("enrichMediaItem image resolution", () => {
     const result = enrichMediaItem({
       ...base,
       coreId: "GOMattCollection",
-      imageUrl: ADMIN_FALLBACK,
-      imageBlurDataUrl: GENERIC_ASSET_BLUR,
+      imageAsset: {
+        previewUrl: ADMIN_FALLBACK,
+        blurDataUrl: GENERIC_ASSET_BLUR,
+      },
     })
     expect(result.blurDataUrl).toBeNull()
   })
@@ -142,7 +156,6 @@ describe("enrichMediaItem image resolution", () => {
       videoDub: {
         muxVideo: { playbackId: "mux-authored-item" },
       },
-      imageUrl: null,
     })
     expect(result.imageUrl).toBe(
       "https://image.mux.com/mux-authored-item/thumbnail.jpg",
@@ -152,7 +165,6 @@ describe("enrichMediaItem image resolution", () => {
   it("uses the authored videoDub mux playback id for previews", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: null,
       videoDub: {
         language: { slug: "spanish-latin-american" },
         muxVideo: { playbackId: "mux-authored-dub" },
@@ -168,7 +180,6 @@ describe("enrichMediaItem image resolution", () => {
       videoSlug: "lumo-the-gospel-of-mark",
       languageSlug: "spanish-latin-american",
       videoDub: null,
-      imageUrl: null,
     })
 
     expect(result.languageSlug).toBe("spanish-latin-american")
@@ -177,7 +188,6 @@ describe("enrichMediaItem image resolution", () => {
   it("does not use a standalone muxPlaybackId fallback for authored media items", () => {
     const result = enrichMediaItem({
       ...base,
-      imageUrl: null,
       muxPlaybackId: "mux-page-language-fallback",
     })
 
@@ -190,7 +200,6 @@ describe("enrichMediaItem other fields", () => {
     const result = enrichMediaItem({
       ...base,
       resolvedTitle: "  Linked Video Title  ",
-      imageUrl: null,
     })
     expect(result.title).toBe("Linked Video Title")
     expect(result.subtitle).toBe("Subtitle")
@@ -208,7 +217,6 @@ describe("enrichMediaItem other fields", () => {
         subtitleOverride: null,
         labelOverride: null,
         collectionSize: null,
-        imageUrl: null,
       })
       expect(result.title).toBe("")
       expect(result.subtitle).toBe("")
@@ -225,17 +233,12 @@ describe("enrichMediaItem other fields", () => {
       subtitleOverride: null,
       labelOverride: null,
       collectionSize: null,
-      imageUrl: null,
     })
     expect(result.title).toBe("")
   })
 
   it("uses videoId as the id and never populates videoSlug", () => {
-    expect(
-      enrichMediaItem({ ...base, imageUrl: null, videoId: "v-7" }).id,
-    ).toBe("v-7")
-    expect(
-      enrichMediaItem({ ...base, imageUrl: null, videoId: "v-7" }).videoSlug,
-    ).toBe("")
+    expect(enrichMediaItem({ ...base, videoId: "v-7" }).id).toBe("v-7")
+    expect(enrichMediaItem({ ...base, videoId: "v-7" }).videoSlug).toBe("")
   })
 })

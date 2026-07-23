@@ -24,9 +24,11 @@ type MediaItem = {
   subtitleOverride: string | null
   labelOverride: string | null
   collectionSize: string | null
-  imageUrl: string | null
-  imageBlurDataUrl?: string | null
-  imageDominantColor?: string | null
+  imageAsset?: {
+    previewUrl?: string | null
+    blurDataUrl?: string | null
+    dominantColor?: string | null
+  } | null
 }
 
 const WATCH_HOME_LOCAL_THUMBNAILS: Record<string, string> = {
@@ -144,8 +146,9 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const label = typeof item.labelOverride === "string" ? item.labelOverride : ""
   const collectionSize = item.collectionSize ?? ""
   const authoredUrl =
-    typeof item.imageUrl === "string" && item.imageUrl.length > 0
-      ? item.imageUrl
+    typeof item.imageAsset?.previewUrl === "string" &&
+    item.imageAsset.previewUrl.length > 0
+      ? item.imageAsset.previewUrl
       : null
   const imageUrl =
     authoredUrl ??
@@ -154,9 +157,9 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
     item.videoImageBlurDataUrl,
   )
-  const fallbackBlurDataUrl = meaningfulBlurDataUrl(item.imageBlurDataUrl)
+  const assetBlurDataUrl = meaningfulBlurDataUrl(item.imageAsset?.blurDataUrl)
   const videoDominantColor = meaningfulColor(item.videoImageDominantColor)
-  const fallbackDominantColor = meaningfulColor(item.imageDominantColor)
+  const assetDominantColor = meaningfulColor(item.imageAsset?.dominantColor)
   // Admin-authored items carry a route slug snapshot when seeded from videos.
   // Renderer skips the `<a href>` when videoSlug is empty (see
   // MediaCollection.tsx `const href = item.videoSlug ? ...`).
@@ -180,7 +183,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     imageUrl,
     blurDataUrl:
       authoredUrl != null
-        ? fallbackBlurDataUrl
+        ? assetBlurDataUrl
         : (videoImageBlurDataUrl ??
           localWatchHomeBlurDataUrl(item.coreId) ??
           demoBlurDataUrl(
@@ -192,7 +195,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
               "media-collection",
           )),
     dominantColor:
-      authoredUrl != null ? fallbackDominantColor : videoDominantColor,
+      authoredUrl != null ? assetDominantColor : videoDominantColor,
     videoSlug,
     languageSlug,
     muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,

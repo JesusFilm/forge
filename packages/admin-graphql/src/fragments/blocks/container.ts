@@ -18,8 +18,15 @@ export const adminContainerFragment = adminGraphql(
       t
       sectionKey
       backgroundColor
-      backgroundImageUrl
       backgroundImageAssetId
+      backgroundImageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       content {
         __typename
         ... on AdventCountdownBlock {

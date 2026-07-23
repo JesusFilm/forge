@@ -18,9 +18,8 @@
 //   - `BlockSchema`                      — top level of `ExperienceLocale.blocks`
 //                                          (excludes quizButton)
 //
-// Media fields: legacy CMS used Strapi media relations; here we store external
-// URL strings until the storage service lands (Unit 11). A future migration
-// can link these to a MediaAsset table.
+// Media fields are asset-backed for authored block visuals. Video-derived
+// images remain resolved from Video rows at read time.
 //
 // Agent extensibility (R25): adding a new block type is (1) add a Zod schema
 // + `t` literal below, (2) add it to the relevant scope union, (3) add UI
@@ -74,13 +73,11 @@ export const BibleQuoteItemSchema = z
     chapterEnd: z.number().int().min(1).optional(),
     verseStart: z.number().int().min(1).optional(),
     verseEnd: z.number().int().min(1).optional(),
-    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
     ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
     ctaLink: z.string().optional(),
     attribution: z.string().optional(),
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
@@ -108,7 +105,6 @@ export const MediaCollectionItemSchema = z
     subtitleOverride: z.string().optional(),
     labelOverride: z.string().optional(),
     collectionSize: z.string().optional(),
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     linkToSectionKey: z.string().optional(),
   })
@@ -120,7 +116,6 @@ export const NavigationCarouselItemSchema = z
     contentId: z.string().min(1),
     title: z.string().min(1),
     category: z.string().optional(),
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
@@ -142,7 +137,6 @@ export const VideoCarouselItemSchema = z
     /** Reference to a Language row by id for language-specific video picks. */
     languageId: z.string().optional(),
     streamingUrl: z.string().optional(),
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
@@ -158,7 +152,6 @@ export const AdventCountdownBlockSchema = z
   .object({
     t: z.literal("adventCountdown"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     title: z.string().min(1),
@@ -172,7 +165,6 @@ export const BibleQuotesCarouselBlockSchema = z
   .object({
     t: z.literal("bibleQuotesCarousel"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -198,7 +190,6 @@ export const CtaBlockSchema = z
   .object({
     t: z.literal("cta"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -213,7 +204,6 @@ export const EasterDatesBlockSchema = z
   .object({
     t: z.literal("easterDates"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     easterDatesTitle: z.string().min(1),
@@ -231,7 +221,6 @@ export const InfoBlocksBlockSchema = z
   .object({
     t: z.literal("infoBlocks"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
@@ -246,7 +235,6 @@ export const MediaCollectionBlockSchema = z
   .object({
     t: z.literal("mediaCollection"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     categoryLabel: z.string().optional(),
@@ -268,7 +256,6 @@ export const NavigationCarouselBlockSchema = z
   .object({
     t: z.literal("navigationCarousel"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     items: z.array(NavigationCarouselItemSchema).default([]),
@@ -279,7 +266,6 @@ export const PromoBannerBlockSchema = z
   .object({
     t: z.literal("promoBanner"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
@@ -312,7 +298,6 @@ export const RelatedQuestionsBlockSchema = z
   .object({
     t: z.literal("relatedQuestions"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -327,7 +312,6 @@ export const TextBlockSchema = z
   .object({
     t: z.literal("text"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -367,7 +351,6 @@ export const VideoCarouselBlockSchema = z
   .object({
     t: z.literal("videoCarousel"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
@@ -390,7 +373,7 @@ export const VideoRecommendationsBlockSchema = z
   .object({
     t: z.literal("videoRecommendations"),
     sectionKey,
-    imageUrl: mediaUrl.optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -461,7 +444,6 @@ export const ContainerSlotBlockSchema = z
     gridSpan: z.number().int().min(1).max(12).default(6),
     spans: ContainerSlotSpansSchema.optional(),
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
   })
   .strict()
@@ -492,7 +474,6 @@ export const ContainerBlockSchema = z
     t: z.literal("container"),
     sectionKey,
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
     content: z.array(ContainerContentBlockSchema).default([]),
     /** Legacy nested-slot payloads are tolerated so old drafts can be opened. */
@@ -538,7 +519,6 @@ export const SectionBlockSchema = z
     t: z.literal("section"),
     sectionKey,
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
     blurHash: z.string().optional(),
     backgroundOpacity: z.number().min(0).max(1).optional(),
@@ -582,75 +562,6 @@ export const BlockSchema = z.discriminatedUnion("t", [
 
 export type Block = z.infer<typeof BlockSchema>
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function nonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0
-}
-
-function hasLegacyOverrideImage(value: unknown) {
-  return (
-    isPlainRecord(value) &&
-    (nonEmptyString(value.imageOverrideUrl) ||
-      nonEmptyString(value.imageOverrideAssetId))
-  )
-}
-
-/**
- * Transitional persistence canonicalizer for Experience block JSON written
- * before authored item art was moved onto the normal image fields.
- */
-export function normalizeLegacyExperienceBlockMediaFields(
-  value: unknown,
-): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeLegacyExperienceBlockMediaFields(item))
-  }
-
-  if (!isPlainRecord(value)) return value
-
-  const normalized: Record<string, unknown> = {}
-  const legacyOverrideAssetId = value.imageOverrideAssetId
-  const legacyOverrideUrl = value.imageOverrideUrl
-  const shouldPromoteAsset =
-    nonEmptyString(legacyOverrideAssetId) && !nonEmptyString(value.imageAssetId)
-  const shouldPromoteUrl =
-    nonEmptyString(legacyOverrideUrl) && !nonEmptyString(value.imageUrl)
-
-  if (shouldPromoteAsset) normalized.imageAssetId = legacyOverrideAssetId
-  if (shouldPromoteUrl) normalized.imageUrl = legacyOverrideUrl
-
-  const oldItems = Array.isArray(value.items) ? value.items : null
-  const shouldPromotePosterRail =
-    value.t === "mediaCollection" &&
-    !nonEmptyString(value.thumbnailOrientation) &&
-    oldItems != null &&
-    oldItems.length > 0 &&
-    oldItems.every(hasLegacyOverrideImage)
-
-  for (const [key, nested] of Object.entries(value)) {
-    if (
-      key === "imageOverrideUrl" ||
-      key === "imageOverrideAssetId" ||
-      key === "imageOverrideBlurDataUrl" ||
-      key === "imageOverrideDominantColor"
-    ) {
-      continue
-    }
-    if (key === "imageAssetId" && shouldPromoteAsset) continue
-    if (key === "imageUrl" && shouldPromoteUrl) continue
-    normalized[key] = normalizeLegacyExperienceBlockMediaFields(nested)
-  }
-
-  if (shouldPromotePosterRail) {
-    normalized.thumbnailOrientation = "vertical"
-  }
-
-  return normalized
-}
-
 /**
  * Schema applied to `ExperienceLocale.blocks` as a whole — an array of
  * top-level blocks. Used by the service layer before writes (Unit 7).
@@ -664,9 +575,6 @@ export function normalizeLegacyExperienceBlockMediaFields(
  * `experience-ai-normalize.ts`). Adding a minimum here would reject valid
  * hand-authored 1-block content.
  */
-export const BlocksSchema = z.preprocess(
-  normalizeLegacyExperienceBlockMediaFields,
-  z.array(BlockSchema),
-)
+export const BlocksSchema = z.array(BlockSchema)
 
 export type Blocks = z.infer<typeof BlocksSchema>

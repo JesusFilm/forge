@@ -56,15 +56,6 @@ const UNSPLASH = "https://images.unsplash.com"
 const unsplash = (id: string, w = 900) =>
   `${UNSPLASH}/${id}?w=${w}&auto=format&fit=crop&q=60`
 
-const COLLECTION_POSTERS = {
-  jesus: "/images/thumbnails/1_jf-0-0-vertical.png",
-  lifeOfJesus: "/images/thumbnails/2_GOJ-0-0-vertical.png",
-  gospelOfMatthew: "/images/thumbnails/GOMattCollection-vertical.png",
-  gospelOfMark: "/images/thumbnails/GOMarkCollection-vertical.png",
-  gospelOfLuke: "/images/thumbnails/GOLukeCollection-vertical.png",
-  gospelOfJohn: "/images/thumbnails/GOJohnCollection-vertical.png",
-} as const
-
 const BSF_CTA = "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
 const ISSUES_CTA = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
 
@@ -387,42 +378,36 @@ async function main(): Promise<void> {
         contentId: "easter-explained/english",
         title: "The True Meaning of Easter",
         category: "Short Video",
-        imageUrl: unsplash("photo-1521106581851-da5b6457f674"),
         backgroundColor: "#1A1815",
       },
       {
         contentId: "my-last-day/english",
         title: "Last hour of Jesus' life from criminal's point of view",
         category: "Short Video",
-        imageUrl: unsplash("photo-1522442676585-c751dab71864"),
         backgroundColor: "#A88E78",
       },
       {
         contentId: "why-did-jesus-have-to-die/english",
         title: "The Purpose of Jesus' Sacrifice",
         category: "Short Video",
-        imageUrl: unsplash("photo-1591561582301-7ce6588cc286"),
         backgroundColor: "#62884C",
       },
       {
         contentId: "did-jesus-come-back-from-the-dead/english",
         title: "The Truth About Jesus' Resurrection",
         category: "Short Video",
-        imageUrl: unsplash("photo-1650658720644-e1588bd66de3"),
         backgroundColor: "#5F4C5E",
       },
       {
         contentId: "the-story-short-film/english",
         title: "The Story: How It All Began and How It Will Never End",
         category: "Short Video",
-        imageUrl: unsplash("photo-1678181896030-11cf0237d704"),
         backgroundColor: "#72593A",
       },
       {
         contentId: "chosen-witness/english",
         title: "Mary Magdalene: A Life Transformed by Jesus",
         category: "Short Video",
-        imageUrl: unsplash("photo-1606876538216-0c70a143dd77"),
         backgroundColor: "#1C160B",
       },
     ],
@@ -551,7 +536,6 @@ async function main(): Promise<void> {
             videoId: lookup("jesus"),
             labelOverride: "Feature Film",
             collectionSize: "61 chapters",
-            imageUrl: COLLECTION_POSTERS.jesus,
             subtitleOverride:
               "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
           },
@@ -559,7 +543,6 @@ async function main(): Promise<void> {
             videoId: lookup("life-of-jesus-gospel-of-john"),
             labelOverride: "Feature Film",
             collectionSize: "49 chapters",
-            imageUrl: COLLECTION_POSTERS.lifeOfJesus,
             subtitleOverride:
               "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
           },
@@ -567,7 +550,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-matthew"),
             labelOverride: "Collection",
             collectionSize: "25 items",
-            imageUrl: COLLECTION_POSTERS.gospelOfMatthew,
             subtitleOverride:
               "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
           },
@@ -575,7 +557,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-mark"),
             labelOverride: "Collection",
             collectionSize: "15 items",
-            imageUrl: COLLECTION_POSTERS.gospelOfMark,
             subtitleOverride:
               "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
           },
@@ -583,7 +564,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-luke"),
             labelOverride: "Collection",
             collectionSize: "26 items",
-            imageUrl: COLLECTION_POSTERS.gospelOfLuke,
             subtitleOverride:
               "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
           },
@@ -591,7 +571,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-john"),
             labelOverride: "Collection",
             collectionSize: "22 items",
-            imageUrl: COLLECTION_POSTERS.gospelOfJohn,
             subtitleOverride:
               "The Gospel of John is a word-for-word portrayal of the biblical text.",
           },
@@ -685,19 +664,16 @@ async function main(): Promise<void> {
         items: [
           {
             videoId: lookup("31-how-did-jesus-die"),
-            imageUrl: imgCinematic("7_0-nfs0301"),
             backgroundColor: "#161817",
             titleOverride: "How Did Jesus Die?",
           },
           {
             videoId: lookup("32-what-happened-next"),
-            imageUrl: imgCinematic("7_0-nfs0302"),
             backgroundColor: "#000906",
             titleOverride: "What Happened Next?",
           },
           {
             videoId: lookup("33-why-is-easter-celebrated-with-bunnies"),
-            imageUrl: imgCinematic("7_0-nfs0303"),
             backgroundColor: "#2B2018",
             titleOverride: "Why is Easter celebrated with bunnies?",
           },

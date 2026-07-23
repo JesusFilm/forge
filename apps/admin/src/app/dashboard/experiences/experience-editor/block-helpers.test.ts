@@ -177,7 +177,6 @@ describe("experience editor block helpers", () => {
       items: [
         {
           videoId: "video-1",
-          imageUrl: "https://example.com/image.jpg",
         },
       ],
     })
@@ -348,7 +347,7 @@ describe("experience editor block helpers", () => {
             {
               reference: "John 3:16",
               text: "For God so loved the world...",
-              backgroundImageUrl: "",
+              backgroundImageAssetId: "",
               imageUrl: "",
               backgroundColor: "",
               ctaEnabled: false,

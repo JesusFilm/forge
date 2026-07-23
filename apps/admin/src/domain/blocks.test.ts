@@ -83,7 +83,7 @@ describe("BlockSchema — all top-level types validate", () => {
       value: {
         t: "container",
         backgroundColor: "#151515",
-        backgroundImageUrl: "https://example.com/container.jpg",
+        backgroundImageAssetId: "asset-container",
         content: [{ t: "containerSlot", gridSpan: 6 }],
       },
     },
@@ -92,7 +92,7 @@ describe("BlockSchema — all top-level types validate", () => {
       value: {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [],
       },
     },
@@ -173,7 +173,7 @@ describe("BlockSchema — all top-level types validate", () => {
           videoId: "video-1",
           titleOverride: "Custom title",
           subtitleOverride: "Custom subtitle",
-          imageUrl: "https://example.com/image.jpg",
+          imageAssetId: "asset-1",
         },
       ],
     })
@@ -269,7 +269,7 @@ describe("BlockSchema — all top-level types validate", () => {
           reference: "John 3:16",
           text: "For God...",
           attribution: "Jesus",
-          backgroundImageUrl: "https://example.com/quote.jpg",
+          backgroundImageAssetId: "asset-quote",
           backgroundColor: "#151515",
           ctaEnabled: true,
           ctaLabel: "Read more",
@@ -436,7 +436,7 @@ describe("container slot responsive spans", () => {
       t: "containerSlot",
       gridSpan: 6,
       backgroundColor: "#26313f",
-      backgroundImageUrl: "https://example.com/slot.jpg",
+      backgroundImageAssetId: "asset-slot",
     })
 
     expect(result.success, JSON.stringify(result)).toBe(true)
@@ -544,7 +544,7 @@ describe("BlocksSchema", () => {
       {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [
           { t: "card", title: "A", description: "B", variant: "default" },
         ],
@@ -555,11 +555,10 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
-  it("accepts canonical media asset ids beside transitional URL fields", () => {
+  it("accepts canonical media asset ids for media collection imagery", () => {
     const input = [
       {
         t: "section",
-        backgroundImageUrl: "https://example.com/section.jpg",
         backgroundImageAssetId: "asset-section",
         content: [
           {
@@ -573,11 +572,9 @@ describe("BlocksSchema", () => {
             t: "mediaCollection",
             variant: "grid",
             itemsSource: "manual",
-            imageUrl: "https://example.com/collection.jpg",
             imageAssetId: "asset-collection",
             items: [
               {
-                imageUrl: "https://example.com/item.jpg",
                 imageAssetId: "asset-item",
               },
             ],
@@ -589,7 +586,7 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
-  it("accepts root-relative admin media preview URLs", () => {
+  it("rejects raw media collection image URLs", () => {
     const input = [
       {
         t: "mediaCollection",
@@ -606,65 +603,7 @@ describe("BlocksSchema", () => {
       },
     ]
 
-    expect(BlocksSchema.safeParse(input).success).toBe(true)
-  })
-
-  it("canonicalizes legacy image override fields before strict validation", () => {
-    const result = BlocksSchema.safeParse([
-      {
-        t: "mediaCollection",
-        variant: "carousel",
-        itemsSource: "manual",
-        items: [
-          {
-            videoId: "video-1",
-            imageOverrideUrl: "https://example.com/poster-1.jpg",
-            imageOverrideAssetId: "asset-1",
-          },
-          {
-            videoId: "video-2",
-            imageOverrideUrl: "https://example.com/poster-2.jpg",
-            imageOverrideAssetId: "asset-2",
-          },
-        ],
-      },
-      {
-        t: "videoCarousel",
-        itemsSource: "manual",
-        items: [
-          {
-            videoId: "video-3",
-            imageOverrideUrl: "https://example.com/video-poster.jpg",
-            imageOverrideAssetId: "asset-3",
-          },
-        ],
-      },
-    ])
-
-    expect(result.success).toBe(true)
-    if (!result.success) return
-    expect(result.data[0]).toMatchObject({
-      thumbnailOrientation: "vertical",
-      items: [
-        {
-          imageUrl: "https://example.com/poster-1.jpg",
-          imageAssetId: "asset-1",
-        },
-        {
-          imageUrl: "https://example.com/poster-2.jpg",
-          imageAssetId: "asset-2",
-        },
-      ],
-    })
-    expect(result.data[1]).toMatchObject({
-      items: [
-        {
-          imageUrl: "https://example.com/video-poster.jpg",
-          imageAssetId: "asset-3",
-        },
-      ],
-    })
-    expect(JSON.stringify(result.data)).not.toContain("imageOverride")
+    expect(BlocksSchema.safeParse(input).success).toBe(false)
   })
 
   it("rejects if any single block is invalid", () => {

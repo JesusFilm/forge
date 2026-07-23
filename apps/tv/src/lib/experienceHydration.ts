@@ -4,6 +4,7 @@
 import { pickCardImage, type CardImageSource } from "./cardImage"
 import { resolveImageUrl } from "./resolveImageUrl"
 import type { NormalizedBlock } from "./normalizer"
+import { blockImageAssetPreviewUrl } from "./blockImageAsset"
 
 // The subset of a hydrated video the card needs (structural, so it accepts the
 // gql.tada result without coupling to the generated type).
@@ -57,7 +58,8 @@ export function collectMediaCollectionCoreIds(
 type MediaItemLike = {
   coreId?: string | null
   titleOverride?: string | null
-  imageUrl?: string | null
+  imageAsset?: unknown
+  imageUrl?: unknown
 }
 
 function firstNonEmpty(
@@ -89,7 +91,10 @@ export function resolveMediaItemImageUrl(
   video: HydratedVideo | undefined,
 ): string | null {
   return (
-    resolveImageUrl(firstNonEmpty(item.imageUrl)) ??
+    resolveImageUrl(blockImageAssetPreviewUrl(item.imageAsset)) ??
+    resolveImageUrl(
+      typeof item.imageUrl === "string" ? firstNonEmpty(item.imageUrl) : null,
+    ) ??
     resolveImageUrl(pickCardImage(video?.images ?? null, "card"))
   )
 }
