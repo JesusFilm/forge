@@ -10,8 +10,9 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { usePathname } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
+import { isPublicWatchLanguageSlug } from "@/lib/locale"
 import { runSearch } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import type { SearchActionResultSource, SearchResult } from "@/lib/search"
@@ -99,6 +100,7 @@ export function FloatingSearchController({
   children,
 }: FloatingSearchControllerProps) {
   const tSearchOverlay = useTranslations("SearchOverlay")
+  const uiLocale = useLocale()
   // usePathname() does NOT force the Full Route Cache deopt that
   // useSearchParams() would. Keep it only for route-language parsing.
   const pathname = usePathname()
@@ -197,7 +199,8 @@ export function FloatingSearchController({
   )
   const routeLanguageSlug = useMemo(() => {
     const parsed = parseWatchPath(pathname)
-    return "lang" in parsed ? parsed.lang : null
+    if (!("lang" in parsed)) return null
+    return isPublicWatchLanguageSlug(parsed.lang) ? parsed.lang : null
   }, [pathname])
   const defaultSearchLanguage = useMemo(
     () =>
@@ -449,6 +452,7 @@ export function FloatingSearchController({
           languageSlug: activeLanguageSlug,
           languageSlugIsExplicit: activeLanguageSlugIsExplicit,
           routeLanguageSlug,
+          uiLocale,
           analytics: {
             detectedQueryLanguage,
             requestType: "search",
@@ -534,6 +538,7 @@ export function FloatingSearchController({
       routeLanguageSlug,
       setQuery,
       tSearchOverlay,
+      uiLocale,
     ],
   )
 
@@ -568,6 +573,7 @@ export function FloatingSearchController({
         languageSlug: expectedSignature.languageSlug,
         languageSlugIsExplicit: expectedSignature.languageSlugIsExplicit,
         routeLanguageSlug,
+        uiLocale,
         analytics: {
           detectedQueryLanguage: expectedSignature.detectedQueryLanguage,
           expectedResultSource: expectedSignature.resultSource,
@@ -612,7 +618,7 @@ export function FloatingSearchController({
         setLoadingMore(false)
       }
     }
-  }, [resultSource, routeLanguageSlug, tSearchOverlay])
+  }, [resultSource, routeLanguageSlug, tSearchOverlay, uiLocale])
 
   const toggleSearchLanguage = useCallback(
     (option: SearchLanguageOption, regionName?: string): void => {
