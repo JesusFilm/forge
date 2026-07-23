@@ -27,6 +27,7 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
+import { normalizeWatchRootHref } from "@/lib/watch-paths"
 import {
   Carousel,
   CarouselContent,
@@ -292,7 +293,8 @@ function WatchHomeMediaCollection({
   const [hoverBackdropLayers, setHoverBackdropLayers] = useState<
     HoverBackdropLayer[]
   >([])
-  const watchHref = ctaLink ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const watchHref =
+    normalizeWatchRootHref(ctaLink) ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
   const sectionBackgroundColor =
     backgroundColor ?? (isRail ? "#5b1537" : "#050505")
   const tintStyle = tintOverlayStyle(backgroundColor, isRail)

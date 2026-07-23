@@ -722,6 +722,28 @@ describe("MediaCollection VideoCard href", () => {
     ).not.toBeNull()
   })
 
+  it("normalizes an authored root CTA to the watch base path", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>(
+          "[data-testid='media-collection-cta']",
+        )
+        ?.getAttribute("href"),
+    ).toBe("/watch")
+  })
+
   it("uses the current localized collection for route video children", () => {
     act(() => {
       root.render(
