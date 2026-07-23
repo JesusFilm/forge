@@ -56,7 +56,7 @@ function buildBatchQuery(videoIds: string[]): string {
   const fields = safeIds
     .map(
       (id, i) =>
-        `v${i}: video(id: "${id}") { id images { mobileCinematicHigh videoStill url } locales(locale: "en") { title } }`,
+        `v${i}: video(id: "${id}") { id images { mobileCinematicHigh mobileCinematicLow videoStill thumbnail url } locales(locale: "en") { title } }`,
     )
     .join("\n    ")
   return `{\n    ${fields}\n  }`

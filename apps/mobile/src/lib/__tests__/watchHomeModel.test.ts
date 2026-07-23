@@ -181,10 +181,20 @@ describe("buildWatchHomeModelFromVideos", () => {
       [image({ videoStill: "still.jpg", url: "url.jpg" })],
       "still.jpg",
     )
-    expectImage([image({ url: "url.jpg", thumbnail: "thumb.jpg" })], "url.jpg")
+    // `url` is the variant-less Cloudflare delivery base (it 400s), so it ranks
+    // last — below `thumbnail`, and below any other image's real art.
+    expectImage(
+      [image({ url: "url.jpg", thumbnail: "thumb.jpg" })],
+      "thumb.jpg",
+    )
+    expectImage([image({ url: "url.jpg" })], "url.jpg")
     expectImage([image({ thumbnail: "thumb.jpg" })], "thumb.jpg")
     // Skips an empty first image record to find a usable later one.
     expectImage([image(), image({ thumbnail: "thumb.jpg" })], "thumb.jpg")
+    expectImage(
+      [image({ url: "url.jpg" }), image({ mobileCinematicHigh: "high.jpg" })],
+      "high.jpg",
+    )
     expectImage([], null)
   })
 
