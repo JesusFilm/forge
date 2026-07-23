@@ -126,7 +126,7 @@ RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts \
 COPY apps/shorts-worker apps/shorts-worker
 COPY packages/shorts-compositions packages/shorts-compositions
 RUN pnpm --filter @forge/shorts-worker build \
-    && pnpm --filter @forge/shorts-worker prebundle /app/bundle
+    && pnpm --filter @forge/shorts-worker prebundle /app/bundle /app/devotional-bundle
 
 # ---------------------------------------------------------------------------
 # prod-deps — production-only node_modules, PRESERVING the pnpm workspace
@@ -170,10 +170,12 @@ COPY --from=media-deps /opt/setup/node_modules/.remotion /app/apps/shorts-worker
 COPY packages/shorts-compositions /app/packages/shorts-compositions
 COPY apps/shorts-worker/package.json /app/apps/shorts-worker/package.json
 COPY --from=build /app/bundle /app/bundle
+COPY --from=build /app/devotional-bundle /app/devotional-bundle
 COPY --from=build /app/apps/shorts-worker/dist /app/apps/shorts-worker/dist
 
 ENV PORT=3012
 ENV SHORTS_WORKER_BUNDLE_DIR=/app/bundle
+ENV SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR=/app/devotional-bundle
 ENV SHORTS_WORKER_WHISPER_MODEL_PATH=/opt/whisper-models/ggml-large-v3-turbo.bin
 ENV SHORTS_WORKER_WHISPER_CPP_DIR=/opt/whisper
 ENV SHORTS_WORKER_WHISPER_CPP_VERSION=1.7.4

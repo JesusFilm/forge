@@ -9,7 +9,7 @@ import {
   AI_GATEWAY_USER_AGENT,
   DEFAULT_AI_GATEWAY_CHAT_BASE_URL,
 } from "../gateway-constants"
-import { getAiChatMemory } from "../memory"
+import { getAiChatMemory } from "../ai-chat-memory"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 
 // ESM-compatible `require` for the provider SDK load below. The provider SDK

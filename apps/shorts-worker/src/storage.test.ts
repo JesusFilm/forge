@@ -1,7 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { Readable } from "node:stream"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ArtifactNotFoundError,
   artifactKey,
@@ -9,6 +10,17 @@ import {
   isNoSuchKeyError,
   type Storage,
 } from "./storage.js"
+
+const { s3Send } = vi.hoisted(() => ({ s3Send: vi.fn() }))
+vi.mock("@aws-sdk/client-s3", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@aws-sdk/client-s3")>()
+  return {
+    ...actual,
+    S3Client: class {
+      send = s3Send
+    },
+  }
+})
 
 describe("artifactKey", () => {
   it("builds {assetId}/{artifactType}.{ext}", () => {
@@ -180,8 +192,10 @@ describe("local storage backend", () => {
 })
 
 describe("s3 storage backend selection", () => {
-  it("reports the s3 backend when a bucket is configured", () => {
-    const storage = createStorage({
+  beforeEach(() => s3Send.mockReset())
+
+  function s3Storage() {
+    return createStorage({
       s3: {
         bucket: "artifacts",
         accessKeyId: "access",
@@ -189,7 +203,71 @@ describe("s3 storage backend selection", () => {
       },
       localRootDir: ".tmp/artifacts",
     })
+  }
+
+  it("reports the s3 backend when a bucket is configured", () => {
+    const storage = s3Storage()
 
     expect(storage.backend).toBe("s3")
+  })
+
+  it.each([
+    [undefined, undefined, 10, undefined],
+    ["bytes=2-5", "bytes=2-5", 4, "bytes 2-5/10"],
+    ["bytes=-3", "bytes=7-9", 3, "bytes 7-9/10"],
+  ])(
+    "streams S3 range %s with exact metadata",
+    async (requestedRange, sentRange, contentLength, contentRange) => {
+      s3Send
+        .mockResolvedValueOnce({ ContentLength: 10 })
+        .mockResolvedValueOnce({
+          Body: Readable.from(Buffer.from("0123456789")),
+          ContentLength: contentLength,
+        })
+      const storage = s3Storage()
+
+      const result = await storage.readArtifactStream(
+        "asset123",
+        "shorts-output-v1",
+        "mp4",
+        requestedRange,
+      )
+
+      expect(s3Send.mock.calls[0][0].constructor.name).toBe("HeadObjectCommand")
+      expect(s3Send.mock.calls[1][0].constructor.name).toBe("GetObjectCommand")
+      expect(s3Send.mock.calls[1][0].input).toMatchObject({
+        Bucket: "artifacts",
+        Key: "asset123/shorts-output-v1.mp4",
+        Range: sentRange,
+      })
+      expect(result.contentLength).toBe(contentLength)
+      expect(result.contentRange).toBe(contentRange)
+    },
+  )
+
+  it("rejects an unsatisfiable S3 range before GET", async () => {
+    s3Send.mockResolvedValueOnce({ ContentLength: 10 })
+    const storage = s3Storage()
+
+    await expect(
+      storage.readArtifactStream(
+        "asset123",
+        "shorts-output-v1",
+        "mp4",
+        "bytes=10-12",
+      ),
+    ).rejects.toMatchObject({ name: "ArtifactRangeNotSatisfiableError" })
+    expect(s3Send).toHaveBeenCalledOnce()
+  })
+
+  it("maps a typed S3 NoSuchKey head failure", async () => {
+    s3Send.mockRejectedValueOnce(
+      Object.assign(new Error("x"), { name: "NoSuchKey" }),
+    )
+    const storage = s3Storage()
+
+    await expect(
+      storage.readArtifactStream("asset123", "shorts-output-v1", "mp4"),
+    ).rejects.toBeInstanceOf(ArtifactNotFoundError)
   })
 })

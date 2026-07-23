@@ -382,6 +382,107 @@ describe("search trace service", () => {
     )
   })
 
+  it("derives Watch trace availability score from the availability kind", async () => {
+    const prisma = buildPrisma()
+
+    await recordWatchSearchTraceSafely(
+      {
+        input: {
+          query: "Jesus",
+          targetLanguageSlug: "english",
+          displayLanguageSlug: "english",
+        },
+        response: {
+          query: "Jesus",
+          requestId: "watch_req_availability",
+          searchMode: "watch-search",
+          degraded: false,
+          latencyMs: 44,
+          hasMore: false,
+          nextOffset: 20,
+          languageInterpretation: {
+            queryLanguageSlug: null,
+            queryNamedLanguageSlug: null,
+            targetLanguageSlug: "english",
+            targetLanguageSource: "explicit_target",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: null,
+            currentWatchLanguageSlug: null,
+            acceptLanguage: null,
+            acceptLanguageSlug: null,
+          },
+          laneStatuses: [],
+          results: [
+            {
+              type: "video",
+              id: "video-jesus",
+              slug: "jesus",
+              title: "JESUS",
+              description: null,
+              snippet: null,
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              playbackId: "mux-english",
+              startSeconds: null,
+              score: 1,
+              scoreBreakdown: {
+                total: 1,
+                sourceRelevance: 0.55,
+                evidenceBoost: 0.2,
+                relevance: 0.75,
+                availability: 0,
+                match: 0.2,
+                sourceScore: 1,
+              },
+              label: null,
+              durationSeconds: null,
+              childCount: null,
+              languageSlug: "english",
+              languageEnglishName: "English",
+              availability: {
+                kind: "target_audio",
+                languageSlug: "english",
+                languageEnglishName: "English",
+                audio: true,
+                subtitles: false,
+              },
+              evidence: {
+                kind: "exact_title",
+                languageSlug: null,
+                label: "Title match",
+              },
+              action: {
+                kind: "watch",
+                hrefLanguageSlug: "english",
+              },
+              fallback: {
+                kind: "none",
+                message: null,
+              },
+            },
+          ],
+        },
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.044Z"),
+        now: new Date("2026-05-01T00:00:00.044Z"),
+      },
+      prisma as unknown as Parameters<typeof recordWatchSearchTraceSafely>[1],
+    )
+
+    const rawData = prisma.searchTrace.create.mock.calls[0]?.[0]?.data
+    expect(rawData.metadata).toMatchObject({
+      results: [
+        {
+          availabilityKind: "target_audio",
+          scoreBreakdown: {
+            availability: 0.25,
+          },
+        },
+      ],
+    })
+  })
+
   it("records admin video-library traces with closed client metadata", async () => {
     const prisma = buildPrisma()
 

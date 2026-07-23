@@ -9,6 +9,7 @@ import { card, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
 import { PressableCard } from "../ui/PressableCard"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const title = (s.title as string | null) ?? "Untitled"
   const subtitle = s.subtitle as string | null
   const sectionKey = s.sectionKey as string | null
-  const streamingUrl = s.streamingUrl as string | null
+  const streamingUrl = blockStreamingUrl(s)
   const videoId = s.videoId as string | null
 
   const resolvedThumb = useVideoThumbnail(videoId)

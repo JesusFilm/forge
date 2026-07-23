@@ -43,10 +43,9 @@ import { refuseUnlessLaneAdmitted } from "../ai-chat-lane-admission"
 import { settleWithinBudget, TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
 import {
   authorizeAiChatThreadAccess,
-  USER_RESOURCE_PREFIX,
   type AiChatOwnershipMemory,
 } from "../ai-chat-thread-ownership"
-import { getAiChatMemory } from "../memory"
+import { aiChatMemoryConfigFor, getAiChatMemory } from "../ai-chat-memory"
 
 // Narrow structural surface of the seeker agent's streaming API (avoids
 // fighting the generic Agent.stream signature; the runtime contract is
@@ -257,13 +256,10 @@ export async function handleSeekerRouteRequest({
     resourceId && resourceId.length > 0
       ? resourceId
       : SEEKER_DEFAULT_RESOURCE_ID
-  // Titling scope (feat-241, KTD12): LLM titles are signed-in-only. Anonymous
-  // and dogfood-fallback threads are permanently unlistable (R2), so titling
-  // them would waste a model call per junk POST on the documented open-proxy
-  // accepted risk — the per-call override disables the Memory-level option.
-  const memory = resource.startsWith(USER_RESOURCE_PREFIX)
-    ? { thread: threadId, resource }
-    : { thread: threadId, resource, options: { generateTitle: false } }
+  // Titling scope (feat-241, KTD12): signed-in-only. The per-call policy —
+  // `options: { generateTitle: false }` for non-`user:` resources — lives
+  // beside the title model in the lane memory module (feat-285).
+  const memory = aiChatMemoryConfigFor(threadId, resource)
 
   // Compose the inbound request signal with the internal turn budget so EITHER
   // a client disconnect or the 90s ceiling aborts the agent run (R9, R10).

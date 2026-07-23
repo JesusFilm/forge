@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { assertRuntimeEnv, parseEnv, RuntimeEnvError } from "./env.js"
+import {
+  assertRuntimeEnv,
+  MAX_RENDER_JOB_TIMEOUT_MS,
+  parseEnv,
+  RuntimeEnvError,
+} from "./env.js"
 
 describe("parseEnv", () => {
   it("applies defaults when unset", () => {
@@ -14,6 +19,7 @@ describe("parseEnv", () => {
     expect(env.SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS).toBe(4_200_000)
     expect(env.SHORTS_WORKER_WHISPER_CPP_VERSION).toBe("1.7.4")
     expect(env.SHORTS_WORKER_BUNDLE_DIR).toBeUndefined()
+    expect(env.SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR).toBeUndefined()
   })
 
   it('treats empty strings as unset (Railway provides "" rather than omitting)', () => {
@@ -33,6 +39,21 @@ describe("parseEnv", () => {
     expect(env.SHORTS_WORKER_QUEUE_LIMIT).toBe(5)
     expect(env.SHORTS_WORKER_RENDER_CONCURRENCY).toBe(4)
   })
+
+  it("keeps the render deadline strictly below Mastra's 80 minute poll ceiling", () => {
+    expect(
+      parseEnv({
+        SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS: String(MAX_RENDER_JOB_TIMEOUT_MS),
+      }).SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS,
+    ).toBe(MAX_RENDER_JOB_TIMEOUT_MS)
+    expect(() =>
+      parseEnv({
+        SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS: String(
+          MAX_RENDER_JOB_TIMEOUT_MS + 1,
+        ),
+      }),
+    ).toThrow()
+  })
 })
 
 const fullProductionSource = {
@@ -44,6 +65,7 @@ const fullProductionSource = {
   RAILWAY_S3_ACCESS_KEY_ID: "access",
   RAILWAY_S3_SECRET_ACCESS_KEY: "secret",
   SHORTS_WORKER_BUNDLE_DIR: "/app/bundle",
+  SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR: "/app/devotional-bundle",
   SHORTS_WORKER_WHISPER_MODEL_PATH:
     "/opt/whisper-models/ggml-large-v3-turbo.bin",
   SHORTS_WORKER_WHISPER_CPP_DIR: "/opt/whisper",

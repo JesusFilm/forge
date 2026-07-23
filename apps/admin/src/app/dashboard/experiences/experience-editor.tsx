@@ -69,6 +69,7 @@ import {
   MonitorPlay,
   Plus,
   RectangleHorizontal,
+  RectangleVertical,
   Route,
   Save,
   Search,
@@ -258,6 +259,7 @@ const VIDEO_PICKER_CATEGORY_OPTIONS: Array<{
 }> = [
   { value: "all", label: "All types" },
   { value: "collections", label: "Collections" },
+  { value: "episodes", label: "Single episodes" },
   { value: "features", label: "Features" },
   { value: "shortFilms", label: "Short films" },
   { value: "series", label: "Series" },
@@ -1238,6 +1240,7 @@ export function ExperienceEditor({
   watchOrigin: string
   initialValues: {
     localeId: string
+    videoLanguageId: string | null
     title: string
     slug: string
     metaDescription: string
@@ -1647,8 +1650,8 @@ export function ExperienceEditor({
     setLocaleDrawerOpen(false)
   }
 
-  const serializedBlocks = JSON.stringify(parsedBlocks)
   const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
+  const serializedBlocks = JSON.stringify(normalizedParsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
     JSON.parse(initialValues.blocksJson),
   )
@@ -4143,11 +4146,11 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
-            streamingUrl:
-              (videos.length === 1 ? selectedStreamUrl : null) ??
-              preferredPlayableDubForVideo(video, null)?.streamUrl ??
-              video.previewStreamUrl ??
-              "",
+            languageId:
+              preferredPlayableDubForVideo(video, selectedStreamUrl)
+                ?.languageId ??
+              initialValues.videoLanguageId ??
+              undefined,
             titleOverride: "",
             subtitleOverride: "",
           })),
@@ -4560,6 +4563,10 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
+            languageId:
+              preferredPlayableDubForVideo(video, null)?.languageId ??
+              initialValues.videoLanguageId ??
+              undefined,
             titleOverride: "",
             subtitleOverride: "",
             imageOverrideUrl: video.previewImageUrl ?? "",
@@ -5478,7 +5485,10 @@ export function ExperienceEditor({
     updateBlockAt(videoPickerBlockIndex, (block) => ({
       ...block,
       videoId: selectedVideo.key,
-      streamingUrl: videoPickerPreviewStreamUrl ?? "",
+      languageId:
+        videoPickerSelectedDub?.languageId ??
+        initialValues.videoLanguageId ??
+        undefined,
       useRouteVideo: false,
       headingSource:
         block.t === "videoHero" && shouldUseVideoHeroHeadingMetadata(block)
@@ -8130,6 +8140,15 @@ export function ExperienceEditor({
     )
     const visualIdentityLabel = type === "card" ? "card" : block.typeLabel
     const isCardBackgroundPickerOpen = cardBackgroundPickerIndex === index
+    const authoredThumbnailOrientation = asString(
+      blockRecord?.thumbnailOrientation,
+    )
+    const usesHorizontalThumbnails = authoredThumbnailOrientation
+      ? authoredThumbnailOrientation === "horizontal"
+      : !["carousel", "collection"].includes(asString(blockRecord?.variant))
+    const ThumbnailOrientationIcon = usesHorizontalThumbnails
+      ? RectangleHorizontal
+      : RectangleVertical
 
     return (
       <div
@@ -9356,17 +9375,49 @@ export function ExperienceEditor({
                         Media items
                       </div>
                       {selectedBlockIndex === index ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            openVideoPicker(index, "mediaCollectionAppend")
-                          }}
-                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add video
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={usesHorizontalThumbnails}
+                            aria-label="Use horizontal video thumbnails"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              updateBlockStringField(
+                                index,
+                                "thumbnailOrientation",
+                                usesHorizontalThumbnails
+                                  ? "vertical"
+                                  : "horizontal",
+                              )
+                            }}
+                            className={cx(
+                              "inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border px-3 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
+                              usesHorizontalThumbnails
+                                ? selectedMediaButtonClassName
+                                : idleMediaButtonClassName,
+                            )}
+                          >
+                            <ThumbnailOrientationIcon
+                              className="h-4 w-4"
+                              strokeWidth={1.5}
+                            />
+                            {usesHorizontalThumbnails
+                              ? "Horizontal"
+                              : "Vertical"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openVideoPicker(index, "mediaCollectionAppend")
+                            }}
+                            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                          >
+                            <Plus className="h-4 w-4" strokeWidth={1.5} />
+                            Add video
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                     <div className="grid">

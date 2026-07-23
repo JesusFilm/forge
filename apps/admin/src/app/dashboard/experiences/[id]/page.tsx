@@ -136,6 +136,17 @@ async function languageSlugForLocale(locale: string): Promise<string | null> {
   return language?.slug ?? null
 }
 
+async function languageIdForLocale(locale: string): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: {
+      deletedAt: null,
+      OR: [{ bcp47: locale }, { slug: locale }, { iso3: locale }],
+    },
+    select: { id: true },
+  })
+  return language?.id ?? null
+}
+
 async function loadMediaLibrary() {
   const [folders, assets] = await Promise.all([
     prisma.mediaFolder.findMany({
@@ -279,13 +290,15 @@ export default async function ExperienceEditorPage({
     notFound()
   }
 
-  const [videoLibrary, mediaLibrary] = await Promise.all([
-    loadVideoRows(principal, {
-      includeVideoIds: videoIdsFromExperienceBlocks(selectedLocale.blocks),
-      preferredLocale: selectedLocale.locale,
-    }),
-    mediaLibraryPromise,
-  ])
+  const [videoLibrary, mediaLibrary, selectedLocaleLanguageId] =
+    await Promise.all([
+      loadVideoRows(principal, {
+        includeVideoIds: videoIdsFromExperienceBlocks(selectedLocale.blocks),
+        preferredLocale: selectedLocale.locale,
+      }),
+      mediaLibraryPromise,
+      languageIdForLocale(selectedLocale.locale),
+    ])
 
   const currentExperienceId = experience.id
   const canUploadImages = hasPermission(principal, "write:media-assets")
@@ -770,6 +783,7 @@ export default async function ExperienceEditorPage({
       watchOrigin={env.WATCH_CANONICAL_ORIGIN}
       initialValues={{
         localeId: selectedLocale.id,
+        videoLanguageId: selectedLocaleLanguageId,
         title: selectedLocale.title ?? "",
         slug: selectedLocale.slug,
         metaDescription: selectedLocale.metaDescription ?? "",

@@ -3,23 +3,24 @@ id: "feat-282"
 title: "Shared Mastra upstream transport for the chat proxies (narrowed)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-21"
 duration: 5
 depends_on: []
-blocks: []
+blocks:
+  - "feat-294"
 tags:
   - "web"
 ---
 
-## Resolution (PR 1 of 2 — arc in progress, ticket flips complete in PR 2)
+## Resolution
 
 **Shipped:** 2026-07-21 via [PR #1661](https://github.com/JesusFilm/forge/pull/1661)
-(`feat(chat): extract shared Mastra upstream SSRF primitives (feat-282 PR 1)`).
-PR 2 (the narrowed shared layer) waits on the feat-281 arc and flips this
-ticket `complete` with the full arc Resolution.
+(`feat(chat): extract shared Mastra upstream SSRF primitives (feat-282 PR 1)`)
+and 2026-07-22 via [PR #1690](https://github.com/JesusFilm/forge/pull/1690)
+(`feat(chat): narrowed shared Mastra transport for the chat proxies (feat-282 PR 2)`).
 
-**What landed.** `hostAllowed` + the loopback/railway helpers + the duplicated
+**What landed (PR 1).** `hostAllowed` + the loopback/railway helpers + the duplicated
 `MAX_CONVERSATION_ID_CHARS` moved into the new server-only
 `apps/chat/src/lib/server/mastra-upstream.ts`; both proxies import it and the
 seeker route no longer exports SSRF primitives. The railway.internal
@@ -33,16 +34,42 @@ review lenses converged on the unguarded `lib/server/` boundary; PR 2 adds
 bearer-adjacent helpers there). Wire behavior identical; 510 tests /
 typecheck / lint green.
 
+**What landed (PR 2).** The narrowed shared transport in
+`apps/chat/src/lib/server/mastra-upstream.ts`: `postMastraUpstream` (the one
+POST fetch shape, with an origin pin throwing before the bearer attaches when
+an absolute/scheme-relative path would escape the validated base — a
+review-driven addition caught by the cross-model adversarial pass),
+`composeUpstreamAbortSignal` (single-source identity preserved, so history's
+bare-budget case keeps today's exact object), `classifyUpstreamFailure`
+(`timeout | cancelled | network`; seeker's budget → caller-abort → error-name
+precedence made canonical per Correction 3), and `readJsonCapped` +
+`undefinedOnAbort` moved shared with direct unit coverage. The keep-list
+stayed per-proxy: deny ladders, budgets and byte-cap sizes, response channels
+and wire mappings over the discriminant, anon-cookie minting, the feat-236
+gate short-circuit. The one declared hardening delta: the seeker 503
+error-body read adopted `readJsonCapped` (64 KiB; over-cap/parse-fail/abort
+all fold to the existing `config_missing`). One seeker test was semantically
+rewritten (the mocked-`json()` abort-race test became vacuous under
+`readJsonCapped`; it now drives a stalled real stream to the same wire frame).
+571 tests / typecheck / lint green; browser-verified against live local
+Mastra AND the Mastra-absent KTD8 states.
+
 **Compound docs.** Two worked-instance rows + the refactor-relocates-risk rule
 in `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`;
 relocation scope note in
-`docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`.
+`docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`;
+`docs/solutions/best-practices/guard-then-use-extraction-act-half-pins-invariant-20260722.md`
+(the generalized origin-pin lesson, PR 2); PR-1 and PR-2 relocation notes in
+`docs/solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md`.
 
-**Residual risk / follow-ups.** PR 2 carries the remaining scope (shared fetch
-shape + signal composition + error-discriminant classifier, `readJsonCapped`
-moving shared with the seeker 503 path adopting it as the one declared
-hardening delta). The per-caller rate cap on `/api/seeker` remains the
-standing open prerequisite before the audience widens (unchanged here).
+**Residual risk / follow-ups.** `feat-294` (branded `ValidatedBaseUrl` input —
+the base-SSRF guard stays comment-coupled to the shared helper by design;
+deferred by ruling agreement). A lint-level check for the 3-line
+inline-comment cap was suggested by review and not pursued. The per-caller
+rate cap on `/api/seeker` remains the standing open prerequisite before the
+audience widens (unchanged here).
+
+**Unblocked.** `feat-294`.
 
 ## Problem
 

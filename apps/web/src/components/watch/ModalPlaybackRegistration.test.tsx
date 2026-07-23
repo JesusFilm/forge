@@ -113,5 +113,16 @@ describe("Watch modal playback registration", () => {
     })
 
     expect(media.pause).toHaveBeenCalledOnce()
+    const close = document.querySelector(
+      '[data-testid="watch-quiz-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close).not.toBeNull()
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+
+    act(() => close.click())
+    expect(
+      document.querySelector('[data-testid="watch-quiz-modal-close"]'),
+    ).toBeNull()
   })
 })

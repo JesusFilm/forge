@@ -1,10 +1,17 @@
-import { buildWatchHomeSectionsFromExperience } from "../experienceAdapter"
+import {
+  assembleWatchHomeModel,
+  buildWatchHomeSectionsFromExperience,
+  experienceItemCoreIds,
+} from "../experienceAdapter"
+import type { WatchHomeModel, WatchHomeVideoInput } from "../model"
 
 /**
  * The adapter maps the published homepage Experience's flat MediaCollectionBlock
- * items into the existing WatchHomeSection[] shape (lean cards, matching web —
- * no video resolution). Non-collection blocks are skipped; WatchHomeHeroBlock is
- * an expected placeholder and must not warn.
+ * items into the existing WatchHomeSection[] shape (lean cards, matching web).
+ * Cards additionally hydrate title/image from a coreId->video index when the
+ * item's own authored overrides are absent (feat-172 coreId hydration; see the
+ * "coreId hydration" describe blocks below). Non-collection blocks are skipped;
+ * WatchHomeHeroBlock is an expected placeholder and must not warn.
  */
 
 type Block = { __typename?: string | null } & Record<string, unknown>
@@ -311,5 +318,203 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     ])
     expect(section.cards[0].metaLabel).toBe("Series")
     expect(section.cards[1].metaLabel).toBe("Docs")
+  })
+})
+
+describe("buildWatchHomeSectionsFromExperience — coreId hydration", () => {
+  // The prod "Acts of the Apostles" shape: items carry a coreId + muxPlaybackId
+  // but null titleOverride/labelOverride/imageUrl/imageOverrideUrl.
+  const actsVideo: WatchHomeVideoInput = {
+    documentId: "d-acts-1",
+    coreId: "6_Acts0401",
+    slug: "lumo-acts-1-1-8-3",
+    images: [{ mobileCinematicHigh: "https://cdn/acts-1.jpg" }],
+    locales: [{ title: "LUMO - Acts 1:1-8:3" }],
+  }
+  const videoByCoreId = new Map<string, WatchHomeVideoInput>([
+    ["6_Acts0401", actsVideo],
+  ])
+
+  it("fills title + image from the linked video when the item's overrides are all null", () => {
+    const [section] = buildWatchHomeSectionsFromExperience(
+      [
+        mediaCollection({
+          mediaCollectionVariant: "grid",
+          items: [
+            {
+              videoId: "d-acts-1",
+              coreId: "6_Acts0401",
+              videoSlug: "lumo-acts-1-1-8-3",
+              muxPlaybackId: "y2W2LCPRxygn8RdXmldloduOoKYJo8TaVJzdvjBrggw",
+              titleOverride: null,
+              labelOverride: null,
+              imageUrl: null,
+              imageOverrideUrl: null,
+            },
+          ],
+        }),
+      ],
+      videoByCoreId,
+    )
+    expect(section.cards[0].title).toBe("LUMO - Acts 1:1-8:3")
+    expect(section.cards[0].imageUrl).toBe("https://cdn/acts-1.jpg")
+    expect(section.cards[0].imageAlt).toBe("LUMO - Acts 1:1-8:3")
+  })
+
+  it("keeps authored overrides winning over hydration (working shelves unchanged)", () => {
+    const [section] = buildWatchHomeSectionsFromExperience(
+      [
+        mediaCollection({
+          items: [
+            {
+              videoId: "d-acts-1",
+              coreId: "6_Acts0401",
+              videoSlug: "lumo-acts-1-1-8-3",
+              titleOverride: "Curated Title",
+              imageUrl: "https://img/curated.jpg",
+            },
+          ],
+        }),
+      ],
+      videoByCoreId,
+    )
+    expect(section.cards[0].title).toBe("Curated Title")
+    expect(section.cards[0].imageUrl).toBe("https://img/curated.jpg")
+  })
+
+  it("falls back to the item's mux thumbnail + slug title when the coreId does not hydrate", () => {
+    const [section] = buildWatchHomeSectionsFromExperience(
+      [
+        mediaCollection({
+          items: [
+            {
+              videoId: "d-x",
+              coreId: "6_Missing",
+              videoSlug: "lumo-acts-1-1-8-3",
+              muxPlaybackId: "y2W2LCPRxygn8RdXmldloduOoKYJo8TaVJzdvjBrggw",
+            },
+          ],
+        }),
+      ],
+      new Map(), // empty index → no hydration
+    )
+    expect(section.cards[0].title).toBe("lumo-acts-1-1-8-3")
+    expect(section.cards[0].imageUrl).toBe(
+      "https://image.mux.com/y2W2LCPRxygn8RdXmldloduOoKYJo8TaVJzdvjBrggw/thumbnail.png?width=1280&fit_mode=smartcrop",
+    )
+  })
+
+  it("renders inline-only (no map arg) exactly as before — backward compatible", () => {
+    const [section] = buildWatchHomeSectionsFromExperience([mediaCollection()])
+    expect(section.cards[0].title).toBe("JESUS")
+    expect(section.cards[0].imageUrl).toBe("https://img/jesus.jpg")
+  })
+})
+
+describe("assembleWatchHomeModel — config/hydration separation (feat-172 hero-leak guard)", () => {
+  // A renderable short film: label SHORT_FILM + slug + poster → eligible for the
+  // carousel's greedy shortFilmById scan (isEligibleWatchHomeVideoSlide).
+  const shortFilm: WatchHomeVideoInput = {
+    documentId: "d-short",
+    coreId: "TESTSHORT1",
+    slug: "test-short",
+    label: "SHORT_FILM",
+    images: [{ mobileCinematicHigh: "https://cdn/short.jpg" }],
+    locales: [{ title: "Test Short Film" }],
+  }
+  const shortFilmBlock = mediaCollection({
+    items: [
+      { videoId: "d-short", coreId: "TESTSHORT1", videoSlug: "test-short" },
+    ],
+  })
+  const inCarouselPools = (model: WatchHomeModel, id: string): boolean =>
+    model.carousel.pools.some((pool) => pool.videos.some((v) => v.id === id))
+
+  it("BASELINE: a short film in the config videos DOES reach the carousel pools (guard is non-vacuous)", () => {
+    const { model } = assembleWatchHomeModel({
+      configVideos: [shortFilm],
+      hydrationVideos: [],
+      blocks: null,
+    })
+    expect(inCarouselPools(model, "TESTSHORT1")).toBe(true)
+  })
+
+  it("GUARD: a short film that arrives ONLY as top-up hydration renders in the Experience body but NEVER the client-owned hero", () => {
+    const { model, usedExperience } = assembleWatchHomeModel({
+      configVideos: [],
+      hydrationVideos: [shortFilm],
+      blocks: [shortFilmBlock],
+    })
+    // Rendered as an Experience card (hydrated title) ...
+    expect(usedExperience).toBe(true)
+    expect(model.sections[0].cards[0].title).toBe("Test Short Film")
+    // ... but absent from every carousel pool — no feat-172 leak.
+    expect(inCarouselPools(model, "TESTSHORT1")).toBe(false)
+  })
+
+  it("hydrates an under-curated block item's title + image from the merged index", () => {
+    const acts: WatchHomeVideoInput = {
+      documentId: "d-acts",
+      coreId: "6_Acts0401",
+      slug: "lumo-acts-1-1-8-3",
+      images: [{ mobileCinematicHigh: "https://cdn/acts-1.jpg" }],
+      locales: [{ title: "LUMO - Acts 1:1-8:3" }],
+    }
+    const { model } = assembleWatchHomeModel({
+      configVideos: [],
+      hydrationVideos: [acts],
+      blocks: [
+        mediaCollection({
+          items: [
+            {
+              videoId: "d-acts",
+              coreId: "6_Acts0401",
+              videoSlug: "lumo-acts-1-1-8-3",
+            },
+          ],
+        }),
+      ],
+    })
+    expect(model.sections[0].cards[0].title).toBe("LUMO - Acts 1:1-8:3")
+    expect(model.sections[0].cards[0].imageUrl).toBe("https://cdn/acts-1.jpg")
+  })
+
+  it("falls back to the config body (usedExperience false) when there are no blocks", () => {
+    const { model, usedExperience } = assembleWatchHomeModel({
+      configVideos: [],
+      hydrationVideos: [],
+      blocks: null,
+    })
+    expect(usedExperience).toBe(false)
+    expect(model.sections).toEqual([])
+  })
+})
+
+describe("experienceItemCoreIds", () => {
+  it("collects and dedupes valid item coreIds from MediaCollection blocks", () => {
+    const ids = experienceItemCoreIds([
+      mediaCollection({
+        items: [
+          { coreId: "6_Acts0401", videoSlug: "a" },
+          { coreId: "6_Acts0402", videoSlug: "b" },
+          { coreId: "6_Acts0401", videoSlug: "a-again" },
+        ],
+      }),
+    ])
+    expect(ids).toEqual(["6_Acts0401", "6_Acts0402"])
+  })
+
+  it("ignores non-collection blocks and items with no / invalid coreId", () => {
+    const ids = experienceItemCoreIds([
+      { __typename: "WatchHomeHeroBlock" } as never,
+      mediaCollection({
+        items: [
+          { coreId: null, videoSlug: "a" },
+          { coreId: "bad id!", videoSlug: "b" },
+          { coreId: "GOLukeCollection", videoSlug: "c" },
+        ],
+      }),
+    ])
+    expect(ids).toEqual(["GOLukeCollection"])
   })
 })
