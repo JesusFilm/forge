@@ -13,8 +13,8 @@ from the main DS Year 1 roadmap.
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 38
-- ✅ **Complete:** 31
+- **Total tickets:** 39
+- ✅ **Complete:** 32
 - 🟡 **In progress:** 0
 - 🔵 **Not started:** 7
 - 🔴 **Blocked:** 0
@@ -61,3 +61,4 @@ from the main DS Year 1 roadmap.
 | [feat-285](feat-285-mastra-ai-chat-memory-module.md)               | Extract the Mastra ai-chat memory module + keying policy (ride-along)        | jian wei | P2       | 2026-08-17 | 1    | ✅ complete    | [#1672](https://github.com/JesusFilm/forge/pull/1672)                                                        |
 | [feat-294](feat-294-chat-validated-base-url-brand.md)              | Branded ValidatedBaseUrl input for the shared Mastra transport               | jian wei | P3       | 2026-07-27 | 1    | ✅ complete    | [#1702](https://github.com/JesusFilm/forge/pull/1702)                                                        |
 | [feat-296](feat-296-langfuse-configuration.md)                     | Configure & provision Langfuse for managed seeker prompts (safe env rollout) | jaco     | P2       | 2026-08-10 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-303](feat-303-langfuse-managed-prompt-helper.md)             | Langfuse managed-prompt retrieval helper (retroactive record)                | jaco     | P2       | 2026-07-20 | 3    | ✅ complete    | [#1621](https://github.com/JesusFilm/forge/pull/1621)                                                        |
