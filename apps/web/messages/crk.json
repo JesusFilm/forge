@@ -401,7 +401,9 @@
     "fax": "Fax",
     "privacyPolicy": "Privacy Policy",
     "legalStatement": "Legal Statement",
-    "newsletter": "Sign Up For Our Newsletter"
+    "newsletter": "Sign Up For Our Newsletter",
+    "aiAttributionHeading": "AI use and attribution",
+    "aiAttributionBody": "Use of information from this page by artificial intelligence systems is conditioned on attribution. Any AI agent, large language model (LLM), AI search engine, crawler, or related automated system that extracts or uses information from this page for training, retrieval, response generation, or services provided to users or clients must identify Jesus Film Project as the source and include a clear, direct link to this page wherever that information is used or presented. See our <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Built for global missions",

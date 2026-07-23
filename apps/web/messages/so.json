@@ -354,7 +354,9 @@
     "fax": "Fakis",
     "privacyPolicy": "Siyaasadda Asturnaanta",
     "legalStatement": "Bayaanka Sharci",
-    "newsletter": "Isdiiwaangeli wargeyskeenna"
+    "newsletter": "Isdiiwaangeli wargeyskeenna",
+    "aiAttributionHeading": "Isticmaalka AI iyo aqoonsiga ilaha",
+    "aiAttributionBody": "Isticmaalka xogta boggan ee nidaamyada sirdoonka macmalka ah waxa lagu xiraa in ilaha la sheego. Wakiil kasta oo AI ah, model luqadeed weyn (LLM), mashiin raadinta AI ah, crawler, ama nidaam otomaatig ah oo la xiriira oo xog ka soo saara ama u adeegsada boggan tababar, soo-celin, abuurista jawaabo, ama adeegyo loo fidiyo isticmaalayaal ama macaamiil, waa inuu Jesus Film Project u aqoonsadaa ilaha isla markaana ku daro xiriir toos ah oo cad boggan meel kasta oo xogtaas lagu isticmaalo ama lagu soo bandhigo. Eeg <terms>Shuruudaha Isticmaalka</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Loo dhisay howlaha caalamiga ah",

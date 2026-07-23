@@ -387,7 +387,9 @@
     "fax": "FAX",
     "privacyPolicy": "プライバシーポリシー",
     "legalStatement": "法的表示",
-    "newsletter": "ニュースレターに登録する"
+    "newsletter": "ニュースレターに登録する",
+    "aiAttributionHeading": "AI利用と出典表示",
+    "aiAttributionBody": "このページの情報を人工知能システムが利用する場合は、出典表示が条件となります。学習、検索、応答生成、またはユーザーやクライアントに提供されるサービスのために、このページの情報を抽出または利用する AI エージェント、LLM、AI 検索エンジン、クローラー、その他関連する自動化システムは、Jesus Film Project を出典として明記し、その情報を使用または表示する際にはこのページへの明確な直接リンクを含める必要があります。<terms>利用規約</terms>をご覧ください。"
   },
   "WatchHomePromo": {
     "eyebrow": "世界宣教のために設計",

@@ -354,7 +354,9 @@
     "fax": "Faksi",
     "privacyPolicy": "Politiki ya bomoto",
     "legalStatement": "Likanisi ya mibeko",
-    "newsletter": "Komisa nkombo mpo na newsletter na biso"
+    "newsletter": "Komisa nkombo mpo na newsletter na biso",
+    "aiAttributionHeading": "Kosalela AI mpe kokata source",
+    "aiAttributionBody": "Kosalela ya makambo oyo ezali na lokasa oyo na ba système ya intelligence artificielle esengeli kozala na kolakisa source. AI nyonso, model ya minene ya monoko (LLM), moteur ya boluki ya AI, crawler, to système mosusu ya automatique oyo ebimisaka to esalelaka makambo ya lokasa oyo mpo na koteya, koluka, kobimisa biyano, to ba services mpo na basaleli to bakiliya esengeli kolakisa Jesus Film Project lokola source mpe kotia lien ya polele, ya mbala moko na lokasa oyo bisika nyonso oyo makambo yango esalelami to emonisami. Tala <terms>Mibeko ya Kosalela</terms> na biso."
   },
   "WatchHomePromo": {
     "eyebrow": "Ebatelami mpo na misio ya mokili mobimba",

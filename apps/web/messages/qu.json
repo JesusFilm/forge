@@ -354,7 +354,9 @@
     "fax": "Faxpa yupaynin",
     "privacyPolicy": "Sapaqlla kawsay política",
     "legalStatement": "Kamachiy willakuy",
-    "newsletter": "Newsletterman qillqakuy"
+    "newsletter": "Newsletterman qillqakuy",
+    "aiAttributionHeading": "AI llamk’aykuna hinallataq allinta riqsichiy",
+    "aiAttributionBody": "Kay p’anqamantam ima willaykuna AI sistemaswan llamk’achinapaq, riqsichiywan yapaykuyta munan. Ima AI agente, hatun simi rimanakuy modelu (LLM), AI maskay thaki, crawler, utaq kay p’anqamanta willayta akllaq chayna automatizado sistema, yachachinapaq, maskanapaq, kutichinapaq, yuyaykuy rurapaq, utaq llamk’aykuna llamk’achiqkunaman rantikunaqmanmi Jesus Film Project-qa pukyu hina riqsichisqa kanman, chaymanta kay p’anqaman sut’i, chiqap llamk’anapaq tinkiwan ninan kanman, chay willayqa maypim churasqa utaq rikuchisqa kan. <terms>Uso kamachikuykuna</terms>-ta rikuy."
   },
   "WatchHomePromo": {
     "eyebrow": "Tukuy pacha misionespaq ruwasqa",

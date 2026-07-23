@@ -354,7 +354,9 @@
     "fax": "Faksi",
     "privacyPolicy": "Polítika di Privasidadi",
     "legalStatement": "Deklarason Legal",
-    "newsletter": "Inscrevi na N'sa Newsletter"
+    "newsletter": "Inscrevi na N'sa Newsletter",
+    "aiAttributionHeading": "Uzu di IA i atribuision",
+    "aiAttributionBody": "Uzu di informason di ki pájina pa sistemas di intelijénsia artifisial ta kondisonadu pa atribuision. Kualker ajan di IA, modelu grandi di lingua (LLM), motor di buska di IA, crawler, ô otu sistema automatizadu relasionadu ki ta ekstrai ô uza informason di ki pájina pa treinu, rikuperason, jenerason di rispusta, ô servisu prujidus pa uzaduris ô klientis, ten ki identifika Jesus Film Project komu fonti i inklui un ligason diritu i klaru pa ki pájina ondiki akéla informason ta ser uzada ô apresintada. Bú odja nôs <terms>Termus di Uzu</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Fetu pa misons global",

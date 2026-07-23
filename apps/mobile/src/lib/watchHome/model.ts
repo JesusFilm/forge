@@ -14,6 +14,7 @@ import {
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
+import { pickCardImage } from "../cardImage"
 import {
   isEligibleWatchHomeVideoSlide,
   type WatchHomeCarouselPool,
@@ -132,16 +133,7 @@ export function muxThumbnail(playbackId: string | null): string | null {
 export function pickAdminImage(
   images: readonly WatchHomeImageInput[],
 ): string | null {
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
-  }
-  return null
+  return pickCardImage(images, "card")
 }
 
 /** Copy of web's format-duration: `m:ss` sub-hour, `h:mm:ss` hour-plus, `""` if invalid. */

@@ -387,7 +387,9 @@
     "fax": "Faks",
     "privacyPolicy": "Polityka prywatności",
     "legalStatement": "Informacja prawna",
-    "newsletter": "Zapisz się do naszego newslettera"
+    "newsletter": "Zapisz się do naszego newslettera",
+    "aiAttributionHeading": "Korzystanie z AI i atrybucja",
+    "aiAttributionBody": "Korzystanie z informacji z tej strony przez systemy sztucznej inteligencji jest uwarunkowane podaniem źródła. Każdy agent AI, duży model językowy (LLM), wyszukiwarka AI, crawler lub powiązany system automatyczny, który pobiera lub wykorzystuje informacje z tej strony do trenowania, wyszukiwania, generowania odpowiedzi lub świadczenia usług użytkownikom bądź klientom, musi wskazać Jesus Film Project jako źródło i zamieścić jasny, bezpośredni link do tej strony wszędzie tam, gdzie te informacje są używane lub prezentowane. Zobacz nasze <terms>Warunki użytkowania</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Stworzone z myślą o globalnej misji",

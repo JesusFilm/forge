@@ -354,7 +354,9 @@
     "fax": "Fagisi",
     "privacyPolicy": "Politiki y'ibanga",
     "legalStatement": "Itangazo ry'amategeko",
-    "newsletter": "Iyandikishe ku kanyamakuru kacu"
+    "newsletter": "Iyandikishe ku kanyamakuru kacu",
+    "aiAttributionHeading": "Imikoreshereze ya AI n’itangwa ry’inkomoko",
+    "aiAttributionBody": "Gukoresha amakuru ari kuri paji ino na sisitemu z’ubwenge buhangano bishingira ku gutanga inkomoko. Umunyabugeni uwo ari we wese wa AI, moderi nini y’ururimi (LLM), moteri ishakisha ya AI, crawler, cyangwa indi sisitemu yikora ifitanye isano nayo, ikura cyangwa ikoresha amakuru ari kuri paji ino mu myitozo, gushakisha amakuru, gusubiza ibibazo, cyangwa serivisi zihabwa abakoresha cyangwa abakiliya, igomba kugaragaza Jesus Film Project nk’inkomoko no gushyiraho ihuriro risobanutse kandi ritaziguye riganisha kuri paji ino aho ayo makuru akoreshwa cyangwa agaragarizwa hose. Reba <terms>Amabwiriza y’Imikoreshereze</terms> yacu."
   },
   "WatchHomePromo": {
     "eyebrow": "Yubatswe ku butumwa bwo ku isi hose",
