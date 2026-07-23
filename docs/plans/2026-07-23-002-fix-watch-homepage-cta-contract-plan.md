@@ -1,7 +1,7 @@
 ---
 title: "fix: Repair Watch homepage section CTA contracts"
 type: fix
-status: active
+status: completed
 date: 2026-07-23
 artifact_contract: "ce-unified-plan/v1"
 artifact_readiness: "implementation-ready"

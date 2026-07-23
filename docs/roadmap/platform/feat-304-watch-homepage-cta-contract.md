@@ -3,7 +3,7 @@ id: "feat-304"
 title: "Watch homepage CTA contract"
 owner: "vlad"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-23"
 duration: 1
 depends_on:
@@ -104,3 +104,24 @@ outside this content-section contract.
 - `git diff --check`
 - Run desktop and mobile browser proof for href, accessible name, direct 200
   navigation, matching canonical, and page-load network behavior.
+
+## Completion Notes
+
+- The Watch-home surface now rejects homepage-equivalent and malformed authored
+  media/FAQ destinations without changing other Experience surfaces. The
+  existing media fallback resolves the published Films About Jesus CTA to
+  `/watch/jfm-collection.html/english.html`.
+- All 12 current content CTAs render a visible-label-plus-section accessible
+  name and emit a bounded best-effort destination action. The global footer
+  Watch link remains outside the contract.
+- Focused Web validation passed: 7 Vitest suites / 99 tests, Web typecheck,
+  touched-file ESLint and Prettier, generated roadmap index, and
+  `git diff --check`.
+- Desktop and 375 px mobile browser smoke rendered all 12 scoped CTAs, preserved
+  the footer boundary, and followed the repaired CTA to a direct 200 JFM
+  Collection page. Its local path matches the canonical
+  `https://www.jesusfilm.org/watch/jfm-collection.html/english.html`.
+- The captured homepage load contained no CTA-specific request. Three existing
+  Watch API requests remained (`watch-progress`, `beta-tester-cta`, and
+  `auth/session`); this change adds no fetch, effect, or page-level client
+  boundary.
