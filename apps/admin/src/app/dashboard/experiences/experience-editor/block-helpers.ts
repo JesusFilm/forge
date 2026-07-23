@@ -733,6 +733,7 @@ export function createTemplateBlock(
       sectionKey: `media-collection-${index}`,
       categoryLabel: "Featured",
       variant: "grid",
+      thumbnailOrientation: "vertical",
       itemsSource: "manual",
       title: "Media collection",
       subtitle: "Explore the collection",
