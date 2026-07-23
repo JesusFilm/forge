@@ -92,6 +92,27 @@ describe("stripHtml", () => {
     expect(stripHtml("   ")).toBeNull()
     expect(stripHtml("<span></span>")).toBeNull()
   })
+
+  // A single strip pass rebuilds a tag out of the surrounding fragments. The
+  // property that matters is that no tag token survives — leftover inert text
+  // ("ipt") is fine, since the target is an RN <Text>, not markup.
+  it("strips nested tags to a fixed point", () => {
+    const out = stripHtml("<scr<script>ipt>alert(1)</script>") ?? ""
+    expect(out).not.toMatch(/<script/i)
+    expect(out).toContain("alert(1)")
+    expect(stripHtml("hi<scr<script>ipt>") ?? "").not.toMatch(/[<>]/)
+  })
+
+  // Sequential decoding turns &amp;lt; into &lt; and then into a live "<".
+  it("decodes entities once, never double-unescaping", () => {
+    expect(stripHtml("a &amp;lt;b&amp;gt; c")).toBe("a &lt;b&gt; c")
+  })
+
+  it("leaves no angle bracket in the plain-text output", () => {
+    for (const s of ["<scr<script>ipt>", "&lt;script&gt;x", "a < b > c"]) {
+      expect(stripHtml(s) ?? "").not.toMatch(/[<>]/)
+    }
+  })
 })
 
 describe("mapWatchSearchResult", () => {

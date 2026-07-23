@@ -45,24 +45,37 @@ export function buildWatchSearchInput({
   }
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  "#39": "'",
+  nbsp: " ",
+}
+
 /**
- * Snippets come from admin's video/scene descriptions, which are CMS-authored
- * and may carry markup. RN `<Text>` renders tags literally, so strip them —
- * mirrors web's htmlToPlainText, minus the DOMParser branch RN has no use for.
+ * Snippets are CMS-authored and may carry markup; RN `<Text>` renders tags
+ * literally, so reduce to plain text. Entities decode in ONE pass (a sequential
+ * `&amp;`-then-`&lt;` chain double-unescapes `&amp;lt;` into a live `<`), and
+ * tags strip to a fixed point (one pass leaves `<scr<script>ipt>` as `<script`).
  */
 export function stripHtml(value: string | null | undefined): string | null {
   if (!value) return null
-  const text = value
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/\s+/g, " ")
-    .trim()
+  let text = value.replace(
+    /&(amp|lt|gt|quot|apos|nbsp|#39);/gi,
+    (_, name: string) => HTML_ENTITIES[name.toLowerCase()] ?? "",
+  )
+  text = text.replace(/<br\s*\/?>/gi, " ")
+  let previous: string
+  do {
+    previous = text
+    text = text.replace(/<[^>]*>/g, "")
+  } while (text !== previous)
+  // Nothing angle-bracketed may survive into plain text, including an unclosed
+  // `<script` the tag pass cannot match.
+  text = text.replace(/[<>]/g, "").replace(/\s+/g, " ").trim()
   return text.length > 0 ? text : null
 }
 
