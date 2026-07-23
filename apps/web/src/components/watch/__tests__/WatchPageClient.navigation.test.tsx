@@ -547,7 +547,7 @@ describe("WatchPageClient chapter navigation", () => {
         .querySelector('[data-testid="open-share"]')
         ?.getAttribute("data-share-href"),
     ).toBe(
-      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fjesusfilm.org%2Fwatch%2Fcurrent-video.html%2Fenglish.html",
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.jesusfilm.org%2Fwatch%2Fcurrent-video.html%2Fenglish.html",
     )
 
     act(() => {

@@ -64,23 +64,17 @@ import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { languageCodeFor } from "@/lib/language-code"
 import {
-  WATCH_BASE_PATH,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import { buildFbShareUrl } from "@/lib/share"
+import { buildFbShareUrl, resolveWatchShareUrl } from "@/lib/share"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
 } from "@/lib/subtitle-preference-client"
-import {
-  PUBLIC_SHARE_FALLBACK_ORIGIN,
-  isPublicShareableOrigin,
-  resolveDownloadPosterUrl,
-  resolvePosterUrl,
-} from "@/lib/url"
+import { resolveDownloadPosterUrl, resolvePosterUrl } from "@/lib/url"
 import {
   getCachedWatchLanguageOptions,
   loadWatchInteraction,
@@ -251,18 +245,12 @@ function buildShareFallbackHref({
   currentLanguageSlug: string
   videoSlug: string
 }): string | undefined {
-  const slug = tryAsContentSlug(videoSlug)
-  const lang = tryAsLocaleSlug(currentLanguageSlug)
-  if (!slug || !lang) return undefined
-
-  const shareOrigin = isPublicShareableOrigin(origin)
-    ? origin
-    : PUBLIC_SHARE_FALLBACK_ORIGIN
-  const shareableUrl = `${shareOrigin}${WATCH_BASE_PATH}${watchVideoPath(
-    slug,
-    lang,
-  )}`
-  return buildFbShareUrl(shareableUrl)
+  const shareableUrl = resolveWatchShareUrl({
+    origin,
+    videoSlug,
+    languageSlug: currentLanguageSlug,
+  })
+  return shareableUrl ? buildFbShareUrl(shareableUrl) : undefined
 }
 
 export function WatchPageClient({
