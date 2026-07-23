@@ -29,6 +29,7 @@ import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
+import { resolveSeriesLanguageIdentity } from "@/lib/series-language"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
 import {
@@ -137,12 +138,10 @@ export function SeriesPageClient({
   // unstable_cache). We re-dedupe by slug here purely as a belt-and-braces
   // guard.
   //
-  // Three downstream consumers all need a per-language projection, built in
-  // one pass keyed by slug:
+  // Two downstream consumers need a per-language projection, built in one
+  // pass keyed by slug:
   //  - languageOptions — the inline LanguageCombobox feed (sorted A→Z
   //    by English form via deriveLanguageDisplay).
-  //  - slugByBcp47 — URL locale resolution: accept either bcp47 ("en")
-  //    OR slug-form ("english") and map back to the combobox option.
   //  - variantsForLanguagePicker — the LanguagePickerModal feed. The modal
   //    filters its input through isPlayableLanguageVariant (it also serves
   //    the watch page, which passes unfiltered variants). These entries are
@@ -151,63 +150,51 @@ export function SeriesPageClient({
   //    only returns published dubs) and a non-null `hls` marker. The modal
   //    reads only hls's PRESENCE, never its value — it navigates by slug —
   //    so eliding the real stream URL here is safe.
-  const { languageOptions, slugByBcp47, variantsForLanguagePicker } =
-    useMemo(() => {
-      const bySlug = new Map<
-        string,
-        {
-          display: LanguageComboboxOption
-          variant: LanguagePickerVariant
-        }
-      >()
-      const bcp47Map = new Map<string, string>()
-      for (const language of series.childDubLanguages ?? []) {
-        if (!language?.slug) continue
-        const slug = language.slug
-        const bcp47 = language.bcp47 ?? null
-        if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
-          bcp47Map.set(bcp47.toLowerCase(), slug)
-        }
-        if (bySlug.has(slug)) continue
-        bySlug.set(slug, {
-          display: {
-            ...deriveLanguageDisplay(slug, language.name),
-            bcp47,
-          },
-          variant: {
-            documentId: slug,
-            published: true,
-            hls: SERVER_GUARANTEED_PLAYABLE,
-            language: {
-              bcp47: language.bcp47,
-              slug: language.slug,
-              name: language.name,
-            },
-          },
-        })
+  const { languageOptions, variantsForLanguagePicker } = useMemo(() => {
+    const bySlug = new Map<
+      string,
+      {
+        display: LanguageComboboxOption
+        variant: LanguagePickerVariant
       }
-      const entries = Array.from(bySlug.values())
-      return {
-        languageOptions: entries
-          .map((e) => e.display)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-        slugByBcp47: bcp47Map,
-        variantsForLanguagePicker: entries.map((e) => e.variant),
-      }
-    }, [series.childDubLanguages])
+    >()
+    for (const language of series.childDubLanguages ?? []) {
+      if (!language?.slug) continue
+      const slug = language.slug
+      const bcp47 = language.bcp47 ?? null
+      if (bySlug.has(slug)) continue
+      bySlug.set(slug, {
+        display: {
+          ...deriveLanguageDisplay(slug, language.name),
+          bcp47,
+        },
+        variant: {
+          documentId: slug,
+          published: true,
+          hls: SERVER_GUARANTEED_PLAYABLE,
+          language: {
+            bcp47: language.bcp47,
+            slug: language.slug,
+            name: language.name,
+          },
+        },
+      })
+    }
+    const entries = Array.from(bySlug.values())
+    return {
+      languageOptions: entries
+        .map((e) => e.display)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      variantsForLanguagePicker: entries.map((e) => e.variant),
+    }
+  }, [series.childDubLanguages])
 
   // Resolve the current language slug from the URL locale. Accept either
   // form — language-slug form ("english") OR bcp47 ("en") — since the
   // resolver matches variants on either. Falls back to the first option
   // so the combobox's controlled value always has a matching entry.
   const currentLanguageSlug =
-    languageOptions.find(
-      (opt) =>
-        opt.slug === locale || opt.slug.toLowerCase() === locale.toLowerCase(),
-    )?.slug ??
-    slugByBcp47.get(locale.toLowerCase()) ??
-    languageOptions[0]?.slug ??
-    ""
+    resolveSeriesLanguageIdentity(languageOptions, locale)?.slug ?? ""
   const currentLanguageCode = languageCodeFor(
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
