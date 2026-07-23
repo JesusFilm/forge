@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 424
-- **Complete:** 317
+- **Total tickets:** 425
+- **Complete:** 318
 - **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
@@ -404,6 +404,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                      | vlad       | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
 | [feat-070](platform/feat-070-public-ai-entry-point.md)                                 | Public AI Entry Point                                                            | tataihono  | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
+| [feat-302](platform/feat-302-watch-home-heading-hierarchy.md)                          | Simplify Watch home heading hierarchy                                            | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 
 ### Topic Experiences
 

@@ -94,6 +94,7 @@ export function Text({ data }: TextProps) {
   const paragraphs = Array.isArray(contentParagraphs)
     ? (contentParagraphs as string[])
     : []
+  const hasHeading = typeof heading === "string" && heading.trim().length > 0
 
   if (variant === "promotional") {
     const markdown = paragraphs
@@ -119,7 +120,7 @@ export function Text({ data }: TextProps) {
                 </p>
               )}
             </div>
-            {heading && (
+            {hasHeading && (
               <Tag className="text-3xl leading-[1.08] font-semibold tracking-[-0.025em] text-white sm:text-4xl lg:text-4xl xl:col-start-1 xl:row-start-2 xl:pr-4 xl:text-5xl">
                 {heading}
               </Tag>
@@ -157,7 +158,7 @@ export function Text({ data }: TextProps) {
               {subtitle}
             </p>
           )}
-          {heading && (
+          {hasHeading && (
             <div className="mb-3 flex items-center justify-between">
               <Tag className="mb-0 text-xl font-bold xl:text-2xl 2xl:text-3xl">
                 {heading}
@@ -188,7 +189,7 @@ export function Text({ data }: TextProps) {
       className="space-y-6 text-stone-100"
       data-testid="Text"
     >
-      {heading && (
+      {hasHeading && (
         <Tag
           className={
             variant === "small"
