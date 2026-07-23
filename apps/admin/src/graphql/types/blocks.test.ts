@@ -10,12 +10,18 @@
 // Structural drift between Zod and Pothos lives in `blocks.drift.test.ts`.
 
 import { describe, expect, it, vi } from "vitest"
+
+vi.mock("@/services/video-image-blur-data-url.service", () => ({
+  getOrScheduleVideoImageBlurDataUrl: vi.fn().mockResolvedValue(null),
+}))
+
 import {
   T_TO_TYPENAME,
   UnknownBlockKindError,
   type BlockKind,
 } from "@/graphql/types/blocks"
 import { schema } from "@/graphql/schema"
+import { getOrScheduleVideoImageBlurDataUrl } from "@/services/video-image-blur-data-url.service"
 import {
   type GraphQLUnionType,
   type GraphQLObjectType,
@@ -132,6 +138,7 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
   mediaCollection: {
     t: "mediaCollection",
     variant: "grid",
+    thumbnailOrientation: "vertical",
     itemsSource: "manual",
     showItemNumbers: false,
     items: [],
@@ -507,6 +514,125 @@ describe("MediaCollectionItem videoSlug resolver", () => {
 
     expect(result).toBe("snapshot-slug")
     expect(load).not.toHaveBeenCalled()
+  })
+})
+
+describe("MediaCollectionItem video image metadata resolvers", () => {
+  const scheduleBlurGeneration = vi.mocked(getOrScheduleVideoImageBlurDataUrl)
+
+  it("schedules blur metadata generation for linked video images missing metadata", async () => {
+    scheduleBlurGeneration.mockClear()
+    const load = vi.fn().mockResolvedValue([
+      {
+        id: "image-1",
+        mobileCinematicHigh: "https://imagedelivery.net/account/image/w=448",
+        mobileCinematicLow: null,
+        videoStill: null,
+        url: null,
+        thumbnail: null,
+        blurDataUrl: null,
+        dominantColor: null,
+      },
+    ])
+    const prisma = {}
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "videoImageBlurDataUrl",
+    )(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma,
+        loaders: {
+          videoImagesByVideoId: { load },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(load).toHaveBeenCalledWith("video-1")
+    expect(scheduleBlurGeneration).toHaveBeenCalledWith({
+      imageId: "image-1",
+      imageUrl: "https://imagedelivery.net/account/image/w=448",
+      prisma,
+    })
+  })
+
+  it("schedules dominant color repair when blur metadata already exists without color", async () => {
+    scheduleBlurGeneration.mockClear()
+    const load = vi.fn().mockResolvedValue([
+      {
+        id: "image-1",
+        mobileCinematicHigh: null,
+        mobileCinematicLow: null,
+        videoStill: "https://imagedelivery.net/account/still/w=448",
+        url: null,
+        thumbnail: null,
+        blurDataUrl: "data:image/png;base64,LQIP",
+        dominantColor: null,
+      },
+    ])
+    const prisma = {}
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "videoImageDominantColor",
+    )(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma,
+        loaders: {
+          videoImagesByVideoId: { load },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(scheduleBlurGeneration).toHaveBeenCalledWith({
+      imageId: "image-1",
+      imageUrl: "https://imagedelivery.net/account/still/w=448",
+      prisma,
+    })
+  })
+
+  it("returns stored metadata without scheduling when blur and color are complete", async () => {
+    scheduleBlurGeneration.mockClear()
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "videoImageBlurDataUrl",
+    )(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma: {},
+        loaders: {
+          videoImagesByVideoId: {
+            load: vi.fn().mockResolvedValue([
+              {
+                id: "image-1",
+                mobileCinematicHigh:
+                  "https://imagedelivery.net/account/image/w=448",
+                mobileCinematicLow: null,
+                videoStill: null,
+                url: null,
+                thumbnail: null,
+                blurDataUrl: "data:image/png;base64,LQIP",
+                dominantColor: "#123456",
+              },
+            ]),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("data:image/png;base64,LQIP")
+    expect(scheduleBlurGeneration).not.toHaveBeenCalled()
   })
 })
 
@@ -984,6 +1110,15 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionBlock")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.defaultCollectionSlug).toBeDefined()
+  })
+
+  it("exposes thumbnail orientation on MediaCollectionBlock", () => {
+    const type = schema.getType("MediaCollectionBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.thumbnailOrientation).toBeDefined()
+    expect(fields?.thumbnailOrientation?.type.toString()).toBe(
+      "MediaCollectionThumbnailOrientation",
+    )
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

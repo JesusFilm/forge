@@ -16,6 +16,7 @@ import {
 import {
   findSearchLanguageOptionByEnglishName,
   normalizeSearchLanguageEnglishNames,
+  publicSlugForLocale,
   resolveSearchLanguage,
   type SearchLanguageOption,
 } from "./search-language"
@@ -99,6 +100,7 @@ export async function runSearch(input: {
   languageSlug?: string | null
   languageSlugIsExplicit?: boolean
   routeLanguageSlug?: string | null
+  uiLocale?: string
 }): Promise<SearchActionResult> {
   const {
     analytics,
@@ -111,9 +113,15 @@ export async function runSearch(input: {
     languageSlug,
     languageSlugIsExplicit,
     routeLanguageSlug,
+    uiLocale = "en",
   } = input
 
   const truncatedQuery = query.slice(0, 200)
+  const validatedRouteLanguageSlug =
+    routeLanguageSlug == null || isPublicWatchLanguageSlug(routeLanguageSlug)
+      ? routeLanguageSlug
+      : null
+  const displayLanguageSlug = publicSlugForLocale(uiLocale)
   const startedAt = performance.now()
   let effectiveLanguageOptions: readonly SearchLanguageOption[] =
     languageOptions
@@ -136,7 +144,7 @@ export async function runSearch(input: {
     const resolvedLanguage = resolveSearchLanguage({
       selectedEnglishNames: selectedLanguageEnglishNames,
       explicitSlug: languageSlug,
-      routeLanguageSlug,
+      routeLanguageSlug: validatedRouteLanguageSlug,
       acceptLanguage,
       languageOptions: effectiveLanguageOptions,
     })
@@ -150,7 +158,7 @@ export async function runSearch(input: {
         limit,
         offset,
         contentType,
-        resolvedLanguage.locale,
+        uiLocale,
         {
           clientRequestId: analytics?.searchRequestId,
           targetLanguageSlug:
@@ -158,8 +166,8 @@ export async function runSearch(input: {
               ? resolvedLanguage.publicSlug
               : null,
           queryNamedLanguageSlug: queryNamedLanguage?.publicSlug,
-          displayLanguageSlug: routeLanguageSlug ?? resolvedLanguage.publicSlug,
-          routeLanguageSlug,
+          displayLanguageSlug,
+          routeLanguageSlug: validatedRouteLanguageSlug,
           acceptLanguage,
         },
       )
@@ -176,7 +184,7 @@ export async function runSearch(input: {
         languageSlug,
         offset,
         response: result,
-        routeLanguageSlug,
+        routeLanguageSlug: validatedRouteLanguageSlug,
         selectedLanguageEnglishNames,
       })
       return result
@@ -199,7 +207,7 @@ export async function runSearch(input: {
         languageSlug,
         offset,
         response: result,
-        routeLanguageSlug,
+        routeLanguageSlug: validatedRouteLanguageSlug,
         selectedLanguageEnglishNames,
       })
       return result
@@ -214,7 +222,7 @@ export async function runSearch(input: {
       query: truncatedQuery,
       resolvedLanguage: resolvedLanguageForAnalytics,
       resultSource: attemptedResultSource,
-      routeLanguageSlug,
+      routeLanguageSlug: validatedRouteLanguageSlug,
       selectedLanguageEnglishNames,
     })
     throw error

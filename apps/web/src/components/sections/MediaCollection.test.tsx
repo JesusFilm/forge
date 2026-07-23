@@ -228,6 +228,55 @@ describe("MediaCollection VideoCard href", () => {
     ).toContain("md:grid-cols-3")
   })
 
+  it("renders an authored horizontal carousel without changing its layout variant", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({ thumbnailOrientation: "horizontal" })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const carouselItem = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-carousel-item"]',
+    )
+    const cardImage = container.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"] > div',
+    )
+
+    expect(carouselItem?.className).toContain("max-w-[360px]")
+    expect(carouselItem?.className).not.toContain("max-w-[200px]")
+    expect(cardImage?.className).toContain("aspect-video")
+    expect(cardImage?.className).not.toContain("aspect-[2/3]")
+  })
+
+  it("renders an authored vertical grid without changing its layout variant", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            thumbnailOrientation: "vertical",
+          })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const grid = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-grid"]',
+    )
+    const cardImage = container.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"] > div',
+    )
+
+    expect(grid?.className).toContain("grid-cols-2")
+    expect(grid?.className).toContain("md:grid-cols-4")
+    expect(cardImage?.className).toContain("aspect-[2/3]")
+    expect(cardImage?.className).not.toContain("aspect-video")
+  })
+
   it.each([
     ["collection", ["text-xl"], ["text-lg", "md:text-xl"]],
     ["grid", ["text-lg", "md:text-xl"], ["text-xl"]],

@@ -1,7 +1,10 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
-import type { SearchLanguageResolution } from "./search-language"
+import {
+  publicSlugForLocale,
+  type SearchLanguageResolution,
+} from "./search-language"
 
 export type SearchContentType = "video" | "experience"
 export type SearchAvailabilityKind =
@@ -271,8 +274,9 @@ export async function searchVideos(
         targetLanguageSlug: languageContext.targetLanguageSlug,
         queryLanguageSlug: languageContext.queryLanguageSlug,
         queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
-        displayLanguageSlug: languageContext.displayLanguageSlug ?? locale,
-        routeLanguageSlug: languageContext.routeLanguageSlug ?? locale,
+        displayLanguageSlug:
+          languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
+        routeLanguageSlug: languageContext.routeLanguageSlug,
         currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
         acceptLanguage: languageContext.acceptLanguage,
         limit,

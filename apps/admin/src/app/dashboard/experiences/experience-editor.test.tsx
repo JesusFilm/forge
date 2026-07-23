@@ -613,6 +613,49 @@ describe("ExperienceEditor", () => {
     )
   })
 
+  it("switches media collection thumbnails between vertical and horizontal", () => {
+    const view = renderEditorDom([
+      {
+        t: "mediaCollection",
+        sectionKey: "media",
+        variant: "carousel",
+        thumbnailOrientation: "vertical",
+        itemsSource: "manual",
+        title: "Media",
+        items: [],
+      },
+    ])
+
+    try {
+      const orientationSwitch = view.container.querySelector(
+        'button[role="switch"][aria-label="Use horizontal video thumbnails"]',
+      )
+      if (!(orientationSwitch instanceof HTMLButtonElement)) {
+        throw new Error("Thumbnail orientation switch not found")
+      }
+
+      expect(orientationSwitch.getAttribute("aria-checked")).toBe("false")
+      expect(orientationSwitch.textContent).toContain("Vertical")
+
+      act(() => {
+        orientationSwitch.click()
+      })
+
+      expect(orientationSwitch.getAttribute("aria-checked")).toBe("true")
+      expect(orientationSwitch.textContent).toContain("Horizontal")
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(JSON.parse(blocksInput.value)).toMatchObject([
+        { thumbnailOrientation: "horizontal" },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("renders a real empty state for questions and answers", () => {
     const html = renderEditor([
       {
@@ -1397,14 +1440,13 @@ describe("ExperienceEditor", () => {
   })
 
   it("filters the picker by video type through the server action and resets on reopen", async () => {
-    const collectionResult = {
+    const episodeResult = {
       ...defaultVideoLibrary[0]!,
-      key: "collection-1",
-      title: "Collection Result",
-      id: "core-collection",
-      label: "COLLECTION",
-      labelLabel: "Collection",
-      isCollectionTarget: true,
+      key: "episode-1",
+      title: "Episode Result",
+      id: "core-episode",
+      label: "EPISODE",
+      labelLabel: "Episode",
     }
     const featureResult = {
       ...defaultVideoLibrary[0]!,
@@ -1414,7 +1456,7 @@ describe("ExperienceEditor", () => {
       label: "FEATURE_FILM",
       labelLabel: "Feature Film",
     }
-    const searchVideoLibraryAction = vi.fn(async () => [collectionResult])
+    const searchVideoLibraryAction = vi.fn(async () => [episodeResult])
     const view = renderEditorDom(
       [
         {
@@ -1427,7 +1469,7 @@ describe("ExperienceEditor", () => {
         },
       ],
       {
-        videoLibrary: [collectionResult, featureResult],
+        videoLibrary: [episodeResult, featureResult],
         searchVideoLibraryAction,
       },
     )
@@ -1449,13 +1491,14 @@ describe("ExperienceEditor", () => {
       ).toEqual([
         "All types",
         "Collections",
+        "Single episodes",
         "Features",
         "Short films",
         "Series",
       ])
 
       act(() => {
-        typeSelect.value = "collections"
+        typeSelect.value = "episodes"
         typeSelect.dispatchEvent(new Event("change", { bubbles: true }))
       })
       await act(async () => {
@@ -1463,10 +1506,10 @@ describe("ExperienceEditor", () => {
       })
 
       expect(searchVideoLibraryAction).toHaveBeenCalledWith("", {
-        category: "collections",
+        category: "episodes",
         client: "experience-editor-media-collection-picker",
       })
-      expect(view.container.textContent).toContain("Collection Result")
+      expect(view.container.textContent).toContain("Episode Result")
       expect(view.container.textContent).not.toContain("Feature Result")
 
       const videoDialog = view.container.querySelector(
