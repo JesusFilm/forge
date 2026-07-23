@@ -3,8 +3,8 @@ id: "feat-266"
 title: "Watch collection download localization"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
-start_date: null
+status: "complete"
+start_date: "2026-07-22"
 duration: 2
 depends_on:
   - "feat-251"
@@ -16,6 +16,14 @@ tags:
   - "i18n"
   - "topic-experiences"
 ---
+
+## Resolution
+
+Completed on 2026-07-22. The Watch content client catalog now includes the
+collection-download namespace, all 225 shipped catalogs contain the series
+download keys, and all non-provisional locales have contextual translations
+for the full collection-download flow. Local browser smoke passed on the LUMO
+Mark series in English and Arabic, including the Arabic RTL modal.
 
 ## Problem
 

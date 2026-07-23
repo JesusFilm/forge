@@ -260,14 +260,14 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
   return { kind: "unknown", raw: pathname }
 }
 
-// Environment-specific absolute origin for share/copy/embed links. Single
-// source of truth lives in env.ts (Zod schema + soft host-allowlist + default).
-// Public SEO/social metadata uses WATCH_PUBLIC_METADATA_ORIGIN instead.
+// Environment-specific absolute origin for app-local absolute URL builders.
+// Single source of truth lives in env.ts (Zod schema + soft host-allowlist +
+// default). Public Share and SEO/social metadata resolve through
+// WATCH_PUBLIC_METADATA_ORIGIN when the configured origin is not public.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
-// SEO/social metadata should always name the indexed public website host, even
-// when the web app is served from a local, preview, or watch-only deployment
-// origin. Keep share/copy/embed builders on WATCH_CANONICAL_ORIGIN.
+// The indexed public website host used by SEO/social metadata and as the Share
+// fallback for local/private app origins.
 export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
 
 // Re-exported from the shared watch-base-path.mjs module that

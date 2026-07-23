@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import Markdown, { defaultUrlTransform, type Components } from "react-markdown"
 import { textSectionFragment } from "@/lib/fragments/text-section"
+import { normalizeWatchRootHref } from "@/lib/watch-paths"
 
 export { textSectionFragment }
 
@@ -62,7 +63,7 @@ const PROMOTIONAL_MARKDOWN_COMPONENTS = {
   ),
   a: ({ children, href }) => (
     <a
-      href={href}
+      href={normalizeWatchRootHref(href)}
       rel="noopener noreferrer"
       className="font-semibold text-red-100 underline decoration-red-100/35 underline-offset-4 transition-colors hover:text-white hover:decoration-white/70 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
     >
@@ -152,7 +153,7 @@ export function Text({ data }: TextProps) {
       >
         <div className="pt-2 2xl:pt-4">
           {subtitle && (
-            <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <p className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </p>
           )}

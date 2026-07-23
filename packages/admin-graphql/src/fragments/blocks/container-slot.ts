@@ -14,7 +14,14 @@ export const adminContainerSlotFragment = adminGraphql(`
       xl
     }
     backgroundColor
-    backgroundImageUrl
     backgroundImageAssetId
+    backgroundImageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
   }
 `)

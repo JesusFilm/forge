@@ -27,7 +27,7 @@ const EASTER_LIKE_BLOCKS = [
           {
             videoId: "vid-002",
             titleOverride: "Why did Jesus die?",
-            imageOverrideUrl: "https://img.example/2.jpg",
+            imageUrl: "https://img.example/2.jpg",
           },
           { videoId: "vid-003", titleOverride: "Did he rise?" },
         ],
@@ -126,9 +126,7 @@ describe("buildExemplarOutline", () => {
       streamingUrl: "LEAK-streamingUrl",
       previewStreamUrl: "LEAK-previewStreamUrl",
       imageUrl: "LEAK-imageUrl",
-      imageOverrideUrl: "LEAK-imageOverrideUrl",
       imageAssetId: "LEAK-imageAssetId",
-      imageOverrideAssetId: "LEAK-imageOverrideAssetId",
       playbackId: "LEAK-playbackId",
       iframeSrc: "LEAK-iframeSrc",
       contentId: "LEAK-contentId",

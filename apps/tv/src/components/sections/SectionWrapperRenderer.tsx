@@ -7,6 +7,7 @@ import {
   type NormalizedBlock,
   type SectionWrapperBlockModel,
 } from "../../lib/normalizer"
+import { blockImageAssetPreviewUrl } from "../../lib/blockImageAsset"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
@@ -56,9 +57,7 @@ export function SectionWrapperRenderer({
 
   const backgroundColor = sectionBackgroundColor(section.backgroundColor)
   const backgroundImageUrl =
-    typeof section.backgroundImageUrl === "string"
-      ? section.backgroundImageUrl
-      : ""
+    blockImageAssetPreviewUrl(section.backgroundImageAsset) ?? ""
   const wrapperStyle = [
     styles.wrapper,
     backgroundColor ? { backgroundColor } : null,

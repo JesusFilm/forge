@@ -318,6 +318,13 @@ describe("resolveWatchLocaleIdentity", () => {
     })
   })
 
+  it("uses the regional English identity for the British homepage", () => {
+    expect(resolveWatchLocaleIdentity("english-british")).toEqual({
+      locale: "en",
+      htmlLang: "en-GB",
+    })
+  })
+
   it("keeps unsupported audio families in the URL while falling chrome back to English", () => {
     expect(resolveWatchLocaleIdentity("aari")).toEqual({
       locale: "en",

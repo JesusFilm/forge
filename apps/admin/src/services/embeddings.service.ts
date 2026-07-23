@@ -22,7 +22,7 @@ const SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS = 2_500
 const SINGLE_EMBEDDING_REQUEST_ATTEMPTS = 2
 
 const BLOCK_TEXT_IGNORE_KEY =
-  /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
+  /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|orientation$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
 
 const EmbeddingResponseSchema = z.object({
   data: z

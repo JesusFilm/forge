@@ -104,7 +104,10 @@
     "seriesLabel": "SERIES · {episodes}",
     "changeAudioLanguage": "Change audio language",
     "share": "Share",
-    "languages": "Languages"
+    "languages": "Languages",
+    "downloadCollection": "Download collection",
+    "checkingDownloads": "Checking downloads…",
+    "downloadSessionError": "Unable to check your session. Please try again."
   },
   "WatchModal": {
     "close": "Close"

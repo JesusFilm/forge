@@ -1,9 +1,9 @@
-// Loaded defensively: @expo/config-plugins is only resolvable when it's a direct
-// dep of apps/mobile (it is, via devDeps). On resolution failure, no-op rather
-// than crash prebuild — the prebuilt ios/ AppDelegate is already patched.
+// Loaded defensively: Expo config plugins are only resolvable in prebuild
+// contexts. On resolution failure, no-op rather than crash prebuild — the
+// prebuilt ios/ AppDelegate is already patched.
 let withAppDelegate = null
 try {
-  ;({ withAppDelegate } = require("@expo/config-plugins"))
+  ;({ withAppDelegate } = require("expo/config-plugins"))
 } catch {
   withAppDelegate = null
 }
@@ -71,9 +71,9 @@ function insertIntoAppDelegate(src) {
 module.exports = function withBackgroundDownloaderAppDelegate(config) {
   if (!withAppDelegate) {
     console.warn(
-      "[withBackgroundDownloaderAppDelegate] @expo/config-plugins not resolvable; " +
+      "[withBackgroundDownloaderAppDelegate] expo/config-plugins not resolvable; " +
         "skipping AppDelegate relocation. Run `pnpm install` so apps/mobile has " +
-        "@expo/config-plugins, then re-run `expo prebuild`.",
+        "expo, then re-run `expo prebuild`.",
     )
     return config
   }

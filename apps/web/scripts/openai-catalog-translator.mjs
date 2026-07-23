@@ -192,11 +192,15 @@ Requirements:
 - Keep URLs, keyboard tokens, abbreviations, and technical identifiers unchanged.
 - Use established Christian terminology in the target language and a respectful, accessible tone.
 - For low-resource languages, produce the best natural target-language copy you can; do not leave full English sentences merely because a borrowed technical noun is common.
+- Honor an explicit BCP-47 script subtag. When the locale does not specify a script, follow the writing system established by existing reference translations, using the locale's default script only when references do not establish one. Never substitute a bridge language or mix unrelated writing systems into a message.
 - Every supplied message is intentionally translatable and currently requires work. Return a value different from its English source for every entry; explicit locale-neutral exceptions are excluded before this request.
 - Return one entry for every requested key and no extra keys.`
 }
 
 function buildUserPrompt({ locale, inventoryEntry, messages, references }) {
+  const parsedLocale = new Intl.Locale(locale)
+  const explicitScript = parsedLocale.script
+  const defaultScript = parsedLocale.maximize().script ?? "not specified"
   const countries = (inventoryEntry?.countries ?? [])
     .map((country) => country.name)
     .join(", ")
@@ -205,6 +209,11 @@ function buildUserPrompt({ locale, inventoryEntry, messages, references }) {
       targetLocale: locale,
       targetLanguage: localeDisplayName(locale),
       scriptAndRegion: locale,
+      explicitScript: explicitScript ?? "not specified",
+      defaultScript,
+      scriptInstructions: explicitScript
+        ? `Use the explicitly requested ${explicitScript} script.`
+        : `Follow the writing system established by the reference translations; use the locale default ${defaultScript} only when references do not establish one.`,
       officialLanguageCountries: countries || "not specified",
       contextualInstructions: [
         "Translate only the message values; return dotted keys unchanged.",

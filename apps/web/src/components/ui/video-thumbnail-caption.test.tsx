@@ -72,11 +72,11 @@ describe("video thumbnail caption", () => {
       )
     })
 
-    const text = Array.from(container.querySelectorAll("span, h3"))
-    expect(text).toHaveLength(2)
-    for (const element of text) {
-      expect(element.className).toContain("font-medium")
-      expect(element.className).not.toMatch(/font-(semi|extra)?bold/)
-    }
+    const eyebrow = container.querySelector("span")
+    const title = container.querySelector("h3")
+    expect(eyebrow?.className).toContain("font-medium")
+    expect(eyebrow?.className).toContain("tracking-media-label")
+    expect(title?.className).toContain("font-media-card-title")
+    expect(title?.className).not.toMatch(/font-(semi|extra)?bold/)
   })
 })

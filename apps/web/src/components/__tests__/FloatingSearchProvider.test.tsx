@@ -1702,6 +1702,43 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ).toBe("spanish-castilian")
   })
 
+  it.each([
+    ["root home", "/", "english", undefined],
+    ["localized home", "/russian.html", "russian", "russian"],
+    ["authored experience", "/easter.html", "english", undefined],
+  ])(
+    "opens the global picker from %s with a valid current language",
+    async (_label, pathname, expectedLanguageSlug, defaultLanguageSlug) => {
+      navigationMocks.pathname = pathname
+      __setWatchInteractionLoadersForTests({
+        "global-language": vi.fn(async () => ({})),
+      })
+      act(() => {
+        root.render(
+          <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
+            <main>Page</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      const languageButton = document.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        languageButton.click()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(
+        document
+          .querySelector('[data-testid="global-language-picker-modal"]')
+          ?.getAttribute("data-current-language-slug"),
+      ).toBe(expectedLanguageSlug)
+    },
+  )
+
   it("keeps the newest page-specific owner when an older owner cleans up", () => {
     const firstOwner = Symbol("first hero")
     const secondOwner = Symbol("second hero")
@@ -1909,6 +1946,34 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     )
   })
 
+  it("keeps the current custom language when the compact logo returns to Watch home", () => {
+    navigationMocks.pathname = "/jesus.html/women-disciples/hindi.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="hindi">
+          <main>Hindi episode page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("/hindi.html")
+  })
+
+  it("keeps the default Watch home fallback for a malformed inner-route language", () => {
+    navigationMocks.pathname = "/jesus.html/not!a!language.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Malformed video route</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("/")
+  })
+
   it("renders the language globe as part of the floating header", () => {
     const onLanguageClick = vi.fn()
     act(() => {
@@ -2064,6 +2129,50 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("closes search without navigating when the header logo is clicked", async () => {
+    vi.useFakeTimers()
+    await openSearchOverlay()
+
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLAnchorElement | null
+    const click = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+
+    expect(logo).not.toBeNull()
+    const navigationAllowed = await act(() => logo!.dispatchEvent(click))
+
+    expect(navigationAllowed).toBe(false)
+    expect(click.defaultPrevented).toBe(true)
+    expect(logo?.getAttribute("aria-label")).toBe("Close search")
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]')
+        ?.className,
+    ).toContain("animate-overlay-fade-out")
+
+    const closingClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+    const closingNavigationAllowed = await act(() =>
+      logo!.dispatchEvent(closingClick),
+    )
+
+    expect(closingNavigationAllowed).toBe(false)
+    expect(closingClick.defaultPrevented).toBe(true)
+
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).toBeNull()
+  })
+
   it("localizes the global search launcher and close control in Russian", async () => {
     setRequestLocale("ru")
     act(() => {

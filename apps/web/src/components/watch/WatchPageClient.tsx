@@ -64,23 +64,17 @@ import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { languageCodeFor } from "@/lib/language-code"
 import {
-  WATCH_BASE_PATH,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import { buildFbShareUrl } from "@/lib/share"
+import { buildFbShareUrl, resolveWatchShareUrl } from "@/lib/share"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
 } from "@/lib/subtitle-preference-client"
-import {
-  PUBLIC_SHARE_FALLBACK_ORIGIN,
-  isPublicShareableOrigin,
-  resolveDownloadPosterUrl,
-  resolvePosterUrl,
-} from "@/lib/url"
+import { resolveDownloadPosterUrl, resolvePosterUrl } from "@/lib/url"
 import {
   getCachedWatchLanguageOptions,
   loadWatchInteraction,
@@ -142,25 +136,29 @@ function isPendingChapterStillRoutable(
     if (!isWatchBlock(block) || block.kind !== "SiblingCarousel") continue
 
     const carouselBlock: WatchSiblingCarouselBlock = block
-    const parentSlug =
-      typeof carouselBlock.canonicalParent.slug === "string"
-        ? tryAsContentSlug(carouselBlock.canonicalParent.slug)
-        : null
-    for (const child of carouselBlock.canonicalParent.children ?? []) {
-      if (
-        child == null ||
-        child.documentId !== pendingChapter.targetVideoDocumentId
-      ) {
-        continue
-      }
+    const parents = carouselBlock.selectableParents ?? [
+      carouselBlock.canonicalParent,
+    ]
 
-      if (typeof child.slug !== "string") return false
-      const slug = tryAsContentSlug(child.slug)
-      if (!slug) return false
-      const href = parentSlug
-        ? watchEpisodePath(parentSlug, slug, lang)
-        : watchVideoPath(slug, lang)
-      return href === pendingChapter.href
+    for (const parent of parents) {
+      const parentSlug =
+        typeof parent.slug === "string" ? tryAsContentSlug(parent.slug) : null
+      for (const child of parent.children ?? []) {
+        if (
+          child == null ||
+          child.documentId !== pendingChapter.targetVideoDocumentId ||
+          typeof child.slug !== "string"
+        ) {
+          continue
+        }
+
+        const slug = tryAsContentSlug(child.slug)
+        if (!slug) continue
+        const href = parentSlug
+          ? watchEpisodePath(parentSlug, slug, lang)
+          : watchVideoPath(slug, lang)
+        if (href === pendingChapter.href) return true
+      }
     }
   }
 
@@ -247,18 +245,12 @@ function buildShareFallbackHref({
   currentLanguageSlug: string
   videoSlug: string
 }): string | undefined {
-  const slug = tryAsContentSlug(videoSlug)
-  const lang = tryAsLocaleSlug(currentLanguageSlug)
-  if (!slug || !lang) return undefined
-
-  const shareOrigin = isPublicShareableOrigin(origin)
-    ? origin
-    : PUBLIC_SHARE_FALLBACK_ORIGIN
-  const shareableUrl = `${shareOrigin}${WATCH_BASE_PATH}${watchVideoPath(
-    slug,
-    lang,
-  )}`
-  return buildFbShareUrl(shareableUrl)
+  const shareableUrl = resolveWatchShareUrl({
+    origin,
+    videoSlug,
+    languageSlug: currentLanguageSlug,
+  })
+  return shareableUrl ? buildFbShareUrl(shareableUrl) : undefined
 }
 
 export function WatchPageClient({

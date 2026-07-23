@@ -7,6 +7,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 import { WatchHistoryClient } from "@/components/watch/WatchHistoryClient"
 import { verifyAuthSession } from "@/lib/auth-session"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import { watchPath } from "@/lib/watch-paths"
 import {
   loadClientMessages,
   WATCH_HISTORY_CLIENT_MESSAGE_NAMESPACES,
@@ -37,7 +38,9 @@ export default async function WatchHistoryPage({ params }: HistoryPageProps) {
 
   const session = await verifyAuthSession(await headers())
   if (!session.authenticated) {
-    redirect("/api/auth/login?returnTo=/watch/history" as Route)
+    redirect(
+      `${watchPath("/api/auth/login")}?returnTo=${encodeURIComponent(watchPath("/history"))}` as Route,
+    )
   }
 
   return (

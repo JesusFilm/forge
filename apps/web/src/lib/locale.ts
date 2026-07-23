@@ -70,6 +70,10 @@ export function parseAcceptLanguage(
 }
 
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
+  // Admin currently exposes generic `eng` for this regional public audio
+  // slug. Keep the distinct British homepage on its actual regional identity
+  // so HTML language and sitemap hreflang signals agree.
+  "english-british": "en-GB",
   // Admin's generated Language.bcp47 corpus does not currently include this
   // public audio slug, but the URL contract does. Keep the raw dub slug in
   // the path while allowing the static root layout to emit the regional SEO

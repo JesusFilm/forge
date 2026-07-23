@@ -13,7 +13,7 @@ function props(
       text: "For God so loved the world...",
       attribution: "Jesus",
       backgroundColor: "#2457aa",
-      backgroundImageUrl: "https://example.com/quote.jpg",
+      backgroundImagePreviewUrl: "https://example.com/quote.jpg",
       ctaEnabled: true,
       ctaLabel: "Read more",
       ctaLink: "/watch",
