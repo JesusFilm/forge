@@ -50,17 +50,35 @@ export function buildWatchSearchInput({
  * and may carry markup. RN `<Text>` renders tags literally, so strip them —
  * mirrors web's htmlToPlainText, minus the DOMParser branch RN has no use for.
  */
+const HTML_ENTITIES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+}
+
+// Require a letter or `/` after `<` so ordinary prose ("a < b") survives, and
+// loop until stable: one pass over `<<b>b>` reassembles a live `<b>`.
+const HTML_TAG = /<\/?[a-zA-Z][^>]*>/g
+
 export function stripHtml(value: string | null | undefined): string | null {
   if (!value) return null
-  const text = value
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
+  let text = value.replace(/<br\s*\/?>/gi, " ")
+  let previous: string
+  do {
+    previous = text
+    text = text.replace(HTML_TAG, "")
+  } while (text !== previous)
+  // ONE pass over all entities: a sequence of per-entity replaces would decode
+  // `&amp;lt;` twice, turning escaped text back into a live `<`.
+  text = text
+    .replace(
+      /&(?:nbsp|amp|lt|gt|quot|apos|#39);/gi,
+      (m) => HTML_ENTITIES[m.toLowerCase()] ?? m,
+    )
     .replace(/\s+/g, " ")
     .trim()
   return text.length > 0 ? text : null

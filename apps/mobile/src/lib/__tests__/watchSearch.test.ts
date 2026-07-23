@@ -98,6 +98,25 @@ describe("stripHtml", () => {
     )
   })
 
+  // CodeQL js/incomplete-multi-character-sanitization: one pass over nested
+  // angle brackets reassembles a live tag from the leftovers.
+  it("keeps stripping until no tag can be reassembled", () => {
+    expect(stripHtml("<<b>b>bold")).toBe("bold")
+    expect(stripHtml("<<script>script>alert")).toBe("alert")
+  })
+
+  // CodeQL js/double-escaping: decoding &amp; before &lt; turns escaped text
+  // back into live markup.
+  it("decodes entities in a single pass, never twice", () => {
+    expect(stripHtml("&amp;lt;b&amp;gt;")).toBe("&lt;b&gt;")
+    expect(stripHtml("&amp;amp;")).toBe("&amp;")
+  })
+
+  // Prose comparisons are not markup.
+  it("leaves ordinary angle brackets in prose alone", () => {
+    expect(stripHtml("a < b and c > d")).toBe("a < b and c > d")
+  })
+
   it("returns null for empty, absent, or tag-only values", () => {
     expect(stripHtml(null)).toBeNull()
     expect(stripHtml(undefined)).toBeNull()
