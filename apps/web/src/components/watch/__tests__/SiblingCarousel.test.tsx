@@ -578,7 +578,7 @@ describe("SiblingCarousel — happy path", () => {
     expect(caption?.className).toContain("sm:pb-4")
     const captionText = Array.from(caption!.querySelectorAll("span"))
     expect(captionText[0]?.className).toContain("font-medium")
-    expect(captionText[1]?.className).toContain("font-medium")
+    expect(captionText[1]?.className).toContain("font-media-card-title")
     expect(captionText[1]?.className).not.toMatch(/font-(semi|extra)?bold/)
 
     const blurMask = active!.querySelector("[aria-hidden='true']")

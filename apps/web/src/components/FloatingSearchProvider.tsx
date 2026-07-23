@@ -107,13 +107,22 @@ type PendingPageLanguageOpen = {
   routeIdentity: RouteIdentity
 }
 
-export function FloatingSearchProvider({ children }: { children: ReactNode }) {
+export function FloatingSearchProvider({
+  children,
+  defaultLanguageSlug = "english",
+}: {
+  children: ReactNode
+  defaultLanguageSlug?: string
+}) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = parseWatchPath(pathname)
-  const currentLanguageSlug = "lang" in parsedPath ? parsedPath.lang : "english"
+  const currentLanguageSlug =
+    parsedPath.kind === "video" || parsedPath.kind === "episode"
+      ? parsedPath.lang
+      : defaultLanguageSlug
   const isWatchHome =
     parsedPath.kind === "home" || parsedPath.kind === "localized-home"
   const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
