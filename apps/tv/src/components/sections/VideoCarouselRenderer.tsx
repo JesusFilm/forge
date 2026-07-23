@@ -9,6 +9,7 @@ import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
 import { extractMuxPlaybackId } from "../../lib/muxUrl"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { blockImageAssetPreviewUrl } from "../../lib/blockImageAsset"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
 import { useHoverPreview } from "../focus/useHoverPreview"
@@ -37,7 +38,9 @@ function VideoCarouselCard({
   item: VideoCarouselItem
   onPress: () => void
 }) {
-  const thumbnailUrl = resolveImageUrl(item.imageUrl ?? null)
+  const thumbnailUrl = resolveImageUrl(
+    blockImageAssetPreviewUrl(item.imageAsset),
+  )
   const title = item.titleOverride ?? "Untitled"
   const [focused, setFocused] = useState(false)
   const previewUrl = useHoverPreview({

@@ -31,6 +31,20 @@ type QuoteItem = NonNullable<
   NonNullable<FragmentOf<typeof bibleQuotesCarouselFragment>["quotes"]>[number]
 >
 
+type ImageAssetBackedQuote = QuoteItem & {
+  imageAsset?: { previewUrl?: string | null } | null
+  backgroundImageAsset?: { previewUrl?: string | null } | null
+}
+
+function quoteImageUrl(quote: QuoteItem) {
+  const assetBackedQuote = quote as ImageAssetBackedQuote
+  return (
+    assetBackedQuote.imageAsset?.previewUrl ??
+    assetBackedQuote.backgroundImageAsset?.previewUrl ??
+    quote.imageUrl
+  )
+}
+
 export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   const { heading, quotes } = data
   const validQuotes =
@@ -157,7 +171,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
   const hasText = typeof quote.text === "string" && quote.text.trim().length > 0
   return (
     <BibleQuoteCard
-      imageUrl={quote.imageUrl}
+      imageUrl={quoteImageUrl(quote)}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
@@ -184,7 +198,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
 function FreeResourceCard({ quote }: { quote: QuoteItem }) {
   return (
     <BibleQuoteCard
-      imageUrl={quote.imageUrl}
+      imageUrl={quoteImageUrl(quote)}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >

@@ -33,6 +33,14 @@ type NavItem = NonNullable<
   NonNullable<FragmentOf<typeof navigationCarouselFragment>["items"]>[number]
 >
 
+type ImageAssetBackedItem = NavItem & {
+  imageAsset?: { previewUrl?: string | null } | null
+}
+
+function blockImageAssetPreviewUrl(item: ImageAssetBackedItem) {
+  return item.imageAsset?.previewUrl ?? null
+}
+
 function handleNavigationClick(contentId: string) {
   const element = document.querySelector(
     `[data-section-key="${CSS.escape(contentId)}"]`,
@@ -43,6 +51,8 @@ function handleNavigationClick(contentId: string) {
 function NavCard({ item, index }: { item: NavItem; index: number }) {
   const t = useTranslations("WatchHome")
   const isFirst = index === 0
+  const imageUrl =
+    blockImageAssetPreviewUrl(item as ImageAssetBackedItem) ?? item.imageUrl
 
   return (
     <Card
@@ -60,20 +70,20 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
       aria-label={t("scrollToVideo", { title: item.title })}
       data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
     >
-      {isFirst && item.imageUrl ? (
+      {isFirst && imageUrl ? (
         <Image
           fill
           sizes="200px"
-          src={item.imageUrl}
+          src={imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
           data-testid="CarouselItemImage"
         />
-      ) : item.imageUrl ? (
+      ) : imageUrl ? (
         <Image
           fill
           sizes="200px"
-          src={item.imageUrl}
+          src={imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
           data-testid="CarouselItemImg"

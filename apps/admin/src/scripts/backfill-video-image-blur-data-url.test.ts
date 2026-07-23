@@ -33,6 +33,7 @@ function row(overrides = {}) {
     thumbnail: null,
     url: null,
     blurDataUrl: null,
+    dominantColor: null,
     video: { slug: "jesus" },
     ...overrides,
   }
@@ -119,6 +120,33 @@ describe("backfill-video-image-blur-data-url selection", () => {
     expect(targets.map((target) => target.imageUrl)).toEqual([
       "https://image.test/mobile-low.jpg",
       "https://image.test/mobile-high.jpg",
+    ])
+  })
+
+  it("selects rows that already have blur data but still need a dominant color", async () => {
+    const prisma = buildPrisma([
+      row({
+        blurDataUrl: "data:image/jpeg;base64,LQIP",
+        dominantColor: null,
+        videoStill: "https://image.test/still.jpg",
+      }),
+    ])
+
+    const targets = await selectVideoImageBlurDataUrlTargets(prisma as never, {
+      limit: 1,
+      fullCatalog: false,
+      execute: false,
+      verbose: false,
+      batchSize: 10,
+    })
+
+    expect(targets).toMatchObject([
+      {
+        id: "image-1",
+        imageUrl: "https://image.test/still.jpg",
+        blurDataUrl: "data:image/jpeg;base64,LQIP",
+        dominantColor: null,
+      },
     ])
   })
 })

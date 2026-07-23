@@ -147,6 +147,9 @@ describe("normalizeExperienceDraft", () => {
       t: "mediaCollection",
       items: [{ videoId: "video-2", linkToSectionKey: "ai-s02" }],
     })
+    expect(normalized.blocks[3]).not.toMatchObject({
+      items: [expect.objectContaining({ imageUrl: expect.any(String) })],
+    })
   })
 
   it("flattens container slots into containerSlot markers plus nested content", () => {

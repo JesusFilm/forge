@@ -14,15 +14,18 @@ export function generateSearchRequestId(): string {
   return `search-${searchRequestCounter}`
 }
 
-// Admin surfaces rate-limit / auth / unavailable as a 200-body GraphQL error
-// (never a 429, R34); Apollo v4 throws CombinedGraphQLErrors whose first error's
-// extensions carry the code (v3's `.graphQLErrors` is gone). Cf. apolloClient.ts.
+// Admin returns these in a 200 body; Apollo v4 throws CombinedGraphQLErrors
+// (v3's `.graphQLErrors` is gone). It sets no domain code on the search path —
+// the rate limiter stamps http.statusCode — so fall back to that or telemetry
+// reports "unknown" for exactly the throttling we most want to see.
 export function parseSearchErrorCode(error: unknown): string {
-  if (CombinedGraphQLErrors.is(error)) {
-    const code = error.errors[0]?.extensions?.code
-    return typeof code === "string" ? code : "unknown"
-  }
-  return "unknown"
+  if (!CombinedGraphQLErrors.is(error)) return "unknown"
+  const extensions = error.errors[0]?.extensions
+  const code = extensions?.code
+  if (typeof code === "string") return code
+  const status = (extensions?.http as { statusCode?: unknown } | undefined)
+    ?.statusCode
+  return typeof status === "number" ? `http_${status}` : "unknown"
 }
 
 export type WatchSearchOutcome = {

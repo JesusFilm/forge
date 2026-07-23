@@ -28,6 +28,7 @@ const {
   isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabledMock,
   getInitialSubtitleTranscriptMock,
+  getWatchRouteManifestMock,
 } = vi.hoisted(() => ({
   resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
@@ -55,6 +56,7 @@ const {
   isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
   getInitialSubtitleTranscriptMock: vi.fn(),
+  getWatchRouteManifestMock: vi.fn(),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -120,6 +122,16 @@ vi.mock("@/lib/watch-transcript", () => ({
   getInitialSubtitleTranscript: getInitialSubtitleTranscriptMock,
 }))
 
+vi.mock("@/lib/watch-route-manifest", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/watch-route-manifest")
+  >("@/lib/watch-route-manifest")
+  return {
+    ...actual,
+    getWatchRouteManifest: getWatchRouteManifestMock,
+  }
+})
+
 import SlugRestPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/[...rest]/page"
@@ -169,6 +181,8 @@ beforeEach(() => {
   isWatchQuestionPanelEnabledMock.mockResolvedValue(false)
   getInitialSubtitleTranscriptMock.mockReset()
   getInitialSubtitleTranscriptMock.mockResolvedValue(null)
+  getWatchRouteManifestMock.mockReset()
+  getWatchRouteManifestMock.mockResolvedValue(null)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -803,6 +817,265 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         (element) => element.getAttribute("data-testid"),
       ),
     ).toEqual(["watch-page-client-mock", "watch-home-footer"])
+  })
+
+  it("builds ordered standalone collection choices from exact admitted current-language routes", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const child = (documentId: string, slug: string, title: string) => ({
+      documentId,
+      slug,
+      title,
+      label: "episode",
+      images: [],
+      durationSeconds: 30,
+      muxPlaybackId: `mux-${documentId}`,
+      muxThumbnailBlurDataUrl: null,
+    })
+    const current = child("v1", "storyclubs", "StoryClubs")
+    const ownChildren = [
+      child("own-1", "own-one", "Own One"),
+      child("own-2", "own-two", "Own Two"),
+    ]
+    const parents = [
+      {
+        documentId: "parent-a",
+        slug: "collection-a",
+        title: "Collection A",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [
+          current,
+          child("a-2", "a-two", "A Two"),
+          child("a-3", "a-three", "A Three"),
+        ],
+      },
+      {
+        documentId: "parent-missing-current",
+        slug: "missing-current",
+        title: "Missing Current",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [current, child("m-2", "m-two", "M Two")],
+      },
+      {
+        documentId: "parent-too-short",
+        slug: "too-short",
+        title: "Too Short",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [current, child("s-2", "s-two", "S Two")],
+      },
+      {
+        documentId: "parent-invalid-slug",
+        slug: "Not Public",
+        title: "Invalid Slug",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [current, child("i-2", "i-two", "I Two")],
+      },
+      {
+        documentId: "parent-b",
+        slug: "collection-b",
+        title: "Collection B",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [
+          child("b-1", "b-one", "B One"),
+          current,
+          child("b-es", "b-spanish", "Spanish Only"),
+        ],
+      },
+    ]
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).children = ownChildren
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).parents = parents
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-07-22T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "collection-a": ["storyclubs", "a-two", "a-three"],
+        "missing-current": ["m-two"],
+        "too-short": ["storyclubs"],
+        "collection-b": ["b-one", "storyclubs", "b-spanish"],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        "collection-a": { storyclubs: [0], "a-two": [0], "a-three": [1] },
+        "missing-current": { "m-two": [0] },
+        "too-short": { storyclubs: [0] },
+        "collection-b": {
+          "b-one": [0],
+          storyclubs: [0],
+          "b-spanish": [1],
+        },
+      },
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        video?: { documentId?: string; slug?: string }
+        nextWatchItem?: { parentSlug?: string } | null
+        canonicalParent?: { slug?: string; children?: Array<{ slug: string }> }
+        selectableParents?: Array<{
+          slug: string
+          children: Array<{ slug: string }>
+        }>
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "collection-a",
+      "collection-b",
+    ])
+    expect(
+      carousel?.selectableParents?.map((parent) =>
+        parent.children.map((entry) => entry.slug),
+      ),
+    ).toEqual([
+      ["storyclubs", "a-two"],
+      ["b-one", "storyclubs"],
+    ])
+    expect(carousel?.canonicalParent?.slug).toBe("collection-a")
+    expect(carousel?.canonicalParent?.children).toHaveLength(2)
+    const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+    expect(hero?.nextWatchItem).toMatchObject({
+      parentSlug: "storyclubs",
+      slug: "own-one",
+      documentId: "own-1",
+    })
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "Share")?.video,
+    ).toMatchObject({ documentId: "v1", slug: "storyclubs" })
+    expect(jsonLdByType("BreadcrumbList")).toMatchObject({
+      itemListElement: [
+        {
+          position: 1,
+          name: "Watch",
+          item: "https://www.jesusfilm.org/watch",
+        },
+        {
+          position: 2,
+          name: "StoryClubs",
+          item: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+        },
+      ],
+    })
+    expect(jsonLdByType("ItemList")).toMatchObject({
+      itemListElement: [
+        {
+          position: 1,
+          item: {
+            name: "StoryClubs",
+            url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+          },
+        },
+        {
+          position: 2,
+          item: {
+            name: "A Two",
+            url: "https://www.jesusfilm.org/watch/a-two.html/english.html",
+          },
+        },
+      ],
+    })
+  })
+
+  it("keeps the standalone own-children fallback when the manifest is unavailable", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const ownChildren = [
+      {
+        documentId: "own-1",
+        slug: "own-one",
+        title: "Own One",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-1",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "own-2",
+        slug: "own-two",
+        title: "Own Two",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-2",
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(result.video as unknown as { children: typeof ownChildren }).children =
+      ownChildren
+    getWatchRouteManifestMock.mockResolvedValue(null)
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        canonicalParent?: { slug?: string }
+        selectableParents?: unknown
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.slug).toBe("storyclubs")
+    expect(carousel).not.toHaveProperty("selectableParents")
+  })
+
+  it("starts the route manifest request alongside standalone video resolution", async () => {
+    let resolveRoute!: (value: unknown) => void
+    let resolveManifest!: (value: null) => void
+    resolveWatchRouteBySlugMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRoute = resolve
+      }),
+    )
+    getWatchRouteManifestMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveManifest = resolve
+      }),
+    )
+
+    const renderPromise = render2Seg("storyclubs", "english")
+    await vi.waitFor(() => {
+      expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
+        "storyclubs",
+        "english",
+      )
+      expect(getWatchRouteManifestMock).toHaveBeenCalledTimes(1)
+    })
+
+    resolveRoute({
+      kind: "video",
+      ...makeWatchVideoResult("featureFilm"),
+    })
+    resolveManifest(null)
+    await renderPromise
   })
 
   it("defers transcript cues and prunes client variant rows", async () => {
@@ -1535,7 +1808,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       label: "clip",
       images: [],
       durationSeconds: null,
-      muxPlaybackId: null,
+      muxPlaybackId: `mux-pilate-${index + 1}`,
     }))
     const anticipateParent = {
       documentId: "anticipate-parent",
@@ -1576,13 +1849,21 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "english",
     )
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      collectionSlug?: string
       mergedBlocks?: Array<{
         kind?: string
+        video?: { documentId?: string; slug?: string }
+        nextWatchItem?: {
+          parentSlug?: string
+          slug?: string
+          documentId?: string
+        } | null
         canonicalParent?: {
           slug?: string | null
           title?: string | null
           children?: unknown[]
         }
+        selectableParents?: unknown
         currentVideoDocumentId?: string
       }>
     }
@@ -1592,7 +1873,61 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     expect(carousel?.canonicalParent?.slug).toBe("anticipate-the-resurrection")
     expect(carousel?.canonicalParent?.title).toBe("Anticipate the Resurrection")
     expect(carousel?.canonicalParent?.children).toHaveLength(29)
+    expect(carousel).not.toHaveProperty("selectableParents")
     expect(carousel?.currentVideoDocumentId).toBe("pilate-chapter-20")
+    expect(
+      props.mergedBlocks?.find((block) => block.kind === "HeroPlayer")
+        ?.nextWatchItem,
+    ).toMatchObject({
+      parentSlug: "anticipate-the-resurrection",
+      slug: "jesus-dies-on-the-cross",
+      documentId: "pilate-chapter-21",
+    })
+    expect(
+      props.mergedBlocks?.find((block) => block.kind === "Share")?.video,
+    ).toMatchObject({
+      documentId: "pilate-chapter-20",
+      slug: "jesus-is-crucified",
+    })
+    expect(props.collectionSlug).toBe("anticipate-the-resurrection")
+    expect(jsonLdByType("BreadcrumbList")).toMatchObject({
+      itemListElement: [
+        {
+          position: 1,
+          name: "Watch",
+          item: "https://www.jesusfilm.org/watch",
+        },
+        {
+          position: 2,
+          name: "Anticipate the Resurrection",
+          item: "https://www.jesusfilm.org/watch/anticipate-the-resurrection.html/english.html",
+        },
+        {
+          position: 3,
+          name: "Jesus is Crucified",
+          item: "https://www.jesusfilm.org/watch/jesus-is-crucified.html/english.html",
+        },
+      ],
+    })
+    const relatedItems = jsonLdByType("ItemList")?.itemListElement as
+      | Array<Record<string, unknown>>
+      | undefined
+    expect(relatedItems).toHaveLength(29)
+    expect(relatedItems?.[0]).toMatchObject({
+      position: 1,
+      item: {
+        name: "Pilate chapter 1",
+        url: "https://www.jesusfilm.org/watch/triumphal-entry.html/english.html",
+      },
+    })
+    expect(relatedItems?.at(-1)).toMatchObject({
+      position: 29,
+      item: {
+        name: "Pilate chapter 29",
+        url: "https://www.jesusfilm.org/watch/invitation-to-know-jesus-personally.html/english.html",
+      },
+    })
+    expect(getWatchRouteManifestMock).not.toHaveBeenCalled()
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {

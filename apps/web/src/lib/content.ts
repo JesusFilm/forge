@@ -2308,6 +2308,8 @@ export type WatchSiblingCarouselBlock = {
   kind: "SiblingCarousel"
   canonicalParent: CarouselParent
   currentVideoDocumentId: string
+  /** Standalone-only collection choices; omitted for fixed contextual rails. */
+  selectableParents?: CarouselParent[]
 }
 
 export type WatchBodyBlock = {
@@ -2439,10 +2441,12 @@ function nextWatchItemFromChild(
  * Returns a carousel block with the most relevant peer set, or null when none
  * is available:
  *
- * 1. When the current video has its **own** children (a parent / collection
+ * 1. When the standalone route supplies eligible selectable parents, use the
+ *    first as the default and retain all choices for the client selector.
+ * 2. When the current video has its **own** children (a parent / collection
  *    video like JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
- * 2. Otherwise, fall back to the canonical parent's children — the current
+ * 3. Otherwise, fall back to the canonical parent's children — the current
  *    video is itself a chapter, and the user wants to navigate between
  *    siblings of the same parent (e.g. between segments of JESUS).
  *
@@ -2451,7 +2455,17 @@ function nextWatchItemFromChild(
 export function buildSiblingCarouselBlock(
   canonicalParent: WatchParent | null,
   video: WatchVideoRecord,
+  selectableParents: CarouselParent[] = [],
 ): WatchSiblingCarouselBlock | null {
+  if (selectableParents.length > 0) {
+    return {
+      kind: "SiblingCarousel",
+      canonicalParent: selectableParents[0]!,
+      currentVideoDocumentId: video.documentId,
+      selectableParents,
+    }
+  }
+
   const ownChildren = video.children
   if (ownChildren.length >= 2) {
     // Synthesize a virtual parent from the current video so the carousel's
@@ -2605,6 +2619,8 @@ type MergeWatchExperienceArgs = {
    * the SiblingCarousel slot is omitted from the merged block array.
    */
   canonicalParent: WatchParent | null
+  /** Eligible collection choices supplied only by the standalone route. */
+  selectableParents?: CarouselParent[]
   /** Optional Experience override — when omitted, all 6 slots auto-template. */
   experience?: WatchExperience | null
 }
@@ -2633,6 +2649,7 @@ export function mergeWatchExperience({
   video,
   variant,
   canonicalParent,
+  selectableParents,
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
@@ -2672,7 +2689,10 @@ export function mergeWatchExperience({
   }
 
   pushSlot("HeroPlayer", buildHeroBlock(video, variant, canonicalParent))
-  pushSlot("SiblingCarousel", buildSiblingCarouselBlock(canonicalParent, video))
+  pushSlot(
+    "SiblingCarousel",
+    buildSiblingCarouselBlock(canonicalParent, video, selectableParents),
+  )
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
   pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))

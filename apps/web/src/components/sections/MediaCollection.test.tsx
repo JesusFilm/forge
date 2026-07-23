@@ -58,7 +58,7 @@ function makeManualItem(overrides: Record<string, unknown> = {}) {
     subtitleOverride: null,
     labelOverride: null,
     collectionSize: null,
-    imageUrl: null,
+    imageAsset: null,
     ...overrides,
   }
 }
@@ -345,7 +345,9 @@ describe("MediaCollection VideoCard href", () => {
               makeManualItem({
                 labelOverride: "Episode",
                 resolvedTitle: "Episode One",
-                imageUrl: "https://example.com/episode-one.jpg",
+                imageAsset: {
+                  previewUrl: "https://example.com/episode-one.jpg",
+                },
               }),
               makeManualItem({
                 videoId: "v-2",
@@ -353,7 +355,9 @@ describe("MediaCollection VideoCard href", () => {
                 titleOverride: "Episode Two",
                 labelOverride: "Episode",
                 resolvedTitle: "Episode Two",
-                imageUrl: "https://example.com/episode-two.jpg",
+                imageAsset: {
+                  previewUrl: "https://example.com/episode-two.jpg",
+                },
               }),
             ],
           })}
@@ -784,8 +788,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                },
               },
               {
                 videoId: "v-blank",
@@ -795,8 +801,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                },
               },
             ],
           })}
@@ -958,6 +966,28 @@ describe("MediaCollection VideoCard href", () => {
     expect(
       container.querySelector<HTMLAnchorElement>("a[href='/watch/featured']"),
     ).not.toBeNull()
+  })
+
+  it("normalizes an authored root CTA to the watch base path", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>(
+          "[data-testid='media-collection-cta']",
+        )
+        ?.getAttribute("href"),
+    ).toBe("/watch")
   })
 
   it("uses the current localized collection for route video children", () => {
@@ -1300,8 +1330,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/poster.jpg",
-                imageOverrideDominantColor: "#787e16",
+                imageAsset: {
+                  previewUrl: "https://example.com/poster.jpg",
+                  dominantColor: "#787e16",
+                },
               },
             ],
           })}
@@ -1333,8 +1365,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/still.jpg",
-                videoImageDominantColor: "#123456",
+                imageAsset: {
+                  previewUrl: "https://example.com/still.jpg",
+                  dominantColor: "#123456",
+                },
               },
             ],
           })}

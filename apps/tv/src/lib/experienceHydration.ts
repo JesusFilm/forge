@@ -1,10 +1,10 @@
-// SDUI MediaCollection cards carry no usable title/image (authored overrides are
-// null; imageOverrideUrl 404s). Like the Home rail — and diverging from mobile's
-// flat render — TV resolves both from the linked video, hydrated by coreId.
+// SDUI MediaCollection cards can carry authored item images, but otherwise TV
+// resolves title/image from the linked video, hydrated by coreId.
 
 import { pickCardImage, type CardImageSource } from "./cardImage"
 import { resolveImageUrl } from "./resolveImageUrl"
 import type { NormalizedBlock } from "./normalizer"
+import { blockImageAssetPreviewUrl } from "./blockImageAsset"
 
 // The subset of a hydrated video the card needs (structural, so it accepts the
 // gql.tada result without coupling to the generated type).
@@ -58,24 +58,8 @@ export function collectMediaCollectionCoreIds(
 type MediaItemLike = {
   coreId?: string | null
   titleOverride?: string | null
-  imageUrl?: string | null
-  imageOverrideUrl?: string | null
-}
-
-// The watch web app origin serving its bundled poster assets. Absolute (not TV's
-// relative static base) so posters load in dev builds too — the relative path
-// resolves to a non-running localhost web server there. Prod-pinned across envs.
-const WATCH_ASSET_BASE = "https://watch.jesusfilm.org/watch"
-
-// SYNC: mirrors apps/web/src/lib/media-image-url.ts. Rewrites a jesusfilm.org
-// /images seed URL to the watch app origin (the SAME curated poster web renders);
-// any other URL passes through unchanged.
-function rewriteSeedPosterUrl(url: string | null): string | null {
-  if (!url) return null
-  const match = url.match(
-    /^https?:\/\/(?:www\.)?jesusfilm\.org(\/images\/.*)$/i,
-  )
-  return match?.[1] ? `${WATCH_ASSET_BASE}${match[1]}` : url
+  imageAsset?: unknown
+  imageUrl?: unknown
 }
 
 function firstNonEmpty(
@@ -102,25 +86,15 @@ export function resolveMediaItemTitle(
   )
 }
 
-// Exported for the Home adapter, which needs this branch alone: it is BOTH the
-// portrait signal and the art, so one function decides both. `imageUrl` must not
-// count toward it — that field carries landscape art too.
-export function resolveOverridePosterUrl(item: MediaItemLike): string | null {
-  return resolveImageUrl(
-    rewriteSeedPosterUrl(firstNonEmpty(item.imageOverrideUrl)),
-  )
-}
-
-// The curated override poster wins (web's precedence: imageOverrideUrl →
-// imageUrl → video art), so these cards show the SAME portrait posters web
-// renders instead of the video's landscape cinematic cropped to portrait.
 export function resolveMediaItemImageUrl(
   item: MediaItemLike,
   video: HydratedVideo | undefined,
 ): string | null {
   return (
-    resolveOverridePosterUrl(item) ??
-    resolveImageUrl(firstNonEmpty(item.imageUrl)) ??
+    resolveImageUrl(blockImageAssetPreviewUrl(item.imageAsset)) ??
+    resolveImageUrl(
+      typeof item.imageUrl === "string" ? firstNonEmpty(item.imageUrl) : null,
+    ) ??
     resolveImageUrl(pickCardImage(video?.images ?? null, "card"))
   )
 }

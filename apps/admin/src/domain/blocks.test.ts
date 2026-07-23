@@ -83,7 +83,7 @@ describe("BlockSchema — all top-level types validate", () => {
       value: {
         t: "container",
         backgroundColor: "#151515",
-        backgroundImageUrl: "https://example.com/container.jpg",
+        backgroundImageAssetId: "asset-container",
         content: [{ t: "containerSlot", gridSpan: 6 }],
       },
     },
@@ -92,7 +92,7 @@ describe("BlockSchema — all top-level types validate", () => {
       value: {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [],
       },
     },
@@ -164,7 +164,7 @@ describe("BlockSchema — all top-level types validate", () => {
     expect(result.success).toBe(true)
   })
 
-  it("accepts videoCarousel route children and item overrides", () => {
+  it("accepts videoCarousel route children and item images", () => {
     const result = VideoCarouselBlockSchema.safeParse({
       t: "videoCarousel",
       itemsSource: "routeVideoChildren",
@@ -173,7 +173,7 @@ describe("BlockSchema — all top-level types validate", () => {
           videoId: "video-1",
           titleOverride: "Custom title",
           subtitleOverride: "Custom subtitle",
-          imageOverrideUrl: "https://example.com/image.jpg",
+          imageAssetId: "asset-1",
         },
       ],
     })
@@ -269,7 +269,7 @@ describe("BlockSchema — all top-level types validate", () => {
           reference: "John 3:16",
           text: "For God...",
           attribution: "Jesus",
-          backgroundImageUrl: "https://example.com/quote.jpg",
+          backgroundImageAssetId: "asset-quote",
           backgroundColor: "#151515",
           ctaEnabled: true,
           ctaLabel: "Read more",
@@ -436,7 +436,7 @@ describe("container slot responsive spans", () => {
       t: "containerSlot",
       gridSpan: 6,
       backgroundColor: "#26313f",
-      backgroundImageUrl: "https://example.com/slot.jpg",
+      backgroundImageAssetId: "asset-slot",
     })
 
     expect(result.success, JSON.stringify(result)).toBe(true)
@@ -544,7 +544,7 @@ describe("BlocksSchema", () => {
       {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [
           { t: "card", title: "A", description: "B", variant: "default" },
         ],
@@ -555,11 +555,10 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
-  it("accepts canonical media asset ids beside transitional URL fields", () => {
+  it("accepts canonical media asset ids for media collection imagery", () => {
     const input = [
       {
         t: "section",
-        backgroundImageUrl: "https://example.com/section.jpg",
         backgroundImageAssetId: "asset-section",
         content: [
           {
@@ -573,12 +572,10 @@ describe("BlocksSchema", () => {
             t: "mediaCollection",
             variant: "grid",
             itemsSource: "manual",
-            imageUrl: "https://example.com/collection.jpg",
             imageAssetId: "asset-collection",
             items: [
               {
-                imageOverrideUrl: "https://example.com/item.jpg",
-                imageOverrideAssetId: "asset-item",
+                imageAssetId: "asset-item",
               },
             ],
           },
@@ -589,7 +586,7 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
-  it("accepts root-relative admin media preview URLs", () => {
+  it("rejects raw media collection image URLs", () => {
     const input = [
       {
         t: "mediaCollection",
@@ -599,14 +596,14 @@ describe("BlocksSchema", () => {
         items: [
           {
             videoId: "video-1",
-            imageOverrideUrl: "/api/media-assets/asset-1/preview",
-            imageOverrideAssetId: "asset-1",
+            imageUrl: "/api/media-assets/asset-1/preview",
+            imageAssetId: "asset-1",
           },
         ],
       },
     ]
 
-    expect(BlocksSchema.safeParse(input).success).toBe(true)
+    expect(BlocksSchema.safeParse(input).success).toBe(false)
   })
 
   it("rejects if any single block is invalid", () => {

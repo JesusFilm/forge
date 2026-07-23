@@ -81,16 +81,15 @@ type SectionData = FragmentOf<typeof sectionFragment>
 type SectionContentItem = NonNullable<
   NonNullable<SectionData["sectionContent"]>[number]
 >
+type AssetBackedSectionData = SectionData & {
+  backgroundImageAsset?: { previewUrl?: string | null } | null
+}
 
 export function Section({ data, routeVideo, languageSlug }: SectionProps) {
-  const {
-    id,
-    sectionKey,
-    backgroundColor,
-    backgroundImageUrl,
-    backgroundOpacity,
-    sectionContent,
-  } = data
+  const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
+    data
+  const backgroundImageUrl =
+    (data as AssetBackedSectionData).backgroundImageAsset?.previewUrl ?? null
 
   const raw = data as Record<string, unknown>
   const isDynamicBg = raw.dynamicBackgroundImage === true

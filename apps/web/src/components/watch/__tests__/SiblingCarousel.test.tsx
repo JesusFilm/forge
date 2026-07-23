@@ -202,6 +202,43 @@ function makeBlock(
   }
 }
 
+function makeSelectableBlock(
+  selectableParents?: WatchSiblingCarouselBlock["selectableParents"],
+): WatchSiblingCarouselBlock {
+  const current = {
+    ...makeChild(1),
+    documentId: "current-video",
+    slug: "current-video",
+    title: "Current Video",
+  }
+  const parents = selectableParents ?? [
+    {
+      documentId: "parent-1",
+      slug: "first-collection",
+      title: "First Collection",
+      children: [current, makeChild(2), makeChild(3)],
+    },
+    {
+      documentId: "parent-2",
+      slug: "second-collection",
+      title:
+        "A deliberately long second collection title that must stay bounded",
+      children: [
+        { ...makeChild(4), documentId: "second-child-1" },
+        current,
+        { ...makeChild(5), documentId: "second-child-3" },
+      ],
+    },
+  ]
+
+  return {
+    kind: "SiblingCarousel",
+    canonicalParent: parents[0]!,
+    selectableParents: parents,
+    currentVideoDocumentId: current.documentId,
+  } as WatchSiblingCarouselBlock
+}
+
 const pilatePageChapterSlugs = [
   "triumphal-entry-and-results",
   "last-supper",
@@ -235,6 +272,202 @@ const pilatePageChapterSlugs = [
 ]
 
 describe("SiblingCarousel — happy path", () => {
+  it("keeps a one-option standalone collection selector visible", () => {
+    const block = makeSelectableBlock()
+    block.selectableParents = block.selectableParents?.slice(0, 1)
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const selector = container.querySelector(
+      "[data-testid='sibling-carousel-parent-selector']",
+    ) as HTMLSelectElement | null
+    expect(selector).not.toBeNull()
+    expect(selector?.getAttribute("aria-label")).toBe("Collection")
+    expect(selector?.options).toHaveLength(1)
+    expect(selector?.options[0]?.textContent).toBe("First Collection")
+    expect(selector?.className).toContain("min-h-11")
+    expect(selector?.className).toContain("w-full")
+    expect(selector?.className).toContain("md:max-w-xs")
+    expect(selector?.className).toContain("focus-visible:ring-2")
+  })
+
+  it("switches collections, rekeys the rail, and updates hrefs, current mark, and announcement", () => {
+    const block = makeSelectableBlock()
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const selector = container.querySelector(
+      "[data-testid='sibling-carousel-parent-selector']",
+    ) as HTMLSelectElement
+    const initialCarousel = container.querySelector("[data-slot='carousel']")
+    expect(selector.options).toHaveLength(2)
+    expect(selector.className).toContain("truncate")
+    expect(selector.className).toContain("max-w-full")
+    expect(
+      container
+        .querySelector(
+          "[data-href='/first-collection.html/current-video/english.html']",
+        )
+        ?.getAttribute("data-active"),
+    ).toBe("true")
+
+    act(() => {
+      selector.value = "parent-2"
+      selector.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+
+    const switchedItems = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+    )
+    expect(switchedItems).toHaveLength(3)
+    expect(switchedItems.map((item) => item.getAttribute("data-href"))).toEqual(
+      [
+        "/second-collection.html/child-4-slug/english.html",
+        "/second-collection.html/current-video/english.html",
+        "/second-collection.html/child-5-slug/english.html",
+      ],
+    )
+    expect(
+      container
+        .querySelector(
+          "[data-href='/second-collection.html/current-video/english.html']",
+        )
+        ?.getAttribute("data-active"),
+    ).toBe("true")
+    expect(container.querySelector("[data-slot='carousel']")).not.toBe(
+      initialCarousel,
+    )
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-selection-announcement']",
+      )?.textContent,
+    ).toContain(
+      "A deliberately long second collection title that must stay bounded · 3 chapters",
+    )
+    expect(
+      container
+        .querySelector("[data-block-type='SiblingCarousel']")
+        ?.getAttribute("aria-label"),
+    ).toContain(
+      "A deliberately long second collection title that must stay bounded",
+    )
+  })
+
+  it("keeps an unmodified active-card click on the standalone route", () => {
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={makeSelectableBlock()}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const current = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/first-collection.html/current-video/english.html']",
+    )
+
+    act(() => {
+      current!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(linkDefaultPrevented).toEqual([true])
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+  })
+
+  it("keeps modified active-card clicks native", () => {
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={makeSelectableBlock()}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const current = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/first-collection.html/current-video/english.html']",
+    )
+
+    act(() => {
+      current!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          metaKey: true,
+        }),
+      )
+    })
+
+    expect(linkDefaultPrevented).toEqual([false])
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+  })
+
+  it("disables and marks the collection selector busy during valid chapter navigation", () => {
+    const block = makeSelectableBlock()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          pendingNavigation={{
+            href: "/second-collection.html/child-4-slug/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "current-video",
+            targetVideoDocumentId: "second-child-1",
+            title: "Child 4",
+            slug: "child-4-slug",
+            label: "Label 4",
+            posterUrl: null,
+          }}
+        />,
+      )
+    })
+
+    const selector = container.querySelector(
+      "[data-testid='sibling-carousel-parent-selector']",
+    ) as HTMLSelectElement
+    expect(selector.disabled).toBe(true)
+    expect(selector.getAttribute("aria-busy")).toBe("true")
+  })
+
+  it("preserves the contextual linked header without a collection selector", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(3, 1)} languageSlug="english" />,
+      )
+    })
+
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-parent-selector']",
+      ),
+    ).toBeNull()
+    const headerLink = container.querySelector("header a")
+    expect(headerLink?.textContent).toBe("Jesus Collection")
+    expect(headerLink?.getAttribute("href")).toBe(
+      "/jesus-collection.html/english.html",
+    )
+  })
+
   it("renders one thumbnail per child with the current item highlighted", () => {
     const block = makeBlock(10, 2)
 
@@ -790,6 +1023,7 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+    expect(linkDefaultPrevented).toEqual([true])
     expect(current!.getAttribute("data-pending")).toBe("false")
     expect(current!.getAttribute("aria-busy")).toBeNull()
   })
