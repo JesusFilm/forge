@@ -6,7 +6,7 @@ import type { Memory } from "@mastra/memory"
 
 import { assertAiChatServiceKeysDisjoint } from "../config/env"
 
-import { buildAiChatMemory } from "./memory"
+import { buildAiChatMemory } from "./ai-chat-memory"
 import {
   AI_CHAT_HISTORY_DEFAULT_PER_PAGE,
   AI_CHAT_HISTORY_MAX_PER_PAGE,
@@ -415,23 +415,33 @@ describe("handleAiChatHistoryReplayRequest — body validation", () => {
 
 describe("handleAiChatHistoryReplayRequest — ownership + existence (AE4, KTD4)", () => {
   it("returns 403 thread_forbidden for a foreign-owner thread, recall never called", async () => {
-    const { memory, recallCalls } = makeMemory({ threadOwner: "user:other" })
+    const { memory, recallCalls, listCalls } = makeMemory({
+      threadOwner: "user:other",
+    })
     const outcome = await handleAiChatHistoryReplayRequest(replayInput(memory))
     expect(outcome.status).toBe(403)
     expect(outcome.body).toEqual({ reason: "thread_forbidden" })
     expect(recallCalls).toHaveLength(0)
+    // No ceiling branch on the read path (feat-284).
+    expect(listCalls).toHaveLength(0)
   })
 
   it("returns an explicit 404 thread_not_found for a missing thread, never an empty success", async () => {
-    const { memory, recallCalls } = makeMemory({ threadOwner: undefined })
+    const { memory, recallCalls, listCalls } = makeMemory({
+      threadOwner: undefined,
+    })
     const outcome = await handleAiChatHistoryReplayRequest(replayInput(memory))
     expect(outcome.status).toBe(404)
     expect(outcome.body).toEqual({ reason: "thread_not_found" })
     expect(recallCalls).toHaveLength(0)
+    expect(listCalls).toHaveLength(0)
   })
 
-  it("maps the gate's thread_limit (at-ceiling resource + missing thread) to thread_not_found on the wire", async () => {
-    const { memory, recallCalls } = makeMemory({
+  it("surfaces thread_not_found for a missing thread even at the creation ceiling — without consulting listThreads (feat-284)", async () => {
+    // Frozen wire outcome: this fixture used to route through the write-path
+    // gate's thread_limit and get remapped; the read path now never runs a
+    // ceiling lookup, so the at-ceiling total must be unreachable.
+    const { memory, recallCalls, listCalls } = makeMemory({
       threadOwner: undefined,
       listThreadsImpl: async () => ({
         threads: [],
@@ -446,6 +456,7 @@ describe("handleAiChatHistoryReplayRequest — ownership + existence (AE4, KTD4)
     expect(outcome.body).toEqual({ reason: "thread_not_found" })
     expect(JSON.stringify(outcome.body)).not.toContain("thread_limit")
     expect(recallCalls).toHaveLength(0)
+    expect(listCalls).toHaveLength(0)
   })
 })
 
@@ -527,7 +538,9 @@ describe("handleAiChatHistoryReplayRequest — projection (AE17, KTD5)", () => {
   })
 
   it("pins recall arguments: resourceId present (the ownership backstop) and explicit perPage", async () => {
-    const { memory, recallCalls } = makeMemory({ threadOwner: OWNER })
+    const { memory, recallCalls, getCalls, listCalls } = makeMemory({
+      threadOwner: OWNER,
+    })
     await handleAiChatHistoryReplayRequest(replayInput(memory))
     expect(recallCalls).toEqual([
       {
@@ -536,13 +549,17 @@ describe("handleAiChatHistoryReplayRequest — projection (AE17, KTD5)", () => {
         perPage: AI_CHAT_HISTORY_REPLAY_MESSAGE_LIMIT,
       },
     ])
+    // Correction 3 made observable: an owned replay is ONE getThreadById
+    // (the resolver's), and the read path never touches listThreads.
+    expect(getCalls).toHaveLength(1)
+    expect(listCalls).toHaveLength(0)
   })
 })
 
 describe("handleAiChatHistoryReplayRequest — failure mapping (fail closed)", () => {
-  it("maps a gate-read store outage to 500 store_failed — never thread_not_found", async () => {
+  it("maps a resolver-read store outage to 500 store_failed — never thread_not_found, recall never called", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const { memory } = makeMemory({
+    const { memory, recallCalls } = makeMemory({
       getThreadByIdImpl: async () => {
         throw new Error("connection refused SECRET_HOST")
       },
@@ -552,9 +569,22 @@ describe("handleAiChatHistoryReplayRequest — failure mapping (fail closed)", (
     expect(outcome.body).toEqual({ reason: "store_failed" })
     expect(JSON.stringify(outcome.body)).not.toContain("SECRET_HOST")
     expect(warn.mock.calls.flat().join("\n")).not.toContain("SECRET_HOST")
+    expect(recallCalls).toHaveLength(0)
   })
 
-  it("maps a recall rejection after a passing gate to 500 store_failed", async () => {
+  it("bounds a never-resolving resolver read by the injected budget as 504 timeout, recall never called", async () => {
+    const { memory, recallCalls } = makeMemory({
+      getThreadByIdImpl: () => new Promise(() => {}),
+    })
+    const outcome = await handleAiChatHistoryReplayRequest(
+      replayInput(memory, { budgetMs: 20 }),
+    )
+    expect(outcome.status).toBe(504)
+    expect(outcome.body).toEqual({ reason: "timeout" })
+    expect(recallCalls).toHaveLength(0)
+  })
+
+  it("maps a recall rejection after a passing resolution to 500 store_failed", async () => {
     const { memory } = makeMemory({
       threadOwner: OWNER,
       recallImpl: async () => {

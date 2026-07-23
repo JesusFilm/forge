@@ -64,6 +64,19 @@ describe("Studio access service", () => {
     expect(repo.markAccessed).toHaveBeenCalledWith({ id: "access-1" })
   })
 
+  it("revalidates playback access without writing access telemetry", async () => {
+    const repo = repository(record())
+    const service = createStudioAccessService({ repository: repo })
+
+    await expect(
+      service.resolve(
+        { subject: "subject-1", email: "editor@example.com" },
+        { recordAccess: false },
+      ),
+    ).resolves.toMatchObject({ allowed: true, role: "editor" })
+    expect(repo.markAccessed).not.toHaveBeenCalled()
+  })
+
   it("creates a pending request for signed-in users without access", async () => {
     const repo = repository(null)
     const service = createStudioAccessService({ repository: repo })

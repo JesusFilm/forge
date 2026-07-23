@@ -37,6 +37,14 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   the tool returns cited passages, the agent generates the answer). Fully
   optional config — unset degrades to an explicit unavailable result, never a
   boot failure.
+- Owns retrieval-only Langfuse prompt management through
+  `langfuse-prompt-client` (`fetchLangfusePrompt` result-union fetch + cached
+  `getManagedPrompt` with caller-supplied fallback and provenance). Fully
+  optional config — unset serves the fallback (`config_missing`), never a
+  boot failure. Prompt authoring, versioning, and label moves stay in the
+  Langfuse UI; per-environment Langfuse projects keep dev keys away from
+  tuned prod prompt text. Nothing consumes the helper yet — seeker
+  integration is tracked as feat-272 in the ai-chat lane.
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized
@@ -65,6 +73,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Human Studio access is handled by `apps/mastra-gateway`; this service should
   not become the human identity authority.
 - App-to-runtime calls use service bearer authentication.
+- Owns the owner-approved `video-first-devotional` durable control loop as a
+  narrow exception to the default Manager-owned heavy-media orchestration rule.
+  Mastra owns workflow state, approval, polling, and publish handoff; Shorts
+  Worker continues to own all media bytes, ffmpeg, Chromium, and rendering.
 
 ## Boundaries
 
@@ -75,6 +87,18 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Runtime storage uses Postgres via `DATABASE_URL`; Studio-visible logs and
   observability use DuckDB files under `MASTRA_STORAGE_DIR` on the Railway
   volume.
+- The video-first devotional exception requires exactly one Mastra replica;
+  Postgres workflow persistence; authenticated, serialized lifecycle routes;
+  canonical starts idempotent per UTC date; retries idempotent per parent-run
+  and variant identity; attributable human approval; disjoint approval and
+  playback bearers; authenticated worker calls; private durable worker object
+  storage; and a Mastra poll deadline strictly above the capped worker deadline.
+  Loss of any invariant requires `DEVOTIONAL_NEW_RUNS_ENABLED=false`, scheduler
+  shutdown, and restoration or Manager migration before new work resumes. Do
+  not generalize this exception without explicit owner approval in root rules.
+- Keep `DEVOTIONAL_NEW_RUNS_ENABLED` default-off and deny native Mastra workflow
+  mutations for every devotional workflow ID. Dedicated lifecycle routes are
+  the only mutation surface; playback status reads must remain side-effect free.
 - Do not import from Admin or Manager to share types; use service HTTP
   contracts and local schemas.
 - Eval query generation is offline only. It must not enter Admin's live search

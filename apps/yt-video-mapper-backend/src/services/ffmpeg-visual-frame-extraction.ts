@@ -13,6 +13,7 @@ import {
 
 const DEFAULT_MAX_FRAMES = 12
 const DEFAULT_TIMEOUT_MS = 60_000
+const DEFAULT_ADAPTIVE_SEEKING_THRESHOLD_MS = 5 * 60 * 1_000
 const DEFAULT_PROTOCOL_WHITELIST = "https,tls,tcp,crypto"
 const DEFAULT_LOCAL_PROTOCOL_WHITELIST = "file,pipe"
 
@@ -53,6 +54,7 @@ export type FfmpegVisualFrameExtractorOptions = {
   protocolWhitelist?: string
   localProtocolWhitelist?: string
   allowedHosts?: Set<string>
+  adaptiveSeeking?: boolean
 }
 
 export class FfmpegVisualFrameExtractionError extends Error {
@@ -74,6 +76,7 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
   private readonly protocolWhitelist: string
   private readonly localProtocolWhitelist: string
   private readonly allowedHosts: Set<string>
+  private readonly adaptiveSeeking: boolean
 
   constructor(options: FfmpegVisualFrameExtractorOptions = {}) {
     this.runCommand = options.runCommand ?? defaultFfmpegCommandRunner
@@ -87,6 +90,7 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
       options.localProtocolWhitelist ?? DEFAULT_LOCAL_PROTOCOL_WHITELIST
     this.allowedHosts =
       options.allowedHosts ?? parseAllowedHosts(env.MEDIA_INDEX_ALLOWED_HOSTS)
+    this.adaptiveSeeking = options.adaptiveSeeking ?? false
   }
 
   async extractFromBytes({
@@ -126,7 +130,7 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
     if (mediaSourceType !== "DOWNLOAD") {
       throw new FfmpegVisualFrameExtractionError(
         "media_source_type_unsupported",
-        "V2 visual extraction only supports direct download media URLs until playlist segment validation is available",
+        "Visual extraction only supports direct download media URLs until playlist segment validation is available",
       )
     }
 
@@ -148,6 +152,14 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
     isRemoteUrl: boolean
     durationMilliseconds?: number | null
   }): Promise<VisualFrameFingerprint[]> {
+    if (this.shouldUseAdaptiveSeeking(durationMilliseconds)) {
+      return await this.extractFramesWithInputSeeking({
+        source,
+        isRemoteUrl,
+        durationMilliseconds,
+      })
+    }
+
     const args = this.ffmpegArgs({
       source,
       isRemoteUrl,
@@ -160,6 +172,111 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
     })
 
     return this.fingerprintsFromRawFrames(result.stdout, durationMilliseconds)
+  }
+
+  private shouldUseAdaptiveSeeking(
+    durationMilliseconds: number | null | undefined,
+  ): durationMilliseconds is number {
+    return (
+      this.adaptiveSeeking &&
+      durationMilliseconds != null &&
+      durationMilliseconds >= DEFAULT_ADAPTIVE_SEEKING_THRESHOLD_MS
+    )
+  }
+
+  private async extractFramesWithInputSeeking({
+    source,
+    isRemoteUrl,
+    durationMilliseconds,
+  }: {
+    source: string
+    isRemoteUrl: boolean
+    durationMilliseconds: number
+  }): Promise<VisualFrameFingerprint[]> {
+    const offsets = this.frameOffsets(durationMilliseconds)
+    const result = await this.runCommand({
+      command: "ffmpeg",
+      args: this.inputSeekFfmpegArgs({
+        source,
+        isRemoteUrl,
+        offsets,
+      }),
+      timeoutMs: this.timeoutMs,
+    })
+    const frameBytes = this.frameWidth * this.frameHeight
+    const expectedBytes = offsets.length * frameBytes
+    if (result.stdout.byteLength !== expectedBytes) {
+      throw new FfmpegVisualFrameExtractionError(
+        "ffmpeg_incomplete_frames",
+        `ffmpeg returned ${result.stdout.byteLength} bytes for ${expectedBytes} bytes of visual frames`,
+      )
+    }
+
+    return offsets.map((offsetMilliseconds, index) => ({
+      offsetMilliseconds,
+      durationMilliseconds: null,
+      payload: buildVisualFrameFingerprintPayload({
+        bytes: result.stdout.subarray(
+          index * frameBytes,
+          (index + 1) * frameBytes,
+        ),
+        width: this.frameWidth,
+        height: this.frameHeight,
+      }),
+    }))
+  }
+
+  private frameOffsets(durationMilliseconds: number): number[] {
+    const offsetStepMilliseconds = durationMilliseconds / this.maxFrames
+    return Array.from({ length: this.maxFrames }, (_, index) =>
+      Math.round(index * offsetStepMilliseconds),
+    )
+  }
+
+  private inputSeekFfmpegArgs({
+    source,
+    isRemoteUrl,
+    offsets,
+  }: {
+    source: string
+    isRemoteUrl: boolean
+    offsets: number[]
+  }): string[] {
+    const protocolWhitelist = isRemoteUrl
+      ? this.protocolWhitelist
+      : this.localProtocolWhitelist
+    const inputArgs = offsets.flatMap((offsetMilliseconds) => [
+      "-protocol_whitelist",
+      protocolWhitelist,
+      "-ss",
+      (offsetMilliseconds / 1_000).toFixed(3),
+      "-i",
+      source,
+    ])
+    const filterLegs = offsets.map(
+      (_, index) =>
+        `[${index}:v]trim=end_frame=1,scale=${this.frameWidth}:${this.frameHeight},format=gray,setpts=PTS-STARTPTS[v${index}]`,
+    )
+    const filterOutputs = offsets.map((_, index) => `[v${index}]`).join("")
+
+    return [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-nostdin",
+      ...inputArgs,
+      "-filter_complex",
+      `${filterLegs.join(";")};${filterOutputs}concat=n=${offsets.length}:v=1:a=0[out]`,
+      "-map",
+      "[out]",
+      "-vsync",
+      "0",
+      "-frames:v",
+      String(offsets.length),
+      "-f",
+      "rawvideo",
+      "pipe:1",
+    ]
   }
 
   private ffmpegArgs({

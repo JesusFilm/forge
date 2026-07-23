@@ -196,13 +196,50 @@ describe("enrichMediaItem image resolution", () => {
     const result = enrichMediaItem({
       ...base,
       coreId: "unknown-core-id",
-      muxPlaybackId: "mux-authored-item",
+      videoDub: {
+        muxVideo: { playbackId: "mux-authored-item" },
+      },
       imageUrl: null,
       imageOverrideUrl: null,
     })
     expect(result.imageUrl).toBe(
       "https://image.mux.com/mux-authored-item/thumbnail.jpg",
     )
+  })
+
+  it("uses the authored videoDub mux playback id for previews", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: null,
+      videoDub: {
+        language: { slug: "spanish-latin-american" },
+        muxVideo: { playbackId: "mux-authored-dub" },
+      },
+    })
+
+    expect(result.muxPlaybackId).toBe("mux-authored-dub")
+  })
+
+  it("uses the authored item language slug when no direct dub exists", () => {
+    const result = enrichMediaItem({
+      ...base,
+      videoSlug: "lumo-the-gospel-of-mark",
+      languageSlug: "spanish-latin-american",
+      videoDub: null,
+      imageUrl: null,
+    })
+
+    expect(result.languageSlug).toBe("spanish-latin-american")
+  })
+
+  it("does not use a standalone muxPlaybackId fallback for authored media items", () => {
+    const result = enrichMediaItem({
+      ...base,
+      imageUrl: null,
+      muxPlaybackId: "mux-page-language-fallback",
+    })
+
+    expect(result.muxPlaybackId).toBeNull()
   })
 })
 

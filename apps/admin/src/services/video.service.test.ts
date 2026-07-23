@@ -225,6 +225,20 @@ describe("VideoService", () => {
           { label: { in: ["COLLECTION"] } },
         ]),
       )
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({
+        input: { category: "episodes", search: "" },
+        query: {},
+      })
+
+      call = prisma.video.findMany.mock.calls[2][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          { label: { in: ["EPISODE"] } },
+        ]),
+      )
     })
 
     it("does not add a category label filter for the all category", async () => {

@@ -15,6 +15,7 @@ async function main() {
     fetcher: new FetchOfficialMediaFetcher(),
     algorithmVersion: env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
     pageSize: env.MEDIA_INDEX_PAGE_SIZE,
+    concurrency: env.MEDIA_INDEX_CONCURRENCY,
     maxMediaBytes: env.MEDIA_INDEX_MAX_FETCH_BYTES,
   })
 

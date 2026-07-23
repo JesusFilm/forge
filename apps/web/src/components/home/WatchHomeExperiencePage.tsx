@@ -2,6 +2,7 @@ import Image from "next/image"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
 type WatchHomeExperiencePageProps = {
@@ -28,6 +29,11 @@ function isWatchHomeHeroBlock(block: Section) {
     (block as { readonly __typename?: string | null }).__typename ===
     "WatchHomeHeroBlock"
   )
+}
+
+function isStandaloneMediaBlock(block: Section) {
+  const typename = (block as { readonly __typename?: string | null }).__typename
+  return typename === "VideoBlock" || typename === "VideoCarouselBlock"
 }
 
 export function WatchHomeExperiencePage({
@@ -75,25 +81,40 @@ export function WatchHomeExperiencePage({
               sequence={heroModel.carousel}
             />
           )}
-          {blocks.map((block, index) =>
-            isWatchHomeHeroBlock(block) ? (
-              <WatchHomeTvCarousel
-                key={
-                  (block as { sectionKey?: string | null }).sectionKey ?? index
-                }
-                slides={heroModel.heroSlides}
-                sequence={heroModel.carousel}
-              />
-            ) : (
+          {blocks.map((block, index) => {
+            const blockKey =
+              (block as { sectionKey?: string | null }).sectionKey ?? index
+
+            if (isWatchHomeHeroBlock(block)) {
+              return (
+                <WatchHomeTvCarousel
+                  key={blockKey}
+                  slides={heroModel.heroSlides}
+                  sequence={heroModel.carousel}
+                />
+              )
+            }
+
+            const renderedBlock = (
               <ExperienceSectionRenderer
-                key={
-                  (block as { sectionKey?: string | null }).sectionKey ?? index
-                }
+                key={blockKey}
                 section={block}
                 languageSlug={languageSlug}
               />
-            ),
-          )}
+            )
+
+            return isStandaloneMediaBlock(block) ? (
+              <div
+                key={blockKey}
+                className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
+                data-watch-home-content-rail
+              >
+                {renderedBlock}
+              </div>
+            ) : (
+              renderedBlock
+            )
+          })}
           <WatchHomeFooter />
         </div>
       </div>

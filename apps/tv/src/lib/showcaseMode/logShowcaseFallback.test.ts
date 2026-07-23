@@ -1,4 +1,5 @@
 import {
+  logSentencePlanFallback,
   logShowcaseFallback,
   logShowcaseParseDrops,
 } from "./logShowcaseFallback"
@@ -20,6 +21,25 @@ describe("logShowcaseFallback", () => {
     expect(warn).toHaveBeenCalledWith("showcase_fallback", {
       reason: "experience-absent",
     })
+  })
+})
+
+describe("logSentencePlanFallback", () => {
+  it("emits one warn per reason value, payload exactly { reason }", () => {
+    const reasons = [
+      "no-subtitle",
+      "fetch-failed",
+      "parse-empty",
+      "no-usable-boundaries",
+      "timeout",
+    ] as const
+    for (const reason of reasons) {
+      logSentencePlanFallback({ reason })
+      expect(warn).toHaveBeenCalledWith("showcase_sentence_plan_fallback", {
+        reason,
+      })
+    }
+    expect(warn).toHaveBeenCalledTimes(reasons.length)
   })
 })
 

@@ -329,6 +329,7 @@ export function VideoLibraryToolbar({
   const categoryOptions: SelectOption[] = [
     { value: "all", label: page.tabs.all },
     { value: "collections", label: page.tabs.collections },
+    { value: "episodes", label: page.tabs.episodes },
     { value: "features", label: page.tabs.features },
     { value: "shortFilms", label: page.tabs.shortFilms },
     { value: "series", label: page.tabs.series },

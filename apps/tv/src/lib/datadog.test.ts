@@ -125,12 +125,27 @@ describe("getDatadogRumConfig (provisioning gate)", () => {
       clientToken: "ct",
       applicationId: "app",
       site: "US1",
-      // __DEV__ is true under jest; release builds default to "production".
+      // __DEV__ is true under jest; release builds default to "prod".
       envName: "development",
       version: undefined,
       sessionSampleRate: 100,
       firstPartyHosts: ["admin.jesusfilm.org"],
     })
+  })
+
+  it("defaults env to prod on a release build (no override)", () => {
+    // Force the release branch (jest sets __DEV__ = true) to prove the fallback
+    // tags "prod" — matching web — not the old "production".
+    const g = globalThis as unknown as { __DEV__: boolean }
+    const originalDev = g.__DEV__
+    g.__DEV__ = false
+    try {
+      mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+      mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+      expect(getDatadogRumConfig()?.envName).toBe("prod")
+    } finally {
+      g.__DEV__ = originalDev
+    }
   })
 
   it("honors explicit site / env / version overrides", () => {

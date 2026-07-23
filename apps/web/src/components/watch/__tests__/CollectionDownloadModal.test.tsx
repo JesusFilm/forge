@@ -39,10 +39,12 @@ vi.mock("@/components/ui/dialog", () => ({
     children,
     overlayClassName: _overlayClassName,
     showCloseButton: _showCloseButton,
+    viewportClassName: _viewportClassName,
     ...props
   }: React.HTMLAttributes<HTMLDivElement> & {
     overlayClassName?: string
     showCloseButton?: boolean
+    viewportClassName?: string
   }) => <div {...props}>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => (
     <h1>{children}</h1>

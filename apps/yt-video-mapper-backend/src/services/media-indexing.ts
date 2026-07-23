@@ -1,10 +1,9 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { isIP } from "node:net"
 import {
   CatalogRunStatus as PrismaCatalogRunStatus,
   MediaSourceType as PrismaMediaSourceType,
   Prisma,
-  SignatureType as PrismaSignatureType,
   type CatalogVariant,
   type IndexRun,
   type PrismaClient,
@@ -20,7 +19,10 @@ import {
   type OfficialMediaSignatureVariant,
 } from "./media-signature-extraction.js"
 import { FfmpegVisualFrameExtractor } from "./ffmpeg-visual-frame-extraction.js"
-import { OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION } from "./visual-fingerprint.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+  isVisualMediaSignatureAlgorithmVersion,
+} from "./visual-fingerprint.js"
 
 const MAX_FAILURE_SUMMARIES = 10
 
@@ -142,6 +144,7 @@ export type MediaIndexingOptions = {
   extractor?: OfficialMediaSignatureExtractor
   algorithmVersion?: string
   pageSize?: number
+  concurrency?: number
   maxMediaBytes?: number
   now?: () => Date
 }
@@ -246,6 +249,7 @@ export class MediaIndexingService {
   private readonly extractor: OfficialMediaSignatureExtractor
   private readonly algorithmVersion: string
   private readonly pageSize: number
+  private readonly concurrency: number
   private readonly maxMediaBytes: number
   private readonly now: () => Date
 
@@ -257,6 +261,17 @@ export class MediaIndexingService {
       options.extractor ??
       createDefaultOfficialMediaSignatureExtractor(this.algorithmVersion)
     this.pageSize = options.pageSize ?? env.MEDIA_INDEX_PAGE_SIZE
+    this.concurrency = options.concurrency ?? env.MEDIA_INDEX_CONCURRENCY
+    if (
+      !Number.isInteger(this.concurrency) ||
+      this.concurrency < 1 ||
+      this.concurrency > 4
+    ) {
+      throw new MediaIndexingSafeError(
+        "invalid_media_index_concurrency",
+        "Media index concurrency must be an integer between 1 and 4",
+      )
+    }
     this.maxMediaBytes =
       options.maxMediaBytes ?? env.MEDIA_INDEX_MAX_FETCH_BYTES
     this.now = options.now ?? (() => new Date())
@@ -289,25 +304,45 @@ export class MediaIndexingService {
             algorithmVersion: this.algorithmVersion,
           })
 
-        for (const variant of variants) {
-          variantsAttempted += 1
+        for (
+          let batchStart = 0;
+          batchStart < variants.length;
+          batchStart += this.concurrency
+        ) {
+          const batch = variants.slice(
+            batchStart,
+            batchStart + this.concurrency,
+          )
+          const outcomes = await Promise.allSettled(
+            batch.map(async (variant) => {
+              const variantKey = mediaSignatureVariantKey(variant)
+              if (indexedVariantKeys.has(variantKey)) return false
 
-          try {
-            const alreadyIndexed = indexedVariantKeys.has(
-              mediaSignatureVariantKey(variant),
-            )
-
-            if (!alreadyIndexed) {
               await this.indexVariant(variant)
-              indexedVariantKeys.add(mediaSignatureVariantKey(variant))
-              variantsIndexed += 1
+              return true
+            }),
+          )
+
+          for (const [index, outcome] of outcomes.entries()) {
+            const variant = batch[index]!
+            variantsAttempted += 1
+
+            if (outcome.status === "fulfilled") {
+              if (outcome.value) {
+                indexedVariantKeys.add(mediaSignatureVariantKey(variant))
+                variantsIndexed += 1
+              }
+            } else {
+              variantsFailed += 1
+              appendFailure(
+                failures,
+                summarizeVariantFailure(outcome.reason, variant),
+              )
             }
-          } catch (error) {
-            variantsFailed += 1
-            appendFailure(failures, summarizeVariantFailure(error, variant))
+
+            cursorVariantId = variant.id
           }
 
-          cursorVariantId = variant.id
           run = await this.options.repository.updateIndexRun(run.id, {
             cursorVariantId,
             variantsAttempted,
@@ -336,31 +371,32 @@ export class MediaIndexingService {
         ),
       })
     } catch (error) {
+      const durableFailures = failures.slice(
+        0,
+        Math.min(failures.length, run.variantsFailed),
+      )
       return await this.options.repository.updateIndexRun(run.id, {
         status: "failed",
         completedAt: this.now(),
-        cursorVariantId,
-        variantsAttempted,
-        variantsIndexed,
-        variantsFailed,
         failureSummary: runFailureSummary(
           error,
-          cursorVariantId,
-          failures,
-          variantsFailed,
+          run.cursorVariantId,
+          durableFailures,
+          run.variantsFailed,
         ),
       })
     }
   }
 
   private async indexVariant(variant: IndexableCatalogVariant): Promise<void> {
-    const mediaSample =
-      this.algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
-        ? undefined
-        : await this.fetcher.fetch({
-            url: variant.mediaSourceUrl,
-            maxBytes: this.maxMediaBytes,
-          })
+    const mediaSample = isVisualMediaSignatureAlgorithmVersion(
+      this.algorithmVersion,
+    )
+      ? undefined
+      : await this.fetcher.fetch({
+          url: variant.mediaSourceUrl,
+          maxBytes: this.maxMediaBytes,
+        })
     const signatures = await this.extractor.extract({
       variant,
       mediaSample,
@@ -389,9 +425,12 @@ export class MediaIndexingService {
 function createDefaultOfficialMediaSignatureExtractor(
   algorithmVersion: string,
 ): OfficialMediaSignatureExtractor {
-  return algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+  return isVisualMediaSignatureAlgorithmVersion(algorithmVersion)
     ? new DeterministicOfficialMediaSignatureExtractor({
-        visualFrameExtractor: new FfmpegVisualFrameExtractor(),
+        visualFrameExtractor: new FfmpegVisualFrameExtractor({
+          adaptiveSeeking:
+            algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+        }),
       })
     : new DeterministicOfficialMediaSignatureExtractor()
 }
@@ -497,39 +536,50 @@ export class PrismaMediaIndexRepository implements MediaIndexRepository {
   async upsertMediaSignatures(
     signatures: StoredMediaSignatureInput[],
   ): Promise<void> {
-    await this.db.$transaction(
-      signatures.map((signature) =>
-        this.db.mediaSignature.upsert({
-          where: {
-            coreId_videoVariantId_signatureType_algorithmVersion_offsetMilliseconds:
-              {
-                coreId: signature.coreId,
-                videoVariantId: signature.videoVariantId,
-                signatureType: toPrismaSignatureType(signature.signatureType),
-                algorithmVersion: signature.algorithmVersion,
-                offsetMilliseconds: signature.offsetMilliseconds,
-              },
-          },
-          create: {
-            coreId: signature.coreId,
-            videoVariantId: signature.videoVariantId,
-            signatureType: toPrismaSignatureType(signature.signatureType),
-            algorithmVersion: signature.algorithmVersion,
-            offsetMilliseconds: signature.offsetMilliseconds,
-            durationMilliseconds: signature.durationMilliseconds,
-            signature: signature.signature as Prisma.InputJsonValue,
-            sourceMediaUrl: signature.sourceMediaUrl,
-            sourceMediaHash: signature.sourceMediaHash,
-          },
-          update: {
-            durationMilliseconds: signature.durationMilliseconds,
-            signature: signature.signature as Prisma.InputJsonValue,
-            sourceMediaUrl: signature.sourceMediaUrl,
-            sourceMediaHash: signature.sourceMediaHash,
-          },
-        }),
-      ),
+    const uniqueSignatures = deduplicateMediaSignatures(signatures)
+    if (uniqueSignatures.length === 0) return
+
+    const rows = uniqueSignatures.map(
+      (signature) => Prisma.sql`(
+        ${randomUUID()},
+        ${signature.coreId},
+        ${signature.videoVariantId},
+        ${toDatabaseSignatureType(signature.signatureType)}::"signature_type",
+        ${signature.algorithmVersion},
+        ${signature.offsetMilliseconds},
+        ${signature.durationMilliseconds},
+        ${JSON.stringify(signature.signature)}::jsonb,
+        ${signature.sourceMediaUrl},
+        ${signature.sourceMediaHash}
+      )`,
     )
+
+    await this.db.$executeRaw(Prisma.sql`
+      INSERT INTO "mapper_media_signature" (
+        "id",
+        "core_id",
+        "video_variant_id",
+        "signature_type",
+        "algorithm_version",
+        "offset_milliseconds",
+        "duration_milliseconds",
+        "signature",
+        "source_media_url",
+        "source_media_hash"
+      )
+      VALUES ${Prisma.join(rows)}
+      ON CONFLICT (
+        "core_id",
+        "video_variant_id",
+        "signature_type",
+        "algorithm_version",
+        "offset_milliseconds"
+      ) DO UPDATE SET
+        "duration_milliseconds" = EXCLUDED."duration_milliseconds",
+        "signature" = EXCLUDED."signature",
+        "source_media_url" = EXCLUDED."source_media_url",
+        "source_media_hash" = EXCLUDED."source_media_hash"
+    `)
   }
 }
 
@@ -722,17 +772,34 @@ function fromPrismaMediaSourceType(
   return map[sourceType]
 }
 
-function toPrismaSignatureType(
-  signatureType: MediaSignatureType,
-): PrismaSignatureType {
+function toDatabaseSignatureType(signatureType: MediaSignatureType): string {
   const map = {
-    VISUAL_FRAME: PrismaSignatureType.VISUAL_FRAME,
-    AUDIO_FINGERPRINT: PrismaSignatureType.AUDIO_FINGERPRINT,
-    TEXT_SEGMENT: PrismaSignatureType.TEXT_SEGMENT,
-    STRUCTURAL_HINT: PrismaSignatureType.STRUCTURAL_HINT,
-  } satisfies Record<MediaSignatureType, PrismaSignatureType>
+    VISUAL_FRAME: "visual_frame",
+    AUDIO_FINGERPRINT: "audio_fingerprint",
+    TEXT_SEGMENT: "text_segment",
+    STRUCTURAL_HINT: "structural_hint",
+  } satisfies Record<MediaSignatureType, string>
 
   return map[signatureType]
+}
+
+function deduplicateMediaSignatures(
+  signatures: StoredMediaSignatureInput[],
+): StoredMediaSignatureInput[] {
+  const byConflictKey = new Map<string, StoredMediaSignatureInput>()
+  for (const signature of signatures) {
+    byConflictKey.set(
+      JSON.stringify([
+        signature.coreId,
+        signature.videoVariantId,
+        signature.signatureType,
+        signature.algorithmVersion,
+        signature.offsetMilliseconds,
+      ]),
+      signature,
+    )
+  }
+  return [...byConflictKey.values()]
 }
 
 function failureSummaryFromFailures(

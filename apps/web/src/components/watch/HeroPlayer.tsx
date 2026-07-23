@@ -1422,11 +1422,13 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
-  const languageCode = languageCodeFor({
+  const explicitLanguageCode = languageCodeFor({ slug: languageSlug })
+  const variantLanguageCode = languageCodeFor({
     bcp47: variant.language?.bcp47,
     iso3: variant.language?.iso3,
-    slug: variant.language?.slug ?? languageSlug,
+    slug: variant.language?.slug,
   })
+  const languageCode = explicitLanguageCode ?? variantLanguageCode
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("hero-player-language-switcher"),
   ).current

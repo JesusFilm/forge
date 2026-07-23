@@ -272,11 +272,10 @@ describe("streamReply — seeker path (flag on)", () => {
     })
   })
 
-  // AE5 (feat-233): a server-side gate denial degrades to the LOCAL stub reply
-  // — a successful turn, not a failure notice. Fake timers (never advanced)
-  // pin the no-STUB_REPLY_DELAY contract: a delayed resolve would hang here.
-  it("maps a terminal gate_denied frame to a successful stub reply, with no delay", async () => {
-    vi.useFakeTimers()
+  // Ruling 3 (feat-281): the seam reports a gate denial HONESTLY — no stub
+  // fabrication here. The session owns the stub-vs-failure decision (the gate
+  // fires pre-upstream, so no partial text ever precedes this frame).
+  it("maps a terminal gate_denied frame to the honest failure — never a stub reply", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
@@ -289,11 +288,9 @@ describe("streamReply — seeker path (flag on)", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     })
     expect(result).toEqual({
-      ok: true,
-      text: buildStubReply("hi there"),
-      sources: [],
-      grounded: false,
-      engine: "stub",
+      ok: false,
+      reason: "gate_denied",
+      partialText: "",
     })
   })
 
@@ -314,11 +311,9 @@ describe("streamReply — seeker path (flag on)", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     })
     expect(result).toEqual({
-      ok: true,
-      text: buildStubReply("hi"),
-      sources: [],
-      grounded: false,
-      engine: "stub",
+      ok: false,
+      reason: "gate_denied",
+      partialText: "",
     })
   })
 
@@ -339,64 +334,5 @@ describe("streamReply — seeker path (flag on)", () => {
       reason: "parse_error",
       partialText: "x",
     })
-  })
-})
-
-describe("streamReply — allowStubFallback (feat-241, KTD10)", () => {
-  it("fails visibly on gate_denied when the stub fallback is withheld (persisted conversation)", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        sseResponse([{ event: "error", data: { reason: "gate_denied" } }]),
-      )
-    const result = await streamReply({
-      text: "hi",
-      conversationId: "c1",
-      seekerEnabled: true,
-      allowStubFallback: false,
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(result).toEqual({
-      ok: false,
-      reason: "gate_denied",
-      partialText: "",
-    })
-  })
-
-  it("keeps the stub downgrade when allowStubFallback is omitted (never-persisted default)", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        sseResponse([{ event: "error", data: { reason: "gate_denied" } }]),
-      )
-    const result = await streamReply({
-      text: "hi",
-      conversationId: "c1",
-      seekerEnabled: true,
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(result).toEqual({
-      ok: true,
-      text: buildStubReply("hi"),
-      sources: [],
-      grounded: false,
-      engine: "stub",
-    })
-  })
-
-  it("withholding the fallback changes gate_denied ONLY — other failures are unaffected", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        sseResponse([{ event: "error", data: { reason: "timeout" } }]),
-      )
-    const result = await streamReply({
-      text: "hi",
-      conversationId: "c1",
-      seekerEnabled: true,
-      allowStubFallback: false,
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(result).toEqual({ ok: false, reason: "timeout", partialText: "" })
   })
 })

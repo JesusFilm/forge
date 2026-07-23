@@ -11,6 +11,7 @@ type SeriesHeroProps = {
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   onLanguageClick?: () => void
+  languageSlug?: string | null
   playableLanguageCount?: number
   // Optional hero-overlay content. When provided, replaces the default
   // label/title overlay in both trailer and static modes. The series
@@ -34,6 +35,7 @@ export function SeriesHero({
   series,
   selectedVariant,
   onLanguageClick,
+  languageSlug,
   playableLanguageCount,
   overlay,
 }: SeriesHeroProps) {
@@ -46,6 +48,7 @@ export function SeriesHero({
         block={{ kind: "HeroPlayer", video: series, variant: selectedVariant }}
         darkenOverlay
         onLanguageClick={onLanguageClick}
+        languageSlug={languageSlug}
         playableLanguageCount={playableLanguageCount}
         overlay={overlay}
       />

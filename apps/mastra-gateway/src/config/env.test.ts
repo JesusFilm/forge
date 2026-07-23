@@ -26,4 +26,15 @@ describe("Mastra gateway env", () => {
       /DATABASE_URL.*required for Mastra gateway production/,
     )
   })
+
+  it("refuses overlapping devotional gateway credentials", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "service-key")
+    vi.stubEnv("MASTRA_DEVOTIONAL_APPROVAL_API_KEY", "approval-key")
+    vi.stubEnv("MASTRA_DEVOTIONAL_PLAYBACK_API_KEY", "approval-key")
+
+    const { assertGatewayRuntimeEnv } = await import("./env")
+
+    expect(() => assertGatewayRuntimeEnv()).toThrow(/must be disjoint/)
+  })
 })

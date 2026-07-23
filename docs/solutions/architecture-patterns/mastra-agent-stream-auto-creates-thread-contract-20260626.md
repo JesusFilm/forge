@@ -31,7 +31,8 @@ new conversation's first turn errors**.
 
 The seeker memory tests document that the _low-level_ API throws:
 `memory.recall()` on a never-created thread throws `"No thread found with id …"`
-(it does not return empty) — see `apps/mastra/src/mastra/memory.test.ts`. The
+(it does not return empty) — see `apps/mastra/src/mastra/ai-chat-memory.test.ts`
+(moved from `memory.test.ts` in feat-285). The
 open question was whether `agent.stream`'s higher-level path hits that same throw.
 
 ## Guidance
