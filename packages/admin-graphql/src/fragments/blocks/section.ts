@@ -21,8 +21,15 @@ export const adminSectionFragment = adminGraphql(
       t
       sectionKey
       backgroundColor
-      backgroundImageUrl
       backgroundImageAssetId
+      backgroundImageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       backgroundOpacity
       dynamicBackgroundImage
       staticOverlay

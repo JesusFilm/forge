@@ -58,7 +58,7 @@ function makeManualItem(overrides: Record<string, unknown> = {}) {
     subtitleOverride: null,
     labelOverride: null,
     collectionSize: null,
-    imageUrl: null,
+    imageAsset: null,
     ...overrides,
   }
 }
@@ -546,8 +546,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                },
               },
               {
                 videoId: "v-blank",
@@ -557,8 +559,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                },
               },
             ],
           })}
@@ -1082,8 +1086,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/poster.jpg",
-                imageDominantColor: "#787e16",
+                imageAsset: {
+                  previewUrl: "https://example.com/poster.jpg",
+                  dominantColor: "#787e16",
+                },
               },
             ],
           })}
@@ -1115,8 +1121,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/still.jpg",
-                imageDominantColor: "#123456",
+                imageAsset: {
+                  previewUrl: "https://example.com/still.jpg",
+                  dominantColor: "#123456",
+                },
               },
             ],
           })}

@@ -9,8 +9,15 @@ export const adminInfoBlocksFragment = adminGraphql(`
     intro
     infoDescription: description
     widthPercent
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
     blocks {
       icon

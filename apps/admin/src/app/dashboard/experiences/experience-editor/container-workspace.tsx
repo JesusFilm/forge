@@ -29,7 +29,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { ArrowLeft, ChevronDown, ImageIcon, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, ChevronDown, Plus, Trash2 } from "lucide-react"
 import { cx } from "@/components/admin-ui"
 import {
   BackgroundColorPicker,
@@ -57,11 +57,6 @@ import { type CanvasBlockRenderOptions } from "./canvas-block-list"
 
 const contentBlockKeys = new WeakMap<object, string>()
 let contentBlockKeyCounter = 0
-const selectedMediaButtonClassName =
-  "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
-const idleMediaButtonClassName =
-  "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
-
 function stableContentBlockKey(item: unknown, childIndex: number) {
   if (!item || typeof item !== "object") {
     return `container-content-primitive-${childIndex}`
@@ -210,8 +205,7 @@ function asSlotRecord(value: unknown): BlockRecord {
 
 function slotAccentStyle(slot: BlockRecord): CSSProperties | null {
   const backgroundColor = asString(slot.backgroundColor)
-  const backgroundImageUrl = asString(slot.backgroundImageUrl)
-  if (!isHexColor(backgroundColor) && !backgroundImageUrl) return null
+  if (!isHexColor(backgroundColor)) return null
 
   const style: CSSProperties = {}
 
@@ -219,12 +213,6 @@ function slotAccentStyle(slot: BlockRecord): CSSProperties | null {
     style.background = `linear-gradient(90deg, transparent 0%, ${normalizeHexColor(
       backgroundColor,
     )} 100%)`
-  }
-
-  if (backgroundImageUrl) {
-    style.backgroundImage = `linear-gradient(90deg, transparent 0%, rgba(5,6,10,0.2) 38%, rgba(5,6,10,0.74) 100%), url("${backgroundImageUrl}")`
-    style.backgroundPosition = "center"
-    style.backgroundSize = "cover"
   }
 
   return style
@@ -316,7 +304,7 @@ export function ContainerWorkspace({
   ) => void
   onSlotVisualChange: (
     slotIndex: number,
-    field: "backgroundColor" | "backgroundImageUrl",
+    field: "backgroundColor",
     value: string,
   ) => void
   onViewportChange: (viewport: GridBreakpoint) => void
@@ -543,16 +531,6 @@ export function ContainerWorkspace({
         </div>
       </div>
     )
-  }
-
-  function chooseSlotBackgroundImage(
-    slotIndex: number,
-    slotRecord: BlockRecord,
-  ) {
-    const current = asString(slotRecord.backgroundImageUrl)
-    const nextValue = window.prompt("Background image URL", current)
-    if (nextValue === null) return
-    onSlotVisualChange(slotIndex, "backgroundImageUrl", nextValue.trim())
   }
 
   return (
@@ -853,32 +831,6 @@ export function ContainerWorkspace({
                                 triggerClassName="h-8 w-8 bg-[var(--color-surface)]"
                                 align="right"
                               />
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  onSelectSlot(slotIndex)
-                                  chooseSlotBackgroundImage(
-                                    slotIndex,
-                                    slotRecord,
-                                  )
-                                }}
-                                className={cx(
-                                  "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border transition-colors duration-[120ms] ease-out",
-                                  slotRecord.backgroundImageAssetId
-                                    ? selectedMediaButtonClassName
-                                    : idleMediaButtonClassName,
-                                )}
-                                aria-pressed={Boolean(
-                                  slotRecord.backgroundImageAssetId,
-                                )}
-                                aria-label={`Choose slot ${slotIndex + 1} background image`}
-                              >
-                                <ImageIcon
-                                  className="h-4 w-4"
-                                  strokeWidth={1.5}
-                                />
-                              </button>
                               <button
                                 type="button"
                                 onClick={(event) => {

@@ -62,7 +62,12 @@ export const BibleQuotesCarouselFragment = graphql(`
       reference
       text
       attribution
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
+      backgroundImageAsset {
+        previewUrl
+      }
       backgroundColor
       ctaLabel
       ctaLink
@@ -126,7 +131,9 @@ export const NavigationCarouselFragment = graphql(`
       contentId
       title
       category
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
       backgroundColor
     }
   }
@@ -150,7 +157,9 @@ export const MediaCollectionFragment = graphql(`
       subtitleOverride
       labelOverride
       collectionSize
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
       linkToSectionKey
       videoId
       coreId
@@ -173,7 +182,9 @@ export const VideoCarouselFragment = graphql(`
           playbackId
         }
       }
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
       titleOverride
       backgroundColor
       videoId
@@ -257,7 +268,9 @@ export const SectionFragment = graphql(
     fragment SectionFields on SectionBlock @_unmask {
       sectionKey
       backgroundColor
-      backgroundImageUrl
+      backgroundImageAsset {
+        previewUrl
+      }
       backgroundOpacity
       dynamicBackgroundImage
       staticOverlay

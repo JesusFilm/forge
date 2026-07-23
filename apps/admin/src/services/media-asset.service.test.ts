@@ -413,108 +413,6 @@ describe("MediaAssetService", () => {
         ),
       ).toBeNull()
     })
-
-    it("hydrates block asset IDs into public URLs", async () => {
-      prisma.mediaAsset.findMany.mockResolvedValueOnce([
-        {
-          id: "asset-1",
-          backend: "S3",
-          status: "READY",
-          visibility: "PUBLIC",
-          objectKey: "media-assets/asset-1/original/hero.webp",
-          previewObjectKey: null,
-          muxPlaybackId: null,
-        },
-      ])
-
-      const result = await service.hydratePublicUrlsInBlocks([
-        {
-          t: "hero",
-          imageAssetId: "asset-1",
-          imageUrl: "/api/media-assets/asset-1/preview",
-          nested: {
-            backgroundImageAssetId: "asset-2",
-            backgroundImageUrl:
-              "http://0.0.0.0:8080/api/media-assets/asset-2/preview",
-          },
-        },
-      ])
-
-      expect(prisma.mediaAsset.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            id: { in: ["asset-1", "asset-2"] },
-            status: "READY",
-            visibility: "PUBLIC",
-          },
-        }),
-      )
-      expect(result).toEqual([
-        {
-          t: "hero",
-          imageAssetId: "asset-1",
-          imageUrl:
-            "http://localhost:3003/api/public/media-assets/asset-1/preview",
-          nested: {
-            backgroundImageAssetId: "asset-2",
-          },
-        },
-      ])
-    })
-
-    it("hydrates legacy override asset ids through canonical image fields", async () => {
-      prisma.mediaAsset.findMany.mockResolvedValueOnce([
-        {
-          id: "asset-1",
-          backend: "S3",
-          status: "READY",
-          visibility: "PUBLIC",
-          objectKey: "media-assets/asset-1/original/poster.webp",
-          previewObjectKey: null,
-          muxPlaybackId: null,
-        },
-      ])
-
-      const result = await service.hydratePublicUrlsInBlocks([
-        {
-          t: "mediaCollection",
-          variant: "carousel",
-          items: [
-            {
-              videoId: "video-1",
-              imageOverrideAssetId: "asset-1",
-              imageOverrideUrl:
-                "http://0.0.0.0:8080/api/media-assets/asset-1/preview",
-            },
-          ],
-        },
-      ])
-
-      expect(prisma.mediaAsset.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            id: { in: ["asset-1"] },
-            status: "READY",
-            visibility: "PUBLIC",
-          },
-        }),
-      )
-      expect(result).toEqual([
-        {
-          t: "mediaCollection",
-          variant: "carousel",
-          thumbnailOrientation: "vertical",
-          items: [
-            {
-              videoId: "video-1",
-              imageAssetId: "asset-1",
-              imageUrl:
-                "http://localhost:3003/api/public/media-assets/asset-1/preview",
-            },
-          ],
-        },
-      ])
-    })
   })
 
   describe("usage", () => {
@@ -535,8 +433,8 @@ describe("MediaAssetService", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },
@@ -547,7 +445,7 @@ describe("MediaAssetService", () => {
       expect(result).toEqual([
         expect.objectContaining({
           experienceLocaleId: "loc-1",
-          fieldPath: "$.blocks[0].imageUrl",
+          fieldPath: "$.blocks[0].mediaUrl",
           match: "object-key",
         }),
       ])
@@ -597,8 +495,8 @@ describe("MediaAssetService", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },

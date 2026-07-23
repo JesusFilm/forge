@@ -44,16 +44,22 @@ const getWatchHomeEditorialOverridesOperation = adminGraphql(
               sectionKey
               items {
                 videoId
-                imageUrl
-                imageBlurDataUrl
-                imageDominantColor
+                imageAsset {
+                  previewUrl
+                  blurDataUrl
+                  dominantColor
+                }
               }
             }
             ... on VideoCarouselBlock {
               sectionKey
               items {
                 videoId
-                imageUrl
+                imageAsset {
+                  previewUrl
+                  blurDataUrl
+                  dominantColor
+                }
               }
             }
           }
@@ -224,10 +230,11 @@ function collectMediaOverrides(
     if (sectionId && Array.isArray(items)) {
       for (const item of items) {
         const videoId = stringValue(recordValue(item, "videoId"))
-        const imageUrl = stringValue(recordValue(item, "imageUrl"))
-        const blurDataUrl = stringValue(recordValue(item, "imageBlurDataUrl"))
+        const imageAsset = recordValue(item, "imageAsset")
+        const imageUrl = stringValue(recordValue(imageAsset, "previewUrl"))
+        const blurDataUrl = stringValue(recordValue(imageAsset, "blurDataUrl"))
         const dominantColor = stringValue(
-          recordValue(item, "imageDominantColor"),
+          recordValue(imageAsset, "dominantColor"),
         )
         if (videoId && imageUrl) {
           overrides.set(overrideKey(sectionId, videoId), {

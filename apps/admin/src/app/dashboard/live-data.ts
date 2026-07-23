@@ -564,11 +564,7 @@ function previewImageFromBlock(
   block: PreviewBlock,
   videoImagesByVideoId: Map<string, VideoImageRow[]>,
 ): string | null {
-  const direct = directUrl(block, [
-    "imageUrl",
-    "backgroundImageUrl",
-    "mediaUrl",
-  ])
+  const direct = directUrl(block, ["mediaUrl"])
   if (direct) return direct
 
   if (block.t === "video" || block.t === "videoHero") {
@@ -577,32 +573,15 @@ function previewImageFromBlock(
 
   if (block.t === "mediaCollection") {
     for (const item of block.items) {
-      const itemImage =
-        item.imageUrl ??
-        previewImageForVideo(item.videoId, videoImagesByVideoId)
+      const itemImage = previewImageForVideo(item.videoId, videoImagesByVideoId)
       if (itemImage) return itemImage
     }
   }
 
   if (block.t === "videoCarousel") {
     for (const item of block.items) {
-      const itemImage =
-        item.imageUrl ??
-        previewImageForVideo(item.videoId, videoImagesByVideoId)
+      const itemImage = previewImageForVideo(item.videoId, videoImagesByVideoId)
       if (itemImage) return itemImage
-    }
-  }
-
-  if (block.t === "navigationCarousel") {
-    for (const item of block.items) {
-      if (item.imageUrl) return item.imageUrl
-    }
-  }
-
-  if (block.t === "bibleQuotesCarousel") {
-    for (const quote of block.quotes) {
-      const quoteImage = quote.backgroundImageUrl ?? quote.imageUrl
-      if (quoteImage) return quoteImage
     }
   }
 

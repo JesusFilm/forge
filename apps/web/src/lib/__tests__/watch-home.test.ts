@@ -257,10 +257,12 @@ describe("buildWatchHomeModelFromVideos", () => {
           items: [
             {
               videoId: "lumo-admin-id",
-              imageUrl:
-                "http://localhost:3003/api/media-assets/asset-1/preview",
-              imageBlurDataUrl: "data:image/jpeg;base64,override-placeholder",
-              imageDominantColor: "#787e16",
+              imageAsset: {
+                previewUrl:
+                  "http://localhost:3003/api/public/media-assets/asset-1/preview",
+                blurDataUrl: "data:image/jpeg;base64,override-placeholder",
+                dominantColor: "#787e16",
+              },
             },
           ],
         },
@@ -271,7 +273,7 @@ describe("buildWatchHomeModelFromVideos", () => {
       (section) => section.id === "home-collection-showcase-grid-vertical",
     )
     expect(vertical?.cards[0]?.imageUrl).toBe(
-      "http://localhost:3003/api/media-assets/asset-1/preview",
+      "http://localhost:3003/api/public/media-assets/asset-1/preview",
     )
     expect(vertical?.cards[0]?.blurDataUrl).toBe(
       "data:image/jpeg;base64,override-placeholder",
@@ -349,9 +351,11 @@ describe("buildWatchHomeModelFromVideos", () => {
           items: [
             {
               videoId: "lumo-child",
-              imageUrl: "https://cdn.example/uploaded-scripture.jpg",
-              imageBlurDataUrl: null,
-              imageDominantColor: null,
+              imageAsset: {
+                previewUrl: "https://cdn.example/uploaded-scripture.jpg",
+                blurDataUrl: null,
+                dominantColor: null,
+              },
             },
           ],
         },

@@ -3,8 +3,8 @@ import { adminBlockVideoDubFragment } from "./video-dub"
 
 /**
  * Items are FLAT in admin (no `items[].video` join or nested media wrapper)
- * wrapper). Renderers reading those nested paths see undefined; runtime
- * fallbacks via `titleOverride` / `imageUrl` cover the common path.
+ * wrapper). Renderers use `imageAsset` for authored artwork and video-derived
+ * fields for linked-video fallbacks.
  */
 export const adminMediaCollectionFragment = adminGraphql(
   `
@@ -24,8 +24,15 @@ export const adminMediaCollectionFragment = adminGraphql(
       mediaCollectionVariant: variant
       thumbnailOrientation
       footerText
-      imageUrl
       imageAssetId
+      imageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       backgroundColor
       items {
         videoId
@@ -42,10 +49,15 @@ export const adminMediaCollectionFragment = adminGraphql(
         subtitleOverride
         labelOverride
         collectionSize
-        imageUrl
         imageAssetId
-        imageBlurDataUrl
-        imageDominantColor
+        imageAsset {
+          id
+          previewUrl
+          blurDataUrl
+          dominantColor
+          width
+          height
+        }
         linkToSectionKey
       }
     }
