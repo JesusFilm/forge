@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 22, 2026)
 
-- **Total tickets:** 404
-- **Complete:** 305
-- **In progress:** 25
-- **Not started:** 25
+- **Total tickets:** 414
+- **Complete:** 306
+- **In progress:** 33
+- **Not started:** 26
 - **Blocked:** 49
-- **Overdue and not complete:** 76
+- **Overdue and not complete:** 84
 
 ## Feature Index
 
@@ -146,10 +146,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-287](media-generation/feat-287-devotional-scripture-nasb-styling.md)                  | Devotional Scripture — NASB Text + Styled Card                       | vlad  | P1       | 2026-07-01 | 6    | 2026-07-06 | in-progress |
 | [feat-288](media-generation/feat-288-devotional-voices-and-music.md)                        | Devotional ElevenLabs Voices + Reusable Ambient Music Library        | vlad  | P1       | 2026-07-01 | 7    | 2026-07-07 | in-progress |
 | [feat-289](media-generation/feat-289-devotional-video-sourcing-trim.md)                     | Devotional Video Sourcing + Trim                                     | vlad  | P1       | 2026-07-01 | 10   | 2026-07-10 | in-progress |
-| [feat-290](media-generation/feat-290-devotional-style-theme-system.md)                      | Devotional Style / Theme System                                      | vlad  | P1       | 2026-07-01 | 12   | 2026-07-12 | in-progress |
+| [feat-290](media-generation/feat-290-devotional-style-theme-system.md)                      | Devotional Style / Theme System (video look → whole devo)            | vlad  | P1       | 2026-07-01 | 12   | 2026-07-12 | in-progress |
 | [feat-291](media-generation/feat-291-devotional-reflection-layouts.md)                      | Devotional Reflection — Cru Source + Varied Layouts                  | vlad  | P1       | 2026-07-01 | 8    | 2026-07-08 | in-progress |
 | [feat-292](media-generation/feat-292-devotional-questions-guided-prayer.md)                 | Devotional Closing — Questions + Guided Prayer                       | vlad  | P1       | 2026-07-01 | 4    | 2026-07-04 | in-progress |
-| [feat-293](media-generation/feat-293-devotional-assembly-distribution.md)                   | Devotional Assembly & Distribution                                   | vlad  | P1       | 2026-07-01 | 10   | 2026-07-10 | in-progress |
+| [feat-293](media-generation/feat-293-devotional-assembly-distribution.md)                   | Devotional Assembly & Distribution (web full + social short)         | vlad  | P1       | 2026-07-01 | 10   | 2026-07-10 | in-progress |
 | [feat-254](media-generation/feat-254-instagram-discovery-thumbnail-ingest-observability.md) | Instagram discovery thumbnails and ingest observability              | vlad  | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                   | Automated Video Rendering Engine                                     | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)            | On-Demand Personalized Video Generation                              | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
@@ -339,7 +339,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-280](platform/feat-280-watch-media-collection-linked-titles.md)                  | Watch Media Collection Linked Titles                                             | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-280](platform/feat-280-experience-video-block-language-identity.md)              | Experience Video Block Language Identity                                         | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-281](platform/feat-281-watch-series-parent-variant-language-canonicalization.md) | Watch series parent variant language canonicalization                            | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-286](platform/feat-286-auth-google-account-chooser.md)                           | Auth Google Account Chooser                                                      | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-289](platform/feat-289-watch-modal-close-position-system.md)                     | Watch Modal Close Position System                                                | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-295](platform/feat-295-watch-mediacollection-video-image-metadata-generation.md) | Restore Watch MediaCollection video image metadata generation                    | unassigned | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-287](platform/feat-287-auth-google-account-chooser-production-verification.md)   | Auth Google Account Chooser Production Verification                              | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |

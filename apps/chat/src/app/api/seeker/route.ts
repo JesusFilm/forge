@@ -37,8 +37,13 @@
 import { env, seekerTimeoutMs } from "@/config/env"
 import { resolveSeekerGate, type SeekerGateDecision } from "@/lib/seeker-gate"
 import {
+  classifyUpstreamFailure,
+  composeUpstreamAbortSignal,
   hostAllowed,
   MAX_CONVERSATION_ID_CHARS,
+  postMastraUpstream,
+  readJsonCapped,
+  undefinedOnAbort,
 } from "@/lib/server/mastra-upstream"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 import type { ReplyFailureReason } from "@/lib/conversations"
@@ -59,6 +64,11 @@ export const dynamic = "force-dynamic"
 // bounds) on a multi-megabyte prompt into a ~90s paid generation. The
 // conversation-id bound is the shared MAX_CONVERSATION_ID_CHARS.
 const MAX_PROMPT_CHARS = 8000
+
+// Byte cap (UTF-8 bytes) on the 503 error-body read (OOM-guard law; feat-282's
+// hardening delta). The `{reason}` envelope is tiny, so 64 KiB is generous;
+// over-cap reads map to config_missing, same as any parse failure.
+const SEEKER_ERROR_BODY_MAX_BYTES = 64 * 1024
 
 /** Server-resolved Seeker proxy configuration (the bearer + base URL never
  * leave the server). Built from env in `POST`; injected directly in tests.
@@ -190,34 +200,29 @@ export async function handleSeekerProxyRequest({
         const budgetSignal = AbortSignal.timeout(config.timeoutMs)
         // Compose the budget, the caller's signal, and the handler-owned abort
         // (fired by cancel()) so ANY of the three tears down the upstream fetch.
-        const signal = AbortSignal.any(
-          requestSignal
-            ? [requestSignal, budgetSignal, upstreamAbort.signal]
-            : [budgetSignal, upstreamAbort.signal],
-        )
+        const signal = composeUpstreamAbortSignal([
+          requestSignal,
+          budgetSignal,
+          upstreamAbort.signal,
+        ])
 
         let response: Response
         try {
-          response = await fetchImpl(new URL("/forge-seeker", config.baseUrl), {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${config.apiKey}`,
-              "content-type": "application/json",
-              accept: "text/event-stream",
-            },
-            body: JSON.stringify({
-              prompt: text,
-              threadId: conversationId,
-              resourceId,
-            }),
-            redirect: "error",
+          response = await postMastraUpstream(fetchImpl, {
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            path: "/forge-seeker",
+            accept: "text/event-stream",
+            body: { prompt: text, threadId: conversationId, resourceId },
             signal,
           })
         } catch (error) {
-          if (budgetSignal.aborted) return fail("timeout")
-          if (requestSignal?.aborted) return fail("cancelled")
-          const name = (error as { name?: string } | null | undefined)?.name
-          return fail(name === "TimeoutError" ? "timeout" : "network_error")
+          const failure = classifyUpstreamFailure(error, {
+            budgetSignal,
+            requestSignal,
+          })
+          // This proxy's wire mapping over the shared discriminant.
+          return fail(failure === "network" ? "network_error" : failure)
         }
 
         // Classify the upstream HTTP status BEFORE the stream-parse path:
@@ -227,25 +232,19 @@ export async function handleSeekerProxyRequest({
           return fail("auth_failed")
         }
         if (response.status === 503) {
-          // The composed signal bounds fetch(), NOT a body read on an
-          // already-received Response — race the json() read against it so a
-          // slow 503 body can't outlive the budget.
-          const abortedReason = new Promise<"config_missing">((resolve) => {
-            if (signal.aborted) return resolve("config_missing")
-            signal.addEventListener("abort", () => resolve("config_missing"), {
-              once: true,
-            })
-          })
-          const parsedReason = response
-            .json()
-            .then((b: { reason?: unknown }) =>
-              b?.reason === "model_key_missing"
-                ? ("model_key_missing" as const)
-                : ("config_missing" as const),
-            )
-            .catch(() => "config_missing" as const)
-          const reason = await Promise.race([parsedReason, abortedReason])
-          return fail(reason)
+          // The composed signal bounds fetch(), NOT a body read on a received
+          // Response — race the byte-capped read against it so a slow 503 body
+          // can't outlive the budget (over-cap/parse/abort → config_missing).
+          const body = await Promise.race([
+            readJsonCapped(response, SEEKER_ERROR_BODY_MAX_BYTES),
+            undefinedOnAbort(signal),
+          ])
+          const reason = (body as { reason?: unknown } | undefined)?.reason
+          return fail(
+            reason === "model_key_missing"
+              ? "model_key_missing"
+              : "config_missing",
+          )
         }
         // 404 = route disabled upstream; treat as config/unavailable.
         if (response.status === 404) return fail("config_missing")
@@ -288,12 +287,11 @@ export async function handleSeekerProxyRequest({
           })
         } catch (error) {
           if (!terminalEmitted) {
-            if (budgetSignal.aborted) fail("timeout")
-            else if (requestSignal?.aborted) fail("cancelled")
-            else {
-              const name = (error as { name?: string } | null | undefined)?.name
-              fail(name === "TimeoutError" ? "timeout" : "network_error")
-            }
+            const failure = classifyUpstreamFailure(error, {
+              budgetSignal,
+              requestSignal,
+            })
+            fail(failure === "network" ? "network_error" : failure)
           }
           return
         }

@@ -258,6 +258,7 @@ const VIDEO_PICKER_CATEGORY_OPTIONS: Array<{
 }> = [
   { value: "all", label: "All types" },
   { value: "collections", label: "Collections" },
+  { value: "episodes", label: "Single episodes" },
   { value: "features", label: "Features" },
   { value: "shortFilms", label: "Short films" },
   { value: "series", label: "Series" },

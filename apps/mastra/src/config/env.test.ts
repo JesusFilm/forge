@@ -1250,4 +1250,221 @@ describe("Mastra env", () => {
 
     expect(canAiChatDataPersist()).toBe(true)
   })
+
+  // --- Langfuse prompt helper (U1): LANGFUSE_* optional config + production host guard ---
+
+  it("imports cleanly with all Langfuse vars unset (no boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { env, getLangfuseConfig } = await import("./env")
+
+    // The Railway-brick regression gate: a fresh deploy with no Langfuse vars boots.
+    expect(env.LANGFUSE_BASE_URL).toBeUndefined()
+    expect(env.LANGFUSE_PUBLIC_KEY).toBeUndefined()
+    expect(env.LANGFUSE_SECRET_KEY).toBeUndefined()
+    expect(env.LANGFUSE_ALLOWED_HOSTS).toBeUndefined()
+    expect(getLangfuseConfig()).toEqual({
+      baseUrl: undefined,
+      publicKey: undefined,
+      secretKey: undefined,
+      timeoutMs: 3_000,
+      userAgent: "forge-mastra-langfuse/1.0",
+      // `.optional()` knob falls back to the 256 KiB default at the accessor —
+      // no boot requirement, so a fresh deploy still gets a cap.
+      maxResponseBytes: 262_144,
+      promptDefaultLabel: undefined,
+      promptCacheTtlMs: 60_000,
+      promptFailureCooldownMs: 10_000,
+    })
+  })
+
+  it("clamps a Langfuse failure cooldown above the cache TTL to the TTL (smaller wins)", async () => {
+    // Invariant: the effective failure cooldown never exceeds the effective
+    // TTL, whatever the operator configured — a cooldown outliving the cache
+    // window would keep serving the fallback after a fresh fetch is due.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "30000")
+    vi.stubEnv("LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS", "45000")
+
+    const { getLangfuseConfig } = await import("./env")
+
+    expect(getLangfuseConfig().promptCacheTtlMs).toBe(30_000)
+    expect(getLangfuseConfig().promptFailureCooldownMs).toBe(30_000)
+  })
+
+  it("skips the Langfuse host guard in production when the base URL is unset", async () => {
+    stubProductionBaseline()
+    // No LANGFUSE_* vars set at all.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http Langfuse base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "http://langfuse.internal")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a Langfuse host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://other.test")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a set Langfuse base URL with no allowlist in production (fail-closed)", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    // LANGFUSE_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an https Langfuse base URL whose host is allowlisted in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("does not throw on an unsafe Langfuse base URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "http://langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("treats empty-string Langfuse values as unset (no url() boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "")
+    vi.stubEnv("LANGFUSE_TIMEOUT_MS", "")
+    vi.stubEnv("LANGFUSE_USER_AGENT", "")
+    // An empty string must not trip the `z.enum(["1"])` smoke gate either.
+    vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "")
+
+    const { env, getLangfuseConfig } = await import("./env")
+
+    expect(env.LANGFUSE_BASE_URL).toBeUndefined()
+    expect(env.LANGFUSE_PROMPT_SMOKE_TEST).toBeUndefined()
+    // Defaults apply when unset.
+    expect(getLangfuseConfig().timeoutMs).toBe(3_000)
+    expect(getLangfuseConfig().userAgent).toBe("forge-mastra-langfuse/1.0")
+  })
+
+  it("projects all Langfuse fields through getLangfuseConfig when set", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+    vi.stubEnv("LANGFUSE_TIMEOUT_MS", "2500")
+    vi.stubEnv("LANGFUSE_USER_AGENT", "forge-test-langfuse/9.9")
+    // Prove the optional byte-cap override projects through (coerced from
+    // string), not just the accessor default.
+    vi.stubEnv("LANGFUSE_MAX_RESPONSE_BYTES", "131072")
+    vi.stubEnv("LANGFUSE_PROMPT_DEFAULT_LABEL", "production")
+    // Cooldown below the TTL: projected verbatim, no clamping.
+    vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "120000")
+    vi.stubEnv("LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS", "20000")
+
+    const { getLangfuseConfig } = await import("./env")
+
+    expect(getLangfuseConfig()).toEqual({
+      baseUrl: "https://langfuse.internal",
+      publicKey: "pk-lf-test",
+      secretKey: "sk-lf-test",
+      timeoutMs: 2_500,
+      userAgent: "forge-test-langfuse/9.9",
+      maxResponseBytes: 131_072,
+      promptDefaultLabel: "production",
+      promptCacheTtlMs: 120_000,
+      promptFailureCooldownMs: 20_000,
+    })
+  })
+
+  it("boots in production with the Langfuse base URL+allowlist set but the keys absent", async () => {
+    // Confirms the allowlist throw and the key-degradation paths are
+    // independent: a valid allowlisted base URL with no keys boots fine; the
+    // helper serves the caller-supplied fallback at runtime (covered in U2+).
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+    // LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY deliberately unset.
+
+    const { assertMastraRuntimeEnv, getLangfuseConfig } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getLangfuseConfig().publicKey).toBeUndefined()
+    expect(getLangfuseConfig().secretKey).toBeUndefined()
+  })
+
+  it("rejects a Langfuse timeout above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TIMEOUT_MS", "10001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a Langfuse prompt cache TTL above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "3600001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a Langfuse failure cooldown above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS", "300001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a Langfuse max-response-bytes above the 5 MiB schema cap at parse", async () => {
+    // Fail LOUD on an over-range operator typo rather than silently widening
+    // the OOM guard. 5_242_881 is one byte over the 5 MiB ceiling.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_MAX_RESPONSE_BYTES", "5242881")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts LANGFUSE_PROMPT_SMOKE_TEST="1" (the only enabling literal)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "1")
+
+    const { env } = await import("./env")
+
+    expect(env.LANGFUSE_PROMPT_SMOKE_TEST).toBe("1")
+  })
+
+  it('rejects a non-"1" LANGFUSE_PROMPT_SMOKE_TEST at parse', async () => {
+    // The enum fails loud on "true"/"yes"/etc. rather than silently
+    // half-enabling the smoke gate.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "true")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
 })
