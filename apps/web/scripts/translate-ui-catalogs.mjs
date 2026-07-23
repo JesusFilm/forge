@@ -22,7 +22,7 @@ const DEFAULT_MANIFEST_PATH = join(
   repoDir,
   "docs/i18n/watch-ui-provisional-catalogs.json",
 )
-const DEFAULT_PROGRESS_PATH = "/tmp/forge-watch-ui-translation-progress.json"
+const DEFAULT_PROGRESS_PATH = `/tmp/forge-watch-ui-translation-progress-${createHash("sha256").update(repoDir).digest("hex").slice(0, 12)}.json`
 const DEFAULT_MODEL = "gpt-5.4-mini-2026-03-17"
 const DEFAULT_CONCURRENCY = 4
 const DEFAULT_MAX_ATTEMPTS = 4
@@ -112,7 +112,7 @@ function sourceDigestForFlatCatalog(sourceFlat) {
 }
 
 function writeJsonAtomic(path, value) {
-  const temporaryPath = `${path}.tmp`
+  const temporaryPath = `${path}.tmp-${process.pid}`
   writeFileSync(temporaryPath, renderJson(value))
   renameSync(temporaryPath, path)
 }
@@ -352,7 +352,8 @@ function updateManifestAfterTranslation({
         "Every shipped UI catalog contains locale-specific copy. Existing authored translations are preserved; machineTranslatedLocales identifies catalogs completed or created with approved contextual AI translation and recommended for native-speaker review.",
       translation: {
         ...previousTranslationMetadata,
-        method: "OpenAI contextual machine translation",
+        method:
+          "OpenAI contextual machine translation with localized phrase reuse",
         model: primaryModel,
         ...(Object.keys(fallbackModels).length > 0 ? { fallbackModels } : {}),
         localeProvenance,
@@ -462,6 +463,22 @@ async function main({ args = process.argv, environment = process.env } = {}) {
 
   const sourceCatalog = readJson(join(messagesDir, `${SOURCE_LOCALE}.json`))
   const sourceFlat = flattenCatalog(sourceCatalog)
+  const requestedKeys = argValue("--keys", "", args)
+  const scopedKeys = new Set(
+    requestedKeys
+      .split(",")
+      .map((key) => key.trim())
+      .filter(Boolean),
+  )
+  const unknownScopedKeys = [...scopedKeys].filter(
+    (key) => !Object.hasOwn(sourceFlat, key),
+  )
+  if (unknownScopedKeys.length > 0) {
+    throw new TranslationCliError(
+      "UNKNOWN_MESSAGE_KEY",
+      `Unknown message keys: ${unknownScopedKeys.join(",")}`,
+    )
+  }
   const translatableSourceMessageCount = Object.keys(sourceFlat).filter(
     (key) => !INTENTIONALLY_LOCALE_NEUTRAL.has(key),
   ).length
@@ -495,6 +512,27 @@ async function main({ args = process.argv, environment = process.env } = {}) {
   )
   const localeProvenance =
     manifest.metadata?.translation?.localeProvenance ?? {}
+  if (shouldPromote && scopedKeys.size > 0) {
+    const scopedBaselineDigest = sourceDigestForFlatCatalog(
+      Object.fromEntries(
+        Object.entries(sourceFlat).filter(([key]) => !scopedKeys.has(key)),
+      ),
+    )
+    const unsafeScopedPromotionLocales = selectedLocales.filter((locale) => {
+      if (!machineTranslatedLocales.has(locale)) return false
+      const previousSourceDigest = localeProvenance[locale]?.sourceDigest
+      return (
+        previousSourceDigest !== sourceDigest &&
+        previousSourceDigest !== scopedBaselineDigest
+      )
+    })
+    if (unsafeScopedPromotionLocales.length > 0) {
+      throw new TranslationStateError(
+        "SCOPED_PROMOTION_SOURCE_DRIFT",
+        `Cannot promote a scoped translation when prior source drift is not limited to --keys: ${unsafeScopedPromotionLocales.slice(0, 12).join(",")}`,
+      )
+    }
+  }
   const queue = selectedLocales
   const failures = []
   let fatalError = null
@@ -549,6 +587,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
           !generated.has(locale)
 
         if (
+          scopedKeys.size === 0 &&
           missing.length === 0 &&
           !requiresFinalProvenance &&
           !hasStaleSourceProvenance &&
@@ -582,30 +621,38 @@ async function main({ args = process.argv, environment = process.env } = {}) {
 
         const isProvisional = manifest.provisionalLocales.includes(locale)
         const shouldTranslateEntireCatalog =
-          (isProvisional && !completed.has(locale)) ||
-          requiresFinalProvenance ||
-          hasStaleSourceProvenance
+          scopedKeys.size === 0 &&
+          ((isProvisional && !completed.has(locale)) ||
+            requiresFinalProvenance ||
+            hasStaleSourceProvenance)
         const missingKeys = new Set(missing)
         const keysToTranslate = Object.keys(sourceFlat).filter(
           (key) =>
             !INTENTIONALLY_LOCALE_NEUTRAL.has(key) &&
-            (missingKeys.has(key) ||
-              shouldTranslateEntireCatalog ||
-              flatCatalog[key] === sourceFlat[key] ||
-              messageContractError(key, sourceFlat[key], flatCatalog[key]) !==
-                null),
+            (scopedKeys.size > 0
+              ? scopedKeys.has(key)
+              : missingKeys.has(key) ||
+                shouldTranslateEntireCatalog ||
+                flatCatalog[key] === sourceFlat[key] ||
+                messageContractError(key, sourceFlat[key], flatCatalog[key]) !==
+                  null),
         )
         const keysToTranslateSet = new Set(keysToTranslate)
         const messages = Object.fromEntries(
           keysToTranslate.map((key) => [key, sourceFlat[key]]),
         )
         const minimumChangeRatio = keysToTranslate.length > 0 ? 1 : 0
+        const scopedNamespaces = new Set(
+          [...scopedKeys].map((key) => key.split(".", 1)[0]),
+        )
         const references = Object.fromEntries(
           Object.keys(sourceFlat)
             .filter(
               (key) =>
                 !keysToTranslateSet.has(key) &&
-                flatCatalog[key] !== sourceFlat[key],
+                flatCatalog[key] !== sourceFlat[key] &&
+                (scopedNamespaces.size === 0 ||
+                  scopedNamespaces.has(key.split(".", 1)[0])),
             )
             .map((key) => [key, flatCatalog[key]]),
         )

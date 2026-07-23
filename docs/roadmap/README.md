@@ -7,9 +7,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (July 22, 2026)
 
 - **Total tickets:** 413
-- **Complete:** 305
+- **Complete:** 306
 - **In progress:** 33
-- **Not started:** 26
+- **Not started:** 25
 - **Blocked:** 49
 - **Overdue and not complete:** 84
 
@@ -410,7 +410,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                           | AI-Generated Christmas Experience                                                | ekkasit   | P0       | 2026-04-01 | 14   | 2026-04-14 | in-progress |
 | [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                                                 | ekkasit   | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit   | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
-| [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | —          | 2    | —          | not-started |
+| [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim      | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
 | [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim      | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
 | [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim      | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |

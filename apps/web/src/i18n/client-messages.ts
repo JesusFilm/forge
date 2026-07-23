@@ -41,6 +41,7 @@ export const WATCH_HOME_CLIENT_MESSAGE_NAMESPACES = [
 
 export const WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES = [
   "BibleQuotes",
+  "CollectionDownloadModal",
   "DownloadButton",
   "DownloadModal",
   "ExperienceError",
