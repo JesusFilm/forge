@@ -43,7 +43,7 @@ vi.mock("@/components/ExperienceError", () => ({
   ExperienceError: experienceErrorMock,
 }))
 
-import HomePage from "@/app/[locale]/[htmlLang]/page"
+import HomePage, { generateMetadata } from "@/app/[locale]/[htmlLang]/page"
 import { WATCH_HOME_CLIENT_MESSAGE_NAMESPACES } from "@/i18n/client-messages"
 
 const heroModel = {
@@ -68,6 +68,29 @@ beforeEach(() => {
 })
 
 describe("Watch root homepage", () => {
+  it("uses the fixed seeker-focused page and social metadata", async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+
+    expect(metadata.title).toBe(
+      "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+    )
+    expect(metadata.description).toBe(
+      "Watch free movies about Jesus, Gospel films, Bible videos, and Christian series. Explore faith, prayer, hope, and the story of Jesus in your language.",
+    )
+    expect(metadata.openGraph).toMatchObject({
+      title: "Watch Free Films About Jesus | Jesus Film Project",
+      description:
+        "Explore free films, series, and Bible videos that bring the life of Jesus to every screen and many languages.",
+    })
+    expect(metadata.twitter).toMatchObject({
+      title: "Watch Free Films About Jesus | Jesus Film Project",
+      description:
+        "Explore free films, series, and Bible videos that bring the life of Jesus to every screen and many languages.",
+    })
+  })
+
   it("renders builder-authored homepage blocks under the static hero model", async () => {
     const blocks = [
       { __typename: "WatchHomeHeroBlock", t: "watchHomeHero" },

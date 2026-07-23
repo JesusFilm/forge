@@ -37,6 +37,14 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   the tool returns cited passages, the agent generates the answer). Fully
   optional config — unset degrades to an explicit unavailable result, never a
   boot failure.
+- Owns retrieval-only Langfuse prompt management through
+  `langfuse-prompt-client` (`fetchLangfusePrompt` result-union fetch + cached
+  `getManagedPrompt` with caller-supplied fallback and provenance). Fully
+  optional config — unset serves the fallback (`config_missing`), never a
+  boot failure. Prompt authoring, versioning, and label moves stay in the
+  Langfuse UI; per-environment Langfuse projects keep dev keys away from
+  tuned prod prompt text. Nothing consumes the helper yet — seeker
+  integration is tracked as feat-272 in the ai-chat lane.
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized

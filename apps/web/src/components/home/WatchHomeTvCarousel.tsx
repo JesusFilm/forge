@@ -601,7 +601,7 @@ function WatchHomeTvOverlayContent({
         >
           <WatchHomeTvSlideLabel slide={slide} />
         </p>
-        <h1
+        <h2
           className={cn(
             itemClassName,
             "line-clamp-3 leading-tight font-extrabold sm:line-clamp-2",
@@ -610,7 +610,7 @@ function WatchHomeTvOverlayContent({
           style={delayStyle(1)}
         >
           {copy.title}
-        </h1>
+        </h2>
         {copy.description ? (
           <p
             className={cn(

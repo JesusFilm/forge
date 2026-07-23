@@ -3,6 +3,7 @@ import {
   WINDOW_SEEK_TOLERANCE_SECONDS,
   computeReelPlayerGate,
   needsWindowStartSeek,
+  windowStartSeekOnReady,
 } from "./reelPlayerGate"
 
 // Steady state: the reel is playing the excerpt it wants (confirmed === target).
@@ -340,5 +341,39 @@ describe("needsWindowStartSeek", () => {
     expect(needsWindowStartSeek({ currentTime: 0.4, startSeconds: 33 })).toBe(
       true,
     )
+  })
+})
+
+// Locks down the readyToPlay heal's OWN arming, which diverges from the timeUpdate
+// self-heal: it never gates on the confirmed token (readyToPlay precedes confirmation),
+// so a future "harmonize the two seams" refactor that added that guard would go red here.
+describe("windowStartSeekOnReady", () => {
+  it("returns the window start when a dropped opener left the clock near 0", () => {
+    // A sentence-aware English opener seeks to ~57s; a dropped post-replaceAsync
+    // seek leaves the clock near 0, so readyToPlay re-issues the seek.
+    expect(
+      windowStartSeekOnReady({ loadedStartSeconds: 56.76, currentTime: 0.2 }),
+    ).toBe(56.76)
+  })
+
+  it("no-ops once the clock has reached the window — never a backward seek", () => {
+    expect(
+      windowStartSeekOnReady({ loadedStartSeconds: 56.76, currentTime: 56 }),
+    ).toBeNull()
+  })
+
+  it("no-ops with no loaded stream — armed only by a loaded window, never by confirmation", () => {
+    expect(
+      windowStartSeekOnReady({ loadedStartSeconds: null, currentTime: 0 }),
+    ).toBeNull()
+    expect(
+      windowStartSeekOnReady({ loadedStartSeconds: undefined, currentTime: 0 }),
+    ).toBeNull()
+  })
+
+  it("never fires for a from-zero window (short-form and fallback excerpts)", () => {
+    expect(
+      windowStartSeekOnReady({ loadedStartSeconds: 0, currentTime: 0 }),
+    ).toBeNull()
   })
 })
