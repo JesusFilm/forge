@@ -485,7 +485,7 @@ export function SeriesPageClient({
       <ShareModal
         open={modalState === "share"}
         videoSlug={series.slug ?? ""}
-        currentLanguageSlug={locale}
+        currentLanguageSlug={currentLanguageSlug}
         videoTitle={series.title ?? null}
         videoDescription={description}
         posterUrl={posterUrl}

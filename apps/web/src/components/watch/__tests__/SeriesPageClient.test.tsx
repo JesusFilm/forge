@@ -104,16 +104,19 @@ const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
       open,
       videoSlug,
       videoTitle,
+      currentLanguageSlug,
     }: {
       open: boolean
       videoSlug: string
       videoTitle?: string | null
+      currentLanguageSlug: string
     }) => (
       <div
         data-testid="share-modal-mock"
         data-open={String(open)}
         data-slug={videoSlug}
         data-title={videoTitle ?? ""}
+        data-language-slug={currentLanguageSlug}
       />
     ),
   ),
@@ -632,11 +635,17 @@ describe("SeriesPageClient — passthrough to children", () => {
     expect(grid?.getAttribute("data-episode-count")).toBe("2")
   })
 
-  it("passes series.slug + title to the ShareModal", () => {
+  it("passes series identity and the resolved public language slug to ShareModal", () => {
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ slug: "storyclubs", title: "StoryClubs" })}
+          series={makeSeries({
+            slug: "storyclubs",
+            title: "StoryClubs",
+            childDubLanguages: makeChildDubLanguages([
+              [{ languageSlug: "english", bcp47: "en" }],
+            ]),
+          })}
           selectedVariant={null}
           locale="en"
         />,
@@ -645,6 +654,7 @@ describe("SeriesPageClient — passthrough to children", () => {
     const modal = container.querySelector('[data-testid="share-modal-mock"]')
     expect(modal?.getAttribute("data-slug")).toBe("storyclubs")
     expect(modal?.getAttribute("data-title")).toBe("StoryClubs")
+    expect(modal?.getAttribute("data-language-slug")).toBe("english")
   })
 })
 

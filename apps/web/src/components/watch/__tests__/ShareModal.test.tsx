@@ -4,7 +4,7 @@
  * ShareModal tests.
  *
  * Covers:
- *  - Copy Link → clipboard contains the canonical 2-segment URL built from
+ *  - Copy Link → clipboard contains the public 2-segment URL resolved from
  *    `NEXT_PUBLIC_CANONICAL_ORIGIN`.
  *  - Clipboard rejection → "Select and copy manually" hint appears, the
  *    field stays selectable.
@@ -28,11 +28,7 @@ vi.mock("@/env", () => ({
   },
 }))
 
-import {
-  PUBLIC_SHARE_FALLBACK_ORIGIN,
-  ShareModal,
-  isPublicShareableOrigin,
-} from "@/components/watch/ShareModal"
+import { ShareModal } from "@/components/watch/ShareModal"
 
 let container: HTMLDivElement
 let root: Root
@@ -175,37 +171,6 @@ describe("ShareModal — Facebook + X share intents", () => {
   })
 })
 
-describe("ShareModal — public-origin fallback (helper)", () => {
-  it("treats real https origins as shareable", () => {
-    expect(isPublicShareableOrigin("https://jesusfilm.org")).toBe(true)
-    expect(isPublicShareableOrigin("https://staging.jesusfilm.org")).toBe(true)
-    expect(isPublicShareableOrigin("http://example.com")).toBe(true)
-  })
-
-  it("rejects localhost and private hosts that Facebook can't crawl", () => {
-    // Reproduces the reported bug: NEXT_PUBLIC_CANONICAL_ORIGIN defaults to
-    // http://localhost:3000 in dev, which Facebook silently strips from the
-    // composer (no preview card, no link). Treating these as non-shareable
-    // forces a fallback to the public canonical so the dialog populates.
-    expect(isPublicShareableOrigin("http://localhost:3000")).toBe(false)
-    expect(isPublicShareableOrigin("http://127.0.0.1:3000")).toBe(false)
-    expect(isPublicShareableOrigin("http://my-mac.local:3000")).toBe(false)
-    expect(isPublicShareableOrigin("http://0.0.0.0:3000")).toBe(false)
-  })
-
-  it("rejects malformed origins", () => {
-    expect(isPublicShareableOrigin("")).toBe(false)
-    expect(isPublicShareableOrigin("not-a-url")).toBe(false)
-  })
-
-  it("exposes the production canonical as the fallback host", () => {
-    // Sanity guard so a future refactor doesn't silently swap the fallback to
-    // a host that's not the actual public site — that would either 404 the
-    // shared link or share an unrelated origin.
-    expect(PUBLIC_SHARE_FALLBACK_ORIGIN).toBe("https://jesusfilm.org")
-  })
-})
-
 describe("ShareModal — Embed Code tab", () => {
   it("hides the Embed Code tab when no playbackId is supplied", () => {
     // Without a Mux playbackId we can't build a portable player.mux.com
@@ -295,13 +260,8 @@ describe("ShareModal — Embed Code tab", () => {
   })
 })
 
-describe("ShareModal — non-public origin disables FB + X buttons", () => {
-  // F20 regression guard: when NEXT_PUBLIC_CANONICAL_ORIGIN is localhost (or
-  // any non-public host), firing the FB share intent against the production
-  // fallback URL would poison Facebook's negative cache for a slug that
-  // doesn't yet exist in production. The buttons must stay visible (so the
-  // affordance is discoverable) but be disabled, with a hint explaining why.
-  it("renders FB + X as disabled buttons with a hint when origin is localhost", async () => {
+describe("ShareModal — local origin fallback", () => {
+  it("renders a public Copy Link and enabled social anchors on localhost", async () => {
     vi.resetModules()
     vi.doMock("@/env", () => ({
       env: {
@@ -326,18 +286,54 @@ describe("ShareModal — non-public origin disables FB + X buttons", () => {
     const x = $('[data-testid="watch-share-modal-x"]')
     expect(fb).not.toBeNull()
     expect(x).not.toBeNull()
-    // They are now <button disabled>, not <a href=…>.
-    expect(fb?.tagName).toBe("BUTTON")
-    expect(x?.tagName).toBe("BUTTON")
-    expect((fb as HTMLButtonElement).disabled).toBe(true)
-    expect((x as HTMLButtonElement).disabled).toBe(true)
+    expect(fb?.tagName).toBe("A")
+    expect(x?.tagName).toBe("A")
+    expect(fb?.getAttribute("aria-label")).toBe("Share on Facebook")
+    expect(x?.getAttribute("aria-label")).toBe("Share on X")
+    expect((fb as HTMLAnchorElement).href).toContain(
+      encodeURIComponent(
+        "https://www.jesusfilm.org/watch/the-call.html/english.html",
+      ),
+    )
+    expect((x as HTMLAnchorElement).href).toContain(
+      encodeURIComponent(
+        "https://www.jesusfilm.org/watch/the-call.html/english.html",
+      ),
+    )
 
     const hint = $('[data-testid="watch-share-modal-share-disabled-hint"]')
-    expect(hint).not.toBeNull()
-    expect(hint?.textContent ?? "").toContain("deployed page")
+    expect(hint).toBeNull()
+    const input = $(
+      '[data-testid="watch-share-modal-link-input"]',
+    ) as HTMLInputElement
+    expect(input.value).toBe(
+      "https://www.jesusfilm.org/watch/the-call.html/english.html",
+    )
 
     vi.doUnmock("@/env")
     vi.resetModules()
+  })
+
+  it("keeps a valid Embed action when the share identity is invalid", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug=""
+          currentLanguageSlug="english"
+          playbackId="ScBFl3LbJCViZNNdZfa4bpJCEyQr9Mw4Cpiirb7gb00E"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect($('[data-testid="watch-share-modal-facebook"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-x"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-input"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-copy"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-input"]')).not.toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-copy"]')).not.toBeNull()
+    expect($('[data-testid="watch-share-modal-close"]')).not.toBeNull()
   })
 })
 

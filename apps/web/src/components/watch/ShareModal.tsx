@@ -29,22 +29,13 @@ import { env } from "@/env"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
-  WATCH_BASE_PATH,
-  tryAsContentSlug,
-  tryAsLocaleSlug,
-  watchVideoPath,
-} from "@/lib/routes"
-import {
-  PUBLIC_SHARE_FALLBACK_ORIGIN,
-  isPublicShareableOrigin,
-} from "@/lib/url"
-import { buildEmbedSnippet, buildFbShareUrl, buildXShareUrl } from "@/lib/share"
+  buildEmbedSnippet,
+  buildFbShareUrl,
+  buildXShareUrl,
+  resolveWatchShareUrl,
+} from "@/lib/share"
 import { cn } from "@/lib/utils"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
-
-// Re-export for backwards compat with existing tests / consumers that import
-// these from `@/components/watch/ShareModal`.
-export { PUBLIC_SHARE_FALLBACK_ORIGIN, isPublicShareableOrigin }
 
 // Optional fields here accept explicit `null` from the parent's `?? null`
 // fallback chain in WatchPageClient (`video.title ?? null`). The effective
@@ -80,44 +71,24 @@ export function ShareModal({
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
   const embedRef = useRef<HTMLTextAreaElement | null>(null)
 
-  const origin = env.NEXT_PUBLIC_CANONICAL_ORIGIN
-  // Build the watch PATH via the @/lib/routes builder, then prefix each origin
-  // manually: canonical + share-fallback are TWO different origins, so the
-  // canonical-origin-baked `watchVideoAbsolute` builder doesn't fit. Invalid
-  // slugs (which can't happen for a published video) fall back to the bare
-  // origin rather than emitting a malformed path.
-  const slug = tryAsContentSlug(videoSlug)
-  const lang = tryAsLocaleSlug(currentLanguageSlug)
-  const watchPath = slug && lang ? watchVideoPath(slug, lang) : null
-  const canonicalUrl = watchPath
-    ? `${origin}${WATCH_BASE_PATH}${watchPath}`
-    : origin
-  // When the configured origin can't be reached by the FB / X scrapers
-  // (localhost, private hosts, etc.) we keep the share buttons VISIBLE but
-  // render them as disabled. Sharing a localhost URL via the public fallback
-  // would otherwise poison Facebook's negative cache for the canonical slug
-  // before it actually exists in production. The button stays as an
-  // affordance hint so the user knows where sharing will appear once the
-  // page is live.
-  const isShareable = isPublicShareableOrigin(origin)
-  // Used by the Facebook + X share intents only. Copy Link / Copy Code keep
-  // the configured origin so devs can copy a localhost URL when that's what
-  // they want.
-  const shareOrigin = isShareable ? origin : PUBLIC_SHARE_FALLBACK_ORIGIN
-  const shareableUrl = watchPath
-    ? `${shareOrigin}${WATCH_BASE_PATH}${watchPath}`
-    : shareOrigin
+  const shareableUrl = resolveWatchShareUrl({
+    origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+    videoSlug,
+    languageSlug: currentLanguageSlug,
+  })
   // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
   // interpolating into the iframe `src` and returns "" on null/invalid; the
   // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
   // hides the tab entirely.
   const embedSnippet = buildEmbedSnippet(playbackId)
 
-  const fbHref = buildFbShareUrl(shareableUrl)
-  const xHref = buildXShareUrl(shareableUrl, videoTitle ?? undefined)
+  const fbHref = shareableUrl ? buildFbShareUrl(shareableUrl) : null
+  const xHref = shareableUrl
+    ? buildXShareUrl(shareableUrl, videoTitle ?? undefined)
+    : null
 
-  const isEmbed = tab === "embed"
-  const currentValue = isEmbed ? embedSnippet : canonicalUrl
+  const isEmbed = tab === "embed" || shareableUrl == null
+  const currentValue = isEmbed ? embedSnippet : shareableUrl
   const copyLabel = isEmbed ? t("copyCode") : t("copyLink")
 
   // Reset the "Copied" pill back to the default label after 2s so a second
@@ -242,62 +213,30 @@ export function ShareModal({
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          {fbHref && xHref ? (
             <div className="flex gap-3">
-              {isShareable ? (
-                <a
-                  href={fbHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t("shareOnFacebook")}
-                  data-testid="watch-share-modal-facebook"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-                >
-                  <Facebook size={18} fill="currentColor" stroke="none" />
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-label={t("shareOnFacebookUnavailable")}
-                  data-testid="watch-share-modal-facebook"
-                  className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full bg-[#1877F2] text-white opacity-50"
-                >
-                  <Facebook size={18} fill="currentColor" stroke="none" />
-                </button>
-              )}
-              {isShareable ? (
-                <a
-                  href={xHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t("shareOnX")}
-                  data-testid="watch-share-modal-x"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-                >
-                  <XBrandIcon size={16} />
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-label={t("shareOnXUnavailable")}
-                  data-testid="watch-share-modal-x"
-                  className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full bg-black text-white opacity-50"
-                >
-                  <XBrandIcon size={16} />
-                </button>
-              )}
-            </div>
-            {!isShareable ? (
-              <p
-                data-testid="watch-share-modal-share-disabled-hint"
-                className="text-xs font-semibold text-stone-400"
+              <a
+                href={fbHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("shareOnFacebook")}
+                data-testid="watch-share-modal-facebook"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
-                {t("shareDisabledHint")}
-              </p>
-            ) : null}
-          </div>
+                <Facebook size={18} fill="currentColor" stroke="none" />
+              </a>
+              <a
+                href={xHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("shareOnX")}
+                data-testid="watch-share-modal-x"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+              >
+                <XBrandIcon size={16} />
+              </a>
+            </div>
+          ) : null}
 
           {/* Tab row only renders when there's a real choice to make
               (i.e., an embed snippet is available alongside the link).
@@ -306,7 +245,7 @@ export function ShareModal({
               "Share Link" tab header alone reads as a meaningless
               non-choice, so we hide the whole tablist and let the link
               input flow directly under the social-share row. */}
-          {embedSnippet ? (
+          {embedSnippet && shareableUrl ? (
             <div
               role="tablist"
               aria-label={t("shareFormat")}
@@ -368,16 +307,16 @@ export function ShareModal({
                 onFocus={(e) => e.currentTarget.select()}
                 className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
-            ) : (
+            ) : shareableUrl ? (
               <input
                 type="text"
                 data-testid="watch-share-modal-link-input"
                 readOnly
-                value={canonicalUrl}
+                value={shareableUrl}
                 onFocus={(e) => e.currentTarget.select()}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
-            )}
+            ) : null}
           </div>
 
           <div className="flex items-center justify-end gap-5 pt-2">
@@ -388,19 +327,21 @@ export function ShareModal({
             >
               {t("close")}
             </Button>
-            <Button
-              variant="pill"
-              data-testid={
-                isEmbed
-                  ? "watch-share-modal-embed-copy"
-                  : "watch-share-modal-link-copy"
-              }
-              onClick={() => copy(currentValue)}
-              className="gap-2 px-7 py-4 text-sm"
-            >
-              <Copy size={16} />
-              <span>{copyStatus === "copied" ? t("copied") : copyLabel}</span>
-            </Button>
+            {currentValue ? (
+              <Button
+                variant="pill"
+                data-testid={
+                  isEmbed
+                    ? "watch-share-modal-embed-copy"
+                    : "watch-share-modal-link-copy"
+                }
+                onClick={() => copy(currentValue)}
+                className="gap-2 px-7 py-4 text-sm"
+              >
+                <Copy size={16} />
+                <span>{copyStatus === "copied" ? t("copied") : copyLabel}</span>
+              </Button>
+            ) : null}
           </div>
         </div>
       </DialogContent>

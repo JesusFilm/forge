@@ -1,32 +1,26 @@
-// Shared URL helpers for share-intent fallbacks.
-//
-// Facebook's URL scraper rejects localhost / private hosts, which empties the
-// composer when share buttons fire from a dev build. The public canonical is
-// what end users would actually see for the page anyway, so we substitute it
-// whenever the configured origin is unreachable from the public internet.
-// Twitter/X is more permissive but still benefits from a real URL preview.
+// Lexical guard for origins a public social crawler cannot reach. Mirrors
+// loopback, RFC1918, link-local, and IPv6 local ranges without doing a DNS or
+// network reachability probe.
+const PRIVATE_IPV4_PATTERN =
+  /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/
+const PRIVATE_IPV6_PATTERN = /^(::|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:)/
 
-export const PUBLIC_SHARE_FALLBACK_ORIGIN = "https://jesusfilm.org"
-
-// Mirrors RFC1918 ranges plus link-local. We accept a small false-positive risk
-// (e.g. legitimate 10.0.0.0/8 deployments) in exchange for never sending FB a
-// URL its scraper can't reach.
-const PRIVATE_IPV4_PATTERN = /^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/
-
-export function isPublicShareableOrigin(origin: string): boolean {
+export function normalizePublicShareableOrigin(origin: string): string | null {
   try {
-    const { hostname } = new URL(origin)
-    if (hostname === "localhost" || hostname === "127.0.0.1") return false
-    if (hostname.endsWith(".local")) return false
-    if (hostname === "0.0.0.0") return false
-    // IPv6 loopback: URL("http://[::1]:3000").hostname returns "[::1]" in
-    // browsers and Node, but bare "::1" can also appear if the URL was
-    // pre-stripped — treat both as non-public.
-    if (hostname === "[::1]" || hostname === "::1") return false
-    if (PRIVATE_IPV4_PATTERN.test(hostname)) return false
-    return true
+    const parsed = new URL(origin)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null
+    if (parsed.username || parsed.password) return null
+
+    const hostname = parsed.hostname.toLowerCase()
+    if (hostname === "localhost") return null
+    if (hostname.endsWith(".local")) return null
+    if (hostname === "0.0.0.0") return null
+    const ipv6Hostname = hostname.replace(/^\[|\]$/g, "")
+    if (PRIVATE_IPV6_PATTERN.test(ipv6Hostname)) return null
+    if (PRIVATE_IPV4_PATTERN.test(hostname)) return null
+    return parsed.origin
   } catch {
-    return false
+    return null
   }
 }
 
