@@ -39,11 +39,11 @@ import { resolveSeekerGate, type SeekerGateDecision } from "@/lib/seeker-gate"
 import {
   classifyUpstreamFailure,
   composeUpstreamAbortSignal,
-  hostAllowed,
   MAX_CONVERSATION_ID_CHARS,
   postMastraUpstream,
   readJsonCapped,
   undefinedOnAbort,
+  validateBaseUrl,
 } from "@/lib/server/mastra-upstream"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 import type { ReplyFailureReason } from "@/lib/conversations"
@@ -192,7 +192,10 @@ export async function handleSeekerProxyRequest({
           fail("config_missing")
           return
         }
-        if (!hostAllowed(config.baseUrl, config.allowedHosts)) {
+        // Mint the branded base from the SSRF guard's success path; null → the
+        // proxy's own ssrf_blocked wire. postMastraUpstream demands the brand.
+        const baseUrl = validateBaseUrl(config.baseUrl, config.allowedHosts)
+        if (baseUrl === null) {
           fail("ssrf_blocked")
           return
         }
@@ -209,7 +212,7 @@ export async function handleSeekerProxyRequest({
         let response: Response
         try {
           response = await postMastraUpstream(fetchImpl, {
-            baseUrl: config.baseUrl,
+            baseUrl,
             apiKey: config.apiKey,
             path: "/forge-seeker",
             accept: "text/event-stream",

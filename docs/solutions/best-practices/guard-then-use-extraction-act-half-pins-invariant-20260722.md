@@ -173,6 +173,21 @@ limits is what keeps the doc honest and the reader safe:
   repo's proxy-logging discipline forbids logging forwarded ids or body fragments) so
   the coding mistake is diagnosable rather than an infinite retry.
 
+> **Shipped 2026-07-22 (feat-294).** The branded-type fix this section names as "the
+> fully-realized form of the rule" has landed. `apps/chat/src/lib/server/mastra-upstream.ts`
+> now exports a `ValidatedBaseUrl` brand minted only by `validateBaseUrl` (the
+> `hostAllowed` success path — the lone `as ValidatedBaseUrl` cast lives there), and
+> `MastraUpstreamRequest.baseUrl` demands it, so a caller that skips the base guard is a
+> **compile error**, not a convention. What deliberately did **not** change, exactly as
+> this section prescribes: the origin pin stays (it guards the independent
+> path-escapes-the-base invariant); `hostAllowed` and its SSRF matrix are untouched; and
+> the base-SSRF guard stays a per-proxy caller obligation — each proxy still maps
+> `validateBaseUrl`'s `null` onto its OWN deny wire (seeker `ssrf_blocked` frame; history
+> 502 `unavailable`), so no per-proxy deny knowledge moved into shared code. The first
+> two "Scope and limits" bullets (the vacuous-base gap and why the guard stays at the
+> call site) describe the pre-feat-294 runtime-throw subset and remain the historical
+> record of why the type was needed.
+
 **Alternatives considered.** Two designs remove the footgun differently. A single fused
 `guardedPostMastraUpstream` (check + act in one export, unseparable) was not taken
 because the SSRF-deny wire mapping is per-proxy by design and belongs at the call site,
@@ -227,7 +242,12 @@ guarantee."
   unrepresentable — the caller can still _construct and pass_ the bad input; it just
   fails when the code runs. A branded/witness type the guard mints (a validated `URL`,
   a `ValidatedBaseUrl`) makes the unsafe call a **compile error** the caller cannot
-  write. Reach for the type first; fall back to the runtime throw as the pragmatic
+  write. That compile error makes the unsafe call unrepresentable _by accident_, not
+  absolutely — a deliberate `as`-cast outside the mint (or an `any`-typed value) still
+  forges the brand, so the real guarantee is the maintained single-cast invariant
+  (reviewable, greppable, and mechanizable with a lint ban forbidding the cast outside
+  the minting module), not cryptographic tamper-proofness. Reach for the type first;
+  fall back to the runtime throw as the pragmatic
   option when a call-shape or per-caller-outcome constraint rules the type out (as it
   did here), and say which one you took and why. Either way, the current callers being
   safe today is not the bar; the bar is a future caller who imports the helper and

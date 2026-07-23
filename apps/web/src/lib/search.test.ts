@@ -22,7 +22,7 @@ describe("searchVideos", () => {
     semanticSearchAdminQuery.mockReset()
   })
 
-  it("calls the Admin Watch search GraphQL contract", async () => {
+  it("calls the Admin Watch search contract with a canonical default display language", async () => {
     semanticSearchAdminQuery.mockResolvedValueOnce({
       data: {
         watchSearch: {
@@ -59,8 +59,8 @@ describe("searchVideos", () => {
             targetLanguageSlug: undefined,
             queryLanguageSlug: undefined,
             queryNamedLanguageSlug: undefined,
-            displayLanguageSlug: "en",
-            routeLanguageSlug: "en",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: undefined,
             currentWatchLanguageSlug: undefined,
             acceptLanguage: undefined,
             limit: 20,
@@ -92,7 +92,7 @@ describe("searchVideos", () => {
     expect(data.latencyMs).toBe(12)
   })
 
-  it("keeps query truncation and offset semantics stable for callers", async () => {
+  it("canonicalizes a localized UI language without synthesizing route context", async () => {
     semanticSearchAdminQuery.mockResolvedValueOnce({
       data: {
         watchSearch: {
@@ -117,8 +117,8 @@ describe("searchVideos", () => {
             targetLanguageSlug: undefined,
             queryLanguageSlug: undefined,
             queryNamedLanguageSlug: undefined,
-            displayLanguageSlug: "es",
-            routeLanguageSlug: "es",
+            displayLanguageSlug: "spanish-castilian",
+            routeLanguageSlug: undefined,
             currentWatchLanguageSlug: undefined,
             acceptLanguage: undefined,
             limit: 10,
@@ -130,6 +130,36 @@ describe("searchVideos", () => {
     )
     expect(data.query).toHaveLength(200)
     expect(data.nextOffset).toBe(40)
+  })
+
+  it("preserves an explicitly null route language", async () => {
+    semanticSearchAdminQuery.mockResolvedValueOnce({
+      data: {
+        watchSearch: {
+          results: [],
+          hasMore: false,
+          query: "jesus",
+          searchMode: "watch-search",
+          latencyMs: 4,
+          nextOffset: 0,
+        },
+      },
+    })
+
+    await searchVideos("jesus", 20, 0, undefined, "en", {
+      routeLanguageSlug: null,
+    })
+
+    expect(semanticSearchAdminQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: {
+          input: expect.objectContaining({
+            displayLanguageSlug: "english",
+            routeLanguageSlug: null,
+          }),
+        },
+      }),
+    )
   })
 
   it("maps returned Watch search results to the existing UI card shape", async () => {
