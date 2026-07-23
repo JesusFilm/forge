@@ -3,7 +3,7 @@ id: "feat-232"
 title: "YouTube mapper arbitrary raw clip matching"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-03"
 duration: 10
 depends_on:
