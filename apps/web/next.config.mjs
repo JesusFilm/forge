@@ -45,7 +45,7 @@ const adminMediaImageHost = (() => {
   }
 })()
 
-const nextConfig = {
+export const nextConfig = {
   basePath: WATCH_BASE_PATH,
   allowedDevOrigins: ["127.0.0.1"],
   // Self-hosted prod (Railway) doesn't always sit behind a compressing
@@ -86,6 +86,11 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "@mux/mux-video-react"],
+    serverActions: {
+      // Core's canonical Watch proxy preserves the public Origin, while
+      // Railway replaces x-forwarded-host with its upstream hostname.
+      allowedOrigins: ["develop.jesusfilm.org", "www.jesusfilm.org"],
+    },
   },
   images: {
     dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
