@@ -1,7 +1,6 @@
 /**
- * Consumer-bearer header builder retained for the temporary search shim.
- * Absent token returns the anonymous shape so the app still boots and public
- * queries work where no key is provisioned.
+ * Consumer-bearer header builder. Absent token returns the anonymous shape so
+ * the app still boots and public queries work where no key is provisioned.
  */
 export function buildAuthHeaders(
   token: string | undefined,
@@ -10,14 +9,15 @@ export function buildAuthHeaders(
   return { Authorization: `Bearer ${token}` }
 }
 
-/** Legacy search operation name retained until mobile search is rebuilt. */
-export const SEARCH_OPERATION_NAME = "Search"
+/** Search operation name. Renamed with admin's Query.search → watchSearch (#1622). */
+export const SEARCH_OPERATION_NAME = "WatchSearch"
 
 /**
- * Bearer scoped to the legacy Search operation only. The consumer bearer is
- * admin's rate-limit identity (`consumer:<key>`, one shared 60/min bucket);
- * since every install ships the same key, never attach it to general public
- * operations.
+ * Bearer scoped to the search operation only. `watchSearch` is a PUBLIC
+ * resolver, so this is not an auth requirement — it buys the per-device
+ * rate-limit bucket (`consumer:<key>:v:<viewer_id>`) instead of the coarse,
+ * CGNAT-collapsed `public:<ip>` one. On other public ops it would pool the
+ * whole fleet into a single bucket.
  */
 export function authHeadersForOperation(
   operationName: string | undefined,

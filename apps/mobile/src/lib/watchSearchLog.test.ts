@@ -74,3 +74,35 @@ describe("resolveWatchSearchOutcome", () => {
     ).toEqual({ outcome: "error", result_count: 0, code: "unknown" })
   })
 })
+
+// The rate limiter stamps http.statusCode and sets no domain code, so reading
+// only `extensions.code` reported "unknown" for exactly the throttling that
+// matters most operationally.
+describe("parseSearchErrorCode falls back to the HTTP status", () => {
+  it("reports a rate-limit 429 instead of unknown", () => {
+    expect(
+      parseSearchErrorCode(
+        new CombinedGraphQLErrors({
+          errors: [
+            {
+              message: "rate limited",
+              extensions: { http: { statusCode: 429 } },
+            },
+          ],
+        }),
+      ),
+    ).toBe("http_429")
+  })
+
+  it("still prefers an explicit code when admin sends one", () => {
+    expect(
+      parseSearchErrorCode(
+        new CombinedGraphQLErrors({
+          errors: [
+            { message: "x", extensions: { code: "INTERNAL_SERVER_ERROR" } },
+          ],
+        }),
+      ),
+    ).toBe("INTERNAL_SERVER_ERROR")
+  })
+})

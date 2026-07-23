@@ -90,16 +90,16 @@ beforeEach(() => {
 })
 
 describe("createRequestChain (auth + Datadog header composition)", () => {
-  it("delivers the Search bearer + viewer-id AND the attribution headers together", () => {
+  it("delivers the WatchSearch bearer + viewer-id AND the attribution headers together", () => {
     const headers = headersThroughChain(gql`
-      query Search {
+      query WatchSearch {
         __typename
       }
     `)
     expect(headers).toMatchObject({
       Authorization: "Bearer test-token",
       "x-viewer-id": "vid-123",
-      "x-dd-graph-ql-operation-name": "Search",
+      "x-dd-graph-ql-operation-name": "WatchSearch",
       "x-dd-graph-ql-operation-type": "query",
     })
   })
@@ -115,11 +115,11 @@ describe("createRequestChain (auth + Datadog header composition)", () => {
     expect(headers?.["x-dd-graph-ql-operation-name"]).toBe("GetVideoBySlug")
   })
 
-  it("skips the attribution link when unprovisioned, but keeps the Search bearer", () => {
+  it("skips the attribution link when unprovisioned, but keeps the WatchSearch bearer", () => {
     mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = undefined
     mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = undefined
     const headers = headersThroughChain(gql`
-      query Search {
+      query WatchSearch {
         __typename
       }
     `)
