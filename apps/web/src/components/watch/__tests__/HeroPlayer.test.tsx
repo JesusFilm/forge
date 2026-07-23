@@ -2032,6 +2032,33 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
+  it("preserves a timestamp deep-link seek when committing playback", async () => {
+    setSearchParams("t=12")
+    await activateMutedPreviewFromIdle()
+    expect(mockPlayerRef.current).not.toBeNull()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.currentTime = 0
+    }
+
+    await act(async () => {
+      lastMuxProps()?.onLoadedMetadata?.(new Event("loadedmetadata"))
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(12)
+
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    expect(pill).not.toBeNull()
+    await act(async () => {
+      pill.click()
+    })
+
+    expect(mockPlayerRef.current?.currentTime).toBe(12)
+    expect(mockPlayerRef.current?.muted).toBe(false)
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
   it("primes the player on pointerdown before the sound-intent click", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -4162,6 +4189,32 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
 })
 
 describe("HeroPlayer — MuxVideo backend events", () => {
+  it.each([
+    ["0", 0],
+    ["12", 12],
+    ["12.5", 12.5],
+    ["-4", 0],
+    ["not-a-number", 0],
+    ["999", 59],
+  ])(
+    "applies ?t=%s after metadata with safe clamping",
+    async (value, expected) => {
+      setSearchParams(`t=${value}`)
+      await activateMutedPreviewFromIdle()
+      expect(mockPlayerRef.current).not.toBeNull()
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.duration = 60
+        mockPlayerRef.current.currentTime = 0
+      }
+
+      await act(async () => {
+        lastMuxProps()?.onLoadedMetadata?.(new Event("loadedmetadata"))
+      })
+
+      expect(mockPlayerRef.current?.currentTime).toBe(expected)
+    },
+  )
+
   it("flips videoReady via onCanPlay without showing a muted-preview spinner", async () => {
     await activateMutedPreviewFromIdle()
     expect(

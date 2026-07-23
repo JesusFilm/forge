@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from "vitest"
 import {
   MAX_REDIRECT_HOPS,
   WATCH_URL_FIXTURES,
+  WATCH_STRUCTURED_DATA_CONTRACTS,
   classifyProbe,
+  parseJsonLdScripts,
   probeUrl,
+  validateStructuredDataContract,
   type ProbeResult,
 } from "./watch-url-probe"
 
@@ -29,6 +32,57 @@ describe("classifyProbe", () => {
     )
     expect(outcome).toBe("hard-regression")
     expect(note).toMatch(/BROKEN LINK/)
+  })
+
+  it("hard-regression: a representative home loses its required CollectionPage", () => {
+    const { outcome, note } = classifyProbe(
+      result({
+        finalPath: "/watch",
+        structuredData: {
+          scriptCount: 1,
+          types: ["CollectionPage"],
+          parseErrors: [],
+        },
+      }),
+      result({ finalPath: "/watch" }),
+      { path: "/watch", expect: "ok" },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("expected exactly 1 CollectionPage, found 0")
+  })
+
+  it("hard-regression: a playable sample emits duplicate VideoObjects", () => {
+    const { outcome, note } = classifyProbe(
+      result(),
+      result({
+        structuredData: {
+          scriptCount: 2,
+          types: ["VideoObject", "VideoObject"],
+          parseErrors: [],
+        },
+      }),
+      { path: "/watch/jesus.html/english.html", expect: "ok" },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("expected exactly 1 VideoObject, found 2")
+  })
+
+  it("hard-regression: malformed JSON-LD remains a gate failure", () => {
+    const { outcome, note } = classifyProbe(
+      result(),
+      result({
+        structuredData: {
+          scriptCount: 1,
+          types: [],
+          parseErrors: ["script 1: unexpected token"],
+        },
+      }),
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("MALFORMED JSON-LD")
   })
 
   it("soft-regression: 200 on both but different final path", () => {
@@ -250,6 +304,84 @@ describe("WATCH_URL_FIXTURES integrity", () => {
   })
 })
 
+describe("parseJsonLdScripts", () => {
+  it("parses literal JSON-LD scripts without counting RSC-serialized copies", () => {
+    const html = `
+      <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject"}</script>
+      <script>self.__next_f.push(["<script type=\\"application/ld+json\\">{\\"@type\\":\\"VideoObject\\"}</script>"])</script>
+      <script class="seo" type='application/ld+json'>{"@type":"ItemList"}</script>
+    `
+
+    expect(parseJsonLdScripts(html)).toEqual({
+      scriptCount: 2,
+      types: ["VideoObject", "ItemList"],
+      parseErrors: [],
+    })
+  })
+
+  it("reports malformed literal scripts", () => {
+    expect(
+      parseJsonLdScripts(
+        '<script type="application/ld+json">{broken}</script>',
+      ),
+    ).toMatchObject({
+      scriptCount: 1,
+      types: [],
+      parseErrors: [expect.stringContaining("script 1")],
+    })
+  })
+
+  it("counts entity types nested in a JSON-LD graph", () => {
+    expect(
+      parseJsonLdScripts(
+        '<script type="application/ld+json">{"@graph":[{"@type":"CollectionPage"},{"@type":["VideoObject","Thing"]}]}</script>',
+      ),
+    ).toMatchObject({
+      scriptCount: 1,
+      types: ["CollectionPage", "VideoObject", "Thing"],
+      parseErrors: [],
+    })
+  })
+})
+
+describe("validateStructuredDataContract", () => {
+  const homeContract = WATCH_STRUCTURED_DATA_CONTRACTS["/watch"]!
+  const videoContract =
+    WATCH_STRUCTURED_DATA_CONTRACTS["/watch/jesus.html/english.html"]!
+
+  it("fails a required entity that is missing from the initial response", () => {
+    expect(validateStructuredDataContract(undefined, homeContract)).toEqual([
+      "expected exactly 1 CollectionPage, found 0",
+    ])
+  })
+
+  it("fails duplicate VideoObjects on a playable sample", () => {
+    expect(
+      validateStructuredDataContract(
+        {
+          scriptCount: 2,
+          types: ["VideoObject", "VideoObject"],
+          parseErrors: [],
+        },
+        videoContract,
+      ),
+    ).toEqual(["expected exactly 1 VideoObject, found 2"])
+  })
+
+  it("fails forbidden schema on a collection sample", () => {
+    expect(
+      validateStructuredDataContract(
+        {
+          scriptCount: 2,
+          types: ["CollectionPage", "BreadcrumbList"],
+          parseErrors: [],
+        },
+        homeContract,
+      ),
+    ).toEqual(["forbidden BreadcrumbList found 1 time(s)"])
+  })
+})
+
 describe("probeUrl (mocked fetch)", () => {
   it("returns final status + origin-stripped path for a direct 200", async () => {
     const fetchImpl = vi
@@ -265,6 +397,26 @@ describe("probeUrl (mocked fetch)", () => {
     expect(r.status).toBe(200)
     expect(r.finalPath).toBe("/watch/jesus.html/english.html")
     expect(r.redirectHops).toBe(0)
+  })
+
+  it("captures structured-data types from final HTML responses", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        '<script type="application/ld+json">{"@type":"CollectionPage"}</script>',
+        {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        },
+      ),
+    ) as unknown as typeof fetch
+
+    const r = await probeUrl("https://preview.test", "/watch", { fetchImpl })
+
+    expect(r.structuredData).toEqual({
+      scriptCount: 1,
+      types: ["CollectionPage"],
+      parseErrors: [],
+    })
   })
 
   it("follows redirects and reports the final path + hop count", async () => {
