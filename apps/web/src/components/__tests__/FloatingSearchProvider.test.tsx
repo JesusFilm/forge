@@ -1702,6 +1702,43 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ).toBe("spanish-castilian")
   })
 
+  it.each([
+    ["root home", "/", "english", undefined],
+    ["localized home", "/russian.html", "russian", "russian"],
+    ["authored experience", "/easter.html", "english", undefined],
+  ])(
+    "opens the global picker from %s with a valid current language",
+    async (_label, pathname, expectedLanguageSlug, defaultLanguageSlug) => {
+      navigationMocks.pathname = pathname
+      __setWatchInteractionLoadersForTests({
+        "global-language": vi.fn(async () => ({})),
+      })
+      act(() => {
+        root.render(
+          <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
+            <main>Page</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      const languageButton = document.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        languageButton.click()
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(
+        document
+          .querySelector('[data-testid="global-language-picker-modal"]')
+          ?.getAttribute("data-current-language-slug"),
+      ).toBe(expectedLanguageSlug)
+    },
+  )
+
   it("keeps the newest page-specific owner when an older owner cleans up", () => {
     const firstOwner = Symbol("first hero")
     const secondOwner = Symbol("second hero")
