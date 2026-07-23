@@ -245,20 +245,81 @@ describe("normalizeVideo", () => {
     expect(result.primaryLanguageBcp47).toBe("en")
   })
 
-  // U1: the watch route needs the parent series' own identity (distinct from
-  // the sibling children it also carries) to attach seriesSlug/seriesTitle to
-  // a single-video download record.
-  it("surfaces parentSeries from parents[0].parent", () => {
-    const result = normalizeVideo(makeRawVideo())!
+  // U1: the watch route attaches seriesSlug/seriesTitle from parentSeries — but
+  // ONLY for a genuine episodic SERIES parent, so standalone films that merely
+  // belong to a COLLECTION don't fold into a Library series folder.
+  it("surfaces parentSeries only for a genuine SERIES parent", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        parents: [
+          {
+            parent: {
+              documentId: "parent-1",
+              slug: "storyclubs",
+              label: "SERIES",
+              locales: [
+                {
+                  documentId: "ploc-1",
+                  languageSlug: "english",
+                  title: "StoryClubs",
+                },
+              ],
+              images: [],
+              children: [],
+            },
+          },
+        ],
+      }),
+    )!
     expect(result.parentSeries).toEqual({
       documentId: "parent-1",
-      slug: "easter-story",
-      title: "The Easter Story",
+      slug: "storyclubs",
+      title: "StoryClubs",
     })
+  })
+
+  // Regression: the default fixture's parent is a COLLECTION ("The Easter Story").
+  // Its members are individually watchable — they must render standalone, never
+  // folded under the collection as if it were a series.
+  it("resolves parentSeries to null for a COLLECTION parent", () => {
+    const result = normalizeVideo(makeRawVideo())!
+    expect(result.parentSeries).toBeNull()
   })
 
   it("resolves parentSeries to null when the video has no parents", () => {
     const result = normalizeVideo(makeRawVideo({ parents: [] }))!
+    expect(result.parentSeries).toBeNull()
+  })
+
+  // Pins the intentional parents[0]-only contract (shared with the siblings
+  // derivation): a SERIES parent behind a COLLECTION at index 0 is not searched.
+  it("resolves parentSeries to null when a SERIES parent sits behind a COLLECTION at index 0", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        parents: [
+          {
+            parent: {
+              documentId: "col-1",
+              slug: "a-collection",
+              label: "COLLECTION",
+              locales: [],
+              images: [],
+              children: [],
+            },
+          },
+          {
+            parent: {
+              documentId: "ser-1",
+              slug: "a-series",
+              label: "SERIES",
+              locales: [],
+              images: [],
+              children: [],
+            },
+          },
+        ],
+      }),
+    )!
     expect(result.parentSeries).toBeNull()
   })
 

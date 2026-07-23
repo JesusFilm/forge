@@ -1,4 +1,5 @@
 import {
+  isEpisodicSeriesLabel,
   isSeriesLabel,
   isSeriesRecord,
   isSeriesSearchResult,
@@ -18,6 +19,25 @@ describe("isSeriesLabel", () => {
     expect(isSeriesLabel("FEATURE_FILM")).toBe(false)
     expect(isSeriesLabel(null)).toBe(false)
     expect(isSeriesLabel(undefined)).toBe(false)
+  })
+})
+
+describe("isEpisodicSeriesLabel", () => {
+  it("matches only SERIES (case-insensitive), never COLLECTION", () => {
+    expect(isEpisodicSeriesLabel("SERIES")).toBe(true)
+    expect(isEpisodicSeriesLabel("series")).toBe(true)
+    expect(isEpisodicSeriesLabel("Series")).toBe(true)
+    // The whole point: a collection of standalone films is NOT a series folder.
+    expect(isEpisodicSeriesLabel("COLLECTION")).toBe(false)
+    expect(isEpisodicSeriesLabel("Collection")).toBe(false)
+  })
+
+  it("rejects single-video labels and absent labels", () => {
+    expect(isEpisodicSeriesLabel("FEATURE_FILM")).toBe(false)
+    expect(isEpisodicSeriesLabel("SHORT_FILM")).toBe(false)
+    expect(isEpisodicSeriesLabel("EPISODE")).toBe(false)
+    expect(isEpisodicSeriesLabel(null)).toBe(false)
+    expect(isEpisodicSeriesLabel(undefined)).toBe(false)
   })
 })
 

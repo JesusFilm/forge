@@ -1,4 +1,5 @@
 import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
+import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickLocalizedName } from "./pickLocalizedName"
 import { cleanStreamUrl } from "./validateUrl"
 
@@ -99,7 +100,8 @@ export type WatchVideoRecord = {
   muxPlaybackId: string | null
   duration: number | null
   primaryLanguageBcp47: string | null
-  /** The series this video is an episode of, or null for a standalone/orphan video. */
+  /** The SERIES-labelled parent this video is an episode of; null for a standalone
+   *  video, a COLLECTION member, or an orphan. */
   parentSeries: { documentId: string; slug: string; title: string } | null
   siblings: WatchSibling[]
   variants: WatchVariant[]
@@ -290,17 +292,18 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
     }))
 
-  // Parent series (U1): parents[0].parent itself, distinct from the siblings it
-  // carries below. null when absent — either an orphan video or the lean series
-  // fragment, which omits the whole `parents` chain.
+  // Parent SERIES only (U1): a COLLECTION (or other) parent groups standalone
+  // films — those must NOT fold into a Library series folder. null when absent,
+  // not a series, or the lean series fragment omits the parents chain.
   const parent = raw.parents?.[0]?.parent
-  const parentSeries = parent
-    ? {
-        documentId: parent.documentId ?? "",
-        slug: parent.slug ?? "",
-        title: pickFirstLocale(parent.locales).title ?? "",
-      }
-    : null
+  const parentSeries =
+    parent && isEpisodicSeriesLabel(parent.label)
+      ? {
+          documentId: parent.documentId ?? "",
+          slug: parent.slug ?? "",
+          title: pickFirstLocale(parent.locales).title ?? "",
+        }
+      : null
 
   // Siblings: parents[0].parent.children, minus self, deduped
   const selfId = raw.documentId
