@@ -159,7 +159,10 @@ type RevisionEntry = {
 
 type MediaLibraryItem = MediaLibraryBrowserData["images"][number]
 
-type ImagePickerUrlField = "backgroundImageUrl" | "imageUrl" | "mediaUrl"
+type ImagePickerUrlField =
+  | "backgroundImageAsset"
+  | "blockImageAsset"
+  | "mediaUrl"
 
 type ImagePickerTarget = {
   label: string
@@ -3620,7 +3623,7 @@ export function ExperienceEditor({
   function updateContainerSlotVisual(
     index: number,
     slotIndex: number,
-    field: "backgroundColor" | "backgroundImageUrl",
+    field: "backgroundColor",
     value: string,
   ) {
     updateBlockAt(index, (block) => {
@@ -3660,7 +3663,7 @@ export function ExperienceEditor({
   }
 
   function chooseContainerBackgroundImage(index: number, block: BlockRecord) {
-    openImagePicker(index, block, "backgroundImageUrl")
+    openImagePicker(index, block, "backgroundImageAsset")
   }
 
   function chooseVideoCarouselItemImage(index: number, itemIndex: number) {
@@ -3668,14 +3671,8 @@ export function ExperienceEditor({
     const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
     openImagePickerTarget({
       label: "carousel item image",
-      selectedAssetId:
-        asString(itemRecord?.imageOverrideAssetId) ||
-        asString(itemRecord?.imageAssetId) ||
-        null,
-      canClear: Boolean(
-        asString(itemRecord?.imageOverrideAssetId) ||
-        asString(itemRecord?.imageAssetId),
-      ),
+      selectedAssetId: asString(itemRecord?.imageAssetId) || null,
+      canClear: Boolean(asString(itemRecord?.imageAssetId)),
       apply: (asset) => {
         updateBlockAt(index, (block) => {
           if (block.t !== "videoCarousel") return block
@@ -3685,10 +3682,7 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    imageOverrideUrl: "",
-                    imageOverrideAssetId: asset.id,
-                    imageUrl: "",
-                    imageAssetId: "",
+                    imageAssetId: asset.id,
                   }
                 : item,
             ),
@@ -3704,9 +3698,6 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    imageOverrideUrl: "",
-                    imageOverrideAssetId: "",
-                    imageUrl: "",
                     imageAssetId: "",
                   }
                 : item,
@@ -3733,7 +3724,6 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    imageUrl: "",
                     imageAssetId: asset.id,
                   }
                 : item,
@@ -3750,7 +3740,6 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    imageUrl: "",
                     imageAssetId: "",
                   }
                 : item,
@@ -3766,14 +3755,8 @@ export function ExperienceEditor({
     const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
     openImagePickerTarget({
       label: "media item image",
-      selectedAssetId:
-        asString(itemRecord?.imageOverrideAssetId) ||
-        asString(itemRecord?.imageAssetId) ||
-        null,
-      canClear: Boolean(
-        asString(itemRecord?.imageOverrideAssetId) ||
-        asString(itemRecord?.imageAssetId),
-      ),
+      selectedAssetId: asString(itemRecord?.imageAssetId) || null,
+      canClear: Boolean(asString(itemRecord?.imageAssetId)),
       apply: (asset) => {
         updateBlockAt(index, (block) => {
           if (block.t !== "mediaCollection") return block
@@ -3783,10 +3766,7 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    imageOverrideUrl: "",
-                    imageOverrideAssetId: asset.id,
-                    imageUrl: "",
-                    imageAssetId: "",
+                    imageAssetId: asset.id,
                   }
                 : item,
             ),
@@ -3802,9 +3782,6 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    imageOverrideUrl: "",
-                    imageOverrideAssetId: "",
-                    imageUrl: "",
                     imageAssetId: "",
                   }
                 : item,
@@ -3837,9 +3814,7 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    backgroundImageUrl: "",
                     backgroundImageAssetId: asset.id,
-                    imageUrl: "",
                     imageAssetId: asset.id,
                   }
                 : item,
@@ -3856,9 +3831,7 @@ export function ExperienceEditor({
               currentIndex === itemIndex
                 ? {
                     ...(asRecord(item) ?? {}),
-                    backgroundImageUrl: "",
                     backgroundImageAssetId: "",
-                    imageUrl: "",
                     imageAssetId: "",
                   }
                 : item,
@@ -3881,11 +3854,14 @@ export function ExperienceEditor({
       selectedAssetId: asString(block[assetField]) || null,
       canClear: Boolean(asString(block[assetField])),
       apply: (asset) => {
-        updateBlockAt(blockIndex, (currentBlock) => ({
-          ...currentBlock,
-          [urlField]: "",
-          [assetField]: asset.id,
-        }))
+        updateBlockAt(blockIndex, (currentBlock) => {
+          const nextBlock: BlockRecord = {
+            ...currentBlock,
+            [assetField]: asset.id,
+          }
+          if (urlField === "mediaUrl") nextBlock[urlField] = ""
+          return nextBlock
+        })
       },
       clear: () => clearVisualIdentityImage(blockIndex, urlField),
     })
@@ -3947,11 +3923,14 @@ export function ExperienceEditor({
     urlField: ImagePickerUrlField,
   ) {
     const assetField = visualIdentityAssetField(urlField)
-    updateBlockAt(index, (block) => ({
-      ...block,
-      [urlField]: "",
-      [assetField]: "",
-    }))
+    updateBlockAt(index, (block) => {
+      const nextBlock: BlockRecord = {
+        ...block,
+        [assetField]: "",
+      }
+      if (urlField === "mediaUrl") nextBlock[urlField] = ""
+      return nextBlock
+    })
   }
 
   function appendContainerSlot(index: number) {
@@ -4366,7 +4345,6 @@ export function ExperienceEditor({
       | "contentId"
       | "title"
       | "category"
-      | "imageUrl"
       | "imageAssetId"
       | "backgroundColor",
     value: string,
@@ -4520,9 +4498,6 @@ export function ExperienceEditor({
     itemIndex: number,
     field:
       | "videoId"
-      | "imageOverrideUrl"
-      | "imageOverrideAssetId"
-      | "imageUrl"
       | "imageAssetId"
       | "titleOverride"
       | "subtitleOverride"
@@ -4569,7 +4544,6 @@ export function ExperienceEditor({
               undefined,
             titleOverride: "",
             subtitleOverride: "",
-            imageOverrideUrl: video.previewImageUrl ?? "",
           })),
         ],
       }
@@ -4711,10 +4685,7 @@ export function ExperienceEditor({
   function resolveVideoCarouselItemImage(item: BlockRecord | null) {
     const itemVideo = findVideoLibraryItem(item?.videoId)
     return (
-      mediaAssetPreviewUrl(item?.imageOverrideAssetId) ||
       mediaAssetPreviewUrl(item?.imageAssetId) ||
-      asString(item?.imageOverrideUrl) ||
-      asString(item?.imageUrl) ||
       itemVideo?.previewImageUrl ||
       ""
     )
@@ -4737,12 +4708,13 @@ export function ExperienceEditor({
   }
 
   function visualIdentityImageField(type: string) {
-    if (type === "container" || type === "section") return "backgroundImageUrl"
-    return type === "card" ? "mediaUrl" : "imageUrl"
+    if (type === "container" || type === "section")
+      return "backgroundImageAsset"
+    return type === "card" ? "mediaUrl" : "blockImageAsset"
   }
 
   function visualIdentityAssetField(field: ImagePickerUrlField) {
-    if (field === "backgroundImageUrl") return "backgroundImageAssetId"
+    if (field === "backgroundImageAsset") return "backgroundImageAssetId"
     if (field === "mediaUrl") return "mediaAssetId"
     return "imageAssetId"
   }
@@ -4754,8 +4726,6 @@ export function ExperienceEditor({
         mediaAssetPreviewUrl(block?.imageAssetId) ||
         mediaAssetPreviewUrl(block?.backgroundImageAssetId) ||
         mediaAssetPreviewUrl(block?.mediaAssetId) ||
-        asString(block?.imageUrl) ||
-        asString(block?.backgroundImageUrl) ||
         asString(block?.mediaUrl),
     }
   }
@@ -6122,10 +6092,7 @@ export function ExperienceEditor({
     const itemRecord = asRecord(item)
     const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
     const itemImageUrl = resolveVideoCarouselItemImage(itemRecord)
-    const hasItemImageOverride = Boolean(
-      asString(itemRecord?.imageOverrideAssetId) ||
-      asString(itemRecord?.imageAssetId),
-    )
+    const hasItemImageOverride = Boolean(asString(itemRecord?.imageAssetId))
     const itemTitle = resolveVideoCarouselItemTitle(itemRecord)
     const itemSubtitle = resolveVideoCarouselItemSubtitle(itemRecord)
     const titleOverride = asString(itemRecord?.titleOverride)
@@ -6688,9 +6655,7 @@ export function ExperienceEditor({
     itemIndex: number,
   ) {
     const itemRecord = asRecord(item)
-    const imageUrl =
-      mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
-      asString(itemRecord?.imageUrl)
+    const imageUrl = mediaAssetPreviewUrl(itemRecord?.imageAssetId)
     const imageAssetId = asString(itemRecord?.imageAssetId)
     const backgroundColor = normalizeHexColor(itemRecord?.backgroundColor)
     const destinationOptions = navigationDestinationOptions(index)
@@ -6948,16 +6913,10 @@ export function ExperienceEditor({
     const itemRecord = asRecord(item)
     const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
     const itemImageUrl =
-      mediaAssetPreviewUrl(itemRecord?.imageOverrideAssetId) ||
       mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
-      asString(itemRecord?.imageOverrideUrl) ||
-      asString(itemRecord?.imageUrl) ||
       itemVideo?.previewImageUrl ||
       ""
-    const hasItemImageOverride = Boolean(
-      asString(itemRecord?.imageOverrideAssetId) ||
-      asString(itemRecord?.imageAssetId),
-    )
+    const hasItemImageOverride = Boolean(asString(itemRecord?.imageAssetId))
     const itemTitle =
       asString(itemRecord?.titleOverride) || itemVideo?.title || "Media item"
     const itemSubtitle =
@@ -7637,10 +7596,7 @@ export function ExperienceEditor({
         {
           backgroundColor: asString(record.backgroundColor),
           imageUrl:
-            mediaAssetPreviewUrl(record.imageOverrideAssetId) ||
             mediaAssetPreviewUrl(record.imageAssetId) ||
-            asString(record.imageOverrideUrl) ||
-            asString(record.imageUrl) ||
             findVideoLibraryItem(record.videoId)?.previewImageUrl ||
             "",
         },
@@ -7655,10 +7611,7 @@ export function ExperienceEditor({
             asString(itemRecord?.backgroundColor) ||
             asString(record.backgroundColor),
           imageUrl:
-            mediaAssetPreviewUrl(itemRecord?.imageOverrideAssetId) ||
             mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
-            asString(itemRecord?.imageOverrideUrl) ||
-            asString(itemRecord?.imageUrl) ||
             findVideoLibraryItem(itemRecord?.videoId)?.previewImageUrl ||
             "",
         }
@@ -7713,9 +7666,9 @@ export function ExperienceEditor({
               imageUrl: previewVisual?.imageUrl ?? "",
             },
           ]
-    const containerBackgroundImageUrl =
-      mediaAssetPreviewUrl(blockRecord.backgroundImageAssetId) ||
-      asString(blockRecord.backgroundImageUrl)
+    const containerBackgroundImageUrl = mediaAssetPreviewUrl(
+      blockRecord.backgroundImageAssetId,
+    )
 
     return (
       <div className="mt-4">
@@ -7885,8 +7838,7 @@ export function ExperienceEditor({
       itemRecord && mediaLibraryPreviewUrl
         ? {
             ...itemRecord,
-            backgroundImageUrl: mediaLibraryPreviewUrl,
-            imageUrl: mediaLibraryPreviewUrl,
+            backgroundImagePreviewUrl: mediaLibraryPreviewUrl,
           }
         : item
 
@@ -9291,8 +9243,8 @@ export function ExperienceEditor({
                                 .slice(0, 2)
                                 .map((item, itemIndex) => {
                                   const itemRecord = asRecord(item)
-                                  const imageUrl = asString(
-                                    itemRecord?.imageUrl,
+                                  const imageUrl = mediaAssetPreviewUrl(
+                                    itemRecord?.imageAssetId,
                                   )
                                   const backgroundColor =
                                     asString(itemRecord?.backgroundColor) ||
@@ -9611,9 +9563,7 @@ export function ExperienceEditor({
                                     ) ||
                                     mediaAssetPreviewUrl(
                                       itemRecord?.imageAssetId,
-                                    ) ||
-                                    asString(itemRecord?.backgroundImageUrl) ||
-                                    asString(itemRecord?.imageUrl)
+                                    )
                                   const backgroundColor =
                                     asString(itemRecord?.backgroundColor) ||
                                     "#151515"

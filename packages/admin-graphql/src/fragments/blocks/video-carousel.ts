@@ -11,8 +11,15 @@ export const adminVideoCarouselFragment = adminGraphql(
       subtitle
       carouselDescription: description
       itemsSource
-      imageUrl
       imageAssetId
+      imageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       backgroundColor
       items {
         videoId
@@ -20,10 +27,15 @@ export const adminVideoCarouselFragment = adminGraphql(
         videoDub {
           ...AdminBlockVideoDub
         }
-        imageUrl
         imageAssetId
-        imageOverrideUrl
-        imageOverrideAssetId
+        imageAsset {
+          id
+          previewUrl
+          blurDataUrl
+          dominantColor
+          width
+          height
+        }
         titleOverride
         subtitleOverride
         backgroundColor

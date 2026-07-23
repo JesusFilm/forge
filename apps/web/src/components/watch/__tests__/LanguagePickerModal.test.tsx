@@ -378,6 +378,22 @@ describe("LanguagePickerModal — globe overlay", () => {
     expectNonCroppingFocusRing(selectedLanguageLink)
   })
 
+  it("keeps the applied custom language in the all-languages link", () => {
+    renderModal({
+      open: true,
+      currentLanguageSlug: "hindi",
+      variants: [
+        ...baseVariants,
+        makeVariant({ documentId: "v4", languageSlug: "hindi" }),
+      ],
+    })
+
+    const allLanguagesLink = $(
+      '[data-testid="watch-language-picker-all-languages-link"]',
+    ) as HTMLAnchorElement
+    expect(allLanguagesLink.getAttribute("href")).toBe("/hindi.html/languages")
+  })
+
   it("updates the inventory link when the draft language changes", () => {
     renderModal({ open: true, variants: baseVariants })
 

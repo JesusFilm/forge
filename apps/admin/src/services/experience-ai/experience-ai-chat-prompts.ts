@@ -113,8 +113,9 @@ section (wrapper, cannot nest another section):
   - section accepts NO "heading" or "title" field. Put a "text" block at the top of "content" for a section heading.
 
 mediaCollection:
-  {"t":"mediaCollection","variant":"grid","title":"Watch the story","items":[{"videoId":"<cuid>","titleOverride":"Optional item title","labelOverride":"Optional eyebrow label"}]}
+  {"t":"mediaCollection","variant":"grid","thumbnailOrientation":"horizontal","title":"Watch the story","items":[{"videoId":"<cuid>","titleOverride":"Optional item title","labelOverride":"Optional eyebrow label"}]}
   - "variant" REQUIRED: "carousel" | "grid" | "collection" | "hero" | "player".
+  - "thumbnailOrientation" OPTIONAL: "horizontal" | "vertical". Use it when the user specifies the card shape.
   - items accept "videoId", "titleOverride", "subtitleOverride", and "labelOverride". DO NOT use "label" on mediaCollection items.
 
 videoCarousel:

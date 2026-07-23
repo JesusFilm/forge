@@ -7,6 +7,7 @@ import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
 import {
   DEFAULT_LOCALE,
+  publicWatchHomeLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
   textDirectionForLocale,
   type UiLocale,
@@ -82,6 +83,8 @@ export default async function RootLayout({
     locale,
     GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   )
+  const defaultLanguageSlug =
+    publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
   return (
     <html
       lang={htmlLang}
@@ -102,7 +105,7 @@ export default async function RootLayout({
           <DatadogRum />
           <GoogleAnalytics />
           <WatchModalActivityProvider>
-            <FloatingSearchProvider>
+            <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
               <FeedbackLauncher />
               <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
             </FloatingSearchProvider>

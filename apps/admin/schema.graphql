@@ -13,8 +13,8 @@
 """Advent calendar countdown block."""
 type AdventCountdownBlock {
   backgroundColor: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   locale: String
   scripture: String
   scriptureReference: String
@@ -57,15 +57,15 @@ type BibleCitation {
 type BibleQuoteItem {
   attribution: String
   backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
   backgroundImageAssetId: String
-  backgroundImageUrl: String
   chapterEnd: Int
   chapterStart: Int
   ctaEnabled: Boolean
   ctaLabel: String
   ctaLink: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   osisId: String
   reference: String
   text: String
@@ -77,11 +77,35 @@ type BibleQuoteItem {
 type BibleQuotesCarouselBlock {
   backgroundColor: String
   heading: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   quotes: [BibleQuoteItem!]!
   sectionKey: String
   t: String
+}
+
+"""
+Public-safe media asset metadata for rendering Experience block imagery.
+"""
+type BlockImageAsset {
+  blurDataUrl: String
+  dominantColor: String
+  height: Int
+  id: ID
+  previewUrl: String
+  width: Int
+}
+
+"""
+Public-safe metadata for the linked Video image used by an Experience block item.
+"""
+type BlockVideoImage {
+  blurDataUrl: String
+  dominantColor: String
+  height: Int
+  id: ID
+  previewUrl: String
+  width: Int
 }
 
 """Simple title/description card with optional media + link."""
@@ -117,8 +141,8 @@ Side-by-side layout container with repeatable slots. `content` dispatches into C
 """
 type ContainerBlock {
   backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
   backgroundImageAssetId: String
-  backgroundImageUrl: String
   content: [ContainerContentBlock!]!
   sectionKey: String
   slots: JSON
@@ -135,8 +159,8 @@ Slot divider marker inside ContainerBlock.content. Only valid inside ContainerCo
 """
 type ContainerSlotBlock {
   backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
   backgroundImageAssetId: String
-  backgroundImageUrl: String
   gridSpan: Int
   spans: ContainerSlotSpans
   t: String
@@ -219,8 +243,8 @@ type CtaBlock {
   buttonLabel: String
   buttonLink: String
   heading: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   sectionKey: String
   t: String
   variant: CtaVariant!
@@ -246,8 +270,8 @@ type DeleteMediaFolderResult {
 type EasterDatesBlock {
   backgroundColor: String
   easterDatesTitle: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   locale: String
   orthodoxEasterEnabled: Boolean
   orthodoxEasterLabel: String
@@ -316,8 +340,8 @@ type InfoBlocksBlock {
   blocks: [InfoBlockItem!]!
   description: String
   heading: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   intro: String
   sectionKey: String
   t: String
@@ -672,8 +696,8 @@ type MediaCollectionBlock {
   defaultCollectionSlug: String
   description: String
   footerText: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   items: [MediaCollectionItem!]!
   itemsSource: ItemsSource!
   sectionKey: String
@@ -695,14 +719,8 @@ type MediaCollectionItem {
   The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.
   """
   coreId: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageBlurDataUrl: String
-  imageDominantColor: String
-  imageOverrideAssetId: String
-  imageOverrideBlurDataUrl: String
-  imageOverrideDominantColor: String
-  imageOverrideUrl: String
-  imageUrl: String
   labelOverride: String
   languageId: String
   """
@@ -710,10 +728,6 @@ type MediaCollectionItem {
   """
   languageSlug: String
   linkToSectionKey: String
-  """
-  Best playable Mux playback id for this media collection item when it references a Video row.
-  """
-  muxPlaybackId(languageSlug: String): String
   """
   Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
   """
@@ -726,11 +740,9 @@ type MediaCollectionItem {
   videoDub: VideoDub
   videoId: String
   """
-  Best generated LQIP for the linked Video image. Falls back to null when the item is not linked to a Video or no video image has blur metadata.
+  The linked Video image used as the item poster fallback when no block image asset is authored.
   """
-  videoImageBlurDataUrl: String
-  """Dominant color for the linked Video image used by this item."""
-  videoImageDominantColor: String
+  videoImage: BlockVideoImage
   """
   Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.
   """
@@ -900,8 +912,8 @@ type MuxVideo {
 """Cross-block navigation carousel."""
 type NavigationCarouselBlock {
   backgroundColor: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   items: [NavigationCarouselItem!]!
   sectionKey: String
   t: String
@@ -912,8 +924,8 @@ type NavigationCarouselItem {
   backgroundColor: String
   category: String
   contentId: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   title: String
 }
 
@@ -940,8 +952,8 @@ type PromoBannerBlock {
   ctaLink: String
   description: String
   heading: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   intro: String
   sectionKey: String
   t: String
@@ -1071,8 +1083,8 @@ type RelatedQuestionsBlock {
   ctaLabel: String
   ctaLink: String
   heading: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   questions: [RelatedQuestionItem!]!
   sectionKey: String
   t: String
@@ -1102,8 +1114,8 @@ Wrapper section with background + dynamic content. Cannot contain another sectio
 """
 type SectionBlock {
   backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
   backgroundImageAssetId: String
-  backgroundImageUrl: String
   backgroundOpacity: Float
   blurHash: String
   content: [SectionContentBlock!]!
@@ -1122,8 +1134,8 @@ type TextBlock {
   contentParagraphs: [String!]
   heading: String
   headingLevel: TextHeadingLevel
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   sectionKey: String
   subtitle: String
   t: String
@@ -1258,8 +1270,8 @@ type VideoBlock {
 type VideoCarouselBlock {
   backgroundColor: String
   description: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageUrl: String
   items: [VideoCarouselItem!]!
   itemsSource: ItemsSource!
   sectionKey: String
@@ -1271,10 +1283,8 @@ type VideoCarouselBlock {
 """Single entry in VideoCarouselBlock.items."""
 type VideoCarouselItem {
   backgroundColor: String
+  imageAsset: BlockImageAsset
   imageAssetId: String
-  imageOverrideAssetId: String
-  imageOverrideUrl: String
-  imageUrl: String
   languageId: String
   subtitleOverride: String
   titleOverride: String
@@ -1539,7 +1549,8 @@ Forward-looking recommendations carousel powered at render time by sceneRecommen
 type VideoRecommendationsBlock {
   backgroundColor: String
   description: String
-  imageUrl: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
   limit: Int
   sectionKey: String
   sourceSceneIndex: Int

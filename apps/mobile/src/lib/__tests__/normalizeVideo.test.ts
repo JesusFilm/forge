@@ -61,6 +61,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         thumbnail: "https://img.example.com/thumb.jpg",
         mobileCinematicHigh: "https://img.example.com/cinematic.jpg",
         mobileCinematicLow: null,
+        videoStill: null,
       },
     ],
     primaryLanguage: { coreId: "529", bcp47: "en" },
@@ -108,6 +109,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     thumbnail: null,
                     mobileCinematicHigh: null,
                     mobileCinematicLow: null,
+                    videoStill: null,
                   },
                 ],
               },
@@ -131,6 +133,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     thumbnail: null,
                     mobileCinematicHigh: null,
                     mobileCinematicLow: null,
+                    videoStill: null,
                   },
                 ],
               },
@@ -349,6 +352,48 @@ describe("normalizeVideo", () => {
 
     // dub-1's hls is unplayable; the pick must advance to dub-2 (Spanish).
     expect(result.streamingUrl).toBe("https://stream.mux.com/def456.m3u8")
+  })
+
+  // Prod regression (Up Next blank card): the "Life of Jesus (Gospel of John)"
+  // sibling's images[0] is videoStill-first, and its bare Cloudflare `url` is
+  // the variant-less delivery base that 400s. Never pick it over real art.
+  it("skips a sibling's variant-less url for its cinematic art", () => {
+    const raw = makeRawVideo()
+    const parent = raw!.parents![0]!.parent!
+    parent.children = parent.children!.map((rel) =>
+      rel.child?.documentId === "vid-2"
+        ? {
+            child: {
+              ...rel.child,
+              images: [
+                {
+                  documentId: "cimg-2a",
+                  url: "https://img.example.com/bare.jpg",
+                  thumbnail: "https://img.example.com/thumb.jpg/f=jpg,w=120",
+                  mobileCinematicHigh: null,
+                  mobileCinematicLow: null,
+                  videoStill: "https://img.example.com/still.jpg/f=jpg,w=1920",
+                },
+                {
+                  documentId: "cimg-2b",
+                  url: "https://img.example.com/bare-cinematic.jpg",
+                  thumbnail: null,
+                  mobileCinematicHigh:
+                    "https://img.example.com/cinematic.jpg/f=jpg,w=1280",
+                  mobileCinematicLow: null,
+                  videoStill: null,
+                },
+              ],
+            },
+          }
+        : rel,
+    )
+
+    const result = normalizeVideo(raw)!
+    const sibling = result.siblings.find((s) => s.documentId === "vid-2")!
+    expect(sibling.posterUrl).toBe(
+      "https://img.example.com/cinematic.jpg/f=jpg,w=1280",
+    )
   })
 
   it("filters self-references from siblings", () => {
@@ -693,6 +738,7 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
           thumbnail: `https://img.example.com/ep${n}-thumb.jpg`,
           mobileCinematicHigh: `https://img.example.com/ep${n}-cine.jpg`,
           mobileCinematicLow: null,
+          videoStill: null,
         },
       ],
       ...extra,
@@ -709,6 +755,7 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
         thumbnail: "https://img.example.com/series-thumb.jpg",
         mobileCinematicHigh: "https://img.example.com/series-cine.jpg",
         mobileCinematicLow: null,
+        videoStill: null,
       },
     ],
     primaryLanguage: { coreId: "529", bcp47: "en" },

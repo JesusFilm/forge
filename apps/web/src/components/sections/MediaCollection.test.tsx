@@ -58,7 +58,7 @@ function makeManualItem(overrides: Record<string, unknown> = {}) {
     subtitleOverride: null,
     labelOverride: null,
     collectionSize: null,
-    imageUrl: null,
+    imageAsset: null,
     ...overrides,
   }
 }
@@ -112,6 +112,40 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
 }
 
 describe("MediaCollection VideoCard href", () => {
+  it("uses shared typography tokens for card copy and section eyebrows", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            categoryLabel: "Video Bible Collection",
+            itemsSource: "manual",
+            items: [
+              makeManualItem({
+                labelOverride: "FeatureFilm",
+                resolvedTitle: "Life of Jesus (Gospel of John)",
+                titleOverride: null,
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const card = container.querySelector('[data-testid="VideoCard"]')
+    const title = card?.querySelector("h3")
+    const label = title?.previousElementSibling
+    const eyebrow = Array.from(container.querySelectorAll("p")).find(
+      (element) => element.textContent === "Video Bible Collection",
+    )
+
+    expect(label?.className).toContain("tracking-media-label")
+    expect(label?.className).not.toContain("tracking-wider")
+    expect(title?.className).toContain("font-media-card-title")
+    expect(title?.className).not.toContain("font-bold")
+    expect(eyebrow?.className).toContain("tracking-eyebrow")
+    expect(eyebrow?.className).not.toContain("tracking-wider")
+  })
+
   it("links manual items with the resolved video dub language", () => {
     act(() => {
       root.render(
@@ -199,13 +233,160 @@ describe("MediaCollection VideoCard href", () => {
     expect(content?.getAttribute("class")).toContain("md:pl-16")
     expect(items).toHaveLength(1)
     expect(items[0]?.getAttribute("class")).toContain("max-w-[200px]")
+    expect(
+      items[0]
+        ?.querySelector('[data-testid="VideoCard"] > div')
+        ?.getAttribute("class"),
+    ).toContain("min-h-[13rem]")
     expect(endSpacer?.getAttribute("class")).toContain("basis-auto")
     expect(endSpacer?.firstElementChild?.getAttribute("class")).toContain(
       "xl:w-24",
     )
   })
 
-  it("keeps non-carousel variants on the grid renderer", () => {
+  it.each([
+    {
+      variant: "grid",
+      expectedSlideWidth: "auto-cols-[56%]",
+      expectedCardAspect: "aspect-video",
+    },
+    {
+      variant: "collection",
+      expectedSlideWidth: "auto-cols-[34%]",
+      expectedCardAspect: "aspect-[2/3]",
+      expectedDesktopColumns: "md:grid-cols-4",
+    },
+    {
+      variant: "hero",
+      expectedSlideWidth: "auto-cols-[56%]",
+      expectedCardAspect: "aspect-video",
+      expectedDesktopColumns: "md:grid-cols-2",
+      expectedDesktopGap: "md:gap-5",
+    },
+    {
+      variant: "player",
+      expectedSlideWidth: "auto-cols-[56%]",
+      expectedCardAspect: "aspect-video",
+      expectedDesktopColumns: "md:grid-cols-2",
+      expectedDesktopGap: "md:gap-5",
+    },
+  ])(
+    "renders multi-item $variant variants as a mobile carousel and desktop grid",
+    ({
+      variant,
+      expectedSlideWidth,
+      expectedCardAspect,
+      expectedDesktopColumns = "md:grid-cols-3",
+      expectedDesktopGap = expectedCardAspect === "aspect-[2/3]"
+        ? "md:gap-4"
+        : "md:gap-5",
+    }) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              mediaCollectionVariant: variant,
+              itemsSource: "manual",
+              items: [
+                makeManualItem(),
+                makeManualItem({
+                  videoId: "v-2",
+                  videoSlug: "episode-two",
+                  titleOverride: "Episode Two",
+                }),
+              ],
+            })}
+          />,
+        )
+      })
+
+      const mobileCarousel = container.querySelector(
+        '[data-testid="media-collection-mobile-carousel"]',
+      )
+      const mobileItems = mobileCarousel?.querySelectorAll(
+        '[data-testid="VideoCard"]',
+      )
+      const firstMobileCardFrame =
+        mobileItems?.[0]?.querySelector(":scope > div")
+      const grid = container.querySelector(
+        '[data-testid="media-collection-grid"]',
+      )
+
+      expect(mobileCarousel?.getAttribute("role")).toBe("region")
+      expect(mobileCarousel?.getAttribute("tabindex")).toBeNull()
+      expect(mobileCarousel?.getAttribute("class")).toContain("overflow-x-auto")
+      expect(mobileCarousel?.getAttribute("class")).toContain("snap-mandatory")
+      expect(mobileCarousel?.getAttribute("class")).toContain(
+        "md:overflow-visible",
+      )
+      expect(mobileItems).toHaveLength(2)
+      expect(grid?.getAttribute("class")).toContain(expectedSlideWidth)
+      expect(firstMobileCardFrame?.getAttribute("class")).toContain(
+        expectedCardAspect,
+      )
+      expect(firstMobileCardFrame?.getAttribute("class")).toContain("min-h-0")
+      expect(grid?.getAttribute("class")).toContain("px-5")
+      expect(grid?.getAttribute("class")).toContain("md:grid-flow-row")
+      expect(grid?.getAttribute("class")).toContain(expectedDesktopColumns)
+      expect(grid?.getAttribute("class")).toContain(expectedDesktopGap)
+      expect(grid?.getAttribute("class")).not.toContain("snap-mandatory")
+    },
+  )
+
+  it("compacts mobile carousel thumbnail overlays without changing desktop sizing", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            showItemNumbers: true,
+            items: [
+              makeManualItem({
+                labelOverride: "Episode",
+                resolvedTitle: "Episode One",
+                imageAsset: {
+                  previewUrl: "https://example.com/episode-one.jpg",
+                },
+              }),
+              makeManualItem({
+                videoId: "v-2",
+                videoSlug: "episode-two",
+                titleOverride: "Episode Two",
+                labelOverride: "Episode",
+                resolvedTitle: "Episode Two",
+                imageAsset: {
+                  previewUrl: "https://example.com/episode-two.jpg",
+                },
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const firstCard = container.querySelector('[data-testid="VideoCard"]')
+    const frame = firstCard?.querySelector(":scope > div")
+    const title = firstCard?.querySelector("h3")
+    const label = title?.previousElementSibling
+    const copy = title?.parentElement
+    const itemNumber = firstCard?.querySelector("span")
+    const image = firstCard?.querySelector("img")
+
+    expect(frame?.getAttribute("class")).toContain("min-h-0")
+    expect(frame?.getAttribute("class")).toContain("md:min-h-[10rem]")
+    expect(copy?.getAttribute("class")).toContain("px-2.5")
+    expect(copy?.getAttribute("class")).toContain("md:px-4")
+    expect(label?.getAttribute("class")).toContain("text-[10px]")
+    expect(label?.getAttribute("class")).toContain("sm:text-xs")
+    expect(title?.getAttribute("class")).toContain("text-sm")
+    expect(title?.getAttribute("class")).toContain("md:text-xl")
+    expect(itemNumber?.getAttribute("class")).toContain("text-3xl")
+    expect(itemNumber?.getAttribute("class")).toContain("md:text-5xl")
+    expect(image?.getAttribute("sizes")).toContain("56vw")
+  })
+
+  it("keeps a single non-carousel item full width on mobile", () => {
     act(() => {
       root.render(
         <MediaCollection
@@ -219,13 +400,74 @@ describe("MediaCollection VideoCard href", () => {
       '[data-testid="media-collection-section"]',
     )
     expect(
-      section?.querySelector('[data-testid="media-collection-carousel"]'),
+      section?.querySelector(
+        '[data-testid="media-collection-mobile-carousel"]',
+      ),
     ).toBeNull()
-    expect(
+    const gridClasses =
       section
         ?.querySelector('[data-testid="media-collection-grid"]')
-        ?.getAttribute("class"),
-    ).toContain("md:grid-cols-3")
+        ?.getAttribute("class") ?? ""
+    expect(gridClasses).toContain("grid-cols-1")
+    expect(gridClasses).not.toContain("hidden")
+  })
+
+  it("keeps a single portrait collection on its existing static grid", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({ mediaCollectionVariant: "collection" })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const section = container.querySelector(
+      '[data-testid="media-collection-section"]',
+    )
+    expect(
+      section?.querySelector(
+        '[data-testid="media-collection-mobile-carousel"]',
+      ),
+    ).toBeNull()
+    const gridClasses =
+      section
+        ?.querySelector('[data-testid="media-collection-grid"]')
+        ?.getAttribute("class") ?? ""
+    expect(gridClasses).toContain("grid-cols-2")
+    expect(gridClasses).toContain("md:grid-cols-4")
+  })
+
+  it("makes a mobile rail keyboard-scrollable when it contains non-link cards", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            items: [
+              makeManualItem({ videoSlug: null }),
+              makeManualItem({
+                videoId: "v-2",
+                videoSlug: null,
+                titleOverride: "Unlinked Episode",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const mobileCarousel = container.querySelector(
+      '[data-testid="media-collection-mobile-carousel"]',
+    )
+    expect(mobileCarousel?.getAttribute("tabindex")).toBe("0")
+    expect(mobileCarousel?.getAttribute("class")).toContain(
+      "focus-visible:ring-2",
+    )
+    expect(mobileCarousel?.getAttribute("class")).not.toContain(
+      "md:focus-visible:ring-0",
+    )
   })
 
   it("renders an authored horizontal carousel without changing its layout variant", () => {
@@ -546,8 +788,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMattCollection-vertical.png",
+                },
               },
               {
                 videoId: "v-blank",
@@ -557,8 +801,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl:
-                  "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                imageAsset: {
+                  previewUrl:
+                    "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+                },
               },
             ],
           })}
@@ -722,6 +968,28 @@ describe("MediaCollection VideoCard href", () => {
     ).not.toBeNull()
   })
 
+  it("normalizes an authored root CTA to the watch base path", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector<HTMLAnchorElement>(
+          "[data-testid='media-collection-cta']",
+        )
+        ?.getAttribute("href"),
+    ).toBe("/watch")
+  })
+
   it("uses the current localized collection for route video children", () => {
     act(() => {
       root.render(
@@ -779,7 +1047,7 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(categoryLabel?.textContent).toBe("New series")
     expect(categoryLabel?.classList).toContain("text-xs")
-    expect(categoryLabel?.classList).toContain("tracking-widest")
+    expect(categoryLabel?.classList).toContain("tracking-eyebrow")
     expect(categoryLabel?.classList).toContain("text-red-100/60")
     expect(categoryLabel?.parentElement).toBe(titleRow)
     expect(title?.parentElement).toBe(titleRow)
@@ -1043,6 +1311,8 @@ describe("MediaCollection VideoCard href", () => {
       '[data-testid="media-collection-section"]',
     )
     expect(section?.style.backgroundColor).toBe("rgb(18, 52, 86)")
+    expect(section?.className).toContain("py-10")
+    expect(section?.className).toContain("md:py-16")
   })
 
   it("uses dominant color for the vertical card text scrim, not the whole card", () => {
@@ -1060,8 +1330,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/poster.jpg",
-                imageOverrideDominantColor: "#787e16",
+                imageAsset: {
+                  previewUrl: "https://example.com/poster.jpg",
+                  dominantColor: "#787e16",
+                },
               },
             ],
           })}
@@ -1093,8 +1365,10 @@ describe("MediaCollection VideoCard href", () => {
                 subtitleOverride: null,
                 labelOverride: null,
                 collectionSize: null,
-                imageUrl: "https://example.com/still.jpg",
-                videoImageDominantColor: "#123456",
+                imageAsset: {
+                  previewUrl: "https://example.com/still.jpg",
+                  dominantColor: "#123456",
+                },
               },
             ],
           })}

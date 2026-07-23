@@ -3,7 +3,6 @@
  * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
  * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
  */
-import { rewriteSeedPosterUrl } from "../mediaImageUrl"
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
 import {
   buildVideoByCoreIdIndex,
@@ -31,8 +30,9 @@ type ExperienceItem = {
   labelOverride?: string | null
   collectionSize?: string | null
   imageUrl?: string | null
-  imageOverrideUrl?: string | null
 }
+
+type ThumbnailOrientation = WatchHomeSection["orientation"]
 
 // KTD10 parity: item coreIds ride as a $coreIds GraphQL variable, but validate
 // before they reach the top-up union anyway.
@@ -61,18 +61,8 @@ function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
-// A rail whose every item has a poster override renders PORTRAIT regardless of
-// variant: those overrides are vertical posters (curated art) a 16:9 card would
-// crop. Cinematic rails (no override) stay landscape.
-function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
-  return (
-    items.length > 0 &&
-    items.every(
-      (it) =>
-        typeof it.imageOverrideUrl === "string" &&
-        it.imageOverrideUrl.trim() !== "",
-    )
-  )
+function mapThumbnailOrientation(value: unknown): ThumbnailOrientation | null {
+  return value === "vertical" || value === "horizontal" ? value : null
 }
 
 function itemToCard(
@@ -110,7 +100,6 @@ function itemToCard(
   // Curated seed → inline image → linked-video art → the item's mux thumbnail
   // (last resort when hydration is unavailable) → none.
   const imageUrl =
-    rewriteSeedPosterUrl(item.imageOverrideUrl) ??
     item.imageUrl ??
     hydratedImage ??
     muxThumbnailFromPlaybackId(item.muxPlaybackId) ??
@@ -135,10 +124,27 @@ function itemToCard(
   }
 }
 
+// Admin does not enforce `sectionKey` uniqueness within an Experience — prod
+// watch-home ships two blocks keyed `media-collection-15` — and the id becomes
+// the shelf's FlashList key, so a collision must resolve to a distinct id.
+function uniqueSectionId(
+  preferred: string,
+  taken: ReadonlySet<string>,
+  index: number,
+): string {
+  if (!taken.has(preferred)) return preferred
+  let candidate = `${preferred}-${index}`
+  for (let n = 2; taken.has(candidate); n += 1) {
+    candidate = `${preferred}-${index}-${n}`
+  }
+  return candidate
+}
+
 function blockToSection(
   block: ExperienceBlock,
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
+  takenSectionIds: ReadonlySet<string>,
 ): WatchHomeSection | null {
   const b = block as Record<string, unknown>
   const sectionKey = (b.sectionKey as string | null) ?? null
@@ -155,16 +161,22 @@ function blockToSection(
   const { layout, orientation } = mapVariant(
     b.mediaCollectionVariant as string | null,
   )
+  const thumbnailOrientation = mapThumbnailOrientation(b.thumbnailOrientation)
   return {
     // index disambiguates the FlashList key when a block omits sectionKey — the
-    // fallback would otherwise collapse to one constant for every such block.
-    id: sectionKey ?? `home-experience-section-${index}`,
+    // fallback would otherwise collapse to one constant for every such block —
+    // and uniqueSectionId covers blocks that SHARE an authored key.
+    id: uniqueSectionId(
+      sectionKey ?? `home-experience-section-${index}`,
+      takenSectionIds,
+      index,
+    ),
     eyebrow: categoryLabel,
     // Empty admin title falls back to the category label so a shelf is never headless.
     title: blockTitle || categoryLabel,
     description: (b.subtitle as string | null) ?? null,
     layout,
-    orientation: isPortraitPosterRail(rawItems) ? "vertical" : orientation,
+    orientation: thumbnailOrientation ?? orientation,
     showSequenceNumbers: (b.showItemNumbers as boolean | null) ?? false,
     cards,
   }
@@ -177,11 +189,22 @@ export function buildWatchHomeSectionsFromExperience(
   videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
 ): WatchHomeSection[] {
   const sections: WatchHomeSection[] = []
+  // Only shelves that survive reserve an id, so a dropped block can't push its
+  // surviving twin off the authored key.
+  const takenSectionIds = new Set<string>()
   ;(blocks ?? []).forEach((block, index) => {
     const typename = block.__typename
     if (typename === "MediaCollectionBlock") {
-      const section = blockToSection(block, index, videoByCoreId)
-      if (section) sections.push(section)
+      const section = blockToSection(
+        block,
+        index,
+        videoByCoreId,
+        takenSectionIds,
+      )
+      if (section) {
+        sections.push(section)
+        takenSectionIds.add(section.id)
+      }
     } else if (typename === "WatchHomeHeroBlock") {
       // Expected placeholder — the hero stays client-owned; render nothing.
     } else if (__DEV__) {

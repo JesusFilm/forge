@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react"
 import dynamic from "next/dynamic"
@@ -49,7 +50,11 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { parseWatchPath } from "@/lib/routes"
+import {
+  localizedHomePath,
+  parseWatchPath,
+  tryAsLocaleSlug,
+} from "@/lib/routes"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -107,16 +112,30 @@ type PendingPageLanguageOpen = {
   routeIdentity: RouteIdentity
 }
 
-export function FloatingSearchProvider({ children }: { children: ReactNode }) {
+export function FloatingSearchProvider({
+  children,
+  defaultLanguageSlug = "english",
+}: {
+  children: ReactNode
+  defaultLanguageSlug?: string
+}) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = parseWatchPath(pathname)
-  const currentLanguageSlug = "lang" in parsedPath ? parsedPath.lang : "english"
+  const currentLanguageSlug =
+    parsedPath.kind === "video" || parsedPath.kind === "episode"
+      ? parsedPath.lang
+      : defaultLanguageSlug
   const isWatchHome =
     parsedPath.kind === "home" || parsedPath.kind === "localized-home"
-  const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
+  const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
+  const logoHref = isWatchHome
+    ? "https://www.jesusfilm.org/"
+    : currentLocaleSlug && currentLocaleSlug !== "english"
+      ? localizedHomePath(currentLocaleSlug)
+      : "/"
   const logoSlotClass = isWatchHome
     ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
     : FLOATING_HEADER_LOGO_SLOT_CLASS
@@ -511,6 +530,17 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   }, [closing, headerLanguageSwitcher, open, pathname, routeIdentity])
 
   const modalChromeHidden = open || closing
+  const handleLogoClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>) => {
+      if (modalChromeHidden) {
+        event.preventDefault()
+        if (!closing) setOpen(false)
+        return
+      }
+      resetSearch()
+    },
+    [closing, modalChromeHidden, resetSearch, setOpen],
+  )
   useWatchModalActivity(modalChromeHidden, { releaseDelayMs: 0 })
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
@@ -666,9 +696,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       >
         <Link
           href={logoHref as Route}
-          aria-label={t("home")}
+          aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
           data-testid="floating-header-logo"
-          onClick={resetSearch}
+          onClick={handleLogoClick}
           className={`pointer-events-auto flex ${logoSlotClass} ${
             modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
           } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}

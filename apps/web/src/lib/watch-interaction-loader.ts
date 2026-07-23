@@ -2,6 +2,7 @@
 
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 import type { GlobalLanguageOption } from "@/lib/watch-language-switcher"
+import { watchPath } from "@/lib/watch-paths"
 
 export type WatchInteractionKey =
   | "global-language"
@@ -51,10 +52,8 @@ let languageOptionsLoader: LanguageOptionsLoader = async ({ videoSlug }) => {
   const languageActions = await import("@/lib/watch-language-actions")
   return languageActions.loadWatchLanguageOptions({ videoSlug })
 }
-let globalLanguageOptionsLoader: GlobalLanguageOptionsLoader = async () => {
-  const languageActions = await import("@/lib/watch-language-actions")
-  return languageActions.loadGlobalWatchLanguageOptions()
-}
+let globalLanguageOptionsLoader: GlobalLanguageOptionsLoader =
+  fetchGlobalWatchLanguageOptions
 
 const interactionPromises = new Map<WatchInteractionKey, Promise<unknown>>()
 const languageOptionsPromises = new Map<
@@ -65,6 +64,43 @@ const languageOptionsResults = new Map<string, LanguagePickerVariant[]>()
 const storageHydratedLanguageOptions = new Set<string>()
 let globalLanguageOptionsPromise: Promise<GlobalLanguageOption[]> | null = null
 let globalLanguageOptionsResult: GlobalLanguageOption[] | null = null
+
+async function fetchGlobalWatchLanguageOptions(): Promise<
+  GlobalLanguageOption[]
+> {
+  const response = await fetch(watchPath("/api/language-options"), {
+    cache: "no-store",
+    headers: { accept: "application/json" },
+    method: "GET",
+  })
+  if (!response.ok) {
+    throw new Error("Global language options request failed")
+  }
+
+  const payload: unknown = await response.json()
+  if (!isGlobalLanguageOptionsResponse(payload)) {
+    throw new Error("Invalid global language options response")
+  }
+  return payload.options
+}
+
+function isGlobalLanguageOptionsResponse(
+  value: unknown,
+): value is { options: GlobalLanguageOption[] } {
+  if (typeof value !== "object" || value === null) return false
+  const options = (value as { options?: unknown }).options
+  return Array.isArray(options) && options.every(isGlobalLanguageOption)
+}
+
+function isGlobalLanguageOption(value: unknown): value is GlobalLanguageOption {
+  if (typeof value !== "object" || value === null) return false
+  const option = value as Partial<GlobalLanguageOption>
+  return (
+    typeof option.slug === "string" &&
+    typeof option.englishName === "string" &&
+    (option.nativeName === null || typeof option.nativeName === "string")
+  )
+}
 
 export function loadWatchInteraction(
   key: WatchInteractionKey,
@@ -337,10 +373,7 @@ export function __resetWatchInteractionLoaderForTests(): void {
     const languageActions = await import("@/lib/watch-language-actions")
     return languageActions.loadWatchLanguageOptions({ videoSlug })
   }
-  globalLanguageOptionsLoader = async () => {
-    const languageActions = await import("@/lib/watch-language-actions")
-    return languageActions.loadGlobalWatchLanguageOptions()
-  }
+  globalLanguageOptionsLoader = fetchGlobalWatchLanguageOptions
   interactionPromises.clear()
   languageOptionsPromises.clear()
   languageOptionsResults.clear()

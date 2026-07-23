@@ -138,10 +138,7 @@ describe("mapVariant (KTD2)", () => {
   })
 })
 
-// Prod's "Discover the full story" is a `carousel` (→ horizontal by variant)
-// whose every item carries a curated 2:3 poster, and web renders it PORTRAIT.
-// The poster override is what promotes it — mirrors mobile's isPortraitPosterRail.
-describe("portrait poster rails", () => {
+describe("authored item images", () => {
   const POSTER_A =
     "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
   const POSTER_B =
@@ -150,34 +147,56 @@ describe("portrait poster rails", () => {
   function posterBlock(
     items: readonly Record<string, unknown>[],
     variant = "carousel",
+    thumbnailOrientation?: "vertical" | "horizontal",
   ) {
-    return mediaBlock({ mediaCollectionVariant: variant, items })
+    return mediaBlock({
+      mediaCollectionVariant: variant,
+      thumbnailOrientation,
+      items,
+    })
   }
 
   function sectionFor(
     items: readonly Record<string, unknown>[],
     variant = "carousel",
+    thumbnailOrientation?: "vertical" | "horizontal",
   ): WatchHomeSection {
     return buildWatchHomeSectionsFromExperience(
-      [posterBlock(items, variant)],
+      [posterBlock(items, variant, thumbnailOrientation)],
       HYDRATED,
     )[0]
   }
 
-  it("promotes an all-poster carousel to a poster rail despite variant=carousel", () => {
+  it("keeps authored images in carousel rails without making them poster rails", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single", imageOverrideUrl: POSTER_B },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      { coreId: "core-single", imageAsset: { previewUrl: POSTER_B } },
     ])
-    expect(section.isPosterRail).toBe(true)
-    // layout still follows the variant; orientation mirrors mobile's model.
+    expect(section.isPosterRail).toBe(false)
     expect(section.layout).toBe("rail")
-    expect(section.orientation).toBe("vertical")
+    expect(section.orientation).toBe("horizontal")
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
   })
 
-  it("is not a poster rail when only SOME items have a poster", () => {
+  it("uses thumbnailOrientation as the explicit poster rail signal", () => {
+    const section = sectionFor(
+      [
+        { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+        { coreId: "core-single", imageAsset: { previewUrl: POSTER_B } },
+      ],
+      "carousel",
+      "vertical",
+    )
+
+    expect(section.layout).toBe("rail")
+    expect(section.orientation).toBe("vertical")
+    expect(section.isPosterRail).toBe(true)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
+  })
+
+  it("is not a poster rail when only some items have authored images", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
       { coreId: "core-single" },
     ])
     expect(section.isPosterRail).toBe(false)
@@ -191,64 +210,52 @@ describe("portrait poster rails", () => {
     expect(section.isPosterRail).toBe(false)
   })
 
-  // Tightening vs mobile (which tests the raw field): an override that cannot
-  // resolve yields NO poster, so the rail must not claim a portrait frame — that
-  // is exactly how landscape art ends up cropped into 2:3.
-  it("is not a poster rail when an override is present but unresolvable", () => {
+  it("is not a poster rail when an authored image is present but unresolvable", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single", imageOverrideUrl: "javascript:alert(1)" },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      {
+        coreId: "core-single",
+        imageAsset: { previewUrl: "javascript:alert(1)" },
+      },
     ])
     expect(section.isPosterRail).toBe(false)
   })
 
-  // REGRESSION GUARD: `collection` maps to orientation "vertical" for mobile
-  // layout parity, but that says NOTHING about art. Rendering off orientation
-  // put a 2:3 frame around the landscape cinematic — the exact bug this feature
-  // exists to prevent. isPosterRail must stay false here.
   it("does NOT make a poster-less variant=collection a poster rail", () => {
     const section = sectionFor(
       [{ coreId: "core-series" }, { coreId: "core-single" }],
       "collection",
     )
     expect(section.orientation).toBe("vertical") // mobile parity, unchanged
-    expect(section.isPosterRail).toBe(false) // but the frame stays landscape
-    // ...and the cards keep the hydrated landscape art, as before the feature.
-    expect(section.cards.map((c) => c.imageUrl)).toEqual([
-      "https://img/series.jpg",
-      "https://img/single.jpg",
-    ])
-  })
-
-  // The invariant the whole feature rests on: a poster rail implies portrait ART
-  // on every rendered card. If this can fail, cards crop.
-  it("gives every card in a poster rail its curated poster", () => {
-    const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single", imageOverrideUrl: POSTER_B },
-    ])
-    expect(section.isPosterRail).toBe(true)
-    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
-  })
-
-  // The converse: a landscape rail must never adopt a portrait poster, or the
-  // 2.13:1 frame crops it. Frame and art are gated on the SAME value.
-  it("keeps landscape art on a mixed rail, ignoring the stray poster", () => {
-    const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single" },
-    ])
     expect(section.isPosterRail).toBe(false)
     expect(section.cards.map((c) => c.imageUrl)).toEqual([
       "https://img/series.jpg",
       "https://img/single.jpg",
     ])
   })
+
+  it("gives every card its authored image when present", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      { coreId: "core-single", imageAsset: { previewUrl: POSTER_B } },
+    ])
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
+  })
+
+  it("uses authored image on a mixed rail when present", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      { coreId: "core-single" },
+    ])
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([
+      POSTER_A,
+      "https://img/single.jpg",
+    ])
+  })
 })
 
-// Card art is gated on the SAME poster-rail decision as the frame, so the two
-// can never disagree: poster rail → the curated override; anything else → the
-// hydrated video art, exactly as before this feature existed.
 describe("card image source", () => {
   const POSTER = "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
   const ITEM_IMAGE = "https://cdn.example/item.jpg"
@@ -261,35 +268,47 @@ describe("card image source", () => {
     )[0].cards[0]
   }
 
-  it("uses the override poster on a poster rail (outranks the video art)", () => {
+  it("uses authored item image asset over the video art", () => {
     expect(
-      cardFor({ coreId: "core-single", imageOverrideUrl: POSTER }).imageUrl,
+      cardFor({ coreId: "core-single", imageAsset: { previewUrl: POSTER } })
+        .imageUrl,
     ).toBe(POSTER)
+  })
+
+  it("uses linked video image when no authored image asset is present", () => {
+    expect(
+      cardFor({
+        coreId: "core-single",
+        videoImage: { previewUrl: ITEM_IMAGE },
+      }).imageUrl,
+    ).toBe(ITEM_IMAGE)
   })
 
   it("uses the hydrated video art when the item has no override", () => {
     expect(cardFor({ coreId: "core-single" }).imageUrl).toBe(VIDEO_ART)
   })
 
-  // item.imageUrl is deliberately NOT a poster signal (it carries landscape art
-  // too), so it can't promote a rail — and a landscape rail keeps its video art.
-  it("ignores the item imageUrl — it cannot make a rail portrait", () => {
+  it("uses item image asset without making the rail portrait", () => {
     const section = buildWatchHomeSectionsFromExperience(
       [
         mediaBlock({
-          items: [{ coreId: "core-single", imageUrl: ITEM_IMAGE }],
+          items: [
+            { coreId: "core-single", imageAsset: { previewUrl: ITEM_IMAGE } },
+          ],
         }),
       ],
       HYDRATED,
     )[0]
     expect(section.isPosterRail).toBe(false)
-    expect(section.cards[0].imageUrl).toBe(VIDEO_ART)
+    expect(section.cards[0].imageUrl).toBe(ITEM_IMAGE)
   })
 
-  it("ignores an unresolvable override rather than blanking the card", () => {
+  it("ignores an unresolvable authored image rather than blanking the card", () => {
     expect(
-      cardFor({ coreId: "core-single", imageOverrideUrl: "javascript:x" })
-        .imageUrl,
+      cardFor({
+        coreId: "core-single",
+        imageAsset: { previewUrl: "javascript:x" },
+      }).imageUrl,
     ).toBe(VIDEO_ART)
   })
 })
@@ -338,12 +357,17 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     ).toBe(false)
   })
 
-  it("threads the item's muxPlaybackId onto the card, null when absent (R5, R6)", () => {
+  it("threads the item's videoDub playback id onto the card, null when absent (R5, R6)", () => {
     const sections = buildWatchHomeSectionsFromExperience(
       [
         mediaBlock({
           sectionKey: "with-id",
-          items: [{ coreId: "core-single", muxPlaybackId: "pbSingle01" }],
+          items: [
+            {
+              coreId: "core-single",
+              videoDub: { muxVideo: { playbackId: "pbSingle01" } },
+            },
+          ],
         }),
         mediaBlock({ sectionKey: "no-id", items: [{ coreId: "core-series" }] }),
       ],
@@ -443,6 +467,70 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     )
     expect(sections).toHaveLength(1)
     expect(sections[0].id).toBe("home-experience-section-1")
+  })
+
+  it("disambiguates a sectionKey two blocks share (rail identity)", () => {
+    // Admin does not enforce uniqueness: the prod watch-home Experience ships
+    // "Seven Days With Jesus" and "Creation to Christ" both keyed
+    // `media-collection-15`, which collided React keys on the Home rail list.
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "media-collection-15", title: "Seven Days" }),
+        mediaBlock({ sectionKey: "media-collection-15", title: "Creation" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections).toHaveLength(2)
+    expect(sections[0].id).toBe("media-collection-15")
+    expect(sections[1].id).not.toBe(sections[0].id)
+  })
+
+  it("keeps ids unique across every rail of a duplicate-heavy Experience", () => {
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: null }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    const ids = sections.map((section) => section.id)
+    expect(ids).toHaveLength(4)
+    expect(new Set(ids).size).toBe(4)
+  })
+
+  it("gives a dropped block's sectionKey to the surviving twin", () => {
+    // Only surviving rails reserve an id: the dropped block must not push the
+    // first survivor off "dup", and the second survivor forces a real collision
+    // (the pre-fix adapter produced ["dup","dup"], so this now discriminates).
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup", items: [{ coreId: "not-hydrated" }] }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections.map((section) => section.id)).toEqual(["dup", "dup-2"])
+  })
+
+  it("escalates past a synthesized id that collides with an authored key", () => {
+    // An authored "dup-2" already holds the id the second "dup" block would
+    // synthesize, so uniqueSectionId must escalate again to "dup-2-2".
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup-2" }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections.map((section) => section.id)).toEqual([
+      "dup-2",
+      "dup",
+      "dup-2-2",
+    ])
   })
 })
 

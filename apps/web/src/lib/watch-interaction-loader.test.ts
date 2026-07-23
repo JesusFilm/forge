@@ -116,6 +116,54 @@ describe("watch interaction loader", () => {
     expect(loadGlobalOptions).toHaveBeenCalledTimes(2)
   })
 
+  it("loads the default global catalog through the Watch GET API", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({ options: globalLanguageOptions }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(loadGlobalWatchLanguageOptions()).resolves.toEqual(
+      globalLanguageOptions,
+    )
+    expect(fetchMock).toHaveBeenCalledWith("/watch/api/language-options", {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+      method: "GET",
+    })
+  })
+
+  it("rejects malformed default global catalog responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ options: [{ slug: "english" }] })),
+    )
+
+    await expect(loadGlobalWatchLanguageOptions()).rejects.toThrow(
+      "Invalid global language options response",
+    )
+  })
+
+  it("retries the default global catalog after an HTTP failure", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: "Language options are temporarily unavailable." },
+          { status: 503 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json({ options: globalLanguageOptions }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(loadGlobalWatchLanguageOptions()).rejects.toThrow(
+      "Global language options request failed",
+    )
+    await expect(loadGlobalWatchLanguageOptions()).resolves.toEqual(
+      globalLanguageOptions,
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it("does not request the global picker or its options before post-load idle warmup", async () => {
     const idleCallbacks: IdleRequestCallback[] = []
     const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {

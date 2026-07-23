@@ -32,7 +32,6 @@ function mediaCollection(overrides: Partial<Block> = {}): Block {
         labelOverride: "Feature film",
         collectionSize: null,
         imageUrl: "https://img/jesus.jpg",
-        imageOverrideUrl: null,
       },
     ],
     ...overrides,
@@ -84,29 +83,26 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     ])
   })
 
-  it("renders portrait when every item has a poster override, even for a carousel", () => {
-    // Curated vertical posters (e.g. admin media-asset previews) would crop in a
-    // 16:9 landscape card, so a full-override rail goes portrait regardless of variant.
-    const [posterRail] = buildWatchHomeSectionsFromExperience([
+  it("keeps carousel orientation from the block variant even when every item has authored art", () => {
+    const [authoredArtRail] = buildWatchHomeSectionsFromExperience([
       mediaCollection({
         mediaCollectionVariant: "carousel",
         items: [
           {
             videoId: "a",
             videoSlug: "jesus",
-            imageOverrideUrl: "https://admin/x/preview",
+            imageUrl: "https://admin/x/preview",
           },
           {
             videoId: "b",
             videoSlug: "lumo",
-            imageOverrideUrl: "https://admin/y/preview",
+            imageUrl: "https://admin/y/preview",
           },
         ],
       }),
     ])
-    expect(posterRail.orientation).toBe("vertical")
+    expect(authoredArtRail.orientation).toBe("horizontal")
 
-    // A mixed rail (some items lack an override) stays landscape.
     const [mixed] = buildWatchHomeSectionsFromExperience([
       mediaCollection({
         mediaCollectionVariant: "carousel",
@@ -114,13 +110,31 @@ describe("buildWatchHomeSectionsFromExperience", () => {
           {
             videoId: "a",
             videoSlug: "jesus",
-            imageOverrideUrl: "https://admin/x/preview",
+            imageUrl: "https://admin/x/preview",
           },
-          { videoId: "b", videoSlug: "lumo", imageOverrideUrl: null },
+          { videoId: "b", videoSlug: "lumo", imageUrl: null },
         ],
       }),
     ])
     expect(mixed.orientation).toBe("horizontal")
+  })
+
+  it("uses thumbnailOrientation as the explicit authored card shape", () => {
+    const [portrait] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "carousel",
+        thumbnailOrientation: "vertical",
+      }),
+    ])
+    const [landscape] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "collection",
+        thumbnailOrientation: "horizontal",
+      }),
+    ])
+
+    expect(portrait.orientation).toBe("vertical")
+    expect(landscape.orientation).toBe("horizontal")
   })
 
   it("skips a non-collection block and warns in dev (AE4, R5)", () => {
@@ -237,36 +251,34 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     expect(typeof withSize.cards[0].metaLabel).toBe("string")
   })
 
-  it("rewrites a jesusfilm.org /images seed override; passes admin URLs through", () => {
+  it("passes authored image URLs through", () => {
     const [section] = buildWatchHomeSectionsFromExperience([
       mediaCollection({
         items: [
           {
             videoSlug: "seed",
             titleOverride: "Seed",
-            imageOverrideUrl:
+            imageUrl:
               "https://www.jesusfilm.org/images/thumbnails/1-vertical.png",
           },
           {
             videoSlug: "admin",
             titleOverride: "Admin",
-            imageOverrideUrl:
+            imageUrl:
               "https://admin.jesusfilm.org/api/public/media-assets/x/preview",
           },
         ],
       }),
     ])
-    // Seed rewritten to the watch origin (matches the SDUI card path); the admin
-    // preview URL (today's real home data) passes through unchanged.
     expect(section.cards[0].imageUrl).toBe(
-      "https://watch.jesusfilm.org/watch/images/thumbnails/1-vertical.png",
+      "https://www.jesusfilm.org/images/thumbnails/1-vertical.png",
     )
     expect(section.cards[1].imageUrl).toBe(
       "https://admin.jesusfilm.org/api/public/media-assets/x/preview",
     )
   })
 
-  it("prefers imageOverrideUrl over imageUrl; title never blank (R3)", () => {
+  it("uses imageUrl; title never blank (R3)", () => {
     const [section] = buildWatchHomeSectionsFromExperience([
       mediaCollection({
         items: [
@@ -274,8 +286,7 @@ describe("buildWatchHomeSectionsFromExperience", () => {
             videoSlug: "o",
             titleOverride: "",
             labelOverride: "Label wins",
-            imageUrl: "https://img/base.jpg",
-            imageOverrideUrl: "https://img/override.jpg",
+            imageUrl: "https://img/override.jpg",
           },
         ],
       }),
@@ -292,6 +303,53 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     ])
     expect(sections).toHaveLength(2)
     expect(new Set(sections.map((s) => s.id)).size).toBe(2)
+  })
+
+  it("gives blocks that SHARE a sectionKey unique ids (FlashList key safety)", () => {
+    // Admin does not enforce uniqueness: the prod watch-home Experience ships
+    // "Seven Days With Jesus" and "Creation to Christ" both keyed
+    // `media-collection-15`, which collided the HomeScreen FlashList keys.
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "media-collection-15", title: "Seven" }),
+      mediaCollection({ sectionKey: "media-collection-15", title: "Creation" }),
+    ])
+    expect(sections).toHaveLength(2)
+    expect(sections[0].id).toBe("media-collection-15")
+    expect(new Set(sections.map((s) => s.id)).size).toBe(2)
+  })
+
+  it("keeps ids unique across a duplicate-heavy Experience", () => {
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: null }),
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: "dup" }),
+    ])
+    expect(sections).toHaveLength(4)
+    expect(new Set(sections.map((s) => s.id)).size).toBe(4)
+  })
+
+  it("gives a dropped block's sectionKey to the surviving twin", () => {
+    // Only surviving shelves reserve an id: the dropped block must not push the
+    // first survivor off "dup", and the second survivor forces a real collision
+    // (the pre-fix adapter produced ["dup","dup"], so this now discriminates).
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "dup", items: [] }),
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: "dup" }),
+    ])
+    expect(sections.map((s) => s.id)).toEqual(["dup", "dup-2"])
+  })
+
+  it("escalates past a synthesized id that collides with an authored key", () => {
+    // An authored "dup-2" already holds the id the second "dup" block would
+    // synthesize, so uniqueSectionId must escalate again to "dup-2-2".
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "dup-2" }),
+      mediaCollection({ sectionKey: "dup" }),
+      mediaCollection({ sectionKey: "dup" }),
+    ])
+    expect(sections.map((s) => s.id)).toEqual(["dup-2", "dup", "dup-2-2"])
   })
 
   it("gives a repeated video in one collection unique card ids (recyclingKey safety)", () => {
@@ -323,7 +381,7 @@ describe("buildWatchHomeSectionsFromExperience", () => {
 
 describe("buildWatchHomeSectionsFromExperience — coreId hydration", () => {
   // The prod "Acts of the Apostles" shape: items carry a coreId + muxPlaybackId
-  // but null titleOverride/labelOverride/imageUrl/imageOverrideUrl.
+  // but null titleOverride/labelOverride/imageUrl/imageUrl.
   const actsVideo: WatchHomeVideoInput = {
     documentId: "d-acts-1",
     coreId: "6_Acts0401",
@@ -349,7 +407,6 @@ describe("buildWatchHomeSectionsFromExperience — coreId hydration", () => {
               titleOverride: null,
               labelOverride: null,
               imageUrl: null,
-              imageOverrideUrl: null,
             },
           ],
         }),

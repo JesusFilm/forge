@@ -1,5 +1,6 @@
 import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
 import { isEpisodicSeriesLabel } from "./isSeriesRecord"
+import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 import { cleanStreamUrl } from "./validateUrl"
 
@@ -116,12 +117,12 @@ export type WatchVideoRecord = {
 
 type RawVideo = NonNullable<WatchVideoData["videoBySlug"]>
 
+// Every watch surface (player poster, Up Next card, episode card) is 16:9, so a
+// videoStill is a valid fallback — hence the "card" intent, not "poster".
 function pickPosterUrl(
   images: RawVideo["images"] | undefined | null,
 ): string | null {
-  if (!images || images.length === 0) return null
-  const img = images[0]
-  return img.mobileCinematicHigh ?? img.url ?? img.thumbnail ?? null
+  return pickCardImage(images, "card")
 }
 
 function compareLanguageSlug(
