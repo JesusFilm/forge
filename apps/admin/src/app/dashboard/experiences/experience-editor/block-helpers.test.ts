@@ -141,8 +141,7 @@ describe("experience editor block helpers", () => {
         {
           videoId: "",
           streamingUrl: "",
-          imageOverrideUrl: "",
-          imageOverrideAssetId: "",
+          imageUrl: "",
           imageAssetId: "",
           titleOverride: "",
           subtitleOverride: "",
@@ -313,7 +312,7 @@ describe("experience editor block helpers", () => {
             {
               videoId: "",
               streamingUrl: "",
-              imageOverrideUrl: "",
+              imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
             },
@@ -327,7 +326,6 @@ describe("experience editor block helpers", () => {
           items: [
             {
               videoId: "",
-              imageOverrideUrl: "",
               imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",

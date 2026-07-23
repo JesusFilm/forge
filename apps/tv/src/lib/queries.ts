@@ -143,6 +143,7 @@ export const MediaCollectionFragment = graphql(`
     mcCtaLabel: ctaLabel
     showItemNumbers
     mcVariant: variant
+    thumbnailOrientation
     footerText
     items {
       titleOverride
@@ -150,7 +151,6 @@ export const MediaCollectionFragment = graphql(`
       labelOverride
       collectionSize
       imageUrl
-      imageOverrideUrl
       linkToSectionKey
       videoId
       coreId

@@ -1772,10 +1772,7 @@ describe("ExperienceEditor", () => {
           "child-1",
           "child-2",
         ])
-        expect(blocks[0]?.items?.map((item) => item.imageOverrideUrl)).toEqual([
-          "https://example.com/episode-one.jpg",
-          "https://example.com/episode-two.jpg",
-        ])
+        expect(blocks[0]?.items?.some((item) => "imageUrl" in item)).toBe(false)
       } finally {
         view.cleanup()
       }

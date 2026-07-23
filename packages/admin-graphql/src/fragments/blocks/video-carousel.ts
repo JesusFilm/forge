@@ -22,8 +22,6 @@ export const adminVideoCarouselFragment = adminGraphql(
         }
         imageUrl
         imageAssetId
-        imageOverrideUrl
-        imageOverrideAssetId
         titleOverride
         subtitleOverride
         backgroundColor

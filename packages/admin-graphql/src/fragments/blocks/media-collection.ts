@@ -2,7 +2,7 @@ import { adminGraphql } from "../../admin"
 import { adminBlockVideoDubFragment } from "./video-dub"
 
 /**
- * Items are FLAT in admin (no `items[].video` join or `imageOverride { url }`
+ * Items are FLAT in admin (no `items[].video` join or nested media wrapper)
  * wrapper). Renderers reading those nested paths see undefined; runtime
  * fallbacks via `titleOverride` / `imageUrl` cover the common path.
  */
@@ -46,10 +46,6 @@ export const adminMediaCollectionFragment = adminGraphql(
         imageAssetId
         imageBlurDataUrl
         imageDominantColor
-        imageOverrideUrl
-        imageOverrideAssetId
-        imageOverrideBlurDataUrl
-        imageOverrideDominantColor
         linkToSectionKey
       }
     }

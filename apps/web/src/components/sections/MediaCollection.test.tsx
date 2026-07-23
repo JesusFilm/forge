@@ -1061,7 +1061,7 @@ describe("MediaCollection VideoCard href", () => {
                 labelOverride: null,
                 collectionSize: null,
                 imageUrl: "https://example.com/poster.jpg",
-                imageOverrideDominantColor: "#787e16",
+                imageDominantColor: "#787e16",
               },
             ],
           })}
@@ -1094,7 +1094,7 @@ describe("MediaCollection VideoCard href", () => {
                 labelOverride: null,
                 collectionSize: null,
                 imageUrl: "https://example.com/still.jpg",
-                videoImageDominantColor: "#123456",
+                imageDominantColor: "#123456",
               },
             ],
           })}

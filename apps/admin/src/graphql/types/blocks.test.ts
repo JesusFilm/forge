@@ -292,14 +292,10 @@ describe("asset-backed block URL field resolvers", () => {
       muxPlaybackId: null,
     })
 
-    const result = await fieldResolver(
-      "MediaCollectionItem",
-      "imageOverrideUrl",
-    )(
+    const result = await fieldResolver("MediaCollectionItem", "imageUrl")(
       {
-        imageOverrideAssetId: "asset-1",
-        imageOverrideUrl:
-          "http://0.0.0.0:8080/api/media-assets/asset-1/preview",
+        imageAssetId: "asset-1",
+        imageUrl: "http://0.0.0.0:8080/api/media-assets/asset-1/preview",
       },
       {},
       {
@@ -359,7 +355,7 @@ describe("asset-backed block URL field resolvers", () => {
     expect(result).toBe("https://image.example.test/poster.jpg")
   })
 
-  it("exposes media asset blur data for collection item overrides", async () => {
+  it("exposes media asset blur data for collection item images", async () => {
     const findUnique = vi.fn().mockResolvedValue({
       id: "asset-1",
       backend: "S3",
@@ -373,9 +369,9 @@ describe("asset-backed block URL field resolvers", () => {
 
     const result = await fieldResolver(
       "MediaCollectionItem",
-      "imageOverrideBlurDataUrl",
+      "imageBlurDataUrl",
     )(
-      { imageOverrideAssetId: "asset-1" },
+      { imageAssetId: "asset-1" },
       {},
       {
         request: { url: "https://admin.jesusfilm.org/api/graphql" },
@@ -1103,7 +1099,9 @@ describe("Edge cases", () => {
     expect(fields?.muxPlaybackId).toBeDefined()
     expect(fields?.coreId).toBeDefined()
     expect(fields?.imageBlurDataUrl).toBeDefined()
-    expect(fields?.imageOverrideBlurDataUrl).toBeDefined()
+    expect(fields?.imageDominantColor).toBeDefined()
+    expect(fields?.imageOverrideUrl).toBeUndefined()
+    expect(fields?.imageOverrideAssetId).toBeUndefined()
   })
 
   it("exposes the inferred default collection slug on MediaCollectionBlock", () => {

@@ -6,6 +6,7 @@ import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived, hasPermission } from "@/auth/permissions"
 import { getAdminBaseURL } from "@/auth/origins"
+import { normalizeLegacyExperienceBlockMediaFields } from "@/domain/blocks"
 import { ForbiddenError } from "./errors"
 import {
   CreateMediaAssetInput,
@@ -401,9 +402,10 @@ export class MediaAssetService {
   }
 
   async hydratePublicUrlsInBlocks(blocks: unknown): Promise<unknown> {
-    const assetIds = Array.from(collectBlockMediaAssetIds(blocks))
+    const normalizedBlocks = normalizeLegacyExperienceBlockMediaFields(blocks)
+    const assetIds = Array.from(collectBlockMediaAssetIds(normalizedBlocks))
     if (assetIds.length === 0) {
-      return blocks
+      return normalizedBlocks
     }
 
     const assets = await this.prisma.mediaAsset.findMany({
@@ -424,7 +426,7 @@ export class MediaAssetService {
     })
     const assetsById = new Map(assets.map((asset) => [asset.id, asset]))
 
-    return hydrateBlockMediaAssetUrls(blocks, assetsById)
+    return hydrateBlockMediaAssetUrls(normalizedBlocks, assetsById)
   }
 
   private async assertMediaAsset(id: string) {
@@ -509,7 +511,6 @@ export function publicMediaAssetPreviewUrl(
 const BLOCK_MEDIA_ASSET_URL_FIELDS = [
   ["backgroundImageAssetId", "backgroundImageUrl"],
   ["imageAssetId", "imageUrl"],
-  ["imageOverrideAssetId", "imageOverrideUrl"],
   ["mediaAssetId", "mediaUrl"],
 ] as const
 

@@ -3,12 +3,9 @@ import { enrichMediaItem, enrichRouteRelatedVideo } from "./enrichment"
 
 const ADMIN_FALLBACK =
   "https://imagedelivery.net/account/abc/mobileCinematicHigh"
-const ADMIN_OVERRIDE = "https://example.org/images/override.png"
 const ADMIN_FALLBACK_BLUR = "data:image/jpeg;base64,FALLBACK"
-const ADMIN_OVERRIDE_BLUR = "data:image/jpeg;base64,OVERRIDE"
 const ADMIN_VIDEO_BLUR = "data:image/jpeg;base64,VIDEO"
 const ADMIN_FALLBACK_COLOR = "#112233"
-const ADMIN_OVERRIDE_COLOR = "#445566"
 const ADMIN_VIDEO_COLOR = "#778899"
 const GENERIC_ASSET_BLUR =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHZpZXdCb3g9IjAgMCA4IDgiPjxyZWN0IHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiMxMTE4MjciLz48L3N2Zz4="
@@ -23,36 +20,7 @@ const base = {
 }
 
 describe("enrichMediaItem image resolution", () => {
-  it("prefers imageOverrideUrl over imageUrl when both are set", () => {
-    const result = enrichMediaItem({
-      ...base,
-      imageUrl: ADMIN_FALLBACK,
-      imageOverrideUrl: ADMIN_OVERRIDE,
-    })
-    expect(result.imageUrl).toBe(ADMIN_OVERRIDE)
-  })
-
-  it("falls back to imageUrl when imageOverrideUrl is null", () => {
-    const result = enrichMediaItem({
-      ...base,
-      imageUrl: ADMIN_FALLBACK,
-      imageOverrideUrl: null,
-    })
-    expect(result.imageUrl).toBe(ADMIN_FALLBACK)
-  })
-
-  it("falls back to imageUrl when imageOverrideUrl is an empty string", () => {
-    // Admin's editor surface writes "" (not null) when an editor clears
-    // the override. Empty string must NOT shadow a valid imageUrl.
-    const result = enrichMediaItem({
-      ...base,
-      imageUrl: ADMIN_FALLBACK,
-      imageOverrideUrl: "",
-    })
-    expect(result.imageUrl).toBe(ADMIN_FALLBACK)
-  })
-
-  it("falls back to imageUrl when imageOverrideUrl is omitted (Strapi-shape caller)", () => {
+  it("uses imageUrl when set", () => {
     const result = enrichMediaItem({
       ...base,
       imageUrl: ADMIN_FALLBACK,
@@ -60,23 +28,9 @@ describe("enrichMediaItem image resolution", () => {
     expect(result.imageUrl).toBe(ADMIN_FALLBACK)
   })
 
-  it("returns null when both image sources are missing or empty", () => {
-    expect(
-      enrichMediaItem({ ...base, imageUrl: null, imageOverrideUrl: null })
-        .imageUrl,
-    ).toBeNull()
-    expect(
-      enrichMediaItem({ ...base, imageUrl: "", imageOverrideUrl: "" }).imageUrl,
-    ).toBeNull()
-  })
-
-  it("returns the override even when imageUrl is empty", () => {
-    const result = enrichMediaItem({
-      ...base,
-      imageUrl: "",
-      imageOverrideUrl: ADMIN_OVERRIDE,
-    })
-    expect(result.imageUrl).toBe(ADMIN_OVERRIDE)
+  it("returns null when imageUrl and fallbacks are missing or empty", () => {
+    expect(enrichMediaItem({ ...base, imageUrl: null }).imageUrl).toBeNull()
+    expect(enrichMediaItem({ ...base, imageUrl: "" }).imageUrl).toBeNull()
   })
 
   it("falls back to known local watch-home thumbnails by coreId", () => {
@@ -84,7 +38,6 @@ describe("enrichMediaItem image resolution", () => {
       ...base,
       coreId: "GOMattCollection",
       imageUrl: null,
-      imageOverrideUrl: null,
     })
     expect(result.imageUrl).toBe(
       "/watch/images/thumbnails/GOMattCollection-vertical.png",
@@ -96,55 +49,46 @@ describe("enrichMediaItem image resolution", () => {
       ...base,
       coreId: "GOMattCollection",
       imageUrl: null,
-      imageOverrideUrl: null,
     })
     expect(result.blurDataUrl).toMatch(/^data:image\/jpeg;base64,/)
   })
 
-  it("prefers override asset blur data over linked video blur data", () => {
+  it("prefers authored image blur data over linked video blur data", () => {
     const result = enrichMediaItem({
       ...base,
       imageUrl: ADMIN_FALLBACK,
       videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
       imageBlurDataUrl: ADMIN_FALLBACK_BLUR,
-      imageOverrideUrl: ADMIN_OVERRIDE,
-      imageOverrideBlurDataUrl: ADMIN_OVERRIDE_BLUR,
     })
-    expect(result.blurDataUrl).toBe(ADMIN_OVERRIDE_BLUR)
+    expect(result.blurDataUrl).toBe(ADMIN_FALLBACK_BLUR)
   })
 
-  it("does not use linked video blur data for override images without override blur data", () => {
+  it("does not pair linked video blur data with an authored image", () => {
     const result = enrichMediaItem({
       ...base,
       imageUrl: ADMIN_FALLBACK,
       videoImageBlurDataUrl: ADMIN_VIDEO_BLUR,
-      imageBlurDataUrl: ADMIN_FALLBACK_BLUR,
-      imageOverrideUrl: ADMIN_OVERRIDE,
-      imageOverrideBlurDataUrl: null,
+      imageBlurDataUrl: null,
     })
     expect(result.blurDataUrl).toBeNull()
   })
 
-  it("prefers override asset dominant color over linked video dominant color", () => {
+  it("prefers authored image dominant color over linked video dominant color", () => {
     const result = enrichMediaItem({
       ...base,
       imageUrl: ADMIN_FALLBACK,
       videoImageDominantColor: ADMIN_VIDEO_COLOR,
       imageDominantColor: ADMIN_FALLBACK_COLOR,
-      imageOverrideUrl: ADMIN_OVERRIDE,
-      imageOverrideDominantColor: ADMIN_OVERRIDE_COLOR,
     })
-    expect(result.dominantColor).toBe(ADMIN_OVERRIDE_COLOR)
+    expect(result.dominantColor).toBe(ADMIN_FALLBACK_COLOR)
   })
 
-  it("does not use linked video dominant color for override images without override color", () => {
+  it("does not pair linked video dominant color with an authored image", () => {
     const result = enrichMediaItem({
       ...base,
       imageUrl: ADMIN_FALLBACK,
       videoImageDominantColor: ADMIN_VIDEO_COLOR,
-      imageDominantColor: ADMIN_FALLBACK_COLOR,
-      imageOverrideUrl: ADMIN_OVERRIDE,
-      imageOverrideDominantColor: null,
+      imageDominantColor: null,
     })
     expect(result.dominantColor).toBeNull()
   })
@@ -181,15 +125,14 @@ describe("enrichMediaItem image resolution", () => {
     })
   })
 
-  it("ignores generic asset blur data and falls back to local watch-home blur data", () => {
+  it("ignores generic asset blur data for authored images", () => {
     const result = enrichMediaItem({
       ...base,
       coreId: "GOMattCollection",
       imageUrl: ADMIN_FALLBACK,
-      imageOverrideBlurDataUrl: GENERIC_ASSET_BLUR,
+      imageBlurDataUrl: GENERIC_ASSET_BLUR,
     })
-    expect(result.blurDataUrl).toMatch(/^data:image\/jpeg;base64,/)
-    expect(result.blurDataUrl).not.toBe(GENERIC_ASSET_BLUR)
+    expect(result.blurDataUrl).toBeNull()
   })
 
   it("falls back to a mux thumbnail when no authored or local thumbnail exists", () => {
@@ -200,7 +143,6 @@ describe("enrichMediaItem image resolution", () => {
         muxVideo: { playbackId: "mux-authored-item" },
       },
       imageUrl: null,
-      imageOverrideUrl: null,
     })
     expect(result.imageUrl).toBe(
       "https://image.mux.com/mux-authored-item/thumbnail.jpg",
@@ -249,7 +191,6 @@ describe("enrichMediaItem other fields", () => {
       ...base,
       resolvedTitle: "  Linked Video Title  ",
       imageUrl: null,
-      imageOverrideUrl: null,
     })
     expect(result.title).toBe("Linked Video Title")
     expect(result.subtitle).toBe("Subtitle")
