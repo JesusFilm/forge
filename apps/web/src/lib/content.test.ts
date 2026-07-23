@@ -140,7 +140,7 @@ describe("resolveWatchPage", () => {
     expect(unstableCacheCalls).toEqual(
       expect.arrayContaining([
         {
-          keyParts: ["watch-page", "v3-media-dominant-colors"],
+          keyParts: ["watch-page", "v4-serializable-errors"],
           options: {
             revalidate: 60,
             tags: [
@@ -229,6 +229,13 @@ describe("resolveWatchPage", () => {
     expect(queryMock).toHaveBeenCalledTimes(1)
     expect(result.data).toBeNull()
     expect(result.error?.message).toBe("No experience found")
+    expect(JSON.parse(JSON.stringify(result))).toEqual({
+      data: null,
+      error: {
+        name: "Error",
+        message: "No experience found",
+      },
+    })
   })
 
   it("falls back to an explicit experience when no route video exists", async () => {

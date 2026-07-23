@@ -46,6 +46,7 @@ import {
   type UiLocale,
 } from "@/lib/locale"
 import {
+  languageVideosIndexPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
@@ -481,6 +482,12 @@ async function renderOneSegment(shape: {
       resolveWatchHome(locale, slug),
       resolveWatchPage(locale),
     ])
+    if (isWatchPageMissingError(pageResult.error)) {
+      const languageSlug = tryAsLocaleSlug(slug)
+      if (!languageSlug) notFound()
+      redirect(languageVideosIndexPath(languageSlug))
+    }
+
     if (heroResult.error) {
       return <ExperienceError message={heroResult.error.message} />
     }
