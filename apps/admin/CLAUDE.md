@@ -487,10 +487,9 @@ service's Config-as-code Path is set to that file. For best Datadog
 auto-instrumentation, production must set Datadog service env
 (`DD_SERVICE=forge-admin`, `DD_ENV=prod`, `DD_VERSION=<git sha>`), point
 at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
-`DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules through the `startCommand`:
-`cd apps/admin/.next/standalone && NODE_OPTIONS='--require ./node_modules/dd-trace/init' node ...server.js`. Do not set
-`NODE_OPTIONS` as a global Railway service variable because it is also present
-during Railpack/mise build setup.
+`DD_AGENT_SYSLOG_PORT=514`), and keep the standalone server start command free
+of `--require dd-trace/init`; Railpack's standalone runtime does not include a
+resolvable preload module. Browser RUM sourcemaps are uploaded during build.
 
 Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
 to restore into local or staging Postgres. The restore path reads
@@ -639,7 +638,7 @@ the dashboard remains canonical.
 | Field                      | Value                                                                                                                                                                                                      |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Config-as-code Path        | `apps/admin/railway.toml`                                                                                                                                                                                  |
-| Start Command              | `cd apps/admin/.next/standalone && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' node apps/admin/server.js`                                             |
+| Start Command              | `cd apps/admin/.next/standalone && HOSTNAME=0.0.0.0 NODE_OPTIONS='--max-old-space-size=5120' node apps/admin/server.js`                                                                                    |
 | Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
 | Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                                                                                             |
 | Healthcheck Path           | `/api/health`                                                                                                                                                                                              |
