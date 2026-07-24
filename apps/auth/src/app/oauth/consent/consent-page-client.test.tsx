@@ -27,4 +27,24 @@ describe("OAuth consent UI", () => {
     expect(html).toContain("Deny access")
     expect(html).toContain('aria-label="Legal"')
   })
+
+  it("renders persistent access as an explicit permission", () => {
+    const html = renderToStaticMarkup(
+      <OAuthConsentPageClient
+        oauthQuery="client_id=codex&scope=offline_access&sig=signed"
+        requestingAppName="Jesus Film Admin MCP"
+        scopes={[
+          {
+            key: "offline_access",
+            label: "Stay signed in",
+            description:
+              "Allow the requesting application to keep access active without asking you to sign in again.",
+          },
+        ]}
+      />,
+    )
+
+    expect(html).toContain("Stay signed in")
+    expect(html).toContain("keep access active")
+  })
 })

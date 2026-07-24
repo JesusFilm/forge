@@ -36,7 +36,9 @@ describe("Auth scopes", () => {
     expect(describeScopes(["offline_access"])).toEqual([
       expect.objectContaining({
         key: "offline_access",
-        label: "Stay connected",
+        label: "Stay signed in",
+        description:
+          "Allow the requesting application to keep access active without asking you to sign in again.",
       }),
     ])
   })
