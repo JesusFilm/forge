@@ -108,16 +108,18 @@ function resolveDownloadEditorialPosterUrl(url: string): string {
  * Cloudflare delivery URLs whose transformation is fixed at 120x68; request a
  * 1280x720 derivative from the same original instead of letting Next/Image
  * upscale that tiny response. Other editorial providers remain untouched.
+ * Prefer that authored artwork over a frame from the selected Dub; Mux remains
+ * the high-resolution fallback when no editorial image is available.
  */
 export function resolveDownloadPosterUrl(
   image: Parameters<typeof resolvePosterUrl>[0],
   muxPlaybackId?: string | null,
 ): string | null {
+  const editorial = resolvePosterUrl(image)
+  if (editorial) return resolveDownloadEditorialPosterUrl(editorial)
+
   const playbackId = muxPlaybackId?.trim()
-  if (!playbackId) {
-    const editorial = resolvePosterUrl(image)
-    return editorial ? resolveDownloadEditorialPosterUrl(editorial) : null
-  }
+  if (!playbackId) return null
   return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=1280&height=720&fit_mode=smartcrop&time=2`
 }
 

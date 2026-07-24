@@ -25,7 +25,13 @@ const manifest = {
       ],
     },
   ],
-  episodeRouteGroups: [],
+  episodeRouteGroups: [
+    {
+      parentSlug: "lumo-the-gospel-of-john",
+      childSlug: "wedding-in-cana",
+      alternates: [{ hreflang: "en", languageSlug: "english" }],
+    },
+  ],
   skippedHreflangValues: {},
 }
 
@@ -72,6 +78,29 @@ describe("watch sitemap routes", () => {
       "<loc>https://www.jesusfilm.org/watch/jesus.html/english.html</loc>",
     )
     expect(xml).toContain('hreflang="es"')
+    expect(xml).not.toContain("lumo-the-gospel-of-john")
+  })
+
+  it("uses one manifest validator and cache policy for index and child", async () => {
+    const indexRoute = await import("./sitemap.xml/route")
+    const childRoute = await import("./sitemap/[id]/route")
+
+    const indexResponse = await indexRoute.GET()
+    const childResponse = await childRoute.GET(
+      new Request("http://web.test/sitemap/0.xml"),
+      { params: Promise.resolve({ id: "0.xml" }) },
+    )
+
+    expect(indexResponse.headers.get("etag")).toBe('"watch-sitemap-version-1"')
+    expect(childResponse.headers.get("etag")).toBe(
+      indexResponse.headers.get("etag"),
+    )
+    expect(indexResponse.headers.get("cache-control")).toBe(
+      "public, max-age=300, stale-while-revalidate=3600",
+    )
+    expect(childResponse.headers.get("cache-control")).toBe(
+      "public, max-age=300, stale-while-revalidate=3600",
+    )
   })
 
   it("404s malformed and missing child sitemap chunks", async () => {

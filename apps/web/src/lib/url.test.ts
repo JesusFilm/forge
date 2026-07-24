@@ -9,25 +9,25 @@ describe("resolveDownloadPosterUrl", () => {
     )
   })
 
-  it("requests a high-resolution Cloudflare editorial derivative without Mux", () => {
+  it("prefers a high-resolution Cloudflare editorial derivative over Mux", () => {
     expect(
       resolveDownloadPosterUrl(
         {
           mobileCinematicHigh:
             "https://imagedelivery.net/account/poster.jpg/f=jpg,w=120,h=68,q=95",
         },
-        "   ",
+        "playback-id",
       ),
     ).toBe(
       "https://imagedelivery.net/account/poster.jpg/f=jpg,w=1280,h=720,q=95",
     )
   })
 
-  it("preserves non-Cloudflare editorial poster URLs without Mux", () => {
+  it("preserves non-Cloudflare editorial poster URLs over Mux", () => {
     expect(
       resolveDownloadPosterUrl(
         { mobileCinematicHigh: "https://cdn.test/editorial-high.jpg" },
-        null,
+        "playback-id",
       ),
     ).toBe("https://cdn.test/editorial-high.jpg")
   })

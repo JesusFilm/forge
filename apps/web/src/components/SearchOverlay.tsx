@@ -32,6 +32,7 @@ import {
 } from "@/components/watch/LanguageCombobox"
 import { CATEGORIES } from "@/lib/search-categories"
 import {
+  FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
@@ -477,7 +478,7 @@ export function SearchOverlay() {
         <div
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
-          className={`pointer-events-auto min-w-0 flex-1 ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
+          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
             headerLanguageSwitcherVisible ? "" : "col-span-2"
           }`}
         >

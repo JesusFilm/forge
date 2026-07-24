@@ -1,5 +1,5 @@
 ---
-id: "feat-310"
+id: "feat-313"
 title: "Watch carousel hover controls"
 owner: "codex"
 priority: "P2"

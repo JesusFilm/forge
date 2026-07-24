@@ -76,10 +76,6 @@ export function WatchHomeFooter() {
             100 Lake Hart Drive
             <br />
             Orlando, FL, 32832
-            <br />
-            <span className="text-[#9a9a9a]">
-              {t("resourcesVersion", { version: "fea8f46" })}
-            </span>
           </p>
           <p className="min-w-0">
             {t("office")}: (407) 826-2300

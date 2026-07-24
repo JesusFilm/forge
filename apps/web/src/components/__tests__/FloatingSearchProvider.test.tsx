@@ -16,6 +16,8 @@ import {
 } from "@/components/FloatingSearchProvider"
 import { SearchOverlayInstantShell } from "@/components/SearchOverlayInstantShell"
 import {
+  FLOATING_HEADER_FIELD_WIDTH_CLASS,
+  FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
@@ -992,7 +994,11 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     const searchButton = document.querySelector(
       '[data-testid="floating-search-desktop-button"]',
     )
+    const searchFieldShell = searchButton?.parentElement
     const header = document.querySelector('[data-testid="floating-header"]')
+    const trailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
     const mobileSearchButton = document.querySelector(
       '[data-testid="floating-search-mobile-button"]',
     )
@@ -1013,8 +1019,20 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
       "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
     )
     expect(header?.className).toContain("h-[52px]")
+    expect(header?.className).toContain(FLOATING_HEADER_LAYOUT_CLASS)
+    expect(header?.className).toContain(
+      "grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)]",
+    )
+    expect(header?.className).toContain(
+      "md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)]",
+    )
     expect(header?.className).toContain("items-center")
     expect(header?.className).toContain("gap-3")
+    expect(searchFieldShell?.className).toContain(
+      FLOATING_HEADER_FIELD_WIDTH_CLASS,
+    )
+    expect(searchFieldShell?.className).toContain("max-w-[800px]")
+    expect(trailingControls?.className).toContain("ml-auto")
     expect(header?.className).toContain("translate-y-0")
     expect(searchButton?.className).toContain("opacity-100")
     expect(searchButton?.className).toContain("cursor-text")
@@ -2647,7 +2665,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(scrollBody?.className).toContain("bottom-0")
     expect(overlayField).not.toBeNull()
     expect(overlayFieldShell?.className).toContain("min-w-0")
-    expect(overlayFieldShell?.className).toContain("flex-1")
+    expect(overlayFieldShell?.className).toContain("w-full")
     expect(overlayFieldShell?.className).toContain(
       FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
     )

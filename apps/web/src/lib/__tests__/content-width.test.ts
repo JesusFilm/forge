@@ -5,15 +5,16 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
   CONTENT_WIDTH_CLASSES,
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
   WATCH_PAGE_CONTENT_CLASSES,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
@@ -137,13 +138,24 @@ describe("content-width.ts — watch page rail lockstep", () => {
     expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
       "md:top-[calc(env(safe-area-inset-top,0px)+1rem)]",
     )
-    expect(FLOATING_HEADER_HEIGHT_CLASS).toBe("h-[52px]")
+    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain("h-[52px]")
+    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain(
+      "grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)]",
+    )
+    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain(
+      "sm:grid-cols-[minmax(112px,1fr)_minmax(0,800px)_minmax(112px,1fr)]",
+    )
+    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain(
+      "md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)]",
+    )
+    expect(FLOATING_HEADER_FIELD_WIDTH_CLASS).toContain("max-w-[800px]")
     expect(FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS).toBe(
       "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]",
     )
-    expect(FLOATING_HEADER_GAP_CLASS).toContain("md:gap-5")
+    expect(FLOATING_HEADER_LAYOUT_CLASS).toContain("md:gap-5")
     expect(FLOATING_HEADER_LOGO_SLOT_CLASS).toContain("md:w-12")
     expect(FLOATING_HEADER_TRAILING_GROUP_CLASS).toContain("md:gap-2")
+    expect(FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS).toContain("md:flex")
     expect(FLOATING_HEADER_LANGUAGE_SLOT_CLASS).toContain("md:w-12")
     expect(FLOATING_HEADER_TRAILING_SLOT_CLASS).toContain("md:w-12")
   })

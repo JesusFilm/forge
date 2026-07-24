@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 24, 2026)
 
-- **Total tickets:** 439
-- **Complete:** 331
+- **Total tickets:** 445
+- **Complete:** 337
 - **In progress:** 33
 - **Not started:** 26
 - **Blocked:** 49
@@ -105,6 +105,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-197](content-discovery/feat-197-watch-search-query-outcome-logging.md)                                   | Watch search query and outcome logging                                                          | nisal      | P2       | 2026-06-22 | 5    | 2026-06-26 | complete    |
 | [feat-250](content-discovery/feat-250-watch-search-close-reset.md)                                             | Reset Watch search when the modal closes                                                        | unassigned | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-302](content-discovery/feat-302-watch-search-logo-close.md)                                              | Close Watch search from the header logo                                                         | codex      | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-310](content-discovery/feat-310-watch-header-search-field-width.md)                                      | Watch header search field width                                                                 | urim       | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
 
 ### Media Generation
@@ -360,6 +361,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-302](platform/feat-302-admin-graphql-otel-operation-spans.md)                    | Admin GraphQL OTel operation spans                                               | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-308](platform/feat-308-watch-video-structured-data-search-console.md)            | Fix Watch video structured data Search Console issues                            | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-309](platform/feat-309-watch-video-structured-data-media-url-audit.md)           | Audit Watch video structured data media URLs                                     | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | not-started |
+| [feat-310](platform/feat-310-watch-canonical-sitemap-routes.md)                        | Watch canonical-only sitemap routes                                              | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-310](platform/feat-310-watch-download-modal-safeguards.md)                       | Restore Watch download modal safeguards                                          | urim       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -413,7 +416,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-305](platform/feat-305-watch-footer-remove-social-newsletter-actions.md)         | Remove Watch footer social and newsletter actions                                | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-306](platform/feat-306-watch-footer-contact-three-column-layout.md)              | Watch footer contact three-column layout                                         | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-307](platform/feat-307-watch-home-heading-hierarchy.md)                          | Simplify Watch home heading hierarchy                                            | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
-| [feat-310](platform/feat-310-watch-carousel-hover-controls.md)                         | Watch carousel hover controls                                                    | codex      | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-310](platform/feat-310-remove-watch-footer-resource-version.md)                  | Remove Watch footer resource version                                             | unassigned | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-311](platform/feat-311-watch-feedback-headset-icon.md)                           | Watch feedback headset icon                                                      | unassigned | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-312](platform/feat-312-watch-faq-row-alignment.md)                               | Watch FAQ row alignment                                                          | unassigned | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-313](platform/feat-313-watch-carousel-hover-controls.md)                         | Watch carousel hover controls                                                    | codex      | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  WatchSeoManifestCoverageError,
   WatchSeoManifestService,
   normalizeGoogleHreflang,
   summarizeWatchSeoManifest,
@@ -57,6 +58,16 @@ describe("WatchSeoManifestService.generate", () => {
           languageSlug: "bad-script",
           bcp47: "zh-Hans",
         },
+        {
+          contentSlug: "pentecost",
+          languageSlug: "english",
+          bcp47: "en",
+        },
+        {
+          contentSlug: "pentecost",
+          languageSlug: "portuguese-brazil",
+          bcp47: "pt-BR",
+        },
       ])
       .mockResolvedValueOnce([
         {
@@ -90,6 +101,13 @@ describe("WatchSeoManifestService.generate", () => {
             { hreflang: "es", languageSlug: "spanish-castilian" },
           ],
         },
+        {
+          contentSlug: "pentecost",
+          alternates: [
+            { hreflang: "en", languageSlug: "english" },
+            { hreflang: "pt-BR", languageSlug: "portuguese-brazil" },
+          ],
+        },
       ],
       episodeRouteGroups: [
         {
@@ -107,9 +125,9 @@ describe("WatchSeoManifestService.generate", () => {
       },
     })
     expect(summarizeWatchSeoManifest(manifest)).toMatchObject({
-      videoRouteGroups: 1,
+      videoRouteGroups: 2,
       episodeRouteGroups: 1,
-      alternateLinks: 4,
+      alternateLinks: 6,
       skippedHreflangValues: 2,
     })
   })
@@ -145,5 +163,33 @@ describe("WatchSeoManifestService.generate", () => {
     const service = new WatchSeoManifestService(prisma)
 
     await expect(service.generate()).rejects.toThrow()
+  })
+
+  it("rejects contextual child languages missing canonical coverage", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          contentSlug: "pentecost",
+          languageSlug: "english",
+          bcp47: "en",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "pentecost",
+          languageSlug: "portuguese-brazil",
+          bcp47: "pt-BR",
+        },
+      ])
+    const service = new WatchSeoManifestService(prisma)
+
+    await expect(service.generate()).rejects.toThrowError(
+      expect.objectContaining<Partial<WatchSeoManifestCoverageError>>({
+        childSlug: "pentecost",
+        languageSlug: "portuguese-brazil",
+      }),
+    )
   })
 })

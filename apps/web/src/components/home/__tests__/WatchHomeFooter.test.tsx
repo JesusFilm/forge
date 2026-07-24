@@ -148,6 +148,24 @@ describe("WatchHomeFooter", () => {
     })
   })
 
+  it("omits the resource version from the address column", () => {
+    renderFooter()
+
+    const contactGrid = container.querySelector(
+      '[data-testid="watch-footer-contact-grid"]',
+    )
+    const addressColumn = contactGrid?.firstElementChild
+    const resourcesLink = container.querySelector(
+      'a[href="https://www.jesusfilm.org/partners/resources/"]',
+    )
+
+    expect(addressColumn?.textContent).toBe(
+      "100 Lake Hart DriveOrlando, FL, 32832",
+    )
+    expect(addressColumn?.textContent).not.toContain("fea8f46")
+    expect(resourcesLink?.textContent).toBe("Resources")
+  })
+
   it("paints its complete white surface above preceding sticky media", () => {
     renderFooter()
 
