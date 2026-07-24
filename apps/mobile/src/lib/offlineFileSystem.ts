@@ -85,7 +85,7 @@ export async function downloadToFile(url: string, dest: string): Promise<void> {
   // throw as a terminal sidecar failure and degrade gracefully.
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
-    await Promise.race([
+    const result = await Promise.race([
       downloadAsync(url, dest),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
@@ -94,6 +94,14 @@ export async function downloadToFile(url: string, dest: string): Promise<void> {
         )
       }),
     ])
+    // downloadAsync writes the body to `dest` for ANY status, so a CDN error page
+    // (a variant-less Cloudflare 400 "malformed URL") would masquerade as a poster.
+    // Allow-list real 2xx (missing/NaN status fails closed); reject + delete else.
+    if (!(result.status >= 200 && result.status < 300)) {
+      datadogLog.warn("sidecar.download_bad_status", { status: result.status })
+      await deleteAsync(dest, { idempotent: true }).catch(() => {})
+      throw new Error(`downloadToFile status ${result.status}`)
+    }
   } catch (err) {
     // R14: surface only the deadline firing; a downloadAsync reject re-throws unlabeled.
     if (err instanceof Error && err.message === "downloadToFile timeout") {
