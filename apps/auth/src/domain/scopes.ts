@@ -16,9 +16,9 @@ export const AUTH_SCOPES = [
   },
   {
     key: "offline_access",
-    label: "Stay connected",
+    label: "Stay signed in",
     description:
-      "Allow the requesting application to renew access without asking you to sign in again.",
+      "Allow the requesting application to keep access active without asking you to sign in again.",
   },
   {
     key: "membership:read",
