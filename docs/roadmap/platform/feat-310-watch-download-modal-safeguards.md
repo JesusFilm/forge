@@ -3,7 +3,7 @@ id: "feat-310"
 title: "Restore Watch download modal safeguards"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-24"
 duration: 1
 depends_on: []
@@ -71,3 +71,27 @@ Watch behavior.
 - Desktop and mobile browser smoke of the single-video modal, including nested
   Terms cancel/accept behavior and absence of file-size copy.
 - Confirm no size-discovery HEAD requests occur when the modal opens.
+
+## Completion Evidence
+
+- 77 focused Vitest cases passed across the resolver, single-video modal,
+  Watch-page modal boundary, collection modal regression surface, and collection
+  download-option helper.
+- `pnpm --filter @forge/web typecheck`, `pnpm --filter @forge/web lint`, and the
+  repository pre-commit format checks passed.
+- Plan-aware `ce-code-review mode:agent` completed with no actionable findings.
+- The actual `DownloadModal` component was rendered at 1440x1000 and 390x844.
+  Both viewports showed a loaded poster, unchecked localized agreement,
+  disabled Download action, and quality labels without MB/GB copy.
+- The nested Terms dialog remained above the outer modal. Cancel preserved the
+  unchecked/disabled state; Accept checked the agreement and enabled Download.
+- Two browser network captures found zero `HEAD` requests to the download proxy
+  while opening the modal.
+- Local screenshots:
+  `output/playwright/watch-download-modal-desktop.png`,
+  `output/playwright/watch-download-modal-terms.png`, and
+  `output/playwright/watch-download-modal-mobile.png`.
+- The full local Watch route could not reach the modal because the available
+  Admin database snapshot returned an existing GraphQL experience error. The
+  component harness was removed after proof; the integration prop boundary and
+  poster selection remain covered by focused tests.

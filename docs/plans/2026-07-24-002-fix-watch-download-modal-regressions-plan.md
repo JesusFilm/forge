@@ -1,7 +1,7 @@
 ---
 title: "fix: restore Watch download modal safeguards"
 type: fix
-status: active
+status: completed
 date: 2026-07-24
 roadmap: docs/roadmap/platform/feat-310-watch-download-modal-safeguards.md
 origin: user report with legacy apps/watch reference and screenshots
