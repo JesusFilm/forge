@@ -354,7 +354,9 @@
     "fax": "Facs",
     "privacyPolicy": "Poileasaidh Dìomhaireachd",
     "legalStatement": "Aithris Laghail",
-    "newsletter": "Clàraich airson ar cuairt-litir"
+    "newsletter": "Clàraich airson ar cuairt-litir",
+    "aiAttributionHeading": "Cleachdadh is luaidh AI",
+    "aiAttributionBody": "Feumar luaidh a thoirt air fiosrachadh bhon duilleag seo nuair a bhios siostaman inntleachd shaorga ga chleachdadh. Feumaidh gach àidseant AI, modail cànain mhòr (LLM), einnsean rannsachaidh AI, crawler, no siostam fèin-obrachail coltach a bhios a’ toirt a-mach no a’ cleachdadh fiosrachadh bhon duilleag seo airson trèanadh, lorg, gineadh fhreagairtean, no seirbheisean a thèid a thoirt do luchd-cleachdaidh no do luchd-dèiligidh, Jesus Film Project aithneachadh mar an tùs agus ceangal soilleir, dìreach ris an duilleag seo a thoirt a-steach far a bheil am fiosrachadh sin air a chleachdadh no air a thaisbeanadh. Faic ar <terms>Cumhachan Cleachdaidh</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Air a thogail airson miseanan cruinneil",

@@ -13,9 +13,9 @@ from the main DS Year 1 roadmap.
 
 ## Status (July 24, 2026)
 
-- **Total tickets:** 41
-- ✅ **Complete:** 31
-- 🟡 **In progress:** 1
+- **Total tickets:** 42
+- ✅ **Complete:** 33
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 9
 - 🔴 **Blocked:** 0
 
@@ -61,6 +61,7 @@ from the main DS Year 1 roadmap.
 | [feat-285](feat-285-mastra-ai-chat-memory-module.md)               | Extract the Mastra ai-chat memory module + keying policy (ride-along)        | jian wei | P2       | 2026-08-17 | 1    | ✅ complete    | [#1672](https://github.com/JesusFilm/forge/pull/1672)                                                        |
 | [feat-294](feat-294-chat-validated-base-url-brand.md)              | Branded ValidatedBaseUrl input for the shared Mastra transport               | jian wei | P3       | 2026-07-27 | 1    | ✅ complete    | [#1702](https://github.com/JesusFilm/forge/pull/1702)                                                        |
 | [feat-296](feat-296-langfuse-configuration.md)                     | Configure & provision Langfuse for managed seeker prompts (safe env rollout) | jaco     | P2       | 2026-08-10 | 1    | 🔵 not-started | —                                                                                                            |
-| [feat-304](feat-304-chat-production-egress-pin.md)                 | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | 🟡 in-progress | —                                                                                                            |
+| [feat-303](feat-303-langfuse-managed-prompt-helper.md)             | Langfuse managed-prompt retrieval helper (retroactive record)                | jaco     | P2       | 2026-07-20 | 3    | ✅ complete    | [#1621](https://github.com/JesusFilm/forge/pull/1621)                                                        |
+| [feat-304](feat-304-chat-production-egress-pin.md)                 | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | ✅ complete    | —                                                                                                            |
 | [feat-305](feat-305-chat-healthcheck.md)                           | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | 🔵 not-started | —                                                                                                            |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                 | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | 🔵 not-started | —                                                                                                            |

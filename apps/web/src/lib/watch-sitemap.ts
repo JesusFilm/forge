@@ -14,6 +14,16 @@ import type {
   WatchSeoManifestAlternate,
 } from "@/lib/watch-seo-manifest"
 
+import {
+  DEFAULT_MAX_SITEMAP_BYTES,
+  DEFAULT_MAX_SITEMAP_URLS,
+} from "./watch-sitemap-limits"
+
+export {
+  DEFAULT_MAX_SITEMAP_BYTES,
+  DEFAULT_MAX_SITEMAP_URLS,
+} from "./watch-sitemap-limits"
+
 const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
 const URLSET_OPEN =
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
@@ -28,8 +38,25 @@ const ENGLISH_BRITISH_HREFLANG = resolveWatchLocaleIdentity(
 
 export const WATCH_SITEMAP_INDEX_PATH = "/sitemap.xml"
 export const WATCH_SITEMAP_CHUNK_PATH_PREFIX = "/sitemap"
-export const DEFAULT_MAX_SITEMAP_URLS = 50_000
-export const DEFAULT_MAX_SITEMAP_BYTES = 45_000_000
+
+export type WatchSitemapGenerationErrorCode =
+  | "chunk_exceeds_max_bytes"
+  | "chunk_exceeds_max_urls"
+  | "duplicate_loc"
+  | "entry_exceeds_max_bytes"
+  | "invalid_max_bytes"
+  | "invalid_max_urls"
+  | "wrapper_exceeds_max_bytes"
+
+export class WatchSitemapGenerationError extends Error {
+  constructor(
+    readonly code: WatchSitemapGenerationErrorCode,
+    readonly details: { actual?: number; limit?: number } = {},
+  ) {
+    super(`Watch sitemap generation failed: ${code}`)
+    this.name = "WatchSitemapGenerationError"
+  }
+}
 
 export type WatchSitemapLimits = {
   maxBytes?: number
@@ -168,10 +195,11 @@ function groupForEntries(
   if (!entries.length) return null
   const alternateLinksXml = entries[0]?.alternates.map(renderAlternate).join("")
   if (!alternateLinksXml) return null
+  const locs = entries.map((entry) => entry.loc)
   return {
     alternateLinksXml,
     alternateLinksBytes: Buffer.byteLength(alternateLinksXml, "utf8"),
-    locs: entries.map((entry) => entry.loc),
+    locs,
   }
 }
 
@@ -230,22 +258,45 @@ export function getWatchSitemapChunks(
   manifest: WatchSeoManifest,
   limits: WatchSitemapLimits = {},
 ): WatchSitemapChunk[] {
-  if (!limits.maxBytes && !limits.maxUrls) {
+  const useDefaultLimits =
+    limits.maxBytes === undefined && limits.maxUrls === undefined
+  if (useDefaultLimits) {
     const cached = chunkCache.get(manifest)
     if (cached) return cached
   }
 
   const maxBytes = limits.maxBytes ?? DEFAULT_MAX_SITEMAP_BYTES
   const maxUrls = limits.maxUrls ?? DEFAULT_MAX_SITEMAP_URLS
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+    throw new WatchSitemapGenerationError("invalid_max_bytes", {
+      actual: maxBytes,
+    })
+  }
+  if (!Number.isSafeInteger(maxUrls) || maxUrls <= 0) {
+    throw new WatchSitemapGenerationError("invalid_max_urls", {
+      actual: maxUrls,
+    })
+  }
   const wrapperBytes = Buffer.byteLength(
     `${XML_HEADER}${URLSET_OPEN}${URLSET_CLOSE}`,
     "utf8",
   )
+  if (wrapperBytes > maxBytes) {
+    throw new WatchSitemapGenerationError("wrapper_exceeds_max_bytes", {
+      actual: wrapperBytes,
+      limit: maxBytes,
+    })
+  }
   const chunks: WatchSitemapChunk[] = []
   let current: WatchSitemapChunk = { entries: [], bytes: wrapperBytes }
+  const seenLocs = new Set<string>()
 
   for (const group of createWatchSitemapGroups(manifest)) {
     for (const loc of group.locs) {
+      if (seenLocs.has(loc)) {
+        throw new WatchSitemapGenerationError("duplicate_loc")
+      }
+      seenLocs.add(loc)
       const entry: WatchSitemapChunkEntry = {
         alternatesXml: group.alternateLinksXml,
         bytes:
@@ -254,9 +305,14 @@ export function getWatchSitemapChunks(
           group.alternateLinksBytes,
         loc,
       }
+      if (wrapperBytes + entry.bytes > maxBytes) {
+        throw new WatchSitemapGenerationError("entry_exceeds_max_bytes", {
+          actual: wrapperBytes + entry.bytes,
+          limit: maxBytes,
+        })
+      }
       const wouldExceedUrlLimit = current.entries.length >= maxUrls
-      const wouldExceedByteLimit =
-        current.entries.length > 0 && current.bytes + entry.bytes > maxBytes
+      const wouldExceedByteLimit = current.bytes + entry.bytes > maxBytes
       if (wouldExceedUrlLimit || wouldExceedByteLimit) {
         chunks.push(current)
         current = { entries: [], bytes: wrapperBytes }
@@ -270,7 +326,22 @@ export function getWatchSitemapChunks(
     chunks.push(current)
   }
 
-  if (!limits.maxBytes && !limits.maxUrls) {
+  for (const chunk of chunks) {
+    if (chunk.bytes > maxBytes) {
+      throw new WatchSitemapGenerationError("chunk_exceeds_max_bytes", {
+        actual: chunk.bytes,
+        limit: maxBytes,
+      })
+    }
+    if (chunk.entries.length > maxUrls) {
+      throw new WatchSitemapGenerationError("chunk_exceeds_max_urls", {
+        actual: chunk.entries.length,
+        limit: maxUrls,
+      })
+    }
+  }
+
+  if (useDefaultLimits) {
     chunkCache.set(manifest, chunks)
   }
   return chunks

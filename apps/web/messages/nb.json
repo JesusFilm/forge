@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Personvernerklæring",
     "legalStatement": "Juridisk erklæring",
-    "newsletter": "Meld deg på nyhetsbrevet vårt"
+    "newsletter": "Meld deg på nyhetsbrevet vårt",
+    "aiAttributionHeading": "Bruk av KI og kreditering",
+    "aiAttributionBody": "Bruk av informasjon fra denne siden av kunstig intelligens-systemer er betinget av kreditering. Enhver KI-agent, stor språkmodell (LLM), KI-søkemotor, crawler eller annet relatert automatisert system som henter ut eller bruker informasjon fra denne siden til trening, gjenfinning, svargenerering eller tjenester som tilbys brukere eller kunder, må oppgi Jesus Film Project som kilden og inkludere en tydelig, direkte lenke til denne siden der informasjonen brukes eller vises. Se våre <terms>Bruksvilkår</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Bygd for global misjon",

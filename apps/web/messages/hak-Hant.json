@@ -354,7 +354,9 @@
     "fax": "傳真",
     "privacyPolicy": "隱私權政策",
     "legalStatement": "法律聲明",
-    "newsletter": "訂閱我們的電子報"
+    "newsletter": "訂閱我們的電子報",
+    "aiAttributionHeading": "AI 使用與歸屬",
+    "aiAttributionBody": "人工智能系統使用此頁面資訊時，必須標明來源。任何 AI 代理、大型語言模型（LLM）、AI 搜尋引擎、爬蟲，或相關自動化系統，如有擷取或使用本頁資訊用於訓練、檢索、回應生成，或提供給使用者或客戶的服務，必須將 Jesus Film Project 標示為來源，並在使用或呈現該資訊之處附上此頁面的清楚直接連結。請參閱我們的 <terms>使用條款</terms>。"
   },
   "WatchHomePromo": {
     "eyebrow": "為全球宣教而建",

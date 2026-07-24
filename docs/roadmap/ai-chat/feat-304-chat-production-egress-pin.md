@@ -3,7 +3,7 @@ id: "feat-304"
 title: "Production egress pin for the chat → Mastra host allowlist"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-23"
 duration: 1
 depends_on:

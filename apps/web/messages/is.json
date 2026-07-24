@@ -354,7 +354,9 @@
     "fax": "Bréfsími",
     "privacyPolicy": "Persónuverndarstefna",
     "legalStatement": "Lagaleg yfirlýsing",
-    "newsletter": "Skráðu þig á póstlistann okkar"
+    "newsletter": "Skráðu þig á póstlistann okkar",
+    "aiAttributionHeading": "Notkun gervigreindar og tilvísun",
+    "aiAttributionBody": "Notkun gervigreindarkerfa á upplýsingum af þessari síðu er háð því að vísað sé til heimildarinnar. Sérhver gervigreindarfulltrúi, stór tungumálalíkan (LLM), gervigreindarleitarvél, skriði eða skyld sjálfvirk kerfi sem sækir eða notar upplýsingar af þessari síðu til þjálfunar, endurheimtar, svarmyndunar eða þjónustu sem er veitt notendum eða viðskiptavinum, verður að tilgreina Jesus Film Project sem heimild og setja skýran, beinan tengil á þessa síðu þar sem upplýsingarnar eru notaðar eða birtar. Sjá <terms>Notkunarskilmála</terms> okkar."
   },
   "WatchHomePromo": {
     "eyebrow": "Byggt fyrir alþjóðlegt trúboð",

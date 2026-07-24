@@ -381,6 +381,10 @@ export function SearchOverlay() {
     resetSearchLanguageToDefault()
   }, [resetSearchLanguageToDefault])
 
+  const closeAfterResultNavigation = useCallback(() => {
+    window.setTimeout(() => setOpen(false), 0)
+  }, [setOpen])
+
   const handleClearInput = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     pendingSearchAfterLanguageLoadRef.current = null
@@ -678,54 +682,52 @@ export function SearchOverlay() {
                 className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
                 {displayResults.map((result, index) => (
-                  <div
+                  <VideoCard
                     key={`${result.id}-${index}`}
-                    onClick={() => setOpen(false)}
-                  >
-                    <VideoCard
-                      result={result}
-                      index={exiting ? 0 : index}
-                      onResultClick={
-                        searchResultAnalytics
-                          ? (clickedResult) => {
-                              const clickKey = [
-                                searchResultAnalytics.searchRequestId,
-                                clickedResult.id,
-                                index + 1,
-                              ].join(":")
-                              if (
-                                recordedResultClickKeysRef.current.has(clickKey)
-                              ) {
-                                return
-                              }
-                              recordedResultClickKeysRef.current.add(clickKey)
-                              reportDatadogRumAction(
-                                WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
-                                buildWatchSearchResultClickRumContext(
-                                  clickedResult,
-                                  {
-                                    ...searchResultAnalytics,
-                                    position: index + 1,
-                                  },
-                                ),
-                              )
-                              void recordWatchSearchResultClick({
-                                requestId:
-                                  searchResultAnalytics.searchRequestId,
-                                resultId: clickedResult.id,
-                                resultType: clickedResult.type,
-                                position: index + 1,
-                                visibleResultIds,
-                                routeLanguageSlug:
-                                  searchResultAnalytics.routeLanguageSlug,
-                                searchLanguageSlug:
-                                  searchResultAnalytics.searchLanguageSlug,
-                              })
+                    result={result}
+                    index={exiting ? 0 : index}
+                    onResultClick={
+                      searchResultAnalytics
+                        ? (clickedResult) => {
+                            closeAfterResultNavigation()
+                            const clickKey = [
+                              searchResultAnalytics.searchRequestId,
+                              clickedResult.id,
+                              index + 1,
+                            ].join(":")
+                            if (
+                              recordedResultClickKeysRef.current.has(clickKey)
+                            ) {
+                              return
                             }
-                          : undefined
-                      }
-                    />
-                  </div>
+                            recordedResultClickKeysRef.current.add(clickKey)
+                            reportDatadogRumAction(
+                              WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+                              buildWatchSearchResultClickRumContext(
+                                clickedResult,
+                                {
+                                  ...searchResultAnalytics,
+                                  position: index + 1,
+                                },
+                              ),
+                            )
+                            void recordWatchSearchResultClick({
+                              requestId: searchResultAnalytics.searchRequestId,
+                              resultId: clickedResult.id,
+                              resultType: clickedResult.type,
+                              position: index + 1,
+                              visibleResultIds,
+                              routeLanguageSlug:
+                                searchResultAnalytics.routeLanguageSlug,
+                              searchLanguageSlug:
+                                searchResultAnalytics.searchLanguageSlug,
+                            })
+                          }
+                        : () => {
+                            closeAfterResultNavigation()
+                          }
+                    }
+                  />
                 ))}
               </div>
 

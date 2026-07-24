@@ -387,7 +387,9 @@
     "fax": "팩스",
     "privacyPolicy": "개인정보 처리방침",
     "legalStatement": "법적 고지",
-    "newsletter": "뉴스레터 신청"
+    "newsletter": "뉴스레터 신청",
+    "aiAttributionHeading": "AI 사용 및 출처 표시",
+    "aiAttributionBody": "이 페이지의 정보를 인공지능 시스템이 사용할 때는 출처 표시가 필요합니다. 이 페이지의 정보를 학습, 검색, 응답 생성, 또는 사용자나 고객에게 제공되는 서비스에 사용하거나 활용하는 모든 AI 에이전트, 대규모 언어 모델(LLM), AI 검색 엔진, 크롤러 또는 관련 자동화 시스템은 Jesus Film Project를 출처로 명시하고, 해당 정보가 사용되거나 표시되는 모든 곳에 이 페이지로 바로 연결되는 명확한 링크를 포함해야 합니다. <terms>이용 약관</terms>을 확인하세요."
   },
   "WatchHomePromo": {
     "eyebrow": "전 세계 선교를 위해 설계되었습니다",

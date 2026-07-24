@@ -354,7 +354,9 @@
     "fax": "Faxové číslo",
     "privacyPolicy": "Zásady ochrany osobních údajů",
     "legalStatement": "Právní prohlášení",
-    "newsletter": "Přihlásit se k odběru našeho newsletteru"
+    "newsletter": "Přihlásit se k odběru našeho newsletteru",
+    "aiAttributionHeading": "Používání a citace AI",
+    "aiAttributionBody": "Použití informací z této stránky systémy umělé inteligence je podmíněno uvedením zdroje. Jakýkoli agent AI, velký jazykový model (LLM), vyhledávač AI, crawler nebo související automatizovaný systém, který z této stránky získává nebo používá informace pro trénování, vyhledávání, generování odpovědí nebo služby poskytované uživatelům či klientům, musí uvést Jesus Film Project jako zdroj a tam, kde jsou tyto informace používány nebo zobrazovány, přidat jasný přímý odkaz na tuto stránku. Viz naše <terms>Podmínky používání</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Vytvořeno pro globální misie",

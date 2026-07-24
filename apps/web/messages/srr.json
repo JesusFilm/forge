@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Politik bu privacy",
     "legalStatement": "Déclaarasyon bu legal",
-    "newsletter": "Mbindal ci sunu newsletter"
+    "newsletter": "Mbindal ci sunu newsletter",
+    "aiAttributionHeading": "AI jëfandikukat ak kaaraange",
+    "aiAttributionBody": "Jëfandikukat bu xibaar yi ci bés bu AI ñu laaj na kaaraange. Njàngat bu AI, large language model (LLM), search engine bu AI, crawler, walla yeneen sistem yu otomatik yu jëfandikukat xibaar yi ci bés bi ngir jàngat, wut, tekk, walla joxe services ñeel jëfandikukat yi walla clients, war naa indaale Jesus Film Project ni xam-xam bi tërëb. Mu war itam mu am benn link bu leer, bu suufe, bu jëm ci bés bi fi xibaar bi jëfandikuwul walla mu dalee. Xool sunu <terms>Conditions d’utilisation</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Jëfandikoo ngir mission yu àddina sépp",

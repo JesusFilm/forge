@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Pravila privatnosti",
     "legalStatement": "Pravna izjava",
-    "newsletter": "Prijavite se za naš bilten"
+    "newsletter": "Prijavite se za naš bilten",
+    "aiAttributionHeading": "Uporaba umjetne inteligencije i navođenje izvora",
+    "aiAttributionBody": "Korištenje informacija s ove stranice od strane sustava umjetne inteligencije uvjetovano je navođenjem izvora. Svaki AI agent, veliki jezični model (LLM), AI tražilica, crawler ili srodni automatizirani sustav koji iz ove stranice izvlači ili koristi informacije za obuku, dohvaćanje, generiranje odgovora ili usluge pružene korisnicima ili klijentima mora navesti Jesus Film Project kao izvor i uključiti jasnu, izravnu poveznicu na ovu stranicu gdje god se te informacije koriste ili prikazuju. Pogledajte naše <terms>Uvjete korištenja</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Izgrađeno za globalno poslanje",

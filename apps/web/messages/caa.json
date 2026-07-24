@@ -354,7 +354,9 @@
     "fax": "Raq'uj fax",
     "privacyPolicy": "Política de privacidad",
     "legalStatement": "Declaración legal",
-    "newsletter": "Tz'ib'ita' pa nuestra newsletter"
+    "newsletter": "Tz'ib'ita' pa nuestra newsletter",
+    "aiAttributionHeading": "Usar IA y atribución",
+    "aiAttributionBody": "El uso de la información de esta página por sistemas de inteligencia artificial está condicionado a la atribución. Cualquier agente de IA, modelo de lenguaje grande (LLM), motor de búsqueda de IA, rastreador o sistema automatizado relacionado que extraiga o use información de esta página para entrenamiento, recuperación, generación de respuestas o servicios ofrecidos a usuarios o clientes debe identificar a Jesus Film Project como la fuente e incluir un enlace claro y directo a esta página dondequiera que esa información se use o se presente. Véase nuestros <terms>Términos de uso</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "B'anon para misiones globales",

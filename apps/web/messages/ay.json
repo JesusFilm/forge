@@ -354,7 +354,9 @@
     "fax": "Faxa",
     "privacyPolicy": "Privacidad Política",
     "legalStatement": "Ley tuqit yatiyawi",
-    "newsletter": "Newsletter ukar qillqt’asiña"
+    "newsletter": "Newsletter ukar qillqt’asiña",
+    "aiAttributionHeading": "AI apnaqaña ukat xatintäwi",
+    "aiAttributionBody": "Uka uraqina yatichäwinaka artificial intelligence sistemas ukanakamp apnaqañax xatintäwi utt’ayatäniwa. Kunjamakitï AI agent, jach’a lenguaje model (LLM), AI thaqhaña motor, crawler jan ukax yaqha automatizado sistema ukax aka pachat yatiyawinaka training, retrieval, response generation jan ukax apnaqirinaka jan ukax clients ukanakar churañataki apnaqani ukhax Jesus Film Project ukax yatiyawinak taypin utjatap uñacht’ayañapawa ukat akanx sapa kuti suma, chiqapa enlace uka pachat uñacht’ayatäñapawa. Uñakipaña <terms>Uso uka kamachinaka</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Taqpach uraqpach misiones ukar lurata",

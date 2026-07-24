@@ -354,7 +354,9 @@
     "fax": "Fax number",
     "privacyPolicy": "Nijta Niti",
     "legalStatement": "Kanooni Bayaan",
-    "newsletter": "Hamare newsletter ke liye sign up kariye"
+    "newsletter": "Hamare newsletter ke liye sign up kariye",
+    "aiAttributionHeading": "AI upyog aur attribution",
+    "aiAttributionBody": "Is paje se mili jaankaari ka artificial intelligence systems ke taraf se upyog attribution ke saath hi kiya jaa sakta hai. Koi bhi AI agent, large language model (LLM), AI search engine, crawler, ya koi aur sambandhit automated system jo is paje se jaankaari training, retrieval, response generation, ya users ya clients ke liye services dene me extract ya use kare, usme Jesus Film Project ko source ke roop me pehchaanna hoga aur jahaan bhi woh jaankaari use ya dikhayi jaaye, uska ek saaf, seedha link is paje par dena hoga. Hamare <terms>Terms of Use</terms> dekhiye."
   },
   "WatchHomePromo": {
     "eyebrow": "Global missions ke liye banaya gaya",

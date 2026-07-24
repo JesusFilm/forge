@@ -354,7 +354,9 @@
     "fax": "Nūmera fax",
     "privacyPolicy": "Politique de confidentialité",
     "legalStatement": "Parau haamaramaramaraa ture",
-    "newsletter": "A tapa'o no ta matou niu parau apî"
+    "newsletter": "A tapa'o no ta matou niu parau apî",
+    "aiAttributionHeading": "Te faaohiparaa o te AI e te faahiti-ra'a",
+    "aiAttributionBody": "E titauhia te faahiti i te tumu no te faaohiparaa i te haamaramaramaraa mai teie api e te mau faanahoraa maramarama faito. Te mau AI agent, te mau language model rahi (LLM), te mau AI search engine, te mau crawler, aore ra te tahi atu faanahoraa matara-maitai tei unu mai aore ra tei faaohipa i te mau haamaramaramaraa no nia i teie api no te haapiiraa, te imiraa, te faatupuraa i te pahonoraa, aore ra te mau taviniraa i horo'ahia i te feia faaohipa aore ra te mau rave ohipa, e tia ia haamaramarama e na Jesus Film Project taua tumu ra, e ia tuu mai i te hoê hono ohie e te papu i teie api i te vahi e faaohipahia ai aore ra e faaitehia ai taua haamaramaramaraa ra. Hi'o i ta matou <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Hanga-hia no te mau misioni o te ao atoa nei",

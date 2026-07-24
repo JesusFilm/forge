@@ -354,7 +354,9 @@
     "fax": "Faxnummer",
     "privacyPolicy": "Datenschutzerklärung",
     "legalStatement": "Rechtlicher Hinwiis",
-    "newsletter": "Für üses Newsletter aamelde"
+    "newsletter": "Für üses Newsletter aamelde",
+    "aiAttributionHeading": "KI-Nutzig und Quelleangab",
+    "aiAttributionBody": "D Nutzig vo Informazione us däre Syte dur künstlichi Intelligenz-System isch a d'Quälleangab bunde. Jedes KI-Agent, grossi Sprachmodell (LLM), KI-Suechmaschine, Crawler oder verchandleti automatisierts System, wo Informazione vo däre Syte für Trainig, Abruef, Antwort-Erstellig oder Dienstleistige für User oder Kundschaft abruft oder brucht, muess Jesus Film Project als Quälle nänne und über allälli Orte, wo die Information brucht oder aazeigt wird, e klare, direkte Link uf die Syte aagee. Sieh üsi <terms>Nutzigsbedingige</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Gebaut für weltwiiti Mission",

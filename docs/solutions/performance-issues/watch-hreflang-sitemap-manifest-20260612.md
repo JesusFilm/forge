@@ -75,6 +75,9 @@ short process-local cache, and renders:
 Each child sitemap entry uses an absolute canonical `www.jesusfilm.org/watch`
 URL and self-inclusive `xhtml:link` alternates for the route group. Chunking is
 bounded by both URL count and uncompressed byte size, not URL count alone.
+The production limits are 35,000,000 uncompressed UTF-8 bytes and 49,999
+canonical entries per child, preserving headroom below search-engine limits as
+the reciprocal alternate graph grows.
 
 ## Revalidation
 
@@ -96,6 +99,7 @@ Minimum verification for future changes in this area:
 ```bash
 pnpm --filter @forge/admin test -- src/services/watch-seo-manifest.service.test.ts src/services/watch-seo-manifest-store.test.ts src/app/api/watch-seo-manifest/route.test.ts src/services/watch-seo-manifest-refresh.service.test.ts src/scripts/generate-watch-seo-manifest.test.ts
 pnpm --filter @forge/web test -- src/lib/experience-metadata.test.ts src/lib/watch-seo-manifest.test.ts src/lib/watch-sitemap.test.ts src/app/sitemap.test.ts src/app/robots.test.ts src/app/api/revalidate/route.test.ts src/lib/watch-cache-tags.test.ts src/proxy.test.ts
+pnpm --filter @forge/web audit:watch-sitemap -- --origin https://www.jesusfilm.org/watch
 ```
 
 Release proof should include one rendered video URL and one episode URL:
@@ -105,6 +109,11 @@ Release proof should include one rendered video URL and one episode URL:
 - `/watch/sitemap.xml` returns a valid sitemap index.
 - At least one child sitemap returns valid XML with the audited route's
   alternate graph.
+- Every referenced child returns a direct HTTP 200 XML response, stays within
+  both shard limits, and is referenced exactly once by a contiguous index.
+- Canonical locations are unique across children, include themselves in their
+  alternate set, and publish the same reciprocal set as every alternate
+  target.
 - Unsupported and duplicate hreflang values are absent from XML and visible in
   skipped summary counts.
 
@@ -115,3 +124,8 @@ subset. That creates mixed ownership and can drift from sitemap XML. If a route
 needs localized metadata beyond canonical/social fields, add it to the sitemap
 manifest or a purpose-built manifest rather than rebuilding the alternate graph
 inside page metadata.
+
+Keep the offline sitemap auditor independent from Web runtime environment
+validation. It must be runnable against production or a preview with only an
+origin argument, and it must measure the decompressed response body rather than
+compressed transfer size.

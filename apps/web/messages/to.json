@@ -354,7 +354,9 @@
     "fax": "Fakisi",
     "privacyPolicy": "Tuʻutuʻuni Tauhi Fakapulipuli",
     "legalStatement": "Fakamatala Fakalao",
-    "newsletter": "Tohi Ki Heʻemau Newsletter"
+    "newsletter": "Tohi Ki Heʻemau Newsletter",
+    "aiAttributionHeading": "Fakaʻaongaʻi ʻo e AI mo e fakahingoa",
+    "aiAttributionBody": "Ko e fakaʻaongaʻi ʻo e fakamatala mei he peesi ni ʻe he ngaahi sisitemi ʻilo fakamisini (artificial intelligence) ʻoku fakangatangata ki he fakahingoa. Ko ha AI agent, large language model (LLM), AI search engine, crawler, pe ko ha sisitemi fakamisini fekauʻaki ʻoku ne toʻo pe fakaʻaongaʻi ʻa e fakamatala mei he peesi ni ki he ako, toʻo fakamatala, faʻu tali, pe ngaahi ngāue ʻoku tuku atu ki he kau ngaueʻaki pe kasitoma, kuo pau ke ne fakahaaʻi ʻa e Jesus Film Project ko e tupuʻanga pea mo ha fehokotaki māmā ʻo fakahangatonu ki he peesi ni ʻi he taimi kotoa pē ʻoku fakaʻaongaʻi pe fakahaaʻi ai ʻa e fakamatala ko ia. Vakai ki heʻemau <terms>Tohi Tuʻutuʻuni ʻo e Fakaʻaongaʻi</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Fokotuʻu ke ngāue fakaemāmani lahi",
