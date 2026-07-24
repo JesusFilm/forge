@@ -1,7 +1,7 @@
 ---
 title: "fix: Harden RTL support across core Watch journeys"
 type: "fix"
-status: "active"
+status: "completed"
 date: "2026-07-23"
 ---
 
