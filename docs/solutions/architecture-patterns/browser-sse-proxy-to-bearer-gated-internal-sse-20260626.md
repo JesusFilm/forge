@@ -164,7 +164,7 @@ project+environment, so an unset allowlist's worst-case http misconfig reaches
 only a sibling service in the same environment; treat the allowlist as
 REQUIRED if the environment ever hosts services outside this trust boundary.
 
-> **"Should" became "must" in production (2026-07-23):** the paragraph above is
+> **"Should" became "must" in production (2026-07-24, feat-304 — #1731):** the paragraph above is
 > retained as the original reasoning, but its blanket "an unset allowlist trusts
 > the operator-set host" is no longer true for `apps/chat`. `hostAllowed` /
 > `validateBaseUrl` now take a third required `requireAllowlist` argument, and

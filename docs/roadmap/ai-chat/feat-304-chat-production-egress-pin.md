@@ -16,6 +16,18 @@ tags:
   - "infrastructure"
 ---
 
+## Resolution
+
+**Shipped:** 2026-07-24 via [PR #1731](https://github.com/JesusFilm/forge/pull/1731) (`feat(chat): make the Mastra host allowlist a production egress pin (feat-304)`).
+
+**What landed.** `hostAllowed` / `validateBaseUrl` gained a **required** third `requireAllowlist` argument with no default, so an unset allowlist denies rather than trusts and no call site can silently inherit fail-open — omitting it is a compile error. The policy is `requireSeekerEgressAllowlist()` in `config/env.ts`, keyed on `NODE_ENV === "production"`, carried on both `SeekerProxyConfig` and `HistoryProxyConfig` as `requireAllowlist`; `buildSeekerProxyConfig()` was extracted so the seeker route has a testable env-reading builder mirroring history's. A new report-only `instrumentation.ts` hook logs `[seeker-egress] event=misconfigured reason=allowlist_unset|host_not_allowed` at server start. The var stayed `.optional()` throughout — the schema never became the enforcement point. Note the trigger is any production **build**, not the environment an operator calls "production": `next build && next start` locally arms the pin too; only `next dev` and the test runner stay fail-open.
+
+**Compound docs.** No new solutions doc — deliberately deferred to the end of the feat-305/feat-306 arc, since the durable learning ("your fail-closed enforcement point is a function of your rollback capability") is only writable once the healthcheck exists. Two existing docs were amended: a 20th worked instance in [mocked-shape-vs-real-contract-discipline](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) (four reviewers converged on both config builders being unpinned — a one-line revert compiled, typechecked, and left all 622 tests green), and a dated supersession note on [browser-sse-proxy-to-bearer-gated-internal-sse](../../solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md), whose guidance #5 still asserted an unset allowlist trusts the operator-set host.
+
+**Residual risk / follow-ups.** Enforcement is at the two proxies, not a boot throw: Next rethrows from `register()` into a cached `prepare()` rejection, and chat's `railway.toml` has no healthcheck to roll that back, so a throw would take down the stub path, the page, and auth over a Seeker-only misconfiguration. The consequence is that a deploy landing ahead of the env var succeeds while Seeker sends return `ssrf_blocked` and the history sidebar 502s. The upgrade path is [feat-305](feat-305-chat-healthcheck.md) (add the healthcheck) then [feat-306](feat-306-chat-egress-pin-boot-throw.md) (fail the deploy) — in that order, and only once the healthcheck is observed gating a real deploy. Separately, `apps/admin` still carries the identical inert fail-open shape (`MASTRA_CHAT_ALLOWED_HOSTS`, `.optional()`, no default, two-arg `hostAllowed`) guarding egress of `MASTRA_CHAT_API_KEY`; it has no ticket yet.
+
+**Unblocked.** [feat-305](feat-305-chat-healthcheck.md).
+
 ## Problem
 
 `SEEKER_MASTRA_ALLOWED_HOSTS` has existed since feat-205 as an optional CSV SSRF
