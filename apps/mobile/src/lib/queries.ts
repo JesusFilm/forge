@@ -128,6 +128,7 @@ export const watchVideoFragment = adminGraphql(`
       thumbnail
       mobileCinematicHigh
       mobileCinematicLow
+      videoStill
     }
     primaryLanguage {
       coreId
@@ -157,6 +158,7 @@ export const watchVideoFragment = adminGraphql(`
           thumbnail
           mobileCinematicHigh
           mobileCinematicLow
+          videoStill
         }
         children {
           child {
@@ -174,6 +176,7 @@ export const watchVideoFragment = adminGraphql(`
               thumbnail
               mobileCinematicHigh
               mobileCinematicLow
+              videoStill
             }
           }
         }
@@ -245,6 +248,7 @@ export const seriesWatchVideoFragment = adminGraphql(`
       thumbnail
       mobileCinematicHigh
       mobileCinematicLow
+      videoStill
     }
     primaryLanguage {
       coreId
@@ -318,6 +322,7 @@ export const GET_SERIES_BY_SLUG = adminGraphql(
               thumbnail
               mobileCinematicHigh
               mobileCinematicLow
+              videoStill
             }
           }
         }

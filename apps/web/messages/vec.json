@@ -354,7 +354,9 @@
     "fax": "Telefax",
     "privacyPolicy": "Politica de privacy",
     "legalStatement": "Dichiarazion legale",
-    "newsletter": "Iscrivite a la nostra newsletter"
+    "newsletter": "Iscrivite a la nostra newsletter",
+    "aiAttributionHeading": "Uso de l’IA e atribusion",
+    "aiAttributionBody": "L’uso de le informassion da sta pagina da parte de sistemi de intelisensa artificial xe condissionà da l’atribusion. Qualsiasi agente IA, modello de linguagio grande (LLM), motore de ricerca IA, crawler o sistema automatizà elàter che estrae o usa informassion da sta pagina par addestramento, recupero, generassion de risposte o servisì forneì ai utenti o clienti, el ga da identifegàr Jesus Film Project come fonte e incluir un colegamento direto e ben visibile a sta pagina dove che ste informassion vien usade o presentade. Varda i nostri <terms>Termini de uso</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Fato par le missioni globali",

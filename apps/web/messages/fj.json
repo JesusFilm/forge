@@ -354,7 +354,9 @@
     "fax": "Fakisi",
     "privacyPolicy": "iVakarau ni veitaqomaki ni itukutuku bibi",
     "legalStatement": "iTukutuku vakalawa",
-    "newsletter": "Tucake me baleta na noda newsletter"
+    "newsletter": "Tucake me baleta na noda newsletter",
+    "aiAttributionHeading": "Vakayagataki ni AI kei na vakamuri ni ivurevure",
+    "aiAttributionBody": "Na vakayagataki ni itukutuku mai na tabana oqo ena ivakarau vakatamata-koro ni vuku e vakatau ena vakamuri ni ivurevure. E dua ga na AI agent, large language model (LLM), AI search engine, crawler, se so tale na ivakarau vakadigitaki me vaka e kauta mai se vakayagataka na itukutuku mai na tabana oqo me baleta na cakacaka ni vakatovolei, vakasaqaqara, kena tawasei mai, saumi/tuvai ni isau, se veiqaravi e soli vua na vakayagataka se kasitama, e dodonu me vakatakilai Jesus Film Project me ivurevure ka vakuri e dua na veisemati matata, totoka kina na tabana oqo ena vanua kece e vakayagataki se vakaraitaki kina na itukutuku oqori. Raica na noda <terms>iVakarau ni Vakayagataki</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Vakadeitaki me baleta na veiliutaki ni vuravura",

@@ -32,7 +32,14 @@ const portugueseBrazil = asLocaleSlug("portuguese-brazil")
 describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
   it("returns branded slug on valid input", () => {
     expect(tryAsContentSlug("jesus")).toBe("jesus")
+    expect(tryAsContentSlug("soccer_event_collection")).toBe(
+      "soccer_event_collection",
+    )
     expect(tryAsLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("keeps public language slugs kebab-case", () => {
+    expect(tryAsLocaleSlug("soccer_event_collection")).toBeNull()
   })
 
   it("returns null on uppercase", () => {
@@ -60,7 +67,14 @@ describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
 describe("asContentSlug / asLocaleSlug guards", () => {
   it("accepts safe slug shape", () => {
     expect(asContentSlug("jesus")).toBe("jesus")
+    expect(asContentSlug("soccer_event_collection")).toBe(
+      "soccer_event_collection",
+    )
     expect(asLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("rejects underscores in locale slugs", () => {
+    expect(() => asLocaleSlug("soccer_event_collection")).toThrow()
   })
 
   it("rejects uppercase", () => {

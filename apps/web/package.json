@@ -18,6 +18,7 @@
     "translate:ui-catalogs": "node scripts/translate-ui-catalogs.mjs",
     "generate:ui-locales": "node scripts/generate-ui-locales.mjs",
     "check:ui-locales": "node scripts/generate-ui-locales.mjs --check",
+    "audit:watch-sitemap": "tsx scripts/audit-watch-sitemap.ts",
     "verify:categories": "tsx scripts/verify-categories.ts",
     "probe:watch-urls": "tsx scripts/probe-watch-urls.ts",
     "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts"
@@ -60,6 +61,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
+    "fast-xml-parser": "5.5.7",
     "jsdom": "^26.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",

@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Ame ƒe nya me ɣaɣla ƒe se",
     "legalStatement": "Se me nyagblɔɖi",
-    "newsletter": "De asi ɖe míaƒe newsletter me"
+    "newsletter": "De asi ɖe míaƒe newsletter me",
+    "aiAttributionHeading": "AI dɔwɔ na kple ƒe gomeɖoɖo",
+    "aiAttributionBody": "Atsɔ nya si le axa sia dzi me na artificial intelligence systemwo la le gomeɖoɖo te. AI agent, large language model (LLM), AI search engine, crawler alo automated system aɖe si le nya siwo le axa sia dzi me kple aɖe dɔwɔ na training, retrieval, response generation alo services siwo wɔna userwo alo clientwo la, ɖe fia Jesus Film Project abe source ene eye woatsɔ link si kɔŋi, si gblɔ be eɖo axa sia dzi, ɖe afi siaa si woaɖe nyawoawo lae ɖe eme. Kpɔ míaƒe <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Wɔe na global missions",

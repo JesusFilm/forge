@@ -354,7 +354,9 @@
     "fax": "Fakisi",
     "privacyPolicy": "Mikanda ya bupandilu bwa munda",
     "legalStatement": "Munsalu wa mulawu",
-    "newsletter": "Ijina ku newsletter yetu"
+    "newsletter": "Ijina ku newsletter yetu",
+    "aiAttributionHeading": "Bukwatakanyi bwa AI ne lusango lwabyo",
+    "aiAttributionBody": "Kukolesha makanda a ku kisamba iki na masitemu a mano ya bukwamfya kikosela ku lusango lwabyo. Mulengi wa AI udi wanshingwa, LLM, injini ya luno lwa AI, crawler, toshi systemi ya bupanga bwikolela yense udi ufulumuna to kukolesha makanda aa ku kisamba iki ku dyondwa, kulonda, kupanga mvumbulwishi, to misalu ya kupesha bantu to bakese ba bakundi, asungulwe Jesus Film Project nge mutudi wa makanda, kabidi afikishe tshilumbululu tsha pashala, tshilelwa, tshiya pamo ku kisamba iki konse makanda aa koleshwe to ashindwe. Talala <terms>Mikanda ya Kukolesha</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Yakatelwa ku misio ya pa buloba",

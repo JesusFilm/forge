@@ -354,7 +354,9 @@
     "fax": "Facsímil",
     "privacyPolicy": "Política de privacidad",
     "legalStatement": "Mombe'uha legal",
-    "newsletter": "Eñemoherakuã ore boletín-pe"
+    "newsletter": "Eñemoherakuã ore boletín-pe",
+    "aiAttributionHeading": "AI jeporu ha jehechauka",
+    "aiAttributionBody": "Ko página mbaʼekuaarã jeporu AI apopyrépe odepende jehechaukarãre. Oimeraẽ AI agente, modelo ñeʼẽ tuicháva (LLM), AI jeheka motor, crawler térã ambue sistema automático ojapóva hag̃ua ko página mbaʼekuaarã jehecha, jeporu, entrenamiento, jeheka jey, mbohovái jejapo térã umi servicio oñemeʼẽva poruhárape térã cliente-kuérape, omombeʼu hag̃ua Jesus Film Project ypykue hag̃ua ha omoĩ hag̃ua peteĩ enlace porã, hekopete ko páginape, ojehechaukáva térã ojeporúva hag̃ua upe mbaʼekuaarã. Ehecha ore <terms>Términos de uso</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Ojejapo hag̃ua misión mundial",

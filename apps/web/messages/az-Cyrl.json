@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Məxfilik Siyasəti",
     "legalStatement": "Hüquqi bildiriş",
-    "newsletter": "Bülletenimizə yazılın"
+    "newsletter": "Bülletenimizə yazılın",
+    "aiAttributionHeading": "Süni intellektdən istifadə və istinad",
+    "aiAttributionBody": "Bu səhifədəki məlumatların süni intellekt sistemləri tərəfindən istifadəsi istinad tələbinə bağlıdır. Bu səhifədən məlumat çıxaran və ya ondan təlim, axtarış, cavab yaratma və ya istifadəçilərə və müştərilərə göstərilən xidmətlər üçün istifadə edən istənilən AI agenti, böyük dil modeli (LLM), AI axtarış sistemi, skreper və ya əlaqəli avtomatlaşdırılmış sistem Jesus Film Project-i mənbə kimi göstərməli və həmin məlumatın istifadə olunduğu və ya təqdim edildiyi hər yerdə bu səhifəyə açıq, birbaşa keçid verməlidir. <terms>İstifadə şərtləri</terms> bölməsinə baxın."
   },
   "WatchHomePromo": {
     "eyebrow": "Qlobal missiya üçün hazırlanıb",

@@ -354,7 +354,9 @@
     "fax": "Faxa",
     "privacyPolicy": "Pribatutasun-politika",
     "legalStatement": "Legezko oharra",
-    "newsletter": "Harpidetu gure buletinera"
+    "newsletter": "Harpidetu gure buletinera",
+    "aiAttributionHeading": "AIaren erabilera eta atribuzioa",
+    "aiAttributionBody": "Orri honetako informazioa adimen artifizialeko sistemek erabiltzea atribuzioaren baldintzapean dago. Orri honetako informazioa entrenamendurako, berreskurapenerako, erantzunak sortzeko edo erabiltzaileei nahiz bezeroei emandako zerbitzuetarako ateratzen edo erabiltzen duen edozein AI agente, hizkuntza eredu handi (LLM), AI bilaketa-motor, arakatzaile edo lotutako sistema automatizatuk Jesus Film Project iturri gisa identifikatu eta orri honetarako esteka zuzen eta argia sartu behar du informazio hori erabiltzen edo erakusten den guztietan. Ikusi gure <terms>Erabilera-baldintzak</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Munduko misioetarako egina",

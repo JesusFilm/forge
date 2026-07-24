@@ -354,7 +354,9 @@
     "fax": "Fakisi",
     "privacyPolicy": "Mutemo wekuvanzika",
     "legalStatement": "Chirevo chepamutemo",
-    "newsletter": "Nyoresai kutsamba yedu yenhau"
+    "newsletter": "Nyoresai kutsamba yedu yenhau",
+    "aiAttributionHeading": "Kushandiswa kweAI nekutaurwa kwayakabva",
+    "aiAttributionBody": "Kushandiswa kweruzivo rwuri papeji rino nemasisitimu ehungwaru hwekugadzira kunoenderana nekutaurwa kwayakabva. Chero AI agent, large language model (LLM), AI search engine, crawler, kana imwe sisitimu yakazvishandira inobvisa kana kushandisa ruzivo rwepeji rino pakudzidzisa, kutsvaga, kugadzira mhinduro, kana masevhisi anopiwa kuvashandisi kana vatengi, inofanira kuratidza Jesus Film Project sechinobva ruzivo uye kuisa chinongedzo chakajeka, chakananga pepeji rino pese panozoshandiswa kana kuratidzwa ruzivo irworwo. Ona <terms>Terms of Use</terms> yedu."
   },
   "WatchHomePromo": {
     "eyebrow": "Yakagadzirirwa basa guru repasi rose",

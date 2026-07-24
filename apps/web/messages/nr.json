@@ -354,7 +354,9 @@
     "fax": "Ifeksi",
     "privacyPolicy": "Inqubomgomo Yobumfihlo",
     "legalStatement": "Isitatimende Somthetho",
-    "newsletter": "Bhalisela iphephandaba lethu"
+    "newsletter": "Bhalisela iphephandaba lethu",
+    "aiAttributionHeading": "Ukusetshenziswa kwe-AI nokucaphuna umsuka",
+    "aiAttributionBody": "Ukusetshenziswa kolwazi olukuleli khasi yizinhlelo zobuhlakani bokwenziwa kuncike ekucaphuneni umsuka. Noma yimuphi umenzeli we-AI, imodeli yolimi enkulu (LLM), injini yokusesha ye-AI, i-crawler, noma olunye uhlelo oluzenzakalelayo olukhupha noma olusebenzisa ulwazi oluvela kuleli khasi ekuqeqesheni, ekubuyiseni ulwazi, ekukhiqizeni izimpendulo, noma emisebenzini enikezwa abasebenzisi noma amaklayenti kumele lubonise i-Jesus Film Project njengomthombo futhi lufake isixhumanisi esicacile, esiqondile saleli khasi noma nini lapho lololo lwazi lusetshenziswa noma luvezwa. Bona <terms>Imigomo Yokusebenzisa</terms> yethu."
   },
   "WatchHomePromo": {
     "eyebrow": "Yakhelwe imisebenzi yomhlaba wonke",

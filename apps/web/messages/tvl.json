@@ -354,7 +354,9 @@
     "fax": "Napa o te fax",
     "privacyPolicy": "Tulafono mō te fakalilolilo",
     "legalStatement": "Fakamatalaga fakatulafono",
-    "newsletter": "Saini mō te matou newsletter"
+    "newsletter": "Saini mō te matou newsletter",
+    "aiAttributionHeading": "Fakaaogāga o AI mo te fakaasino atu",
+    "aiAttributionBody": "Te fakaoga o fakamatalaga mai te itulau tenei e tino fakalagolago ki te fakaasino atu ke fai. So se AI agent, large language model (LLM), AI search engine, crawler, io me se isi system aunoa e kalai e toso mai io me fakaoga fakamatalaga mai te itulau tenei mō te akoako, sukesuke, tali fakamatalaga, io me mo fakamatalaga e tuku ki tino fakaoga io me tino fakatau, e tau o fakaigoa atu Jesus Film Project me ko te punavai, kae aofia se sootaga māmā, tonu ki te itulau tenei i so se koga e fakaoga io me fakaali atu ei tena fakamatalaga. Sio ki a matou <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Fausia mō misiona i te lalolagi katoa",

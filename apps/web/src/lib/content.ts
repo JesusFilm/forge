@@ -330,6 +330,13 @@ export type WatchPageResult =
 
 const NO_EXPERIENCE_FOUND_MESSAGE = "No experience found"
 
+function missingExperienceError(): ErrorLike {
+  return {
+    name: "Error",
+    message: NO_EXPERIENCE_FOUND_MESSAGE,
+  }
+}
+
 /** Maps a WatchExperience to metadata shape. Returns null if no usable title/description. */
 export function experienceToMetadata(
   exp: WatchExperience | null,
@@ -1143,7 +1150,7 @@ const fetchResolvedWatchPage = unstable_cache(
           : await resolveSlugPage(locale, slugOrNull)
 
       if (!resolved) {
-        return { data: null, error: new Error(NO_EXPERIENCE_FOUND_MESSAGE) }
+        return { data: null, error: missingExperienceError() }
       }
 
       return {
@@ -1157,7 +1164,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page", "v3-media-dominant-colors"],
+  ["watch-page", "v4-serializable-errors"],
   {
     revalidate: 60,
     tags: [
@@ -1181,7 +1188,7 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
     try {
       const experience = await getExperienceBySlug(locale, slug)
       if (!experience) {
-        return { data: null, error: new Error(NO_EXPERIENCE_FOUND_MESSAGE) }
+        return { data: null, error: missingExperienceError() }
       }
 
       return {

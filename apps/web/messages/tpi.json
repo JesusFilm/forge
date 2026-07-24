@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Lo bilong haitim infomesen",
     "legalStatement": "Toksave bilong lo",
-    "newsletter": "Raitap long newsletter bilong mipela"
+    "newsletter": "Raitap long newsletter bilong mipela",
+    "aiAttributionHeading": "Yus bilong AI na attribution",
+    "aiAttributionBody": "Yus bilong ol information long dispela pes long ol artificial intelligence system i stap long pas wantaim attribution. Wanem AI agent, large language model (LLM), AI search engine, crawler, o narapela automat sistem i rausim o yusim information long dispela pes bilong trainim, retrieval, wokim bek tok, o givim service long ol user o client, mas makim Jesus Film Project olsem source na putim klia wanpela stret link long dispela pes taim ol yusim o soim dispela information. Lukim <terms>Terms of Use</terms> bilong mipela."
   },
   "WatchHomePromo": {
     "eyebrow": "Mekim wok bilong mission long olgeta hap bilong wol",

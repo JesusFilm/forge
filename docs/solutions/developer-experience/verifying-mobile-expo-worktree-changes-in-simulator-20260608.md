@@ -1,7 +1,7 @@
 ---
 title: Verifying mobile (Expo) worktree changes in the iOS simulator
 date: 2026-06-08
-last_updated: 2026-07-08
+last_updated: 2026-07-24
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -147,6 +147,13 @@ Applies to the TV dev-client (`org.jesusfilm.forgetv`, route deep-links like
 _(2026-07-17: TV dev-clients built after PR #1590 carry bundle id
 `org.jesusfilm.forgewatch`; the deep-link scheme is unchanged.)_
 
+**Lifecycle-end gotcha for option 1 (own Metro):** if the worktree is later pruned
+(e.g. right after its PR merges) while a dev client is still pointed at that Metro,
+the next lazily-required module throws a misleading `UnableToResolveError` naming an
+arbitrary transitive dep — the whole `node_modules` tree under the deleted worktree
+is gone, not that package. See
+`docs/solutions/developer-experience/deleted-worktree-under-live-metro-unresolve-error.md`.
+
 ### 3. Force a full reload — fast-refresh lies
 
 A style/JS edit often does **not** apply to an already-loaded Expo Go bundle
@@ -263,6 +270,9 @@ invisible without the running backend.
   — the diagnosis-side companion: this doc reads the live a11y tree to _verify_
   UI; that one reads the on-disk app container (AsyncStorage / `documentDirectory`)
   to _diagnose_ persisted state and native events when `console.log` is dead.
+- `docs/solutions/developer-experience/deleted-worktree-under-live-metro-unresolve-error.md`
+  — the lifecycle-end failure of §2b's "own Metro" choice: a dev client left pointed
+  at a pruned worktree's Metro throws a misleading `UnableToResolveError`.
 - `docs/solutions/design-patterns/mirror-ui-derive-geometry-from-shared-constants.md`
   — the structural fix for §5's platform-branch trap: a mirror/placeholder derives
   geometry from the real component's shared constant so it can't diverge on Android TV.

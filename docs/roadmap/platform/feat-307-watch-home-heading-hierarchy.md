@@ -1,5 +1,5 @@
 ---
-id: "feat-302"
+id: "feat-307"
 title: "Simplify Watch home heading hierarchy"
 owner: "unassigned"
 priority: "P2"

@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Maxfiylik siyosati",
     "legalStatement": "Huquqiy bayonot",
-    "newsletter": "Bizning axborot byulletenimizga yoziling"
+    "newsletter": "Bizning axborot byulletenimizga yoziling",
+    "aiAttributionHeading": "Sun’iy intellektdan foydalanish va manbani ko‘rsatish",
+    "aiAttributionBody": "Ushbu sahifadagi ma’lumotlardan sun’iy intellekt tizimlari foydalanishi manbani ko‘rsatish sharti bilan ruxsat etiladi. Ushbu sahifadagi ma’lumotlarni trening, qidirib topish, javob yaratish yoki foydalanuvchi va mijozlarga taqdim etiladigan xizmatlar uchun oladigan yoki ishlatadigan har qanday AI agent, katta til modeli (LLM), AI qidiruv tizimi, crawler yoki unga aloqador avtomatlashtirilgan tizim Jesus Film Projectni manba sifatida ko‘rsatishi hamda bu ma’lumot ishlatilgan yoki taqdim etilgan har bir joyda ushbu sahifaga aniq va bevosita havola berishi kerak. <terms>Foydalanish shartlari</terms> bilan tanishing."
   },
   "WatchHomePromo": {
     "eyebrow": "Global missiya uchun yaratilgan",

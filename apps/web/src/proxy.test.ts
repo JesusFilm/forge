@@ -397,6 +397,11 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/es/es-ES/spanish-castilian.html")
   })
 
+  it("rewrites the English-British homepage with a regional htmlLang", async () => {
+    const response = await proxy(makeRequest("/english-british.html"))
+    expect(rewritePath(response)).toBe("/en/en-GB/english-british.html")
+  })
+
   it("rewrites localized videos indexes while preserving the raw language slug", async () => {
     const response = await proxy(
       makeRequest("/spanish-latin-american.html/videos"),

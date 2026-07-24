@@ -1206,7 +1206,9 @@ export function HeroPlayer({
 
       const savedProgress =
         tParam == null ? getWatchProgress(video.documentId) : null
-      player.currentTime = savedProgress?.positionSeconds ?? 0
+      if (tParam == null) {
+        player.currentTime = savedProgress?.positionSeconds ?? 0
+      }
       player.muted = false
       const result = player.play()
       setChromeRevealed(true)

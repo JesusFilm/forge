@@ -354,7 +354,9 @@
     "fax": "Fekisi",
     "privacyPolicy": "Nongonoko wa Xihundla",
     "legalStatement": "Xitatimende xa Nawu",
-    "newsletter": "Tirhisana leswaku u kuma Newsletter ya hina"
+    "newsletter": "Tirhisana leswaku u kuma Newsletter ya hina",
+    "aiAttributionHeading": "Ku tirhisa AI na nkhombo",
+    "aiAttributionBody": "Ku tirhisiwa ka vuxokoxoko lebyi bva eka tluka leri hi tisisitimi ta vutlharhi byo endliwa swi titshegeke hi ku komba xihlovo. AI agent yin’wana ni yin’wana, large language model (LLM), AI search engine, crawler kumbe tisisitimi tin’wana to fana leti tirhisaka kumbe ku humesa vuxokoxoko lebyi bva eka tluka leri eka ku dyondzisa, ku lavisisa, ku veka nhlamulo kumbe vukorhokeri lebyi nyikeriwaka vatirhisi kumbe vaxavi, swi fanele ku kombisa leswaku Jesus Film Project hi yona xihlovo naswona swi nghenisa link yo tshembeka, yo kongoma leyi yisaka eka tluka leri nkarhi wun’wana ni wun’wana loko vuxokoxoko byebyo byi tirhisiwa kumbe byi kombisiwa. Vona <terms>Mitirho ya Ku Tirhisa</terms> ya hina."
   },
   "WatchHomePromo": {
     "eyebrow": "Yakhiwe hikwalaho ka ntirho wa misava hinkwayo",

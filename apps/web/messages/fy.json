@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Privacybelied",
     "legalStatement": "Juridyske ferklearring",
-    "newsletter": "Meld jo oan foar ús nijsbrief"
+    "newsletter": "Meld jo oan foar ús nijsbrief",
+    "aiAttributionHeading": "AI-gebrûk en attribúsje",
+    "aiAttributionBody": "It brûken fan ynformaasje fan dizze side troch keunstmjittige-yntelliginsjesystemen is keppele oan attribúsje. Elke AI-agint, grut taalmodel (LLM), AI-sykmasine, crawler, of besibbe automatisearre systeem dat ynformaasje fan dizze side ekstraheart of brûkt foar training, opheljen, antwurdgenerearring, of tsjinsten oan brûkers of kliïnten, moat Jesus Film Project oanjaan as boarne en in dúdlike, direkte keppeling nei dizze side opnimme wêr’t dy ynformaasje brûkt of toand wurdt. Sjoch ús <terms>Gebrûksbetingsten</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Boud foar wrâldwide missy",

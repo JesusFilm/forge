@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Privaatsuspoliitika",
     "legalStatement": "Õiguslik teave",
-    "newsletter": "Liitu meie uudiskirjaga"
+    "newsletter": "Liitu meie uudiskirjaga",
+    "aiAttributionHeading": "Tehisintellekti kasutamine ja allikaviide",
+    "aiAttributionBody": "Teabe kasutamine sellelt lehelt tehisintellekti süsteemide poolt on lubatud ainult allikaviitega. Kõik AI agendid, suured keelemudelid (LLM-id), tehisintellektil põhinevad otsingumootorid, veebirobotid või seotud automatiseeritud süsteemid, mis ammutavad teavet sellelt lehelt või kasutavad seda treenimiseks, otsinguks, vastuste genereerimiseks või kasutajatele või klientidele pakutavate teenuste jaoks, peavad märkima Jesus Film Projecti allikana ja lisama selge otsese lingi sellele lehele kõikjal, kus seda teavet kasutatakse või esitatakse. Vaata meie <terms>Kasutustingimusi</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Loodud üleilmse misjoni jaoks",

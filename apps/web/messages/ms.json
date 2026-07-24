@@ -387,7 +387,9 @@
     "fax": "Faks",
     "privacyPolicy": "Dasar Privasi",
     "legalStatement": "Pernyataan Undang-undang",
-    "newsletter": "Daftar untuk surat berita kami"
+    "newsletter": "Daftar untuk surat berita kami",
+    "aiAttributionHeading": "Penggunaan AI dan atribusi",
+    "aiAttributionBody": "Penggunaan maklumat daripada halaman ini oleh sistem kecerdasan buatan adalah tertakluk pada atribusi. Mana-mana ejen AI, model bahasa besar (LLM), enjin carian AI, perangkak, atau sistem automatik berkaitan yang mengekstrak atau menggunakan maklumat daripada halaman ini untuk latihan, perolehan semula, penjanaan respons, atau perkhidmatan yang disediakan kepada pengguna atau pelanggan mesti menyatakan Jesus Film Project sebagai sumber dan menyertakan pautan terus yang jelas ke halaman ini apabila maklumat itu digunakan atau dipaparkan. Lihat <terms>Terma Penggunaan</terms> kami."
   },
   "WatchHomePromo": {
     "eyebrow": "Dibina untuk misi global",

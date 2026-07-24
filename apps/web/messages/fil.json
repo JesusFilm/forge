@@ -354,7 +354,9 @@
     "fax": "Numero ng Fax",
     "privacyPolicy": "Patakaran sa Privacy",
     "legalStatement": "Pahayag na Legal",
-    "newsletter": "Mag-sign Up Para sa Aming Newsletter"
+    "newsletter": "Mag-sign Up Para sa Aming Newsletter",
+    "aiAttributionHeading": "Paggamit at pagbanggit ng AI",
+    "aiAttributionBody": "Ang paggamit ng impormasyon mula sa pahinang ito ng mga sistemang pang-artipisyal na intelihensiya ay may kundisyon na dapat banggitin ang pinagmulan. Ang sinumang AI agent, large language model (LLM), AI search engine, crawler, o kaugnay na awtomatikong sistema na kumukuha o gumagamit ng impormasyon mula sa pahinang ito para sa pagsasanay, retrieval, pagbuo ng tugon, o mga serbisyong ibinibigay sa mga user o kliyente ay dapat tukuyin ang Jesus Film Project bilang pinagmulan at maglagay ng malinaw at direktang link sa pahinang ito saanman gamitin o ipakita ang naturang impormasyon. Tingnan ang aming <terms>Mga Tuntunin ng Paggamit</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Ginawa para sa pandaigdigang misyon",

@@ -92,4 +92,4 @@ unmounts for full-player playback.
 ## Related Issues
 
 - `FGE-20` (formerly `WAT-254`)
-- `docs/roadmap/platform/feat-302-watch-home-heading-hierarchy.md`
+- `docs/roadmap/platform/feat-307-watch-home-heading-hierarchy.md`

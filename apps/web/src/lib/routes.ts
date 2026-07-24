@@ -20,14 +20,15 @@ declare const contentSlugBrand: unique symbol
 /** English-name kebab-case language identifier (e.g. `english`, `russian`, `portuguese-brazil`). NOT a bcp47 code. */
 export type LocaleSlug = string & { readonly [localeSlugBrand]: true }
 
-/** Watch-content URL segment (e.g. `jesus`, `lumo-the-gospel-of-john`). Lowercase ASCII slug shape. */
+/** Watch-content URL segment (e.g. `jesus`, `soccer_event_collection`). Lowercase ASCII slug shape. */
 export type ContentSlug = string & { readonly [contentSlugBrand]: true }
 
-const SLUG_PATTERN = /^[a-z0-9-]+$/
+const LOCALE_SLUG_PATTERN = /^[a-z0-9-]+$/
+const CONTENT_SLUG_PATTERN = /^[a-z0-9_-]+$/
 
 /** Throw-on-invalid `LocaleSlug` constructor. Use for pre-validated inputs (env vars, configured constants). Prefer `tryAsLocaleSlug` at user-input boundaries. */
 export function asLocaleSlug(value: string): LocaleSlug {
-  if (!SLUG_PATTERN.test(value)) {
+  if (!LOCALE_SLUG_PATTERN.test(value)) {
     throw new Error(`invalid LocaleSlug: ${value}`)
   }
   return value as LocaleSlug
@@ -35,7 +36,7 @@ export function asLocaleSlug(value: string): LocaleSlug {
 
 /** Throw-on-invalid `ContentSlug` constructor. Use for pre-validated inputs. Prefer `tryAsContentSlug` at user-input boundaries. */
 export function asContentSlug(value: string): ContentSlug {
-  if (!SLUG_PATTERN.test(value)) {
+  if (!CONTENT_SLUG_PATTERN.test(value)) {
     throw new Error(`invalid ContentSlug: ${value}`)
   }
   return value as ContentSlug
@@ -43,12 +44,12 @@ export function asContentSlug(value: string): ContentSlug {
 
 /** Result-shape `LocaleSlug` constructor. Returns `null` if the input fails the slug regex — for use at page routes / agent boundaries where invalid input should `notFound()` instead of crash. */
 export function tryAsLocaleSlug(value: string): LocaleSlug | null {
-  return SLUG_PATTERN.test(value) ? (value as LocaleSlug) : null
+  return LOCALE_SLUG_PATTERN.test(value) ? (value as LocaleSlug) : null
 }
 
 /** Result-shape `ContentSlug` constructor. Returns `null` on invalid input. */
 export function tryAsContentSlug(value: string): ContentSlug | null {
-  return SLUG_PATTERN.test(value) ? (value as ContentSlug) : null
+  return CONTENT_SLUG_PATTERN.test(value) ? (value as ContentSlug) : null
 }
 
 // `reason` documents WHY a resync sentinel is set on the URL. Today the
@@ -260,14 +261,14 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
   return { kind: "unknown", raw: pathname }
 }
 
-// Environment-specific absolute origin for share/copy/embed links. Single
-// source of truth lives in env.ts (Zod schema + soft host-allowlist + default).
-// Public SEO/social metadata uses WATCH_PUBLIC_METADATA_ORIGIN instead.
+// Environment-specific absolute origin for app-local absolute URL builders.
+// Single source of truth lives in env.ts (Zod schema + soft host-allowlist +
+// default). Public Share and SEO/social metadata resolve through
+// WATCH_PUBLIC_METADATA_ORIGIN when the configured origin is not public.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
-// SEO/social metadata should always name the indexed public website host, even
-// when the web app is served from a local, preview, or watch-only deployment
-// origin. Keep share/copy/embed builders on WATCH_CANONICAL_ORIGIN.
+// The indexed public website host used by SEO/social metadata and as the Share
+// fallback for local/private app origins.
 export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
 
 // Re-exported from the shared watch-base-path.mjs module that

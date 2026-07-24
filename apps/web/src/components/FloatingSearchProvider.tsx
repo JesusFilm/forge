@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react"
 import dynamic from "next/dynamic"
@@ -529,6 +530,17 @@ export function FloatingSearchProvider({
   }, [closing, headerLanguageSwitcher, open, pathname, routeIdentity])
 
   const modalChromeHidden = open || closing
+  const handleLogoClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>) => {
+      if (modalChromeHidden) {
+        event.preventDefault()
+        if (!closing) setOpen(false)
+        return
+      }
+      resetSearch()
+    },
+    [closing, modalChromeHidden, resetSearch, setOpen],
+  )
   useWatchModalActivity(modalChromeHidden, { releaseDelayMs: 0 })
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
@@ -684,9 +696,9 @@ export function FloatingSearchProvider({
       >
         <Link
           href={logoHref as Route}
-          aria-label={t("home")}
+          aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
           data-testid="floating-header-logo"
-          onClick={resetSearch}
+          onClick={handleLogoClick}
           className={`pointer-events-auto flex ${logoSlotClass} ${
             modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
           } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}

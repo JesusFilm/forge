@@ -354,7 +354,9 @@
     "fax": "Facs",
     "privacyPolicy": "Polasey yn phrisheys",
     "legalStatement": "Coorse lishnagh",
-    "newsletter": "Sign up son y corys-naight ain"
+    "newsletter": "Sign up son y corys-naight ain",
+    "aiAttributionHeading": "Ymmyd AI as cooilleeney",
+    "aiAttributionBody": "Ta ymmyd fys ass yn duillag shoh liorish caghlaaghyn dooyrt AI as cooilleeney. Dy bee oltey AI erbee, modhool scrutee moir-lheidgedagh (LLM), jeeaghyn shirrey AI, crawler, ny caghlaaghyn co-cheangltit erbee aghtey, ta goaill no ymmyrkey fys ass yn duillag shoh son ynsey, feddyn, ginsh freggyrt, ny shirveishyn er nyn ny cur da uss, lheid as clein, dy denmys Jesus Film Project myr yn bun as dy chur co-chassid gollrish link jeianagh, jeeragh gys yn duillag shoh raad erbee ta'n fys shen ry-ymmyrkey ny ry-hoi. Jeeagh er nyn <terms>Termyn Ymmyrkey</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Toggit son sheealyn cheerey",

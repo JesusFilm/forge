@@ -275,6 +275,9 @@ function updateManifestAfterTranslation({
 }) {
   const completed = new Set(completedLocales)
   const generated = new Set(generatedLocales)
+  const humanReviewedLocales = new Set(
+    translationPolicy.humanReviewedLocales ?? [],
+  )
   const inventoryLocales = inventory.languages.map((language) => language.tag)
   const remainingProvisional = manifest.provisionalLocales.filter(
     (locale) => !completed.has(locale),
@@ -282,7 +285,7 @@ function updateManifestAfterTranslation({
   const machineTranslatedLocales = sortedUnique([
     ...(manifest.machineTranslatedLocales ?? []),
     ...generatedLocales,
-  ])
+  ]).filter((locale) => !humanReviewedLocales.has(locale))
   const previousTranslation = manifest.metadata.translation ?? {}
   const previousLocaleProvenance = previousTranslation.localeProvenance ?? {}
   const localeProvenance = Object.fromEntries(

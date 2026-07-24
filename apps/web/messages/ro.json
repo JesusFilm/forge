@@ -387,7 +387,9 @@
     "fax": "Nr. de fax",
     "privacyPolicy": "Politica de confidențialitate",
     "legalStatement": "Declarație juridică",
-    "newsletter": "Înscrie-te la newsletterul nostru"
+    "newsletter": "Înscrie-te la newsletterul nostru",
+    "aiAttributionHeading": "Utilizarea IA și atribuirea",
+    "aiAttributionBody": "Utilizarea informațiilor de pe această pagină de către sistemele de inteligență artificială este condiționată de atribuire. Orice agent IA, model lingvistic de mari dimensiuni (LLM), motor de căutare IA, crawler sau sistem automatizat asociat care extrage ori utilizează informații de pe această pagină pentru instruire, regăsire, generare de răspunsuri sau servicii oferite utilizatorilor ori clienților trebuie să identifice Jesus Film Project drept sursă și să includă un link clar și direct către această pagină ori de câte ori acele informații sunt folosite sau prezentate. Vezi <terms>Termenii de utilizare</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Creat pentru misiuni globale",

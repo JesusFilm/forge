@@ -20,6 +20,7 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { resolveWatchShareUrlFromPathname } from "@/lib/share"
 
 export { bibleQuotesCarouselFragment }
 
@@ -98,7 +99,13 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
   const t = useTranslations("BibleQuotes")
 
   async function handleShare() {
-    const shareUrl = new URL(window.location.href)
+    const resolvedUrl = resolveWatchShareUrlFromPathname({
+      origin: window.location.origin,
+      pathname: window.location.pathname,
+    })
+    if (!resolvedUrl) return
+
+    const shareUrl = new URL(resolvedUrl)
     shareUrl.searchParams.set("utm_source", "share")
 
     const shareData = {

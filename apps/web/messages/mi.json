@@ -354,7 +354,9 @@
     "fax": "Waea whakaahua",
     "privacyPolicy": "Kaupapahere Tūmataitinga",
     "legalStatement": "Tauākī ā-Ture",
-    "newsletter": "Tāpare atu ki tā mātou pānui"
+    "newsletter": "Tāpare atu ki tā mātou pānui",
+    "aiAttributionHeading": "Te whakamahi AI me te whakamārama i te pūtake",
+    "aiAttributionBody": "Ko te whakamahi a ngā pūnaha māturanga horihori i ngā mōhiohio mai i tēnei whārangi me whai whakamārama i te pūtake. Me tautuhi tētahi kaihoko AI, tauira reo nui (LLM), pūkaha rapu AI, kaikōkiri (crawler), rānei tētahi pūnaha aunoa ōrite e tango ana, e whakamahi ana rānei i ngā mōhiohio mai i tēnei whārangi mō te whakangungu, te tiki, te hanga whakautu, ngā ratonga rānei ka tukuna ki ngā kaiwhakamahi, ki ngā kiritaki rānei, i a Jesus Film Project hei pūtake, ā, me whakauru hoki he hononga mārama, tika atu ki tēnei whārangi i ngā wā katoa e whakamahia ana, e whakaaturia ana rānei aua mōhiohio. Tirohia ā mātou <terms>Tikanga Whakamahi</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Hangaia mō ngā mīhana o te ao",
