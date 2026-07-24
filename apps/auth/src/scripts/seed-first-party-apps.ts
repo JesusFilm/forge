@@ -1,10 +1,18 @@
 import { createHash } from "node:crypto"
 
-import { FIRST_PARTY_APP_SEEDS, type RegisteredAppSeed } from "@/domain/apps"
-import { AUTH_SCOPES } from "@/domain/scopes"
+import {
+  ADMIN_MCP_DEFAULT_SCOPES,
+  FIRST_PARTY_APP_SEEDS,
+  type RegisteredAppSeed,
+} from "@/domain/apps"
+import { AUTH_SCOPES, type AuthScopeKey } from "@/domain/scopes"
 import { prisma } from "@/db/client"
 
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
+const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
+const ADMIN_MCP_DYNAMIC_SCOPE_MARKERS = ADMIN_MCP_DEFAULT_SCOPES.filter(
+  (scope) => scope !== OFFLINE_ACCESS_SCOPE,
+)
 
 export async function seedFirstPartyApps() {
   for (const scope of AUTH_SCOPES) {
@@ -22,6 +30,8 @@ export async function seedFirstPartyApps() {
     await seedFirstPartyApp(appSeed)
   }
 
+  await migrateExistingDynamicAdminMcpClients()
+
   return {
     apps: FIRST_PARTY_APP_SEEDS.length,
     environments: FIRST_PARTY_APP_SEEDS.reduce(
@@ -38,6 +48,73 @@ export async function seedFirstPartyApps() {
       0,
     ),
     scopes: AUTH_SCOPES.length,
+  }
+}
+
+async function migrateExistingDynamicAdminMcpClients() {
+  const candidates = await prisma.oauthClient.findMany({
+    where: {
+      public: true,
+      tokenEndpointAuthMethod: "none",
+      grantTypes: { hasEvery: ["authorization_code", "refresh_token"] },
+      scopes: { hasEvery: ADMIN_MCP_DYNAMIC_SCOPE_MARKERS },
+    },
+    select: {
+      clientId: true,
+      grantTypes: true,
+      redirectUris: true,
+      requirePKCE: true,
+      scopes: true,
+      tokenEndpointAuthMethod: true,
+    },
+  })
+
+  for (const client of candidates) {
+    if (!isExistingDynamicAdminMcpClientMissingOfflineAccess(client)) continue
+
+    await prisma.oauthClient.update({
+      where: { clientId: client.clientId },
+      data: {
+        scopes: [...client.scopes, OFFLINE_ACCESS_SCOPE],
+      },
+    })
+  }
+}
+
+function isExistingDynamicAdminMcpClientMissingOfflineAccess(client: {
+  grantTypes: string[]
+  redirectUris: string[]
+  requirePKCE: boolean | null
+  scopes: string[]
+  tokenEndpointAuthMethod: string | null
+}) {
+  return (
+    client.tokenEndpointAuthMethod === "none" &&
+    client.requirePKCE !== false &&
+    client.grantTypes.includes("authorization_code") &&
+    client.grantTypes.includes("refresh_token") &&
+    ADMIN_MCP_DYNAMIC_SCOPE_MARKERS.every((scope) =>
+      client.scopes.includes(scope),
+    ) &&
+    !client.scopes.includes(OFFLINE_ACCESS_SCOPE) &&
+    client.redirectUris.length > 0 &&
+    client.redirectUris.every(isCodexLoopbackMcpCallback)
+  )
+}
+
+function isCodexLoopbackMcpCallback(redirectUri: string) {
+  try {
+    const url = new URL(redirectUri)
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      (url.pathname === "/auth/callback" || url.pathname === "/callback") &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.port.length > 0
+    )
+  } catch {
+    return false
   }
 }
 
