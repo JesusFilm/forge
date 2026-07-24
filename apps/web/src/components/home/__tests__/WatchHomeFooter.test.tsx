@@ -40,11 +40,15 @@ afterEach(() => {
   container.remove()
 })
 
+function renderFooter() {
+  act(() => {
+    root.render(<WatchHomeFooter />)
+  })
+}
+
 describe("WatchHomeFooter", () => {
   it("places the AI use attribution notice immediately after the footer", () => {
-    act(() => {
-      root.render(<WatchHomeFooter />)
-    })
+    renderFooter()
 
     const notice = container.querySelector(
       '[data-testid="watch-ai-attribution-notice"]',
@@ -66,9 +70,7 @@ describe("WatchHomeFooter", () => {
   it("renders the attribution notice from the active locale catalog", () => {
     setRequestLocale("ru")
 
-    act(() => {
-      root.render(<WatchHomeFooter />)
-    })
+    renderFooter()
 
     const notice = container.querySelector(
       '[data-testid="watch-ai-attribution-notice"]',
@@ -84,10 +86,70 @@ describe("WatchHomeFooter", () => {
     expect(termsLink?.textContent).not.toBe("Terms of Use")
   })
 
-  it("paints its complete white surface above preceding sticky media", () => {
-    act(() => {
-      root.render(<WatchHomeFooter />)
+  it("omits social and newsletter actions", () => {
+    renderFooter()
+
+    const removedHrefs = [
+      "https://twitter.com/jesusfilm",
+      "https://www.facebook.com/jesusfilm",
+      "https://www.instagram.com/jesusfilm",
+      "https://www.youtube.com/user/jesusfilm",
+      "https://www.jesusfilm.org/email/",
+    ]
+
+    removedHrefs.forEach((href) => {
+      expect(container.querySelector(`a[href="${href}"]`)).toBeNull()
     })
+
+    const removedLabels = ["X", "Facebook", "Instagram", "YouTube"]
+    removedLabels.forEach((label) => {
+      expect(container.querySelector(`a[aria-label="${label}"]`)).toBeNull()
+    })
+    expect(container.textContent).not.toContain("Sign Up For Our Newsletter")
+  })
+
+  it("keeps Give Now in the single-row navigation layout from medium widths", () => {
+    renderFooter()
+
+    const navigation = container.querySelector(
+      '[data-testid="watch-footer-navigation"]',
+    )
+
+    expect(navigation?.classList.contains("min-w-0")).toBe(true)
+    expect(navigation?.classList.contains("md:flex-nowrap")).toBe(true)
+    expect(navigation?.classList.contains("md:justify-between")).toBe(true)
+    expect(navigation?.lastElementChild?.textContent).toBe("Give Now")
+
+    Array.from(navigation?.children ?? []).forEach((action) => {
+      expect(action.classList.contains("min-w-0")).toBe(true)
+      expect(action.classList.contains("break-words")).toBe(true)
+    })
+    expect(navigation?.lastElementChild?.classList.contains("min-h-9")).toBe(
+      true,
+    )
+  })
+
+  it("equally distributes contact details without dividers", () => {
+    renderFooter()
+
+    const contactGrid = container.querySelector(
+      '[data-testid="watch-footer-contact-grid"]',
+    )
+
+    expect(contactGrid?.classList.contains("grid")).toBe(true)
+    expect(contactGrid?.classList.contains("grid-cols-3")).toBe(true)
+    expect(contactGrid?.classList.contains("w-full")).toBe(true)
+    expect(contactGrid?.classList.contains("break-words")).toBe(true)
+    expect(contactGrid?.children).toHaveLength(3)
+
+    Array.from(contactGrid?.children ?? []).forEach((column) => {
+      expect(column.className).not.toContain("border-")
+      expect(column.className).not.toContain("max-w-")
+    })
+  })
+
+  it("paints its complete white surface above preceding sticky media", () => {
+    renderFooter()
 
     const footer = container.querySelector('[data-testid="watch-home-footer"]')
 

@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 431
-- **Complete:** 324
+- **Total tickets:** 433
+- **Complete:** 326
 - **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
@@ -406,6 +406,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-297](platform/feat-297-watch-home-page-title.md)                                 | Set the Watch home page metadata copy                                            | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-298](platform/feat-298-watch-shared-typography-tokens.md)                        | Watch shared card and eyebrow typography tokens                                  | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-299](platform/feat-299-watch-grid-mobile-carousels.md)                           | Watch Experience grids become mobile carousels                                   | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-306](platform/feat-306-watch-footer-contact-three-column-layout.md)              | Watch footer contact three-column layout                                         | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-305](platform/feat-305-watch-footer-remove-social-newsletter-actions.md)         | Remove Watch footer social and newsletter actions                                | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
