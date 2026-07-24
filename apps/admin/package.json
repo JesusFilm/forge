@@ -9,7 +9,7 @@
     "dev": "next dev --port 3003",
     "build": "prisma generate && next build",
     "start": "next start",
-    "datadog:sourcemaps": "release_version=${DATADOG_RELEASE_VERSION:-$NEXT_PUBLIC_DATADOG_VERSION}; release_version=${release_version:-$RAILWAY_GIT_COMMIT_SHA}; release_version=${release_version:-$VERCEL_GIT_COMMIT_SHA}; release_version=${release_version:-$GIT_COMMIT_SHA}; pnpm dlx @datadog/datadog-ci@5.8.0 sourcemaps upload .next/static --service=forge-admin --release-version=$release_version --minified-path-prefix=/_next/static/",
+    "datadog:sourcemaps": "node ../../scripts/upload-datadog-sourcemaps.mjs --service forge-admin --minified-path-prefix /_next/static/",
     "postinstall": "prisma generate",
     "restore:video-db": "tsx src/scripts/restore-video-db.ts",
     "restore:video-db:latest": "tsx src/scripts/restore-latest-video-db.ts",
