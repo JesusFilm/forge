@@ -47,20 +47,21 @@ export function WatchHomeFooter() {
 
           <nav
             aria-label={t("navigation")}
-            className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-bold xl:justify-end"
+            data-testid="watch-footer-navigation"
+            className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-3 text-sm font-bold md:flex-nowrap md:justify-between md:gap-x-0"
           >
             {navLinks.map((link) => (
               <a
                 key={link.key}
                 href={link.href}
-                className="transition-colors hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
+                className="min-w-0 break-words text-center leading-tight transition-colors hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
               >
                 {t(link.key)}
               </a>
             ))}
             <a
               href={giveNowHref}
-              className="inline-flex h-9 items-center rounded-full bg-[#d33a43] px-5 text-sm font-bold text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
+              className="inline-flex min-h-9 min-w-0 break-words items-center rounded-full bg-[#d33a43] px-5 py-2 text-center text-sm font-bold leading-tight text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
             >
               {t("giveNow")}
             </a>
@@ -69,9 +70,9 @@ export function WatchHomeFooter() {
 
         <div
           data-testid="watch-footer-contact-grid"
-          className="grid max-w-[410px] grid-cols-3 break-words text-xs leading-tight text-[#131111]"
+          className="grid w-full grid-cols-3 break-words text-xs leading-tight text-[#131111]"
         >
-          <p className="min-w-0 max-w-[130px] border-e border-[#d9d9d9] pe-3 sm:pe-5">
+          <p className="min-w-0">
             100 Lake Hart Drive
             <br />
             Orlando, FL, 32832
@@ -80,12 +81,12 @@ export function WatchHomeFooter() {
               {t("resourcesVersion", { version: "fea8f46" })}
             </span>
           </p>
-          <p className="min-w-0 max-w-[140px] border-e border-[#d9d9d9] px-3 sm:px-5">
+          <p className="min-w-0">
             {t("office")}: (407) 826-2300
             <br />
             {t("fax")}: (407) 826-2375
           </p>
-          <p className="min-w-0 max-w-[140px] ps-3 sm:px-5">
+          <p className="min-w-0">
             <a
               href="https://www.jesusfilm.org/privacy/"
               className="block hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"

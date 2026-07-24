@@ -108,7 +108,28 @@ describe("WatchHomeFooter", () => {
     expect(container.textContent).not.toContain("Sign Up For Our Newsletter")
   })
 
-  it("keeps contact details in three adjacent columns", () => {
+  it("keeps Give Now in the single-row navigation layout from medium widths", () => {
+    renderFooter()
+
+    const navigation = container.querySelector(
+      '[data-testid="watch-footer-navigation"]',
+    )
+
+    expect(navigation?.classList.contains("min-w-0")).toBe(true)
+    expect(navigation?.classList.contains("md:flex-nowrap")).toBe(true)
+    expect(navigation?.classList.contains("md:justify-between")).toBe(true)
+    expect(navigation?.lastElementChild?.textContent).toBe("Give Now")
+
+    Array.from(navigation?.children ?? []).forEach((action) => {
+      expect(action.classList.contains("min-w-0")).toBe(true)
+      expect(action.classList.contains("break-words")).toBe(true)
+    })
+    expect(navigation?.lastElementChild?.classList.contains("min-h-9")).toBe(
+      true,
+    )
+  })
+
+  it("equally distributes contact details without dividers", () => {
     renderFooter()
 
     const contactGrid = container.querySelector(
@@ -117,16 +138,14 @@ describe("WatchHomeFooter", () => {
 
     expect(contactGrid?.classList.contains("grid")).toBe(true)
     expect(contactGrid?.classList.contains("grid-cols-3")).toBe(true)
+    expect(contactGrid?.classList.contains("w-full")).toBe(true)
     expect(contactGrid?.classList.contains("break-words")).toBe(true)
     expect(contactGrid?.children).toHaveLength(3)
 
-    const [address, phoneNumbers, legalLinks] = Array.from(
-      contactGrid?.children ?? [],
-    )
-    expect(address?.classList.contains("border-e")).toBe(true)
-    expect(address?.classList.contains("pe-3")).toBe(true)
-    expect(phoneNumbers?.classList.contains("border-e")).toBe(true)
-    expect(legalLinks?.classList.contains("ps-3")).toBe(true)
+    Array.from(contactGrid?.children ?? []).forEach((column) => {
+      expect(column.className).not.toContain("border-")
+      expect(column.className).not.toContain("max-w-")
+    })
   })
 
   it("paints its complete white surface above preceding sticky media", () => {

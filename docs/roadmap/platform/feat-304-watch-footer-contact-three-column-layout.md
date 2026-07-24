@@ -37,15 +37,19 @@ adjacent columns.
 
 1. Render the address, phone numbers, and legal links in a three-column grid at
    every viewport width.
-2. Preserve the existing copy, links, separators, and footer layering.
-3. Add focused regression coverage for the three-column contract.
+2. Distribute the three columns equally across the footer content width without
+   dividers.
+3. Keep the Give Now action on the same navigation row from medium viewport
+   widths.
+4. Preserve the existing copy, links, and footer layering.
+5. Add focused regression coverage for the layout contracts.
 
 ## Constraints
 
 - Do not change footer destinations or localized labels.
 - Do not change the footer's sticky-player stacking layer.
-- Keep the three columns usable within compact viewport widths, long-label
-  locales, and both LTR and RTL directions.
+- Keep the three columns usable within compact viewport widths and long-label
+  locales.
 
 ## Verification
 
@@ -55,13 +59,15 @@ adjacent columns.
 
 ## Completion Notes
 
-- Replaced the compact stacked contact layout with a three-column grid and
-  allowed long localized labels to wrap within their tracks while preserving
-  the existing desktop width, separators, copy, and links.
-- Used logical inline borders and padding so separators remain between columns
-  in both LTR and RTL locales.
+- Replaced the compact stacked contact layout with a full-width, equal
+  three-column grid and allowed long localized labels to wrap within their
+  tracks while preserving the copy and links.
+- Removed the contact-column dividers and kept Give Now on the navigation row
+  from medium viewport widths, while allowing long localized navigation labels
+  to wrap within that row.
 - Added focused component coverage for the three-column layout contract.
 - Focused tests, Web typecheck, targeted ESLint, Prettier, and browser
-  verification passed. At a 375px browser content width, all three columns
-  shared the same row, the page had no horizontal overflow, and no browser
-  errors were reported.
+  verification passed. At 840px all nine navigation actions shared one
+  centerline and the three divider-free contact columns measured 232px each.
+  At 375px the three 107px columns shared one row without horizontal overflow,
+  and no browser errors were reported.
