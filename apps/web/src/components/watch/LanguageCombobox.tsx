@@ -476,8 +476,8 @@ export function LanguageCombobox({
 
   const selectedNativeName = selected ? nativeNameForOption(selected) : null
   const triggerClassName = compact
-    ? "flex h-14 min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-left text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-    : "flex h-16 min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    ? "flex h-14 min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-start text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    : "flex h-16 min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-start text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
   const triggerButton = (
     <button
       ref={triggerRef}
@@ -510,17 +510,18 @@ export function LanguageCombobox({
           />
         )}
         <span className="grid min-w-0 content-center">
-          <span className="block truncate leading-tight">
-            {selected?.name ?? resolvedPlaceholder}
+          <span dir="auto" className="block truncate leading-tight">
+            {selected ? <bdi>{selected.name}</bdi> : resolvedPlaceholder}
           </span>
           {selectedNativeName ? (
             <span
+              dir="auto"
               data-testid="language-combobox-trigger-native"
               className={`mt-0.5 block truncate leading-tight text-stone-400 ${
                 compact ? "text-[11px]" : "text-xs"
               }`}
             >
-              {selectedNativeName}
+              <bdi>{selectedNativeName}</bdi>
             </span>
           ) : null}
         </span>
@@ -568,6 +569,7 @@ export function LanguageCombobox({
                   ref={searchRef}
                   data-testid="language-combobox-search"
                   type="text"
+                  dir="auto"
                   value={query}
                   onChange={(e) => resetQuery(e.target.value)}
                   // jsdom-only: dispatchEvent(new Event("input")) does not trigger React's synthetic onChange.
@@ -648,7 +650,7 @@ export function LanguageCombobox({
                             data-disabled={optionDisabled ? "true" : "false"}
                             onMouseEnter={() => setActiveIndex(index)}
                             onClick={() => handleSelect(option.slug)}
-                            className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-100 ${
+                            className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition disabled:cursor-not-allowed disabled:opacity-100 ${
                               optionDisabled
                                 ? active
                                   ? "bg-white/[0.06] text-stone-500"
@@ -663,15 +665,19 @@ export function LanguageCombobox({
                             <span className="flex min-w-0 items-center gap-4">
                               <LanguageCodeMarker option={option} />
                               <span className="min-w-0">
-                                <span className="block truncate text-sm font-semibold">
-                                  {option.name}
+                                <span
+                                  dir="auto"
+                                  className="block truncate text-sm font-semibold"
+                                >
+                                  <bdi>{option.name}</bdi>
                                 </span>
                                 {nativeName ? (
                                   <span
+                                    dir="auto"
                                     data-testid="language-combobox-option-native"
                                     className="block truncate text-xs text-stone-400"
                                   >
-                                    {nativeName}
+                                    <bdi>{nativeName}</bdi>
                                   </span>
                                 ) : null}
                               </span>

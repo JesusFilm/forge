@@ -109,6 +109,12 @@ describe("LanguageInventoryPage video thumbnails", () => {
       '[aria-label="Promoted Static"]',
     )
     expect(linkedFull?.className).toContain("group")
+    expect(linkedFull?.className).toContain("text-start")
+    expect(linkedFull?.className).not.toContain("text-left")
+    expect(linkedFull?.querySelector("bdi")?.textContent).toBe(
+      "Promoted Linked",
+    )
+    expect(linkedFull?.getAttribute("href")).toBe("/linked.html")
     expect(linkedFull?.className).toContain("focus-visible:outline-none")
     expect(
       linkedFull?.querySelector(

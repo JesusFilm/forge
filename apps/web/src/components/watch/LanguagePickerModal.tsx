@@ -28,6 +28,7 @@ import {
   type LanguageComboboxOption,
 } from "@/components/watch/LanguageCombobox"
 import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
+import { isolateBidiDisplayText } from "@/lib/bidi"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
@@ -47,8 +48,6 @@ export type LanguagePickerVariant = WatchLanguagePickerVariant
 
 const MODAL_FOCUS_RING_CLASS =
   "focus-visible:border-stone-100/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-100 focus-visible:outline-none"
-const FIRST_STRONG_ISOLATE = "\u2068"
-const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
 export type LanguagePickerModalProps = {
   open: boolean
@@ -351,7 +350,7 @@ export function LanguagePickerModal({
   const draftLanguageInventoryName =
     draftLanguageOption?.nativeName?.trim() || draftLanguageDisplay.name
   const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
-    language: `${FIRST_STRONG_ISOLATE}${draftLanguageInventoryName}${POP_DIRECTIONAL_ISOLATE}`,
+    language: isolateBidiDisplayText(draftLanguageInventoryName),
   })
   const draftLanguageInventoryPath = useMemo(() => {
     const slug = tryAsLocaleSlug(draftSlug)
@@ -553,11 +552,15 @@ export function LanguagePickerModal({
   const subtitleSelectionRequired =
     draftSubtitleEnabled && hasSelectableSubtitleOptions && !draftSubtitleSlug
   const subtitleUnavailableLabel = currentLanguageDisplay.name
-    ? `${t("noSubtitles")} (${currentLanguageDisplay.name})`
+    ? `${t("noSubtitles")} (${isolateBidiDisplayText(
+        currentLanguageDisplay.name,
+      )})`
     : t("noSubtitles")
   const subtitlePlaceholder = currentLanguageUnavailableSubtitleOption
     ? t("noLanguageSubtitles", {
-        language: currentLanguageUnavailableSubtitleOption.name,
+        language: isolateBidiDisplayText(
+          currentLanguageUnavailableSubtitleOption.name,
+        ),
       })
     : t("noSubtitles")
   // Derived: navigating iff we dispatched and the URL hasn't caught up.
@@ -762,7 +765,7 @@ export function LanguagePickerModal({
                   href={allLanguagesPath}
                   prefetch={false}
                   data-testid="watch-language-picker-all-languages-link"
-                  className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
+                  className={`ms-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
                 >
                   <Globe aria-hidden className="size-3.5" />
                   <span>{t("seeAllLanguages")}</span>
@@ -833,7 +836,7 @@ export function LanguagePickerModal({
                   </span>
                   <ArrowRight
                     aria-hidden
-                    className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                    className="size-3.5 shrink-0 transition-transform rtl:rotate-180 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5"
                   />
                 </Link>
               </div>
@@ -904,7 +907,7 @@ export function LanguagePickerModal({
                   <span
                     data-testid="watch-language-picker-subtitles-toggle-state"
                     className={`pointer-events-none absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center ${
-                      draftSubtitleEnabled ? "left-1" : "right-1"
+                      draftSubtitleEnabled ? "start-1" : "end-1"
                     }`}
                   >
                     {draftSubtitleEnabled ? "I" : "O"}
@@ -913,7 +916,7 @@ export function LanguagePickerModal({
                     aria-hidden="true"
                     className={`relative z-10 size-7 rounded-full shadow-sm transition-transform duration-200 ${
                       draftSubtitleEnabled
-                        ? "translate-x-7 bg-stone-950"
+                        ? "translate-x-7 bg-stone-950 rtl:-translate-x-7"
                         : "translate-x-0 bg-stone-100"
                     }`}
                   />

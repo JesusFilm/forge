@@ -353,6 +353,29 @@ describe("VideoCard", () => {
     expect(hoverOutline?.className).not.toMatch(/red|amber|gradient|shadow/)
   })
 
+  it("isolates mixed-script display copy without changing the result href", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const result = makeResult({
+      slug: "jesus",
+      title: "يسوع Jesus",
+      snippet: "شاهد الآن Watch now",
+    })
+
+    act(() => {
+      root?.render(<VideoCard result={result} />)
+    })
+
+    const card = container.querySelector("a")
+    const bidiValues = Array.from(container.querySelectorAll("bdi")).map(
+      (element) => element.textContent,
+    )
+    expect(card?.getAttribute("href")).toContain("/jesus.html/")
+    expect(bidiValues).toContain(result.title)
+    expect(bidiValues).toContain(result.snippet)
+  })
+
   it("passes Admin image blur data URLs through to Next Image", () => {
     container = document.createElement("div")
     document.body.appendChild(container)

@@ -201,9 +201,9 @@ function StudyQuestionRow({
         aria-expanded={isOpen}
         aria-controls={panelId}
         data-testid={`${testId}-trigger`}
-        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-0 py-4 text-left text-sm font-medium transition-all outline-none hover:no-underline focus-visible:ring-[3px] focus-visible:ring-white/40"
+        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-0 py-4 text-start text-sm font-medium transition-all outline-none hover:no-underline focus-visible:ring-[3px] focus-visible:ring-white/40"
       >
-        <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left md:grid-cols-[1.75rem_minmax(0,1fr)]">
+        <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-start md:grid-cols-[1.75rem_minmax(0,1fr)]">
           <WatchQuestionIcon />
           <h3 className="text-base leading-[1.6] font-normal text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
             {question}
@@ -228,7 +228,7 @@ function StudyQuestionRow({
           }`}
           style={{ height: panelHeight }}
         >
-          <div ref={panelContentRef} className="pt-2 pr-2 pb-6 pl-12">
+          <div ref={panelContentRef} className="pt-2 pe-2 pb-6 ps-12">
             <p
               data-testid={`${testId}-fallback-body`}
               className="leading-relaxed font-normal text-stone-200/80"

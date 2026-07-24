@@ -3465,26 +3465,30 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
 // the coalesced seek by advancing 0ms.
 // ---------------------------------------------------------------------------
 
-function stubTimelineRect({
-  height = 1,
-  top = 0,
-}: {
+type SliderRectOptions = {
   height?: number
+  left?: number
   top?: number
-} = {}): HTMLDivElement {
-  const tl = container.querySelector(
-    '[data-testid="hero-chrome-timeline"]',
+  width?: number
+}
+
+function stubSliderRect(
+  testId: string,
+  { height = 1, left = 0, top = 0, width = 100 }: SliderRectOptions = {},
+): HTMLDivElement {
+  const slider = container.querySelector(
+    `[data-testid="${testId}"]`,
   ) as HTMLDivElement
-  Object.defineProperty(tl, "getBoundingClientRect", {
+  Object.defineProperty(slider, "getBoundingClientRect", {
     value: () =>
       ({
-        x: 0,
+        x: left,
         y: top,
         top,
-        left: 0,
-        right: 100,
+        left,
+        right: left + width,
         bottom: top + height,
-        width: 100,
+        width,
         height,
         toJSON() {
           return this
@@ -3492,18 +3496,37 @@ function stubTimelineRect({
       }) as DOMRect,
     configurable: true,
   })
-  // JSDOM lacks setPointerCapture / hasPointerCapture. Stub them to no-ops
-  // so the production code's defensive guards don't throw under test. Cast
-  // through unknown so we can attach element-level methods that JSDOM
-  // hasn't implemented; production browsers ship them on every Element.
   const noop = (): void => undefined
-  ;(tl as unknown as { setPointerCapture: () => void }).setPointerCapture = noop
+  ;(slider as unknown as { setPointerCapture: () => void }).setPointerCapture =
+    noop
   ;(
-    tl as unknown as { releasePointerCapture: () => void }
+    slider as unknown as { releasePointerCapture: () => void }
   ).releasePointerCapture = noop
-  ;(tl as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture =
-    () => false
-  return tl
+  ;(
+    slider as unknown as { hasPointerCapture: () => boolean }
+  ).hasPointerCapture = () => false
+  return slider
+}
+
+function stubTimelineRect({
+  height = 1,
+  left = 0,
+  top = 0,
+  width = 100,
+}: SliderRectOptions = {}): HTMLDivElement {
+  return stubSliderRect("hero-chrome-timeline", {
+    height,
+    left,
+    top,
+    width,
+  })
+}
+
+function stubVolumeRect({
+  left = 0,
+  width = 100,
+}: Pick<SliderRectOptions, "left" | "width"> = {}): HTMLDivElement {
+  return stubSliderRect("hero-chrome-volume-slider", { left, width })
 }
 
 function makePointerEvent(
@@ -3636,6 +3659,7 @@ describe("HeroPlayer — timeline storyboard previews", () => {
   })
 
   it("boxes the preview within the timeline edges", async () => {
+    container.dir = "rtl"
     const { restore } = installStoryboardFetchMock()
     try {
       await revealChrome()
@@ -3650,6 +3674,7 @@ describe("HeroPlayer — timeline storyboard previews", () => {
       let preview = container.querySelector(
         '[data-testid="hero-chrome-timeline-preview"]',
       ) as HTMLElement
+      expect(preview.closest('[dir="ltr"]')).not.toBeNull()
       expect(preview.getAttribute("style")).toContain(
         "--hero-preview-left: clamp(64px, 4%, calc(100% - 64px))",
       )
@@ -3662,6 +3687,7 @@ describe("HeroPlayer — timeline storyboard previews", () => {
       preview = container.querySelector(
         '[data-testid="hero-chrome-timeline-preview"]',
       ) as HTMLElement
+      expect(preview.closest('[dir="ltr"]')).not.toBeNull()
       expect(preview.getAttribute("style")).toContain(
         "--hero-preview-left: clamp(64px, 96%, calc(100% - 64px))",
       )
@@ -3672,6 +3698,31 @@ describe("HeroPlayer — timeline storyboard previews", () => {
 })
 
 describe("HeroPlayer — timeline pointer-driven scrub", () => {
+  it("keeps nonzero-left pointer geometry chronological in an RTL host", async () => {
+    container.dir = "rtl"
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 0
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = true
+    }
+    const tl = stubTimelineRect({ left: 100, width: 200 })
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 250 }))
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(45)
+    expect(
+      container
+        .querySelector('[data-testid="hero-chrome-timeline-progress"]')
+        ?.getAttribute("style"),
+    ).toContain("width: 75%")
+    expect(
+      container
+        .querySelector('[data-testid="hero-chrome-timeline-thumb"]')
+        ?.getAttribute("style"),
+    ).toContain("left: 75%")
+  })
+
   it("data-dragging flips to 'true' on pointerdown and 'false' on pointerup", async () => {
     await revealChrome()
     if (mockPlayerRef.current) {
@@ -3776,6 +3827,119 @@ describe("HeroPlayer — timeline pointer-driven scrub", () => {
     })
     expect(tl.getAttribute("data-dragging")).toBe("false")
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("HeroPlayer — RTL media value-axis semantics", () => {
+  it("keeps timeline and volume pointer and arrow semantics LTR", async () => {
+    container.dir = "rtl"
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 20
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.muted = false
+      mockPlayerRef.current.volume = 0.5
+    }
+
+    const timeline = stubTimelineRect({ left: 100, width: 200 })
+    await act(async () => {
+      timeline.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(25)
+    await act(async () => {
+      timeline.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(20)
+
+    const volume = stubVolumeRect({ left: 200, width: 100 })
+    await act(async () => {
+      volume.dispatchEvent(makePointerEvent("pointerdown", { clientX: 225 }))
+    })
+    expect(mockPlayerRef.current?.volume).toBeCloseTo(0.25, 5)
+    await act(async () => {
+      volume.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBeCloseTo(0.3, 5)
+    await act(async () => {
+      volume.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBeCloseTo(0.25, 5)
+  })
+
+  it("clamps timeline and volume pointers to physical endpoints", async () => {
+    container.dir = "rtl"
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 30
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.muted = false
+      mockPlayerRef.current.volume = 0.5
+      mockPlayerRef.current.paused = true
+    }
+
+    const timeline = stubTimelineRect({ left: 100, width: 200 })
+    await act(async () => {
+      timeline.dispatchEvent(
+        makePointerEvent("pointerdown", { clientX: 50, pointerId: 1 }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(0)
+    expect(
+      container
+        .querySelector('[data-testid="hero-chrome-timeline-progress"]')
+        ?.getAttribute("style"),
+    ).toContain("width: 0%")
+    expect(
+      container
+        .querySelector('[data-testid="hero-chrome-timeline-thumb"]')
+        ?.getAttribute("style"),
+    ).toContain("left: 0%")
+    await act(async () => {
+      timeline.dispatchEvent(
+        makePointerEvent("pointerup", { clientX: 50, pointerId: 1 }),
+      )
+      timeline.dispatchEvent(
+        makePointerEvent("pointerdown", { clientX: 350, pointerId: 2 }),
+      )
+    })
+    expect(mockPlayerRef.current?.currentTime).toBe(60)
+    expect(
+      container
+        .querySelector('[data-testid="hero-chrome-timeline-progress"]')
+        ?.getAttribute("style"),
+    ).toContain("width: 100%")
+    expect(
+      container
+        .querySelector('[data-testid="hero-chrome-timeline-thumb"]')
+        ?.getAttribute("style"),
+    ).toContain("left: 100%")
+
+    const volume = stubVolumeRect({ left: 200, width: 100 })
+    await act(async () => {
+      volume.dispatchEvent(
+        makePointerEvent("pointerdown", { clientX: 150, pointerId: 3 }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBe(0)
+    expect(mockPlayerRef.current?.muted).toBe(true)
+    await act(async () => {
+      volume.dispatchEvent(
+        makePointerEvent("pointerup", { clientX: 150, pointerId: 3 }),
+      )
+      volume.dispatchEvent(
+        makePointerEvent("pointerdown", { clientX: 350, pointerId: 4 }),
+      )
+    })
+    expect(mockPlayerRef.current?.volume).toBe(1)
+    expect(mockPlayerRef.current?.muted).toBe(false)
   })
 })
 

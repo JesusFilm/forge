@@ -4,7 +4,13 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("@/components/DirectionProvider", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/components/DirectionProvider")>()
+  return { ...actual, useDirection: () => "ltr" }
+})
 
 import type { RouteVideo } from "@/lib/content"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
@@ -230,7 +236,7 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(carousel?.getAttribute("role")).toBe("region")
     expect(carousel?.getAttribute("aria-label")).toBe("Related")
-    expect(content?.getAttribute("class")).toContain("md:pl-16")
+    expect(content?.getAttribute("class")).toContain("md:ps-16")
     expect(items).toHaveLength(1)
     expect(items[0]?.getAttribute("class")).toContain("max-w-[200px]")
     expect(

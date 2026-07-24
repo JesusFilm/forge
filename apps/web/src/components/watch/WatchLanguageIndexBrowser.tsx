@@ -142,18 +142,18 @@ function LanguageLink({ language }: { language: WatchLanguageIndexLanguage }) {
     <li>
       <Link
         href={language.href as Route}
-        className="group flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-left text-stone-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+        className="group flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-start text-stone-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base leading-tight font-medium">
-            {language.englishLabel}
+            <bdi>{language.englishLabel}</bdi>
           </span>
           <span className="mt-1 block truncate text-sm leading-tight font-normal text-stone-500">
-            {language.nativeLabel}
+            <bdi>{language.nativeLabel}</bdi>
           </span>
         </span>
         <ArrowRight
-          className="size-4 shrink-0 text-amber-200 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          className="size-4 shrink-0 text-amber-200 opacity-0 transition-[opacity,transform] rtl:rotate-180 group-hover:opacity-100 group-focus-visible:opacity-100"
           aria-hidden="true"
         />
       </Link>
@@ -206,7 +206,7 @@ function CountryLanguages({
         )}
         <div className="min-w-0">
           <h4 className="m-0 truncate text-lg leading-tight font-bold text-white">
-            {country.name}
+            <bdi>{country.name}</bdi>
           </h4>
           <p className="m-0 mt-0.5 text-sm leading-tight font-semibold text-stone-400">
             {t("languageCount", { count: country.languages.length })}
@@ -276,7 +276,7 @@ function RegionLanguages({
             {t("region")}
           </span>
           <h3 className="m-0 text-3xl leading-none font-bold text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
-            {region.name}
+            <bdi>{region.name}</bdi>
           </h3>
           <span className="mt-2 text-lg leading-none font-bold text-stone-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
             {t("languageCount", { count: region.languages.length })}
@@ -415,21 +415,22 @@ export function WatchLanguageIndexBrowser({
 
       <label className="relative mb-8 block w-full max-w-3xl">
         <Search
-          className="pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2 text-white/70"
+          className="pointer-events-none absolute top-1/2 start-5 size-5 -translate-y-1/2 text-white/70"
           aria-hidden="true"
         />
         <input
           type="search"
+          dir="auto"
           value={searchValue}
           onChange={(event) => setSearchValue(event.target.value)}
           placeholder={t("searchPlaceholder")}
           aria-label={t("searchLabel")}
-          className="h-14 w-full rounded-[35px] border border-white/10 bg-white/10 pr-12 pl-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40"
+          className="h-14 w-full rounded-[35px] border border-white/10 bg-white/10 pe-12 ps-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40"
         />
         {searchValue ? (
           <button
             type="button"
-            className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+            className="absolute top-1/2 end-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
             onClick={() => setSearchValue("")}
             aria-label={t("clearSearch")}
           >

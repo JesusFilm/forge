@@ -15,8 +15,9 @@ import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { linkDefaultPrevented } = vi.hoisted(() => ({
+const { linkDefaultPrevented, testDirection } = vi.hoisted(() => ({
   linkDefaultPrevented: [] as boolean[],
+  testDirection: { current: "ltr" as "ltr" | "rtl" },
 }))
 
 // Embla browser-API polyfills (matchMedia / IntersectionObserver /
@@ -120,6 +121,12 @@ vi.mock("next-intl", () => ({
     },
 }))
 
+vi.mock("@/components/DirectionProvider", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/components/DirectionProvider")>()
+  return { ...actual, useDirection: () => testDirection.current }
+})
+
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
@@ -129,6 +136,7 @@ let root: Root
 
 beforeEach(() => {
   linkDefaultPrevented.length = 0
+  testDirection.current = "ltr"
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -500,8 +508,9 @@ describe("SiblingCarousel — happy path", () => {
       "font-medium",
     )
     const carousel = container.querySelector("[data-slot='carousel']")
-    expect(carousel?.className).toContain("pl-5")
-    expect(carousel?.className).toContain("md:pl-0")
+    expect(carousel?.className).toContain("ps-5")
+    expect(carousel?.className).toContain("md:ps-0")
+    expect(carousel?.className).not.toContain("pl-5")
     expect(carousel?.className).not.toContain("translate-x-10")
     expect(carousel?.className).not.toContain("md:translate-x-0")
     const content = container.querySelector(
@@ -511,8 +520,8 @@ describe("SiblingCarousel — happy path", () => {
     expect(viewport?.className).toContain("overflow-x-clip")
     expect(viewport?.className).toContain("overflow-y-visible")
     expect(viewport?.className).not.toContain("overflow-x-visible")
-    expect(content?.className).not.toContain("pl-10")
-    expect(content?.className).not.toContain("md:pl-0")
+    expect(content?.className).not.toContain("ps-10")
+    expect(content?.className).not.toContain("md:ps-0")
     expect(content?.className).not.toContain("translate-x-14")
     expect(content?.className).not.toContain("md:translate-x-0")
     const endSpacer = container.querySelector(
@@ -523,7 +532,7 @@ describe("SiblingCarousel — happy path", () => {
     expect(endSpacer?.getAttribute("aria-hidden")).toBe("true")
     expect(endSpacer?.getAttribute("tabindex")).toBe("-1")
     expect(endSpacer?.className).toContain("basis-auto")
-    expect(endSpacer?.className).toContain("pl-0")
+    expect(endSpacer?.className).toContain("ps-0")
     expect(endSpacer?.className).not.toContain("basis-[52%]")
     expect(endSpacer?.className).not.toContain("md:basis-[66.666%]")
     const endGutter = endSpacer?.querySelector("div")
@@ -634,6 +643,39 @@ describe("SiblingCarousel — happy path", () => {
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("3 of 10")
     expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
+  })
+
+  it("preserves document-order hrefs and optimistic selection in RTL", () => {
+    testDirection.current = "rtl"
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        "[data-testid='sibling-carousel-item']",
+      ),
+    )
+    expect(items.map((item) => item.dataset.href)).toEqual([
+      "/jesus-collection.html/child-1-slug/english.html",
+      "/jesus-collection.html/child-2-slug/english.html",
+      "/jesus-collection.html/child-3-slug/english.html",
+      "/jesus-collection.html/child-4-slug/english.html",
+    ])
+
+    act(() => {
+      items[1]!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, button: 0 }),
+      )
+    })
+
+    expect(items[0]!.dataset.active).toBe("false")
+    expect(items[1]!.dataset.active).toBe("true")
+    expect(items[1]!.dataset.href).toBe(
+      "/jesus-collection.html/child-2-slug/english.html",
+    )
   })
 
   it("routes a child through the contextual collection shape", () => {

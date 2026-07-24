@@ -211,7 +211,7 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     ).toBe(true)
   })
 
-  it("starts the right-aligned control group at mute", () => {
+  it("starts the inline-end control group at mute", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: true,
       showSubtitleButton: true,
@@ -226,7 +226,8 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     const languageControls = overlayAnchor.querySelector(
       '[data-testid="hero-chrome-language-controls"]',
     )
-    expect(muteControls?.className).toContain("ml-auto")
+    expect(muteControls?.className).toContain("ms-auto")
+    expect(muteControls?.className).not.toContain("ml-auto")
     expect(muteControls?.previousElementSibling).toBe(time)
     expect(muteControls?.nextElementSibling).toBe(languageControls)
   })
@@ -744,8 +745,8 @@ describe("HeroPlayerControls — chrome layout", () => {
       volumeContainer.compareDocumentPosition(muteButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    expect(volumeContainer.getAttribute("class")).toContain("mr-0")
-    expect(volumeContainer.getAttribute("class")).not.toContain("ml-0")
+    expect(volumeContainer.getAttribute("class")).toContain("me-0")
+    expect(volumeContainer.getAttribute("class")).not.toContain("mr-0")
 
     const backdrop = overlayAnchor.querySelector(
       '[data-testid="hero-player-chrome-backdrop"]',
@@ -762,6 +763,107 @@ describe("HeroPlayerControls — chrome layout", () => {
     expect(backdrop.getAttribute("style")).toContain(
       WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND,
     )
+  })
+
+  it("keeps RTL chrome layout separate from LTR media value axes", () => {
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    overlayAnchor.dir = "rtl"
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer({
+        currentTime: 15,
+        duration: 60,
+        volume: 0.5,
+      }),
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+          showLanguageButton
+          showSubtitleButton
+          onLanguageClick={() => {}}
+        />,
+      )
+    })
+
+    const chrome = overlayAnchor.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+    expect(chrome.getAttribute("dir")).toBeNull()
+    expect(chrome.parentElement?.getAttribute("dir")).toBe("rtl")
+
+    for (const testId of [
+      "hero-chrome-timeline",
+      "hero-chrome-time",
+      "hero-chrome-volume-slider",
+    ]) {
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.getAttribute("dir"),
+      ).toBe("ltr")
+    }
+
+    for (const testId of [
+      "hero-chrome-timeline-track",
+      "hero-chrome-timeline-buffered",
+      "hero-chrome-timeline-progress",
+      "hero-chrome-timeline-thumb",
+      "hero-chrome-volume-fill",
+      "hero-chrome-volume-thumb",
+    ]) {
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.closest('[dir="ltr"]'),
+      ).not.toBeNull()
+    }
+
+    for (const testId of [
+      "hero-chrome-play",
+      "hero-chrome-mute",
+      "hero-chrome-language",
+      "hero-chrome-subtitles",
+      "hero-chrome-fullscreen",
+    ]) {
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.getAttribute("dir"),
+      ).toBeNull()
+    }
+
+    const timeline = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-timeline"]',
+    ) as HTMLElement
+    const volume = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-volume-slider"]',
+    ) as HTMLElement
+    expect(timeline.getAttribute("role")).toBe("slider")
+    expect(timeline.getAttribute("aria-label")).toBe("Seek")
+    expect(timeline.getAttribute("aria-valuetext")).toContain("0:15")
+    expect(volume.getAttribute("role")).toBe("slider")
+    expect(volume.getAttribute("aria-label")).toBe("Volume")
+    expect(timeline.tabIndex).toBe(0)
+    expect(volume.tabIndex).toBe(0)
+    expect(
+      timeline.compareDocumentPosition(volume) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })
 

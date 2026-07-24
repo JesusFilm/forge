@@ -371,7 +371,7 @@ export function SiblingCarousel({
           startIndex: carouselStartIndex,
         }}
         setApi={setApi}
-        className="w-full pl-5 md:pl-0"
+        className="w-full ps-5 md:ps-0"
       >
         <CarouselContent>
           {children.map((child, index) => {
@@ -620,7 +620,7 @@ export function SiblingCarousel({
             aria-hidden="true"
             data-testid="sibling-carousel-end-spacer"
             tabIndex={-1}
-            className="basis-auto pl-0"
+            className="basis-auto ps-0"
           >
             <div className={CAROUSEL_END_SPACER} />
           </CarouselItem>

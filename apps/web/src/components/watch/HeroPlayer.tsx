@@ -1836,7 +1836,7 @@ export function HeroPlayer({
             data-auto-armed={watchNextAutoArmed ? "true" : "false"}
             aria-label={t("nextEpisode")}
             onClick={navigateToNextWatchItem}
-            className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
+            className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-start shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
               watchNextManual
                 ? "bg-white text-black ring-white hover:bg-white"
                 : "bg-black/70 text-white ring-white/20 hover:bg-black/80"

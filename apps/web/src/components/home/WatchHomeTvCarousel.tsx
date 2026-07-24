@@ -879,16 +879,16 @@ function WatchHomeTvRail({
             loop: true,
           }}
           setApi={setApi}
-          className="-mx-5 w-[calc(100%+2.5rem)] pl-5 md:mx-0 md:w-full md:pl-0"
+          className="-mx-5 w-[calc(100%+2.5rem)] ps-5 md:mx-0 md:w-full md:ps-0"
         >
           <CarouselContent
-            className="-ml-4"
+            className="-ms-4"
             viewportClassName="overflow-x-visible md:overflow-x-clip"
           >
             {slides.map((slide) => (
               <CarouselItem
                 key={slide.id}
-                className="basis-auto pl-4 md:basis-1/3 lg:basis-1/4"
+                className="basis-auto ps-4 md:basis-1/3 lg:basis-1/4"
               >
                 <WatchHomeTvCard
                   slide={slide}

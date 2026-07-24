@@ -131,7 +131,7 @@ export function normalizeBcp47Tag(tag: string): string {
     .join("-")
 }
 
-type LocaleTextDirection = "ltr" | "rtl"
+export type LocaleTextDirection = "ltr" | "rtl"
 
 type LocaleTextInfo = Readonly<{
   direction: LocaleTextDirection

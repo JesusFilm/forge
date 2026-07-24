@@ -85,6 +85,49 @@ function searchLanguages(html: HTMLElement, value: string) {
 }
 
 describe("WatchLanguageIndexBrowser", () => {
+  it("uses logical search affordances and preserves mixed-script link identity", () => {
+    const mixed = language(1, {
+      englishLabel: "Arabic",
+      nativeLabel: "العربية",
+      publicSlug: "arabic-modern-standard",
+      href: "/arabic-modern-standard.html/videos",
+    })
+    const html = renderBrowser({
+      regions: [
+        {
+          name: "Asia",
+          languages: [mixed],
+          countries: [
+            {
+              id: "country-eg",
+              coreId: "EG",
+              name: "مصر",
+              flagPngSrc: null,
+              speakerCount: 10_000,
+              languageSpeakerCounts: languageSpeakerCounts([mixed]),
+              languages: [mixed],
+            },
+          ],
+        },
+      ],
+    })
+
+    const input = html.querySelector<HTMLInputElement>('input[type="search"]')
+    const link = html.querySelector<HTMLAnchorElement>(
+      'a[href="/arabic-modern-standard.html/videos"]',
+    )
+    const arrow = link?.querySelector("svg")
+    expect(input?.dir).toBe("auto")
+    expect(input?.className).toContain("ps-[3.25rem]")
+    expect(input?.className).toContain("pe-12")
+    expect(link?.className).toContain("text-start")
+    expect(link?.querySelectorAll("bdi")).toHaveLength(2)
+    expect(link?.getAttribute("href")).toBe(
+      "/arabic-modern-standard.html/videos",
+    )
+    expect(arrow?.getAttribute("class")).toContain("rtl:rotate-180")
+  })
+
   it("collapses country languages after the top four", () => {
     const languages = [1, 2, 3, 4, 5].map((index) => language(index))
     const html = renderToString(

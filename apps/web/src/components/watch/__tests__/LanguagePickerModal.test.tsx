@@ -365,7 +365,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
     expect(languageHeader?.contains(allLanguagesLink)).toBe(true)
     expect(languageHeader?.className).toContain("w-full")
-    expect(allLanguagesLink.className).toContain("ml-auto")
+    expect(allLanguagesLink.className).toContain("ms-auto")
+    expect(allLanguagesLink.className).not.toContain("ml-auto")
     expect(
       selectedLanguageAction?.previousElementSibling?.contains(languageSelect),
     ).toBe(true)
@@ -903,7 +904,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggleState?.className).toContain("w-7")
     expect(toggleState?.className).toContain("items-center")
     expect(toggleState?.className).toContain("justify-center")
-    expect(toggleState?.className).toContain("left-1")
+    expect(toggleState?.className).toContain("start-1")
+    expect(toggleState?.className).not.toContain("left-1")
     const toggleTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       [
@@ -1040,7 +1042,8 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-subtitles-toggle-state"]',
     )
     expect(toggleState?.textContent).toBe("O")
-    expect(toggleState?.className).toContain("right-1")
+    expect(toggleState?.className).toContain("end-1")
+    expect(toggleState?.className).not.toContain("right-1")
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       ["打开字幕", "उपशीर्षक चालू करें", "Activar subtítulos", "شغّل الترجمة"],
@@ -1059,7 +1062,8 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-subtitles-toggle-state"]',
     )
     expect(toggleState?.textContent).toBe("I")
-    expect(toggleState?.className).toContain("left-1")
+    expect(toggleState?.className).toContain("start-1")
+    expect(toggleState?.className).not.toContain("left-1")
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       [
@@ -1137,7 +1141,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(2)
     expect(
       $$('[data-testid="language-combobox-trigger"]')[1]?.textContent,
-    ).toContain("No English Subtitles")
+    ).toContain(`No ${isolate("English")} Subtitles`)
     const apply = $(
       '[data-testid="watch-language-picker-apply"]',
     ) as HTMLButtonElement

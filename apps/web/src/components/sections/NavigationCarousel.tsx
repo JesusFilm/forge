@@ -124,17 +124,17 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
         }}
         data-testid="NavigationCarouselSwiper"
       >
-        <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
+        <CarouselContent className={`-ms-5 ${CAROUSEL_CONTENT_PADDING}`}>
           {items.map((item: LegacyFragmentValue, index: number) => (
             <CarouselItem
               key={item.contentId}
-              className="basis-auto pl-5"
+              className="basis-auto ps-5"
               data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
             >
               <NavCard item={item} index={index} />
             </CarouselItem>
           ))}
-          <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+          <CarouselItem className="basis-auto ps-0" aria-hidden="true">
             <div className={CAROUSEL_END_SPACER} />
           </CarouselItem>
         </CarouselContent>

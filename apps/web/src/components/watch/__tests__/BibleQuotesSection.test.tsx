@@ -49,6 +49,12 @@ vi.mock("embla-carousel-react", () => ({
   default: () => [emblaRefMock, emblaApi],
 }))
 
+vi.mock("@/components/DirectionProvider", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/components/DirectionProvider")>()
+  return { ...actual, useDirection: () => "ltr" }
+})
+
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import {
   WATCH_PILL_BUTTON_CLASS,
@@ -332,8 +338,8 @@ describe("BibleQuotesSection — citations + promo", () => {
     const content = container.querySelector(
       '[data-testid="watch-bible-quotes-list"]',
     )
-    expect(content?.className).toContain("pl-5")
-    expect(content?.className).toContain("md:pl-0")
+    expect(content?.className).toContain("ps-5")
+    expect(content?.className).toContain("md:ps-0")
 
     // The two citation items render the formatted reference labels.
     const refs = container.querySelectorAll(
@@ -388,8 +394,8 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(next).not.toBeNull()
     expect(prev?.className).toContain("md:inline-flex")
     expect(next?.className).toContain("md:inline-flex")
-    expect(prev?.className).toContain("-left-12")
-    expect(next?.className).toContain("-right-12")
+    expect(prev?.className).toContain("-start-12")
+    expect(next?.className).toContain("-end-12")
     expect(prev?.className).toContain("text-stone-900")
     expect(next?.className).toContain("text-stone-900")
     expect(prev?.className).not.toContain("sr-only")

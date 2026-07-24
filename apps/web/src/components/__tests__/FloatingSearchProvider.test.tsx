@@ -2665,7 +2665,12 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")
     expect(overlayField?.className).toContain("w-full")
+    expect(overlayField?.className).toContain("text-start")
+    expect(overlayField?.className).not.toContain("text-left")
     expect(overlayField?.className).not.toContain("md:rounded-r-none")
+    expect(overlayField?.querySelector("input")?.getAttribute("dir")).toBe(
+      "auto",
+    )
     expect(
       document.querySelector('[data-testid="search-overlay-input-icon"]'),
     ).not.toBeNull()

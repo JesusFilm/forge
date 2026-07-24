@@ -227,7 +227,7 @@ export function VideoCard({
                 size="display"
                 className="text-center tracking-tight text-white/90 select-none"
               >
-                {result.title}
+                <bdi>{result.title}</bdi>
               </VideoThumbnailTitle>
             </div>
           </div>
@@ -293,11 +293,11 @@ export function VideoCard({
             </VideoThumbnailEyebrow>
           ) : null}
           <VideoThumbnailTitle size="compact">
-            {result.title}
+            <bdi>{result.title}</bdi>
           </VideoThumbnailTitle>
           {result.snippet && (
             <VideoThumbnailDescription>
-              {result.snippet}
+              <bdi>{result.snippet}</bdi>
             </VideoThumbnailDescription>
           )}
         </VideoThumbnailCaption>
