@@ -6,7 +6,7 @@
 # or false on admin web replicas so web scaling does not also scale background
 # job runners.
 #
-# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# Do not set NODE_OPTIONS=--require ./node_modules/dd-trace/init as a global Railway variable:
 # service variables are present during Railpack/mise build setup, before
 # dependencies are installed. Keep the Datadog preload scoped to startCommand.
 
@@ -23,7 +23,7 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init --max-old-space-size=5120' node apps/admin/.next/standalone/apps/admin/server.js"
+startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' node apps/admin/.next/standalone/apps/admin/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
