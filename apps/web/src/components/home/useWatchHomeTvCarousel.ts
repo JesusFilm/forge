@@ -160,10 +160,6 @@ export function useWatchHomeTvCarousel(
   } | null>(null)
   const [isMuted, setIsMuted] = useState(true)
   const [progress, setProgress] = useState(0)
-  const [playbackTime, setPlaybackTime] = useState<{
-    seconds: number
-    slideId: string | null
-  }>({ seconds: 0, slideId: null })
   const [leavingSlide, setLeavingSlide] =
     useState<WatchHomeTvCarouselSlide | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
@@ -233,6 +229,7 @@ export function useWatchHomeTvCarousel(
     displaySlides[defaultActiveIndex] ??
     displaySlides[0] ??
     null
+
   const autoAdvancePaused =
     activeSlide != null &&
     activeSlide.id === options.autoAdvancePausedForSlideId
@@ -286,7 +283,6 @@ export function useWatchHomeTvCarousel(
       clearVideoPosterHold()
       setProgress(0)
       setMediaReady(false)
-      setPlaybackTime({ seconds: 0, slideId: nextSlide?.id ?? null })
       setActiveSlideId(nextSlide?.id ?? null)
     },
     [
@@ -306,6 +302,11 @@ export function useWatchHomeTvCarousel(
     [displaySlides, selectIndex],
   )
 
+  const pinActiveSlide = useCallback(() => {
+    if (!hasHydrated || !activeSlide) return
+    setActiveSlideId((current) => current ?? activeSlide.id)
+  }, [activeSlide, hasHydrated])
+
   const advance = useCallback(() => {
     const nextIndex = isSequenced
       ? safeActiveIndex + 1 < displaySlides.length
@@ -315,14 +316,16 @@ export function useWatchHomeTvCarousel(
     selectIndex(nextIndex)
   }, [displaySlides, isSequenced, safeActiveIndex, selectIndex])
 
-  const toggleMuted = useCallback(() => {
-    setIsMuted((current) => {
-      const next = !current
-      const video = videoRef.current
-      if (video) video.muted = next
-      return next
-    })
+  const setMuted = useCallback((muted: boolean) => {
+    isMutedRef.current = muted
+    const video = videoRef.current
+    if (video) video.muted = muted
+    setIsMuted(muted)
   }, [])
+
+  const toggleMuted = useCallback(() => {
+    setMuted(!isMutedRef.current)
+  }, [setMuted])
 
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current
@@ -331,21 +334,16 @@ export function useWatchHomeTvCarousel(
       video.currentTime + VIDEO_POSTER_HOLD_SECONDS,
       video.duration,
     )
-    setPlaybackTime({
-      seconds: video.currentTime,
-      slideId: activeSlide?.id ?? null,
-    })
     setProgress(nextProgress)
     previousProgressRef.current = nextProgress
-  }, [activeSlide?.id])
+  }, [])
 
   const handleLoadedMetadata = useCallback(() => {
     previousProgressRef.current = 0
     clearVideoPosterHold()
     setMediaReady(false)
-    setPlaybackTime({ seconds: 0, slideId: activeSlide?.id ?? null })
     setProgress(0)
-  }, [activeSlide?.id, clearVideoPosterHold])
+  }, [clearVideoPosterHold])
 
   const handleCanPlay = useCallback(() => {
     const video = videoRef.current
@@ -555,10 +553,10 @@ export function useWatchHomeTvCarousel(
       isMuted,
       leavingSlide,
       mediaReady,
+      pinActiveSlide,
       progress,
-      playbackTimeSeconds:
-        playbackTime.slideId === activeSlide?.id ? playbackTime.seconds : 0,
       selectSlide,
+      setMuted,
       slides: displaySlides,
       toggleMuted,
       videoRef,
@@ -574,9 +572,10 @@ export function useWatchHomeTvCarousel(
       isMuted,
       leavingSlide,
       mediaReady,
-      playbackTime,
+      pinActiveSlide,
       progress,
       selectSlide,
+      setMuted,
       toggleMuted,
     ],
   )

@@ -3,7 +3,7 @@
  */
 
 import { act, useEffect, type ReactNode } from "react"
-import { createRoot, type Root } from "react-dom/client"
+import { createRoot, hydrateRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -15,6 +15,11 @@ import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
+import { watchHomePreviewOverlapPx } from "@/components/home/WatchHomeTvCarousel"
+import {
+  addWatchHomeTvPlayedId,
+  useWatchHomeTvCarousel,
+} from "@/components/home/useWatchHomeTvCarousel"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
@@ -182,6 +187,53 @@ function makeModel(overrides: Partial<WatchHomeModel> = {}): WatchHomeModel {
   }
 }
 
+function makeTwoHeroModel(): WatchHomeModel {
+  return makeModel({
+    heroSlides: [
+      { ...makeCard(), eyebrow: "Featured" },
+      {
+        ...makeCard({
+          id: "card-2",
+          sourceId: "2_jf-0-0",
+          coreId: "2_jf-0-0",
+          title: "John",
+          href: "/john.html/english.html",
+          hls: "https://stream.example/john.m3u8",
+        }),
+        eyebrow: "Featured",
+      },
+    ],
+  })
+}
+
+function mockDesktopPreviewGeometry() {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: query === "(min-width: 768px)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(() => false),
+    })),
+  )
+  vi.spyOn(window, "innerHeight", "get").mockReturnValue(1000)
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: HTMLElement) {
+      if (this.getAttribute("data-testid") === "watch-home-tv-preview-frame") {
+        return new DOMRect(0, 0, 1600, 900)
+      }
+      if (this.getAttribute("data-testid") === "watch-home-tv-rail") {
+        return new DOMRect(0, 900, 1600, 280)
+      }
+      return new DOMRect()
+    },
+  )
+}
+
 function makeCarouselSlide(
   overrides: Partial<WatchHomeTvCarouselVideoSlide> = {},
 ): WatchHomeTvCarouselVideoSlide {
@@ -202,6 +254,29 @@ function makeCarouselSlide(
     durationSeconds: 10,
     ...overrides,
   }
+}
+
+function CarouselHydrationProbe({
+  slides,
+}: {
+  slides: WatchHomeTvCarouselVideoSlide[]
+}) {
+  const { activeSlide, pinActiveSlide } = useWatchHomeTvCarousel(slides)
+  return (
+    <div>
+      <span data-testid="hydration-active-title">
+        {activeSlide?.kind === "video"
+          ? activeSlide.title
+          : activeSlide?.copyId}
+      </span>
+      <video
+        key={activeSlide?.id}
+        ref={(next) => {
+          if (next) pinActiveSlide()
+        }}
+      />
+    </div>
+  )
 }
 
 const muxInsert = {
@@ -247,9 +322,91 @@ afterEach(async () => {
   })
   container.remove()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe("WatchHomePage", () => {
+  it("calculates only the desktop overlap needed to keep the full rail visible", () => {
+    expect(
+      watchHomePreviewOverlapPx({
+        desktop: true,
+        frameBottom: 900,
+        railHeight: 280,
+        viewportHeight: 1000,
+      }),
+    ).toBe(180)
+    expect(
+      watchHomePreviewOverlapPx({
+        desktop: true,
+        frameBottom: 700,
+        railHeight: 280,
+        viewportHeight: 1000,
+      }),
+    ).toBe(0)
+    expect(
+      watchHomePreviewOverlapPx({
+        desktop: false,
+        frameBottom: 900,
+        railHeight: 280,
+        viewportHeight: 1000,
+      }),
+    ).toBe(0)
+  })
+
+  it("applies rendered preview overlap and restores it after another rail selection", async () => {
+    mockDesktopPreviewGeometry()
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined)
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeTwoHeroModel()} />)
+    })
+
+    const previewFrame = container.querySelector(
+      '[data-testid="watch-home-tv-preview-frame"]',
+    ) as HTMLElement
+    const overlay = container.querySelector(
+      '[data-testid="watch-home-tv-overlay"]',
+    ) as HTMLElement
+    expect(previewFrame.dataset.previewMeasured).toBe("true")
+    expect(previewFrame.className).toContain("transition-[margin-bottom]")
+    expect(previewFrame.dataset.previewOverlapPx).toBe("180")
+    expect(previewFrame.style.marginBottom).toBe("-180px")
+    expect(overlay.style.bottom).toBe("180px")
+
+    const watchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+    await act(async () => {
+      watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(previewFrame.dataset.previewOverlapPx).toBe("0")
+    expect(previewFrame.style.marginBottom).toBe("0px")
+    expect(overlay.style.bottom).toBe("")
+
+    const johnRailCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((card) => card.textContent?.includes("John"))
+    await act(async () => {
+      johnRailCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    const selectedVideo = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    expect(selectedVideo.muted).toBe(true)
+    expect(previewFrame.dataset.previewOverlapPx).toBe("180")
+    expect(previewFrame.style.marginBottom).toBe("-180px")
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-home-tv-overlay"]',
+        ) as HTMLElement
+      ).style.bottom,
+    ).toBe("180px")
+    expect(container.textContent).toContain("Watch Now")
+  })
+
   it("server-renders one page heading outside the heading-free carousel", () => {
     const serverContainer = document.createElement("div")
     serverContainer.innerHTML = renderToStaticMarkup(
@@ -271,6 +428,43 @@ describe("WatchHomePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
+    expect(
+      serverContainer
+        .querySelector('[data-testid="watch-home-tv-preview-frame"]')
+        ?.getAttribute("class"),
+    ).not.toContain("transition-[margin-bottom]")
+  })
+
+  it("hydrates to the persisted first-unplayed hero instead of pinning the server default", async () => {
+    const slides = [
+      makeCarouselSlide({ id: "queued-1", title: "Queued One" }),
+      makeCarouselSlide({ id: "queued-2", title: "Queued Two" }),
+    ]
+    addWatchHomeTvPlayedId("queued-1")
+    const hydrationContainer = document.createElement("div")
+    hydrationContainer.innerHTML = renderToStaticMarkup(
+      <CarouselHydrationProbe slides={slides} />,
+    )
+    document.body.appendChild(hydrationContainer)
+    let hydratedRoot: Root | null = null
+
+    await act(async () => {
+      hydratedRoot = hydrateRoot(
+        hydrationContainer,
+        <CarouselHydrationProbe slides={slides} />,
+      )
+      await Promise.resolve()
+    })
+
+    expect(
+      hydrationContainer.querySelector('[data-testid="hydration-active-title"]')
+        ?.textContent,
+    ).toBe("Queued Two")
+
+    await act(async () => {
+      hydratedRoot?.unmount()
+    })
+    hydrationContainer.remove()
   })
 
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {
@@ -441,6 +635,16 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
     ).not.toBeNull()
+    const clickSurface = container.querySelector(
+      '[data-testid="watch-home-player-click-surface"]',
+    )
+    expect(clickSurface?.getAttribute("aria-hidden")).toBe("true")
+    expect(clickSurface?.getAttribute("tabindex")).toBe("-1")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"] > div')
+        ?.getAttribute("class"),
+    ).toContain("motion-reduce:transition-none")
     expect(container.textContent).toContain("Jesus")
     expect(container.textContent).toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
@@ -480,11 +684,12 @@ describe("WatchHomePage", () => {
       container.querySelectorAll(
         "a[href='/jesus.html/english.html?autoplay=1']",
       ),
-    ).toHaveLength(1)
+    ).toHaveLength(0)
     expect(
-      container.querySelector("a[href='/jesus.html/english.html?autoplay=1']")
-        ?.textContent,
-    ).toContain("Watch Now")
+      Array.from(container.querySelectorAll("button")).find((button) =>
+        button.textContent?.includes("Watch Now"),
+      ),
+    ).not.toBeUndefined()
     expect(
       container.querySelector('[data-testid="watch-home-share-button"]'),
     ).toBeNull()
@@ -805,7 +1010,11 @@ describe("WatchHomePage", () => {
     )
   })
 
-  it("carries the hero preview playback time into the watch now link", async () => {
+  it("expands and unmutes a catalog preview inline from Watch Now", async () => {
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined)
+
     await act(async () => {
       root.render(<WatchHomePage model={makeModel()} />)
     })
@@ -813,24 +1022,323 @@ describe("WatchHomePage", () => {
     const video = container.querySelector(
       '[data-testid="watch-home-tv-video"]',
     ) as HTMLVideoElement
-    Object.defineProperty(video, "currentTime", {
-      configurable: true,
-      value: 12.8,
-    })
-    Object.defineProperty(video, "duration", {
-      configurable: true,
-      value: 100,
-    })
+    const watchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
 
     await act(async () => {
-      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(watchNow).not.toBeUndefined()
+    expect(watchNow?.getAttribute("aria-controls")).toBe(
+      "watch-home-tv-media-frame",
+    )
+    expect(playSpy).toHaveBeenCalled()
+    expect(video.muted).toBe(false)
+    expect(video.className).toContain("watch-home-player-enter")
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 380))
     })
 
     expect(
-      container.querySelector(
-        "a[href='/jesus.html/english.html?t=12&autoplay=1']",
-      )?.textContent,
-    ).toContain("Watch Now")
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).not.toBeNull()
+    expect(document.activeElement?.getAttribute("data-testid")).toBe(
+      "hero-chrome-play",
+    )
+    expect(container.textContent).not.toContain("Watch Now")
+
+    const activeRailCard = container.querySelector(
+      '[data-testid="watch-home-tv-carousel-card"][aria-pressed="true"]',
+    )
+    await act(async () => {
+      activeRailCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).not.toBeNull()
+    expect(video.muted).toBe(false)
+  })
+
+  it("opens a catalog preview inline from the non-focusable media surface", async () => {
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined)
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-player-click-surface"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(playSpy).toHaveBeenCalled()
+    expect(video.muted).toBe(false)
+    expect(video.className).toContain("watch-home-player-enter")
+    expect(document.activeElement?.getAttribute("data-testid")).not.toBe(
+      "hero-chrome-play",
+    )
+  })
+
+  it("restores global header visibility when the carousel unmounts during takeover", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined)
+    const visibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
+    const handleVisibility = (event: Event) => {
+      visibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
+      )
+    }
+    window.addEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleVisibility,
+    )
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+    const watchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+    await act(async () => {
+      watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    visibilityEvents.length = 0
+
+    await act(async () => {
+      root.render(<div />)
+    })
+
+    expect(visibilityEvents.at(-1)).toEqual({ visible: true, opacity: 1 })
+    window.removeEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleVisibility,
+    )
+  })
+
+  it("rolls back to the muted preview when inline playback is rejected", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(
+      new DOMException("Playback rejected", "NotAllowedError"),
+    )
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    const watchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+
+    await act(async () => {
+      watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(video.muted).toBe(true)
+    expect(video.className).not.toContain("watch-home-player-enter")
+    expect(container.textContent).toContain("Watch Now")
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).toBeNull()
+  })
+
+  it("restores Watch Now focus after a delayed playback rejection", async () => {
+    let rejectPlay: ((reason?: unknown) => void) | undefined
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectPlay = reject
+        }),
+    )
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const watchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+    await act(async () => {
+      watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      await new Promise((resolve) => window.setTimeout(resolve, 380))
+    })
+    expect(document.activeElement?.getAttribute("data-testid")).toBe(
+      "hero-chrome-play",
+    )
+
+    await act(async () => {
+      rejectPlay?.(new DOMException("Late rejection", "NotAllowedError"))
+      await Promise.resolve()
+    })
+
+    const retryWatchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+    expect(document.activeElement).toBe(retryWatchNow)
+  })
+
+  it("restores the muted preview when play throws synchronously", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() => {
+      throw new DOMException("Playback threw", "NotAllowedError")
+    })
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const watchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+    await act(async () => {
+      watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    expect(video.muted).toBe(true)
+    expect(container.textContent).toContain("Watch Now")
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).toBeNull()
+  })
+
+  it("resumes timed carousel advancement after playback rejection", async () => {
+    vi.useFakeTimers()
+    try {
+      vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(
+        new DOMException("Playback rejected", "NotAllowedError"),
+      )
+      await act(async () => {
+        root.render(<WatchHomePage model={makeTwoHeroModel()} />)
+      })
+      const activeBefore = container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+      const watchNow = Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.includes("Watch Now"),
+      )
+      await act(async () => {
+        watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+        await Promise.resolve()
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(31_000)
+        await Promise.resolve()
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-tv-carousel"]')
+          ?.getAttribute("aria-label"),
+      ).not.toBe(activeBefore)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("ignores an old playback rejection after a newer slide takes over", async () => {
+    let rejectFirstPlay: ((reason?: unknown) => void) | undefined
+    const firstPlay = new Promise<void>((_resolve, reject) => {
+      rejectFirstPlay = reject
+    })
+    vi.spyOn(HTMLMediaElement.prototype, "play")
+      .mockImplementationOnce(() => firstPlay)
+      .mockResolvedValue(undefined)
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeTwoHeroModel()} />)
+    })
+
+    const firstWatchNow = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Watch Now"),
+    )
+    await act(async () => {
+      firstWatchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    const johnRailCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((card) => card.textContent?.includes("John"))
+    await act(async () => {
+      johnRailCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    const secondWatchNow = Array.from(
+      container.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Watch Now"))
+    await act(async () => {
+      secondWatchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      rejectFirstPlay?.(new DOMException("Stale rejection", "AbortError"))
+      await Promise.resolve()
+    })
+
+    const currentVideo = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    expect(currentVideo.getAttribute("src")).toBe(
+      "https://stream.example/john.m3u8",
+    )
+    expect(currentVideo.muted).toBe(false)
+    expect(currentVideo.className).toContain("watch-home-player-enter")
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 380))
+    })
+
+    expect(
+      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
+    ).not.toBeNull()
+  })
+
+  it("pauses timed carousel advancement while a catalog video is expanded", async () => {
+    vi.useFakeTimers()
+    try {
+      vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined)
+
+      await act(async () => {
+        root.render(<WatchHomePage model={makeTwoHeroModel()} />)
+      })
+
+      const watchNow = Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.includes("Watch Now"),
+      )
+      const activeTitleBeforeTakeover = container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+      await act(async () => {
+        watchNow?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(31_000)
+        await Promise.resolve()
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-tv-carousel"]')
+          ?.getAttribute("aria-label"),
+      ).toBe(activeTitleBeforeTakeover)
+      expect(
+        document.body.querySelector(
+          '[data-testid="hero-player-custom-chrome"]',
+        ),
+      ).not.toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("shows available subtitles while the hero preview is muted", async () => {
@@ -1267,6 +1775,11 @@ describe("WatchHomePage", () => {
 
     expect(container.textContent).toContain("Today's Video Picks")
     expect(container.textContent).not.toContain("Watch Short Film")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-home-player-click-surface"]',
+      ),
+    ).toBeNull()
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
     ).toHaveLength(1)
