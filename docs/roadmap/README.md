@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 433
-- **Complete:** 326
+- **Total tickets:** 434
+- **Complete:** 327
 - **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
@@ -408,6 +408,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-299](platform/feat-299-watch-grid-mobile-carousels.md)                           | Watch Experience grids become mobile carousels                                   | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-306](platform/feat-306-watch-footer-contact-three-column-layout.md)              | Watch footer contact three-column layout                                         | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-305](platform/feat-305-watch-footer-remove-social-newsletter-actions.md)         | Remove Watch footer social and newsletter actions                                | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-307](platform/feat-307-watch-home-heading-hierarchy.md)                          | Simplify Watch home heading hierarchy                                            | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |

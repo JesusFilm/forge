@@ -11,6 +11,7 @@ import {
   useState,
   type CSSProperties,
   type MutableRefObject,
+  type ReactNode,
   type RefObject,
 } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -79,6 +80,26 @@ type WatchHomeTvCarouselProps = {
 type WatchHomeShortFilmPhase = "transitioning" | "playing"
 
 const WATCH_HOME_SHORT_FILM_TRANSITION_MS = 360
+
+function WatchHomeTvCarouselRegion({
+  activeSlide,
+  children,
+}: {
+  activeSlide: WatchHomeTvCarouselSlide
+  children: ReactNode
+}) {
+  const copy = useWatchHomeTvSlideCopy(activeSlide)
+
+  return (
+    <section
+      aria-label={copy.title}
+      className="relative bg-black"
+      data-testid="watch-home-tv-carousel"
+    >
+      {children}
+    </section>
+  )
+}
 
 function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
@@ -601,16 +622,19 @@ function WatchHomeTvOverlayContent({
         >
           <WatchHomeTvSlideLabel slide={slide} />
         </p>
-        <h2
+        <p
           className={cn(
             itemClassName,
             "line-clamp-3 leading-tight font-extrabold sm:line-clamp-2",
             "text-3xl max-[360px]:text-2xl sm:text-5xl md:text-6xl",
           )}
+          data-testid={
+            mode === "entering" ? "watch-home-tv-active-title" : undefined
+          }
           style={delayStyle(1)}
         >
           {copy.title}
-        </h2>
+        </p>
         {copy.description ? (
           <p
             className={cn(
@@ -818,7 +842,7 @@ function WatchHomeTvCard({
         <VideoThumbnailEyebrow as="p" size="compact-sm">
           <WatchHomeTvSlideLabel slide={slide} />
         </VideoThumbnailEyebrow>
-        <VideoThumbnailTitle as="h2" size="regular-sm">
+        <VideoThumbnailTitle as="span" size="regular-sm">
           {copy.title}
         </VideoThumbnailTitle>
       </VideoThumbnailCaption>
@@ -1062,8 +1086,7 @@ export function WatchHomeTvCarousel({
   if (!activeSlide) return null
 
   return (
-    <section className="relative bg-black" data-testid="watch-home-tv-carousel">
-      <h1 className="sr-only">{t("pageTitle")}</h1>
+    <WatchHomeTvCarouselRegion activeSlide={activeSlide}>
       <div className="relative mx-auto h-[66svh] w-full max-w-[1920px] overflow-hidden bg-black md:h-[min(100svh,56.25vw)]">
         <WatchHomeTvMedia
           activeSlide={activeSlide}
@@ -1150,6 +1173,6 @@ export function WatchHomeTvCarousel({
         progress={progress}
         onSelect={handleSelectSlide}
       />
-    </section>
+    </WatchHomeTvCarouselRegion>
   )
 }

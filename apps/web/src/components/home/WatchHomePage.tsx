@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomePromo } from "@/components/home/WatchHomePromo"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
@@ -23,6 +24,7 @@ function findBackdropImage(model: WatchHomeModel): {
 }
 
 export function WatchHomePage({ model }: WatchHomePageProps) {
+  const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(model)
 
   return (
@@ -56,6 +58,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
         </div>
 
         <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-x-clip">
+          <h1 className="sr-only">{t("pageTitle")}</h1>
           <WatchHomeTvCarousel
             slides={model.heroSlides}
             sequence={model.carousel}

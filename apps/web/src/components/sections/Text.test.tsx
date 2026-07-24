@@ -137,6 +137,24 @@ describe("Text promotional Markdown", () => {
     ).toBeNull()
   })
 
+  it("server-renders an authored page topic as the only h1", () => {
+    const { container } = renderText({
+      heading: "Watch free Christian videos, Bible stories, and films",
+      headingLevel: "h1",
+    })
+
+    expect(container.querySelectorAll("h1")).toHaveLength(1)
+    expect(container.querySelector("h1")?.textContent).toBe(
+      "Watch free Christian videos, Bible stories, and films",
+    )
+  })
+
+  it("does not render a whitespace-only heading", () => {
+    const { container } = renderText({ heading: "   ", headingLevel: "h1" })
+
+    expect(container.querySelector("h1")).toBeNull()
+  })
+
   it("does not render decorative rays beside the promotional heading", () => {
     const { container } = renderText()
 
