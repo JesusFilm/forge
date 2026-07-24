@@ -7,6 +7,7 @@ import {
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
+import { asContentSlug, asLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
@@ -59,11 +60,16 @@ type RewriteDecision =
   | { kind: "pass" }
   | { kind: "not-found" }
 
+type ManifestAdmissionDecision =
+  | { kind: "admit" }
+  | { kind: "redirect"; pathname: string }
+  | { kind: "not-found" }
+
 function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
 }
 
-function buildRedirect(url: URL, status: 307 | 308): NextResponse {
+function buildRedirect(url: URL, status: 301 | 307 | 308): NextResponse {
   const response = NextResponse.redirect(url, status)
   response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
   return response
@@ -287,19 +293,44 @@ function buildNotFound(request: ProxyRequest): NextResponse {
   })
 }
 
-async function isRewriteAdmittedByManifest(
+async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
-): Promise<boolean> {
-  if (!decision.manifestRoute) return true
+): Promise<ManifestAdmissionDecision> {
+  if (!decision.manifestRoute) return { kind: "admit" }
 
   const manifest = await getWatchRouteManifest()
   if (!manifest) {
-    return decision.manifestRoute.kind === "one-segment"
-      ? isOneSegmentCollectionSlug(decision.manifestRoute.slug)
-      : true
+    if (
+      decision.manifestRoute.kind === "one-segment" &&
+      !isOneSegmentCollectionSlug(decision.manifestRoute.slug)
+    ) {
+      return { kind: "not-found" }
+    }
+    return { kind: "admit" }
   }
 
-  return isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)
+  if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+    return { kind: "admit" }
+  }
+
+  if (decision.manifestRoute.kind === "episode") {
+    const standaloneRoute: WatchRouteManifestRoute = {
+      kind: "video",
+      contentSlug: decision.manifestRoute.childSlug,
+      audioLanguageSlug: decision.manifestRoute.audioLanguageSlug,
+    }
+    if (isWatchRouteAdmittedByManifest(manifest, standaloneRoute)) {
+      return {
+        kind: "redirect",
+        pathname: watchVideoPath(
+          asContentSlug(standaloneRoute.contentSlug),
+          asLocaleSlug(standaloneRoute.audioLanguageSlug),
+        ),
+      }
+    }
+  }
+
+  return { kind: "not-found" }
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
@@ -346,8 +377,14 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const rewrite = classifyRewrite(pathname)
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") return buildNotFound(request)
-  if (!(await isRewriteAdmittedByManifest(rewrite))) {
+  const admission = await classifyManifestAdmission(rewrite)
+  if (admission.kind === "not-found") {
     return buildNotFound(request)
+  }
+  if (admission.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = admission.pathname
+    return buildRedirect(url, 301)
   }
   return rewriteToInternal(request, rewrite)
 }

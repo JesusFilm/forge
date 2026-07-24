@@ -44,6 +44,27 @@ Audio availability takes precedence over subtitle-only membership, while
 collection containers and playable leaf Videos remain distinct inventory
 groups even when they share the same underlying language coverage.
 
+### Contextual Watch Route
+
+A public Watch URL that identifies a parent collection, child Video, and
+Language together so navigation can preserve the child's collection context
+when that exact relationship is valid.
+
+### Standalone Watch Route
+
+The canonical public Watch URL for a Video and Language independent of any
+collection relationship.
+
+### Watch Route Manifest
+
+An Admin-owned snapshot of public Watch route dimensions used by consumers to
+admit or reject possible contextual and standalone routes before resolving page
+content.
+
+The manifest is an admission contract, not a rendering payload or historical
+record; absence can disprove current route validity but cannot explain why a
+relationship changed.
+
 ## Video source mapper
 
 ### Video Source Mapper
