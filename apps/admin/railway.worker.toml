@@ -12,7 +12,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && if [ -n \"${DATADOG_API_KEY:-${DD_API_KEY:-}}\" ]; then pnpm --filter @forge/admin datadog:sourcemaps; else echo 'Skipping @forge/admin Datadog sourcemap upload: DATADOG_API_KEY/DD_API_KEY is not set'; fi && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && if [ -n \"$DATADOG_API_KEY$DD_API_KEY\" ]; then pnpm --filter @forge/admin datadog:sourcemaps; else echo 'Skipping @forge/admin Datadog sourcemap upload: DATADOG_API_KEY/DD_API_KEY is not set'; fi && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static"
 watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
