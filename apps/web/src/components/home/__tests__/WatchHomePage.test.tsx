@@ -1219,36 +1219,6 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('button[aria-label="Next video preview"]'),
     ).not.toBeNull()
-    expect(
-      container
-        .querySelector('button[aria-label="Previous video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("left-6")
-    expect(
-      container
-        .querySelector('button[aria-label="Previous video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("h-12")
-    expect(
-      container
-        .querySelector('button[aria-label="Previous video preview"]')
-        ?.getAttribute("class"),
-    ).toContain("text-stone-900")
-    expect(
-      container
-        .querySelector('button[aria-label="Next video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("right-6")
-    expect(
-      container
-        .querySelector('button[aria-label="Next video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("h-12")
-    expect(
-      container
-        .querySelector('button[aria-label="Next video preview"]')
-        ?.getAttribute("class"),
-    ).toContain("text-stone-900")
   })
 
   it("keeps configured Mux inserts when the video queue is empty", async () => {

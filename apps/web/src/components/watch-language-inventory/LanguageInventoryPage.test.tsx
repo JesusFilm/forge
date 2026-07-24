@@ -14,6 +14,8 @@ vi.mock("@/components/ui/carousel", () => {
     Carousel: Pass,
     CarouselContent: Pass,
     CarouselItem: Pass,
+    CarouselPrevious: () => null,
+    CarouselNext: () => null,
   }
 })
 vi.mock("./LanguageCollectionSwitcher", () => ({

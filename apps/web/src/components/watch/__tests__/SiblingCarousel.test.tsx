@@ -91,6 +91,7 @@ vi.mock("next/link", () => ({
 }))
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en",
   useTranslations:
     (namespace: "SiblingCarousel" | "VideoLabels") =>
     (key: string, values?: Record<string, unknown>) => {

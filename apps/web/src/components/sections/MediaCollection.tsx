@@ -32,6 +32,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
@@ -594,6 +596,8 @@ function WatchHomeMediaCollection({
                 <div className="w-5 md:w-16 xl:w-24" />
               </CarouselItem>
             </CarouselContent>
+            <CarouselPrevious label={t("previousVideoPreview")} />
+            <CarouselNext label={t("nextVideoPreview")} />
           </Carousel>
         </div>
       ) : (

@@ -11,6 +11,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import { Card } from "@/components/ui/card"
 import {
@@ -105,6 +107,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
 }
 
 export function NavigationCarousel({ data }: NavigationCarouselProps) {
+  const t = useTranslations("WatchHome")
   const items = data.items?.filter(
     (item: LegacyFragmentValue): item is NonNullable<typeof item> =>
       item != null,
@@ -138,6 +141,8 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
             <div className={CAROUSEL_END_SPACER} />
           </CarouselItem>
         </CarouselContent>
+        <CarouselPrevious label={t("previousVideoPreview")} />
+        <CarouselNext label={t("nextVideoPreview")} />
       </Carousel>
     </div>
   )

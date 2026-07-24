@@ -19,6 +19,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
@@ -739,6 +741,7 @@ export function LanguageInventoryPage({
   homeSections = [],
 }: LanguageInventoryPageProps) {
   const t = useTranslations("LanguageInventory")
+  const watchHome = useTranslations("WatchHome")
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
   const videoBibleCollections = inventory.audioCollections.filter(
@@ -877,6 +880,8 @@ export function LanguageInventoryPage({
                 />
               </CarouselItem>
             </CarouselContent>
+            <CarouselPrevious label={watchHome("previousVideoPreview")} />
+            <CarouselNext label={watchHome("nextVideoPreview")} />
           </Carousel>
         </div>
       </nav>
