@@ -20,7 +20,7 @@ import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 
 const PROMPT_ROTATION_MS = 3000
-const FIELD_BASE_CLASS = `group flex min-h-14 min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-left shadow-xl ${GLASS_OUTLINE_CLASS} transition-[background-color,color] duration-300 ease-out`
+const FIELD_BASE_CLASS = `group flex min-h-14 min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-start shadow-xl ${GLASS_OUTLINE_CLASS} transition-[background-color,color] duration-300 ease-out`
 const FIELD_GLASS_CLASS =
   "bg-white/10 text-white backdrop-blur-[10px] hover:bg-white hover:text-stone-950"
 const FIELD_SOLID_CLASS = "bg-white text-stone-950"
@@ -161,7 +161,7 @@ export function WatchQuestionPanel({
                       aria-pressed={selected}
                       data-testid={`watch-question-panel-option-${index}`}
                       onClick={() => handlePromptSelect(index)}
-                      className={`group flex min-h-16 w-full cursor-pointer items-center gap-4 px-3 py-3 text-left transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none ${
+                      className={`group flex min-h-16 w-full cursor-pointer items-center gap-4 px-3 py-3 text-start transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none ${
                         selected
                           ? "bg-black/[0.18] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04),inset_0_12px_28px_rgba(0,0,0,0.34)]"
                           : "text-white/70 hover:text-white"
@@ -253,6 +253,7 @@ export function WatchQuestionPanel({
               <input
                 ref={inputRef}
                 type="text"
+                dir="auto"
                 name="watch-question"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
@@ -274,7 +275,7 @@ export function WatchQuestionPanel({
                   key={currentPrompt.id}
                   aria-hidden="true"
                   data-testid="watch-mobile-question-panel-prompt"
-                  className="pointer-events-none absolute inset-y-0 left-0 z-0 flex max-w-full items-center truncate text-base leading-none text-white/90 transition-colors duration-300 animate-watch-panel-swap group-hover:text-stone-950"
+                  className="pointer-events-none absolute inset-y-0 start-0 z-0 flex max-w-full items-center truncate text-base leading-none text-white/90 transition-colors duration-300 animate-watch-panel-swap group-hover:text-stone-950"
                 >
                   {promptLabel(currentPrompt)}
                 </span>
@@ -285,7 +286,7 @@ export function WatchQuestionPanel({
               aria-label={t("send")}
               data-testid="watch-mobile-question-panel-send"
               disabled={!hasQuestion}
-              className={`-mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-full transition focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none ${
+              className={`-me-2 grid h-9 w-9 shrink-0 place-items-center rounded-full transition focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none ${
                 hasQuestion
                   ? "cursor-pointer bg-brand-red text-white hover:bg-brand-red/90"
                   : chatOpen

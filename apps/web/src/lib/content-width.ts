@@ -62,17 +62,18 @@ export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATC
  * aligned with the padded content area.
  *
  * Apply CAROUSEL_BLEED_CLASSES to the carousel's outer wrapper (negative margins
- * pull it past the Section padding). Apply CAROUSEL_CONTENT_PADDING to
- * CarouselContent so the first slide starts at the content edge.
+ * pull it past the Section padding). Apply the logical inline-start
+ * CAROUSEL_CONTENT_PADDING to CarouselContent so the first slide starts at the
+ * content edge in either document direction.
  */
 export const CAROUSEL_BLEED_CLASSES =
   "-mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-10 2xl:-mx-12"
 export const CAROUSEL_CONTENT_PADDING =
-  "pl-4 sm:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12"
+  "ps-4 sm:ps-6 lg:ps-8 xl:ps-10 2xl:ps-12"
 
 /**
  * Width classes for the trailing spacer slide in a carousel.
- * Embla's containScroll trims CSS padding-right, so we add a real
- * CarouselItem as the last slide to mirror the left content padding.
+ * Embla's containScroll trims CSS inline-end padding, so we add a real
+ * CarouselItem as the last slide to mirror the inline-start content padding.
  */
 export const CAROUSEL_END_SPACER = "w-4 sm:w-6 lg:w-8 xl:w-10 2xl:w-12"

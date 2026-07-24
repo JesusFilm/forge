@@ -14,6 +14,7 @@ import {
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
 import DatadogRum from "@/components/DatadogRum"
+import { DirectionProvider } from "@/components/DirectionProvider"
 import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
@@ -101,16 +102,18 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <DatadogRum />
-          <GoogleAnalytics />
-          <WatchModalActivityProvider>
-            <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
-              <FeedbackLauncher />
-              <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
-            </FloatingSearchProvider>
-          </WatchModalActivityProvider>
-        </NextIntlClientProvider>
+        <DirectionProvider direction={textDirection}>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <DatadogRum />
+            <GoogleAnalytics />
+            <WatchModalActivityProvider>
+              <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
+                <FeedbackLauncher />
+                <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+              </FloatingSearchProvider>
+            </WatchModalActivityProvider>
+          </NextIntlClientProvider>
+        </DirectionProvider>
       </body>
     </html>
   )

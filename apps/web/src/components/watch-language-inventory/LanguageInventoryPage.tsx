@@ -28,6 +28,7 @@ import { WatchHomeSection } from "@/components/home/WatchHomeSection"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import { isolateBidiDisplayText } from "@/lib/bidi"
 import {
   type WatchLanguageInventoryCard,
   type WatchLanguageInventoryModel,
@@ -296,7 +297,7 @@ function InventoryCard({
     item.availability === "AUDIO" ? t("dubbed") : t("subtitles")
   const isInteractive = Boolean(item.href)
   const frameClassName = cn(
-    "relative block h-full overflow-hidden rounded-lg bg-stone-900 text-left text-inherit shadow-xl shadow-black/35 ring-1 ring-white/10 transition duration-300",
+    "relative block h-full overflow-hidden rounded-lg bg-stone-900 text-start text-inherit shadow-xl shadow-black/35 ring-1 ring-white/10 transition duration-300",
     isInteractive && "group hover:-translate-y-1",
     isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
     promoted ? "min-w-[78vw] sm:min-w-[340px] lg:min-w-[380px]" : "",
@@ -354,16 +355,18 @@ function InventoryCard({
           ) : null}
         </div>
         <h3 className="line-clamp-2 text-lg leading-tight font-bold text-white">
-          {item.title}
+          <bdi>{item.title}</bdi>
         </h3>
         {item.description ? (
           <p className="line-clamp-2 text-sm leading-6 text-stone-300">
-            {item.description}
+            <bdi>{item.description}</bdi>
           </p>
         ) : null}
         {item.parentTitle ? (
           <p className="line-clamp-1 text-xs font-semibold text-stone-400">
-            {t("fromCollection", { collection: item.parentTitle })}
+            {t("fromCollection", {
+              collection: isolateBidiDisplayText(item.parentTitle),
+            })}
           </p>
         ) : null}
       </div>
@@ -451,7 +454,7 @@ function CompactVideoRow({
     .join(" / ")
   const content = (
     <>
-      <span className="w-8 shrink-0 text-right text-xs font-black text-stone-500 tabular-nums">
+      <span className="w-8 shrink-0 text-end text-xs font-black text-stone-500 tabular-nums">
         {index + 1}
       </span>
       <span className="relative h-12 w-20 shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10 sm:h-14 sm:w-24">
@@ -481,7 +484,7 @@ function CompactVideoRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-1 text-sm font-bold text-white">
-          {item.title}
+          <bdi>{item.title}</bdi>
         </span>
         {metadata ? (
           <span className="mt-0.5 block truncate text-xs font-semibold text-stone-400">
@@ -522,7 +525,9 @@ function CollectionGroupOverview({ group }: { group: GroupedInventoryVideos }) {
   const description =
     collection?.description ??
     (group.items[0]?.parentTitle
-      ? t("videosFromCollection", { collection: group.title })
+      ? t("videosFromCollection", {
+          collection: isolateBidiDisplayText(group.title),
+        })
       : t("standaloneDescription"))
 
   return (
@@ -546,7 +551,9 @@ function CollectionGroupOverview({ group }: { group: GroupedInventoryVideos }) {
       </div>
       <div className="mt-4 flex flex-1 flex-col items-start space-y-2">
         <div className="text-xs font-bold text-amber-200/90">{label}</div>
-        <h3 className="text-xl leading-tight font-black text-white">{title}</h3>
+        <h3 className="text-xl leading-tight font-black text-white">
+          <bdi>{title}</bdi>
+        </h3>
         {collection?.href ? (
           <Link
             href={collection.href}
@@ -602,7 +609,7 @@ function GroupedVideoListSection({
               {eyebrow}
             </div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">
-              {title}
+              <bdi>{title}</bdi>
             </h2>
             <p className="mt-3 max-w-2xl text-base leading-7 text-stone-300">
               {description}
@@ -626,7 +633,7 @@ function GroupedVideoListSection({
                 data-testid="language-inventory-collection-group"
               >
                 <div
-                  className="border-b border-white/10 bg-white/[0.035] p-4 lg:border-r lg:border-b-0 lg:p-5"
+                  className="border-b border-white/10 bg-white/[0.035] p-4 lg:border-e lg:border-b-0 lg:p-5"
                   data-testid="language-inventory-collection-sidebar"
                 >
                   <div
@@ -688,7 +695,7 @@ function InventorySection({
               {eyebrow}
             </div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">
-              {title}
+              <bdi>{title}</bdi>
             </h2>
             <p className="mt-3 max-w-2xl text-base leading-7 text-stone-300">
               {description}
@@ -741,6 +748,8 @@ export function LanguageInventoryPage({
   const t = useTranslations("LanguageInventory")
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
+  const isolatedLanguageDisplayName =
+    isolateBidiDisplayText(languageDisplayName)
   const videoBibleCollections = inventory.audioCollections.filter(
     (item) =>
       item.watchLanguageSlug === inventory.languageSlug &&
@@ -791,10 +800,12 @@ export function LanguageInventoryPage({
         <div className="relative mx-auto grid min-h-[72vh] max-w-7xl items-end gap-8 px-5 pt-36 pb-10 sm:px-8 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44">
           <div className="max-w-4xl">
             <h1 className="max-w-3xl text-4xl leading-[1.04] font-bold text-white sm:text-5xl lg:text-6xl">
-              {t("heroTitle", { language: languageDisplayName })}
+              {t("heroTitle", { language: isolatedLanguageDisplayName })}
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-stone-200">
-              {t("heroDescription", { language: languageDisplayName })}
+              {t("heroDescription", {
+                language: isolatedLanguageDisplayName,
+              })}
             </p>
           </div>
           <LanguageCollectionSwitcher
@@ -821,8 +832,8 @@ export function LanguageInventoryPage({
               dragFree: true,
             }}
           >
-            <CarouselContent className="-ml-5">
-              <CarouselItem className="basis-auto pl-5">
+            <CarouselContent className="-ms-5">
+              <CarouselItem className="basis-auto ps-5">
                 <SectionMetricAnchor
                   href="#new"
                   icon={Sparkles}
@@ -831,7 +842,7 @@ export function LanguageInventoryPage({
                   value={inventory.promoted.length}
                 />
               </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
+              <CarouselItem className="basis-auto ps-5">
                 <SectionMetricAnchor
                   href="#bible-gospels"
                   icon={BookOpen}
@@ -840,7 +851,7 @@ export function LanguageInventoryPage({
                   value={videoBibleCollections.length}
                 />
               </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
+              <CarouselItem className="basis-auto ps-5">
                 <SectionMetricAnchor
                   href="#bible-project"
                   icon={BookOpen}
@@ -849,7 +860,7 @@ export function LanguageInventoryPage({
                   value={bibleProjectCollections.length}
                 />
               </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
+              <CarouselItem className="basis-auto ps-5">
                 <SectionMetricAnchor
                   href="#sports"
                   icon={Trophy}
@@ -858,7 +869,7 @@ export function LanguageInventoryPage({
                   value={sportsCollections.length}
                 />
               </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
+              <CarouselItem className="basis-auto ps-5">
                 <SectionMetricAnchor
                   href="#audio-collections"
                   icon={Library}
@@ -867,7 +878,7 @@ export function LanguageInventoryPage({
                   value={groupedAudioVideos.length}
                 />
               </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
+              <CarouselItem className="basis-auto ps-5">
                 <SectionMetricAnchor
                   href="#subtitles-only"
                   icon={Captions}
@@ -896,7 +907,9 @@ export function LanguageInventoryPage({
                 {t("newlyAdded")}
               </div>
               <h2 className="text-3xl font-bold text-white md:text-4xl">
-                {t("newVideosTitle", { language: languageDisplayName })}
+                {t("newVideosTitle", {
+                  language: isolatedLanguageDisplayName,
+                })}
               </h2>
             </div>
             <div className="hidden items-center gap-2 text-sm font-semibold text-stone-400 sm:flex">
@@ -928,10 +941,10 @@ export function LanguageInventoryPage({
         id="bible-gospels"
         eyebrow={t("bibleAndGospelFilms")}
         title={t("videoBibleCollectionsTitle", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         description={t("videoBibleDescription", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         icon={BookOpen}
         items={videoBibleCollections}
@@ -943,10 +956,10 @@ export function LanguageInventoryPage({
         id="bible-project"
         eyebrow={t("bibleProject")}
         title={t("bibleProjectCollectionsTitle", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         description={t("bibleProjectDescription", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         icon={BookOpen}
         items={bibleProjectCollections}
@@ -957,9 +970,9 @@ export function LanguageInventoryPage({
       <InventorySection
         id="sports"
         eyebrow={t("sportsStories")}
-        title={t("sportsTitle", { language: languageDisplayName })}
+        title={t("sportsTitle", { language: isolatedLanguageDisplayName })}
         description={t("sportsDescription", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         icon={Trophy}
         items={sportsCollections}
@@ -970,9 +983,11 @@ export function LanguageInventoryPage({
       <GroupedVideoListSection
         id="audio-collections"
         eyebrow={t("fullyDubbed")}
-        title={t("dubbedVideosTitle", { language: languageDisplayName })}
+        title={t("dubbedVideosTitle", {
+          language: isolatedLanguageDisplayName,
+        })}
         description={t("dubbedVideosDescription", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         icon={Library}
         groups={groupedAudioVideos}
@@ -984,9 +999,11 @@ export function LanguageInventoryPage({
       <InventorySection
         id="subtitles-only"
         eyebrow={t("subtitlesAvailable")}
-        title={t("subtitlesTitle", { language: languageDisplayName })}
+        title={t("subtitlesTitle", {
+          language: isolatedLanguageDisplayName,
+        })}
         description={t("subtitlesDescription", {
-          language: languageDisplayName,
+          language: isolatedLanguageDisplayName,
         })}
         icon={Captions}
         items={inventory.subtitleOnlyVideos}

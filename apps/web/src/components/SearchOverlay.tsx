@@ -53,6 +53,7 @@ import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
 import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
+import { isolateBidiDisplayText } from "@/lib/bidi"
 
 const CATEGORY_TITLE_KEYS: Record<
   CategorySearchTerm,
@@ -242,6 +243,9 @@ export function SearchOverlay() {
   )
   const suggestedLanguageName =
     queryLanguageSuggestion?.option.englishName.split(",")[0] ?? null
+  const isolatedSuggestedLanguageName = isolateBidiDisplayText(
+    suggestedLanguageName ?? "",
+  )
   const visibleResultIds = useMemo(
     () => displayResults.map((row) => row.id),
     [displayResults],
@@ -406,7 +410,7 @@ export function SearchOverlay() {
     selectedSearchLanguageOption?.publicSlug != null
   const semanticLanguageTriggerClassName = [
     "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20",
-    semanticLanguageOverrideActive ? "pr-14" : null,
+    semanticLanguageOverrideActive ? "pe-14" : null,
   ]
     .filter(Boolean)
     .join(" ")
@@ -512,7 +516,7 @@ export function SearchOverlay() {
                   type="button"
                   aria-label={t("useWebsiteDefaultLanguage")}
                   onClick={handleResetSearchLanguage}
-                  className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
+                  className="absolute end-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
                 >
                   <X size={16} aria-hidden />
                 </button>
@@ -523,7 +527,7 @@ export function SearchOverlay() {
             <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md">
               <span className="font-medium">
                 {t("queryLanguageDetected", {
-                  language: suggestedLanguageName,
+                  language: isolatedSuggestedLanguageName,
                 })}
               </span>
               <button
@@ -532,7 +536,9 @@ export function SearchOverlay() {
                 onClick={handleQueryLanguageSuggestionConfirm}
                 className="inline-flex h-8 cursor-pointer items-center rounded-full bg-brand-red px-3 text-xs font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
               >
-                {t("searchInLanguage", { language: suggestedLanguageName })}
+                {t("searchInLanguage", {
+                  language: isolatedSuggestedLanguageName,
+                })}
               </button>
             </div>
           )}
@@ -597,7 +603,7 @@ export function SearchOverlay() {
                       {Icon ? (
                         <Icon
                           aria-hidden="true"
-                          className="absolute right-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:right-2 sm:top-2 sm:h-24 sm:w-24"
+                          className="absolute end-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:end-2 sm:top-2 sm:h-24 sm:w-24"
                         />
                       ) : null}
                     </span>
@@ -607,7 +613,7 @@ export function SearchOverlay() {
                       className="search-category-hover-outline search-category-red-outline pointer-events-none absolute z-20 opacity-0 transition-opacity duration-200"
                     />
                     <span
-                      className="absolute bottom-3 left-3 z-10 text-base font-semibold leading-tight sm:text-lg md:text-xl"
+                      className="absolute bottom-3 start-3 z-10 text-start text-base font-semibold leading-tight sm:text-lg md:text-xl"
                       style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
                     >
                       {title}
@@ -658,7 +664,9 @@ export function SearchOverlay() {
           {!loading && searched && displayResults.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">
-                {t("noResults", { query: query.trim() })}
+                {t("noResults", {
+                  query: isolateBidiDisplayText(query.trim()),
+                })}
               </h2>
               <p className="mt-2 text-sm text-stone-500">
                 {t("tryDifferentKeywordsOrLanguage")}
@@ -669,7 +677,9 @@ export function SearchOverlay() {
                   onClick={handleQueryLanguageSuggestionConfirm}
                   className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-full bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
                 >
-                  {t("searchInLanguage", { language: suggestedLanguageName })}
+                  {t("searchInLanguage", {
+                    language: isolatedSuggestedLanguageName,
+                  })}
                 </button>
               )}
             </div>

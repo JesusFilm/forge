@@ -1073,6 +1073,42 @@ describe("LanguageCombobox", () => {
 
     const native = $('[data-testid="language-combobox-trigger-native"]')
     expect(native?.textContent).toBe("Русский")
+    expect(native?.getAttribute("dir")).toBe("auto")
+    expect(native?.querySelector("bdi")?.textContent).toBe("Русский")
+    expect($('[data-testid="language-combobox-trigger"]')?.className).toContain(
+      "text-start",
+    )
+  })
+
+  it("keeps cross-script search values raw while using content-sensitive direction", () => {
+    const onChange = vi.fn()
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[{ slug: "arabic", name: "Arabic", nativeName: "العربية" }]}
+          value="arabic"
+          onChange={onChange}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const search = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement | null
+    expect(search?.dir).toBe("auto")
+    expect(
+      $$('[data-testid="language-combobox-option"] bdi').map(
+        (element) => element.textContent,
+      ),
+    ).toEqual(["Arabic", "العربية"])
+    expect(
+      $$('[data-testid="language-combobox-option"] bdi').map((element) =>
+        element.parentElement?.getAttribute("dir"),
+      ),
+    ).toEqual(["auto", "auto"])
   })
 
   it("derives a native language subtitle from bcp47 when nativeName is missing", () => {

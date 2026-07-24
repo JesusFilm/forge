@@ -156,6 +156,12 @@ describe("DownloadModal — header metadata", () => {
     expect(
       $('[data-testid="watch-download-modal-language"]')?.textContent,
     ).toContain("English")
+    expect(
+      $('[data-testid="watch-download-modal-title"] bdi')?.textContent,
+    ).toBe("JESUS")
+    expect(
+      $('[data-testid="watch-download-modal-language"] bdi')?.textContent,
+    ).toBe("English")
     // `formatDuration` is the shared util at `@/lib/format-duration` —
     // hours render without zero-padding (`2:07:54`, not `02:07:54`) to
     // match the standard media-duration convention and the search-card

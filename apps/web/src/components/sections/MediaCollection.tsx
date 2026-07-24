@@ -562,14 +562,14 @@ function WatchHomeMediaCollection({
           >
             <CarouselContent
               data-testid="media-collection-carousel-content"
-              className="-ml-5 pl-5 md:pl-16 xl:pl-24"
+              className="-ms-5 ps-5 md:ps-16 xl:ps-24"
             >
               {items.map((item: EnrichedMediaItem, index: number) => (
                 <CarouselItem
                   key={`${item.id}-${index}`}
                   data-testid="media-collection-carousel-item"
                   className={cn(
-                    "py-1 pl-5",
+                    "py-1 ps-5",
                     isVertical ? "max-w-[200px]" : "max-w-[360px]",
                   )}
                 >
@@ -589,7 +589,7 @@ function WatchHomeMediaCollection({
                 aria-hidden="true"
                 tabIndex={-1}
                 data-testid="media-collection-carousel-end-spacer"
-                className="basis-auto pl-0"
+                className="basis-auto ps-0"
               >
                 <div className="w-5 md:w-16 xl:w-24" />
               </CarouselItem>

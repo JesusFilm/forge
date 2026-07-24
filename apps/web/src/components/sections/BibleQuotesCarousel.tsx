@@ -68,11 +68,11 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
           }}
           className="w-full"
         >
-          <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
+          <CarouselContent className={`-ms-4 ${CAROUSEL_CONTENT_PADDING}`}>
             {validQuotes.map((quote: QuoteItem) => (
               <CarouselItem
                 key={quote.id}
-                className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
+                className="basis-[85vw] ps-4 sm:basis-[50%] lg:basis-1/4"
               >
                 {quote.ctaLabel ? (
                   <FreeResourceCard quote={quote} />
@@ -82,7 +82,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
               </CarouselItem>
             ))}
             <CarouselItem
-              className="basis-auto pl-0"
+              className="basis-auto ps-0"
               aria-hidden="true"
               tabIndex={-1}
             >

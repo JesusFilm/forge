@@ -38,6 +38,7 @@ import {
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { languageCodeFor } from "@/lib/language-code"
 import { loadWatchCollectionDownloads } from "@/lib/watch-collection-download-actions"
+import { isolateBidiDisplayText } from "@/lib/bidi"
 
 type DirectoryHandle = CollectionDownloadDirectory & { name?: string }
 
@@ -458,7 +459,7 @@ export function CollectionDownloadModal({
                 {t("eyebrow")}
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-                {collectionTitle ?? t("dialogTitle")}
+                <bdi>{collectionTitle ?? t("dialogTitle")}</bdi>
               </h2>
               <p
                 data-testid="watch-collection-download-description"
@@ -606,11 +607,13 @@ export function CollectionDownloadModal({
                   <p>{t("skippedCount", { count: options.skipped.length })}</p>
                   <ul
                     data-testid="watch-collection-download-skipped"
-                    className="mt-2 list-disc space-y-1 pl-5"
+                    className="mt-2 list-disc space-y-1 ps-5"
                   >
                     {options.skipped.map((episode) => (
                       <li key={episode.documentId}>
-                        {episode.title ?? episode.slug ?? episode.documentId}
+                        <bdi>
+                          {episode.title ?? episode.slug ?? episode.documentId}
+                        </bdi>
                       </li>
                     ))}
                   </ul>
@@ -626,12 +629,17 @@ export function CollectionDownloadModal({
                   className="h-auto w-full justify-start border-white/15 bg-stone-900/70 px-4 py-3 text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 hover:text-white"
                 >
                   <FolderOpen size={17} />
-                  <span className="min-w-0 flex-1 truncate text-left">
+                  <span className="min-w-0 flex-1 truncate text-start">
                     {directory?.name
-                      ? t("folderSelected", { name: directory.name })
+                      ? t("folderSelected", {
+                          name: isolateBidiDisplayText(directory.name),
+                        })
                       : t("chooseFolder")}
                   </span>
-                  <ChevronRight className="ml-auto text-stone-500" size={16} />
+                  <ChevronRight
+                    className="ms-auto text-stone-500 rtl:rotate-180"
+                    size={16}
+                  />
                 </Button>
               ) : (
                 <p className="text-xs leading-5 text-stone-400">
@@ -648,7 +656,11 @@ export function CollectionDownloadModal({
                   <div className="flex items-center justify-between text-sm font-semibold">
                     <span>
                       {running && progress?.active
-                        ? t("downloading", { title: progress.active.title })
+                        ? t("downloading", {
+                            title: isolateBidiDisplayText(
+                              progress.active.title,
+                            ),
+                          })
                         : result?.canceled
                           ? t("canceled")
                           : t("complete")}

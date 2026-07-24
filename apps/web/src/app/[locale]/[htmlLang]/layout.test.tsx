@@ -11,6 +11,7 @@ vi.mock("@/lib/watch-font", () => ({
 }))
 
 import RootLayout from "./layout"
+import { DirectionProvider } from "@/components/DirectionProvider"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 
 function findElement(
@@ -29,6 +30,44 @@ function findElement(
 }
 
 describe("Watch root layout", () => {
+  it.each([
+    {
+      name: "English",
+      locale: "en",
+      htmlLang: "english",
+      expectedLang: "en",
+      expectedDirection: "ltr",
+    },
+    {
+      name: "Arabic",
+      locale: "ar",
+      htmlLang: "arabic-modern-standard",
+      expectedLang: "ar",
+      expectedDirection: "rtl",
+    },
+    {
+      name: "script-sensitive Hassaniyya Latin",
+      locale: "mey-Latn",
+      htmlLang: "arabic-hassaniya",
+      expectedLang: "mey-Latn",
+      expectedDirection: "ltr",
+    },
+  ])(
+    "emits the resolved language and direction for $name",
+    async ({ locale, htmlLang, expectedLang, expectedDirection }) => {
+      const layout = await RootLayout({
+        children: <main>Watch page</main>,
+        params: Promise.resolve({ locale, htmlLang }),
+      })
+
+      expect(layout.props.lang).toBe(expectedLang)
+      expect(layout.props.dir).toBe(expectedDirection)
+      expect(findElement(layout, DirectionProvider)).toMatchObject({
+        props: { direction: expectedDirection },
+      })
+    },
+  )
+
   it("leaves the runtime beta tester CTA flag out of the static layout", async () => {
     const layout = await RootLayout({
       children: <main>Watch page</main>,

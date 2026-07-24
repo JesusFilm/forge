@@ -308,7 +308,7 @@ describe("/{language}.html/videos route", () => {
     expect(group?.classList).toContain("overflow-clip")
     expect(group?.classList).not.toContain("overflow-hidden")
     expect(sidebar?.classList).toContain("bg-white/[0.035]")
-    expect(sidebar?.classList).toContain("lg:border-r")
+    expect(sidebar?.classList).toContain("lg:border-e")
     expect(sidebar?.classList).not.toContain("lg:sticky")
     expect(sidebar?.classList).not.toContain("lg:self-start")
     expect(overview?.classList).toContain("lg:sticky")

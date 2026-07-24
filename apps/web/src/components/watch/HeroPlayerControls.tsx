@@ -991,6 +991,7 @@ export function HeroPlayerControls({
 
       <div
         ref={timelineRef}
+        dir="ltr"
         role="slider"
         tabIndex={0}
         aria-label={t("seek")}
@@ -1059,16 +1060,22 @@ export function HeroPlayerControls({
             </div>
           </div>
         ) : null}
-        <div className="relative h-1 w-full rounded-full bg-white/20 transition-colors duration-150 group-hover/timeline:bg-white/30 group-focus-visible/timeline:bg-white/30 group-focus-visible/timeline:ring-1 group-focus-visible/timeline:ring-brand-red/70 group-focus-visible/timeline:ring-offset-2 group-focus-visible/timeline:ring-offset-black/40">
+        <div
+          data-testid="hero-chrome-timeline-track"
+          className="relative h-1 w-full rounded-full bg-white/20 transition-colors duration-150 group-hover/timeline:bg-white/30 group-focus-visible/timeline:bg-white/30 group-focus-visible/timeline:ring-1 group-focus-visible/timeline:ring-brand-red/70 group-focus-visible/timeline:ring-offset-2 group-focus-visible/timeline:ring-offset-black/40"
+        >
           <div
+            data-testid="hero-chrome-timeline-buffered"
             className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
             style={{ width: `${bufferedPct}%` }}
           />
           <div
+            data-testid="hero-chrome-timeline-progress"
             className="absolute inset-y-0 left-0 rounded-l-full bg-brand-red"
             style={{ width: `${progressPct}%` }}
           />
           <div
+            data-testid="hero-chrome-timeline-thumb"
             className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-red shadow transition group-hover/timeline:opacity-100 group-focus-visible/timeline:opacity-100 ${
               timelineDragging || previewPct != null
                 ? "opacity-100"
@@ -1080,6 +1087,7 @@ export function HeroPlayerControls({
       </div>
 
       <div
+        dir="ltr"
         data-testid="hero-chrome-time"
         data-current-time={Math.floor(displayTime)}
         data-duration={Math.floor(duration)}
@@ -1094,7 +1102,7 @@ export function HeroPlayerControls({
       </div>
 
       <div
-        className="relative ml-auto flex shrink-0 items-center"
+        className="relative ms-auto flex shrink-0 items-center"
         onMouseEnter={() => setVolumeOpen(true)}
         onMouseLeave={() => setVolumeOpen(false)}
         onFocus={() => setVolumeOpen(true)}
@@ -1108,11 +1116,12 @@ export function HeroPlayerControls({
           data-testid="hero-chrome-volume-container"
           data-open={volumeOpen || volumeDragging ? "true" : "false"}
           className={`overflow-hidden transition-[width,margin] duration-200 ease-out ${
-            volumeOpen || volumeDragging ? "mr-2 w-24" : "mr-0 w-0"
+            volumeOpen || volumeDragging ? "me-2 w-24" : "me-0 w-0"
           }`}
         >
           <div
             ref={volumeTrackRef}
+            dir="ltr"
             role="slider"
             tabIndex={0}
             aria-label={t("volume")}
@@ -1132,10 +1141,12 @@ export function HeroPlayerControls({
             className="group relative h-1 w-full cursor-pointer touch-none rounded-full bg-white/20 transition-colors duration-150 hover:bg-white/30 focus:bg-white/30 focus:ring-2 focus:ring-white/60 focus:outline-none"
           >
             <div
+              data-testid="hero-chrome-volume-fill"
               className="absolute inset-y-0 left-0 rounded-l-full bg-white"
               style={{ width: `${(muted ? 0 : volume) * 100}%` }}
             />
             <div
+              data-testid="hero-chrome-volume-thumb"
               className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow transition ${
                 muted || volume === 0
                   ? "opacity-0"

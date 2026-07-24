@@ -49,7 +49,7 @@ const PROMO_IMAGE_URL =
   "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
 
 const BIBLE_QUOTE_SLIDE_CLASSES =
-  "basis-[76vw] pl-4 sm:basis-[64vw] md:basis-[48vw] lg:basis-[36rem] xl:basis-[38rem]"
+  "basis-[76vw] ps-4 sm:basis-[64vw] md:basis-[48vw] lg:basis-[36rem] xl:basis-[38rem]"
 
 const BIBLE_QUOTE_IMAGE_SIZES =
   "(max-width: 640px) 76vw, (max-width: 768px) 64vw, (max-width: 1024px) 48vw, 38rem"
@@ -144,7 +144,7 @@ export function BibleQuotesSection({
         >
           <CarouselContent
             data-testid="watch-bible-quotes-list"
-            className="-ml-4 pl-5 md:pl-0"
+            className="-ms-4 ps-5 md:ps-0"
           >
             {bibleCitations.map((citation) => (
               <CarouselItem
@@ -225,7 +225,7 @@ export function BibleQuotesSection({
               </div>
             </CarouselItem>
             <CarouselItem
-              className="basis-auto pl-0"
+              className="basis-auto ps-0"
               aria-hidden="true"
               tabIndex={-1}
               data-testid="watch-bible-quotes-end-spacer"

@@ -494,11 +494,11 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           }}
           className="w-full"
         >
-          <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
+          <CarouselContent className={`-ms-5 ${CAROUSEL_CONTENT_PADDING}`}>
             {validItems.map((item: LegacyFragmentValue, index: number) => (
               <CarouselItem
                 key={item.id ?? index}
-                className="max-w-[200px] pl-5"
+                className="max-w-[200px] ps-5"
               >
                 <ThumbnailCard
                   item={item}
@@ -507,7 +507,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
                 />
               </CarouselItem>
             ))}
-            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+            <CarouselItem className="basis-auto ps-0" aria-hidden="true">
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>

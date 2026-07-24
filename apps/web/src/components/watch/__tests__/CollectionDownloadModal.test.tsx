@@ -215,6 +215,11 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-skipped"]',
       )?.textContent,
     ).toContain("Episode Two")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-skipped"] bdi',
+      )?.textContent,
+    ).toBe("Episode Two")
 
     await act(async () => {
       ;(

@@ -434,7 +434,7 @@ export function DownloadModal({
             data-testid="watch-download-modal-title"
             className="text-2xl leading-tight font-semibold text-stone-50 sm:text-3xl"
           >
-            {videoTitle ?? ""}
+            <bdi>{videoTitle ?? ""}</bdi>
           </h2>
           {languageName ? (
             <span
@@ -442,7 +442,7 @@ export function DownloadModal({
               className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-stone-100"
             >
               <Globe2 size={14} />
-              <span>{languageName}</span>
+              <bdi>{languageName}</bdi>
             </span>
           ) : null}
         </div>
@@ -467,7 +467,7 @@ export function DownloadModal({
           />
           <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-          <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
+          <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pe-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
             {modalHeader}
 
             <div
@@ -528,7 +528,7 @@ export function DownloadModal({
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-        <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
+        <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pe-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
           {modalHeader}
 
           {/* Body: file size dropdown */}
@@ -567,7 +567,7 @@ export function DownloadModal({
                     aria-haspopup="listbox"
                     aria-expanded={dropdownOpen}
                     aria-controls={dropdownListId}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left text-lg font-semibold text-stone-100 transition hover:bg-white/10"
+                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-start text-lg font-semibold text-stone-100 transition hover:bg-white/10"
                   >
                     <span>
                       {selected ? (
@@ -577,7 +577,7 @@ export function DownloadModal({
                           </span>
                           <SizeLabel
                             bytes={resolveSize(selected.download)}
-                            className="ml-1 text-stone-300"
+                            className="ms-1 text-stone-300"
                           />
                         </>
                       ) : (
@@ -633,7 +633,7 @@ export function DownloadModal({
                                     closeDropdown()
                                   }}
                                   className={cn(
-                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-sm transition",
+                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-start text-sm transition",
                                     isSelected
                                       ? "bg-brand-red text-white"
                                       : "text-stone-100 hover:bg-white/10",

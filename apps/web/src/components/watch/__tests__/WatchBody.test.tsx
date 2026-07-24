@@ -571,6 +571,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(trigger.className).toContain("grid-cols-[minmax(0,1fr)_auto]")
     expect(trigger.className).toContain("gap-2")
     expect(trigger.className).toContain("py-4")
+    expect(trigger.className).toContain("text-start")
+    expect(trigger.className).not.toContain("text-left")
     expect(trigger.className).not.toContain("hover:bg-white/10")
 
     const icon = trigger.querySelector("svg[viewBox='0 0 24 24']")
@@ -634,6 +636,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
       '[data-testid="watch-study-questions-item-panel"]',
     )
     expect(panel).not.toBeNull()
+    expect(panel?.firstElementChild?.className).toContain("pe-2")
+    expect(panel?.firstElementChild?.className).toContain("ps-12")
     expect(panel!.textContent).toContain(
       "Have a private discussion with someone who is ready to listen.",
     )
