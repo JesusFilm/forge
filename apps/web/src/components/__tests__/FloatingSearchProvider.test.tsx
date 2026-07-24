@@ -276,6 +276,7 @@ function makeSearchResult(id: string, title: string): SearchResult {
     label: null,
     durationSeconds: 120,
     childCount: 0,
+    languageSlug: "english",
   }
 }
 
@@ -2760,6 +2761,73 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 })
 
 describe("FloatingSearchProvider — search pagination", () => {
+  it("exposes the preserved cursor when the bounded drain returns an empty nonterminal page", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [],
+          hasMore: true,
+          nextOffset: 30,
+          query: "the bible project",
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeSearchResponse(
+          [makeSearchResult("later-result", "Later Valid Result")],
+          false,
+        ),
+      )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    const loadMore = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Load more",
+    )
+    expect(loadMore).not.toBeUndefined()
+    expect(document.body.textContent).not.toContain(
+      'No results for "the bible project"',
+    )
+
+    act(() => {
+      loadMore?.click()
+    })
+    await flushResolvedSearch()
+
+    expect(mockedRunSearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        query: "the bible project",
+        offset: 30,
+      }),
+    )
+    expect(document.body.textContent).toContain("Later Valid Result")
+  })
+
+  it("keeps the definitive no-results state for a terminal empty page", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", {
+        results: [],
+        hasMore: false,
+        query: "the bible project",
+      }),
+    )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "the bible project")
+
+    expect(
+      Array.from(document.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Load more",
+      ),
+    ).toBeUndefined()
+    expect(document.body.textContent).toContain(
+      'No results for "the bible project"',
+    )
+  })
+
   it("requests the initial Watch search page with limit 10 and offset 0", async () => {
     vi.useFakeTimers()
     mockedRunSearch.mockResolvedValueOnce(

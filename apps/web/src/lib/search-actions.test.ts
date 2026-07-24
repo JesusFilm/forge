@@ -205,7 +205,7 @@ describe("runSearch", () => {
     },
   )
 
-  it("keeps an explicit Spanish target separate from the English UI locale", async () => {
+  it("keeps an explicit Spanish target separate without synthesizing result route language", async () => {
     vi.mocked(searchVideos).mockResolvedValueOnce({
       results: [semanticResult],
       hasMore: false,
@@ -247,13 +247,9 @@ describe("runSearch", () => {
         publicSlug: "spanish-castilian",
         source: "explicit-selection",
       },
-      results: [
-        {
-          ...semanticResult,
-          languageSlug: "spanish-castilian",
-        },
-      ],
+      results: [semanticResult],
     })
+    expect(result.results[0]).not.toHaveProperty("languageSlug")
   })
 
   it("passes the analytics request id through Watch search calls", async () => {
@@ -530,6 +526,36 @@ describe("runSearch", () => {
         searchLanguageSlug: "spanish-castilian",
         searchRequestId: "admin_request_123",
         surface: WATCH_SEARCH_ANALYTICS_SURFACE,
+      }),
+    )
+  })
+
+  it("uses end-to-end elapsed latency for successful search analytics", async () => {
+    const performanceNow = vi
+      .spyOn(performance, "now")
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(149)
+    vi.mocked(searchVideos).mockResolvedValueOnce({
+      results: [semanticResult],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "watch-search",
+      latencyMs: 12,
+    })
+
+    try {
+      await runSearch({
+        analytics: watchAnalytics,
+        query: "jesus",
+      })
+    } finally {
+      performanceNow.mockRestore()
+    }
+
+    expect(scheduleWatchSearchAnalyticsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        latencyMs: 49,
+        outcome: "completed",
       }),
     )
   })

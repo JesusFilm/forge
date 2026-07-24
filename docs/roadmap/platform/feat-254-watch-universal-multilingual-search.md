@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-07-14"
 duration: 8
 depends_on: []
-blocks: []
+blocks:
+  - "feat-308"
 tags:
   - "platform"
   - "watch"

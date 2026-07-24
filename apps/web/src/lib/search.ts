@@ -1,6 +1,8 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
+import { isPublicWatchLanguageSlug } from "./locale"
+import { tryAsContentSlug, tryAsLocaleSlug } from "./routes"
 import {
   publicSlugForLocale,
   type SearchLanguageResolution,
@@ -118,6 +120,7 @@ export type SearchActionResult =
     })
 
 const MAX_QUERY_LENGTH = 200
+const MAX_SOURCE_PAGE_REQUESTS = 3
 
 const watchSearchOperation = adminGraphql(`
   query WatchSearch($input: WatchSearchInput!) {
@@ -147,7 +150,6 @@ const watchSearchOperation = adminGraphql(`
         label
         durationSeconds
         childCount
-        languageSlug
         languageEnglishName
         availability {
           kind
@@ -158,7 +160,11 @@ const watchSearchOperation = adminGraphql(`
           languageSlug
         }
         action {
+          kind
           hrefLanguageSlug
+        }
+        fallback {
+          kind
         }
       }
       hasMore
@@ -205,14 +211,14 @@ function toWatchSearchResultType(
 function mapWatchSearchResult(
   result: WatchSearchResultItem,
 ): SearchResult | null {
-  if (!result.type || !result.id || !result.slug || !result.title) {
+  const contentSlug = result.slug ? tryAsContentSlug(result.slug) : null
+  if (!result.id || !contentSlug || !result.title) {
     return null
   }
 
-  return {
-    type: result.type.toLowerCase() as SearchContentType,
+  const sharedResult = {
     id: result.id,
-    slug: result.slug,
+    slug: contentSlug,
     title: result.title,
     imageUrl: result.imageUrl,
     imageBlurDataUrl: result.imageBlurDataUrl,
@@ -224,14 +230,44 @@ function mapWatchSearchResult(
     label: result.label as AdminVideoLabel | null,
     durationSeconds: result.durationSeconds,
     childCount: result.childCount,
-    source: "watch-search",
-    languageSlug: result.action?.hrefLanguageSlug ?? result.languageSlug,
+    source: "watch-search" as const,
     languageEnglishName: result.languageEnglishName,
     availabilityKind: mapWatchSearchAvailabilityKind(result.availability?.kind),
     availabilityLanguageEnglishName:
       result.availability?.languageEnglishName ?? result.languageEnglishName,
     evidenceLabel: result.evidence?.label ?? null,
     evidenceLanguageSlug: result.evidence?.languageSlug ?? null,
+  }
+
+  if (result.type === "EXPERIENCE") {
+    return result.action?.kind === "OPEN_EXPERIENCE"
+      ? {
+          ...sharedResult,
+          type: "experience",
+        }
+      : null
+  }
+
+  const actionLanguageSlug = result.action?.hrefLanguageSlug
+    ? tryAsLocaleSlug(result.action.hrefLanguageSlug)
+    : null
+  const hasSupportedRouteContract =
+    result.action?.kind === "WATCH" &&
+    actionLanguageSlug != null &&
+    isPublicWatchLanguageSlug(actionLanguageSlug) &&
+    ((result.availability?.kind === "TARGET_AUDIO" &&
+      result.fallback?.kind === "NONE") ||
+      (result.availability?.kind === "RELATED_LANGUAGE" &&
+        result.fallback?.kind === "RELATED_LANGUAGE"))
+
+  if (result.type !== "VIDEO" || !hasSupportedRouteContract) {
+    return null
+  }
+
+  return {
+    ...sharedResult,
+    type: "video",
+    languageSlug: actionLanguageSlug,
   }
 }
 
@@ -336,59 +372,78 @@ export async function searchVideos(
   languageContext: SearchVideosLanguageContext = {},
 ): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
-  const result = await semanticSearchAdminClient.query({
-    query: watchSearchOperation,
-    variables: {
-      input: {
-        query: truncatedQuery,
-        clientRequestId: languageContext.clientRequestId,
-        targetLanguageSlug: languageContext.targetLanguageSlug,
-        queryLanguageSlug: languageContext.queryLanguageSlug,
-        queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
-        displayLanguageSlug:
-          languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
-        routeLanguageSlug: languageContext.routeLanguageSlug,
-        currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
-        acceptLanguage: languageContext.acceptLanguage,
-        limit,
-        offset,
-        resultTypes: toWatchSearchResultType(type),
+  let sourceOffset = offset
+
+  for (
+    let requestCount = 0;
+    requestCount < MAX_SOURCE_PAGE_REQUESTS;
+    requestCount += 1
+  ) {
+    const result = await semanticSearchAdminClient.query({
+      query: watchSearchOperation,
+      variables: {
+        input: {
+          query: truncatedQuery,
+          clientRequestId: languageContext.clientRequestId,
+          targetLanguageSlug: languageContext.targetLanguageSlug,
+          queryLanguageSlug: languageContext.queryLanguageSlug,
+          queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
+          displayLanguageSlug:
+            languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
+          routeLanguageSlug: languageContext.routeLanguageSlug,
+          currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
+          acceptLanguage: languageContext.acceptLanguage,
+          limit,
+          offset: sourceOffset,
+          resultTypes: toWatchSearchResultType(type),
+        },
       },
-    },
-    fetchPolicy: "no-cache",
-  })
+      fetchPolicy: "no-cache",
+    })
 
-  if (result.error) {
-    throw new Error(result.error.message)
+    if (result.error) {
+      throw new Error(result.error.message)
+    }
+
+    const response = result.data?.watchSearch
+    if (!response) {
+      throw new Error("Watch search response was empty")
+    }
+
+    const results = await hydrateMissingVideoLabels(
+      (response.results ?? []).flatMap((item) => {
+        const mapped = mapWatchSearchResult(item)
+        return mapped ? [mapped] : []
+      }),
+    )
+    const hasMore = response.hasMore ?? false
+    const nextOffset = response.nextOffset ?? sourceOffset
+    const canAdvance = Number.isFinite(nextOffset) && nextOffset > sourceOffset
+    const mappedResponse: SearchResponse = {
+      results,
+      hasMore: hasMore && canAdvance,
+      query: response.query ?? truncatedQuery,
+      searchMode: response.searchMode ?? "watch-search",
+      latencyMs: response.latencyMs ?? 0,
+      nextOffset,
+      requestId: response.requestId ?? null,
+      degraded: response.degraded ?? false,
+      laneStatuses: (response.laneStatuses ?? []).map((status) => ({
+        lane: status.lane ?? "unknown",
+        status: status.status ?? "unknown",
+        elapsedMs: status.elapsedMs ?? 0,
+        resultCount: status.resultCount ?? 0,
+        reason: status.reason ?? null,
+      })),
+    }
+
+    const reachedRequestBound = requestCount + 1 >= MAX_SOURCE_PAGE_REQUESTS
+    if (results.length > 0 || !hasMore || reachedRequestBound || !canAdvance) {
+      return mappedResponse
+    }
+
+    sourceOffset = nextOffset
   }
 
-  const response = result.data?.watchSearch
-  if (!response) {
-    throw new Error("Watch search response was empty")
-  }
-
-  const results = await hydrateMissingVideoLabels(
-    (response.results ?? []).flatMap((item) => {
-      const mapped = mapWatchSearchResult(item)
-      return mapped ? [mapped] : []
-    }),
-  )
-
-  return {
-    results,
-    hasMore: response.hasMore ?? false,
-    query: response.query ?? truncatedQuery,
-    searchMode: response.searchMode ?? "watch-search",
-    latencyMs: response.latencyMs ?? 0,
-    nextOffset: response.nextOffset ?? offset,
-    requestId: response.requestId ?? null,
-    degraded: response.degraded ?? false,
-    laneStatuses: (response.laneStatuses ?? []).map((status) => ({
-      lane: status.lane ?? "unknown",
-      status: status.status ?? "unknown",
-      elapsedMs: status.elapsedMs ?? 0,
-      resultCount: status.resultCount ?? 0,
-      reason: status.reason ?? null,
-    })),
-  }
+  throw new Error("Watch search source-page bound was not resolved")
 }

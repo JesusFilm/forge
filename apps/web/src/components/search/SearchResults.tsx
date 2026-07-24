@@ -11,7 +11,7 @@ type SearchResultsProps = {
   initialHasMore: boolean
   query: string
   type?: SearchContentType
-  hrefBuilder?: (result: SearchResult) => Route
+  hrefBuilder?: (result: SearchResult) => Route | null
   onQueryTimed?: (durationMs: number) => void
   showLoadMore?: boolean
 }

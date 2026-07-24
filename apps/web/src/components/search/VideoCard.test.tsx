@@ -79,6 +79,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     label: "EPISODE",
     durationSeconds: 120,
     childCount: 0,
+    languageSlug: "english",
     ...overrides,
   }
 }
@@ -124,10 +125,12 @@ describe("formatDuration", () => {
 })
 
 describe("defaultHrefBuilder", () => {
-  it("builds the canonical two-segment watch path with the english locale slug", () => {
-    expect(defaultHrefBuilder(makeResult({ slug: "jesus" }))).toBe(
-      "/jesus.html/english.html",
-    )
+  it("builds the canonical two-segment watch path from result-owned language metadata", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({ slug: "jesus", languageSlug: "english" }),
+      ),
+    ).toBe("/jesus.html/english.html")
   })
 
   it("uses a result language slug when watch search resolves one", () => {
@@ -149,8 +152,23 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/soccer_event_collection.html/english.html")
   })
 
-  it("falls back to / on a malformed slug rather than a broken deep link", () => {
-    expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
+  it("returns no destination for malformed content or action language metadata", () => {
+    expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBeNull()
+    expect(
+      defaultHrefBuilder(
+        makeResult({ slug: "jesus", languageSlug: undefined }),
+      ),
+    ).toBeNull()
+    expect(
+      defaultHrefBuilder(
+        makeResult({ slug: "jesus", languageSlug: "Not A Language!" }),
+      ),
+    ).toBeNull()
+    expect(
+      defaultHrefBuilder(
+        makeResult({ slug: "jesus", languageSlug: "non-existent" }),
+      ),
+    ).toBeNull()
   })
 })
 
@@ -251,6 +269,134 @@ describe("pickCardPill", () => {
 })
 
 describe("VideoCard", () => {
+  it("keeps valid audio-backed and underscore-slug results clickable", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            slug: "soccer_event_collection",
+            languageSlug: "spanish-castilian",
+          })}
+        />,
+      )
+    })
+
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/soccer_event_collection.html/spanish-castilian.html",
+    )
+  })
+
+  it.each([
+    ["non-ASCII content slug", { slug: "tümlükden-nura" }],
+    ["malformed content slug", { slug: "La_Busqueda_La Recherche" }],
+    ["missing action language", { languageSlug: undefined }],
+    ["malformed action language", { languageSlug: "Not A Language!" }],
+    ["non-public action language", { languageSlug: "non-existent" }],
+  ])("renders %s without navigation affordances", (_case, overrides) => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const onResultClick = vi.fn()
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            playbackId: "playback-id",
+            ...overrides,
+          })}
+          onResultClick={onResultClick}
+        />,
+      )
+    })
+
+    const card = container.firstElementChild as HTMLElement | null
+    expect(container.querySelector("a")).toBeNull()
+    expect(container.querySelector('[href="/"]')).toBeNull()
+    expect(container.querySelector('[href="/watch"]')).toBeNull()
+    expect(
+      container.querySelector('[data-testid="mux-hover-preview"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="search-card-hover-outline"]'),
+    ).toBeNull()
+    expect(card?.className).not.toContain("cursor-pointer")
+    expect(card?.className).not.toContain("group")
+    expect(card?.getAttribute("tabindex")).toBeNull()
+
+    act(() => {
+      card?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    expect(onResultClick).not.toHaveBeenCalled()
+  })
+
+  it("validates the content slug before invoking a custom destination builder", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const hrefBuilder = vi.fn(() => "/demo-search/valid_demo/en" as const)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            slug: "La_Busqueda_La Recherche",
+            languageSlug: undefined,
+          })}
+          hrefBuilder={hrefBuilder}
+        />,
+      )
+    })
+
+    expect(hrefBuilder).not.toHaveBeenCalled()
+    expect(container.querySelector("a")).toBeNull()
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            slug: "valid_demo",
+            languageSlug: undefined,
+          })}
+          hrefBuilder={hrefBuilder}
+        />,
+      )
+    })
+
+    expect(hrefBuilder).toHaveBeenCalledTimes(1)
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/demo-search/valid_demo/en",
+    )
+  })
+
+  it("invokes result-click handling once for a valid card", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const onResultClick = vi.fn()
+    const result = makeResult({ slug: "jesus", languageSlug: "english" })
+
+    act(() => {
+      root?.render(<VideoCard result={result} onResultClick={onResultClick} />)
+    })
+    const link = container.querySelector("a")
+    link?.addEventListener("click", (event) => event.preventDefault(), {
+      once: true,
+    })
+    act(() => {
+      link?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+
+    expect(onResultClick).toHaveBeenCalledOnce()
+    expect(onResultClick).toHaveBeenCalledWith(result)
+  })
+
   it("does not render a generic Video badge when the search result has no catalog label", () => {
     container = document.createElement("div")
     document.body.appendChild(container)

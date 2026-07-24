@@ -655,25 +655,43 @@ export function SearchOverlay() {
             </div>
           )}
 
-          {!loading && searched && displayResults.length === 0 && !error && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <h2 className="text-lg font-semibold text-stone-200">
-                {t("noResults", { query: query.trim() })}
-              </h2>
-              <p className="mt-2 text-sm text-stone-500">
-                {t("tryDifferentKeywordsOrLanguage")}
-              </p>
-              {queryLanguageSuggestion && suggestedLanguageName && (
+          {!loading &&
+            searched &&
+            displayResults.length === 0 &&
+            !error &&
+            (hasMore ? (
+              <div className="flex justify-center py-20">
                 <button
                   type="button"
-                  onClick={handleQueryLanguageSuggestionConfirm}
-                  className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-full bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
                 >
-                  {t("searchInLanguage", { language: suggestedLanguageName })}
+                  {loadingMore && (
+                    <SpinnerIcon className="h-4 w-4 animate-spin" />
+                  )}
+                  {loadingMore ? t("loading") : t("loadMore")}
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <h2 className="text-lg font-semibold text-stone-200">
+                  {t("noResults", { query: query.trim() })}
+                </h2>
+                <p className="mt-2 text-sm text-stone-500">
+                  {t("tryDifferentKeywordsOrLanguage")}
+                </p>
+                {queryLanguageSuggestion && suggestedLanguageName && (
+                  <button
+                    type="button"
+                    onClick={handleQueryLanguageSuggestionConfirm}
+                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-full bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                  >
+                    {t("searchInLanguage", { language: suggestedLanguageName })}
+                  </button>
+                )}
+              </div>
+            ))}
 
           {displayResults.length > 0 && (
             <>

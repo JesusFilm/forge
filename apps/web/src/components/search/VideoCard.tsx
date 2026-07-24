@@ -16,14 +16,9 @@ import {
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
+import { isPublicWatchLanguageSlug } from "@/lib/locale"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
-import {
-  asLocaleSlug,
-  searchPath,
-  tryAsContentSlug,
-  tryAsLocaleSlug,
-  watchVideoPath,
-} from "@/lib/routes"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
@@ -32,24 +27,21 @@ import { cn } from "@/lib/utils"
 type VideoCardProps = {
   result: SearchResult
   index?: number
-  hrefBuilder?: (result: SearchResult) => Route
+  hrefBuilder?: (result: SearchResult) => Route | null
   onResultClick?: (result: SearchResult) => void
 }
 
-// English is the default UI locale for search-result deep links. Hoisted to
-// module scope so the throwing constructor runs once at load, not per render.
-const ENGLISH_LOCALE = asLocaleSlug("english")
-
-export const defaultHrefBuilder = (result: SearchResult): Route => {
+export const defaultHrefBuilder = (result: SearchResult): Route | null => {
   const slug = tryAsContentSlug(result.slug)
-  const resultLanguage = result.languageSlug
-    ? tryAsLocaleSlug(result.languageSlug)
-    : null
-  // On a malformed slug, fall back to the modal-capable watch home rather than
-  // emitting a broken deep link or resurrecting the deprecated /search page.
-  return slug
-    ? watchVideoPath(slug, resultLanguage ?? ENGLISH_LOCALE)
-    : searchPath()
+  if (
+    slug == null ||
+    result.languageSlug == null ||
+    !isPublicWatchLanguageSlug(result.languageSlug)
+  ) {
+    return null
+  }
+  const resultLanguage = tryAsLocaleSlug(result.languageSlug)
+  return resultLanguage ? watchVideoPath(slug, resultLanguage) : null
 }
 
 // Full tailwind class strings so JIT can extract them at build time.
@@ -176,17 +168,15 @@ export function VideoCard({
     pill?.kind === "count" && result.childCount != null
       ? t("episodeCount", { count: result.childCount })
       : pill?.text
+  // Content-shape validation happens before both the default and any custom
+  // destination builder. This keeps future callers from receiving malformed
+  // route input while allowing demo builders to own their non-Watch language
+  // contract.
+  const href =
+    tryAsContentSlug(result.slug) != null ? hrefBuilder(result) : null
 
-  return (
-    <Link
-      href={hrefBuilder(result)}
-      onClick={() => onResultClick?.(result)}
-      className={cn(
-        "group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40",
-        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
-      )}
-      style={{ animationDelay: `${index * 50}ms` }}
-    >
+  const cardContent = (
+    <>
       {/* Full-bleed thumbnail */}
       <div
         className="relative aspect-video w-full overflow-hidden bg-stone-800 bg-cover bg-center"
@@ -243,10 +233,12 @@ export function VideoCard({
             </svg>
           </div>
         )}
-        <MuxHoverPreview
-          previewUrl={muxPreviewUrl}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-        />
+        {href ? (
+          <MuxHoverPreview
+            previewUrl={muxPreviewUrl}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+          />
+        ) : null}
 
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
@@ -302,7 +294,35 @@ export function VideoCard({
           )}
         </VideoThumbnailCaption>
       </div>
-      <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
+      {href ? (
+        <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
+      ) : null}
+    </>
+  )
+
+  const animationStyle = { animationDelay: `${index * 50}ms` }
+  if (href == null) {
+    return (
+      <div
+        className="animate-card-enter relative flex flex-col overflow-hidden rounded-lg"
+        style={animationStyle}
+      >
+        {cardContent}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      onClick={() => onResultClick?.(result)}
+      className={cn(
+        "group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
+      style={animationStyle}
+    >
+      {cardContent}
     </Link>
   )
 }

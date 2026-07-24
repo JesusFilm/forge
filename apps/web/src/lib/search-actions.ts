@@ -11,7 +11,6 @@ import {
   type SearchActionResult,
   type SearchActionResultSource,
   type SearchError,
-  type SearchResult,
 } from "./search"
 import {
   findSearchLanguageOptionByEnglishName,
@@ -173,13 +172,13 @@ export async function runSearch(input: {
       )
       const result: SearchActionResult = {
         ...response,
-        results: withResolvedLanguageSlug(response.results, resolvedLanguage),
         ok: true,
         resultSource: "watch-search",
         resolvedLanguage,
       }
       scheduleAnalyticsForResponse({
         analytics,
+        analyticsLatencyMs: performance.now() - startedAt,
         languageOptions: effectiveLanguageOptions,
         languageSlug,
         offset,
@@ -581,23 +580,6 @@ function safeScheduleWatchSearchAnalyticsEvent(
   } catch {
     // Search analytics is intentionally best-effort and non-blocking.
   }
-}
-
-function withResolvedLanguageSlug(
-  results: readonly SearchResult[],
-  resolvedLanguage: { publicSlug: string },
-): SearchResult[] {
-  if (!isPublicWatchLanguageSlug(resolvedLanguage.publicSlug)) {
-    return [...results]
-  }
-  return results.map((result) =>
-    result.type === "video"
-      ? {
-          ...result,
-          languageSlug: result.languageSlug ?? resolvedLanguage.publicSlug,
-        }
-      : result,
-  )
 }
 
 async function readAcceptLanguageHeader(): Promise<string | null> {
