@@ -3,12 +3,8 @@ import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   WatchSitemapGenerationError,
   renderWatchSitemapIndex,
+  watchSitemapXmlHeaders,
 } from "@/lib/watch-sitemap"
-
-const XML_HEADERS = {
-  "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
-  "Content-Type": "application/xml; charset=utf-8",
-}
 
 function unavailableResponse(): Response {
   return new Response("Watch sitemap unavailable", {
@@ -29,7 +25,7 @@ export async function GET(): Promise<Response> {
   try {
     return new Response(renderWatchSitemapIndex(manifest), {
       status: 200,
-      headers: XML_HEADERS,
+      headers: watchSitemapXmlHeaders(manifest.version),
     })
   } catch (error) {
     logWatchServerEvent(

@@ -5,7 +5,6 @@ import {
   localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
@@ -38,6 +37,16 @@ const ENGLISH_BRITISH_HREFLANG = resolveWatchLocaleIdentity(
 
 export const WATCH_SITEMAP_INDEX_PATH = "/sitemap.xml"
 export const WATCH_SITEMAP_CHUNK_PATH_PREFIX = "/sitemap"
+
+export function watchSitemapXmlHeaders(
+  manifestVersion: string,
+): Record<string, string> {
+  return {
+    "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+    "Content-Type": "application/xml; charset=utf-8",
+    ETag: `"watch-sitemap-${manifestVersion}"`,
+  }
+}
 
 export type WatchSitemapGenerationErrorCode =
   | "chunk_exceeds_max_bytes"
@@ -140,18 +149,6 @@ function videoHref(contentSlug: string, languageSlug: string): string | null {
   return absoluteWatchUrl(watchVideoPath(content, language))
 }
 
-function episodeHref(
-  parentSlug: string,
-  childSlug: string,
-  languageSlug: string,
-): string | null {
-  const parent = tryAsContentSlug(parentSlug)
-  const child = tryAsContentSlug(childSlug)
-  const language = tryAsLocaleSlug(languageSlug)
-  if (!parent || !child || !language) return null
-  return absoluteWatchUrl(watchEpisodePath(parent, child, language))
-}
-
 function renderAlternate(alternate: WatchSitemapAlternate): string {
   return `<xhtml:link rel="alternate" hreflang="${xmlEscape(alternate.hreflang)}" href="${xmlEscape(alternate.href)}" />`
 }
@@ -215,13 +212,6 @@ function createWatchSitemapGroups(
     if (sitemapGroup) groups.push(sitemapGroup)
   }
 
-  for (const group of manifest.episodeRouteGroups) {
-    const sitemapGroup = groupForAlternates(group.alternates, (languageSlug) =>
-      episodeHref(group.parentSlug, group.childSlug, languageSlug),
-    )
-    if (sitemapGroup) groups.push(sitemapGroup)
-  }
-
   const homeSitemapGroup = groupForEntries(createWatchHomeSitemapEntries())
   if (homeSitemapGroup) groups.push(homeSitemapGroup)
 
@@ -237,14 +227,6 @@ export function createWatchSitemapEntries(
     entries.push(
       ...groupEntries(group.alternates, (languageSlug) =>
         videoHref(group.contentSlug, languageSlug),
-      ),
-    )
-  }
-
-  for (const group of manifest.episodeRouteGroups) {
-    entries.push(
-      ...groupEntries(group.alternates, (languageSlug) =>
-        episodeHref(group.parentSlug, group.childSlug, languageSlug),
       ),
     )
   }

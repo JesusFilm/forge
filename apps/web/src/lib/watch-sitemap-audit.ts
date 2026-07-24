@@ -20,6 +20,7 @@ export type WatchSitemapAuditIssueCode =
   | "alternate_target_missing"
   | "child_too_large"
   | "child_too_many_urls"
+  | "contextual_route"
   | "duplicate_child_document"
   | "duplicate_child_reference"
   | "duplicate_hreflang"
@@ -218,6 +219,19 @@ function childId(url: string): number | null {
   }
 }
 
+export function isContextualWatchSitemapUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.origin !== "https://www.jesusfilm.org") return false
+    const match = parsed.pathname.match(
+      /^\/watch\/([^/]+)\.html\/([^/.]+)\/([^/]+)\.html$/,
+    )
+    return Boolean(match)
+  } catch {
+    return false
+  }
+}
+
 function alternateSignature(
   alternates: Array<{ href: string; hreflang: string }>,
 ): string {
@@ -378,6 +392,15 @@ export class WatchSitemapAuditSession {
           continue
         }
         locCount += 1
+        if (isContextualWatchSitemapUrl(loc)) {
+          this.issues.push(
+            documentIssue(
+              "contextual_route",
+              "Sitemap canonical entry uses a contextual parent/child route",
+              loc,
+            ),
+          )
+        }
 
         const alternates = asArray(entry?.["xhtml:link"])
           .map((alternate) => asRecord(alternate))
@@ -402,6 +425,17 @@ export class WatchSitemapAuditSession {
 
         hreflangCount += alternates.length
         const hrefs = alternates.map((alternate) => alternate.href)
+        for (const href of hrefs) {
+          if (isContextualWatchSitemapUrl(href)) {
+            this.issues.push(
+              documentIssue(
+                "contextual_route",
+                "Sitemap alternate target uses a contextual parent/child route",
+                href,
+              ),
+            )
+          }
+        }
         const hreflangs = alternates.map((alternate) => alternate.hreflang)
         if (new Set(hreflangs).size !== hreflangs.length) {
           this.issues.push(
