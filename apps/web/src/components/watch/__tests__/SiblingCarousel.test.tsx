@@ -6,19 +6,40 @@
  * Embla browser-API polyfills are in vitest.setup.ts. We mock `next/image`
  * to a plain `<img>` so we don't need a Next.js runtime.
  *
- * Embla itself is not mocked — we let it run inside jsdom so we can spy on
- * the real `scrollTo` it installs on the captured `setApi` instance,
- * verifying U6's auto-scroll-on-mount behavior.
+ * Embla itself runs inside jsdom. A thin module wrapper below captures the
+ * API returned by the real hook so drag tests can assert its selected snap
+ * directly without replacing Embla behavior.
  */
 
 import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { linkDefaultPrevented, testDirection } = vi.hoisted(() => ({
-  linkDefaultPrevented: [] as boolean[],
-  testDirection: { current: "ltr" as "ltr" | "rtl" },
-}))
+const { capturedEmblaApi, linkDefaultPrevented, testDirection } = vi.hoisted(
+  () => ({
+    capturedEmblaApi: {
+      current: null as {
+        selectedScrollSnap: () => number
+      } | null,
+    },
+    linkDefaultPrevented: [] as boolean[],
+    testDirection: { current: "ltr" as "ltr" | "rtl" },
+  }),
+)
+
+vi.mock("embla-carousel-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("embla-carousel-react")>()
+  const useCapturedEmblaCarousel: typeof actual.default = (...args) => {
+    const result = actual.default(...args)
+    capturedEmblaApi.current = result[1] ?? null
+    return result
+  }
+
+  return {
+    ...actual,
+    default: useCapturedEmblaCarousel,
+  }
+})
 
 // Embla browser-API polyfills (matchMedia / IntersectionObserver /
 // ResizeObserver) live in vitest.setup.ts so every Embla-backed test inherits
@@ -133,8 +154,10 @@ import type { WatchSiblingCarouselBlock } from "@/lib/content"
 
 let container: HTMLDivElement
 let root: Root
+let restoreRealEmblaLayout: (() => void) | null = null
 
 beforeEach(() => {
+  capturedEmblaApi.current = null
   linkDefaultPrevented.length = 0
   testDirection.current = "ltr"
   container = document.createElement("div")
@@ -147,6 +170,8 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  restoreRealEmblaLayout?.()
+  restoreRealEmblaLayout = null
 })
 
 type ImageVariantFields = {
@@ -208,6 +233,107 @@ function makeBlock(
     } as never,
     currentVideoDocumentId: children[currentIndex]!.documentId,
   }
+}
+
+function installRealEmblaHorizontalLayout(direction: "ltr" | "rtl") {
+  const viewportWidth = 300
+  const slideWidth = 100
+  const originalDir = document.documentElement.dir
+  document.documentElement.dir = direction
+
+  const offsetParentSpy = vi
+    .spyOn(HTMLElement.prototype, "offsetParent", "get")
+    .mockImplementation(function offsetParentMock(this: HTMLElement) {
+      return this.parentElement
+    })
+  const offsetWidthSpy = vi
+    .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+    .mockImplementation(function offsetWidthMock(this: HTMLElement) {
+      if (
+        this.dataset.slot === "carousel-content" ||
+        this.parentElement?.dataset.slot === "carousel-content"
+      ) {
+        return viewportWidth
+      }
+      if (this.dataset.slot === "carousel-item") return slideWidth
+      return 0
+    })
+  const offsetHeightSpy = vi
+    .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+    .mockImplementation(function offsetHeightMock(this: HTMLElement) {
+      return this.dataset.slot === "carousel-item" ? 100 : 0
+    })
+  const offsetLeftSpy = vi
+    .spyOn(HTMLElement.prototype, "offsetLeft", "get")
+    .mockImplementation(function offsetLeftMock(this: HTMLElement) {
+      if (this.dataset.slot !== "carousel-item") return 0
+
+      const slideIndex = Array.from(this.parentElement?.children ?? []).indexOf(
+        this,
+      )
+      return direction === "rtl"
+        ? viewportWidth - (slideIndex + 1) * slideWidth
+        : slideIndex * slideWidth
+    })
+  const offsetTopSpy = vi
+    .spyOn(HTMLElement.prototype, "offsetTop", "get")
+    .mockReturnValue(0)
+  const getComputedStyleSpy = vi
+    .spyOn(window, "getComputedStyle")
+    .mockReturnValue({
+      getPropertyValue: () => "0px",
+    } as CSSStyleDeclaration)
+
+  restoreRealEmblaLayout = () => {
+    getComputedStyleSpy.mockRestore()
+    offsetTopSpy.mockRestore()
+    offsetLeftSpy.mockRestore()
+    offsetHeightSpy.mockRestore()
+    offsetWidthSpy.mockRestore()
+    offsetParentSpy.mockRestore()
+    document.documentElement.dir = originalDir
+  }
+}
+
+async function dragEmblaBy(deltaX: number) {
+  const viewport = container.querySelector<HTMLElement>(
+    "[data-slot='carousel-content']",
+  )
+  expect(viewport).not.toBeNull()
+
+  viewport!.dispatchEvent(
+    new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      buttons: 1,
+      clientX: 150,
+      clientY: 50,
+    }),
+  )
+  document.dispatchEvent(
+    new MouseEvent("mousemove", {
+      bubbles: true,
+      cancelable: true,
+      buttons: 1,
+      clientX: 150 + deltaX,
+      clientY: 50,
+    }),
+  )
+
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
+
+  document.dispatchEvent(
+    new MouseEvent("mouseup", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 150 + deltaX,
+      clientY: 50,
+    }),
+  )
 }
 
 function makeSelectableBlock(
@@ -645,38 +771,69 @@ describe("SiblingCarousel — happy path", () => {
     expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
   })
 
-  it("preserves document-order hrefs and optimistic selection in RTL", () => {
-    testDirection.current = "rtl"
-    const block = makeBlock(4, 0)
+  it.each([
+    {
+      direction: "ltr" as const,
+      physicalDirection: "left",
+      deltaX: -120,
+      expectedIndex: 3,
+    },
+    {
+      direction: "ltr" as const,
+      physicalDirection: "right",
+      deltaX: 120,
+      expectedIndex: 1,
+    },
+    {
+      direction: "rtl" as const,
+      physicalDirection: "left",
+      deltaX: -120,
+      expectedIndex: 1,
+    },
+    {
+      direction: "rtl" as const,
+      physicalDirection: "right",
+      deltaX: 120,
+      expectedIndex: 3,
+    },
+  ])(
+    "keeps semantic item identity after a $physicalDirection drag in $direction",
+    async ({ direction, deltaX, expectedIndex }) => {
+      testDirection.current = direction
+      installRealEmblaHorizontalLayout(direction)
 
-    act(() => {
-      root.render(<SiblingCarousel block={block} languageSlug="english" />)
-    })
+      await act(async () => {
+        root.render(
+          <SiblingCarousel block={makeBlock(6, 2)} languageSlug="english" />,
+        )
+        await Promise.resolve()
+      })
 
-    const items = Array.from(
-      container.querySelectorAll<HTMLElement>(
-        "[data-testid='sibling-carousel-item']",
-      ),
-    )
-    expect(items.map((item) => item.dataset.href)).toEqual([
-      "/jesus-collection.html/child-1-slug/english.html",
-      "/jesus-collection.html/child-2-slug/english.html",
-      "/jesus-collection.html/child-3-slug/english.html",
-      "/jesus-collection.html/child-4-slug/english.html",
-    ])
-
-    act(() => {
-      items[1]!.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, button: 0 }),
+      const items = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          "[data-testid='sibling-carousel-item']",
+        ),
       )
-    })
+      const expectedHrefs = Array.from(
+        { length: 6 },
+        (_, index) =>
+          `/jesus-collection.html/child-${index + 1}-slug/english.html`,
+      )
+      expect(items.map((item) => item.dataset.href)).toEqual(expectedHrefs)
 
-    expect(items[0]!.dataset.active).toBe("false")
-    expect(items[1]!.dataset.active).toBe("true")
-    expect(items[1]!.dataset.href).toBe(
-      "/jesus-collection.html/child-2-slug/english.html",
-    )
-  })
+      await act(async () => {
+        await dragEmblaBy(deltaX)
+      })
+
+      expect(capturedEmblaApi.current?.selectedScrollSnap()).toBe(expectedIndex)
+      expect(items.map((item) => item.dataset.href)).toEqual(expectedHrefs)
+      expect(
+        container.querySelector<HTMLElement>(
+          "[data-testid='sibling-carousel-item'][data-active='true']",
+        )?.dataset.href,
+      ).toBe(expectedHrefs[2])
+    },
+  )
 
   it("routes a child through the contextual collection shape", () => {
     // Builder contract: parent `jesus-collection` + child `magdalena`

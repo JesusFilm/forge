@@ -178,6 +178,19 @@ const spanishSearchLanguage = {
   regionNames: ["Europe"],
 }
 
+const arabicSearchLanguage = {
+  englishName: "Arabic, Modern Standard",
+  nativeName: "العربية الفصحى",
+  bcp47: "arb",
+  publicSlug: "arabic-modern-standard",
+  regionNames: ["Middle East"],
+}
+
+function expectBalancedBidiIsolates(value: string, expectedPairs: number) {
+  expect(value.match(/\u2068/g) ?? []).toHaveLength(expectedPairs)
+  expect(value.match(/\u2069/g) ?? []).toHaveLength(expectedPairs)
+}
+
 function dispatchChromeVisibility(visible: boolean, opacity?: number) {
   window.dispatchEvent(
     new CustomEvent<WatchPlayerChromeVisibilityDetail>(
@@ -2761,6 +2774,84 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayTrailingSpacer?.children[1]?.className).toContain(
       FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
     )
+  })
+})
+
+describe("FloatingSearchProvider — search bidi display boundaries", () => {
+  it("isolates the detected-language name in suggestion copy", async () => {
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      options: [englishSearchLanguage, arabicSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+
+    const input = await openSearchOverlay()
+    await act(async () => {
+      setInputValue(input, "يسوع")
+      await Promise.resolve()
+    })
+
+    const detectedCopy = Array.from(document.querySelectorAll("span")).find(
+      (element) => element.textContent?.endsWith(" detected"),
+    )?.textContent
+    const suggestionAction = Array.from(
+      document.querySelectorAll("button"),
+    ).find((button) =>
+      button.textContent?.startsWith("Search in "),
+    )?.textContent
+
+    expect(detectedCopy).toBe("\u2068Arabic\u2069 detected")
+    expect(suggestionAction).toBe("Search in \u2068Arabic\u2069")
+    expectBalancedBidiIsolates(detectedCopy ?? "", 1)
+    expectBalancedBidiIsolates(suggestionAction ?? "", 1)
+  })
+
+  it("isolates the no-results query without changing the search request", async () => {
+    const rawQuery = "يسوع Jesus"
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      options: [englishSearchLanguage, arabicSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", {
+        query: rawQuery,
+      }),
+    )
+
+    const input = await openSearchOverlay()
+    await act(async () => {
+      setInputValue(input, rawQuery)
+      await Promise.resolve()
+    })
+
+    const suggestionAction = Array.from(
+      document.querySelectorAll("button"),
+    ).find((button) => button.textContent?.startsWith("Search in "))
+    expect(suggestionAction).not.toBeUndefined()
+
+    await act(async () => {
+      suggestionAction?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const submittedQuery = mockedRunSearch.mock.calls[0]?.[0].query
+    expect(submittedQuery).toBe(rawQuery)
+    expect(submittedQuery).not.toContain("\u2068")
+    expect(submittedQuery).not.toContain("\u2069")
+
+    const noResultsCopy = Array.from(document.querySelectorAll("h2")).find(
+      (heading) => heading.textContent?.startsWith("No results for"),
+    )?.textContent
+    expect(noResultsCopy).toBe(`No results for "\u2068${rawQuery}\u2069"`)
+    expectBalancedBidiIsolates(noResultsCopy ?? "", 1)
   })
 })
 

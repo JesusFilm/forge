@@ -1085,8 +1085,11 @@ describe("LanguageCombobox", () => {
     act(() => {
       root.render(
         <LanguageCombobox
-          options={[{ slug: "arabic", name: "Arabic", nativeName: "العربية" }]}
-          value="arabic"
+          options={[
+            { slug: "arabic", name: "Arabic", nativeName: "العربية" },
+            { slug: "spanish", name: "Spanish", nativeName: "Español" },
+          ]}
+          value="spanish"
           onChange={onChange}
         />,
       )
@@ -1097,18 +1100,42 @@ describe("LanguageCombobox", () => {
 
     const search = $(
       '[data-testid="language-combobox-search"]',
-    ) as HTMLInputElement | null
-    expect(search?.dir).toBe("auto")
+    ) as HTMLInputElement
+    expect(search.dir).toBe("auto")
     expect(
-      $$('[data-testid="language-combobox-option"] bdi').map(
-        (element) => element.textContent,
-      ),
+      $$(
+        '[data-testid="language-combobox-option"][data-language-slug="arabic"] bdi',
+      ).map((element) => element.textContent),
     ).toEqual(["Arabic", "العربية"])
     expect(
-      $$('[data-testid="language-combobox-option"] bdi').map((element) =>
-        element.parentElement?.getAttribute("dir"),
-      ),
+      $$(
+        '[data-testid="language-combobox-option"][data-language-slug="arabic"] bdi',
+      ).map((element) => element.parentElement?.getAttribute("dir")),
     ).toEqual(["auto", "auto"])
+
+    for (const rawQuery of ["العربية", "Arabic"]) {
+      act(() => {
+        search.value = rawQuery
+        search.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+
+      expect(search.value).toBe(rawQuery)
+      expect(search.value).not.toMatch(/[\u2068\u2069]/u)
+      expect(
+        $$('[data-testid="language-combobox-option"]').map((option) =>
+          option.getAttribute("data-language-slug"),
+        ),
+      ).toEqual(["arabic"])
+    }
+
+    act(() => {
+      $('[data-testid="language-combobox-option"]')?.click()
+    })
+
+    expect(onChange).toHaveBeenCalledOnce()
+    const selectedSlug = onChange.mock.calls[0]?.[0]
+    expect(selectedSlug).toBe("arabic")
+    expect(selectedSlug).not.toMatch(/[\u2068\u2069]/u)
   })
 
   it("derives a native language subtitle from bcp47 when nativeName is missing", () => {

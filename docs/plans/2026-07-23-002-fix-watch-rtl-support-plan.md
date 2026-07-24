@@ -87,7 +87,7 @@ flowchart TB
 - **Requirements:** R1, R6
 - **Dependencies:** None
 - **Files:**
-  - `docs/roadmap/platform/feat-302-watch-rtl-support.md`
+  - `docs/roadmap/platform/feat-304-watch-rtl-support.md`
   - `apps/web/src/app/[locale]/[htmlLang]/layout.test.tsx`
   - `apps/web/src/components/DirectionProvider.tsx`
   - `apps/web/src/components/DirectionProvider.test.tsx`
@@ -205,7 +205,7 @@ flowchart TB
 - **Requirements:** R10
 - **Dependencies:** U2, U3, U4
 - **Files:**
-  - `docs/roadmap/platform/feat-302-watch-rtl-support.md`
+  - `docs/roadmap/platform/feat-304-watch-rtl-support.md`
   - `docs/solutions/ui-bugs/watch-rtl-layout-carousel-and-bidi-support.md`
 - **Approach:** Run focused tests before full Web checks. Browser-smoke the verified Arabic inventory route and the first playable Arabic episode discovered from that inventory which exposes a carousel, language selection, downloads, and custom player chrome. Use Chromium at 1440x900, Chromium mobile emulation at 390x844, and WebKit at 390x844. Capture screenshots plus DOM direction, focus, href, selected-item, slider, and bounding-rectangle evidence. Record the reusable ownership rules in a solution note, then mark the roadmap ticket complete.
 - **Test scenarios:**

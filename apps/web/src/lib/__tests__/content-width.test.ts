@@ -108,6 +108,35 @@ describe("content-width.ts — bleed/padding lockstep", () => {
   it("uses logical inline-start padding for both document directions", () => {
     expect(CAROUSEL_CONTENT_PADDING).not.toMatch(/(?:^|\s)(?:\w+:)*pl-/)
   })
+
+  it.each([
+    {
+      direction: "ltr",
+      startInset: "left",
+      endInset: "right",
+    },
+    {
+      direction: "rtl",
+      startInset: "right",
+      endInset: "left",
+    },
+  ])(
+    "maps $direction compact-landscape gutters to physical safe-area insets",
+    ({ direction, startInset, endInset }) => {
+      expect(CAROUSEL_CONTENT_PADDING).toContain(
+        `${direction}:compact-landscape:ps-[max(1rem,env(safe-area-inset-${startInset},0px))]`,
+      )
+      expect(CAROUSEL_CONTENT_PADDING).toContain(
+        `sm:${direction}:compact-landscape:ps-[max(1.5rem,env(safe-area-inset-${startInset},0px))]`,
+      )
+      expect(CAROUSEL_END_SPACER).toContain(
+        `${direction}:compact-landscape:w-[max(1rem,env(safe-area-inset-${endInset},0px))]`,
+      )
+      expect(CAROUSEL_END_SPACER).toContain(
+        `sm:${direction}:compact-landscape:w-[max(1.5rem,env(safe-area-inset-${endInset},0px))]`,
+      )
+    },
+  )
 })
 
 describe("content-width.ts — watch page rail lockstep", () => {
@@ -124,6 +153,21 @@ describe("content-width.ts — watch page rail lockstep", () => {
       expect(WATCH_PAGE_LEFT_RAIL_CLASSES).toContain(rail.left)
     })
   }
+
+  it("protects both compact-landscape rail edges with nonzero safe-area insets", () => {
+    expect(WATCH_PAGE_RAIL_PADDING_CLASSES).toContain(
+      "compact-landscape:pl-[max(1.25rem,env(safe-area-inset-left,0px))]",
+    )
+    expect(WATCH_PAGE_RAIL_PADDING_CLASSES).toContain(
+      "compact-landscape:pr-[max(1.25rem,env(safe-area-inset-right,0px))]",
+    )
+    expect(WATCH_PAGE_RAIL_PADDING_CLASSES).toContain(
+      "md:compact-landscape:pl-[max(4rem,env(safe-area-inset-left,0px))]",
+    )
+    expect(WATCH_PAGE_RAIL_PADDING_CLASSES).toContain(
+      "md:compact-landscape:pr-[max(4rem,env(safe-area-inset-right,0px))]",
+    )
+  })
 
   it("clamps fixed edge header chrome to the 1920px watch frame on wide screens", () => {
     expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
