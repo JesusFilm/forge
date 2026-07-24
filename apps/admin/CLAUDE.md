@@ -488,7 +488,7 @@ auto-instrumentation, production must set Datadog service env
 (`DD_SERVICE=forge-admin`, `DD_ENV=prod`, `DD_VERSION=<git sha>`), point
 at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
 `DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules through the `startCommand`:
-`NODE_OPTIONS='--require dd-trace/init' node ...server.js`. Do not set
+`NODE_OPTIONS='--require ./node_modules/dd-trace/init' node ...server.js`. Do not set
 `NODE_OPTIONS` as a global Railway service variable because it is also present
 during Railpack/mise build setup.
 
@@ -636,15 +636,15 @@ the dashboard remains canonical.
 
 **Authoritative configuration:**
 
-| Field                      | Value                                                                                                                                                     |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config-as-code Path        | `apps/admin/railway.toml`                                                                                                                                 |
-| Start Command              | `HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js`                                           |
-| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
-| Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                                            |
-| Healthcheck Path           | `/api/health`                                                                                                                                             |
-| Healthcheck Timeout        | 60s                                                                                                                                                       |
-| Restart Policy Max Retries | 3                                                                                                                                                         |
+| Field                      | Value                                                                                                                                                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config-as-code Path        | `apps/admin/railway.toml`                                                                                                                                                                                  |
+| Start Command              | `HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' node apps/admin/.next/standalone/apps/admin/server.js`                                                   |
+| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
+| Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                                                                                             |
+| Healthcheck Path           | `/api/health`                                                                                                                                                                                              |
+| Healthcheck Timeout        | 60s                                                                                                                                                                                                        |
+| Restart Policy Max Retries | 3                                                                                                                                                                                                          |
 
 The `preDeployCommand` runs Prisma migrations before the standalone Next.js
 server boots. If `migrate deploy` fails, the deploy is marked failed before
