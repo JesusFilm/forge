@@ -26,6 +26,7 @@ const BASE_CONFIG: HistoryProxyConfig = {
   baseUrl: "https://mastra.internal",
   apiKey: "lane-key",
   allowedHosts: undefined,
+  requireAllowlist: false,
   timeoutMs: 5000,
 }
 
@@ -224,6 +225,34 @@ describe("history proxy — config + SSRF guard (AE11)", () => {
     expect(res.status).toBe(502)
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(warn.mock.calls.flat().join("\n")).toContain("reason=ssrf_blocked")
+  })
+
+  // Wiring case for the production egress pin — the cores must thread
+  // config.requireAllowlist into the guard, not just the send path.
+  it("refuses when requireAllowlist is set and the allowlist is unset", async () => {
+    const fetchSpy = vi.fn()
+    const res = await runList({
+      config: {
+        ...BASE_CONFIG,
+        allowedHosts: undefined,
+        requireAllowlist: true,
+      },
+      fetchImpl: fetchSpy as unknown as typeof fetch,
+    })
+    expect(res.status).toBe(502)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  // Anti-vacuous companion: a correctly pinned host must still be admitted.
+  it("admits a listed host under requireAllowlist → 200", async () => {
+    const res = await runList({
+      config: {
+        ...BASE_CONFIG,
+        allowedHosts: "mastra.internal",
+        requireAllowlist: true,
+      },
+    })
+    expect(res.status).toBe(200)
   })
 
   it("refuses a non-allowlisted host when an allowlist is set", async () => {

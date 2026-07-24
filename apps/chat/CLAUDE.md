@@ -44,7 +44,8 @@ src/
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
-    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205: SEEKER_MASTRA_BASE_URL + SEEKER_MASTRA_ALLOWED_HOSTS + SEEKER_TIMEOUT_MS; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205: SEEKER_MASTRA_BASE_URL + SEEKER_MASTRA_ALLOWED_HOSTS + SEEKER_TIMEOUT_MS; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix() + the egress pin's requireSeekerEgressAllowlist() / describeSeekerEgressMisconfiguration(). Boots clean with none set
+  instrumentation.ts     Next server-start hook: REPORTS the Seeker egress misconfiguration ([seeker-egress] event=misconfigured reason=allowlist_unset|host_not_allowed) and never throws — enforcement is at the proxies (see "Production egress pin")
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text)
@@ -193,6 +194,25 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   storage matters. A per-caller rate/concurrency cap remains the open
   prerequisite before the audience widens — the R15 grant log is the interim
   volume signal; do not "fix" this surface piecemeal without that work.
+- **Production egress pin (`SEEKER_MASTRA_ALLOWED_HOSTS`).** The var stays
+  `.optional()` (chat's boots-clean-with-nothing contract), but what UNSET
+  MEANS is environment-dependent: outside production it trusts the
+  operator-set base host; **in production an unset allowlist DENIES**, because
+  the scheme floor alone admits any `https://…` base, so a typo'd or tampered
+  `SEEKER_MASTRA_BASE_URL` would egress the `AI_CHAT_MASTRA_API_KEY` bearer
+  and prompt text to it. The policy is `requireSeekerEgressAllowlist()`
+  (production only), carried on BOTH proxies' config as `requireAllowlist` and
+  threaded into `validateBaseUrl` — the third arg of `hostAllowed` /
+  `validateBaseUrl` is required with no default, so a new call site cannot
+  silently inherit fail-open. Enforcement is at the proxies, not at boot:
+  a missing pin denies exactly the calls that would carry the bearer
+  (`ssrf_blocked` frame / history 502) while the stub path, page, and auth
+  keep working. `instrumentation.ts` only REPORTS it — a throwing `register()`
+  rejects Next's `prepare()` for every request, and chat's `railway.toml` has
+  no healthcheck to roll that back. **Deploy ordering:** set the env var in an
+  environment BEFORE shipping code that requires it there, or the first deploy
+  lands with the pin already violated. Value is hostnames only, CSV, no scheme
+  or port (`.env.example` ships `localhost` to match its localhost base URL).
 - **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
   (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
   signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is
@@ -503,7 +523,10 @@ pnpm --filter @forge/chat test
 Env is optional: the app runs against the stub with no config. To dogfood
 Seeker locally (the gate keeps production's shape locally — R12, feat-233):
 copy `.env.example` → `.env.local`, set `SEEKER_CHAT_ENABLED=true` plus the
-Mastra base URL + bearer, configure chat auth against a local `apps/auth`,
+Mastra base URL + bearer, keep `SEEKER_MASTRA_ALLOWED_HOSTS` matching that base
+URL's HOSTNAME (it ships pinned to `localhost`; switch it to `127.0.0.1` or
+whatever host you point at, or sends fail `ssrf_blocked`),
+configure chat auth against a local `apps/auth`,
 sign in with a session whose email is verified (`emailVerified === true`), and
 put that email in `SEEKER_ALLOWED_EMAILS`. The mechanism is identical locally
 and deployed — no dev-only override exists. Anonymous, unverified email, or an
