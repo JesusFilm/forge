@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 432
-- **Complete:** 325
+- **Total tickets:** 433
+- **Complete:** 326
 - **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
@@ -355,6 +355,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-301](platform/feat-301-watch-public-share-origin.md)                             | Watch public share origin                                                        | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-302](platform/feat-302-watch-home-hreflang-sitemap-cluster.md)                   | Watch homepage hreflang sitemap cluster                                          | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-303](platform/feat-303-watch-ai-use-attribution-notice.md)                       | Watch AI use attribution notice                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-304](platform/feat-304-watch-sitemap-shard-size-limits.md)                       | Watch sitemap shard size limits                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -405,7 +406,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-297](platform/feat-297-watch-home-page-title.md)                                 | Set the Watch home page metadata copy                                            | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-298](platform/feat-298-watch-shared-typography-tokens.md)                        | Watch shared card and eyebrow typography tokens                                  | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-299](platform/feat-299-watch-grid-mobile-carousels.md)                           | Watch Experience grids become mobile carousels                                   | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
-| [feat-304](platform/feat-304-watch-footer-contact-three-column-layout.md)              | Watch footer contact three-column layout                                         | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
+| [feat-306](platform/feat-306-watch-footer-contact-three-column-layout.md)              | Watch footer contact three-column layout                                         | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-305](platform/feat-305-watch-footer-remove-social-newsletter-actions.md)         | Remove Watch footer social and newsletter actions                                | unassigned | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |

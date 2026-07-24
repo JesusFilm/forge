@@ -389,3 +389,73 @@ describe("getWatchPageMetadata", () => {
     ])
   })
 })
+
+describe("buildWatchVideoMetadataModel", () => {
+  const selectedVariant = {
+    documentId: "dub-en",
+    slug: null,
+    published: true,
+    hls: "https://cdn.example/life-en.m3u8",
+    duration: 120,
+    language: {
+      slug: "english",
+      bcp47: "en",
+      coreId: "529",
+      name: "English",
+      nativeName: "English",
+    },
+    downloads: [],
+    muxVideo: { playbackId: "mux-life" },
+  }
+
+  const video = {
+    documentId: "video-1",
+    slug: "life-of-jesus",
+    publishedAt: "2026-06-01T12:00:00.000Z",
+    title: null,
+    snippet: "A feature film about Jesus.",
+    description: "Watch the life of Jesus.",
+    noIndex: false,
+    label: "featureFilm",
+    imageAlt: "Jesus speaks to a crowd",
+    images: [],
+    primaryLanguage: null,
+    parents: [],
+    children: [],
+    childDubLanguages: [],
+    variants: [selectedVariant],
+    subtitles: [],
+    studyQuestions: [],
+    bibleCitations: [],
+  }
+
+  it("uses a trimmed resolved video title for structured data", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: { ...video, title: "  Life of Jesus  " },
+    })
+
+    expect(model.structuredDataTitle).toBe("Life of Jesus")
+  })
+
+  it("does not use the slug fallback as a structured-data title", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video,
+    })
+
+    expect(model.structuredDataTitle).toBeNull()
+    expect(model.videoTitle).toBe("life-of-jesus")
+    expect(model.title).toBe("life-of-jesus | Jesus Film Project")
+  })
+})

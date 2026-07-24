@@ -104,6 +104,11 @@ type WatchMetadataImage = {
   type: "image/jpeg"
 }
 
+export type WatchStructuredDataCaption = {
+  contentUrl: string
+  inLanguage: string
+}
+
 const MUX_SOCIAL_IMAGE_WIDTH = 1200
 const MUX_SOCIAL_IMAGE_HEIGHT = 630
 
@@ -125,15 +130,21 @@ function buildMuxSocialImage(
 export type WatchVideoMetadataModel = {
   title: string
   videoTitle: string
+  /**
+   * Eligible VideoObject name. Unlike page and social metadata titles, this
+   * intentionally never falls back to the route slug or a generic label.
+   */
+  structuredDataTitle: string | null
   description: string
   canonicalUrl: string
   image: WatchMetadataImage
+  structuredDataThumbnailUrl: string | null
   noIndex: boolean
   inLanguage: string | null
   durationSeconds: number | null
   contentUrl: string | null
-  embedUrl: string
   uploadDate: string | null
+  captions: WatchStructuredDataCaption[]
 }
 
 type WatchVideoMetadataOptions = {
@@ -150,6 +161,7 @@ export function buildWatchVideoMetadataModel(
   const episodeSlug = options.video.slug ?? options.routeSlug
   const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
   const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const structuredDataTitle = options.video.title?.trim() || null
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""
   const imageAlt =
@@ -177,18 +189,20 @@ export function buildWatchVideoMetadataModel(
   return {
     title,
     videoTitle,
+    structuredDataTitle,
     description,
     canonicalUrl,
     image,
+    structuredDataThumbnailUrl: muxSocialImage?.url ?? posterUrl,
     noIndex: options.video.noIndex ?? false,
-    inLanguage:
-      options.selectedVariant.language?.bcp47 ??
-      options.selectedVariant.language?.slug ??
-      null,
+    inLanguage: options.selectedVariant.language?.bcp47?.trim() || null,
     durationSeconds: options.selectedVariant.duration ?? null,
-    contentUrl: options.selectedVariant.hls ?? null,
-    embedUrl: canonicalUrl,
+    contentUrl: options.selectedVariant.hls?.trim() || null,
     uploadDate: options.video.publishedAt ?? null,
+    captions: options.video.subtitles.map((subtitle) => ({
+      contentUrl: subtitle.vttSrc.trim(),
+      inLanguage: subtitle.language.bcp47.trim(),
+    })),
   }
 }
 

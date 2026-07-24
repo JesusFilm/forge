@@ -252,4 +252,70 @@ describe("searchVideos", () => {
       ],
     })
   })
+
+  it("hydrates missing video labels from the catalog slug", async () => {
+    semanticSearchAdminQuery
+      .mockResolvedValueOnce({
+        data: {
+          watchSearch: {
+            results: [
+              {
+                type: "VIDEO",
+                id: "video-collection",
+                slug: "global-football-soccer-event",
+                title: "Global Football Soccer Event",
+                imageUrl: null,
+                imageBlurDataUrl: null,
+                muxThumbnailBlurDataUrl: null,
+                snippet: "",
+                playbackId: null,
+                startSeconds: null,
+                score: 0.9,
+                label: null,
+                durationSeconds: null,
+                childCount: null,
+                languageSlug: "english",
+                languageEnglishName: "English",
+                availability: null,
+                evidence: null,
+                action: {
+                  hrefLanguageSlug: "english",
+                },
+              },
+            ],
+            hasMore: false,
+            query: "world cup",
+            searchMode: "watch-search",
+            latencyMs: 15,
+            nextOffset: 0,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: {
+            label: "COLLECTION",
+            children: [
+              { child: { id: "child-1" } },
+              { child: { id: "child-2" } },
+            ],
+          },
+        },
+      })
+
+    const data = await searchVideos("world cup")
+
+    expect(semanticSearchAdminQuery).toHaveBeenCalledTimes(2)
+    expect(semanticSearchAdminQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        variables: { slug: "global-football-soccer-event" },
+        fetchPolicy: "no-cache",
+      }),
+    )
+    expect(data.results[0]).toMatchObject({
+      slug: "global-football-soccer-event",
+      label: "COLLECTION",
+      childCount: 2,
+    })
+  })
 })
