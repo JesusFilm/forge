@@ -14,7 +14,12 @@ import {
 const TEST_MANIFEST: WatchRouteManifest = {
   version: "test-version",
   generatedAt: "2026-05-29T12:00:00.000Z",
-  contentSlugs: ["easter", "jesus", "lumo-the-gospel-of-john"],
+  contentSlugs: [
+    "easter",
+    "jesus",
+    "lumo-the-gospel-of-john",
+    "parable-of-the-sower-and-the-seed",
+  ],
   oneSegmentSlugs: ["easter", "new-collection"],
   episodePairsByParent: {
     "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
@@ -472,6 +477,69 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/lumo-the-gospel-of-john.html/anything/english.html"),
     )
     expectNotFoundRewrite(response)
+  })
+
+  it("301 redirects rejected legacy contexts to an admitted standalone video", async () => {
+    resetManifestSource?.()
+    let manifestReads = 0
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => {
+      manifestReads += 1
+      return { ...TEST_MANIFEST }
+    })
+
+    const response = await proxy(
+      makeRequest(
+        "/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html?utm_source=google&ref=legacy",
+      ),
+    )
+
+    expect(response.status).toBe(301)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe(
+      "/parable-of-the-sower-and-the-seed.html/spanish-latin-american.html",
+    )
+    expect(location.search).toBe("?utm_source=google&ref=legacy")
+    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
+    expect(rewritePath(response)).toBeNull()
+    expect(manifestReads).toBe(1)
+  })
+
+  it("404s rejected contexts when the standalone video lacks the requested dub", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: ["parable-of-the-sower-and-the-seed"],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["english", "spanish-latin-american"],
+      audioLanguageIndexesByContent: {
+        "parable-of-the-sower-and-the-seed": [0],
+      },
+    }))
+
+    const response = await proxy(
+      makeRequest(
+        "/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
+      ),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("fails open to contextual resolution when the route manifest is unavailable", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
+
+    const response = await proxy(
+      makeRequest(
+        "/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewritePath(response)).toBe(
+      "/es/es-419/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
+    )
   })
 
   it("keeps the fixed 404 sentinel internal", async () => {
