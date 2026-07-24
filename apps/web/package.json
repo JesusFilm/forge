@@ -11,7 +11,7 @@
     "typecheck": "pnpm run generate:ui-locales && tsc --noEmit",
     "test": "pnpm run generate:ui-locales && vitest run",
     "test:watch": "pnpm run generate:ui-locales && vitest",
-    "datadog:sourcemaps": "pnpm dlx @datadog/datadog-ci@5.8.0 sourcemaps upload .next/static --service=forge-web --release-version=${DATADOG_RELEASE_VERSION:-${NEXT_PUBLIC_DATADOG_VERSION:-${RAILWAY_GIT_COMMIT_SHA:-${VERCEL_GIT_COMMIT_SHA:-$GIT_COMMIT_SHA}}}} --minified-path-prefix=/watch/_next/static/",
+    "datadog:sourcemaps": "release_version=${DATADOG_RELEASE_VERSION:-$NEXT_PUBLIC_DATADOG_VERSION}; release_version=${release_version:-$RAILWAY_GIT_COMMIT_SHA}; release_version=${release_version:-$VERCEL_GIT_COMMIT_SHA}; release_version=${release_version:-$GIT_COMMIT_SHA}; pnpm dlx @datadog/datadog-ci@5.8.0 sourcemaps upload .next/static --service=forge-web --release-version=$release_version --minified-path-prefix=/watch/_next/static/",
     "prune:next-isr": "node scripts/prune-next-isr-output.mjs",
     "generate:provisional-ui-catalogs": "node scripts/generate-provisional-ui-catalogs.mjs",
     "check:provisional-ui-catalogs": "node scripts/generate-provisional-ui-catalogs.mjs --check",
