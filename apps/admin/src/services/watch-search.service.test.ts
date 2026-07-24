@@ -78,6 +78,7 @@ const activeSearchLanguages = [
   { bcp47: "fr", slug: "french" },
   { bcp47: "de", slug: "german-standard" },
   { bcp47: "pt-BR", slug: "portuguese-brazil" },
+  { bcp47: "ro", slug: "romanian" },
   { bcp47: "ru", slug: "russian" },
   { bcp47: "es", slug: "spanish-castilian" },
 ]
@@ -137,6 +138,17 @@ function watchabilityForKind(videoId: string, kind: WatchabilityKind) {
     videoSubtitleId: subtitles ? `sub-${videoId}` : null,
     durationSeconds: kind === "unavailable" ? null : 120,
     hrefLanguageSlug: languageSlug,
+  }
+}
+
+function romanianWatchability(videoId: string, kind: WatchabilityKind) {
+  const watchability = watchabilityForKind(videoId, kind)
+  if (kind === "unavailable") return watchability
+  return {
+    ...watchability,
+    languageSlug: kind === "related_language" ? "english" : "romanian",
+    languageEnglishName: kind === "related_language" ? "English" : "Romanian",
+    hrefLanguageSlug: kind === "related_language" ? "english" : "romanian",
   }
 }
 
@@ -360,7 +372,7 @@ describe("WatchSearchService", () => {
       searchByKeywordWeightedMock,
       searchByTrigramMock,
     ]) {
-      expect(retriever).toHaveBeenCalledTimes(2)
+      expect(retriever).toHaveBeenCalledTimes(4)
       expect(retriever).toHaveBeenNthCalledWith(
         1,
         prisma,
@@ -369,7 +381,17 @@ describe("WatchSearchService", () => {
       expect(retriever).toHaveBeenNthCalledWith(
         2,
         prisma,
+        expect.objectContaining({ locale: "en" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        3,
+        prisma,
         expect.objectContaining({ locale: "de" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        4,
+        prisma,
+        expect.objectContaining({ locale: "en" }),
       )
     }
   })
@@ -525,6 +547,314 @@ describe("WatchSearchService", () => {
         },
       }),
     ])
+  })
+
+  it.each(["JESUS", "Isus", "Iisus"])(
+    "retrieves Romanian-playable JESUS through bounded English exact-title evidence for %s",
+    async (query) => {
+      searchByExactTitleMock.mockImplementation(
+        async (_prisma, input: { query: string; locale: string }) =>
+          input.locale === "en" && input.query === "JESUS"
+            ? [exactTitleResult("video-jesus", "JESUS")]
+            : [],
+      )
+      hydrateMock.mockImplementation(
+        async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+          new Map(
+            candidates.map(({ videoId }) => [
+              videoId,
+              romanianWatchability(videoId, "target_audio"),
+            ]),
+          ),
+      )
+
+      const result = await service.search({
+        query,
+        targetLanguageSlug: "romanian",
+        displayLanguageSlug: "romanian",
+      })
+
+      expect(result.results).toEqual([
+        expect.objectContaining({
+          id: "video-jesus",
+          title: "JESUS",
+          playbackId: "mux-video-jesus",
+          availability: expect.objectContaining({
+            kind: "target_audio",
+            languageSlug: "romanian",
+          }),
+          action: {
+            kind: "watch",
+            hrefLanguageSlug: "romanian",
+          },
+        }),
+      ])
+      expect(
+        searchByExactTitleMock.mock.calls.map(([, input]) => [
+          input.locale,
+          input.query,
+        ]),
+      ).toEqual(
+        query === "JESUS"
+          ? [
+              ["ro", "JESUS"],
+              ["en", "JESUS"],
+            ]
+          : [
+              ["ro", query],
+              ["ro", "JESUS"],
+              ["en", query],
+              ["en", "JESUS"],
+            ],
+      )
+    },
+  )
+
+  it("prefers primary-locale evidence and hydrates a duplicate video only once across locales and lanes", async () => {
+    searchByExactTitleMock.mockImplementation(
+      async (_prisma, input: { locale: string }) => [
+        exactTitleResult(
+          "video-shared",
+          input.locale === "ro" ? "Isus" : "JESUS",
+        ),
+      ],
+    )
+    searchByKeywordWeightedMock.mockImplementation(
+      async (_prisma, input: { locale: string }) =>
+        input.locale === "en" ? [metadataResult("video-shared", "JESUS")] : [],
+    )
+    searchByTrigramMock.mockImplementation(
+      async (_prisma, input: { locale: string }) =>
+        input.locale === "en" ? [metadataResult("video-shared", "JESUS")] : [],
+    )
+    searchVideoSemanticMock.mockImplementation(
+      async (_prisma, input: { locale: string }) => [
+        semanticResult(
+          "video-shared",
+          input.locale === "ro" ? "Isus" : "JESUS",
+          input.locale === "ro" ? 0.8 : 1,
+        ),
+      ],
+    )
+    hydrateMock.mockResolvedValue(
+      new Map([
+        ["video-shared", romanianWatchability("video-shared", "unavailable")],
+      ]),
+    )
+
+    const result = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "romanian",
+      displayLanguageSlug: "romanian",
+    })
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        id: "video-shared",
+        title: "Isus",
+        evidence: expect.objectContaining({ kind: "exact_title" }),
+      }),
+    ])
+    expect(hydrateMock).toHaveBeenCalledTimes(1)
+    expect(hydrateMock).toHaveBeenCalledWith({
+      candidates: [{ videoId: "video-shared" }],
+      targetLanguageSlug: "romanian",
+    })
+    expect(
+      searchByExactTitleMock.mock.calls.map(([, input]) => input.locale),
+    ).toEqual(["ro", "en"])
+  })
+
+  it("keeps an eligible fallback exact-title match ahead of native semantic evidence for the same video", async () => {
+    searchByExactTitleMock.mockImplementation(
+      async (_prisma, input: { locale: string }) =>
+        input.locale === "en" ? [exactTitleResult("video-jesus", "JESUS")] : [],
+    )
+    searchVideoSemanticMock.mockImplementation(
+      async (_prisma, input: { locale: string }) =>
+        input.locale === "ro"
+          ? [semanticResult("video-jesus", "Isus", 0.9)]
+          : [],
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            romanianWatchability(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "romanian",
+      displayLanguageSlug: "romanian",
+    })
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        id: "video-jesus",
+        title: "JESUS",
+        evidence: expect.objectContaining({ kind: "exact_title" }),
+      }),
+    ])
+  })
+
+  it("prefers native semantic evidence over a stronger fallback duplicate", async () => {
+    searchVideoSemanticMock.mockImplementation(
+      async (_prisma, input: { locale: string }) =>
+        input.locale === "ro"
+          ? [semanticResult("video-shared", "Isus", 0.7)]
+          : input.locale === "en"
+            ? [semanticResult("video-shared", "JESUS", 0.95)]
+            : [],
+    )
+    hydrateMock.mockResolvedValue(
+      new Map([
+        ["video-shared", romanianWatchability("video-shared", "target_audio")],
+      ]),
+    )
+
+    const result = await service.search({
+      query: "credință",
+      targetLanguageSlug: "romanian",
+      displayLanguageSlug: "romanian",
+    })
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        id: "video-shared",
+        title: "Isus",
+        evidence: expect.objectContaining({
+          kind: "transcript_semantic",
+          languageSlug: "romanian",
+        }),
+      }),
+    ])
+  })
+
+  it("keeps the strongest semantic duplicate within native evidence locales", async () => {
+    searchVideoSemanticMock.mockImplementation(
+      async (_prisma, input: { locale: string }) =>
+        input.locale === "ro"
+          ? [semanticResult("video-shared", "Isus", 0.4)]
+          : input.locale === "ru"
+            ? [semanticResult("video-shared", "Иисус", 0.8)]
+            : [],
+    )
+    hydrateMock.mockResolvedValue(
+      new Map([
+        ["video-shared", romanianWatchability("video-shared", "target_audio")],
+      ]),
+    )
+
+    const result = await service.search({
+      query: "credință",
+      queryLanguageSlug: "russian",
+      targetLanguageSlug: "romanian",
+      displayLanguageSlug: "romanian",
+    })
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        id: "video-shared",
+        title: "Иисус",
+        evidence: expect.objectContaining({
+          kind: "transcript_semantic",
+          languageSlug: "russian",
+        }),
+      }),
+    ])
+  })
+
+  it.each(["fiul risipitor", "anxietate", "iertare", "Crăciun"])(
+    "returns a Romanian-playable fallback result and excludes English-only inventory for %s",
+    async (query) => {
+      const playableId = `video-playable-${query}`
+      const englishOnlyId = `video-english-only-${query}`
+      if (query === "Crăciun") {
+        searchVideoSemanticMock.mockImplementation(
+          async (_prisma, input: { locale: string }) =>
+            input.locale === "en"
+              ? [
+                  semanticResult(playableId, "Christmas Story", 0.8),
+                  semanticResult(englishOnlyId, "Christmas Feature", 1),
+                ]
+              : [],
+        )
+      } else {
+        const fallbackCandidates = [
+          metadataResult(playableId, "Relevant Story"),
+          metadataResult(englishOnlyId, "Stronger English Result"),
+        ]
+        searchByKeywordWeightedMock.mockImplementation(
+          async (_prisma, input: { locale: string }) =>
+            input.locale === "en" ? fallbackCandidates : [],
+        )
+        searchByTrigramMock.mockImplementation(
+          async (_prisma, input: { locale: string }) =>
+            input.locale === "en" ? fallbackCandidates : [],
+        )
+      }
+      hydrateMock.mockImplementation(
+        async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+          new Map(
+            candidates.map(({ videoId }) => [
+              videoId,
+              romanianWatchability(
+                videoId,
+                videoId === playableId ? "target_subtitle" : "related_language",
+              ),
+            ]),
+          ),
+      )
+
+      const result = await service.search({
+        query,
+        targetLanguageSlug: "romanian",
+        displayLanguageSlug: "romanian",
+      })
+
+      expect(result.results.map((candidate) => candidate.id)).toEqual([
+        playableId,
+      ])
+      expect(result.results[0]).toMatchObject({
+        availability: {
+          kind: "target_subtitle",
+          languageSlug: "romanian",
+        },
+        action: {
+          kind: "watch",
+          hrefLanguageSlug: "romanian",
+        },
+      })
+      expect(result.results).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: englishOnlyId }),
+        ]),
+      )
+    },
+  )
+
+  it("does not fan out duplicate English lexical requests for an English display locale", async () => {
+    await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+    })
+
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenCalledTimes(1)
+      expect(retriever).toHaveBeenCalledWith(
+        prisma,
+        expect.objectContaining({ locale: "en" }),
+      )
+    }
   })
 
   it("uses every watchability tier after whole-title class and relevance tie", async () => {
@@ -1084,7 +1414,7 @@ describe("WatchSearchService", () => {
       targetLanguageSlug: "russian",
     })
     expect(hydrateMock).toHaveBeenNthCalledWith(2, {
-      candidates: [{ videoId: "video-exact" }, { videoId: "video-semantic" }],
+      candidates: [{ videoId: "video-semantic" }],
       targetLanguageSlug: "russian",
     })
   })

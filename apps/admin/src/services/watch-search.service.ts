@@ -29,6 +29,7 @@ import {
   type SearchWatchability,
 } from "./search-watchability"
 import { elapsedMs, nowMs } from "./hybrid-search-timing"
+import { watchSearchQueryVariants } from "./watch-search-query-normalization"
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
@@ -338,34 +339,111 @@ export class WatchSearchService {
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
     ])
+    const exactTitleQueries = watchSearchQueryVariants({
+      query: titleQuery,
+      targetLanguageSlug: languageInterpretation.targetLanguageSlug,
+    })
+    const lexicalEvidenceLocales = boundedLexicalEvidenceLocales(displayLocale)
     const semanticSearchPromise = this.searchSemanticVideos({
       query,
       languageInterpretation,
+      displayLocale,
       timelineStartedAt,
     })
     const lexicalLimit = Math.max(
       offset + limit + 1,
       WATCHABILITY_RERANK_CANDIDATE_LIMIT,
     )
+    const hydrationByVideoId = new Map<
+      string,
+      Promise<SearchWatchability | undefined>
+    >()
+    const hydrateWatchability = async (
+      candidates: readonly { videoId: string }[],
+    ): Promise<Map<string, SearchWatchability>> => {
+      const videoIds = uniqueNonNull(
+        candidates.map((candidate) => candidate.videoId),
+      )
+      const unclaimedVideoIds = videoIds.filter(
+        (videoId) => !hydrationByVideoId.has(videoId),
+      )
+      if (unclaimedVideoIds.length > 0) {
+        const batchHydration = this.watchability.hydrate({
+          candidates: unclaimedVideoIds.map((videoId) => ({ videoId })),
+          targetLanguageSlug: languageInterpretation.targetLanguageSlug,
+        })
+        for (const videoId of unclaimedVideoIds) {
+          hydrationByVideoId.set(
+            videoId,
+            batchHydration.then((watchability) => watchability.get(videoId)),
+          )
+        }
+      }
+
+      const hydrated = await Promise.all(
+        videoIds.map(async (videoId) => [
+          videoId,
+          await hydrationByVideoId.get(videoId),
+        ]),
+      )
+      return new Map(
+        hydrated.filter(
+          (entry): entry is [string, SearchWatchability] => entry[1] != null,
+        ),
+      )
+    }
     const metadataRetrievalStartedAt = nowMs()
-    const metadataRetrievalPromise = Promise.all([
-      searchByKeywordWeighted(this.prisma, {
-        query: titleQuery,
-        locale: displayLocale,
-        limit: lexicalLimit,
+    const metadataRetrievalPromise = Promise.all(
+      lexicalEvidenceLocales.map(async (evidenceLocale) => {
+        const [keywordWeighted, trigram] = await Promise.all([
+          searchByKeywordWeighted(this.prisma, {
+            query: titleQuery,
+            locale: evidenceLocale.locale,
+            limit: lexicalLimit,
+          }),
+          searchByTrigram(this.prisma, {
+            query: titleQuery,
+            locale: evidenceLocale.locale,
+            limit: lexicalLimit,
+          }),
+        ])
+        return {
+          candidates: fuseMetadataCandidates({
+            keywordWeighted,
+            trigram,
+          }).map((candidate) => ({
+            ...candidate,
+            fallbackOnly: evidenceLocale.fallbackOnly,
+          })),
+          resultCount: keywordWeighted.length + trigram.length,
+        }
       }),
-      searchByTrigram(this.prisma, {
-        query: titleQuery,
-        locale: displayLocale,
-        limit: lexicalLimit,
-      }),
-    ])
+    ).then((retrievals) => ({
+      candidates: stableDedupeCandidates(
+        retrievals.flatMap((retrieval) => retrieval.candidates),
+      ),
+      resultCount: retrievals.reduce(
+        (total, retrieval) => total + retrieval.resultCount,
+        0,
+      ),
+    }))
     const exactTitleStartedAt = nowMs()
-    const exactTitlePromise = searchByExactTitle(this.prisma, {
-      query: titleQuery,
-      locale: displayLocale,
-      limit: lexicalLimit,
-    })
+    const exactTitlePromise = Promise.all(
+      lexicalEvidenceLocales.flatMap((evidenceLocale) =>
+        exactTitleQueries.map(async (exactTitleQuery) =>
+          (
+            await searchByExactTitle(this.prisma, {
+              query: exactTitleQuery,
+              locale: evidenceLocale.locale,
+              limit: lexicalLimit,
+            })
+          ).map((candidate) => ({
+            ...candidate,
+            fallbackOnly: evidenceLocale.fallbackOnly,
+          })),
+        ),
+      ),
+    ).then((results) => stableDedupeCandidates(results.flat()))
     const exactPipelinePromise = exactTitlePromise.then(async (exactTitle) => {
       const exactTitleLaneStatus = laneStatus({
         lane: "exact_title",
@@ -381,10 +459,7 @@ export class WatchSearchService {
       const exactWatchability =
         exactWatchabilityCandidates.length === 0
           ? new Map<string, SearchWatchability>()
-          : await this.watchability.hydrate({
-              candidates: exactWatchabilityCandidates,
-              targetLanguageSlug: languageInterpretation.targetLanguageSlug,
-            })
+          : await hydrateWatchability(exactWatchabilityCandidates)
 
       return {
         exactTitle,
@@ -409,23 +484,21 @@ export class WatchSearchService {
       }
     })
     const metadataPipelinePromise = metadataRetrievalPromise.then(
-      async ([keywordWeighted, trigram]) => {
+      async ({ candidates, resultCount }) => {
         const metadataRetrievalLaneStatus = laneStatus({
           lane: "metadata_retrieval",
           status: "fulfilled",
           startedOffsetMs: metadataRetrievalStartedAt - timelineStartedAt,
           elapsedMs: elapsedMs(metadataRetrievalStartedAt),
-          resultCount: keywordWeighted.length + trigram.length,
+          resultCount,
         })
         const exactTitle = await exactTitlePromise
         const exactVideoIds = new Set(
-          exactTitle.map((candidate) => candidate.resultId),
+          exactTitle
+            .filter((candidate) => !candidate.fallbackOnly)
+            .map((candidate) => candidate.resultId),
         )
-        const metadataCandidates = fuseMetadataCandidates({
-          keywordWeighted,
-          trigram,
-        })
-        const uniqueMetadataCandidates = metadataCandidates.filter(
+        const uniqueMetadataCandidates = candidates.filter(
           (candidate) => !exactVideoIds.has(candidate.resultId),
         )
         const metadataWatchabilityCandidates = uniqueMetadataCandidates.map(
@@ -437,10 +510,7 @@ export class WatchSearchService {
         const metadataWatchability =
           metadataWatchabilityCandidates.length === 0
             ? new Map<string, SearchWatchability>()
-            : await this.watchability.hydrate({
-                candidates: metadataWatchabilityCandidates,
-                targetLanguageSlug: languageInterpretation.targetLanguageSlug,
-              })
+            : await hydrateWatchability(metadataWatchabilityCandidates)
 
         return {
           metadataCandidates: uniqueMetadataCandidates,
@@ -468,19 +538,32 @@ export class WatchSearchService {
     )
     const semanticPipelinePromise = semanticSearchPromise.then(
       async (semanticSearch) => {
+        const [exactTitle, metadataRetrieval] = await Promise.all([
+          exactTitlePromise,
+          metadataRetrievalPromise,
+        ])
+        const lexicalVideoIds = new Set(
+          localeMajorStableDedupe([
+            ...exactTitle,
+            ...metadataRetrieval.candidates,
+          ])
+            .filter((candidate) => !candidate.fallbackOnly)
+            .map((candidate) => candidate.resultId),
+        )
         const semanticCandidates = semanticSearch.results.filter(
-          (candidate) => candidate.similarity >= MIN_SEMANTIC_SOURCE_SCORE,
+          (candidate) =>
+            candidate.similarity >= MIN_SEMANTIC_SOURCE_SCORE &&
+            !lexicalVideoIds.has(candidate.resultId),
         )
         const semanticWatchabilityStartedAt = nowMs()
         const semanticWatchability =
           semanticCandidates.length === 0
             ? new Map<string, SearchWatchability>()
-            : await this.watchability.hydrate({
-                candidates: semanticCandidates.map((candidate) => ({
+            : await hydrateWatchability(
+                semanticCandidates.map((candidate) => ({
                   videoId: candidate.resultId,
                 })),
-                targetLanguageSlug: languageInterpretation.targetLanguageSlug,
-              })
+              )
         return {
           ...semanticSearch,
           semanticCandidates,
@@ -513,19 +596,34 @@ export class WatchSearchService {
       ...semanticPipeline.laneStatuses,
       semanticPipeline.semanticWatchabilityLaneStatus,
     )
-    const rawCandidates = exactPipeline.exactTitle
+    const rawCandidates = exactPipeline.exactTitle.filter((candidate) =>
+      fallbackCandidateIsEligible(
+        candidate,
+        exactWatchability.get(candidate.resultId),
+      ),
+    )
     const exactVideoIds = new Set(
       rawCandidates.map((candidate) => candidate.resultId),
     )
     const uniqueMetadataCandidates = metadataPipeline.metadataCandidates.filter(
-      (candidate) => !exactVideoIds.has(candidate.resultId),
+      (candidate) =>
+        !exactVideoIds.has(candidate.resultId) &&
+        fallbackCandidateIsEligible(
+          candidate,
+          metadataWatchability.get(candidate.resultId),
+        ),
     )
     const lexicalVideoIds = new Set([
       ...exactVideoIds,
       ...uniqueMetadataCandidates.map((candidate) => candidate.resultId),
     ])
     const uniqueSemanticCandidates = semanticPipeline.semanticCandidates.filter(
-      (candidate) => !lexicalVideoIds.has(candidate.resultId),
+      (candidate) =>
+        !lexicalVideoIds.has(candidate.resultId) &&
+        fallbackCandidateIsEligible(
+          candidate,
+          semanticPipeline.semanticWatchability.get(candidate.resultId),
+        ),
     )
     const rankedExactCandidates = rawCandidates
       .map((candidate, index) => ({ candidate, index }))
@@ -632,10 +730,12 @@ export class WatchSearchService {
   private async searchSemanticVideos({
     query,
     languageInterpretation,
+    displayLocale,
     timelineStartedAt,
   }: {
     query: string
     languageInterpretation: WatchSearchLanguageInterpretation
+    displayLocale: string
     timelineStartedAt: number
   }): Promise<{
     results: SemanticVideoSearchResult[]
@@ -644,7 +744,10 @@ export class WatchSearchService {
   }> {
     const laneStatuses: WatchSearchLaneStatus[] = []
     const semanticStartedAt = nowMs()
-    const evidenceLocales = await this.evidenceLocales(languageInterpretation)
+    const evidenceLocales = await this.evidenceLocales(
+      languageInterpretation,
+      displayLocale,
+    )
     if (evidenceLocales.length === 0) {
       laneStatuses.push(
         laneStatus({
@@ -717,7 +820,7 @@ export class WatchSearchService {
 
     const retrievalStartedAt = nowMs()
     const retrievals = await Promise.all(
-      evidenceLocales.map(async ({ languageSlug, locale }) => {
+      evidenceLocales.map(async ({ languageSlug, locale, fallbackOnly }) => {
         try {
           return {
             results: (
@@ -729,6 +832,7 @@ export class WatchSearchService {
             ).map((candidate) => ({
               ...candidate,
               evidenceLanguageSlug: languageSlug,
+              fallbackOnly,
             })),
             degraded: false,
           }
@@ -774,14 +878,24 @@ export class WatchSearchService {
 
   private async evidenceLocales(
     languageInterpretation: WatchSearchLanguageInterpretation,
+    displayLocale: string,
   ): Promise<EvidenceLocale[]> {
-    const languageSlugs = uniqueNonNull([
+    const displayUsesEnglish = localeUsesEnglish(displayLocale)
+    const candidateLanguageSlugs = uniqueNonNull([
       languageInterpretation.targetLanguageSlug,
       languageInterpretation.queryLanguageSlug,
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.displayLanguageSlug,
       languageInterpretation.routeLanguageSlug,
-    ]).slice(0, MAX_EVIDENCE_LOCALES)
+    ])
+    const languageSlugs = displayUsesEnglish
+      ? candidateLanguageSlugs.slice(0, MAX_EVIDENCE_LOCALES)
+      : [
+          ...candidateLanguageSlugs
+            .filter((slug) => slug !== "english")
+            .slice(0, MAX_EVIDENCE_LOCALES - 1),
+          "english",
+        ]
     const languageRows = await this.prisma.language.findMany({
       where: {
         slug: { in: languageSlugs },
@@ -802,7 +916,11 @@ export class WatchSearchService {
         localeForLanguageSlug(languageSlug) ?? bcp47BySlug.get(languageSlug)
       if (!locale || seenLocales.has(locale)) continue
       seenLocales.add(locale)
-      evidenceLocales.push({ languageSlug, locale })
+      evidenceLocales.push({
+        languageSlug,
+        locale,
+        fallbackOnly: languageSlug === "english" && !displayUsesEnglish,
+      })
       if (evidenceLocales.length === MAX_EVIDENCE_LOCALES) break
     }
     return evidenceLocales
@@ -845,9 +963,13 @@ export class WatchSearchService {
   }
 }
 
-type ExactTitleCandidate = ExactTitleResult
+type EvidenceProvenance = {
+  fallbackOnly: boolean
+}
 
-type MetadataCandidate = FusedResult & {
+type ExactTitleCandidate = ExactTitleResult & EvidenceProvenance
+
+type MetadataCandidateBase = FusedResult & {
   resultType: "video"
   resultId: string
   videoCoreId: string | null
@@ -857,6 +979,8 @@ type MetadataCandidate = FusedResult & {
   description: string | null
 }
 
+type MetadataCandidate = MetadataCandidateBase & EvidenceProvenance
+
 type RankedWatchCandidate =
   | { kind: "exact"; candidate: ExactTitleCandidate }
   | { kind: "metadata"; candidate: MetadataCandidate }
@@ -865,11 +989,15 @@ type RankedWatchCandidate =
 type EvidenceLocale = {
   languageSlug: string
   locale: string
-}
+} & EvidenceProvenance
+
+type LexicalEvidenceLocale = {
+  locale: string
+} & EvidenceProvenance
 
 type SemanticVideoSearchResult = VideoSemanticResult & {
   evidenceLanguageSlug: string
-}
+} & EvidenceProvenance
 
 type WatchSearchResultImage = {
   imageUrl: string
@@ -1178,13 +1306,54 @@ function uniqueNonNull(values: ReadonlyArray<string | null | undefined>) {
   return result
 }
 
+function localeUsesEnglish(locale: string): boolean {
+  return locale.toLowerCase() === "en" || locale.toLowerCase().startsWith("en-")
+}
+
+function boundedLexicalEvidenceLocales(
+  displayLocale: string,
+): LexicalEvidenceLocale[] {
+  const locales: LexicalEvidenceLocale[] = [
+    { locale: displayLocale, fallbackOnly: false },
+  ]
+  if (!localeUsesEnglish(displayLocale)) {
+    locales.push({ locale: "en", fallbackOnly: true })
+  }
+  return locales
+}
+
+function stableDedupeCandidates<Candidate extends { resultId: string }>(
+  candidates: readonly Candidate[],
+): Candidate[] {
+  const seen = new Set<string>()
+  return candidates.filter((candidate) => {
+    if (seen.has(candidate.resultId)) return false
+    seen.add(candidate.resultId)
+    return true
+  })
+}
+
+function localeMajorStableDedupe<
+  Candidate extends { resultId: string; fallbackOnly: boolean },
+>(candidates: readonly Candidate[]): Candidate[] {
+  return stableDedupeCandidates([
+    ...candidates.filter((candidate) => !candidate.fallbackOnly),
+    ...candidates.filter((candidate) => candidate.fallbackOnly),
+  ])
+}
+
 function dedupeSemanticResults(
   results: readonly SemanticVideoSearchResult[],
 ): SemanticVideoSearchResult[] {
   const byVideoId = new Map<string, SemanticVideoSearchResult>()
   for (const result of results) {
     const existing = byVideoId.get(result.resultId)
-    if (!existing || result.similarity > existing.similarity) {
+    if (
+      !existing ||
+      (existing.fallbackOnly && !result.fallbackOnly) ||
+      (existing.fallbackOnly === result.fallbackOnly &&
+        result.similarity > existing.similarity)
+    ) {
       byVideoId.set(result.resultId, result)
     }
   }
@@ -1193,6 +1362,17 @@ function dedupeSemanticResults(
     if (scoreDelta !== 0) return scoreDelta
     return a.resultId.localeCompare(b.resultId)
   })
+}
+
+function fallbackCandidateIsEligible(
+  candidate: EvidenceProvenance,
+  watchability: SearchWatchability | undefined,
+): boolean {
+  if (!candidate.fallbackOnly) return true
+  return (
+    watchability?.kind === "target_audio" ||
+    watchability?.kind === "target_subtitle"
+  )
 }
 
 function bestVideoImageUrl(image: {
@@ -1230,7 +1410,7 @@ function fuseMetadataCandidates({
 }: {
   keywordWeighted: KeywordWeightedResult[]
   trigram: TrigramResult[]
-}): MetadataCandidate[] {
+}): MetadataCandidateBase[] {
   return fuseRankedLists([keywordWeighted, trigram]).map((candidate) => ({
     resultType: "video",
     resultId: candidate.resultId,
