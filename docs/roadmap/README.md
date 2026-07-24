@@ -7,8 +7,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (July 24, 2026)
 
 - **Total tickets:** 435
-- **Complete:** 327
-- **In progress:** 34
+- **Complete:** 328
+- **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
 - **Overdue and not complete:** 83
@@ -357,7 +357,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-302](platform/feat-302-watch-home-hreflang-sitemap-cluster.md)                   | Watch homepage hreflang sitemap cluster                                          | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-303](platform/feat-303-watch-ai-use-attribution-notice.md)                       | Watch AI use attribution notice                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-304](platform/feat-304-watch-sitemap-shard-size-limits.md)                       | Watch sitemap shard size limits                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
-| [feat-310](platform/feat-310-watch-canonical-sitemap-routes.md)                        | Watch canonical-only sitemap routes                                              | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | in-progress |
+| [feat-310](platform/feat-310-watch-canonical-sitemap-routes.md)                        | Watch canonical-only sitemap routes                                              | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
