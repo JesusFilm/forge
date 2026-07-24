@@ -107,6 +107,12 @@ phase, before `dd-trace` is guaranteed to exist. Admin's
 HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js
 ```
 
+The dedicated Admin worker service should use config-as-code path
+`apps/admin/railway.worker.toml`. It runs the same Admin standalone server so
+`src/instrumentation.ts` can start Postgres World, but only the worker service
+should set `WORKFLOW_RUNNER_ENABLED=true`; admin web should leave it unset or
+`false`.
+
 Admin forwards server console logs to the Agent with syslog over UDP on the
 private network. Railway does not expose sibling service stdout to the Agent
 container, so `DD_LOGS_INJECTION=true` alone is not enough; the app must also
@@ -128,14 +134,19 @@ DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 
 ## Admin sourcemap upload
 
-After the Admin production build, upload browser sourcemaps with:
+Admin's Railway config-as-code runs the browser sourcemap upload immediately
+after the production build when `DATADOG_API_KEY` or `DD_API_KEY` is available.
+To run the same upload manually, use:
 
 ```bash
 pnpm --filter @forge/admin datadog:sourcemaps
 ```
 
 The upload script uses service `forge-admin`, release version
-`DATADOG_RELEASE_VERSION`, and minified path prefix `/_next/static/`.
+`DATADOG_RELEASE_VERSION`, and minified path prefix `/_next/static/`. Keep
+`DATADOG_RELEASE_VERSION`, `NEXT_PUBLIC_DATADOG_VERSION`, and
+`RAILWAY_GIT_COMMIT_SHA` aligned so RUM events and uploaded maps share the same
+release identity.
 
 ## Web production variables
 
@@ -161,12 +172,22 @@ NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=<Forge Watch RUM client token>
 NEXT_PUBLIC_DATADOG_SITE=datadoghq.com
 NEXT_PUBLIC_DATADOG_ENV=prod
 NEXT_PUBLIC_DATADOG_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
+
+# Watch browser sourcemaps
+DATADOG_API_KEY=<Forge-production API key value>
+DATADOG_SITE=datadoghq.com
+DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 ```
 
 `apps/web/src/instrumentation.ts` configures Datadog only in the Next.js Node
 runtime. Watch search analytics use structured `forge-web` logs as the
 canonical every-search signal and RUM only for supplemental click context. See
 `docs/operations/watch-search-analytics-datadog.md`.
+
+Web's Railway config-as-code runs `pnpm --filter @forge/web datadog:sourcemaps`
+after the production build when `DATADOG_API_KEY` or `DD_API_KEY` is present.
+The upload script uses service `forge-web`, release version
+`DATADOG_RELEASE_VERSION`, and minified path prefix `/watch/_next/static/`.
 
 ## TV production variables
 

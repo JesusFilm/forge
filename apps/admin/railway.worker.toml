@@ -1,6 +1,10 @@
-# Railway only reads this file if the @forge/admin service's Config-as-code Path
-# is set to apps/admin/railway.toml. Without that service setting, this file is
-# ignored and the Railway dashboard remains canonical.
+# Railway only reads this file if the dedicated @forge/admin worker service's
+# Config-as-code Path is set to apps/admin/railway.worker.toml. The traffic-
+# serving admin web service should keep using apps/admin/railway.toml.
+#
+# Set WORKFLOW_RUNNER_ENABLED=true on this worker service only. Leave it unset
+# or false on admin web replicas so web scaling does not also scale background
+# job runners.
 #
 # Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
 # service variables are present during Railpack/mise build setup, before
@@ -19,7 +23,6 @@ watchPatterns = [
 ]
 
 [deploy]
-preDeployCommand = "pnpm --filter @forge/admin db:migrate:deploy"
 startCommand = "HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init --max-old-space-size=5120' node apps/admin/.next/standalone/apps/admin/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60

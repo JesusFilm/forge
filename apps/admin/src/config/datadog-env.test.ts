@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { normalizeDatadogEnv } from "./datadog-env"
 
@@ -20,5 +20,32 @@ describe("normalizeDatadogEnv", () => {
     expect(normalizeDatadogEnv("Sandbox")).toBe("sandbox")
     expect(normalizeDatadogEnv("")).toBeUndefined()
     expect(normalizeDatadogEnv(undefined)).toBeUndefined()
+  })
+})
+
+describe("datadogRumEnv", () => {
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_DATADOG_VERSION
+    delete process.env.RAILWAY_GIT_COMMIT_SHA
+    delete process.env.VERCEL_GIT_COMMIT_SHA
+    delete process.env.GIT_COMMIT_SHA
+    vi.resetModules()
+  })
+
+  it("uses the same Railway release fallback as the sourcemap upload script", async () => {
+    process.env.RAILWAY_GIT_COMMIT_SHA = "railway-sha"
+
+    const { datadogRumEnv } = await import("./datadog-rum-env")
+
+    expect(datadogRumEnv.NEXT_PUBLIC_DATADOG_VERSION).toBe("railway-sha")
+  })
+
+  it("prefers the explicit public Datadog version over git fallbacks", async () => {
+    process.env.NEXT_PUBLIC_DATADOG_VERSION = "release-1"
+    process.env.RAILWAY_GIT_COMMIT_SHA = "railway-sha"
+
+    const { datadogRumEnv } = await import("./datadog-rum-env")
+
+    expect(datadogRumEnv.NEXT_PUBLIC_DATADOG_VERSION).toBe("release-1")
   })
 })

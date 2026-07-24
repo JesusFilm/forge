@@ -16,6 +16,15 @@ function emptyToUndefined(value: string | undefined): string | undefined {
   return value === "" ? undefined : value
 }
 
+function datadogVersionFallback(): string | undefined {
+  return (
+    emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
+    emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.VERCEL_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.GIT_COMMIT_SHA)
+  )
+}
+
 function normalizeDatadogSite(value: string | undefined): DatadogSite {
   const site = emptyToUndefined(value)
   return (
@@ -38,7 +47,5 @@ export const datadogRumEnv = {
     normalizeDatadogEnv(
       process.env.NEXT_PUBLIC_DATADOG_ENV ?? process.env.NODE_ENV,
     ) ?? "development",
-  NEXT_PUBLIC_DATADOG_VERSION: emptyToUndefined(
-    process.env.NEXT_PUBLIC_DATADOG_VERSION,
-  ),
+  NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
 }
