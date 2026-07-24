@@ -253,7 +253,7 @@ export function watchVideoStructuredDataJson(
   model: WatchVideoMetadataModel,
 ): string | null {
   const name = trimmed(model.structuredDataTitle)
-  const description = trimmed(model.description)
+  const description = trimmed(model.structuredDataDescription)
   const canonicalUrl = watchAbsoluteUrl(model.canonicalUrl)
   const contentUrl = stablePublicMediaUrl(model.contentUrl, ".m3u8")
   const thumbnailUrl = httpsUrl(model.structuredDataThumbnailUrl)?.toString()

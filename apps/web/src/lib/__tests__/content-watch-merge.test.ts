@@ -86,6 +86,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     documentId: "video-1",
     slug: "jesus",
     publishedAt: null,
+    localePublishedAt: null,
     title: "Jesus",
     snippet: "snippet",
     description: "description",

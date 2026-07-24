@@ -1112,6 +1112,7 @@ WatchRouteSnapshotLocaleRef.implement({
   fields: (t) => ({
     documentId: t.exposeID("documentId", { nullable: false }),
     languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     description: t.exposeString("description", { nullable: true }),
     snippet: t.exposeString("snippet", { nullable: true }),
