@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { WatchVideoRecord } from "./content"
 
 const { resolveWatchPageMock } = vi.hoisted(() => ({
   resolveWatchPageMock: vi.fn(),
@@ -127,6 +128,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-1",
         slug: "life-of-jesus-gospel-of-john",
         publishedAt: "2026-06-01T12:00:00.000Z",
+        localePublishedAt: null,
         title: "Life of Jesus (Gospel of John)",
         snippet: "A feature film about Jesus.",
         description: "Watch the life of Jesus from the Gospel of John.",
@@ -248,6 +250,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-pilate",
         slug: "jesus-is-brought-to-pilate",
         publishedAt: null,
+        localePublishedAt: null,
         title: "Jesus is Brought to Pilate",
         snippet: "Pilate questions Jesus.",
         description: "Pilate questions Jesus before the crowd.",
@@ -300,6 +303,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-1",
         slug: "jesus",
         publishedAt: null,
+        localePublishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,
@@ -355,6 +359,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-1",
         slug: "jesus",
         publishedAt: null,
+        localePublishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,
@@ -408,10 +413,11 @@ describe("buildWatchVideoMetadataModel", () => {
     muxVideo: { playbackId: "mux-life" },
   }
 
-  const video = {
+  const video: WatchVideoRecord = {
     documentId: "video-1",
     slug: "life-of-jesus",
     publishedAt: "2026-06-01T12:00:00.000Z",
+    localePublishedAt: null,
     title: null,
     snippet: "A feature film about Jesus.",
     description: "Watch the life of Jesus.",
@@ -443,6 +449,82 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(model.structuredDataTitle).toBe("Life of Jesus")
   })
 
+  it("uses a title-based structured-data description fallback without changing page metadata", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        title: "Life of Jesus",
+        description: null,
+        snippet: null,
+      },
+    })
+
+    expect(model.description).toBe("")
+    expect(model.structuredDataDescription).toBe(
+      "Watch Life of Jesus from Jesus Film Project.",
+    )
+  })
+
+  it("uses localized publish date as the structured-data upload date fallback", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        publishedAt: null,
+        localePublishedAt: "2026-06-02T12:00:00.000Z",
+      },
+    })
+
+    expect(model.uploadDate).toBe("2026-06-02T12:00:00.000Z")
+  })
+
+  it("prefers valid video publish date over localized publish date", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        publishedAt: "2026-06-01T12:00:00.000Z",
+        localePublishedAt: "2026-06-02T12:00:00.000Z",
+      },
+    })
+
+    expect(model.uploadDate).toBe("2026-06-01T12:00:00.000Z")
+  })
+
+  it("uses localized publish date when the video publish date is invalid", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        publishedAt: "not a date",
+        localePublishedAt: "2026-06-02T12:00:00.000Z",
+      },
+    })
+
+    expect(model.uploadDate).toBe("2026-06-02T12:00:00.000Z")
+  })
+
   it("does not use the slug fallback as a structured-data title", async () => {
     const { buildWatchVideoMetadataModel } =
       await import("./experience-metadata")
@@ -455,6 +537,7 @@ describe("buildWatchVideoMetadataModel", () => {
     })
 
     expect(model.structuredDataTitle).toBeNull()
+    expect(model.structuredDataDescription).toBe("Watch the life of Jesus.")
     expect(model.videoTitle).toBe("life-of-jesus")
     expect(model.title).toBe("life-of-jesus | Jesus Film Project")
   })

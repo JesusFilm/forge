@@ -142,6 +142,7 @@ export const watchVideoLocalizedCopyFragment = adminGraphql(`
     locales(locale: $locale, languageSlug: $languageSlug) {
       documentId: id
       languageSlug
+      publishedAt
       title
       description
       snippet
@@ -393,6 +394,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
         exactLocales {
           documentId
           languageSlug
+          publishedAt
           title
           description
           snippet
@@ -401,6 +403,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
         broadLocales {
           documentId
           languageSlug
+          publishedAt
           title
           description
           snippet
@@ -409,6 +412,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
         englishLocales {
           documentId
           languageSlug
+          publishedAt
           title
           description
           snippet

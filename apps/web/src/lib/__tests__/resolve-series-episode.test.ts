@@ -23,6 +23,7 @@ function record(parents: WatchParent[]): WatchVideoRecord {
     documentId: "ep-1",
     slug: "wedding-in-cana",
     publishedAt: null,
+    localePublishedAt: null,
     title: null,
     snippet: null,
     description: null,

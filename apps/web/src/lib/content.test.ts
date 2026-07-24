@@ -51,6 +51,7 @@ function makeAdminVideo(
     locales: [
       {
         documentId: "loc-1",
+        publishedAt: null,
         title: "Jesus",
         description: "A full description",
         snippet: "The story of Jesus",
@@ -307,6 +308,7 @@ describe("resolveWatchPage", () => {
             exactLocales: [
               {
                 documentId: "loc-1",
+                publishedAt: "2026-06-02T12:00:00.000Z",
                 title: "Jesus",
                 description: "A full description",
                 snippet: "The story of Jesus",
@@ -539,6 +541,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       videoSlug: "jesus",
     })
     expect(result?.video.title).toBe("Jesus (English fallback)")
+    expect(result?.video.localePublishedAt).toBeNull()
   })
 
   it("does not re-fetch when the primary fetch already returns a locale row", async () => {
@@ -580,6 +583,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
             locales: [
               {
                 documentId: "loc-ru",
+                publishedAt: "2026-06-02T12:00:00.000Z",
                 title: "Jesus RU",
                 description: "Russian description",
                 snippet: "Russian snippet",
@@ -632,6 +636,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       videoSlug: "jesus",
     })
     expect(result?.video.title).toBe("Jesus RU")
+    expect(result?.video.localePublishedAt).toBe("2026-06-02T12:00:00.000Z")
     expect(result?.selectedVariant.language?.slug).toBe("russian")
     expect(result?.selectedVariant.language?.iso3).toBe("rus")
     expect(result?.selectedVariant.downloads).toEqual([

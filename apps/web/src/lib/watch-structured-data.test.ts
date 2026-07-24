@@ -15,6 +15,7 @@ const completeVideo: WatchVideoMetadataModel = {
   title: "Life < Jesus | Jesus Film Project",
   videoTitle: "Life < Jesus",
   structuredDataTitle: "Life < Jesus",
+  structuredDataDescription: "A page-specific story with <script> content.",
   description: "A page-specific story with <script> content.",
   canonicalUrl: "https://www.jesusfilm.org/watch/life.html/english.html",
   image: {
@@ -87,7 +88,7 @@ describe("watchVideoStructuredDataJson", () => {
 
   it.each([
     ["blank name", { structuredDataTitle: " " }],
-    ["blank description", { description: "" }],
+    ["blank description", { description: "", structuredDataDescription: null }],
     ["generic thumbnail", { structuredDataThumbnailUrl: null }],
     ["missing upload date", { uploadDate: null }],
     ["non-HTTPS media", { contentUrl: "http://cdn.example/life.m3u8" }],
@@ -107,6 +108,21 @@ describe("watchVideoStructuredDataJson", () => {
     })
     expect(JSON.parse(json!)).not.toHaveProperty("potentialAction")
     expect(JSON.parse(json!).duration).toBe("PT29.9S")
+  })
+
+  it("uses structured-data description when page metadata description is blank", () => {
+    const payload = JSON.parse(
+      watchVideoStructuredDataJson({
+        ...completeVideo,
+        description: "",
+        structuredDataDescription:
+          "Watch Life of Jesus from Jesus Film Project.",
+      })!,
+    )
+
+    expect(payload.description).toBe(
+      "Watch Life of Jesus from Jesus Film Project.",
+    )
   })
 
   it("omits an invalid language without suppressing an otherwise complete video", () => {

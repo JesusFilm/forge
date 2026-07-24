@@ -127,6 +127,16 @@ function buildMuxSocialImage(
   }
 }
 
+function firstValidDate(
+  ...values: Array<string | null | undefined>
+): string | null {
+  for (const value of values) {
+    const candidate = value?.trim()
+    if (candidate && Number.isFinite(Date.parse(candidate))) return candidate
+  }
+  return null
+}
+
 export type WatchVideoMetadataModel = {
   title: string
   videoTitle: string
@@ -135,6 +145,7 @@ export type WatchVideoMetadataModel = {
    * intentionally never falls back to the route slug or a generic label.
    */
   structuredDataTitle: string | null
+  structuredDataDescription: string | null
   description: string
   canonicalUrl: string
   image: WatchMetadataImage
@@ -164,6 +175,12 @@ export function buildWatchVideoMetadataModel(
   const structuredDataTitle = options.video.title?.trim() || null
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""
+  const structuredDataDescription =
+    options.video.description?.trim() ||
+    options.video.snippet?.trim() ||
+    (structuredDataTitle
+      ? `Watch ${structuredDataTitle} from Jesus Film Project.`
+      : null)
   const imageAlt =
     options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
   const muxSocialImage = buildMuxSocialImage(
@@ -190,6 +207,7 @@ export function buildWatchVideoMetadataModel(
     title,
     videoTitle,
     structuredDataTitle,
+    structuredDataDescription,
     description,
     canonicalUrl,
     image,
@@ -198,7 +216,10 @@ export function buildWatchVideoMetadataModel(
     inLanguage: options.selectedVariant.language?.bcp47?.trim() || null,
     durationSeconds: options.selectedVariant.duration ?? null,
     contentUrl: options.selectedVariant.hls?.trim() || null,
-    uploadDate: options.video.publishedAt ?? null,
+    uploadDate: firstValidDate(
+      options.video.publishedAt,
+      options.video.localePublishedAt,
+    ),
     captions: options.video.subtitles.map((subtitle) => ({
       contentUrl: subtitle.vttSrc.trim(),
       inLanguage: subtitle.language.bcp47.trim(),

@@ -217,10 +217,11 @@ function makeWatchVideoResult(
     video: {
       documentId: "v1",
       slug: "storyclubs",
-      publishedAt: "2026-06-01T12:00:00.000Z",
-      title: "StoryClubs",
-      snippet: "StoryClubs snippet",
-      description: "StoryClubs description",
+      publishedAt: "2026-06-01T12:00:00.000Z" as string | null,
+      localePublishedAt: null as string | null,
+      title: "StoryClubs" as string | null,
+      snippet: "StoryClubs snippet" as string | null,
+      description: "StoryClubs description" as string | null,
       noIndex: false,
       label,
       imageAlt: "StoryClubs poster",
@@ -1412,6 +1413,25 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       scripts.find((script) => script["@type"] === "VideoObject"),
     ).toMatchObject({
       url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+    })
+  })
+
+  it("renders sparse playable video JSON-LD with structured-data fallbacks", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    watchVideoResult.video.description = null
+    watchVideoResult.video.snippet = null
+    watchVideoResult.video.publishedAt = null
+    watchVideoResult.video.localePublishedAt = "2026-06-02T12:00:00.000Z"
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(jsonLdByType("VideoObject")).toMatchObject({
+      "@type": "VideoObject",
+      name: "StoryClubs",
+      description: "Watch StoryClubs from Jesus Film Project.",
+      uploadDate: "2026-06-02T12:00:00.000Z",
+      contentUrl: "https://cdn.example/storyclubs.m3u8",
     })
   })
 
