@@ -94,11 +94,3 @@ export function selectDefaultDownloadTier(
 ): DownloadTierOption | null {
   return bucketDownloads(downloads)[0] ?? null
 }
-
-export function formatDownloadSize(bytes: number | null | undefined): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ""
-  const mb = bytes / 1024 / 1024
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
-  if (mb >= 100) return `${mb.toFixed(0)} MB`
-  return `${mb.toFixed(2)} MB`
-}
