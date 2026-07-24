@@ -32,9 +32,9 @@ import {
   useWatchModalActivity,
 } from "@/components/watch/WatchModalActivityProvider"
 import {
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
@@ -691,7 +691,7 @@ export function FloatingSearchProvider({
         className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
           modalChromeHidden
             ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-            : `flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS}`
+            : FLOATING_HEADER_LAYOUT_CLASS
         } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
       >
         <Link
@@ -721,7 +721,7 @@ export function FloatingSearchProvider({
           />
         </Link>
         <div
-          className={`min-w-0 flex-1 ${
+          className={`${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${
             modalChromeHidden
               ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
                   headerLanguageControlVisible ? "" : "col-span-2"
