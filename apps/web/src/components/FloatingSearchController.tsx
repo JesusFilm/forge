@@ -111,6 +111,7 @@ export function FloatingSearchController({
   const [resultsKey, setResultsKey] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [queryPending, setQueryPending] = useState(false)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -171,6 +172,29 @@ export function FloatingSearchController({
 
   const setQuery = useCallback(
     (nextQuery: string) => {
+      if (queryRef.current !== nextQuery) {
+        requestIdRef.current += 1
+        loadMoreRunIdRef.current += 1
+        loadingMoreRef.current = false
+        activeSearchSignatureRef.current = null
+        displayResultsRef.current = []
+        if (skeletonTimerRef.current) {
+          clearTimeout(skeletonTimerRef.current)
+          skeletonTimerRef.current = null
+        }
+        setResults([])
+        setDisplayResults([])
+        setExiting(false)
+        setHasMore(false)
+        setLoading(false)
+        setQueryPending(nextQuery.trim().length > 0)
+        setShowSkeleton(false)
+        setLoadingMore(false)
+        setError(null)
+        setSearched(false)
+        setResultSource(null)
+        setSearchResultAnalytics(null)
+      }
       queryRef.current = nextQuery
       setQueryState(nextQuery)
     },
@@ -371,6 +395,7 @@ export function FloatingSearchController({
       setLoadingMore(false)
 
       if (!trimmed) {
+        setQueryPending(false)
         if (displayResultsRef.current.length > 0) {
           setExiting(true)
           await new Promise<void>((resolve) => setTimeout(resolve, 200))
@@ -390,6 +415,7 @@ export function FloatingSearchController({
         return
       }
 
+      setQueryPending(true)
       if (displayResultsRef.current.length > 0) {
         setExiting(true)
         await new Promise<void>((resolve) => setTimeout(resolve, 200))
@@ -472,6 +498,7 @@ export function FloatingSearchController({
           activeSearchSignatureRef.current = null
           setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
+          setQueryPending(false)
           if (data.languageFacets) {
             maybeSetLanguageFacets(
               data.languageFacets,
@@ -512,6 +539,7 @@ export function FloatingSearchController({
           searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
           searchRequestId: responseSearchRequestId,
         })
+        setQueryPending(false)
         if (data.languageFacets) {
           maybeSetLanguageFacets(
             data.languageFacets,
@@ -523,6 +551,7 @@ export function FloatingSearchController({
           activeSearchSignatureRef.current = null
           setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
+          setQueryPending(false)
         }
       } finally {
         // Only clear loading state for the winning request — otherwise a
@@ -731,6 +760,7 @@ export function FloatingSearchController({
       resultsKey,
       hasMore,
       loading,
+      queryPending,
       showSkeleton,
       loadingMore,
       error,
@@ -770,6 +800,7 @@ export function FloatingSearchController({
       resultsKey,
       hasMore,
       loading,
+      queryPending,
       showSkeleton,
       loadingMore,
       error,

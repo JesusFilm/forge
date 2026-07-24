@@ -107,7 +107,15 @@ export function detectQueryLanguageSuggestion({
   )
   const topOptionWithSlug = withPublicSlug(topOption)
   if (!topOptionWithSlug) return null
-  if (topOptionWithSlug.publicSlug === currentLanguageSlug) return null
+  if (
+    matchesCurrentSearchLanguage(
+      topOptionWithSlug,
+      currentLanguageSlug,
+      languageOptions,
+    )
+  ) {
+    return null
+  }
 
   const confidence = top.accuracy
   const secondScore = second?.accuracy ?? 0
@@ -165,7 +173,7 @@ export function findSearchLanguageOptionForDetectorCode(
   }
 
   const matches = options.filter((option) => {
-    const primary = option.bcp47?.split("-")[0]?.toLowerCase()
+    const primary = bcp47Primary(option.bcp47)
     return primary === code
   })
   return matches.length === 1 ? (matches[0] ?? null) : null
@@ -209,7 +217,14 @@ function detectScriptSuggestion(
       languageOptions,
     )
     const optionWithSlug = withPublicSlug(option)
-    if (!optionWithSlug || optionWithSlug.publicSlug === currentLanguageSlug) {
+    if (
+      !optionWithSlug ||
+      matchesCurrentSearchLanguage(
+        optionWithSlug,
+        currentLanguageSlug,
+        languageOptions,
+      )
+    ) {
       return null
     }
     return {
@@ -221,6 +236,32 @@ function detectScriptSuggestion(
   }
 
   return null
+}
+
+function matchesCurrentSearchLanguage(
+  detectedOption: SearchLanguageOptionWithPublicSlug,
+  currentLanguageSlug: string | null,
+  languageOptions: readonly SearchLanguageOption[],
+): boolean {
+  if (detectedOption.publicSlug === currentLanguageSlug) return true
+  if (!currentLanguageSlug) return false
+
+  const currentOption = languageOptions.find(
+    (option) => option.publicSlug === currentLanguageSlug,
+  )
+  const detectedPrimary = bcp47Primary(detectedOption.bcp47)
+  const currentPrimary = bcp47Primary(currentOption?.bcp47)
+
+  return (
+    detectedPrimary != null &&
+    currentPrimary != null &&
+    detectedPrimary === currentPrimary
+  )
+}
+
+function bcp47Primary(bcp47: string | null | undefined): string | null {
+  const primary = bcp47?.split("-")[0]?.trim().toLowerCase()
+  return primary ? primary : null
 }
 
 function scriptCharacterCount(

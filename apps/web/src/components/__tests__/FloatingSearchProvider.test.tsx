@@ -178,6 +178,14 @@ const spanishSearchLanguage = {
   regionNames: ["Europe"],
 }
 
+const latinAmericanSpanishSearchLanguage = {
+  englishName: "Spanish, Latin American",
+  nativeName: "Español latinoamericano",
+  bcp47: "es-419",
+  publicSlug: "spanish-latin-american",
+  regionNames: ["Latin America"],
+}
+
 function dispatchChromeVisibility(visible: boolean, opacity?: number) {
   window.dispatchEvent(
     new CustomEvent<WatchPlayerChromeVisibilityDetail>(
@@ -2514,6 +2522,180 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       document.querySelector('[data-testid="language-combobox-trigger"]'),
     ).not.toBeNull()
     expect(document.activeElement).toBe(input)
+  })
+
+  it("keeps Latin American Spanish selected and removes old results for replacement queries", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      options: [
+        englishSearchLanguage,
+        spanishSearchLanguage,
+        latinAmericanSpanishSearchLanguage,
+      ],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockImplementation(async ({ query }) =>
+      searchResult("watch-search", {
+        query,
+        results: [makeSearchResult(`result-${query}`, `Result for ${query}`)],
+        resolvedLanguage: {
+          locale: "es",
+          publicSlug: "spanish-latin-american",
+          englishName: "Spanish, Latin American",
+          source: "explicit-selection",
+        },
+      }),
+    )
+
+    const input = await openSearchOverlay()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="language-combobox-trigger"]',
+        )
+        ?.click()
+      await Promise.resolve()
+    })
+    const latinAmericanOption = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[data-testid="language-combobox-option"]',
+      ),
+    ).find(
+      (option) =>
+        option.getAttribute("data-language-slug") === "spanish-latin-american",
+    )
+    expect(latinAmericanOption).toBeDefined()
+    act(() => {
+      latinAmericanOption?.click()
+    })
+
+    await submitDebouncedSearch(input, "perdón")
+    expect(document.body.textContent).toContain("Result for perdón")
+
+    for (const query of ["Navidad", "ansiedad", "hijo pródigo"]) {
+      act(() => {
+        setInputValue(input, query)
+      })
+
+      expect(document.body.textContent).not.toContain("Result for perdón")
+      expect(
+        Array.from(document.querySelectorAll("button")).some((button) =>
+          button.textContent?.includes("Search in Spanish"),
+        ),
+      ).toBe(false)
+      expect(document.activeElement).toBe(input)
+      expect(document.querySelector('[role="status"]')?.textContent).toContain(
+        "Searching",
+      )
+
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+    }
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(4)
+    for (const query of ["perdón", "Navidad", "ansiedad", "hijo pródigo"]) {
+      expect(mockedRunSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query,
+          languageEnglishNames: ["Spanish, Latin American"],
+          languageSlug: "spanish-latin-american",
+          languageSlugIsExplicit: true,
+        }),
+      )
+    }
+  })
+
+  it("does not render a late response after the visible query changes", async () => {
+    vi.useFakeTimers()
+    const delayedSearch = deferred<SearchActionResult>()
+    mockedRunSearch
+      .mockReturnValueOnce(delayedSearch.promise)
+      .mockResolvedValueOnce(
+        makeSearchResponse(
+          [makeSearchResult("navidad", "Navidad Result")],
+          false,
+        ),
+      )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "perdón")
+
+    act(() => {
+      setInputValue(input, "Navidad")
+    })
+    await act(async () => {
+      delayedSearch.resolve(
+        makeSearchResponse(
+          [makeSearchResult("late-perdon", "Late Perdón Result")],
+          false,
+        ),
+      )
+      await delayedSearch.promise
+      await Promise.resolve()
+    })
+
+    expect(document.body.textContent).not.toContain("Late Perdón Result")
+
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(document.body.textContent).toContain("Navidad Result")
+    expect(document.body.textContent).not.toContain("Late Perdón Result")
+  })
+
+  it("clears completed results while a different-primary confirmation is pending", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+      ok: true,
+      options: [englishSearchLanguage, spanishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(
+      makeSearchResponse(
+        [makeSearchResult("english-result", "English Result")],
+        false,
+      ),
+    )
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "bible stories")
+    expect(document.body.textContent).toContain("English Result")
+
+    act(() => {
+      setInputValue(input, "películas bíblicas para niños cristianos")
+    })
+
+    expect(document.body.textContent).not.toContain("English Result")
+    expect(
+      Array.from(document.querySelectorAll("button")).some((button) =>
+        button.textContent?.includes("Search in Spanish"),
+      ),
+    ).toBe(true)
+    expect(document.querySelector('[role="status"]')?.textContent).toContain(
+      "Spanish detected",
+    )
+    expect(document.activeElement).toBe(input)
+    expect(document.body.textContent).not.toContain("Search failed")
+
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the floating header stable while rendering search overlay controls below it", async () => {

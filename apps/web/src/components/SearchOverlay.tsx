@@ -90,6 +90,7 @@ export function SearchOverlay() {
     resultsKey,
     hasMore,
     loading,
+    queryPending,
     showSkeleton,
     loadingMore,
     error,
@@ -536,6 +537,15 @@ export function SearchOverlay() {
               </button>
             </div>
           )}
+          <p role="status" aria-live="polite" className="sr-only">
+            {queryLanguageSuggestion && suggestedLanguageName
+              ? t("queryLanguageDetected", {
+                  language: suggestedLanguageName,
+                })
+              : queryPending || loading
+                ? t("searching")
+                : ""}
+          </p>
         </div>
         <div
           aria-hidden="true"
@@ -633,10 +643,6 @@ export function SearchOverlay() {
                 </div>
               ))}
             </div>
-          )}
-
-          {loading && !showSkeleton && (
-            <p className="sr-only">{t("searching")}</p>
           )}
 
           {!loading && searched && displayResults.length === 0 && error && (

@@ -15,15 +15,26 @@ import {
 
 const english = option("English", "english", "en")
 const spanish = option("Spanish, Castilian", "spanish-castilian", "es-ES")
+const latinAmericanSpanish = option(
+  "Spanish, Latin American",
+  "spanish-latin-american",
+  "es-419",
+)
 const french = option("French", "french", "fr")
 const norwegian = option("Norwegian", "norwegian", "no")
 const arabic = option("Arabic, Modern Standard", "arabic-modern-standard", "ar")
+const egyptianArabic = option(
+  "Arabic, Egyptian Colloquial",
+  "arabic-egyptian-colloquial",
+  "ar-EG",
+)
 const hindi = option("Hindi", "hindi", "hi")
 const japanese = option("Japanese", "japanese", "ja")
 
 const languageOptions = [
   english,
   spanish,
+  latinAmericanSpanish,
   french,
   norwegian,
   arabic,
@@ -112,6 +123,42 @@ describe("detectQueryLanguageSuggestion", () => {
     ).toBeNull()
   })
 
+  it.each(["perdón", "Navidad", "ansiedad", "hijo pródigo"])(
+    "does not suggest a sibling Spanish variant for %j",
+    (query) => {
+      detectAllMock.mockReturnValue([
+        { lang: "es", accuracy: 0.9 },
+        { lang: "pt", accuracy: 0.1 },
+      ])
+
+      expect(
+        detectQueryLanguageSuggestion({
+          query,
+          currentLanguageSlug: "spanish-latin-american",
+          languageOptions,
+        }),
+      ).toBeNull()
+    },
+  )
+
+  it("does not guess same-primary equivalence for an unknown current slug", () => {
+    detectAllMock.mockReturnValue([
+      { lang: "es", accuracy: 0.9 },
+      { lang: "pt", accuracy: 0.1 },
+    ])
+
+    expect(
+      detectQueryLanguageSuggestion({
+        query: "perdón",
+        currentLanguageSlug: "spanish-unknown",
+        languageOptions,
+      }),
+    ).toMatchObject({
+      option: spanish,
+      source: "tinyld",
+    })
+  })
+
   it("rejects low-confidence detector calls even when the top language is supported", () => {
     detectAllMock.mockReturnValue([
       { lang: "es", accuracy: 0.09 },
@@ -174,6 +221,17 @@ describe("detectQueryLanguageSuggestion", () => {
     expect(detectAllMock).not.toHaveBeenCalled()
   })
 
+  it("does not suggest a sibling variant from a script hint", () => {
+    expect(
+      detectQueryLanguageSuggestion({
+        query: "يسوع",
+        currentLanguageSlug: "arabic-egyptian-colloquial",
+        languageOptions: [...languageOptions, egyptianArabic],
+      }),
+    ).toBeNull()
+    expect(detectAllMock).toHaveBeenCalledWith("يسوع")
+  })
+
   it("uses script hints for short Devanagari queries", () => {
     expect(
       detectQueryLanguageSuggestion({
@@ -205,12 +263,6 @@ describe("detectQueryLanguageSuggestion", () => {
 
 describe("findSearchLanguageOptionForDetectorCode", () => {
   it("prefers the public Watch slug for codes with multiple variants", () => {
-    const latinAmericanSpanish = option(
-      "Spanish, Latin American",
-      "spanish-latin-american",
-      "es-419",
-    )
-
     expect(
       findSearchLanguageOptionForDetectorCode("es", [
         latinAmericanSpanish,

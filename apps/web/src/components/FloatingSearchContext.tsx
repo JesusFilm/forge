@@ -25,6 +25,7 @@ export type FloatingSearchContextValue = {
   resultsKey: number
   hasMore: boolean
   loading: boolean
+  queryPending: boolean
   showSkeleton: boolean
   loadingMore: boolean
   error: string | null
