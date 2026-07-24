@@ -923,18 +923,8 @@ function WatchHomeTvRail({
               </CarouselItem>
             ))}
           </CarouselContent>
-          {slides.length > 2 ? (
-            <>
-              <CarouselPrevious
-                className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-                label={t("previousVideoPreview")}
-              />
-              <CarouselNext
-                className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-                label={t("nextVideoPreview")}
-              />
-            </>
-          ) : null}
+          <CarouselPrevious label={t("previousVideoPreview")} />
+          <CarouselNext label={t("nextVideoPreview")} />
         </Carousel>
       </div>
     </div>

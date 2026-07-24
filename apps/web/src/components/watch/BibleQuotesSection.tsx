@@ -233,15 +233,11 @@ export function BibleQuotesSection({
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
-          {/* Match the watch chapter carousel's visible circular step
-              controls so large quote cards are browsable without dragging. */}
           <CarouselPrevious
-            className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
             label={t("previousQuote")}
             data-testid="watch-bible-quotes-prev"
           />
           <CarouselNext
-            className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
             label={t("nextQuote")}
             data-testid="watch-bible-quotes-next"
           />

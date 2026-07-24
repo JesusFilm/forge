@@ -626,19 +626,8 @@ export function SiblingCarousel({
           </CarouselItem>
         </CarouselContent>
 
-        {/* The shared `outline` Button variant only sets text color on
-            hover (via `hover:text-foreground`); against this dark-themed
-            page the chevrons inherit white from the parent until hover.
-            Force the chevrons to a near-black at all times so the arrow
-            stays legible against the light circular background. */}
-        <CarouselPrevious
-          className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-          label={t("previousChapter")}
-        />
-        <CarouselNext
-          className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-          label={t("nextChapter")}
-        />
+        <CarouselPrevious label={t("previousChapter")} />
+        <CarouselNext label={t("nextChapter")} />
       </Carousel>
     </section>
   )

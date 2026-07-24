@@ -19,8 +19,12 @@ vi.mock("@/components/ui/carousel", () => {
     Carousel: Pass,
     CarouselContent: Pass,
     CarouselItem: Pass,
-    CarouselPrevious: () => null,
-    CarouselNext: () => null,
+    CarouselPrevious: ({ label }: { label: string }) => (
+      <button data-slot="carousel-previous" aria-label={label} />
+    ),
+    CarouselNext: ({ label }: { label: string }) => (
+      <button data-slot="carousel-next" aria-label={label} />
+    ),
   }
 })
 
@@ -102,6 +106,16 @@ describe("CarouselVideo", () => {
       container.querySelector('[data-testid="carousel-copy"]'),
     ).not.toBeNull()
     expect(container.textContent).toContain("Series")
+    expect(
+      container.querySelector(
+        'button[data-slot="carousel-previous"][aria-label="Previous video preview"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        'button[data-slot="carousel-next"][aria-label="Next video preview"]',
+      ),
+    ).not.toBeNull()
   })
 
   it("uses the shared focus frame and preserves selected-state framing", async () => {
