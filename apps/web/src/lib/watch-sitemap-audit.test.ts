@@ -12,6 +12,8 @@ const CHILD_1 = "https://www.jesusfilm.org/watch/sitemap/1.xml"
 const JESUS_EN = "https://www.jesusfilm.org/watch/jesus.html/english.html"
 const JESUS_ES =
   "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"
+const CONTEXTUAL_EN =
+  "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html"
 
 function document(
   url: string,
@@ -226,6 +228,37 @@ describe("watch sitemap deployed audit", () => {
         "non_reciprocal_alternate_set",
       ]),
     )
+  })
+
+  it("fails contextual routes in locs and alternate targets across children", () => {
+    const report = auditWatchSitemapDocuments(document(INDEX_URL, indexXml()), [
+      document(
+        CHILD_0,
+        childXml([
+          {
+            loc: JESUS_EN,
+            alternates: [
+              { href: JESUS_EN, hreflang: "en" },
+              { href: CONTEXTUAL_EN, hreflang: "es" },
+            ],
+          },
+        ]),
+      ),
+      document(
+        CHILD_1,
+        childXml([
+          {
+            loc: CONTEXTUAL_EN,
+            alternates: [{ href: CONTEXTUAL_EN, hreflang: "en" }],
+          },
+        ]),
+      ),
+    ])
+
+    expect(report.ok).toBe(false)
+    expect(
+      report.issues.filter((issue) => issue.code === "contextual_route"),
+    ).toHaveLength(2)
   })
 
   it("fails missing, unreferenced, and duplicate child documents", () => {

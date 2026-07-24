@@ -28,10 +28,19 @@ const manifest: WatchSeoManifest = {
       contentSlug: "bad slug",
       alternates: [{ hreflang: "fr", languageSlug: "french" }],
     },
+    {
+      contentSlug: "wedding-in-cana",
+      alternates: [{ hreflang: "en", languageSlug: "english" }],
+    },
   ],
   episodeRouteGroups: [
     {
       parentSlug: "lumo-the-gospel-of-john",
+      childSlug: "wedding-in-cana",
+      alternates: [{ hreflang: "en", languageSlug: "english" }],
+    },
+    {
+      parentSlug: "the-life-of-jesus",
       childSlug: "wedding-in-cana",
       alternates: [{ hreflang: "en", languageSlug: "english" }],
     },
@@ -78,6 +87,9 @@ describe("watch sitemap rendering", () => {
       ],
     })
     expect(entries[2]?.loc).toBe(
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
+    )
+    expect(entries.map(({ loc }) => loc)).not.toContain(
       "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
@@ -95,6 +107,19 @@ describe("watch sitemap rendering", () => {
         loc: "https://www.jesusfilm.org/watch/english-british.html",
         alternates: expectedHomepageAlternates,
       },
+    ])
+  })
+
+  it("emits only home entries for a contextual-only manifest", () => {
+    const entries = createWatchSitemapEntries({
+      ...manifest,
+      videoRouteGroups: [],
+    })
+
+    expect(entries).toHaveLength(2)
+    expect(entries.map(({ loc }) => loc)).toEqual([
+      "https://www.jesusfilm.org/watch",
+      "https://www.jesusfilm.org/watch/english-british.html",
     ])
   })
 
