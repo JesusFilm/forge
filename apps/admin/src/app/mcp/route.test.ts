@@ -86,6 +86,7 @@ describe("Admin MCP route", () => {
       authorization_servers: [expect.any(String)],
       bearer_methods_supported: ["header"],
       scopes_supported: expect.arrayContaining([
+        "offline_access",
         "experience:read",
         "experience:locale:create",
         "experience:locale:update",

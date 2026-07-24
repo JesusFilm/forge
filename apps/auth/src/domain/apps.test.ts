@@ -148,6 +148,7 @@ describe("first-party app seeds", () => {
             "openid",
             "profile:read",
             "email:read",
+            "offline_access",
             "membership:read",
             "experience:read",
             "experience:locale:create",
@@ -169,6 +170,66 @@ describe("first-party app seeds", () => {
           ],
           allowedOrigins: ["https://admin.jesusfilm.org"],
           defaultScopes: expect.arrayContaining(["experience:publish"]),
+          autoApprove: true,
+        }),
+      ]),
+    )
+  })
+
+  it("does not add offline_access to non-MCP first-party app defaults", () => {
+    expect(ADMIN_APP_SEED.environments[0]?.defaultScopes).not.toContain(
+      "offline_access",
+    )
+    expect(MANAGER_APP_SEED.environments[0]?.defaultScopes).not.toContain(
+      "offline_access",
+    )
+    expect(WEB_APP_SEED.environments[0]?.defaultScopes).not.toContain(
+      "offline_access",
+    )
+    expect(CHAT_APP_SEED.environments[0]?.defaultScopes).not.toContain(
+      "offline_access",
+    )
+    expect(MASTRA_STUDIO_APP_SEED.environments[0]?.defaultScopes).not.toContain(
+      "offline_access",
+    )
+  })
+
+  it("keeps every Admin MCP OAuth client public, PKCE-bound, and refresh-token capable", () => {
+    for (const environment of ADMIN_MCP_APP_SEED.environments) {
+      expect(environment.defaultScopes).toContain("offline_access")
+      expect(environment.defaultScopes).toEqual(
+        expect.arrayContaining([
+          "experience:read",
+          "experience:locale:update",
+          "experience:publish",
+        ]),
+      )
+    }
+  })
+
+  it("keeps non-MCP app scopes unchanged when Admin MCP gains offline access", () => {
+    expect(CHAT_APP_SEED.environments).toEqual([
+      expect.objectContaining({
+        key: "local",
+        defaultScopes: ["openid", "profile:read", "email:read"],
+      }),
+      expect.objectContaining({
+        key: "production",
+        defaultScopes: ["openid", "profile:read", "email:read"],
+      }),
+    ])
+  })
+
+  it("registers production Admin MCP defaults with persistent access only for MCP", () => {
+    expect(ADMIN_MCP_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "production",
+          defaultScopes: expect.arrayContaining([
+            "offline_access",
+            "experience:read",
+            "experience:publish",
+          ]),
           autoApprove: true,
         }),
       ]),
@@ -218,6 +279,7 @@ describe("first-party app seeds", () => {
             "openid",
             "profile:read",
             "email:read",
+            "offline_access",
             "membership:read",
             "experience:read",
             "experience:locale:create",
