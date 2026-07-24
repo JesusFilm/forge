@@ -29,11 +29,14 @@ const { capturedEmblaApi, linkDefaultPrevented, testDirection } = vi.hoisted(
 
 vi.mock("embla-carousel-react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("embla-carousel-react")>()
-  const useCapturedEmblaCarousel: typeof actual.default = (...args) => {
-    const result = actual.default(...args)
-    capturedEmblaApi.current = result[1] ?? null
-    return result
-  }
+  const useCapturedEmblaCarousel = Object.assign(
+    (...args: Parameters<typeof actual.default>) => {
+      const result = actual.default(...args)
+      capturedEmblaApi.current = result[1] ?? null
+      return result
+    },
+    { globalOptions: actual.default.globalOptions },
+  ) satisfies typeof actual.default
 
   return {
     ...actual,
@@ -282,7 +285,7 @@ function installRealEmblaHorizontalLayout(direction: "ltr" | "rtl") {
     .spyOn(window, "getComputedStyle")
     .mockReturnValue({
       getPropertyValue: () => "0px",
-    } as CSSStyleDeclaration)
+    } as unknown as CSSStyleDeclaration)
 
   restoreRealEmblaLayout = () => {
     getComputedStyleSpy.mockRestore()

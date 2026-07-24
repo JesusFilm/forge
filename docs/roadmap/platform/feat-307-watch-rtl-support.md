@@ -1,10 +1,11 @@
 ---
-id: "feat-304"
+id: "feat-307"
 title: "Watch RTL layout, carousel, and bidi support"
 owner: "unassigned"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-23"
+completed_date: "2026-07-23"
 duration: 3
 depends_on: []
 blocks: []
