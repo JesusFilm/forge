@@ -142,6 +142,86 @@ type LocaleWithTextInfo = Intl.Locale & {
   getTextInfo?: () => LocaleTextInfo
 }
 
+const RTL_LANGUAGE_SUBTAGS = new Set([
+  "acw",
+  "aii",
+  "apc",
+  "ar",
+  "ars",
+  "avl",
+  "ayn",
+  "azb",
+  "bal",
+  "bej",
+  "bft",
+  "bgn",
+  "bgp",
+  "bqi",
+  "brh",
+  "bsk",
+  "cja",
+  "ckb",
+  "dcc",
+  "dgl",
+  "dv",
+  "fa",
+  "fub",
+  "gjk",
+  "gju",
+  "glk",
+  "gwc",
+  "hac",
+  "haz",
+  "he",
+  "hnd",
+  "hno",
+  "jdg",
+  "kby",
+  "khw",
+  "ks",
+  "kvx",
+  "kxp",
+  "lah",
+  "lrc",
+  "mfi",
+  "mki",
+  "mve",
+  "mvy",
+  "mzn",
+  "odk",
+  "pbt",
+  "plk",
+  "ps",
+  "qxq",
+  "rhg",
+  "rmt",
+  "scl",
+  "sd",
+  "sdh",
+  "skr",
+  "swb",
+  "syc",
+  "syr",
+  "trw",
+  "ug",
+  "ur",
+  "uzs",
+  "wlo",
+  "wne",
+  "yi",
+  "zdj",
+])
+
+const RTL_SCRIPT_SUBTAGS = new Set([
+  "Adlm",
+  "Arab",
+  "Hebr",
+  "Nkoo",
+  "Rohg",
+  "Syrc",
+  "Thaa",
+])
+
 export function textDirectionForLocale(locale: string): LocaleTextDirection {
   try {
     const resolvedLocale = new Intl.Locale(locale) as LocaleWithTextInfo
@@ -150,7 +230,16 @@ export function textDirectionForLocale(locale: string): LocaleTextDirection {
         ? resolvedLocale.getTextInfo()
         : resolvedLocale.textInfo
 
-    return textInfo?.direction === "rtl" ? "rtl" : "ltr"
+    if (textInfo) return textInfo.direction === "rtl" ? "rtl" : "ltr"
+
+    const script =
+      resolvedLocale.script ??
+      (typeof resolvedLocale.maximize === "function"
+        ? resolvedLocale.maximize().script
+        : undefined)
+    if (script) return RTL_SCRIPT_SUBTAGS.has(script) ? "rtl" : "ltr"
+
+    return RTL_LANGUAGE_SUBTAGS.has(resolvedLocale.language) ? "rtl" : "ltr"
   } catch {
     const primaryLocale = locale.split("-")[0]
     if (primaryLocale && primaryLocale !== locale) {

@@ -1,7 +1,7 @@
 ---
 title: "fix: Harden RTL support across core Watch journeys"
 type: "fix"
-status: "completed"
+status: "active"
 date: "2026-07-23"
 ---
 
@@ -23,7 +23,7 @@ Watch already resolves the page language and emits the correct root `lang` and `
 
 ### Direction ownership and shared primitives
 
-- R1. The Watch root layout must keep `htmlLang` as the sole page-direction source and prove emitted LTR and RTL attributes at the layout boundary.
+- R1. The Watch root layout must keep `htmlLang` as the sole page-direction source and prove Arabic, Hebrew, Persian, Urdu, and Sorani Kurdish emit RTL attributes while English and the explicit `mey-Latn` exception remain LTR.
 - R2. Shared horizontal carousels must configure Embla with the inherited document direction without changing item identity, document order, route targets, or optimistic selection state.
 - R3. Carousel keyboard, wheel, touch, button placement, icons, disabled state, leading gutters, and trailing gutters must agree with the active visual direction.
 - R4. Shared Watch rail and carousel spacing must use logical inline geometry while preserving existing breakpoint widths, safe-area handling, and horizontal clipping.
@@ -38,7 +38,8 @@ Watch already resolves the page language and emits the correct root `lang` and `
 
 - R8. Timeline and volume value axes must remain explicitly LTR so pointer math, fills, previews, keyboard increments, and chronological meaning stay synchronized in both page directions.
 - R9. The surrounding player control row must continue to follow page direction and preserve focus order, visibility, fullscreen, language, and subtitle behavior.
-- R10. Focused tests and representative Arabic browser smokes must prove direction, layout, mixed-script ordering, carousel navigation, modal geometry, and player value-axis behavior without horizontal page overflow or loading-performance regressions.
+- R10. Focused tests and Arabic browser smokes across home, video, episode, series, history, language-index, and language-inventory routes at 375, 390, 608, 1280, and 1440 pixel widths must prove direction, layout, mixed-script ordering, carousel navigation, modal geometry, and player value-axis behavior without horizontal page overflow or loading-performance regressions.
+- R11. The collection-download ready summary must use the existing localized, plural-aware episode-count message and contain no hard-coded English `videos` label.
 
 ---
 
@@ -97,10 +98,11 @@ flowchart TB
 - **Patterns to follow:** `textDirectionForLocale()` in `apps/web/src/lib/locale.ts` and the first-strong isolation pattern in `apps/web/src/components/watch/LanguagePickerModal.tsx`.
 - **Test scenarios:**
   1. English layout emits the resolved language and `dir="ltr"`.
-  2. Arabic layout emits the resolved language and `dir="rtl"`.
-  3. A Latin-script language identity does not become RTL because its base language has an Arabic-script variant.
+  2. Arabic, Hebrew, Persian, Urdu, and Sorani Kurdish layouts emit their resolved language and `dir="rtl"`.
+  3. The `mey-Latn` language identity does not become RTL because its base language has an Arabic-script variant.
   4. Isolating a Latin name inside Arabic text and an Arabic name inside Latin text produces balanced isolate markers.
   5. The server-rendered RTL provider hydrates without warnings and exposes RTL before a carousel initializes.
+  6. Direction resolution uses `Intl.Locale#getTextInfo`, legacy `textInfo`, and a deterministic script/language fallback when neither API exists.
 - **Verification:** Direction ownership is enforced at the rendered layout boundary and the new helpers remain client-safe and deterministic.
 
 ### U2. Make the shared carousel direction-aware
@@ -123,7 +125,7 @@ flowchart TB
   - `apps/web/src/components/sections/MediaCollection.tsx`
   - `apps/web/src/components/watch-language-inventory/LanguageInventoryPage.tsx`
 - **Execution note:** Start with failing shared-carousel tests that independently prove LTR and RTL branches.
-- **Approach:** Consume the server-seeded direction, pass it to Embla, and expose it through carousel context. Watch locale changes are full document navigations, so direction is immutable for a mounted carousel. Convert default and consumer gutters to logical start padding/margins, keep the real trailing spacer, mirror horizontal controls and glyphs, and map keys/wheel gestures through direction without reversing slide arrays or link targets.
+- **Approach:** Consume the server-seeded direction, pass it to Embla, and expose it through carousel context. Watch locale changes are full document navigations, so direction is immutable for a mounted carousel. Keep options and drag predicates referentially stable so ordinary rerenders do not reinitialize Embla. Convert default and consumer gutters to logical start padding/margins, keep the real trailing spacer, mirror horizontal controls and glyphs, and map keys/wheel gestures through direction without reversing slide arrays or link targets.
 - **Patterns to follow:** The bleed/padding/spacer lockstep in `apps/web/src/lib/content-width.ts`, real Embla coverage in `apps/web/src/components/watch/__tests__/SiblingCarousel.test.tsx`, and the clipping rules in `docs/solutions/ui-bugs/watch-mobile-sibling-carousel-horizontal-rubber-band.md`.
 - **Test scenarios:**
   1. LTR and RTL carousels pass the correct direction to Embla.
@@ -134,19 +136,33 @@ flowchart TB
   6. Sibling optimistic selection and href identity remain unchanged under RTL.
   7. LTR and RTL drag gestures in both physical directions select the expected semantic previous or next item without changing href identity.
   8. Logical rail classes preserve leading and trailing safe-area insets with a nonzero simulated inset in both directions.
+  9. Rerendering a mounted carousel with unchanged semantic options does not reinitialize Embla.
+  10. RTL button clicks, disabled boundaries, touch/swipe input, loop, `startIndex`, and `containScroll` preserve semantic previous/next behavior and item identity.
 - **Verification:** Every carousel behavior class uses the shared direction contract, and page-level horizontal clipping remains intact.
 
 ### U3. Repair RTL layout and bidi boundaries on Watch content surfaces
 
 - **Goal:** Remove forced LTR presentation from viewer-facing Watch language, search, study, download, and inventory flows.
-- **Requirements:** R5, R6, R7
+- **Requirements:** R5, R6, R7, R11
 - **Dependencies:** U1
 - **Files:**
   - `apps/web/src/components/FloatingSearchField.tsx`
   - `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`
+  - `apps/web/src/components/home/WatchHomeHero.tsx`
+  - `apps/web/src/components/home/__tests__/WatchHomeHero.test.tsx`
   - `apps/web/src/components/SearchOverlay.tsx`
+  - `apps/web/src/components/sections/Text.tsx`
+  - `apps/web/src/components/sections/Text.test.tsx`
   - `apps/web/src/components/search/VideoCard.tsx`
   - `apps/web/src/components/search/VideoCard.test.tsx`
+  - `apps/web/src/components/watch/AccountControl.tsx`
+  - `apps/web/src/components/watch/__tests__/AccountControl.test.tsx`
+  - `apps/web/src/components/watch/InteractiveSubtitleTranscript.tsx`
+  - `apps/web/src/components/watch/__tests__/SubtitleTranscript.render.test.tsx`
+  - `apps/web/src/components/watch/SeriesEpisodeCard.tsx`
+  - `apps/web/src/components/watch/__tests__/SeriesEpisodeCard.test.tsx`
+  - `apps/web/src/components/watch/WatchHistoryClient.tsx`
+  - `apps/web/src/components/watch/WatchHistoryClient.test.tsx`
   - `apps/web/src/components/watch/WatchStudyQuestions.tsx`
   - `apps/web/src/components/watch/WatchQuestionPanel.tsx`
   - `apps/web/src/components/watch/__tests__/WatchBody.test.tsx`
@@ -175,6 +191,8 @@ flowchart TB
   8. Language loading, error, retry, no-match, pending-apply, applied, and nested-combobox Escape states preserve accessible names, focus trapping, and trigger-focus restoration.
   9. Download authentication, empty, loading, error, retry, progress, partial-completion, success, explicit-close, and Escape states keep status values isolated and live announcements coherent.
   10. Raw source values remain byte-for-byte unchanged through search, links, selection keys, and filename construction; only final display and accessible strings contain isolation markers.
+  11. The collection-download ready summary renders `CollectionDownloadModal.availableCount` for the active catalog, the series route projects that namespace to the client, all catalogs retain parity, and the component source contains no hard-coded English `videos` label.
+  12. Home hero cards, authored Text lists and blockquotes, transcript cues, account menus, series episode titles, and history titles use logical alignment or leaf-level bidi isolation without changing their routes or underlying values.
 - **Verification:** The targeted surfaces contain no forced physical text alignment for reading-order content, and their tests prove both script directions.
 
 ### U4. Separate RTL chrome layout from LTR media value axes
@@ -188,7 +206,7 @@ flowchart TB
   - `apps/web/src/components/watch/HeroPlayer.tsx`
   - `apps/web/src/components/watch/__tests__/HeroPlayer.test.tsx`
 - **Approach:** Let the control row inherit page direction. Set `dir="ltr"` on the timeline slider root and its preview/fill/thumb descendants, a separate time-value wrapper, and the volume slider root/track. Keep localized labels outside those islands. ArrowRight remains increment/forward and ArrowLeft decrement/back in both page directions.
-- **Patterns to follow:** Existing pointer-capture and nonzero bounding-rectangle tests in `HeroPlayerControls`, and the ownership boundary documented in `docs/solutions/design-patterns/mux-player-custom-react-chrome-pattern-20260430.md`.
+- **Patterns to follow:** Existing pointer-capture and nonzero bounding-rectangle tests in `HeroPlayerControls`, the ownership boundary documented in `docs/solutions/design-patterns/mux-player-custom-react-chrome-pattern-20260430.md`, and the portaled-chrome, subtitle-lift, focus, touch, and compact-landscape contracts in `docs/solutions/design-patterns/watch-language-player-chrome-layout-20260609.md`.
 - **Test scenarios:**
   1. RTL host layout leaves the control row RTL while timeline and volume sliders expose LTR direction.
   2. Nonzero-left timeline and volume rectangles map pointer positions to the same values under LTR and RTL hosts.
@@ -207,19 +225,20 @@ flowchart TB
 - **Files:**
   - `docs/roadmap/platform/feat-307-watch-rtl-support.md`
   - `docs/solutions/ui-bugs/watch-rtl-layout-carousel-and-bidi-support.md`
-- **Approach:** Run focused tests before full Web checks. Browser-smoke the verified Arabic inventory route and the first playable Arabic episode discovered from that inventory which exposes a carousel, language selection, downloads, and custom player chrome. Use Chromium at 1440x900, Chromium mobile emulation at 390x844, and WebKit at 390x844. Capture screenshots plus DOM direction, focus, href, selected-item, slider, and bounding-rectangle evidence. Record the reusable ownership rules in a solution note, then mark the roadmap ticket complete.
+- **Approach:** Run focused tests before full Web checks. Browser-smoke Arabic home, video, episode, series, history, language-index, and language-inventory routes in Chromium at 375, 390, 608, 1280, and 1440 pixel widths, with representative mobile coverage repeated in WebKit. Include representative Hebrew and Persian routes plus matching English LTR controls. Capture screenshots plus root/body/descendant overflow, focus, href, selected-item, slider, carousel transform, `scrollX`, and bounding-rectangle evidence. Record route, viewport, browser, source SHA, raw performance samples, medians, DOM measurements, and screenshot paths in the solution note, then mark the roadmap ticket complete.
 - **Test scenarios:**
   1. `/watch/arabic-modern-standard.html/videos` emits Arabic `lang`, `dir="rtl"`, localized visible and accessible copy, and no missing-message text.
-  2. Inventory and episode pages have no document overflow at desktop and narrow mobile widths.
+  2. Home, video, episode, series, history, language-index, and language-inventory pages have `documentElement.scrollWidth`, `body.scrollWidth`, and visible descendant bounds contained at 375, 390, 608, 1280, and 1440 pixel widths.
   3. Search accepts a Latin query on the Arabic page and renders isolated mixed-script results.
-  4. Language and download modals open, scroll, close, and avoid label/control collisions.
-  5. Carousel drag stays inside its rail, does not move the page horizontally, and preserves active/link identity.
+  4. Language and download modals open, scroll, close, keep `scrollWidth <= innerWidth`, and keep every visible descendant within the viewport at mobile widths and the 608 pixel desktop cap.
+  5. Carousel drag moves the rail transform inside the rail, leaves `scrollX === 0` when dragging outside it, and preserves active/link identity.
   6. Player seek and volume controls remain left-origin and respond correctly inside the RTL page.
   7. Language selection applies a destination, verifies the resulting route and root direction, then restores focus on cancel and explicit close paths.
   8. Search enters and clears a mixed-script query, activates a result, verifies the destination, and restores focus on exit.
   9. A download selection verifies rendition and filename behavior through success or the representative error path, then exits without focus loss.
   10. Carousel accessible names, disabled exposure, DOM/tab order, keys, pointer drag, and touch behavior agree with semantic previous/next meaning.
   11. Five cold loads of the same pre-change and post-change Arabic routes produce no hydration warnings, no direction-induced layout shifts, one Embla initialization per mount, and no greater than 10% median LCP regression in the same local environment.
+  12. Representative Hebrew and Persian routes emit RTL and preserve the same no-overflow, logical-alignment, and mixed-script behavior as the Arabic routes.
 - **Verification:** Focused tests, typecheck, lint, Web build, the defined browser matrix, and the bounded performance comparison pass; the roadmap ticket is complete and durable learnings are recorded.
 
 ---

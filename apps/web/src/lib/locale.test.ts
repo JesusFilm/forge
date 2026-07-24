@@ -15,6 +15,7 @@ import {
   slugToBcp47Primary,
   textDirectionForLocale,
 } from "./locale"
+import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 
 describe("isLocale (generated UI catalogs only)", () => {
   it("accepts generated UI catalog locales", () => {
@@ -237,6 +238,86 @@ describe("textDirectionForLocale", () => {
 
     try {
       expect(textDirectionForLocale("ar")).toBe("rtl")
+    } finally {
+      if (localeDescriptor) {
+        Object.defineProperty(Intl, "Locale", localeDescriptor)
+      }
+    }
+  })
+
+  it("uses getTextInfo when available", () => {
+    const localeDescriptor = Object.getOwnPropertyDescriptor(Intl, "Locale")
+    const MethodLocale = class {
+      getTextInfo() {
+        return { direction: "rtl" as const }
+      }
+    }
+
+    Object.defineProperty(Intl, "Locale", {
+      configurable: true,
+      value: MethodLocale,
+    })
+
+    try {
+      expect(textDirectionForLocale("ar")).toBe("rtl")
+    } finally {
+      if (localeDescriptor) {
+        Object.defineProperty(Intl, "Locale", localeDescriptor)
+      }
+    }
+  })
+
+  it("falls back to explicit script and language subtags without text-info APIs", () => {
+    const localeDescriptor = Object.getOwnPropertyDescriptor(Intl, "Locale")
+    const directionByTag = new Map<string, "ltr" | "rtl">()
+    const localePartsByTag = new Map<
+      string,
+      { language: string; script: string | undefined }
+    >()
+    for (const tag of new Set(Object.values(LANGUAGE_BCP47_MAP))) {
+      directionByTag.set(tag, textDirectionForLocale(tag))
+      try {
+        const locale = new Intl.Locale(tag)
+        localePartsByTag.set(tag, {
+          language: locale.language,
+          script: locale.script,
+        })
+      } catch {
+        // Some admin values are legacy compound tags rather than structurally
+        // valid BCP-47. Preserve their normal safe-LTR behavior in this corpus
+        // check while exercising canonical subtags for every constructible tag.
+      }
+    }
+    const BasicLocale = class {
+      language: string
+      script: string | undefined
+
+      constructor(locale: string) {
+        const canonicalParts = localePartsByTag.get(locale)
+        if (canonicalParts) {
+          this.language = canonicalParts.language
+          this.script = canonicalParts.script
+          return
+        }
+        const [language, script] = locale.split("-")
+        this.language = language ?? ""
+        this.script = script?.length === 4 ? script : undefined
+      }
+    }
+
+    Object.defineProperty(Intl, "Locale", {
+      configurable: true,
+      value: BasicLocale,
+    })
+
+    try {
+      expect(textDirectionForLocale("ar")).toBe("rtl")
+      expect(textDirectionForLocale("az-Arab")).toBe("rtl")
+      expect(textDirectionForLocale("mey-Latn")).toBe("ltr")
+      expect(textDirectionForLocale("en")).toBe("ltr")
+      for (const [tag, expectedDirection] of directionByTag) {
+        expect(textDirectionForLocale(tag), tag).toBe(expectedDirection)
+      }
     } finally {
       if (localeDescriptor) {
         Object.defineProperty(Intl, "Locale", localeDescriptor)

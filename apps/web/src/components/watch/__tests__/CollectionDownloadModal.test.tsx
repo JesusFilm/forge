@@ -3,6 +3,7 @@
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { setRequestLocale } from "next-intl/server"
 
 const {
   loadWatchCollectionDownloadsMock,
@@ -129,6 +130,7 @@ async function flush() {
 }
 
 beforeEach(() => {
+  setRequestLocale("en")
   window.sessionStorage.clear()
   loadWatchCollectionDownloadsMock.mockReset()
   resolveDownloadSessionAccessMock.mockReset()
@@ -395,7 +397,21 @@ describe("CollectionDownloadModal", () => {
       '[data-testid="watch-collection-download-ready-count"]',
     )
     expect(count?.className).toContain("text-center")
-    expect(count?.textContent).toBe("2 videos")
+    expect(count?.textContent).toBe("2 episodes are ready")
+    expect(count?.textContent).not.toContain("videos")
+  })
+
+  it("localizes the visible ready count instead of rendering an English literal", async () => {
+    setRequestLocale("ru")
+    renderModal()
+    await flush()
+
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-ready-count"]',
+      )?.textContent,
+    ).toBe("2 серии готовы")
+    expect(container.textContent).not.toContain("videos")
   })
 
   it("strengthens the form hierarchy without changing action shapes", async () => {

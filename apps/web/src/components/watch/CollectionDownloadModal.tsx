@@ -508,14 +508,11 @@ export function CollectionDownloadModal({
                 <span
                   data-testid="watch-collection-download-ready-count"
                   aria-hidden="true"
-                  className="whitespace-nowrap text-center text-stone-300"
+                  className="text-center text-lg font-semibold text-white min-[700px]:text-2xl"
                 >
-                  <span className="text-3xl font-semibold tabular-nums text-white min-[700px]:text-5xl">
-                    {options.candidates.length}
-                  </span>{" "}
-                  <span className="text-base font-medium min-[700px]:text-xl">
-                    videos
-                  </span>
+                  {t("availableCount", {
+                    count: options.candidates.length,
+                  })}
                 </span>
               </div>
             ) : null}
