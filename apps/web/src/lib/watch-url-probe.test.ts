@@ -470,6 +470,20 @@ describe("parseDocumentIdentity", () => {
       openGraphUrl: "https://www.jesusfilm.org/watch/jesus.html",
     })
   })
+
+  it("decodes attribute entities exactly once", () => {
+    expect(
+      parseDocumentIdentity(`
+        <link rel="canonical" href="https://www.jesusfilm.org/watch/jesus.html?q=&amp;quot;jesus&amp;quot;">
+        <meta property="og:url" content="https://www.jesusfilm.org/watch/jesus.html?q=fish&amp;amp;chips">
+      `),
+    ).toEqual({
+      canonicalUrl:
+        "https://www.jesusfilm.org/watch/jesus.html?q=&quot;jesus&quot;",
+      openGraphUrl:
+        "https://www.jesusfilm.org/watch/jesus.html?q=fish&amp;chips",
+    })
+  })
 })
 
 describe("validateStructuredDataContract", () => {

@@ -673,10 +673,14 @@ function htmlAttribute(tag: string, name: string): string | null {
   )
   const value = match?.[1] ?? match?.[2] ?? match?.[3]
   if (value == null) return null
-  return value
-    .replaceAll("&amp;", "&")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&#39;", "'")
+  return value.replace(
+    /&(amp|quot|#39);/g,
+    (_entityReference, entity: string) => {
+      if (entity === "amp") return "&"
+      if (entity === "quot") return '"'
+      return "'"
+    },
+  )
 }
 
 export function parseDocumentIdentity(html: string): {
