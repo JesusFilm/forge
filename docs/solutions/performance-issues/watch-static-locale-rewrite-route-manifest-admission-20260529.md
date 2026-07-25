@@ -1,6 +1,7 @@
 ---
 title: "Bound Watch Static Route Admission with the Admin Route Manifest"
 date: "2026-05-29"
+last_updated: "2026-07-24"
 category: "performance-issues"
 module: "apps/web watch routing"
 problem_type: "performance_issue"
@@ -37,6 +38,11 @@ The watch static locale rewrite moved public URLs through static App Router rout
 
 The performance risk was that hostile paths such as `/watch/anything.html/english.html` could drive admin/page resolution and potentially mint unbounded ISR or notFound cache entries. The correctness risk was that public audio slugs, UI catalog keys, and `<html lang>` values drifted into one another.
 
+A later compatibility gap exposed a second admission requirement: durable
+language-less Video URLs such as `/watch/jesus.html` needed to mean English
+without redirecting or weakening the fixed-404 boundary for random one-segment
+slugs.
+
 ## Symptoms
 
 - `/anything.html/english.html` and unknown episode pairs were safe-looking enough to proceed past proxy classification toward the force-static catch-all.
@@ -49,6 +55,12 @@ The performance risk was that hostile paths such as `/watch/anything.html/englis
 
 - Treating `[locale]` as a universal language identifier was the core mistake. The public route segment may be a raw audio slug (`english`, `spanish-castilian`, `german-standard`), the internal `[locale]` segment is a message catalog key (`en`, `es`, `de`), and the internal `[htmlLang]` segment can be a finer BCP-47 tag (`es-419`). Collapsing these into one value produced invalid public revalidation paths.
 - Delegating every safe-looking path to the catch-all was too permissive. Syntax validation only proves a string is safe to parse; it does not prove the content/audio or parent/episode pair exists.
+- Redirecting a language-less Video to `/english.html` changed the durable
+  public URL instead of honoring the compatibility contract that an omitted
+  language means English.
+- Teaching the catch-all page to guess that any one-segment slug was a Video
+  would have bypassed the proxy's manifest admission boundary and made
+  collection/Video identity ambiguous.
 - Generating or storing every possible watch URL was rejected in the prior admin manifest work because the content-language permutation space would grow too large. The durable decision was compact admission dimensions instead: content slugs, one-segment slugs, episode pairs, and audio language slugs. (session history)
 
 ## Solution
@@ -65,10 +77,15 @@ export type WatchRouteManifest = {
   oneSegmentSlugs: string[]
   episodePairsByParent: Record<string, string[]>
   audioLanguageSlugs: string[]
+  audioLanguageIndexesByContent?: Record<string, number[]>
+  audioLanguageIndexesByEpisode?: Record<string, Record<string, number[]>>
 }
 ```
 
-The admission helper is a compact dimensional prefilter: it rejects unknown one-segment slugs, unknown content slugs, unknown audio slugs, and unknown episode pairs. For two-segment video routes it checks that the content slug and audio slug are both present in the manifest; it does not prove that a specific video has that exact dub before the page resolver runs.
+The admission helper rejects unknown one-segment slugs, unknown content slugs,
+unknown audio slugs, unknown episode pairs, and—when the exact indexes are
+present—content/audio or episode/audio combinations that do not exist. Older
+manifests without the optional exact indexes retain the global-audio fallback.
 
 ```ts
 export function isWatchRouteAdmittedByManifest(
@@ -82,13 +99,22 @@ export function isWatchRouteAdmittedByManifest(
   if (route.kind === "video") {
     return (
       index.contentSlugs.has(route.contentSlug) &&
-      index.audioLanguageSlugs.has(route.audioLanguageSlug)
+      isContentAudioLanguageAdmitted(
+        index,
+        route.contentSlug,
+        route.audioLanguageSlug,
+      )
     )
   }
   return (
-    index.audioLanguageSlugs.has(route.audioLanguageSlug) &&
     (index.episodePairsByParent.get(route.parentSlug)?.has(route.childSlug) ??
-      false)
+      false) &&
+    isEpisodeAudioLanguageAdmitted(
+      index,
+      route.parentSlug,
+      route.childSlug,
+      route.audioLanguageSlug,
+    )
   )
 }
 ```
@@ -102,6 +128,41 @@ if (rewrite.kind === "not-found") return buildNotFound()
 if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
 return rewriteToInternal(request, rewrite)
 ```
+
+For an omitted Video language, keep exact one-segment collection admission
+first. Only after that fails, validate the same slug as a standalone Video in
+the default public audio language. An admitted target overrides only the
+internal pathname; `NextResponse.rewrite` keeps the browser on the
+language-less URL and preserves its query string.
+
+```ts
+if (decision.manifestRoute.kind === "one-segment") {
+  const defaultAudioLanguageSlug =
+    publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+  if (defaultAudioLanguageSlug) {
+    const defaultLanguageRoute = {
+      kind: "video",
+      contentSlug: decision.manifestRoute.slug,
+      audioLanguageSlug: defaultAudioLanguageSlug,
+    } satisfies WatchRouteManifestRoute
+
+    if (isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
+      return {
+        kind: "admit",
+        internalPathname: watchVideoPath(
+          asContentSlug(defaultLanguageRoute.contentSlug),
+          asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
+        ),
+      }
+    }
+  }
+}
+```
+
+This maps `/watch/jesus.html` internally through the existing
+`/watch/en/en/jesus.html/english.html` render path without a `Location`
+response header. Unknown slugs, Videos without admitted English audio, and
+manifest-unavailable non-collection paths remain fixed 404s.
 
 When the manifest is available, tests pin the cheap negative path:
 
@@ -161,7 +222,20 @@ Keeping these separate prevents catalog keys from leaking into public audio slot
 
 The manifest check also moves negative route admission ahead of the expensive/static boundary when web has a fresh or stale cached manifest. Instead of letting every safe-looking path become a potential ISR key and page resolver miss, proxy can reject known-impossible route dimensions before the request reaches the force-static catch-all.
 
-The implementation intentionally preserves availability if `getWatchRouteManifest()` returns `null`: one-segment non-language routes fall back to the legacy `isOneSegmentCollectionSlug` allowlist, and two-/three-segment routes fail open to the page resolver. That means the manifest bounds cache spray only once a manifest has been fetched or cached; it is not an unconditional security boundary. The manifest remains an admission gate, not a rendering payload or content resolver; admin still owns the lifecycle and web still resolves content normally for admitted paths. (session history)
+The language-less compatibility path does not create another page resolver. It
+proves the English target through the same route manifest, then reuses the
+existing two-segment English render path. That preserves one implementation
+for content, metadata, structured data, and UI while keeping the durable
+public address unchanged.
+
+The implementation intentionally preserves availability if
+`getWatchRouteManifest()` returns `null`: known one-segment collections fall
+back to the legacy `isOneSegmentCollectionSlug` allowlist, while unknown
+one-segment paths—including language-less Videos—fail closed. Existing
+two-/three-segment routes still fail open to the page resolver. The manifest
+remains an admission gate, not a rendering payload or content resolver; admin
+still owns the lifecycle and web still resolves content normally for admitted
+paths. (session history)
 
 ## Prevention
 
@@ -195,6 +269,21 @@ The implementation intentionally preserves availability if `getWatchRouteManifes
   expect(episodeResponse.status).toBe(404)
   expect(rewritePath(episodeResponse)).toBeNull()
   ```
+
+- Pin the language-less compatibility outcome at the proxy boundary:
+
+  ```ts
+  const response = await proxy(
+    makeRequest("/jesus.html?utm_source=legacy&ref=printed"),
+  )
+  expect(response.status).toBe(200)
+  expect(response.headers.get("location")).toBeNull()
+  expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
+  ```
+
+  Pair that positive case with exact no-English and manifest-unavailable 404
+  cases. This prevents a future route migration from silently removing the
+  English default or reopening arbitrary one-segment paths.
 
 - Revalidate both public and internal route shapes, but derive public language segments from the raw public slug map. Never use `AVAILABLE_UI_LOCALES` directly as the public audio slot.
 - Clear the web manifest cache on the `watch-route-manifest` webhook so admin refreshes can propagate without waiting for the polling TTL.

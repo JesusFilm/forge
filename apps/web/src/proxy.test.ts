@@ -392,7 +392,36 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/en/en/new-collection.html")
   })
 
-  it("404s one-segment slugs outside the manifest collection set", async () => {
+  it("rewrites a language-less video as English without changing the URL", async () => {
+    const response = await proxy(
+      makeRequest("/jesus.html?utm_source=legacy&ref=printed"),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+    expect(rewrite.pathname).toBe("/en/en/jesus.html/english.html")
+    expect(rewrite.search).toBe("?utm_source=legacy&ref=printed")
+  })
+
+  it("404s a language-less video without an admitted English dub", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageSlugs: ["english", "russian"],
+      audioLanguageIndexesByContent: {
+        jesus: [1],
+      },
+    }))
+
+    const response = await proxy(makeRequest("/jesus.html"))
+    expectNotFoundRewrite(response)
+  })
+
+  it("keeps language-less non-collection routes closed when the manifest is unavailable", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
+
     const response = await proxy(makeRequest("/jesus.html"))
     expectNotFoundRewrite(response)
   })
