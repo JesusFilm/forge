@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
@@ -46,10 +46,15 @@ function QuestionItem({
   isOpen: boolean
   onToggle: () => void
 }) {
+  const panelId = `${useId()}-panel`
+
   return (
     <>
       <button
+        type="button"
         onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         className="group w-full cursor-pointer rounded-lg p-4 text-left transition-colors hover:bg-white/5"
       >
         <div className="w-full">
@@ -73,8 +78,12 @@ function QuestionItem({
         </div>
       </button>
 
-      {isOpen && (
-        <div className="border-b border-stone-500/20 py-6 pb-12 text-stone-200/80">
+      <div
+        id={panelId}
+        hidden={!isOpen}
+        className="border-b border-stone-500/20 py-6 pb-12 text-stone-200/80"
+      >
+        {isOpen && (
           <Markdown
             components={{
               ul: ({ children }) => (
@@ -88,8 +97,8 @@ function QuestionItem({
           >
             {answer}
           </Markdown>
-        </div>
-      )}
+        )}
+      </div>
     </>
   )
 }
