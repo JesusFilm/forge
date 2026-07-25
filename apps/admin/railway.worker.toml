@@ -6,13 +6,13 @@
 # or false on admin web replicas so web scaling does not also scale background
 # job runners.
 #
-# Do not set NODE_OPTIONS=--require dd-trace/init for the standalone server:
-# Railpack's standalone runtime does not include a resolvable dd-trace preload
-# module. Browser RUM sourcemaps are uploaded during build instead.
+# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# service variables are present during Railpack/mise build setup, before
+# dependencies are installed. Keep the Datadog preload scoped to startCommand.
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps"
 watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
@@ -23,7 +23,7 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "cd apps/admin/.next/standalone && HOSTNAME=0.0.0.0 NODE_OPTIONS='--max-old-space-size=5120' node apps/admin/server.js"
+startCommand = "cd apps/admin && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
