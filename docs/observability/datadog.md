@@ -104,11 +104,11 @@ phase, before `dd-trace` is guaranteed to exist. Admin's
 `apps/admin/railway.toml` scopes the preload to runtime:
 
 ```bash
-HOSTNAME=0.0.0.0 NODE_OPTIONS='--require dd-trace/init' node apps/admin/.next/standalone/apps/admin/server.js
+cd apps/admin && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start
 ```
 
 The dedicated Admin worker service should use config-as-code path
-`apps/admin/railway.worker.toml`. It runs the same Admin standalone server so
+`apps/admin/railway.worker.toml`. It runs the same Admin Next server so
 `src/instrumentation.ts` can start Postgres World, but only the worker service
 should set `WORKFLOW_RUNNER_ENABLED=true`; admin web should leave it unset or
 `false`.

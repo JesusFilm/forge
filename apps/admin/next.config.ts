@@ -2,7 +2,6 @@ import type { NextConfig } from "next"
 import { withWorkflow } from "workflow/next"
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   typedRoutes: true,
   // Required for Datadog RUM stack traces to resolve to original sources after
   // `pnpm --filter @forge/admin datadog:sourcemaps` uploads release artifacts.
