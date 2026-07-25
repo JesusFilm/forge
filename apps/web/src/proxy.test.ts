@@ -20,7 +20,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "lumo-the-gospel-of-john",
     "parable-of-the-sower-and-the-seed",
   ],
-  oneSegmentSlugs: ["easter", "new-collection"],
+  oneSegmentSlugs: ["easter", "jesus", "new-collection"],
   episodePairsByParent: {
     "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
   },
@@ -34,6 +34,9 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "spanish-latin-american",
     "zulu",
   ],
+  audioLanguageIndexesByContent: {
+    jesus: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
 }
 
 let resetManifestSource: (() => void) | null = null
@@ -392,7 +395,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/en/en/new-collection.html")
   })
 
-  it("rewrites a language-less video as English without changing the URL", async () => {
+  it("prefers an exact English video over a colliding one-segment Experience", async () => {
     const response = await proxy(
       makeRequest("/jesus.html?utm_source=legacy&ref=printed"),
     )
@@ -402,6 +405,17 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
     expect(rewrite.pathname).toBe("/en/en/jesus.html/english.html")
     expect(rewrite.search).toBe("?utm_source=legacy&ref=printed")
+  })
+
+  it("preserves Experience precedence for a legacy manifest without exact video languages", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageIndexesByContent: undefined,
+    }))
+
+    const response = await proxy(makeRequest("/jesus.html"))
+    expect(rewritePath(response)).toBe("/en/en/jesus.html")
   })
 
   it("404s a language-less video without an admitted English dub", async () => {

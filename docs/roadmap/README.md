@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 24, 2026)
 
-- **Total tickets:** 447
-- **Complete:** 339
+- **Total tickets:** 448
+- **Complete:** 340
 - **In progress:** 33
 - **Not started:** 26
 - **Blocked:** 49
@@ -365,6 +365,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-310](platform/feat-310-watch-download-modal-safeguards.md)                       | Restore Watch download modal safeguards                                          | urim       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-314](platform/feat-314-watch-legacy-context-redirects.md)                        | Watch legacy contextual route redirects                                          | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-315](platform/feat-315-watch-language-less-english-default.md)                   | Watch language-less Video defaults to English                                    | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-316](platform/feat-316-watch-language-less-video-collision.md)                   | Resolve Watch language-less Video and Experience collisions                      | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |

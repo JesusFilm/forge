@@ -129,33 +129,32 @@ if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
 return rewriteToInternal(request, rewrite)
 ```
 
-For an omitted Video language, keep exact one-segment collection admission
-first. Only after that fails, validate the same slug as a standalone Video in
-the default public audio language. An admitted target overrides only the
-internal pathname; `NextResponse.rewrite` keeps the browser on the
-language-less URL and preserves its query string.
+For an omitted Video language, validate the same slug as a standalone Video in
+the default public audio language. A slug may be present in both
+`oneSegmentSlugs` and `contentSlugs`—production `jesus` exposed that collision.
+When the manifest has an exact content/audio entry for the slug, the exact
+English Video result wins. Without that exact entry, preserve one-segment
+Experience admission first so collection-only slugs and older manifests do not
+get misclassified as Videos. An admitted Video overrides only the internal
+pathname; `NextResponse.rewrite` keeps the browser on the language-less URL and
+preserves its query string.
 
 ```ts
 if (decision.manifestRoute.kind === "one-segment") {
-  const defaultAudioLanguageSlug =
-    publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
-  if (defaultAudioLanguageSlug) {
-    const defaultLanguageRoute = {
-      kind: "video",
-      contentSlug: decision.manifestRoute.slug,
-      audioLanguageSlug: defaultAudioLanguageSlug,
-    } satisfies WatchRouteManifestRoute
+  const { slug } = decision.manifestRoute
+  const videoAdmission = defaultLanguageVideoAdmission(manifest, slug)
+  const hasExactVideoLanguages = Object.hasOwn(
+    manifest.audioLanguageIndexesByContent ?? {},
+    slug,
+  )
 
-    if (isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
-      return {
-        kind: "admit",
-        internalPathname: watchVideoPath(
-          asContentSlug(defaultLanguageRoute.contentSlug),
-          asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
-        ),
-      }
-    }
+  if (hasExactVideoLanguages) {
+    return videoAdmission ?? { kind: "not-found" }
   }
+  if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+    return { kind: "admit" }
+  }
+  return videoAdmission ?? { kind: "not-found" }
 }
 ```
 

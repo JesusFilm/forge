@@ -23,6 +23,7 @@ import {
 import {
   getWatchRouteManifest,
   isWatchRouteAdmittedByManifest,
+  type WatchRouteManifest,
   type WatchRouteManifestRoute,
 } from "@/lib/watch-route-manifest"
 
@@ -65,6 +66,32 @@ type ManifestAdmissionDecision =
   | { kind: "admit"; internalPathname?: string }
   | { kind: "redirect"; pathname: string }
   | { kind: "not-found" }
+
+function defaultLanguageVideoAdmission(
+  manifest: WatchRouteManifest,
+  contentSlug: string,
+): Extract<ManifestAdmissionDecision, { kind: "admit" }> | null {
+  const defaultAudioLanguageSlug =
+    publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+  if (!defaultAudioLanguageSlug) return null
+
+  const defaultLanguageRoute: WatchRouteManifestRoute = {
+    kind: "video",
+    contentSlug,
+    audioLanguageSlug: defaultAudioLanguageSlug,
+  }
+  if (!isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
+    return null
+  }
+
+  return {
+    kind: "admit",
+    internalPathname: watchVideoPath(
+      asContentSlug(defaultLanguageRoute.contentSlug),
+      asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
+    ),
+  }
+}
 
 function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
@@ -310,6 +337,26 @@ async function classifyManifestAdmission(
     return { kind: "admit" }
   }
 
+  if (decision.manifestRoute.kind === "one-segment") {
+    const { slug } = decision.manifestRoute
+    const defaultVideoAdmission = defaultLanguageVideoAdmission(manifest, slug)
+    const hasExactVideoLanguages = Object.hasOwn(
+      manifest.audioLanguageIndexesByContent ?? {},
+      slug,
+    )
+
+    // A slug can be published as both an Experience and a Video. Prefer the
+    // Video only when the manifest proves its exact language availability;
+    // otherwise preserve the one-segment Experience route.
+    if (hasExactVideoLanguages) {
+      return defaultVideoAdmission ?? { kind: "not-found" }
+    }
+    if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+      return { kind: "admit" }
+    }
+    return defaultVideoAdmission ?? { kind: "not-found" }
+  }
+
   if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
     return { kind: "admit" }
   }
@@ -327,27 +374,6 @@ async function classifyManifestAdmission(
           asContentSlug(standaloneRoute.contentSlug),
           asLocaleSlug(standaloneRoute.audioLanguageSlug),
         ),
-      }
-    }
-  }
-
-  if (decision.manifestRoute.kind === "one-segment") {
-    const defaultAudioLanguageSlug =
-      publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
-    if (defaultAudioLanguageSlug) {
-      const defaultLanguageRoute: WatchRouteManifestRoute = {
-        kind: "video",
-        contentSlug: decision.manifestRoute.slug,
-        audioLanguageSlug: defaultAudioLanguageSlug,
-      }
-      if (isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
-        return {
-          kind: "admit",
-          internalPathname: watchVideoPath(
-            asContentSlug(defaultLanguageRoute.contentSlug),
-            asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
-          ),
-        }
       }
     }
   }
