@@ -24,6 +24,10 @@ builder-authored page topic already supplies the stable visible H1, so carousel
 content makes the document outline noisy and unstable across rotations
 (FGE-20, formerly WAT-254).
 
+The single-H1 fix left one residual sequence skip: promotional Markdown
+subheadings remained H3 when their Text block heading was the page H1, so the
+outline reached H3 before the later section H2s.
+
 ## Entry Points - Read These First
 
 1. `apps/web/src/components/home/WatchHomeTvCarousel.tsx` - hero overlay,
@@ -59,6 +63,8 @@ content makes the document outline noisy and unstable across rotations
    title for its accessible name.
 6. Verify the complete page outline and axe result at desktop and mobile
    widths without changing carousel styling, playback, or navigation.
+7. Render promotional Markdown subheadings as H2 beneath the page H1 while
+   preserving their H3 level beneath promotional H2 headings.
 
 ## Constraints
 
@@ -74,5 +80,7 @@ content makes the document outline noisy and unstable across rotations
 - `pnpm --filter @forge/web lint`
 - `pnpm --filter roadmap generate:readme`
 - Server HTML and hydrated DOM expose exactly one stable H1.
+- Promotional content under the page H1 proceeds to H2 before later section
+  H2s, while other promotional blocks retain their H2-to-H3 hierarchy.
 - Desktop and mobile browser checks show no carousel headings, one labelled
   active slide, and no critical or heading-related axe violations.
