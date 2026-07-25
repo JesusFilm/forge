@@ -28,6 +28,9 @@ export const WatchRouteManifestSchema = z.object({
   generatedAt: z.string().datetime(),
   contentSlugs: z.array(z.string().min(1)),
   oneSegmentSlugs: z.array(z.string().min(1)),
+  // Optional for backward-compatible reads of snapshots written before the
+  // localized-home admission corpus was added. New snapshots always emit it.
+  homepageLocales: z.array(z.string().min(1)).optional(),
   episodePairsByParent: z.record(z.string().min(1), z.array(z.string().min(1))),
   audioLanguageSlugs: z.array(z.string().min(1)),
   audioLanguageIndexesByContent: AudioLanguageIndexesByContentSchema.default(
@@ -43,6 +46,7 @@ export type WatchRouteManifest = z.infer<typeof WatchRouteManifestSchema>
 export type WatchRouteManifestCounts = {
   contentSlugs: number
   oneSegmentSlugs: number
+  homepageLocales: number
   parentSlugs: number
   parentChildPairs: number
   audioLanguageSlugs: number
@@ -63,6 +67,7 @@ export class WatchRouteManifestService {
     const [
       contentSlugs,
       oneSegmentSlugs,
+      homepageLocales,
       episodePairs,
       audioLanguageSlugs,
       audioLanguageSlugsByContent,
@@ -70,6 +75,7 @@ export class WatchRouteManifestService {
     ] = await Promise.all([
       this.loadContentSlugs(),
       this.loadOneSegmentSlugs(),
+      this.loadHomepageLocales(),
       this.loadEpisodePairsByParent(),
       this.loadAudioLanguageSlugs(),
       this.loadAudioLanguageSlugsByContent(),
@@ -91,6 +97,7 @@ export class WatchRouteManifestService {
       audioLanguageIndexesByEpisode,
       contentSlugs,
       episodePairsByParent: episodePairs,
+      homepageLocales,
       oneSegmentSlugs,
     }
     const version = createHash("sha256")
@@ -102,6 +109,7 @@ export class WatchRouteManifestService {
       generatedAt,
       contentSlugs,
       oneSegmentSlugs,
+      homepageLocales,
       episodePairsByParent: episodePairs,
       audioLanguageSlugs,
       audioLanguageIndexesByContent,
@@ -225,6 +233,24 @@ export class WatchRouteManifestService {
         AND locale."is_homepage" = FALSE
         AND (locale."path_segment" IS NULL OR locale."path_segment" = '')
       ORDER BY locale.slug ASC
+    `
+    return SlugRowSchema.array()
+      .parse(rows)
+      .map((row) => row.slug)
+  }
+
+  private async loadHomepageLocales(): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<unknown[]>`
+      SELECT DISTINCT locale.locale AS slug
+      FROM "experience_locale" locale
+      JOIN "experience" experience
+        ON experience.id = locale."experience_id"
+      WHERE experience."archived_at" IS NULL
+        AND experience."is_template" = FALSE
+        AND locale.status = 'published'::"LocaleStatus"
+        AND locale."is_homepage" = TRUE
+        AND locale.locale <> ''
+      ORDER BY locale.locale ASC
     `
     return SlugRowSchema.array()
       .parse(rows)
@@ -499,6 +525,7 @@ export function summarizeWatchRouteManifest(
     | "audioLanguageIndexesByEpisode"
     | "contentSlugs"
     | "episodePairsByParent"
+    | "homepageLocales"
     | "oneSegmentSlugs"
   >,
 ): WatchRouteManifestCounts {
@@ -509,6 +536,7 @@ export function summarizeWatchRouteManifest(
   return {
     contentSlugs: manifest.contentSlugs.length,
     oneSegmentSlugs: manifest.oneSegmentSlugs.length,
+    homepageLocales: manifest.homepageLocales?.length ?? 0,
     parentSlugs: parentEntries.length,
     parentChildPairs: parentEntries.reduce(
       (sum, [, childSlugs]) => sum + childSlugs.length,

@@ -195,7 +195,7 @@ describe("getWatchPageMetadata", () => {
     )
     expect(metadata.openGraph).toMatchObject({
       title: "Life of Jesus (Gospel of John) | Jesus Film Project",
-      url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
+      url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html",
       images: [
         {
           url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -217,7 +217,7 @@ describe("getWatchPageMetadata", () => {
     })
     expect(metadata.alternates).toMatchObject({
       canonical:
-        "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
+        "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html",
     })
     expect(metadata.alternates).not.toHaveProperty("languages")
   })
@@ -270,7 +270,7 @@ describe("getWatchPageMetadata", () => {
     })
 
     const canonical =
-      "https://www.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.html"
+      "https://www.jesusfilm.org/watch/jesus-is-brought-to-pilate.html"
     expect(metadata.alternates?.canonical).toBe(canonical)
     expect(metadata.openGraph).toMatchObject({ url: canonical })
     expect(metadata.alternates).not.toHaveProperty("languages")
@@ -447,6 +447,28 @@ describe("buildWatchVideoMetadataModel", () => {
     })
 
     expect(model.structuredDataTitle).toBe("Life of Jesus")
+  })
+
+  it("aligns English, international, and collision-owned canonical identities", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const build = (routeSlug: string, pathLocale: string) =>
+      buildWatchVideoMetadataModel({
+        routeSlug,
+        pathLocale,
+        selectedVariant,
+        video: { ...video, slug: routeSlug },
+      }).canonicalUrl
+
+    expect(build("life-of-jesus", "english")).toBe(
+      "https://www.jesusfilm.org/watch/life-of-jesus.html",
+    )
+    expect(build("life-of-jesus", "romanian")).toBe(
+      "https://www.jesusfilm.org/watch/life-of-jesus.html/romanian.html",
+    )
+    expect(build("russian", "english")).toBe(
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
+    )
   })
 
   it("uses a title-based structured-data description fallback without changing page metadata", async () => {

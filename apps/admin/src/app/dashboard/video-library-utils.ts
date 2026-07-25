@@ -1,3 +1,5 @@
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
+
 import type { WatchRouteManifest } from "@/services/watch-route-manifest.service"
 
 export const VIDEO_LIBRARY_PAGE_SIZE = 30
@@ -368,7 +370,10 @@ export function buildVideoVisitorUrl({
     return null
   if (!isPublicAudioLanguageSlug(normalizedLanguageSlug)) return null
 
-  return `${normalizedWebOrigin}/watch/${normalizedContentSlug}.html/${normalizedLanguageSlug}.html`
+  return `${normalizedWebOrigin}/watch${buildCanonicalWatchVideoPath(
+    normalizedContentSlug,
+    normalizedLanguageSlug,
+  )}`
 }
 
 export function resolveVideoVisitorUrl({

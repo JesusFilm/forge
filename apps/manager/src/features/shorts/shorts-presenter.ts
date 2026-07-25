@@ -4,6 +4,7 @@
 // smart-crop-presenter.ts.
 
 import { SHORT_CLIP_DURATION } from "@forge/shorts-compositions/schema"
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import {
   getShortsActiveStall,
   type ShortsActiveStall,
@@ -338,7 +339,10 @@ export function buildSourceWatchHref(
   const languageSlug = watchLanguageSlugForLocale(summary.languageBcp47)
   if (!languageSlug) return null
 
-  return `${origin}/watch/${encodeURIComponent(sourceSlug)}.html/${languageSlug}.html`
+  return `${origin}/watch${buildCanonicalWatchVideoPath(
+    encodeURIComponent(sourceSlug),
+    languageSlug,
+  )}`
 }
 
 function formatLanguageShortLabel(language: {

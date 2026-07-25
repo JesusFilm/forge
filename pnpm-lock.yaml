@@ -161,6 +161,9 @@ importers:
       '@forge/experience-schema':
         specifier: workspace:*
         version: link:../../packages/experience-schema
+      '@forge/watch-url-policy':
+        specifier: workspace:*
+        version: link:../../packages/watch-url-policy
       '@hebcal/hdate':
         specifier: 0.21.1
         version: 0.21.1
@@ -498,6 +501,9 @@ importers:
       '@forge/video-player':
         specifier: workspace:*
         version: link:../../packages/video-player
+      '@forge/watch-url-policy':
+        specifier: workspace:*
+        version: link:../../packages/watch-url-policy
       '@mux/mux-node':
         specifier: ^9.0.0
         version: 9.0.1
@@ -711,6 +717,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/watch-url-policy':
+        specifier: workspace:*
+        version: link:../../packages/watch-url-policy
       '@hebcal/hdate':
         specifier: ^0.21.1
         version: 0.21.1
@@ -823,6 +832,9 @@ importers:
 
   apps/roadmap:
     dependencies:
+      '@forge/watch-url-policy':
+        specifier: workspace:*
+        version: link:../../packages/watch-url-policy
       '@tailwindcss/typography':
         specifier: 0.5.19
         version: 0.5.19(tailwindcss@4.2.4)
@@ -933,6 +945,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/watch-url-policy':
+        specifier: workspace:*
+        version: link:../../packages/watch-url-policy
       '@hebcal/hdate':
         specifier: ^0.21.1
         version: 0.21.1

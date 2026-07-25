@@ -1,7 +1,7 @@
 ---
 title: "Bound Watch Static Route Admission with the Admin Route Manifest"
 date: "2026-05-29"
-last_updated: "2026-07-24"
+last_updated: "2026-07-25"
 category: "performance-issues"
 module: "apps/web watch routing"
 problem_type: "performance_issue"
@@ -301,6 +301,44 @@ curl -sS -D - -o /dev/null http://localhost:3015/watch/english.html
 ```
 
 The production-server proof returned `x-nextjs-cache: MISS` on the first request, then `x-nextjs-cache: HIT`, `x-nextjs-prerender: 1`, and `Cache-Control: s-maxage=60, stale-while-revalidate=31535940` on the second.
+
+## 2026-07-25 Canonical URL Supersession
+
+The admission and explicit internal rewrite described above remain current.
+What changed is public identity: an admitted, non-colliding English Video now
+uses `/watch/{slug}.html` as its canonical, Open Graph, structured-data, share,
+and sitemap URL. `/watch/{slug}.html/english.html` remains a direct
+compatibility route and the internal renderer target. Non-English and
+contextual browser routes remain language-explicit; a Video slug matching a
+public language home also keeps explicit English.
+
+## 2026-07-25 Cold Localized-Home Redirect Admission
+
+A cold production build exposed a Next.js 16 edge that warm-cache probes hid:
+when a force-static localized-home page discovered that its homepage was
+missing and called `redirect()`, the first ISR response could emit the same
+`Location` header twice. Node combined those headers into an invalid
+comma-separated path; later warm responses emitted only one header.
+
+The durable fix is to decide this route before the static page boundary:
+
+- Admin's Watch route manifest now includes `homepageLocales`, derived from
+  published, non-template Experience locales flagged `is_homepage`.
+- Web proxy admission redirects an absent localized home to its `/videos`
+  index with one `307`, before Next.js creates an ISR entry.
+- Old manifests remain readable during deployment overlap. If
+  `homepageLocales` is absent, Web loads the existing `watchSetting(locale)`
+  GraphQL contract only for the requested locale.
+- The fallback coalesces concurrent requests and caches known per-locale
+  results. An upstream failure is not cached or treated as proof that a
+  homepage is missing.
+- Every mutation that can remove a published locale from the route surface,
+  including restoring its revision back to draft, refreshes the manifest.
+  This keeps both route admission and `homepageLocales` synchronized.
+
+Do not move this redirect back into the force-static page. Test both raw cold
+headers and followed behavior: a missing localized home must have one
+`Location`, while an available home must remain a direct `200`.
 
 ## Related Issues
 

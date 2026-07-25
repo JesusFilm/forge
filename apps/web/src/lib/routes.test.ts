@@ -19,6 +19,7 @@ import {
   watchEpisodeAbsolute,
   watchEpisodePath,
   watchVideoAbsolute,
+  watchVideoExplicitLanguagePath,
   watchVideoPath,
 } from "./routes"
 
@@ -26,7 +27,9 @@ const jesus = asContentSlug("jesus")
 const lumo = asContentSlug("lumo-the-gospel-of-john")
 const wedding = asContentSlug("wedding-in-cana")
 const english = asLocaleSlug("english")
+const romanian = asLocaleSlug("romanian")
 const russian = asLocaleSlug("russian")
+const spanishCastilian = asLocaleSlug("spanish-castilian")
 const portugueseBrazil = asLocaleSlug("portuguese-brazil")
 
 describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
@@ -107,30 +110,68 @@ describe("localizedHomePath", () => {
 })
 
 describe("watchVideoPath", () => {
-  it("returns canonical two-segment shape", () => {
-    expect(watchVideoPath(jesus, english)).toBe("/jesus.html/english.html")
+  it("omits English from the eligible canonical shape", () => {
+    expect(watchVideoPath(jesus, english)).toBe("/jesus.html")
+  })
+
+  it("keeps international routes language-explicit", () => {
+    expect(watchVideoPath(jesus, spanishCastilian)).toBe(
+      "/jesus.html/spanish-castilian.html",
+    )
+    expect(watchVideoPath(jesus, romanian)).toBe("/jesus.html/romanian.html")
+    expect(watchVideoPath(jesus, russian)).toBe("/jesus.html/russian.html")
+  })
+
+  it("keeps English explicit for a public language-home collision", () => {
+    expect(watchVideoPath(asContentSlug("russian"), english)).toBe(
+      "/russian.html/english.html",
+    )
+  })
+
+  it("keeps non-language one-segment Experiences eligible", () => {
+    expect(watchVideoPath(asContentSlug("easter"), english)).toBe(
+      "/easter.html",
+    )
   })
 
   it("appends t and autoplay one-shots", () => {
     expect(watchVideoPath(jesus, english, { t: 120, autoplay: true })).toBe(
-      "/jesus.html/english.html?t=120&autoplay=1",
+      "/jesus.html?t=120&autoplay=1",
     )
   })
 
   it("emits _lr=1 when reason is set", () => {
     expect(watchVideoPath(jesus, english, { reason: "locale-resolved" })).toBe(
-      "/jesus.html/english.html?_lr=1",
+      "/jesus.html?_lr=1",
     )
   })
 
   it("does not emit _lr=1 when reason is undefined", () => {
-    expect(watchVideoPath(jesus, english)).toBe("/jesus.html/english.html")
-    expect(watchVideoPath(jesus, english, {})).toBe("/jesus.html/english.html")
+    expect(watchVideoPath(jesus, english)).toBe("/jesus.html")
+    expect(watchVideoPath(jesus, english, {})).toBe("/jesus.html")
   })
 
   it("preserves t and autoplay alongside reason", () => {
     expect(
       watchVideoPath(jesus, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+      }),
+    ).toBe("/jesus.html?t=42&autoplay=1&_lr=1")
+  })
+})
+
+describe("watchVideoExplicitLanguagePath", () => {
+  it("always emits the language segment", () => {
+    expect(watchVideoExplicitLanguagePath(jesus, english)).toBe(
+      "/jesus.html/english.html",
+    )
+  })
+
+  it("serializes one-shot query options identically", () => {
+    expect(
+      watchVideoExplicitLanguagePath(jesus, english, {
         t: 42,
         autoplay: true,
         reason: "locale-resolved",
@@ -198,7 +239,7 @@ describe("WATCH_CANONICAL_ORIGIN integration with env.ts", () => {
 describe("absolute URL builders", () => {
   it("watchVideoAbsolute prepends origin + basePath", () => {
     expect(watchVideoAbsolute(jesus, english)).toBe(
-      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/jesus.html/english.html`,
+      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/jesus.html`,
     )
   })
 
@@ -328,10 +369,19 @@ describe("parseWatchPath", () => {
     })
   })
 
-  it("inverts watchVideoPath: parse(emit) === { slug, lang }", () => {
+  it("keeps language-less canonical parsing syntax-only until admission", () => {
     const emitted = watchVideoPath(jesus, english)
     const parsed = parseWatchPath(emitted)
-    expect(parsed).toEqual({ kind: "video", slug: "jesus", lang: "english" })
+    expect(parsed).toEqual({ kind: "localized-home", lang: "jesus" })
+  })
+
+  it("inverts the explicit-language video path", () => {
+    const emitted = watchVideoExplicitLanguagePath(jesus, english)
+    expect(parseWatchPath(emitted)).toEqual({
+      kind: "video",
+      slug: "jesus",
+      lang: "english",
+    })
   })
 
   it("inverts watchEpisodePath", () => {

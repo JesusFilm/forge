@@ -682,9 +682,7 @@ describe("MediaCollection VideoCard href", () => {
       'a[data-testid="VideoCard"]',
     )
     expect(link).not.toBeNull()
-    expect(link?.getAttribute("href")).toBe(
-      "/watch/the-gospel-of-john.html/english.html",
-    )
+    expect(link?.getAttribute("href")).toBe("/watch/the-gospel-of-john.html")
   })
 
   it("renders a non-link <div> wrapper when the item has no videoSlug", () => {
@@ -734,9 +732,7 @@ describe("MediaCollection VideoCard href", () => {
     const link = container.querySelector<HTMLAnchorElement>(
       'a[data-testid="VideoCard"]',
     )
-    expect(link?.getAttribute("href")).toBe(
-      "/watch/the-gospel-of-luke.html/english.html",
-    )
+    expect(link?.getAttribute("href")).toBe("/watch/the-gospel-of-luke.html")
   })
 
   it("renders the Admin-resolved linked video title", () => {

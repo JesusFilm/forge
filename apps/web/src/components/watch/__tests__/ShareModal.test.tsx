@@ -60,7 +60,7 @@ afterEach(() => {
 })
 
 describe("ShareModal — Copy Link", () => {
-  it("renders the canonical 2-segment URL (with /watch/) in the input field", () => {
+  it("renders the language-less English canonical URL in the input field", () => {
     act(() => {
       root.render(
         <ShareModal
@@ -75,9 +75,7 @@ describe("ShareModal — Copy Link", () => {
     const input = $(
       '[data-testid="watch-share-modal-link-input"]',
     ) as HTMLInputElement
-    expect(input.value).toBe(
-      "https://share.example/watch/the-call.html/english.html",
-    )
+    expect(input.value).toBe("https://share.example/watch/the-call.html")
     expect(input.readOnly).toBe(true)
   })
 
@@ -106,7 +104,7 @@ describe("ShareModal — Copy Link", () => {
     })
 
     expect(writeText).toHaveBeenCalledWith(
-      "https://share.example/watch/the-call.html/english.html",
+      "https://share.example/watch/the-call.html",
     )
     expect(copyBtn.textContent).toBe("Copied")
   })
@@ -148,7 +146,7 @@ describe("ShareModal — Facebook + X share intents", () => {
       '[data-testid="watch-share-modal-facebook"]',
     ) as HTMLAnchorElement
     expect(fb.href).toBe(
-      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%2Fenglish.html",
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html",
     )
   })
 
@@ -166,7 +164,7 @@ describe("ShareModal — Facebook + X share intents", () => {
     })
     const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
     expect(x.href).toBe(
-      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%2Fenglish.html&text=The%20Call",
+      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html&text=The%20Call",
     )
   })
 })
@@ -291,14 +289,10 @@ describe("ShareModal — local origin fallback", () => {
     expect(fb?.getAttribute("aria-label")).toBe("Share on Facebook")
     expect(x?.getAttribute("aria-label")).toBe("Share on X")
     expect((fb as HTMLAnchorElement).href).toContain(
-      encodeURIComponent(
-        "https://www.jesusfilm.org/watch/the-call.html/english.html",
-      ),
+      encodeURIComponent("https://www.jesusfilm.org/watch/the-call.html"),
     )
     expect((x as HTMLAnchorElement).href).toContain(
-      encodeURIComponent(
-        "https://www.jesusfilm.org/watch/the-call.html/english.html",
-      ),
+      encodeURIComponent("https://www.jesusfilm.org/watch/the-call.html"),
     )
 
     const hint = $('[data-testid="watch-share-modal-share-disabled-hint"]')
@@ -306,9 +300,7 @@ describe("ShareModal — local origin fallback", () => {
     const input = $(
       '[data-testid="watch-share-modal-link-input"]',
     ) as HTMLInputElement
-    expect(input.value).toBe(
-      "https://www.jesusfilm.org/watch/the-call.html/english.html",
-    )
+    expect(input.value).toBe("https://www.jesusfilm.org/watch/the-call.html")
 
     vi.doUnmock("@/env")
     vi.resetModules()

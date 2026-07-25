@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import { XMLParser, XMLValidator } from "fast-xml-parser"
+import { isLanguageLessWatchVideoPathEligible } from "@forge/watch-url-policy/routes"
 
 import {
   DEFAULT_MAX_SITEMAP_BYTES,
@@ -25,6 +26,7 @@ export type WatchSitemapAuditIssueCode =
   | "duplicate_child_reference"
   | "duplicate_hreflang"
   | "duplicate_loc"
+  | "explicit_english_alias"
   | "http_redirect"
   | "http_status"
   | "invalid_child_sequence"
@@ -219,17 +221,39 @@ function childId(url: string): number | null {
   }
 }
 
-export function isContextualWatchSitemapUrl(url: string): boolean {
+type WatchSitemapUrlClassification = {
+  contextual: boolean
+  eligibleExplicitEnglishAlias: boolean
+}
+
+function classifyWatchSitemapUrl(url: string): WatchSitemapUrlClassification {
   try {
     const parsed = new URL(url)
-    if (parsed.origin !== "https://www.jesusfilm.org") return false
-    const match = parsed.pathname.match(
-      /^\/watch\/([^/]+)\.html\/([^/.]+)\/([^/]+)\.html$/,
+    if (parsed.origin !== "https://www.jesusfilm.org") {
+      return { contextual: false, eligibleExplicitEnglishAlias: false }
+    }
+    const contextual = Boolean(
+      parsed.pathname.match(
+        /^\/watch\/([^/]+)\.html\/([^/.]+)\/([^/]+)\.html$/,
+      ),
     )
-    return Boolean(match)
+    const explicitEnglishMatch = parsed.pathname.match(
+      /^\/watch\/([a-z0-9_-]+)\.html\/english\.html$/,
+    )
+    return {
+      contextual,
+      eligibleExplicitEnglishAlias: Boolean(
+        explicitEnglishMatch?.[1] &&
+        isLanguageLessWatchVideoPathEligible(explicitEnglishMatch[1]),
+      ),
+    }
   } catch {
-    return false
+    return { contextual: false, eligibleExplicitEnglishAlias: false }
   }
+}
+
+export function isContextualWatchSitemapUrl(url: string): boolean {
+  return classifyWatchSitemapUrl(url).contextual
 }
 
 function alternateSignature(
@@ -324,6 +348,10 @@ export class WatchSitemapAuditSession {
   private readonly maxUrls: number
   private readonly receivedChildren = new Set<string>()
   private readonly requiredSignatureByLoc = new Map<string, string>()
+  private readonly urlClassificationByUrl = new Map<
+    string,
+    WatchSitemapUrlClassification
+  >()
 
   constructor(
     indexDocument: WatchSitemapAuditDocument,
@@ -336,6 +364,14 @@ export class WatchSitemapAuditSession {
     this.issues = [...inspected.issues]
     this.maxBytes = limits.maxBytes ?? DEFAULT_MAX_SITEMAP_BYTES
     this.maxUrls = limits.maxUrls ?? DEFAULT_MAX_SITEMAP_URLS
+  }
+
+  private classifyUrl(url: string): WatchSitemapUrlClassification {
+    const cached = this.urlClassificationByUrl.get(url)
+    if (cached) return cached
+    const classification = classifyWatchSitemapUrl(url)
+    this.urlClassificationByUrl.set(url, classification)
+    return classification
   }
 
   addChild(document: WatchSitemapAuditDocument): void {
@@ -392,11 +428,21 @@ export class WatchSitemapAuditSession {
           continue
         }
         locCount += 1
-        if (isContextualWatchSitemapUrl(loc)) {
+        const locClassification = this.classifyUrl(loc)
+        if (locClassification.contextual) {
           this.issues.push(
             documentIssue(
               "contextual_route",
               "Sitemap canonical entry uses a contextual parent/child route",
+              loc,
+            ),
+          )
+        }
+        if (locClassification.eligibleExplicitEnglishAlias) {
+          this.issues.push(
+            documentIssue(
+              "explicit_english_alias",
+              "Eligible English sitemap entry must use its language-less canonical URL",
               loc,
             ),
           )
@@ -426,11 +472,21 @@ export class WatchSitemapAuditSession {
         hreflangCount += alternates.length
         const hrefs = alternates.map((alternate) => alternate.href)
         for (const href of hrefs) {
-          if (isContextualWatchSitemapUrl(href)) {
+          const hrefClassification = this.classifyUrl(href)
+          if (hrefClassification.contextual) {
             this.issues.push(
               documentIssue(
                 "contextual_route",
                 "Sitemap alternate target uses a contextual parent/child route",
+                href,
+              ),
+            )
+          }
+          if (hrefClassification.eligibleExplicitEnglishAlias) {
+            this.issues.push(
+              documentIssue(
+                "explicit_english_alias",
+                "Eligible English sitemap alternate must use its language-less canonical URL",
                 href,
               ),
             )

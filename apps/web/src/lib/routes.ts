@@ -5,6 +5,11 @@
 
 import type { Route } from "next"
 
+import {
+  buildCanonicalWatchVideoPath,
+  buildExplicitWatchVideoPath,
+} from "@forge/watch-url-policy/routes"
+
 import { env } from "@/env"
 
 import { LOCALE_RESOLVED_PARAM } from "./locale"
@@ -75,7 +80,10 @@ const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
  */
 type LocalizedHomeRoute = `/${string}.html${"" | `?${string}`}`
 type LanguageInventoryRoute = `/${string}.html/videos`
-type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
+type WatchVideoPathname = `/${string}.html` | `/${string}.html/${string}.html`
+type WatchVideoRoute = `${WatchVideoPathname}${"" | `?${string}`}`
+type WatchVideoExplicitLanguageRoute =
+  `/${string}.html/${string}.html${"" | `?${string}`}`
 type WatchEpisodeRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type LanguagesIndexRoute = "/languages"
@@ -109,14 +117,29 @@ export function languageInventoryPath(
   return `/${appendHtmlSuffix(lang)}/videos` as LanguageInventoryRoute & Route
 }
 
-/** Build the canonical two-segment watch path `/{slug}.html/{lang}.html`. */
+/**
+ * Build the canonical standalone watch path. Eligible English content uses
+ * `/{slug}.html`; non-English and one-segment collisions keep
+ * `/{slug}.html/{lang}.html`.
+ */
 export function watchVideoPath(
   slug: ContentSlug,
   lang: LocaleSlug,
   opts?: BuildOptions,
 ): WatchVideoRoute & Route {
-  const path = `/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(lang)}`
+  const path = buildCanonicalWatchVideoPath(slug, lang)
   return appendQueryString(path, opts) as WatchVideoRoute & Route
+}
+
+/** Build the explicit `/{slug}.html/{lang}.html` compatibility/internal path. */
+export function watchVideoExplicitLanguagePath(
+  slug: ContentSlug,
+  lang: LocaleSlug,
+  opts?: BuildOptions,
+): WatchVideoExplicitLanguageRoute & Route {
+  const path = buildExplicitWatchVideoPath(slug, lang)
+  return appendQueryString(path, opts) as WatchVideoExplicitLanguageRoute &
+    Route
 }
 
 /** Build the three-segment series-episode path `/{series}.html/{episode}/{lang}.html` (episode segment is bare by production contract). */
@@ -277,7 +300,7 @@ export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
 import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
 export { WATCH_BASE_PATH }
 
-/** Build an environment-specific absolute URL for a watch video (origin + basePath + 2-segment path). */
+/** Build an environment-specific absolute URL for a canonical watch video. */
 export function watchVideoAbsolute(
   slug: ContentSlug,
   lang: LocaleSlug,

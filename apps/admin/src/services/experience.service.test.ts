@@ -886,6 +886,35 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.update",
+      })
+    })
+
+    it("does not refresh the public manifest when restoring an already-draft locale", async () => {
+      prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce(
+        revisionRow,
+      )
+      prisma.contentRevision.update.mockResolvedValueOnce({
+        ...revisionRow,
+        appliedAt: new Date("2026-04-15T12:30:00.000Z"),
+      })
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+        ...localeRow,
+        status: "DRAFT",
+      })
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...localeRow,
+        status: "DRAFT",
+      })
+
+      await service.restoreLocaleRevision({
+        input: { revisionId: "rev-1" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
     })
 
     it("EDITOR cannot restore another editor's locale revision", async () => {

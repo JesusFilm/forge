@@ -15,6 +15,7 @@ import {
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
+import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import {
@@ -85,9 +86,11 @@ export default async function HomePage({ params }: PageProps) {
   ])
 
   const withMessages = (children: ReactNode) => (
-    <NextIntlClientProvider locale={locale} messages={messages}>
-      {children}
-    </NextIntlClientProvider>
+    <WatchChromeShell locale={locale} initialRouteSurface="language-home">
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        {children}
+      </NextIntlClientProvider>
+    </WatchChromeShell>
   )
 
   if (heroResult.error) {

@@ -9,6 +9,7 @@ duration: 1
 depends_on: []
 blocks:
   - "feat-316"
+  - "feat-318"
 tags:
   - "platform"
   - "web"
@@ -80,3 +81,11 @@ though `/watch/jesus.html/english.html` is a valid canonical route.
 
 `feat-316` records the post-deploy collision found when `jesus` was admitted as
 both a one-segment Experience and an exact standalone Video.
+
+## 2026-07-25 Supersession Note
+
+The language-less rendering behavior shipped here remains the foundation.
+Eligible language-less English is now also the canonical emitted URL;
+explicit-English remains a direct compatibility/internal route. Non-English
+and contextual browser routes remain explicit, and public-language-home slug
+collisions keep explicit English.

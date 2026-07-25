@@ -124,9 +124,9 @@ describe("formatDuration", () => {
 })
 
 describe("defaultHrefBuilder", () => {
-  it("builds the canonical two-segment watch path with the english locale slug", () => {
+  it("builds the language-less canonical path for English", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "jesus" }))).toBe(
-      "/jesus.html/english.html",
+      "/jesus.html",
     )
   })
 
@@ -138,6 +138,12 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/jesus.html/spanish-castilian.html")
   })
 
+  it("keeps English explicit for a public language-home collision", () => {
+    expect(defaultHrefBuilder(makeResult({ slug: "russian" }))).toBe(
+      "/russian.html/english.html",
+    )
+  })
+
   it("keeps Admin content slugs with underscores clickable", () => {
     expect(
       defaultHrefBuilder(
@@ -146,7 +152,7 @@ describe("defaultHrefBuilder", () => {
           languageSlug: "english",
         }),
       ),
-    ).toBe("/soccer_event_collection.html/english.html")
+    ).toBe("/soccer_event_collection.html")
   })
 
   it("falls back to / on a malformed slug rather than a broken deep link", () => {

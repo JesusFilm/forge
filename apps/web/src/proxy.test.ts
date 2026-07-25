@@ -10,6 +10,7 @@ import {
   setWatchRouteManifestSourceForTest,
   type WatchRouteManifest,
 } from "./lib/watch-route-manifest"
+import { setWatchHomepageAvailabilitySourceForTest } from "./lib/watch-home-route-admission"
 
 const TEST_MANIFEST: WatchRouteManifest = {
   version: "test-version",
@@ -21,6 +22,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "parable-of-the-sower-and-the-seed",
   ],
   oneSegmentSlugs: ["easter", "jesus", "new-collection"],
+  homepageLocales: ["en", "es"],
   episodePairsByParent: {
     "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
   },
@@ -40,6 +42,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
 }
 
 let resetManifestSource: (() => void) | null = null
+let resetHomepageAvailabilitySource: (() => void) | null = null
 
 beforeEach(() => {
   resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
@@ -50,6 +53,8 @@ beforeEach(() => {
 afterEach(() => {
   resetManifestSource?.()
   resetManifestSource = null
+  resetHomepageAvailabilitySource?.()
+  resetHomepageAvailabilitySource = null
 })
 
 function makeRequest(
@@ -89,7 +94,7 @@ function expectNotFoundRewrite(response: Response): void {
   expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
-  ).toBe("1")
+  ).toBe("/404")
 }
 
 function rewrittenRequestHeaders(response: Response): Headers {
@@ -445,6 +450,52 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/es/es-ES/spanish-castilian.html")
   })
 
+  it("redirects a language without a published homepage before the static page route", async () => {
+    const response = await proxy(makeRequest("/russian.html"))
+
+    expect(response.status).toBe(307)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/russian.html/videos",
+    )
+    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
+    expect(rewritePath(response)).toBeNull()
+  })
+
+  it("falls back to the existing GraphQL homepage contract for an older manifest", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      homepageLocales: undefined,
+    }))
+    resetHomepageAvailabilitySource = setWatchHomepageAvailabilitySourceForTest(
+      async (locale) => (locale === "es" ? "available" : "missing"),
+    )
+
+    const available = await proxy(makeRequest("/spanish-castilian.html"))
+    const missing = await proxy(makeRequest("/russian.html"))
+
+    expect(rewritePath(available)).toBe("/es/es-ES/spanish-castilian.html")
+    expect(missing.status).toBe(307)
+    expect(new URL(missing.headers.get("location") ?? "").pathname).toBe(
+      "/russian.html/videos",
+    )
+  })
+
+  it("does not infer a missing homepage when the fallback lookup fails", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      homepageLocales: undefined,
+    }))
+    resetHomepageAvailabilitySource = setWatchHomepageAvailabilitySourceForTest(
+      async () => "unknown",
+    )
+
+    const response = await proxy(makeRequest("/russian.html"))
+
+    expect(rewritePath(response)).toBe("/ru/ru/russian.html")
+  })
+
   it("rewrites the English-British homepage with a regional htmlLang", async () => {
     const response = await proxy(makeRequest("/english-british.html"))
     expect(rewritePath(response)).toBe("/en/en-GB/english-british.html")
@@ -545,6 +596,20 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(response.headers.get("cache-control")).toBe("private, max-age=0")
     expect(rewritePath(response)).toBeNull()
     expect(manifestReads).toBe(1)
+  })
+
+  it("redirects a rejected English context to the canonical language-less standalone video", async () => {
+    const response = await proxy(
+      makeRequest(
+        "/discipleship.html/parable-of-the-sower-and-the-seed/english.html?utm_source=google&ref=legacy",
+      ),
+    )
+
+    expect(response.status).toBe(301)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/parable-of-the-sower-and-the-seed.html")
+    expect(location.search).toBe("?utm_source=google&ref=legacy")
+    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
   })
 
   it("404s rejected contexts when the standalone video lacks the requested dub", async () => {
@@ -649,7 +714,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
 describe("proxy — visible internal-prefix policy", () => {
   it("allows proxy-originated internal rewrites without redirecting back to public URL", async () => {
-    const first = await proxy(makeRequest("/jesus.html/english.html"))
+    const first = await proxy(makeRequest("/jesus.html?ref=printed"))
     const internalPath = rewritePath(first)
 
     expect(internalPath).toBe("/en/en/jesus.html/english.html")
@@ -664,8 +729,69 @@ describe("proxy — visible internal-prefix policy", () => {
       first.headers.get(
         `x-middleware-request-${WATCH_INTERNAL_REWRITE_HEADER}`,
       ),
-    ).toBe("1")
+    ).toBe("/jesus.html")
     expect(second.status).toBe(200)
+  })
+
+  it("does not trust a caller-supplied internal rewrite marker as admission", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      version: "test",
+      generatedAt: "2026-07-25T00:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["english"],
+      audioLanguageIndexesByContent: {},
+      audioLanguageIndexesByEpisode: {},
+    }))
+
+    const response = await proxy(
+      makeRequest("/en/en/new-collection.html", {
+        headers: new Headers([
+          [WATCH_INTERNAL_REWRITE_HEADER, "/new-collection.html"],
+        ]),
+      }),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("keeps caller-claimed internal Experiences closed when the manifest is unavailable", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
+
+    const response = await proxy(
+      makeRequest("/en/en/new-collection.html", {
+        headers: new Headers([
+          [WATCH_INTERNAL_REWRITE_HEADER, "/new-collection.html"],
+        ]),
+      }),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("normalizes a visible internal English video prefix to its language-less canonical URL", async () => {
+    const response = await proxy(
+      makeRequest("/en/en/jesus.html/english.html?ref=visible"),
+    )
+
+    expect(response.status).toBe(308)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/jesus.html")
+    expect(location.search).toBe("?ref=visible")
+  })
+
+  it("keeps explicit English when a content slug conflicts with a public language home", async () => {
+    const response = await proxy(
+      makeRequest("/en/en/russian.html/english.html"),
+    )
+
+    expect(response.status).toBe(308)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/russian.html/english.html",
+    )
   })
 
   it("308 redirects visible internal root and route prefixes to canonical public URLs", async () => {
@@ -705,7 +831,9 @@ describe("proxy — visible internal-prefix policy", () => {
   it("404s invalid marked internal prefix pairs instead of treating the marker as a bypass", async () => {
     const response = await proxy(
       makeRequest("/en/es-419/jesus.html/english.html", {
-        headers: new Headers([[WATCH_INTERNAL_REWRITE_HEADER, "1"]]),
+        headers: new Headers([
+          [WATCH_INTERNAL_REWRITE_HEADER, "/jesus.html/english.html"],
+        ]),
       }),
     )
     expectNotFoundRewrite(response)

@@ -13,7 +13,10 @@ import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { X } from "lucide-react"
 
-import { useFloatingSearch } from "./FloatingSearchContext"
+import {
+  useFloatingSearch,
+  useWatchRouteSurface,
+} from "./FloatingSearchContext"
 import {
   FloatingSearchFieldInput,
   useFloatingSearchInputAutofocus,
@@ -78,10 +81,14 @@ export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
   const pathname = usePathname()
   const parsedPath = parseWatchPath(pathname)
-  const logoSlotClass =
-    parsedPath.kind === "home" || parsedPath.kind === "localized-home"
-      ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
-      : FLOATING_HEADER_LOGO_SLOT_CLASS
+  const routeSurface = useWatchRouteSurface()
+  const isWatchHome =
+    routeSurface == null
+      ? parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+      : routeSurface === "language-home" || routeSurface === "experience"
+  const logoSlotClass = isWatchHome
+    ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
+    : FLOATING_HEADER_LOGO_SLOT_CLASS
   const {
     open,
     closing,

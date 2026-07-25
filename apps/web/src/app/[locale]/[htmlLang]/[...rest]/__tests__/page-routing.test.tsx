@@ -30,6 +30,7 @@ const {
   isWatchQuestionPanelEnabledMock,
   getInitialSubtitleTranscriptMock,
   getWatchRouteManifestMock,
+  watchRouteSurfaceRegistrationMock,
 } = vi.hoisted(() => ({
   resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
@@ -58,6 +59,7 @@ const {
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
   getInitialSubtitleTranscriptMock: vi.fn(),
   getWatchRouteManifestMock: vi.fn(),
+  watchRouteSurfaceRegistrationMock: vi.fn(() => null),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -99,6 +101,10 @@ vi.mock("@/components/home/WatchHomeExperiencePage", () => ({
 
 vi.mock("@/components/watch/WatchQuestionPanel", () => ({
   WatchQuestionPanel: watchQuestionPanelMock,
+}))
+
+vi.mock("@/components/WatchRouteSurfaceRegistration", () => ({
+  WatchRouteSurfaceRegistration: watchRouteSurfaceRegistrationMock,
 }))
 
 vi.mock("@/components/ExperienceEmpty", () => ({
@@ -184,6 +190,7 @@ beforeEach(() => {
   getInitialSubtitleTranscriptMock.mockResolvedValue(null)
   getWatchRouteManifestMock.mockReset()
   getWatchRouteManifestMock.mockResolvedValue(null)
+  watchRouteSurfaceRegistrationMock.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -520,6 +527,36 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
     expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(experienceEmptyMock).not.toHaveBeenCalled()
+    expect(watchRouteSurfaceRegistrationMock).toHaveBeenCalledWith(
+      { surface: "experience" },
+      undefined,
+    )
+  })
+
+  it("admits manifest-only one-segment Experiences and registers their resolved route surface", async () => {
+    resolveWatchExperiencePageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-new",
+          slug: "new-collection",
+          title: "New Collection",
+          blocks: [{ __typename: "TextBlock", id: "blk-new", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+
+    await render1Seg("new-collection.html")
+
+    expect(resolveWatchExperiencePageMock).toHaveBeenCalledWith(
+      "en",
+      "new-collection",
+    )
+    expect(watchRouteSurfaceRegistrationMock).toHaveBeenCalledWith(
+      { surface: "experience" },
+      undefined,
+    )
   })
 
   it("passes the exact public language slug to localized-home content while retaining the resolved UI locale", async () => {
@@ -564,6 +601,10 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
     expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
+    expect(watchRouteSurfaceRegistrationMock).toHaveBeenCalledWith(
+      { surface: "language-home" },
+      undefined,
+    )
   })
 
   it("emits localized CollectionPage JSON-LD from the initial server hero", async () => {
@@ -687,7 +728,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(resolveWatchPageMock).toHaveBeenCalledWith("de", undefined)
   })
 
-  it("404s one-segment non-language misses instead of rendering the empty shell", async () => {
+  it("lets the proxy-admitted one-segment Experience resolver own misses", async () => {
     resolveWatchExperiencePageMock.mockResolvedValue({
       data: null,
       error: new Error("No experience found"),
@@ -695,14 +736,14 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     await expect(render1Seg("jesus.html")).rejects.toThrow("NEXT_NOT_FOUND")
 
-    expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
+    expect(resolveWatchExperiencePageMock).toHaveBeenCalledWith("en", "jesus")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
     expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(notFoundMock).toHaveBeenCalledTimes(1)
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
 
-  it("does not run one-segment non-language slugs through the default video template resolver", async () => {
+  it("does not run one-segment non-language slugs through the default Watch-page resolver", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "video-template",
@@ -719,10 +760,23 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     await expect(render1Seg("jesus.html")).rejects.toThrow("NEXT_NOT_FOUND")
 
-    expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
+    expect(resolveWatchExperiencePageMock).toHaveBeenCalledWith("en", "jesus")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
     expect(notFoundMock).toHaveBeenCalledTimes(1)
     expect(experienceEmptyMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("Catch-all routing — route-surface registration", () => {
+  it("registers explicit English compatibility and internal rewrite pages as English video surfaces", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+
+    await render2Seg("storyclubs.html", "english.html")
+
+    expect(watchRouteSurfaceRegistrationMock).toHaveBeenCalledWith(
+      { surface: "english-video" },
+      undefined,
+    )
   })
 })
 
@@ -742,7 +796,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     expect(metadata.description).toBe("StoryClubs description")
     expect(metadata.openGraph).toMatchObject({
       title: "StoryClubs | Jesus Film Project",
-      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html",
       images: [
         {
           url: "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -760,7 +814,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       ],
     })
     expect(metadata.alternates).toMatchObject({
-      canonical: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      canonical: "https://www.jesusfilm.org/watch/storyclubs.html",
     })
     expect(metadata.alternates).not.toHaveProperty("languages")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
@@ -802,7 +856,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     expect(metadata.title).toBe("StoryClubs | Jesus Film Project")
     expect(metadata.openGraph).toMatchObject({
       title: "StoryClubs | Jesus Film Project",
-      url: "https://www.jesusfilm.org/watch/easter.html/english.html",
+      url: "https://www.jesusfilm.org/watch/easter.html",
       images: [
         {
           url: "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -843,7 +897,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     expect(metadata.title).toBe("StoryClubs | Jesus Film Project")
     expect(metadata.openGraph).toMatchObject({
       title: "StoryClubs | Jesus Film Project",
-      url: "https://www.jesusfilm.org/watch/easter.html/english.html",
+      url: "https://www.jesusfilm.org/watch/easter.html",
     })
     expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
@@ -867,7 +921,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
 
     expect(metadata.title).toBe("easter | Jesus Film Project")
     expect(metadata.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/easter.html/english.html",
+      "https://www.jesusfilm.org/watch/easter.html",
     )
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
@@ -889,7 +943,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
 
     expect(metadata.title).toBe("Wedding in Cana | Jesus Film Project")
     expect(metadata.openGraph).toMatchObject({
-      url: "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
+      url: "https://www.jesusfilm.org/watch/wedding-in-cana.html",
       images: [
         {
           url: "https://image.mux.com/pb-1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -898,7 +952,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       ],
     })
     expect(metadata.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html",
     )
   })
 })
@@ -945,14 +999,14 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     expect(payload).toMatchObject({
       name: "StoryClubs",
-      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html",
       inLanguage: "en",
       mainEntity: {
         itemListElement: [
           {
             position: 1,
             name: "Ep 1",
-            url: "https://www.jesusfilm.org/watch/ep-1.html/english.html",
+            url: "https://www.jesusfilm.org/watch/ep-1.html",
           },
         ],
       },
@@ -1163,12 +1217,12 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         {
           position: 1,
           name: "StoryClubs",
-          url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+          url: "https://www.jesusfilm.org/watch/storyclubs.html",
         },
         {
           position: 2,
           name: "A Two",
-          url: "https://www.jesusfilm.org/watch/a-two.html/english.html",
+          url: "https://www.jesusfilm.org/watch/a-two.html",
         },
       ],
     })
@@ -1372,7 +1426,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       "@type": "VideoObject",
       name: "Story < Clubs",
       description: "Story < Clubs description",
-      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html",
       contentUrl: "https://cdn.example/storyclubs.m3u8",
       thumbnailUrl: [
         "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -1387,7 +1441,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       potentialAction: {
         "@type": "SeekToAction",
         target:
-          "https://www.jesusfilm.org/watch/storyclubs.html/english.html?t={seek_to_second_number}",
+          "https://www.jesusfilm.org/watch/storyclubs.html?t={seek_to_second_number}",
         "startOffset-input": "required name=seek_to_second_number",
       },
     })
@@ -1412,7 +1466,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(
       scripts.find((script) => script["@type"] === "VideoObject"),
     ).toMatchObject({
-      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html",
     })
   })
 
@@ -1544,13 +1598,13 @@ describe("Catch-all routing — series branch (2-seg)", () => {
           "@type": "ListItem",
           position: 1,
           name: "StoryClubs",
-          url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+          url: "https://www.jesusfilm.org/watch/storyclubs.html",
         },
         {
           "@type": "ListItem",
           position: 2,
           name: "Another Story",
-          url: "https://www.jesusfilm.org/watch/another-story.html/english.html",
+          url: "https://www.jesusfilm.org/watch/another-story.html",
         },
       ],
     })
@@ -2158,10 +2212,10 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     expect(props.collectionSlug).toBe("anticipate-the-resurrection")
     expect(jsonLdByType("BreadcrumbList")).toBeNull()
     expect(jsonLdByType("VideoObject")).toMatchObject({
-      url: "https://www.jesusfilm.org/watch/jesus-is-crucified.html/english.html",
+      url: "https://www.jesusfilm.org/watch/jesus-is-crucified.html",
       potentialAction: {
         target:
-          "https://www.jesusfilm.org/watch/jesus-is-crucified.html/english.html?t={seek_to_second_number}",
+          "https://www.jesusfilm.org/watch/jesus-is-crucified.html?t={seek_to_second_number}",
       },
     })
     const relatedItems = jsonLdByType("ItemList")?.itemListElement as
@@ -2171,7 +2225,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     expect(relatedItems?.[0]).toMatchObject({
       position: 1,
       name: "Pilate chapter 1",
-      url: "https://www.jesusfilm.org/watch/triumphal-entry.html/english.html",
+      url: "https://www.jesusfilm.org/watch/triumphal-entry.html",
     })
     expect(relatedItems?.at(-1)).toMatchObject({
       position: 12,

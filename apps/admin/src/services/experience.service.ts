@@ -514,7 +514,7 @@ export class ExperienceService {
       locale: existing.locale,
     })
 
-    return this.prisma.$transaction(async (tx) => {
+    const restored = await this.prisma.$transaction(async (tx) => {
       const restoredAt = new Date()
 
       await tx.contentRevision.update({
@@ -575,6 +575,27 @@ export class ExperienceService {
         },
       })
     })
+
+    if (existing.status === "PUBLISHED") {
+      void emitRevalidateWebhook({
+        model: "experience",
+        slug: existing.slug,
+        locale: existing.locale,
+      })
+      if (existing.isHomepage) {
+        void emitRevalidateWebhook({
+          model: "watch-setting",
+          slug: null,
+          locale: existing.locale,
+        })
+      }
+      refreshManifestAfterResponse({
+        prisma: this.prisma,
+        reason: "experience.update",
+      })
+    }
+
+    return restored
   }
 
   async archive({

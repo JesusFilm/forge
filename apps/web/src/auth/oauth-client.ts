@@ -2,7 +2,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
 import {
   getDefaultWatchCallbackOrigins,
   normalizeOrigin,
-} from "@forge/watch-url-policy"
+} from "@forge/watch-url-policy/callbacks"
 
 import { env } from "@/env"
 

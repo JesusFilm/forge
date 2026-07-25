@@ -128,3 +128,12 @@ means English and the browser remains on the language-less URL.
   record the May production inventory that motivated that 404.
 - `docs/solutions/performance-issues/watch-static-locale-rewrite-route-manifest-admission-20260529.md`
   defines the manifest admission boundary reused by this change.
+
+## 2026-07-25 Supersession Note
+
+This completed plan restored language-less English rendering without changing
+the visible URL. The follow-up canonical contract now also treats eligible
+`/watch/{slug}.html` as the emitted English canonical across metadata, sharing,
+and sitemap discovery. Explicit `/english.html` remains a direct compatibility
+and internal-renderer route; non-English, contextual browser routes, and
+public-language-home collisions remain explicit.

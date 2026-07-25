@@ -53,7 +53,13 @@ when that exact relationship is valid.
 ### Standalone Watch Route
 
 The canonical public Watch URL for a Video and Language independent of any
-collection relationship.
+collection relationship. Eligible English uses
+`/watch/{video-slug}.html`; non-English uses
+`/watch/{video-slug}.html/{language-slug}.html`. Explicit
+`/english.html` remains a direct compatibility/internal route. If the Video
+slug is also a public language-home slug, English stays explicit so the
+language home retains the one-segment URL. Contextual Watch Routes keep their
+parent, child, and explicit language segments in the browser.
 
 ### Watch Route Manifest
 

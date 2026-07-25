@@ -72,12 +72,12 @@ describe("watch sitemap rendering", () => {
 
     expect(entries).toHaveLength(5)
     expect(entries[0]).toEqual({
-      loc: "https://www.jesusfilm.org/watch/jesus.html/english.html",
+      loc: "https://www.jesusfilm.org/watch/jesus.html",
       alternates: [
         {
           hreflang: "en",
           languageSlug: "english",
-          href: "https://www.jesusfilm.org/watch/jesus.html/english.html",
+          href: "https://www.jesusfilm.org/watch/jesus.html",
         },
         {
           hreflang: "es",
@@ -87,7 +87,7 @@ describe("watch sitemap rendering", () => {
       ],
     })
     expect(entries[2]?.loc).toBe(
-      "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html",
     )
     expect(entries.map(({ loc }) => loc)).not.toContain(
       "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
@@ -144,12 +144,33 @@ describe("watch sitemap rendering", () => {
     expect(xml).toContain("<urlset")
     expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
     expect(xml).toContain(
-      "<loc>https://www.jesusfilm.org/watch/jesus.html/english.html</loc>",
+      "<loc>https://www.jesusfilm.org/watch/jesus.html</loc>",
     )
     expect(xml).toContain(
       'hreflang="es" href="https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"',
     )
     expect(xml).not.toContain("bad slug")
+  })
+
+  it("keeps collision-owned English explicit while international URLs stay explicit", () => {
+    const entries = createWatchSitemapEntries({
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "russian",
+          alternates: [
+            { hreflang: "en", languageSlug: "english" },
+            { hreflang: "ro", languageSlug: "romanian" },
+          ],
+        },
+      ],
+      episodeRouteGroups: [],
+    })
+
+    expect(entries.slice(0, 2).map(({ loc }) => loc)).toEqual([
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
+      "https://www.jesusfilm.org/watch/russian.html/romanian.html",
+    ])
   })
 
   it("escapes XML attribute and text values", () => {

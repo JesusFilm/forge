@@ -419,7 +419,19 @@ describe("output + clone helpers", () => {
         },
         "https://www.jesusfilm.org/watch",
       ),
-    ).toBe("https://www.jesusfilm.org/watch/the-source-film.html/english.html")
+    ).toBe("https://www.jesusfilm.org/watch/the-source-film.html")
+  })
+
+  it("keeps collision-owned English source URLs explicit", () => {
+    expect(
+      buildSourceWatchHref(
+        {
+          sourceSlug: "russian",
+          languageBcp47: "en",
+        },
+        "https://www.jesusfilm.org",
+      ),
+    ).toBe("https://www.jesusfilm.org/watch/russian.html/english.html")
   })
 
   it("maps regional source languages to public Watch language slugs", () => {

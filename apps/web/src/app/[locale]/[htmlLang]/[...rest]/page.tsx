@@ -6,6 +6,7 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceRegistration"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
@@ -57,11 +58,7 @@ import {
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import {
-  isOneSegmentCollectionSlug,
-  SAFE_SLUG_PATTERN,
-  stripHtmlSuffix,
-} from "@/lib/url-shape"
+import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
 import {
   watchHomeCollectionStructuredDataJson,
   watchRelatedItemListStructuredDataJson,
@@ -82,6 +79,7 @@ import {
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
   WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
 } from "@/i18n/client-messages"
+import type { WatchRouteSurface } from "@/components/FloatingSearchContext"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -242,9 +240,6 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!slug) return { kind: "unknown" }
     if (isLocale(slug)) return { kind: "unknown" }
     const isLanguageHome = isPublicWatchHomeLanguageSlug(slug)
-    if (!isLanguageHome && !isOneSegmentCollectionSlug(slug)) {
-      return { kind: "unknown" }
-    }
     return {
       kind: "one-segment",
       slug,
@@ -289,6 +284,16 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     }
   }
   return { kind: "unknown" }
+}
+
+function watchRouteSurfaceForShape(shape: Shape): WatchRouteSurface | null {
+  if (shape.kind === "one-segment") {
+    return shape.isLanguageHome ? "language-home" : "experience"
+  }
+  if (shape.kind === "video" && shape.rawLocale === "english") {
+    return "english-video"
+  }
+  return null
 }
 
 async function getDownloadButtonLabel(
@@ -445,9 +450,13 @@ export default async function SlugRestPage({ params }: PageProps) {
       : shape.kind === "episode"
         ? await renderEpisode(shape)
         : await renderVideo(shape)
+  const routeSurface = watchRouteSurfaceForShape(shape)
 
   return (
     <NextIntlClientProvider locale={shape.locale} messages={messages}>
+      {routeSurface ? (
+        <WatchRouteSurfaceRegistration surface={routeSurface} />
+      ) : null}
       {content}
     </NextIntlClientProvider>
   )

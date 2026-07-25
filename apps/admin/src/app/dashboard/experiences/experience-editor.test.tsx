@@ -262,11 +262,17 @@ describe("ExperienceEditor", () => {
     expect(watchLanguageSlugForLocale("")).toBeNull()
   })
 
-  it("builds two-segment .html watch URLs for published previews", () => {
+  it("builds canonical .html watch URLs for published previews", () => {
     // jsdom runs on localhost, so the local watch base wins over the origin.
     expect(
       buildPublishedWatchUrl("christmas", "en", "https://watch.jesusfilm.org"),
-    ).toBe("http://localhost:3000/watch/christmas.html/english.html")
+    ).toBe("http://localhost:3000/watch/christmas.html")
+    expect(
+      buildPublishedWatchUrl("christmas", "es", "https://watch.jesusfilm.org"),
+    ).toBe("http://localhost:3000/watch/christmas.html/spanish-castilian.html")
+    expect(
+      buildPublishedWatchUrl("russian", "en", "https://watch.jesusfilm.org"),
+    ).toBe("http://localhost:3000/watch/russian.html/english.html")
     expect(
       buildPublishedWatchUrl("christmas", "xx", "https://watch.jesusfilm.org"),
     ).toBeNull()
@@ -2218,7 +2224,7 @@ describe("ExperienceEditor", () => {
       })
 
       expect(openSpy).toHaveBeenCalledWith(
-        "http://localhost:3000/watch/experience-title.html/english.html",
+        "http://localhost:3000/watch/experience-title.html",
         "_blank",
         "noopener,noreferrer",
       )

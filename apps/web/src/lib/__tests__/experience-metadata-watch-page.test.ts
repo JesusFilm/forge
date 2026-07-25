@@ -59,10 +59,10 @@ describe("getWatchPageMetadata", () => {
     })
 
     expect(meta.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/jesus.html/english.html",
+      "https://www.jesusfilm.org/watch/jesus.html",
     )
     expect(meta.openGraph?.url).toBe(
-      "https://www.jesusfilm.org/watch/jesus.html/english.html",
+      "https://www.jesusfilm.org/watch/jesus.html",
     )
   })
 })
