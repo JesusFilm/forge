@@ -24,7 +24,7 @@ See the origin docs for full context:
   `.jesusfilm.org` cookies or host admin-local credential handlers.
 - useworkflow (`workflow` npm package) for durable background jobs
 - Redis (TCP via `ioredis`) for rate limiting
-- Railway deployment (NIXPACKS, standalone output)
+- Railway deployment (Railpack, standard `next start`)
 - Doppler for env var management (project: `forge-admin`)
 
 ## Embedding ownership
@@ -487,9 +487,11 @@ service's Config-as-code Path is set to that file. For best Datadog
 auto-instrumentation, production must set Datadog service env
 (`DD_SERVICE=forge-admin`, `DD_ENV=prod`, `DD_VERSION=<git sha>`), point
 at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
-`DD_AGENT_SYSLOG_PORT=514`), and keep the standalone server start command free
-of `--require dd-trace/init`; Railpack's standalone runtime does not include a
-resolvable preload module. Browser RUM sourcemaps are uploaded during build.
+`DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules
+through the `startCommand`:
+`cd apps/admin && NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start`.
+Do not set `NODE_OPTIONS` as a global Railway service variable because it is
+also present during Railpack/mise build setup.
 
 Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
 to restore into local or staging Postgres. The restore path reads
@@ -635,23 +637,20 @@ the dashboard remains canonical.
 
 **Authoritative configuration:**
 
-| Field                      | Value                                                                                                                                                                                                      |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config-as-code Path        | `apps/admin/railway.toml`                                                                                                                                                                                  |
-| Start Command              | `cd apps/admin/.next/standalone && HOSTNAME=0.0.0.0 NODE_OPTIONS='--max-old-space-size=5120' node apps/admin/server.js`                                                                                    |
-| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
-| Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                                                                                             |
-| Healthcheck Path           | `/api/health`                                                                                                                                                                                              |
-| Healthcheck Timeout        | 60s                                                                                                                                                                                                        |
-| Restart Policy Max Retries | 3                                                                                                                                                                                                          |
+| Field                      | Value                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Config-as-code Path        | `apps/admin/railway.toml`                                                                                                      |
+| Start Command              | `cd apps/admin && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start` |
+| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps`          |
+| Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                 |
+| Healthcheck Path           | `/api/health`                                                                                                                  |
+| Healthcheck Timeout        | 60s                                                                                                                            |
+| Restart Policy Max Retries | 3                                                                                                                              |
 
-The `preDeployCommand` runs Prisma migrations before the standalone Next.js
-server boots. If `migrate deploy` fails, the deploy is marked failed before
-serving traffic (see Migrations section for failure-mode recovery). Other
-deployment caveats in
-`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
-still apply: set `HOSTNAME=0.0.0.0` in the Railway dashboard (not
-`[deploy.env]`).
+The `preDeployCommand` runs Prisma migrations before the Next.js server boots.
+If `migrate deploy` fails, the deploy is marked failed before serving traffic
+(see Migrations section for failure-mode recovery). Set `HOSTNAME=0.0.0.0` in
+the Railway start command or dashboard, not `[deploy.env]`.
 
 **Editing dashboard config via MCP:** always pair
 `mcp__railway__updateServiceTool` with
