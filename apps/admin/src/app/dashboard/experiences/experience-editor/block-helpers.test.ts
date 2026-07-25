@@ -5,9 +5,11 @@ import {
   type BlockTemplateKey,
   createContainerSlotLayout,
   createTemplateBlock,
+  editorTextFromContentParagraphs,
   defaultContainerSlotSpans,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
+  contentParagraphsFromEditorText,
   readContainerSlotSpans,
   summarizeBlock,
   type VideoLibraryItem,
@@ -30,17 +32,22 @@ const videoLibrary: VideoLibraryItem[] = [
     durationSeconds: 754,
     previewImageUrl: "https://example.com/image.jpg",
     previewStreamUrl: "https://example.com/video.mp4",
+    hasGrounding: true,
   },
 ]
 
 describe("experience editor block helpers", () => {
   const nonComposingBlockKeys = BLOCK_TEMPLATE_KEYS.filter(
-    (key): key is Exclude<BlockTemplateKey, "section" | "container"> =>
-      key !== "section" && key !== "container",
+    (
+      key,
+    ): key is Exclude<
+      BlockTemplateKey,
+      "section" | "container" | "promotionalText"
+    > => key !== "section" && key !== "container" && key !== "promotionalText",
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(19)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(21)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -48,16 +55,94 @@ describe("experience editor block helpers", () => {
     }
   })
 
+  it("creates a schema-valid promotional story composition", () => {
+    const starter = createTemplateBlock("promotionalText", 4)
+
+    expect(starter).toMatchObject({
+      t: "section",
+      sectionKey: "promotional-story-4",
+      backgroundColor: "purple",
+      staticOverlay: true,
+      content: [
+        {
+          t: "text",
+          sectionKey: "promotional-copy-4",
+          variant: "promotional",
+          headingLevel: "h2",
+        },
+      ],
+    })
+    expect(BlockSchema.safeParse(starter).success).toBe(true)
+  })
+
+  it("leaves public copy unauthored in video carousel starters", () => {
+    const manualStarter = createTemplateBlock("videoCarousel", 2)
+    const routeStarter = createTemplateBlock("routeVideoCarousel", 3)
+
+    expect(manualStarter).toEqual({
+      t: "videoCarousel",
+      sectionKey: "video-carousel-2",
+      itemsSource: "manual",
+      items: [],
+    })
+    expect(routeStarter).toEqual({
+      t: "videoCarousel",
+      sectionKey: "route-video-carousel-3",
+      itemsSource: "routeVideoChildren",
+      items: [],
+    })
+    expect(BlockSchema.safeParse(manualStarter).success).toBe(true)
+    expect(BlockSchema.safeParse(routeStarter).success).toBe(true)
+  })
+
+  it("starts new media collections with vertical thumbnails", () => {
+    expect(createTemplateBlock("mediaCollection", 5)).toMatchObject({
+      t: "mediaCollection",
+      thumbnailOrientation: "vertical",
+    })
+  })
+
+  it("preserves promotional Markdown blocks and legacy line splitting", () => {
+    const markdown = [
+      "### Why this story matters",
+      "A first paragraph.",
+      "A second paragraph.",
+      "- One reason\n- Another reason",
+    ].join("\n\n")
+
+    expect(contentParagraphsFromEditorText(markdown, "promotional")).toEqual([
+      "### Why this story matters",
+      "A first paragraph.",
+      "A second paragraph.",
+      "- One reason\n- Another reason",
+    ])
+    expect(
+      editorTextFromContentParagraphs(
+        contentParagraphsFromEditorText(markdown, "promotional"),
+        "promotional",
+      ),
+    ).toBe(markdown)
+    expect(contentParagraphsFromEditorText("First\nSecond", "lead")).toEqual([
+      "First",
+      "Second",
+    ])
+    expect(contentParagraphsFromEditorText("  \n\n ", "promotional")).toEqual(
+      [],
+    )
+  })
+
   it("normalizes empty optional fields before save", () => {
     const result = normalizeEditorBlockPayload({
       t: "videoCarousel",
       sectionKey: "",
       title: "Videos",
+      imageAssetId: "",
       items: [
         {
           videoId: "",
           streamingUrl: "",
-          imageOverrideUrl: "",
+          imageUrl: "",
+          imageAssetId: "",
           titleOverride: "",
           subtitleOverride: "",
         },
@@ -69,6 +154,33 @@ describe("experience editor block helpers", () => {
       title: "Videos",
       items: [{}],
     })
+  })
+
+  it("drops legacy read-only media item fields before save", () => {
+    const result = normalizeEditorBlockPayload({
+      t: "mediaCollection",
+      sectionKey: "videos",
+      variant: "grid",
+      items: [
+        {
+          videoId: "video-1",
+          videoSlug: "legacy-slug",
+          imageUrl: "https://example.com/image.jpg",
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      t: "mediaCollection",
+      sectionKey: "videos",
+      variant: "grid",
+      items: [
+        {
+          videoId: "video-1",
+        },
+      ],
+    })
+    expect(BlockSchema.safeParse(result).success).toBe(true)
   })
 
   it("drops stale nested slot payloads from containers before save", () => {
@@ -199,7 +311,7 @@ describe("experience editor block helpers", () => {
             {
               videoId: "",
               streamingUrl: "",
-              imageOverrideUrl: "",
+              imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
             },
@@ -213,7 +325,6 @@ describe("experience editor block helpers", () => {
           items: [
             {
               videoId: "",
-              imageOverrideUrl: "",
               imageUrl: "",
               titleOverride: "",
               subtitleOverride: "",
@@ -236,7 +347,7 @@ describe("experience editor block helpers", () => {
             {
               reference: "John 3:16",
               text: "For God so loved the world...",
-              backgroundImageUrl: "",
+              backgroundImageAssetId: "",
               imageUrl: "",
               backgroundColor: "",
               ctaEnabled: false,
@@ -345,6 +456,23 @@ describe("experience editor block helpers", () => {
       typeLabel: "Route Video Carousel",
       title: "Related videos",
       badges: ["ROUTE_VIDEO_CHILDREN"],
+    })
+  })
+
+  it("creates and summarizes the Watch Home hero placeholder", () => {
+    expect(createTemplateBlock("watchHomeHero", 0)).toEqual({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero-0",
+    })
+
+    expect(
+      summarizeBlock(createTemplateBlock("watchHomeHero", 0), 0, []),
+    ).toMatchObject({
+      typeLabel: "Watch Home Hero",
+      title: "Watch Home Hero",
+      body: "Renders the static Watch homepage hero.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
     })
   })
 

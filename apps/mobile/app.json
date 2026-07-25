@@ -55,7 +55,9 @@
         {
           "supportsBackgroundPlayback": true
         }
-      ]
+      ],
+      "@kesha-antonov/react-native-background-downloader",
+      "./plugins/withBackgroundDownloaderAppDelegate"
     ],
     "extra": {
       "router": {

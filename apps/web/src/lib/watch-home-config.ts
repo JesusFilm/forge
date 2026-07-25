@@ -7,32 +7,42 @@ export type WatchHomePlaylistGroup = readonly string[]
 
 export type WatchHomeMuxInsertConfig = {
   id: string
+  copyId: WatchHomeMuxInsertCopyId
   enabled: boolean
   playbackIds: readonly string[]
   durationSeconds: number | null
-  label: string
-  title: string
-  collectionTitle: string | null
-  description: string | null
-  action: { label: string; url: string } | null
+  action: WatchHomeMuxInsertAction | null
   logo: boolean
   posterOverride: string | null
   trigger: { type: "sequence-start" } | { type: "after-count"; count: number }
   conditionalOverlays?: readonly WatchHomeConditionalOverlay[]
 }
 
+export type WatchHomeMuxInsertAction = {
+  copyId: WatchHomeMuxInsertActionCopyId
+  url: string
+  icon?: "join" | "share"
+}
+
+export type WatchHomeMuxInsertCopyId =
+  | "welcomeStart"
+  | "welcomeMorning"
+  | "welcomeAfternoon"
+  | "welcomeEvening"
+  | "joinUs"
+  | "tellingTheStoryOfJesus"
+
+export type WatchHomeMuxInsertActionCopyId = "joinUs" | "shareMission"
+
 export type WatchHomeConditionalOverlay = {
+  copyId: WatchHomeMuxInsertCopyId
   priority: number
   conditions: readonly {
     type: "time-range"
     range: { start: number; end: number }
   }[]
   overlay: {
-    label: string
-    title: string
-    collectionTitle: string | null
-    description: string | null
-    action?: { label: string; url: string } | null
+    action?: WatchHomeMuxInsertAction | null
   }
 }
 
@@ -49,7 +59,7 @@ export type WatchHomeSectionConfig = {
   childLimit?: number
 }
 
-export const WATCH_HOME_CACHE_VERSION = "v3-carousel-sequence"
+export const WATCH_HOME_CACHE_VERSION = "v6-real-images-with-dominant-colors"
 
 export const collectionShowcaseSources = [
   { id: "1_jf-0-0", limitChildren: 0 },
@@ -125,67 +135,45 @@ export const WATCH_HOME_COLLECTION_BLACKLIST = new Set(["7_Origins4Connect"])
 export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
   {
     id: "welcome-start",
+    copyId: "welcomeStart",
     enabled: true,
     playbackIds: ["34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y"],
     durationSeconds: 9,
-    label: "Faith & Scripture",
-    title: "Today's Video Picks",
-    collectionTitle: "Daily Inspirations",
-    description:
-      "Faith-centered video content from our library to inspire, challenge, and spark reflection.",
     action: null,
     logo: true,
     posterOverride: null,
     trigger: { type: "sequence-start" },
     conditionalOverlays: [
       {
+        copyId: "welcomeMorning",
         priority: 10,
         conditions: [{ type: "time-range", range: { start: 5, end: 9 } }],
-        overlay: {
-          label: "Morning Inspiration",
-          title: "Good Morning! Today's Bible Moments Await.",
-          collectionTitle: "Morning Moments",
-          description:
-            "Begin your day with encouraging Bible moments designed to inspire and uplift your spirit.",
-        },
+        overlay: {},
       },
       {
+        copyId: "welcomeAfternoon",
         priority: 10,
         conditions: [{ type: "time-range", range: { start: 12, end: 17 } }],
-        overlay: {
-          label: "Afternoon Inspiration",
-          title: "Good Afternoon! Bible Moments for Your Day.",
-          collectionTitle: "Afternoon Moments",
-          description:
-            "Encouraging Bible content perfect for your afternoon break or continued inspiration.",
-        },
+        overlay: {},
       },
       {
+        copyId: "welcomeEvening",
         priority: 10,
         conditions: [{ type: "time-range", range: { start: 17, end: 21 } }],
-        overlay: {
-          label: "Evening Inspiration",
-          title: "Good Evening! Wind Down with Bible Moments.",
-          collectionTitle: "Evening Moments",
-          description:
-            "Peaceful Bible moments to help you reflect and find comfort as your day comes to a close.",
-        },
+        overlay: {},
       },
     ],
   },
   {
     id: "join-us",
+    copyId: "joinUs",
     enabled: true,
     playbackIds: ["VN4b95KOO3JtLg3x019dH2mzMHPL4le65vRmXFONyzZ8"],
     durationSeconds: null,
-    label: "Join Us",
-    title: "Billions are searching",
-    collectionTitle: "Highlights",
-    description:
-      "The harvest is here. Join us as we share the gospel with the world using digital media.",
     action: {
-      label: "Join Us",
+      copyId: "joinUs",
       url: "https://your.nextstep.is/joinus",
+      icon: "join",
     },
     logo: false,
     posterOverride: null,
@@ -193,17 +181,14 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
   },
   {
     id: "telling-the-story-of-jesus",
+    copyId: "tellingTheStoryOfJesus",
     enabled: true,
     playbackIds: ["W00xXnOS4kU8VVMgx4M6AdzZE63OnKk300HdEDeUYZqlQ"],
     durationSeconds: null,
-    label: "Let's go together",
-    title: "Telling the Story of Jesus, Together",
-    collectionTitle: "Highlights",
-    description:
-      "So they can hear and see the love of Jesus in their own language right where they are.",
     action: {
-      label: "Share in Our Mission",
+      copyId: "shareMission",
       url: "https://www.jesusfilm.org/partners/",
+      icon: "share",
     },
     logo: false,
     posterOverride: null,
@@ -211,7 +196,7 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
   },
 ] as const
 
-export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
+const WATCH_HOME_SECTION_DEFINITIONS = [
   {
     id: "home-video-gospels",
     layout: "rail",
@@ -283,7 +268,13 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
     sources: collectionLumo,
     orientation: "vertical",
   },
-] as const
+] as const satisfies readonly WatchHomeSectionConfig[]
+
+export type WatchHomeSectionId =
+  (typeof WATCH_HOME_SECTION_DEFINITIONS)[number]["id"]
+
+export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] =
+  WATCH_HOME_SECTION_DEFINITIONS
 
 export function getWatchHomeCoreIds(): string[] {
   const ids = [

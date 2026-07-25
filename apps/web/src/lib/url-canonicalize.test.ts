@@ -226,6 +226,25 @@ describe("Rule 4: per-segment .html append → 307", () => {
     })
   })
 
+  it("keeps localized /videos indexes .html-free on the final segment", () => {
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american/videos" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american.html/videos.html" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+  })
+
   it("appends .html on 3-segment missing first + last (episode stays bare)", () => {
     expect(canonical({ rawPathname: "/jesus/the-beginning/english" })).toEqual({
       kind: "redirect",
@@ -263,9 +282,18 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
-  it("does NOT fire for /videos (exempt)", () => {
-    expect(canonical({ rawPathname: "/videos" })).toEqual({
+  it("does NOT fire for /languages (exempt)", () => {
+    expect(canonical({ rawPathname: "/languages" })).toEqual({
       kind: "canonical",
+    })
+  })
+
+  it("redirects legacy /videos to /languages", () => {
+    expect(canonical({ rawPathname: "/videos" })).toEqual({
+      kind: "redirect",
+      pathname: "/languages",
+      status: 307,
+      cache: "short",
     })
   })
 
@@ -365,6 +393,22 @@ describe("Rule 6: language-slug alias → 307", () => {
     })
   })
 
+  it.each(["languages", "history", "videos"])(
+    "applies alias to localized %s routes",
+    (utility) => {
+      expect(
+        canonical({
+          rawPathname: `/chinese-mandarin.html/${utility}`,
+        }),
+      ).toEqual({
+        kind: "redirect",
+        pathname: `/mandarin-china.html/${utility}`,
+        status: 307,
+        cache: "short",
+      })
+    },
+  )
+
   it("does NOT apply alias to slug segment (segment 0)", () => {
     // No content slug named "chinese-mandarin", but verify shape: even if
     // it were, alias resolves only on the locale segment, not the slug.
@@ -417,7 +461,10 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/jesus.html/the-beginning/russian.html",
     "/russian.html",
     "/portuguese-brazil.html",
-    "/videos",
+    "/languages",
+    "/french.html/languages",
+    "/spanish-latin-american.html/history",
+    "/spanish-latin-american.html/videos",
   ]
 
   for (const url of canonicalUrls) {

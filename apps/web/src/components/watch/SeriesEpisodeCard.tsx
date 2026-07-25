@@ -2,11 +2,31 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import type { Route } from "next"
 import { Play } from "lucide-react"
 
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import { isSeriesRecord } from "@/lib/watch-content-kind"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+  watchVideoPath,
+} from "@/lib/routes"
+import { cn } from "@/lib/utils"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
 type Episode = NonNullable<Episodes[number]>
@@ -15,6 +35,7 @@ type SeriesEpisodeCardProps = {
   episode: Episode
   index: number
   languageSlug: string
+  parentSlug: string
   // Backdrop URL surfaced via data-backdrop-url so the parent grid can
   // delegate pointer/focus events at the container level instead of
   // attaching per-card handlers (avoids 20+ rerenders during keyboard
@@ -39,13 +60,22 @@ export function SeriesEpisodeCard({
   episode,
   index,
   languageSlug,
+  parentSlug,
   backdropUrl,
 }: SeriesEpisodeCardProps) {
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
+  const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
-  // Episodes link as standalone videos: canonical two-segment shape.
-  const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+  let href: Route | undefined
+  if (slug && lang) {
+    if (isSeriesRecord(episode)) {
+      href = watchVideoPath(slug, lang)
+    } else if (parent) {
+      href = watchEpisodePath(parent, slug, lang)
+    }
+  }
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
+  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)
   // rather than being derived from a per-child dub list.
@@ -54,8 +84,12 @@ export function SeriesEpisodeCard({
   // Shared card surface. When the slug/locale is malformed (rare data bug)
   // the href is undefined, so we render a plain <div> with identical attrs
   // rather than a dead <Link>.
-  const cardClassName =
-    "group animate-card-enter relative flex aspect-video w-full cursor-pointer overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+  const cardClassName = cn(
+    "animate-card-enter relative flex aspect-video w-full overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300",
+    href &&
+      "group cursor-pointer hover:z-10 hover:scale-105 focus:outline-none",
+    href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  )
   const cardStyle = { animationDelay: `${index * 40}ms` }
 
   const cardContent = (
@@ -71,6 +105,11 @@ export function SeriesEpisodeCard({
       ) : (
         <div className="absolute inset-0 bg-stone-800" aria-hidden="true" />
       )}
+      <MuxHoverPreview
+        previewUrl={href ? muxPreviewUrl : null}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
+        imageClassName="object-left-top"
+      />
 
       {/* Bottom-anchored scrim. Stronger at the bottom so the EPISODE
           label and title stay legible regardless of thumbnail luminance. */}
@@ -78,24 +117,32 @@ export function SeriesEpisodeCard({
         aria-hidden="true"
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"
       />
+      <WatchProgressBar videoId={episode.documentId} />
+      {href ? (
+        <VideoThumbnailInteractionFrame data-testid="series-episode-card-hover-outline" />
+      ) : null}
 
-      {/* Top-right runtime pill. Icon-only when no duration is available
-          (still affordant as a "play" hint) — the label collapses rather
-          than showing a fake zero runtime. */}
-      <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
-        <Play size={12} className="fill-white" strokeWidth={0} />
-        {runtimeLabel ? <span>{runtimeLabel}</span> : null}
-      </div>
+      {/* Routable cards keep an icon-only play hint when runtime is absent.
+          Static fallbacks may still show real runtime metadata, but never a
+          play affordance or a fake zero runtime. */}
+      {href || runtimeLabel ? (
+        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
+          {href ? (
+            <Play size={12} className="fill-white" strokeWidth={0} />
+          ) : null}
+          {runtimeLabel ? <span>{runtimeLabel}</span> : null}
+        </div>
+      ) : null}
 
       {/* Bottom-left text block — EPISODE eyebrow + episode title. */}
-      <div className="absolute right-3 bottom-3 left-3 flex flex-col gap-1">
-        <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-300/90 uppercase">
+      <VideoThumbnailCaption inset="compact">
+        <VideoThumbnailEyebrow size="compact">
           {`Episode ${index + 1}`}
-        </span>
-        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-white drop-shadow-md md:text-base">
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle size="compact-md">
           {episode.title ?? ""}
-        </h3>
-      </div>
+        </VideoThumbnailTitle>
+      </VideoThumbnailCaption>
     </>
   )
 

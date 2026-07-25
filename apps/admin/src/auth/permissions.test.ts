@@ -33,6 +33,11 @@ const MANAGER_OPERATOR_ADMIN: Principal = {
   managerRole: "OPERATOR",
 }
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
+const WEB_USER: Principal = {
+  id: "auth-user-1",
+  role: "WEB_USER",
+  rateLimitBucketKey: "auth-user-1",
+}
 
 const EXPERIENCE_OWNED_BY_ALICE = {
   ownerId: "alice",
@@ -79,6 +84,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
       { key: "write:manager-jobs", role: "PUBLIC", expected: false },
+      { key: "write:watch-events", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
 
       // VIEWER reach
@@ -92,6 +98,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
       { key: "write:manager-jobs", role: "VIEWER", expected: false },
+      { key: "write:watch-events", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
 
       // EDITOR reach
@@ -104,6 +111,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "access:manager", role: "EDITOR", expected: false },
       { key: "read:manager-read-models", role: "EDITOR", expected: false },
       { key: "write:manager-jobs", role: "EDITOR", expected: false },
+      { key: "write:watch-events", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
@@ -119,6 +127,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "access:manager", role: "ADMIN", expected: false },
       { key: "read:manager-read-models", role: "ADMIN", expected: false },
       { key: "write:manager-jobs", role: "ADMIN", expected: false },
+      { key: "write:watch-events", role: "ADMIN", expected: true },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
@@ -139,6 +148,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "access:manager", role: "SYSTEM", expected: false },
       { key: "read:manager-read-models", role: "SYSTEM", expected: false },
       { key: "write:manager-jobs", role: "SYSTEM", expected: false },
+      { key: "write:watch-events", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
     ]
@@ -176,6 +186,16 @@ describe("hasPermission — Manager backend bearer gate", () => {
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
       false,
     )
+  })
+})
+
+describe("hasPermission — Web user bearer gate", () => {
+  it("grants only watch-event writes", () => {
+    expect(hasPermission(WEB_USER, "write:watch-events")).toBe(true)
+    expect(hasPermission(WEB_USER, "read:videos")).toBe(false)
+    expect(hasPermission(WEB_USER, "read:experiences")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:experiences")).toBe(false)
+    expect(hasPermission(WEB_USER, "admin:all")).toBe(false)
   })
 })
 
@@ -408,7 +428,6 @@ describe("permission matrix completeness", () => {
       "write:experiences",
       "write:videos",
       "write:media-assets",
-      "write:scene-embeddings",
       "write:transcript-embeddings",
       "write:experience-embeddings",
       "write:manager-enrichment-trigger",
@@ -446,9 +465,9 @@ describe("permission matrix completeness", () => {
 
   it("write:experience-embeddings is ADMIN-only", () => {
     // Admin-native experience-embedding backfill. Mirrors the
-    // write:scene-embeddings / write:transcript-embeddings tier gates
-    // so a regression that widens the key (e.g. flips to EDITOR) fails
-    // loudly here and not just at the mutation boundary.
+    // write:transcript-embeddings tier gate so a regression that widens
+    // the key (e.g. flips to EDITOR) fails loudly here and not just at
+    // the mutation boundary.
     expect(hasPermission(ADMIN, "write:experience-embeddings")).toBe(true)
     expect(hasPermission(EDITOR_ALICE, "write:experience-embeddings")).toBe(
       false,
@@ -463,9 +482,8 @@ describe("permission matrix completeness", () => {
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
-    // Mirror the existing write:scene-embeddings tier gate so a
-    // regression that widens the key (e.g. flips to EDITOR) fails
-    // loudly here and not just at the mutation boundary.
+    // A regression that widens the key (e.g. flips to EDITOR) should
+    // fail loudly here and not just at the mutation boundary.
     expect(hasPermission(ADMIN, "write:transcript-embeddings")).toBe(true)
     expect(hasPermission(EDITOR_ALICE, "write:transcript-embeddings")).toBe(
       false,
@@ -493,12 +511,6 @@ describe("permission matrix completeness", () => {
       id: null,
       role: "WORKFLOW_TRIGGER",
     }
-
-    it("satisfies write:scene-embeddings", () => {
-      expect(hasPermission(WORKFLOW_TRIGGER, "write:scene-embeddings")).toBe(
-        true,
-      )
-    })
 
     it("satisfies write:transcript-embeddings", () => {
       expect(
@@ -536,7 +548,6 @@ describe("permission matrix completeness", () => {
       // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
       // the allowedKeys list.
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
-        "write:scene-embeddings",
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
         "write:experience-embeddings",
@@ -554,9 +565,9 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -591,9 +602,9 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -632,9 +643,9 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -681,9 +692,9 @@ describe("permission matrix completeness", () => {
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
-        "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
+        "write:watch-events": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -718,7 +729,6 @@ describe("permission matrix completeness", () => {
       // WORKFLOW_TRIGGER — the two principal types share the bearer
       // surface but not the permission surface).
       const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      expect(hasPermission(bearer, "write:scene-embeddings")).toBe(false)
       expect(hasPermission(bearer, "write:transcript-embeddings")).toBe(false)
       expect(hasPermission(bearer, "write:manager-enrichment-trigger")).toBe(
         false,
@@ -734,11 +744,6 @@ describe("permission matrix completeness", () => {
       // mint WORKFLOW_TRIGGER (permission widening). The distinct
       // env vars are the load-bearing boundary.
       //
-      // `search-bearer.ts` itself no longer reads any env CSV after
-      // Plan 003 (partner-key store PR3) — it only composes the
-      // partner / consumer / workflow validators. The regression
-      // guard for that file is that it doesn't ACCIDENTALLY reach
-      // back into env vars.
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const consumerSource = await readFile(
@@ -753,10 +758,6 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./video-mapper-bearer.ts", import.meta.url)),
         "utf8",
       )
-      const searchSource = await readFile(
-        fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
-        "utf8",
-      )
       // Each narrow file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
@@ -766,13 +767,6 @@ describe("permission matrix completeness", () => {
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(videoMapperSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
       expect(videoMapperSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      // The composer reads NO env CSV directly — it only imports the
-      // narrow validators + verifyPartnerToken. Source MUST NOT
-      // reference env CSV names; a regression that re-introduced a
-      // direct env read would slip the cross-CSV isolation boundary.
-      expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
-      expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      expect(searchSource).not.toMatch(/env\.SEARCH_API_KEYS/)
     })
   })
 })

@@ -1,74 +1,211 @@
 "use client"
 
 import Image from "next/image"
-import type {
-  FragmentOf,
-  LegacyFragmentValue,
-} from "@/lib/legacy-fragment-types"
+import type { CSSProperties } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
-import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
+} from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import {
   WATCH_BASE_PATH,
   asLocaleSlug,
   tryAsContentSlug,
+  tryAsLocaleSlug,
+  videosIndexPath,
   watchVideoPath,
 } from "@/lib/routes"
-
-// Collections carry no per-item language today, so card deep links default
-// to the English variant and rely on the watch route to re-resolve locale.
-// See todo: EnrichedMediaItem should carry a defaultLanguage (data-model gap).
-// Hoisted so the throwing constructor runs once at module load, not per card.
-const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
+import { resolveMediaImageUrl } from "@/lib/media-image-url"
+import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import { cn } from "@/lib/utils"
+import { normalizeWatchRootHref } from "@/lib/watch-paths"
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import {
-  CAROUSEL_CONTENT_PADDING,
-  CAROUSEL_END_SPACER,
-} from "@/lib/content-width"
-import { useDynamicBackground } from "./DynamicBackground"
-import { resolveMediaImageUrl } from "@/lib/media-image-url"
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import { WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS } from "@/components/watch/watch-section-styles"
+
+// Hoisted so the throwing constructor runs once at module load, not per card.
+const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
 
 export { mediaCollectionFragment }
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }
 
-export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
-  const onBackgroundImageChange = useDynamicBackground()
+type HoverBackdropLayer = {
+  id: number
+  imageUrl: string
+  state: "entering" | "exiting"
+}
+
+const MEDIA_COLLECTION_TINTS: Record<string, string> = {
+  default: "#050505",
+  dark: "#050505",
+  primary: "#172554",
+  cosmic: "#312e81",
+  purple: "#91214A",
+  red: "#7f1d1d",
+  rose: "#9f1239",
+  blue: "#1e3a8a",
+  teal: "#134e4a",
+  green: "#14532d",
+  amber: "#92400e",
+}
+
+const MOBILE_CAROUSEL_LAYOUT = {
+  horizontal: {
+    columns: "auto-cols-[56%] gap-4 sm:auto-cols-[42%] md:gap-5",
+    imageSizes: "(max-width: 639px) 56vw, (max-width: 767px) 42vw, 360px",
+  },
+  vertical: {
+    columns: "auto-cols-[34%] gap-3 sm:auto-cols-[26%] md:gap-4",
+    imageSizes: "(max-width: 639px) 34vw, (max-width: 767px) 26vw, 220px",
+  },
+} as const
+
+function backgroundImageStyle(imageUrl: string | null) {
+  return imageUrl ? { backgroundImage: `url("${imageUrl}")` } : undefined
+}
+
+function normalizeTintColor(value: unknown): string | null {
+  if (typeof value !== "string") return null
+
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  return MEDIA_COLLECTION_TINTS[trimmed] ?? trimmed
+}
+
+function alphaColor(color: string, opacity: number): string {
+  const rgb = hexToRgb(color)
+  if (!rgb) return color
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`
+}
+
+function textScrimStyle(
+  item: EnrichedMediaItem,
+  orientation: "horizontal" | "vertical",
+): CSSProperties {
+  const rgb = readableScrimRgb(item.dominantColor)
+  if (!rgb) {
+    return {
+      background:
+        "linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.18), transparent)",
+    }
+  }
+
+  if (orientation === "vertical") {
+    return {
+      background: `linear-gradient(to top, rgb(${rgb.r},${rgb.g},${rgb.b}), rgba(${rgb.r},${rgb.g},${rgb.b},.78) 36%, rgba(${rgb.r},${rgb.g},${rgb.b},.22) 68%, transparent 100%)`,
+    }
+  }
+
+  return {
+    background: `linear-gradient(to top, rgb(${rgb.r},${rgb.g},${rgb.b}), rgba(${rgb.r},${rgb.g},${rgb.b},.86) 24%, rgba(${rgb.r},${rgb.g},${rgb.b},.28) 42%, transparent 62%)`,
+  }
+}
+
+function tintOverlayStyle(
+  backgroundColor: string | null,
+  isRail: boolean,
+): CSSProperties | undefined {
+  if (!backgroundColor) return undefined
+
+  const strong = alphaColor(backgroundColor, isRail ? 0.92 : 0.86)
+  const soft = alphaColor(backgroundColor, isRail ? 0.38 : 0.34)
+  const deep = alphaColor("#050505", isRail ? 0.62 : 0.76)
+
+  return {
+    background: `linear-gradient(to top right, ${deep}, ${soft} 42%, ${strong})`,
+  }
+}
+
+function backdropLayerStyle(
+  imageUrl: string | null,
+  opacity: string,
+  extraStyle?: CSSProperties,
+): CSSProperties {
+  return {
+    ...backgroundImageStyle(imageUrl),
+    ...extraStyle,
+    "--watch-home-backdrop-opacity": opacity,
+  } as CSSProperties
+}
+
+export function MediaCollection({
+  data,
+  routeVideo,
+  languageSlug,
+}: MediaCollectionProps) {
   const {
     id,
     title,
     subtitle,
     mediaDescription: description,
+    backgroundColor,
     categoryLabel,
     mediaCtaLink: ctaLink,
     mediaCtaLabel: rawCtaLabel,
+    mediaDefaultCollectionSlug,
     showItemNumbers,
     mediaCollectionVariant: variant,
     itemsSource,
     footerText: rawFooterText,
     items,
   } = data
+  const thumbnailOrientation = (
+    data as typeof data & {
+      thumbnailOrientation?: "vertical" | "horizontal" | null
+    }
+  ).thumbnailOrientation
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
   const selectedSource = itemsSource ?? "manual"
-  const enrichedItems =
+  const rawEnrichedItems: Array<EnrichedMediaItem | null | undefined> =
     selectedSource === "routeVideoChildren"
       ? (routeVideo?.relatedItems ?? [])
-      : (items ?? [])
-          .filter(
-            (i: LegacyFragmentValue): i is NonNullable<typeof i> => i != null,
-          )
-          .map(enrichMediaItem)
+      : (items ?? []).map(enrichMediaItem)
+  const enrichedItems = rawEnrichedItems.filter(
+    (item): item is EnrichedMediaItem => item != null,
+  )
+  const resolvedLanguageSlug =
+    tryAsLocaleSlug(languageSlug ?? "") ?? DEFAULT_COLLECTION_LOCALE
+  const inferredCollectionSlug =
+    selectedSource === "routeVideoChildren"
+      ? tryAsContentSlug(routeVideo?.slug ?? "")
+      : tryAsContentSlug(mediaDefaultCollectionSlug ?? "")
+  const inferredCtaLink = inferredCollectionSlug
+    ? `${WATCH_BASE_PATH}${watchVideoPath(inferredCollectionSlug, resolvedLanguageSlug)}`
+    : null
+  const explicitCtaLink =
+    typeof ctaLink === "string" && ctaLink.trim().length > 0 ? ctaLink : null
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -82,62 +219,23 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
 
   if (enrichedItems.length === 0) return null
 
-  if (variant === "carousel") {
-    return (
-      <CarouselVariant
-        id={id}
-        title={title}
-        subtitle={categoryLabel}
-        ctaLink={ctaLink}
-        ctaLabel={ctaLabel}
-        footerText={footerText}
-        items={enrichedItems}
-        onBackgroundImageChange={onBackgroundImageChange ?? undefined}
-      />
-    )
-  }
-
-  const gridClass =
-    variant === "hero"
-      ? "grid grid-cols-1"
-      : variant === "player"
-        ? "grid grid-cols-1 max-w-2xl mx-auto"
-        : variant === "grid"
-          ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-          : "grid grid-cols-1 md:grid-cols-2 gap-4"
-
   return (
-    <section id={id} className="py-8">
-      <div className="container mx-auto px-4">
-        {title && <h2 className="mb-2 text-2xl font-bold">{title}</h2>}
-        {subtitle && <p className="mb-2 text-gray-600">{subtitle}</p>}
-        {description && <p className="mb-4">{description}</p>}
-        {categoryLabel && (
-          <span className="mb-4 inline-block rounded bg-gray-100 px-2 py-1 text-sm">
-            {categoryLabel}
-          </span>
-        )}
-        <div className={gridClass}>
-          {enrichedItems.map((item: EnrichedMediaItem, i: number) => (
-            <DefaultCard
-              key={item.id}
-              item={item}
-              index={i}
-              variant={variant}
-              showItemNumbers={showItemNumbers}
-            />
-          ))}
-        </div>
-        {ctaLink && (
-          <a
-            href={ctaLink}
-            className="mt-4 inline-block font-medium text-blue-600 hover:underline"
-          >
-            View all
-          </a>
-        )}
-      </div>
-    </section>
+    <WatchHomeMediaCollection
+      id={id}
+      categoryLabel={categoryLabel}
+      title={title}
+      subtitle={subtitle}
+      description={description}
+      ctaLink={explicitCtaLink ?? inferredCtaLink}
+      ctaLabel={ctaLabel}
+      footerText={footerText}
+      variant={variant}
+      thumbnailOrientation={thumbnailOrientation ?? null}
+      backgroundColor={normalizeTintColor(backgroundColor)}
+      showItemNumbers={showItemNumbers}
+      items={enrichedItems}
+      fallbackLanguageSlug={resolvedLanguageSlug}
+    />
   )
 }
 
@@ -161,223 +259,612 @@ function PlayIcon({ className }: { className?: string }) {
   )
 }
 
-function CarouselVariant({
+function WatchHomeMediaCollection({
   id,
+  categoryLabel,
   title,
   subtitle,
+  description,
   ctaLink,
   ctaLabel,
   footerText,
+  variant,
+  thumbnailOrientation,
+  backgroundColor,
+  showItemNumbers,
   items,
-  onBackgroundImageChange,
+  fallbackLanguageSlug,
 }: {
   id: string
+  categoryLabel: string | null
   title: string | null
   subtitle: string | null
+  description: string | null
   ctaLink: string | null
   ctaLabel: string | null
   footerText: string | null
+  variant: string | null
+  thumbnailOrientation: "vertical" | "horizontal" | null
+  backgroundColor: string | null
+  showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
-  onBackgroundImageChange?: (url: string | null) => void
+  fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
 }) {
-  const handleHover = (imageUrl: string | null) => {
-    onBackgroundImageChange?.(imageUrl)
+  const t = useTranslations("WatchHome")
+  const isRail = variant === "carousel"
+  const orientation =
+    thumbnailOrientation ??
+    (isRail || variant === "collection" ? "vertical" : "horizontal")
+  const isVertical = orientation === "vertical"
+  const usesMobileCarousel = !isRail && items.length > 1
+  const needsKeyboardScrollableCarousel =
+    usesMobileCarousel &&
+    items.some(
+      (item) => !item.videoSlug || tryAsContentSlug(item.videoSlug) == null,
+    )
+  const desktopGridColumns = isVertical
+    ? "md:grid-cols-4 xl:grid-cols-4"
+    : variant === "hero" || variant === "player"
+      ? "md:grid-cols-2"
+      : "md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+  const mobileCarouselLayout = isVertical
+    ? MOBILE_CAROUSEL_LAYOUT.vertical
+    : MOBILE_CAROUSEL_LAYOUT.horizontal
+  const staticGridColumns = isVertical
+    ? "grid-cols-2 gap-4"
+    : "grid-cols-1 gap-5"
+  const defaultBackgroundUrl =
+    items.map(mediaItemBackdropImageUrl).find((imageUrl) => imageUrl) ?? null
+  const latestHoveredBackgroundUrlRef = useRef<string | null>(null)
+  const hoverLayerIdRef = useRef(0)
+  const [isSectionActive, setIsSectionActive] = useState(false)
+  const [settledBackgroundUrl, setSettledBackgroundUrl] = useState<
+    string | null
+  >(defaultBackgroundUrl)
+  const [hoverBackdropLayers, setHoverBackdropLayers] = useState<
+    HoverBackdropLayer[]
+  >([])
+  const watchHref =
+    normalizeWatchRootHref(ctaLink) ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const sectionBackgroundColor =
+    backgroundColor ?? (isRail ? "#5b1537" : "#050505")
+  const tintStyle = tintOverlayStyle(backgroundColor, isRail)
+  const titleRowStart = categoryLabel ? "row-start-2" : "row-start-1"
+  const watchCta = (
+    <a
+      href={watchHref}
+      data-testid="media-collection-cta"
+      className={cn(
+        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+        title && `col-start-2 ${titleRowStart}`,
+      )}
+    >
+      <PlayIcon />
+      {ctaLabel ?? t("watch")}
+    </a>
+  )
+  const categoryEyebrow = categoryLabel ? (
+    <p className="text-xs font-semibold tracking-eyebrow text-red-100/60 uppercase xl:text-sm 2xl:text-base">
+      {categoryLabel}
+    </p>
+  ) : null
+  const supportingCopy = (
+    <>
+      {subtitle ? (
+        <p
+          data-testid="media-collection-supporting-title"
+          className={cn(
+            "w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
+            title && "pt-1",
+          )}
+        >
+          {subtitle}
+        </p>
+      ) : null}
+      {description ? (
+        <p
+          data-testid="media-collection-description"
+          className="w-full pt-2 text-sm leading-relaxed font-normal text-stone-200/80 xl:text-base"
+        >
+          {description}
+        </p>
+      ) : null}
+    </>
+  )
+
+  function updateHoverBackground(imageUrl: string | null) {
+    if (imageUrl) {
+      latestHoveredBackgroundUrlRef.current = imageUrl
+    }
+
+    setHoverBackdropLayers((layers) => {
+      let currentLayer: HoverBackdropLayer | null = null
+      for (let index = layers.length - 1; index >= 0; index -= 1) {
+        if (layers[index]?.state === "entering") {
+          currentLayer = layers[index]
+          break
+        }
+      }
+      if ((currentLayer?.imageUrl ?? null) === imageUrl) return layers
+
+      const exitingLayers = layers.map((layer) => ({
+        ...layer,
+        state: "exiting" as const,
+      }))
+
+      if (!imageUrl) return exitingLayers
+
+      hoverLayerIdRef.current += 1
+      return [
+        ...exitingLayers,
+        {
+          id: hoverLayerIdRef.current,
+          imageUrl,
+          state: "entering",
+        },
+      ]
+    })
   }
 
+  function settleLatestHoveredBackground() {
+    setSettledBackgroundUrl(
+      latestHoveredBackgroundUrlRef.current ?? defaultBackgroundUrl,
+    )
+  }
+
+  useEffect(() => {
+    if (hoverBackdropLayers.length === 0) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setSettledBackgroundUrl(
+        latestHoveredBackgroundUrlRef.current ?? defaultBackgroundUrl,
+      )
+      setHoverBackdropLayers([])
+    }, 1250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [defaultBackgroundUrl, hoverBackdropLayers])
+
   return (
-    <div id={id}>
-      <div className={`${CONTENT_WIDTH_CLASSES} relative z-2 pb-6`}>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-1">
-            {subtitle && (
-              <h4 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-                {subtitle}
-              </h4>
-            )}
-            {title && (
-              <h2 className="text-2xl font-bold text-white xl:text-3xl 2xl:text-4xl">
-                {title}
-              </h2>
-            )}
-          </div>
-          {ctaLink && (
-            <a href={ctaLink}>
-              <button
-                aria-label={ctaLabel ?? "Watch"}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-brand-red hover:text-white"
+    <section
+      id={id}
+      data-testid="media-collection-section"
+      onPointerEnter={() => setIsSectionActive(true)}
+      onPointerLeave={() => {
+        settleLatestHoveredBackground()
+        setIsSectionActive(false)
+        updateHoverBackground(null)
+      }}
+      onFocus={() => setIsSectionActive(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          settleLatestHoveredBackground()
+          setIsSectionActive(false)
+          updateHoverBackground(null)
+        }
+      }}
+      className={cn(
+        "scroll-mt-24 relative overflow-hidden text-white",
+        WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
+        !backgroundColor &&
+          (isRail
+            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.22),rgba(88,28,135,0.2),rgba(145,33,74,0.94))]"
+            : "bg-[#050505]"),
+      )}
+      style={{ backgroundColor: sectionBackgroundColor }}
+    >
+      {settledBackgroundUrl ? (
+        <div
+          data-testid="media-collection-default-backdrop"
+          className={cn(
+            "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat opacity-100 blur-2xl",
+            isRail
+              ? "brightness-80 saturate-125"
+              : "brightness-75 saturate-110",
+          )}
+          style={backgroundImageStyle(settledBackgroundUrl)}
+          aria-hidden
+        />
+      ) : null}
+      {hoverBackdropLayers.map((layer) => (
+        <div
+          key={`media-collection-hover-backdrop-${layer.id}`}
+          data-testid={
+            layer.state === "entering"
+              ? "media-collection-hover-backdrop"
+              : "media-collection-hover-backdrop-previous"
+          }
+          className={cn(
+            "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat blur-2xl",
+            layer.state === "entering"
+              ? "watch-home-section-backdrop-enter"
+              : "watch-home-section-backdrop-exit",
+            isRail
+              ? "brightness-80 saturate-125"
+              : "brightness-75 saturate-110",
+          )}
+          style={backdropLayerStyle(layer.imageUrl, "1")}
+          aria-hidden
+        />
+      ))}
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-0 z-[1] transition-opacity duration-500 ease-out",
+          isSectionActive ? "opacity-0" : "opacity-100",
+          !backgroundColor && isRail
+            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.38),rgba(88,28,135,0.34),rgba(145,33,74,0.88))] mix-blend-multiply"
+            : !backgroundColor
+              ? "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.42),rgba(190,24,93,0.34)_38%,rgba(12,10,9,0.9))]"
+              : "mix-blend-multiply",
+        )}
+        style={tintStyle}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-0 z-[1] bg-[url(/watch/images/overlay.svg)] bg-repeat mix-blend-multiply transition-opacity duration-500 ease-out",
+          isSectionActive ? "opacity-0" : isRail ? "opacity-85" : "opacity-65",
+        )}
+      />
+
+      <div className={cn("relative z-[3] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
+        <div className="flex flex-col gap-1">
+          {title ? (
+            <>
+              <div
+                data-testid="media-collection-title-row"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1"
               >
-                <PlayIcon />
-                <span>{ctaLabel ?? "Watch"}</span>
-              </button>
-            </a>
+                {categoryEyebrow}
+                <h2
+                  className={cn(
+                    "col-start-1 max-w-4xl text-2xl leading-tight font-bold tracking-normal text-white xl:text-3xl 2xl:text-4xl",
+                    titleRowStart,
+                  )}
+                >
+                  {title}
+                </h2>
+                {watchCta}
+              </div>
+              {supportingCopy}
+            </>
+          ) : (
+            <>
+              {categoryEyebrow}
+              <div
+                data-testid="media-collection-titleless-layout"
+                className="flex flex-col gap-6 lg:items-end"
+              >
+                <div
+                  data-testid="media-collection-titleless-supporting-copy"
+                  className="flex w-full flex-col gap-1"
+                >
+                  {supportingCopy}
+                </div>
+                {watchCta}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      <div className="relative">
-        <Carousel
-          opts={{
-            align: "start",
-            dragFree: true,
-            containScroll: "trimSnaps",
-            watchDrag: (api) => api.scrollSnapList().length > 1,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {items.map((item: EnrichedMediaItem) => (
-              <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
-                <VideoCard
-                  item={item}
-                  onHover={() => handleHover(item.imageUrl)}
-                />
+      {isRail ? (
+        <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
+          <Carousel
+            aria-label={title ?? t("mediaCollection")}
+            data-testid="media-collection-carousel"
+            opts={{
+              align: "start",
+              dragFree: true,
+              containScroll: "trimSnaps",
+              watchDrag: (api) => api.scrollSnapList().length > 1,
+            }}
+            className="w-full"
+          >
+            <CarouselContent
+              data-testid="media-collection-carousel-content"
+              className="-ml-5 pl-5 md:pl-16 xl:pl-24"
+            >
+              {items.map((item: EnrichedMediaItem, index: number) => (
+                <CarouselItem
+                  key={`${item.id}-${index}`}
+                  data-testid="media-collection-carousel-item"
+                  className={cn(
+                    "py-1 pl-5",
+                    isVertical ? "max-w-[200px]" : "max-w-[360px]",
+                  )}
+                >
+                  <VideoCard
+                    item={item}
+                    index={index}
+                    orientation={orientation}
+                    showItemNumbers={showItemNumbers}
+                    fallbackLanguageSlug={fallbackLanguageSlug}
+                    onHover={() =>
+                      updateHoverBackground(mediaItemBackdropImageUrl(item))
+                    }
+                  />
+                </CarouselItem>
+              ))}
+              <CarouselItem
+                aria-hidden="true"
+                tabIndex={-1}
+                data-testid="media-collection-carousel-end-spacer"
+                className="basis-auto pl-0"
+              >
+                <div className="w-5 md:w-16 xl:w-24" />
               </CarouselItem>
+            </CarouselContent>
+            <CarouselPrevious label={t("previousVideoPreview")} />
+            <CarouselNext label={t("nextVideoPreview")} />
+          </Carousel>
+        </div>
+      ) : (
+        <div
+          data-testid={
+            usesMobileCarousel ? "media-collection-mobile-carousel" : undefined
+          }
+          role={usesMobileCarousel ? "region" : undefined}
+          tabIndex={needsKeyboardScrollableCarousel ? 0 : undefined}
+          aria-label={
+            usesMobileCarousel ? (title ?? t("mediaCollection")) : undefined
+          }
+          className={cn(
+            "relative z-[3]",
+            usesMobileCarousel
+              ? `${CONTENT_WIDTH_ALIGN_CLASSES} snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 md:snap-none md:overflow-visible [&::-webkit-scrollbar]:hidden`
+              : WATCH_PAGE_CONTENT_CLASSES,
+          )}
+        >
+          <div
+            data-testid="media-collection-grid"
+            className={cn(
+              "grid",
+              usesMobileCarousel
+                ? "grid-flow-col px-5 pb-1 md:grid-flow-row md:auto-cols-auto md:px-16 xl:px-24"
+                : null,
+              usesMobileCarousel
+                ? mobileCarouselLayout.columns
+                : staticGridColumns,
+              desktopGridColumns,
+            )}
+          >
+            {items.map((item: EnrichedMediaItem, index: number) => (
+              <VideoCard
+                key={`${item.id}-${index}`}
+                item={item}
+                index={index}
+                orientation={orientation}
+                showItemNumbers={showItemNumbers}
+                fallbackLanguageSlug={fallbackLanguageSlug}
+                compactImageSizes={
+                  usesMobileCarousel
+                    ? mobileCarouselLayout.imageSizes
+                    : undefined
+                }
+                className={usesMobileCarousel ? "snap-start" : undefined}
+                onHover={() =>
+                  updateHoverBackground(mediaItemBackdropImageUrl(item))
+                }
+              />
             ))}
-            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
-              <div className={CAROUSEL_END_SPACER} />
-            </CarouselItem>
-          </CarouselContent>
-        </Carousel>
-      </div>
+          </div>
+        </div>
+      )}
 
-      {footerText && (
-        <div className={`${CONTENT_WIDTH_CLASSES} space-y-6`}>
-          <p className="mt-8 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+      {footerText ? (
+        <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
+          <p
+            data-testid="media-collection-footer"
+            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
+          >
             {footerText}
           </p>
         </div>
-      )}
-    </div>
+      ) : null}
+    </section>
   )
+}
+
+function mediaItemDisplayImageUrl(item: EnrichedMediaItem) {
+  return item.imageUrl
+}
+
+function mediaItemBackdropImageUrl(item: EnrichedMediaItem) {
+  return item.blurDataUrl ?? item.imageUrl
 }
 
 function VideoCard({
   item,
+  index,
+  orientation,
+  showItemNumbers,
+  fallbackLanguageSlug,
+  compactImageSizes,
+  className,
   onHover,
 }: {
   item: EnrichedMediaItem
+  index: number
+  orientation: "horizontal" | "vertical"
+  showItemNumbers: boolean | null
+  fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
+  compactImageSizes?: string
+  className?: string
   onHover?: () => void
 }) {
+  const t = useTranslations("WatchHome")
   // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
-  // manually. EnrichedMediaItem carries no language field, so the locale
-  // segment defaults to `english` (see DEFAULT_COLLECTION_LOCALE).
+  // manually. Prefer the resolved item dub language; fall back to the current
+  // page language for route-derived items or legacy payloads.
   const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
+  const itemLanguageSlug = tryAsLocaleSlug(item.languageSlug ?? "")
+  const cardLanguageSlug =
+    itemLanguageSlug ?? fallbackLanguageSlug ?? DEFAULT_COLLECTION_LOCALE
   const href = slug
-    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
+    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, cardLanguageSlug)}`
     : undefined
+  const isInteractive = Boolean(href)
   const Wrapper = href ? "a" : "div"
-  const imageSrc = resolveMediaImageUrl(item.imageUrl)
+  const imageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
+  const blurDataUrl = item.blurDataUrl ?? undefined
+  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
+  const isVertical = orientation === "vertical"
+  const compactOnMobile = compactImageSizes != null
+  const compactFrameSizeClasses = isVertical
+    ? "aspect-[2/3] min-h-0 md:min-h-[16rem]"
+    : "aspect-video min-h-0 md:min-h-[10rem]"
+  const defaultFrameSizeClasses = isVertical
+    ? "aspect-[2/3] min-h-[13rem] sm:min-h-[16rem]"
+    : "aspect-video min-h-[10rem]"
+  const frameSizeClasses = compactOnMobile
+    ? compactFrameSizeClasses
+    : defaultFrameSizeClasses
+  const defaultImageSizes = isVertical
+    ? "(max-width: 768px) 46vw, 220px"
+    : "(max-width: 768px) 100vw, 360px"
+  const responsiveImageSizes = compactImageSizes ?? defaultImageSizes
+  const [isMuxPreviewLoaded, setIsMuxPreviewLoaded] = useState(false)
+  const accessibleTitle =
+    item.title || [item.label, item.videoSlug].filter(Boolean).join(" ")
 
   return (
     <Wrapper
       href={href}
-      className={`block text-inherit no-underline ${
-        href ? "pointer-events-auto cursor-pointer" : "pointer-events-none"
-      }`}
-      aria-label="VideoCard"
+      className={cn(
+        "relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        isInteractive
+          ? "group cursor-pointer hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]"
+          : "cursor-default",
+        isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+        className,
+      )}
+      aria-label={
+        isInteractive ? t("showVideo", { title: accessibleTitle }) : undefined
+      }
+      data-testid="VideoCard"
+      onPointerEnter={isInteractive ? onHover : undefined}
+      onFocus={isInteractive ? onHover : undefined}
     >
-      <div className="flex flex-col gap-6">
-        <button
-          type="button"
-          className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-lg transition-transform duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] disabled:cursor-default"
-          onMouseEnter={onHover}
-        >
-          <div className="absolute inset-0 overflow-hidden rounded-lg bg-black/50 transition-transform duration-300">
-            {imageSrc ? (
-              <Image
-                src={imageSrc}
-                alt={item.title}
-                fill
-                unoptimized
-                sizes="(max-width: 768px) 50vw, 200px"
-                className="transition-transform duration-300 group-hover:scale-105"
-                style={{
-                  // `center` keeps the subject in frame regardless of the
-                  // source image's aspect ratio. Portrait poster artwork
-                  // (the original cms data) stays centered; landscape
-                  // `mobileCinematicHigh` variants (post-data-layer-flip,
-                  // when admin only carries banner-aspect rows) show the
-                  // middle of the scene instead of the left edge.
-                  objectFit: "cover",
-                  objectPosition: "center",
-                  color: "transparent",
-                  maskImage:
-                    "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",
-                  WebkitMaskImage:
-                    "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",
-                }}
-              />
-            ) : (
-              <div className="absolute inset-0 rounded-lg bg-stone-800" />
-            )}
-          </div>
-
-          <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0px_0px_0px_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 hover:opacity-50" />
-
-          {item.collectionSize && (
-            <div className="absolute top-2 right-2 z-10 flex shrink-0 flex-row items-center gap-1 rounded bg-black/30 px-2 py-1 text-white">
-              <span className="text-sm font-semibold">
-                {item.collectionSize}
-              </span>
-            </div>
-          )}
-
-          <div className="absolute inset-0 flex flex-col justify-end gap-0 p-4">
-            {item.label && (
-              <div className="flex min-w-0 flex-row items-end justify-between gap-[90px]">
-                <div className="truncate text-xs font-semibold leading-8 tracking-wider text-stone-300/70 uppercase mix-blend-screen">
-                  {formatLabel(item.label)}
-                </div>
-              </div>
-            )}
-            <h3 className="-mt-1 text-left text-xl font-bold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
-              {item.title}
-            </h3>
-          </div>
-        </button>
-      </div>
-    </Wrapper>
-  )
-}
-
-function DefaultCard({
-  item,
-  index,
-  variant,
-  showItemNumbers,
-}: {
-  item: EnrichedMediaItem
-  index: number
-  variant: string | null
-  showItemNumbers: boolean | null
-}) {
-  return (
-    <article className="rounded-lg border bg-white p-4 shadow-sm">
-      {resolveMediaImageUrl(item.imageUrl) && (
-        <div className="relative mb-2 aspect-video w-full overflow-hidden rounded">
+      <div
+        className={cn(
+          "relative w-full overflow-hidden rounded-lg bg-black/50",
+          frameSizeClasses,
+        )}
+      >
+        {imageSrc ? (
           <Image
-            src={resolveMediaImageUrl(item.imageUrl) ?? ""}
+            src={imageSrc}
             alt={item.title}
             fill
-            className="object-cover"
-            sizes={
-              variant === "hero"
-                ? "100vw"
-                : variant === "player"
-                  ? "(max-width: 768px) 100vw, 33vw"
-                  : "(max-width: 768px) 100vw, 25vw"
+            sizes={responsiveImageSizes}
+            placeholder={blurDataUrl ? "blur" : "empty"}
+            blurDataURL={blurDataUrl}
+            className="poster-hover-zoom object-cover"
+            style={
+              isVertical || item.dominantColor
+                ? { objectPosition: isVertical ? "center" : "left top" }
+                : {
+                    objectPosition: "left top",
+                    maskImage:
+                      "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
+                    WebkitMaskImage:
+                      "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
+                  }
             }
           />
-        </div>
-      )}
-      <h3 className="font-semibold">{item.title}</h3>
-      {item.subtitle && (
-        <p className="text-sm text-gray-600">{item.subtitle}</p>
-      )}
-      {showItemNumbers && (
-        <span className="text-xs text-gray-400">{index + 1}</span>
-      )}
-    </article>
+        ) : (
+          <div
+            aria-hidden
+            className="h-full w-full bg-[linear-gradient(135deg,#111827,#4c1d1d_52%,#064e3b)]"
+          />
+        )}
+        <MuxHoverPreview
+          previewUrl={muxPreviewUrl}
+          sizes={responsiveImageSizes}
+          imageClassName={isVertical ? undefined : "object-left-top"}
+          onPreviewLoadedChange={setIsMuxPreviewLoaded}
+        />
+        <div
+          aria-hidden
+          data-testid="media-collection-card-text-scrim"
+          className={cn(
+            "pointer-events-none absolute z-20 rounded-lg opacity-100 transition-opacity duration-300 ease-out",
+            isMuxPreviewLoaded &&
+              "group-hover:opacity-65 group-focus-visible:opacity-65 group-focus-within:opacity-65",
+            isVertical ? "inset-x-0 bottom-0 h-[40%]" : "inset-0",
+          )}
+          style={textScrimStyle(item, orientation)}
+        />
+        {showItemNumbers ? (
+          <span
+            className={cn(
+              "absolute top-2 left-2 z-10 leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]",
+              compactOnMobile ? "text-3xl md:text-5xl" : "text-5xl",
+            )}
+          >
+            {index + 1}
+          </span>
+        ) : null}
+        <WatchProgressBar videoId={item.id} />
+        {item.collectionSize ? (
+          <div
+            className={cn(
+              "absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 font-semibold text-white backdrop-blur-sm",
+              compactOnMobile
+                ? "px-1.5 py-0.5 text-xs md:px-2 md:py-1 md:text-sm"
+                : "px-2 py-1 text-sm",
+            )}
+          >
+            {item.collectionSize}
+          </div>
+        ) : null}
+        <div
+          aria-hidden
+          data-testid="media-collection-card-bevel"
+          className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
+        />
+        {isInteractive ? (
+          <VideoThumbnailInteractionFrame
+            data-testid="media-collection-card-hover-outline"
+            className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          />
+        ) : null}
+        <VideoThumbnailCaption
+          inset={compactOnMobile ? "compact" : "default"}
+          className={cn(
+            "z-30",
+            compactOnMobile
+              ? "px-2.5 pt-2.5 pb-3 md:px-4 md:pt-10 md:pb-4"
+              : null,
+          )}
+        >
+          {item.label ? (
+            <VideoThumbnailEyebrow
+              as="div"
+              size={compactOnMobile ? "compact-sm" : "regular"}
+            >
+              {formatLabel(item.label)}
+            </VideoThumbnailEyebrow>
+          ) : null}
+          {item.title ? (
+            <VideoThumbnailTitle
+              size={
+                compactOnMobile
+                  ? "compact-sm"
+                  : isVertical
+                    ? "large"
+                    : "prominent"
+              }
+              className={compactOnMobile ? "md:text-xl" : undefined}
+            >
+              {item.title}
+            </VideoThumbnailTitle>
+          ) : null}
+        </VideoThumbnailCaption>
+      </div>
+    </Wrapper>
   )
 }
 

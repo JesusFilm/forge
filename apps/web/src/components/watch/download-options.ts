@@ -1,5 +1,6 @@
 export type WatchDownloadOption = {
   documentId: string
+  height?: number | null
   quality: string
   size: number | null
 }
@@ -12,20 +13,36 @@ export type DownloadTierOption = {
   download: WatchDownloadOption
 }
 
+export type DownloadResolutionLabel = "4K" | "2K" | "FHD" | "HD" | "SD"
+
 // Quality keys the CMS emits, ordered highest-fidelity first. Size still wins
 // when available because some rows have stale quality labels for the asset.
-const QUALITY_PRIORITY = [
-  "uhd",
-  "qhd",
-  "fhd",
-  "highest",
-  "high",
-  "distroHigh",
-  "sd",
-  "distroSd",
-  "low",
-  "distroLow",
-] as const
+const QUALITY_METADATA: {
+  quality: string
+  resolution: DownloadResolutionLabel
+}[] = [
+  { quality: "uhd", resolution: "4K" },
+  { quality: "qhd", resolution: "2K" },
+  { quality: "fhd", resolution: "FHD" },
+  { quality: "highest", resolution: "FHD" },
+  { quality: "high", resolution: "HD" },
+  { quality: "distroHigh", resolution: "HD" },
+  { quality: "sd", resolution: "SD" },
+  { quality: "distroSd", resolution: "SD" },
+  { quality: "low", resolution: "SD" },
+  { quality: "distroLow", resolution: "SD" },
+]
+
+const QUALITY_PRIORITY = QUALITY_METADATA.map(({ quality }) => quality)
+const RESOLUTION_BY_QUALITY = new Map(
+  QUALITY_METADATA.map(({ quality, resolution }) => [quality, resolution]),
+)
+
+export function downloadQualityResolutionLabel(
+  quality: string | null | undefined,
+): DownloadResolutionLabel | null {
+  return quality == null ? null : (RESOLUTION_BY_QUALITY.get(quality) ?? null)
+}
 
 export function sortDownloadsByQuality(
   downloads: WatchDownloadOption[],
@@ -76,12 +93,4 @@ export function selectDefaultDownloadTier(
   downloads: WatchDownloadOption[],
 ): DownloadTierOption | null {
   return bucketDownloads(downloads)[0] ?? null
-}
-
-export function formatDownloadSize(bytes: number | null | undefined): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ""
-  const mb = bytes / 1024 / 1024
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
-  if (mb >= 100) return `${mb.toFixed(0)} MB`
-  return `${mb.toFixed(2)} MB`
 }

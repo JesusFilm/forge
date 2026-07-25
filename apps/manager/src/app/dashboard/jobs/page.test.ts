@@ -118,4 +118,40 @@ describe("dashboard jobs page", () => {
       languageLabelsById: { 529: "English" },
     })
   })
+
+  it("passes Shorts jobs from the admin gateway to the jobs table", async () => {
+    const shortsJob = makeJobRecord({
+      id: "job-shorts",
+      languages: [],
+      options: {
+        shorts: {
+          assetId: "asset-1-short-1234abcd",
+          sourceMuxAssetId: "asset-1",
+          sourcePlaybackId: "playback-1",
+          clip: { startSec: 10, endSec: 40 },
+          language: { bcp47: "en", whisper: "en" },
+        },
+      },
+      currentStep: "shorts_prepare",
+      steps: [{ name: "shorts_prepare", status: "running", retries: 0 }],
+    })
+
+    getCmsGatewayMock.mockReturnValue({
+      mode: "admin",
+      getLanguageGeo: vi.fn(async () => ({
+        continents: [],
+        countries: [],
+        languages: [],
+      })),
+    })
+    listJobsMock.mockResolvedValue([shortsJob])
+
+    const element = await JobsPage()
+    const table = element.props.children
+
+    expect(table.props).toMatchObject({
+      initialJobs: [shortsJob],
+      languageLabelsById: {},
+    })
+  })
 })

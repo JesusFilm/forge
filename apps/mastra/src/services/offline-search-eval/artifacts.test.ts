@@ -33,6 +33,7 @@ function baseline(): BaselineArtifact {
       startedAt: "2026-05-27T00:00:00.000Z",
       finishedAt: "2026-05-27T00:00:01.000Z",
       baselineName: "default",
+      callerTrack: "public-watch",
       promptSetVersion: "seed/v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
       judgeModel: null,
@@ -44,6 +45,7 @@ function baseline(): BaselineArtifact {
         locale: "en",
         queryText: "Jesus",
         source: "seed",
+        callerTrack: "public-watch",
         tags: ["core"],
         results: [],
       },
@@ -93,7 +95,7 @@ describe("search eval artifact store", () => {
       mastraEvaluation: {
         integrationStatus: "native_synced",
         dataset: {
-          name: "search-eval:local:default",
+          name: "search-eval:local:default:public-watch:hybrid",
           datasetId: "dataset-1",
           source: "seed_prompt_set",
           version: "seed/v1",
@@ -101,7 +103,8 @@ describe("search eval artifact store", () => {
           targetType: "workflow",
           targetId: "offline-search-eval",
           environmentLabel: "local",
-          nativeKey: "search-eval:local:default:seed/v1",
+          nativeKey:
+            "search-eval:local:default:seed/v1:track:public-watch:mode:hybrid",
           status: "created",
         },
         scorers: [
@@ -113,14 +116,15 @@ describe("search eval artifact store", () => {
           },
         ],
         experiment: {
-          name: "search-eval-compare:local:default:run-1",
+          name: "search-eval-compare:local:default:public-watch:hybrid:run-1",
           experimentId: "experiment-1",
           status: "created",
           mode: "comparison",
           reportId: "run-1",
           baselineName: "default",
           environmentLabel: "local",
-          nativeKey: "search-eval:local:default:seed/v1:report:run-1",
+          nativeKey:
+            "search-eval:local:default:seed/v1:track:public-watch:mode:hybrid:report:run-1",
         },
       },
     }

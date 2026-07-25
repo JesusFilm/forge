@@ -5,6 +5,7 @@
 import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived, hasPermission } from "@/auth/permissions"
+import { getAdminBaseURL } from "@/auth/origins"
 import { ForbiddenError } from "./errors"
 import {
   CreateMediaAssetInput,
@@ -336,17 +337,19 @@ export class MediaAssetService {
   }: {
     mediaAssetId: string
     user: Principal | null
-    data: Pick<
-      Prisma.MediaAssetUpdateInput,
-      | "blurDataUrl"
-      | "dominantColor"
-      | "width"
-      | "height"
-      | "imageEnrichmentStatus"
-      | "imageEnrichmentErrorCode"
-      | "imageEnrichmentErrorMessage"
-      | "imageEnrichmentStartedAt"
-      | "imageEnrichmentCompletedAt"
+    data: Partial<
+      Pick<
+        Prisma.MediaAssetUpdateInput,
+        | "blurDataUrl"
+        | "dominantColor"
+        | "width"
+        | "height"
+        | "imageEnrichmentStatus"
+        | "imageEnrichmentErrorCode"
+        | "imageEnrichmentErrorMessage"
+        | "imageEnrichmentStartedAt"
+        | "imageEnrichmentCompletedAt"
+      >
     >
   }) {
     if (!canWriteDerived(user)) {
@@ -445,6 +448,35 @@ export function mediaAssetDownloadUrl(asset: {
     return null
   }
   return asset.objectKey ? `/api/media-assets/${asset.id}/download` : null
+}
+
+export function publicMediaAssetPreviewUrl(
+  asset: {
+    id: string
+    backend: string
+    status: string
+    visibility: string
+    objectKey: string | null
+    previewObjectKey: string | null
+    muxPlaybackId: string | null
+  },
+  baseUrl = getAdminBaseURL(),
+) {
+  if (asset.status !== "READY" || asset.visibility !== "PUBLIC") {
+    return null
+  }
+  if (asset.muxPlaybackId) {
+    return `https://image.mux.com/${asset.muxPlaybackId}/thumbnail.jpg`
+  }
+  if (
+    asset.backend === "MUX" ||
+    (!asset.previewObjectKey && !asset.objectKey)
+  ) {
+    return null
+  }
+
+  const origin = new URL(baseUrl).origin
+  return `${origin}/api/public/media-assets/${encodeURIComponent(asset.id)}/preview`
 }
 
 function validateMimeKind(kind: MediaAssetKind, mimeType: string) {

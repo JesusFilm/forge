@@ -19,6 +19,14 @@ const {
 
 vi.mock("@/lib/auth", () => ({
   authenticateManagerOverrideRequest: authenticateOverrideMock,
+  managerActorIdentity: (actor: {
+    kind: string
+    user?: { email: string }
+    approvedByUserId: string
+  }) =>
+    actor.kind === "session"
+      ? actor.user?.email || actor.approvedByUserId
+      : actor.approvedByUserId,
 }))
 
 vi.mock("@/lib/state", () => ({
@@ -33,6 +41,8 @@ vi.mock("@/services/storage", () => ({
 }))
 
 const { POST } = await import("@/app/api/smart-crop/jobs/[id]/approve/route")
+const { buildSmartCropAttemptsArtifact, buildSmartCropAttemptSummary } =
+  await import("@/services/smartCrop")
 
 const PLAN_ARTIFACT = {
   version: 1,
@@ -95,6 +105,27 @@ function postRequest(body: unknown): Request {
   })
 }
 
+function buildAttemptsArtifact(status = "complete") {
+  return buildSmartCropAttemptsArtifact({
+    assetId: "asset123",
+    selectedAttemptIndex: 1,
+    attempts: [
+      buildSmartCropAttemptSummary({
+        attemptIndex: 1,
+        status: status as Parameters<
+          typeof buildSmartCropAttemptSummary
+        >[0]["status"],
+        source: "repair",
+        repairedFromAttemptIndex: 0,
+        createdAt: "2026-06-09T00:01:00.000Z",
+        updatedAt: "2026-06-09T00:02:00.000Z",
+        qa: { verdict: "pass", issueCount: 0, repairTriggerCount: 0 },
+      }),
+    ],
+    updatedAt: "2026-06-09T00:02:00.000Z",
+  })
+}
+
 const routeParams = { params: Promise.resolve({ id: "job-1" }) }
 
 beforeEach(() => {
@@ -118,7 +149,10 @@ beforeEach(() => {
   })
   getJobMock.mockResolvedValue(buildSmartCropJob())
   mergeJobArtifactsMock.mockResolvedValue(buildSmartCropJob())
-  artifactExistsMock.mockResolvedValue(true)
+  artifactExistsMock.mockImplementation(
+    async (_assetId: string, artifactType: string) =>
+      artifactType !== "smart-crop-attempts-9x16-v1",
+  )
   readArtifactMock.mockResolvedValue(
     new TextEncoder().encode(JSON.stringify(PLAN_ARTIFACT)),
   )
@@ -222,6 +256,87 @@ describe("POST /api/smart-crop/jobs/[id]/approve", () => {
     await expect(response.json()).resolves.toMatchObject({
       qa: { approvedBy: "service:manager-api-key" },
     })
+  })
+
+  it("approves the selected repaired attempt and copies it to the canonical plan", async () => {
+    const attempts = buildAttemptsArtifact()
+    artifactExistsMock.mockResolvedValue(true)
+    readArtifactMock
+      .mockResolvedValueOnce(new TextEncoder().encode(JSON.stringify(attempts)))
+      .mockResolvedValue(
+        new TextEncoder().encode(JSON.stringify(PLAN_ARTIFACT)),
+      )
+
+    const response = await POST(
+      postRequest({
+        action: "approve",
+        attemptIndex: 1,
+        manifestDigest: attempts.manifestDigest,
+      }),
+      routeParams,
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      attemptIndex: 1,
+    })
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        artifactType: "smart-crop-plan-9x16-v1",
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        artifactType: "smart-crop-attempts-9x16-v1",
+      }),
+    )
+  })
+
+  it("requires an explicit selected attempt when an attempt manifest exists", async () => {
+    const attempts = buildAttemptsArtifact()
+    artifactExistsMock.mockResolvedValue(true)
+    readArtifactMock.mockResolvedValueOnce(
+      new TextEncoder().encode(JSON.stringify(attempts)),
+    )
+
+    const response = await POST(postRequest({ action: "approve" }), routeParams)
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Smart Crop attempt selection is required; refresh and try again",
+    })
+    expect(writeArtifactMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects selected attempts that are not ready for review", async () => {
+    const attempts = buildAttemptsArtifact("planned")
+    artifactExistsMock.mockResolvedValue(true)
+    readArtifactMock.mockResolvedValueOnce(
+      new TextEncoder().encode(JSON.stringify(attempts)),
+    )
+
+    const response = await POST(
+      postRequest({
+        action: "approve",
+        attemptIndex: 1,
+        manifestDigest: attempts.manifestDigest,
+      }),
+      routeParams,
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Selected Smart Crop attempt is not ready for review",
+    })
+    expect(writeArtifactMock).not.toHaveBeenCalled()
   })
 
   it("propagates the authenticator's error response", async () => {

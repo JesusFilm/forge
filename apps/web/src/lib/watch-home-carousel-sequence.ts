@@ -1,4 +1,8 @@
-import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
+import type {
+  WatchHomeMuxInsertAction,
+  WatchHomeMuxInsertConfig,
+  WatchHomeMuxInsertCopyId,
+} from "@/lib/watch-home-config"
 
 export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
 export const WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY = "carousel-played-ids"
@@ -19,6 +23,8 @@ export type WatchHomeTvCarouselVideoSlide = {
   imageAlt: string
   src: string | null
   playbackId: string | null
+  subtitleVttSrc?: string | null
+  subtitleLanguageBcp47?: string | null
   durationSeconds: number | null
   poolId?: string
   poolIndex?: number
@@ -27,19 +33,18 @@ export type WatchHomeTvCarouselVideoSlide = {
 export type WatchHomeTvCarouselMuxSlide = {
   kind: "mux"
   id: string
-  title: string
-  description: string | null
-  label: string
+  copyId: WatchHomeMuxInsertCopyId
   href: string | null
-  action: { label: string; url: string } | null
+  action: WatchHomeMuxInsertAction | null
+  secondaryAction: { type: "watch-short-film" } | null
   posterUrl: string | null
   thumbnailUrl: string | null
-  imageAlt: string
   src: string | null
   playbackId: string | null
   durationSeconds: number | null
   logo: boolean
   playbackIndex: number
+  titleDate: string | null
 }
 
 export type WatchHomeTvCarouselSlide =
@@ -77,6 +82,7 @@ type QueueBuildInput = {
   startPoolIndex?: number
   targetVideoCount: number
   now?: Date
+  useStoredProgress?: boolean
 }
 
 function simpleHash(value: string): number {
@@ -340,6 +346,7 @@ export function buildWatchHomeVideoQueue({
   pools,
   startPoolIndex = 0,
   targetVideoCount,
+  useStoredProgress = true,
 }: QueueBuildInput): {
   videos: WatchHomeTvCarouselVideoSlide[]
   nextPoolIndex: number
@@ -354,7 +361,9 @@ export function buildWatchHomeVideoQueue({
 
   const videos = [...existingVideos]
   const seen = new Set(videos.map((video) => video.id))
-  const persistentPlayed = new Set(playedIds ?? readWatchHomeTvPlayedIds(now))
+  const persistentPlayed = new Set(
+    playedIds ?? (useStoredProgress ? readWatchHomeTvPlayedIds(now) : []),
+  )
   let poolIndex = Math.max(0, startPoolIndex)
   let attempts = 0
   const maxAttempts = Math.max(pools.length * 4, targetVideoCount * 6)
@@ -363,12 +372,18 @@ export function buildWatchHomeVideoQueue({
     const pool = pools[poolIndex % pools.length]
     attempts += 1
 
-    if (!pool || isWatchHomePoolExhausted(pool.id, pool.videos.length)) {
+    if (
+      !pool ||
+      (useStoredProgress &&
+        isWatchHomePoolExhausted(pool.id, pool.videos.length))
+    ) {
       poolIndex += 1
       continue
     }
 
-    const poolPlayed = new Set(readWatchHomePoolPlayedIds(pool.id))
+    const poolPlayed = new Set(
+      useStoredProgress ? readWatchHomePoolPlayedIds(pool.id) : [],
+    )
     const candidates = pool.videos.filter(
       (video) =>
         Boolean(video.src) &&
@@ -378,7 +393,9 @@ export function buildWatchHomeVideoQueue({
     )
 
     if (candidates.length === 0) {
-      markWatchHomePoolFailure(pool.id, pool.videos.length)
+      if (useStoredProgress) {
+        markWatchHomePoolFailure(pool.id, pool.videos.length)
+      }
       poolIndex += 1
       continue
     }
@@ -397,7 +414,9 @@ export function buildWatchHomeVideoQueue({
       }
       videos.push(video)
       seen.add(video.id)
-      resetWatchHomePoolFailures(pool.id)
+      if (useStoredProgress) {
+        resetWatchHomePoolFailures(pool.id)
+      }
     }
 
     poolIndex += 1
@@ -412,14 +431,6 @@ function muxStreamUrl(playbackId: string) {
 
 function muxPosterUrl(playbackId: string, width = 1280) {
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
-}
-
-function datePrefix(now: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "America/New_York",
-  }).format(now)
 }
 
 function timeRangeMatches(start: number, end: number, hour: number) {
@@ -453,19 +464,13 @@ function overlayForInsert(insert: WatchHomeMuxInsertConfig, now: Date) {
 
   if (!selected) {
     return {
-      label: insert.label,
-      title: insert.title,
-      collectionTitle: insert.collectionTitle,
-      description: insert.description,
+      copyId: insert.copyId,
       action: insert.action,
     }
   }
 
   return {
-    label: selected.overlay.label,
-    title: selected.overlay.title,
-    collectionTitle: selected.overlay.collectionTitle,
-    description: selected.overlay.description,
+    copyId: selected.copyId,
     action: selected.overlay.action ?? insert.action,
   }
 }
@@ -516,57 +521,65 @@ function getMuxSessionSeed(): string | undefined {
   }
 }
 
-function selectMuxPlaybackId(insert: WatchHomeMuxInsertConfig): {
+function selectMuxPlaybackId(
+  insert: WatchHomeMuxInsertConfig,
+  options: { useStoredSelections?: boolean } = {},
+): {
   playbackId: string | null
   playbackIndex: number
 } {
   const playbackIds = insert.playbackIds.filter(Boolean)
   if (playbackIds.length === 0) return { playbackId: null, playbackIndex: -1 }
 
-  const stored = readMuxSelections()[insert.id]
+  const useStoredSelections = options.useStoredSelections ?? true
+  const stored = useStoredSelections ? readMuxSelections()[insert.id] : null
   if (stored && playbackIds.includes(stored)) {
     return { playbackId: stored, playbackIndex: playbackIds.indexOf(stored) }
   }
 
-  const seed = getMuxSessionSeed()
+  const seed = useStoredSelections ? getMuxSessionSeed() : undefined
   const index =
     simpleHash(`${seed ?? "watch-home"}:${insert.id}`) % playbackIds.length
   const playbackId = playbackIds[index]
   if (!playbackId) return { playbackId: null, playbackIndex: -1 }
 
-  writeMuxSelection(insert.id, playbackId)
+  if (useStoredSelections) {
+    writeMuxSelection(insert.id, playbackId)
+  }
   return { playbackId, playbackIndex: index }
 }
 
 function muxInsertToSlide(
   insert: WatchHomeMuxInsertConfig,
-  options: { now: Date; prefixTitleWithDate?: boolean },
+  options: {
+    now: Date
+    prefixTitleWithDate?: boolean
+    useStoredSelections?: boolean
+  },
 ): WatchHomeTvCarouselMuxSlide | null {
-  const { playbackId, playbackIndex } = selectMuxPlaybackId(insert)
+  const { playbackId, playbackIndex } = selectMuxPlaybackId(insert, {
+    useStoredSelections: options.useStoredSelections,
+  })
   if (!playbackId) return null
 
   const overlay = overlayForInsert(insert, options.now)
-  const title = options.prefixTitleWithDate
-    ? `${datePrefix(options.now)}: ${overlay.title}`
-    : overlay.title
   const posterUrl = insert.posterOverride ?? muxPosterUrl(playbackId)
 
   return {
     kind: "mux",
     id: `mux-${insert.id}`,
-    title,
-    description: overlay.description,
-    label: overlay.label,
+    copyId: overlay.copyId,
     href: null,
     action: overlay.action,
+    secondaryAction: overlay.action ? { type: "watch-short-film" } : null,
     posterUrl,
     thumbnailUrl: muxPosterUrl(playbackId, 640),
-    imageAlt: title,
     src: muxStreamUrl(playbackId),
     playbackId,
     durationSeconds: insert.durationSeconds,
     logo: insert.logo,
     playbackIndex,
+    titleDate: options.prefixTitleWithDate ? options.now.toISOString() : null,
   }
 }
 
@@ -574,6 +587,7 @@ export function mergeWatchHomeMuxInserts(
   videos: readonly WatchHomeTvCarouselVideoSlide[],
   inserts: readonly WatchHomeMuxInsertConfig[],
   now = new Date(),
+  options: { useStoredSelections?: boolean } = {},
 ): WatchHomeTvCarouselSlide[] {
   const enabled = inserts.filter((insert) => insert.enabled)
   if (enabled.length === 0) return [...videos]
@@ -596,6 +610,7 @@ export function mergeWatchHomeMuxInserts(
     const slide = muxInsertToSlide(insert, {
       now,
       prefixTitleWithDate: insert.id === firstStartId,
+      useStoredSelections: options.useStoredSelections,
     })
     if (slide) {
       slides.push(slide)
@@ -609,7 +624,10 @@ export function mergeWatchHomeMuxInserts(
     for (const insert of afterCount) {
       if (inserted.has(insert.id)) continue
       if (index + 1 < insert.trigger.count) continue
-      const slide = muxInsertToSlide(insert, { now })
+      const slide = muxInsertToSlide(insert, {
+        now,
+        useStoredSelections: options.useStoredSelections,
+      })
       if (slide) {
         slides.push(slide)
         inserted.add(insert.id)

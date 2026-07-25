@@ -8,11 +8,11 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
-  resolveWatchVideoBySlugMock,
-  resolveSeriesBySlugMock,
+  resolveWatchRouteBySlugMock,
   resolveSeriesEpisodeBySlugMock,
   resolveWatchExperiencePageMock,
   resolveWatchPageMock,
@@ -21,19 +21,17 @@ const {
   redirectMock,
   seriesPageClientMock,
   watchPageClientMock,
-  watchHomePageMock,
+  watchHomeExperiencePageMock,
   watchQuestionPanelMock,
   experienceEmptyMock,
   experienceErrorMock,
   isWatchCtaTextCopyEnabledMock,
-  isWatchYouVersionBibleQuotesEnabledMock,
   isWatchHideBibleQuotesEnabledMock,
-  fetchYouVersionBibleQuotePassagesMock,
   isWatchQuestionPanelEnabledMock,
   getInitialSubtitleTranscriptMock,
+  getWatchRouteManifestMock,
 } = vi.hoisted(() => ({
-  resolveWatchVideoBySlugMock: vi.fn(),
-  resolveSeriesBySlugMock: vi.fn(),
+  resolveWatchRouteBySlugMock: vi.fn(),
   resolveSeriesEpisodeBySlugMock: vi.fn(),
   resolveWatchExperiencePageMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
@@ -48,17 +46,18 @@ const {
     (_props: { series: unknown; selectedVariant: unknown; locale: string }) =>
       null,
   ),
-  watchPageClientMock: vi.fn((_props: unknown) => null),
-  watchHomePageMock: vi.fn((_props: unknown) => null),
+  watchPageClientMock: vi.fn((_props: unknown) => (
+    <div data-testid="watch-page-client-mock" />
+  )),
+  watchHomeExperiencePageMock: vi.fn((_props: unknown) => null),
   watchQuestionPanelMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
   isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
-  isWatchYouVersionBibleQuotesEnabledMock: vi.fn(async () => false),
   isWatchHideBibleQuotesEnabledMock: vi.fn(async () => false),
-  fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
-  getInitialSubtitleTranscriptMock: vi.fn(async () => null),
+  getInitialSubtitleTranscriptMock: vi.fn(),
+  getWatchRouteManifestMock: vi.fn(),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -70,8 +69,7 @@ vi.mock("@/lib/content", async () => {
     await vi.importActual<typeof import("@/lib/content")>("@/lib/content")
   return {
     ...actual,
-    resolveWatchVideoBySlug: resolveWatchVideoBySlugMock,
-    resolveSeriesBySlug: resolveSeriesBySlugMock,
+    resolveWatchRouteBySlug: resolveWatchRouteBySlugMock,
     resolveSeriesEpisodeBySlug: resolveSeriesEpisodeBySlugMock,
     resolveWatchExperiencePage: resolveWatchExperiencePageMock,
     resolveWatchPage: resolveWatchPageMock,
@@ -80,10 +78,6 @@ vi.mock("@/lib/content", async () => {
 
 vi.mock("@/lib/watch-home", () => ({
   resolveWatchHome: resolveWatchHomeMock,
-}))
-
-vi.mock("@/lib/watch-transcript", () => ({
-  getInitialSubtitleTranscript: getInitialSubtitleTranscriptMock,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -99,8 +93,8 @@ vi.mock("@/components/watch/WatchPageClient", () => ({
   WatchPageClient: watchPageClientMock,
 }))
 
-vi.mock("@/components/home/WatchHomePage", () => ({
-  WatchHomePage: watchHomePageMock,
+vi.mock("@/components/home/WatchHomeExperiencePage", () => ({
+  WatchHomeExperiencePage: watchHomeExperiencePageMock,
 }))
 
 vi.mock("@/components/watch/WatchQuestionPanel", () => ({
@@ -121,14 +115,23 @@ vi.mock("@/components/sections", () => ({
 
 vi.mock("@/lib/feature-flags", () => ({
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
-  isWatchYouVersionBibleQuotesEnabled: isWatchYouVersionBibleQuotesEnabledMock,
   isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
 }))
 
-vi.mock("@/lib/youversion-passage", () => ({
-  fetchYouVersionBibleQuotePassages: fetchYouVersionBibleQuotePassagesMock,
+vi.mock("@/lib/watch-transcript", () => ({
+  getInitialSubtitleTranscript: getInitialSubtitleTranscriptMock,
 }))
+
+vi.mock("@/lib/watch-route-manifest", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/watch-route-manifest")
+  >("@/lib/watch-route-manifest")
+  return {
+    ...actual,
+    getWatchRouteManifest: getWatchRouteManifestMock,
+  }
+})
 
 import SlugRestPage, {
   generateMetadata,
@@ -140,8 +143,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
-  resolveWatchVideoBySlugMock.mockReset()
-  resolveSeriesBySlugMock.mockReset()
+  resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
   resolveWatchPageMock.mockReset()
@@ -168,22 +170,20 @@ beforeEach(() => {
   })
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
-  watchHomePageMock.mockClear()
+  watchHomeExperiencePageMock.mockClear()
   watchQuestionPanelMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
   isWatchCtaTextCopyEnabledMock.mockReset()
   isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
-  isWatchYouVersionBibleQuotesEnabledMock.mockReset()
-  isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(false)
   isWatchHideBibleQuotesEnabledMock.mockReset()
   isWatchHideBibleQuotesEnabledMock.mockResolvedValue(false)
-  fetchYouVersionBibleQuotePassagesMock.mockReset()
-  fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   isWatchQuestionPanelEnabledMock.mockReset()
   isWatchQuestionPanelEnabledMock.mockResolvedValue(false)
   getInitialSubtitleTranscriptMock.mockReset()
   getInitialSubtitleTranscriptMock.mockResolvedValue(null)
+  getWatchRouteManifestMock.mockReset()
+  getWatchRouteManifestMock.mockResolvedValue(null)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -217,9 +217,11 @@ function makeWatchVideoResult(
     video: {
       documentId: "v1",
       slug: "storyclubs",
-      title: "StoryClubs",
-      snippet: "StoryClubs snippet",
-      description: "StoryClubs description",
+      publishedAt: "2026-06-01T12:00:00.000Z" as string | null,
+      localePublishedAt: null as string | null,
+      title: "StoryClubs" as string | null,
+      snippet: "StoryClubs snippet" as string | null,
+      description: "StoryClubs description" as string | null,
       noIndex: false,
       label,
       imageAlt: "StoryClubs poster",
@@ -266,6 +268,18 @@ function makeBibleCitations() {
       documentId: "bc-1",
       order: 1,
       osisId: "John.3.16",
+      passage: {
+        citationDocumentId: "bc-1",
+        content: "Server passage.",
+        copyright: "Copyright.",
+        humanReference: "John 3:16",
+        provider: "youversion",
+        publisherUrl: null,
+        reference: "JHN.3.16",
+        versionAbbreviation: "BSB",
+        versionId: 3034,
+        versionTitle: "Berean Standard Bible",
+      },
       verseEnd: null,
       verseStart: 16,
     },
@@ -289,10 +303,35 @@ function makeSeriesResult(slug = "storyclubs") {
           images: [],
         },
       ],
+      childDubLanguages: [{ slug: "english", bcp47: "en", name: "English" }],
       variants: [],
     },
     selectedVariant: null,
   }
+}
+
+function mockRouteVideo(result: ReturnType<typeof makeWatchVideoResult>) {
+  resolveWatchRouteBySlugMock.mockResolvedValue({
+    kind: "video",
+    ...result,
+  })
+  return result
+}
+
+function mockRouteSeries(
+  result:
+    | ReturnType<typeof makeWatchVideoResult>
+    | ReturnType<typeof makeSeriesResult>,
+) {
+  resolveWatchRouteBySlugMock.mockResolvedValue({
+    kind: "series",
+    ...result,
+  })
+  return result
+}
+
+function mockRouteNone() {
+  resolveWatchRouteBySlugMock.mockResolvedValue({ kind: "none" })
 }
 
 function makeEpisodeResult(
@@ -315,6 +354,7 @@ function makeEpisodeResult(
     video: {
       documentId: "ep-1",
       slug: "wedding-in-cana",
+      publishedAt: "2026-06-01T12:00:00.000Z",
       title: "Wedding in Cana",
       snippet: "Wedding in Cana snippet",
       description: "Wedding in Cana description",
@@ -368,6 +408,38 @@ function makeEpisodeResult(
   }
 }
 
+const pilatePageChapterSlugs = [
+  "triumphal-entry",
+  "jesus-cleanses-the-temple",
+  "jesus-teaches-in-the-temple",
+  "judas-agrees-to-betray-jesus",
+  "the-last-supper",
+  "jesus-prays-in-gethsemane",
+  "jesus-is-arrested",
+  "jesus-before-caiaphas",
+  "peter-denies-jesus",
+  "jesus-is-condemned-by-the-council",
+  "judas-hangs-himself",
+  "jesus-is-brought-to-pilate",
+  "jesus-is-brought-before-herod",
+  "jesus-is-sentenced",
+  "jesus-is-scourged-and-mocked",
+  "jesus-is-brought-to-pilate-again",
+  "jesus-sentenced-to-be-crucified",
+  "jesus-carries-his-cross",
+  "jesus-is-nailed-to-the-cross",
+  "jesus-is-crucified",
+  "jesus-dies-on-the-cross",
+  "jesus-is-buried",
+  "the-tomb-is-guarded",
+  "the-tomb-is-empty",
+  "jesus-appears-to-mary",
+  "resurrected-jesus-appears",
+  "jesus-appears-to-his-disciples",
+  "jesus-commissions-his-followers",
+  "invitation-to-know-jesus-personally",
+]
+
 function internalLocaleParams(rawLocale?: string) {
   return resolveWatchLocaleIdentity(
     rawLocale ? stripHtmlSuffix(rawLocale) : null,
@@ -405,6 +477,28 @@ async function render3Seg(slug: string, episode: string, locale: string) {
   })
 }
 
+async function renderServerHtml(rest: string[], locale: string) {
+  const identity = internalLocaleParams(locale)
+  const element = await SlugRestPage({
+    params: Promise.resolve({ ...identity, rest }),
+  })
+  return renderToStaticMarkup(element)
+}
+
+function jsonLdByType(type: string): Record<string, unknown> | null {
+  const scripts = Array.from(
+    container.querySelectorAll('script[type="application/ld+json"]'),
+  )
+  for (const script of scripts) {
+    const parsed = JSON.parse(script.textContent ?? "{}") as Record<
+      string,
+      unknown
+    >
+    if (parsed["@type"] === type) return parsed
+  }
+  return null
+}
+
 describe("Catch-all routing — one-segment collection/home branch", () => {
   it("keeps best-effort collection slugs such as /easter.html out of localized-home dispatch", async () => {
     resolveWatchExperiencePageMock.mockResolvedValue({
@@ -424,11 +518,11 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     expect(resolveWatchExperiencePageMock).toHaveBeenCalledWith("en", "easter")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
 
-  it("dispatches one-segment public language slugs to the modern localized home", async () => {
+  it("passes the exact public language slug to localized-home content while retaining the resolved UI locale", async () => {
     resolveWatchHomeMock.mockResolvedValue({
       data: {
         heroSlides: [{ id: "hero-es" }],
@@ -438,14 +532,136 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       },
       error: null,
     })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-home-es",
+          slug: "watch-home",
+          title: "Watch Home",
+          blocks: [],
+        },
+      },
+      error: null,
+    })
 
     await render1Seg("spanish-castilian.html")
 
-    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es")
-    expect(watchHomePageMock).toHaveBeenCalled()
-    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        heroModel: {
+          heroSlides: [{ id: "hero-es" }],
+          sections: [],
+          carousel: { pools: [], muxInserts: [] },
+          missingData: [],
+        },
+        blocks: [],
+      }),
+      undefined,
+    )
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("emits localized CollectionPage JSON-LD from the initial server hero", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [
+          {
+            id: "hero-es",
+            coreId: "hero-es",
+            title: "JESÚS",
+            href: "/watch/jesus.html/spanish-castilian.html",
+          },
+        ],
+        sections: [],
+        carousel: { pools: [], muxInserts: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-home-es",
+          slug: "watch-home",
+          title: "Watch Home",
+          blocks: [],
+        },
+      },
+      error: null,
+    })
+
+    const html = await renderServerHtml(
+      ["spanish-castilian.html"],
+      "spanish-castilian",
+    )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const payload = JSON.parse(
+      document.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? "{}",
+    )
+
+    expect(payload).toMatchObject({
+      url: "https://www.jesusfilm.org/watch/spanish-castilian.html",
+      inLanguage: "es-ES",
+      mainEntity: {
+        itemListElement: [
+          {
+            position: 1,
+            name: "JESÚS",
+            url: "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html",
+          },
+        ],
+      },
+    })
+  })
+
+  it("redirects a missing localized home to the same language's video inventory", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [{ id: "hero-ru" }],
+        sections: [],
+        carousel: { pools: [], muxInserts: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+
+    await expect(render1Seg("russian.html")).rejects.toThrow(
+      "NEXT_REDIRECT:/russian.html/videos",
+    )
+
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("ru", "russian")
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("ru")
+    expect(redirectMock).toHaveBeenCalledWith("/russian.html/videos")
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+    expect(experienceEmptyMock).not.toHaveBeenCalled()
+  })
+
+  it("does not treat an operational localized-home error as missing content", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [{ id: "hero-ru" }],
+        sections: [],
+        carousel: { pools: [], muxInserts: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+
+    await render1Seg("russian.html")
+
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).toHaveBeenCalled()
   })
 
   it("canonicalizes one-segment language-home metadata to the public language URL", async () => {
@@ -481,7 +697,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(notFoundMock).toHaveBeenCalledTimes(1)
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
@@ -511,10 +727,8 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 })
 
 describe("Catch-all routing — metadata for playable watch pages", () => {
-  it("uses resolved video data for two-segment metadata before falling back to the template resolver", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+  it("uses resolved video data for two-segment metadata without page-head hreflang", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -547,13 +761,10 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
     })
     expect(metadata.alternates).toMatchObject({
       canonical: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-      languages: {
-        en: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
-        es: "https://www.jesusfilm.org/watch/storyclubs.html/spanish-castilian.html",
-      },
     })
+    expect(metadata.alternates).not.toHaveProperty("languages")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
@@ -576,9 +787,9 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    watchVideoResult.video.slug = "easter"
+    mockRouteVideo(watchVideoResult)
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -598,7 +809,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
         },
       ],
     })
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
@@ -619,8 +830,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult("easter"))
+    mockRouteSeries(makeSeriesResult("easter"))
 
     const metadata = await generateMetadata({
       params: Promise.resolve({
@@ -635,15 +845,34 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       title: "StoryClubs | Jesus Film Project",
       url: "https://www.jesusfilm.org/watch/easter.html/english.html",
     })
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("easter", "english")
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 
-  it("uses the three-segment production URL for episode metadata", async () => {
+  it("uses lightweight fallback metadata when watch route resolution throws", async () => {
+    resolveWatchRouteBySlugMock.mockRejectedValue(
+      new Error("You are trying to access 'videoBySlug' too often"),
+    )
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["easter.html", "english.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe("easter | Jesus Film Project")
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/easter.html/english.html",
+    )
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+  })
+
+  it("uses the standalone video identity for episode metadata", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
 
     const metadata = await generateMetadata({
@@ -660,7 +889,7 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
 
     expect(metadata.title).toBe("Wedding in Cana | Jesus Film Project")
     expect(metadata.openGraph).toMatchObject({
-      url: "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      url: "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
       images: [
         {
           url: "https://image.mux.com/pb-1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -669,35 +898,97 @@ describe("Catch-all routing — metadata for playable watch pages", () => {
       ],
     })
     expect(metadata.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
     )
   })
 })
 
 describe("Catch-all routing — series branch (2-seg)", () => {
-  it("renders SeriesPageClient when video resolver returns a COLLECTION-labeled record", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+  it("renders SeriesPageClient when route resolver returns a COLLECTION-labeled record", async () => {
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("storyclubs", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveSeriesBySlugMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-home-footer"]'),
+    ).toBeNull()
   })
 
   it("renders SeriesPageClient when label is 'series' (defensive OR)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("series"),
-    )
+    mockRouteSeries(makeWatchVideoResult("series"))
     await render2Seg("any-series", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
 
-  it("renders WatchPageClient when label is non-series (regression guard)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
+  it("emits an indexable series CollectionPage with standalone child entities", async () => {
+    mockRouteSeries(makeSeriesResult("storyclubs"))
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-07-23T00:00:00.000Z",
+      contentSlugs: ["ep-1"],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["english"],
+      audioLanguageIndexesByContent: { "ep-1": [0] },
+    })
+
+    const html = await renderServerHtml(
+      ["storyclubs.html", "english.html"],
+      "english",
     )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const payload = JSON.parse(
+      document.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? "{}",
+    )
+
+    expect(payload).toMatchObject({
+      name: "StoryClubs",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      inLanguage: "en",
+      mainEntity: {
+        itemListElement: [
+          {
+            position: 1,
+            name: "Ep 1",
+            url: "https://www.jesusfilm.org/watch/ep-1.html/english.html",
+          },
+        ],
+      },
+    })
+  })
+
+  it("redirects series routes to the language used by visible episode cards", async () => {
+    const result = makeSeriesResult("storyclubs")
+    result.video.childDubLanguages = [
+      {
+        slug: "spanish-castilian",
+        bcp47: "es-ES",
+        name: "Spanish, Castilian",
+      },
+    ]
+    mockRouteSeries(result)
+
+    await expect(render2Seg("storyclubs", "english")).rejects.toThrow(
+      "NEXT_REDIRECT:/storyclubs.html/spanish-castilian.html?_lr=1",
+    )
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("omits collection JSON-LD for noIndex series without changing its UI", async () => {
+    const result = makeSeriesResult("storyclubs")
+    ;(result.video as typeof result.video & { noIndex: boolean }).noIndex = true
+    mockRouteSeries(result)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
+    expect(jsonLdByType("CollectionPage")).toBeNull()
+  })
+
+  it("renders WatchPageClient when label is non-series (regression guard)", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
     await render2Seg("jesus", "english")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
@@ -707,47 +998,371 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       }),
     )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="watch-page-client-mock"], [data-testid="watch-home-footer"]',
+        ),
+        (element) => element.getAttribute("data-testid"),
+      ),
+    ).toEqual(["watch-page-client-mock", "watch-home-footer"])
   })
 
-  it("passes initial transcript cues and prunes client variant rows", async () => {
-    const initialTranscript = {
-      vttSrc: "https://cdn.example/storyclubs.vtt",
-      cues: [{ start: 1, end: 4, text: "Server cue" }],
+  it("builds ordered standalone collection choices from exact admitted current-language routes", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const child = (documentId: string, slug: string, title: string) => ({
+      documentId,
+      slug,
+      title,
+      label: "episode",
+      images: [],
+      durationSeconds: 30,
+      muxPlaybackId: `mux-${documentId}`,
+      muxThumbnailBlurDataUrl: null,
+    })
+    const current = child("v1", "storyclubs", "StoryClubs")
+    const ownChildren = [
+      child("own-1", "own-one", "Own One"),
+      child("own-2", "own-two", "Own Two"),
+    ]
+    const parents = [
+      {
+        documentId: "parent-a",
+        slug: "collection-a",
+        title: "Collection A",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [
+          current,
+          child("a-2", "a-two", "A Two"),
+          child("a-3", "a-three", "A Three"),
+        ],
+      },
+      {
+        documentId: "parent-missing-current",
+        slug: "missing-current",
+        title: "Missing Current",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [current, child("m-2", "m-two", "M Two")],
+      },
+      {
+        documentId: "parent-too-short",
+        slug: "too-short",
+        title: "Too Short",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [current, child("s-2", "s-two", "S Two")],
+      },
+      {
+        documentId: "parent-invalid-slug",
+        slug: "Not Public",
+        title: "Invalid Slug",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [current, child("i-2", "i-two", "I Two")],
+      },
+      {
+        documentId: "parent-b",
+        slug: "collection-b",
+        title: "Collection B",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [
+          child("b-1", "b-one", "B One"),
+          current,
+          child("b-es", "b-spanish", "Spanish Only"),
+        ],
+      },
+    ]
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).children = ownChildren
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).parents = parents
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-07-22T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "collection-a": ["storyclubs", "a-two", "a-three"],
+        "missing-current": ["m-two"],
+        "too-short": ["storyclubs"],
+        "collection-b": ["b-one", "storyclubs", "b-spanish"],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        "collection-a": { storyclubs: [0], "a-two": [0], "a-three": [1] },
+        "missing-current": { "m-two": [0] },
+        "too-short": { storyclubs: [0] },
+        "collection-b": {
+          "b-one": [0],
+          storyclubs: [0],
+          "b-spanish": [1],
+        },
+      },
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        video?: { documentId?: string; slug?: string }
+        nextWatchItem?: { parentSlug?: string } | null
+        canonicalParent?: { slug?: string; children?: Array<{ slug: string }> }
+        selectableParents?: Array<{
+          slug: string
+          children: Array<{ slug: string }>
+        }>
+      }>
     }
-    getInitialSubtitleTranscriptMock.mockResolvedValue(
-      initialTranscript as never,
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
     )
+    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "collection-a",
+      "collection-b",
+    ])
+    expect(
+      carousel?.selectableParents?.map((parent) =>
+        parent.children.map((entry) => entry.slug),
+      ),
+    ).toEqual([
+      ["storyclubs", "a-two"],
+      ["b-one", "storyclubs"],
+    ])
+    expect(carousel?.canonicalParent?.slug).toBe("collection-a")
+    expect(carousel?.canonicalParent?.children).toHaveLength(2)
+    const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+    expect(hero?.nextWatchItem).toMatchObject({
+      parentSlug: "storyclubs",
+      slug: "own-one",
+      documentId: "own-1",
+    })
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "Share")?.video,
+    ).toMatchObject({ documentId: "v1", slug: "storyclubs" })
+    expect(jsonLdByType("BreadcrumbList")).toBeNull()
+    expect(jsonLdByType("ItemList")).toMatchObject({
+      itemListElement: [
+        {
+          position: 1,
+          name: "StoryClubs",
+          url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+        },
+        {
+          position: 2,
+          name: "A Two",
+          url: "https://www.jesusfilm.org/watch/a-two.html/english.html",
+        },
+      ],
+    })
+  })
+
+  it("keeps the standalone own-children fallback when the manifest is unavailable", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const ownChildren = [
+      {
+        documentId: "own-1",
+        slug: "own-one",
+        title: "Own One",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-1",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "own-2",
+        slug: "own-two",
+        title: "Own Two",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-2",
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(result.video as unknown as { children: typeof ownChildren }).children =
+      ownChildren
+    getWatchRouteManifestMock.mockResolvedValue(null)
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        canonicalParent?: { slug?: string }
+        selectableParents?: unknown
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.slug).toBe("storyclubs")
+    expect(carousel).not.toHaveProperty("selectableParents")
+  })
+
+  it("starts the route manifest request alongside standalone video resolution", async () => {
+    let resolveRoute!: (value: unknown) => void
+    let resolveManifest!: (value: null) => void
+    resolveWatchRouteBySlugMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRoute = resolve
+      }),
+    )
+    getWatchRouteManifestMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveManifest = resolve
+      }),
+    )
+
+    const renderPromise = render2Seg("storyclubs", "english")
+    await vi.waitFor(() => {
+      expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
+        "storyclubs",
+        "english",
+      )
+      expect(getWatchRouteManifestMock).toHaveBeenCalledTimes(1)
+    })
+
+    resolveRoute({
+      kind: "video",
+      ...makeWatchVideoResult("featureFilm"),
+    })
+    resolveManifest(null)
+    await renderPromise
+  })
+
+  it("defers transcript cues and prunes client variant rows", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    const carouselChildren = [
+      {
+        documentId: "chapter-1",
+        slug: "chapter-1",
+        title: "Chapter 1",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "chapter-pb-1",
+      },
+      {
+        documentId: "chapter-2",
+        slug: "chapter-2",
+        title: "Chapter 2",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "chapter-pb-2",
+      },
+    ]
+    const watchVideo = watchVideoResult.video as unknown as {
+      children: typeof carouselChildren
+      parents: Array<{
+        documentId: string
+        slug: string
+        title: string
+        noIndex: boolean
+        label: string
+        images: unknown[]
+        children: typeof carouselChildren
+      }>
+      studyQuestions: Array<{
+        documentId: string
+        value: string
+        order: number
+      }>
+      bibleCitations: ReturnType<typeof makeBibleCitations>
+    }
+    watchVideo.children = carouselChildren
+    watchVideo.parents = [
+      {
+        documentId: "parent-1",
+        slug: "jesus",
+        title: "Jesus",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: carouselChildren,
+      },
+    ]
+    watchVideo.studyQuestions = [
+      { documentId: "sq-1", value: "What changed?", order: 1 },
+    ]
+    watchVideo.bibleCitations = makeBibleCitations()
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus", "english")
 
-    expect(getInitialSubtitleTranscriptMock).toHaveBeenCalledWith({
-      subtitles: watchVideoResult.video.subtitles,
-      audioSlug: "english",
-      durationSeconds: 30,
-    })
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      initialTranscript: unknown
-      video: { variants: unknown[] }
+      initialTranscript?: unknown
+      variant: { videoEdition: unknown }
+      video: {
+        parents: unknown[]
+        children: unknown[]
+        variants: Array<{ videoEdition: unknown }>
+        studyQuestions: unknown[]
+        bibleCitations: unknown[]
+      }
       mergedBlocks: Array<{
         kind?: string
         playableLanguageCount?: number
-        video?: { variants: unknown[] }
+        variant?: { videoEdition: unknown }
+        video?: {
+          parents: unknown[]
+          children: unknown[]
+          variants: Array<{ videoEdition: unknown }>
+          studyQuestions: unknown[]
+          bibleCitations: unknown[]
+        }
+        canonicalParent?: { children: unknown[] }
       }>
     }
-    expect(props.initialTranscript).toBe(initialTranscript)
+    expect(props.initialTranscript).toBeNull()
+    expect(props.variant.videoEdition).toBeNull()
+    expect(props.video.parents).toEqual([])
+    expect(props.video.children).toEqual([])
+    expect(props.video.studyQuestions).toEqual([])
+    expect(props.video.bibleCitations).toEqual([])
     expect(props.video.variants).toHaveLength(1)
+    expect(props.video.variants[0]?.videoEdition).toBeNull()
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
     expect(hero?.playableLanguageCount).toBe(2)
+    expect(hero?.variant?.videoEdition).toBeNull()
+    expect(hero?.video?.parents).toEqual([])
+    expect(hero?.video?.children).toEqual([])
     expect(hero?.video?.variants).toHaveLength(1)
+    expect(hero?.video?.variants[0]?.videoEdition).toBeNull()
+    const body = props.mergedBlocks.find((block) => block.kind === "WatchBody")
+    expect(body?.video?.parents).toEqual([])
+    expect(body?.video?.children).toEqual([])
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.children).toHaveLength(2)
   })
 
   it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     watchVideoResult.video.title = "Story < Clubs"
     watchVideoResult.video.description = "Story < Clubs description"
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("storyclubs", "english")
 
@@ -758,20 +1373,235 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       name: "Story < Clubs",
       description: "Story < Clubs description",
       url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      contentUrl: "https://cdn.example/storyclubs.m3u8",
       thumbnailUrl: [
         "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
       ],
       inLanguage: "en",
+      uploadDate: "2026-06-01T12:00:00.000Z",
       duration: "PT30S",
+      publisher: {
+        "@type": "Organization",
+        name: "Jesus Film Project",
+      },
+      potentialAction: {
+        "@type": "SeekToAction",
+        target:
+          "https://www.jesusfilm.org/watch/storyclubs.html/english.html?t={seek_to_second_number}",
+        "startOffset-input": "required name=seek_to_second_number",
+      },
+    })
+    expect(script?.textContent).not.toContain("embedUrl")
+  })
+
+  it("includes parsed VideoObject JSON-LD in pre-hydration server HTML", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+
+    const html = await renderServerHtml(
+      ["storyclubs.html", "english.html"],
+      "english",
+    )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const scripts = Array.from(
+      document.querySelectorAll('script[type="application/ld+json"]'),
+    ).map((script) => JSON.parse(script.textContent ?? "{}"))
+
+    expect(
+      scripts.filter((script) => script["@type"] === "VideoObject"),
+    ).toHaveLength(1)
+    expect(
+      scripts.find((script) => script["@type"] === "VideoObject"),
+    ).toMatchObject({
+      url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
     })
   })
 
+  it("renders sparse playable video JSON-LD with structured-data fallbacks", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    watchVideoResult.video.description = null
+    watchVideoResult.video.snippet = null
+    watchVideoResult.video.publishedAt = null
+    watchVideoResult.video.localePublishedAt = "2026-06-02T12:00:00.000Z"
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(jsonLdByType("VideoObject")).toMatchObject({
+      "@type": "VideoObject",
+      name: "StoryClubs",
+      description: "Watch StoryClubs from Jesus Film Project.",
+      uploadDate: "2026-06-02T12:00:00.000Z",
+      contentUrl: "https://cdn.example/storyclubs.m3u8",
+    })
+  })
+
+  it("passes server-formatted compact transcript text to the client when subtitles exist", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const subtitles = [
+      {
+        documentId: "sub-en",
+        language: {
+          slug: "english",
+          name: "English",
+          nativeName: null,
+          bcp47: "en",
+        },
+        vttSrc: "https://cdn.example/storyclubs.vtt",
+        primary: true,
+        aiGenerated: false,
+      },
+    ]
+    ;(watchVideoResult.video as { subtitles: typeof subtitles }).subtitles =
+      subtitles
+    const initialTranscript = {
+      vttSrc: "https://cdn.example/storyclubs.vtt",
+      compactText: "In the beginning\n\nThe story continues",
+    }
+    getInitialSubtitleTranscriptMock.mockResolvedValue(initialTranscript)
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(getInitialSubtitleTranscriptMock).toHaveBeenCalledWith({
+      subtitles,
+      audioSlug: "english",
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toMatchObject({
+      initialTranscript,
+    })
+    expect(jsonLdByType("VideoObject")).toMatchObject({
+      caption: [
+        {
+          "@type": "MediaObject",
+          contentUrl: "https://cdn.example/storyclubs.vtt",
+          encodingFormat: "text/vtt",
+          inLanguage: "en",
+        },
+      ],
+    })
+  })
+
+  it("renders bounded related-item JSON-LD without schema-only breadcrumbs", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const carouselChildren = [
+      {
+        documentId: "video-1",
+        slug: "storyclubs",
+        title: "StoryClubs",
+        label: "episode",
+        images: [
+          {
+            documentId: "img-storyclubs",
+            url: null,
+            thumbnail: "https://cdn.example/storyclubs-thumb.jpg",
+            mobileCinematicHigh: "https://cdn.example/storyclubs-high.jpg",
+            mobileCinematicLow: null,
+          },
+        ],
+        durationSeconds: 30,
+        muxPlaybackId: null,
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "video-2",
+        slug: "another-story",
+        title: "Another Story",
+        label: "episode",
+        images: [],
+        durationSeconds: null,
+        muxPlaybackId: null,
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(
+      watchVideoResult.video as { children: typeof carouselChildren }
+    ).children = carouselChildren
+    const parents = [
+      {
+        documentId: "parent-1",
+        slug: "jesus",
+        title: "Jesus",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: carouselChildren,
+      },
+    ]
+    ;(watchVideoResult.video as { parents: typeof parents }).parents = parents
+    ;(
+      watchVideoResult as unknown as {
+        canonicalParent: (typeof parents)[number]
+      }
+    ).canonicalParent = parents[0]!
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(jsonLdByType("BreadcrumbList")).toBeNull()
+    expect(jsonLdByType("ItemList")).toMatchObject({
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "StoryClubs",
+          url: "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Another Story",
+          url: "https://www.jesusfilm.org/watch/another-story.html/english.html",
+        },
+      ],
+    })
+  })
+
+  it("suppresses all JSON-LD for noIndex videos without hiding the page", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    watchVideoResult.video.noIndex = true
+    const carouselChildren = [
+      {
+        documentId: "video-1",
+        slug: "storyclubs",
+        title: "StoryClubs",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: null,
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(
+      watchVideoResult.video as { children: typeof carouselChildren }
+    ).children = carouselChildren
+    const parent = {
+      documentId: "parent-1",
+      slug: "jesus",
+      title: "Jesus",
+      noIndex: false,
+      label: "collection",
+      images: [],
+      children: carouselChildren,
+    }
+    ;(watchVideoResult.video as { parents: (typeof parent)[] }).parents = [
+      parent,
+    ]
+    ;(
+      watchVideoResult as unknown as { canonicalParent: typeof parent }
+    ).canonicalParent = parent
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "english")
+
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(
+      container.querySelectorAll('script[type="application/ld+json"]'),
+    ).toHaveLength(0)
+  })
+
   it("404s bcp47 catalog keys in public audio slots", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
     await expect(render2Seg("jesus", "en")).rejects.toThrow("NEXT_NOT_FOUND")
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })
 
   it("404s unknown public audio slugs before content or experience lookup", async () => {
@@ -780,74 +1610,28 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     )
 
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
   })
 
-  it("keeps the YouVersion Bible Quotes panel disabled by default", async () => {
+  it("passes Admin-resolved Bible passages through the Bible Quotes block", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const bibleCitations = makeBibleCitations()
     ;(
       watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
     ).bibleCitations = bibleCitations
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus.html", "english.html")
 
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: { route: "/watch/jesus.html/english.html" },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{
         kind?: string
-        youVersionPassages?: Array<unknown>
+        passages?: Array<unknown>
       }>
     }
     expect(
       props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
-    ).toEqual([])
-  })
-
-  it("passes YouVersion passages into Bible Quotes when the LaunchDarkly flag is enabled", async () => {
-    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
-    fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([
-      {
-        citationDocumentId: "bc-1",
-        content: "Server passage.",
-        copyright: "Copyright.",
-        humanReference: "John 3:16",
-        publisherUrl: null,
-        reference: "JHN.3.16",
-        versionAbbreviation: "BSB",
-        versionId: 3034,
-        versionTitle: "Berean Standard Bible",
-      },
-    ])
-    const watchVideoResult = makeWatchVideoResult("featureFilm")
-    const bibleCitations = makeBibleCitations()
-    ;(
-      watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
-    ).bibleCitations = bibleCitations
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
-
-    await render2Seg("jesus.html", "english.html")
-
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: { route: "/watch/jesus.html/english.html" },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).toHaveBeenCalledWith(
-      bibleCitations,
-    )
-    const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      mergedBlocks: Array<{
-        kind?: string
-        youVersionPassages?: Array<unknown>
-      }>
-    }
-    expect(
-      props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
+        ?.passages,
     ).toEqual([
       expect.objectContaining({
         content: "Server passage.",
@@ -856,23 +1640,20 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ])
   })
 
-  it("passes the Bible Quotes hide flag to WatchPageClient and skips YouVersion fetches when enabled", async () => {
+  it("passes the Bible Quotes hide flag to WatchPageClient when enabled", async () => {
     isWatchHideBibleQuotesEnabledMock.mockResolvedValue(true)
-    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const bibleCitations = makeBibleCitations()
     ;(
       watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
     ).bibleCitations = bibleCitations
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
+    mockRouteVideo(watchVideoResult)
 
     await render2Seg("jesus.html", "english.html")
 
     expect(isWatchHideBibleQuotesEnabledMock).toHaveBeenCalledWith({
       custom: { route: "/watch/jesus.html/english.html" },
     })
-    expect(isWatchYouVersionBibleQuotesEnabledMock).not.toHaveBeenCalled()
-    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         hideBibleQuotes: true,
@@ -882,9 +1663,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
     isWatchCtaTextCopyEnabledMock.mockResolvedValue(true)
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     await render2Seg("jesus.html", "english.html")
 
@@ -900,9 +1679,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
   it("passes the LaunchDarkly question panel flag to WatchPageClient when enabled", async () => {
     isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     await render2Seg("jesus.html", "english.html")
 
@@ -914,6 +1691,24 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         questionPanelEnabled: true,
       }),
     )
+  })
+
+  it("renders an error state instead of bubbling to a 500 when route resolution throws", async () => {
+    resolveWatchRouteBySlugMock.mockRejectedValue(
+      new Error("Response not successful: Received status code 503"),
+    )
+
+    await render2Seg("life-of-jesus-gospel-of-john.html", "english.html")
+
+    expect(experienceErrorMock).toHaveBeenCalledWith(
+      {
+        message: "Response not successful: Received status code 503",
+      },
+      undefined,
+    )
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })
 
@@ -931,14 +1726,12 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
     await render2Seg("easter", "english")
     expect(seriesPageClientMock).not.toHaveBeenCalled()
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchQuestionPanelMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
@@ -958,9 +1751,7 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("easter", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
@@ -981,16 +1772,13 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       },
       error: null,
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(
-      makeSeriesResult("storyclubs-no-trailer"),
-    )
+    mockRouteSeries(makeSeriesResult("storyclubs-no-trailer"))
 
     await render2Seg("storyclubs-no-trailer", "english")
 
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
       "english",
     )
@@ -999,8 +1787,7 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
 
   it("renders the gated question panel for curated watch experiences when no video or series resolves", async () => {
     isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(null)
+    mockRouteNone()
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -1026,16 +1813,17 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       undefined,
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(
+      container.querySelector('[data-testid="watch-home-footer"]'),
+    ).toBeNull()
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
     )
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("easter", "english")
   })
 
   it("falls through to ExperienceEmpty when Experience has no blocks", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(null)
+    mockRouteNone()
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -1045,27 +1833,24 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
     })
     await render2Seg("x", "english")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith("x", "english")
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith("x", "english")
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith("x", "english")
   })
 })
 
 describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () => {
-  it("falls through to resolveSeriesBySlug when video resolver returns null", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+  it("renders a trailerless series when the route resolver returns one", async () => {
+    mockRouteSeries(makeSeriesResult())
     await render2Seg("storyclubs-no-trailer", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
-    expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
       "english",
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
 
-  it("404s when both resolvers return null and watchPage reports missing", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(null)
+  it("404s when route resolver returns none and watchPage reports missing", async () => {
+    mockRouteNone()
     resolveWatchPageMock.mockResolvedValue({
       data: null,
       error: { message: "No experience found" },
@@ -1083,7 +1868,7 @@ describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () 
 describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () => {
   it("passes selectedVariant in trailer-mode series rendering", async () => {
     const watchVideo = makeWatchVideoResult("collection")
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
+    mockRouteSeries(watchVideo)
     await render2Seg("storyclubs", "english")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
@@ -1091,8 +1876,7 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
   })
 
   it("passes selectedVariant=null in static-mode (trailerless) series rendering", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+    mockRouteSeries(makeSeriesResult())
     await render2Seg("storyclubs-no-trailer", "english")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBeNull()
@@ -1105,15 +1889,36 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
       bcp47: "es",
       name: "Spanish, Castilian",
     })
-    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
+    mockRouteSeries(watchVideo)
     await render2Seg("storyclubs", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.locale).toBe("spanish-castilian")
   })
 
+  it("does not redirect a series route when the optional parent variant language differs from the URL language", async () => {
+    const watchVideo = makeWatchVideoResult("collection", {
+      slug: "hindi",
+      bcp47: "hi",
+      name: "Hindi",
+    })
+    mockRouteSeries(watchVideo)
+    await render2Seg("how-did-we-get-here-episode-1", "spanish-castilian")
+    const args = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
+    expect(args?.locale).toBe("spanish-castilian")
+  })
+
   it("passes raw slug-form locale in static-mode (trailerless) too", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(null)
-    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+    const result = makeSeriesResult()
+    result.video.childDubLanguages = [
+      {
+        slug: "spanish-castilian",
+        bcp47: "es-ES",
+        name: "Spanish, Castilian",
+      },
+    ]
+    mockRouteSeries(result)
     await render2Seg("storyclubs-no-trailer", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.locale).toBe("spanish-castilian")
@@ -1122,11 +1927,9 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
 
 describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   it("strips .html from slug and locale params before dispatch (canonical shape)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("storyclubs.html", "english.html")
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
@@ -1135,7 +1938,7 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   })
 
   it("handles .html suffix with slug-form locale (spanish-castilian.html)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteSeries(
       makeWatchVideoResult("collection", {
         slug: "spanish-castilian",
         bcp47: "es",
@@ -1143,7 +1946,7 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
       }),
     )
     await render2Seg("storyclubs.html", "spanish-castilian.html")
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "spanish-castilian",
     )
@@ -1152,11 +1955,9 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   })
 
   it("still accepts bare-shape input (transitional)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("collection"),
-    )
+    mockRouteSeries(makeWatchVideoResult("collection"))
     await render2Seg("storyclubs", "english")
-    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
@@ -1166,7 +1967,7 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
 describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-seg)", () => {
   it("renders Spanish UI chrome when URL locale is 'spanish-castilian'", async () => {
     // Non-series record so WatchPageClient receives the locale prop.
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "spanish-castilian",
         bcp47: "es-ES",
@@ -1185,7 +1986,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   })
 
   it("renders Portuguese UI chrome for portuguese-brazil + portuguese-mozambique", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "portuguese-brazil",
         bcp47: "pt",
@@ -1198,7 +1999,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   })
 
   it("renders French UI chrome for french-african (ISO 639-3 fallback)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "french-african",
         bcp47: "fra",
@@ -1214,7 +2015,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   it("falls back to DEFAULT_LOCALE='en' when language family has no generated catalog", async () => {
     // Aari is a valid public audio language, but it is outside the
     // official-language inventory catalog rollout.
-    resolveWatchVideoBySlugMock.mockResolvedValue(
+    mockRouteVideo(
       makeWatchVideoResult("shortFilm", {
         slug: "aari",
         bcp47: "aiw",
@@ -1237,6 +2038,146 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "wedding-in-cana",
       "english",
     )
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="watch-page-client-mock"], [data-testid="watch-home-footer"]',
+        ),
+        (element) => element.getAttribute("data-testid"),
+      ),
+    ).toEqual(["watch-page-client-mock", "watch-home-footer"])
+  })
+
+  it("suppresses all JSON-LD for noIndex contextual episodes", async () => {
+    const result = makeEpisodeResult()
+    result.video.noIndex = true
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(
+      container.querySelectorAll('script[type="application/ld+json"]'),
+    ).toHaveLength(0)
+  })
+
+  it("keeps the requested parent collection for multi-parent chapter routes", async () => {
+    const result = makeEpisodeResult() as unknown as {
+      video: Record<string, unknown>
+      canonicalParent: Record<string, unknown>
+      series: Record<string, unknown>
+    }
+    const anticipateChildren = pilatePageChapterSlugs.map((slug, index) => ({
+      documentId: `pilate-chapter-${index + 1}`,
+      slug,
+      title: `Pilate chapter ${index + 1}`,
+      label: "clip",
+      images: [],
+      durationSeconds: null,
+      muxPlaybackId: `mux-pilate-${index + 1}`,
+    }))
+    const anticipateParent = {
+      documentId: "anticipate-parent",
+      slug: "anticipate-the-resurrection",
+      title: "Anticipate the Resurrection",
+      label: "collection",
+      images: [],
+      children: anticipateChildren,
+    }
+    result.video.documentId = "pilate-chapter-20"
+    result.video.slug = "jesus-is-crucified"
+    result.video.title = "Jesus is Crucified"
+    result.video.parents = [
+      {
+        documentId: "jesus-parent",
+        slug: "jesus",
+        title: "JESUS",
+        label: "collection",
+        images: [],
+        children: [],
+      },
+      anticipateParent,
+    ]
+    result.canonicalParent = anticipateParent
+    result.series = anticipateParent
+
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+
+    await render3Seg(
+      "anticipate-the-resurrection",
+      "jesus-is-crucified",
+      "english",
+    )
+
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "anticipate-the-resurrection",
+      "jesus-is-crucified",
+      "english",
+    )
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      collectionSlug?: string
+      mergedBlocks?: Array<{
+        kind?: string
+        video?: { documentId?: string; slug?: string }
+        nextWatchItem?: {
+          parentSlug?: string
+          slug?: string
+          documentId?: string
+        } | null
+        canonicalParent?: {
+          slug?: string | null
+          title?: string | null
+          children?: unknown[]
+        }
+        selectableParents?: unknown
+        currentVideoDocumentId?: string
+      }>
+    }
+    const carousel = props.mergedBlocks?.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.slug).toBe("anticipate-the-resurrection")
+    expect(carousel?.canonicalParent?.title).toBe("Anticipate the Resurrection")
+    expect(carousel?.canonicalParent?.children).toHaveLength(29)
+    expect(carousel).not.toHaveProperty("selectableParents")
+    expect(carousel?.currentVideoDocumentId).toBe("pilate-chapter-20")
+    expect(
+      props.mergedBlocks?.find((block) => block.kind === "HeroPlayer")
+        ?.nextWatchItem,
+    ).toMatchObject({
+      parentSlug: "anticipate-the-resurrection",
+      slug: "jesus-dies-on-the-cross",
+      documentId: "pilate-chapter-21",
+    })
+    expect(
+      props.mergedBlocks?.find((block) => block.kind === "Share")?.video,
+    ).toMatchObject({
+      documentId: "pilate-chapter-20",
+      slug: "jesus-is-crucified",
+    })
+    expect(props.collectionSlug).toBe("anticipate-the-resurrection")
+    expect(jsonLdByType("BreadcrumbList")).toBeNull()
+    expect(jsonLdByType("VideoObject")).toMatchObject({
+      url: "https://www.jesusfilm.org/watch/jesus-is-crucified.html/english.html",
+      potentialAction: {
+        target:
+          "https://www.jesusfilm.org/watch/jesus-is-crucified.html/english.html?t={seek_to_second_number}",
+      },
+    })
+    const relatedItems = jsonLdByType("ItemList")?.itemListElement as
+      | Array<Record<string, unknown>>
+      | undefined
+    expect(relatedItems).toHaveLength(12)
+    expect(relatedItems?.[0]).toMatchObject({
+      position: 1,
+      name: "Pilate chapter 1",
+      url: "https://www.jesusfilm.org/watch/triumphal-entry.html/english.html",
+    })
+    expect(relatedItems?.at(-1)).toMatchObject({
+      position: 12,
+      name: "Pilate chapter 12",
+    })
+    expect(getWatchRouteManifestMock).not.toHaveBeenCalled()
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
@@ -1262,7 +2203,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     )
   })
 
-  it("keeps episode YouVersion passages disabled by default", async () => {
+  it("passes Admin-resolved episode Bible passages through the Bible Quotes block", async () => {
     const episodeResult = makeEpisodeResult()
     const bibleCitations = makeBibleCitations()
     ;(
@@ -1276,74 +2217,18 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "english.html",
     )
 
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: {
-        route:
-          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-      },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).not.toHaveBeenCalled()
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{
         kind?: string
-        youVersionPassages?: Array<unknown>
+        passages?: Array<unknown>
       }>
     }
     expect(
       props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
-    ).toEqual([])
-  })
-
-  it("passes YouVersion passages into episode Bible Quotes when the LaunchDarkly flag is enabled", async () => {
-    isWatchYouVersionBibleQuotesEnabledMock.mockResolvedValue(true)
-    fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([
-      {
-        citationDocumentId: "bc-1",
-        content: "Episode passage.",
-        copyright: "Copyright.",
-        humanReference: "John 3:16",
-        publisherUrl: null,
-        reference: "JHN.3.16",
-        versionAbbreviation: "BSB",
-        versionId: 3034,
-        versionTitle: "Berean Standard Bible",
-      },
-    ])
-    const episodeResult = makeEpisodeResult()
-    const bibleCitations = makeBibleCitations()
-    ;(
-      episodeResult.video as { bibleCitations?: typeof bibleCitations }
-    ).bibleCitations = bibleCitations
-    resolveSeriesEpisodeBySlugMock.mockResolvedValue(episodeResult)
-
-    await render3Seg(
-      "lumo-the-gospel-of-john.html",
-      "wedding-in-cana",
-      "english.html",
-    )
-
-    expect(isWatchYouVersionBibleQuotesEnabledMock).toHaveBeenCalledWith({
-      custom: {
-        route:
-          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-      },
-    })
-    expect(fetchYouVersionBibleQuotePassagesMock).toHaveBeenCalledWith(
-      bibleCitations,
-    )
-    const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      mergedBlocks: Array<{
-        kind?: string
-        youVersionPassages?: Array<unknown>
-      }>
-    }
-    expect(
-      props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
-        ?.youVersionPassages,
+        ?.passages,
     ).toEqual([
       expect.objectContaining({
-        content: "Episode passage.",
+        content: "Server passage.",
         reference: "JHN.3.16",
       }),
     ])
@@ -1497,7 +2382,7 @@ describe("Catch-all routing — unknown shape", () => {
       }),
     })
     await expect(element).rejects.toThrow("NEXT_NOT_FOUND")
-    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })

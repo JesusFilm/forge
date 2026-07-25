@@ -4,9 +4,11 @@ import {
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  publicWatchAudioLanguageSlugForLocale,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
+import { asContentSlug, asLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
@@ -21,6 +23,7 @@ import {
 import {
   getWatchRouteManifest,
   isWatchRouteAdmittedByManifest,
+  type WatchRouteManifest,
   type WatchRouteManifestRoute,
 } from "@/lib/watch-route-manifest"
 
@@ -59,23 +62,51 @@ type RewriteDecision =
   | { kind: "pass" }
   | { kind: "not-found" }
 
+type ManifestAdmissionDecision =
+  | { kind: "admit"; internalPathname?: string }
+  | { kind: "redirect"; pathname: string }
+  | { kind: "not-found" }
+
+function defaultLanguageVideoAdmission(
+  manifest: WatchRouteManifest,
+  contentSlug: string,
+): Extract<ManifestAdmissionDecision, { kind: "admit" }> | null {
+  const defaultAudioLanguageSlug =
+    publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+  if (!defaultAudioLanguageSlug) return null
+
+  const defaultLanguageRoute: WatchRouteManifestRoute = {
+    kind: "video",
+    contentSlug,
+    audioLanguageSlug: defaultAudioLanguageSlug,
+  }
+  if (!isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
+    return null
+  }
+
+  return {
+    kind: "admit",
+    internalPathname: watchVideoPath(
+      asContentSlug(defaultLanguageRoute.contentSlug),
+      asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
+    ),
+  }
+}
+
 function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
 }
 
-function buildRedirect(url: URL, status: 307 | 308): NextResponse {
+function buildRedirect(url: URL, status: 301 | 307 | 308): NextResponse {
   const response = NextResponse.redirect(url, status)
   response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
   return response
 }
 
-function buildNotFound(): NextResponse {
-  return new NextResponse(null, { status: 404 })
-}
-
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   const url = request.nextUrl.clone()
   url.pathname = "/"
+  url.searchParams.delete("q")
   return buildRedirect(url, 307)
 }
 
@@ -130,10 +161,15 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   }
 
   const publicPath = rest.length > 0 ? `/${rest.join("/")}` : "/"
-  if (isUnsafeRedirectPath(publicPath) || !isSafeCanonicalPath(publicPath)) {
+  const canonicalPublicPath =
+    publicPath === "/videos" ? "/languages" : publicPath
+  if (
+    isUnsafeRedirectPath(canonicalPublicPath) ||
+    !isSafeCanonicalPath(canonicalPublicPath)
+  ) {
     return { kind: "not-found" }
   }
-  return { kind: "redirect", pathname: publicPath }
+  return { kind: "redirect", pathname: canonicalPublicPath }
 }
 
 function classifyRewrite(pathname: string): RewriteDecision {
@@ -151,7 +187,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "videos") {
+    if (segment === "history" || segment === "languages") {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,
@@ -178,6 +214,27 @@ function classifyRewrite(pathname: string): RewriteDecision {
 
   if (segments.length === 2) {
     const [slugSegment, localeSegment] = segments
+    if (
+      localeSegment === "videos" ||
+      localeSegment === "languages" ||
+      localeSegment === "history"
+    ) {
+      if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
+      const rawLanguageSlug = stripSafeSlug(slugSegment)
+      if (!rawLanguageSlug) return { kind: "not-found" }
+      if (!isPublicWatchLanguageSlug(rawLanguageSlug)) {
+        return { kind: "not-found" }
+      }
+      return {
+        kind: "rewrite",
+        ...resolveWatchLocaleIdentity(rawLanguageSlug),
+        pathname,
+        internalPathname:
+          localeSegment === "videos"
+            ? `/videos/${rawLanguageSlug}`
+            : `/${localeSegment}`,
+      }
+    }
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
       return { kind: "not-found" }
     }
@@ -249,23 +306,79 @@ function rewriteToInternal(
     WATCH_INTERNAL_REWRITE_VALUE,
   )
   return applyWatchSecurityHeaders(
-    NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
+    NextResponse.rewrite(url, {
+      request: { headers: requestHeaders },
+    }),
   )
 }
 
-async function isRewriteAdmittedByManifest(
+function buildNotFound(request: ProxyRequest): NextResponse {
+  return rewriteToInternal(request, {
+    kind: "rewrite",
+    locale: DEFAULT_LOCALE,
+    htmlLang: DEFAULT_LOCALE,
+    pathname: "/404",
+  })
+}
+
+async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
-): Promise<boolean> {
-  if (!decision.manifestRoute) return true
+): Promise<ManifestAdmissionDecision> {
+  if (!decision.manifestRoute) return { kind: "admit" }
 
   const manifest = await getWatchRouteManifest()
   if (!manifest) {
-    return decision.manifestRoute.kind === "one-segment"
-      ? isOneSegmentCollectionSlug(decision.manifestRoute.slug)
-      : true
+    if (
+      decision.manifestRoute.kind === "one-segment" &&
+      !isOneSegmentCollectionSlug(decision.manifestRoute.slug)
+    ) {
+      return { kind: "not-found" }
+    }
+    return { kind: "admit" }
   }
 
-  return isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)
+  if (decision.manifestRoute.kind === "one-segment") {
+    const { slug } = decision.manifestRoute
+    const defaultVideoAdmission = defaultLanguageVideoAdmission(manifest, slug)
+    const hasExactVideoLanguages = Object.hasOwn(
+      manifest.audioLanguageIndexesByContent ?? {},
+      slug,
+    )
+
+    // A slug can be published as both an Experience and a Video. Prefer the
+    // Video only when the manifest proves its exact language availability;
+    // otherwise preserve the one-segment Experience route.
+    if (hasExactVideoLanguages) {
+      return defaultVideoAdmission ?? { kind: "not-found" }
+    }
+    if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+      return { kind: "admit" }
+    }
+    return defaultVideoAdmission ?? { kind: "not-found" }
+  }
+
+  if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+    return { kind: "admit" }
+  }
+
+  if (decision.manifestRoute.kind === "episode") {
+    const standaloneRoute: WatchRouteManifestRoute = {
+      kind: "video",
+      contentSlug: decision.manifestRoute.childSlug,
+      audioLanguageSlug: decision.manifestRoute.audioLanguageSlug,
+    }
+    if (isWatchRouteAdmittedByManifest(manifest, standaloneRoute)) {
+      return {
+        kind: "redirect",
+        pathname: watchVideoPath(
+          asContentSlug(standaloneRoute.contentSlug),
+          asLocaleSlug(standaloneRoute.audioLanguageSlug),
+        ),
+      }
+    }
+  }
+
+  return { kind: "not-found" }
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
@@ -281,14 +394,23 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     if (prefix.kind === "redirect") {
       return applyWatchSecurityHeaders(NextResponse.next())
     }
-    if (prefix.kind === "not-found") return buildNotFound()
+    if (prefix.kind === "not-found") return buildNotFound(request)
   }
 
-  if (prefix.kind === "not-found") return buildNotFound()
+  if (prefix.kind === "not-found") return buildNotFound(request)
   if (prefix.kind === "redirect") {
     const url = request.nextUrl.clone()
     url.pathname = prefix.pathname
     return buildRedirect(url, 308)
+  }
+
+  if (pathname === "/history") {
+    return rewriteToInternal(request, {
+      kind: "rewrite",
+      locale: DEFAULT_LOCALE,
+      htmlLang: DEFAULT_LOCALE,
+      pathname,
+    })
   }
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
@@ -302,9 +424,20 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   const rewrite = classifyRewrite(pathname)
   if (rewrite.kind === "pass") return NextResponse.next()
-  if (rewrite.kind === "not-found") return buildNotFound()
-  if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
-  return rewriteToInternal(request, rewrite)
+  if (rewrite.kind === "not-found") return buildNotFound(request)
+  const admission = await classifyManifestAdmission(rewrite)
+  if (admission.kind === "not-found") {
+    return buildNotFound(request)
+  }
+  if (admission.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = admission.pathname
+    return buildRedirect(url, 301)
+  }
+  return rewriteToInternal(request, {
+    ...rewrite,
+    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+  })
 }
 
 export const config = {
@@ -312,6 +445,6 @@ export const config = {
     // Reserved framework + asset subtrees that must never enter the
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
-    "/((?!(?:api|assets|images|fonts|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
   ],
 }

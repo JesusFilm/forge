@@ -14,10 +14,9 @@ describe("offline search eval workflow route", () => {
   it("defaults Studio/API inputs to a runnable all-locale baseline capture", () => {
     expect(_internal.OfflineSearchEvalInputSchema.parse({})).toEqual({
       mode: "capture-baseline",
-      baselineName: "seed-baseline",
+      callerTrack: "public-watch",
       locales: DEFAULT_SEED_LOCALES,
       searchLimit: 20,
-      searchMode: "hybrid",
       contentType: "all",
     })
   })
@@ -29,10 +28,9 @@ describe("offline search eval workflow route", () => {
       ),
     ).toEqual({
       mode: "capture-baseline",
-      baselineName: "seed-baseline",
+      callerTrack: "public-watch",
       locales: DEFAULT_SEED_LOCALES,
       searchLimit: 20,
-      searchMode: "hybrid",
     })
 
     expect(
@@ -42,6 +40,19 @@ describe("offline search eval workflow route", () => {
         }),
       ).contentType,
     ).toBe("experience")
+  })
+
+  it("accepts semantic-only as an internal diagnostic search mode", () => {
+    expect(
+      _internal.OfflineSearchEvalInputSchema.parse({
+        searchMode: "semantic-only",
+      }).searchMode,
+    ).toBe("semantic-only")
+    expect(
+      _internal.OfflineSearchEvalInputSchema.safeParse({
+        searchMode: "algolia-backed",
+      }).success,
+    ).toBe(false)
   })
 
   it("exposes the structured input schema to Studio workflow metadata", () => {
@@ -108,9 +119,9 @@ describe("offline search eval workflow route", () => {
       {
         mode: "capture-baseline",
         baselineName: "default",
+        callerTrack: "public-watch",
         locales: DEFAULT_SEED_LOCALES,
         searchLimit: 20,
-        searchMode: "hybrid",
         contentType: "all",
       },
       { runId: expect.any(String) },
@@ -140,10 +151,9 @@ describe("offline search eval workflow route", () => {
     expect(launch).toHaveBeenCalledWith(
       {
         mode: "capture-baseline",
-        baselineName: "seed-baseline",
+        callerTrack: "public-watch",
         locales: DEFAULT_SEED_LOCALES,
         searchLimit: 20,
-        searchMode: "hybrid",
         contentType: "all",
       },
       { runId: expect.any(String) },

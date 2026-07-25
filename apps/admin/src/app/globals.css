@@ -167,6 +167,16 @@ button.status-pill:not(:disabled):hover {
   background-color: var(--color-surface-raised);
 }
 
+.route-feedback-enter {
+  animation: routeFeedbackEnter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.route-feedback-exit {
+  animation: routeFeedbackExit 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
 .workflow-trace-shell {
   --ds-background-100: #14110f;
   --ds-background-200: var(--color-surface-inset);
@@ -223,5 +233,29 @@ button.status-pill:not(:disabled):hover {
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes routeFeedbackEnter {
+  from {
+    transform: translateX(calc(100% + 32px));
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes routeFeedbackExit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(calc(100% + 32px));
+    opacity: 0;
   }
 }

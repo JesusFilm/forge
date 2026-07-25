@@ -147,6 +147,99 @@ describe("loadJobReviewContext", () => {
     })
   })
 
+  it("exposes subtitle validation summaries and artifacts for review automation", async () => {
+    const result = await loadJobReviewContext(
+      buildJob({
+        artifacts: {
+          metadata: { kind: "downloadable" },
+          chapters: { kind: "downloadable" },
+          "subtitles-fr": { kind: "downloadable" },
+          "subtitle-validation-fr": { kind: "downloadable" },
+        },
+        steps: [
+          {
+            name: "translation",
+            status: "completed",
+            retries: 0,
+            details: {
+              subtitleValidation: {
+                highestVerdict: "needs_review",
+                languagesChecked: 1,
+                modelOnlyLanguages: ["fr"],
+                unavailableLanguages: [],
+                warningCount: 0,
+                needsReviewCount: 1,
+                results: [
+                  {
+                    lang: "fr",
+                    verdict: "needs_review",
+                    basis: "model_knowledge",
+                    confidence: 0.82,
+                    checkedReferenceCount: 1,
+                    warningCount: 0,
+                    needsReviewCount: 1,
+                    fallbackReason: "provider_config_missing",
+                    unavailableReason: "artifact_write_failed",
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+      {
+        loadVideoReviewSource: async () => ({
+          subtitles: [],
+        }),
+        loadMuxSubtitleTracks: async () => [],
+        readArtifactJson: async (_assetId, artifactKey) => {
+          if (artifactKey === "metadata") return { title: "Generated title" }
+          if (artifactKey === "chapters") return { chapters: [] }
+          throw new Error(`Unexpected artifact ${artifactKey}`)
+        },
+        buildArtifactHref: (jobId, artifactKey) =>
+          `/api/jobs/${jobId}/artifacts/${artifactKey}`,
+      },
+    )
+
+    expect(result.status).toBe("ready")
+    if (result.status !== "ready") {
+      throw new Error("expected ready result")
+    }
+
+    expect(result.context.after.validation).toEqual({
+      status: "available",
+      summary: {
+        highestVerdict: "needs_review",
+        languagesChecked: 1,
+        modelOnlyLanguages: ["fr"],
+        unavailableLanguages: [],
+        warningCount: 0,
+        needsReviewCount: 1,
+        results: [
+          {
+            lang: "fr",
+            verdict: "needs_review",
+            basis: "model_knowledge",
+            confidence: 0.82,
+            checkedReferenceCount: 1,
+            warningCount: 0,
+            needsReviewCount: 1,
+            fallbackReason: "provider_config_missing",
+            unavailableReason: "artifact_write_failed",
+          },
+        ],
+      },
+      artifacts: [
+        {
+          key: "subtitle-validation-fr",
+          href: "/api/jobs/job-1/artifacts/subtitle-validation-fr",
+          languageCode: "fr",
+        },
+      ],
+    })
+  })
+
   it("loads mock review sources without calling live CMS or Mux", async () => {
     const mockState = cloneMockCmsSeed(DEFAULT_MOCK_CMS_SEED)
 

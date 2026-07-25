@@ -365,6 +365,7 @@ export async function syncVideos({
             const pendingRelations: Array<{
               parentId: string
               childCoreId: string
+              order: number
             }> = []
 
             for (const video of videos) {
@@ -431,8 +432,7 @@ export async function syncVideos({
                 bcp47ByCoreId,
                 slugByCoreId,
               })
-              pageErrors +=
-                localizedResult.errors + localizedResult.skippedLanguages
+              pageErrors += localizedResult.errors
               if (localizedResult.skippedLanguages > 0) {
                 console.warn(
                   JSON.stringify({
@@ -506,10 +506,11 @@ export async function syncVideos({
                 videoKeywordRows.push({ videoId: videoRow.id, keywordId })
               }
 
-              for (const child of video.children) {
+              for (const [index, child] of video.children.entries()) {
                 pendingRelations.push({
                   parentId: videoRow.id,
                   childCoreId: child.id,
+                  order: index + 1,
                 })
               }
 
@@ -561,7 +562,14 @@ export async function syncVideos({
               const videoRelationRows = pendingRelations.flatMap((relation) => {
                 const childId = childIdByCoreId.get(relation.childCoreId)
                 return childId
-                  ? [{ id: randomUUID(), parentId: relation.parentId, childId }]
+                  ? [
+                      {
+                        id: randomUUID(),
+                        parentId: relation.parentId,
+                        childId,
+                        order: relation.order,
+                      },
+                    ]
                   : []
               })
 
@@ -571,18 +579,21 @@ export async function syncVideos({
                     "id",
                     "parent_id",
                     "child_id",
+                    "order",
                     "created_at"
                   )
                   SELECT
                     input."id",
                     input."parent_id",
                     input."child_id",
+                    input."order_text"::int,
                     NOW()
                   FROM unnest(
                     ${toPgArray(videoRelationRows.map((row) => row.id))}::text[],
                     ${toPgArray(videoRelationRows.map((row) => row.parentId))}::text[],
-                    ${toPgArray(videoRelationRows.map((row) => row.childId))}::text[]
-                  ) AS input("id", "parent_id", "child_id")
+                    ${toPgArray(videoRelationRows.map((row) => row.childId))}::text[],
+                    ${toPgArray(videoRelationRows.map((row) => row.order.toString()))}::text[]
+                  ) AS input("id", "parent_id", "child_id", "order_text")
                   ON CONFLICT ("parent_id", "child_id") DO NOTHING
                 `
               }

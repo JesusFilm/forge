@@ -13,9 +13,20 @@
       "channel": "preview",
       "environment": "preview"
     },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": { "simulator": true }
+    },
     "production": {
       "channel": "production",
       "environment": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6791428415"
+      }
     }
   }
 }

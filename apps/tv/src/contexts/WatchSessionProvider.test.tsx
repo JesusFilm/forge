@@ -1,8 +1,6 @@
-// TV has no @testing-library/react-native (and no react-test-renderer), so the
-// provider's React wiring is kept a thin shell over PURE, exported helpers and
-// those helpers are unit-tested directly here (per U3's "otherwise test the
-// reducer/helper logic directly without rendering"). Each helper backs one
-// provider behavior; the mapping is noted per describe block.
+// TV has no @testing-library/react-native, so the provider stays a thin shell
+// over PURE exported helpers that we unit-test directly here (per U3). Each
+// helper backs one provider behavior; the mapping is noted per describe block.
 
 // Import from the React-free helper module (not the .tsx provider) — the jest
 // transform can't load the provider's React/JSX module graph, and the provider
@@ -144,7 +142,7 @@ describe("resolveDefaultVariantIndex", () => {
       }),
     ])
     // primary is "en" → matches English at index 1.
-    expect(resolveDefaultVariantIndex(video, null)).toBe(1)
+    expect(resolveDefaultVariantIndex(video, [])).toBe(1)
   })
 
   it("matches the persisted preference by language SLUG, not bcp47 — ko vs ko-kmr do not collide", () => {
@@ -167,8 +165,8 @@ describe("resolveDefaultVariantIndex", () => {
     )
     // Preferring "kurdish-kurmanji" must select the Kurmanji dub (index 1),
     // never the Korean one whose bcp47 prefix "ko" would collide.
-    expect(resolveDefaultVariantIndex(video, "kurdish-kurmanji")).toBe(1)
-    expect(resolveDefaultVariantIndex(video, "korean")).toBe(0)
+    expect(resolveDefaultVariantIndex(video, ["kurdish-kurmanji"])).toBe(1)
+    expect(resolveDefaultVariantIndex(video, ["korean"])).toBe(0)
   })
 
   it("falls back to index 0 when nothing resolves", () => {
@@ -189,11 +187,11 @@ describe("resolveDefaultVariantIndex", () => {
       ],
       { primaryLanguageBcp47: "zz" },
     )
-    expect(resolveDefaultVariantIndex(video, null)).toBe(0)
+    expect(resolveDefaultVariantIndex(video, [])).toBe(0)
   })
 
   it("returns 0 for a variant-less video", () => {
-    expect(resolveDefaultVariantIndex(makeVideo([]), null)).toBe(0)
+    expect(resolveDefaultVariantIndex(makeVideo([]), [])).toBe(0)
   })
 })
 

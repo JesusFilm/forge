@@ -9,14 +9,36 @@ const envMock = vi.hoisted(() => ({
 
 vi.mock("@/config/env", () => envMock)
 vi.mock("@/db/client", () => ({ prisma: {} }))
+vi.mock("@/services/search-trace-retention.service", () => ({
+  purgeExpiredSearchTraces: vi.fn(async () => ({
+    purgedCount: 0,
+    purgedRawTraceCount: 0,
+    purgedGeneratedCandidateCount: 0,
+    purgedWatchSearchEventCount: 0,
+    purgedQueryEmbeddingCacheCount: 0,
+    purgedBefore: "2026-05-01T00:00:00.180Z",
+  })),
+  readSearchTraceRetentionHealth: vi.fn(async () => ({
+    healthy: true,
+    reason: "recent-purge",
+    latestPurgeAt: "2026-05-01T00:00:00.000Z",
+    activeSchedulerRunId: null,
+  })),
+}))
 
 import {
   __resetSearchTraceHealthForTest,
   getSearchTraceHealthCounters,
 } from "./search-trace-health"
 import {
+  purgeExpiredSearchTraces,
+  readSearchTraceRetentionHealth,
+} from "@/services/search-trace-retention.service"
+import {
   classifyLatencyBucket,
+  recordAdminVideoLibrarySearchTraceSafely,
   recordSearchTraceSafely,
+  recordWatchSearchTraceSafely,
   sampleSearchTraces,
   writeSearchTrace,
   type RecordSearchTraceInput,
@@ -42,7 +64,7 @@ const baseTraceInput: RecordSearchTraceInput = {
   locale: "en",
   routeSource: "rest",
   requestedMode: "hybrid",
-  searchMode: "hybrid",
+  searchMode: "watch-search",
   resultCount: 3,
   outcome: "success",
   traceClass: "none",
@@ -91,7 +113,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",
@@ -117,6 +139,28 @@ describe("search trace service", () => {
       outcome: "SUCCESS",
       queryLabelSource: "rules",
       queryLabelVersion: "search-query-labels/v1",
+    })
+  })
+
+  it("defaults raw trace retention when runtime env skips schema defaults", async () => {
+    const prisma = buildPrisma()
+    envMock.env.SEARCH_TRACE_RAW_RETENTION_DAYS = undefined as unknown as number
+
+    await expect(
+      writeSearchTrace(
+        baseTraceInput,
+        prisma as unknown as Parameters<typeof writeSearchTrace>[1],
+      ),
+    ).resolves.toEqual({
+      aggregateStored: true,
+      rawStored: true,
+      rawCaptureDisabled: false,
+    })
+
+    expect(prisma.searchTrace.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        rawExpiresAt: new Date("2026-05-30T00:00:00.180Z"),
+      }),
     })
   })
 
@@ -169,10 +213,408 @@ describe("search trace service", () => {
     )
   })
 
+  it("records Watch search request metadata in Admin raw traces without adding query text to aggregates", async () => {
+    const prisma = buildPrisma()
+
+    await recordWatchSearchTraceSafely(
+      {
+        input: {
+          query: "Should I pray to God?",
+          targetLanguageSlug: "russian",
+          queryNamedLanguageSlug: "russian",
+          displayLanguageSlug: "english",
+          routeLanguageSlug: "english",
+          acceptLanguage: "en-US,en;q=0.9",
+          limit: 10,
+          offset: 0,
+          resultTypes: ["video"],
+        },
+        response: {
+          query: "Should I pray to God?",
+          requestId: "watch_req_123456",
+          searchMode: "watch-search",
+          degraded: true,
+          latencyMs: 123.4,
+          hasMore: false,
+          nextOffset: 10,
+          languageInterpretation: {
+            queryLanguageSlug: null,
+            queryNamedLanguageSlug: "russian",
+            targetLanguageSlug: "russian",
+            targetLanguageSource: "explicit_target",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: "english",
+            currentWatchLanguageSlug: null,
+            acceptLanguage: "en-US,en;q=0.9",
+            acceptLanguageSlug: "english",
+          },
+          laneStatuses: [
+            {
+              lane: "semantic_retrieval",
+              status: "degraded",
+              startedOffsetMs: 0,
+              elapsedMs: 42,
+              resultCount: 1,
+              reason: "partial_locale_failure",
+              detail: null,
+            },
+          ],
+          results: [
+            {
+              type: "video",
+              id: "video-prayer",
+              slug: "prayer",
+              title: "Prayer",
+              description: "This text must not enter metadata.",
+              snippet: "This snippet must not enter metadata.",
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              playbackId: "playback-secret-ish",
+              startSeconds: 12,
+              score: 0.9,
+              scoreBreakdown: {
+                total: 0.9,
+                sourceRelevance: 0.5,
+                evidenceBoost: 0.15,
+                relevance: 0.65,
+                availability: 0.25,
+                match: 0.15,
+                sourceScore: 0.91,
+              },
+              label: "FEATURE_FILM",
+              durationSeconds: 120,
+              childCount: 0,
+              languageSlug: "russian",
+              languageEnglishName: "Russian",
+              availability: {
+                kind: "target_audio",
+                languageSlug: "russian",
+                languageEnglishName: "Russian",
+                audio: true,
+                subtitles: false,
+              },
+              evidence: {
+                kind: "transcript_semantic",
+                languageSlug: "russian",
+                label: "Transcript match",
+              },
+              action: {
+                kind: "watch",
+                hrefLanguageSlug: "russian",
+              },
+              fallback: {
+                kind: "none",
+                message: null,
+              },
+            },
+          ],
+        },
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.123Z"),
+        now: new Date("2026-05-01T00:00:00.123Z"),
+      },
+      prisma as unknown as Parameters<typeof recordWatchSearchTraceSafely>[1],
+    )
+
+    const rawData = prisma.searchTrace.create.mock.calls[0]?.[0]?.data
+    expect(rawData).toMatchObject({
+      requestId: "watch_req_123456",
+      locale: "russian",
+      routeSource: "GRAPHQL",
+      requestedMode: "watch-search",
+      searchMode: "watch-search",
+      resultCount: 1,
+      outcome: "DEGRADED",
+      traceClass: expect.stringContaining("semantic_retrieval_degraded"),
+    })
+    expect(rawData.metadata).toMatchObject({
+      version: "watch-search-analytics/v2",
+      requestId: "watch_req_123456",
+      queryLength: "Should I pray to God?".length,
+      resultCount: 1,
+      degraded: true,
+      language: {
+        targetLanguageSlug: "russian",
+        queryNamedLanguageSlug: "russian",
+        acceptLanguageSlug: "english",
+      },
+      laneStatuses: [
+        {
+          lane: "semantic_retrieval",
+          status: "degraded",
+          reason: "partial_locale_failure",
+          detail: null,
+        },
+      ],
+      results: [
+        {
+          id: "video-prayer",
+          type: "video",
+          score: 0.9,
+          scoreBreakdown: {
+            total: 0.9,
+            sourceRelevance: 0.5,
+            evidenceBoost: 0.15,
+            relevance: 0.65,
+            availability: 0.25,
+            match: 0.15,
+            sourceScore: 0.91,
+          },
+          availabilityKind: "target_audio",
+          evidenceKind: "transcript_semantic",
+        },
+      ],
+    })
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "This snippet must not enter metadata",
+    )
+    expect(JSON.stringify(rawData.metadata)).not.toContain("en-US,en;q=0.9")
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "playback-secret-ish",
+    )
+
+    const aggregateCreate =
+      prisma.searchTraceAggregate.upsert.mock.calls[0]?.[0]?.create
+    expect(JSON.stringify(aggregateCreate)).not.toContain("metadata")
+    expect(JSON.stringify(aggregateCreate)).not.toContain(
+      "Should I pray to God?",
+    )
+  })
+
+  it("derives Watch trace availability score from the availability kind", async () => {
+    const prisma = buildPrisma()
+
+    await recordWatchSearchTraceSafely(
+      {
+        input: {
+          query: "Jesus",
+          targetLanguageSlug: "english",
+          displayLanguageSlug: "english",
+        },
+        response: {
+          query: "Jesus",
+          requestId: "watch_req_availability",
+          searchMode: "watch-search",
+          degraded: false,
+          latencyMs: 44,
+          hasMore: false,
+          nextOffset: 20,
+          languageInterpretation: {
+            queryLanguageSlug: null,
+            queryNamedLanguageSlug: null,
+            targetLanguageSlug: "english",
+            targetLanguageSource: "explicit_target",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: null,
+            currentWatchLanguageSlug: null,
+            acceptLanguage: null,
+            acceptLanguageSlug: null,
+          },
+          laneStatuses: [],
+          results: [
+            {
+              type: "video",
+              id: "video-jesus",
+              slug: "jesus",
+              title: "JESUS",
+              description: null,
+              snippet: null,
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              playbackId: "mux-english",
+              startSeconds: null,
+              score: 1,
+              scoreBreakdown: {
+                total: 1,
+                sourceRelevance: 0.55,
+                evidenceBoost: 0.2,
+                relevance: 0.75,
+                availability: 0,
+                match: 0.2,
+                sourceScore: 1,
+              },
+              label: null,
+              durationSeconds: null,
+              childCount: null,
+              languageSlug: "english",
+              languageEnglishName: "English",
+              availability: {
+                kind: "target_audio",
+                languageSlug: "english",
+                languageEnglishName: "English",
+                audio: true,
+                subtitles: false,
+              },
+              evidence: {
+                kind: "exact_title",
+                languageSlug: null,
+                label: "Title match",
+              },
+              action: {
+                kind: "watch",
+                hrefLanguageSlug: "english",
+              },
+              fallback: {
+                kind: "none",
+                message: null,
+              },
+            },
+          ],
+        },
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.044Z"),
+        now: new Date("2026-05-01T00:00:00.044Z"),
+      },
+      prisma as unknown as Parameters<typeof recordWatchSearchTraceSafely>[1],
+    )
+
+    const rawData = prisma.searchTrace.create.mock.calls[0]?.[0]?.data
+    expect(rawData.metadata).toMatchObject({
+      results: [
+        {
+          availabilityKind: "target_audio",
+          scoreBreakdown: {
+            availability: 0.25,
+          },
+        },
+      ],
+    })
+  })
+
+  it("records admin video-library traces with closed client metadata", async () => {
+    const prisma = buildPrisma()
+
+    await recordAdminVideoLibrarySearchTraceSafely(
+      {
+        query: "Rivka testimony",
+        locale: "en",
+        client: "experience-editor-media-collection-picker",
+        response: {
+          query: "Rivka testimony",
+          requestId: "watch_req_admin_123",
+          searchMode: "watch-search",
+          degraded: false,
+          latencyMs: 88,
+          hasMore: false,
+          nextOffset: 30,
+          languageInterpretation: {
+            queryLanguageSlug: null,
+            queryNamedLanguageSlug: null,
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: "english",
+            currentWatchLanguageSlug: null,
+            acceptLanguage: "en",
+            acceptLanguageSlug: "english",
+          },
+          laneStatuses: [],
+          results: [
+            {
+              type: "video",
+              id: "video-rivka",
+              slug: "rivka",
+              title: "Rivka",
+              description: "This text must not enter metadata.",
+              snippet: "This snippet must not enter metadata.",
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              playbackId: "playback-secret-ish",
+              startSeconds: null,
+              score: 0.9,
+              scoreBreakdown: {
+                total: 0.9,
+                sourceRelevance: 0.5,
+                evidenceBoost: 0.15,
+                relevance: 0.65,
+                availability: 0.25,
+                match: 0.15,
+                sourceScore: 0.91,
+              },
+              label: "SHORT_FILM",
+              durationSeconds: 120,
+              childCount: 0,
+              languageSlug: "english",
+              languageEnglishName: "English",
+              availability: {
+                kind: "target_audio",
+                languageSlug: "english",
+                languageEnglishName: "English",
+                audio: true,
+                subtitles: false,
+              },
+              evidence: {
+                kind: "transcript_semantic",
+                languageSlug: "english",
+                label: "Transcript match",
+              },
+              action: {
+                kind: "watch",
+                hrefLanguageSlug: "english",
+              },
+              fallback: {
+                kind: "none",
+                message: null,
+              },
+            },
+          ],
+        },
+        resultIds: ["video-rivka", "bad token with spaces"],
+        hydratedResultCount: 1,
+        targetLanguageSlug: "english",
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.088Z"),
+        now: new Date("2026-05-01T00:00:00.088Z"),
+      },
+      prisma as unknown as Parameters<
+        typeof recordAdminVideoLibrarySearchTraceSafely
+      >[1],
+    )
+
+    const rawData = prisma.searchTrace.create.mock.calls[0]?.[0]?.data
+    expect(rawData).toMatchObject({
+      requestId: "watch_req_admin_123",
+      locale: "en",
+      routeSource: "GRAPHQL",
+      requestedMode: "experience-editor-media-collection-picker",
+      searchMode: "watch-search",
+      resultCount: 1,
+      outcome: "SUCCESS",
+      traceClass: "none",
+    })
+    expect(rawData.metadata).toMatchObject({
+      version: "admin-video-library-search/v1",
+      client: "experience-editor-media-collection-picker",
+      queryLength: "Rivka testimony".length,
+      targetLanguageSlug: "english",
+      resultTypes: ["video"],
+      resultCount: 1,
+      hydratedResultCount: 1,
+      degraded: false,
+      resultIds: ["video-rivka"],
+    })
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "This snippet must not enter metadata",
+    )
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "playback-secret-ish",
+    )
+
+    const aggregateCreate =
+      prisma.searchTraceAggregate.upsert.mock.calls[0]?.[0]?.create
+    expect(JSON.stringify(aggregateCreate)).not.toContain("metadata")
+    expect(JSON.stringify(aggregateCreate)).not.toContain("Rivka testimony")
+  })
+
   it("does not throw or log raw query text when persistence fails", async () => {
     const prisma = buildPrisma()
     prisma.searchTraceAggregate.upsert.mockRejectedValueOnce(
-      new Error("database unavailable"),
+      new Error(
+        "Invalid value for argument `queryText`: raw private query is bad",
+      ),
     )
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
@@ -185,6 +627,9 @@ describe("search trace service", () => {
 
     expect(getSearchTraceHealthCounters().writeFailures).toBe(1)
     expect(warn.mock.calls.flat().join(" ")).not.toContain("raw private query")
+    expect(warn.mock.calls.flat().join(" ")).toContain(
+      "Invalid value for argument `queryText`",
+    )
   })
 
   it("returns after timeout and logs no raw query text", async () => {
@@ -220,6 +665,39 @@ describe("search trace service", () => {
     expect(getSearchTraceHealthCounters().rawCaptureDisabled).toBe(1)
   })
 
+  it("self-heals missing production retention health before storing raw traces", async () => {
+    envMock.env.NODE_ENV = "production"
+    vi.mocked(readSearchTraceRetentionHealth).mockResolvedValueOnce({
+      healthy: false,
+      reason: "missing",
+      latestPurgeAt: null,
+      activeSchedulerRunId: null,
+    })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const prisma = buildPrisma()
+
+    await expect(
+      writeSearchTrace(
+        baseTraceInput,
+        prisma as unknown as Parameters<typeof writeSearchTrace>[1],
+      ),
+    ).resolves.toEqual({
+      aggregateStored: true,
+      rawStored: true,
+      rawCaptureDisabled: false,
+    })
+
+    expect(purgeExpiredSearchTraces).toHaveBeenCalledWith(
+      prisma,
+      baseTraceInput.now,
+    )
+    expect(prisma.searchTrace.create).toHaveBeenCalledOnce()
+    expect(getSearchTraceHealthCounters().rawCaptureDisabled).toBe(0)
+    expect(warn).toHaveBeenCalledWith(
+      "[search] event=trace_retention_inline_purge route=rest reason=missing",
+    )
+  })
+
   it("samples only unexpired, eligible rows inside the clamped window", async () => {
     const prisma = buildPrisma()
     prisma.searchTrace.findMany.mockResolvedValueOnce([
@@ -229,7 +707,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",
@@ -258,7 +736,7 @@ describe("search trace service", () => {
         {
           locale: "en",
           routeSource: "rest",
-          searchMode: "hybrid",
+          searchMode: "watch-search",
           since: new Date("2026-05-01T00:00:00.000Z"),
           until: now,
           limit: 500,
@@ -272,7 +750,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "rest",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "lt_250ms",
         outcome: "success",
@@ -307,7 +785,7 @@ describe("search trace service", () => {
         sampleEligible: true,
         locale: "en",
         routeSource: "REST",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
       },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -415,7 +893,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 0,
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",

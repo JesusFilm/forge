@@ -9,9 +9,9 @@ export type HomePagerDotsProps = {
 }
 
 /**
- * Page indicator for the Home hero pager: small dots, active one elongated.
- * Returns null for single-slide queues (mirrors showsPagerChrome — AE2); the
- * pager also gates on the selector so both stay in agreement.
+ * Page indicator for the Home hero pager: dots, active one elongated.
+ * Returns null for single-slide queues (mirrors showsPagerChrome — AE2);
+ * the pager also gates on the selector so both stay in agreement.
  */
 export function HomePagerDots({ count, activeIndex }: HomePagerDotsProps) {
   const indexes = useMemo(

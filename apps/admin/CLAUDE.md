@@ -24,17 +24,19 @@ See the origin docs for full context:
   `.jesusfilm.org` cookies or host admin-local credential handlers.
 - useworkflow (`workflow` npm package) for durable background jobs
 - Redis (TCP via `ioredis`) for rate limiting
-- Railway deployment (NIXPACKS, standalone output)
+- Railway deployment (Railpack, standard `next start`)
 - Doppler for env var management (project: `forge-admin`)
 
 ## Embedding ownership
 
-Mastra owns background transcript, scene, and experience embedding generation:
+Mastra owns background transcript and experience embedding generation:
 provider calls, provider-result validation, retries, workflow diagnostics, and
-Studio observability. Admin owns type-specific ingest routes, target
-resolution, vector storage, publication gates, pgvector indexes, public search
-contracts, and retrieval. Keep the transcript, scene, and experience ingest
-contracts separate; do not add a generic embedding blob endpoint.
+Studio observability. Admin owns the remaining type-specific ingest routes,
+target resolution, vector storage, publication gates, pgvector indexes, public
+search contracts, and retrieval. The legacy scene embedding writer and Admin
+scene ingest route are retired; historical scene rows stay in Postgres until
+feat-199 decides retention/migration. Scene analysis artifacts are non-search
+source artifacts, not a scene-vector pipeline.
 Coordinated all-content content-vector replacement uses
 `run-embeds --pipeline=all` only after a passed Mastra content search-eval gate
 report from `docs/search-eval-reports/`.
@@ -42,6 +44,115 @@ report from `docs/search-eval-reports/`.
 Live user search stays Admin-owned. Search services may generate live query
 embeddings for retrieval, but live search orchestration does not move to
 Mastra.
+
+## AI experience draft generation — structural validity & gateway-trust gate
+
+The "create full experience draft" editor action
+(`src/app/dashboard/experiences/generate-draft-action.ts` →
+`src/mastra/workflows/multi-step-draft-workflow.ts`) layers defense so a
+generated draft is never off-shape: two-phase generation (skeleton → validate
+→ sequential fill), deterministic coercion, optional per-phase
+schema-constrained decoding, and a fail-closed validate→repair loop that
+always re-validates the assembled output against the persistence-layer
+`BlocksSchema` (`@/domain/blocks`) plus the single-sourced
+`GENERATION_MIN_BLOCKS`. The generation minimum is enforced ONLY on the
+generation path — `BlocksSchema` itself stays permissive so legitimate manual
+1-block experiences still persist.
+
+### Constrained-decoding trust flag
+
+`AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED` (env, `z.enum(["true","false"])`,
+`.optional().default("false")`) marks a provider's schema-constrained decoding
+as trusted. It stays `"false"` until a GREEN smoke run — with the AI gateway
+enabled AND constrained decoding turned on — confirms the provider honors
+schema-constrained decoding for the experience schema. The default mode
+(Gemini, free-text) never depends on it: coercion + repair + the BlocksSchema
+validator carry the final guarantee regardless of the flag.
+
+### Structural-validity smoke gate
+
+`pnpm --filter @forge/admin smoke:draft-workflow`
+(`src/scripts/smoke-mastra-draft-workflow.ts`) is a REAL-LLM harness (requires
+`OPENROUTER_API_KEY`). It runs the `multi-step-draft` workflow over a committed
+prompt set and asserts the FULL structural guarantee per prompt: the workflow
+draft passes `DraftExperienceSchema` AND `normalizeExperienceDraft(draft,
+candidates)` succeeds — i.e. the assembled output also satisfies `BlocksSchema`
+plus the generation minimum, the same boundary the action enforces before
+persisting. It reports a per-prompt split (`firstPassValid` /
+`recoveredAfterRepair` / `terminalFail`) and exits non-zero on any
+terminal-fail. `recoveredAfterRepair` is always 0 here: the repair loop lives
+in `runGenerateDraftAction`, not in the workflow this harness drives directly —
+repair-recovery is covered by the action-level tests
+(`generate-draft-action.test.ts` / `repair-draft.test.ts`).
+
+Gateway-verification procedure: to authorize trusting a provider's constrained
+decoding (R6), run this smoke with the gateway enabled and constrained decoding
+on. A green run (zero terminal-fails) proves the provider's constrained output
+survives the full post-normalize `BlocksSchema` boundary — not just
+`DraftExperienceSchema` — and is the gate that authorizes flipping
+`AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED=true` for that provider. The smoke
+assertion is intrinsic to `smoke:draft-workflow` (same harness, same run, no
+opt-in path), so there is no separate `smoke:draft-structural` script.
+
+## Experience draft/chat — standalone Mastra consolidation
+
+The AI draft-authoring + chat **generation** is being moved out of admin's
+in-process `src/mastra` singleton into the standalone `@forge/mastra` Railway
+service, reached over authenticated HTTP (plan
+`docs/plans/2026-06-19-001-feat-mastra-admin-to-standalone-consolidation-plan.md`).
+Admin stays the caller/proxy and keeps data ownership; Mastra is the generator.
+
+**Flag-gated, in-process fallback retained.** Two independent flags flip admin
+from the in-process agents/workflows to the remote service; both default off, so
+the in-process path under `src/mastra` is still the live fallback and is NOT
+deleted until both flags are stable in prod:
+
+- `EXPERIENCE_AI_REMOTE_DRAFT` (`"true"`/`"false"`, default `"false"`) — the
+  one-shot "Generate full page"/"Quick draft" path. When on,
+  `runGenerateDraftAction` calls `mastra-experience-draft-client.ts`
+  (`POST /forge-experience-draft`, reusing `MASTRA_BASE_URL` +
+  `MASTRA_SERVICE_API_KEY`); candidates + exemplar are still computed admin-side
+  and shipped keyed on `videoId`; `config_missing` degrades to in-process; other
+  remote failures map to the editor error surface (no retry storm).
+  `MASTRA_DRAFT_TIMEOUT_MS` (default 200s) stays strictly larger than mastra's
+  internal 180s workflow budget.
+- `EXPERIENCE_AI_REMOTE_CHAT` (`"true"`/`"false"`, default `"false"`) — the
+  streaming chat turn. When on, `runMastraChat` relays the token stream from
+  `POST /forge-experience-chat` via `mastra-experience-chat-client.ts` (admin =
+  SSE proxy); SSRF host allowlist (`MASTRA_CHAT_ALLOWED_HOSTS`) checked before
+  fetch, `redirect:"error"`, `MASTRA_CHAT_TIMEOUT_MS` (default 95s, > mastra's
+  90s `chatTurn`) composed with `request.signal` so a closed tab cancels the
+  upstream run. A remote `timeout` stays `timeout`; the `done` event keeps
+  `producedBy` so 👍/👎 ratings still attach. `config_missing` degrades to
+  in-process; `MASTRA_CHAT_BASE_URL` + `MASTRA_CHAT_API_KEY` reuse mastra's
+  `MASTRA_SERVICE_API_KEYS`.
+
+**Stays admin (data ownership):** video-candidate retrieval, exemplar selection
+(pgvector + embeddings), draft re-validation/normalization (`@/domain/blocks`
+`BlocksSchema` + `normalizeExperienceDraft` + the repair loop), persistence +
+ContentRevision + ABAC, chat history, the `chat-thumb-rating` scorer + Mastra
+scores store + rating routes, and the editor SSE route + the 4-variant
+`ChatStreamEvent` union (in `experience-ai-chat.service.ts`). The dead
+7-variant `chat-stream-event.ts` + `streaming-bridge.ts` were removed in U10.
+
+**Agent-tool receiver (mastra → admin).** The remote chat agent's tools call
+admin back over HTTP — bearer-gated `POST /api/internal/agent-tools/{search-videos,
+lookup-bible-verse,fetch-video-image}` (`src/app/api/internal/agent-tools/`,
+`isValidAgentToolsBearer`). Every load-bearing filter/cap is enforced
+server-side (the mastra caller is untrusted): search `contentTypes:["video"]` +
+`playbackId !== null`; bible OR-match + locale-fallback `displayName`; image
+`VARIANT_PRIORITY`. The new receiver CSV `ADMIN_AGENT_TOOLS_API_KEYS` joins the
+boot-time `assertBearerCsvsDisjoint` invariant.
+
+**Deploy ordering (keyring-first).** For the agent-tool direction, deploy
+admin's `ADMIN_AGENT_TOOLS_API_KEYS` + endpoints (receiver) BEFORE mastra's
+`ADMIN_AGENT_TOOLS_URL`/`_API_KEY` (caller); verify `503/401 → 200`. For the
+draft/chat triggers, `MASTRA_SERVICE_API_KEYS` already exists on mastra — deploy
+the `/forge-experience-*` routes before flipping admin's flag.
+
+**Shared generation contract.** The LLM draft schema is single-sourced in
+`@forge/experience-schema` (pure zod) and consumed by both admin's re-validator
+and the standalone generator so they cannot drift.
 
 ## Folder structure
 
@@ -276,6 +387,44 @@ and `video-dub-downloads`. When any of those phases run, admin emits a broad
 `model: "video"` webhook with no slug so web clears video, series, child-dub,
 and home resolver caches even when the manifest itself does not need refreshing.
 
+### Watch SEO sitemap manifest snapshot
+
+Admin owns the Watch sitemap-only hreflang manifest at
+`GET /api/watch-seo-manifest`. The route requires the normal consumer bearer
+and returns the latest persisted snapshot with `ETag` support; if no snapshot
+exists, it returns a controlled 503 instead of generating on demand.
+
+This manifest is deliberately separate from the route manifest. The route
+manifest stays a compact route-admission contract; the SEO manifest carries
+only sitemap rendering data for public Watch video and episode URLs.
+
+Snapshot fields the web branch can rely on:
+
+- `videoRouteGroups` — public two-segment Watch content slugs and valid
+  Google-supported hreflang alternates with their public audio language slugs.
+- `episodeRouteGroups` — parent/child Watch episode slug pairs and valid
+  Google-supported hreflang alternates with their public audio language slugs.
+- `skippedHreflangValues` — aggregate counts for duplicate, missing, or
+  unsupported language tags skipped during generation.
+- `version` and `generatedAt` — stable cache/revalidation metadata.
+
+Refresh triggers:
+
+- Core sync phases `languages`, `videos`, and `video-dubs`.
+- Operator refresh script:
+
+```bash
+DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
+pnpm --filter @forge/admin watch-seo-manifest:generate
+```
+
+The script prints summary-only JSON by default: version, generated timestamp,
+payload size, counts, and duration. Use `--print` only for local debugging when
+the full manifest payload is intentionally needed. Like the route-manifest
+script, it refuses production-like `DATABASE_URL` hosts (`*.railway.app`,
+`*.jesusfilm.org`, and unparseable URLs) so operators do not accidentally mutate
+production snapshots from a workstation.
+
 ### Video database backup and clone
 
 Production backup is automated only. Do not add or use an operator
@@ -286,12 +435,12 @@ can use the same admin build/start command, but only the worker should set
 replicas can scale on traffic without also running jobs. When the worker boots,
 `src/instrumentation.ts` starts Postgres World and ensures one
 `src/workflows/videoDbBackup.ts` scheduler workflow is running. That scheduler
-workflow runs one backup immediately when it is first created, then sleeps until
+workflow runs backups immediately when it is first created, then sleeps until
 the next daily UTC run and repeats on that cadence. The actual `pg_dump` and S3
 upload run inside Postgres World, and each backup gets a `workflow_run` ledger
-row visible in `/dashboard/workflows`. The job backs up the default
-`video-core` profile and uploads to the normal Railway S3 bucket env vars
-already managed through Doppler/Railway:
+row visible in `/dashboard/workflows`. The job backs up the scheduled
+`video-core` and `video-search` profiles and uploads to the normal Railway S3
+bucket env vars already managed through Doppler/Railway:
 `RAILWAY_S3_BUCKET`,
 `RAILWAY_S3_ENDPOINT`, `RAILWAY_S3_REGION`, `RAILWAY_S3_ACCESS_KEY_ID`, and
 `RAILWAY_S3_SECRET_ACCESS_KEY`. Backups upload under the fixed
@@ -307,6 +456,42 @@ Railway services, do not put a root Railpack config in place for this feature
 unless every service should inherit it. Deployment details should be checked
 after merge to confirm the package settings were applied to both admin web and
 worker services.
+
+### Datadog observability
+
+`src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
+Datadog's built-in `graphql` plugin. This plugin automatically traces
+`graphql.parse`, `graphql.validate`, `graphql.execute`, and `graphql.resolve`
+spans, including Yoga's GraphQL executor path. Keep query source and variables
+disabled in `src/observability/datadog.ts`; do not tag raw GraphQL documents,
+variables, slugs, bearer keys, cookies, IPs, or user identifiers.
+
+`src/components/DatadogRum.tsx` initializes Browser RUM for Admin when
+`NEXT_PUBLIC_DATADOG_APPLICATION_ID` and `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN` are
+configured. The RUM service is `forge-admin`, matching backend APM for trace
+correlation. RUM traces only Admin GraphQL URLs and uses masked-input privacy.
+
+`src/observability/datadog-logs.ts` forwards server console logs to the shared
+Datadog Agent over syslog UDP when `DD_AGENT_HOST` is configured. It preserves
+normal Railway stdout, adds Datadog service/env/version fields, and attaches
+active trace/span ids when `dd-trace` has an active span. Keep this transport
+plain and opt-in; Railway does not let the Agent scrape sibling service stdout.
+
+The shared Railway Datadog Agent service definition lives in
+`infra/datadog-agent/`; operator setup and env variables are documented in
+`docs/observability/datadog.md`. Admin browser sourcemaps upload with
+`pnpm --filter @forge/admin datadog:sourcemaps`.
+
+Production Admin Railway config lives in `apps/admin/railway.toml` once the
+service's Config-as-code Path is set to that file. For best Datadog
+auto-instrumentation, production must set Datadog service env
+(`DD_SERVICE=forge-admin`, `DD_ENV=prod`, `DD_VERSION=<git sha>`), point
+at the private Datadog Agent (`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`,
+`DD_AGENT_SYSLOG_PORT=514`), and load the tracer before application modules
+through the `startCommand`:
+`cd apps/admin && NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start`.
+Do not set `NODE_OPTIONS` as a global Railway service variable because it is
+also present during Railpack/mise build setup.
 
 Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
 to restore into local or staging Postgres. The restore path reads
@@ -358,6 +543,11 @@ Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
 behind a short timeout and every write/timeout failure is swallowed from the
 live search caller's perspective. Failures increment safe process-local
 counters and log `[search] event=trace_record_* ...` without raw query text.
+Experience-editor video library server-action searches use
+`recordAdminVideoLibrarySearchTraceSafely`; their raw traces set
+`requestedMode` to a closed client label such as
+`experience-editor-media-collection-picker` and keep picker context in bounded
+metadata.
 
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
@@ -441,31 +631,26 @@ VIEWER/EDITOR role ladder.
 ## Deployment
 
 Railway service `@forge/admin` in project `forge` (Doppler project
-`forge-admin` of the same name). The service is **configured via the
-Railway dashboard, NOT via `apps/admin/railway.toml`** — that file is
-dead config until the service's "Config-as-code Path" is wired up
-(see `apps/admin/railway.toml` header comment + the solutions doc
-linked below).
+`forge-admin` of the same name). Set the service's Config-as-code Path to
+`apps/admin/railway.toml`; otherwise Railway ignores the per-service file and
+the dashboard remains canonical.
 
-**Authoritative dashboard configuration (as of 2026-04-29 recovery):**
+**Authoritative configuration:**
 
-| Field                      | Value                                                                                                                                                     |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Custom Start Command       | `pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js`                                  |
-| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
-| Custom Pre-Deploy Command  | (not set — migrate is chained into startCommand)                                                                                                          |
-| Healthcheck Path           | `/api/health`                                                                                                                                             |
-| Healthcheck Timeout        | 60s                                                                                                                                                       |
-| Restart Policy Max Retries | 3                                                                                                                                                         |
+| Field                      | Value                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Config-as-code Path        | `apps/admin/railway.toml`                                                                                                      |
+| Start Command              | `cd apps/admin && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start` |
+| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps`          |
+| Custom Pre-Deploy Command  | `pnpm --filter @forge/admin db:migrate:deploy`                                                                                 |
+| Healthcheck Path           | `/api/health`                                                                                                                  |
+| Healthcheck Timeout        | 60s                                                                                                                            |
+| Restart Policy Max Retries | 3                                                                                                                              |
 
-The chained `startCommand` runs Prisma migrations BEFORE the
-standalone Next.js server boots. If `migrate deploy` fails, the
-container crashes and `restartPolicy` retries up to 3 times before
-the deploy is marked FAILED (see Migrations section for failure-mode
-recovery). Other deployment caveats in
-`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
-still apply: set `HOSTNAME=0.0.0.0` in the Railway dashboard (not
-`[deploy.env]`).
+The `preDeployCommand` runs Prisma migrations before the Next.js server boots.
+If `migrate deploy` fails, the deploy is marked failed before serving traffic
+(see Migrations section for failure-mode recovery). Set `HOSTNAME=0.0.0.0` in
+the Railway start command or dashboard, not `[deploy.env]`.
 
 **Editing dashboard config via MCP:** always pair
 `mcp__railway__updateServiceTool` with
@@ -835,182 +1020,27 @@ stats.errors === 0 && seenCoreIds.size > 0`, the phase soft-deletes
   `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`
   to re-measure before changing the value.
 
-## Scene embeddings (R1 of admin migration playbook)
+## Scene embeddings (retired writer path)
 
-Admin owns scene-level embeddings in its own Postgres. Source data is
-apps/manager's `{assetId}/scene-analysis.json` S3 artifact (the
-multimodal scene-analysis pipeline). Mastra owns scene embedding generation,
-provider retries, run diagnostics, and Studio observability. Admin launches
-Mastra for each scene target, then accepts the final scene-specific payload at
-`/api/internal/mastra/scene-embeddings` and stores it in `VideoScene` +
-`VideoSceneLocale`. Admin remains the owner of pgvector storage, partial HNSW
-indexes, target resolution, public search contracts, and search retrieval.
+Feat-193 retired the scene embedding writer pipeline. Do not reintroduce
+Admin scene embedding backfills, `triggerSceneEmbeddingBackfill`, Mastra
+`/forge-scene-embeddings`, `/api/internal/mastra/scene-embeddings`,
+`MASTRA_SCENE_INGEST_API_KEYS`, `SCENE_EMBEDDING_CONCURRENCY`, or
+`write:scene-embeddings`.
 
-- **Schema:** `VideoScene` attaches to `VideoEdition` (timecodes follow
-  the edition's cut, matching `VideoSubtitle`). Per-locale descriptions
-  - embeddings live on `VideoSceneLocale`. `embedding` is
-    `Unsupported("vector(1536)")?` and NEVER exposed via GraphQL
-    (enforced by `schema.test.ts` "no embed/vector/similarit" assertion).
-- **Partial HNSW indexes** per-locale (`en`, `es`, `fr`) plus a global
-  NULL-excluded fallback. Per-locale indexes guard against the pgvector
-  "HNSW + WHERE locale = ?" planner bypass.
-- **Storage writer:** `src/services/scene-embedding.service.ts`
-  (`writeSceneEmbeddingPayload`). Idempotent upsert on
-  `(videoEditionId, sceneIndex)` and `(videoSceneId, locale)`. Raw SQL
-  `::vector` write inside a Prisma `$transaction`. ABAC-gated via
-  `canWriteDerived`.
-- **Mastra ingest endpoint:** `src/app/api/internal/mastra/scene-embeddings`
-  accepts only scene-shaped payloads from `MASTRA_SCENE_INGEST_API_KEYS`;
-  no generic embedding blob endpoint. Payloads carry compact provenance:
-  source artifact/version/content hash, locale, model/dimensions, generation
-  mode, Mastra run id, and generated timestamp. Vectors and raw source text are
-  never exposed through GraphQL or normal route summaries.
-- **Backfill workflow:**
-  `src/workflows/sceneEmbeddingBackfill.ts` — useworkflow job that
-  enumerates one target per `(video, edition, bcp47)` triple. The
-  locale set is data-derived at enumeration time from the union of
-  each video's primary language + edition-level subtitle languages +
-  edition-level dub languages. No hardcoded locale list — an earlier
-  prototype used `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped per
-  `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
-  Per-target error isolation; `artifact_missing` errors skip and Mastra/Admin
-  ingest failures fail but don't halt the run. Safe to re-run with
-  `idempotent`, `repair`, `force`, or `model-upgrade` modes.
-- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
-  enumerated `(video, edition, locale)` targets by `(video, edition)`
-  and parallelises over GROUPS via
-  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) + Promise.allSettled`
-  — never bare `Promise.all`. Per-locale work inside a group runs
-  sequentially with the artifact in scope. See
-  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`
-  (the WHY) and
-  `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
-  (the canonical HOW). The concurrency-cap test still asserts
-  `observedMaxInFlight === N` — a regression to sequential `for…of`
-  yields `1` and trips the assertion.
-- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
-  the workflow fetches `scene-analysis.json` ONCE per `(video, edition)`
-  group via `readSceneAnalysisArtifact(...)` and passes the loaded JSON
-  down to each per-locale Mastra launch. S3 reads collapse from N×L (per
-  locale) to N (per group). Group-level artifact-load failures cascade
-  to per-locale outcomes with the right classification
-  (`artifact_missing` → skipped; everything else → failed) so the
-  report's succeeded/skipped/failed triple stays meaningful.
-- **Mastra workflow (feat-133):** `apps/mastra` workflow id
-  `scene-embedding` accepts scene-analysis source data, validates scene order
-  and provider response shape, batches descriptions through the configured
-  embedding provider, then submits the final vectors to Admin ingest. Workflow
-  failures throw so failed runs are visible in Mastra Studio rather than hidden
-  behind successful `{ ok: false }` step outputs.
-- Tune concurrency via the `SCENE_EMBEDDING_CONCURRENCY` env var on
-  `forge-admin` Doppler. Default `5` matches admin's documented Prisma
-  `connection_limit=10` so a backfill leaves headroom for concurrent
-  GraphQL/REST traffic; local dev can crank to `20+` via the env
-  override. Per-target progress streams as `scene_index_complete` /
-  `scene_index_skipped` / `scene_index_failed` JSON log events; the
-  workflow also emits a single `event=start` log at dispatch carrying
-  the resolved concurrency AND `groupCount` (Stage 2's reshape
-  surfaces the artifact-fetch fan-in for any trigger path).
-- **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:scene-embeddings`). Stage 2's
-  reshape is internal to execution, but the JSON report shape is
-  additive over Stage 1 (`missingArtifacts`, `retrySelection`,
-  `groupedFailures`, and failed-outcome `failureCategory` may appear).
-  `outcomes[]` ordering remains documented as non-deterministic per
-  `Promise.allSettled`.
-- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
-  AWS S3 `NoSuchKey` errors classify as `skipped { reason: "artifact_missing" }`
-  via the typed-error helper `isArtifactMissing` in
-  `manager-artifacts.service.ts` (typed `error.name` first, legacy
-  `error.Code` second, tightened regex backstop third). Re-running
-  the embed workflow does NOT produce the artifact — the operator
-  must explicitly trigger enrichment via PR2's
-  `triggerManagerEnrichment` mutation. The workflow report carries a
-  `missingArtifacts: ReadonlyArray<{ assetId, coreId, kind }>` field
-  (deduped by `assetId`, sorted ascending) so an operator can pipe
-  it into `pnpm trigger-enrichment --from-report=<path>` (PR2).
-  Only `skipped { artifact_missing }` outcomes feed the list — `failed`
-  outcomes are real failures, not upstream gaps. See
-  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
-- **Scene retry recovery from prior reports:** for `pnpm run-embeds`,
-  `--pipeline=scene --from-report=<path>` extracts failed
-  `reports.scene.outcomes[]` from a prior `run-embeds.complete` report,
-  dedupes exact `(coreId, videoEditionId, locale)` selectors, and retries
-  only those targets. The workflow reconciles selectors against current
-  enumeration and fails closed when selectors are stale. The final report
-  includes `retrySelection` counts plus `groupedFailures`, which
-  collapses noisy per-locale failures by asset, edition, and category
-  (`dns_failed`, `timeout`, `prisma_transaction`, `provider_validation`,
-  etc.). Use this for transient infrastructure/provider recovery rather
-  than blindly rerunning the full catalog.
-- **Bulk SQL writes (Stage 3 — feat-117):** the per-target write batch
-  collapses from a per-row `videoSceneLocale.upsert()` + per-row
-  `$executeRaw … UPDATE … embedding` loop into THREE bulk statements
-  inside the same per-target `prisma.$transaction`:
-  1. Bulk parent INSERT with client-generated ids:
-     `INSERT INTO video_scene … SELECT * FROM unnest(...) ON CONFLICT
-(video_edition_id, scene_index) DO NOTHING`. Ids are bound as a
-     `text[]` literal via `toPgArray` (extended Stage 3 to emit the
-     unquoted `NULL` token for nullish elements). `randomUUID()` from
-     `node:crypto` is the id source — `VideoScene.id` is `String @id`
-     in Prisma (`@default(cuid())` is the schema default; nothing in
-     the DB enforces cuid shape). Avoids adding a runtime cuid dep.
-  2. ONE follow-up SELECT recovers the full `scene_index → id` map for
-     ALL incoming sceneIndexes (both freshly-inserted AND pre-existing
-     parents). `RETURNING id` alone is insufficient because
-     `ON CONFLICT DO NOTHING` doesn't return rows for existing matches,
-     and the rerun path needs ids for those too.
-  3. Bulk locale `INSERT … unnest(...) ON CONFLICT (video_scene_id,
-locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
-     SELECT seam (`u.embedding_text::vector(1536)`) — Way A discipline,
-     NOT `::vector(1536)[]` on the parameter. The `text[]` columns
-     (`themes`, `bible_verses`, `demographics`, `spiritual_context`,
-     all `String[]` in `schema.prisma` — NOT jsonb) are bound as
-     `JSON.stringify`'d strings inside a `text[]` literal and unfolded
-     per-row via `ARRAY(SELECT jsonb_array_elements_text(u.<col>_json::jsonb))`.
-     Length-equality preflight asserts ALL parallel arrays match
-     `prepared.length` BEFORE invoking `$executeRaw`. PG18's
-     `unnest(arr1, arr2, ...)` silently NULL-pads unequal-length arrays —
-     the preflight is the regression guard. See
-     `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Historical `VideoScene` and `VideoSceneLocale` tables/rows remain in place
+until the deferred retention/migration work is explicitly approved. This
+cleanup only removes code paths that create, refresh, ingest, sync, or search
+against scene embedding vectors.
 
-**Operational runbook:**
+Manager may still produce scene-analysis artifacts for non-search product
+uses, and Admin may still read scene descriptions as non-vector context where a
+current owner exists. Search, recommendations, and Experience AI semantic
+candidate retrieval must stay transcript-backed; any remaining `video_scene`
+or `video_scene_locale` read needs a non-search justification.
 
-1. Refresh the coreId → cms video id mapping into admin's own Railway
-   S3 bucket (the one wired to `RAILWAY_S3_*`):
-   `pnpm --filter @forge/admin refresh:core-id-mapping`. The CLI
-   dumps from cms and uploads to
-   `admin-migrations/core-id-mapping.json`. Re-run when cms's catalog
-   grows (Strapi SERIAL ids don't change, so existing entries stay
-   valid).
-2. Ensure both S3 env blocks are set on the `forge-admin` Railway
-   service:
-   - `RAILWAY_S3_*` → admin's write bucket
-     (`cms-storage-jbpuckp0lmqap`, Railway bucket resource
-     `17368fd5-23e7-45bb-b007-e3f843b3d710`). Used for the coreId
-     mapping snapshot and any other `admin-migrations/*` writes.
-   - `MANAGER_ARTIFACTS_S3_*` → manager's bucket
-     (`forgemanagerartifacts-xtgld8`, Railway bucket resource
-     `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
-     `{assetId}/scene-analysis.json` + `{assetId}/transcript.json`.
-
-   Also ensure `MASTRA_BASE_URL` and `MASTRA_SERVICE_API_KEY` are set
-   so Admin can launch the scene embedding workflow. Mastra owns the
-   scene embedding provider credentials and calls Admin back through
-   the scene-specific ingest endpoint.
-
-3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
-   defaults to `admin-migrations/core-id-mapping.json`; override for
-   dry runs or ad-hoc snapshots. Omitted `locales` means "every
-   locale that exists for the videos" (union of primary / subtitle /
-   dub languages per edition). Restrict with `coreIds` or `locales`
-   (strict inclusion list — no silent fallback).
-4. Verify: `SELECT COUNT(*) FROM video_scene_locale WHERE embedding IS NOT NULL`
-   grows as expected; `SELECT DISTINCT video_edition_id FROM video_scene`
-   enumerates the indexed editions.
-
-The primary learnings doc is
-`docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`.
+The old implementation notes live in historical plans/solution docs only as
+archival context. They are not an operational runbook.
 
 ## Transcript embeddings (Mastra-owned generation)
 
@@ -1063,15 +1093,36 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   anywhere, it produces no targets (a data-quality signal, not a
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
-  Safe to re-run. The workflow loads the Manager transcript source once
-  per `(video, edition)` group and launches Mastra once per target.
-- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
-  enumerated `(video, edition, language)` targets by
-  `(video, edition)` and parallelises over GROUPS via
-  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all`. Per-language work
-  inside a group runs sequentially with the source artifact in scope. Same
-  shape / same rule as R1.
+  Safe to re-run at the storage identity level. The workflow first groups
+  enumerated targets by `(video, edition)` for stable reporting and source
+  gap aggregation, then shards each `(video, edition, language)` target into
+  target-bounded batches so no single Workflow step owns the full
+  all-language corpus.
+- **Bounded parallelism (Stage 2 — feat-116, updated for feat-192 hotfix):**
+  the workflow calls `stepProcessTranscriptEmbeddingGroups` sequentially per
+  target-bounded batch. Parallelism stays inside each batch via
+  `TRANSCRIPT_EMBEDDING_CONCURRENCY`; do not use parallel dynamic workflow
+  step fanout. The default step target limit is 50, each durable step stops
+  launching new work after a 220s budget and returns remaining groups for the
+  next step, and each Mastra launch has a 120s Admin-side timeout. The start
+  log includes `groupBatchCount`, `stepTargetLimit`, `stepMaxDurationMs`, and
+  `launchTimeoutMs` for production verification. Runtime knobs are resolved in
+  a step before batching so workflow replay keeps the same partitioning even if
+  Railway env changes mid-run.
+- **Manager transcript fallback tradeoff:** target sharding means Manager
+  fallback artifacts may be read once per durable step per `cmsVideoId`, not
+  once for the whole run. The step-local source loader caches artifact reads
+  while that batch is active, but later batches may reread the same Manager
+  artifact. That is intentional for all-language backfills: bounded step
+  duration is more important than whole-run S3 memoization until a first-class
+  backfill ledger exists.
+- **Timed-out Mastra launch confirmation:** if Admin receives a retryable
+  Mastra launch network error that still has a `mastraRunId`, the batch step
+  returns a pending confirmation. The workflow checks pending confirmations
+  opportunistically between launch batches, then drains any remaining pending
+  runs through short `stepConfirmTranscriptEmbeddingIngests` calls separated by
+  workflow-level `sleep()`. Unresolved confirmations are marked failed only
+  after the 20 minute confirmation window. Do not sleep inside the worker step.
 - Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
   backfill is now network-bound on Mastra plus DB-bound inside the
   ingest callback; default `5` leaves headroom on admin's
@@ -1272,11 +1323,12 @@ AND embedding IS NOT NULL` grows as expected.
 ## Hybrid search (R4 of admin migration playbook)
 
 Admin owns public hybrid search — semantic + keyword retrieval fused via
-Reciprocal Rank Fusion — over the `Video`/`VideoLocale`/`VideoScene[Locale]`
-and `Experience`/`ExperienceLocale` corpora. Matches the contract of
-apps/cms `/api/search` + `/api/search/health` byte-for-byte (modulo
-cuid-string ids) so apps/web + apps/mobile can swap base URL at R8
-cutover with zero response-shape drift.
+Reciprocal Rank Fusion — over the `Video`/`VideoLocale` transcript-backed video
+semantic corpus and `Experience`/`ExperienceLocale` corpora. It originally
+matched apps/cms `/api/search` + `/api/search/health` byte-for-byte (modulo
+cuid-string ids) for the R8 cutover, then feat-192 moved video semantic
+evidence to enriched transcript chunks while preserving the public response
+shape.
 
 - **Shared service:** `src/services/hybrid-search.service.ts`
   (`HybridSearchService`). One `search(params)` entry point called by
@@ -1285,12 +1337,12 @@ cutover with zero response-shape drift.
   `MAX_LIMIT = 50`.
 - **Retrievers:** `src/services/hybrid-search-retrievers.ts` exports
   four functions. Each is a thin `$queryRaw` caller.
-  - `searchVideoSemantic` — pgvector cosine over
-    `VideoSceneLocale.embedding` and `VideoTranscriptChunk.embedding`,
-    locale/language-filtered, mixed inside one `semantic-video`
-    retriever. It performs bounded scene + transcript scans, collapses
-    to one candidate per video before RRF, and lets the winning raw
-    evidence own `snippet`/`startSeconds`/`embeddingText`. Resolves
+  - `searchVideoSemantic` — pgvector cosine over enriched
+    `VideoTranscriptChunk.embedding`, language-filtered and provenance-gated
+    to the accepted gateway transcript contract, inside the existing
+    `semantic-video` retriever. It collapses transcript chunks to one
+    candidate per video before RRF and lets the winning chunk own
+    `snippet`/`startSeconds`/`embeddingText`. Resolves
     `playbackId` via a LATERAL lookup on `video_dub → mux_video` keyed
     by `(video_edition_id, language.bcp47 = locale)`. When no dub
     matches, playbackId is NULL and the row still returns.
@@ -1315,12 +1367,11 @@ description`, same `'simple'` config as cms, locale + status gate.
   `cosineSimilarityFromText`. Line-for-line port of cms's `fusion.ts`
   with `resultId: string` (admin cuids) instead of cms's integer ids.
   Experience rows skip all three dedup layers.
-- **Mixed evidence inside `semantic-video`.** Transcript chunks are NOT
-  a fifth RRF list. `VideoTranscriptChunk.embedding` is mixed with
-  scene evidence inside `searchVideoSemantic`, then a single ranked
-  video semantic list flows into the existing RRF pipeline. This avoids
-  double-counting videos that match both scene and transcript evidence
-  while preserving the public REST/GraphQL response shape.
+- **Transcript-backed evidence inside `semantic-video`.** Transcript chunks are
+  NOT a fifth RRF list, and scene embeddings are no longer runtime search
+  evidence. `VideoTranscriptChunk.embedding` feeds the single ranked video
+  semantic list that flows into the existing RRF pipeline, preserving public
+  REST/GraphQL response shape without double-counting legacy scene rows.
 - **Video imageUrl resolves via LATERAL on `VideoImage`.** Both
   retrievers (semantic + keyword) emit
   `COALESCE(mobile_cinematic_high, url)` from the per-video
@@ -1380,9 +1431,9 @@ error_class=… message=…`. Process-local counters in
    satisfy live query embedding readiness.
 3. Canary diff vs cms: for a fixed query set × locales, compare
    `admin/api/search?q=…&locale=…` to `cms/api/search?q=…&locale=…`.
-   Top-10 should overlap within ranking ±1. Drift signals either a
-   data-readiness gap (R1 scene backfill not yet run on prod) or an
-   SQL-invariant drift to investigate.
+   Top-10 should overlap within ranking ±1. Drift signals transcript
+   embedding readiness, provider-provenance mismatch, catalog publication
+   visibility, or a current SQL-invariant drift to investigate.
 4. Verify GIN indexes are used:
    `EXPLAIN ANALYZE SELECT COUNT(*) FROM video_locale WHERE
 to_tsvector('simple', coalesce(title,'') || ' ' ||
@@ -1636,18 +1687,21 @@ shape drift.
 - **Retriever:** `src/services/scene-recommendations-retriever.ts`
   exports four `$queryRaw` helpers:
   - `resolveSlugToVideoId(slug)` — non-deleted `video.slug` → cuid.
-  - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-scene or
-    per-video input embeddings in the requested locale.
+  - `fetchInputEmbeddings(videoId, locale, sceneIndex?)` — per-chunk or
+    per-video transcript input embeddings in the requested locale. The
+    `sceneIndex` argument is a compatibility alias for transcript
+    `chunk_index`.
   - `getRelatedVideoIds(videoId)` — self + parent + child via the
     `video_relation` table.
   - `queryScenesSimilar(queryEmbedding, locale, excludeIds, limit)` —
-    DISTINCT ON over `video_scene_locale.embedding`, locale-filtered
-    via the 3-hop `VideoDub(edition, language)` chain, with
+    DISTINCT ON over `video_transcript_chunk.embedding`, locale-filtered
+    through the transcript parent/chunk language columns and the 3-hop
+    `VideoDub(edition, language)` chain, with
     `v.deleted_at IS NULL + video_locale.status='published'` consumer
     visibility. Playback is resolved via LATERAL + **INNER JOIN** on
     dub/mux so rows without a resolvable playback are filtered out
-    (preserves cms's non-null `playbackId` contract; distinct from R4
-    hybrid search which uses LEFT JOIN).
+    (preserves cms's non-null `playbackId` contract; distinct from hybrid
+    search which uses LEFT JOIN).
 - **Dedup:** 3-layer video dedup (coreId prefix, exact title, embedding
   cosine > 0.95) via the shared `dedupeByVideoIdentity` primitive in
   `src/services/video-dedup.ts`. Same primitive R4 hybrid-search uses.
@@ -1694,24 +1748,32 @@ public: true }`. `VideoNotFoundError` soft-swallowed to `[]` so the
 
 **Operational runbook:**
 
-1. Ensure R1 scene embeddings are backfilled for the locales you care
-   about (prod readiness). `SELECT COUNT(*) FROM video_scene_locale
-WHERE locale = 'en' AND embedding IS NOT NULL` should be non-zero
-   before canary diffs.
+1. Ensure transcript chunk embeddings are backfilled for the locales you care
+   about (prod readiness): `SELECT COUNT(*) FROM video_transcript_chunk vtc
+JOIN video_transcript vt ON vt.id = vtc.transcript_id
+WHERE vtc.language = 'en'
+  AND vtc.embedding IS NOT NULL
+  AND vt.embedding_provider = 'jesus-film-ai-gateway'
+  AND vt.model = 'embeddings'
+  AND vt.dimensions = 1536
+  AND vt.embedding_native_dimensions = 1536
+  AND vt.embedding_transform_version IS NULL
+  AND vtc.model = 'embeddings'
+  AND vtc.dimensions = 1536;` should be non-zero before canary diffs.
 2. Canary diff vs cms. For a fixed set of `(slug, locale)` seeds,
    compare `admin/api/scene-embedding/recommendations?slug=…&locale=…`
    to `cms/api/scene-embedding/recommendations?videoId=…&locale=…`.
    Top-10 should overlap within ±1 ranking position for seeds with
-   published dubs in the requested locale. Divergence signals either
-   R1 data-readiness gap or an SQL-invariant drift to investigate.
+   published dubs in the requested locale. Divergence signals either a
+   transcript data-readiness/provenance gap or an SQL-invariant drift to
+   investigate.
 3. Rate-limit monitoring. The `"recommendations"` Redis bucket is new.
    Add to dashboards alongside `"search"` / `"search-health"`.
-4. Verify HNSW index usage:
-   `EXPLAIN ANALYZE SELECT vs.video_id FROM video_scene_locale vsl
-JOIN video_scene vs ON vs.id = vsl.video_scene_id
-WHERE vsl.embedding IS NOT NULL AND vsl.locale = 'en'
-ORDER BY vsl.embedding <=> '[...]'::vector LIMIT 10;` should show
-   the partial HNSW index (same one R1 provisioned).
+4. Verify the transcript vector path with `EXPLAIN ANALYZE` over
+   `video_transcript_chunk` joined to `video_transcript` using the same
+   provider/model/dimension predicates as search and recommendation
+   services. Do not diagnose recommendation readiness from scene-vector
+   indexes; the compatibility endpoint is transcript-backed.
 
 **Common things to remember:**
 
@@ -1771,7 +1833,6 @@ path and the Cloudflare 524 edge timeout. Per
    MASTRA_BASE_URL=...
    MASTRA_SERVICE_API_KEY=...
    MASTRA_TRANSCRIPT_INGEST_API_KEYS=...
-   MASTRA_SCENE_INGEST_API_KEYS=...
    MASTRA_EXPERIENCE_INGEST_API_KEYS=...
    ```
 
@@ -1783,12 +1844,11 @@ path and the Cloudflare 524 edge timeout. Per
    ```bash
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds --pipeline=transcript
-   #   --pipeline=scene|transcript|experience|both|all     (required)
-   #   # both = scene + transcript; all = scene + transcript + experience
+   #   --pipeline=transcript|experience|both|all     (required)
+   #   # both = transcript legacy alias; all = transcript + experience
    #   --core-id=<id>          (repeatable; restrict to specific videos)
-   #   --locale=<bcp47>        (repeatable; R1 filter)
+   #   --locale=<bcp47>        (repeatable; experience filter)
    #   --language=<bcp47>      (repeatable; transcript filter)
-   #   --scene-mode=idempotent|repair|force|model-upgrade
    #   --transcript-mode=idempotent|repair|force|model-upgrade
    #   --experience-mode=idempotent|repair|force|model-upgrade
    #   --experience-id=<id>    (repeatable; experience filter)
@@ -1796,16 +1856,15 @@ path and the Cloudflare 524 edge timeout. Per
    #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
    ```
 
-   Direct-invokes `runSceneEmbeddingBackfill`,
-   `runTranscriptEmbeddingBackfill`, or `runExperienceEmbeddingBackfill`
+   Direct-invokes `runTranscriptEmbeddingBackfill` or
+   `runExperienceEmbeddingBackfill`
    against the in-process Prisma singleton, mirroring `pnpm run-sync`.
-   Per-pipeline error isolation; structured JSON output. Scene,
-   transcript, and experience runs launch Mastra, which generates vectors
-   and calls Admin ingest; Admin keeps vector storage and search retrieval
-   authority.
+   Per-pipeline error isolation; structured JSON output. Transcript and
+   experience runs launch Mastra, which generates vectors and calls Admin
+   ingest; Admin keeps vector storage and search retrieval authority.
 
-   `--pipeline=all` is the AI Gateway content replacement path. It runs scene,
-   transcript, and experience branches, and it refuses to start until
+   `--pipeline=all` is the AI Gateway content replacement path. It runs
+   transcript and experience branches, and it refuses to start until
    `--gate-report` points at a sanitized
    `content-search-eval-gate-report` whose gate is backfill-ready, judged,
    calibrated, passed, has zero loss/search/judge/disagreement failures, and
@@ -1823,43 +1882,22 @@ path and the Cloudflare 524 edge timeout. Per
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds \
      --pipeline=all \
-     --scene-mode=model-upgrade \
      --transcript-mode=model-upgrade \
      --experience-mode=model-upgrade \
      --gate-report=docs/search-eval-reports/<id>.json \
      --report-out=.tmp/prod-embeds/content-ai-gateway-backfill.json
    ```
 
-   Scene-including runs perform a preflight before indexing: admin S3
-   reachability, manager artifact S3 reachability, mapping load, and
-   (when `--from-report` provides a sample asset) one sample
-   scene-analysis artifact read. Infrastructure failures such as DNS,
-   timeout, bucket/auth errors, or mapping read failures fail before
-   target enumeration; a sample `artifact_missing` is only a warning
-   because missing artifacts are an enrichment gap, not storage outage.
-
-4. **Retry only failed scene outcomes from a prior report:**
-
-   ```bash
-   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
-   pnpm --filter @forge/admin run-embeds \
-     --pipeline=scene \
-     --from-report=.tmp/prod-embeds/prod-scene-report.json \
-     --report-out=.tmp/prod-embeds/prod-scene-retry-$(date +%Y%m%d%H%M%S).json
-   ```
-
-   `--from-report` is scene-only and mutually exclusive with broad
-   `--core-id`, `--locale`, and `--language` filters. It retries exact
-   failed `(coreId, videoEditionId, locale)` targets from the report
-   after preflight, preserving the one-artifact-read-per-edition group
-   behavior. If `retrySelection.unmatched > 0`, treat the report as
-   stale and inspect the unmatched selectors before proceeding.
+4. **Do not retry scene outcomes from prior reports:** `--pipeline=scene`,
+   `--scene-mode`, and `--from-report` are retired with the scene embedding
+   writer path. Historical scene embedding reports are archival; do not use
+   them as an operational retry source.
 
 **Local DB is the destination.** `DATABASE_URL` is the only safety
 guard — there is no in-script check that detects a prod URL. Mirrors
 `run-sync.ts`'s posture; operator discipline applies.
 
-**Long-running invocations.** R1 + R2 runs across the full local
+**Long-running invocations.** Full transcript/experience runs across the local
 catalogue can take many minutes — the CLI blocks in-process. If you
 need to walk away from the terminal, use `tmux` / `screen` / `nohup`
 so a session disconnect doesn't kill the run mid-flight:
@@ -1880,24 +1918,61 @@ The new solutions doc
 captures the architectural pattern (local-fallback storage trick,
 direct-invoke shape, prod-mapping-pull rationale).
 
+### Legacy OpenAI embedding cleanup
+
+Use this only after confirming the target database and backup posture. The CLI
+dry-runs by default and writes a JSON report under
+`.tmp/legacy-openai-embedding-cleanup/` unless `--report-out` is provided.
+
+```bash
+DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+pnpm --filter @forge/admin cleanup:legacy-openai-embeddings -- \
+  --target-env=development
+```
+
+The cleanup targets only known legacy OpenAI embeddings:
+`openai/text-embedding-3-small`, `text-embedding-3-small`, or OpenAI provider
+provenance where this schema stores it. It clears legacy scene and experience
+vectors in place, deletes transcript chunks whose parent transcript uses the
+legacy OpenAI model, and verifies or drops reverted `embedding_qwen`
+columns/indexes if a target database still has them. It does not use
+`chunking_version` as a selector and does not delete transcript parent rows,
+Manager artifacts, S3 objects, source media, or source transcript artifacts.
+
+Production execution is intentionally noisy and requires both an explicit
+production unlock and backup evidence:
+
+```bash
+DATABASE_URL='<production-admin-db-url>' \
+pnpm --filter @forge/admin cleanup:legacy-openai-embeddings -- \
+  --target-env=production \
+  --execute \
+  --allow-production-target \
+  --backup-evidence='<backup key or recovery point id>' \
+  --report-out=.tmp/legacy-openai-embedding-cleanup/prod-cleanup.json
+```
+
+Run a production dry-run first, inspect the report for ambiguous rows or
+blocked Qwen migration state, and only then execute. Re-embedding is a
+separate `run-embeds` operation after cleanup.
+
 ## Triggering embeds from manager
 
-Manager exposes thin REST proxies that forward to admin's existing
-GraphQL trigger mutations. Same workflow runs end-to-end on admin's
-side — manager owns presentation, admin owns execution. No workflow
-duplication; data ownership stays with admin.
+Manager exposes a thin REST proxy that forwards to admin's active
+transcript embedding GraphQL trigger mutation. Same workflow runs end-to-end
+on admin's side -- manager owns presentation, admin owns execution. No
+workflow duplication; data ownership stays with admin.
 
 **Endpoints (manager-side):**
 
-- `POST manager/api/admin-embeds/scene` — body `{ mappingS3Key?,
-coreIds?, locales? }`. Proxies to admin's
-  `triggerSceneEmbeddingBackfill`.
 - `POST manager/api/admin-embeds/transcript` — body `{ mappingS3Key?,
 coreIds?, languages? }`. Proxies to admin's
   `triggerTranscriptEmbeddingBackfill`.
 
-Both gate manager-side via `authenticateRequest` (Strapi JWT cookie
-or `MANAGER_API_KEY` bearer) before forwarding.
+The proxy gates manager-side via `authenticateRequest` (Strapi JWT cookie
+or `MANAGER_API_KEY` bearer) before forwarding. The old
+`POST manager/api/admin-embeds/scene` route and
+`triggerSceneEmbeddingBackfill` mutation are retired.
 
 **Admin-side auth posture (plan 006):** admin's GraphQL context
 mints a request-bound `WORKFLOW_TRIGGER` principal when an incoming
@@ -1905,9 +1980,8 @@ request carries `Authorization: Bearer <key>` matching one of the
 keys in `WORKFLOW_API_KEYS` (the same env var the workflow callback
 endpoint validates with HMAC). The `WORKFLOW_TRIGGER` role
 satisfies a narrow allowlist defined in `src/auth/permissions.ts`
-(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently:
+(`WORKFLOW_TRIGGER_PERMISSIONS`) -- currently:
 
-- `write:scene-embeddings` — `triggerSceneEmbeddingBackfill`
 - `write:transcript-embeddings` — `triggerTranscriptEmbeddingBackfill`
 - `write:experience-embeddings` — `triggerExperienceEmbeddingBackfill`
 - `write:manager-enrichment-trigger` — `triggerManagerEnrichment` (feat-119 PR2)
@@ -2040,7 +2114,9 @@ credentials now live in admin's `PartnerApiKey` Postgres table. See
      manager → admin proxies + the eval CLI's bearer mint).
 
   `isAnyKnownBearer(authHeader)` in `src/auth/search-bearer.ts`
-  OR-composes them and returns `{ valid, source, keyId? }`.
+  OR-composes them and returns `{ valid, source, keyId?, fleetKeyId? }`
+  (`fleetKeyId` — sha256-prefix of a fleet key — is the bucket id the F1 #2
+  global search ceiling keys on; see "Fleet-aware rate-limit bucketing").
 
 - **The disjointness invariant** (`assertBearerCsvsDisjoint` at
   boot in `src/config/env.ts`) holds for the three remaining env
@@ -2110,8 +2186,9 @@ Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
 ### Files
 
 - `src/auth/search-bearer.ts` — `isAnyKnownBearer` composer
-  (async, returns `BearerCheckResult`; OR-composes the three
-  known-caller branches in PARTNER → CONSUMER → WORKFLOW order).
+  (async, returns `BearerCheckResult`; OR-composes PARTNER →
+  CONSUMER → WORKFLOW; the CONSUMER branch reports `source=fleet`
+  for a `FLEET_ADMIN_API_KEYS` key, else `source=consumer`).
 - `src/auth/partner-token.ts` — pure helpers for the partner token
   format (`jfp_search_<keyId>_<random>`).
 - `src/services/partner-api-key.service.ts` — DB-backed partner
@@ -2124,6 +2201,72 @@ Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
   stays.
 - `src/config/env.ts` — `SEARCH_AUTH_REQUIRED` enum +
   `assertBearerCsvsDisjoint` over the 3 remaining env CSVs.
+
+### Fleet-aware rate-limit bucketing (apps/tv + apps/mobile)
+
+TV and mobile ship the SAME consumer bearer baked into every install, so a flat
+`consumer:<key>` bucket would collapse the whole fleet into one 60/min limit
+(self-DoS). `FLEET_ADMIN_API_KEYS` is a dedicated consumer-bearer CSV whose keys
+mint the normal `CONSUMER_BEARER` principal (zero permissions) but flagged
+`fleet`, so `identifyForRateLimit` buckets them per device: by a client-provided
+`viewer_id` as `consumer:<key>:v:<viewer_id>` when present (preferred), else per
+client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) uses trusted
+request-scoped internal buckets so RSC traffic does not accumulate into a shared
+field-rate-limit counter.
+
+- **Trusted IP only (R8).** The `<ip>` comes from `getTrustedClientIp`
+  (`cf-connecting-ip` only) — never the client-supplied `x-forwarded-for`. The
+  fleet key is extractable from the app bundle and per-IP is its sole abuse
+  control, so a spoofable IP would let a holder mint buckets or pin a victim. No
+  trusted IP → `consumer:<key>:unknown` (fleet namespace, not `public:unknown`).
+- **Per-`viewer_id` (preferred, CGNAT-immune).** When the client sends a valid
+  `x-viewer-id` header (sanitized: 1–64 chars `[A-Za-z0-9._-]`), fleet traffic
+  buckets `consumer:<key>:v:<viewer_id>` — one bucket per app launch (the client id
+  is in-memory, regenerated on relaunch), regardless of NAT, so co-egress carrier
+  devices don't collapse. `viewer_id` is client-set and freely rotatable, so it is
+  an availability label ONLY (never identity/authz) and makes minting fresh buckets
+  TRIVIAL (rotate a header, cheaper than rotating IPs) — so it is safe ONLY once the
+  F1 global per-fleet-key ceiling is live. That ceiling (BLOCKING precondition #2
+  below) is the SOLE abuse bound, not this per-device key. The `v:` prefix keeps a
+  spoofed IP-shaped id from colliding with a real IP bucket. Absent/malformed → IP
+  fallback (additive, inert until clients send it).
+- **Disjoint at boot.** `FLEET_ADMIN_API_KEYS` joins `BEARER_CSV_KEYS` and the
+  `assertBearerCsvsDisjoint` invariant; a value shared with any other bearer CSV
+  fails the boot. Mint a DEDICATED fleet key per surface (tv, mobile) — never
+  reuse web SSR's or another surface's value.
+- **Observable.** A fleet key logs `source=fleet` in the per-request search log
+  (vs web SSR's `source=consumer`); a rising `consumer:*:unknown` share signals a
+  `cf-connecting-ip` drop / AOP regression collapsing the fleet. Web SSR should
+  not trip Admin's field-rate limiter; it is internal server-to-server traffic.
+- **Carrier-NAT residual (IP path only).** Devices behind one carrier-grade NAT
+  egress that do NOT send a `viewer_id` share a single `consumer:<key>:<ip>` 60/min
+  bucket — the multi-user-per-IP collapse re-scoped to per-carrier-egress; the
+  mobile cellular fleet is most exposed. A client that sends `x-viewer-id` avoids
+  this entirely (per-device bucket). For the IP-only fallback, the limit is
+  server-side tunable (raise the cap; no client rebuild) or lean on the F1 ceiling.
+
+**Deploy ordering (receiver-first).** Land the fleet keys in admin's
+`FLEET_ADMIN_API_KEYS` BEFORE provisioning the client
+`EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` in EAS. Rotation overlap is WEEKS, not
+sub-hour: store binaries update at user discretion, so keep the old fleet key
+valid until install metrics confirm the new build reached the fleet.
+
+**Before shipping a fleet token — F1 preconditions, both BLOCKING:**
+
+1. Confirm Cloudflare Authenticated Origin Pulls is enforced and the raw
+   `*.up.railway.app` origin is unreachable/403 (probe + record) — R8's
+   unspoofability rests entirely on this.
+2. Land a real abuse ceiling on the search path (a Cloudflare edge rate-limit
+   keyed on the fleet bearer, or an app-level global per-fleet-key counter):
+   per-IP does NOT bound an attacker rotating IPs with the extracted key.
+
+**Abuse-incident runbook.** Env-CSV keys have no sub-second per-key revocation
+(unlike the DB-backed partner store). To revoke a compromised fleet key: rotate
+`FLEET_ADMIN_API_KEYS` + redeploy (revokes fleet-wide immediately, but fleet
+search breaks until a new build ships); use a Cloudflare edge block of the
+abusive pattern as the no-user-impact interim.
+
+See `docs/plans/2026-07-08-002-feat-admin-fleet-aware-rate-limit-bucketing-plan.md`.
 
 ### Cross-references
 
@@ -2334,9 +2477,22 @@ fresh DB-backed key**:
     §"Recovery when contracts are structurally broken" — the
     `import-from-env` deletion case.
 
+## Scripture Passages
+
+Admin owns YouVersion provider access for Watch Bible passage rendering. Keep
+`YOUVERSION_APP_KEY` and `YOUVERSION_PASSAGE_CACHE_TTL_SECONDS` in Admin
+environments only. The approved Watch language slug / Core language id →
+YouVersion-version table lives in
+`src/services/scripture-passage.service.ts` as reviewed code; missing languages
+fall back to the launch English BSB version. Only full-Bible YouVersion
+candidates belong in the launch table; partial/NT-only candidates require
+explicit product approval. Web reads cached passage text through GraphQL
+`BibleCitation.passage(languageSlug:)`; other consumers may pass Core
+`languageId`. Web and consumers must not call the provider API directly.
+
 ## Common pitfalls (grows with each unit)
 
-- **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
+- **Per-service `railway.toml` files are ignored until Config-as-code Path is set.** For Admin, set it to `apps/admin/railway.toml` before assuming code-owned config applies. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
 - **Railway MCP writes are staged, not applied** — `updateServiceTool` writes to a buffer; flush with `accept-deploy(environmentId)`, not `redeploy`. See `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
 - PostgreSQL 18 on Railway: `?::jsonb::text[]` cast unsupported. Use PG array

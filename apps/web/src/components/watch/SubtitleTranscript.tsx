@@ -1,12 +1,16 @@
 "use client"
 
 import {
-  useCallback,
+  lazy,
+  Suspense,
   useEffect,
+  useId,
   useMemo,
   useState,
   type RefObject,
+  type ReactNode,
 } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -16,22 +20,28 @@ import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 import {
   filterTranscriptSubtitlesForAudio,
-  normalizeCueOffset,
-  parseVtt,
+  formatCompactTranscript,
   pickInitialSubtitleSlug,
   type InitialSubtitleTranscript,
   type SubtitleCue,
 } from "@/lib/subtitle-transcript"
 
-function formatTimestamp(seconds: number): string {
-  const total = Math.max(0, Math.floor(seconds))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const pad = (n: number) => n.toString().padStart(2, "0")
-  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`
-  return `${m}:${pad(s)}`
+type InteractiveTranscriptModule =
+  typeof import("./InteractiveSubtitleTranscript")
+
+let interactiveTranscriptModulePromise: Promise<InteractiveTranscriptModule> | null =
+  null
+
+function loadInteractiveTranscriptModule(): Promise<InteractiveTranscriptModule> {
+  interactiveTranscriptModulePromise ??=
+    import("./InteractiveSubtitleTranscript").catch((error: unknown) => {
+      interactiveTranscriptModulePromise = null
+      throw error
+    })
+  return interactiveTranscriptModulePromise
 }
+
+const LazyInteractiveSubtitleTranscript = lazy(loadInteractiveTranscriptModule)
 
 type SubtitleTranscriptProps = {
   subtitles: WatchSubtitle[]
@@ -39,13 +49,13 @@ type SubtitleTranscriptProps = {
   audioSlug?: string | null
   /**
    * Selected variant's duration in seconds. Used to detect and unwind
-   * SMPTE-style 1-hour authoring offsets in the VTT timing (see
-   * `normalizeCueOffset`). Optional — when omitted, cues render as
-   * authored.
+   * SMPTE-style 1-hour authoring offsets in the VTT timing.
    */
   durationSeconds?: number | null
   initialTranscript?: InitialSubtitleTranscript
 }
+
+type TranscriptStatus = "loading" | "error" | "ready"
 
 export function SubtitleTranscript({
   subtitles,
@@ -55,6 +65,7 @@ export function SubtitleTranscript({
   initialTranscript = null,
 }: SubtitleTranscriptProps) {
   const t = useTranslations("SubtitleTranscript")
+  const contentId = useId()
   const transcriptSubtitles = useMemo(
     () => filterTranscriptSubtitlesForAudio(subtitles, audioSlug),
     [subtitles, audioSlug],
@@ -63,11 +74,16 @@ export function SubtitleTranscript({
     () => pickInitialSubtitleSlug(transcriptSubtitles, audioSlug ?? null),
     [transcriptSubtitles, audioSlug],
   )
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(initialSlug)
-
-  useEffect(() => {
-    setSelectedSlug(initialSlug)
-  }, [initialSlug])
+  const [interaction, setInteraction] = useState(() => ({
+    expanded: false,
+    initialSlug,
+    selectedSlug: initialSlug,
+  }))
+  const interactionIsCurrent = interaction.initialSlug === initialSlug
+  const selectedSlug = interactionIsCurrent
+    ? interaction.selectedSlug
+    : initialSlug
+  const expanded = interactionIsCurrent ? interaction.expanded : false
 
   const activeSubtitle = useMemo(() => {
     if (!selectedSlug) return null
@@ -78,142 +94,131 @@ export function SubtitleTranscript({
     )
   }, [selectedSlug, transcriptSubtitles])
 
-  const [loaded, setLoaded] = useState<{
-    vttSrc: string
-    cues: SubtitleCue[] | null
-  } | null>(initialTranscript)
-  // activeMark carries BOTH the cue-list identity and the highlighted index,
-  // so render-time we only treat the index as valid when it belongs to the
-  // currently-rendered cues array. Switching subtitle language drops the
-  // stale highlight without an extra effect-driven setState.
-  const [activeMark, setActiveMark] = useState<{
-    cues: SubtitleCue[] | null
-    idx: number
-  }>({ cues: null, idx: -1 })
-
   const activeVttSrc = activeSubtitle?.vttSrc ?? null
+  const [loadedTranscripts, setLoadedTranscripts] = useState<
+    ReadonlyMap<string, SubtitleCue[] | null>
+  >(() => new Map())
+  const hasLoadedActiveSource = activeVttSrc
+    ? loadedTranscripts.has(activeVttSrc)
+    : false
   const cues =
-    loaded && activeVttSrc && loaded.vttSrc === activeVttSrc
-      ? loaded.cues
+    activeVttSrc && hasLoadedActiveSource
+      ? (loadedTranscripts.get(activeVttSrc) ?? null)
       : null
-  const status: "idle" | "loading" | "error" | "ready" = !activeVttSrc
-    ? "idle"
-    : !loaded || loaded.vttSrc !== activeVttSrc
-      ? "loading"
-      : loaded.cues === null
-        ? "error"
-        : loaded.cues.length === 0
-          ? "error"
-          : "ready"
-
-  const activeIdx = activeMark.cues === cues ? activeMark.idx : -1
+  const serverCompactText =
+    initialTranscript?.vttSrc === activeVttSrc
+      ? initialTranscript.compactText
+      : null
+  const compactText = useMemo(() => {
+    if (serverCompactText) return serverCompactText
+    if (expanded || !cues || cues.length === 0) return null
+    return formatCompactTranscript(cues)
+  }, [cues, expanded, serverCompactText])
 
   useEffect(() => {
-    if (!activeVttSrc) return
-    if (loaded?.vttSrc === activeVttSrc) return
+    if (!expanded || !activeVttSrc || hasLoadedActiveSource) return
+
     const controller = new AbortController()
-    fetch(activeVttSrc, {
-      credentials: "omit",
-      signal: controller.signal,
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.text()
+    loadInteractiveTranscriptModule()
+      .then(({ loadSubtitleCues }) => {
+        if (controller.signal.aborted) return []
+        return loadSubtitleCues(
+          activeVttSrc,
+          durationSeconds,
+          controller.signal,
+        )
       })
-      .then((text) => {
-        setLoaded({
-          vttSrc: activeVttSrc,
-          cues: normalizeCueOffset(parseVtt(text), durationSeconds),
+      .then((nextCues) => {
+        if (controller.signal.aborted) return
+        setLoadedTranscripts((current) => {
+          const next = new Map(current)
+          next.set(activeVttSrc, nextCues.length > 0 ? nextCues : null)
+          return next
         })
       })
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return
-        setLoaded({ vttSrc: activeVttSrc, cues: null })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        if (controller.signal.aborted) return
+        setLoadedTranscripts((current) => {
+          const next = new Map(current)
+          next.set(activeVttSrc, null)
+          return next
+        })
       })
+
     return () => controller.abort()
-  }, [activeVttSrc, durationSeconds, loaded?.vttSrc])
-
-  useEffect(() => {
-    const el = playerRef.current as HTMLMediaElement | null
-    if (!el || !cues || cues.length === 0) return
-    let lastIdx = -1
-    const update = () => {
-      const t = el.currentTime
-      let idx = -1
-      for (let i = 0; i < cues.length; i++) {
-        const c = cues[i]!
-        if (t >= c.start && t < c.end) {
-          idx = i
-          break
-        }
-        if (c.start > t) break
-      }
-      if (idx !== lastIdx) {
-        lastIdx = idx
-        setActiveMark({ cues, idx })
-      }
-    }
-    update()
-    el.addEventListener("timeupdate", update)
-    el.addEventListener("seeking", update)
-    return () => {
-      el.removeEventListener("timeupdate", update)
-      el.removeEventListener("seeking", update)
-    }
-  }, [cues, playerRef])
-
-  const handleSeek = useCallback(
-    (cue: SubtitleCue) => {
-      const el = playerRef.current as HTMLMediaElement | null
-      if (!el) return
-      // Promote the hero out of muted-preview if it has not committed yet.
-      // The pre-reveal click surface owns the unmute + chrome-revealed
-      // state transition inside HeroPlayer; clicking it from this cue-click
-      // handler chains the user gesture so the browser still treats the
-      // synthetic click as user-initiated and grants unmuted playback.
-      // The synthetic click also resets `currentTime` to 0 inside
-      // HeroPlayer, so we apply the seek AFTER the click to land at the
-      // requested cue.
-      if (typeof document !== "undefined") {
-        const wrapper = document.querySelector(
-          '[data-testid="hero-player-wrapper"]',
-        )
-        const revealed =
-          wrapper?.getAttribute("data-chrome-revealed") === "true"
-        if (!revealed) {
-          const surface = document.querySelector(
-            '[data-testid="hero-player-pre-reveal-click-surface"]',
-          ) as HTMLButtonElement | null
-          surface?.click()
-        }
-      }
-      // Belt-and-suspenders unmute for the already-revealed case (the
-      // click surface above is absent post-reveal). Safe to set on every
-      // click — the user explicitly asked for the moment, so silent
-      // playback is never the desired outcome here.
-      el.muted = false
-      el.currentTime = cue.start
-      const result = el.play()
-      if (result && typeof (result as Promise<void>).then === "function") {
-        ;(result as Promise<void>).catch(() => {})
-      }
-      // Bring the player into view so the user sees the moment they
-      // jumped to. The hero wrapper is sticky-positioned, so
-      // scrollIntoView is a no-op (it's always at viewport top); scroll
-      // the window to the document origin instead.
-      if (typeof window !== "undefined") {
-        window.scrollTo({ top: 0, behavior: "smooth" })
-      }
-    },
-    [playerRef],
-  )
+  }, [activeVttSrc, durationSeconds, expanded, hasLoadedActiveSource])
 
   if (transcriptSubtitles.length === 0) return null
 
-  const languageLabel = (s: WatchSubtitle) =>
-    s.language.nativeName && s.language.nativeName !== s.language.name
-      ? `${s.language.name} (${s.language.nativeName})`
-      : s.language.name
+  const languageLabel = (subtitle: WatchSubtitle) =>
+    subtitle.language.nativeName &&
+    subtitle.language.nativeName !== subtitle.language.name
+      ? `${subtitle.language.name} (${subtitle.language.nativeName})`
+      : subtitle.language.name
+
+  const openTranscript = () => {
+    if (activeVttSrc && loadedTranscripts.get(activeVttSrc) === null) {
+      setLoadedTranscripts((current) => {
+        if (current.get(activeVttSrc) !== null) return current
+        const next = new Map(current)
+        next.delete(activeVttSrc)
+        return next
+      })
+    }
+    setInteraction({ expanded: true, initialSlug, selectedSlug })
+  }
+  const closeTranscript = () => {
+    setInteraction({ expanded: false, initialSlug, selectedSlug })
+  }
+  let interactiveStatus: TranscriptStatus = "ready"
+  if (!hasLoadedActiveSource) interactiveStatus = "loading"
+  else if (!cues || cues.length === 0) interactiveStatus = "error"
+
+  const collapsedStatus: TranscriptStatus = compactText ? "ready" : "error"
+  const status = expanded ? interactiveStatus : collapsedStatus
+
+  const loadingContent = (
+    <div
+      id={contentId}
+      className="flex items-center justify-center px-8 py-16 text-sm text-stone-400"
+    >
+      {t("loading")}
+    </div>
+  )
+  let content: ReactNode
+  if (status === "loading") {
+    content = loadingContent
+  } else if (status === "error") {
+    content = (
+      <div
+        id={contentId}
+        className="px-8 py-16 text-center text-sm text-stone-400"
+      >
+        {t("unavailable")}
+      </div>
+    )
+  } else if (expanded && cues) {
+    content = (
+      <Suspense fallback={loadingContent}>
+        <LazyInteractiveSubtitleTranscript
+          id={contentId}
+          cues={cues}
+          playerRef={playerRef}
+        />
+      </Suspense>
+    )
+  } else {
+    content = (
+      <div
+        id={contentId}
+        data-testid="watch-subtitle-compact-text"
+        className="whitespace-pre-line px-6 py-6 text-base leading-relaxed text-stone-300 sm:px-8 sm:py-8 sm:text-lg"
+      >
+        {compactText}
+      </div>
+    )
+  }
 
   return (
     <section
@@ -231,22 +236,48 @@ export function SubtitleTranscript({
               >
                 {t("heading")}
               </h2>
-              <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
+              {expanded ? (
+                <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
-              {transcriptSubtitles.length > 1 ? (
+              {expanded && transcriptSubtitles.length > 1 ? (
                 <label className="flex items-center gap-2 text-sm text-stone-300">
                   <span className="sr-only">{t("subtitleLanguage")}</span>
                   <select
                     data-testid="watch-subtitle-language"
                     value={selectedSlug ?? ""}
-                    onChange={(e) => setSelectedSlug(e.target.value)}
+                    onChange={(event) => {
+                      const nextSlug = event.target.value
+                      const nextVttSrc = transcriptSubtitles.find(
+                        (subtitle) => subtitle.language.slug === nextSlug,
+                      )?.vttSrc
+                      if (
+                        nextVttSrc &&
+                        loadedTranscripts.get(nextVttSrc) === null
+                      ) {
+                        setLoadedTranscripts((current) => {
+                          if (current.get(nextVttSrc) !== null) return current
+                          const next = new Map(current)
+                          next.delete(nextVttSrc)
+                          return next
+                        })
+                      }
+                      setInteraction({
+                        expanded,
+                        initialSlug,
+                        selectedSlug: nextSlug,
+                      })
+                    }}
                     className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
                   >
-                    {transcriptSubtitles.map((s) => (
-                      <option key={s.documentId} value={s.language.slug}>
-                        {languageLabel(s)}
-                        {s.aiGenerated ? t("aiSuffix") : ""}
+                    {transcriptSubtitles.map((subtitle) => (
+                      <option
+                        key={subtitle.documentId}
+                        value={subtitle.language.slug}
+                      >
+                        {languageLabel(subtitle)}
+                        {subtitle.aiGenerated ? t("aiSuffix") : ""}
                       </option>
                     ))}
                   </select>
@@ -257,62 +288,27 @@ export function SubtitleTranscript({
                   {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
                 </span>
               )}
+              <button
+                type="button"
+                data-testid="watch-subtitle-transcript-toggle"
+                aria-expanded={expanded}
+                aria-controls={contentId}
+                aria-label={t("heading")}
+                title={t("heading")}
+                onClick={expanded ? closeTranscript : openTranscript}
+                className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-stone-50 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+              >
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`size-5 transition-transform duration-200 ${
+                    expanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
             </div>
           </header>
 
-          {status === "loading" ? (
-            <div className="flex items-center justify-center px-8 py-16 text-sm text-stone-400">
-              {t("loading")}
-            </div>
-          ) : status === "error" ? (
-            <div className="px-8 py-16 text-center text-sm text-stone-400">
-              {t("unavailable")}
-            </div>
-          ) : cues && cues.length > 0 ? (
-            <ol
-              data-testid="watch-subtitle-cues"
-              className="px-2 py-3 sm:px-4 sm:py-4"
-            >
-              {cues.map((cue, idx) => {
-                const isActive = idx === activeIdx
-                return (
-                  <li key={`${cue.start}-${idx}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleSeek(cue)}
-                      aria-current={isActive ? "true" : undefined}
-                      className={[
-                        "group flex w-full cursor-pointer items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
-                        "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
-                        isActive
-                          ? "bg-white/10 text-stone-50"
-                          : "text-stone-300 hover:bg-white/5 hover:text-stone-100",
-                      ].join(" ")}
-                    >
-                      <time
-                        dateTime={`PT${Math.floor(cue.start)}S`}
-                        className={[
-                          "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
-                          isActive
-                            ? "text-amber-300"
-                            : "text-stone-500 group-hover:text-stone-300",
-                        ].join(" ")}
-                      >
-                        {formatTimestamp(cue.start)}
-                      </time>
-                      <span className="text-base leading-relaxed sm:text-lg">
-                        {cue.text}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : (
-            <div className="px-8 py-16 text-center text-sm text-stone-400">
-              {t("empty")}
-            </div>
-          )}
+          {content}
         </div>
       </div>
     </section>

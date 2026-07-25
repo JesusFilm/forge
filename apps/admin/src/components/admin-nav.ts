@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import {
   Activity,
+  Bot,
   Clapperboard,
   Database,
   Image,
@@ -100,6 +101,12 @@ export const adminNavItems: AdminNavItem[] = [
     icon: KeyRound,
   },
   {
+    id: "mcp",
+    href: "/dashboard/mcp",
+    section: "system",
+    icon: Bot,
+  },
+  {
     id: "settings",
     href: "/dashboard/settings",
     section: "system",
@@ -118,7 +125,10 @@ export const adminNavSections = Array.from(
 export function isNavItemVisible(role: Role, item: AdminNavItem) {
   if (
     role !== "ADMIN" &&
-    (item.id === "users" || item.id === "settings" || item.id === "partnerKeys")
+    (item.id === "users" ||
+      item.id === "settings" ||
+      item.id === "partnerKeys" ||
+      item.id === "mcp")
   ) {
     return false
   }

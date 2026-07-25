@@ -28,7 +28,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   // Pre-existing
   "experienceBySlug",
   "searchExperiences",
-  "search",
+  "watchSearch",
+  "recordWatchSearchEvent",
   "sceneRecommendations",
   // consumer-migration U2 (2026-05-11) — see
   // docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md
@@ -37,6 +38,11 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "videos",
   // Forge /watch home showcase lookup: public consumer read, normal Video shape.
   "watchHomeVideos",
+  // Forge /watch language inventory lookup: public consumer read, flat card shape.
+  "watchLanguageInventory",
+  // Forge /watch single-video cold route lookup: public consumer read, flat
+  // route snapshot shape that replaces the hot nested videoBySlug graph.
+  "watchVideoRouteSnapshotBySlug",
   // Lazy per-dub downloads/subtitles fetch for mobile's lean watch screen —
   // same public posture + visibility as videoBySlug{ dubs }.
   "videoDub",

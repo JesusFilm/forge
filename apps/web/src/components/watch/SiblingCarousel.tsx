@@ -1,6 +1,12 @@
 "use client"
 
-import { type MouseEvent, useCallback, useEffect, useState } from "react"
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
@@ -14,11 +20,90 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
+import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
-import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
-import type { WatchChapterNavigationIntent } from "./chapter-navigation"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+  watchEpisodePath,
+} from "@/lib/routes"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxAnimatedPreviewUrl,
+  resolveMuxHeroPosterUrl,
+  resolvePosterUrl,
+} from "@/lib/url"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
+import {
+  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  type WatchChapterCarouselPreserveState,
+  type WatchChapterNavigationIntent,
+} from "./chapter-navigation"
+
+function getRoutableCarouselChildren(
+  parent: WatchSiblingCarouselBlock["canonicalParent"],
+) {
+  return (parent.children ?? []).filter(
+    (child): child is NonNullable<typeof child> & { slug: string } =>
+      child != null && typeof child.slug === "string" && child.slug.length > 0,
+  )
+}
+
+function consumePreservedCarouselIndex({
+  children,
+  currentVideoDocumentId,
+  languageSlug,
+}: {
+  children: Array<{ documentId: string }>
+  currentVideoDocumentId: string
+  languageSlug: string
+}): number | null {
+  if (typeof window === "undefined") return null
+
+  const raw = window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+  if (!raw) return null
+
+  window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+
+  let state: WatchChapterCarouselPreserveState
+  try {
+    state = JSON.parse(raw) as WatchChapterCarouselPreserveState
+  } catch {
+    return null
+  }
+
+  if (
+    state.languageSlug !== languageSlug ||
+    state.targetVideoDocumentId !== currentVideoDocumentId
+  ) {
+    return null
+  }
+
+  const sourceIndex = children.findIndex(
+    (child) => child.documentId === state.sourceVideoDocumentId,
+  )
+  if (
+    typeof state.sourceCarouselIndex === "number" &&
+    Number.isInteger(state.sourceCarouselIndex) &&
+    state.sourceCarouselIndex >= 0 &&
+    state.sourceCarouselIndex < children.length
+  ) {
+    return state.sourceCarouselIndex
+  }
+  return sourceIndex >= 0 ? sourceIndex : null
+}
 
 export function SiblingCarousel({
   block,
@@ -34,22 +119,46 @@ export function SiblingCarousel({
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
   const { canonicalParent, currentVideoDocumentId } = block
+  const selectableParents =
+    block.selectableParents != null && block.selectableParents.length > 0
+      ? block.selectableParents
+      : null
+  const defaultParent = selectableParents?.[0] ?? canonicalParent
+  const [parentSelection, setParentSelection] = useState<{
+    sourceVideoDocumentId: string
+    parentDocumentId: string
+  } | null>(null)
+  const selectedParentDocumentId =
+    parentSelection?.sourceVideoDocumentId === currentVideoDocumentId
+      ? parentSelection.parentDocumentId
+      : defaultParent.documentId
+  const selectedParent =
+    selectableParents?.find(
+      (parent) => parent.documentId === selectedParentDocumentId,
+    ) ?? canonicalParent
+  const hasExplicitParentSelection =
+    parentSelection?.sourceVideoDocumentId === currentVideoDocumentId
 
   // Drop nulls AND items missing a slug — without a slug we can't build a
   // routable href, and rendering an unclickable card is worse than
   // omitting it entirely. Content-slug and public language-slug validity are
   // re-checked per child via the route builders below (a malformed slug still
   // renders, just not as a <Link>).
-  const children = (canonicalParent.children ?? []).filter(
-    (child): child is NonNullable<typeof child> & { slug: string } =>
-      child != null && typeof child.slug === "string" && child.slug.length > 0,
-  )
+  const children = getRoutableCarouselChildren(selectedParent)
 
   const activeIndex = children.findIndex(
     (child) => child.documentId === currentVideoDocumentId,
   )
   const clipTotal = children.length
-  const parentTitle = canonicalParent.title ?? videoLabels("collection")
+  const parentTitle = selectedParent.title ?? videoLabels("collection")
+  const parentSlug =
+    typeof selectedParent.slug === "string"
+      ? tryAsContentSlug(selectedParent.slug)
+      : null
+  const parentHref =
+    parentSlug != null && tryAsLocaleSlug(languageSlug) != null
+      ? watchVideoPath(parentSlug, tryAsLocaleSlug(languageSlug)!)
+      : null
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
   // lazy-loading still fetches above-fold images immediately — it only
@@ -71,10 +180,13 @@ export function SiblingCarousel({
       intent: WatchChapterNavigationIntent,
       isActive: boolean,
     ) => {
-      if (isActive) return
       if (event.defaultPrevented) return
       if (event.button !== 0) return
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return
+      }
+      if (isActive) {
+        event.preventDefault()
         return
       }
 
@@ -106,7 +218,25 @@ export function SiblingCarousel({
     pendingActiveIndex >= 0 ? pendingActiveIndex : activeIndex
   const isParentMode = visualActiveIndex < 0
   const clipIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
-  const initialCarouselIndex = visualActiveIndex >= 0 ? visualActiveIndex : 0
+  const [initialCarouselState] = useState(() => {
+    const preservedIndex = consumePreservedCarouselIndex({
+      children,
+      currentVideoDocumentId,
+      languageSlug,
+    })
+    return {
+      index: preservedIndex ?? (activeIndex >= 0 ? activeIndex : 0),
+      deferInitialAutoScroll: preservedIndex != null,
+    }
+  })
+  const carouselStartIndex = hasExplicitParentSelection
+    ? visualActiveIndex >= 0
+      ? visualActiveIndex
+      : 0
+    : initialCarouselState.index
+  const deferInitialAutoScrollRef = useRef(
+    initialCarouselState.deferInitialAutoScroll,
+  )
 
   // Snap to the visually active item whenever it changes (or when `api`
   // first becomes available). Pending navigation can temporarily move the
@@ -115,8 +245,28 @@ export function SiblingCarousel({
   useEffect(() => {
     if (!api) return
     if (visualActiveIndex < 0) return
-    api.scrollTo(visualActiveIndex, true)
-  }, [api, visualActiveIndex])
+    if (pendingActiveIndex >= 0) return
+    if (deferInitialAutoScrollRef.current) {
+      deferInitialAutoScrollRef.current = false
+      let secondFrame = 0
+      // The target route mounts at the source chapter's carousel position.
+      // Wait until after that commit paints, then animate the clicked chapter
+      // into the lead position so it reads as one post-transition movement.
+      const firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          api.scrollTo(visualActiveIndex)
+        })
+      })
+      return () => {
+        window.cancelAnimationFrame(firstFrame)
+        if (secondFrame !== 0) window.cancelAnimationFrame(secondFrame)
+      }
+    }
+    // Let Embla animate the active-card change. Passing `jump: true` made
+    // chapter clicks teleport the rail so the clicked item snapped into the
+    // first position, which felt like a page reload.
+    api.scrollTo(visualActiveIndex)
+  }, [api, pendingActiveIndex, visualActiveIndex])
 
   if (children.length < 2) return null
 
@@ -132,46 +282,96 @@ export function SiblingCarousel({
         current: clipIndex,
         total: clipTotal,
       })
+  const positionLabel = isParentMode ? (
+    t("chapterCount", { count: clipTotal })
+  ) : (
+    <>
+      <span className="md:hidden">
+        {t("position", { current: clipIndex, total: clipTotal })}
+      </span>
+      <span className="hidden md:inline">
+        {t("clipPosition", {
+          current: clipIndex,
+          total: clipTotal,
+        })}
+      </span>
+    </>
+  )
 
   return (
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative -mx-10 w-[calc(100%+5rem)] pt-2 pb-2 md:mx-0 md:w-full"
+      className="relative -mx-5 w-[calc(100%+2.5rem)] pt-2 pb-2 md:mx-0 md:w-full"
       aria-label={ariaLabel}
     >
-      <header className="mb-4 px-10 md:px-0">
-        <p className="text-sm font-normal text-stone-300">
-          <span className="font-medium text-stone-100">{parentTitle}</span>
-          <span className="px-2 text-stone-500">·</span>
-          <span data-testid="sibling-carousel-label">
-            {isParentMode ? (
-              t("chapterCount", { count: clipTotal })
+      <header className="mb-4 px-5 md:px-0">
+        {selectableParents != null ? (
+          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
+            <select
+              aria-label={videoLabels("collection")}
+              aria-busy={validPendingNavigation != null ? "true" : undefined}
+              data-testid="sibling-carousel-parent-selector"
+              value={selectedParent.documentId}
+              disabled={validPendingNavigation != null}
+              className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
+              onChange={(event) => {
+                setApi(null)
+                deferInitialAutoScrollRef.current = false
+                setParentSelection({
+                  sourceVideoDocumentId: currentVideoDocumentId,
+                  parentDocumentId: event.currentTarget.value,
+                })
+              }}
+            >
+              {selectableParents.map((parent) => (
+                <option key={parent.documentId} value={parent.documentId}>
+                  {parent.title ?? videoLabels("collection")}
+                </option>
+              ))}
+            </select>
+            <span
+              data-testid="sibling-carousel-label"
+              className="shrink-0 text-sm font-normal text-stone-300"
+            >
+              {positionLabel}
+            </span>
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid="sibling-carousel-selection-announcement"
+              className="sr-only"
+            >
+              {parentTitle} · {t("chapterCount", { count: clipTotal })}
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm font-normal text-stone-300">
+            {parentHref != null ? (
+              <Link
+                href={parentHref}
+                className="text-stone-100 hover:underline"
+              >
+                <span className="font-medium">{parentTitle}</span>
+              </Link>
             ) : (
-              <>
-                <span className="md:hidden">
-                  {t("position", { current: clipIndex, total: clipTotal })}
-                </span>
-                <span className="hidden md:inline">
-                  {t("clipPosition", {
-                    current: clipIndex,
-                    total: clipTotal,
-                  })}
-                </span>
-              </>
+              <span className="font-medium text-stone-100">{parentTitle}</span>
             )}
-          </span>
-        </p>
+            <span className="px-2 text-stone-500">·</span>
+            <span data-testid="sibling-carousel-label">{positionLabel}</span>
+          </p>
+        )}
       </header>
 
       <Carousel
+        key={selectedParent.documentId}
         opts={{
           align: "start",
           containScroll: "trimSnaps",
-          startIndex: initialCarouselIndex,
+          startIndex: carouselStartIndex,
         }}
         setApi={setApi}
-        className="w-full pl-10 md:pl-0"
+        className="w-full pl-5 md:pl-0"
       >
         <CarouselContent>
           {children.map((child, index) => {
@@ -182,30 +382,42 @@ export function SiblingCarousel({
             // entirely: it's a misshaped Cloudflare Images URL (missing the
             // variant path segment) that returns 400, so a "last resort"
             // fallback to it only ever produces broken images.
-            const thumb =
-              resolveMuxFrameThumbnailUrl(child.muxPlaybackId) ??
-              resolvePosterUrl(child.images?.[0])
-            // The builder emits the canonical 2-segment `.html` shape
-            // (`/{slug}.html/{languageSlug}.html`).
+            const muxThumb = resolveMuxFrameThumbnailUrl(child.muxPlaybackId)
+            const muxPreview = resolveMuxAnimatedPreviewUrl(child.muxPlaybackId)
+            const thumb = muxThumb ?? resolvePosterUrl(child.images?.[0])
+            const heroPoster = resolveMuxHeroPosterUrl(child.muxPlaybackId)
+            const blurDataURL =
+              muxThumb != null ? child.muxThumbnailBlurDataUrl : null
+            const heroBlurDataURL =
+              heroPoster != null ? child.muxHeroPosterBlurDataUrl : null
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
-            const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const href =
+              parentSlug && slug && lang
+                ? watchEpisodePath(parentSlug, slug, lang)
+                : undefined
             const isPending =
               validPendingNavigation != null &&
               validPendingNavigation.href === href &&
               validPendingNavigation.targetVideoDocumentId === child.documentId
             const thumbnailAlt = child.title
-              ? `${child.title} thumbnail`
-              : "Related video thumbnail"
+              ? t("thumbnailAlt", { title: child.title })
+              : t("relatedVideoThumbnail")
 
             const cardClassName = cn(
-              "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
+              "relative block aspect-video overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",
+              href && "group cursor-pointer",
+              href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
               isActive
-                ? "border-4 border-white"
-                : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                ? "opacity-100"
+                : cn(
+                    "opacity-70",
+                    href &&
+                      "hover:opacity-100 focus-visible:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                  ),
               isPending &&
                 !isActive &&
-                "opacity-100 outline-4 outline-offset-[-4px] outline-brand-red shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                "opacity-100 shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
             )
 
             // Card contents are identical whether the card is a routable
@@ -219,6 +431,12 @@ export function SiblingCarousel({
                     fill
                     sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    {...(blurDataURL
+                      ? {
+                          placeholder: "blur" as const,
+                          blurDataURL,
+                        }
+                      : {})}
                     // Native lazy-loading. Browser still fetches
                     // above-fold cards immediately (lazy only defers
                     // far-from-viewport). Avoids the head-preload
@@ -235,6 +453,10 @@ export function SiblingCarousel({
                     {t("noImage")}
                   </div>
                 )}
+                <MuxHoverPreview
+                  previewUrl={href ? muxPreview : null}
+                  sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                />
 
                 {/* Soften the image into the lower caption zone. */}
                 <div
@@ -273,28 +495,49 @@ export function SiblingCarousel({
                 {/* Caption block — a lower frosted panel like the modern
                     episode rails, keeping text readable inside the
                     landscape tile. */}
-                <div
+                <VideoThumbnailCaption
                   data-testid="sibling-carousel-caption"
-                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
+                  inset="compact"
+                  className="z-20 bg-gradient-to-t from-black/68 via-black/35 to-transparent"
                 >
-                  <span className="text-[10px] font-normal tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
+                  <VideoThumbnailEyebrow size="compact-sm">
                     {t("chapter")}
-                  </span>
+                  </VideoThumbnailEyebrow>
                   {/* Card title rendered as <span>, not <h3>: the cards are
                       sibling-navigation Link items and don't anchor their
                       own section. Emitting an <h3> with no parent <h2>
                       skipped the heading order (WCAG 1.3.1) and would
                       require an artificial sr-only section header. The
                       Link's accessible name covers the card's title. */}
-                  <span className="line-clamp-2 text-sm leading-tight font-semibold text-white drop-shadow-md sm:text-base">
+                  <VideoThumbnailTitle as="span" size="compact-sm">
                     {child.title ?? ""}
-                  </span>
-                </div>
+                  </VideoThumbnailTitle>
+                </VideoThumbnailCaption>
 
                 <div
                   aria-hidden="true"
                   data-testid="sibling-carousel-bevel"
                   className="pointer-events-none absolute inset-0 z-40 rounded-lg border border-white opacity-40 mix-blend-soft-light"
+                />
+                <WatchProgressBar videoId={child.documentId} />
+
+                {href ? (
+                  <VideoThumbnailInteractionFrame
+                    data-testid="sibling-carousel-hover-outline"
+                    interactive={!isActive}
+                    visible={isPending}
+                  />
+                ) : null}
+
+                <div
+                  aria-hidden="true"
+                  data-testid="sibling-carousel-active-outline"
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white transition-[opacity,transform] duration-300 ease-out",
+                    isActive
+                      ? "scale-100 opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]"
+                      : "scale-[0.985] opacity-0",
+                  )}
                 />
 
                 {/* Visually-hidden active marker — preserves the existing
@@ -326,6 +569,7 @@ export function SiblingCarousel({
                 {href ? (
                   <Link
                     href={href}
+                    prefetch={false}
                     data-testid="sibling-carousel-item"
                     data-active={isActive ? "true" : "false"}
                     data-pending={isPending ? "true" : "false"}
@@ -349,7 +593,10 @@ export function SiblingCarousel({
                           title: child.title ?? null,
                           slug: child.slug,
                           label: child.label ?? null,
-                          posterUrl: thumb,
+                          posterUrl: heroPoster ?? thumb,
+                          posterBlurDataUrl: heroBlurDataURL,
+                          sourceCarouselIndex:
+                            api?.selectedScrollSnap() ?? null,
                         },
                         isActive,
                       )
@@ -369,26 +616,18 @@ export function SiblingCarousel({
               </CarouselItem>
             )
           })}
-          <div
+          <CarouselItem
             aria-hidden="true"
             data-testid="sibling-carousel-end-spacer"
-            className="min-w-0 shrink-0 grow-0 basis-[52%] sm:basis-[64%] md:basis-[66.666%] lg:basis-[75%] xl:basis-[80%] 2xl:basis-[83.333%]"
-          />
+            tabIndex={-1}
+            className="basis-auto pl-0"
+          >
+            <div className={CAROUSEL_END_SPACER} />
+          </CarouselItem>
         </CarouselContent>
 
-        {/* The shared `outline` Button variant only sets text color on
-            hover (via `hover:text-foreground`); against this dark-themed
-            page the chevrons inherit white from the parent until hover.
-            Force the chevrons to a near-black at all times so the arrow
-            stays legible against the light circular background. */}
-        <CarouselPrevious
-          className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-          label={t("previousChapter")}
-        />
-        <CarouselNext
-          className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-          label={t("nextChapter")}
-        />
+        <CarouselPrevious label={t("previousChapter")} />
+        <CarouselNext label={t("nextChapter")} />
       </Carousel>
     </section>
   )

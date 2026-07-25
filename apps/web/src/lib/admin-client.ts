@@ -42,6 +42,20 @@ function createAdminClient(timeoutMs: number): ApolloClient {
   })
 }
 
+export function createUserAdminClient(
+  accessToken: string,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): ApolloClient {
+  return new ApolloClient({
+    link: new HttpLink({
+      uri: env.ADMIN_GRAPHQL_URL,
+      headers: { Authorization: `Bearer ${accessToken}` },
+      fetch: createTimeoutFetch(timeoutMs),
+    }),
+    cache: new InMemoryCache(),
+  })
+}
+
 function createLazyAdminClient(timeoutMs: number): ApolloClient {
   let realClient: ApolloClient | undefined
 

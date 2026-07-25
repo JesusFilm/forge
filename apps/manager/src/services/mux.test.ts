@@ -3,6 +3,7 @@ import {
   buildMuxAssetCreateParams,
   ensureGeneratedSubtitlesForAsset,
   getSceneThumbnailUrls,
+  getMuxStaticRenditionSourceUrl,
   getThumbnailUrl,
   normalizeGeneratedSubtitleLanguage,
 } from "@/services/mux"
@@ -257,5 +258,55 @@ describe("ensureGeneratedSubtitlesForAsset", () => {
         generateSubtitles: async () => [],
       }),
     ).rejects.toThrow("Mux asset asset-1 has no audio track")
+  })
+})
+
+describe("getMuxStaticRenditionSourceUrl", () => {
+  it("chooses the highest ready public MP4 rendition", () => {
+    expect(
+      getMuxStaticRenditionSourceUrl({
+        publicPlaybackId: "public-playback",
+        staticRenditions: [
+          {
+            name: "360p.mp4",
+            status: "ready",
+            width: 640,
+            height: 360,
+            type: "advanced",
+          },
+          {
+            name: "480p.mp4",
+            status: "ready",
+            width: 854,
+            height: 480,
+            type: "advanced",
+          },
+          {
+            name: "720p.mp4",
+            status: "preparing",
+            width: 1280,
+            height: 720,
+            type: "advanced",
+          },
+        ],
+      }),
+    ).toBe("https://stream.mux.com/public-playback/480p.mp4")
+  })
+
+  it("does not build an unauthenticated URL for signed-only playback", () => {
+    expect(
+      getMuxStaticRenditionSourceUrl({
+        publicPlaybackId: null,
+        staticRenditions: [
+          {
+            name: "480p.mp4",
+            status: "ready",
+            width: 854,
+            height: 480,
+            type: "advanced",
+          },
+        ],
+      }),
+    ).toBeNull()
   })
 })

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# setup-sim-env.sh <tv|mobile>
+#
+# Seeds apps/<app>/.env.local for a simulator run. Fresh git worktrees never
+# inherit .env.local (it's gitignored), and apps/tv's file historically ships
+# only EXPO_PUBLIC_GRAPHQL_URL — missing EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN, the
+# consumer bearer scoped to the WatchSearch op. Since #1622 replaced Query.search
+# with the PUBLIC watchSearch, its absence no longer breaks search — it drops the
+# device into admin's coarse per-IP rate-limit bucket. This copies the env from
+# the main checkout and guarantees the token is present. Idempotent.
+#
+# TV only: mobile's search hook is still the #1622 no-op shim (its op name is the
+# unmigrated `Search`), so no token makes mobile search work until it migrates.
+#
+# tv and mobile share the SAME consumer-bearer value, so the token is sourced
+# from whichever main-checkout env file has it.
+#
+# Restart Metro after this runs: Expo inlines EXPO_PUBLIC_* at bundler startup,
+# so a change made after boot is not picked up.
+set -euo pipefail
+
+app="${1:-}"
+case "$app" in
+  tv | mobile) ;;
+  *)
+    echo "usage: scripts/setup-sim-env.sh <tv|mobile>" >&2
+    exit 2
+    ;;
+esac
+
+key="EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN"
+main="$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")"
+here="$(git rev-parse --show-toplevel)"
+src="$main/apps/$app/.env.local"
+dst="$here/apps/$app/.env.local"
+
+# Seed a missing worktree env from the main checkout (skip when already in main).
+if [ "$src" != "$dst" ] && [ ! -f "$dst" ]; then
+  if [ -f "$src" ]; then
+    cp "$src" "$dst"
+    echo "[setup-sim-env] seeded apps/$app/.env.local from the main checkout."
+  else
+    echo "[setup-sim-env] WARN: no $src to copy from." >&2
+  fi
+fi
+
+# Require a non-empty value — a blank `KEY=` is not "present".
+if [ -f "$dst" ] && grep -qE "^$key=.+" "$dst"; then
+  echo "[setup-sim-env] $key present — search will work."
+  exit 0
+fi
+
+# A blank `$key=` is broken, not absent: warn instead of appending a duplicate
+# line or falsely reporting success.
+if [ -f "$dst" ] && grep -qE "^$key=[[:space:]]*$" "$dst"; then
+  echo "[setup-sim-env] WARN: $key is present but blank in $dst — set it manually or re-seed." >&2
+  exit 1
+fi
+
+# Token absent: borrow a non-empty value, this app's own main env first.
+tok_line="$(grep -hE "^$key=.+" "$src" "$main/apps/mobile/.env.local" "$main/apps/tv/.env.local" 2>/dev/null | head -1 || true)"
+if [ -z "$tok_line" ]; then
+  # Still a hard fail: search itself works unauthenticated, but a sim run against
+  # prod should exercise the per-device rate-limit bucket the real app gets.
+  echo "[setup-sim-env] WARN: $key not found in the main checkout — search will fall back to admin's per-IP rate-limit bucket." >&2
+  echo "[setup-sim-env] Add it to $main/apps/$app/.env.local (this app's OWN entry in admin's FLEET_ADMIN_API_KEYS CSV — never WEB_ADMIN_API_KEYS, which admin buckets per-request and so rate-limits effectively not at all)." >&2
+  [ "$app" = mobile ] && echo "[setup-sim-env] Or populate mobile's env from Doppler: pnpm --filter @forge/mobile fetch-secrets" >&2
+  exit 1
+fi
+
+[ -f "$dst" ] && [ -n "$(tail -c1 "$dst" 2>/dev/null)" ] && printf '\n' >>"$dst"
+printf '%s\n' "$tok_line" >>"$dst"
+echo "[setup-sim-env] added $key to apps/$app/.env.local — search will work."

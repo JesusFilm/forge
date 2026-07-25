@@ -8,6 +8,12 @@ import type {
   SearchLanguageOption,
   SearchLanguageRegionGroup,
 } from "@/lib/search-language"
+import type { WatchSearchResultClickAnalytics } from "@/lib/watch-search-analytics-contract"
+
+export type FloatingSearchResultAnalyticsContext = Omit<
+  WatchSearchResultClickAnalytics,
+  "position"
+>
 
 export type FloatingSearchContextValue = {
   open: boolean
@@ -24,20 +30,30 @@ export type FloatingSearchContextValue = {
   error: string | null
   searched: boolean
   resultSource: SearchActionResultSource | null
-  algoliaSearchEnabled: boolean
   languageOptions: SearchLanguageOption[]
   languageGroups: SearchLanguageRegionGroup[]
   languageCountrySuggestion: SearchLanguageCountrySuggestion | null
   recommendedLanguage: SearchLanguageOption | null
+  languageOptionsLoaded: boolean
   languageOptionsLoading: boolean
   languageOptionsError: string | null
   selectedLanguageEnglishNames: string[]
   selectedLanguageRegionByName: Record<string, string>
+  selectedSearchLanguageOption: SearchLanguageOption | null
+  searchResultAnalytics: FloatingSearchResultAnalyticsContext | null
+  defaultSearchLanguageOption: SearchLanguageOption | null
+  headerLanguageSwitcherVisible: boolean
+  headerLanguageCode: string | null
+  headerPinned: boolean
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
   search: (
     q: string,
-    options?: { languageEnglishNames?: string[] },
+    options?: {
+      languageEnglishNames?: string[]
+      languageSlug?: string | null
+      languageSlugIsExplicit?: boolean
+    },
   ) => Promise<void>
   loadMore: () => Promise<void>
   toggleSearchLanguage: (
@@ -48,8 +64,8 @@ export type FloatingSearchContextValue = {
     option: SearchLanguageOption,
     regionName?: string,
   ) => void
+  resetSearchLanguageToDefault: () => void
   clearSearchLanguages: () => void
-  closeAndKeepQuery: () => void
 }
 
 export type FloatingSearchPinnedContextValue = {

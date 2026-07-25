@@ -8,11 +8,13 @@ import {
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
+  TextBlockSchema,
   ContainerContentBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeHeroBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -20,7 +22,7 @@ import {
 // Happy-path: each top-level block type validates at minimum-required fields.
 // -----------------------------------------------------------------------------
 
-describe("BlockSchema — all 16 top-level types validate", () => {
+describe("BlockSchema — all top-level types validate", () => {
   const samples: Array<{ name: string; value: unknown }> = [
     {
       name: "adventCountdown",
@@ -73,11 +75,15 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       value: { t: "videoRecommendations" },
     },
     {
+      name: "watchHomeHero",
+      value: { t: "watchHomeHero" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
         backgroundColor: "#151515",
-        backgroundImageUrl: "https://example.com/container.jpg",
+        backgroundImageAssetId: "asset-container",
         content: [{ t: "containerSlot", gridSpan: 6 }],
       },
     },
@@ -86,7 +92,7 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       value: {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [],
       },
     },
@@ -99,10 +105,40 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
   }
 
-  it("covers all 17 top-level block types listed in the experience schema", () => {
+  it("covers all 18 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
-    // videoRecommendations variant (schema only; no cms precedent).
-    expect(samples.length).toBe(17)
+    // videoRecommendations variant (schema only; no cms precedent) +
+    // watchHomeHero's homepage-only placeholder.
+    expect(samples.length).toBe(18)
+  })
+
+  it("accepts watchHomeHero as a placement-only placeholder", () => {
+    const result = WatchHomeHeroBlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts promotional Markdown text and rejects unknown variants", () => {
+    const promotional = TextBlockSchema.safeParse({
+      t: "text",
+      sectionKey: "mission-story",
+      heading: "A story worth discovering",
+      contentParagraphs: [
+        "### Why this story matters\n\nA substantial opening paragraph.",
+        "- One reason\n- Another reason",
+      ],
+      variant: "promotional",
+    })
+
+    expect(promotional.success).toBe(true)
+    expect(
+      TextBlockSchema.safeParse({
+        t: "text",
+        variant: "editorial-but-unknown",
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts videoHero metadata source modes", () => {
@@ -128,7 +164,7 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     expect(result.success).toBe(true)
   })
 
-  it("accepts videoCarousel route children and item overrides", () => {
+  it("accepts videoCarousel route children and item images", () => {
     const result = VideoCarouselBlockSchema.safeParse({
       t: "videoCarousel",
       itemsSource: "routeVideoChildren",
@@ -137,11 +173,36 @@ describe("BlockSchema — all 16 top-level types validate", () => {
           videoId: "video-1",
           titleOverride: "Custom title",
           subtitleOverride: "Custom subtitle",
-          imageOverrideUrl: "https://example.com/image.jpg",
+          imageAssetId: "asset-1",
         },
       ],
     })
     expect(result.success).toBe(true)
+  })
+
+  it("accepts explicit media collection thumbnail orientations without changing legacy blocks", () => {
+    const legacy = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+    })
+    const horizontal = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+    })
+
+    expect(legacy.success).toBe(true)
+    if (legacy.success && legacy.data.t === "mediaCollection") {
+      expect(legacy.data.thumbnailOrientation).toBeUndefined()
+    }
+    expect(horizontal.success).toBe(true)
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        thumbnailOrientation: "square",
+      }).success,
+    ).toBe(false)
   })
 
   it("videoRecommendations accepts seed + limit overrides", () => {
@@ -208,11 +269,30 @@ describe("BlockSchema — all 16 top-level types validate", () => {
           reference: "John 3:16",
           text: "For God...",
           attribution: "Jesus",
-          backgroundImageUrl: "https://example.com/quote.jpg",
+          backgroundImageAssetId: "asset-quote",
           backgroundColor: "#151515",
           ctaEnabled: true,
           ctaLabel: "Read more",
           ctaLink: "/watch",
+        },
+      ],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts a reference-first quote: structured citation identity and NO verse text", () => {
+    // Video-anchored generation stores reference + structured ids; apps/web resolves
+    // the verse text at render. The canonical schema must accept a text-less quote.
+    const result = BibleQuotesCarouselBlockSchema.safeParse({
+      t: "bibleQuotesCarousel",
+      heading: "Featured Scripture",
+      quotes: [
+        {
+          reference: "John 20:19-29",
+          osisId: "John.20.19",
+          chapterStart: 20,
+          verseStart: 19,
+          verseEnd: 29,
         },
       ],
     })
@@ -243,6 +323,15 @@ describe("strictness", () => {
   it("rejects an unknown block type", () => {
     const result = BlockSchema.safeParse({ t: "marquee", value: "go" })
     expect(result.success).toBe(false)
+  })
+
+  it("accepts the watch home hero discriminator stored on watch home locales", () => {
+    const result = BlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+
+    expect(result.success).toBe(true)
   })
 })
 
@@ -347,7 +436,7 @@ describe("container slot responsive spans", () => {
       t: "containerSlot",
       gridSpan: 6,
       backgroundColor: "#26313f",
-      backgroundImageUrl: "https://example.com/slot.jpg",
+      backgroundImageAssetId: "asset-slot",
     })
 
     expect(result.success, JSON.stringify(result)).toBe(true)
@@ -455,7 +544,7 @@ describe("BlocksSchema", () => {
       {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [
           { t: "card", title: "A", description: "B", variant: "default" },
         ],
@@ -466,11 +555,10 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
-  it("accepts canonical media asset ids beside transitional URL fields", () => {
+  it("accepts canonical media asset ids for media collection imagery", () => {
     const input = [
       {
         t: "section",
-        backgroundImageUrl: "https://example.com/section.jpg",
         backgroundImageAssetId: "asset-section",
         content: [
           {
@@ -484,12 +572,10 @@ describe("BlocksSchema", () => {
             t: "mediaCollection",
             variant: "grid",
             itemsSource: "manual",
-            imageUrl: "https://example.com/collection.jpg",
             imageAssetId: "asset-collection",
             items: [
               {
-                imageOverrideUrl: "https://example.com/item.jpg",
-                imageOverrideAssetId: "asset-item",
+                imageAssetId: "asset-item",
               },
             ],
           },
@@ -498,6 +584,26 @@ describe("BlocksSchema", () => {
     ]
 
     expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("rejects raw media collection image URLs", () => {
+    const input = [
+      {
+        t: "mediaCollection",
+        variant: "collection",
+        itemsSource: "manual",
+        showItemNumbers: false,
+        items: [
+          {
+            videoId: "video-1",
+            imageUrl: "/api/media-assets/asset-1/preview",
+            imageAssetId: "asset-1",
+          },
+        ],
+      },
+    ]
+
+    expect(BlocksSchema.safeParse(input).success).toBe(false)
   })
 
   it("rejects if any single block is invalid", () => {
@@ -518,6 +624,8 @@ describe("videoHero authoring modes", () => {
   it("accepts authored streaming URL", () => {
     const result = VideoHeroBlockSchema.safeParse({
       t: "videoHero",
+      videoId: "video-1",
+      languageId: "english-language",
       streamingUrl: "https://cdn.example/video.m3u8",
       heading: "Watch",
     })

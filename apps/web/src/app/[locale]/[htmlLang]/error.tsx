@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect } from "react"
+import { useTranslations } from "next-intl"
 
 import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
 
-// Segment-level fallback for unexpected root/home/videos render errors.
+// Segment-level fallback for unexpected root/home/languages render errors.
 // Resolver errors are handled inline in the page components when possible.
 export default function WatchLocaleError({
   error,
@@ -14,6 +15,7 @@ export default function WatchLocaleError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const t = useTranslations("ExperienceError")
   useEffect(() => {
     reportDatadogRumError(error, { boundary: "watch-locale" })
     if (process.env.NODE_ENV !== "production") {
@@ -30,7 +32,7 @@ export default function WatchLocaleError({
           onClick={reset}
           className="rounded-full border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
-          Try again
+          {t("tryAgain")}
         </button>
       </div>
     </main>

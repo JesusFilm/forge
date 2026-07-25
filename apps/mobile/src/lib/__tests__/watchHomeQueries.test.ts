@@ -1,6 +1,6 @@
 import { print } from "graphql"
 
-import { GET_WATCH_HOME_VIDEOS } from "../queries"
+import { GET_WATCH_SETTING, GET_WATCH_HOME_VIDEOS } from "../queries"
 import {
   selectHeroStreamUrl,
   type HeroStreamVariantInput,
@@ -50,6 +50,30 @@ describe("GET_WATCH_HOME_VIDEOS — lean payload guard", () => {
       /locales\(locale: \$locale, languageSlug: \$languageSlug\)/g,
     )
     expect(localeSelections).toHaveLength(2)
+  })
+})
+
+// The Home Experience body rides the SAME public, no-bearer surface as TV: only
+// watchSetting / experienceBySlug (never the editor-gated `experiences` list),
+// and never a dubs/variants selection (the bulk-payload trap the hero fetch also
+// guards). A regression that pulls the gated list or a heavy media join here
+// would 401 the anonymous fleet or reinflate the payload — this fails first.
+describe("GET_WATCH_SETTING — home Experience public-query guard", () => {
+  const printed = print(GET_WATCH_SETTING)
+
+  it("reads the homepage Experience via the public watchSetting query", () => {
+    expect(printed).toContain("query GetWatchSetting")
+    expect(printed).toContain("watchSetting(locale: $locale)")
+    expect(printed).toContain("homepageExperience")
+  })
+
+  it("never touches the editor-gated experiences list", () => {
+    expect(printed).not.toMatch(/\bexperiences\s*\(/)
+  })
+
+  it("selects no dubs/variants (the heavy-media-join trap stays out)", () => {
+    expect(printed).not.toMatch(/\bdubs\b/)
+    expect(printed).not.toMatch(/\bvariants\b/)
   })
 })
 
@@ -139,6 +163,63 @@ describe("selectHeroStreamUrl — lazy hero stream selection", () => {
         documentId: "dub-en",
         language: { slug: "english" },
         hls: "https://evil.example.com/english.m3u8",
+      }),
+      variant({
+        documentId: "dub-fr",
+        language: { slug: "french" },
+        hls: "https://stream.mux.com/french.m3u8",
+      }),
+    ]
+    expect(selectHeroStreamUrl(variants)).toBe(
+      "https://stream.mux.com/french.m3u8",
+    )
+  })
+
+  // Prod regression: the jesus English dub shipped "…m3u8\n". WHATWG URL
+  // validation strips the newline but the raw string reached the native
+  // player → Mux 400 → instant STREAM_ERROR skipped the hero slide.
+  it("returns a TRIMMED url when the winning hls carries stray whitespace", () => {
+    const variants = [
+      variant({
+        documentId: "dub-en",
+        language: { slug: "english" },
+        hls: "https://stream.mux.com/english.m3u8\n",
+      }),
+      variant({
+        documentId: "dub-fr",
+        language: { slug: "french" },
+        hls: "https://stream.mux.com/french.m3u8",
+      }),
+    ]
+    expect(selectHeroStreamUrl(variants)).toBe(
+      "https://stream.mux.com/english.m3u8",
+    )
+  })
+
+  it("treats INTERIOR whitespace as unplayable (WHATWG URL would strip it)", () => {
+    const variants = [
+      variant({
+        documentId: "dub-en",
+        language: { slug: "english" },
+        hls: "https://stream.mux.com/eng\nlish.m3u8",
+      }),
+      variant({
+        documentId: "dub-fr",
+        language: { slug: "french" },
+        hls: "https://stream.mux.com/french.m3u8",
+      }),
+    ]
+    expect(selectHeroStreamUrl(variants)).toBe(
+      "https://stream.mux.com/french.m3u8",
+    )
+  })
+
+  it("treats a whitespace-only hls as unplayable", () => {
+    const variants = [
+      variant({
+        documentId: "dub-en",
+        language: { slug: "english" },
+        hls: "  \n",
       }),
       variant({
         documentId: "dub-fr",

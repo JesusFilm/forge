@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -14,8 +11,7 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { cacheDirectory, downloadAsync } from "expo-file-system/src/legacy"
-import * as Sharing from "expo-sharing"
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -25,6 +21,7 @@ import {
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
+import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
 import type { WatchDownload } from "../../lib/normalizeVideo"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
@@ -35,43 +32,7 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-function formatFileSize(sizeString: string): string {
-  const bytes = Number(sizeString)
-  if (Number.isNaN(bytes) || bytes <= 0) return "Unknown"
-  const mb = bytes / 1048576
-  if (mb >= 1024) {
-    return `${(mb / 1024).toFixed(1)} GB`
-  }
-  return `${mb.toFixed(1)} MB`
-}
-
-type QualityTier = "Highest" | "High" | "Low"
-
-type TieredDownload = WatchDownload & { tier: QualityTier }
-
-function tierDownloads(downloads: WatchDownload[]): TieredDownload[] {
-  const sorted = [...downloads].sort((a, b) => Number(b.size) - Number(a.size))
-  if (sorted.length === 0) return []
-  const head = sorted[0]
-  if (sorted.length === 1) {
-    return [{ ...head, tier: "Highest" }]
-  }
-  const tail = sorted[sorted.length - 1]
-  if (sorted.length === 2) {
-    return [
-      { ...head, tier: "Highest" },
-      { ...tail, tier: "Low" },
-    ]
-  }
-  const middle = sorted[Math.floor(sorted.length / 2)]
-  return [
-    { ...head, tier: "Highest" },
-    { ...middle, tier: "High" },
-    { ...tail, tier: "Low" },
-  ]
-}
-
-function TermsModal({
+export function TermsModal({
   visible,
   onAccept,
   onCancel,
@@ -154,12 +115,182 @@ function TermsModal({
   )
 }
 
+export type DropdownOption = {
+  key: string
+  label: string
+  /** Optional trailing text shown on the right (e.g. a file size). */
+  trailing?: string
+  /** Grayed out and non-selectable (e.g. already downloaded in this option). */
+  disabled?: boolean
+  /** Short note shown on a disabled row in place of `trailing` (e.g. "Already downloaded"). */
+  note?: string
+}
+
+/** Cap the open panel at ~5 rows so long lists scroll inside the dropdown, not grow the sheet. */
+const DROPDOWN_MAX_HEIGHT = 240
+
+/**
+ * Collapsed select expanding to a bounded, internally-scrollable list, so the
+ * sheet stays compact on first present regardless of option count. Exported so
+ * the series download sheet reuses one dropdown implementation (no style drift).
+ */
+export function Dropdown({
+  sectionLabel,
+  options,
+  selectedKey,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  sectionLabel: string
+  options: DropdownOption[]
+  selectedKey: string
+  open: boolean
+  onToggle: () => void
+  onSelect: (key: string) => void
+}) {
+  const typography = useTypography()
+  const selected = options.find((o) => o.key === selectedKey) ?? options[0]
+
+  return (
+    <View style={styles.dropdownSection}>
+      <Text style={[styles.dropdownSectionLabel, typography.bodySmall]}>
+        {sectionLabel}
+      </Text>
+      <Pressable
+        style={({ pressed }) => [
+          styles.dropdownTrigger,
+          open && styles.dropdownTriggerOpen,
+          pressed && feedback.pressed,
+        ]}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={
+          selected != null ? `${sectionLabel}, ${selected.label}` : sectionLabel
+        }
+      >
+        <Text style={[styles.dropdownValue, typography.body]} numberOfLines={1}>
+          {selected?.label}
+        </Text>
+        <View style={styles.dropdownRight}>
+          {selected?.trailing != null && (
+            <Text style={[styles.dropdownTrailing, typography.bodySmall]}>
+              {selected.trailing}
+            </Text>
+          )}
+          <Ionicons
+            name={open ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={TEXT_SECONDARY}
+          />
+        </View>
+      </Pressable>
+      {open && (
+        <View style={styles.dropdownPanel}>
+          <ScrollView
+            style={styles.dropdownPanelScroll}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            accessibilityLabel={`${sectionLabel} options`}
+          >
+            <View accessibilityRole="radiogroup">
+              {options.map((opt) => {
+                const disabled = opt.disabled === true
+                // A disabled row (e.g. already downloaded) never reads as the
+                // active choice, even if it's still the current selectedKey.
+                const isSelected = !disabled && opt.key === selectedKey
+                return (
+                  <Pressable
+                    key={opt.key}
+                    style={({ pressed }) => [
+                      styles.dropdownOption,
+                      isSelected && styles.dropdownOptionSelected,
+                      !disabled && pressed && feedback.pressed,
+                    ]}
+                    onPress={disabled ? undefined : () => onSelect(opt.key)}
+                    disabled={disabled}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected, disabled }}
+                    accessibilityLabel={
+                      disabled && opt.note != null
+                        ? `${opt.label}, ${opt.note}`
+                        : opt.label
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionLabel,
+                        typography.body,
+                        isSelected && styles.dropdownOptionLabelSelected,
+                        disabled && styles.dropdownOptionLabelDisabled,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {opt.label}
+                    </Text>
+                    <View style={styles.dropdownRight}>
+                      {disabled && opt.note != null ? (
+                        <Text
+                          style={[
+                            styles.dropdownOptionNote,
+                            typography.bodySmall,
+                          ]}
+                        >
+                          {opt.note}
+                        </Text>
+                      ) : (
+                        <>
+                          {opt.trailing != null && (
+                            <Text
+                              style={[
+                                styles.dropdownOptionTrailing,
+                                typography.bodySmall,
+                                isSelected &&
+                                  styles.dropdownOptionLabelSelected,
+                              ]}
+                            >
+                              {opt.trailing}
+                            </Text>
+                          )}
+                          {isSelected && (
+                            <Ionicons
+                              name="checkmark"
+                              size={18}
+                              color="#ffffff"
+                            />
+                          )}
+                        </>
+                      )}
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  )
+}
+
 export type DownloadSheetProps = {
   videoTitle: string | null
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
-  onDownloadComplete?: () => void
+  /**
+   * The subtitle language that will be bundled with the download — the dub's
+   * active subtitle as chosen on the Video Details subtitle sheet, or null when
+   * none is active. Display-only; the route resolves and enqueues the track.
+   */
+  subtitleLanguageName: string | null
+  /**
+   * Enqueue the chosen rendition for offline download. The active subtitle is
+   * inherited from the watch session (not picked here); the route builds the
+   * full request, dismisses the sheet, and downloads via DownloadsProvider.
+   */
+  onStartDownload: (rendition: WatchDownload) => void
 }
 
 export function DownloadSheetContent({
@@ -167,103 +298,47 @@ export function DownloadSheetContent({
   duration,
   languageName,
   downloads,
-  onDownloadComplete,
+  subtitleLanguageName,
+  onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
-  const downloadInFlight = useRef(false)
-  // The download outlives the sheet if the user swipes it closed mid-flight.
-  // Guard post-await side effects so we don't setState, Alert, or navigate on
-  // an unmounted route (which would pop the watch screen underneath).
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
+  const [qualityOpen, setQualityOpen] = useState(false)
 
-  const [downloading, setDownloading] = useState(false)
+  // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
+  // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
+  // and break selection (findIndex always resolving to the first match).
+  const qualityOptions = useMemo<DropdownOption[]>(
+    () =>
+      tiered.map((t, index) => ({
+        key: String(index),
+        label: t.tier,
+        trailing: formatFileSize(t.size),
+      })),
+    [tiered],
+  )
+  const selectedQualityKey = String(selectedIndex)
 
-  const handleDownload = useCallback(async () => {
-    if (downloadInFlight.current) return
+  // Keep selectedIndex in range if the renditions list changes out from under
+  // it — otherwise the trigger shows a stale tier while Download silently
+  // no-ops (handleDownload reads tiered[selectedIndex]).
+  useEffect(() => {
+    if (selectedIndex >= tiered.length) setSelectedIndex(0)
+  }, [tiered.length, selectedIndex])
+
+  const handleDownload = useCallback(() => {
     if (!touAccepted || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
-    downloadInFlight.current = true
-    setDownloading(true)
-
-    try {
-      if (!cacheDirectory) throw new Error("Cache directory unavailable")
-      const rawName =
-        selected.url.split("/").pop()?.split("?")[0] ?? "video.mp4"
-      const filename = `${selected.documentId}-${rawName}`
-      const localUri = `${cacheDirectory}${filename}`
-      const { uri } = await downloadAsync(selected.url, localUri)
-      try {
-        await Sharing.shareAsync(uri, {
-          mimeType: "video/mp4",
-          UTI: "public.mpeg-4",
-        })
-      } catch {
-        // User dismissed the share sheet — not an error
-      }
-      if (mountedRef.current) onDownloadComplete?.()
-    } catch {
-      if (mountedRef.current) {
-        Alert.alert(
-          "Download failed",
-          "Could not download the video. Please try again.",
-        )
-      }
-    } finally {
-      downloadInFlight.current = false
-      if (mountedRef.current) setDownloading(false)
-    }
-  }, [touAccepted, tiered, selectedIndex, onDownloadComplete])
-
-  const renderQualityRow = useCallback(
-    ({ item, index }: { item: TieredDownload; index: number }) => {
-      const isSelected = index === selectedIndex
-      return (
-        <Pressable
-          style={({ pressed }) => [
-            styles.qualityRow,
-            isSelected ? styles.qualityRowSelected : styles.qualityRowDefault,
-            pressed && feedback.pressed,
-          ]}
-          onPress={() => setSelectedIndex(index)}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: isSelected }}
-          accessibilityLabel={`${item.tier} quality, ${formatFileSize(item.size)}`}
-        >
-          <Text
-            style={[
-              styles.qualityLabel,
-              typography.body,
-              isSelected && styles.qualityLabelSelected,
-            ]}
-          >
-            {item.tier}
-          </Text>
-          <Text
-            style={[
-              styles.qualitySize,
-              typography.bodySmall,
-              isSelected && styles.qualitySizeSelected,
-            ]}
-          >
-            {formatFileSize(item.size)}
-          </Text>
-        </Pressable>
-      )
-    },
-    [selectedIndex, typography],
-  )
+    // Enqueue and hand off to the background engine; the parent dismisses the
+    // sheet. One copy per video is enforced by DownloadsProvider.
+    onStartDownload(selected)
+  }, [touAccepted, tiered, selectedIndex, onStartDownload])
 
   if (downloads.length === 0) {
     return (
@@ -288,6 +363,7 @@ export function DownloadSheetContent({
           { paddingBottom: insets.bottom + 24 },
         ]}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
       >
         <View style={styles.header}>
           {videoTitle != null && (
@@ -299,18 +375,6 @@ export function DownloadSheetContent({
             </Text>
           )}
           <View style={styles.metaRow}>
-            {languageName != null && (
-              <View style={styles.metaPill}>
-                <Ionicons
-                  name="globe-outline"
-                  size={14}
-                  color={TEXT_SECONDARY}
-                />
-                <Text style={[styles.metaPillText, typography.bodySmall]}>
-                  {languageName}
-                </Text>
-              </View>
-            )}
             {duration != null && duration > 0 && (
               <View style={styles.metaPill}>
                 <Ionicons
@@ -323,21 +387,42 @@ export function DownloadSheetContent({
                 </Text>
               </View>
             )}
+            {languageName != null && (
+              <View style={styles.metaPill}>
+                <Ionicons
+                  name="globe-outline"
+                  size={14}
+                  color={TEXT_SECONDARY}
+                />
+                <Text style={[styles.metaPillText, typography.bodySmall]}>
+                  {languageName}
+                </Text>
+              </View>
+            )}
+            <View style={styles.metaPill}>
+              <MaterialCommunityIcons
+                name="closed-caption-outline"
+                size={16}
+                color={TEXT_SECONDARY}
+              />
+              <Text style={[styles.metaPillText, typography.bodySmall]}>
+                {subtitleLanguageName ?? "No subtitles"}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.qualitySection}>
-          <Text style={[styles.qualitySectionLabel, typography.bodySmall]}>
-            Select a file size
-          </Text>
-          <FlatList
-            data={tiered}
-            keyExtractor={(item) => item.documentId}
-            renderItem={renderQualityRow}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={styles.qualityGap} />}
-          />
-        </View>
+        <Dropdown
+          sectionLabel="Select a file size"
+          options={qualityOptions}
+          selectedKey={selectedQualityKey}
+          open={qualityOpen}
+          onToggle={() => setQualityOpen((o) => !o)}
+          onSelect={(key) => {
+            setSelectedIndex(Number(key))
+            setQualityOpen(false)
+          }}
+        />
 
         <View style={styles.touRow}>
           <Pressable
@@ -374,24 +459,18 @@ export function DownloadSheetContent({
         <Pressable
           style={({ pressed }) => [
             styles.downloadButton,
-            (!touAccepted || downloading) && styles.downloadButtonDisabled,
-            pressed && touAccepted && !downloading && feedback.pressed,
+            !touAccepted && styles.downloadButtonDisabled,
+            pressed && touAccepted && feedback.pressed,
           ]}
           onPress={handleDownload}
-          disabled={!touAccepted || downloading}
+          disabled={!touAccepted}
           accessibilityRole="button"
-          accessibilityLabel={
-            downloading ? "Downloading video" : "Download video"
-          }
-          accessibilityState={{ disabled: !touAccepted || downloading }}
+          accessibilityLabel="Download video"
+          accessibilityState={{ disabled: !touAccepted }}
         >
-          {downloading ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Ionicons name="download-outline" size={20} color="#ffffff" />
-          )}
+          <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
-            {downloading ? "Downloading..." : "Download"}
+            Download
           </Text>
         </Pressable>
       </ScrollView>
@@ -437,7 +516,11 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    // Wrap chips onto the next line instead of pushing a long language name
+    // (and the chips after it) off the right edge. Row gap matches the column.
+    flexWrap: "wrap",
+    rowGap: 8,
+    columnGap: 8,
   },
   metaPill: {
     flexDirection: "row",
@@ -452,15 +535,18 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontFamily: "System",
   },
-  qualitySection: {
+  dropdownSection: {
     marginBottom: 24,
   },
-  qualitySectionLabel: {
+  dropdownSectionLabel: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 12,
   },
-  qualityRow: {
+  dropdownPanelScroll: {
+    maxHeight: DROPDOWN_MAX_HEIGHT,
+  },
+  dropdownTrigger: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -468,30 +554,70 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     minHeight: 48,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
-  qualityRowDefault: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  dropdownTriggerOpen: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
-  qualityRowSelected: {
-    backgroundColor: ACCENT,
-  },
-  qualityGap: {
-    height: 8,
-  },
-  qualityLabel: {
+  dropdownValue: {
     color: TEXT_PRIMARY,
     fontWeight: "600",
     fontFamily: "System",
+    flexShrink: 1,
+    marginRight: 8,
   },
-  qualityLabelSelected: {
-    color: "#ffffff",
+  dropdownRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  qualitySize: {
+  dropdownTrailing: {
     color: TEXT_BODY,
     fontFamily: "System",
   },
-  qualitySizeSelected: {
+  dropdownPanel: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    overflow: "hidden",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255, 255, 255, 0.08)",
+  },
+  dropdownOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: ACCENT,
+  },
+  dropdownOptionLabel: {
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  dropdownOptionLabelSelected: {
     color: "#ffffff",
+    fontWeight: "600",
+  },
+  dropdownOptionTrailing: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+  },
+  dropdownOptionLabelDisabled: {
+    color: TEXT_SECONDARY,
+    opacity: 0.55,
+  },
+  dropdownOptionNote: {
+    color: TEXT_SECONDARY,
+    opacity: 0.75,
+    fontFamily: "System",
+    fontStyle: "italic",
   },
   touRow: {
     flexDirection: "row",

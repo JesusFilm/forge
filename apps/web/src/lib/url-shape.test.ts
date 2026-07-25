@@ -125,11 +125,12 @@ describe("getWatchLocaleSegmentIndex", () => {
 })
 
 describe("SAFE_SLUG_PATTERN", () => {
-  it("accepts kebab-case ASCII slugs", () => {
+  it("accepts safe ASCII content slugs", () => {
     expect(SAFE_SLUG_PATTERN.test("english")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("spanish-castilian")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("arabic-modern-standard")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("magdalena-2")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("soccer_event_collection")).toBe(true)
   })
 
   it("rejects uppercase, dots, slashes, and host shapes", () => {
@@ -153,6 +154,7 @@ describe("RESERVED_PREFIXES", () => {
     expect(RESERVED_PREFIXES.has("_next")).toBe(true)
     expect(RESERVED_PREFIXES.has(".well-known")).toBe(true)
     expect(RESERVED_PREFIXES.has("robots.txt")).toBe(true)
+    expect(RESERVED_PREFIXES.has("sitemap")).toBe(true)
     expect(RESERVED_PREFIXES.has("sitemap.xml")).toBe(true)
   })
 })

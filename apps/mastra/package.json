@@ -4,10 +4,12 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "mastra dev",
+    "dev": "NODE_OPTIONS=\"--import tsx\" mastra dev",
     "build": "mastra build --studio",
     "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
     "lint": "eslint .",
+    "devo:run": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/run-daily-devotional.ts",
+    "devo:segments": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/build-devotional-video-manifest.ts",
     "eval:content-embedding-gate": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/run-content-embedding-search-eval.ts",
     "seed:search-eval": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts",
     "seed:search-eval:prod": "MASTRA_NATIVE_EVAL_ENVIRONMENT=local pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts --artifact docs/search-eval-baselines/temporary/prod-seed-baseline-2026-06-02-export.json --environment-label local",
@@ -16,17 +18,27 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/google": "3.0.79",
+    "@ai-sdk/openai": "3.0.63",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@forge/experience-schema": "workspace:*",
     "@mastra/core": "1.36.0",
     "@mastra/duckdb": "1.4.0",
+    "@mastra/editor": "0.8.1",
     "@mastra/loggers": "1.1.1",
+    "@mastra/memory": "1.18.2",
     "@mastra/observability": "1.13.0",
     "@mastra/pg": "1.11.1",
+    "ai": "6.0.182",
+    "jsonrepair": "3.14.0",
     "mastra": "1.10.0",
+    "ollama-ai-provider-v2": "3.5.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22",
     "eslint": "^9.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "3.2.4"
   }

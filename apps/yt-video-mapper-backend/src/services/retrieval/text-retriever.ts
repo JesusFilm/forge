@@ -1,5 +1,6 @@
 import {
   jaccardScore,
+  retrievalSignalKey,
   type RetrievalSignal,
   type TimecodedStringSignature,
 } from "./types.js"
@@ -19,9 +20,10 @@ export function retrieveTextCandidates({
   const byVariant = new Map<string, TimecodedStringSignature[]>()
 
   for (const signature of officialTextSignatures) {
-    const existing = byVariant.get(signature.videoVariantId) ?? []
+    const key = retrievalSignalKey(signature)
+    const existing = byVariant.get(key) ?? []
     existing.push(signature)
-    byVariant.set(signature.videoVariantId, existing)
+    byVariant.set(key, existing)
   }
 
   return Array.from(byVariant.values())

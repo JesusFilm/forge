@@ -70,6 +70,10 @@ export function parseAcceptLanguage(
 }
 
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
+  // Admin currently exposes generic `eng` for this regional public audio
+  // slug. Keep the distinct British homepage on its actual regional identity
+  // so HTML language and sitemap hreflang signals agree.
+  "english-british": "en-GB",
   // Admin's generated Language.bcp47 corpus does not currently include this
   // public audio slug, but the URL contract does. Keep the raw dub slug in
   // the path while allowing the static root layout to emit the regional SEO
@@ -125,6 +129,35 @@ export function normalizeBcp47Tag(tag: string): string {
       return part.toLowerCase()
     })
     .join("-")
+}
+
+type LocaleTextDirection = "ltr" | "rtl"
+
+type LocaleTextInfo = Readonly<{
+  direction: LocaleTextDirection
+}>
+
+type LocaleWithTextInfo = Intl.Locale & {
+  readonly textInfo?: LocaleTextInfo
+  getTextInfo?: () => LocaleTextInfo
+}
+
+export function textDirectionForLocale(locale: string): LocaleTextDirection {
+  try {
+    const resolvedLocale = new Intl.Locale(locale) as LocaleWithTextInfo
+    const textInfo =
+      typeof resolvedLocale.getTextInfo === "function"
+        ? resolvedLocale.getTextInfo()
+        : resolvedLocale.textInfo
+
+    return textInfo?.direction === "rtl" ? "rtl" : "ltr"
+  } catch {
+    const primaryLocale = locale.split("-")[0]
+    if (primaryLocale && primaryLocale !== locale) {
+      return textDirectionForLocale(primaryLocale)
+    }
+    return "ltr"
+  }
 }
 
 export function slugToBcp47Tag(slug: string): string | null {
@@ -297,12 +330,24 @@ export type WatchLocaleIdentity = {
   htmlLang: string
 }
 
+const WATCH_LOCALE_IDENTITY_OVERRIDES: Readonly<
+  Record<string, WatchLocaleIdentity>
+> = Object.freeze({
+  // Admin exposes Hassaniyya through the extlang-style `ar-mey` tag, while
+  // the UI inventory owns an explicit Latin-script catalog. Keep that
+  // intentional provisional catalog reachable instead of collapsing to `ar`.
+  "arabic-hassaniya": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+  "ar-mey": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+})
+
 export function resolveWatchLocaleIdentity(
   localeSegment: string | null | undefined,
 ): WatchLocaleIdentity {
   if (!localeSegment) {
     return { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
   }
+  const override = WATCH_LOCALE_IDENTITY_OVERRIDES[localeSegment]
+  if (override) return override
   const locale = resolveUiLocale(localeSegment) ?? DEFAULT_LOCALE
   const tag = slugToBcp47Tag(localeSegment)
   const htmlLang = tag && resolveUiLocale(tag) === locale ? tag : locale

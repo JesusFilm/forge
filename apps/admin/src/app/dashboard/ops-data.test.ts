@@ -7,6 +7,17 @@ const { userCount, userFindMany, managerMembershipFindMany } = vi.hoisted(
     managerMembershipFindMany: vi.fn(),
   }),
 )
+const {
+  searchTraceFindMany,
+  watchSearchEventFindMany,
+  videoFindMany,
+  languageFindMany,
+} = vi.hoisted(() => ({
+  searchTraceFindMany: vi.fn(),
+  watchSearchEventFindMany: vi.fn(),
+  videoFindMany: vi.fn(),
+  languageFindMany: vi.fn(),
+}))
 const { queryRaw, mockEnv } = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   mockEnv: {
@@ -35,6 +46,18 @@ vi.mock("@/db/client", () => ({
     managerMembership: {
       findMany: (...args: unknown[]) => managerMembershipFindMany(...args),
     },
+    searchTrace: {
+      findMany: (...args: unknown[]) => searchTraceFindMany(...args),
+    },
+    watchSearchEvent: {
+      findMany: (...args: unknown[]) => watchSearchEventFindMany(...args),
+    },
+    video: {
+      findMany: (...args: unknown[]) => videoFindMany(...args),
+    },
+    language: {
+      findMany: (...args: unknown[]) => languageFindMany(...args),
+    },
   },
 }))
 
@@ -45,6 +68,7 @@ import {
   buildLanguageDiagnosticRow,
   loadEmbeddingsData,
   loadSettingsData,
+  loadWatchSearchAnalyticsData,
   loadUsersData,
   runSemanticSearch,
   type LanguageDiagnosticSourceRow,
@@ -85,6 +109,12 @@ function mockEmbeddingCounts({
 
 beforeEach(() => {
   queryRaw.mockReset()
+  searchTraceFindMany.mockReset()
+  watchSearchEventFindMany.mockReset()
+  videoFindMany.mockReset()
+  videoFindMany.mockResolvedValue([])
+  languageFindMany.mockReset()
+  languageFindMany.mockResolvedValue([])
   resetMockEnv()
 })
 
@@ -239,6 +269,479 @@ describe("embedding provider readiness", () => {
     )
     expect(data.unavailableReason).toBe(
       "Semantic search requires OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY.",
+    )
+  })
+})
+
+describe("loadWatchSearchAnalyticsData", () => {
+  it("displays target language names for stored language codes", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_en",
+        requestId: "req_en",
+        queryText: "Jesus",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "en",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+    languageFindMany.mockResolvedValueOnce([
+      {
+        bcp47: "en",
+        name: { en: "English", native: "English" },
+        slug: "english",
+      },
+    ])
+
+    const data = await loadWatchSearchAnalyticsData({
+      requestId: "req_en",
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(languageFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ slug: { in: ["en"] } }, { bcp47: { in: ["en"] } }],
+        }),
+      }),
+    )
+    expect(data.selectedRequest).toEqual(
+      expect.objectContaining({
+        targetLanguageSlug: "en",
+        targetLanguageLabel: "English",
+      }),
+    )
+  })
+
+  it("joins recent Watch search traces with click events", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_1",
+        requestId: "req_12345678",
+        queryText: "JESUS Russian",
+        locale: "russian",
+        searchMode: "watch-search",
+        resultCount: 2,
+        outcome: "SUCCESS",
+        metadata: {
+          latencyMs: 148,
+          language: {
+            targetLanguageSlug: "russian",
+            targetLanguageSource: "query_named_language",
+            queryNamedLanguageSlug: "russian",
+          },
+          laneStatuses: [
+            {
+              lane: "semantic_embedding",
+              status: "fulfilled",
+              elapsedMs: 12,
+              resultCount: 1,
+              detail: "cache_hit",
+            },
+          ],
+          results: [
+            {
+              id: "video_1",
+              type: "video",
+              score: 1,
+              scoreBreakdown: {
+                total: 1,
+                sourceRelevance: 0.55,
+                evidenceBoost: 0.2,
+                relevance: 0.75,
+                availability: 0.25,
+                match: 0.2,
+                sourceScore: 1,
+              },
+              availabilityKind: "target_audio",
+              evidenceKind: "exact_title",
+              actionKind: "watch",
+            },
+            {
+              id: "video_2",
+              type: "video",
+              score: 0.72,
+              scoreBreakdown: {
+                total: 0.72,
+                sourceRelevance: 0.5,
+                evidenceBoost: 0.14,
+                relevance: 0.64,
+                availability: 0.08,
+                match: 0.14,
+                sourceScore: 0.91,
+              },
+              availabilityKind: "unavailable",
+              evidenceKind: "metadata",
+              actionKind: "watch",
+            },
+          ],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+      {
+        id: "trace_2",
+        requestId: "req_12345678",
+        queryText: "JESUS Russian",
+        locale: "russian",
+        searchMode: "watch-search",
+        resultCount: 1,
+        outcome: "SUCCESS",
+        metadata: {
+          latencyMs: 95,
+          offset: 10,
+          language: {
+            targetLanguageSlug: "russian",
+            targetLanguageSource: "query_named_language",
+            queryNamedLanguageSlug: "russian",
+          },
+          results: [
+            {
+              id: "video_3",
+              type: "video",
+              score: 0.64,
+              scoreBreakdown: {
+                total: 0.64,
+                sourceRelevance: 0.31,
+                evidenceBoost: 0.08,
+                relevance: 0.39,
+                availability: 0.25,
+                match: 0.08,
+                sourceScore: 0.56,
+              },
+              availabilityKind: "target_audio",
+              evidenceKind: "transcript_semantic",
+              actionKind: "watch",
+            },
+          ],
+        },
+        createdAt: new Date("2026-07-15T12:00:05.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([
+      {
+        requestId: "req_12345678",
+        eventType: "results_viewed",
+        resultId: null,
+        position: null,
+        metadata: {
+          visibleResultIds: ["video_1", "video_2", "video_3"],
+        },
+      },
+      {
+        requestId: "req_12345678",
+        eventType: "result_clicked",
+        resultId: "video_2",
+        position: 2,
+        metadata: null,
+      },
+    ])
+    videoFindMany.mockResolvedValueOnce([
+      {
+        id: "video_1",
+        slug: "jesus",
+        locales: [
+          {
+            locale: "en",
+            languageSlug: "english",
+            title: "JESUS",
+            description: "Feature film",
+          },
+        ],
+        images: [
+          {
+            url: "https://images.example.com/jesus.jpg",
+            kind: "videoStill",
+            createdAt: new Date("2026-07-01T00:00:00.000Z"),
+          },
+        ],
+      },
+      {
+        id: "video_2",
+        slug: "jesus-trailer",
+        locales: [
+          {
+            locale: "en",
+            languageSlug: "english",
+            title: "Jesus Trailer",
+            description: "Trailer description",
+          },
+        ],
+        images: [],
+      },
+      {
+        id: "video_3",
+        slug: "known-by-god",
+        locales: [
+          {
+            locale: "en",
+            languageSlug: "english",
+            title: "Known by God",
+            description: "Follow-on result",
+          },
+        ],
+        images: [],
+      },
+    ])
+
+    const data = await loadWatchSearchAnalyticsData({
+      requestId: "req_12345678",
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(searchTraceFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          searchMode: "watch-search",
+          routeSource: "GRAPHQL",
+          createdAt: { gte: new Date("2026-07-08T12:30:00.000Z") },
+        }),
+        take: 100,
+      }),
+    )
+    expect(watchSearchEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          requestId: { in: ["req_12345678"] },
+        }),
+        take: 600,
+      }),
+    )
+    expect(videoFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: { in: ["video_1", "video_2", "video_3"] },
+          deletedAt: null,
+        },
+      }),
+    )
+    expect(data.window).toBe("7d")
+    expect(data.requests).toHaveLength(1)
+    expect(
+      data.metrics.find((metric) => metric.label === "Click Rate"),
+    ).toEqual(expect.objectContaining({ value: "100%" }))
+    expect(data.selectedRequest).toEqual(
+      expect.objectContaining({
+        requestId: "req_12345678",
+        queryText: "JESUS Russian",
+        targetLanguageSlug: "russian",
+        clickedPosition: 2,
+        resultCount: 3,
+      }),
+    )
+    expect(data.selectedRequest?.lanes[0]).toEqual(
+      expect.objectContaining({
+        lane: "semantic_embedding",
+        detail: "cache_hit",
+      }),
+    )
+    expect(data.selectedRequest?.results).toEqual([
+      expect.objectContaining({
+        id: "video_1",
+        title: "JESUS",
+        slug: "jesus",
+        imageUrl: "https://images.example.com/jesus.jpg",
+        score: 1,
+        scoreBreakdown: {
+          total: 1,
+          sourceRelevance: 0.55,
+          evidenceBoost: 0.2,
+          relevance: 0.75,
+          availability: 0.25,
+          match: 0.2,
+          sourceScore: 1,
+        },
+        clicked: false,
+        position: 1,
+      }),
+      expect.objectContaining({
+        id: "video_2",
+        title: "Jesus Trailer",
+        slug: "jesus-trailer",
+        imageUrl: null,
+        score: 0.72,
+        clicked: true,
+        position: 2,
+      }),
+      expect.objectContaining({
+        id: "video_3",
+        title: "Known by God",
+        slug: "known-by-god",
+        score: 0.64,
+        clicked: false,
+        position: 3,
+      }),
+    ])
+    expect(data.selectedRequest?.lanes).toEqual([
+      expect.objectContaining({
+        lane: "semantic_embedding",
+        elapsedMs: 12,
+        detail: "cache_hit",
+      }),
+    ])
+  })
+
+  it("keeps every stored Watch search result for the request detail view", async () => {
+    const storedResults = Array.from({ length: 18 }, (_, index) => ({
+      id: `video_${index + 1}`,
+      type: "video",
+      score: 1 - index / 100,
+      scoreBreakdown: {
+        total: 1 - index / 100,
+        sourceRelevance: 0.55 - index / 100,
+        evidenceBoost: 0.14,
+        relevance: 0.69 - index / 100,
+        availability: 0.25,
+        match: 0.14,
+        sourceScore: 1 - index / 100,
+      },
+      availabilityKind: "target_audio",
+      evidenceKind: "metadata",
+      actionKind: "watch",
+    }))
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_many",
+        requestId: "req_many_results",
+        queryText: "Bible project",
+        locale: "english",
+        searchMode: "watch-search",
+        resultCount: 18,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "explicit_target",
+          },
+          results: storedResults,
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+    videoFindMany.mockResolvedValueOnce(
+      storedResults.map((result) => ({
+        id: result.id,
+        slug: result.id,
+        locales: [
+          {
+            locale: "en",
+            languageSlug: "english",
+            title: `Video ${result.id}`,
+            description: null,
+          },
+        ],
+        images: [],
+      })),
+    )
+
+    const data = await loadWatchSearchAnalyticsData({
+      requestId: "req_many_results",
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.selectedRequest?.results).toHaveLength(18)
+    expect(data.selectedRequest?.results.at(0)).toEqual(
+      expect.objectContaining({ id: "video_1", position: 1 }),
+    )
+    expect(data.selectedRequest?.results.at(-1)).toEqual(
+      expect.objectContaining({ id: "video_18", position: 18 }),
+    )
+  })
+
+  it("derives missing Watch search availability scores from stored availability kind", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_availability",
+        requestId: "req_availability",
+        queryText: "Jesus",
+        locale: "english",
+        searchMode: "watch-search",
+        resultCount: 2,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "explicit_target",
+          },
+          results: [
+            {
+              id: "video_audio",
+              type: "video",
+              score: 1,
+              scoreBreakdown: {
+                total: 1,
+                sourceRelevance: 0.55,
+                evidenceBoost: 0.2,
+                relevance: 0.75,
+                availability: 0,
+                match: 0.2,
+                sourceScore: 1,
+              },
+              availabilityKind: "target_audio",
+              evidenceKind: "exact_title",
+              actionKind: "watch",
+            },
+            {
+              id: "video_subtitle",
+              type: "video",
+              score: 0.55,
+              availabilityKind: "target_subtitle",
+              evidenceKind: "metadata",
+              actionKind: "watch",
+            },
+          ],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      requestId: "req_availability",
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.selectedRequest?.results).toEqual([
+      expect.objectContaining({
+        id: "video_audio",
+        availabilityKind: "target_audio",
+        scoreBreakdown: expect.objectContaining({ availability: 0.25 }),
+      }),
+      expect.objectContaining({
+        id: "video_subtitle",
+        availabilityKind: "target_subtitle",
+        scoreBreakdown: expect.objectContaining({ availability: 0.18 }),
+      }),
+    ])
+  })
+
+  it("returns an empty visualization model when no Watch search traces exist", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(watchSearchEventFindMany).not.toHaveBeenCalled()
+    expect(data.requests).toEqual([])
+    expect(data.selectedRequest).toBeNull()
+    expect(data.window).toBe("24h")
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "0" }),
     )
   })
 })

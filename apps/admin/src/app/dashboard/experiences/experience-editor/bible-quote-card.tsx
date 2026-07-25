@@ -21,8 +21,6 @@ import {
 } from "./background-color-picker"
 
 type BlockRecord = Record<string, unknown>
-type ToastTone = "success" | "error"
-
 export type BibleQuoteDragState = {
   blockIndex: number
   itemIndex: number
@@ -36,6 +34,11 @@ export type BibleQuoteDragHandleState = {
 }
 
 type BibleQuoteFieldValue = string | boolean
+
+const selectedOverlayMediaButtonClassName =
+  "border-[rgba(110,231,183,0.54)] bg-[rgba(20,83,61,0.82)] text-white hover:border-[rgba(110,231,183,0.78)] hover:bg-[rgba(24,96,70,0.9)]"
+const idleOverlayMediaButtonClassName =
+  "border-white/18 bg-[#08090d] text-white hover:border-white/36 hover:bg-[#11131a]"
 
 export type BibleQuoteCardProps = {
   blockIndex: number
@@ -61,9 +64,9 @@ export type BibleQuoteCardProps = {
     itemIndex: number,
     event: DragEvent<HTMLDivElement>,
   ) => void
+  onChooseImage: (blockIndex: number, itemIndex: number) => void
   onClearDragState: () => void
   onSetDragHandleState: (state: BibleQuoteDragHandleState | null) => void
-  onPushToast: (message: string, tone: ToastTone) => void
 }
 
 function asRecord(value: unknown): BlockRecord | null {
@@ -94,14 +97,17 @@ export function BibleQuoteCard({
   onRemove,
   onDragStart,
   onDragEnter,
+  onChooseImage,
   onClearDragState,
   onSetDragHandleState,
-  onPushToast,
 }: BibleQuoteCardProps) {
   const itemRecord = asRecord(item)
-  const backgroundImageUrl =
-    asString(itemRecord?.backgroundImageUrl) || asString(itemRecord?.imageUrl)
+  const backgroundImageUrl = asString(itemRecord?.backgroundImagePreviewUrl)
   const hasBackgroundImage = backgroundImageUrl.length > 0
+  const hasMediaLibraryImage = Boolean(
+    asString(itemRecord?.backgroundImageAssetId) ||
+    asString(itemRecord?.imageAssetId),
+  )
   const backgroundColor = normalizeHexColor(itemRecord?.backgroundColor)
   const ctaEnabled = isSwitchEnabled(itemRecord, "ctaEnabled")
   const [ctaLinkModalRendered, setCtaLinkModalRendered] = useState(false)
@@ -257,34 +263,20 @@ export function BibleQuoteCard({
                 draggable={false}
                 onClick={(event) => {
                   event.stopPropagation()
-                  onPushToast(
-                    "Asset library image picker is coming next.",
-                    "success",
-                  )
+                  onChooseImage(blockIndex, itemIndex)
                 }}
                 className={cx(
-                  "inline-flex h-8 w-8 cursor-pointer items-center justify-center border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a]",
-                  hasBackgroundImage ? "rounded-l-sm border-r-0" : "rounded-sm",
+                  "inline-flex h-8 w-8 cursor-pointer items-center justify-center border transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5",
+                  hasMediaLibraryImage
+                    ? selectedOverlayMediaButtonClassName
+                    : idleOverlayMediaButtonClassName,
+                  "rounded-sm",
                 )}
+                aria-pressed={hasMediaLibraryImage}
                 aria-label="Choose quote image"
               >
                 <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
               </button>
-              {hasBackgroundImage ? (
-                <button
-                  type="button"
-                  draggable={false}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    update("backgroundImageUrl", "")
-                    update("imageUrl", "")
-                  }}
-                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-r-sm border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a] hover:text-[var(--color-danger)]"
-                  aria-label="Remove quote image"
-                >
-                  <X className="h-4 w-4" strokeWidth={1.5} />
-                </button>
-              ) : null}
             </div>
           </div>
         </div>

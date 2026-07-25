@@ -1,12 +1,13 @@
-// SYNC: ported from apps/mobile/src/lib/normalizeVideo.ts
-//
-// Normalizes the raw videoBySlug payload into a TV consumer record. Memoized on
-// the raw object reference (WeakMap) so re-entering a video (cache-first) reuses
-// the prior record instead of re-walking thousands of dubs. Siblings are derived
-// defensively (self-filter + dedupe) so the Up Next rail is correct the moment
-// the inverted admin Video.parents/children relation is fixed — see KTD5.
+// SYNC: ported from apps/mobile/src/lib/normalizeVideo.ts. Normalizes videoBySlug into a
+// TV consumer record, WeakMap-memoized on the raw ref so cache-first re-entry skips re-walking
+// thousands of dubs. Siblings self-filtered + deduped, correct once KTD5's inverted admin relation is fixed.
 
-import type { WatchVideoData, WatchDubData } from "./videoQueries"
+import type {
+  WatchVideoData,
+  WatchDubData,
+  SeriesVideoData,
+} from "./videoQueries"
+import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -57,6 +58,24 @@ export type WatchSibling = {
   label: string | null
   title: string | null
   posterUrl: string | null
+  // Mux playback id for the hover-preview, or null (series parent / lean series path).
+  muxPlaybackId: string | null
+}
+
+// A child video of a series, rendered as a card in the episode rail — a
+// sibling-shaped card plus the locale text the 10-foot UI can surface on focus.
+export type WatchEpisode = WatchSibling & {
+  description: string | null
+  imageAlt: string | null
+}
+
+// One language the series' episodes are available in (server-aggregated union),
+// the feed for the series language panel. Identity is the unique `slug`, never
+// bcp47 — `ko` collides with `ko-kmr`.
+export type WatchChildLanguage = {
+  slug: string
+  name: string | null
+  bcp47: string | null
 }
 
 export type WatchStudyQuestion = {
@@ -94,6 +113,13 @@ export type WatchVideoRecord = {
   bibleCitations: WatchBibleCitation[]
 }
 
+// Series screen's record: shared video record (trailer = series' own playable dub
+// as streamingUrl/variants) plus the episode rail. The language union is fetched
+// lazily (GET_SERIES_LANGUAGES, U1), not carried on the record.
+export type WatchSeriesRecord = WatchVideoRecord & {
+  episodes: WatchEpisode[]
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 
 type RawVideo = NonNullable<WatchVideoData["videoBySlug"]>
@@ -108,9 +134,7 @@ type RawImage = {
 function pickPosterUrl(
   images: readonly RawImage[] | undefined | null,
 ): string | null {
-  if (!images || images.length === 0) return null
-  const img = images[0]
-  return img.mobileCinematicHigh ?? img.url ?? img.thumbnail ?? null
+  return pickCardImage(images, "poster")
 }
 
 function compareLanguageSlug(
@@ -130,6 +154,7 @@ function pickFirstLocale(
         title?: string | null
         description?: string | null
         snippet?: string | null
+        imageAlt?: string | null
       }[]
     | null
     | undefined,
@@ -137,9 +162,10 @@ function pickFirstLocale(
   title: string | null
   description: string | null
   snippet: string | null
+  imageAlt: string | null
 } {
   if (!locales || locales.length === 0)
-    return { title: null, description: null, snippet: null }
+    return { title: null, description: null, snippet: null, imageAlt: null }
   const loc = [...locales].sort((a, b) => {
     const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
     if (bySlug !== 0) return bySlug
@@ -149,14 +175,26 @@ function pickFirstLocale(
     title: loc.title ?? null,
     description: loc.description ?? null,
     snippet: loc.snippet ?? null,
+    imageAlt: loc.imageAlt ?? null,
   }
 }
 
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
 
+// The series query (SeriesWatchVideo) is leaner than the watch query: no `parents`
+// chain, dubs omit player-only `duration`/`muxVideo`. These permissive aliases let the
+// shared builder accept both shapes without loosening either operation's generated type.
+type NormalizableVariant = Omit<RawVariant, "duration" | "muxVideo"> &
+  Partial<Pick<RawVariant, "duration" | "muxVideo">>
+
+type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
+  parents?: RawVideo["parents"]
+  variants?: readonly NormalizableVariant[] | null
+}
+
 function pickFirstPlayableVariant(
-  variants: RawVideo["variants"] | undefined | null,
-): RawVariant | null {
+  variants: readonly NormalizableVariant[] | undefined | null,
+): NormalizableVariant | null {
   if (!variants) return null
   return (
     variants.find(
@@ -165,10 +203,9 @@ function pickFirstPlayableVariant(
   )
 }
 
-// Native-language display name for a language, or null when it would just echo
-// the English name (no distinct native form) or the language IS English. `name`
-// is admin's jsonb locale map; `bcp47` selects the locale. Shared by audio
-// variants and subtitle tracks so both render the same "English · Native" pair.
+// Native display name, or null when it echoes English or the language IS English.
+// `name` is admin's jsonb locale map, `bcp47` selects the locale. Shared by audio
+// variants and subtitles so both render the same "English · Native" pair.
 function pickNativeName(
   name: unknown,
   bcp47: string | null | undefined,
@@ -197,10 +234,9 @@ function dedupeByDocumentId<T extends { documentId: string | null }>(
 
 type RawDub = NonNullable<WatchDubData["videoDub"]>
 
-// Map one lazily-fetched dub's downloads + subtitles. Same projection the bulk
-// query used to inline per dub, now run once for the active language only. A
-// missing dub (or one with no media) yields empty arrays = "loaded, nothing".
-// Returns a fresh object each call so callers can never mutate a shared empty.
+// Map one lazily-fetched dub's downloads + subtitles (same projection the bulk
+// query inlined, now run once for the active language). Missing/empty dub yields
+// empty arrays = "loaded, nothing"; fresh object each call so callers can't mutate a shared empty.
 export function normalizeDubMedia(
   raw: RawDub | null | undefined,
 ): VariantMedia {
@@ -236,22 +272,18 @@ export function normalizeDubMedia(
 
 // ── Normalizer ─────────────────────────────────────────────────────
 
-// Memoize by the raw object reference. Apollo returns a referentially-stable
-// result for an unchanged cache read, so re-entering a video (cache-first) maps
-// to the same `raw` and reuses the prior record instead of re-walking every dub
-// — a video like birth-of-jesus has 2,259 dubs, so re-normalizing on each mount
-// is a multi-second JS-thread freeze. A WeakMap can't leak: entries die with the
-// cached object. New/changed data is a new reference, so this never serves stale.
+// Memoize by raw object reference: Apollo returns a stable ref for unchanged cache
+// reads, so re-entry reuses the prior record instead of re-walking every dub (birth-of-jesus
+// has 2,259 — a multi-second freeze). WeakMap can't leak; new data is a new ref, never stale.
 const normalizeCache = new WeakMap<object, WatchVideoRecord | null>()
 
 export function normalizeVideo(
   raw: RawVideo | null | undefined,
 ): WatchVideoRecord | null {
   if (raw == null) return null
-  // With returnPartialData, the cache can surface a partial Video object before
-  // the network fills it in. Without an identity there's nothing usable to
-  // publish (the session keys on documentId), so treat identity-less partials
-  // as "not ready" and let the seed/skeleton carry the screen.
+  // returnPartialData can surface a partial Video before the network fills it in.
+  // The session keys on documentId, so treat identity-less partials as "not ready"
+  // and let the seed/skeleton carry the screen.
   if (!raw.documentId) return null
 
   const cached = normalizeCache.get(raw)
@@ -261,7 +293,7 @@ export function normalizeVideo(
   return result
 }
 
-function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
+function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
   const locale = pickFirstLocale(raw.locales)
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
@@ -283,10 +315,9 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
     }))
 
-  // Siblings: parents[0].parent.children, minus self (KTD5 — the inverted
-  // admin relation returns only self-references today, so this yields an EMPTY
-  // list on current main; the self-filter + dedupe make the rail correct the
-  // moment the relation is fixed, with no further change here).
+  // Siblings: parents[0].parent.children minus self. KTD5: the inverted admin
+  // relation returns only self-references today (EMPTY list on main); self-filter
+  // + dedupe make the rail correct the moment it's fixed, no further change here.
   const selfId = raw.documentId
   const rawSiblings =
     raw.parents?.[0]?.parent?.children
@@ -301,6 +332,7 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
         label: child.label ?? null,
         title: pickFirstLocale(child.locales).title,
         posterUrl: pickPosterUrl(child.images),
+        muxPlaybackId: child.muxPlaybackId ?? null,
       })) ?? []
   const siblings = dedupeByDocumentId(rawSiblings)
 
@@ -352,4 +384,88 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
     studyQuestions,
     bibleCitations,
   }
+}
+
+// ── Series normalizer ──────────────────────────────────────────────
+
+type RawSeriesVideo = NonNullable<SeriesVideoData["videoBySlug"]>
+
+// Own-children → episode cards. KTD5-tolerant: the inverted admin relation can
+// surface self-references and duplicates today, so this self-filters, dedupes,
+// and yields [] rather than a broken rail — correct the moment it's fixed.
+function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
+  const selfId = raw.documentId
+  const episodes = (raw.children ?? [])
+    .filter(
+      (rel): rel is typeof rel & { child: NonNullable<typeof rel.child> } =>
+        rel.child != null && rel.child.documentId !== selfId,
+    )
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((rel) => {
+      const locale = pickFirstLocale(rel.child.locales)
+      return {
+        documentId: rel.child.documentId ?? "",
+        slug: rel.child.slug ?? "",
+        label: rel.child.label ?? null,
+        title: locale.title,
+        description: locale.description,
+        imageAlt: locale.imageAlt,
+        posterUrl: pickPosterUrl(rel.child.images),
+        muxPlaybackId: rel.child.muxPlaybackId ?? null,
+      }
+    })
+  return dedupeByDocumentId(episodes)
+}
+
+// One child-dub language as it arrives from the (now lazy) GET_SERIES_LANGUAGES
+// query — `name` is a JSON locale map resolved client-side.
+export type RawChildDubLanguage = {
+  slug: string | null
+  name: unknown
+  bcp47: string | null
+}
+
+// Language union, keyed on the unique slug (never bcp47 — ko/ko-kmr collide).
+// Exported so the series screen normalizes the lazy GET_SERIES_LANGUAGES result
+// into its OWN state, independent of the lean series record (KTD1).
+export function normalizeChildDubLanguages(
+  raw: readonly RawChildDubLanguage[] | null | undefined,
+): WatchChildLanguage[] {
+  const seen = new Set<string>()
+  const languages: WatchChildLanguage[] = []
+  for (const lang of raw ?? []) {
+    const slug = lang.slug
+    if (slug == null || slug === "" || seen.has(slug)) continue
+    seen.add(slug)
+    languages.push({
+      slug,
+      name: lang.name ? (pickLocalizedName(lang.name) ?? null) : null,
+      bcp47: lang.bcp47 ?? null,
+    })
+  }
+  return languages
+}
+
+// Memoize on the raw reference like normalizeVideo, so a cache-first re-entry
+// doesn't re-walk children/languages.
+const normalizeSeriesCache = new WeakMap<object, WatchSeriesRecord | null>()
+
+// Normalize a series Video: the shared video record (trailer = the series' own
+// playable dub, exposed as streamingUrl/variants) plus the series-only episode
+// rail and the language union that feeds the language panel.
+export function normalizeSeries(
+  raw: RawSeriesVideo | null | undefined,
+): WatchSeriesRecord | null {
+  if (raw == null || !raw.documentId) return null
+  const cached = normalizeSeriesCache.get(raw)
+  if (cached !== undefined) return cached
+  // RawSeriesVideo is the lean SeriesWatchVideo subset of WatchVideo (no parents
+  // chain; per-dub duration/muxVideo dropped). The builder accepts it via
+  // NormalizableVideo; dropped fields resolve to siblings=[]/duration=null/muxPlaybackId=null (unused here).
+  const result: WatchSeriesRecord = {
+    ...buildWatchVideoRecord(raw),
+    episodes: buildEpisodes(raw),
+  }
+  normalizeSeriesCache.set(raw, result)
+  return result
 }

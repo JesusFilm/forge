@@ -11,18 +11,13 @@ import {
   env,
   getAuthBaseUrl,
   getAuthTrustedOrigins,
+  getAuthValidAudiences,
 } from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const validAudiences = [
-  getAuthBaseUrl(),
-  ...(env.AUTH_VALID_AUDIENCES ?? "")
-    .split(",")
-    .map((audience) => audience.trim())
-    .filter((audience) => audience.length > 0),
-]
+const validAudiences = getAuthValidAudiences()
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =
@@ -35,7 +30,6 @@ const socialProviders = {
         facebook: {
           clientId: env.FACEBOOK_CLIENT_ID,
           clientSecret: env.FACEBOOK_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -44,7 +38,7 @@ const socialProviders = {
         google: {
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
-          disableSignUp: true,
+          prompt: "select_account" as const,
         },
       }
     : {}),
@@ -53,7 +47,6 @@ const socialProviders = {
         apple: {
           clientId: env.APPLE_CLIENT_ID,
           clientSecret: env.APPLE_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -67,7 +60,6 @@ const upstreamProviderPlugins =
             okta({
               clientId: env.OKTA_CLIENT_ID,
               clientSecret: env.OKTA_CLIENT_SECRET,
-              disableSignUp: true,
               issuer: env.OKTA_ISSUER,
             }),
           ],
@@ -124,6 +116,11 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/login",
       consentPage: "/oauth/consent",
+      // MCP clients such as Codex discover and register OAuth clients at
+      // runtime. Keep these enabled so /mcp can be authenticated without an
+      // out-of-band OAuth client bootstrap.
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
       scopes: AUTH_SCOPES.map((scope) => scope.key),
       validAudiences,
       advertisedMetadata: {

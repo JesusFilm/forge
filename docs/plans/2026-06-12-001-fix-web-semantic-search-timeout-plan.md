@@ -69,4 +69,4 @@ Production semantic search normally returns in several seconds but can brush pas
 - `apps/web/src/lib/admin-client.ts` owns the current 15 second Admin GraphQL fetch timeout and lazy server-only env access.
 - `apps/web/src/lib/search.ts` is the semantic search adapter used by `apps/web/src/lib/search-actions.ts`.
 - `docs/solutions/architecture-patterns/forge-algolia-search-modal-20260610.md` keeps the Algolia rollout split in the server action and preserves semantic search as the fallback path.
-- `docs/solutions/platform/admin-hybrid-search-r4-pattern.md` and `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md` confirm this mitigation should not alter Admin retrieval topology.
+- `docs/solutions/platform/admin-hybrid-search-r4-pattern.md` and `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md` confirm this mitigation should not alter Admin retrieval topology.

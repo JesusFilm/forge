@@ -61,6 +61,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         thumbnail: "https://img.example.com/thumb.jpg",
         mobileCinematicHigh: "https://img.example.com/cinematic.jpg",
         mobileCinematicLow: null,
+        videoStill: null,
       },
     ],
     primaryLanguage: { coreId: "529", bcp47: "en" },
@@ -108,6 +109,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     thumbnail: null,
                     mobileCinematicHigh: null,
                     mobileCinematicLow: null,
+                    videoStill: null,
                   },
                 ],
               },
@@ -131,6 +133,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     thumbnail: null,
                     mobileCinematicHigh: null,
                     mobileCinematicLow: null,
+                    videoStill: null,
                   },
                 ],
               },
@@ -243,6 +246,76 @@ describe("normalizeVideo", () => {
     expect(result.muxPlaybackId).toBe("abc123")
     expect(result.duration).toBe(725)
     expect(result.primaryLanguageBcp47).toBe("en")
+  })
+
+  // Prod regression: a dub's hls shipped with a trailing "\n"; the raw string
+  // reaching the native player 400s at Mux. Ingest trimmed, never raw.
+  it("trims whitespace-tainted hls at ingestion (streamingUrl + variants)", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((v, index) =>
+      index === 0 ? { ...v, hls: `${v.hls}\n` } : v,
+    )
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
+    expect(
+      result.variants.map((v) => v.hls).every((h) => h === h?.trim()),
+    ).toBe(true)
+  })
+
+  it("skips a whitespace-only hls when picking the first playable variant", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((v, index) => (index === 0 ? { ...v, hls: "  \n" } : v))
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    // dub-1's hls is unplayable; the pick must advance to dub-2 (Spanish).
+    expect(result.streamingUrl).toBe("https://stream.mux.com/def456.m3u8")
+  })
+
+  // Prod regression (Up Next blank card): the "Life of Jesus (Gospel of John)"
+  // sibling's images[0] is videoStill-first, and its bare Cloudflare `url` is
+  // the variant-less delivery base that 400s. Never pick it over real art.
+  it("skips a sibling's variant-less url for its cinematic art", () => {
+    const raw = makeRawVideo()
+    const parent = raw!.parents![0]!.parent!
+    parent.children = parent.children!.map((rel) =>
+      rel.child?.documentId === "vid-2"
+        ? {
+            child: {
+              ...rel.child,
+              images: [
+                {
+                  documentId: "cimg-2a",
+                  url: "https://img.example.com/bare.jpg",
+                  thumbnail: "https://img.example.com/thumb.jpg/f=jpg,w=120",
+                  mobileCinematicHigh: null,
+                  mobileCinematicLow: null,
+                  videoStill: "https://img.example.com/still.jpg/f=jpg,w=1920",
+                },
+                {
+                  documentId: "cimg-2b",
+                  url: "https://img.example.com/bare-cinematic.jpg",
+                  thumbnail: null,
+                  mobileCinematicHigh:
+                    "https://img.example.com/cinematic.jpg/f=jpg,w=1280",
+                  mobileCinematicLow: null,
+                  videoStill: null,
+                },
+              ],
+            },
+          }
+        : rel,
+    )
+
+    const result = normalizeVideo(raw)!
+    const sibling = result.siblings.find((s) => s.documentId === "vid-2")!
+    expect(sibling.posterUrl).toBe(
+      "https://img.example.com/cinematic.jpg/f=jpg,w=1280",
+    )
   })
 
   it("filters self-references from siblings", () => {
@@ -411,6 +484,39 @@ describe("normalizeVideo", () => {
     expect(result.bibleCitations[0].verseStart).toBe(30)
   })
 
+  it("sorts a frozen bibleCitations array without mutating it", () => {
+    // Apollo's InMemoryCache returns frozen arrays and Array.sort mutates in
+    // place, so normalizeVideo must copy before sorting (else "Cannot assign to
+    // read-only property"). Inverted order forces a swap, so no copy = throw.
+    const frozenCitations = Object.freeze([
+      {
+        documentId: "bc-2",
+        chapterStart: 1,
+        verseStart: 1,
+        order: 2,
+        osisId: "John.1.1",
+        bibleBook: { documentId: "bb-2", name: { en: "John" } },
+      },
+      {
+        documentId: "bc-1",
+        chapterStart: 3,
+        verseStart: 16,
+        order: 1,
+        osisId: "John.3.16",
+        bibleBook: { documentId: "bb-1", name: { en: "John" } },
+      },
+    ])
+
+    const result = normalizeVideo(
+      makeRawVideo({ bibleCitations: frozenCitations }),
+    )!
+
+    expect(result.bibleCitations).toHaveLength(2)
+    // Ascending by order: bc-1 (order 1) before bc-2 (order 2).
+    expect(result.bibleCitations[0].documentId).toBe("bc-1")
+    expect(result.bibleCitations[1].documentId).toBe("bc-2")
+  })
+
   it("handles missing fields gracefully", () => {
     const result = normalizeVideo(
       makeRawVideo({
@@ -554,6 +660,7 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
           thumbnail: `https://img.example.com/ep${n}-thumb.jpg`,
           mobileCinematicHigh: `https://img.example.com/ep${n}-cine.jpg`,
           mobileCinematicLow: null,
+          videoStill: null,
         },
       ],
       ...extra,
@@ -570,6 +677,7 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
         thumbnail: "https://img.example.com/series-thumb.jpg",
         mobileCinematicHigh: "https://img.example.com/series-cine.jpg",
         mobileCinematicLow: null,
+        videoStill: null,
       },
     ],
     primaryLanguage: { coreId: "529", bcp47: "en" },
@@ -657,6 +765,35 @@ describe("normalizeSeries", () => {
     expect(result.streamingUrl).toBe("https://stream.mux.com/trailer.m3u8")
     expect(result.muxPlaybackId).toBe("trailer123")
     expect(result.variants).toHaveLength(1)
+  })
+
+  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo omits the
+  // player-only duration/muxVideo, so those keys are absent (undefined), not null.
+  // Builder must still make a trailer from hls; dropping `?? null` should fail here.
+  it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "dub-lean",
+            slug: "english",
+            published: true,
+            hls: "https://stream.mux.com/lean.m3u8",
+            language: {
+              coreId: "529",
+              bcp47: "en",
+              slug: "english",
+              name: { en: "English" },
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/lean.m3u8")
+    expect(result.duration).toBeNull()
+    expect(result.muxPlaybackId).toBeNull()
+    expect(result.variants[0].duration).toBeNull()
+    expect(result.variants[0].muxPlaybackId).toBeNull()
   })
 
   it("has no trailer streamingUrl when no dub is playable", () => {

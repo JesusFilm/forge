@@ -11,28 +11,33 @@
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'",
+    "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
+    "eas-build-on-success": "bash scripts/eas-build-on-success.sh",
     "update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
+    "@datadog/mobile-react-native": "3.5.2",
+    "@datadog/mobile-react-native-session-replay": "3.5.2",
     "@forge/admin-graphql": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
+    "@kesha-antonov/react-native-background-downloader": "^4.5.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@shopify/flash-list": "^2.0.2",
+    "@shopify/flash-list": "2.0.2",
     "@t3-oss/env-core": "^0.13.11",
-    "expo": "~54.0.34",
+    "expo": "~54.0.36",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
-    "expo-file-system": "~19.0.22",
+    "expo-dev-client": "~6.0.21",
+    "expo-file-system": "~19.0.23",
     "expo-glass-effect": "~0.1.10",
     "expo-image": "~3.0.11",
     "expo-linear-gradient": "^15.0.8",
     "expo-linking": "~8.0.12",
-    "expo-router": "~6.0.23",
+    "expo-router": "~6.0.24",
     "expo-screen-orientation": "~9.0.9",
-    "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
-    "expo-updates": "~29.0.17",
+    "expo-updates": "~29.0.19",
     "expo-video": "~3.0.16",
     "graphql": "16.13.1",
     "react": "19.1.0",
@@ -44,6 +49,7 @@
   },
   "devDependencies": {
     "@babel/runtime": "^7.28.0",
+    "@expo/ngrok": "^4.1.0",
     "@types/jest": "^29.5.0",
     "@types/react": "~19.1.17",
     "babel-preset-expo": "^54.0.10",
@@ -56,7 +62,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))"
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

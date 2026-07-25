@@ -1,6 +1,7 @@
 ---
 title: Watch language picker, player chrome fade, and measured episode rail overlap
 date: 2026-06-09
+last_updated: 2026-07-17
 category: docs/solutions/design-patterns
 module: apps/web
 problem_type: design_pattern
@@ -8,7 +9,10 @@ component: watch-page
 severity: medium
 related_components:
   - apps/web/src/components/watch/HeroPlayer.tsx
+  - apps/web/src/components/watch/__tests__/HeroPlayer.test.tsx
   - apps/web/src/components/watch/HeroPlayerControls.tsx
+  - apps/web/src/components/watch/SubtitleOverlay.tsx
+  - apps/web/src/components/watch/__tests__/SubtitleOverlay.test.tsx
   - apps/web/src/components/watch/LanguagePickerModal.tsx
   - apps/web/src/components/watch/LanguageCombobox.tsx
   - apps/web/src/components/FloatingSearchProvider.tsx
@@ -23,11 +27,15 @@ tags:
   - sticky-hero
   - episode-carousel
   - responsive-layout
+  - mobile-landscape
+  - safe-area
+  - flow-layout
   - accessibility
 applies_when:
   - You are changing the public watch page language modal, subtitles/audio selectors, hero player chrome, floating header, or episode rail overlap
   - A future refactor makes the I/O switch text, multi-language tooltips, opacity states, or measured body overlap look accidental
   - You need to verify whether a watch hero layout change should be breakpoint-driven or measurement-driven
+  - A compact-landscape preview, long localized title, or episode carousel overlaps the floating header or visible viewport
 ---
 
 # Watch language picker, player chrome fade, and measured episode rail overlap
@@ -161,7 +169,7 @@ Reason future agents might regress it:
 - The event handshake may look indirect. It prevents header and controls from
   drifting into different opacity states.
 
-### 5. Muted preview hero height and episode rail overlap are measurement-driven
+### 5. Muted preview hero height and episode rail overlap are state-aware
 
 Touched files:
 
@@ -170,14 +178,30 @@ Touched files:
 
 Intent:
 
-- The sound-on player uses a full-width 16:9 frame capped by visible viewport
-  height: `h-[min(100svh,56.25vw)]`.
-- Muted preview also uses that frame, with `object-fit: cover` and the existing
-  pre-reveal vertical scale. Sound-on uses contain so the full video is visible.
+- The sound-on player and ordinary muted previews use a full-width 16:9 frame
+  capped by visible viewport height: `h-[min(100svh,56.25vw)]`.
+- The default pre-reveal overlay is a deliberate compact-landscape exception.
+  At `max-width: 1023px`, `max-height: 500px`, and landscape orientation, its
+  video wrapper uses `h-[100svh]` so the picture consumes the full available
+  small viewport. `100svh` is required for visible iOS Safari viewport chrome.
+- In that state, the overlay anchor is laid over the video with
+  `-mt-[100svh]`, but becomes an auto-height normal-flow flex container with
+  `min-h-[100svh]`. The default overlay becomes `relative`, so a long localized
+  title increases the anchor and page height instead of escaping beneath the
+  floating header. Safe-area-aware top and inline padding preserve header and
+  notch clearance without clamping the title.
+- Compact-landscape preview/body overlap is forced to `0`. The body and episode
+  carousel follow the completed overlay flow box, after at least one full
+  viewport of video. If the title needs more space, the carousel moves farther
+  down with it.
+- This exception is scoped by `defaultPreRevealOverlayInFlow`. Portrait,
+  revealed player chrome, autoplay-suppressed previews, and custom overlays
+  retain the ordinary frame and zero-height anchor behavior.
 - On sound-on reveal, clear any muted-preview body overlap and smooth-scroll to
   the hero top if the user was already scrolled.
-- The episodes/body panel is pulled upward only when the measured episode rail
-  plus bottom padding would not fit under the muted hero.
+- Outside the compact-landscape exception, the episodes/body panel is pulled
+  upward only when the measured episode rail plus bottom padding would not fit
+  under the muted hero.
 - Do not use a plain width breakpoint for the pull-up. A small/narrow viewport
   can already fit the video plus panel with no overlap, while a wider but squat
   viewport may need a modest overlap.
@@ -187,20 +211,56 @@ Intent:
   - `HERO_PREVIEW_BODY_OVERLAP_MIN_PX = 160`
   - `HERO_PREVIEW_BODY_OVERLAP_MAX_PX = 288`
 - The computed overlap is exposed as `data-preview-overlap-px` for tests and
-  browser smoke. In normal roomy viewports it should be `0`; in squat viewports
-  it may be a small positive number such as `85`.
+  browser smoke. In normal roomy viewports and the compact-landscape exception
+  it should be `0`; other squat viewports may use a small positive value.
 
 Reason future agents might regress it:
 
-- A static negative margin looked okay on wide screens but made the muted video
-  tiny on narrow screens. The measurement-based rule is the intended correction.
+- A static body overlap looked okay on wide screens but made the muted video
+  tiny on narrow screens. Measurement remains the default; compact landscape
+  instead uses a bounded full-height, auto-growing flow layout.
+
+### 6. Subtitle lift follows owner-supplied chrome visibility
+
+Touched files:
+
+- `apps/web/src/components/watch/HeroPlayer.tsx`
+- `apps/web/src/components/watch/SubtitleOverlay.tsx`
+- `apps/web/src/components/watch/__tests__/SubtitleOverlay.test.tsx`
+
+Intent:
+
+- Active subtitles are lifted above the timeline and bottom controls whenever
+  chrome is dim or bright.
+- When chrome reaches its hidden state, subtitles return to the ordinary
+  bottom-edge offset instead of remaining raised over the picture.
+- `HeroPlayer` owns the latest `HeroPlayerControls.onVisibilityChange` detail
+  and passes the visible/hidden boolean to `SubtitleOverlay`.
+- `SubtitleOverlay` may still measure the rendered rail height while it is
+  visible, but it must not rediscover visibility with its own global DOM query
+  and `MutationObserver`. A second visibility channel can lag or disagree with
+  the player lifecycle, especially across fullscreen targets.
+- Keep the chrome lift independent from the overlay's scroll-aware body-zone
+  offset. One avoids player controls; the other avoids content occluding the
+  sticky hero.
+
+Browser proof on the Russian Watch route measured a `-64px` transform with
+visible chrome and 4 px of clearance above the rail. After auto-hide, the
+transform returned to `0px` and the subtitle lower edge sat 16 px above the
+player frame bottom.
+
+Reason future agents might regress it:
+
+- Watching `data-visible` locally looks self-contained, but makes a display
+  component infer lifecycle state that its owner already knows. Preserve the
+  direct state flow and the visible-hidden-visible regression test.
 
 ## Verification commands
 
 Run the focused tests after touching this surface:
 
 ```bash
-pnpm --filter @forge/web test -- src/components/watch/__tests__/HeroPlayer.test.tsx src/components/watch/__tests__/HeroPlayerControls.test.tsx src/components/__tests__/FloatingSearchProvider.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx src/components/watch/__tests__/LanguageCombobox.test.tsx
+pnpm --filter @forge/web test -- src/components/watch/__tests__/HeroPlayer.test.tsx src/components/watch/__tests__/HeroPlayerControls.test.tsx src/components/watch/__tests__/SubtitleOverlay.test.tsx src/components/__tests__/FloatingSearchProvider.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx src/components/watch/__tests__/LanguageCombobox.test.tsx
 ```
 
 Run lint before handing off:
@@ -216,15 +276,36 @@ Browser smoke that caught regressions in this branch:
   - `data-preview-overlap="false"`
   - `data-preview-overlap-px="0"`
   - `marginBottom: 0px`
-- Squat viewport expected values:
+- Squat non-compact viewport expected values:
   - `data-preview-overlap="true"`
   - positive `data-preview-overlap-px`
   - episode rail bottom padding around 30 px
+- Compact-landscape default pre-reveal expected values:
+  - wrapper height equals `100svh`
+  - `data-preview-overlap="false"`
+  - `data-preview-overlap-px="0"`
+  - `marginBottom: 0px`
+  - body and episode content begin after the complete overlay flow box
+  - an oversized localized title stays below the header and grows the anchor
 - Sound-on reveal:
   - `data-chrome-revealed="true"`
   - `data-preview-overlap="false"`
   - `marginBottom: 0px`
   - page scrolls back to hero top if it was scrolled
+- Preserve boundary smoke at 390x844 portrait and 1024x501 landscape.
+
+Browser proof on 2026-07-17 measured the default Russian route at 844x390 with
+a 390 px wrapper and anchor, the body beginning at 390 px, and zero overlap. At
+844x220, the anchor grew to 251.8 px for the localized title, retained an 8 px
+gap below the 60 px header, and pushed the body to 251.8 px. Portrait kept its
+390 px square preview and the compact variant remained inactive at 1024x501.
+
+Related planning records:
+
+- `docs/plans/2026-07-16-001-fix-watch-mobile-landscape-hero-layout-plan.md`
+- `docs/roadmap/platform/feat-264-watch-mobile-landscape-hero-layout.md`
+- `docs/roadmap/platform/feat-175-watch-mobile-portrait-hero-preview.md`
+- `docs/solutions/design-patterns/mux-player-custom-react-chrome-pattern-20260430.md`
 
 ## Agent guidance
 

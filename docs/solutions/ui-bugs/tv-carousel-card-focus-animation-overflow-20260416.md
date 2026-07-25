@@ -1,6 +1,7 @@
 ---
 title: "TV Carousel Card Focus: Animated Scale Transition and Overflow Clipping Fix"
 date: "2026-04-16"
+last_updated: "2026-06-24"
 category: ui-bugs
 module: apps/tv
 problem_type: ui_bug
@@ -152,6 +153,14 @@ cardWrapper: { paddingVertical: 40 }
 
 ### Part 4: Unified Crimson Glow
 
+> **Superseded (2026-06-24):** the crimson glow is no longer the focus default.
+> apps/tv standardized on an app-wide white **border ring** (FocusableCard's
+> `focusRing` default flipped crimson→white; crimson is opt-in only on near-white
+> surfaces like the RelatedQuestions FallbackPill). The two-layer split + clipping
+> fix in this doc still apply unchanged — only the ring's color/shape changed, and
+> the values below are now historical. See
+> `docs/solutions/best-practices/tv-focus-white-ring-default-and-light-surface-exception.md`.
+
 All focusable elements use `COLORS.primary` (`#CB333B`) for shadow:
 
 | Element                 | shadowRadius | shadowOpacity |
@@ -175,10 +184,11 @@ The `LAYOUT_KEYS` split ensures the outer View gets size/position constraints (s
 - **Separate shadow/transform from content-clip layers** — any component needing both a visible overflow effect (glow, shadow, scale bleed) and content clipping (borderRadius) requires two Views: outer `overflow: "visible"`, inner `overflow: "hidden"`.
 - **FlatList clips its content frame** — `contentContainerStyle` padding does not expand the clip boundary. Add `paddingVertical` to item wrapper Views so scaled or glowing children have physical room within the scroll container.
 - **Split style props by concern** — when routing styles to outer/inner Views, use an explicit allowlist (`LAYOUT_KEYS`) with an `else` branch to ensure layout and visual properties are mutually exclusive partitions. Missing the `else` causes properties to leak to both Views.
-- **Android TV has no colored shadows** — `shadowColor`/`shadowRadius` are iOS-only. The crimson glow is invisible on Android TV. Consider adding `elevation` or a border-based fallback for Android TV focus indicators. (session history)
+- **Android TV has no colored shadows** — `shadowColor`/`shadowRadius` are iOS-only, so the crimson glow was invisible on Android TV. The border-based fallback this recommends was since adopted app-wide: a white **border ring** is now the default focus indicator (visible on both platforms). See `docs/solutions/best-practices/tv-focus-white-ring-default-and-light-surface-exception.md`. (session history)
 
 ## Related Issues
 
+- [docs/solutions/best-practices/tv-focus-white-ring-default-and-light-surface-exception.md](../best-practices/tv-focus-white-ring-default-and-light-surface-exception.md) — the white-ring focus default that superseded the crimson glow (the "border-based fallback" this doc's Prevention recommends)
 - [docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md](../best-practices/react-native-tvos-porting-pitfalls-20260414.md) — Pitfall 3: never use `position: "absolute"` for focusable elements; UIFocusEngine requires flexbox flow
 - [docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md](../best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md) — Section 6: TVFocusGuideView and focus management patterns; Section 7: FlatList zero-height on tvOS
 - [docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md](tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md) — Context-dependent `pointerEvents="none"`: correct for inline cards, breaks overlay VideoViews

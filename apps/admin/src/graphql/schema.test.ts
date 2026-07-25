@@ -48,6 +48,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videoBySlug",
         "videos",
         "watchHomeVideos",
+        "watchLanguageInventory",
+        "watchSearch",
         "videosByCoreIds",
         // Experience
         "experience",
@@ -58,6 +60,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "managerViewer",
         "managerLanguageGeo",
         "managerVideoCoverage",
+        "managerVideosForEnrichment",
         "managerCoverageSnapshots",
         "managerJobs",
         "managerJob",
@@ -78,11 +81,28 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(Object.keys(fieldsOf("ManagerLanguageGeo"))).toEqual(
       expect.arrayContaining(["continents", "countries", "languages"]),
     )
+    expect(Object.keys(fieldsOf("ManagerLanguage"))).toEqual(
+      expect.arrayContaining(["id", "coreId", "bcp47", "iso3"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoForEnrichment"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "title",
+        "label",
+        "primaryLanguage",
+        "variants",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerEnrichmentVariant"))).toEqual(
+      expect.arrayContaining(["language", "muxVideo", "downloads"]),
+    )
     expect(Object.keys(fieldsOf("ManagerVideoCoverage"))).toEqual(
       expect.arrayContaining([
         "documentId",
         "coreId",
         "parentDocumentIds",
+        "parentRelations",
         "coverage",
       ]),
     )
@@ -134,6 +154,117 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(nonNull("subtitleUrl")).toBe(false)
   })
 
+  it("WatchLanguageInventory type exposes the localized /videos card contract", () => {
+    const inventoryFields = fieldsOf("WatchLanguageInventory")
+    expect(Object.keys(inventoryFields)).toEqual(
+      expect.arrayContaining([
+        "language",
+        "counts",
+        "promoted",
+        "audioCollections",
+        "audioVideos",
+        "subtitleOnlyVideos",
+      ]),
+    )
+
+    const itemFields = fieldsOf("WatchLanguageInventoryItem")
+    expect(Object.keys(itemFields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "slug",
+        "title",
+        "description",
+        "imageUrl",
+        "imageAlt",
+        "label",
+        "availability",
+        "watchLanguageSlug",
+        "parentSlug",
+        "parentTitle",
+        "durationSeconds",
+        "childCount",
+        "publishedAt",
+      ]),
+    )
+
+    const query = schema.getQueryType()!.getFields().watchLanguageInventory
+    expect(String(query.type)).toBe("WatchLanguageInventory!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "languageSlug",
+      "limit",
+    ])
+  })
+
+  it("WatchSearch type exposes the replacement multilingual contract skeleton", () => {
+    const query = schema.getQueryType()!.getFields().watchSearch
+    expect(String(query.type)).toBe("WatchSearchResponse")
+    expect(query.args.map((arg) => arg.name)).toEqual(["input"])
+
+    expect(Object.keys(fieldsOf("WatchSearchResponse"))).toEqual(
+      expect.arrayContaining([
+        "query",
+        "results",
+        "hasMore",
+        "nextOffset",
+        "searchMode",
+        "requestId",
+        "degraded",
+        "latencyMs",
+        "laneStatuses",
+        "languageInterpretation",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchLaneStatus"))).toEqual(
+      expect.arrayContaining([
+        "lane",
+        "status",
+        "elapsedMs",
+        "resultCount",
+        "reason",
+        "detail",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchResult"))).toEqual(
+      expect.arrayContaining([
+        "type",
+        "id",
+        "slug",
+        "title",
+        "snippet",
+        "imageUrl",
+        "playbackId",
+        "startSeconds",
+        "score",
+        "label",
+        "durationSeconds",
+        "childCount",
+        "languageSlug",
+        "languageEnglishName",
+        "availability",
+        "evidence",
+        "action",
+        "fallback",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchLanguageInterpretation"))).toEqual(
+      expect.arrayContaining([
+        "queryLanguageSlug",
+        "queryNamedLanguageSlug",
+        "targetLanguageSlug",
+        "targetLanguageSource",
+        "displayLanguageSlug",
+        "routeLanguageSlug",
+        "currentWatchLanguageSlug",
+        "acceptLanguage",
+        "acceptLanguageSlug",
+      ]),
+    )
+  })
+
   it("Query root no longer exposes the Unit 3 Ping spike fields", () => {
     const fields = schema.getQueryType()!.getFields()
     expect(fields.pingAll).toBeUndefined()
@@ -155,6 +286,13 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.updateManagerJob).toBeDefined()
   })
 
+  it("Mutation root exposes the private watch-event write contract", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.recordWatchEvent).toBeDefined()
+  })
+
   it("Mutation root exposes media asset write entry points", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
@@ -169,22 +307,11 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.deleteMediaFolder).toBeDefined()
   })
 
-  it("Mutation root exposes the scene embedding backfill trigger", () => {
+  it("Mutation root does not expose the retired scene embedding backfill trigger", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
-    expect(fields.triggerSceneEmbeddingBackfill).toBeDefined()
-  })
-
-  it("triggerSceneEmbeddingBackfill.mappingS3Key is optional with the canonical default", () => {
-    const mutation = schema.getMutationType()!
-    const field = mutation.getFields().triggerSceneEmbeddingBackfill!
-    const arg = field.args.find((a) => a.name === "mappingS3Key")
-    expect(arg).toBeDefined()
-    // Nullable (String, not String!) so clients may omit or pass null;
-    // defaultValue holds the canonical admin-migrations/ snapshot.
-    expect(String(arg!.type)).toBe("String")
-    expect(arg!.defaultValue).toBe("admin-migrations/core-id-mapping.json")
+    expect(fields.triggerSceneEmbeddingBackfill).toBeUndefined()
   })
 
   it("Mutation root exposes the transcript embedding backfill trigger", () => {
@@ -568,117 +695,6 @@ describe("reference types", () => {
         "language",
       ]),
     )
-  })
-})
-
-describe("Hybrid search — R4 query + response types", () => {
-  it("Query root exposes the `search` field", () => {
-    const fields = schema.getQueryType()!.getFields()
-    expect(fields.search).toBeTruthy()
-  })
-
-  it("HybridSearchResult exposes the expected consumer-facing shape", () => {
-    const fields = fieldsOf("HybridSearchResult") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining([
-        "type",
-        "id",
-        "slug",
-        "title",
-        "imageUrl",
-        "snippet",
-        "startSeconds",
-        "playbackId",
-        "score",
-      ]),
-    )
-    expect(fields.score.type.toString()).toBe("Float!")
-    expect(fields.startSeconds.type.toString()).toBe("Float")
-    expect(fields.playbackId.type.toString()).toBe("String")
-  })
-
-  it("HybridSearchResult exposes no embedding/vector/similarity-shaped field", () => {
-    const fields = fieldsOf("HybridSearchResult")
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-  })
-
-  it("HybridSearchResultDebug exposes ranks + fusedScore + dilutionCapApplied (no embedding leak)", () => {
-    const fields = fieldsOf("HybridSearchResultDebug") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining([
-        "retrieverRanks",
-        "fusedScore",
-        "dilutionCapApplied",
-      ]),
-    )
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-    expect(fields.fusedScore.type.toString()).toBe("Float!")
-    expect(fields.dilutionCapApplied.type.toString()).toBe("Boolean!")
-    expect(fields.retrieverRanks.type.toString()).toBe(
-      "[HybridSearchRetrieverRank!]!",
-    )
-  })
-
-  it("HybridSearchRetrieverRank carries label + rank only (no embedding leak)", () => {
-    const fields = fieldsOf("HybridSearchRetrieverRank") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields).sort()).toEqual(["label", "rank"])
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-    expect(fields.label.type.toString()).toBe("String!")
-    expect(fields.rank.type.toString()).toBe("Int!")
-  })
-
-  it("HybridSearchResult exposes a nullable debug field gated at the resolver", () => {
-    const fields = fieldsOf("HybridSearchResult") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(fields.debug.type.toString()).toBe("HybridSearchResultDebug")
-  })
-
-  it("HybridSearchResponse wraps results + hasMore + query + searchMode", () => {
-    const fields = fieldsOf("HybridSearchResponse") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(fields.results.type.toString()).toBe("[HybridSearchResult!]!")
-    expect(fields.hasMore.type.toString()).toBe("Boolean!")
-    expect(fields.query.type.toString()).toBe("String!")
-    expect(fields.searchMode.type.toString()).toBe("HybridSearchMode!")
-  })
-
-  it("HybridSearchMode enum exposes hybrid + keyword-only values", () => {
-    const t = schema.getType("HybridSearchMode")
-    expect(t).toBeTruthy()
-    const values = (
-      t as unknown as { getValues(): { value: string }[] }
-    ).getValues()
-    const raw = values.map((v) => v.value)
-    expect(raw).toContain("hybrid")
-    expect(raw).toContain("keyword-only")
-  })
-
-  it("HybridSearchContentType enum maps to service-layer values", () => {
-    const t = schema.getType("HybridSearchContentType")
-    const values = (
-      t as unknown as { getValues(): { value: string }[] }
-    ).getValues()
-    const raw = values.map((v) => v.value)
-    expect(raw).toEqual(expect.arrayContaining(["video", "experience"]))
   })
 })
 

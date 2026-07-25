@@ -1,6 +1,7 @@
 ---
 title: "TV /watch overlay plays on black at 0:00 — backdrop VideoView starved the fullscreen player's decoder"
 date: 2026-06-11
+last_updated: 2026-06-16
 category: ui-bugs
 module: apps/tv
 problem_type: ui_bug
@@ -88,7 +89,20 @@ Drive via `idb ui key 40` (Select) / `41` (Menu) + `xcrun simctl io <udid> scree
 
 The SAME symptom (plays for a tick -> stalls black at 0:00, pause icon flips back to play) reappears in **dev** whenever Metro Fast Refresh applies an edit to any player file (`VideoPlayer.tsx`, `VideoBackdrop.tsx`, `SubtitleOverlay.tsx`, `useSessionPlayback.ts`) while the app is running — including indirect writes like the pre-commit prettier hook rewriting staged files AFTER you finished testing. The hot reload tears through the mounted player tree and orphans the old native `AVPlayer`, which keeps its decode slot until process death; the next play wedges exactly like the production bug above. It hit three separate times during this branch's development.
 
-**Rule: after any edit lands in a player file, cold-relaunch the app before judging playback** (`xcrun simctl terminate <udid> org.jesusfilm.forgetv` + relaunch + reconnect Metro). If a cold launch plays and a hot-reloaded session doesn't, it's the zombie — not a code regression. Verify fixes only from cold launches.
+**Rule: after any edit lands in a player file, cold-relaunch the app before judging playback** (`xcrun simctl terminate <udid> org.jesusfilm.forgetv` + relaunch + reconnect Metro). _(2026-07-17: TV builds after PR #1590 use bundle id `org.jesusfilm.forgewatch` — target that id; only pre-#1590 installed clients keep `forgetv`.)_ If a cold launch plays and a hot-reloaded session doesn't, it's the zombie — not a code regression. Verify fixes only from cold launches.
+
+**It also presents as an _immediate_ terminal error, not only the plays-a-tick stall.** On a fresh details-page play (2026-06-16, branch `feat/tv-home-search-polish`) the zombie surfaced as the `VideoPlayer` error overlay — **"Playback failed — press Back to exit", duration `--:--`, expo-video `statusChange` status `"error"`, no manifest load** — because the new player never acquired a decoder at all. Same root cause, blunter symptom; recognise this screen as the zombie too. (It recurs across branches, not just the one it was first found on.)
+
+**When the starvation fix above is already in place, don't re-chase it — or the URL, or secrets — go straight to the cold-launch test.** This recurrence wasted time ruling out, in order: decoder starvation (the `!overlayVisible` gate was present and working), an expired/signed Mux URL (it's a public `stream.mux.com/<id>.m3u8`, passes `validateStreamingUrl`, plays fine), and missing `.env.local`/secrets (byte-identical config between the failing and working runs — config can't be the cause when the _only_ variable that changed was Fast Refresh). All three are dead ends the moment a cold launch plays the same build.
+
+**Positive "is it actually playing?" probe** — confirm the decode pipeline independent of the JS UI by streaming the device log while you press Play:
+
+```bash
+xcrun simctl spawn <udid> log stream --predicate \
+  'process == "JesusFilmWatch" OR senderImagePath CONTAINS "CoreMedia"'
+```
+
+Continuous `subaq_enqueueAQBufferIntoAudioQueue` (audio enqueue) + `LayerSync` lines with zero decode-error lines = the pipeline is healthy and advancing (a cold launch shows the playhead climb 0:33 → end). Silence on those lines, or explicit decode-failure lines, = a real problem. The `err 61` / `ECONNREFUSED` TCP lines in the same log are the dev client polling a dead Metro — not video, which is remote HTTPS.
 
 ## Prevention
 

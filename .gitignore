@@ -46,6 +46,7 @@ test-results/
 .claude/telemetry/
 .claude/worktrees/
 .claude/secrets.local.md
+.claude/**/*.dev.md
 
 # Compound engineering working files
 .context/
@@ -57,3 +58,10 @@ forge.code-workspace
 
 # ce-plan HTML explainers (present-html) — disposable, regenerated per plan
 *.explainer.html
+
+# local whisper.cpp install + models (devo snippet detector)
+.cache/
+
+# Daily-devotional generated artifacts: rendered videos, downloaded clips, audio,
+# manifests, caches, previews. All reproducible output — never committed.
+devo/

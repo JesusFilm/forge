@@ -1,21 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-carousel-sequence.ts (the pure
- * pieces only) — sync obligation in ./config.ts. Mobile adaptations:
- *
- *   - All browser-storage persistence on web (monthly played ids, per-pool
- *     exhaustion counters, per-session mux selections, saved sessions) is
- *     replaced by caller-held state: a played `Set<string>` and a
- *     `startPoolIndex` passed into the queue builders plus a `sessionSeed`
- *     string that keeps mux playback selection stable within an app session.
- *     The Home screen hydrates/persists that state via AsyncStorage in
- *     useWatchHomeCarouselMemory (storage schema in ../watchHomePersistence).
- *     Storage globals throw on Hermes and must never be referenced here.
- *   - Video slides have no `src` at build time (lean bulk fetch, KTD-2);
- *     eligibility is a poster image + slug (KTD-4). Streams resolve lazily.
- *   - `overlayForInsert` takes `now` and is intended to be re-evaluated at
- *     display time (Eastern-hour rule), not only baked at model-build time.
- *
- * Pure TypeScript only — no React/React Native imports.
+ * ADAPTED COPY of apps/web/src/lib/watch-home-carousel-sequence.ts (pure pieces; sync via ./config.ts).
+ * Mobile uses caller-held state not browser storage (globals throw on Hermes); slides lack build-time `src` (KTD-2),
+ * eligibility is poster + slug (KTD-4); `overlayForInsert` re-evaluates at display time. Pure TS only.
  */
 
 import { muxHlsUrlFromPlaybackId } from "../muxThumbnail"
@@ -47,10 +33,7 @@ export type WatchHomeVideoSlide = {
 export type WatchHomeMuxSlide = {
   kind: "mux"
   id: string
-  /**
-   * The source insert config, carried so display code can re-resolve the
-   * time-correct overlay copy via `muxSlideDisplayCopy(slide, now)`.
-   */
+  /** Source insert config; display code re-resolves time-correct copy via `muxSlideDisplayCopy(slide, now)`. */
   insert: WatchHomeMuxInsertConfig
   title: string
   description: string | null
@@ -128,10 +111,7 @@ export function getWatchHomeDeterministicOffset(
   return simpleHash(seed) % videoCount
 }
 
-/**
- * KTD-4 slide eligibility: a usable hero slide needs a poster image and a
- * slug. No build-time stream requirement — HLS resolves lazily per slide.
- */
+/** KTD-4 eligibility: a usable hero slide needs poster + slug; no build-time stream (HLS resolves lazily). */
 export function isEligibleWatchHomeVideoSlide(
   slide: Pick<WatchHomeVideoSlide, "posterUrl" | "slug">,
 ): boolean {
@@ -149,9 +129,8 @@ export type WatchHomeQueueBuildInput = {
 }
 
 /**
- * Build a video queue by cycling the playlist pools, skipping slides the
- * caller has marked played. Web's persisted pool-exhaustion/failure counters
- * are unnecessary here: an exhausted pool simply yields no candidates and the
+ * Build a video queue by cycling the pools, skipping caller-marked-played slides.
+ * No persisted exhaustion counters: an exhausted pool yields no candidates and the
  * loop moves on (bounded by maxAttempts).
  */
 export function buildWatchHomeVideoQueue({
@@ -243,9 +222,8 @@ function currentEasternHour(now: Date): number {
 }
 
 /**
- * Pick the time-correct overlay copy for an insert. Call this at DISPLAY
- * time with a fresh `now` (Eastern-hour rule) — the queue bakes copy only as
- * an initial value.
+ * Pick the time-correct overlay copy for an insert. Call at DISPLAY time with a
+ * fresh `now` (Eastern-hour rule); the queue bakes copy only as an initial value.
  */
 export function overlayForInsert(
   insert: WatchHomeMuxInsertConfig,
@@ -282,10 +260,7 @@ export function overlayForInsert(
   }
 }
 
-/**
- * Display-time copy for a mux slide: time-correct overlay plus the date
- * prefix the first sequence-start insert carries.
- */
+/** Display-time copy for a mux slide: time-correct overlay plus the first sequence-start insert's date prefix. */
 export function muxSlideDisplayCopy(
   slide: WatchHomeMuxSlide,
   now: Date,
@@ -296,9 +271,8 @@ export function muxSlideDisplayCopy(
 }
 
 /**
- * Deterministic playback-id selection per insert. Web persisted a random
- * per-session selection; here the caller's `sessionSeed` (any stable string
- * held for the app session) provides the same in-session stability.
+ * Deterministic playback-id selection per insert. Caller's `sessionSeed` (any
+ * stable per-session string) gives the in-session stability web got from a persisted random pick.
  */
 function selectMuxPlaybackId(
   insert: WatchHomeMuxInsertConfig,
@@ -423,10 +397,9 @@ export type WatchHomeHeroQueueInput = {
 }
 
 /**
- * Build the full hero queue: video queue from the pools, then mux inserts
- * merged at their trigger positions. When every eligible slide has already
- * been played, the queue wraps — it rebuilds ignoring the played set and
- * returns `wrapped: true` so the caller can reset its set.
+ * Build the full hero queue: video queue from the pools, then mux inserts merged at
+ * their triggers. When all eligible slides are played, it rebuilds ignoring the played
+ * set and returns `wrapped: true` so the caller can reset its set.
  */
 export function buildWatchHomeHeroQueue({
   pools,
@@ -439,7 +412,6 @@ export function buildWatchHomeHeroQueue({
 }: WatchHomeHeroQueueInput): {
   slides: WatchHomeSlide[]
   videos: WatchHomeVideoSlide[]
-  nextPoolIndex: number
   wrapped: boolean
 } {
   let result = buildWatchHomeVideoQueue({
@@ -461,10 +433,22 @@ export function buildWatchHomeHeroQueue({
     })
   }
 
+  // Fixed-size contract: the hero never shrinks as videos get watched. When
+  // unseen videos can't fill the target, top up with already-played ones —
+  // unseen always lead the queue, played ones return behind them.
+  if (result.videos.length < targetVideoCount) {
+    result = buildWatchHomeVideoQueue({
+      pools,
+      existingVideos: result.videos,
+      startPoolIndex: result.nextPoolIndex,
+      targetVideoCount,
+      now,
+    })
+  }
+
   return {
     slides: mergeWatchHomeMuxInserts(result.videos, inserts, now, sessionSeed),
     videos: result.videos,
-    nextPoolIndex: result.nextPoolIndex,
     wrapped,
   }
 }

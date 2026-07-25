@@ -2,32 +2,46 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Tool execute() returns the success type or a ValidationError. Tests pass valid
 // inputs, so we narrow to the success shape by excluding the error variant.
-function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
-  if (typeof value === "object" && value !== null && "error" in value) {
+// We also exclude `void`: Mastra's createTool types execute's return as
+// `T | void`, and once the admin program's total type-instantiation load is
+// high the checker keeps the `void` arm instead of resolving to T. Excluding
+// it here (with a runtime null-guard) keeps these tests robust to that budget.
+function assertOk<T>(value: T): Exclude<T, { error: unknown } | void> {
+  if (value == null) {
+    throw new Error("tool returned no result")
+  }
+  if (typeof value === "object" && "error" in value) {
     throw new Error("tool returned a ValidationError instead of a result")
   }
-  return value as Exclude<T, { error: unknown }>
+  return value as Exclude<T, { error: unknown } | void>
 }
 
 const searchMock = vi.hoisted(() => vi.fn())
+const languageFindFirstMock = vi.hoisted(() => vi.fn())
 
-vi.mock("@/services/hybrid-search.service", () => ({
-  HybridSearchService: class {
+vi.mock("@/services/watch-search.service", () => ({
+  WatchSearchService: class {
     search = searchMock
   },
 }))
 
 vi.mock("@/db/client", () => ({
-  prisma: {},
+  prisma: {
+    language: {
+      findFirst: languageFindFirstMock,
+    },
+  },
 }))
 
 describe("searchVideosTool", () => {
   beforeEach(() => {
     searchMock.mockReset()
+    languageFindFirstMock.mockReset()
+    languageFindFirstMock.mockResolvedValue({ slug: "english" })
     vi.resetModules()
   })
 
-  it("calls HybridSearchService.search with the input query+locale+limit and returns trimmed videos", async () => {
+  it("calls WatchSearchService.search with the input query+locale+limit and returns trimmed playable videos, dropping playbackId-null rows", async () => {
     searchMock.mockResolvedValue({
       results: [
         {
@@ -66,7 +80,7 @@ describe("searchVideosTool", () => {
       ],
       hasMore: false,
       query: "jesus",
-      searchMode: "hybrid",
+      searchMode: "watch-search",
     })
 
     const { searchVideosTool } = await import("./search-videos")
@@ -79,18 +93,16 @@ describe("searchVideosTool", () => {
 
     expect(searchMock).toHaveBeenCalledWith({
       query: "jesus",
-      locale: "en",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      acceptLanguage: "en",
       limit: 5,
-      contentTypes: ["video"],
+      resultTypes: ["video"],
     })
+    // vid-1 has playbackId null (no playable dub in the locale) — agents
+    // write returned videoIds into blocks verbatim, so it must be dropped.
     expect(result.videos).toEqual([
-      {
-        videoId: "vid-1",
-        title: "Jesus",
-        snippet: "About Jesus.",
-        slug: "jesus",
-        imageUrl: "https://cdn/img.png",
-      },
       {
         videoId: "vid-2",
         title: "Easter",
@@ -106,7 +118,7 @@ describe("searchVideosTool", () => {
       results: [],
       hasMore: false,
       query: "nothing",
-      searchMode: "hybrid",
+      searchMode: "watch-search",
     })
     const { searchVideosTool } = await import("./search-videos")
     const result = assertOk(

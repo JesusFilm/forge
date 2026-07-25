@@ -1,6 +1,7 @@
 "use client"
 
 import { useId, useState } from "react"
+import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
   LegacyFragmentValue,
@@ -13,31 +14,6 @@ export { relatedQuestionsFragment }
 
 type RelatedQuestionsProps = {
   data: FragmentOf<typeof relatedQuestionsFragment>
-}
-
-/**
- * Decorative `?` icon shown next to each related question. Exported so the
- * watch-page `<WatchStudyQuestions>` can mirror the same visual vocabulary
- * without duplicating SVG paths.
- */
-export function QuestionIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="mt-1 mr-1.5 size-5 shrink-0 opacity-20"
-      aria-hidden
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <path d="M12 17h.01" />
-    </svg>
-  )
 }
 
 /** Speech-bubble icon used inside the "Ask yours" pill button. */
@@ -79,12 +55,11 @@ function QuestionItem({
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={panelId}
-        className="group w-full cursor-pointer rounded-lg py-3 text-left transition-colors hover:bg-white/5"
+        className="group w-full cursor-pointer rounded-lg p-4 text-left transition-colors hover:bg-white/5"
       >
         <div className="w-full">
-          <div className="flex items-start justify-between">
-            <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
-              <QuestionIcon />
+          <div className="flex items-center justify-between gap-4">
+            <p className="min-w-0 text-base leading-[1.6] font-normal text-stone-100 md:text-lg md:text-balance">
               {question}
             </p>
             <div className="hidden shrink-0 p-2 text-stone-400 transition-colors group-hover:text-white sm:block">
@@ -129,6 +104,7 @@ function QuestionItem({
 }
 
 export function RelatedQuestions({ data }: RelatedQuestionsProps) {
+  const t = useTranslations("WatchStudyQuestions")
   const { id, sectionKey, heading, questions } = data
   const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
   const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
@@ -160,7 +136,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
     >
       <div className="mb-6 flex flex-wrap items-center justify-between">
         {heading && (
-          <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+          <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
             {heading}
           </h4>
         )}
@@ -169,13 +145,13 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
           <Button
             variant="pill"
             nativeButton={false}
-            aria-label={ctaLabel || "Ask a question"}
+            aria-label={ctaLabel || t("askYours")}
             render={
               <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
             }
           >
             <MessageCircleIcon />
-            <span>{ctaLabel || "Ask yours"}</span>
+            <span>{ctaLabel || t("askYours")}</span>
           </Button>
         )}
       </div>

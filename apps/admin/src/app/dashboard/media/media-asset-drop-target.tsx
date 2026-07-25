@@ -7,12 +7,18 @@ import { useRouter } from "next/navigation"
 import { cx } from "@/components/admin-ui"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
 import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
+import {
+  MAX_MEDIA_UPLOAD_BYTES,
+  mediaUploadTooLargeMessage,
+} from "@/app/dashboard/media/media-upload-limits"
 
 type MediaAssetDropTargetProps = {
   canUpload: boolean
   uploadAction: (formData: FormData) => Promise<UploadActionResult>
   selectedFolderId: string | null
   selectedFolderLabel: string
+  acceptedMimePrefix?: string
+  contentClassName?: string
   children: ReactNode
 }
 
@@ -29,6 +35,8 @@ export function MediaAssetDropTarget({
   uploadAction,
   selectedFolderId,
   selectedFolderLabel,
+  acceptedMimePrefix,
+  contentClassName,
   children,
 }: MediaAssetDropTargetProps) {
   const router = useRouter()
@@ -48,9 +56,25 @@ export function MediaAssetDropTarget({
       return
     }
 
-    const validFiles = files.filter((file) => file.size > 0)
+    const validFiles = files.filter(
+      (file) =>
+        file.size > 0 &&
+        (!acceptedMimePrefix || file.type.startsWith(acceptedMimePrefix)),
+    )
     if (validFiles.length === 0) {
-      pushToast("Choose at least one file to upload.", "error")
+      pushToast(
+        acceptedMimePrefix === "image/"
+          ? "Choose at least one image file to upload."
+          : "Choose at least one file to upload.",
+        "error",
+      )
+      return
+    }
+    const tooLargeFiles = validFiles.filter(
+      (file) => file.size > MAX_MEDIA_UPLOAD_BYTES,
+    )
+    if (tooLargeFiles.length > 0) {
+      pushToast(mediaUploadTooLargeMessage(tooLargeFiles[0]?.name), "error")
       return
     }
 
@@ -75,6 +99,8 @@ export function MediaAssetDropTarget({
 
       if (result.error === "forbidden") {
         forbidden = true
+      } else if (result.error === "too-large") {
+        pushToast(mediaUploadTooLargeMessage(file.name), "error")
       } else {
         failed = true
       }
@@ -95,7 +121,12 @@ export function MediaAssetDropTarget({
     if (forbidden) {
       pushToast("Your account cannot upload media assets.", "error")
     } else if (failed) {
-      pushToast("Some files could not be uploaded. Try again.", "error")
+      pushToast(
+        acceptedMimePrefix === "image/"
+          ? "Some images could not be uploaded. Try again."
+          : "Some files could not be uploaded. Try again.",
+        "error",
+      )
     }
   }
 
@@ -144,7 +175,7 @@ export function MediaAssetDropTarget({
       }}
       className="relative min-h-0 flex-1"
     >
-      <div className="min-h-full">{children}</div>
+      <div className={contentClassName ?? "min-h-full"}>{children}</div>
 
       {(dragActive || uploadingCount > 0) && (
         <div className="pointer-events-none absolute inset-0 z-10 rounded-sm">

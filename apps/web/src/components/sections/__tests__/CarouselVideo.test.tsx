@@ -19,8 +19,12 @@ vi.mock("@/components/ui/carousel", () => {
     Carousel: Pass,
     CarouselContent: Pass,
     CarouselItem: Pass,
-    CarouselPrevious: () => null,
-    CarouselNext: () => null,
+    CarouselPrevious: ({ label }: { label: string }) => (
+      <button data-slot="carousel-previous" aria-label={label} />
+    ),
+    CarouselNext: ({ label }: { label: string }) => (
+      <button data-slot="carousel-next" aria-label={label} />
+    ),
   }
 })
 
@@ -29,6 +33,10 @@ vi.mock("next/image", () => ({
 }))
 
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
+import {
+  WatchModalActivityProvider,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
 
 const baseFragment = {
   t: "videoCarousel",
@@ -41,7 +49,6 @@ const baseFragment = {
     {
       streamingUrl: "https://example.com/one.m3u8",
       imageUrl: undefined,
-      imageOverrideUrl: undefined,
       titleOverride: "First",
       backgroundColor: undefined,
       videoId: undefined,
@@ -72,6 +79,22 @@ afterEach(async () => {
 })
 
 describe("CarouselVideo", () => {
+  function ModalOwner({ active }: { active: boolean }) {
+    useWatchModalActivity(active, { releaseDelayMs: 0 })
+    return null
+  }
+
+  async function renderWithModal(active: boolean) {
+    await act(async () => {
+      root.render(
+        <WatchModalActivityProvider>
+          <ModalOwner active={active} />
+          <CarouselVideo data={baseFragment} />
+        </WatchModalActivityProvider>,
+      )
+    })
+  }
+
   it("mounts via Mux Video for the selected item", async () => {
     await act(async () => {
       root.render(<CarouselVideo data={baseFragment} />)
@@ -79,6 +102,113 @@ describe("CarouselVideo", () => {
 
     // @mux/mux-video-react renders a plain <video> element.
     expect(container.querySelector("video")).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="carousel-copy"]'),
+    ).not.toBeNull()
     expect(container.textContent).toContain("Series")
+    expect(
+      container.querySelector(
+        'button[data-slot="carousel-previous"][aria-label="Previous video preview"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        'button[data-slot="carousel-next"][aria-label="Next video preview"]',
+      ),
+    ).not.toBeNull()
+  })
+
+  it("uses the shared focus frame and preserves selected-state framing", async () => {
+    const data = {
+      ...baseFragment,
+      items: [
+        ...baseFragment.items,
+        {
+          ...baseFragment.items[0],
+          streamingUrl: "https://example.com/two.m3u8",
+          titleOverride: "Second",
+        },
+      ],
+    } as Parameters<typeof CarouselVideo>[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    const selected = container.querySelector<HTMLElement>(
+      '[role="button"][aria-label="Show First"]',
+    )
+    const inactive = container.querySelector<HTMLElement>(
+      '[role="button"][aria-label="Show Second"]',
+    )
+    const selectedInteractionFrame = selected?.querySelector<HTMLElement>(
+      '[data-testid="carousel-video-thumbnail-frame"]',
+    )
+    const inactiveInteractionFrame = inactive?.querySelector<HTMLElement>(
+      '[data-testid="carousel-video-thumbnail-frame"]',
+    )
+
+    expect(selected?.className).toContain("focus-visible:outline-none")
+    expect(selectedInteractionFrame?.className).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
+    expect(selectedInteractionFrame?.className).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).toContain("border-white")
+    expect(inactiveInteractionFrame?.className).toContain(
+      "group-hover:opacity-100",
+    )
+    expect(inactiveInteractionFrame?.className).toContain(
+      "group-focus-visible:opacity-100",
+    )
+
+    await act(async () => {
+      inactive?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(inactiveInteractionFrame?.className).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
+  })
+
+  it("omits the copy block when no carousel text is authored", async () => {
+    await act(async () => {
+      root.render(
+        <CarouselVideo
+          data={{
+            ...baseFragment,
+            title: undefined,
+            subtitle: undefined,
+            carouselDescription: undefined,
+          }}
+        />,
+      )
+    })
+
+    expect(container.querySelector("video")).not.toBeNull()
+    expect(container.querySelector('[data-testid="carousel-copy"]')).toBeNull()
+    expect(container.textContent).toContain("First")
+  })
+
+  it("pauses its authored carousel media when modal activity opens", async () => {
+    await renderWithModal(false)
+    const video = container.querySelector("video") as HTMLVideoElement
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      value: false,
+      writable: true,
+    })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+
+    await renderWithModal(true)
+
+    expect(pause).toHaveBeenCalledOnce()
   })
 })

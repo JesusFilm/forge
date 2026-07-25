@@ -372,7 +372,7 @@ describe("buildWatchHomeHeroQueue", () => {
     ])
   })
 
-  it("does not wrap while unplayed slides remain", () => {
+  it("does not wrap while unplayed slides remain; played ones backfill the queue", () => {
     const result = buildWatchHomeHeroQueue({
       pools: [pool("pool-a", ["video-a", "video-b"])],
       inserts: [],
@@ -381,7 +381,42 @@ describe("buildWatchHomeHeroQueue", () => {
     })
 
     expect(result.wrapped).toBe(false)
-    expect(result.videos.map((item) => item.id)).toEqual(["video-b"])
+    // Fixed-size contract: the unseen video leads, the played one returns
+    // behind it instead of the queue shrinking to a single slide.
+    expect(result.videos.map((item) => item.id)).toEqual(["video-b", "video-a"])
+  })
+
+  it("holds the fixed target by backfilling played videos AFTER every unseen one", () => {
+    const result = buildWatchHomeHeroQueue({
+      pools,
+      inserts: [],
+      playedIds: new Set(["video-a", "video-b", "video-c"]),
+      targetVideoCount: 4,
+      now: morningNow,
+    })
+
+    expect(result.wrapped).toBe(false)
+    expect(result.videos).toHaveLength(4)
+    expect(result.videos[0]?.id).toBe("video-d")
+    expect(result.videos.map((v) => v.id).sort()).toEqual([
+      "video-a",
+      "video-b",
+      "video-c",
+      "video-d",
+    ])
+  })
+
+  it("backfill stops at pool exhaustion with no duplicates", () => {
+    const result = buildWatchHomeHeroQueue({
+      pools: [pool("pool-a", ["video-a", "video-b"])],
+      inserts: [],
+      playedIds: new Set(["video-a"]),
+      targetVideoCount: 7,
+      now: morningNow,
+    })
+
+    expect(result.videos).toHaveLength(2)
+    expect(new Set(result.videos.map((v) => v.id)).size).toBe(2)
   })
 })
 
@@ -392,10 +427,9 @@ describe("constants", () => {
 })
 
 describe("watchHome modules are Hermes-safe (no storage access)", () => {
-  // On Hermes `window` exists but the storage globals throw on access. Install
-  // throwing storage globals and exercise the full module surface — any
-  // reintroduced storage call (web's localStorage-backed played-id tracking)
-  // fails this test before it can crash the app.
+  // On Hermes `window` exists but storage globals throw on access. Install
+  // throwing globals and exercise the full surface so any reintroduced storage
+  // call (web's localStorage played-id tracking) fails here before it crashes the app.
   type GlobalWithStorage = typeof globalThis & {
     localStorage?: unknown
     sessionStorage?: unknown

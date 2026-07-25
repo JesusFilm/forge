@@ -9,8 +9,6 @@ import {
 
 export type SearchLanguageResolutionSource =
   | "explicit-selection"
-  | "search-preference"
-  | "audio-preference"
   | "route"
   | "accept-language"
   | "fallback"
@@ -84,8 +82,6 @@ export type SearchLanguageResolution = {
 export type ResolveSearchLanguageInput = {
   selectedEnglishNames?: readonly string[]
   explicitSlug?: string | null
-  searchPreferenceSlug?: string | null
-  audioPreferenceSlug?: string | null
   routeLanguageSlug?: string | null
   acceptLanguage?: string | null
   languageOptions?: readonly SearchLanguageOption[]
@@ -126,7 +122,7 @@ export function stripLanguageFromSearchQuery(
   return query.replace(new RegExp(normalizedLanguage, "gi"), "").trim()
 }
 
-function publicSlugForLocale(locale: string): string {
+export function publicSlugForLocale(locale: string): string {
   return publicWatchAudioLanguageSlugForLocale(locale) ?? ENGLISH_PUBLIC_SLUG
 }
 
@@ -155,6 +151,13 @@ function optionForPublicSlug(
   options: readonly SearchLanguageOption[] = [],
 ): SearchLanguageOption | null {
   return options.find((option) => option.publicSlug === publicSlug) ?? null
+}
+
+export function findSearchLanguageOptionByPublicSlug(
+  publicSlug: string,
+  options: readonly SearchLanguageOption[] = [],
+): SearchLanguageOption | null {
+  return optionForPublicSlug(publicSlug, options)
 }
 
 function resolutionFromSlug(
@@ -208,26 +211,14 @@ function resolutionFromAcceptLanguage(
 export function resolveSearchLanguage({
   selectedEnglishNames = [],
   explicitSlug,
-  searchPreferenceSlug,
-  audioPreferenceSlug,
   routeLanguageSlug,
   acceptLanguage,
   languageOptions = [],
 }: ResolveSearchLanguageInput): SearchLanguageResolution {
   const explicitSelection = selectedEnglishNames[0]
   const candidates: Array<SearchLanguageResolution | null> = [
-    resolutionFromEnglishName(explicitSelection, languageOptions),
     resolutionFromSlug(explicitSlug, "explicit-selection", languageOptions),
-    resolutionFromSlug(
-      searchPreferenceSlug,
-      "search-preference",
-      languageOptions,
-    ),
-    resolutionFromSlug(
-      audioPreferenceSlug,
-      "audio-preference",
-      languageOptions,
-    ),
+    resolutionFromEnglishName(explicitSelection, languageOptions),
     resolutionFromSlug(routeLanguageSlug, "route", languageOptions),
     resolutionFromAcceptLanguage(acceptLanguage, languageOptions),
   ]

@@ -82,6 +82,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
     ],
     durationSeconds: 120,
     muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   }
   return { ...base, ...overrides }
 }
@@ -90,6 +91,7 @@ function renderCard(props: {
   episode: Episode
   index?: number
   languageSlug?: string
+  parentSlug?: string
 }) {
   act(() => {
     root.render(
@@ -97,6 +99,7 @@ function renderCard(props: {
         episode={props.episode}
         index={props.index ?? 0}
         languageSlug={props.languageSlug ?? "english"}
+        parentSlug={props.parentSlug ?? "lumo-the-gospel-of-john"}
       />,
     )
   })
@@ -114,6 +117,29 @@ function getRuntimeText(): string | null {
   const runtime = spans.find((s) => !s.hasAttribute("data-testid"))
   return runtime?.textContent ?? null
 }
+
+describe("SeriesEpisodeCard interaction frame", () => {
+  it("uses the shared white hover and keyboard-focus thumbnail frame", () => {
+    renderCard({ episode: makeEpisode({}) })
+
+    const card = container.querySelector<HTMLElement>(
+      '[data-testid="series-episode-card"]',
+    )
+    const frame = container.querySelector<HTMLElement>(
+      '[data-testid="series-episode-card-hover-outline"]',
+    )
+    const frameClasses = frame?.className ?? ""
+
+    expect(card?.className).toContain("focus-visible:outline-none")
+    expect(card?.className).not.toContain("focus-visible:ring-amber")
+    expect(frameClasses).toContain("rounded-[inherit]")
+    expect(frameClasses).toContain("border-4")
+    expect(frameClasses).toContain("border-white")
+    expect(frameClasses).toContain("group-hover:opacity-100")
+    expect(frameClasses).toContain("group-focus-visible:opacity-100")
+    expect(frameClasses).not.toMatch(/red|amber|gradient|shadow/)
+  })
+})
 
 describe("SeriesEpisodeCard — formatRuntime via runtime pill", () => {
   it("collapses to icon-only for null duration", () => {
@@ -267,14 +293,15 @@ describe("SeriesEpisodeCard — Episode N label", () => {
 })
 
 describe("SeriesEpisodeCard — href", () => {
-  it("routes to the canonical /{slug}.html/{locale}.html shape", () => {
+  it("routes to the contextual /{series}.html/{episode}/{locale}.html shape", () => {
     renderCard({
       episode: makeEpisode({ slug: "wedding-in-cana" }),
       languageSlug: "english",
+      parentSlug: "lumo-the-gospel-of-john",
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/wedding-in-cana.html/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
 
@@ -285,8 +312,74 @@ describe("SeriesEpisodeCard — href", () => {
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/the-birth-of-jesus.html/spanish-castilian.html",
+      "/lumo-the-gospel-of-john.html/the-birth-of-jesus/spanish-castilian.html",
     )
+  })
+
+  it("routes a nested collection to its standalone language page", () => {
+    renderCard({
+      episode: makeEpisode({
+        slug: "lumo-the-gospel-of-matthew",
+        label: "COLLECTION",
+      }),
+      languageSlug: "russian",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo-the-gospel-of-matthew.html/russian.html",
+    )
+  })
+
+  it("routes a nested series without requiring a valid parent slug", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "nested-series", label: "SERIES" }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/nested-series.html/english.html",
+    )
+  })
+
+  it("keeps unlabeled children on the contextual route", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "unlabeled-child", label: null }),
+      languageSlug: "english",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo.html/unlabeled-child/english.html",
+    )
+  })
+
+  it("renders a plain div (no <a>) when the parent slug is malformed", () => {
+    renderCard({
+      episode: makeEpisode({
+        slug: "wedding-in-cana",
+        muxPlaybackId: "mux-preview-1",
+      }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card?.tagName).toBe("DIV")
+    expect(card?.className).not.toContain("group")
+    expect(card?.className).not.toContain("focus-visible:outline-none")
+    expect(
+      card?.querySelector('[data-testid="series-episode-card-hover-outline"]'),
+    ).toBeNull()
+    expect(card?.querySelector("svg")).toBeNull()
+
+    act(() => {
+      card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    expect(card?.querySelector('[data-testid="mux-hover-preview"]')).toBeNull()
+    expect(card?.querySelectorAll("img")).toHaveLength(1)
   })
 
   it("renders a plain div (no <a>) when the slug is malformed", () => {

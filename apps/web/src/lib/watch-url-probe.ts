@@ -25,7 +25,7 @@ const ROOTS: readonly string[] = [
   "/watch",
   // NOTE: `/watch/` (trailing slash) lives in REDIRECTS — it 308s to `/watch`
   // per §5.4, so it is probed as a redirect, not a root 200.
-  "/watch/videos",
+  "/watch/languages",
   "/watch/english.html",
   "/watch/russian.html",
   "/watch/portuguese-brazil.html",
@@ -123,6 +123,7 @@ const EPISODES: readonly string[] = [
 // §5.3 legacy 4-segment + §5.4 normalization — must REDIRECT (3xx), not 404.
 const REDIRECTS: readonly string[] = [
   "/watch/search",
+  "/watch/videos",
   "/watch/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
   "/watch/jesus/the-beginning.html/english.html",
   "/watch/",
@@ -191,8 +192,53 @@ export type ProbeResult = {
   finalPath: string
   redirectHops: number
   ms: number
+  structuredData?: {
+    scriptCount: number
+    types: string[]
+    parseErrors: string[]
+  }
   /** Set when the request failed at the transport layer (DNS, timeout, etc.). */
   error?: string
+}
+
+export type StructuredDataContract = {
+  /** Exact number of each page-level entity required in the literal response HTML. */
+  required: Readonly<Record<string, number>>
+  /** Entity types that this route class must never publish. */
+  forbidden: readonly string[]
+}
+
+/**
+ * Representative public routes whose schema is part of the cutover contract.
+ *
+ * This is deliberately a small matrix, rather than a requirement for every URL
+ * fixture: empty, noindex, and legacy redirect routes intentionally do not all
+ * publish the same JSON-LD. The selected routes cover root/localized homes,
+ * series, a standalone video, and a contextual episode.
+ */
+export const WATCH_STRUCTURED_DATA_CONTRACTS: Readonly<
+  Record<string, StructuredDataContract>
+> = {
+  "/watch": {
+    required: { CollectionPage: 1 },
+    forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/spanish-castilian.html": {
+    required: { CollectionPage: 1 },
+    forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-the-gospel-of-john.html/english.html": {
+    required: { CollectionPage: 1 },
+    forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/jesus.html/english.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
 }
 
 export type ProbeOutcome =
@@ -278,6 +324,24 @@ export function classifyProbe(
     }
   }
 
+  if (
+    statusClass(preview.status) === 3 &&
+    preview.redirectHops >= MAX_REDIRECT_HOPS
+  ) {
+    return {
+      outcome: "hard-regression",
+      note: `REDIRECT LOOP: preview returned ${preview.status} after ${preview.redirectHops} hop(s) ending at ${preview.finalPath}`,
+    }
+  }
+
+  const malformedJsonLd = preview.structuredData?.parseErrors ?? []
+  if (malformedJsonLd.length > 0) {
+    return {
+      outcome: "hard-regression",
+      note: `MALFORMED JSON-LD: ${malformedJsonLd.join("; ")}`,
+    }
+  }
+
   if (fixture?.expect === "passthrough") {
     const previewViolation = passthroughViolation(
       "preview",
@@ -307,17 +371,26 @@ export function classifyProbe(
   const vc = statusClass(preview.status)
   const samePath = production.finalPath === preview.finalPath
 
-  if (vc === 3 && preview.redirectHops >= MAX_REDIRECT_HOPS) {
-    return {
-      outcome: "hard-regression",
-      note: `REDIRECT LOOP: preview returned ${preview.status} after ${preview.redirectHops} hop(s) ending at ${preview.finalPath}`,
-    }
-  }
-
   if (pc === 5) {
     return {
       outcome: "error",
       note: `production returned ${production.status}; cannot baseline`,
+    }
+  }
+
+  const structuredDataContract = fixture
+    ? WATCH_STRUCTURED_DATA_CONTRACTS[fixture.path]
+    : undefined
+  if (structuredDataContract) {
+    const violations = validateStructuredDataContract(
+      preview.structuredData,
+      structuredDataContract,
+    )
+    if (violations.length > 0) {
+      return {
+        outcome: "hard-regression",
+        note: `JSON-LD CONTRACT: ${violations.join("; ")}`,
+      }
     }
   }
 
@@ -381,6 +454,91 @@ export const HARD_FAIL_OUTCOMES: ReadonlySet<ProbeOutcome> = new Set([
 export const MAX_REDIRECT_HOPS = 5
 const DEFAULT_TIMEOUT_MS = 10_000
 
+export function parseJsonLdScripts(html: string): {
+  scriptCount: number
+  types: string[]
+  parseErrors: string[]
+} {
+  const scripts = Array.from(
+    html.matchAll(
+      /<script\b[^>]*\btype=(?:"application\/ld\+json"|'application\/ld\+json')[^>]*>([\s\S]*?)<\/script>/gi,
+    ),
+  )
+  const types: string[] = []
+  const parseErrors: string[] = []
+
+  for (const [index, match] of scripts.entries()) {
+    try {
+      const parsed = JSON.parse(match[1] ?? "") as unknown
+      types.push(...collectJsonLdTypes(parsed))
+    } catch (error) {
+      parseErrors.push(
+        `script ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  return {
+    scriptCount: scripts.length,
+    types,
+    parseErrors,
+  }
+}
+
+function collectJsonLdTypes(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(collectJsonLdTypes)
+  }
+  if (typeof value !== "object" || value == null) return []
+
+  const record = value as Record<string, unknown>
+  const type = record["@type"]
+  const ownTypes =
+    typeof type === "string"
+      ? [type]
+      : Array.isArray(type)
+        ? type.filter((entry): entry is string => typeof entry === "string")
+        : []
+
+  return [
+    ...ownTypes,
+    ...Object.values(record).flatMap((entry) => collectJsonLdTypes(entry)),
+  ]
+}
+
+/**
+ * Returns the schema contract violations in a complete initial response.
+ * Missing HTML/JSON-LD is intentionally treated as zero entities, so a route
+ * that drops a required script cannot quietly pass the CLI gate.
+ */
+export function validateStructuredDataContract(
+  structuredData: ProbeResult["structuredData"],
+  contract: StructuredDataContract,
+): string[] {
+  const typeCounts = new Map<string, number>()
+  for (const type of structuredData?.types ?? []) {
+    typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1)
+  }
+
+  const violations: string[] = []
+  for (const [type, expectedCount] of Object.entries(contract.required)) {
+    const actualCount = typeCounts.get(type) ?? 0
+    if (actualCount !== expectedCount) {
+      violations.push(
+        `expected exactly ${expectedCount} ${type}, found ${actualCount}`,
+      )
+    }
+  }
+  for (const type of contract.forbidden) {
+    const actualCount = typeCounts.get(type) ?? 0
+    if (actualCount > 0) {
+      violations.push(`forbidden ${type} found ${actualCount} time(s)`)
+    }
+  }
+
+  return violations
+}
+
 /**
  * Fetch `${origin}${path}`, manually following up to MAX_REDIRECT_HOPS
  * redirects so we can capture the full chain length + the final
@@ -416,11 +574,17 @@ export async function probeUrl(
         continue
       }
 
+      const contentType = res.headers.get("content-type") ?? ""
+      const structuredData = contentType.includes("text/html")
+        ? parseJsonLdScripts(await res.text())
+        : undefined
+
       return {
         status: res.status,
         finalPath: new URL(currentUrl).pathname,
         redirectHops: hops,
         ms: Date.now() - start,
+        ...(structuredData && { structuredData }),
       }
     }
   } catch (err) {

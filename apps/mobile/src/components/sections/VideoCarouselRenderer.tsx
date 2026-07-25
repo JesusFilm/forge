@@ -1,7 +1,5 @@
 import {
   FlatList,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,29 +8,32 @@ import {
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 
-import Ionicons from "@expo/vector-icons/Ionicons"
-
 import { SURFACE_COLOR, TEXT_ON_OVERLAY } from "../../lib/color"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
   carousel,
   card,
-  feedback,
   layout,
-  overlay,
   text,
   CARD_GAP,
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { PressableCard } from "../ui/PressableCard"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type CarouselItem = {
   videoId?: string | null
   streamingUrl?: string | null
+  videoDub?: {
+    hls?: string | null
+    dash?: string | null
+    share?: string | null
+  } | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
@@ -73,7 +74,10 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     index: number
   }) => {
     const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
-    const thumbnailUrl = resolveImageUrl(item.imageUrl ?? resolvedThumb)
+    const thumbnailUrl = resolveThumbnailUrl(
+      item.imageUrl ?? resolvedThumb,
+      blockStreamingUrl(item),
+    )
     const title = item.titleOverride ?? "Untitled"
     const carouselSectionKey = s.sectionKey as string | undefined
 
@@ -86,52 +90,35 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     }
 
     return (
-      <Pressable
-        style={({ pressed }) => [
-          card.surface,
-          { width: cardWidth, height: cardHeight },
-          pressed && Platform.OS === "ios" && feedback.pressed,
-        ]}
-        android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
+      <PressableCard
         onPress={handlePress}
-        accessibilityRole="button"
         accessibilityLabel={`Play ${title}`}
-      >
-        {thumbnailUrl != null ? (
-          <Image
-            source={thumbnailUrl}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={`vc-${index}`}
-            accessibilityLabel={title}
-            priority="low"
-          />
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: item.backgroundColor ?? SURFACE_COLOR,
-              },
-            ]}
-          />
-        )}
-
-        <View style={overlay.playOverlay} pointerEvents="none">
-          <View style={styles.playCircle}>
-            <Ionicons
-              name="play"
-              size={18}
-              color={TEXT_ON_OVERLAY}
-              style={{ marginLeft: 3 }}
+        style={[card.surface, { width: cardWidth, height: cardHeight }]}
+        background={
+          thumbnailUrl != null ? (
+            <Image
+              source={thumbnailUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={`vc-${index}`}
+              accessibilityLabel={title}
+              priority="low"
             />
-          </View>
-        </View>
-
+          ) : (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: item.backgroundColor ?? SURFACE_COLOR },
+              ]}
+            />
+          )
+        }
+        playOverlay="small"
+      >
         <View style={styles.titleOverlay} pointerEvents="none">
           <Text style={[styles.cardTitle, typography.bodySmall]}>{title}</Text>
         </View>
-      </Pressable>
+      </PressableCard>
     )
   }
 
@@ -178,14 +165,6 @@ const styles = StyleSheet.create({
   localSubtitle: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 2,
-  },
-  playCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: `rgba(0, 0, 0, 0.5)`,
-    justifyContent: "center",
-    alignItems: "center",
   },
   titleOverlay: {
     position: "absolute",

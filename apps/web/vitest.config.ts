@@ -17,7 +17,7 @@ export default defineConfig({
     // Tests that need a DOM should add `// @vitest-environment jsdom` at
     // the top of the test file.
     environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.mjs"],
     setupFiles: ["./vitest.setup.ts"],
   },
 })

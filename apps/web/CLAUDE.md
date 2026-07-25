@@ -15,6 +15,9 @@
 - Data fetching: RSC async components calling resolvers in `src/lib/content.ts` / `recommendations.ts` / `demo-search.ts`, which use `adminGraphql()` from `@forge/admin-graphql` + the default Apollo client at `src/lib/admin-client.ts`. `src/lib/search.ts` uses the semantic-search Admin client from the same module so production semantic search gets a longer bounded timeout without widening every Admin GraphQL call.
 - Client components that need data go through a `"use server"` action (e.g. `src/lib/search-actions.ts`) — admin's bearer is server-only and must never reach the browser bundle.
 - Metadata: export `metadata` or `generateMetadata` from every page.
+- Watch video and episode metadata must not emit page-head hreflang alternates.
+  Canonical, Open Graph, Twitter, robots, and JSON-LD stay in page metadata;
+  localized Watch hreflang belongs to sitemap XML only.
 
 ## Data layer
 
@@ -28,7 +31,11 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 
 Required env vars (both flipped from `.optional()` in U13):
 
-- `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Host-allowlist rejects `auth.jesusfilm.org` (PR #909 trap).
+- `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Production Web should use
+  Railway private networking, e.g.
+  `http://forgeadmin.railway.internal:8080/api/graphql`, so SSR/RSC calls avoid
+  public DNS, Cloudflare, and TLS hops. Host-allowlist rejects
+  `auth.jesusfilm.org` (PR #909 trap).
 - `WEB_ADMIN_API_KEYS` — single key or CSV; web reads the first entry as the outbound bearer so traffic identifies as `consumer:<key>` at admin's rate limiter.
 
 `REVALIDATION_SECRET` remains required for the `/api/revalidate` route. `STRAPI_PREVIEW_SECRET` remains required for the `/api/preview` Next draft-mode entry token (Strapi-era surface that hasn't migrated yet; out of data-layer scope).
@@ -70,12 +77,47 @@ The receiver maps each semantic model to both paths and Data Cache tags:
 - `experience` invalidates experience/home tags plus the current slug matrix.
 - `video` invalidates video/series/child-dub/home tags; slug-less payloads are valid broad invalidations for Core sync and revalidate the watch layouts.
 - `watch-route-manifest` clears the receiving process's in-memory manifest cache, invalidates the route-manifest tag, and revalidates the watch layouts.
+- `watch-seo-manifest` clears the receiving process's in-memory SEO manifest cache, invalidates the SEO manifest tag, and revalidates the sitemap index plus child sitemap routes.
 
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
+
+The SEO sitemap manifest cache in `src/lib/watch-seo-manifest.ts` follows the
+same process-local pattern. Sitemap routes read the cached snapshot and return
+a controlled 503 when no valid snapshot is available; Watch page metadata does
+not depend on this manifest and continues to render without page-head hreflang.
 
 Production proof on 2026-06-10 showed `@forge/web` online in Railway US West behind Cloudflare, live watch HTML served with `cf-cache-status: DYNAMIC`, and authorized `experience`, broad `video`, and `watch-route-manifest` webhooks returning healthy first post-webhook renders. The Railway CLI path available here did not expose exact web replica count.
 
 See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
+
+## Datadog observability
+
+`src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
+Datadog's built-in `graphql` plugin with source and variables disabled. Keep
+query source, variables, bearer keys, cookies, IPs, slugs, and user identifiers
+out of trace tags.
+
+`src/observability/datadog-logs.ts` forwards server console logs to the shared
+Datadog Agent over syslog UDP when `DD_AGENT_HOST` is configured. Railway still
+receives normal stdout. Forwarded logs include service/env/version plus active
+trace/span ids when a span is active.
+
+Production Web Railway config lives in `apps/web/railway.toml` once the
+service's Config-as-code Path is set to that file. For server APM, production
+must set Datadog service env (`DD_SERVICE=forge-web`, `DD_ENV=prod`,
+`DD_VERSION=<git sha>`), point at the private Datadog Agent
+(`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`, `DD_AGENT_SYSLOG_PORT=514`), and
+load the tracer before application modules through the `startCommand`:
+`cd apps/web && NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start`.
+Do not set `NODE_OPTIONS` as a global Railway service variable because service
+variables are also present during Railpack setup before dependencies are
+installed.
+
+Production readiness gates for `@forge/web` live in
+`docs/operations/web-production-readiness.md`. Use that runbook before launch
+or before broadening production traffic; it ties together local checks, Railway
+config verification, URL parity, revalidation, Datadog evidence, source maps,
+and gated third-party smokes.
 
 ## Feature flags
 
@@ -113,13 +155,28 @@ flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
 renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
 and Railway envs unless intentionally testing the fallback path.
 
-`forge.watch.youVersionBibleQuotes` is a temporary LaunchDarkly-backed rollout
-flag for the server-rendered YouVersion passage panel below the watch-page
-Bible Quotes carousel. `false` preserves the existing carousel-only behavior
-and skips YouVersion API calls; `true` enables the server fetch when
-`YOUVERSION_APP_KEY` is configured. Keep
-`FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` unless intentionally
-smoke-testing the panel locally.
+`forge.watch.downloadAccountGate` is a LaunchDarkly-backed product rollout flag
+for requiring a Web account before Watch downloads. `false` is the product
+default and keeps anonymous downloads available through opaque download IDs;
+`true` restores the account-required modal and route gate. Keep
+`FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false` unless intentionally testing
+the gated path. Do not use this flag as restricted-content authorization; it is
+a UX/product rollout gate with a fail-open fallback.
+
+`forge.watch.globalBetaTesterCta` is a temporary LaunchDarkly-backed release
+flag for the global floating beta tester CTA. `false` omits the floating CTA
+while keeping the shared modal provider available to authored beta-tester
+links; `true` renders the floating CTA. Because public Watch routes are
+statically cached, evaluate this flag through the same-origin, no-store
+`/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
+layout. Keep
+`FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
+or rolling out the launcher.
+
+Watch Bible passage text is resolved by Admin through
+`BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
+YouVersion API directly. If the passage is absent, the watch page falls back to
+the existing citation carousel and promo card behavior.
 
 `forge.watch.hideBibleQuotes` is a temporary LaunchDarkly-backed release flag
 for hiding the full watch-page Bible Quotes band. `false` keeps the existing

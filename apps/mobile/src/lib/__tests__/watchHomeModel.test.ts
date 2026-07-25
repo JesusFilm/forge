@@ -181,10 +181,20 @@ describe("buildWatchHomeModelFromVideos", () => {
       [image({ videoStill: "still.jpg", url: "url.jpg" })],
       "still.jpg",
     )
-    expectImage([image({ url: "url.jpg", thumbnail: "thumb.jpg" })], "url.jpg")
+    // `url` is the variant-less Cloudflare delivery base (it 400s), so it ranks
+    // last — below `thumbnail`, and below any other image's real art.
+    expectImage(
+      [image({ url: "url.jpg", thumbnail: "thumb.jpg" })],
+      "thumb.jpg",
+    )
+    expectImage([image({ url: "url.jpg" })], "url.jpg")
     expectImage([image({ thumbnail: "thumb.jpg" })], "thumb.jpg")
     // Skips an empty first image record to find a usable later one.
     expectImage([image(), image({ thumbnail: "thumb.jpg" })], "thumb.jpg")
+    expectImage(
+      [image({ url: "url.jpg" }), image({ mobileCinematicHigh: "high.jpg" })],
+      "high.jpg",
+    )
     expectImage([], null)
   })
 
@@ -239,33 +249,52 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(card.playbackId).toBeNull()
   })
 
-  it("builds carousel pools from the playlist sequence without requiring streams (KTD-4)", () => {
+  it("builds carousel pools from the playlist sequence, emitting parent films even with children (KTD-4)", () => {
+    // Feature films survive the label gate; MAG1 keeps its parent card despite
+    // having chapter children (the JESUS/Magdalena case).
     const model = buildWatchHomeModelFromVideos({
       videos: [
-        videoInput("1_jf-0-0"),
-        videoInput("11_Advent", {
-          children: [child("11_Advent-ep1"), child("11_Advent-ep2")],
+        videoInput("1_jf-0-0", { label: "FEATURE_FILM" }),
+        videoInput("MAG1", {
+          label: "FEATURE_FILM",
+          children: [child("MAG1-ep1"), child("MAG1-ep2")],
         }),
       ],
     })
 
     const poolIds = model.carousel.pools.map((pool) => pool.id)
-    expect(poolIds).toEqual([
-      "playlist-0-1_jf-0-0",
-      "playlist-6-11_Sermon|11_Shema|11_ReadBible|11_Advent",
-    ])
+    expect(poolIds).toEqual(["playlist-0-1_jf-0-0", "playlist-5-MAG1"])
 
-    const adventPool = model.carousel.pools[1]
-    expect(adventPool?.videos.map((video) => video.id)).toEqual([
-      "11_Advent-ep1",
-      "11_Advent-ep2",
+    // web-parity: the pool holds the PARENT film, not its child episodes.
+    const magPool = model.carousel.pools[1]
+    expect(magPool?.videos.map((video) => video.id)).toEqual(["MAG1"])
+  })
+
+  it("drops collection/series playlist sources from the carousel (web-parity label gate)", () => {
+    // 8_NBC (COLLECTION) and GOMattCollection (SERIES) carry no playable stream on
+    // web → dropped; only the feature film forms a playlist pool.
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        videoInput("1_jf-0-0", { label: "FEATURE_FILM" }),
+        videoInput("8_NBC", {
+          label: "COLLECTION",
+          children: [child("nbc-ep1")],
+        }),
+        videoInput("GOMattCollection", {
+          label: "SERIES",
+          children: [child("gomatt-ep1")],
+        }),
+      ],
+    })
+
+    expect(model.carousel.pools.map((pool) => pool.id)).toEqual([
+      "playlist-0-1_jf-0-0",
     ])
-    expect(adventPool?.videos[0]?.parentSlug).toBe("11_Advent-slug")
   })
 
   it("keeps a posterless card in its section but out of the carousel (KTD-4)", () => {
     const model = buildWatchHomeModelFromVideos({
-      videos: [videoInput("1_jf-0-0", { images: [] })],
+      videos: [videoInput("1_jf-0-0", { label: "FEATURE_FILM", images: [] })],
     })
 
     expect(firstCard(model).imageUrl).toBeNull()
@@ -274,14 +303,11 @@ describe("buildWatchHomeModelFromVideos", () => {
     ).toBe(false)
   })
 
-  it("synthesizes the short-films pool from SHORT_FILM labels", () => {
+  it("synthesizes the short-films pool from top-level SHORT_FILM records only", () => {
     const model = buildWatchHomeModelFromVideos({
       videos: [
         videoInput("1_jf-0-0", {
-          children: [
-            child("short-1", { label: "SHORT_FILM" }),
-            child("episode-1", { label: "EPISODE" }),
-          ],
+          children: [child("short-1", { label: "SHORT_FILM" })],
         }),
         videoInput("standalone-short", { label: "SHORT_FILM" }),
       ],
@@ -290,12 +316,10 @@ describe("buildWatchHomeModelFromVideos", () => {
     const shortFilms = model.carousel.pools.find(
       (pool) => pool.id === "shortFilms",
     )
-    expect(shortFilms?.videos.map((video) => video.id)).toEqual(
-      expect.arrayContaining(["short-1", "standalone-short"]),
-    )
-    expect(shortFilms?.videos.some((video) => video.id === "episode-1")).toBe(
-      false,
-    )
+    // web-parity: only top-level SHORT_FILM parents; child short films are dropped.
+    expect(shortFilms?.videos.map((video) => video.id)).toEqual([
+      "standalone-short",
+    ])
   })
 
   it("excludes blacklisted core ids from the carousel everywhere", () => {

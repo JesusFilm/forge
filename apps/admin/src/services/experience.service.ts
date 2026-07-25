@@ -4,6 +4,7 @@
 // Read methods: (1) tier check, (2) role-based WHERE filtering, (3) Prisma call.
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
+import { after } from "next/server"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
@@ -21,6 +22,7 @@ import {
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+import { backfillExperienceVideoLanguageIds } from "./experience-video-language-backfill"
 import {
   CreateExperienceInput,
   CreateExperienceLocaleInput,
@@ -42,6 +44,33 @@ function snapshotEnvelope(
   data: Prisma.InputJsonObject,
 ): Prisma.InputJsonObject {
   return { v: 1, data }
+}
+
+/**
+ * Refresh the watch-route manifest snapshot reliably without blocking the
+ * editor response.
+ *
+ * The refresh regenerates AND persists the snapshot apps/web reads to admit
+ * `/watch` routes, so it MUST run to completion — but the editor must not wait
+ * on it. A bare `void` is dropped when a Next standalone Server Action / route
+ * handler returns before the detached promise settles, which left freshly
+ * published experiences absent from the snapshot and their watch preview 404'd
+ * until the next refresh happened to land. We start the refresh immediately and
+ * hand the in-flight promise to `after()`, which keeps the runtime alive until
+ * it settles after the response is flushed. Outside a request scope (unit
+ * tests, CLIs) `after()` throws, so we fall back to the detached promise.
+ * `refreshWatchRouteManifest` never rejects (it returns a typed outcome), so
+ * neither path risks an unhandled rejection.
+ */
+function refreshManifestAfterResponse(
+  args: Parameters<typeof refreshWatchRouteManifest>[0],
+): void {
+  const refresh = refreshWatchRouteManifest(args)
+  try {
+    after(() => refresh)
+  } catch {
+    void refresh
+  }
 }
 
 function snapshotExperienceLocale(locale: {
@@ -104,6 +133,12 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    const blocks = await backfillExperienceVideoLanguageIds({
+      prisma: this.prisma,
+      blocks: input.blocks,
+      locale: input.locale,
+    })
+
     return this.prisma.experience.create({
       data: {
         isTemplate: input.isTemplate,
@@ -113,7 +148,7 @@ export class ExperienceService {
             locale: input.locale,
             slug: input.slug,
             title: input.title,
-            blocks: input.blocks,
+            blocks: blocks.blocks as Prisma.InputJsonValue,
           },
         },
       },
@@ -145,9 +180,15 @@ export class ExperienceService {
     }
 
     const { experienceId, ...data } = input
+    const blocks = await backfillExperienceVideoLanguageIds({
+      prisma: this.prisma,
+      blocks: input.blocks,
+      locale: input.locale,
+    })
     return this.prisma.experienceLocale.create({
       data: {
         ...data,
+        blocks: blocks.blocks as Prisma.InputJsonValue,
         experience: {
           connect: { id: experienceId },
         },
@@ -273,6 +314,15 @@ export class ExperienceService {
     }
 
     const { id, isTemplate, ...data } = input
+    if (input.blocks !== undefined) {
+      const blocks = await backfillExperienceVideoLanguageIds({
+        prisma: this.prisma,
+        blocks: input.blocks,
+        locale: existing.locale,
+      })
+      data.blocks = blocks.blocks as typeof data.blocks
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
@@ -319,7 +369,7 @@ export class ExperienceService {
           locale: updated.locale,
         })
       }
-      void refreshWatchRouteManifest({
+      refreshManifestAfterResponse({
         prisma: this.prisma,
         reason: "experience.update",
       })
@@ -400,7 +450,7 @@ export class ExperienceService {
         locale: published.locale,
       })
     }
-    void refreshWatchRouteManifest({
+    refreshManifestAfterResponse({
       prisma: this.prisma,
       reason: "experience.publish",
     })
@@ -458,6 +508,12 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    const restoredBlocks = await backfillExperienceVideoLanguageIds({
+      prisma: this.prisma,
+      blocks: snapshot.blocks,
+      locale: existing.locale,
+    })
+
     return this.prisma.$transaction(async (tx) => {
       const restoredAt = new Date()
 
@@ -513,7 +569,7 @@ export class ExperienceService {
               : snapshot.ogImageUrl === null
                 ? null
                 : existing.ogImageUrl,
-          blocks: snapshot.blocks as Prisma.InputJsonValue,
+          blocks: restoredBlocks.blocks as Prisma.InputJsonValue,
           status: "DRAFT",
           updatedAt: restoredAt,
         },
@@ -558,7 +614,7 @@ export class ExperienceService {
       slug: null,
       locale: null,
     })
-    void refreshWatchRouteManifest({
+    refreshManifestAfterResponse({
       prisma: this.prisma,
       reason: "experience.archive",
     })
@@ -660,8 +716,49 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    // Full-precision optimistic-concurrency token. `experience_locale.
+    // updated_at` is a bare TIMESTAMPTZ (microsecond precision), but Prisma
+    // reads it into a JS Date (millisecond precision) — so comparing
+    // `where updated_at = <Date>` silently fails for any row whose stored
+    // value carries sub-millisecond digits (set by a non-Prisma writer:
+    // now()/raw SQL/import/background enrich), tripping the guard on every
+    // apply. Capture the value as text to preserve full precision; the
+    // guard below compares text-to-text inside the locked transaction.
+    const baselineRows = await this.prisma.$queryRaw<{ u: string }[]>(
+      Prisma.sql`SELECT updated_at::text AS u FROM experience_locale WHERE id = ${parsed.id}`,
+    )
+    const baselineUpdatedAtText = baselineRows[0]?.u ?? null
+
     const { id, ...data } = parsed
+    if (parsed.blocks !== undefined) {
+      const blocks = await backfillExperienceVideoLanguageIds({
+        prisma: this.prisma,
+        blocks: parsed.blocks,
+        locale: existing.locale,
+      })
+      data.blocks = blocks.blocks as typeof data.blocks
+    }
     const result = await this.prisma.$transaction(async (tx) => {
+      // Optimistic-concurrency guard with a row lock. `SELECT ... FOR
+      // UPDATE` locks the row for the rest of this transaction so no
+      // writer can slip in between the check and the write. We compare the
+      // CURRENT full-precision `updated_at::text` against the baseline
+      // captured above (full precision, same `::text` form): if they
+      // differ, a concurrent manual save or chat turn changed the row
+      // since we read it, so we throw — surfacing "reload and retry"
+      // instead of clobbering the other writer (lost update). Throwing
+      // rolls back the transaction, so no orphan HISTORICAL revision row
+      // is left behind.
+      const lockedRows = await tx.$queryRaw<{ u: string }[]>(
+        Prisma.sql`SELECT updated_at::text AS u FROM experience_locale WHERE id = ${id} FOR UPDATE`,
+      )
+      if (
+        lockedRows.length === 0 ||
+        lockedRows[0]?.u !== baselineUpdatedAtText
+      ) {
+        throw new ConcurrentModificationError("ExperienceLocale", id)
+      }
+
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -674,26 +771,12 @@ export class ExperienceService {
         },
       })
 
-      // Optimistic-concurrency guard: the write only lands if the row's
-      // `updatedAt` still matches the pre-image we snapshotted above. A
-      // concurrent manual save (or another chat turn) between read and
-      // write bumps `updatedAt`, the conditional match returns count 0,
-      // and we throw so the chat turn surfaces "reload and retry" instead
-      // of silently clobbering the other writer's change (lost update).
-      // Throwing rolls back the transaction, so no orphan HISTORICAL
-      // revision row is left behind.
-      const { count } = await tx.experienceLocale.updateMany({
-        where: { id, updatedAt: existing.updatedAt },
-        data: data as Prisma.ExperienceLocaleUncheckedUpdateInput,
-      })
-      if (count === 0) {
-        throw new ConcurrentModificationError("ExperienceLocale", id)
-      }
-
-      // Re-fetch the freshly-updated row for the return value
-      // (`updateMany` returns a count, not the row).
-      const updated = await tx.experienceLocale.findUniqueOrThrow({
+      // Row is locked and version-verified above, so a plain update is
+      // safe — no `updatedAt` predicate (which would re-introduce the
+      // millisecond-truncation mismatch).
+      const updated = await tx.experienceLocale.update({
         where: { id },
+        data: data as Prisma.ExperienceLocaleUncheckedUpdateInput,
       })
 
       return { before: existing, after: updated }

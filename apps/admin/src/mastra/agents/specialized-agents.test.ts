@@ -98,6 +98,32 @@ describe("specialized agents (U8)", () => {
     })
   })
 
+  describe("buildSkeletonAgent (U3)", () => {
+    it("has no tools (structure-only planning)", async () => {
+      const { buildSkeletonAgent } = await import("./specialized-agents")
+      const agent = buildSkeletonAgent()
+      const tools = await agent.listTools()
+      expect(Object.keys(tools)).toEqual([])
+      expect(agent.id).toBe("experience-skeleton")
+    })
+  })
+
+  describe("buildFillAgent (U3)", () => {
+    it("has the same tool catalog as draft-experience", async () => {
+      const { buildFillAgent } = await import("./specialized-agents")
+      const agent = buildFillAgent()
+      const tools = await agent.listTools()
+      expect(Object.keys(tools).sort()).toEqual(
+        [
+          "fetchVideoImageTool",
+          "lookupBibleVerseTool",
+          "searchVideosTool",
+        ].sort(),
+      )
+      expect(agent.id).toBe("experience-fill")
+    })
+  })
+
   describe("workflow agent memory binding (R12)", () => {
     // Structural guard: the planner/critic/reviser factories MUST NOT
     // bind `getMastraMemory()`. R12 requires workflow runs to be
@@ -116,6 +142,8 @@ describe("specialized agents (U8)", () => {
         "buildPlannerAgent",
         "buildCriticAgent",
         "buildReviserAgent",
+        "buildSkeletonAgent",
+        "buildFillAgent",
       ]) {
         const pattern = new RegExp(
           `export function ${fnName}\\([^)]*\\): Agent \\{[\\s\\S]*?^\\}`,
@@ -132,15 +160,17 @@ describe("specialized agents (U8)", () => {
   })
 
   describe("buildSpecializedAgents", () => {
-    it("returns all six specialized agents keyed by SpecializedAgentId", async () => {
+    it("returns all eight specialized agents keyed by SpecializedAgentId", async () => {
       const { buildSpecializedAgents } = await import("./specialized-agents")
       const agents = buildSpecializedAgents()
       expect(Object.keys(agents).sort()).toEqual([
         "add-section",
         "draft-experience",
         "experience-critic",
+        "experience-fill",
         "experience-planner",
         "experience-reviser",
+        "experience-skeleton",
         "rewrite-copy",
       ])
       expect(agents["draft-experience"].id).toBe("draft-experience")
@@ -149,6 +179,8 @@ describe("specialized agents (U8)", () => {
       expect(agents["experience-planner"].id).toBe("experience-planner")
       expect(agents["experience-critic"].id).toBe("experience-critic")
       expect(agents["experience-reviser"].id).toBe("experience-reviser")
+      expect(agents["experience-skeleton"].id).toBe("experience-skeleton")
+      expect(agents["experience-fill"].id).toBe("experience-fill")
     })
   })
 })

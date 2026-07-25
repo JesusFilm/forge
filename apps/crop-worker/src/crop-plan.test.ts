@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
+  cropPlanArtifactTypeSchema,
   parseCropPlan,
   parseTimelineMap,
   remapSegments,
+  renderArtifactSuffixSchema,
   samplePreviewSegments,
   type CropPlan,
   type TimelineMap,
@@ -110,6 +112,32 @@ describe("parseCropPlan", () => {
         ],
       }),
     ).toThrow()
+  })
+})
+
+describe("attempt artifact validators", () => {
+  it("accepts the legacy plan artifact type and three-digit attempt plan types", () => {
+    expect(cropPlanArtifactTypeSchema.parse("smart-crop-plan-9x16-v1")).toBe(
+      "smart-crop-plan-9x16-v1",
+    )
+    expect(
+      cropPlanArtifactTypeSchema.parse("smart-crop-plan-9x16-attempt-001-v1"),
+    ).toBe("smart-crop-plan-9x16-attempt-001-v1")
+  })
+
+  it("rejects malformed attempt plan artifact types", () => {
+    expect(() =>
+      cropPlanArtifactTypeSchema.parse("smart-crop-plan-9x16-attempt-1-v1"),
+    ).toThrow()
+    expect(() =>
+      cropPlanArtifactTypeSchema.parse("smart-crop-plan-9x16-attempt-001"),
+    ).toThrow()
+  })
+
+  it("accepts only three-digit render artifact suffixes", () => {
+    expect(renderArtifactSuffixSchema.parse("attempt-001")).toBe("attempt-001")
+    expect(() => renderArtifactSuffixSchema.parse("attempt-1")).toThrow()
+    expect(() => renderArtifactSuffixSchema.parse("preview-001")).toThrow()
   })
 })
 

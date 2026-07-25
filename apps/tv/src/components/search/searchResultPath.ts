@@ -2,25 +2,27 @@
 // inside SearchResultsGrid.tsx) so it is unit-testable without loading the
 // component's React/JSX module graph under jest-expo.
 
+import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { type SearchResult } from "../../lib/queries"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 
 /**
- * Video results open the new /watch/[slug] details page with a seed for instant
- * first paint; everything else (experiences) keeps the existing /experience
- * route. `encodeWatchSeed` already URL-encodes its return value, so the seed is
- * appended without further encoding.
+ * Series-shaped videos open /series/[slug], leaf videos /watch/[slug], else
+ * /experience. Seed gives first paint; series seed playbackId is nulled (never
+ * derive a stream from it). encodeWatchSeed already URL-encodes (don't re-encode).
  */
 export function searchResultPath(result: SearchResult): string {
   const slug = encodeURIComponent(result.slug)
   if (result.type === "VIDEO") {
+    const isSeries = isSeriesSearchResult(result)
     const seed = encodeWatchSeed({
       slug: result.slug,
       title: result.title ?? null,
       imageUrl: result.imageUrl ?? null,
-      playbackId: result.playbackId ?? null,
+      playbackId: isSeries ? null : (result.playbackId ?? null),
     })
-    return `/watch/${slug}?seed=${seed}`
+    const base = isSeries ? "series" : "watch"
+    return `/${base}/${slug}?seed=${seed}`
   }
   return `/experience/${slug}`
 }

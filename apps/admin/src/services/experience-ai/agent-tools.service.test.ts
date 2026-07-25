@@ -1,0 +1,224 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const searchMock = vi.hoisted(() => vi.fn())
+
+vi.mock("@/services/watch-search.service", () => ({
+  WatchSearchService: class {
+    search = searchMock
+  },
+}))
+
+import {
+  fetchVideoImageForAgent,
+  lookupBibleVerseForAgent,
+  searchVideosForAgent,
+  searchVideosRequestSchema,
+  lookupBibleVerseRequestSchema,
+} from "./agent-tools.service"
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyPrisma = any
+
+describe("searchVideosForAgent", () => {
+  beforeEach(() => searchMock.mockReset())
+
+  it("searches contentTypes:['video'] and drops playbackId-null rows (R7 — unplayable videos never reach the agent)", async () => {
+    searchMock.mockResolvedValue({
+      results: [
+        {
+          type: "video",
+          id: "vid-1",
+          slug: "jesus",
+          title: "Jesus",
+          imageUrl: "https://cdn/img.png",
+          snippet: "About Jesus.",
+          playbackId: null, // unplayable in the locale — must be dropped
+        },
+        {
+          type: "video",
+          id: "vid-2",
+          slug: "easter",
+          title: "Easter",
+          imageUrl: null,
+          snippet: "Easter video.",
+          playbackId: "pb-1", // playable — kept
+        },
+      ],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "watch-search",
+    })
+    const prisma = {
+      language: { findFirst: vi.fn().mockResolvedValue({ slug: "english" }) },
+    } as AnyPrisma
+
+    const result = await searchVideosForAgent(prisma, {
+      q: "jesus",
+      locale: "en",
+      limit: 5,
+    })
+
+    expect(searchMock).toHaveBeenCalledWith({
+      query: "jesus",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      acceptLanguage: "en",
+      limit: 5,
+      resultTypes: ["video"],
+    })
+    // ONLY the playable row survives — this is the assertion a deleted filter
+    // would fail (the null-playback row would leak through).
+    expect(result.videos).toEqual([
+      {
+        videoId: "vid-2",
+        title: "Easter",
+        snippet: "Easter video.",
+        slug: "easter",
+        imageUrl: null,
+      },
+    ])
+  })
+
+  it("clamps an over-cap limit at the schema boundary (max 20) and defaults to 8", () => {
+    // The request schema is the server-side re-assertion of the cap; the
+    // caller (mastra) is untrusted.
+    expect(
+      searchVideosRequestSchema.safeParse({ q: "x", locale: "en", limit: 999 })
+        .success,
+    ).toBe(false)
+    expect(
+      searchVideosRequestSchema.parse({ q: "x", locale: "en" }).limit,
+    ).toBe(8)
+  })
+})
+
+describe("lookupBibleVerseForAgent", () => {
+  function makePrisma(rows: unknown[]) {
+    return {
+      bibleBook: { findMany: vi.fn().mockResolvedValue(rows) },
+    } as AnyPrisma
+  }
+
+  it("OR-matches osisId / paratextAbbreviation / alternateName, orders by order asc, and caps via take", async () => {
+    const prisma = makePrisma([])
+    await lookupBibleVerseForAgent(prisma, {
+      query: "John",
+      locale: "en",
+      limit: 3,
+    })
+    const args = prisma.bibleBook.findMany.mock.calls[0][0]
+    expect(args.orderBy).toEqual({ order: "asc" })
+    expect(args.take).toBe(3)
+    expect(args.where.deletedAt).toBeNull()
+    expect(args.where.OR).toEqual([
+      { osisId: { equals: "John", mode: "insensitive" } },
+      { paratextAbbreviation: { equals: "John", mode: "insensitive" } },
+      { alternateName: { contains: "John", mode: "insensitive" } },
+    ])
+  })
+
+  it("resolves displayName via locale → BCP-47 base → en → raw-query fallback", async () => {
+    const prisma = makePrisma([
+      {
+        id: "b1",
+        osisId: "John",
+        name: { en: "John", es: "Juan", fr: "Jean" },
+        testament: "NT",
+        order: 43,
+      },
+      {
+        id: "b2",
+        osisId: "Mark",
+        name: { en: "Mark" }, // no fr — falls back to en
+        testament: "NT",
+        order: 41,
+      },
+      {
+        id: "b3",
+        osisId: "Luke",
+        name: "not-a-map", // unparseable — falls back to the raw query
+        testament: "NT",
+        order: 42,
+      },
+    ])
+    const result = await lookupBibleVerseForAgent(prisma, {
+      query: "the-query",
+      locale: "fr-CA",
+      limit: 3,
+    })
+    // b1: fr-CA → base "fr" → "Jean"
+    expect(result.books[0].displayName).toBe("Jean")
+    // b2: no fr → en → "Mark"
+    expect(result.books[1].displayName).toBe("Mark")
+    // b3: name not a map → raw query
+    expect(result.books[2].displayName).toBe("the-query")
+  })
+
+  it("defaults locale to en and limit to 3 at the schema boundary", () => {
+    const parsed = lookupBibleVerseRequestSchema.parse({ query: "John" })
+    expect(parsed.locale).toBe("en")
+    expect(parsed.limit).toBe(3)
+  })
+})
+
+describe("fetchVideoImageForAgent", () => {
+  function makePrisma(images: unknown[]) {
+    return {
+      videoImage: { findMany: vi.fn().mockResolvedValue(images) },
+    } as AnyPrisma
+  }
+
+  it("returns the first non-empty by VARIANT_PRIORITY (mobileCinematicHigh wins over thumbnail)", async () => {
+    const result = await fetchVideoImageForAgent(
+      makePrisma([
+        {
+          mobileCinematicHigh: "https://cdn/hero.png",
+          videoStill: null,
+          thumbnail: "https://cdn/thumb.png",
+          url: "https://cdn/legacy.png",
+        },
+      ]),
+      { videoId: "v1" },
+    )
+    expect(result).toEqual({
+      imageUrl: "https://cdn/hero.png",
+      variant: "mobileCinematicHigh",
+    })
+  })
+
+  it("falls through priority to the first populated lower variant", async () => {
+    const result = await fetchVideoImageForAgent(
+      makePrisma([
+        {
+          mobileCinematicHigh: null,
+          videoStill: "",
+          thumbnail: "https://cdn/thumb.png",
+          url: "https://cdn/legacy.png",
+        },
+      ]),
+      { videoId: "v1" },
+    )
+    expect(result).toEqual({
+      imageUrl: "https://cdn/thumb.png",
+      variant: "thumbnail",
+    })
+  })
+
+  it("returns null/null when the video has no images", async () => {
+    const result = await fetchVideoImageForAgent(makePrisma([]), {
+      videoId: "v1",
+    })
+    expect(result).toEqual({ imageUrl: null, variant: null })
+  })
+
+  it("returns null/null when images exist but no priority variant is populated", async () => {
+    const result = await fetchVideoImageForAgent(
+      makePrisma([
+        { mobileCinematicHigh: null, videoStill: null, thumbnail: "", url: "" },
+      ]),
+      { videoId: "v1" },
+    )
+    expect(result).toEqual({ imageUrl: null, variant: null })
+  })
+})

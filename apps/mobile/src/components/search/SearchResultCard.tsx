@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
@@ -6,31 +6,47 @@ import { LinearGradient } from "expo-linear-gradient"
 import type { SearchResult } from "../../lib/queries"
 import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { ExperienceFallback } from "./ExperienceFallback"
+import { ENTRANCE_DURATION_MS } from "./searchEntrance"
 
 type SearchResultCardProps = {
   result: SearchResult
-  index?: number
+  /** Entrance stagger in ms — see `./searchEntrance`. Owned by the caller. */
+  entranceDelay?: number
   onSelect: (result: SearchResult) => void
   /** Fired on touch-down to warm the detail query before navigation. */
   onPressIn?: (result: SearchResult) => void
+  /** Fired once this card has been laid out, so the caller knows it is on screen. */
+  onAppear?: () => void
 }
 
 export function SearchResultCard({
   result,
-  index = 0,
+  entranceDelay = 0,
   onSelect,
   onPressIn,
+  onAppear,
 }: SearchResultCardProps) {
   const validatedImageUrl = resolveImageUrl(result.imageUrl)
   const opacity = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.92)).current
+  // Pinned at mount: appending a later page shifts this card's position, and a
+  // re-derived delay would restart an entrance the user has already watched.
+  const delayRef = useRef(entranceDelay)
+  const appearedRef = useRef(false)
+
+  const handleLayout = useCallback(() => {
+    if (appearedRef.current) return
+    appearedRef.current = true
+    onAppear?.()
+  }, [onAppear])
 
   useEffect(() => {
-    const delay = index * 60
+    const delay = delayRef.current
     const anim = Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 280,
+        duration: ENTRANCE_DURATION_MS,
         delay,
         useNativeDriver: true,
       }),
@@ -44,17 +60,21 @@ export function SearchResultCard({
     ])
     anim.start()
     return () => anim.stop()
-  }, [opacity, scale, index])
+  }, [opacity, scale])
 
   return (
     <Animated.View
       style={[styles.cardOuter, { opacity, transform: [{ scale }] }]}
+      onLayout={onAppear ? handleLayout : undefined}
     >
       <Pressable
         onPress={() => onSelect(result)}
         onPressIn={onPressIn ? () => onPressIn(result) : undefined}
         accessibilityRole="button"
         accessibilityLabel={`${result.title}: ${result.snippet}`}
+        // KTD10: a stable RUM action name so trackInteractions doesn't derive it
+        // from accessibilityLabel (which leaks the title + snippet into telemetry).
+        {...{ "dd-action-name": "search-result" }}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
         <View style={styles.thumbnailContainer}>
@@ -65,6 +85,8 @@ export function SearchResultCard({
               contentFit="cover"
               recyclingKey={`search-${result.id}`}
             />
+          ) : result.type === "EXPERIENCE" ? (
+            <ExperienceFallback slug={result.slug} title={result.title} />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
               <Text style={styles.placeholderIcon}>▶</Text>

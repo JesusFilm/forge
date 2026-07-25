@@ -52,11 +52,9 @@ describe("shouldReplaceSource", () => {
 // ── inPlayerMenuVisible — the stale-session-safe gate ────────────────────────
 
 describe("inPlayerMenuVisible", () => {
-  // CHARACTERIZATION — the no-session contract.
-  // This is the guard that proves experience-card playback is UNCHANGED:
-  // playVideo(url) with no session populated must never attach the in-player
-  // menu (or any session-driven behavior). If this ever returns true with no
-  // session, the non-negotiable invariant is broken.
+  // CHARACTERIZATION — no-session contract: playVideo(url) with no session must
+  // never attach the in-player menu. Returning true here breaks the non-negotiable
+  // invariant that experience-card playback stays UNCHANGED.
   it("returns false with NO session (experience-card playback unchanged)", () => {
     expect(
       inPlayerMenuVisible({

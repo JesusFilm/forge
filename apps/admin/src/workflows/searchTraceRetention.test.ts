@@ -16,6 +16,8 @@ describe("runSearchTraceRetention workflow", () => {
       purgedCount: 5,
       purgedRawTraceCount: 3,
       purgedGeneratedCandidateCount: 2,
+      purgedWatchSearchEventCount: 0,
+      purgedQueryEmbeddingCacheCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     }
     job.runSearchTraceRetentionJob.mockResolvedValueOnce(result)

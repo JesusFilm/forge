@@ -2,7 +2,7 @@ import type {
   FragmentOf,
   LegacyFragmentValue,
 } from "@/lib/legacy-fragment-types"
-import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
@@ -74,22 +74,22 @@ function isHexColor(value: unknown) {
 type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
 type SectionContentItem = NonNullable<
   NonNullable<SectionData["sectionContent"]>[number]
 >
+type AssetBackedSectionData = SectionData & {
+  backgroundImageAsset?: { previewUrl?: string | null } | null
+}
 
-export function Section({ data, routeVideo }: SectionProps) {
-  const {
-    id,
-    sectionKey,
-    backgroundColor,
-    backgroundImageUrl,
-    backgroundOpacity,
-    sectionContent,
-  } = data
+export function Section({ data, routeVideo, languageSlug }: SectionProps) {
+  const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
+    data
+  const backgroundImageUrl =
+    (data as AssetBackedSectionData).backgroundImageAsset?.previewUrl ?? null
 
   const raw = data as Record<string, unknown>
   const isDynamicBg = raw.dynamicBackgroundImage === true
@@ -107,6 +107,7 @@ export function Section({ data, routeVideo }: SectionProps) {
         key={`section-${id ?? index}-${index}`}
         item={item as SectionContentItem}
         routeVideo={routeVideo}
+        languageSlug={languageSlug}
       />
     ) : null,
   )
@@ -187,7 +188,7 @@ export function Section({ data, routeVideo }: SectionProps) {
           />
         )}
         <div
-          className={`${hasStaticOverlay || backgroundImageUrl ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+          className={`${hasStaticOverlay || backgroundImageUrl ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${WATCH_PAGE_CONTENT_CLASSES}`}
         >
           {content}
         </div>
@@ -199,9 +200,11 @@ export function Section({ data, routeVideo }: SectionProps) {
 function SectionContentRenderer({
   item,
   routeVideo,
+  languageSlug,
 }: {
   item: SectionContentItem
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
@@ -213,6 +216,7 @@ function SectionContentRenderer({
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsVideo":
@@ -241,6 +245,7 @@ function SectionContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsQuizButton":
@@ -276,6 +281,7 @@ function SectionContentRenderer({
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "VideoBlock":
@@ -322,6 +328,7 @@ function SectionContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "NavigationCarouselBlock":

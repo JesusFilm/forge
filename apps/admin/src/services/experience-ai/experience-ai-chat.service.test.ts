@@ -118,23 +118,29 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     updatedAt: new Date("2026-04-15T12:00:00.000Z"),
   }
   const locale = {
-    // applyChatMutation reads the pre-image once (outside tx), then
-    // re-fetches the updated row once (inside tx after updateMany).
+    // applyChatMutation reads the pre-image once (outside tx), then writes
+    // via a plain `update` inside the locked tx (the FOR UPDATE + text
+    // guard replaced the old updateMany-on-updatedAt path).
     findUniqueOrThrow: vi
       .fn()
       .mockResolvedValueOnce(preImage)
       .mockResolvedValue(afterRow),
-    // Optimistic-concurrency guard write — matches one row by default.
     updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     update: vi.fn().mockResolvedValue(afterRow),
   }
 
   const contentRevision = { create: vi.fn() }
+  // applyChatMutation's optimistic-concurrency token: a full-precision
+  // `updated_at::text` read (baseline outside tx, then the FOR UPDATE
+  // locked read inside tx). Both resolve to the same value by default so
+  // the guard passes.
+  const $queryRaw = vi.fn().mockResolvedValue([{ u: "2026-04-15 12:00:00+00" }])
   const $transaction = vi.fn(async (fn: unknown) =>
     typeof fn === "function"
       ? (fn as (txc: unknown) => Promise<unknown>)({
           experienceLocale: locale,
           contentRevision,
+          $queryRaw,
         })
       : fn,
   )
@@ -144,6 +150,7 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     experienceChatMessage: message,
     experienceLocale: locale,
     contentRevision,
+    $queryRaw,
     $transaction,
   } as unknown as PrismaClient & {
     experienceChatThread: typeof thread
@@ -529,6 +536,44 @@ describe("streamChatTurn — Mastra integration", () => {
     expect(seenSignal!.aborted).toBe(false)
     controller.abort()
     expect(seenSignal!.aborted).toBe(true)
+  })
+
+  it("classifies an aborted-but-resolved-empty generate() as timeout (not provider_validation_failed)", async () => {
+    // Production root cause: a from-scratch draft on the gateway model
+    // runs ~37-45s, past the chat-turn budget. When the budget signal
+    // fires, the AI SDK RESOLVES generate() with empty text rather than
+    // rejecting — so the run reaches the success path with an empty
+    // buffer. Without the abort guard this was misreported as
+    // `provider_validation_failed` ("returned text without a JSON
+    // object"; prod logs showed `stream_done buffer_length=0` +
+    // `no_json_object head="" tail=""`). The guard must classify it as a
+    // `timeout` instead. Here AbortSignal.timeout is faked to return an
+    // already-aborted signal and generate() resolves with empty text.
+    const realTimeout = AbortSignal.timeout
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation(() => {
+        const c = new AbortController()
+        c.abort(new DOMException("timed out", "TimeoutError"))
+        return c.signal
+      })
+    try {
+      mastraGenerateMock.mockResolvedValue({ text: "" })
+      const prisma = makeFakePrisma()
+
+      const events = await collect(
+        streamChatTurn(
+          { threadId: "thread-1", prompt: "draft a full page" },
+          { prisma, user: EDITOR },
+        ),
+      )
+
+      const err = events.find((e) => e.type === "error")
+      expect(err).toMatchObject({ type: "error", code: "timeout" })
+    } finally {
+      timeoutSpy.mockRestore()
+      expect(AbortSignal.timeout).toBe(realTimeout)
+    }
   })
 
   it("emits a timeout-classified error event when the chat-turn budget fires", async () => {

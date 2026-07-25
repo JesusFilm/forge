@@ -6,9 +6,11 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type Ref,
 } from "react"
 import {
+  Animated,
   AppState,
   FlatList,
   type NativeScrollEvent,
@@ -34,7 +36,9 @@ import {
 } from "../../lib/color"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
+import { datadogLog } from "../../lib/datadog"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { sanitizeVideoErrorMessage } from "../../lib/videoQoe"
 import {
   muxSlideDisplayCopy,
   type WatchHomeSlide,
@@ -44,6 +48,7 @@ import {
   WATCH_HOME_MAX_DWELL_MS,
   activeSlide as selectActiveSlide,
   createInitialPagerState,
+  heroPageVideoState,
   pagerReducer,
   showsPagerChrome,
   timersRunning,
@@ -54,21 +59,20 @@ import { HomePagerDots } from "./HomePagerDots"
 
 export type HomeHeroPagerHandle = {
   /**
-   * Chip-rail jump (CHIP_TAPPED): swaps the hero in place, no navigation.
-   * No-op on the current index; dropped while a swap is in flight.
+   * Chip-rail jump (CHIP_TAPPED): swaps hero in place. No-op on current
+   * index; dropped while a swap is in flight.
    */
   selectSlide: (index: number) => void
   /**
    * Swipe-gesture jump (SWIPED): like selectSlide but never dropped during
-   * an in-flight swap — the user physically moved the pager.
+   * an in-flight swap (the user physically moved the pager).
    */
   swipeToSlide: (index: number) => void
 }
 
-// Shared hero-chrome geometry. HomeScreen's overlay chrome (Watch Now /
-// insert CTA / mute) positions itself with these same numbers, so the pager's
-// reserved text-block padding and the overlay buttons cannot silently
-// misalign when one side resizes.
+// Shared hero-chrome geometry. HomeScreen's overlay chrome uses these same
+// numbers, so the pager's reserved text-block padding and the overlay
+// buttons can't silently misalign when one side resizes.
 /** Bottom offset of the chrome row above the hero's bottom edge. */
 export const HERO_CHROME_BOTTOM = 44
 /** Overlay CTA pill height (also the mute circle's diameter). */
@@ -78,8 +82,8 @@ export const HERO_CTA_FOOTPRINT = HERO_CTA_HEIGHT + 16
 
 export type HomeHeroPagerProps = {
   /**
-   * The hero queue (buildWatchHomeHeroQueue output). MUST be referentially
-   * stable across renders — a new array identity resets the pager to slide 0.
+   * Hero queue. MUST be referentially stable across renders — a new array
+   * identity resets the pager to slide 0.
    */
   slides: readonly WatchHomeSlide[]
   heroHeight?: number
@@ -90,12 +94,9 @@ export type HomeHeroPagerProps = {
   paused?: boolean
   blurOpacity?: number
   /**
-   * Mute is a CONTROLLED prop: the screen owns the state AND the mute button
-   * itself (rendered in HomeScreen's zIndex-2 touch overlay — the pager hosts
-   * no interactive chrome; the FlashList above it would swallow the taps).
-   * The pager only syncs this prop onto player.muted. The session rules —
-   * unmute persists across advances, tab blur resets to muted — are
-   * implemented by the screen's state (HomeScreen).
+   * CONTROLLED: HomeScreen owns the state and the mute button (the pager
+   * hosts no interactive chrome; FlashList above it swallows taps). The pager
+   * only syncs this onto player.muted; session rules live in HomeScreen.
    */
   muted?: boolean
   /** Fires whenever the active slide settles (chip, swipe, or auto-advance). */
@@ -180,15 +181,42 @@ export function HomeHeroPager({
     if (isPlaying) dispatch({ type: "PLAY_STARTED" })
   }, [isPlaying])
 
-  // Genuine stream failure → skip. Transient "idle" blips are ignored so the
-  // videoReady latch (and the mounted VideoView) survive them. Only video
-  // slides consume the error: a stale source erroring in the background must
-  // not skip an active mux slide (those advance on their own 7s timer).
+  // Genuine stream failure → the slide parks on its poster dwell; transient
+  // "idle" blips are ignored so the videoReady latch survives. Only video
+  // slides consume the error — a stale background source must not park an
+  // active mux slide (those run their own 7s timer).
   useEffect(() => {
-    const sub = player.addListener("statusChange", ({ status }) => {
+    const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status !== "error") return
       const current = stateRef.current
-      if (current.slides[current.currentIndex]?.kind !== "video") return
+      const message =
+        error?.message != null
+          ? sanitizeVideoErrorMessage(error.message)
+          : "video playback error"
+      // Mid-hold the player still carries the OUTGOING stream; its error must
+      // not skip the incoming slide (whose own swap surfaces its own errors)
+      // — but it must stay observable (R37: silent QoE losses are findings).
+      if (current.transitionFromId != null) {
+        const held = current.slides.find(
+          (s) => s.id === current.transitionFromId,
+        )
+        datadogLog.warn("video.playback_error", {
+          surface: "hero",
+          phase: "transition_hold",
+          content_id:
+            held?.kind === "video" ? (held.slug ?? held.id) : held?.id,
+          message,
+        })
+        return
+      }
+      const slide = current.slides[current.currentIndex]
+      if (slide?.kind !== "video") return
+      // R37: the hero is a distinct player the managed-player QoE excludes.
+      datadogLog.warn("video.playback_error", {
+        surface: "hero",
+        content_id: slide.slug,
+        message,
+      })
       dispatch({ type: "STREAM_ERROR" })
     })
     return () => sub.remove()
@@ -214,21 +242,38 @@ export function HomeHeroPager({
     return () => sub.remove()
   }, [player])
 
-  // Leaving a slide: silence the outgoing stream immediately (the incoming
-  // slide reveals via PLAY_STARTED after its own swap) and bump the slide
-  // epoch so re-entering a slide re-issues its swap.
+  // Leaving a slide: silence the outgoing stream (the incoming slide reveals
+  // via PLAY_STARTED after its own swap) and bump the slide epoch so
+  // re-entering a slide re-issues its swap. A transition hold defers the
+  // pause — the outgoing video keeps playing through the slide animation.
   const slideEpochRef = useRef(0)
   const prevActiveIdRef = useRef(activeId)
   useEffect(() => {
     if (prevActiveIdRef.current === activeId) return
     prevActiveIdRef.current = activeId
     slideEpochRef.current += 1
+    if (stateRef.current.transitionFromId != null) return
     try {
       player.pause()
     } catch {
       // Native player already released.
     }
   }, [activeId, player])
+
+  // The hold's release (settle/suspend/queue swap) is where the deferred
+  // pause lands — and what re-arms the playingChange edge the incoming
+  // slide's PLAY_STARTED reveal depends on.
+  const prevTransitionIdRef = useRef(state.transitionFromId)
+  useEffect(() => {
+    const prev = prevTransitionIdRef.current
+    prevTransitionIdRef.current = state.transitionFromId
+    if (prev == null || state.transitionFromId != null) return
+    try {
+      player.pause()
+    } catch {
+      // Native player already released.
+    }
+  }, [state.transitionFromId, player])
 
   // ── Stream resolution → serialized replaceAsync swaps ────────────────────
 
@@ -253,7 +298,8 @@ export function HomeHeroPager({
       return
     }
     if (stream.failed) {
-      // Consume each failure once; the reducer advances past the slide.
+      // Consume each failure once; the reducer parks the slide on its
+      // unavailable poster dwell (no instant skip).
       if (failedSlugRef.current !== activeVideoSlug) {
         failedSlugRef.current = activeVideoSlug
         dispatch({ type: "STREAM_ERROR" })
@@ -263,6 +309,10 @@ export function HomeHeroPager({
     const url = stream.streamUrl
     if (url == null) return
     if (state.swapInFlight) return
+    // Transition hold: the player is still presenting the outgoing slide —
+    // a swap now would flash the new source there mid-animation. The settle
+    // clears the hold and re-runs this effect.
+    if (state.transitionFromId != null) return
     if (state.suspended !== null) {
       // Remember the ready stream; RESUME re-issues the swap (AE6).
       dispatch({ type: "STREAM_READY" })
@@ -312,6 +362,7 @@ export function HomeHeroPager({
     state.swapInFlight,
     state.suspended,
     state.pendingSwap,
+    state.transitionFromId,
     player,
   ])
 
@@ -340,6 +391,17 @@ export function HomeHeroPager({
     )
     return () => clearTimeout(timer)
   }, [timersOn, activeId, activeKind])
+
+  // Failed (unavailable) slides dwell on their poster for the same image
+  // budget instead of skipping instantly — calm offline rotation.
+  useEffect(() => {
+    if (!timersOn || state.phase !== "unavailable") return
+    const timer = setTimeout(
+      () => dispatch({ type: "UNAVAILABLE_TIMER_ELAPSED" }),
+      WATCH_HOME_IMAGE_SLIDE_DWELL_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [timersOn, activeId, state.phase])
 
   useEffect(() => {
     if (!timersOn || activeKind !== "video" || state.phase === "playing") return
@@ -409,11 +471,9 @@ export function HomeHeroPager({
     }
   }, [state.currentIndex, state.slides.length])
 
-  // The list is scrollEnabled={false} (slide changes are programmatic only:
-  // chips, auto-advance, and HomeScreen's capture-phase swipe all go through
-  // the handle / the reducer). Animated scrollToIndex still fires momentum
-  // end; SLIDE_SHOWN on the settled index is a no-op when it matches
-  // currentIndex (moveTo's equal-index bail).
+  // List is scrollEnabled={false} — slide changes are programmatic only (all
+  // route through the handle/reducer). Animated scrollToIndex still fires
+  // momentum end; SLIDE_SHOWN on the settled index no-ops if it matches.
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
@@ -474,22 +534,25 @@ export function HomeHeroPager({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const renderItem = useCallback(
-    ({ item, index }: { item: WatchHomeSlide; index: number }) => (
-      <HeroPage
-        slide={item}
-        isActive={index === state.currentIndex}
-        phase={state.phase}
-        videoReady={state.videoReady}
-        player={player}
-        width={screenWidth}
-        height={pageHeight}
-        typography={typography}
-      />
-    ),
+    ({ item, index }: { item: WatchHomeSlide; index: number }) => {
+      const { showVideo, posterHidden } = heroPageVideoState(state, item, index)
+      return (
+        <HeroPage
+          slide={item}
+          showVideo={showVideo}
+          posterHidden={posterHidden}
+          player={player}
+          width={screenWidth}
+          height={pageHeight}
+          typography={typography}
+        />
+      )
+    },
     [
       state.currentIndex,
       state.phase,
       state.videoReady,
+      state.transitionFromId,
       player,
       screenWidth,
       pageHeight,
@@ -508,7 +571,7 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -558,39 +621,57 @@ export function HomeHeroPager({
 
 type HeroPageProps = {
   slide: WatchHomeSlide
-  isActive: boolean
-  phase: "poster" | "resolving" | "playing"
-  videoReady: boolean
+  /**
+   * This page hosts the single VideoView (active page, or the departing page
+   * while a transition hold runs). Poster stays painted on top until
+   * posterHidden — the handoff rule: no black flash during replaceAsync.
+   */
+  showVideo: boolean
+  posterHidden: boolean
   player: VideoPlayer
   width: number
   height: number
   typography: TypographyScale
 }
 
+/** Poster→video crossfade length once the incoming slide starts playing. */
+const POSTER_CROSSFADE_MS = 350
+
 const HeroPage = memo(function HeroPage({
   slide,
-  isActive,
-  phase,
-  videoReady,
+  showVideo,
+  posterHidden,
   player,
   width,
   height,
   typography,
 }: HeroPageProps) {
   const posterUrl = resolveImageUrl(slide.posterUrl ?? slide.thumbnailUrl)
-  const isVideo = slide.kind === "video"
 
-  // The single VideoView mounts only on the ACTIVE page once the player-level
-  // videoReady latch is set; the poster stays painted on top until the
-  // incoming slide actually plays (handoff rule — no black flash during
-  // replaceAsync).
-  const showVideo = isActive && isVideo && videoReady
-  const posterHidden = showVideo && phase === "playing"
+  // Crossfade instead of a hard cut: fade the poster out over the playing
+  // video, then unmount it. Re-arming (slide change / phase reset) restores
+  // full opacity BEFORE the poster remounts, so it never flashes transparent.
+  const posterOpacity = useRef(new Animated.Value(1)).current
+  const [posterMounted, setPosterMounted] = useState(true)
+  useEffect(() => {
+    if (posterHidden) {
+      const fade = Animated.timing(posterOpacity, {
+        toValue: 0,
+        duration: POSTER_CROSSFADE_MS,
+        useNativeDriver: true,
+      })
+      fade.start(({ finished }) => {
+        if (finished) setPosterMounted(false)
+      })
+      return () => fade.stop()
+    }
+    posterOpacity.setValue(1)
+    setPosterMounted(true)
+  }, [posterHidden, posterOpacity])
 
   // Mux overlay copy is time-of-day sensitive — resolve at DISPLAY time
-  // (Eastern-hour rule), not at queue-build time. Memoized per slide entry:
-  // per-slide-entry resolution is the intended display-time semantics;
-  // per-render recomputation is wasteful.
+  // (Eastern-hour rule), not at queue-build time. Memoized per slide entry
+  // (the intended display-time semantics; per-render recompute is wasteful).
   const muxCopy = useMemo(
     () =>
       slide.kind === "mux" ? muxSlideDisplayCopy(slide, new Date()) : null,
@@ -600,11 +681,9 @@ const HeroPage = memo(function HeroPage({
   const title = muxCopy?.title ?? slide.title
   const insertAction = muxCopy?.action ?? null
 
-  // Pages host DISPLAY content only — the interactive chrome (Watch Now,
-  // insert CTA, mute) lives in HomeScreen's zIndex-2 touch overlay, because
-  // the FlashList scrolling over the hero swallows any tap aimed here. The
-  // text block reserves the overlay CTA's footprint so the layout matches
-  // the old in-page Pressable exactly.
+  // Pages host DISPLAY content only — interactive chrome lives in HomeScreen's
+  // zIndex-2 overlay, since the FlashList over the hero swallows taps here. The
+  // text block reserves the overlay CTA's footprint to match the old layout.
   const reservesCtaSpace =
     (slide.kind === "video" && slide.slug != null) || insertAction != null
 
@@ -621,18 +700,27 @@ const HeroPage = memo(function HeroPage({
         />
       )}
 
-      {!posterHidden &&
-        (posterUrl != null ? (
-          <Image
-            source={posterUrl}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={slide.id}
-            accessibilityLabel={slide.imageAlt}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.posterFallback]} />
-        ))}
+      {posterMounted && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: posterOpacity }]}
+        >
+          {posterUrl != null ? (
+            <Image
+              source={posterUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={slide.id}
+              accessibilityLabel={slide.imageAlt}
+              // R18: a silently-dropped hero poster is a content-quality loss.
+              onError={() =>
+                datadogLog.warn("image.load_failed", { surface: "hero" })
+              }
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.posterFallback]} />
+          )}
+        </Animated.View>
+      )}
 
       <LinearGradient
         colors={[hexToRgba(BG_COLOR, 0), BG_COLOR]}

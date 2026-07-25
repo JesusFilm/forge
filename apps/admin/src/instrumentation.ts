@@ -6,6 +6,10 @@ type WorkflowStartupState = {
   starting: boolean
 }
 
+type WatchSearchPrewarmState = {
+  started: boolean
+}
+
 const TRANSIENT_WORKFLOW_STARTUP_PATTERNS = [
   /too many clients already/i,
   /remaining connection slots are reserved/i,
@@ -15,6 +19,7 @@ const TRANSIENT_WORKFLOW_STARTUP_PATTERNS = [
 function workflowStartupGlobal() {
   return globalThis as typeof globalThis & {
     __forgeAdminWorkflowStartup?: WorkflowStartupState
+    __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
   }
 }
 
@@ -30,22 +35,41 @@ function workflowStartupState() {
   return state
 }
 
-function positiveIntegerEnv(name: string, fallback: number) {
-  const value = Number.parseInt(process.env[name] ?? "", 10)
-  return Number.isFinite(value) && value > 0 ? value : fallback
+function positiveIntegerValue(value: unknown, fallback: number) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function maxTransientWorkflowStartupAttempts() {
-  return positiveIntegerEnv("WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS", 12)
+  return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS, 12)
 }
 
 function transientWorkflowStartupDelayMs() {
-  return positiveIntegerEnv("WORKFLOW_STARTUP_TRANSIENT_DELAY_MS", 10_000)
+  return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS, 10_000)
 }
 
 function errorText(error: unknown) {
   if (error instanceof Error) return error.message
   return String(error)
+}
+
+function startWatchSearchPrewarm(): void {
+  const global = workflowStartupGlobal()
+  const state = global.__forgeAdminWatchSearchPrewarm ?? { started: false }
+  global.__forgeAdminWatchSearchPrewarm = state
+  if (state.started) return
+
+  state.started = true
+  void import("@/services/watch-search.service")
+    .then(async ({ prewarmWatchSearchQueryEmbeddings }) => {
+      const { prisma } = await import("@/db/client")
+      return prewarmWatchSearchQueryEmbeddings({ prisma })
+    })
+    .catch((error) => {
+      console.warn(
+        `[watch-search] event=query_embedding_prewarm_start_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+      )
+    })
 }
 
 export function isTransientWorkflowStartupError(error: unknown): boolean {
@@ -122,6 +146,12 @@ async function startWorkflowWorldWithTransientRetry(
 }
 
 export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { configureDatadog } = await import("@/observability/datadog")
+    configureDatadog()
+    startWatchSearchPrewarm()
+  }
+
   if (!shouldStartWorkflowWorld()) return
 
   await startWorkflowWorldWithTransientRetry()

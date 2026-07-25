@@ -1,4 +1,5 @@
 import { prisma } from "@/db/client"
+import { ADMIN_MCP_CODEX_CLIENT_ID } from "@/domain/apps"
 
 const DYNAMIC_PREVIEW_CLIENT_IDS = new Set([
   "jfp_admin_preview",
@@ -6,6 +7,8 @@ const DYNAMIC_PREVIEW_CLIENT_IDS = new Set([
   "jfp_mastra_studio_preview",
   "jfp_mastra_studio_staging",
 ])
+const DYNAMIC_LOCAL_WEB_CLIENT_IDS = new Set(["jfp_web_local"])
+const DYNAMIC_LOCAL_CODEX_MCP_CLIENT_IDS = new Set([ADMIN_MCP_CODEX_CLIENT_ID])
 
 // OAuth clients ultimately need exact redirect URIs, but Railway PR previews
 // receive generated hostnames. Treat these regexes as tightly scoped wildcards:
@@ -41,6 +44,58 @@ export function isDynamicRailwayPreviewRedirectUriAllowed({
   }
 }
 
+export function isDynamicLocalWebRedirectUriAllowed({
+  clientId,
+  redirectUri,
+}: {
+  clientId: string
+  redirectUri: string
+}) {
+  if (!DYNAMIC_LOCAL_WEB_CLIENT_IDS.has(clientId)) {
+    return false
+  }
+
+  try {
+    const url = new URL(redirectUri)
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.pathname === "/watch/api/auth/callback" &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.port.length > 0
+    )
+  } catch {
+    return false
+  }
+}
+
+export function isDynamicLocalCodexMcpRedirectUriAllowed({
+  clientId,
+  redirectUri,
+}: {
+  clientId: string
+  redirectUri: string
+}) {
+  if (!DYNAMIC_LOCAL_CODEX_MCP_CLIENT_IDS.has(clientId)) {
+    return false
+  }
+
+  try {
+    const url = new URL(redirectUri)
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      (url.pathname === "/auth/callback" || url.pathname === "/callback") &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.port.length > 0
+    )
+  } catch {
+    return false
+  }
+}
+
 export async function ensureDynamicPreviewRedirectUriRegistered({
   clientId,
   redirectUri,
@@ -51,13 +106,13 @@ export async function ensureDynamicPreviewRedirectUriRegistered({
   if (
     !clientId ||
     !redirectUri ||
-    !isDynamicRailwayPreviewRedirectUriAllowed({ clientId, redirectUri })
+    !isDynamicRedirectUriAllowed({ clientId, redirectUri })
   ) {
     return
   }
 
   const origin = new URL(redirectUri).origin
-  const postLogoutRedirectUri = `${origin}/api/auth/login`
+  const postLogoutRedirectUri = getPostLogoutRedirectUri(redirectUri)
 
   await prisma.$transaction(async (tx) => {
     const [client, environment] = await Promise.all([
@@ -102,8 +157,38 @@ export async function ensureDynamicPreviewRedirectUriRegistered({
   })
 }
 
+function isDynamicRedirectUriAllowed({
+  clientId,
+  redirectUri,
+}: {
+  clientId: string
+  redirectUri: string
+}) {
+  return (
+    isDynamicRailwayPreviewRedirectUriAllowed({ clientId, redirectUri }) ||
+    isDynamicLocalWebRedirectUriAllowed({ clientId, redirectUri }) ||
+    isDynamicLocalCodexMcpRedirectUriAllowed({ clientId, redirectUri })
+  )
+}
+
 function appendUnique(values: string[], value: string) {
   return values.includes(value) ? values : [...values, value]
+}
+
+function getPostLogoutRedirectUri(redirectUri: string) {
+  const url = new URL(redirectUri)
+  if (url.pathname === "/watch/api/auth/callback") {
+    return `${url.origin}/watch`
+  }
+  if (
+    isDynamicLocalCodexMcpRedirectUriAllowed({
+      clientId: ADMIN_MCP_CODEX_CLIENT_ID,
+      redirectUri,
+    })
+  ) {
+    return url.origin
+  }
+  return `${url.origin}/api/auth/login`
 }
 
 function isAllowedPreviewHostname(clientId: string, hostname: string) {

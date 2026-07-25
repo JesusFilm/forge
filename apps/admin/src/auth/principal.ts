@@ -24,8 +24,8 @@
  * granted ZERO permissions beyond PUBLIC — its sole purpose is to
  * bucket consumer SSR traffic (apps/web) separately from anonymous-IP
  * traffic in admin's rate-limit identifier. The principal carries the
- * matched key as `rateLimitBucketKey` so the identifyFn can produce
- * `consumer:<key>` without re-inspecting headers downstream.
+ * matched key as `rateLimitBucketKey` so the identifyFn can form a
+ * trusted internal Web bucket without re-inspecting headers downstream.
  *
  * `MANAGER_BACKEND` is the request-bound service identity used by
  * apps/manager to call Admin-owned Manager read/job contracts. It never
@@ -35,6 +35,11 @@
  * yt-video-mapper backend to read the flat catalog sync projection. It is
  * intentionally separate from `WORKFLOW_TRIGGER` so existing manager/workflow
  * bearers do not inherit whole-catalog media URL access.
+ *
+ * `WEB_USER` is a request-bound human identity minted only after Admin
+ * introspects a user-delegated Auth access token issued to apps/web. It is
+ * intentionally narrower than editorial roles and exists for watch-event
+ * writes, not content reads or admin UI access.
  */
 export type Role =
   | "ADMIN"
@@ -45,6 +50,7 @@ export type Role =
   | "WORKFLOW_TRIGGER"
   | "MANAGER_BACKEND"
   | "VIDEO_MAPPER"
+  | "WEB_USER"
   | "CONSUMER_BEARER"
 
 export type Principal = {
@@ -55,11 +61,17 @@ export type Principal = {
    * Set on bearer principals that need rate-limit bucketing — the matched
    * CSV entry from the mint-source env var. Today: `CONSUMER_BEARER`
    * (from `WEB_ADMIN_API_KEYS`). The rate-limit identifyFn reads this
-   * without re-inspecting headers and namespaces it as `consumer:<key>`
-   * so consumer SSR traffic stays separate from anonymous-IP traffic.
+   * without re-inspecting headers and namespaces it so consumer SSR traffic
+   * stays separate from anonymous-IP traffic.
    * Never logged.
    */
   rateLimitBucketKey?: string
+  /**
+   * True on a fleet consumer bearer (`FLEET_ADMIN_API_KEYS`). The rate-limit
+   * identifyFn buckets a fleet principal per-IP (`consumer:<key>:<ip>`) instead
+   * of the flat per-key `consumer:<key>`. Bucketing-only; never a permission.
+   */
+  fleet?: boolean
 }
 
 export type ManagerRole = "OPERATOR"
@@ -101,8 +113,8 @@ export const VIDEO_MAPPER_PRINCIPAL = {
 /**
  * Factory for the request-bound consumer-bearer principal. Mints a
  * Principal carrying the matched bearer key so the rate-limit
- * identifyFn can bucket as `consumer:<key>` without re-inspecting the
- * Authorization header downstream. `id: null` matches the
+ * identifyFn can bucket without re-inspecting the Authorization header
+ * downstream. `id: null` matches the
  * WORKFLOW_TRIGGER convention — bearer principals are non-user
  * identities, no DB row to point at.
  *
@@ -112,13 +124,28 @@ export const VIDEO_MAPPER_PRINCIPAL = {
  */
 export function CONSUMER_BEARER_PRINCIPAL({
   rateLimitBucketKey,
+  fleet = false,
 }: {
   rateLimitBucketKey: string
+  fleet?: boolean
 }): Principal {
   return {
     id: null,
     role: "CONSUMER_BEARER",
     rateLimitBucketKey,
+    fleet,
+  }
+}
+
+export function WEB_USER_PRINCIPAL({
+  subject,
+}: {
+  subject: string
+}): Principal {
+  return {
+    id: subject,
+    role: "WEB_USER",
+    rateLimitBucketKey: subject,
   }
 }
 

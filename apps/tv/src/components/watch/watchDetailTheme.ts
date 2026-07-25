@@ -1,12 +1,11 @@
-// Visual tokens for the /watch/[slug] detail page, ported from the Claude Design
-// handoff ("Forge TV Video Page"). The user chose to match that mockup exactly,
-// which deliberately diverges from the app-wide Crimson Gallery system (brighter
-// red accent, frosted-glass pills, white-fill focus, near-black scrims). These
-// tokens are SCOPED to the watch-detail components so Home / Search / the rest of
-// the TV app keep their Crimson Gallery look (COLORS in lib/colors.ts).
-//
-// No expo-blur dependency on TV, so the "frosted glass" pills are approximated
-// with a translucent white fill over the dark scrim — no actual backdrop blur.
+// Visual tokens (Claude Design handoff) governing watch detail, Home, and Search.
+// Diverges from Crimson Gallery (brighter accent, white-fill focus, near-black
+// scrims); SDUI/series/legacy keep COLORS in lib/colors.ts. No expo-blur on TV.
+
+import { scale } from "../../lib/scale"
+
+/** Near-black surface/ink shared by WATCH_THEME (focusInk) and SEARCH_THEME. */
+export const NEAR_BLACK = "#0a0a0b"
 
 export const WATCH_THEME = {
   /** Bright red CTA accent from the mockup (vs Crimson Gallery #CB333B). */
@@ -18,12 +17,14 @@ export const WATCH_THEME = {
 
   /** Focused secondary pill: inverts to a white fill with dark text (tvOS HIG). */
   focusFill: "#ffffff",
-  focusInk: "#0a0a0b",
+  focusInk: NEAR_BLACK,
 
   /** Backdrop scrim base — near-black with a faint cool tint (rgba(7,7,8,a)). */
   scrim: (a: number) => `rgba(7,7,8,${a})`,
   /** Opaque background for the "below the fold" content section. */
   below: "#08080a",
+  /** No-artwork thumbnail fallback tint (matches HomeCard.thumbFallback). */
+  cardFallback: "rgba(255,255,255,0.06)",
 
   /** Text on the cinematic backdrop. */
   text: "#ffffff",
@@ -36,6 +37,13 @@ export const WATCH_THEME = {
   /** Translucent chip behind the kicker badge ("SERIES"). */
   badgeBg: "rgba(255,255,255,0.16)",
 } as const
+
+// ── Hero layout (shared by the watch + series detail screens) ──────
+// Hero LAYOUT stops short of full height by HERO_PEEK so the next rail peeks above
+// the fold (TV next-row-peek affordance; we deliberately ship no scroll chevron).
+// HERO_BOTTOM_FADE_HEIGHT is the gradient fading the hero into the rail bg, killing the seam.
+export const HERO_PEEK = scale(170)
+export const HERO_BOTTOM_FADE_HEIGHT = scale(220)
 
 // SECTION_HEADING moved to ../sections/sectionHeading (a generic SDUI section
 // renderer must not depend on this watch-only token file).

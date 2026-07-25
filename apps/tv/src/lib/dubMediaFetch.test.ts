@@ -125,9 +125,8 @@ describe("ensureDubMedia", () => {
   })
 
   it("settles into error and releases the slot when fetchMedia rejects (e.g. a hung admin hits the timeout)", async () => {
-    // Mirrors the provider's GET_VIDEO_DUB timeout: a never-resolving Apollo
-    // query is raced against an 8 s reject, so fetchMedia surfaces a rejection
-    // rather than hanging. ensureDubMedia must treat that as a failed attempt —
+    // Mirrors the provider's GET_VIDEO_DUB timeout (hung query raced against an
+    // 8 s reject). ensureDubMedia must treat the rejection as a failed attempt:
     // error fired, settled, and the ledger slot freed so the next ensure retries.
     const requested = new Set<string>()
     const fetchMedia = jest.fn(

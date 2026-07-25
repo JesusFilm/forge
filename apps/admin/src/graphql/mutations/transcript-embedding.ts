@@ -56,7 +56,7 @@ builder.mutationFields((t) => ({
         required: false,
         defaultValue: DEFAULT_CORE_ID_MAPPING_S3_KEY,
         description:
-          "S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.",
+          "S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.",
       }),
       coreIds: t.arg.stringList({
         required: false,
@@ -65,7 +65,7 @@ builder.mutationFields((t) => ({
       languages: t.arg.stringList({
         required: false,
         description:
-          "Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.",
+          "Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` because the filter axis is source transcription language, not per-locale publish state.",
       }),
       mode: t.arg({
         type: TranscriptBackfillModeEnum,

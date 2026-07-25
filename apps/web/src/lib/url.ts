@@ -1,32 +1,26 @@
-// Shared URL helpers for share-intent fallbacks.
-//
-// Facebook's URL scraper rejects localhost / private hosts, which empties the
-// composer when share buttons fire from a dev build. The public canonical is
-// what end users would actually see for the page anyway, so we substitute it
-// whenever the configured origin is unreachable from the public internet.
-// Twitter/X is more permissive but still benefits from a real URL preview.
+// Lexical guard for origins a public social crawler cannot reach. Mirrors
+// loopback, RFC1918, link-local, and IPv6 local ranges without doing a DNS or
+// network reachability probe.
+const PRIVATE_IPV4_PATTERN =
+  /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/
+const PRIVATE_IPV6_PATTERN = /^(::|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:)/
 
-export const PUBLIC_SHARE_FALLBACK_ORIGIN = "https://jesusfilm.org"
-
-// Mirrors RFC1918 ranges plus link-local. We accept a small false-positive risk
-// (e.g. legitimate 10.0.0.0/8 deployments) in exchange for never sending FB a
-// URL its scraper can't reach.
-const PRIVATE_IPV4_PATTERN = /^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/
-
-export function isPublicShareableOrigin(origin: string): boolean {
+export function normalizePublicShareableOrigin(origin: string): string | null {
   try {
-    const { hostname } = new URL(origin)
-    if (hostname === "localhost" || hostname === "127.0.0.1") return false
-    if (hostname.endsWith(".local")) return false
-    if (hostname === "0.0.0.0") return false
-    // IPv6 loopback: URL("http://[::1]:3000").hostname returns "[::1]" in
-    // browsers and Node, but bare "::1" can also appear if the URL was
-    // pre-stripped — treat both as non-public.
-    if (hostname === "[::1]" || hostname === "::1") return false
-    if (PRIVATE_IPV4_PATTERN.test(hostname)) return false
-    return true
+    const parsed = new URL(origin)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null
+    if (parsed.username || parsed.password) return null
+
+    const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "")
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) return null
+    if (hostname.endsWith(".local")) return null
+    if (hostname === "0.0.0.0") return null
+    const ipv6Hostname = hostname.replace(/^\[|\]$/g, "")
+    if (PRIVATE_IPV6_PATTERN.test(ipv6Hostname)) return null
+    if (PRIVATE_IPV4_PATTERN.test(hostname)) return null
+    return parsed.origin
   } catch {
-    return false
+    return null
   }
 }
 
@@ -73,4 +67,74 @@ export function resolveMuxFrameThumbnailUrl(
   const playbackId = muxPlaybackId?.trim()
   if (!playbackId) return null
   return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2`
+}
+
+function resolveDownloadEditorialPosterUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname !== "imagedelivery.net") return url
+
+    const segments = parsed.pathname.split("/")
+    const transformations = segments.at(-1)?.split(",")
+    if (
+      transformations == null ||
+      !transformations.some((value) => /^w=\d+$/.test(value)) ||
+      !transformations.some((value) => /^h=\d+$/.test(value))
+    ) {
+      return url
+    }
+
+    segments[segments.length - 1] = transformations
+      .map((value) => {
+        if (/^w=\d+$/.test(value)) return "w=1280"
+        if (/^h=\d+$/.test(value)) return "h=720"
+        return value
+      })
+      .join(",")
+    parsed.pathname = segments.join("/")
+    return parsed.toString()
+  } catch {
+    return url
+  }
+}
+
+/**
+ * Resolve the poster used by the full-width mobile download modal.
+ *
+ * Card thumbnails intentionally stay capped at 448px. The modal can occupy
+ * roughly 390 CSS pixels on a 3x display, so it needs a larger source to avoid
+ * browser upscaling. Prefer the selected Dub's frame so the asset can be
+ * requested at the required resolution. Videos without Mux playback can carry
+ * Cloudflare delivery URLs whose transformation is fixed at 120x68; request a
+ * 1280x720 derivative from the same original instead of letting Next/Image
+ * upscale that tiny response. Other editorial providers remain untouched.
+ * Prefer that authored artwork over a frame from the selected Dub; Mux remains
+ * the high-resolution fallback when no editorial image is available.
+ */
+export function resolveDownloadPosterUrl(
+  image: Parameters<typeof resolvePosterUrl>[0],
+  muxPlaybackId?: string | null,
+): string | null {
+  const editorial = resolvePosterUrl(image)
+  if (editorial) return resolveDownloadEditorialPosterUrl(editorial)
+
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=1280&height=720&fit_mode=smartcrop&time=2`
+}
+
+export function resolveMuxAnimatedPreviewUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/animated.webp?start=2&end=6&width=448&fps=8`
+}
+
+export function resolveMuxHeroPosterUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.webp?time=2`
 }

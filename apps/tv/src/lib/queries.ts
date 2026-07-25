@@ -1,12 +1,9 @@
 // Fragments here are kept structurally in sync with apps/mobile/src/lib/queries.ts.
 
 /**
- * gql.tada typed GraphQL query and fragments for Experience blocks.
- *
- * Defined here in apps/tv/ per convention:
- * "Operations are defined in apps using graphql() from this package."
- *
- * Uses @_unmask to make fragment fields directly accessible on parent results.
+ * gql.tada typed Experience-block query and fragments. Defined here in apps/tv
+ * per convention (operations live in apps, not the package). @_unmask exposes
+ * fragment fields directly on parent results.
  */
 import {
   adminGraphql as graphql,
@@ -22,7 +19,14 @@ export const VideoHeroFragment = graphql(`
     subheading
     ctaLabel
     ctaLink
-    streamingUrl
+    videoDub {
+      hls
+      dash
+      share
+      muxVideo {
+        playbackId
+      }
+    }
   }
 `)
 
@@ -58,7 +62,12 @@ export const BibleQuotesCarouselFragment = graphql(`
       reference
       text
       attribution
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
+      backgroundImageAsset {
+        previewUrl
+      }
       backgroundColor
       ctaLabel
       ctaLink
@@ -101,10 +110,17 @@ export const CTASectionFragment = graphql(`
 export const VideoSectionFragment = graphql(`
   fragment VideoSectionFields on VideoBlock @_unmask {
     sectionKey
-    streamingUrl
     videoTitle: title
     videoSubtitle: subtitle
     videoId
+    videoDub {
+      hls
+      dash
+      share
+      muxVideo {
+        playbackId
+      }
+    }
   }
 `)
 
@@ -115,7 +131,9 @@ export const NavigationCarouselFragment = graphql(`
       contentId
       title
       category
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
       backgroundColor
     }
   }
@@ -132,15 +150,27 @@ export const MediaCollectionFragment = graphql(`
     mcCtaLabel: ctaLabel
     showItemNumbers
     mcVariant: variant
+    thumbnailOrientation
     footerText
     items {
       titleOverride
       subtitleOverride
       labelOverride
       collectionSize
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
+      videoImage {
+        previewUrl
+      }
+      videoDub {
+        muxVideo {
+          playbackId
+        }
+      }
       linkToSectionKey
       videoId
+      coreId
     }
   }
 `)
@@ -152,8 +182,17 @@ export const VideoCarouselFragment = graphql(`
     vcSubtitle: subtitle
     vcDescription: description
     items {
-      streamingUrl
-      imageUrl
+      videoDub {
+        hls
+        dash
+        share
+        muxVideo {
+          playbackId
+        }
+      }
+      imageAsset {
+        previewUrl
+      }
       titleOverride
       backgroundColor
       videoId
@@ -170,16 +209,26 @@ export const QuizButtonFragment = graphql(`
 
 // ── Composite fragments (nested content) ────────────────────────────
 
-// ContainerSlotContentDynamicZone members (from schema.graphql):
-// AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
-// MediaCollection, RelatedQuestions, Text, Video
-// NOTE: Container, NavigationCarousel, VideoCarousel, QuizButton are NOT in this union
+// content[] is flat: ContainerSlotBlock markers divide it into side-by-side
+// slots (each marker carries the grid span), then content blocks follow.
+// Members: AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
+// MediaCollection, RelatedQuestions, Text, Video (+ the ContainerSlot marker).
 export const ContainerFragment = graphql(
   `
     fragment ContainerFields on ContainerBlock @_unmask {
       sectionKey
       content {
         __typename
+        ... on ContainerSlotBlock {
+          gridSpan
+          spans {
+            xs
+            sm
+            md
+            lg
+            xl
+          }
+        }
         ... on TextBlock {
           ...TextSectionFields
         }
@@ -219,16 +268,17 @@ export const ContainerFragment = graphql(
   ],
 )
 
-// SectionContentDynamicZone members (from schema.graphql):
-// BibleQuotesCarousel, Card, Container, Cta, InfoBlocks, MediaCollection,
-// NavigationCarousel, PromoBanner, QuizButton, RelatedQuestions, Text, Video, VideoCarousel
-// NOTE: EasterDates and AdventCountdown are NOT in this union (only in ContainerSlotContentDynamicZone)
+// SectionContentDynamicZone members: BibleQuotesCarousel, Card, Container, Cta,
+// InfoBlocks, MediaCollection, NavigationCarousel, PromoBanner, QuizButton,
+// RelatedQuestions, Text, Video, VideoCarousel. NOT here: EasterDates, AdventCountdown.
 export const SectionFragment = graphql(
   `
     fragment SectionFields on SectionBlock @_unmask {
       sectionKey
       backgroundColor
-      backgroundImageUrl
+      backgroundImageAsset {
+        previewUrl
+      }
       backgroundOpacity
       dynamicBackgroundImage
       staticOverlay
@@ -353,59 +403,17 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
-// ── Watch setting (public homepage resolution) ──────────────────────
-//
-// Mirrors apps/mobile/src/lib/queries.ts GET_WATCH_SETTING. Resolves the
-// configured homepage Experience's slug via the PUBLIC watchSetting query so
-// the TV home can then render it through experienceBySlug (also PUBLIC) — the
-// same pattern mobile and web use for the watch home.
-//
-// This replaced the former LIST_EXPERIENCES home query, which fetched the
-// editor-gated top-level Query.experiences (authScopes hasPermission
-// "read:experiences", VIEWER tier minimum) and so failed with "Not authorized
-// to resolve Query.experiences" for the unauthenticated public TV app. There
-// is no PUBLIC list-all-experiences query by design; the home is a single
-// curated homepage Experience, not a launcher over every experience.
-//
-// We select only `slug` here; the home loads the full experience via
-// GET_WATCH_EXPERIENCE (PUBLIC, Apollo-cached).
-export const GET_WATCH_SETTING = graphql(`
-  query GetWatchSetting($locale: String!) {
-    watchSetting(locale: $locale) {
-      homepageExperience {
-        slug
-      }
-    }
-  }
-`)
+// ── Watch search query ──────────────────────────────────────────────
 
-// ── Semantic search query ─────────────────────────────────────────
-//
-// Mirrors apps/mobile/src/lib/queries.ts SEMANTIC_SEARCH with one
-// addition: we select `searchMode` so the TV search hook can
-// distinguish "hybrid" (healthy) from "keyword-only" (degraded
-// backend — e.g., OPENROUTER key missing) and render distinct UX.
-// Mobile does not consume the degraded signal today; TV does.
-//
-// $locale is String! because admin's search resolver accepts a plain
-// locale string rather than a schema-specific locale enum.
-
-export const SEMANTIC_SEARCH = graphql(`
-  query SemanticSearch(
-    $query: String!
-    $locale: String!
-    $limit: Int
-    $offset: Int
-  ) {
-    semanticSearch: search(
-      q: $query
-      locale: $locale
-      limit: $limit
-      offset: $offset
-    ) {
+// Admin retired the legacy `Query.search` in #1622; `watchSearch` is the
+// multilingual replacement. Selection stays narrow — TV renders a card grid, so
+// the language/evidence/availability signals web uses are deliberately unread.
+export const WATCH_SEARCH = graphql(`
+  query WatchSearch($input: WatchSearchInput!) {
+    watchSearch(input: $input) {
       query
       hasMore
-      searchMode
+      nextOffset
       results {
         type
         id
@@ -416,15 +424,40 @@ export const SEMANTIC_SEARCH = graphql(`
         startSeconds
         playbackId
         score
+        label
+        childCount
       }
     }
   }
 `)
 
-export type SearchResult = NonNullable<
-  ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
->["results"][number]
+/** One row exactly as admin returns it — every field nullable. */
+export type WatchSearchResultItem = NonNullable<
+  NonNullable<ResultOf<typeof WATCH_SEARCH>["watchSearch"]>["results"]
+>[number]
 
-export type SearchResponse = NonNullable<
-  ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
->
+// ── Search result shape ─────────────────────────────────────────────
+// UI-facing row: narrowed to non-null so cards and routing can read slug/title
+// without guards. `mapWatchSearchResult` drops server rows missing any of them.
+
+export type SearchResult = {
+  readonly type: string
+  readonly id: string
+  readonly slug: string
+  readonly title: string
+  readonly imageUrl: string | null
+  readonly snippet: string | null
+  readonly startSeconds: number | null
+  readonly playbackId: string | null
+  readonly score: number | null
+  readonly label: string | null
+  readonly childCount: number | null
+}
+
+export type SearchResponse = {
+  readonly query: string
+  readonly hasMore: boolean
+  /** Offset to request for the next page; admin owns the cursor arithmetic. */
+  readonly nextOffset: number
+  readonly results: readonly SearchResult[]
+}

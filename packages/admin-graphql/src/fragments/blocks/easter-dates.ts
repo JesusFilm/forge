@@ -13,8 +13,15 @@ export const adminEasterDatesFragment = adminGraphql(`
     passoverLabel
     passoverEnabled
     locale
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
   }
 `)

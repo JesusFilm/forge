@@ -16,6 +16,7 @@ import {
   type WatchCacheTag,
 } from "@/lib/watch-cache-tags"
 import { clearWatchRouteManifestCache } from "@/lib/watch-route-manifest"
+import { clearWatchSeoManifestCache } from "@/lib/watch-seo-manifest"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 const BEARER_PREFIX = "Bearer "
@@ -33,12 +34,14 @@ type RevalidateModel =
   | "experience"
   | "video"
   | "watch-route-manifest"
+  | "watch-seo-manifest"
   | "watch-setting"
 
 const REVALIDATE_MODELS = new Set<RevalidateModel>([
   "experience",
   "video",
   "watch-route-manifest",
+  "watch-seo-manifest",
   "watch-setting",
 ])
 const REVALIDATE_MODEL_VALUES: ReadonlySet<string> = REVALIDATE_MODELS
@@ -159,6 +162,14 @@ export async function POST(request: Request) {
     revalidated.push(key)
   }
 
+  const pushPagePattern = (path: string) => {
+    const key = `${path} (page)`
+    if (seen.has(key)) return
+    seen.add(key)
+    revalidatePath(path, "page")
+    revalidated.push(key)
+  }
+
   const pushInternal = (publicPath: string, rawLocale?: string) => {
     const identity = resolveWatchLocaleIdentity(rawLocale)
     const suffix = publicPath === "/" ? "" : publicPath
@@ -212,6 +223,12 @@ export async function POST(request: Request) {
     pushLayout("/")
   }
 
+  const revalidateWatchSitemaps = () => {
+    push("/sitemap.xml")
+    pushPagePattern("/sitemap/[id]")
+    pushLayout("/sitemap")
+  }
+
   const revalidateHomepagePaths = () => {
     push("/")
     pushInternal("/")
@@ -258,6 +275,17 @@ export async function POST(request: Request) {
     return NextResponse.json(
       responsePayload({
         manifestCacheCleared: true,
+      }),
+    )
+  }
+
+  if (model === "watch-seo-manifest") {
+    pushTags(WATCH_CACHE_TAG_GROUPS.watchSeoManifest)
+    clearWatchSeoManifestCache()
+    revalidateWatchSitemaps()
+    return NextResponse.json(
+      responsePayload({
+        seoManifestCacheCleared: true,
       }),
     )
   }

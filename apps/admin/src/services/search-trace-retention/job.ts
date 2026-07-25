@@ -30,6 +30,8 @@ export type SearchTraceRetentionJobResult = {
   purgedCount: number
   purgedRawTraceCount: number
   purgedGeneratedCandidateCount: number
+  purgedWatchSearchEventCount: number
+  purgedQueryEmbeddingCacheCount: number
   purgedBefore: string
 }
 
@@ -126,6 +128,9 @@ export async function runSearchTraceRetentionJob(
             purgedCount: result.purgedCount,
             purgedRawTraceCount: result.purgedRawTraceCount,
             purgedGeneratedCandidateCount: result.purgedGeneratedCandidateCount,
+            purgedWatchSearchEventCount: result.purgedWatchSearchEventCount,
+            purgedQueryEmbeddingCacheCount:
+              result.purgedQueryEmbeddingCacheCount,
             purgedBefore: result.purgedBefore,
           } satisfies Prisma.InputJsonValue,
         },

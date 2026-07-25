@@ -2,9 +2,11 @@
 
 import {
   forwardRef,
+  useLayoutEffect,
   type ChangeEventHandler,
   type ComponentProps,
   type MouseEventHandler,
+  type RefObject,
 } from "react"
 import { Search } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -17,25 +19,53 @@ function iconClassName(variant: "glass" | "solid") {
     : "h-6 w-6 shrink-0 text-white/85 transition-colors duration-300 group-hover:text-stone-950"
 }
 
-const FIELD_BASE_CLASS = `group flex min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-left shadow-xl ${GLASS_OUTLINE_CLASS} transition-[top,opacity,background-color,color] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`
+const FIELD_BASE_CLASS = `group flex h-[52px] min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-left shadow-xl ${GLASS_OUTLINE_CLASS} transition-[top,opacity,background-color,color] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`
 
 const FIELD_GLASS_CLASS =
   "bg-white/10 text-white backdrop-blur-[10px] hover:bg-white hover:text-stone-950"
 
 const FIELD_SOLID_CLASS = "bg-white text-stone-950"
 
+export function useFloatingSearchInputAutofocus(
+  open: boolean,
+  inputRef: RefObject<HTMLInputElement | null>,
+) {
+  useLayoutEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const focusInput = () => {
+      if (cancelled) return
+      inputRef.current?.focus({ preventScroll: true })
+    }
+    focusInput()
+    const frame = window.requestAnimationFrame(focusInput)
+    const timer = window.setTimeout(focusInput, 100)
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
+  }, [inputRef, open])
+}
+
 export function FloatingSearchFieldButton({
   display,
+  mobileDisplay,
   isPlaceholder,
   className,
   iconTestId = "floating-search-icon",
   ...props
 }: {
   display: string
+  mobileDisplay?: string
   isPlaceholder: boolean
   className?: string
   iconTestId?: string
 } & ComponentProps<"button">) {
+  const textClassName = `min-w-0 truncate transition-colors duration-300 group-hover:text-stone-950 ${
+    isPlaceholder ? "text-white/90" : "text-white"
+  }`
+
   return (
     <button
       type="button"
@@ -47,13 +77,14 @@ export function FloatingSearchFieldButton({
         data-testid={iconTestId}
         className={iconClassName("glass")}
       />
-      <span
-        className={`min-w-0 truncate transition-colors duration-300 group-hover:text-stone-950 ${
-          isPlaceholder ? "text-white/90" : "text-white"
-        }`}
-      >
-        {display}
-      </span>
+      {mobileDisplay ? (
+        <>
+          <span className={`${textClassName} md:hidden`}>{mobileDisplay}</span>
+          <span className={`${textClassName} hidden md:inline`}>{display}</span>
+        </>
+      ) : (
+        <span className={textClassName}>{display}</span>
+      )}
     </button>
   )
 }
@@ -107,7 +138,7 @@ export const FloatingSearchFieldInput = forwardRef<
           type="button"
           onClick={onClear}
           aria-label={t("clearSearch")}
-          className="-mr-2 cursor-pointer rounded-full p-2 text-stone-500 transition hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
+          className="-mr-2 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-stone-500 transition hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

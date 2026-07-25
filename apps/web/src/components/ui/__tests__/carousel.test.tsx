@@ -3,6 +3,7 @@
  */
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { emblaApi, useEmblaCarouselMock } = vi.hoisted(() => {
@@ -28,6 +29,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 
 let container: HTMLDivElement
@@ -49,14 +52,20 @@ afterEach(() => {
   container.remove()
 })
 
-function renderCarousel(orientation: "horizontal" | "vertical" = "horizontal") {
+function renderCarousel(
+  orientation: "horizontal" | "vertical" = "horizontal",
+  locale = "en",
+) {
   act(() => {
+    setRequestLocale(locale)
     root.render(
       <Carousel orientation={orientation}>
         <CarouselContent>
           <CarouselItem>One</CarouselItem>
           <CarouselItem>Two</CarouselItem>
         </CarouselContent>
+        <CarouselPrevious />
+        <CarouselNext />
       </Carousel>,
     )
   })
@@ -77,6 +86,14 @@ function wheelContent(deltaX: number, deltaY = 0): WheelEvent {
 }
 
 describe("CarouselContent — horizontal wheel support", () => {
+  it("clips horizontal overflow by default", () => {
+    renderCarousel()
+
+    const content = container.querySelector('[data-slot="carousel-content"]')
+    expect(content?.className).toContain("overflow-x-clip")
+    expect(content?.className).toContain("overflow-y-visible")
+  })
+
   it("moves to the next slide on horizontal wheel right", () => {
     renderCarousel()
 
@@ -123,5 +140,69 @@ describe("CarouselContent — horizontal wheel support", () => {
     expect(emblaApi.scrollNext).not.toHaveBeenCalled()
     expect(emblaApi.scrollPrev).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(false)
+  })
+})
+
+describe("Carousel navigation", () => {
+  it("renders accessible controls that delegate movement to Embla", () => {
+    renderCarousel()
+
+    const previous = container.querySelector<HTMLButtonElement>(
+      '[data-slot="carousel-previous"]',
+    )
+    const next = container.querySelector<HTMLButtonElement>(
+      '[data-slot="carousel-next"]',
+    )
+
+    expect(previous?.getAttribute("aria-label")).toBe("Previous slide")
+    expect(next?.getAttribute("aria-label")).toBe("Next slide")
+
+    act(() => {
+      previous?.click()
+      next?.click()
+    })
+
+    expect(emblaApi.scrollPrev).toHaveBeenCalledOnce()
+    expect(emblaApi.scrollNext).toHaveBeenCalledOnce()
+  })
+
+  it("hides directions that Embla cannot currently scroll", () => {
+    emblaApi.canScrollPrev.mockReturnValue(false)
+    emblaApi.canScrollNext.mockReturnValue(true)
+    renderCarousel()
+
+    const previous = container.querySelector<HTMLButtonElement>(
+      '[data-slot="carousel-previous"]',
+    )
+    const next = container.querySelector<HTMLButtonElement>(
+      '[data-slot="carousel-next"]',
+    )
+
+    expect(previous?.disabled).toBe(true)
+    expect(next?.disabled).toBe(false)
+  })
+
+  it("configures Embla and controls from the production locale direction", () => {
+    renderCarousel("horizontal", "ar")
+
+    const previous = container.querySelector<HTMLButtonElement>(
+      '[data-slot="carousel-previous"]',
+    )
+    const next = container.querySelector<HTMLButtonElement>(
+      '[data-slot="carousel-next"]',
+    )
+
+    expect(useEmblaCarouselMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ axis: "x", direction: "rtl" }),
+      undefined,
+    )
+    expect(previous?.className).toContain("right-3")
+    expect(next?.className).toContain("left-3")
+    expect(previous?.querySelector("svg")?.className.baseVal).toContain(
+      "lucide-chevron-right",
+    )
+    expect(next?.querySelector("svg")?.className.baseVal).toContain(
+      "lucide-chevron-left",
+    )
   })
 })

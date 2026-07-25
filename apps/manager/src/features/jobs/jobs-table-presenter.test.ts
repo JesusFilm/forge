@@ -94,6 +94,29 @@ describe("displayed job status", () => {
     expect(getDisplayedJobStatus(job)).toBe("failed")
     expect(getProgressSummary(job)).toBe("Failed at Transcription")
   })
+
+  it("formats Shorts Studio progress from the current workflow step", () => {
+    const job = buildJobRecord({
+      status: "running",
+      currentStep: "shorts_render",
+      options: {
+        shorts: {
+          assetId: "mux-1-short-1234abcd",
+          sourceMuxAssetId: "mux-1",
+          sourcePlaybackId: "playback-1",
+          clip: { startSec: 10, endSec: 40 },
+          language: { bcp47: "en", whisper: "en" },
+        },
+      },
+      steps: [
+        { name: "shorts_prepare", status: "completed", retries: 0 },
+        { name: "shorts_render", status: "running", retries: 0 },
+        { name: "shorts_mux_output", status: "pending", retries: 0 },
+      ],
+    })
+
+    expect(getProgressSummary(job)).toBe("In progress at Shorts Render")
+  })
 })
 
 describe("getStepDotSymbol", () => {

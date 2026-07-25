@@ -7,13 +7,13 @@
  *  - Header metadata (title, poster, duration, language) renders when provided.
  *  - Quality bucketing — the 8 raw quality keys collapse into Highest/High/Low.
  *  - Default selection is Highest, surfaced in the dropdown trigger.
- *  - AE4 gating: Download is disabled until ToS is checked. Size has a default,
- *    so the only blocker is the agreement checkbox.
+ *  - Terms gating: every downloadable viewer must agree before Download.
+ *  - Account gating: flagged signed-in viewers re-check sessions before the
+ *    proxy request.
  *  - Allowlist enforcement: blocked URLs surface an inline error and never
  *    create the `<a>` element that triggers the browser download.
  *  - Allowed URLs trigger a programmatic anchor with the correct attributes.
  *  - Empty-state defensive render when `downloads` is `[]`.
- *  - Terms-of-Use link opens in a new tab with safe rel attrs.
  *
  * Note: the `@base-ui/react` Dialog renders into a portal, so DOM queries use
  * `document` (not the local container) for elements inside the modal.
@@ -32,15 +32,14 @@ import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 
 // next/image renders an <img> in tests; the modal otherwise tries to load the
-// real image-optimization endpoint, which JSDOM can't serve. Strip the
-// next/image-only props (`fill`, `sizes`) so React doesn't warn about them
-// being forwarded to a plain DOM <img>.
+// real image-optimization endpoint, which JSDOM can't serve. Preserve its
+// layout-only props as data attributes without forwarding them to the DOM.
 vi.mock("next/image", () => ({
   default: ({
     src,
     alt,
-    fill: _fill,
-    sizes: _sizes,
+    fill,
+    sizes,
     ...rest
   }: {
     src: string
@@ -51,7 +50,15 @@ vi.mock("next/image", () => ({
     // Bypass `<img>` lint warning — this mock is only loaded in jsdom
     // tests where next/image's optimization endpoint isn't available.
     const Img = "img"
-    return <Img src={src} alt={alt} {...rest} />
+    return (
+      <Img
+        src={src}
+        alt={alt}
+        data-fill={fill ? "true" : "false"}
+        data-sizes={sizes}
+        {...rest}
+      />
+    )
   },
 }))
 
@@ -78,9 +85,7 @@ beforeEach(() => {
   root = createRoot(container)
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      Response.json({ authenticated: false, gateEnabled: false }),
-    ),
+    vi.fn(async () => Response.json({ authenticated: true })),
   )
   vi.mocked(redirectToAuth).mockReset()
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
@@ -93,6 +98,7 @@ afterEach(() => {
   container.remove()
   // Drop any portal nodes left over from previous renders.
   document.body.innerHTML = ""
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -129,6 +135,15 @@ function $$(selector: string): HTMLElement[] {
   return Array.from(document.querySelectorAll(selector)) as HTMLElement[]
 }
 
+function acceptTerms() {
+  const checkbox = $(
+    '[data-testid="watch-download-modal-tos"]',
+  ) as HTMLInputElement
+  act(() => {
+    checkbox.click()
+  })
+}
+
 describe("DownloadModal — header metadata", () => {
   it("renders title, language pill, and duration overlay when provided", () => {
     act(() => {
@@ -159,6 +174,14 @@ describe("DownloadModal — header metadata", () => {
       $('[data-testid="watch-download-modal-duration"]')?.textContent,
     ).toContain("2:07:54")
     expect($('[data-testid="watch-download-modal-poster"]')).not.toBeNull()
+    const poster = $(
+      '[data-testid="watch-download-modal-poster"] img',
+    ) as HTMLImageElement | null
+    expect(poster?.getAttribute("src")).toBe(
+      "https://imagedelivery.net/poster.jpg",
+    )
+    expect(poster?.dataset.fill).toBe("true")
+    expect(poster?.dataset.sizes).toBe("(min-width: 640px) 224px, 100vw")
     expect($('[data-testid="watch-download-modal-eyebrow"]')?.className).toBe(
       WATCH_SECTION_EYEBROW_CLASS,
     )
@@ -306,7 +329,9 @@ describe("DownloadModal — quality bucketing", () => {
     expect(trigger?.parentElement?.parentElement?.className).toContain("px-2")
   })
 
-  it("formats sizes >= 1 GB as GB and < 1 GB as MB", () => {
+  it("omits file sizes from the selected tier and every option", () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }))
+    vi.stubGlobal("fetch", fetchMock)
     act(() => {
       root.render(
         <TestDownloadModal
@@ -333,15 +358,18 @@ describe("DownloadModal — quality bucketing", () => {
     const trigger = $(
       '[data-testid="watch-download-modal-size-trigger"]',
     ) as HTMLButtonElement
-    expect(trigger.textContent).toContain("5.14 GB")
+    expect(trigger.textContent).toBe("Highest")
     act(() => {
       trigger.click()
     })
-    const lowOption = $$(
-      '[data-testid="watch-download-modal-size-option"]',
-    ).find((o) => o.getAttribute("data-tier") === "low")
-    // 558.17 MB rounds to "558 MB" with 0-decimal formatting for >= 100 MB.
-    expect(lowOption?.textContent).toContain("558 MB")
+    const optionText = $$('[data-testid="watch-download-modal-size-option"]')
+      .map((option) => option.textContent)
+      .join(" ")
+    expect(optionText).toContain("Highest")
+    expect(optionText).toContain("Low")
+    expect(optionText).not.toContain("MB")
+    expect(optionText).not.toContain("GB")
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("keeps the open file-size list in document flow so the modal can scroll to it", () => {
@@ -368,13 +396,65 @@ describe("DownloadModal — quality bucketing", () => {
     })
 
     const list = $('[data-testid="watch-download-modal-size-list"]')
-    expect(list?.className).toContain("relative")
+    expect(list?.parentElement).toBe(document.body)
+    expect(list?.className).toContain("fixed")
+    expect(list?.className).toContain("max-h-72")
+    expect(list?.className).toContain("transition-[opacity,transform]")
+    expect(list?.className).toContain("duration-150")
+    expect(list?.className).toContain("opacity-100")
+    expect(list?.className).not.toContain("relative")
     expect(list?.className).not.toContain("absolute")
+  })
+
+  it("animates the file size dropdown closed before unmounting it", () => {
+    vi.useFakeTimers()
+
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[
+            makeDownload({ documentId: "fhd", quality: "fhd" }),
+            makeDownload({ documentId: "hd", quality: "hd" }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const trigger = $(
+      '[data-testid="watch-download-modal-size-trigger"]',
+    ) as HTMLButtonElement
+
+    act(() => {
+      trigger.click()
+    })
+
+    const openList = $('[data-testid="watch-download-modal-size-list"]')
+    expect(openList?.getAttribute("data-open")).toBe("true")
+    expect(openList?.className).toContain("opacity-100")
+
+    act(() => {
+      trigger.click()
+    })
+
+    const closingList = $('[data-testid="watch-download-modal-size-list"]')
+    expect(closingList).not.toBeNull()
+    expect(closingList?.getAttribute("data-open")).toBe("false")
+    expect(closingList?.className).toContain("opacity-0")
+    expect(closingList?.className).toContain("scale-[0.98]")
+    expect(closingList?.className).toContain("-translate-y-1")
+
+    act(() => {
+      vi.advanceTimersByTime(160)
+    })
+
+    expect($('[data-testid="watch-download-modal-size-list"]')).toBeNull()
   })
 })
 
-describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
-  it("renders Download disabled by default", () => {
+describe("DownloadModal — Terms of Use agreement", () => {
+  it("renders the legacy confirmation row with Download disabled by default", () => {
     act(() => {
       root.render(
         <TestDownloadModal
@@ -388,10 +468,159 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
+    const checkbox = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+    const row = $('[data-testid="watch-download-modal-confirmation-row"]')
+    expect(confirm.disabled).toBe(true)
+    expect(checkbox.checked).toBe(false)
+    expect(checkbox.getAttribute("aria-label")).toBe(
+      "I agree to the Terms of Use",
+    )
+    expect(row?.textContent).toContain("I agree to the Terms of Use")
+    expect(row?.className).toContain("rounded-2xl")
+    expect(row?.className).toContain("sm:flex-row")
+    expect(row?.contains(confirm)).toBe(true)
+  })
+
+  it("enables Download only while the checkbox is checked", () => {
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const confirm = $(
+      '[data-testid="watch-download-modal-confirm"]',
+    ) as HTMLButtonElement
+    const checkbox = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+
+    acceptTerms()
+    expect(checkbox.checked).toBe(true)
+    expect(confirm.disabled).toBe(false)
+
+    act(() => {
+      checkbox.click()
+    })
+    expect(checkbox.checked).toBe(false)
     expect(confirm.disabled).toBe(true)
   })
 
-  it("renders the ToS agreement as a regular-label checkbox with a muted underline link", () => {
+  it("opens Terms without accepting; Cancel keeps the outer modal disabled", () => {
+    const onClose = vi.fn()
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={onClose}
+        />,
+      )
+    })
+
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-tos-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(
+      $('[data-testid="watch-download-modal-terms-dialog"]'),
+    ).not.toBeNull()
+    expect(
+      $('[data-testid="watch-download-modal-terms-body"]')?.textContent,
+    ).toContain("PLEASE CAREFULLY REVIEW THE TERMS OF USE")
+    const canonicalLink = $(
+      '[data-testid="watch-download-modal-terms-canonical-notice"] a',
+    ) as HTMLAnchorElement
+    expect(canonicalLink.href).toBe("https://www.jesusfilm.org/terms-of-use/")
+    expect(canonicalLink.target).toBe("_blank")
+    expect(canonicalLink.rel).toContain("noopener")
+    expect(canonicalLink.rel).toContain("noreferrer")
+    expect(
+      ($('[data-testid="watch-download-modal-tos"]') as HTMLInputElement)
+        .checked,
+    ).toBe(false)
+
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-terms-cancel"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+    expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(
+      ($('[data-testid="watch-download-modal-confirm"]') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+  })
+
+  it.each([
+    {
+      name: "X button",
+      dismiss: () =>
+        (
+          $(
+            '[data-testid="watch-download-modal-terms-close"]',
+          ) as HTMLButtonElement
+        ).click(),
+    },
+    {
+      name: "backdrop",
+      dismiss: () =>
+        (
+          $('[data-testid="watch-download-modal-terms-overlay"]') as HTMLElement
+        ).click(),
+    },
+    {
+      name: "Escape",
+      dismiss: () =>
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+        ),
+    },
+  ])("$name dismisses Terms without accepting", ({ dismiss }) => {
+    const onClose = vi.fn()
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={onClose}
+        />,
+      )
+    })
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-tos-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      dismiss()
+    })
+
+    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+    expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(
+      ($('[data-testid="watch-download-modal-tos"]') as HTMLInputElement)
+        .checked,
+    ).toBe(false)
+  })
+
+  it("Accept checks the agreement and enables Download", () => {
     act(() => {
       root.render(
         <TestDownloadModal
@@ -402,46 +631,70 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       )
     })
 
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    const label = tos.closest("label")
-    const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
-    expect(tos.type).toBe("checkbox")
-    expect(tos.className).toContain("rounded-[3px]")
-    expect(tos.className).not.toContain("rounded-full")
-    expect(label?.className).toContain("font-normal")
-    expect(label?.className).not.toContain("font-semibold")
-    expect(trigger?.className).toContain("font-normal")
-    expect(trigger?.className).toContain("underline")
-    expect(trigger?.className).toContain("decoration-brand-red/40")
-  })
-
-  it("enables Download when ToS is checked (size already defaulted to Highest)", () => {
     act(() => {
-      root.render(
-        <TestDownloadModal
-          open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
-          onClose={vi.fn()}
-        />,
-      )
+      ;(
+        $(
+          '[data-testid="watch-download-modal-tos-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-terms-accept"]',
+        ) as HTMLButtonElement
+      ).click()
     })
 
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    act(() => {
-      tos.click()
-    })
-
-    const confirm = $(
-      '[data-testid="watch-download-modal-confirm"]',
-    ) as HTMLButtonElement
-    expect(tos.checked).toBe(true)
-    expect(confirm.disabled).toBe(false)
+    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+    expect(
+      ($('[data-testid="watch-download-modal-tos"]') as HTMLInputElement)
+        .checked,
+    ).toBe(true)
+    expect(
+      ($('[data-testid="watch-download-modal-confirm"]') as HTMLButtonElement)
+        .disabled,
+    ).toBe(false)
   })
 
+  it("resets agreement after the outer modal closes and reopens", () => {
+    const onClose = vi.fn()
+    const render = (open: boolean) => (
+      <TestDownloadModal
+        open={open}
+        downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+        onClose={onClose}
+      />
+    )
+    act(() => {
+      root.render(render(true))
+    })
+    acceptTerms()
+
+    act(() => {
+      ;(
+        $('[data-testid="watch-download-modal-close"]') as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      root.render(render(false))
+    })
+    act(() => {
+      root.render(render(true))
+    })
+
+    expect(
+      ($('[data-testid="watch-download-modal-tos"]') as HTMLInputElement)
+        .checked,
+    ).toBe(false)
+    expect(
+      ($('[data-testid="watch-download-modal-confirm"]') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
+  })
+})
+
+describe("DownloadModal — account-authenticated downloads", () => {
   it("closes the dialog after a successful download click", async () => {
     const onClose = vi.fn()
     act(() => {
@@ -461,13 +714,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       )
     })
 
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    act(() => {
-      tos.click()
-    })
-
+    acceptTerms()
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
@@ -475,6 +722,10 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       confirm.click()
     })
 
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/watch/api/auth/session"),
+      expect.anything(),
+    )
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -483,22 +734,25 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       root.render(
         <TestDownloadModal
           open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              height: 360,
+              quality: "fhd",
+            }),
+          ]}
+          languageCode="eng"
+          languageName="English"
+          languageSlug="english"
           variantId="variant-1"
           videoSlug="jesus"
-          videoTitle="JESUS"
+          videoTitle="Jesus Film"
           onClose={vi.fn()}
         />,
       )
     })
 
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    act(() => {
-      tos.click()
-    })
-
+    acceptTerms()
     const created: HTMLAnchorElement[] = []
     const realAppend = document.body.appendChild.bind(document.body)
     const appendSpy = vi
@@ -526,9 +780,9 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect(a.getAttribute("href")).toContain("variantId=variant-1")
     expect(a.getAttribute("href")).toContain("videoSlug=jesus")
     expect(a.getAttribute("href")).not.toContain("stream.mux.com")
-    // Filename is derived from the video title + tier.
+    // Filename is derived from title, selected audio language, code, and height.
     const downloadAttr = a.getAttribute("download") ?? ""
-    expect(downloadAttr).toBe("jesus-highest.mp4")
+    expect(downloadAttr).toBe("Jesus-Film_English_eng_360p.mp4")
     expect(a.getAttribute("href")).toContain(
       `filename=${encodeURIComponent(downloadAttr)}`,
     )
@@ -537,12 +791,13 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
   })
 
   it("re-checks auth before final download and blocks the anchor when the session is stale", async () => {
+    const loginUrl =
+      "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
     const fetchMock = vi.fn(async () =>
       Response.json({
+        accountGateEnabled: true,
         authenticated: false,
-        gateEnabled: true,
-        loginUrl:
-          "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html",
+        loginUrl,
       }),
     )
     vi.stubGlobal("fetch", fetchMock)
@@ -557,6 +812,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       root.render(
         <TestDownloadModal
           open
+          accountGateEnabled
           downloads={[
             makeDownload({
               documentId: "dl-1",
@@ -570,13 +826,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       )
     })
 
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    act(() => {
-      tos.click()
-    })
-
+    acceptTerms()
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
@@ -589,12 +839,119 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       expect.objectContaining({ credentials: "include" }),
     )
     expect(created).toHaveLength(0)
-    expect($('[data-testid="watch-download-modal-error"]')?.textContent).toBe(
-      "Your session expired. Sign in again to download.",
+    const authRequiredCopy =
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent ?? ""
+    expect(authRequiredCopy).toContain("Want to download this video?")
+    expect(authRequiredCopy.indexOf("Sign in to download")).toBeLessThan(
+      authRequiredCopy.indexOf("Want to download this video?"),
     )
-    expect(redirectToAuth).toHaveBeenCalledWith(
-      "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html",
+    expect(authRequiredCopy).toContain(
+      "A free Jesus Film account is required to download videos.",
     )
+    expect(authRequiredCopy).toContain("Keep watching")
+    expect($('[data-testid="watch-download-modal-error"]')).toBeNull()
+    expect(redirectToAuth).not.toHaveBeenCalled()
+
+    await act(async () => {
+      ;(
+        $('[data-testid="watch-download-modal-sign-in"]') as HTMLButtonElement
+      ).click()
+    })
+    expect(redirectToAuth).toHaveBeenCalledWith(loginUrl, {
+      reopenDownload: true,
+    })
+  })
+
+  it("shows a sign-in explanation when opened for a signed-out viewer", async () => {
+    const loginUrl =
+      "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
+    const onClose = vi.fn()
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          accountGateEnabled
+          authRequiredLoginUrl={loginUrl}
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          videoTitle="JESUS"
+          onClose={onClose}
+        />,
+      )
+    })
+
+    const authRequiredCopy =
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent ?? ""
+    expect(authRequiredCopy).toContain("Want to download this video?")
+    expect(authRequiredCopy.indexOf("Sign in to download")).toBeLessThan(
+      authRequiredCopy.indexOf("Want to download this video?"),
+    )
+    expect(authRequiredCopy).toContain(
+      "A free Jesus Film account is required to download videos.",
+    )
+    expect(authRequiredCopy).toContain("Keep watching")
+    expect($('[data-testid="watch-download-modal-sign-in"]')?.textContent).toBe(
+      "Sign in to download",
+    )
+    expect($('[data-testid="watch-download-modal-tos"]')).toBeNull()
+    expect($('[data-testid="watch-download-modal-confirm"]')).toBeNull()
+    const close = $(
+      '[data-testid="watch-download-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+    expect($('[data-testid="watch-download-modal-mobile-close"]')).toBeNull()
+
+    await act(async () => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-keep-watching"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(onClose).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      ;(
+        $('[data-testid="watch-download-modal-sign-in"]') as HTMLButtonElement
+      ).click()
+    })
+    expect(redirectToAuth).toHaveBeenCalledWith(loginUrl, {
+      reopenDownload: true,
+    })
+
+    await act(async () => close.click())
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not probe sizes while flagged signed-out viewers see sign-in state", () => {
+    const fetchMock = vi.fn(async () => Response.json({ authenticated: true }))
+    vi.stubGlobal("fetch", fetchMock)
+    const loginUrl =
+      "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
+
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          accountGateEnabled
+          authRequiredLoginUrl={loginUrl}
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              size: 0,
+            }),
+          ]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect(
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
+    ).toContain("Want to download this video?")
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("shows a visible error instead of no-oping when the session check fails", async () => {
@@ -613,6 +970,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       root.render(
         <TestDownloadModal
           open
+          accountGateEnabled
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           videoTitle="JESUS"
           onClose={vi.fn()}
@@ -620,13 +978,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       )
     })
 
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    act(() => {
-      tos.click()
-    })
-
+    acceptTerms()
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
@@ -641,223 +993,32 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
   })
 })
 
-describe("DownloadModal — Terms of Use nested dialog", () => {
-  it("renders the ToU trigger as a button (not an external link)", () => {
-    act(() => {
-      root.render(
-        <TestDownloadModal
-          open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
-    expect(trigger).not.toBeNull()
-    expect(trigger!.tagName.toLowerCase()).toBe("button")
-    // Nested dialog is closed by default.
-    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
-  })
-
-  it("opens the nested Terms-of-Use dialog when the trigger is clicked", () => {
-    act(() => {
-      root.render(
-        <TestDownloadModal
-          open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    const trigger = $(
-      '[data-testid="watch-download-modal-tos-trigger"]',
-    ) as HTMLButtonElement
-    act(() => {
-      trigger.click()
-    })
-
-    expect(
-      $('[data-testid="watch-download-modal-terms-dialog"]'),
-    ).not.toBeNull()
-    expect(
-      $('[data-testid="watch-download-modal-terms-title"]')?.textContent,
-    ).toBe("Terms of Use")
-    // Body should contain at least one paragraph of the canonical terms text.
-    expect(
-      $('[data-testid="watch-download-modal-terms-body"]')?.textContent,
-    ).toContain("PLEASE CAREFULLY REVIEW THE TERMS OF USE")
-    // Opening the dialog must NOT prematurely tick the ToS checkbox —
-    // only Accept does that.
-    const checkbox = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    expect(checkbox.checked).toBe(false)
-  })
-
-  it("Cancel closes the nested dialog without ticking the ToS checkbox", () => {
-    act(() => {
-      root.render(
-        <TestDownloadModal
-          open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-tos-trigger"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-    const checkboxBefore = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    expect(checkboxBefore.checked).toBe(false)
-
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-terms-cancel"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-
-    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
-    const checkboxAfter = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    expect(checkboxAfter.checked).toBe(false)
-  })
-
-  it("Accept ticks the ToS checkbox and closes the nested dialog", () => {
-    act(() => {
-      root.render(
-        <TestDownloadModal
-          open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-tos-trigger"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-terms-accept"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-
-    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
-    const checkbox = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    expect(checkbox.checked).toBe(true)
-    // The download dialog should still be open underneath.
-    expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
-    // Accept must unlock the Download button — direct `canDownload`
-    // gate verification. Without this, a regression that ticks the
-    // checkbox visually but never feeds tosAgreed back into canDownload
-    // would still pass the checkbox assertion above.
-    const confirm = $(
-      '[data-testid="watch-download-modal-confirm"]',
-    ) as HTMLButtonElement
-    expect(confirm.disabled).toBe(false)
-  })
-
-  it("the X close button dismisses the nested dialog without accepting", () => {
-    act(() => {
-      root.render(
-        <TestDownloadModal
-          open
-          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-tos-trigger"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-terms-close"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-
-    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
-    const checkbox = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    expect(checkbox.checked).toBe(false)
-  })
-
-  it("closing the outer modal via its X button fires handleOpenChange, resetting termsOpen and calling onClose", () => {
+describe("DownloadModal — empty + lifecycle", () => {
+  it("keeps the shared top-right close icon visible on mobile", () => {
     const onClose = vi.fn()
-    const downloads = [makeDownload({ documentId: "dl-1", quality: "fhd" })]
-
     act(() => {
       root.render(
-        <TestDownloadModal open downloads={downloads} onClose={onClose} />,
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={onClose}
+        />,
       )
     })
-    act(() => {
-      ;(
-        $(
-          '[data-testid="watch-download-modal-tos-trigger"]',
-        ) as HTMLButtonElement
-      ).click()
-    })
-    expect(
-      $('[data-testid="watch-download-modal-terms-dialog"]'),
-    ).not.toBeNull()
+
     const close = $(
       '[data-testid="watch-download-modal-close"]',
     ) as HTMLButtonElement
-    expect(close.className).toContain("fixed")
-    expect(close.className).toContain("top-12")
-    expect(close.className).toContain("right-10")
-    expect(close.className).toContain("h-[52px]")
-    expect(close.className).toContain("w-12")
-    expect(close.className).toContain("z-[60]")
-    expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
+    expect(close).not.toBeNull()
+    expect(close.className).not.toContain("hidden")
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+    expect($("[data-testid='watch-download-modal-mobile-close']")).toBeNull()
 
-    // Click the fullscreen close button. This mirrors the language
-    // switcher-style chrome and still routes through handleOpenChange(false),
-    // which is the reset path for the nested Terms dialog.
-    act(() => {
-      close.click()
-    })
-
-    // The reset path fired: onClose was invoked AND the inner dialog
-    // is no longer rendered (termsOpen=false). Re-rendering with
-    // open=true (the parent's re-open path) must NOT resurrect it.
-    expect(onClose).toHaveBeenCalled()
-    expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+    act(() => close.click())
+    expect(onClose).toHaveBeenCalledOnce()
   })
-})
 
-describe("DownloadModal — empty + lifecycle", () => {
   it("shows an empty-state message when downloads is empty", () => {
     act(() => {
       root.render(<TestDownloadModal open downloads={[]} onClose={vi.fn()} />)
@@ -867,7 +1028,11 @@ describe("DownloadModal — empty + lifecycle", () => {
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
+    const checkbox = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
     expect(confirm.disabled).toBe(true)
+    expect(checkbox.disabled).toBe(true)
   })
 
   it("does not render any modal contents when open is false", () => {
@@ -885,19 +1050,10 @@ describe("DownloadModal — empty + lifecycle", () => {
   })
 })
 
-describe("DownloadModal — formatSize edge cases", () => {
-  // The CMS English variant ships with `size: 0` for all downloads; the
-  // formatter must treat that as "no size known" (empty label) so the
-  // lazy HEAD probe can fill in the real value. These tests pin the
-  // negative-path of the formatter so a regression that resurrected
-  // "0.00 MB" labels would fail.
-  it("renders no size label when CMS size is 0 (waits for HEAD probe)", () => {
-    // Stub fetch with a never-resolving promise so the probe stays in
-    // flight and we observe the pre-probe label state.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise(() => undefined)),
-    )
+describe("DownloadModal — hidden size metadata", () => {
+  it("renders no size label and makes no probe when CMS size is 0", () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }))
+    vi.stubGlobal("fetch", fetchMock)
     act(() => {
       root.render(
         <TestDownloadModal
@@ -914,15 +1070,14 @@ describe("DownloadModal — formatSize edge cases", () => {
       '[data-testid="watch-download-modal-size-trigger"]',
     ) as HTMLButtonElement
     expect(trigger.textContent).toContain("Highest")
-    // No parenthetical size — the empty `formatSize` return must hide
-    // the `(...)` span entirely, not render `(0.00 MB)`.
     expect(trigger.textContent).not.toContain("(")
     expect(trigger.textContent).not.toContain("MB")
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 
-describe("DownloadModal — lazy HEAD probe", () => {
-  it("issues one HEAD per unique download id when CMS size is missing", async () => {
+describe("DownloadModal — no lazy HEAD probe", () => {
+  it("does not probe unique download ids when CMS size is missing", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(null, {
@@ -959,30 +1114,17 @@ describe("DownloadModal — lazy HEAD probe", () => {
         />,
       )
     })
-    // Flush probe pipeline (fetch → json → setState).
     await act(async () => {
       await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
     })
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-    // All three were HEAD requests through the same-origin proxy.
-    for (const call of fetchMock.mock.calls) {
-      const [url, init] = call as unknown as [string, RequestInit | undefined]
-      expect(url).toContain("/watch/api/download?")
-      expect(url).toContain("variantId=variant-1")
-      expect(url).toContain("videoSlug=jesus")
-      expect(url).not.toContain("stream.mux.com")
-      expect(init?.method).toBe("HEAD")
-    }
-    // Probed size landed in the trigger label.
+    expect(fetchMock).not.toHaveBeenCalled()
     const trigger = $(
       '[data-testid="watch-download-modal-size-trigger"]',
     ) as HTMLButtonElement
-    expect(trigger.textContent).toContain("12.00 MB")
+    expect(trigger.textContent).toBe("Highest")
   })
 
-  it("deduplicates HEADs across tiers that share a download id", async () => {
+  it("does not probe duplicate download ids", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(null, {
@@ -1022,11 +1164,10 @@ describe("DownloadModal — lazy HEAD probe", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    // 2 unique download ids → 2 HEADs, not 3.
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("skips the HEAD probe when CMS already provides a valid size", () => {
+  it("does not display a valid CMS size", () => {
     const fetchMock = vi.fn(() => new Promise(() => undefined))
     vi.stubGlobal("fetch", fetchMock)
     act(() => {
@@ -1048,10 +1189,10 @@ describe("DownloadModal — lazy HEAD probe", () => {
     const trigger = $(
       '[data-testid="watch-download-modal-size-trigger"]',
     ) as HTMLButtonElement
-    expect(trigger.textContent).toContain("50.00 MB")
+    expect(trigger.textContent).toBe("Highest")
   })
 
-  it("does not re-issue HEAD after probe completion (no dep-loop)", async () => {
+  it("does not issue a HEAD after repeated effect flushes", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(null, {
@@ -1080,20 +1221,15 @@ describe("DownloadModal — lazy HEAD probe", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    const callsAfterFirstSettle = fetchMock.mock.calls.length
-    // Give the effect a couple more flushes — if `probedSizes` were in
-    // the dep array, the effect would re-run and re-issue (or at least
-    // re-construct an AbortController per cycle).
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
       await Promise.resolve()
     })
-    expect(fetchMock.mock.calls.length).toBe(callsAfterFirstSettle)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("exposes probed size on the option element as data-size-bytes", async () => {
+  it("does not expose a probed size on the option element", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(null, {
@@ -1133,7 +1269,7 @@ describe("DownloadModal — lazy HEAD probe", () => {
       '[data-testid="watch-download-modal-size-option"][data-tier="highest"]',
     ) as HTMLButtonElement
     expect(option).not.toBeNull()
-    // Machine-readable size for agents that want to pick by byte count.
-    expect(option.getAttribute("data-size-bytes")).toBe("9437184")
+    expect(option.getAttribute("data-size-bytes")).toBe("")
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

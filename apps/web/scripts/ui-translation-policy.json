@@ -1,0 +1,14 @@
+{
+  "humanReviewedLocales": ["en", "ru"],
+  "pendingTranslationPaths": [],
+  "intentionallyLocaleNeutral": [
+    "DownloadModal.termsAgreementSuffix",
+    "LanguageInventory.bibleProject",
+    "LanguageInventory.sectionMetricLabel",
+    "SubtitleTranscript.aiSuffix",
+    "WatchHomeMuxInserts.datedTitle",
+    "WatchHomeSections.bibleProjectEyebrow",
+    "WatchHomeSections.nuaTitle",
+    "WatchHomeSections.nuaWorthTitle"
+  ]
+}

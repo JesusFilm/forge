@@ -3,29 +3,26 @@
 import { useEffect, useRef, useState } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { getWebVttCueText } from "@/lib/webvtt"
+
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 
 const CHROME_BAR_HEIGHT = 64
-
-function stripHtmlTags(text: string): string {
-  if (typeof DOMParser === "undefined") return text.replace(/<[^>]+>/g, "")
-  const doc = new DOMParser().parseFromString(text, "text/html")
-  return doc.body.textContent ?? ""
-}
 
 export function SubtitleOverlay({
   playerRef,
   wrapperRef,
   player,
+  controlsVisible,
 }: {
   playerRef: React.RefObject<MuxPlayerRef | null>
   wrapperRef: React.RefObject<HTMLDivElement | null>
   player: MuxPlayerRef | null
+  controlsVisible: boolean
 }) {
   const [cueText, setCueText] = useState<string | null>(null)
   const [bottomOffset, setBottomOffset] = useState(16)
   const [playbackCommitted, setPlaybackCommitted] = useState(false)
-  const [chromeBarVisible, setChromeBarVisible] = useState(false)
   const listenerRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
@@ -45,54 +42,6 @@ export function SubtitleOverlay({
     })
     return () => observer.disconnect()
   }, [wrapperRef])
-
-  useEffect(() => {
-    if (!playbackCommitted) return
-
-    const sync = () => {
-      const bar = document.querySelector(
-        '[data-testid="hero-player-custom-chrome"]',
-      )
-      setChromeBarVisible(bar?.getAttribute("data-visible") === "true")
-    }
-
-    sync()
-
-    const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type === "attributes" && m.attributeName === "data-visible") {
-          sync()
-          return
-        }
-        if (m.type === "childList") {
-          const bar = document.querySelector(
-            '[data-testid="hero-player-custom-chrome"]',
-          )
-          if (bar) {
-            observer.observe(bar, {
-              attributes: true,
-              attributeFilter: ["data-visible"],
-            })
-            sync()
-          }
-        }
-      }
-    })
-
-    const bar = document.querySelector(
-      '[data-testid="hero-player-custom-chrome"]',
-    )
-    if (bar) {
-      observer.observe(bar, {
-        attributes: true,
-        attributeFilter: ["data-visible"],
-      })
-    } else {
-      observer.observe(document.body, { childList: true, subtree: true })
-    }
-
-    return () => observer.disconnect()
-  }, [playbackCommitted])
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -158,7 +107,7 @@ export function SubtitleOverlay({
         const texts: string[] = []
         for (let i = 0; i < activeCues.length; i++) {
           const cue = activeCues[i] as VTTCue
-          if (cue.text) texts.push(stripHtmlTags(cue.text))
+          if (cue.text) texts.push(getWebVttCueText(cue))
         }
         setCueText(texts.length > 0 ? texts.join("\n") : null)
       }
@@ -198,7 +147,7 @@ export function SubtitleOverlay({
   if (!cueText || !playbackCommitted) return null
 
   const chromeShift = (() => {
-    if (!chromeBarVisible) return 0
+    if (!controlsVisible) return 0
     const bar = document.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
     )
@@ -220,7 +169,7 @@ export function SubtitleOverlay({
         transition: "transform 200ms ease-out",
       }}
     >
-      <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/40 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
+      <div className="max-w-[min(80%,700px)] whitespace-pre-line px-5 py-2.5 text-center text-lg font-medium text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.9)] md:text-xl">
         {cueText}
       </div>
     </div>

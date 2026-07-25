@@ -7,8 +7,6 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Runs the self-hosted Mastra Server runtime for Forge agents and workflows.
 - Owns transcript embedding chunk planning and provider calls, then submits
   transcript vectors to Admin ingest.
-- Owns scene embedding provider calls and workflow diagnostics, then submits
-  scene vectors to Admin's scene-specific ingest endpoint.
 - Owns experience embedding provider calls and workflow diagnostics, then
   submits experience vectors to Admin's experience-specific ingest endpoint.
 - Owns offline eval query generation for catalog-derived, locale-quality, and
@@ -17,22 +15,57 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns the offline search eval system: seed prompt sets, baseline/report
   artifacts, comparison workflows, judge orchestration, and developer/operator
   eval routes that call Admin search through authenticated HTTP.
+- Owns search eval caller tracks. Public Watch, AI experience generation, and
+  semantic diagnostics use different seed prompts, mode defaults, judge
+  rubrics, and baseline identities even when they call the same Admin search
+  endpoint.
 - Owns a thin search eval orchestrator that coordinates those leaf workflows
   for baseline capture, comparison, native Evaluation sync, and release-gate
   summaries without moving leaf logic into one mega-workflow.
 - Owns Firecrawl web data access for agents and operator workflows through
   bounded search/scrape tools, a dedicated web research agent, and the
   `/forge-firecrawl-web-data` service route.
-- All embedding workflows share provider-result validation for count alignment,
-  finite vector values, and configured dimensions before calling Admin.
+- Owns optional website review-queue and saved-source discovery integration.
+  Incomplete website configuration disables only that integration and must
+  never block Mastra startup; outbound clients require HTTPS before sending
+  the shared bearer and reject redirects.
+- Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
+  reads Manager transcript artifacts, translates and retimes subtitles, and
+  writes Manager-compatible subtitle/translation artifacts to shared storage.
+- Owns RAG retrieval for the seeker agent through the `retrieveAnswer` tool and
+  `jesusfilm-rag-client` (outbound-only bearer to the JesusFilm RAG service;
+  the tool returns cited passages, the agent generates the answer). Fully
+  optional config — unset degrades to an explicit unavailable result, never a
+  boot failure.
+- Owns retrieval-only Langfuse prompt management through
+  `langfuse-prompt-client` (`fetchLangfusePrompt` result-union fetch + cached
+  `getManagedPrompt` with caller-supplied fallback and provenance). Fully
+  optional config — unset serves the fallback (`config_missing`), never a
+  boot failure. Prompt authoring, versioning, and label moves stay in the
+  Langfuse UI; per-environment Langfuse projects keep dev keys away from
+  tuned prod prompt text. Nothing consumes the helper yet — seeker
+  integration is tracked as feat-272 in the ai-chat lane.
+- Owns subtitle scripture accuracy validation for Bible-story results:
+  runs model-knowledge checks by default, can optionally compare against a
+  configured target-language Bible text source, and writes sanitized
+  Manager-compatible validation artifacts.
+- Owns source transcript scripture correction judgment through
+  `/forge-transcript-scripture-correction`: detects likely Bible-story source
+  transcripts and returns bounded correction candidates/flag-only findings.
+  Manager applies deterministic exact-match corrections and writes artifacts.
+- Transcript and experience embedding workflows share provider-result
+  validation for count alignment, finite vector values, and configured
+  dimensions before calling Admin.
 - AI Gateway content embeddings request the normal OpenAI-compatible
   embedding response and require the configured native dimensions before Admin
   ingest. Current production gateway output is native 1536, so Mastra does not
   pass `dimensions` through LiteLLM and does not apply a client transform; keep
   the shared 4096-to-1536 truncate/re-normalize helper for future gateway
   variants that truly return 4096.
-- All embedding workflows use the shared Admin ingest client behavior but keep
-  separate transcript, scene, and experience endpoints and payload schemas.
+- Transcript and experience embedding workflows use the shared Admin ingest
+  client behavior but keep separate endpoints and payload schemas. The scene
+  embedding workflow/Admin ingest path is retired; scene analysis artifacts are
+  non-search source artifacts.
 - Generation modes are consistent across embedding workflows: omitted means
   idempotent; explicit repair, force, and model-upgrade request rewrites.
 - Builds Studio assets with `mastra build --studio` and serves them from the
@@ -40,6 +73,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Human Studio access is handled by `apps/mastra-gateway`; this service should
   not become the human identity authority.
 - App-to-runtime calls use service bearer authentication.
+- Owns the owner-approved `video-first-devotional` durable control loop as a
+  narrow exception to the default Manager-owned heavy-media orchestration rule.
+  Mastra owns workflow state, approval, polling, and publish handoff; Shorts
+  Worker continues to own all media bytes, ffmpeg, Chromium, and rendering.
 
 ## Boundaries
 
@@ -50,6 +87,18 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Runtime storage uses Postgres via `DATABASE_URL`; Studio-visible logs and
   observability use DuckDB files under `MASTRA_STORAGE_DIR` on the Railway
   volume.
+- The video-first devotional exception requires exactly one Mastra replica;
+  Postgres workflow persistence; authenticated, serialized lifecycle routes;
+  canonical starts idempotent per UTC date; retries idempotent per parent-run
+  and variant identity; attributable human approval; disjoint approval and
+  playback bearers; authenticated worker calls; private durable worker object
+  storage; and a Mastra poll deadline strictly above the capped worker deadline.
+  Loss of any invariant requires `DEVOTIONAL_NEW_RUNS_ENABLED=false`, scheduler
+  shutdown, and restoration or Manager migration before new work resumes. Do
+  not generalize this exception without explicit owner approval in root rules.
+- Keep `DEVOTIONAL_NEW_RUNS_ENABLED` default-off and deny native Mastra workflow
+  mutations for every devotional workflow ID. Dedicated lifecycle routes are
+  the only mutation surface; playback status reads must remain side-effect free.
 - Do not import from Admin or Manager to share types; use service HTTP
   contracts and local schemas.
 - Eval query generation is offline only. It must not enter Admin's live search
@@ -59,12 +108,28 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   seed-prompt artifacts owned by Mastra. Keep the Studio-facing workflow
   seed-only until a later human promotion flow decides how staged generated
   candidates should become reviewable.
+- Offline search eval baselines are scoped by `callerTrack`. Treat legacy
+  untracked baselines as `public-watch`, and do not compare or overwrite a
+  baseline under a different caller track.
 - The search eval orchestrator must not promote generated, trace-derived, seed,
   or user-submitted candidates. Candidate generation and seed submission are
   opt-in staging steps; human promotion stays behind Admin review contracts.
 - Firecrawl access belongs in this runtime. Do not add Firecrawl SDK/API calls
   to Admin or Manager; expose typed Mastra tools/workflows and HTTP contracts
   from here when other apps need web data.
+- Subtitle translation and retiming belongs in this runtime. Manager may call
+  the service route and handle job state/Mux sync, but should not reintroduce
+  provider-heavy subtitle execution.
+- Gospel-aware subtitle translation prompt steering belongs in this runtime.
+  Manager may send optional title, label, and Bible-reference context, but
+  Mastra owns scripture-context detection, translation prompt guidance, and
+  sanitized subtitle artifact provenance.
+- Subtitle scripture accuracy validation also belongs in this runtime. Missing
+  Bible-source configuration must fall back to `model_knowledge` validation,
+  not fail translation or require Manager-side scripture logic.
+- Source transcript scripture correction judgment also belongs in this runtime.
+  Return candidates and sanitized rationale only; do not mutate Manager source
+  artifacts or log raw prompts/full Bible passage text.
 - Firecrawl MCP is not the product runtime path. Revisit MCP only for local
   operator/coding-agent convenience or after a clear multi-tool server need.
 - Studio-facing workflows need structured Zod object input schemas on both the

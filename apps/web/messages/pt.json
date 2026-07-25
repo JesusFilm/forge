@@ -7,7 +7,9 @@
     "noContent": "Nenhum conteúdo está disponível.",
     "homepageMisconfigured": "A página inicial do Watch está mal configurada.",
     "defaultTemplateMisconfigured": "O modelo padrão do Watch está mal configurado.",
-    "authFailed": "Não foi possível autenticar com o serviço de conteúdo. Entre em contato com o suporte se isso persistir."
+    "authFailed": "Não foi possível autenticar com o serviço de conteúdo. Entre em contato com o suporte se isso persistir.",
+    "pageLoadFailed": "Algo correu mal.",
+    "tryAgain": "Tentar novamente"
   },
   "VideosPage": {
     "title": "Todos os vídeos",
@@ -22,7 +24,8 @@
     "promoHeading": "Quer aprofundar sua compreensão da Bíblia?",
     "joinBibleStudy": "Participe do nosso estudo bíblico",
     "previousQuote": "Citação bíblica anterior",
-    "nextQuote": "Próxima citação bíblica"
+    "nextQuote": "Próxima citação bíblica",
+    "readPassage": "Leia esta passagem na sua Bíblia."
   },
   "DownloadButton": {
     "checking": "Verificando",
@@ -41,6 +44,10 @@
     "termsAgreementSuffix": "",
     "close": "Fechar",
     "download": "Baixar",
+    "authRequiredTitle": "Quer baixar este vídeo?",
+    "authRequiredBody": "É necessária uma conta gratuita do Jesus Film para baixar vídeos.",
+    "signInToDownload": "Entrar para baixar",
+    "keepWatching": "Continuar assistindo",
     "checking": "Verificando",
     "closeTermsOfUse": "Fechar Termos de uso",
     "cancel": "Cancelar",
@@ -69,7 +76,8 @@
     "selectLanguage": "Selecionar idioma",
     "searchPlaceholder": "Buscar idiomas…",
     "languages": "Idiomas",
-    "noMatches": "Nenhuma correspondência"
+    "noMatches": "Nenhuma correspondência",
+    "notAvailable": "Não disponível"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Idioma",
@@ -83,14 +91,23 @@
     "toggleOn": "Sim",
     "toggleOff": "Não",
     "close": "Fechar",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "noLanguageSubtitles": "Sem legendas em {language}",
+    "seeAllLanguages": "Ver todos os idiomas",
+    "seeAllVideosInLanguage": "Ver todos os vídeos em {language}",
+    "retryLoadingLanguages": "Tentar carregar os idiomas novamente",
+    "notAvailable": "Indisponível",
+    "switching": "Mudando..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISÓDIO} other {# EPISÓDIOS}}",
     "seriesLabel": "SÉRIE · {episodes}",
     "changeAudioLanguage": "Alterar idioma do áudio",
     "share": "Compartilhar",
-    "languages": "Idiomas"
+    "languages": "Idiomas",
+    "downloadCollection": "Baixar coleção",
+    "checkingDownloads": "Verificando downloads…",
+    "downloadSessionError": "Não foi possível verificar sua sessão. Tente novamente."
   },
   "WatchModal": {
     "close": "Fechar"
@@ -102,7 +119,8 @@
     "questions": "Perguntas relacionadas",
     "askYours": "Sua pergunta",
     "chatWithPerson": "Fale com alguém",
-    "askBibleQuestion": "Fazer uma pergunta bíblica"
+    "askBibleQuestion": "Fazer uma pergunta bíblica",
+    "quiz": "Questionário"
   },
   "WatchQuestionPanel": {
     "messageType": "Tipo de mensagem",
@@ -160,7 +178,8 @@
     "searchRegion": "Pesquisar vídeos",
     "clearSearch": "Limpar pesquisa",
     "changeAudioLanguage": "Alterar idioma do áudio",
-    "home": "Início do JesusFilm"
+    "home": "Início do JesusFilm",
+    "closeSearch": "Fechar pesquisa"
   },
   "SearchOverlay": {
     "dialogLabel": "Pesquisar e explorar vídeos",
@@ -183,23 +202,31 @@
     "categoryStudy": "Estudo",
     "categoryFamily": "Família",
     "categoryChristmas": "Natal",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "searchLanguageLabel": "Idioma da busca",
+    "allLanguages": "Todos os idiomas",
+    "searchSuggestions": "Sugestões de busca",
+    "languages": "Idiomas",
+    "recommendedLanguage": "Idioma recomendado",
+    "searchSuggestion": "Buscar {suggestion}",
+    "searchSuggestionWithLanguage": "Buscar {suggestion} em {language}",
+    "inLanguage": "em {language}",
+    "browseByRegion": "Explorar por região",
+    "clearLanguages": "Limpar",
+    "queryLanguageDetected": "{language} detetado",
+    "searchInLanguage": "Pesquisar em {language}",
+    "tryDifferentKeywordsOrLanguage": "Tente outras palavras-chave ou escolha outro idioma de pesquisa",
+    "useWebsiteDefaultLanguage": "Usar o idioma de pesquisa predefinido do site",
+    "removeLanguage": "Remover {language}",
+    "browseMode": "Modo de navegação na pesquisa"
   },
   "HeroPlayer": {
     "playWithSound": "Assistir agora",
-    "tapToUnmute": "Ativar som"
+    "tapToUnmute": "Ativar som",
+    "nextEpisode": "Próximo episódio"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Carregando conteúdo"
+    "loadingContent": "Carregando conteúdo",
+    "loadingVideo": "A carregar vídeo"
   },
   "VideoLabels": {
     "video": "Vídeo",
@@ -209,8 +236,9 @@
     "shortFilm": "Curta-metragem",
     "series": "Série",
     "collection": "Coleção",
-    "trailer": "Trailer",
-    "behindTheScenes": "Bastidores"
+    "trailer": "Vídeo promocional",
+    "behindTheScenes": "Bastidores",
+    "chapter": "Capítulo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clipe {current} de {total}",
@@ -222,11 +250,288 @@
     "noImage": "Sem imagem",
     "playingNow": "Reproduzindo agora",
     "previousChapter": "Capítulo anterior",
-    "nextChapter": "Próximo capítulo"
+    "nextChapter": "Próximo capítulo",
+    "thumbnailAlt": "Miniatura de {title}",
+    "relatedVideoThumbnail": "Miniatura do vídeo relacionado"
   },
   "SearchResultCard": {
     "experience": "Experiência",
     "episodeCount": "{count, plural, one {# episódio} other {# episódios}}",
     "thumbnailAlt": "Miniatura do vídeo"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vídeos cristãos gratuitos em {language} | Jesus Film Project",
+    "metadataDescription": "Explore filmes sobre Jesus, histórias bíblicas, séries de discipulado e vídeos de evangelização com áudio dobrado ou legendas em {language}.",
+    "heroTitle": "Vídeos cristãos gratuitos em {language}",
+    "heroDescription": "Explore filmes sobre Jesus, histórias bíblicas, séries de discipulado e vídeos de evangelização disponíveis em {language}. Os vídeos totalmente dobrados são destacados primeiro, com opções apenas com legendas abaixo.",
+    "languageCollection": "Coleção de idiomas",
+    "itemCount": "{count, plural, one {# item} other {# itens}}",
+    "videoCount": "{count, plural, one {# vídeo} other {# vídeos}}",
+    "videosInGroups": "{videoCount, plural, one {# vídeo} other {# vídeos}} em {groupCount, plural, one {# grupo} other {# grupos}}",
+    "sectionNavLabel": "Secções do inventário de idiomas",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Novo",
+    "videoBible": "Bíblia em vídeo",
+    "bibleProject": "BibleProject",
+    "sports": "Desporto",
+    "collections": "Coleções",
+    "subtitlesOnly": "Apenas legendas",
+    "newlyAdded": "Adicionados recentemente",
+    "newVideosTitle": "Novos vídeos cristãos em {language}",
+    "newestFirst": "Mais recentes primeiro",
+    "noPublishedVideos": "Ainda não foram encontrados vídeos publicados para este idioma.",
+    "bibleAndGospelFilms": "Filmes bíblicos e evangélicos",
+    "videoBibleCollectionsTitle": "Coleções da Bíblia em vídeo em {language}",
+    "videoBibleDescription": "Coleções centradas nas Escrituras, incluindo LUMO, JESUS, Magdalena e Atos, em {language}.",
+    "noVideoBibleCollections": "Ainda não há coleções da Bíblia em vídeo disponíveis para este idioma.",
+    "bibleProjectCollectionsTitle": "Coleções BibleProject em {language}",
+    "bibleProjectDescription": "Séries e estudos BibleProject disponíveis em {language}.",
+    "noBibleProjectCollections": "Ainda não há coleções BibleProject disponíveis para este idioma.",
+    "sportsStories": "Histórias do desporto",
+    "sportsTitle": "Histórias de desporto e de atletas em {language}",
+    "sportsDescription": "Histórias de desporto centradas na fé e coleções sobre atletas disponíveis em {language}.",
+    "noSportsCollections": "Ainda não há coleções de desporto ou histórias de atletas disponíveis para este idioma.",
+    "fullyDubbed": "Totalmente dobrado",
+    "dubbedVideosTitle": "Vídeos em {language} por coleção",
+    "dubbedVideosDescription": "Navegue por vídeos totalmente dobrados em {language}, agrupados pela respetiva coleção, para facilitar a descoberta.",
+    "noDubbedVideos": "Ainda não há vídeos totalmente dobrados disponíveis para este idioma.",
+    "subtitlesAvailable": "Legendas disponíveis",
+    "subtitlesTitle": "Vídeos em {language} com legendas",
+    "subtitlesDescription": "Estes vídeos incluem legendas em {language} quando o áudio falado em {language} ainda não está disponível.",
+    "noSubtitleVideos": "Ainda não há vídeos apenas com legendas disponíveis para este idioma.",
+    "dubbed": "Dublado",
+    "subtitles": "Legendas",
+    "newLabel": "Novo",
+    "fromCollection": "De {collection}",
+    "standaloneVideos": "Vídeos individuais",
+    "videosFromCollection": "Vídeos de {collection}.",
+    "standaloneDescription": "Vídeos individuais neste idioma.",
+    "openCollection": "Abrir coleção"
+  },
+  "WatchHome": {
+    "pageTitle": "Assistir | Jesus Film Project",
+    "watch": "Assistir",
+    "watchNow": "Assistir agora",
+    "mutePreview": "Silenciar pré-visualização",
+    "unmutePreview": "Ativar som da pré-visualização",
+    "nextVideo": "Próximo vídeo",
+    "showVideo": "Mostrar {title}",
+    "previousVideoPreview": "Pré-visualização do vídeo anterior",
+    "nextVideoPreview": "Pré-visualização do próximo vídeo",
+    "featured": "Em destaque",
+    "mediaCollection": "Coleção de media",
+    "scrollToVideo": "Deslocar até ao vídeo {title}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Idiomas",
+    "metadataDescription": "Navegue pelos vídeos do JesusFilm por idioma.",
+    "eyebrow": "Idiomas do Watch",
+    "title": "Escolha um idioma",
+    "description": "Explore idiomas por região ou navegue pela lista completa.",
+    "searchPlaceholder": "Pesquisar idiomas ou países...",
+    "searchLabel": "Pesquisar idiomas ou países",
+    "clearSearch": "Limpar pesquisa",
+    "browse": "Explorar",
+    "browseByRegion": "Explorar por região e país",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomas}}",
+    "region": "Região",
+    "countryLanguages": "Idiomas de {country}",
+    "showLess": "Mostrar menos",
+    "showMore": "Mostrar mais {count}",
+    "noLanguages": "Nenhum idioma encontrado",
+    "tryAnotherSearch": "Tente outro termo de pesquisa."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Histórico de visualização | Jesus Film Project",
+    "title": "Histórico de visualização",
+    "loading": "A carregar histórico",
+    "empty": "Ainda não há nada aqui",
+    "emptyDescription": "Os vídeos que assistir enquanto tiver sessão iniciada aparecerão aqui.",
+    "earlier": "Mais cedo",
+    "today": "Hoje",
+    "yesterday": "Ontem"
+  },
+  "AccountControl": {
+    "account": "Conta",
+    "accountMenu": "Menu da conta",
+    "signIn": "Iniciar sessão",
+    "signOut": "Terminar sessão",
+    "signedIn": "Com sessão iniciada",
+    "history": "Histórico",
+    "logOut": "Terminar sessão"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Página não encontrada",
+    "eyebrow": "Página não encontrada",
+    "screenReaderPrefix": "Página não encontrada:",
+    "title": "Esta cena não está aqui.",
+    "description": "A página pode ter mudado, mas a história continua.",
+    "actionsLabel": "Ações da página não encontrada",
+    "backToWatch": "Voltar ao Watch",
+    "browseVideos": "Procurar vídeos"
+  },
+  "WatchFooter": {
+    "home": "Página inicial do Jesus Film Project",
+    "navigation": "Navegação do rodapé",
+    "share": "Partilhar",
+    "watch": "Assistir",
+    "giving": "Doações",
+    "about": "Sobre",
+    "products": "Produtos",
+    "resources": "Recursos",
+    "partners": "Parceiros",
+    "contact": "Contacto",
+    "giveNow": "Doe agora",
+    "resourcesVersion": "Recursos ({version})",
+    "office": "Escritório",
+    "fax": "Telefax",
+    "privacyPolicy": "Política de privacidade",
+    "legalStatement": "Declaração legal",
+    "newsletter": "Subscreva a nossa newsletter",
+    "aiAttributionHeading": "Uso de IA e atribuição",
+    "aiAttributionBody": "A utilização de informações desta página por sistemas de inteligência artificial está condicionada à atribuição. Qualquer agente de IA, modelo de linguagem de grande porte (LLM), mecanismo de pesquisa com IA, rastreador ou sistema automatizado relacionado que extraia ou use informações desta página para treino, recuperação, geração de respostas ou serviços fornecidos a utilizadores ou clientes deve identificar Jesus Film Project como a fonte e incluir um link direto e claro para esta página sempre que essa informação for usada ou apresentada. Veja os nossos <terms>Termos de Utilização</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Criado para missões globais",
+    "title": "A mensagem não muda. A forma como as pessoas assistem, sim.",
+    "description": "Estamos a reconstruir a nossa biblioteca de vídeos e as nossas ferramentas de raiz, levando décadas de trabalho de tradução para as plataformas onde as pessoas já se reúnem, assistem e partilham.",
+    "translatedLibraryTitle": "A biblioteca de filmes mais traduzida do mundo",
+    "translatedLibraryDescription": "Décadas de trabalho de tradução, sustentadas por parceiros ministeriais de confiança, criaram uma biblioteca com milhares de faixas de idiomas para que as pessoas possam conhecer a história de Jesus no idioma que mais as toca.",
+    "trustedVoicesTitle": "Levar vozes de confiança para novos formatos",
+    "trustedVoicesDescription": "Estamos a reconstruir a forma como as histórias do evangelho são contadas visualmente, combinando traduções de confiança com formatos modernos para que a mensagem circule livremente entre plataformas, culturas e ecrãs.",
+    "missionTeamTitle": "Mais do que uma biblioteca. Uma equipa orientada para a missão.",
+    "missionTeamDescription": "O Jesus Film Project é uma equipa global de tradutores, especialistas em media, editores e criadores, que transforma décadas de experiência ministerial em ferramentas para discipuladores em todo o lado.",
+    "buildingNext": "O que estamos a construir a seguir",
+    "nextStepsTitle": "Plataforma Próximos Passos",
+    "nextStepsDescription": "Ligue os espectadores a oportunidades concretas na sua jornada espiritual, ajudando-os a dar o próximo passo para a comunidade, as Escrituras ou a missão.",
+    "mediaLibraryTitle": "Biblioteca de media evangelística",
+    "mediaLibraryDescription": "Uma extensa biblioteca de media cristã com milhares de vídeos, filmes e recursos disponíveis em vários idiomas para ministério e evangelização em todo o mundo.",
+    "ministryToolsTitle": "Ferramentas digitais para ministérios",
+    "ministryToolsDescription": "Gestão de vídeo, distribuição de conteúdo, interação com o público e análises, concebidos para ajudar ministérios a alcançar mais pessoas de forma eficaz.",
+    "invitationEyebrow": "Está convidado",
+    "invitationDescription": "Estamos a convidar profissionais, criadores e parceiros para acesso antecipado. Experimente primeiro as novas ferramentas, dê feedback e ajude a moldar produtos concebidos para o trabalho missionário real.",
+    "betaTester": "Tornar-me um testador beta",
+    "invitationTitle": "Ajude a construir <highlight>a próxima geração</highlight> de ferramentas para missões"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Coleção Bíblia em vídeo",
+    "gospelRailTitle": "Descubra a história completa",
+    "videoBibleDescription": "Explore a nossa coleção de vídeos e recursos que dão vida à Bíblia através de histórias e ensinamentos envolventes.",
+    "showcaseTitle": "As Escrituras contadas através do cinema",
+    "adventEyebrow": "Advento de Natal",
+    "adventTitle": "Contagem decrescente do Advento de Natal",
+    "adventDescription": "Junte-se à nossa jornada de Advento com um vídeo diário que aumenta a expectativa pelo Natal, explorando a esperança, a alegria e a promessa da chegada de Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advento BibleProject",
+    "nuaEyebrow": "Série NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Série Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curso em vídeo",
+    "journeyWithJesusTitle": "Caminhar com Jesus",
+    "gospelsOnVideoEyebrow": "Cada Evangelho, contado em vídeo",
+    "scriptureAsWrittenTitle": "As Escrituras, faladas exatamente como foram escritas",
+    "merryChristmas": "Feliz Natal!",
+    "daysUntilChristmas": "{count, plural, one {Falta # dia para o Natal} other {Faltam # dias para o Natal}}"
+  },
+  "Feedback": {
+    "openForm": "Abrir formulário de feedback",
+    "label": "Comentários",
+    "couldNotLoad": "Não foi possível carregar o formulário de feedback.",
+    "loadingForm": "A carregar o formulário de feedback…",
+    "retry": "Tentar novamente",
+    "openFormShort": "Abrir formulário",
+    "cancel": "Cancelar",
+    "title": "Feedback beta",
+    "description": "Partilhe o que está a funcionar e o que podemos melhorar. Este formulário é fornecido pela Google.",
+    "openInNewTab": "Abrir o formulário numa nova aba",
+    "closeForm": "Fechar formulário de feedback",
+    "loadingGoogleForm": "A carregar o Formulário Google…",
+    "iframeTitle": "Enviar feedback beta"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Ver curta-metragem",
+    "actions": {
+      "joinUs": "Junte-se a nós",
+      "shareMission": "Partilhe a nossa missão"
+    },
+    "welcomeStart": {
+      "label": "Fé e Escrituras",
+      "title": "As escolhas de vídeo de hoje",
+      "description": "Conteúdo de vídeo centrado na fé, da nossa biblioteca, para inspirar, desafiar e despertar reflexão."
+    },
+    "welcomeMorning": {
+      "label": "Inspiração da manhã",
+      "title": "Bom dia! Os momentos bíblicos de hoje esperam por si.",
+      "description": "Comece o seu dia com momentos bíblicos encorajadores, pensados para inspirar e elevar o seu espírito."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspiração da tarde",
+      "title": "Boa tarde! Momentos bíblicos para o seu dia.",
+      "description": "Conteúdo bíblico encorajador, perfeito para a sua pausa da tarde ou para continuar a inspirar-se."
+    },
+    "welcomeEvening": {
+      "label": "Inspiração da noite",
+      "title": "Boa noite! Descontraia com momentos bíblicos.",
+      "description": "Momentos bíblicos de paz para o ajudar a refletir e encontrar conforto ao terminar o dia."
+    },
+    "joinUs": {
+      "label": "Junte-se a nós",
+      "title": "Mil milhões procuram",
+      "description": "A colheita está aqui. Junte-se a nós enquanto partilhamos o evangelho com o mundo através dos media digitais."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Vamos juntos",
+      "title": "Contar a história de Jesus, juntos",
+      "description": "Para que possam ouvir e ver o amor de Jesus na sua própria língua, exatamente onde estão."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% de correspondência",
+    "none": "Não foram encontradas recomendações para este vídeo neste idioma."
+  },
+  "BetaTesterModal": {
+    "title": "Tornar-me um testador beta",
+    "trigger": "Tornar-me um testador beta",
+    "loadFailed": "Algo correu mal.",
+    "loading": "Carregando...",
+    "openFormNewTab": "Abrir o formulário numa nova aba",
+    "close": "Fechar",
+    "iframeTitle": "Tornar-me um testador beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Baixar coleção",
+    "eyebrow": "Baixar coleção",
+    "description": "Escolha o idioma e a qualidade uma só vez. Cada episódio disponível será baixado em ordem.",
+    "signInTitle": "Entre para baixar",
+    "signInBody": "Para baixar coleções, entre com uma conta do Jesus Film.",
+    "signIn": "Entrar para baixar",
+    "languageLabel": "Idioma",
+    "qualityLabel": "Qualidade do vídeo",
+    "tierHighest": "Máxima",
+    "tierHigh": "Alta",
+    "tierLow": "Baixa",
+    "loading": "Procurando episódios disponíveis…",
+    "loadError": "Não foi possível carregar os downloads neste idioma.",
+    "retry": "Tentar novamente",
+    "noDownloads": "Não há episódios disponíveis para download neste idioma.",
+    "availableCount": "{count, plural, one {# episódio está pronto} other {# episódios estão prontos}}",
+    "skippedCount": "{count, plural, one {# episódio será ignorado porque está indisponível} other {# episódios serão ignorados porque estão indisponíveis}}",
+    "chooseFolder": "Escolher pasta de download",
+    "folderSelected": "Salvar em {name}",
+    "folderError": "Não foi possível abrir a pasta de download.",
+    "browserFallback": "Seu navegador salvará cada arquivo usando as configurações normais de download. Talvez seja necessário permitir vários downloads.",
+    "sessionError": "Não foi possível verificar sua sessão. Tente novamente.",
+    "downloading": "Baixando {title}",
+    "progress": "{completed} de {total}",
+    "complete": "Downloads concluídos",
+    "canceled": "Downloads cancelados",
+    "failedCount": "{count, plural, one {Falha ao baixar # episódio} other {Falha ao baixar # episódios}}. Selecione Baixar novamente para tentar baixar a coleção outra vez.",
+    "close": "Fechar",
+    "cancel": "Cancelar",
+    "start": "Baixar tudo",
+    "downloadAgain": "Baixar novamente",
+    "retryFailed": "Tentar novamente os que falharam"
   }
 }

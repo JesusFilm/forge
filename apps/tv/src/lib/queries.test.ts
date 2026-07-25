@@ -1,7 +1,7 @@
 import { print } from "graphql"
 import type { DocumentNode } from "graphql"
 
-import { GET_WATCH_SETTING, GET_WATCH_EXPERIENCE } from "./queries"
+import { GET_WATCH_EXPERIENCE, WATCH_SEARCH } from "./queries"
 
 // gql.tada documents are parsed DocumentNode ASTs (no raw source string is
 // retained), so we serialize them back with graphql's `print` to make
@@ -10,33 +10,8 @@ function asSdl(doc: unknown): string {
   return print(doc as DocumentNode)
 }
 
-const settingSdl = asSdl(GET_WATCH_SETTING)
 const experienceSdl = asSdl(GET_WATCH_EXPERIENCE)
-
-describe("GET_WATCH_SETTING (public homepage resolution)", () => {
-  it("queries the watchSetting root field", () => {
-    expect(settingSdl).toContain("watchSetting(locale: $locale)")
-  })
-
-  it("selects the homepageExperience slug (the only field the home needs)", () => {
-    expect(settingSdl).toContain("homepageExperience")
-    expect(settingSdl).toContain("slug")
-  })
-
-  it("declares the $locale variable", () => {
-    expect(settingSdl).toContain("$locale: String!")
-  })
-
-  // Regression guard: the home MUST NOT fetch the editor-gated top-level
-  // Query.experiences (authScopes hasPermission "read:experiences") — doing so
-  // 401s for the unauthenticated public TV app ("Not authorized to resolve
-  // Query.experiences"). The home resolves the homepage via the PUBLIC
-  // watchSetting query instead. If this assertion ever fails, the home has
-  // regressed back onto the gated list query.
-  it("does NOT touch the editor-gated Query.experiences", () => {
-    expect(settingSdl).not.toMatch(/\bexperiences\b/)
-  })
-})
+const searchSdl = asSdl(WATCH_SEARCH)
 
 describe("GET_WATCH_EXPERIENCE (public single experience, powers the home)", () => {
   it("resolves an experience via the PUBLIC experienceBySlug field", () => {
@@ -48,5 +23,38 @@ describe("GET_WATCH_EXPERIENCE (public single experience, powers the home)", () 
   it("does NOT use the editor-gated Query.experiences list field", () => {
     // experienceBySlug is public; the bare `experiences` list field is gated.
     expect(experienceSdl).not.toMatch(/\bexperiences\b/)
+  })
+
+  it("selects the authored media-collection thumbnail orientation", () => {
+    expect(experienceSdl).toContain("thumbnailOrientation")
+  })
+})
+
+// Restored from the pre-#1622 SEMANTIC_SEARCH suite, retargeted at watchSearch.
+describe("WATCH_SEARCH (multilingual watch search)", () => {
+  it("queries the public watchSearch root field, not the retired Query.search", () => {
+    expect(searchSdl).toContain("watchSearch(input: $input)")
+    expect(searchSdl).not.toMatch(/\bsemanticSearch\b/)
+  })
+
+  // The operation NAME is the bearer's attach key (authHeaders.SEARCH_OPERATION_NAME).
+  it("is named WatchSearch so the consumer bearer attaches", () => {
+    expect(searchSdl).toContain("query WatchSearch(")
+  })
+
+  // searchResultPath routes series off label OR childCount, so both must be
+  // selected or every series degrades to the /watch hop. Admin returns null for
+  // both today; selecting them is what makes TV correct once it populates them.
+  it("selects label and childCount for series routing", () => {
+    expect(searchSdl).toMatch(/\blabel\b/)
+    expect(searchSdl).toMatch(/\bchildCount\b/)
+  })
+
+  // playbackId feeds the watch seed; slug/title/id/type are the fields
+  // mapWatchSearchResult treats as required and drops rows for.
+  it("selects the fields the card and router read", () => {
+    for (const field of ["type", "id", "slug", "title", "playbackId"]) {
+      expect(searchSdl).toMatch(new RegExp(`\\b${field}\\b`))
+    }
   })
 })

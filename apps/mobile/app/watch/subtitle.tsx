@@ -28,9 +28,11 @@ export default function SubtitleSheetRoute() {
   }, [ensureActiveVariantMedia])
 
   const handleSubtitleChange = useCallback(
-    (enabled: boolean, slug: string | null) => {
+    (enabled: boolean, slug: string | null, isUserSelection: boolean) => {
       setSubtitleEnabled(enabled)
-      setActiveSubtitleSlug(slug)
+      // Only a deliberate row pick changes (and persists) the language. A bare
+      // toggle keeps the already-resolved track without overwriting the pref.
+      if (isUserSelection) setActiveSubtitleSlug(slug)
     },
     [setSubtitleEnabled, setActiveSubtitleSlug],
   )

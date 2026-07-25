@@ -152,8 +152,7 @@ describe("indexEditionTranscript", () => {
 
   it("returns zero counts for an empty artifact without touching the DB", async () => {
     const { prisma, videoTranscriptUpsert, executeRaw } = buildStubPrisma()
-    // Mirror the symmetry of scene-embedding's empty-artifact test: even
-    // though R2 reuses vectors verbatim from the artifact (the embedding
+    // Even though R2 reuses vectors verbatim from the artifact (the embedding
     // provider isn't imported into the transcript indexer at all), spy on
     // the embeddings module to lock the invariant. A regression that
     // accidentally re-introduced a provider call on R2 would fire this
@@ -305,6 +304,11 @@ describe("indexEditionTranscript", () => {
     ]
     const sql = strings.join("?")
     expect(sql).toContain("INSERT INTO video_transcript_chunk")
+    expect(sql).toContain("raw_source_text")
+    expect(sql).toContain("embedding_input_text")
+    expect(sql).toContain("felt_needs")
+    expect(sql).toContain("content_summary")
+    expect(sql).toContain("extraction_metadata")
     expect(sql).toContain("unnest(")
     expect(sql).toContain("::text[]")
     // Way A vector cast — per-row at the SELECT seam, NOT

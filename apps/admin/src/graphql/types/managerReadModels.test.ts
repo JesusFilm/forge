@@ -36,6 +36,7 @@ describe("Manager read-model GraphQL contracts", () => {
         "aiMetadata",
         "imageUrl",
         "parentDocumentIds",
+        "parentRelations",
         "coverage",
       ]),
     )

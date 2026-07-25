@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { env } from "../../config/env"
+import { env, getOpenRouterApiKey } from "../../config/env"
 import { isValidServiceBearer } from "../../server/service-bearer"
 import {
   assertAllowedFrameUrl,
@@ -106,6 +106,20 @@ const CropKeyframeSchema = z
   })
   .strict()
 
+const NormalizedPointSchema = z
+  .object({
+    cx: z.number().min(0).max(1),
+    cy: z.number().min(0).max(1),
+  })
+  .strict()
+
+const FaceCenterSchema = z
+  .object({
+    start: NormalizedPointSchema,
+    end: NormalizedPointSchema,
+  })
+  .strict()
+
 const PlanSegmentSchema = z
   .object({
     shotId: z.string(),
@@ -116,6 +130,8 @@ const PlanSegmentSchema = z
     secondarySubjects: z.array(z.string()),
     avoidCutting: z.array(z.string()),
     confidence: z.number().min(0).max(1),
+    faceVisible: z.boolean().optional(),
+    faceCenter: FaceCenterSchema.nullable().optional(),
     cropKeyframes: z.array(CropKeyframeSchema).length(2),
   })
   .strict()
@@ -200,7 +216,7 @@ export async function runSmartCropPlanWorkflow(
       source: input.source,
       cropMode: input.cropMode,
       model,
-      apiKey: options.apiKey ?? env.OPENROUTER_API_KEY,
+      apiKey: options.apiKey ?? getOpenRouterApiKey(),
       fetchImpl: options.fetchImpl,
       timeoutMs: options.timeoutMs,
     })
@@ -208,7 +224,7 @@ export async function runSmartCropPlanWorkflow(
     const segments: SmartCropPlanSegment[] = input.shots.map((shot, index) => {
       const intent = intents.intents[index]!
       const planned = intentToKeyframes(intent, shot, input.source)
-      return {
+      const segment: SmartCropPlanSegment = {
         shotId: shot.shotId,
         canonicalStart: shot.start,
         canonicalEnd: shot.end,
@@ -217,8 +233,13 @@ export async function runSmartCropPlanWorkflow(
         secondarySubjects: intent.secondarySubjects,
         avoidCutting: intent.avoidCutting,
         confidence: intent.confidence,
+        faceVisible: intent.faceVisible,
         cropKeyframes: planned.cropKeyframes,
       }
+      if (intent.faceCenter !== undefined) {
+        segment.faceCenter = intent.faceCenter
+      }
+      return segment
     })
 
     return {

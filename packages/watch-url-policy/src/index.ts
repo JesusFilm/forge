@@ -1,7 +1,7 @@
 export const PRODUCTION_WATCH_CALLBACK_ORIGINS = [
   "https://jesusfilm.org",
   "https://www.jesusfilm.org",
-  "https://web.jesusfilm.org",
+  "https://watch.jesusfilm.org",
 ] as const
 
 export const LOCAL_WATCH_CALLBACK_ORIGINS = [
@@ -30,6 +30,7 @@ export const SAFE_DOWNLOAD_EXTENSIONS: ReadonlySet<string> = new Set([
 
 const BLOCKED_CALLBACK_PARAM_NAMES = new Set(["downloadurl", "mediaurl", "url"])
 const BLOCKED_MEDIA_REFERENCE_PATTERN = /stream\.mux\.com|image\.mux\.com/i
+const ENCODED_PATH_SEPARATOR_PATTERN = /%2f|%5c/i
 
 export function normalizeOrigin(value: string): string | null {
   try {
@@ -94,7 +95,9 @@ export function resolveWatchCallbackURL(
       .filter((origin): origin is string => origin != null),
   )
   if (!normalizedAllowedOrigins.has(url.origin)) return undefined
-  if (!url.pathname.startsWith("/watch/")) return undefined
+  if (ENCODED_PATH_SEPARATOR_PATTERN.test(url.pathname)) return undefined
+  if (url.pathname !== "/watch" && !url.pathname.startsWith("/watch/"))
+    return undefined
   if (url.pathname.startsWith("/watch/api/")) return undefined
   if (url.pathname.startsWith("/api/")) return undefined
   if (hasBlockedDownloadReference(url)) return undefined

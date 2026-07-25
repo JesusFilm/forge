@@ -84,7 +84,11 @@ describe("syncVideos", () => {
                 },
               ],
               keywords: [{ id: "keyword-1" }],
-              children: [{ id: "child-core-1" }],
+              children: [
+                { id: "child-core-1" },
+                { id: "missing-child-core" },
+                { id: "child-core-3" },
+              ],
               locked: false,
               noIndex: false,
               updatedAt: "2026-01-02T00:00:00.000Z",
@@ -113,7 +117,10 @@ describe("syncVideos", () => {
         findMany: vi
           .fn()
           .mockResolvedValueOnce([])
-          .mockResolvedValueOnce([{ id: "child-1", coreId: "child-core-1" }]),
+          .mockResolvedValueOnce([
+            { id: "child-1", coreId: "child-core-1" },
+            { id: "child-3", coreId: "child-core-3" },
+          ]),
         upsert: vi.fn().mockResolvedValue({ id: "video-1" }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
@@ -248,6 +255,17 @@ describe("syncVideos", () => {
       where: { parentId: { in: ["video-1"] } },
     })
     expect(tx.$executeRaw).toHaveBeenCalledTimes(2)
+    const relationInsertCall = tx.$executeRaw.mock.calls.find((call) =>
+      String.raw({ raw: call[0] as unknown as string[] }).includes(
+        'INSERT INTO "video_relation"',
+      ),
+    )
+    expect(relationInsertCall).toBeDefined()
+    const relationInsertSql = relationInsertCall
+      ? String.raw({ raw: relationInsertCall[0] as unknown as string[] })
+      : ""
+    expect(relationInsertSql).toContain('"order"')
+    expect(relationInsertCall?.[4]).toBe('{"1","3"}')
   })
 
   it("retries a page transaction when Prisma reports P2024 pool pressure", async () => {
@@ -339,7 +357,12 @@ describe("syncVideos", () => {
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(2)
     expect(stats.updated).toBe(1)
-    expect(stats.errors).toBe(1)
+    expect(stats.errors).toBe(0)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "core-sync.video-localized-metadata.skipped-languages",
+      ),
+    )
     warnSpy.mockRestore()
   })
 })

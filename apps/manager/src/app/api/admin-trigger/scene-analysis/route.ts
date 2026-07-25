@@ -1,6 +1,6 @@
 // POST /api/admin-trigger/scene-analysis — admin-triggered scene-
-// analysis pipeline dispatch (feat-119 PR2). Inverse direction of
-// /api/admin-embeds/scene.
+// analysis pipeline dispatch (feat-119 PR2). This produces non-search
+// source artifacts; the scene embedding proxy is retired.
 //
 // Body: { items: [{ assetId: number, coreId: string }, ...] }
 // Auth: bearer in `ADMIN_TRIGGER_API_KEYS` allowlist.

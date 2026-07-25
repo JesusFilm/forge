@@ -5,7 +5,6 @@ import { adminGraphql } from "@forge/admin-graphql"
 
 import client from "@/lib/admin-client"
 
-import { isWatchAlgoliaSearchEnabled } from "./feature-flags"
 import {
   parseAcceptLanguage,
   publicWatchAudioLanguageSlugForLocale,
@@ -66,6 +65,13 @@ type SearchLanguageMetadata = {
 
 const PAGE_SIZE = 500
 const MAX_LANGUAGE_PAGES = 10
+const SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS = 5 * 60
+
+let cachedSearchLanguageMetadata: {
+  expiresAt: number
+  metadata: SearchLanguageMetadata
+} | null = null
+let pendingSearchLanguageMetadata: Promise<SearchLanguageMetadata> | null = null
 
 export async function getSearchLanguageOptions(
   input: {
@@ -74,7 +80,6 @@ export async function getSearchLanguageOptions(
 ): Promise<
   | {
       ok: true
-      algoliaEnabled: boolean
       options: SearchLanguageOption[]
       countrySuggestion: SearchLanguageCountrySuggestion | null
       recommendedLanguage: SearchLanguageOption | null
@@ -83,7 +88,6 @@ export async function getSearchLanguageOptions(
     }
   | {
       ok: false
-      algoliaEnabled: boolean
       options: []
       countrySuggestion: null
       recommendedLanguage: null
@@ -95,30 +99,13 @@ export async function getSearchLanguageOptions(
       }
     }
 > {
-  const [algoliaEnabled, requestHeaders] = await Promise.all([
-    isWatchAlgoliaSearchEnabled({
-      custom: { surface: "floating-search-modal" },
-    }),
-    readRequestHeaders(),
-  ])
+  const requestHeaders = await readRequestHeaders()
   const countryCode = readCountryCode(requestHeaders)
   const acceptLanguage = requestHeaders?.get("accept-language") ?? null
   const countryName = countryCode ? countryNameFromCode(countryCode) : null
 
-  if (!algoliaEnabled) {
-    return {
-      ok: true,
-      algoliaEnabled,
-      options: [],
-      countrySuggestion: null,
-      recommendedLanguage: null,
-      countryCode,
-      countryName,
-    }
-  }
-
   try {
-    const metadata = await fetchSearchLanguageMetadata()
+    const metadata = await fetchCachedSearchLanguageMetadata()
     const result = buildSearchLanguageOptions({
       languages: metadata.languages,
       countries: metadata.countries,
@@ -129,11 +116,9 @@ export async function getSearchLanguageOptions(
 
     return {
       ok: true,
-      algoliaEnabled,
       options: result.options,
       countrySuggestion: result.countrySuggestion,
       recommendedLanguage: recommendedLanguageOption({
-        countrySuggestion: result.countrySuggestion,
         options: result.options,
         acceptLanguage,
       }),
@@ -146,7 +131,6 @@ export async function getSearchLanguageOptions(
     )
     return {
       ok: false,
-      algoliaEnabled,
       options: [],
       countrySuggestion: null,
       recommendedLanguage: null,
@@ -160,7 +144,20 @@ export async function getSearchLanguageOptions(
   }
 }
 
-async function fetchSearchLanguageMetadata(): Promise<SearchLanguageMetadata> {
+/** Load the routable catalog without search-only flags or request hints. */
+export async function getSearchLanguageCatalogOptions(): Promise<
+  SearchLanguageOption[]
+> {
+  const metadata = await fetchCachedSearchLanguageMetadata()
+  return buildSearchLanguageOptions({
+    languages: metadata.languages,
+    countries: metadata.countries,
+    countryCode: null,
+    countryName: null,
+  }).options
+}
+
+async function fetchSearchLanguageMetadataUncached(): Promise<SearchLanguageMetadata> {
   const languages: SearchLanguageMetadataLanguage[] = []
   let countries: SearchLanguageMetadataCountry[] = []
 
@@ -196,6 +193,37 @@ async function fetchSearchLanguageMetadata(): Promise<SearchLanguageMetadata> {
   }
 }
 
+async function fetchCachedSearchLanguageMetadata(): Promise<SearchLanguageMetadata> {
+  if (process.env.NODE_ENV === "test") {
+    return fetchSearchLanguageMetadataUncached()
+  }
+
+  const now = Date.now()
+  if (
+    cachedSearchLanguageMetadata &&
+    cachedSearchLanguageMetadata.expiresAt > now
+  ) {
+    return cachedSearchLanguageMetadata.metadata
+  }
+
+  if (!pendingSearchLanguageMetadata) {
+    pendingSearchLanguageMetadata = fetchSearchLanguageMetadataUncached()
+      .then((metadata) => {
+        cachedSearchLanguageMetadata = {
+          expiresAt:
+            Date.now() + SEARCH_LANGUAGE_METADATA_CACHE_TTL_SECONDS * 1000,
+          metadata,
+        }
+        return metadata
+      })
+      .finally(() => {
+        pendingSearchLanguageMetadata = null
+      })
+  }
+
+  return pendingSearchLanguageMetadata
+}
+
 function compact<T>(
   values: readonly (T | null | undefined)[] | null | undefined,
 ): T[] {
@@ -221,17 +249,12 @@ function readCountryCode(requestHeaders: Headers | null): string | null {
 }
 
 function recommendedLanguageOption({
-  countrySuggestion,
   options,
   acceptLanguage,
 }: {
-  countrySuggestion: SearchLanguageCountrySuggestion | null
   options: readonly SearchLanguageOption[]
   acceptLanguage: string | null
 }): SearchLanguageOption | null {
-  const countryLanguage = countrySuggestion?.languages[0]
-  if (countryLanguage) return countryLanguage
-
   const locale = parseAcceptLanguage(acceptLanguage)
   const publicSlug = locale
     ? publicWatchAudioLanguageSlugForLocale(locale)

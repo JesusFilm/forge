@@ -1,5 +1,89 @@
-// Share-intent URL builders extracted from ShareModal so the embed snippet
-// + social intent shapes can be unit-tested independently of the modal UI.
+// Share URL builders extracted from ShareModal so the public Watch link,
+// embed snippet, and social intent shapes can be unit-tested independently of
+// the modal UI.
+
+import {
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+  parseWatchPath,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "./routes"
+import { normalizePublicShareableOrigin } from "./url"
+
+export type ResolveWatchShareUrlInput = {
+  origin: string
+  videoSlug: string
+  languageSlug: string
+}
+
+/**
+ * Build the standalone public Watch URL used by Copy Link and social intents.
+ *
+ * Public deployment origins remain environment-aware. Literal local/private
+ * origins fall back to the indexed public host so a local browser never copies
+ * a localhost-only link. Invalid content identity returns null rather than
+ * sharing the Watch root or emitting a malformed path.
+ */
+export function resolveWatchShareUrl({
+  origin,
+  videoSlug,
+  languageSlug,
+}: ResolveWatchShareUrlInput): string | null {
+  const slug = tryAsContentSlug(videoSlug)
+  const lang = tryAsLocaleSlug(languageSlug)
+  if (!slug || !lang) return null
+
+  const normalizedOrigin =
+    normalizePublicShareableOrigin(origin) ?? WATCH_PUBLIC_METADATA_ORIGIN
+
+  return `${normalizedOrigin}${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
+}
+
+/**
+ * Resolve a browser pathname to the standalone public identity used by Share.
+ * Contextual episode routes intentionally share the episode, not its parent.
+ */
+export function resolveWatchShareUrlFromPathname({
+  origin,
+  pathname,
+}: {
+  origin: string
+  pathname: string
+}): string | null {
+  const watchPathname =
+    pathname === WATCH_BASE_PATH
+      ? "/"
+      : pathname.startsWith(`${WATCH_BASE_PATH}/`)
+        ? pathname.slice(WATCH_BASE_PATH.length)
+        : pathname
+  const normalizedWatchPathname = watchPathname.startsWith("/")
+    ? watchPathname
+    : `/${watchPathname}`
+  const parsed = parseWatchPath(normalizedWatchPathname)
+
+  if (parsed.kind === "video") {
+    return resolveWatchShareUrl({
+      origin,
+      videoSlug: parsed.slug,
+      languageSlug: parsed.lang,
+    })
+  }
+  if (parsed.kind === "episode") {
+    return resolveWatchShareUrl({
+      origin,
+      videoSlug: parsed.episode,
+      languageSlug: parsed.lang,
+    })
+  }
+  if (parsed.kind === "reserved" || parsed.kind === "unknown") return null
+
+  const normalizedOrigin =
+    normalizePublicShareableOrigin(origin) ?? WATCH_PUBLIC_METADATA_ORIGIN
+  const suffix = parsed.kind === "home" ? "" : normalizedWatchPathname
+  return `${normalizedOrigin}${WATCH_BASE_PATH}${suffix}`
+}
 
 // Mux playback ids are URL-safe (alphanumeric + `_-`), and currently 8-64
 // characters in practice. Validating before interpolation prevents an

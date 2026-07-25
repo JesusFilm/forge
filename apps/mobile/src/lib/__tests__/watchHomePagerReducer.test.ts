@@ -8,6 +8,7 @@ import {
   WATCH_HOME_MAX_DWELL_MS,
   activeSlide,
   createInitialPagerState,
+  heroPageVideoState,
   pagerReducer,
   shouldReissueSwap,
   showsPagerChrome,
@@ -149,14 +150,6 @@ describe("chip taps (AE3)", () => {
       swapping,
     )
   })
-
-  it("marks the slide it left as played", () => {
-    const next = pagerReducer(createInitialPagerState(mixedQueue), {
-      type: "CHIP_TAPPED",
-      index: 1,
-    })
-    expect(next.playedIds.has("v1")).toBe(true)
-  })
 })
 
 // ── Swipe (SLIDE_SHOWN) ─────────────────────────────────────────────────────
@@ -170,7 +163,6 @@ describe("swipe settling (SLIDE_SHOWN)", () => {
     )
     expect(playing.currentIndex).toBe(1)
     expect(playing.phase).toBe("poster")
-    expect(playing.playedIds.has("v1")).toBe(true)
   })
 
   it("clamps out-of-range momentum indexes", () => {
@@ -220,13 +212,12 @@ describe("swipe gesture (SWIPED)", () => {
 // ── Auto-advance ────────────────────────────────────────────────────────────
 
 describe("auto-advance", () => {
-  it("advances a video slide on play-to-end and marks it played", () => {
+  it("advances a video slide on play-to-end", () => {
     const next = pagerReducer(createInitialPagerState(twoVideos), {
       type: "PLAY_TO_END",
     })
     expect(next.currentIndex).toBe(1)
     expect(next.phase).toBe("poster")
-    expect(next.playedIds.has("v1")).toBe(true)
   })
 
   it("ignores play-to-end on a mux slide", () => {
@@ -244,7 +235,6 @@ describe("auto-advance", () => {
     })
     const next = pagerReducer(onMux, { type: "IMAGE_TIMER_ELAPSED" })
     expect(next.currentIndex).toBe(2)
-    expect(next.playedIds.has("mux-welcome")).toBe(true)
   })
 
   it("ignores the image timer on a video slide", () => {
@@ -259,36 +249,65 @@ describe("auto-advance", () => {
     })
     const next = pagerReducer(atEnd, { type: "PLAY_TO_END" })
     expect(next.currentIndex).toBe(0)
-    expect(next.wrapCount).toBe(1)
-    expect(next.playedIds.has("v2")).toBe(true)
   })
 })
 
 // ── AE5: skip rules ─────────────────────────────────────────────────────────
 
-describe("skip rules (AE5)", () => {
-  it("skips to the next slide on stream error and clears the in-flight swap", () => {
+describe("dead-slide dwell (AE5)", () => {
+  it("parks a failed slide on its poster dwell instead of skipping instantly", () => {
     const next = run(
       createInitialPagerState(twoVideos),
       { type: "SWAP_STARTED" },
       { type: "STREAM_ERROR" },
     )
-    expect(next.currentIndex).toBe(1)
+    // Offline rotation stays calm: no instant jump, the slide dwells.
+    expect(next.currentIndex).toBe(0)
+    expect(next.phase).toBe("unavailable")
     expect(next.swapInFlight).toBe(false)
     // The interrupted swap died with its slide — no stale re-issue.
     expect(next.pendingSwap).toBe(false)
   })
 
-  it("falls back to the poster on stream error with a single slide", () => {
+  it("the unavailable dwell timer advances past the failed slide", () => {
+    const parked = run(createInitialPagerState(twoVideos), {
+      type: "STREAM_ERROR",
+    })
+    const next = pagerReducer(parked, { type: "UNAVAILABLE_TIMER_ELAPSED" })
+    expect(next.currentIndex).toBe(1)
+    expect(next.phase).toBe("poster")
+  })
+
+  it("the unavailable timer is inert outside the unavailable phase", () => {
+    const initial = createInitialPagerState(twoVideos)
+    expect(pagerReducer(initial, { type: "UNAVAILABLE_TIMER_ELAPSED" })).toBe(
+      initial,
+    )
+  })
+
+  it("PLAY_STARTED recovers an unavailable slide to playing", () => {
+    const parked = run(createInitialPagerState(twoVideos), {
+      type: "STREAM_ERROR",
+    })
+    const recovered = pagerReducer(parked, { type: "PLAY_STARTED" })
+    expect(recovered.phase).toBe("playing")
+    expect(recovered.currentIndex).toBe(0)
+  })
+
+  it("a failed single-slide queue parks unavailable without advancing", () => {
     const single = run(createInitialPagerState([videoSlide("only")]), {
       type: "STREAM_RESOLVING",
     })
     const next = pagerReducer(single, { type: "STREAM_ERROR" })
     expect(next.currentIndex).toBe(0)
-    expect(next.phase).toBe("poster")
+    expect(next.phase).toBe("unavailable")
+    // Nowhere to advance to — the timer no-ops on a lone slide.
+    expect(
+      pagerReducer(next, { type: "UNAVAILABLE_TIMER_ELAPSED" }).currentIndex,
+    ).toBe(0)
   })
 
-  it("skips a stuck slide on max dwell", () => {
+  it("max dwell remains the backstop for a stuck slide", () => {
     const resolving = run(createInitialPagerState(twoVideos), {
       type: "STREAM_RESOLVING",
     })
@@ -411,10 +430,10 @@ describe("videoReady latch", () => {
 // ── Queue replacement ───────────────────────────────────────────────────────
 
 describe("slides set", () => {
-  it("replaces the queue, resets to the first slide, and keeps session state", () => {
+  it("replaces the queue and resets to the first slide", () => {
     const session = run(
       createInitialPagerState(twoVideos),
-      { type: "PLAY_TO_END" }, // marks v1 played, now on v2
+      { type: "PLAY_TO_END" }, // advances past v1, now on v2
     )
     const fresh = [videoSlide("v3"), videoSlide("v4")]
     const next = pagerReducer(session, { type: "SLIDES_SET", slides: fresh })
@@ -422,7 +441,6 @@ describe("slides set", () => {
     expect(next.slides).toBe(fresh)
     expect(next.currentIndex).toBe(0)
     expect(next.phase).toBe("poster")
-    expect(next.playedIds.has("v1")).toBe(true) // session history survives
   })
 
   it("yields no active slide for an empty queue", () => {
@@ -482,7 +500,7 @@ describe("swap serialization", () => {
 // ── AE5: pendingSkip (deferred skip on stream error while suspended) ─────────
 
 describe("pendingSkip (AE5 deferred skip)", () => {
-  it("records pendingSkip on STREAM_ERROR while suspended, then advances on RESUME", () => {
+  it("STREAM_ERROR while suspended parks unavailable; RESUME does not skip (dwell handles it)", () => {
     // Scenario: SWAP_STARTED → STREAM_RESOLVING → SUSPEND → STREAM_ERROR
     const afterError = run(
       createInitialPagerState(twoVideos),
@@ -492,15 +510,15 @@ describe("pendingSkip (AE5 deferred skip)", () => {
       { type: "STREAM_ERROR" },
     )
 
-    expect(afterError.phase).toBe("poster")
-    expect(afterError.currentIndex).toBe(0) // not advanced yet
+    expect(afterError.phase).toBe("unavailable")
+    expect(afterError.currentIndex).toBe(0) // not advanced
     expect(afterError.swapInFlight).toBe(false) // swap cleared
-    expect(afterError.pendingSkip).toBe(true)
+    expect(afterError.pendingSkip).toBe(false)
 
     const resumed = pagerReducer(afterError, { type: "RESUME" })
     expect(resumed.suspended).toBeNull()
-    expect(resumed.currentIndex).toBe(1) // deferred skip executed
-    expect(resumed.pendingSkip).toBe(false)
+    // The re-armed unavailable dwell paces the advance after resume.
+    expect(resumed.currentIndex).toBe(0)
   })
 
   it("records pendingSkip on MAX_DWELL_ELAPSED while suspended, then advances on RESUME", () => {
@@ -523,7 +541,7 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     const afterError = run(
       createInitialPagerState(twoVideos),
       { type: "SUSPEND", reason: "scroll" },
-      { type: "STREAM_ERROR" },
+      { type: "MAX_DWELL_ELAPSED" },
     )
     expect(afterError.pendingSkip).toBe(true)
 
@@ -545,7 +563,7 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     const afterError = run(
       createInitialPagerState(mixedQueue),
       { type: "SUSPEND", reason: "scroll" },
-      { type: "STREAM_ERROR" },
+      { type: "MAX_DWELL_ELAPSED" },
     )
     expect(afterError.pendingSkip).toBe(true)
 
@@ -562,12 +580,194 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     const afterError = run(
       createInitialPagerState(twoVideos),
       { type: "SUSPEND", reason: "scroll" },
-      { type: "STREAM_ERROR" },
+      { type: "MAX_DWELL_ELAPSED" },
     )
     expect(afterError.pendingSkip).toBe(true)
 
     const fresh = [videoSlide("v3"), videoSlide("v4")]
     const next = pagerReducer(afterError, { type: "SLIDES_SET", slides: fresh })
     expect(next.pendingSkip).toBe(false)
+  })
+})
+
+// ── Transition hold: outgoing video keeps playing through the slide anim ────
+
+describe("transition hold (transitionFromId)", () => {
+  /** Queue on v1 with its video revealed (phase "playing"). */
+  const playingOnV1 = run(createInitialPagerState(twoVideos), {
+    type: "PLAY_STARTED",
+  })
+
+  it("starts null", () => {
+    expect(createInitialPagerState(twoVideos).transitionFromId).toBeNull()
+  })
+
+  it("leaving a PLAYING slide records it as the hold (chip tap)", () => {
+    const next = pagerReducer(playingOnV1, { type: "CHIP_TAPPED", index: 1 })
+    expect(next.currentIndex).toBe(1)
+    expect(next.transitionFromId).toBe("v1")
+  })
+
+  it("leaving a PLAYING slide records it as the hold (auto-advance)", () => {
+    const next = pagerReducer(playingOnV1, { type: "PLAY_TO_END" })
+    expect(next.currentIndex).toBe(1)
+    expect(next.transitionFromId).toBe("v1")
+  })
+
+  it("leaving a POSTER slide sets no hold (nothing was playing)", () => {
+    const next = pagerReducer(createInitialPagerState(twoVideos), {
+      type: "SWIPED",
+      index: 1,
+    })
+    expect(next.transitionFromId).toBeNull()
+  })
+
+  it("a second jump mid-animation keeps the ORIGINAL hold", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    // Incoming slide never played, so its departure must not steal the hold.
+    const doubled = pagerReducer(midFlight, { type: "SWIPED", index: 0 })
+    expect(doubled.transitionFromId).toBe("v1")
+  })
+
+  it("the scroll settle (SLIDE_SHOWN) releases the hold", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const settled = pagerReducer(midFlight, { type: "SLIDE_SHOWN", index: 1 })
+    expect(settled.currentIndex).toBe(1)
+    expect(settled.transitionFromId).toBeNull()
+  })
+
+  it("SLIDE_SHOWN with no hold on the current index is a no-op (same ref)", () => {
+    const state = createInitialPagerState(twoVideos)
+    expect(pagerReducer(state, { type: "SLIDE_SHOWN", index: 0 })).toBe(state)
+  })
+
+  it("SUSPEND releases the hold (settle may never fire while suspended)", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const suspended = pagerReducer(midFlight, {
+      type: "SUSPEND",
+      reason: "blur",
+    })
+    expect(suspended.transitionFromId).toBeNull()
+  })
+
+  it("STREAM_ERROR during a hold parks unavailable and keeps the hold", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const errored = pagerReducer(midFlight, { type: "STREAM_ERROR" })
+    expect(errored.currentIndex).toBe(1) // no mid-animation advance
+    expect(errored.phase).toBe("unavailable")
+    expect(errored.transitionFromId).toBe("v1")
+  })
+
+  it("PLAY_TO_END during a hold is the OUTGOING stream ending — no advance", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    // The outgoing video finishing mid-animation must not double-advance
+    // past the incoming slide; it just freezes on its last frame.
+    expect(pagerReducer(midFlight, { type: "PLAY_TO_END" })).toBe(midFlight)
+  })
+
+  it("SLIDES_SET releases the hold (held id may no longer exist)", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const replaced = pagerReducer(midFlight, {
+      type: "SLIDES_SET",
+      slides: [videoSlide("v3"), videoSlide("v4")],
+    })
+    expect(replaced.transitionFromId).toBeNull()
+  })
+
+  it("PLAY_STARTED during a hold is the OUTGOING stream's edge — no latch", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    // A rebuffer-resume of the still-playing outgoing video must not flip
+    // phase to "playing" for the incoming slide (poster would hide at settle).
+    expect(pagerReducer(midFlight, { type: "PLAY_STARTED" })).toBe(midFlight)
+  })
+
+  it("MAX_DWELL force-releases a hold whose settle never arrived", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const escaped = pagerReducer(midFlight, { type: "MAX_DWELL_ELAPSED" })
+    expect(escaped.currentIndex).toBe(0) // wrapped past the stuck slide
+    expect(escaped.transitionFromId).toBeNull()
+  })
+
+  it("repeat same-reason SUSPEND still clears a hold created while suspended", () => {
+    const wedged = run(
+      playingOnV1,
+      { type: "SUSPEND", reason: "blur" },
+      // moveTo has no suspended guard, so this creates a hold mid-suspension.
+      { type: "CHIP_TAPPED", index: 1 },
+      { type: "SUSPEND", reason: "blur" },
+    )
+    expect(wedged.transitionFromId).toBeNull()
+  })
+})
+
+// ── heroPageVideoState (render-time host derivation) ────────────────────────
+
+describe("heroPageVideoState", () => {
+  const ready = run(createInitialPagerState(twoVideos), {
+    type: "PLAY_STARTED",
+  })
+
+  it("active playing page hosts the video with poster hidden", () => {
+    expect(heroPageVideoState(ready, twoVideos[0]!, 0)).toEqual({
+      showVideo: true,
+      posterHidden: true,
+    })
+    expect(heroPageVideoState(ready, twoVideos[1]!, 1)).toEqual({
+      showVideo: false,
+      posterHidden: false,
+    })
+  })
+
+  it("poster phase shows the video under a visible poster (handoff rule)", () => {
+    const poster = run(ready, { type: "SLIDE_SHOWN", index: 1 })
+    expect(heroPageVideoState(poster, twoVideos[1]!, 1)).toEqual({
+      showVideo: true,
+      posterHidden: false,
+    })
+  })
+
+  it("during a hold the DEPARTING page keeps the video; incoming shows poster", () => {
+    const midFlight = pagerReducer(ready, { type: "CHIP_TAPPED", index: 1 })
+    expect(heroPageVideoState(midFlight, twoVideos[0]!, 0)).toEqual({
+      showVideo: true,
+      posterHidden: true,
+    })
+    expect(heroPageVideoState(midFlight, twoVideos[1]!, 1)).toEqual({
+      showVideo: false,
+      posterHidden: false,
+    })
+  })
+
+  it("a mux slide never hosts the video", () => {
+    const onMux = run(
+      createInitialPagerState(mixedQueue),
+      { type: "PLAY_STARTED" },
+      { type: "SLIDE_SHOWN", index: 1 },
+    )
+    expect(heroPageVideoState(onMux, mixedQueue[1]!, 1).showVideo).toBe(false)
   })
 })

@@ -1,23 +1,17 @@
-// Pure builders that turn a normalized WatchVideoRecord's content into the
-// NormalizedBlock-shaped inputs the existing section renderers consume. The
-// renderers read TV's ALIASED field names off the block (rqHeading, textHeading,
-// bqcHeading + per-item arrays), so these adapters reproduce exactly those keys
-// — see RelatedQuestionsRenderer / TextRenderer / BibleQuotesCarouselRenderer.
-//
-// KTD7: feed the existing renderers via small adapter objects rather than
-// rebuilding them. Study questions carry no inline answers (the data has none),
-// so answers are empty strings. Bible citations carry only reference fields, so
-// the verse text arrives via the useBibleVerses fetch map and the card
-// backgrounds are the same stock Unsplash set mobile/web cycle by index.
-// Returning null when there are no items lets the screen omit the whole section
-// (heading + body) — the degraded contract in U5.
+// KTD7: pure builders feeding section renderers with wire-conformant block
+// models (the SDUI normalizer's typed shapes), so the watch page reuses the
+// Experience renderers. Returning null omits the whole section — U5 contract.
 
 import {
   BIBLE_IMAGES,
   JOIN_BIBLE_STUDY_URL,
   PROMO_IMAGE_URL,
 } from "../../lib/bibleContent"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type {
+  BibleQuotesCarouselBlockModel,
+  RelatedQuestionsBlockModel,
+  TextBlockModel,
+} from "../../lib/normalizer"
 import type {
   WatchBibleCitation,
   WatchStudyQuestion,
@@ -26,38 +20,40 @@ import type {
 // ── Description → TextRenderer block ───────────────────────────────
 
 /**
- * Build the TextRenderer input from the video description, or null when there's
- * no usable description. `textHeading` is null (the description stands alone
- * under the title); `contentParagraphs` is the renderer's `string[]` field.
+ * TextRenderer input from the video description, or null when none. `textHeading`
+ * is null (description stands alone under the title); `contentParagraphs` is the
+ * renderer's `string[]` field.
  */
 export function buildDescriptionBlock(
   description: string | null | undefined,
-): NormalizedBlock | null {
+): TextBlockModel | null {
   const trimmed = description?.trim()
   if (!trimmed) return null
   return {
     kind: "text",
     __typename: "TextBlock",
+    sectionKey: null,
     textHeading: null,
+    headingLevel: null,
+    subtitle: null,
     contentParagraphs: [trimmed],
+    textVariant: null,
   }
 }
 
 // ── Study questions → RelatedQuestionsRenderer block ───────────────
 
 /**
- * Build the RelatedQuestionsRenderer input from the video's study questions, or
- * null when there are none. Each question gets a per-question stable `id` (its
- * index) and an empty `answer` — the data carries no inline answers; the QR /
- * CTA-on-expand handoff is layered by the screen, not here.
+ * RelatedQuestionsRenderer input from study questions, or null when none. Rows
+ * key on their index; `answer` is empty — the data has no inline answers; the
+ * QR / CTA-on-expand handoff is layered by the screen, not here.
  */
 export function buildRelatedQuestionsBlock(
   studyQuestions: readonly WatchStudyQuestion[] | null | undefined,
-): NormalizedBlock | null {
+): RelatedQuestionsBlockModel | null {
   if (!studyQuestions || studyQuestions.length === 0) return null
   const questions = studyQuestions
-    .map((q, i) => ({
-      id: String(i),
+    .map((q) => ({
       question: q.value,
       answer: "",
     }))
@@ -66,7 +62,10 @@ export function buildRelatedQuestionsBlock(
   return {
     kind: "relatedQuestions",
     __typename: "RelatedQuestionsBlock",
+    sectionKey: null,
     rqHeading: "Related Questions",
+    ctaLabel: null,
+    ctaLink: null,
     questions,
   }
 }
@@ -93,27 +92,23 @@ export function formatCitationReference(c: WatchBibleCitation): string | null {
   return `${c.bookName} ${chapter}:${verse}`
 }
 
-type BibleQuoteCard = {
+type BibleQuoteBase = NonNullable<
+  BibleQuotesCarouselBlockModel["quotes"]
+>[number]
+type BibleQuoteCard = BibleQuoteBase & {
   id: string
-  reference: string
-  text: string
-  imageUrl: string
-  ctaLabel?: string
-  ctaLink?: string
+  imageUrl?: string | null
 }
 
 /**
- * Build the BibleQuotesCarouselRenderer input from the video's bible citations,
- * or null when there are none with a usable reference. Each citation card gets
- * the verse text from the `verses` fetch map (keyed by documentId — empty
- * fallback while loading / unavailable) and a stock background image cycled by
- * index, then the "Join Our Bible Study" promo card closes the rail — the same
- * card set mobile/web render for this section.
+ * BibleQuotesCarouselRenderer input from bible citations, or null when none have
+ * a usable reference. Verse text comes from the `verses` map (by documentId);
+ * a "Join Our Bible Study" promo card closes the rail — same set mobile/web use.
  */
 export function buildBibleQuotesBlock(
   bibleCitations: readonly WatchBibleCitation[] | null | undefined,
   verses: Record<string, string> = {},
-): NormalizedBlock | null {
+): BibleQuotesCarouselBlockModel | null {
   if (!bibleCitations || bibleCitations.length === 0) return null
   const quotes = bibleCitations
     .map((c, i): BibleQuoteCard | null => {
@@ -123,7 +118,13 @@ export function buildBibleQuotesBlock(
         id: String(i),
         reference,
         text: verses[c.documentId] ?? "",
+        attribution: null,
+        imageAsset: null,
+        backgroundImageAsset: null,
         imageUrl: BIBLE_IMAGES[i % BIBLE_IMAGES.length],
+        backgroundColor: null,
+        ctaLabel: null,
+        ctaLink: null,
       }
     })
     .filter((q): q is BibleQuoteCard => q != null)
@@ -132,13 +133,18 @@ export function buildBibleQuotesBlock(
     id: "promo",
     reference: "Free Resources",
     text: "Want to explore life's biggest questions?",
+    attribution: null,
+    imageAsset: null,
+    backgroundImageAsset: null,
     imageUrl: PROMO_IMAGE_URL,
+    backgroundColor: null,
     ctaLabel: "Join Our Bible Study",
     ctaLink: JOIN_BIBLE_STUDY_URL,
   })
   return {
     kind: "bibleQuotesCarousel",
     __typename: "BibleQuotesCarouselBlock",
+    sectionKey: null,
     bqcHeading: "Bible Quotes",
     quotes,
   }

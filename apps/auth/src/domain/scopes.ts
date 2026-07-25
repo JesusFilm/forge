@@ -15,6 +15,12 @@ export const AUTH_SCOPES = [
     description: "Share your verified email address.",
   },
   {
+    key: "offline_access",
+    label: "Stay signed in",
+    description:
+      "Allow the requesting application to keep access active without asking you to sign in again.",
+  },
+  {
     key: "membership:read",
     label: "Read membership status",
     description:
@@ -36,6 +42,12 @@ export const AUTH_SCOPES = [
     description: "Allow sign-in to the Mastra Studio gateway.",
   },
   {
+    key: "web:watch-events:write",
+    label: "Record watch activity",
+    description:
+      "Allow Web to record meaningful signed-in video watch activity.",
+  },
+  {
     key: "admin:manager-session:validate",
     label: "Validate Manager sessions",
     description:
@@ -45,6 +57,46 @@ export const AUTH_SCOPES = [
     key: "tokens:manage",
     label: "Manage tokens",
     description: "Create, inspect, and revoke scoped Auth tokens.",
+  },
+  {
+    key: "experience:read",
+    label: "Read experiences",
+    description: "Read Experience pages and locale content for localization.",
+  },
+  {
+    key: "experience:locale:create",
+    label: "Create experience locales",
+    description: "Create new localized Experience drafts.",
+  },
+  {
+    key: "experience:locale:update",
+    label: "Update experience locales",
+    description: "Update localized Experience drafts you can edit.",
+  },
+  {
+    key: "experience:locale:validate",
+    label: "Validate experience locales",
+    description: "Validate localized Experience drafts before writing.",
+  },
+  {
+    key: "media:read",
+    label: "Read media",
+    description: "Read media asset metadata needed for localized Experiences.",
+  },
+  {
+    key: "video:read",
+    label: "Read videos",
+    description: "Read video availability and replacement candidates.",
+  },
+  {
+    key: "bible:read",
+    label: "Read Bible references",
+    description: "Read Bible passages and reference metadata for localization.",
+  },
+  {
+    key: "experience:publish",
+    label: "Publish experience locales",
+    description: "Publish localized Experiences after validation.",
   },
 ] as const
 

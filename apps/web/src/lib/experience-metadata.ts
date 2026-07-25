@@ -13,7 +13,6 @@ import {
   localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
 import { getSocialConfig } from "@/lib/social-config"
@@ -21,6 +20,7 @@ import { resolvePosterUrl } from "@/lib/url"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 
 const TITLE_SUFFIX = "| Jesus Film Project"
+const TITLE_SUFFIX_TEXT = "Jesus Film Project"
 
 /**
  * Build the canonical absolute URL for a watch page in the `.html` shape,
@@ -70,26 +70,6 @@ function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
   return root
 }
 
-function buildEpisodeCanonicalUrl(
-  seriesSlug: string,
-  episodeSlug: string,
-  pathLocale: string,
-): string {
-  const root = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`
-  const series = stripHtmlSuffix(seriesSlug)
-  const episode = stripHtmlSuffix(episodeSlug)
-  const locale = stripHtmlSuffix(pathLocale)
-
-  const seriesContentSlug = tryAsContentSlug(series)
-  const episodeContentSlug = tryAsContentSlug(episode)
-  const localeSlug = tryAsLocaleSlug(locale)
-  if (seriesContentSlug && episodeContentSlug && localeSlug) {
-    return `${root}${watchEpisodePath(seriesContentSlug, episodeContentSlug, localeSlug)}`
-  }
-
-  return `${root}/${series}/${episode}/${locale}`
-}
-
 const OG_LOCALE_OVERRIDES: Record<string, string> = {
   en: "en_US",
   pt: "pt_BR",
@@ -99,6 +79,13 @@ function getOgLocale(locale: string): string {
   if (OG_LOCALE_OVERRIDES[locale]) return OG_LOCALE_OVERRIDES[locale]
   if (locale.includes("-")) return locale.replace(/-/g, "_")
   return `${locale}_${locale.toUpperCase()}`
+}
+
+function withTitleSuffix(title: string): string {
+  const trimmed = title.trim()
+  if (!trimmed) return `Watch ${TITLE_SUFFIX}`
+  if (trimmed.endsWith(TITLE_SUFFIX_TEXT)) return trimmed
+  return `${trimmed} ${TITLE_SUFFIX}`
 }
 
 const DEFAULT_OG_IMAGE = {
@@ -115,6 +102,11 @@ type WatchMetadataImage = {
   height: number
   alt: string
   type: "image/jpeg"
+}
+
+export type WatchStructuredDataCaption = {
+  contentUrl: string
+  inLanguage: string
 }
 
 const MUX_SOCIAL_IMAGE_WIDTH = 1200
@@ -135,16 +127,35 @@ function buildMuxSocialImage(
   }
 }
 
+function firstValidDate(
+  ...values: Array<string | null | undefined>
+): string | null {
+  for (const value of values) {
+    const candidate = value?.trim()
+    if (candidate && Number.isFinite(Date.parse(candidate))) return candidate
+  }
+  return null
+}
+
 export type WatchVideoMetadataModel = {
   title: string
   videoTitle: string
+  /**
+   * Eligible VideoObject name. Unlike page and social metadata titles, this
+   * intentionally never falls back to the route slug or a generic label.
+   */
+  structuredDataTitle: string | null
+  structuredDataDescription: string | null
   description: string
   canonicalUrl: string
   image: WatchMetadataImage
+  structuredDataThumbnailUrl: string | null
   noIndex: boolean
   inLanguage: string | null
   durationSeconds: number | null
-  alternatesLanguages?: Record<string, string>
+  contentUrl: string | null
+  uploadDate: string | null
+  captions: WatchStructuredDataCaption[]
 }
 
 type WatchVideoMetadataOptions = {
@@ -155,40 +166,21 @@ type WatchVideoMetadataOptions = {
   seriesSlug?: string
 }
 
-function buildWatchVideoAlternateLanguages(
-  options: WatchVideoMetadataOptions,
-): Record<string, string> | undefined {
-  const languages: Record<string, string> = {}
-  const episodeSlug = options.video.slug ?? options.routeSlug
-
-  for (const variant of options.video.variants ?? []) {
-    if (variant.published !== true || !variant.hls) continue
-    const slug = variant.language?.slug
-    const bcp47 = variant.language?.bcp47
-    if (!slug || !bcp47 || languages[bcp47]) continue
-
-    languages[bcp47] = options.seriesSlug
-      ? buildEpisodeCanonicalUrl(options.seriesSlug, episodeSlug, slug)
-      : buildCanonicalUrl(options.routeSlug, slug)
-  }
-
-  return Object.keys(languages).length ? languages : undefined
-}
-
 export function buildWatchVideoMetadataModel(
   options: WatchVideoMetadataOptions,
 ): WatchVideoMetadataModel {
   const episodeSlug = options.video.slug ?? options.routeSlug
-  const canonicalUrl = options.seriesSlug
-    ? buildEpisodeCanonicalUrl(
-        options.seriesSlug,
-        episodeSlug,
-        options.pathLocale,
-      )
-    : buildCanonicalUrl(options.routeSlug, options.pathLocale)
+  const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
   const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const structuredDataTitle = options.video.title?.trim() || null
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""
+  const structuredDataDescription =
+    options.video.description?.trim() ||
+    options.video.snippet?.trim() ||
+    (structuredDataTitle
+      ? `Watch ${structuredDataTitle} from Jesus Film Project.`
+      : null)
   const imageAlt =
     options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
   const muxSocialImage = buildMuxSocialImage(
@@ -214,16 +206,24 @@ export function buildWatchVideoMetadataModel(
   return {
     title,
     videoTitle,
+    structuredDataTitle,
+    structuredDataDescription,
     description,
     canonicalUrl,
     image,
+    structuredDataThumbnailUrl: muxSocialImage?.url ?? posterUrl,
     noIndex: options.video.noIndex ?? false,
-    inLanguage:
-      options.selectedVariant.language?.bcp47 ??
-      options.selectedVariant.language?.slug ??
-      null,
+    inLanguage: options.selectedVariant.language?.bcp47?.trim() || null,
     durationSeconds: options.selectedVariant.duration ?? null,
-    alternatesLanguages: buildWatchVideoAlternateLanguages(options),
+    contentUrl: options.selectedVariant.hls?.trim() || null,
+    uploadDate: firstValidDate(
+      options.video.publishedAt,
+      options.video.localePublishedAt,
+    ),
+    captions: options.video.subtitles.map((subtitle) => ({
+      contentUrl: subtitle.vttSrc.trim(),
+      inLanguage: subtitle.language.bcp47.trim(),
+    })),
   }
 }
 
@@ -265,9 +265,6 @@ export function generateWatchVideoMetadata(
     ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
     alternates: {
       canonical: model.canonicalUrl,
-      ...(model.alternatesLanguages && {
-        languages: model.alternatesLanguages,
-      }),
     },
   }
 }
@@ -352,11 +349,11 @@ function toMetadata(
   const fallbackTitle = options?.slug
     ? `${options.slug} ${TITLE_SUFFIX}`
     : "Watch | Jesus Film Project"
-  const title = cms?.title ?? fallbackTitle
+  const title = cms?.title ? withTitleSuffix(cms.title) : fallbackTitle
   const description =
     cms?.description ??
     "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages."
-  const ogTitle = cms?.ogTitle ?? title
+  const ogTitle = cms?.ogTitle ? withTitleSuffix(cms.ogTitle) : title
   const ogDescription = cms?.ogDescription ?? description
   const ogImage = cms?.ogImage
     ? {
@@ -410,6 +407,13 @@ export async function getWatchPageMetadata(
 ): Promise<Metadata> {
   const result = await resolveWatchPage(locale, options?.slug)
   return toMetadata(locale, result.data, options)
+}
+
+export function getWatchRouteFallbackMetadata(
+  locale: string,
+  options?: { slug?: string; pathLocale?: string },
+): Metadata {
+  return toMetadata(locale, null, options)
 }
 
 // Series-page metadata helper. Mirrors the shape `getWatchPageMetadata`

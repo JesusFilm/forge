@@ -5,6 +5,10 @@ import {
   WATCH_CANONICAL_ORIGIN,
   asContentSlug,
   asLocaleSlug,
+  languagesIndexPath,
+  localizedHistoryPath,
+  localizedLanguagesPath,
+  languageVideosIndexPath,
   localizedHomeAbsolute,
   localizedHomePath,
   parseWatchPath,
@@ -28,7 +32,14 @@ const portugueseBrazil = asLocaleSlug("portuguese-brazil")
 describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
   it("returns branded slug on valid input", () => {
     expect(tryAsContentSlug("jesus")).toBe("jesus")
+    expect(tryAsContentSlug("soccer_event_collection")).toBe(
+      "soccer_event_collection",
+    )
     expect(tryAsLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("keeps public language slugs kebab-case", () => {
+    expect(tryAsLocaleSlug("soccer_event_collection")).toBeNull()
   })
 
   it("returns null on uppercase", () => {
@@ -56,7 +67,14 @@ describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
 describe("asContentSlug / asLocaleSlug guards", () => {
   it("accepts safe slug shape", () => {
     expect(asContentSlug("jesus")).toBe("jesus")
+    expect(asContentSlug("soccer_event_collection")).toBe(
+      "soccer_event_collection",
+    )
     expect(asLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("rejects underscores in locale slugs", () => {
+    expect(() => asLocaleSlug("soccer_event_collection")).toThrow()
   })
 
   it("rejects uppercase", () => {
@@ -136,22 +154,37 @@ describe("watchEpisodePath", () => {
 })
 
 describe("videosIndexPath", () => {
-  it("returns /videos (no .html)", () => {
-    expect(videosIndexPath()).toBe("/videos")
+  it("returns the canonical /languages path for compatibility", () => {
+    expect(videosIndexPath()).toBe("/languages")
+  })
+})
+
+describe("languagesIndexPath", () => {
+  it("returns /languages (no .html)", () => {
+    expect(languagesIndexPath()).toBe("/languages")
+  })
+})
+
+describe("localized utility paths", () => {
+  it("builds language-bearing all-languages and history paths", () => {
+    expect(localizedLanguagesPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/languages",
+    )
+    expect(localizedHistoryPath(russian)).toBe("/russian.html/history")
+  })
+})
+
+describe("languageVideosIndexPath", () => {
+  it("returns /lang.html/videos", () => {
+    expect(languageVideosIndexPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/videos",
+    )
   })
 })
 
 describe("searchPath", () => {
-  it("returns / when no q", () => {
+  it("returns the root modal fallback path", () => {
     expect(searchPath()).toBe("/")
-  })
-
-  it("returns /?q=... when q is provided", () => {
-    expect(searchPath("jesus")).toBe("/?q=jesus")
-  })
-
-  it("URL-encodes special characters in q", () => {
-    expect(searchPath("jesus & friends")).toBe("/?q=jesus+%26+friends")
   })
 })
 
@@ -221,42 +254,35 @@ describe("parseWatchPath", () => {
     })
   })
 
-  it("parses /videos as videos", () => {
-    expect(parseWatchPath("/videos")).toEqual({ kind: "videos" })
+  it("parses /languages as languages", () => {
+    expect(parseWatchPath("/languages")).toEqual({ kind: "languages" })
   })
 
-  it("parses /search with q from URLSearchParams (proxy.ts caller)", () => {
-    expect(parseWatchPath("/search", new URLSearchParams("q=jesus"))).toEqual({
-      kind: "search",
-      q: "jesus",
+  it("parses localized utility routes without treating them as videos", () => {
+    expect(parseWatchPath("/french.html/languages")).toEqual({
+      kind: "localized-languages",
+      lang: "french",
+    })
+    expect(parseWatchPath("/spanish-latin-american.html/history")).toEqual({
+      kind: "localized-history",
+      lang: "spanish-latin-american",
     })
   })
 
-  it("parses /search with q from plain Record (Next 16 page-route caller)", () => {
-    expect(parseWatchPath("/search", { q: "jesus" })).toEqual({
-      kind: "search",
-      q: "jesus",
+  it("parses legacy /videos as languages", () => {
+    expect(parseWatchPath("/videos")).toEqual({ kind: "languages" })
+  })
+
+  it("parses /spanish-latin-american.html/videos as language videos", () => {
+    expect(parseWatchPath("/spanish-latin-american.html/videos")).toEqual({
+      kind: "language-videos",
+      lang: "spanish-latin-american",
     })
   })
 
-  it("parses /search with array-valued q from plain Record (takes first)", () => {
-    expect(parseWatchPath("/search", { q: ["jesus", "ignored"] })).toEqual({
-      kind: "search",
-      q: "jesus",
-    })
-  })
-
-  it("parses /search with undefined q from plain Record", () => {
-    expect(parseWatchPath("/search", { q: undefined })).toEqual({
-      kind: "search",
-      q: undefined,
-    })
-  })
-
-  it("parses /search without q", () => {
+  it("parses deprecated /search without query state", () => {
     expect(parseWatchPath("/search")).toEqual({
       kind: "search",
-      q: undefined,
     })
   })
 
@@ -316,6 +342,15 @@ describe("parseWatchPath", () => {
       series: "lumo-the-gospel-of-john",
       episode: "wedding-in-cana",
       lang: "english",
+    })
+  })
+
+  it("inverts languageVideosIndexPath", () => {
+    const emitted = languageVideosIndexPath(portugueseBrazil)
+    const parsed = parseWatchPath(emitted)
+    expect(parsed).toEqual({
+      kind: "language-videos",
+      lang: "portuguese-brazil",
     })
   })
 })

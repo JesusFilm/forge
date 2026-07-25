@@ -1,0 +1,30 @@
+# Railway only reads this file if the dedicated @forge/admin worker service's
+# Config-as-code Path is set to apps/admin/railway.worker.toml. The traffic-
+# serving admin web service should keep using apps/admin/railway.toml.
+#
+# Set WORKFLOW_RUNNER_ENABLED=true on this worker service only. Leave it unset
+# or false on admin web replicas so web scaling does not also scale background
+# job runners.
+#
+# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# service variables are present during Railpack/mise build setup, before
+# dependencies are installed. Keep the Datadog preload scoped to startCommand.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps"
+watchPatterns = [
+  "/apps/admin/**",
+  "/packages/experience-schema/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+startCommand = "cd apps/admin && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { useTranslations } from "next-intl"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -45,10 +46,16 @@ function DialogContent({
   showCloseButton = true,
   overlayClassName,
   portalContainer,
+  viewportClassName,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
   overlayClassName?: string
+  /**
+   * Opt into Base UI's positioning viewport so the parent can own scrolling
+   * while the popup stays width-constrained inside it.
+   */
+  viewportClassName?: string
   /**
    * Override the portal mount point. Defaults to `<body>`. Used by callers
    * that need the dialog to render inside a specific subtree — e.g. so it
@@ -57,36 +64,53 @@ function DialogContent({
    */
   portalContainer?: HTMLElement | null
 }) {
+  const t = useTranslations("WatchModal")
+  const popup = (
+    <DialogPrimitive.Popup
+      data-slot="dialog-content"
+      className={cn(
+        "z-50 grid w-full gap-4 rounded-xl bg-background p-4 text-sm ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        viewportClassName === undefined
+          ? "fixed top-1/2 left-1/2 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 sm:max-w-sm"
+          : "relative",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      {showCloseButton && (
+        <DialogPrimitive.Close
+          data-slot="dialog-close"
+          data-testid="dialog-close-button"
+          render={
+            <Button
+              variant="ghost"
+              className="absolute top-2 right-2"
+              size="icon-sm"
+              aria-label={t("close")}
+            />
+          }
+        >
+          <XIcon />
+          <span className="sr-only">{t("close")}</span>
+        </DialogPrimitive.Close>
+      )}
+    </DialogPrimitive.Popup>
+  )
+
   return (
     <DialogPortal container={portalContainer ?? undefined}>
       <DialogOverlay className={overlayClassName} />
-      <DialogPrimitive.Popup
-        data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-background p-4 text-sm ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            data-testid="dialog-close-button"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-2 right-2"
-                size="icon-sm"
-                aria-label="Close"
-              />
-            }
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Popup>
+      {viewportClassName !== undefined ? (
+        <DialogPrimitive.Viewport
+          data-slot="dialog-viewport"
+          className={viewportClassName}
+        >
+          {popup}
+        </DialogPrimitive.Viewport>
+      ) : (
+        popup
+      )}
     </DialogPortal>
   )
 }
@@ -109,6 +133,8 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const t = useTranslations("WatchModal")
+
   return (
     <div
       data-slot="dialog-footer"
@@ -121,7 +147,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
+          {t("close")}
         </DialogPrimitive.Close>
       )}
     </div>

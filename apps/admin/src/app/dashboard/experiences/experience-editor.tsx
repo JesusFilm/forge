@@ -3,10 +3,13 @@
 import {
   useCallback,
   useEffect,
+  useId,
+  useMemo,
   useRef,
   useState,
   useTransition,
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react"
 import { createPortal } from "react-dom"
 import {
@@ -27,6 +30,7 @@ import {
   CalendarDays,
   Captions,
   Check,
+  ChevronDown,
   CirclePlay,
   ArrowLeft,
   BookMarked,
@@ -62,8 +66,10 @@ import {
   MousePointer2,
   Music,
   ImageIcon,
+  MonitorPlay,
   Plus,
   RectangleHorizontal,
+  RectangleVertical,
   Route,
   Save,
   Search,
@@ -80,10 +86,17 @@ import {
 import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
+import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
+import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
+import {
+  matchesVideoLibraryCategory,
+  type VideoLibraryCategory,
+} from "@/app/dashboard/video-library-utils"
 import {
   BackgroundColorPicker,
   normalizeHexColor,
 } from "./experience-editor/background-color-picker"
+import { ImagePickerBrowser } from "./experience-editor/image-picker-browser"
 import {
   BibleQuoteCard,
   type BibleQuoteDragHandleState,
@@ -100,6 +113,8 @@ import {
   createContainerSlotBlock,
   createContainerSlotLayout,
   createTemplateBlock,
+  contentParagraphsFromEditorText,
+  editorTextFromContentParagraphs,
   isContainerSlotBlock,
   normalizeEditorBlocks,
   parseClipInput,
@@ -117,6 +132,7 @@ import {
   type VideoHeroHeadingSource,
   type VideoHeroSubheadingSource,
   type VideoLibraryItem,
+  type VideoLibraryPlayableDub,
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
@@ -141,21 +157,19 @@ type RevisionEntry = {
   isActive: boolean
 }
 
-type MediaLibraryItem = {
-  id: string
-  displayName: string
-  altText: string | null
-  mimeType: string
-  byteSize: string
-  previewUrl: string | null
-  updated: string
-}
+type MediaLibraryItem = MediaLibraryBrowserData["images"][number]
+
+type ImagePickerUrlField =
+  | "backgroundImageAsset"
+  | "blockImageAsset"
+  | "mediaUrl"
 
 type ImagePickerTarget = {
-  blockIndex: number
-  urlField: "backgroundImageUrl" | "imageUrl" | "mediaUrl"
-  assetField: "backgroundImageAssetId" | "imageAssetId" | "mediaAssetId"
   label: string
+  selectedAssetId: string | null
+  canClear: boolean
+  apply: (asset: MediaLibraryItem) => void
+  clear: () => void
 }
 
 type LocaleEntry = {
@@ -227,6 +241,7 @@ type NavigationDestinationPickerPosition = {
 
 type VideoPickerDraft = {
   videoKey: string | null
+  dubKey: string | null
   clipStartSeconds: string
   clipEndSeconds: string
   autoplay: boolean
@@ -236,6 +251,22 @@ type VideoPickerDraft = {
 }
 
 type VideoPickerMode = "block" | "carouselAppend" | "mediaCollectionAppend"
+type VideoLibrarySearchClient =
+  | "experience-editor-video-picker"
+  | "experience-editor-video-carousel-picker"
+  | "experience-editor-media-collection-picker"
+
+const VIDEO_PICKER_CATEGORY_OPTIONS: Array<{
+  label: string
+  value: VideoLibraryCategory
+}> = [
+  { value: "all", label: "All types" },
+  { value: "collections", label: "Collections" },
+  { value: "episodes", label: "Single episodes" },
+  { value: "features", label: "Features" },
+  { value: "shortFilms", label: "Short films" },
+  { value: "series", label: "Series" },
+]
 
 type ClipHandle = "start" | "end"
 type PreviewFlashIcon = "play" | "pause" | null
@@ -269,6 +300,19 @@ type InfoBlockDragHandleState = {
   pointerOffsetX: number
   pointerOffsetY: number
 }
+
+function videoLibrarySearchClientForMode(
+  mode: VideoPickerMode,
+): VideoLibrarySearchClient {
+  if (mode === "mediaCollectionAppend") {
+    return "experience-editor-media-collection-picker"
+  }
+  if (mode === "carouselAppend") {
+    return "experience-editor-video-carousel-picker"
+  }
+  return "experience-editor-video-picker"
+}
+
 type NavigationCarouselDragState = {
   blockIndex: number
   itemIndex: number
@@ -312,6 +356,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: Clapperboard,
   },
   {
+    key: "watchHomeHero",
+    label: "Watch Home Hero",
+    description: "Static hero used at the top of the Watch homepage.",
+    category: "Hero",
+    icon: MonitorPlay,
+  },
+  {
     key: "routeVideoHero",
     label: "Route Video Hero",
     description: "Hero bound to the current video route.",
@@ -343,6 +394,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     key: "text",
     label: "Text",
     description: "Rich editorial copy with heading and body.",
+    category: "Content",
+    icon: FileText,
+  },
+  {
+    key: "promotionalText",
+    label: "Promotional Story",
+    description: "Long-form Markdown in a cinematic mission section.",
     category: "Content",
     icon: FileText,
   },
@@ -458,6 +516,7 @@ type SectionContentTemplateKey =
       BlockTemplateKey,
       | "adventCountdown"
       | "easterDates"
+      | "promotionalText"
       | "section"
       | "videoHero"
       | "routeVideoHero"
@@ -805,6 +864,15 @@ function localeDotClass(tone: LocaleEntry["stateTone"]) {
   return "bg-[var(--color-warning)]"
 }
 
+const selectedMediaButtonClassName =
+  "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
+const idleMediaButtonClassName =
+  "border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+const selectedOverlayMediaButtonClassName =
+  "border-[rgba(110,231,183,0.54)] bg-[rgba(20,83,61,0.82)] text-white hover:border-[rgba(110,231,183,0.78)] hover:bg-[rgba(24,96,70,0.9)]"
+const idleOverlayMediaButtonClassName =
+  "border-white/18 bg-[#08090d] text-white hover:border-white/36 hover:bg-[#11131a]"
+
 function formatSeconds(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "--:--"
   const totalSeconds = Math.max(0, Math.floor(value))
@@ -817,6 +885,208 @@ function formatSeconds(value: number | null) {
   }
 
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+}
+
+function formatReadableDuration(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return null
+  const totalSeconds = Math.max(0, Math.floor(value))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const parts: string[] = []
+
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
+
+  return parts.join(" ")
+}
+
+function videoDubOptionMatchesSearch(
+  dub: VideoLibraryPlayableDub,
+  search: string,
+) {
+  const query = search.replace(/\s+/g, " ").trim().toLocaleLowerCase("en")
+  if (!query) return true
+
+  return [
+    dub.label,
+    dub.duration,
+    formatReadableDuration(dub.durationSeconds),
+    dub.languageSlug,
+    dub.bcp47,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("en")
+    .includes(query)
+}
+
+function SearchableVideoDubControl({
+  dubs,
+  label,
+  onSelect,
+  selectedDub,
+}: {
+  dubs: VideoLibraryPlayableDub[]
+  label: string
+  onSelect: (dubKey: string) => void
+  selectedDub: VideoLibraryPlayableDub | null
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState("")
+  const controlId = useId()
+  const listboxId = `${controlId}-listbox`
+  const rootRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const selectedDuration =
+    formatReadableDuration(selectedDub?.durationSeconds ?? null) ??
+    selectedDub?.duration ??
+    null
+  const filteredDubs = useMemo(
+    () => dubs.filter((dub) => videoDubOptionMatchesSearch(dub, searchValue)),
+    [dubs, searchValue],
+  )
+
+  useEffect(() => {
+    if (!open) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    window.setTimeout(() => searchInputRef.current?.focus(), 0)
+  }, [open])
+
+  function toggleOpen() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+
+    setSearchValue("")
+    setOpen(true)
+  }
+
+  function selectDub(
+    dubKey: string,
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault()
+    setOpen(false)
+    onSelect(dubKey)
+  }
+
+  return (
+    <div ref={rootRef} className="relative min-w-0">
+      <button
+        type="button"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={label}
+        className="flex h-10 w-full min-w-0 items-center justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-left text-[12px] font-medium text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus-visible:border-[var(--color-brand)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+        onClick={toggleOpen}
+        role="combobox"
+      >
+        <span className="min-w-0 truncate">
+          {selectedDub?.label ?? "Select language"}
+        </span>
+        <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
+          {selectedDuration}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]"
+          strokeWidth={1.5}
+        />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+          <label className="mb-1 flex h-9 items-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-bg)] px-2">
+            <Search
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+              strokeWidth={1.5}
+            />
+            <span className="sr-only">{label}</span>
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.currentTarget.value)}
+              placeholder="Search languages"
+              className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+            />
+          </label>
+
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={label}
+            className="max-h-64 overflow-y-auto overscroll-contain py-0.5 [scrollbar-width:thin]"
+          >
+            {filteredDubs.length > 0 ? (
+              filteredDubs.map((dub) => {
+                const selected = dub.key === selectedDub?.key
+                const duration =
+                  formatReadableDuration(dub.durationSeconds) ?? dub.duration
+
+                return (
+                  <button
+                    key={dub.key}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={(event) => selectDub(dub.key, event)}
+                    className="flex min-h-9 w-full items-center justify-between gap-3 rounded-[2px] px-2 py-1 text-left text-[12px] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:text-[var(--color-text-primary)] focus-visible:outline-none"
+                  >
+                    <span className="min-w-0 truncate">{dub.label}</span>
+                    <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {duration}
+                    </span>
+                    <Check
+                      aria-hidden="true"
+                      className={cx(
+                        "h-3.5 w-3.5 shrink-0",
+                        selected
+                          ? "text-[var(--color-brand)]"
+                          : "text-transparent",
+                      )}
+                      strokeWidth={1.8}
+                    />
+                  </button>
+                )
+              })
+            ) : (
+              <div className="px-2 py-2 text-[12px] text-[var(--color-text-muted)]">
+                No languages found
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 function createNestedTemplateBlock(
@@ -948,6 +1218,7 @@ export function ExperienceEditor({
   localeEntries,
   videoLibrary,
   mediaLibrary,
+  canUploadImages,
   calendarDate,
   watchOrigin,
   initialValues,
@@ -955,6 +1226,9 @@ export function ExperienceEditor({
   publishAction,
   createLocaleAction,
   restoreAction,
+  uploadImageAction,
+  loadVideoCollectionChildrenAction,
+  searchVideoLibraryAction,
   onCanvasController,
 }: {
   canPublish: boolean
@@ -962,12 +1236,14 @@ export function ExperienceEditor({
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
-  mediaLibrary: MediaLibraryItem[]
+  mediaLibrary: MediaLibraryBrowserData
+  canUploadImages: boolean
   calendarDate: string
   /** Forge watch-app origin (env.WATCH_CANONICAL_ORIGIN) for preview links. */
   watchOrigin: string
   initialValues: {
     localeId: string
+    videoLanguageId: string | null
     title: string
     slug: string
     metaDescription: string
@@ -983,6 +1259,17 @@ export function ExperienceEditor({
   publishAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
+  uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
+  loadVideoCollectionChildrenAction?: (
+    parentVideoId: string,
+  ) => Promise<VideoLibraryItem[]>
+  searchVideoLibraryAction?: (
+    query: string,
+    context?: {
+      category?: VideoLibraryCategory
+      client?: VideoLibrarySearchClient
+    },
+  ) => Promise<VideoLibraryItem[]>
   /**
    * Optional imperative bridge published once on mount so the chat panel
    * (sibling component at the page level) can read current canvas state
@@ -1209,6 +1496,7 @@ export function ExperienceEditor({
     useState<VideoPickerMode>("block")
   const [videoPickerDraft, setVideoPickerDraft] = useState<VideoPickerDraft>({
     videoKey: null,
+    dubKey: null,
     clipStartSeconds: "",
     clipEndSeconds: "",
     autoplay: true,
@@ -1228,12 +1516,22 @@ export function ExperienceEditor({
   const [previewIsLoading, setPreviewIsLoading] = useState(false)
   const [previewIsFullscreen, setPreviewIsFullscreen] = useState(false)
   const [videoLibraryQuery, setVideoLibraryQuery] = useState("")
-  const [videoLibrarySort, setVideoLibrarySort] = useState<
-    "recent" | "title" | "duration"
-  >("recent")
+  const [videoLibraryCategory, setVideoLibraryCategory] =
+    useState<VideoLibraryCategory>("all")
+  const [videoLibrarySearchPending, setVideoLibrarySearchPending] =
+    useState(false)
+  const [videoLibrarySearchError, setVideoLibrarySearchError] = useState(false)
+  const [videoPickerApplyPending, setVideoPickerApplyPending] = useState(false)
+  const [videoLibrarySearchResultKeys, setVideoLibrarySearchResultKeys] =
+    useState<readonly string[]>([])
   const [imagePickerTarget, setImagePickerTarget] =
     useState<ImagePickerTarget | null>(null)
   const [imageLibraryQuery, setImageLibraryQuery] = useState("")
+  const [imagePickerSelectedFolderId, setImagePickerSelectedFolderId] =
+    useState<string | null>(null)
+  const [lastImagePickerFolderId, setLastImagePickerFolderId] = useState<
+    string | null
+  >(null)
   const [carouselDragState, setCarouselDragState] =
     useState<CarouselDragState | null>(null)
   const [carouselDragHandleState, setCarouselDragHandleState] =
@@ -1355,8 +1653,8 @@ export function ExperienceEditor({
     setLocaleDrawerOpen(false)
   }
 
-  const serializedBlocks = JSON.stringify(parsedBlocks)
   const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
+  const serializedBlocks = JSON.stringify(normalizedParsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
     JSON.parse(initialValues.blocksJson),
   )
@@ -1410,6 +1708,8 @@ export function ExperienceEditor({
       )
     }
 
+    if (block.key === "watchHomeHero") return isHomepage
+
     return isTemplate || block.category !== "Route"
   })
   const blockCategories = [
@@ -1453,34 +1753,12 @@ export function ExperienceEditor({
     videoPickerBlockRecord?.videoId,
   )
   const videoPickerBlockType = asString(videoPickerBlockRecord?.t)
-  const videoPickerBlockLabel =
-    videoPickerBlockType === "videoHero"
-      ? "hero"
-      : videoPickerBlockType === "video"
-        ? "video block"
-        : videoPickerMode === "carouselAppend"
-          ? "carousel"
-          : videoPickerMode === "mediaCollectionAppend"
-            ? "media collection"
-            : "block"
   const videoPickerDialogTitle =
     videoPickerMode === "carouselAppend"
       ? "Add carousel video"
       : videoPickerMode === "mediaCollectionAppend"
         ? "Add media collection video"
         : "Choose a video"
-  const videoPickerDialogDescription =
-    videoPickerMode === "carouselAppend"
-      ? "Browse the current library, search by title or Core ID, and pick a video to add into this carousel."
-      : videoPickerMode === "mediaCollectionAppend"
-        ? "Browse the current library, search by title or Core ID, and pick a video to add into this media collection."
-        : "Browse the current library, search by title or Core ID, and use the filters below to narrow the set before attaching a video to the selected block."
-  const videoPickerCurrentAttachmentLabel = videoPickerCurrentVideo
-    ? `Current ${videoPickerBlockLabel} video: ${videoPickerCurrentVideo.title}`
-    : videoPickerMode === "carouselAppend" ||
-        videoPickerMode === "mediaCollectionAppend"
-      ? `Pick a video to add it to this ${videoPickerBlockLabel}.`
-      : `No video currently attached to this ${videoPickerBlockLabel}.`
   const activeLocaleEntry = localeEntries.find((entry) => entry.active)
   const cleanedNewLocaleCode = cleanLocaleCode(newLocaleCode, true)
   const newLocaleAlreadyExists = localeEntries.some(
@@ -1488,53 +1766,206 @@ export function ExperienceEditor({
   )
   const currentLocaleCode = activeLocaleEntry?.code ?? "en"
   const normalizedVideoLibraryQuery = videoLibraryQuery.trim().toLowerCase()
-  const filteredVideoLibrary = [...videoLibrary]
-    .filter((item) => {
-      const carouselAlreadyIncludes =
-        (videoPickerMode === "carouselAppend" ||
-          videoPickerMode === "mediaCollectionAppend") &&
-        asArray(videoPickerBlockRecord?.items).some(
-          (entry) => asString(asRecord(entry)?.videoId) === item.key,
-        )
-      if (carouselAlreadyIncludes) return false
-      const haystack =
-        `${item.title} ${item.id} ${item.sourceLabel} ${item.dubs}`.toLowerCase()
-      const matchesQuery =
-        normalizedVideoLibraryQuery.length === 0 ||
-        haystack.includes(normalizedVideoLibraryQuery)
-      return matchesQuery
-    })
-    .sort((left, right) => {
-      if (videoLibrarySort === "title") {
-        return left.title.localeCompare(right.title)
-      }
-      if (videoLibrarySort === "duration") {
-        return right.duration.localeCompare(left.duration)
-      }
-      return right.updated.localeCompare(left.updated)
-    })
-  const videoPickerLibraryRows = [
-    ...(videoPickerMode === "block" && videoPickerCurrentVideo
-      ? [videoPickerCurrentVideo]
-      : []),
-    ...filteredVideoLibrary.filter(
-      (item) => item.key !== videoPickerCurrentVideo?.key,
-    ),
-  ]
-  const normalizedImageLibraryQuery = imageLibraryQuery.trim().toLowerCase()
-  const filteredImageLibrary = mediaLibrary.filter((asset) => {
-    const haystack =
-      `${asset.displayName} ${asset.altText ?? ""} ${asset.mimeType} ${asset.id}`.toLowerCase()
-    return (
-      normalizedImageLibraryQuery.length === 0 ||
-      haystack.includes(normalizedImageLibraryQuery)
+  const videoLibraryFilterIsActive =
+    normalizedVideoLibraryQuery.length > 0 || videoLibraryCategory !== "all"
+  const videoLibrarySearchResultKeySet = useMemo(
+    () => new Set(videoLibrarySearchResultKeys),
+    [videoLibrarySearchResultKeys],
+  )
+  const filteredVideoLibrary = useMemo(() => {
+    const videoByKey = new Map(videoLibrary.map((item) => [item.key, item]))
+    const isSelectableVideo = (item: VideoLibraryItem) =>
+      videoPickerMode !== "block" ||
+      videoPickerBlockType !== "videoHero" ||
+      (!item.isCollectionTarget && item.label !== "COLLECTION")
+    const isAlreadyInTargetCollection = (item: VideoLibraryItem) =>
+      (videoPickerMode === "carouselAppend" ||
+        videoPickerMode === "mediaCollectionAppend") &&
+      asArray(videoPickerBlockRecord?.items).some(
+        (entry) => asString(asRecord(entry)?.videoId) === item.key,
+      )
+    const availableVideos = videoLibrary.filter(
+      (item) =>
+        matchesVideoLibraryCategory(item.label, videoLibraryCategory) &&
+        isSelectableVideo(item) &&
+        !isAlreadyInTargetCollection(item),
     )
-  })
+
+    if (videoLibraryFilterIsActive && searchVideoLibraryAction) {
+      return videoLibrarySearchResultKeys.flatMap((key) => {
+        const item = videoByKey.get(key)
+        return item &&
+          isSelectableVideo(item) &&
+          !isAlreadyInTargetCollection(item)
+          ? [item]
+          : []
+      })
+    }
+
+    return availableVideos
+      .filter((item) => {
+        const haystack = `${item.title} ${item.description ?? ""} ${item.id} ${
+          item.labelLabel ?? ""
+        } ${item.sourceLabel} ${item.dubs}`.toLowerCase()
+        const matchesQuery =
+          normalizedVideoLibraryQuery.length === 0 ||
+          videoLibrarySearchResultKeySet.has(item.key) ||
+          haystack.includes(normalizedVideoLibraryQuery)
+        return matchesQuery
+      })
+      .sort((left, right) => {
+        return right.updated.localeCompare(left.updated)
+      })
+  }, [
+    normalizedVideoLibraryQuery,
+    searchVideoLibraryAction,
+    videoLibrary,
+    videoLibraryCategory,
+    videoLibraryFilterIsActive,
+    videoLibrarySearchResultKeys,
+    videoLibrarySearchResultKeySet,
+    videoPickerBlockRecord,
+    videoPickerBlockType,
+    videoPickerMode,
+  ])
+
+  useEffect(() => {
+    if (videoPickerBlockIndex === null) return
+    if (!searchVideoLibraryAction) return
+
+    const query = videoLibraryQuery.trim()
+    if (!query && videoLibraryCategory === "all") {
+      setVideoLibrarySearchPending(false)
+      setVideoLibrarySearchError(false)
+      setVideoLibrarySearchResultKeys([])
+      return
+    }
+
+    let ignore = false
+    setVideoLibrarySearchPending(true)
+    setVideoLibrarySearchError(false)
+    const client = videoLibrarySearchClientForMode(videoPickerMode)
+    const timeout = window.setTimeout(() => {
+      searchVideoLibraryAction(query, {
+        category: videoLibraryCategory,
+        client,
+      })
+        .then((results) => {
+          if (ignore) return
+          setVideoLibrarySearchResultKeys(results.map((result) => result.key))
+          setVideoLibrarySearchError(false)
+        })
+        .catch(() => {
+          if (ignore) return
+          setVideoLibrarySearchResultKeys([])
+          setVideoLibrarySearchError(true)
+        })
+        .finally(() => {
+          if (ignore) return
+          setVideoLibrarySearchPending(false)
+        })
+    }, 220)
+
+    return () => {
+      ignore = true
+      window.clearTimeout(timeout)
+    }
+  }, [
+    searchVideoLibraryAction,
+    videoLibraryCategory,
+    videoLibraryQuery,
+    videoPickerBlockIndex,
+    videoPickerMode,
+  ])
+
+  const videoPickerLibraryRows = useMemo(
+    () => [
+      ...(videoPickerMode === "block" && videoPickerCurrentVideo
+        ? [videoPickerCurrentVideo]
+        : []),
+      ...filteredVideoLibrary.filter(
+        (item) => item.key !== videoPickerCurrentVideo?.key,
+      ),
+    ],
+    [filteredVideoLibrary, videoPickerCurrentVideo, videoPickerMode],
+  )
+  const videoLibrarySearchIsActive =
+    videoLibraryFilterIsActive && searchVideoLibraryAction != null
+  const videoPickerDurationLabel = (video: VideoLibraryItem) =>
+    formatReadableDuration(video.durationSeconds)
   const videoPickerSelectedVideo = findVideoLibraryItem(
     videoPickerDraft.videoKey,
   )
+  const videoPickerCollectionPreviewItems =
+    videoPickerSelectedVideo?.isCollectionTarget
+      ? (videoPickerSelectedVideo.collectionPreviewItems ?? [])
+      : []
+  const videoPickerCollectionRemainingCount = Math.max(
+    0,
+    (videoPickerSelectedVideo?.childCount ?? 0) -
+      videoPickerCollectionPreviewItems.length,
+  )
+  const videoPickerLanguageSlug = watchLanguageSlugForLocale(currentLocaleCode)
+  const videoPickerLocaleBase = cleanLocaleCode(currentLocaleCode, true).split(
+    "-",
+  )[0]
+
+  const preferredPlayableDubForVideo = useCallback(
+    (
+      video: VideoLibraryItem | null,
+      preferredStreamUrl: string | null,
+    ): VideoLibraryPlayableDub | null => {
+      const dubs = video?.playableDubs ?? []
+      if (dubs.length === 0) return null
+
+      if (preferredStreamUrl) {
+        const streamMatch = dubs.find(
+          (dub) => dub.streamUrl === preferredStreamUrl,
+        )
+        if (streamMatch) return streamMatch
+      }
+
+      const localeMatch = dubs.find((dub) => {
+        const bcp47 = dub.bcp47?.toLowerCase() ?? null
+        const languageSlug = dub.languageSlug?.toLowerCase() ?? null
+        return (
+          (videoPickerLanguageSlug != null &&
+            languageSlug === videoPickerLanguageSlug) ||
+          bcp47 === currentLocaleCode.toLowerCase() ||
+          bcp47 === videoPickerLocaleBase ||
+          bcp47?.startsWith(`${videoPickerLocaleBase}-`) === true
+        )
+      })
+
+      return localeMatch ?? dubs[0] ?? null
+    },
+    [currentLocaleCode, videoPickerLanguageSlug, videoPickerLocaleBase],
+  )
+
+  function selectedPlayableDubForVideo(
+    video: VideoLibraryItem | null,
+  ): VideoLibraryPlayableDub | null {
+    const dubs = video?.playableDubs ?? []
+    return (
+      dubs.find((dub) => dub.key === videoPickerDraft.dubKey) ??
+      preferredPlayableDubForVideo(
+        video,
+        asString(videoPickerBlockRecord?.streamingUrl) || null,
+      )
+    )
+  }
+
+  const videoPickerSelectedDub = selectedPlayableDubForVideo(
+    videoPickerSelectedVideo,
+  )
+  const videoPickerPreviewStreamUrl =
+    videoPickerSelectedDub?.streamUrl ??
+    videoPickerSelectedVideo?.previewStreamUrl ??
+    null
   const videoPickerDurationSeconds =
-    videoPickerSelectedVideo?.durationSeconds ?? 0
+    videoPickerSelectedDub?.durationSeconds ??
+    videoPickerSelectedVideo?.durationSeconds ??
+    0
   const videoPickerClipStart = clampNumber(
     parseClipInput(videoPickerDraft.clipStartSeconds) ?? 0,
     0,
@@ -1899,28 +2330,48 @@ export function ExperienceEditor({
 
     if (
       videoPickerDraft.videoKey &&
-      videoLibrary.some((video) => video.key === videoPickerDraft.videoKey)
+      videoPickerLibraryRows.some(
+        (video) => video.key === videoPickerDraft.videoKey,
+      )
     ) {
       return
     }
 
-    setVideoPickerDraft((current) => ({
-      ...current,
-      videoKey:
-        videoPickerCurrentVideo?.key ?? filteredVideoLibrary[0]?.key ?? null,
-    }))
+    setVideoPickerDraft((current) => {
+      const nextVideoKey =
+        videoPickerLibraryRows[0]?.key ?? videoPickerCurrentVideo?.key ?? null
+      const nextVideo =
+        videoPickerLibraryRows.find((video) => video.key === nextVideoKey) ??
+        videoPickerCurrentVideo ??
+        null
+      const nextDubKey =
+        preferredPlayableDubForVideo(nextVideo, null)?.key ?? null
+      if (current.videoKey === nextVideoKey && current.dubKey === nextDubKey) {
+        return current
+      }
+      return {
+        ...current,
+        videoKey: nextVideoKey,
+        dubKey: nextDubKey,
+      }
+    })
   }, [
-    filteredVideoLibrary,
-    videoLibrary,
+    videoPickerLibraryRows,
     videoPickerBlockIndex,
-    videoPickerCurrentVideo?.key,
+    videoPickerCurrentVideo,
     videoPickerDraft.videoKey,
+    videoPickerDraft.dubKey,
+    preferredPlayableDubForVideo,
   ])
 
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
     setPreviewMuted(true)
-  }, [videoPickerBlockIndex, videoPickerDraft.videoKey])
+  }, [
+    videoPickerBlockIndex,
+    videoPickerDraft.videoKey,
+    videoPickerDraft.dubKey,
+  ])
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -1937,8 +2388,7 @@ export function ExperienceEditor({
 
   useEffect(() => {
     const previewEl = videoPickerPreviewRef.current
-    const selectedVideo = videoPickerSelectedVideo
-    if (!previewEl || !selectedVideo?.previewStreamUrl) return
+    if (!previewEl || !videoPickerPreviewStreamUrl) return
     const preview = previewEl
     setPreviewIsLoading(true)
 
@@ -2035,6 +2485,7 @@ export function ExperienceEditor({
     videoPickerDraft.clipStartSeconds,
     videoPickerClipEnd,
     videoPickerClipStart,
+    videoPickerPreviewStreamUrl,
     videoPickerSelectedVideo,
   ])
 
@@ -3086,10 +3537,7 @@ export function ExperienceEditor({
   function updateBlockParagraphsField(index: number, value: string) {
     updateBlockAt(index, (block) => ({
       ...block,
-      contentParagraphs: value
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean),
+      contentParagraphs: contentParagraphsFromEditorText(value, block.variant),
     }))
   }
 
@@ -3175,7 +3623,7 @@ export function ExperienceEditor({
   function updateContainerSlotVisual(
     index: number,
     slotIndex: number,
-    field: "backgroundColor" | "backgroundImageUrl",
+    field: "backgroundColor",
     value: string,
   ) {
     updateBlockAt(index, (block) => {
@@ -3198,60 +3646,291 @@ export function ExperienceEditor({
     })
   }
 
+  function mediaAssetPreviewUrl(assetId: unknown) {
+    const id = asString(assetId)
+    if (!id) return ""
+    return (
+      mediaLibrary.images.find((asset) => asset.id === id)?.previewUrl ?? ""
+    )
+  }
+
   function chooseBackgroundImage(
     index: number,
     block: BlockRecord,
-    field: ImagePickerTarget["urlField"],
+    field: ImagePickerUrlField,
   ) {
     openImagePicker(index, block, field)
   }
 
   function chooseContainerBackgroundImage(index: number, block: BlockRecord) {
-    openImagePicker(index, block, "backgroundImageUrl")
+    openImagePicker(index, block, "backgroundImageAsset")
+  }
+
+  function chooseVideoCarouselItemImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
+    openImagePickerTarget({
+      label: "carousel item image",
+      selectedAssetId: asString(itemRecord?.imageAssetId) || null,
+      canClear: Boolean(asString(itemRecord?.imageAssetId)),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "videoCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageAssetId: asset.id,
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "videoCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
+  function chooseNavigationCarouselItemImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
+    openImagePickerTarget({
+      label: "navigation destination image",
+      selectedAssetId: asString(itemRecord?.imageAssetId) || null,
+      canClear: Boolean(asString(itemRecord?.imageAssetId)),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "navigationCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageAssetId: asset.id,
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "navigationCarousel") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
+  function chooseMediaCollectionItemImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.items)[itemIndex])
+    openImagePickerTarget({
+      label: "media item image",
+      selectedAssetId: asString(itemRecord?.imageAssetId) || null,
+      canClear: Boolean(asString(itemRecord?.imageAssetId)),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "mediaCollection") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageAssetId: asset.id,
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "mediaCollection") return block
+          return {
+            ...block,
+            items: asArray(block.items).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
+  }
+
+  function chooseBibleQuoteImage(index: number, itemIndex: number) {
+    const blockRecord = asRecord(parsedBlocks[index])
+    const itemRecord = asRecord(asArray(blockRecord?.quotes)[itemIndex])
+    openImagePickerTarget({
+      label: "quote image",
+      selectedAssetId:
+        asString(itemRecord?.backgroundImageAssetId) ||
+        asString(itemRecord?.imageAssetId) ||
+        null,
+      canClear: Boolean(
+        asString(itemRecord?.backgroundImageAssetId) ||
+        asString(itemRecord?.imageAssetId),
+      ),
+      apply: (asset) => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "bibleQuotesCarousel") return block
+          return {
+            ...block,
+            quotes: asArray(block.quotes).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    backgroundImageAssetId: asset.id,
+                    imageAssetId: asset.id,
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+      clear: () => {
+        updateBlockAt(index, (block) => {
+          if (block.t !== "bibleQuotesCarousel") return block
+          return {
+            ...block,
+            quotes: asArray(block.quotes).map((item, currentIndex) =>
+              currentIndex === itemIndex
+                ? {
+                    ...(asRecord(item) ?? {}),
+                    backgroundImageAssetId: "",
+                    imageAssetId: "",
+                  }
+                : item,
+            ),
+          }
+        })
+      },
+    })
   }
 
   function openImagePicker(
     blockIndex: number,
     block: BlockRecord,
-    urlField: ImagePickerTarget["urlField"],
+    urlField: ImagePickerUrlField,
   ) {
     const blockType = asString(block.t) || "block"
-    setImagePickerTarget({
-      blockIndex,
-      urlField,
-      assetField: visualIdentityAssetField(urlField),
+    const assetField = visualIdentityAssetField(urlField)
+    openImagePickerTarget({
       label: blockType === "card" ? "card image" : `${blockType} image`,
+      selectedAssetId: asString(block[assetField]) || null,
+      canClear: Boolean(asString(block[assetField])),
+      apply: (asset) => {
+        updateBlockAt(blockIndex, (currentBlock) => {
+          const nextBlock: BlockRecord = {
+            ...currentBlock,
+            [assetField]: asset.id,
+          }
+          if (urlField === "mediaUrl") nextBlock[urlField] = ""
+          return nextBlock
+        })
+      },
+      clear: () => clearVisualIdentityImage(blockIndex, urlField),
+    })
+  }
+
+  function openImagePickerTarget(target: ImagePickerTarget) {
+    const selectedAsset = target.selectedAssetId
+      ? mediaLibrary.images.find((asset) => asset.id === target.selectedAssetId)
+      : null
+    const rememberedFolderId =
+      lastImagePickerFolderId === null ||
+      mediaLibrary.folders.some(
+        (folder) => folder.id === lastImagePickerFolderId,
+      )
+        ? lastImagePickerFolderId
+        : null
+    setImagePickerTarget({
+      label: target.label,
+      selectedAssetId: target.selectedAssetId,
+      canClear: target.canClear,
+      apply: target.apply,
+      clear: target.clear,
     })
     setImageLibraryQuery("")
+    setImagePickerSelectedFolderId(
+      selectedAsset ? selectedAsset.folderId : rememberedFolderId,
+    )
   }
 
   function closeImagePicker() {
     setImagePickerTarget(null)
     setImageLibraryQuery("")
+    setImagePickerSelectedFolderId(null)
+  }
+
+  function selectImagePickerFolder(folderId: string | null) {
+    setImagePickerSelectedFolderId(folderId)
+    setLastImagePickerFolderId(folderId)
   }
 
   function applyImagePickerSelection(asset: MediaLibraryItem) {
     if (!imagePickerTarget || !asset.previewUrl) return
 
-    updateBlockAt(imagePickerTarget.blockIndex, (block) => ({
-      ...block,
-      [imagePickerTarget.urlField]: asset.previewUrl,
-      [imagePickerTarget.assetField]: asset.id,
-    }))
+    imagePickerTarget.apply(asset)
     pushToast(`Attached ${asset.displayName}.`, "success")
+    closeImagePicker()
+  }
+
+  function clearImagePickerSelection() {
+    if (!imagePickerTarget) return
+
+    imagePickerTarget.clear()
+    pushToast(`Removed ${imagePickerTarget.label}.`, "success")
     closeImagePicker()
   }
 
   function clearVisualIdentityImage(
     index: number,
-    urlField: ImagePickerTarget["urlField"],
+    urlField: ImagePickerUrlField,
   ) {
     const assetField = visualIdentityAssetField(urlField)
-    updateBlockAt(index, (block) => ({
-      ...block,
-      [urlField]: "",
-      [assetField]: "",
-    }))
+    updateBlockAt(index, (block) => {
+      const nextBlock: BlockRecord = {
+        ...block,
+        [assetField]: "",
+      }
+      if (urlField === "mediaUrl") nextBlock[urlField] = ""
+      return nextBlock
+    })
   }
 
   function appendContainerSlot(index: number) {
@@ -3413,31 +4092,51 @@ export function ExperienceEditor({
     })
   }
 
-  function appendVideoCarouselItem(index: number, videoKey: string) {
-    const selectedVideo = findVideoLibraryItem(videoKey)
-    if (!selectedVideo) return
+  function videosNotAlreadyIncluded(
+    currentItems: unknown[],
+    videos: VideoLibraryItem[],
+  ) {
+    const includedIds = new Set(
+      currentItems.map((item) => asString(asRecord(item)?.videoId)),
+    )
+    return videos.filter((video) => {
+      if (includedIds.has(video.key)) return false
+      includedIds.add(video.key)
+      return true
+    })
+  }
+
+  function appendVideoCarouselItems(
+    index: number,
+    videos: VideoLibraryItem[],
+    selectedStreamUrl: string | null = null,
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "videoCarousel") return 0
+    const additions = videosNotAlreadyIncluded(asArray(block.items), videos)
+    if (additions.length === 0) return 0
 
     updateBlockAt(index, (block) => {
       if (block.t !== "videoCarousel") return block
       const currentItems = asArray(block.items)
-      const alreadyIncluded = currentItems.some(
-        (item) => asString(asRecord(item)?.videoId) === selectedVideo.key,
-      )
-      if (alreadyIncluded) return block
-
       return {
         ...block,
         items: [
           ...currentItems,
-          {
-            videoId: selectedVideo.key,
-            streamingUrl: selectedVideo.previewStreamUrl ?? "",
+          ...additions.map((video) => ({
+            videoId: video.key,
+            languageId:
+              preferredPlayableDubForVideo(video, selectedStreamUrl)
+                ?.languageId ??
+              initialValues.videoLanguageId ??
+              undefined,
             titleOverride: "",
             subtitleOverride: "",
-          },
+          })),
         ],
       }
     })
+    return additions.length
   }
 
   function updateVideoCarouselItemField(
@@ -3642,7 +4341,12 @@ export function ExperienceEditor({
   function updateNavigationCarouselItemField(
     index: number,
     itemIndex: number,
-    field: "contentId" | "title" | "category" | "imageUrl" | "backgroundColor",
+    field:
+      | "contentId"
+      | "title"
+      | "category"
+      | "imageAssetId"
+      | "backgroundColor",
     value: string,
   ) {
     updateBlockAt(index, (block) => {
@@ -3794,8 +4498,7 @@ export function ExperienceEditor({
     itemIndex: number,
     field:
       | "videoId"
-      | "imageOverrideUrl"
-      | "imageUrl"
+      | "imageAssetId"
       | "titleOverride"
       | "subtitleOverride"
       | "labelOverride"
@@ -3817,31 +4520,35 @@ export function ExperienceEditor({
     })
   }
 
-  function appendMediaCollectionVideoItem(index: number, videoKey: string) {
-    const selectedVideo = findVideoLibraryItem(videoKey)
-    if (!selectedVideo) return
+  function appendMediaCollectionVideoItems(
+    index: number,
+    videos: VideoLibraryItem[],
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "mediaCollection") return 0
+    const additions = videosNotAlreadyIncluded(asArray(block.items), videos)
+    if (additions.length === 0) return 0
 
     updateBlockAt(index, (block) => {
       if (block.t !== "mediaCollection") return block
       const currentItems = asArray(block.items)
-      const alreadyIncluded = currentItems.some(
-        (item) => asString(asRecord(item)?.videoId) === selectedVideo.key,
-      )
-      if (alreadyIncluded) return block
-
       return {
         ...block,
         items: [
           ...currentItems,
-          {
-            videoId: selectedVideo.key,
+          ...additions.map((video) => ({
+            videoId: video.key,
+            languageId:
+              preferredPlayableDubForVideo(video, null)?.languageId ??
+              initialValues.videoLanguageId ??
+              undefined,
             titleOverride: "",
             subtitleOverride: "",
-            imageOverrideUrl: selectedVideo.previewImageUrl ?? "",
-          },
+          })),
         ],
       }
     })
+    return additions.length
   }
 
   function removeMediaCollectionItem(index: number, itemIndex: number) {
@@ -3978,8 +4685,7 @@ export function ExperienceEditor({
   function resolveVideoCarouselItemImage(item: BlockRecord | null) {
     const itemVideo = findVideoLibraryItem(item?.videoId)
     return (
-      asString(item?.imageOverrideUrl) ||
-      asString(item?.imageUrl) ||
+      mediaAssetPreviewUrl(item?.imageAssetId) ||
       itemVideo?.previewImageUrl ||
       ""
     )
@@ -4002,12 +4708,13 @@ export function ExperienceEditor({
   }
 
   function visualIdentityImageField(type: string) {
-    if (type === "container" || type === "section") return "backgroundImageUrl"
-    return type === "card" ? "mediaUrl" : "imageUrl"
+    if (type === "container" || type === "section")
+      return "backgroundImageAsset"
+    return type === "card" ? "mediaUrl" : "blockImageAsset"
   }
 
-  function visualIdentityAssetField(field: ImagePickerTarget["urlField"]) {
-    if (field === "backgroundImageUrl") return "backgroundImageAssetId"
+  function visualIdentityAssetField(field: ImagePickerUrlField) {
+    if (field === "backgroundImageAsset") return "backgroundImageAssetId"
     if (field === "mediaUrl") return "mediaAssetId"
     return "imageAssetId"
   }
@@ -4016,8 +4723,9 @@ export function ExperienceEditor({
     return {
       backgroundColor: asString(block?.backgroundColor),
       imageUrl:
-        asString(block?.imageUrl) ||
-        asString(block?.backgroundImageUrl) ||
+        mediaAssetPreviewUrl(block?.imageAssetId) ||
+        mediaAssetPreviewUrl(block?.backgroundImageAssetId) ||
+        mediaAssetPreviewUrl(block?.mediaAssetId) ||
         asString(block?.mediaUrl),
     }
   }
@@ -4615,12 +5323,20 @@ export function ExperienceEditor({
     setVideoPickerMode(mode)
     setVideoPickerBlockIndex(index)
     setVideoLibraryQuery("")
-    setVideoLibrarySort("recent")
+    setVideoLibraryCategory("all")
+    setVideoLibrarySearchResultKeys([])
     setVideoPickerDraft({
       videoKey:
         mode === "carouselAppend" || mode === "mediaCollectionAppend"
           ? null
           : (currentVideo?.key ?? null),
+      dubKey:
+        mode === "carouselAppend" || mode === "mediaCollectionAppend"
+          ? null
+          : (preferredPlayableDubForVideo(
+              currentVideo,
+              asString(block?.streamingUrl) || null,
+            )?.key ?? null),
       clipStartSeconds: stringFromOptionalNumber(block?.clipStartSeconds),
       clipEndSeconds: stringFromOptionalNumber(block?.clipEndSeconds),
       autoplay:
@@ -4663,6 +5379,7 @@ export function ExperienceEditor({
     }, 180)
     setVideoPickerDraft({
       videoKey: null,
+      dubKey: null,
       clipStartSeconds: "",
       clipEndSeconds: "",
       autoplay: true,
@@ -4672,18 +5389,58 @@ export function ExperienceEditor({
     })
   }
 
-  function applyVideoPickerSelection() {
+  async function applyVideoPickerSelection() {
     if (videoPickerBlockIndex === null) return
     const selectedVideo = findVideoLibraryItem(videoPickerDraft.videoKey)
     if (!selectedVideo) return
+    if (
+      (videoPickerMode === "carouselAppend" ||
+        videoPickerMode === "mediaCollectionAppend") &&
+      selectedVideo.isCollectionTarget
+    ) {
+      if (!loadVideoCollectionChildrenAction) {
+        pushToast("Unable to load collection videos.", "error")
+        return
+      }
+      setVideoPickerApplyPending(true)
+      try {
+        const children = await loadVideoCollectionChildrenAction(
+          selectedVideo.key,
+        )
+        if (children.length === 0) {
+          pushToast("This collection has no videos to add.", "error")
+          return
+        }
+        const addedCount =
+          videoPickerMode === "carouselAppend"
+            ? appendVideoCarouselItems(videoPickerBlockIndex, children)
+            : appendMediaCollectionVideoItems(videoPickerBlockIndex, children)
+        closeVideoPicker()
+        pushToast(
+          addedCount > 0
+            ? `${addedCount} collection ${addedCount === 1 ? "video" : "videos"} added.`
+            : "All collection videos are already in this block.",
+          "success",
+        )
+      } catch {
+        pushToast("Unable to load collection videos.", "error")
+      } finally {
+        setVideoPickerApplyPending(false)
+      }
+      return
+    }
     if (videoPickerMode === "carouselAppend") {
-      appendVideoCarouselItem(videoPickerBlockIndex, selectedVideo.key)
+      appendVideoCarouselItems(
+        videoPickerBlockIndex,
+        [selectedVideo],
+        videoPickerPreviewStreamUrl,
+      )
       closeVideoPicker()
       pushToast("Video added to carousel.", "success")
       return
     }
     if (videoPickerMode === "mediaCollectionAppend") {
-      appendMediaCollectionVideoItem(videoPickerBlockIndex, selectedVideo.key)
+      appendMediaCollectionVideoItems(videoPickerBlockIndex, [selectedVideo])
       closeVideoPicker()
       pushToast("Video added to media collection.", "success")
       return
@@ -4698,7 +5455,10 @@ export function ExperienceEditor({
     updateBlockAt(videoPickerBlockIndex, (block) => ({
       ...block,
       videoId: selectedVideo.key,
-      streamingUrl: selectedVideo.previewStreamUrl ?? "",
+      languageId:
+        videoPickerSelectedDub?.languageId ??
+        initialValues.videoLanguageId ??
+        undefined,
       useRouteVideo: false,
       headingSource:
         block.t === "videoHero" && shouldUseVideoHeroHeadingMetadata(block)
@@ -5332,6 +6092,7 @@ export function ExperienceEditor({
     const itemRecord = asRecord(item)
     const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
     const itemImageUrl = resolveVideoCarouselItemImage(itemRecord)
+    const hasItemImageOverride = Boolean(asString(itemRecord?.imageAssetId))
     const itemTitle = resolveVideoCarouselItemTitle(itemRecord)
     const itemSubtitle = resolveVideoCarouselItemSubtitle(itemRecord)
     const titleOverride = asString(itemRecord?.titleOverride)
@@ -5404,12 +6165,15 @@ export function ExperienceEditor({
               draggable={false}
               onClick={(event) => {
                 event.stopPropagation()
-                pushToast(
-                  "Asset library image picker is coming next.",
-                  "success",
-                )
+                chooseVideoCarouselItemImage(index, itemIndex)
               }}
-              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-white/16 bg-[rgba(4,6,10,0.58)] text-white shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out hover:bg-[rgba(4,6,10,0.72)]"
+              className={cx(
+                "absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out",
+                hasItemImageOverride
+                  ? selectedOverlayMediaButtonClassName
+                  : "border-white/16 bg-[rgba(4,6,10,0.58)] text-white hover:bg-[rgba(4,6,10,0.72)]",
+              )}
+              aria-pressed={hasItemImageOverride}
               aria-label="Choose carousel image"
             >
               <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
@@ -5543,12 +6307,13 @@ export function ExperienceEditor({
     index: number,
     value: string[],
     placeholder: string,
+    variant: unknown,
     rows = 4,
     autoResize = false,
   ) {
     return (
       <textarea
-        value={value.join("\n")}
+        value={editorTextFromContentParagraphs(value, variant)}
         rows={rows}
         onClick={(event) => {
           event.stopPropagation()
@@ -5890,7 +6655,8 @@ export function ExperienceEditor({
     itemIndex: number,
   ) {
     const itemRecord = asRecord(item)
-    const imageUrl = asString(itemRecord?.imageUrl)
+    const imageUrl = mediaAssetPreviewUrl(itemRecord?.imageAssetId)
+    const imageAssetId = asString(itemRecord?.imageAssetId)
     const backgroundColor = normalizeHexColor(itemRecord?.backgroundColor)
     const destinationOptions = navigationDestinationOptions(index)
     const currentDestination = destinationOptions.find(
@@ -5979,39 +6745,20 @@ export function ExperienceEditor({
                   onClick={(event) => {
                     event.stopPropagation()
                     activateBlock(index)
-                    pushToast(
-                      "Asset library image picker is coming next.",
-                      "success",
-                    )
+                    chooseNavigationCarouselItemImage(index, itemIndex)
                   }}
                   className={cx(
-                    "inline-flex h-8 w-8 cursor-pointer items-center justify-center border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a]",
-                    imageUrl ? "rounded-l-sm border-r-0" : "rounded-sm",
+                    "inline-flex h-8 w-8 cursor-pointer items-center justify-center border transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5",
+                    imageAssetId
+                      ? selectedOverlayMediaButtonClassName
+                      : idleOverlayMediaButtonClassName,
+                    "rounded-sm",
                   )}
+                  aria-pressed={Boolean(imageAssetId)}
                   aria-label="Choose navigation destination image"
                 >
                   <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
                 </button>
-                {imageUrl ? (
-                  <button
-                    type="button"
-                    draggable={false}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      activateBlock(index)
-                      updateNavigationCarouselItemField(
-                        index,
-                        itemIndex,
-                        "imageUrl",
-                        "",
-                      )
-                    }}
-                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-r-sm border border-white/18 bg-[#08090d] text-white transition-[background-color,transform,border-color] duration-[160ms] ease-out hover:-translate-y-0.5 hover:border-white/36 hover:bg-[#11131a] hover:text-[var(--color-danger)]"
-                    aria-label="Remove navigation destination image"
-                  >
-                    <X className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                ) : null}
               </div>
             </div>
           </div>
@@ -6166,10 +6913,10 @@ export function ExperienceEditor({
     const itemRecord = asRecord(item)
     const itemVideo = findVideoLibraryItem(itemRecord?.videoId)
     const itemImageUrl =
-      asString(itemRecord?.imageOverrideUrl) ||
-      asString(itemRecord?.imageUrl) ||
+      mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
       itemVideo?.previewImageUrl ||
       ""
+    const hasItemImageOverride = Boolean(asString(itemRecord?.imageAssetId))
     const itemTitle =
       asString(itemRecord?.titleOverride) || itemVideo?.title || "Media item"
     const itemSubtitle =
@@ -6261,12 +7008,15 @@ export function ExperienceEditor({
               draggable={false}
               onClick={(event) => {
                 event.stopPropagation()
-                pushToast(
-                  "Asset library image picker is coming next.",
-                  "success",
-                )
+                chooseMediaCollectionItemImage(index, itemIndex)
               }}
-              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-white/16 bg-[rgba(4,6,10,0.58)] text-white shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out hover:bg-[rgba(4,6,10,0.72)]"
+              className={cx(
+                "absolute right-3 top-3 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border shadow-[0_12px_28px_rgba(0,0,0,0.3)] backdrop-blur-[6px] transition-colors duration-[120ms] ease-out",
+                hasItemImageOverride
+                  ? selectedOverlayMediaButtonClassName
+                  : "border-white/16 bg-[rgba(4,6,10,0.58)] text-white hover:bg-[rgba(4,6,10,0.72)]",
+              )}
+              aria-pressed={hasItemImageOverride}
               aria-label="Choose media item image"
             >
               <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
@@ -6846,8 +7596,7 @@ export function ExperienceEditor({
         {
           backgroundColor: asString(record.backgroundColor),
           imageUrl:
-            asString(record.imageOverrideUrl) ||
-            asString(record.imageUrl) ||
+            mediaAssetPreviewUrl(record.imageAssetId) ||
             findVideoLibraryItem(record.videoId)?.previewImageUrl ||
             "",
         },
@@ -6862,8 +7611,7 @@ export function ExperienceEditor({
             asString(itemRecord?.backgroundColor) ||
             asString(record.backgroundColor),
           imageUrl:
-            asString(itemRecord?.imageOverrideUrl) ||
-            asString(itemRecord?.imageUrl) ||
+            mediaAssetPreviewUrl(itemRecord?.imageAssetId) ||
             findVideoLibraryItem(itemRecord?.videoId)?.previewImageUrl ||
             "",
         }
@@ -6918,7 +7666,9 @@ export function ExperienceEditor({
               imageUrl: previewVisual?.imageUrl ?? "",
             },
           ]
-    const containerBackgroundImageUrl = asString(blockRecord.backgroundImageUrl)
+    const containerBackgroundImageUrl = mediaAssetPreviewUrl(
+      blockRecord.backgroundImageAssetId,
+    )
 
     return (
       <div className="mt-4">
@@ -7080,11 +7830,23 @@ export function ExperienceEditor({
     item: unknown,
     itemIndex: number,
   ) {
+    const itemRecord = asRecord(item)
+    const mediaLibraryPreviewUrl =
+      mediaAssetPreviewUrl(itemRecord?.backgroundImageAssetId) ||
+      mediaAssetPreviewUrl(itemRecord?.imageAssetId)
+    const previewItem =
+      itemRecord && mediaLibraryPreviewUrl
+        ? {
+            ...itemRecord,
+            backgroundImagePreviewUrl: mediaLibraryPreviewUrl,
+          }
+        : item
+
     return (
       <BibleQuoteCard
         key={`${index}-bible-quote-${itemIndex}`}
         blockIndex={index}
-        item={item}
+        item={previewItem}
         itemIndex={itemIndex}
         dragState={bibleQuoteDragState}
         dragHandleState={bibleQuoteDragHandleState}
@@ -7093,9 +7855,9 @@ export function ExperienceEditor({
         onRemove={removeBibleQuote}
         onDragStart={handleBibleQuoteDragStart}
         onDragEnter={handleBibleQuoteDragEnter}
+        onChooseImage={chooseBibleQuoteImage}
         onClearDragState={clearBibleQuoteDragState}
         onSetDragHandleState={setBibleQuoteDragHandleState}
-        onPushToast={pushToast}
       />
     )
   }
@@ -7321,8 +8083,24 @@ export function ExperienceEditor({
       visualIdentity.backgroundColor,
     )
     const visualIdentityImageFieldName = visualIdentityImageField(type)
+    const visualIdentityImageAssetId = asString(
+      blockRecord?.[
+        visualIdentityAssetField(
+          visualIdentityImageFieldName as ImagePickerUrlField,
+        )
+      ],
+    )
     const visualIdentityLabel = type === "card" ? "card" : block.typeLabel
     const isCardBackgroundPickerOpen = cardBackgroundPickerIndex === index
+    const authoredThumbnailOrientation = asString(
+      blockRecord?.thumbnailOrientation,
+    )
+    const usesHorizontalThumbnails = authoredThumbnailOrientation
+      ? authoredThumbnailOrientation === "horizontal"
+      : !["carousel", "collection"].includes(asString(blockRecord?.variant))
+    const ThumbnailOrientationIcon = usesHorizontalThumbnails
+      ? RectangleHorizontal
+      : RectangleVertical
 
     return (
       <div
@@ -7398,15 +8176,17 @@ export function ExperienceEditor({
                     chooseBackgroundImage(
                       index,
                       blockRecord ?? {},
-                      visualIdentityImageFieldName as ImagePickerTarget["urlField"],
+                      visualIdentityImageFieldName as ImagePickerUrlField,
                     )
                   }}
                   className={cx(
-                    "flex h-6 w-6 cursor-pointer items-center justify-center border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]",
-                    visualIdentityImageUrl
-                      ? "rounded-l-sm border-r-0"
-                      : "rounded-sm",
+                    "flex h-6 w-6 cursor-pointer items-center justify-center border transition-all duration-[120ms] ease-out",
+                    visualIdentityImageAssetId
+                      ? selectedMediaButtonClassName
+                      : idleMediaButtonClassName,
+                    "rounded-sm",
                   )}
+                  aria-pressed={Boolean(visualIdentityImageAssetId)}
                   aria-label={
                     type === "container"
                       ? "Choose container background image"
@@ -7415,24 +8195,6 @@ export function ExperienceEditor({
                 >
                   <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
                 </button>
-                {visualIdentityImageUrl ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      activateBlock(index)
-                      clearVisualIdentityImage(
-                        index,
-                        visualIdentityImageFieldName as ImagePickerTarget["urlField"],
-                      )
-                    }}
-                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-danger)]"
-                    aria-label={`Remove ${visualIdentityLabel} image`}
-                  >
-                    <X className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                ) : null}
               </div>
             </>
           ) : null}
@@ -8226,8 +8988,11 @@ export function ExperienceEditor({
                       asArray(blockRecord?.contentParagraphs).filter(
                         (item): item is string => typeof item === "string",
                       ),
-                      "Paragraphs, one per line",
-                      1,
+                      asString(blockRecord?.variant) === "promotional"
+                        ? "Markdown: use blank lines between paragraphs; start subheadings with ###"
+                        : "Paragraphs, one per line",
+                      blockRecord?.variant,
+                      asString(blockRecord?.variant) === "promotional" ? 8 : 1,
                       true,
                     )}
                   </div>
@@ -8237,7 +9002,7 @@ export function ExperienceEditor({
                     {renderCanvasVariantControl({
                       index,
                       block: blockRecord,
-                      options: ["default", "lead", "small"],
+                      options: ["default", "lead", "small", "promotional"],
                       className: "",
                     })}
                     {renderCanvasStringOptionControl({
@@ -8478,8 +9243,8 @@ export function ExperienceEditor({
                                 .slice(0, 2)
                                 .map((item, itemIndex) => {
                                   const itemRecord = asRecord(item)
-                                  const imageUrl = asString(
-                                    itemRecord?.imageUrl,
+                                  const imageUrl = mediaAssetPreviewUrl(
+                                    itemRecord?.imageAssetId,
                                   )
                                   const backgroundColor =
                                     asString(itemRecord?.backgroundColor) ||
@@ -8562,17 +9327,49 @@ export function ExperienceEditor({
                         Media items
                       </div>
                       {selectedBlockIndex === index ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            openVideoPicker(index, "mediaCollectionAppend")
-                          }}
-                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add video
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={usesHorizontalThumbnails}
+                            aria-label="Use horizontal video thumbnails"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              updateBlockStringField(
+                                index,
+                                "thumbnailOrientation",
+                                usesHorizontalThumbnails
+                                  ? "vertical"
+                                  : "horizontal",
+                              )
+                            }}
+                            className={cx(
+                              "inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border px-3 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
+                              usesHorizontalThumbnails
+                                ? selectedMediaButtonClassName
+                                : idleMediaButtonClassName,
+                            )}
+                          >
+                            <ThumbnailOrientationIcon
+                              className="h-4 w-4"
+                              strokeWidth={1.5}
+                            />
+                            {usesHorizontalThumbnails
+                              ? "Horizontal"
+                              : "Vertical"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openVideoPicker(index, "mediaCollectionAppend")
+                            }}
+                            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                          >
+                            <Plus className="h-4 w-4" strokeWidth={1.5} />
+                            Add video
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                     <div className="grid">
@@ -8761,8 +9558,12 @@ export function ExperienceEditor({
                                 .map((item, itemIndex) => {
                                   const itemRecord = asRecord(item)
                                   const previewImageUrl =
-                                    asString(itemRecord?.backgroundImageUrl) ||
-                                    asString(itemRecord?.imageUrl)
+                                    mediaAssetPreviewUrl(
+                                      itemRecord?.backgroundImageAssetId,
+                                    ) ||
+                                    mediaAssetPreviewUrl(
+                                      itemRecord?.imageAssetId,
+                                    )
                                   const backgroundColor =
                                     asString(itemRecord?.backgroundColor) ||
                                     "#151515"
@@ -9470,132 +10271,26 @@ export function ExperienceEditor({
           </div>
         </div>
       ) : null}
-      <div
-        className={cx(
-          "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
+      <ImagePickerBrowser
+        key={
           imagePickerTarget
-            ? "pointer-events-auto bg-[rgba(4,6,10,0.78)] backdrop-blur-[8px]"
-            : "pointer-events-none bg-[rgba(4,6,10,0)] backdrop-blur-0",
-        )}
-        onClick={(event) => {
-          if (event.target !== event.currentTarget) return
-          closeImagePicker()
-        }}
-        role="presentation"
-        aria-hidden={!imagePickerTarget}
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="image-library-title"
-          className={cx(
-            "flex h-[min(80vh,760px)] w-full max-w-[920px] flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
-            imagePickerTarget
-              ? "translate-y-0 scale-100 opacity-100"
-              : "translate-y-2 scale-[0.98] opacity-0",
-          )}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                Media Library
-              </div>
-              <h2
-                id="image-library-title"
-                className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
-              >
-                Choose an image
-              </h2>
-              <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                Attach a managed image asset to this{" "}
-                {imagePickerTarget?.label ?? "block"}. The editor stores the
-                asset ID and keeps the preview URL for current renderers.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={closeImagePicker}
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
-              aria-label="Close image library"
-            >
-              <X className="h-4 w-4" strokeWidth={1.5} />
-            </button>
-          </div>
-
-          <label className="mt-5 grid gap-1.5 border-b border-[var(--color-hairline)] pb-4">
-            <span className="label-text">Search</span>
-            <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
-              <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
-              <input
-                value={imageLibraryQuery}
-                onChange={(event) => setImageLibraryQuery(event.target.value)}
-                className="w-full border-0 bg-transparent text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
-                placeholder="Search display name, alt text, MIME type, or asset ID"
-              />
-            </div>
-          </label>
-
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-            {filteredImageLibrary.length === 0 ? (
-              <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-8 text-center">
-                <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
-                  No image assets match these filters
-                </div>
-                <div className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                  Upload images in the Media Library, then return here to use
-                  them in experience blocks.
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-3 pb-6 md:grid-cols-2 xl:grid-cols-3">
-                {filteredImageLibrary.map((asset) => (
-                  <button
-                    key={asset.id}
-                    type="button"
-                    disabled={!asset.previewUrl}
-                    onClick={() => applyImagePickerSelection(asset)}
-                    className="group grid cursor-pointer overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <div className="aspect-video bg-[var(--color-bg)]">
-                      {asset.previewUrl ? (
-                        <div
-                          className="h-full w-full bg-cover bg-center transition-transform duration-[180ms] ease-out group-hover:scale-[1.02]"
-                          style={{
-                            backgroundImage: `url("${asset.previewUrl}")`,
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <ImageIcon
-                            className="h-8 w-8 text-[var(--color-text-muted)]"
-                            strokeWidth={1.5}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="grid gap-2 p-3">
-                      <div className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
-                        {asset.displayName}
-                      </div>
-                      <div className="mono-meta truncate text-[var(--color-text-muted)]">
-                        {asset.altText || asset.id}
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="mono-meta text-[var(--color-text-secondary)]">
-                          {asset.byteSize}
-                        </span>
-                        <span className="mono-meta text-[var(--color-text-muted)]">
-                          {asset.updated}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            ? `${imagePickerTarget.label}:${imagePickerTarget.selectedAssetId ?? ""}`
+            : "closed"
+        }
+        open={imagePickerTarget !== null}
+        mediaLibrary={mediaLibrary}
+        query={imageLibraryQuery}
+        selectedFolderId={imagePickerSelectedFolderId}
+        selectedAssetId={imagePickerTarget?.selectedAssetId ?? null}
+        canClearImage={imagePickerTarget?.canClear ?? false}
+        canUpload={canUploadImages}
+        uploadAction={uploadImageAction}
+        onQueryChange={setImageLibraryQuery}
+        onSelectFolder={selectImagePickerFolder}
+        onSelectImage={applyImagePickerSelection}
+        onClearImage={clearImagePickerSelection}
+        onClose={closeImagePicker}
+      />
       <div
         className={cx(
           "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
@@ -9605,6 +10300,7 @@ export function ExperienceEditor({
         )}
         onClick={(event) => {
           if (event.target !== event.currentTarget) return
+          if (videoPickerApplyPending) return
           closeVideoPicker()
         }}
         role="presentation"
@@ -9636,47 +10332,59 @@ export function ExperienceEditor({
               >
                 {videoPickerDialogTitle}
               </h2>
-              <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                {videoPickerDialogDescription}
-              </p>
             </div>
             <button
               type="button"
               onClick={closeVideoPicker}
+              disabled={videoPickerApplyPending}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </div>
 
-          <div className="mt-5 grid gap-3 border-b border-[var(--color-hairline)] pb-4 md:grid-cols-[minmax(0,1fr)_160px]">
-            <label className="grid gap-1.5">
-              <span className="label-text">Search</span>
+          <div className="mt-5 grid gap-3 border-b border-[var(--color-hairline)] pb-4 sm:grid-cols-[minmax(0,1fr)_180px]">
+            <label>
+              <span className="sr-only">Search videos</span>
               <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
                 <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
                 <input
                   value={videoLibraryQuery}
                   onChange={(event) => setVideoLibraryQuery(event.target.value)}
                   className="w-full border-0 bg-transparent text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
-                  placeholder="Search title, Core ID, source, or dub coverage"
+                  placeholder="Search videos"
                 />
               </div>
             </label>
-            <label className="grid gap-1.5">
-              <span className="label-text">Sort</span>
+            <label className="relative block min-w-0">
+              <span className="sr-only">Filter by video type</span>
               <select
-                value={videoLibrarySort}
-                onChange={(event) =>
-                  setVideoLibrarySort(
-                    event.target.value as "recent" | "title" | "duration",
+                aria-label="Filter by video type"
+                value={videoLibraryCategory}
+                onChange={(event) => {
+                  const nextCategory = event.currentTarget
+                    .value as VideoLibraryCategory
+                  setVideoLibraryCategory(nextCategory)
+                  setVideoLibrarySearchError(false)
+                  setVideoLibrarySearchPending(
+                    searchVideoLibraryAction != null &&
+                      (nextCategory !== "all" ||
+                        videoLibraryQuery.trim().length > 0),
                   )
-                }
-                className={`${fieldClassName()} pr-8`}
+                }}
+                className="h-10 w-full appearance-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] pl-3 pr-9 text-[12px] font-medium text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] focus:border-[var(--color-brand)]"
               >
-                <option value="recent">Recently updated</option>
-                <option value="title">Title</option>
-                <option value="duration">Duration</option>
+                {VIDEO_PICKER_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                strokeWidth={1.5}
+              />
             </label>
           </div>
 
@@ -9691,29 +10399,29 @@ export function ExperienceEditor({
               )}
             >
               <div className="flex min-h-0 flex-col overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
-                <div className="border-b border-[var(--color-hairline)] px-4 py-3">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                    Results
-                  </div>
-                  <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                    {videoPickerMode === "carouselAppend"
-                      ? "Choose a media item to preview and add to this carousel."
-                      : videoPickerMode === "mediaCollectionAppend"
-                        ? "Choose a video to preview and add to this media collection."
-                        : "Choose a media item to preview and configure on the right."}
-                  </div>
-                </div>
                 <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-2 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-                  <div className="grid pb-12">
+                  <div className="grid min-h-full pb-12">
                     {videoPickerLibraryRows.length === 0 ? (
-                      <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-8 text-center">
-                        <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
-                          No videos match these filters
+                      videoLibrarySearchPending ? (
+                        <div className="flex min-h-full items-center justify-center">
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-text-disabled)] border-t-[var(--color-text-primary)]" />
                         </div>
-                        <div className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                          Try widening the search or clearing the current query.
+                      ) : (
+                        <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-8 text-center">
+                          <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                            {videoLibrarySearchError
+                              ? "Search could not be completed"
+                              : "No videos match these filters"}
+                          </div>
+                          <div className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                            {videoLibrarySearchError
+                              ? "Try again or clear the current query."
+                              : videoLibrarySearchIsActive
+                                ? "Try a different search or clear the current query."
+                                : "Try widening the search or clearing the current query."}
+                          </div>
                         </div>
-                      </div>
+                      )
                     ) : (
                       videoPickerLibraryRows.map((video) => {
                         const isCurrent =
@@ -9729,6 +10437,9 @@ export function ExperienceEditor({
                               setVideoPickerDraft((current) => ({
                                 ...current,
                                 videoKey: video.key,
+                                dubKey:
+                                  preferredPlayableDubForVideo(video, null)
+                                    ?.key ?? null,
                               }))
                             }
                             className={cx(
@@ -9748,12 +10459,11 @@ export function ExperienceEditor({
                                 />
                               ) : null}
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,12,18,0.04),rgba(6,8,12,0.56))]" />
-                              <div className="absolute bottom-2 left-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-[rgba(4,6,10,0.56)] text-white backdrop-blur-[4px]">
-                                <CirclePlay
-                                  className="h-3.5 w-3.5"
-                                  strokeWidth={1.5}
-                                />
-                              </div>
+                              {videoPickerDurationLabel(video) ? (
+                                <div className="absolute bottom-2 right-2 inline-flex rounded-pill border border-white/18 bg-[rgba(4,6,10,0.68)] px-2 py-1 font-mono text-[11px] leading-none text-white shadow-[0_8px_18px_rgba(0,0,0,0.26)] backdrop-blur-[4px]">
+                                  {videoPickerDurationLabel(video)}
+                                </div>
+                              ) : null}
                             </div>
                             <div className="min-w-0 overflow-hidden">
                               <div className="flex min-w-0 items-center gap-2">
@@ -9766,12 +10476,11 @@ export function ExperienceEditor({
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="mt-1 truncate text-[12px] leading-5 text-[var(--color-text-muted)]">
-                                {video.id} • {video.duration}
-                              </div>
-                              <div className="mt-0.5 truncate text-[12px] leading-5 text-[var(--color-text-muted)]">
-                                {video.dubs}
-                              </div>
+                              {video.labelLabel ? (
+                                <div className="mt-1 truncate text-[12px] leading-5 text-[var(--color-text-muted)]">
+                                  {video.labelLabel}
+                                </div>
+                              ) : null}
                             </div>
                           </button>
                         )
@@ -9781,7 +10490,7 @@ export function ExperienceEditor({
                 </div>
               </div>
 
-              <div className="min-h-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
+              <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] [scrollbar-width:thin]">
                 {videoPickerSelectedVideo ? (
                   <div
                     className={cx(
@@ -9799,13 +10508,13 @@ export function ExperienceEditor({
                           className="relative aspect-video cursor-pointer bg-[linear-gradient(180deg,#181c25,#0b0d12)]"
                           onClick={togglePreviewPlayback}
                         >
-                          {videoPickerSelectedVideo.previewStreamUrl ? (
+                          {videoPickerPreviewStreamUrl ? (
                             <>
                               <video
                                 key={videoPickerSelectedVideo.key}
                                 ref={videoPickerPreviewRef}
                                 className="h-full w-full object-cover"
-                                src={videoPickerSelectedVideo.previewStreamUrl}
+                                src={videoPickerPreviewStreamUrl}
                                 poster={
                                   videoPickerSelectedVideo.previewImageUrl ??
                                   undefined
@@ -9996,7 +10705,7 @@ export function ExperienceEditor({
                               }}
                             />
                           ) : null}
-                          {!videoPickerSelectedVideo.previewStreamUrl ? (
+                          {!videoPickerPreviewStreamUrl ? (
                             <div className="absolute inset-0 flex items-center justify-center text-[12px] text-white">
                               Preview image only
                             </div>
@@ -10005,16 +10714,75 @@ export function ExperienceEditor({
                       </div>
 
                       <div className="min-w-0">
+                        {videoPickerCollectionPreviewItems.length > 0 ? (
+                          <div className="mb-5">
+                            <div className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2">
+                              {videoPickerCollectionPreviewItems.map((item) => (
+                                <div
+                                  key={item.key}
+                                  className="group relative aspect-video min-w-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,#181c25,#0b0d12)]"
+                                  title={item.title}
+                                >
+                                  {item.previewImageUrl ? (
+                                    <div
+                                      className="absolute inset-0 bg-cover bg-center transition-transform duration-[180ms] ease-out group-hover:scale-[1.03]"
+                                      style={{
+                                        backgroundImage: `url("${item.previewImageUrl}")`,
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,12,18,0.02),rgba(6,8,12,0.5))]" />
+                                </div>
+                              ))}
+                              {videoPickerCollectionRemainingCount > 0 ? (
+                                <div className="inline-flex h-full min-h-[48px] min-w-[56px] shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 font-mono text-[12px] font-medium text-[var(--color-text-secondary)]">
+                                  +{videoPickerCollectionRemainingCount}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
                         <div className="text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]">
                           {videoPickerSelectedVideo.title}
                         </div>
-                        <div className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                          {videoPickerSelectedVideo.id} •{" "}
-                          {videoPickerSelectedVideo.duration}
-                        </div>
-                        <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-muted)]">
-                          Dubs: {videoPickerSelectedVideo.dubs}
-                        </div>
+                        {videoPickerSelectedVideo.labelLabel ? (
+                          <div className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">
+                            {videoPickerSelectedVideo.labelLabel}
+                          </div>
+                        ) : null}
+                        {(videoPickerSelectedVideo.playableDubs?.length ?? 0) >
+                        1 ? (
+                          <div className="mt-3 grid w-full gap-1.5">
+                            <span className="label-text">Audio language</span>
+                            <SearchableVideoDubControl
+                              dubs={videoPickerSelectedVideo.playableDubs ?? []}
+                              label="Audio language"
+                              selectedDub={videoPickerSelectedDub}
+                              onSelect={(nextDubKey) => {
+                                const nextDubKeyOrNull = nextDubKey || null
+                                const nextDub =
+                                  videoPickerSelectedVideo.playableDubs?.find(
+                                    (dub) => dub.key === nextDubKeyOrNull,
+                                  ) ?? null
+                                setVideoPickerDraft((current) => ({
+                                  ...current,
+                                  dubKey: nextDubKeyOrNull,
+                                  clipStartSeconds: "0",
+                                  clipEndSeconds: "",
+                                }))
+                                const preview = videoPickerPreviewRef.current
+                                if (preview) {
+                                  preview.pause()
+                                  preview.currentTime = 0
+                                  setPreviewCurrentTime(0)
+                                }
+                                if (nextDub?.durationSeconds != null) {
+                                  setPreviewControlsVisible(true)
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : null}
                         {videoPickerSelectedVideo.description ? (
                           <div className="mt-3 max-w-2xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
                             {videoPickerSelectedVideo.description}
@@ -10103,8 +10871,8 @@ export function ExperienceEditor({
                             <div className="mt-3 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
                               <span>00:00</span>
                               <span>
-                                {formatSeconds(
-                                  videoPickerSelectedVideo.durationSeconds,
+                                {formatReadableDuration(
+                                  videoPickerDurationSeconds,
                                 )}
                               </span>
                             </div>
@@ -10174,13 +10942,13 @@ export function ExperienceEditor({
                       <div className="mt-4 text-[18px] font-semibold text-[var(--color-text-primary)]">
                         Select a video to preview
                       </div>
-                      <p className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                        {videoPickerMode === "carouselAppend"
-                          ? "Pick a result on the left to preview the media and add it to this carousel."
-                          : videoPickerMode === "mediaCollectionAppend"
-                            ? "Pick a result on the left to preview the video and add it to this media collection."
-                            : "Pick a result on the left to preview the media, trim the clip, and configure playback behavior before applying it to the hero."}
-                      </p>
+                      {videoPickerMode === "block" ? (
+                        <p className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">
+                          Pick a result on the left to preview the media, trim
+                          the clip, and configure playback behavior before
+                          applying it to the hero.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 )}
@@ -10188,29 +10956,29 @@ export function ExperienceEditor({
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--color-hairline)] pt-4">
-            <div className="text-[12px] leading-5 text-[var(--color-text-muted)]">
-              {videoPickerCurrentAttachmentLabel}
-            </div>
+          <div className="mt-4 flex items-center justify-end gap-3 border-t border-[var(--color-hairline)] pt-4">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={closeVideoPicker}
+                disabled={videoPickerApplyPending}
                 className="inline-flex h-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={applyVideoPickerSelection}
-                disabled={!videoPickerSelectedVideo}
+                onClick={() => void applyVideoPickerSelection()}
+                disabled={!videoPickerSelectedVideo || videoPickerApplyPending}
                 className="inline-flex h-9 cursor-pointer items-center justify-center rounded-sm bg-[var(--color-brand)] px-4 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {videoPickerMode === "carouselAppend"
-                  ? "Add video"
-                  : videoPickerMode === "mediaCollectionAppend"
+                {videoPickerApplyPending
+                  ? "Adding videos…"
+                  : videoPickerMode === "carouselAppend"
                     ? "Add video"
-                    : "Apply video"}
+                    : videoPickerMode === "mediaCollectionAppend"
+                      ? "Add video"
+                      : "Apply video"}
               </button>
             </div>
           </div>

@@ -1,54 +1,37 @@
 /**
- * Pure state machine for the Home hero pager (plan U4, HTD "Hero pager
- * advance rules"). The component (HomeHeroPager) owns the platform pieces —
- * the FlatList, the single expo-video player, and the actual setTimeout
- * timers — and drives them from this reducer's state plus the derived
- * selectors below. Encoded rules:
- *
- *   - advance: video slide on PLAY_TO_END; image/mux slide on the 7s image
- *     timer; STREAM_ERROR or MAX_DWELL_ELAPSED skips a stuck slide so one bad
- *     stream can't freeze the pager (AE5)
- *   - end of queue wraps to index 0 (wrapCount lets the caller reset its
- *     played set / rebuild the queue)
- *   - chip tap on the current index is a no-op; taps during an in-flight
- *     replaceAsync are dropped entirely (serialized swaps, AE3)
- *   - videoReady latches true once and never un-latches on transient idle
- *     (see docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop)
- *   - SUSPEND stops timers (timersRunning selector) and records an
- *     interrupted swap as pendingSwap; RESUME restores the current slide and
- *     shouldReissueSwap tells the component to re-issue it (AE6)
- *   - mute is a CONTROLLED prop owned by the screen, not reducer state: the
- *     session rules (unmute persists across advances, reset to muted on tab
- *     blur) are implemented in HomeScreen
- *   - single-slide queue: no auto-advance, chips/dots hidden
- *     (showsPagerChrome, AE2)
- *
- * No-op transitions return the SAME state reference so useReducer bails out
- * of re-renders and component effects keyed on state identity stay quiet.
- *
- * Pure TypeScript only — no React/React Native imports.
+ * Pure state machine for the Home hero pager (plan U4); HomeHeroPager drives the platform pieces from its state +
+ * selectors. No-op transitions return the SAME state reference. Pure TS. Rules: advance/skip (AE5), wrap, serialized swaps (AE3),
+ * videoReady latch (docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop), suspend/resume (AE6), controlled mute, single-slide chrome (AE2).
  */
 
 import type { WatchHomeSlide } from "./carouselSequence"
 
-/** Dwell for image/mux insert slides before auto-advancing (web parity: 7s). */
+/**
+ * Dwell before auto-advancing image/mux slides AND failed (unavailable) video
+ * slides — a dead slide shows its poster for this budget instead of an
+ * instant skip, so offline rotation stays calm (web parity: 7s).
+ */
 export const WATCH_HOME_IMAGE_SLIDE_DWELL_MS = 7000
 
 /**
- * Stuck-slide guard: a video slide that has not reached "playing" within this
- * budget is skipped. Playing slides are exempt — PLAY_TO_END advances them.
+ * Stuck-slide guard: a video slide not "playing" within this budget is skipped.
+ * Playing slides are exempt — PLAY_TO_END advances them.
  */
 export const WATCH_HOME_MAX_DWELL_MS = 20000
 
 export type PagerSuspendReason = "blur" | "scroll"
 
 /**
- * Reveal state for the ACTIVE slide. "poster" paints immediately on every
- * slide change; "playing" is what hides the poster over the VideoView (the
- * handoff rule: the incoming slide's poster stays visible during
- * replaceAsync).
+ * Reveal state for the ACTIVE slide. "poster" paints on every slide change;
+ * "playing" hides the poster over the VideoView; "unavailable" is a failed
+ * slide dwelling on its poster for the image budget before advancing.
+ * Handoff rule: the incoming slide's poster stays visible during replaceAsync.
  */
-export type PagerPlaybackPhase = "poster" | "resolving" | "playing"
+export type PagerPlaybackPhase =
+  | "poster"
+  | "resolving"
+  | "playing"
+  | "unavailable"
 
 export type PagerState = {
   slides: readonly WatchHomeSlide[]
@@ -59,24 +42,26 @@ export type PagerState = {
   /** A replaceAsync swap is running on the native player. */
   swapInFlight: boolean
   /**
-   * A swap was interrupted (slide changed mid-swap, or suspended with one in
-   * flight, or a stream resolved while suspended). The component re-issues it
-   * when shouldReissueSwap turns true.
+   * A swap was interrupted (slide changed mid-swap, suspended with one in flight,
+   * or a stream resolved while suspended). Component re-issues it when
+   * shouldReissueSwap turns true.
    */
   pendingSwap: boolean
   /**
-   * A skip (STREAM_ERROR or MAX_DWELL_ELAPSED) arrived while suspended and
-   * was deferred. RESUME executes the advance and clears this flag (AE5).
-   * Cleared early by SLIDES_SET, or by an explicit move (CHIP_TAPPED /
-   * SLIDE_SHOWN / SWIPED) to a DIFFERENT index — moveTo bails before
-   * clearing when the index is unchanged.
+   * A MAX_DWELL skip arrived while suspended and was deferred; RESUME executes
+   * the advance and clears it (AE5). Cleared early by SLIDES_SET or by an
+   * explicit move to a DIFFERENT index (moveTo). Stream errors no longer skip
+   * — they park the slide in the "unavailable" poster dwell instead.
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null
-  /** Slides the pager has left, fed back into queue rebuilds on wrap. */
-  playedIds: ReadonlySet<string>
-  /** Times the queue wrapped past its end back to index 0. */
-  wrapCount: number
+  /**
+   * Slide that keeps hosting the live video while the scroll animation runs —
+   * leaving a PLAYING slide must not snap it back to its poster mid-slide.
+   * Set by moveTo/advance, released by the settle (SLIDE_SHOWN), SUSPEND, or
+   * SLIDES_SET; the component defers pause + swap until it clears.
+   */
+  transitionFromId: string | null
 }
 
 export type PagerEvent =
@@ -84,8 +69,8 @@ export type PagerEvent =
   /** Swipe momentum settled on an index. */
   | { type: "SLIDE_SHOWN"; index: number }
   /**
-   * User swipe gesture committed. Unlike CHIP_TAPPED it is NOT dropped during
-   * an in-flight swap — moveTo records the interrupted swap as pendingSwap.
+   * User swipe committed. Unlike CHIP_TAPPED it is NOT dropped during an
+   * in-flight swap — moveTo records the interrupted swap as pendingSwap.
    */
   | { type: "SWIPED"; index: number }
   | { type: "CHIP_TAPPED"; index: number }
@@ -97,6 +82,7 @@ export type PagerEvent =
   | { type: "PLAY_STARTED" }
   | { type: "PLAY_TO_END" }
   | { type: "IMAGE_TIMER_ELAPSED" }
+  | { type: "UNAVAILABLE_TIMER_ELAPSED" }
   | { type: "STREAM_ERROR" }
   | { type: "MAX_DWELL_ELAPSED" }
   | { type: "SUSPEND"; reason: PagerSuspendReason }
@@ -114,8 +100,7 @@ export function createInitialPagerState(
     pendingSwap: false,
     pendingSkip: false,
     suspended: null,
-    playedIds: new Set<string>(),
-    wrapCount: 0,
+    transitionFromId: null,
   }
 }
 
@@ -127,8 +112,8 @@ export function showsPagerChrome(state: PagerState): boolean {
 }
 
 /**
- * Whether the component should keep its auto-advance timers (image dwell,
- * max dwell) armed. Suspension and single-slide queues stop them.
+ * Whether to keep auto-advance timers (image dwell, max dwell) armed.
+ * Suspension and single-slide queues stop them.
  */
 export function timersRunning(state: PagerState): boolean {
   return state.suspended === null && state.slides.length > 1
@@ -143,16 +128,38 @@ export function activeSlide(state: PagerState): WatchHomeSlide | null {
   return state.slides[state.currentIndex] ?? null
 }
 
+/**
+ * Which page hosts the single VideoView and whether its poster is hidden.
+ * Hold-aware: the departing slide keeps hosting through the scroll animation
+ * while the incoming page shows its poster (one-decoder discipline).
+ */
+export function heroPageVideoState(
+  state: PagerState,
+  slide: WatchHomeSlide,
+  index: number,
+): { showVideo: boolean; posterHidden: boolean } {
+  const holding = state.transitionFromId !== null
+  const hostsVideo = holding
+    ? slide.id === state.transitionFromId
+    : index === state.currentIndex
+  const showVideo = hostsVideo && slide.kind === "video" && state.videoReady
+  return {
+    showVideo,
+    posterHidden: showVideo && (holding || state.phase === "playing"),
+  }
+}
+
 // ── Transitions ─────────────────────────────────────────────────────────────
 
-function withPlayed(
-  playedIds: ReadonlySet<string>,
-  id: string | undefined,
-): ReadonlySet<string> {
-  if (!id || playedIds.has(id)) return playedIds
-  const next = new Set(playedIds)
-  next.add(id)
-  return next
+/**
+ * Hold for the departing slide: only a revealed video needs to keep hosting
+ * the player through the animation. A mid-flight second jump departs a
+ * poster-phase slide, so the original hold survives it.
+ */
+function transitionHold(state: PagerState): string | null {
+  return state.phase === "playing"
+    ? (activeSlide(state)?.id ?? null)
+    : state.transitionFromId
 }
 
 /** User-driven jump (swipe settle or chip tap). */
@@ -164,12 +171,12 @@ function moveTo(state: PagerState, rawIndex: number): PagerState {
     ...state,
     currentIndex: index,
     phase: "poster",
-    playedIds: withPlayed(state.playedIds, activeSlide(state)?.id),
     // A move during an in-flight swap can't cancel the native replaceAsync;
     // it records a pending swap for the new slide instead.
     pendingSwap: state.pendingSwap || state.swapInFlight,
     // Explicit navigation supersedes any deferred skip.
     pendingSkip: false,
+    transitionFromId: transitionHold(state),
   }
 }
 
@@ -182,19 +189,24 @@ function advance(state: PagerState): PagerState {
   return {
     ...state,
     currentIndex: wrapped ? 0 : next,
-    wrapCount: wrapped ? state.wrapCount + 1 : state.wrapCount,
     phase: "poster",
-    playedIds: withPlayed(state.playedIds, activeSlide(state)?.id),
     pendingSwap: state.pendingSwap || state.swapInFlight,
+    transitionFromId: transitionHold(state),
   }
 }
 
 function suspend(state: PagerState, reason: PagerSuspendReason): PagerState {
   const pendingSwap = state.pendingSwap || state.swapInFlight
-  if (state.suspended === reason && state.pendingSwap === pendingSwap) {
+  if (
+    state.suspended === reason &&
+    state.pendingSwap === pendingSwap &&
+    state.transitionFromId === null
+  ) {
     return state
   }
-  return { ...state, suspended: reason, pendingSwap }
+  // Release the hold: the settle event may never arrive while suspended, and
+  // suspension pauses the player anyway.
+  return { ...state, suspended: reason, pendingSwap, transitionFromId: null }
 }
 
 export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
@@ -208,10 +220,17 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         pendingSwap: state.pendingSwap || state.swapInFlight,
         // A queue replacement is an explicit move; supersedes any deferred skip.
         pendingSkip: false,
+        // The held slide may not exist in the new queue.
+        transitionFromId: null,
       }
 
-    case "SLIDE_SHOWN":
-      return moveTo(state, event.index)
+    case "SLIDE_SHOWN": {
+      // The settle of the scroll animation: release the transition hold so the
+      // component pauses the outgoing stream and issues the deferred swap.
+      const moved = moveTo(state, event.index)
+      if (moved.transitionFromId === null) return moved
+      return { ...moved, transitionFromId: null }
+    }
 
     case "SWIPED":
       return moveTo(state, event.index)
@@ -243,11 +262,18 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       return state.swapInFlight ? { ...state, swapInFlight: false } : state
 
     case "PLAY_STARTED":
+      // During a hold the playing edge belongs to the OUTGOING stream (the
+      // incoming swap is deferred); latching phase here would hide the
+      // incoming slide's poster over the paused outgoing frame at settle.
+      if (state.transitionFromId !== null) return state
       // videoReady latches here and is never reset by idle blips or advances.
       if (state.phase === "playing" && state.videoReady) return state
       return { ...state, phase: "playing", videoReady: true }
 
     case "PLAY_TO_END":
+      // During a transition hold the event belongs to the OUTGOING stream —
+      // advancing again would leap past the incoming slide.
+      if (state.transitionFromId !== null) return state
       return activeSlide(state)?.kind === "video" ? advance(state) : state
 
     case "IMAGE_TIMER_ELAPSED":
@@ -259,28 +285,19 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       const cleared = state.swapInFlight
         ? { ...state, swapInFlight: false }
         : state
-      if (cleared.suspended !== null) {
-        // Can't advance while suspended. Record a pendingSkip for multi-slide
-        // queues so RESUME executes the skip promptly (AE5) instead of letting
-        // the dead slide sit on its poster for the full 20s max-dwell.
-        const base =
-          cleared.phase === "poster"
-            ? cleared
-            : { ...cleared, phase: "poster" as const }
-        if (cleared.slides.length > 1 && !base.pendingSkip) {
-          return { ...base, pendingSkip: true }
-        }
-        return base
-      }
-      const advanced = advance(cleared)
-      if (advanced !== cleared) return advanced
-      // Single-slide queue: nowhere to skip to — fall back to the poster.
-      return cleared.phase === "poster"
+      // Dead-slide dwell: park on the poster for the image budget
+      // (UNAVAILABLE_TIMER_ELAPSED advances) instead of skipping instantly —
+      // offline rotation stays calm rather than jumping between live slides.
+      return cleared.phase === "unavailable"
         ? cleared
-        : { ...cleared, phase: "poster" }
+        : { ...cleared, phase: "unavailable" }
     }
 
-    case "MAX_DWELL_ELAPSED":
+    case "UNAVAILABLE_TIMER_ELAPSED":
+      if (state.phase !== "unavailable") return state
+      return advance(state)
+
+    case "MAX_DWELL_ELAPSED": {
       // Max dwell guards stuck slides; a playing video ends via PLAY_TO_END.
       if (state.phase === "playing") return state
       if (state.suspended !== null && state.slides.length > 1) {
@@ -288,7 +305,14 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         // RESUME to execute (AE5) so the stuck slide doesn't dwell needlessly.
         return state.pendingSkip ? state : { ...state, pendingSkip: true }
       }
-      return advance(state)
+      const advanced = advance(state)
+      // A hold that survived a full max-dwell means the scroll settle was
+      // lost — force-release it so the deferred pause/swap machinery runs.
+      if (advanced.transitionFromId !== null) {
+        return { ...advanced, transitionFromId: null }
+      }
+      return advanced
+    }
 
     case "SUSPEND":
       return suspend(state, event.reason)

@@ -1,12 +1,7 @@
 /**
- * Orientation control for the custom video fullscreen.
- *
- * Every screen is portrait by default (global `lockPortrait()` at app root);
- * only the fullscreen player rotates. The native module is lazy-`require`d so a
- * static import of this file never pulls `expo-screen-orientation` into the
- * eager module graph (mirrors the white-screen-avoidance pattern in
- * `app/_layout.tsx`). All calls are best-effort — a rejection (or a missing
- * native module under a slim runtime) must never crash navigation.
+ * Orientation control for the custom video fullscreen (only the player rotates;
+ * app is portrait by default). Native module is lazy-`require`d to keep it out of
+ * the eager module graph (white-screen avoidance); all calls are best-effort.
  */
 type ScreenOrientationModule = typeof import("expo-screen-orientation")
 
@@ -31,15 +26,9 @@ export async function lockPortrait(): Promise<void> {
 }
 
 /**
- * Enter the fullscreen orientation: lock to landscape so the view rotates and
- * stays landscape (either landscape-left or -right as the device turns).
- *
- * We deliberately do NOT unlock to "follow the device" afterwards: on iOS
- * `unlockAsync()` immediately re-applies the device's current physical
- * orientation, which snaps a portrait-held phone straight back to portrait —
- * so the landscape nudge never takes (verified in the simulator). Locking to
- * LANDSCAPE is the robust, standard fullscreen behavior. Portrait fullscreen
- * is intentionally not offered while in this mode.
+ * Lock to LANDSCAPE for fullscreen. We deliberately don't `unlockAsync()`
+ * afterward: on iOS it re-applies the device's physical orientation, snapping a
+ * portrait-held phone back to portrait so the landscape nudge never takes.
  */
 export async function enterFullscreenLandscape(): Promise<void> {
   const SO = load()

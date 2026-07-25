@@ -4,8 +4,8 @@
  * Dumps from cms via `pnpm --filter @forge/cms dump:core-id-mapping` and
  * uploads the resulting JSON to the shared Railway S3 bucket at
  * `admin-migrations/core-id-mapping.json`. That key is the default
- * consumed by `triggerSceneEmbeddingBackfill` (and future admin-migration
- * mutations).
+ * consumed by transcript embedding backfills and future admin-migration
+ * mutations.
  *
  * Usage:
  *   pnpm --filter @forge/admin refresh:core-id-mapping

@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { RelatedQuestions } from "@/components/sections/RelatedQuestions"
@@ -12,15 +13,14 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  setRequestLocale("en")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
 })
 
 afterEach(() => {
-  act(() => {
-    root.unmount()
-  })
+  act(() => root.unmount())
   container.remove()
 })
 
@@ -34,8 +34,8 @@ function makeData(): Parameters<typeof RelatedQuestions>[0]["data"] {
     questions: [
       {
         id: "question-1",
-        question: "Who is Jesus?",
-        answer: "Jesus is the Son of God.",
+        question: "Where can I watch the JESUS film online for free?",
+        answer: "You can watch it on this site.",
       },
       {
         id: "question-2",
@@ -44,6 +44,12 @@ function makeData(): Parameters<typeof RelatedQuestions>[0]["data"] {
       },
     ],
   } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
+}
+
+function renderQuestions() {
+  act(() => {
+    root.render(<RelatedQuestions data={makeData()} />)
+  })
 }
 
 function getFaqTriggers() {
@@ -59,11 +65,41 @@ function getControlledPanel(trigger: HTMLButtonElement) {
   return panel as HTMLDivElement
 }
 
-describe("RelatedQuestions disclosure semantics", () => {
-  it("connects every collapsed trigger to a unique hidden answer panel", () => {
+describe("RelatedQuestions", () => {
+  it("uses icon-free, normal-weight rows with centered content and equal padding", () => {
+    renderQuestions()
+
+    const trigger = container.querySelector("button")
+    const row = trigger?.firstElementChild?.firstElementChild
+    const question = row?.querySelector("p")
+
+    expect(trigger?.className).toContain("p-4")
+    expect(trigger?.className).not.toContain("py-3")
+    expect(row?.className).toContain("items-center")
+    expect(row?.className).not.toContain("items-start")
+    expect(question?.className).toContain("font-normal")
+    expect(question?.className).not.toContain("font-semibold")
+    expect(question?.querySelector("svg")).toBeNull()
+    expect(trigger?.querySelectorAll("svg")).toHaveLength(1)
+  })
+
+  it("keeps the row expandable after the presentation change", () => {
+    renderQuestions()
+
+    const trigger = container.querySelector("button")
+    expect(container.textContent).not.toContain(
+      "You can watch it on this site.",
+    )
+
     act(() => {
-      root.render(<RelatedQuestions data={makeData()} />)
+      trigger?.click()
     })
+
+    expect(container.textContent).toContain("You can watch it on this site.")
+  })
+
+  it("connects every collapsed trigger to a unique hidden answer panel", () => {
+    renderQuestions()
 
     const triggers = getFaqTriggers()
     expect(triggers).toHaveLength(2)
@@ -82,9 +118,7 @@ describe("RelatedQuestions disclosure semantics", () => {
   })
 
   it("keeps state and controlled-panel visibility accurate while toggling rows", () => {
-    act(() => {
-      root.render(<RelatedQuestions data={makeData()} />)
-    })
+    renderQuestions()
 
     const [firstTrigger, secondTrigger] = getFaqTriggers()
     expect(firstTrigger).toBeDefined()
@@ -98,7 +132,7 @@ describe("RelatedQuestions disclosure semantics", () => {
     })
     expect(firstTrigger!.getAttribute("aria-expanded")).toBe("true")
     expect(firstPanel.hidden).toBe(false)
-    expect(firstPanel.textContent).toContain("Jesus is the Son of God.")
+    expect(firstPanel.textContent).toContain("You can watch it on this site.")
     expect(secondTrigger!.getAttribute("aria-expanded")).toBe("false")
     expect(secondPanel.hidden).toBe(true)
 

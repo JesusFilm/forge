@@ -88,7 +88,7 @@ export function getAuthTrustedOrigins(): string[] {
   const productionWebOrigins = [
     "https://jesusfilm.org",
     "https://www.jesusfilm.org",
-    "https://web.jesusfilm.org",
+    "https://watch.jesusfilm.org",
   ]
   const localWebOrigins =
     process.env.NODE_ENV === "production"
@@ -110,6 +110,22 @@ export function getAuthTrustedOrigins(): string[] {
       ...productionWebOrigins,
       ...localWebOrigins,
       ...parseOriginList(env.AUTH_WEB_TRUSTED_ORIGINS),
+    ]),
+  )
+}
+
+export function getAuthValidAudiences(): string[] {
+  return Array.from(
+    new Set([
+      getAuthBaseUrl(),
+      "http://localhost:3003/mcp",
+      "https://admin-preview.jesusfilm.org/mcp",
+      "https://admin-stage.jesusfilm.org/mcp",
+      "https://admin.jesusfilm.org/mcp",
+      ...(env.AUTH_VALID_AUDIENCES ?? "")
+        .split(",")
+        .map((audience) => audience.trim())
+        .filter((audience) => audience.length > 0),
     ]),
   )
 }

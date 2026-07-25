@@ -32,10 +32,11 @@ date_learned: 2026-04-22
 ## Search usage update (feat-131)
 
 Transcript chunk vectors are now live search evidence in admin, but they still
-do not form a separate RRF list. `searchVideoSemantic` mixes
-`video_transcript_chunk.embedding` with `video_scene_locale.embedding` inside
-one `semantic-video` retriever, then emits one candidate per video to the
-existing RRF pipeline.
+do not form a separate RRF list. Since feat-192, `searchVideoSemantic` reads
+the accepted enriched transcript chunk vector contract from
+`video_transcript_chunk.embedding`, then emits one candidate per video to the
+existing `semantic-video` RRF list. Scene embeddings remain historical storage
+until the legacy cleanup pass deletes the unused pipeline.
 
 The performance rule from this doc remains load-bearing: transcript semantic
 search filters on `video_transcript_chunk.language`, not only

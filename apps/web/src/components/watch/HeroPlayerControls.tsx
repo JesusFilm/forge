@@ -1,6 +1,6 @@
 "use client"
 
-import { Globe } from "lucide-react"
+import { AudioLines, Captions } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -30,22 +30,64 @@ import {
   PauseIcon,
   PlayIcon,
 } from "./chrome-icons"
+import {
+  buildMuxStoryboardJsonUrl,
+  findStoryboardTile,
+  parseMuxStoryboard,
+  type MuxStoryboard,
+} from "./mux-storyboard"
 
 const TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX = 8
-const CHROME_DIMMED_OPACITY = 0.3
 const CHROME_IDLE_HIDE_DELAY_MS = 4000
 const CHROME_INITIAL_POINTER_LOCK_MS = 5000
 
 type ChromeVisibility = "dim" | "hidden" | "bright"
+
+type WebKitFullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => Promise<void> | void
+}
+
+type WebKitFullscreenWrapper = HTMLDivElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void
+}
+
+type WebKitFullscreenVideo = HTMLVideoElement & {
+  webkitDisplayingFullscreen?: boolean
+  webkitEnterFullscreen?: () => void
+  webkitExitFullscreen?: () => void
+}
+
+function getWebKitFullscreenVideo(
+  player: MuxPlayerRef | null,
+): WebKitFullscreenVideo | null {
+  if (!player) return null
+
+  if (player instanceof HTMLVideoElement) {
+    return player as WebKitFullscreenVideo
+  }
+
+  const host = player as unknown as { shadowRoot?: ShadowRoot | null }
+  const video = host.shadowRoot?.querySelector("video")
+  return video instanceof HTMLVideoElement
+    ? (video as WebKitFullscreenVideo)
+    : null
+}
 
 export function HeroPlayerControls({
   player,
   playerRef,
   wrapperRef,
   overlayAnchor,
+  playbackId,
+  playbackLoading = false,
   onLanguageClick,
+  languageCode,
+  subtitleLanguageCode,
   showLanguageButton,
+  showSubtitleButton,
   onVisibilityChange,
+  onWatchNextInteraction,
 }: {
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
@@ -59,17 +101,27 @@ export function HeroPlayerControls({
    * so this is null for one render at most before the ref callback fires.
    */
   overlayAnchor: HTMLDivElement | null
-  /** Click handler for the in-chrome globe (mirrors the top-right globe). */
+  playbackId?: string
+  playbackLoading?: boolean
+  /** Click handler for the in-chrome audio and subtitle controls. */
   onLanguageClick?: () => void
+  /** Active audio language code displayed beside the in-chrome voice icon. */
+  languageCode?: string | null
+  /** Active subtitle language code; null when subtitles are disabled. */
+  subtitleLanguageCode?: string | null
   /**
-   * Whether to render the in-chrome globe button. The parent applies the
+   * Whether to render the in-chrome audio button. The parent applies the
    * same gate it uses for the top-right globe (>= 2 playable variants AND
    * a callback is provided), so both surfaces appear together.
    */
   showLanguageButton?: boolean
+  /** Whether the current video exposes subtitle options. */
+  showSubtitleButton?: boolean
   onVisibilityChange?: (detail: WatchPlayerChromeVisibilityDetail) => void
+  onWatchNextInteraction?: () => void
 }) {
   const t = useTranslations("HeroPlayerControls")
+  const languagePickerT = useTranslations("LanguagePickerModal")
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -95,6 +147,9 @@ export function HeroPlayerControls({
   const [volumeOpen, setVolumeOpen] = useState(false)
   const [volumeDragging, setVolumeDragging] = useState(false)
   const [timelineDragging, setTimelineDragging] = useState(false)
+  const [previewPct, setPreviewPct] = useState<number | null>(null)
+  const [storyboard, setStoryboard] = useState<MuxStoryboard | null>(null)
+  const [pendingSeekTime, setPendingSeekTime] = useState<number | null>(null)
   // Local scrub position (0..1) used by the visual thumb during a drag so
   // the cursor can lead the player's actual seek-resolved time without
   // visible lag. `null` outside of a drag — falls back to currentTime.
@@ -110,18 +165,19 @@ export function HeroPlayerControls({
   }, [chromeVisibility])
 
   const chromeOpacity =
-    chromeVisibility === "bright"
-      ? 1
-      : chromeVisibility === "dim"
-        ? CHROME_DIMMED_OPACITY
-        : 0
+    chromeVisibility === "bright" ? 1 : chromeVisibility === "dim" ? 1 : 0
   const chromeVisible = chromeVisibility !== "hidden"
   const chromeOpacityClass =
     chromeVisibility === "bright"
       ? "opacity-100"
       : chromeVisibility === "dim"
-        ? "opacity-30"
+        ? "opacity-100"
         : "opacity-0"
+  const showSubtitleLanguageCode = Boolean(
+    languageCode &&
+    subtitleLanguageCode &&
+    subtitleLanguageCode !== languageCode,
+  )
 
   useEffect(() => {
     onVisibilityChange?.({
@@ -129,6 +185,11 @@ export function HeroPlayerControls({
       opacity: chromeOpacity,
     })
   }, [chromeOpacity, chromeVisible, onVisibilityChange])
+
+  useEffect(() => {
+    if (chromeVisible) return
+    setPreviewPct(null)
+  }, [chromeVisible])
 
   useEffect(() => {
     window.dispatchEvent(
@@ -169,6 +230,7 @@ export function HeroPlayerControls({
   // pointermove fires at 60-120 Hz on most browsers, and HLS / Mux Player
   // cannot process that many seeks per second without visible jerk.
   const scrubPctRef = useRef<number | null>(null)
+  const pendingSeekTimeRef = useRef<number | null>(null)
   const scrubRafRef = useRef<number | null>(null)
   // Snapshot of the timeline's bounding rect captured at pointerdown. Re-using
   // this for the entire drag prevents thumb oscillation when the volume
@@ -203,6 +265,10 @@ export function HeroPlayerControls({
   useEffect(() => {
     timelineDraggingRef.current = timelineDragging
   }, [timelineDragging])
+
+  useEffect(() => {
+    pendingSeekTimeRef.current = pendingSeekTime
+  }, [pendingSeekTime])
 
   useEffect(() => {
     pointerRevealLockedRef.current = true
@@ -298,7 +364,17 @@ export function HeroPlayerControls({
       setMuted(!!player.muted)
       const v = player.volume
       setVolume(Number.isFinite(v) ? v : 1)
-      setCurrentTime(player.currentTime)
+      const nextCurrentTime = player.currentTime
+      setCurrentTime(nextCurrentTime)
+      const pending = pendingSeekTimeRef.current
+      if (
+        pending != null &&
+        Number.isFinite(nextCurrentTime) &&
+        Math.abs(nextCurrentTime - pending) <= 0.5
+      ) {
+        pendingSeekTimeRef.current = null
+        setPendingSeekTime(null)
+      }
       const d = player.duration
       setDuration(Number.isFinite(d) ? d : 0)
       const b = player.buffered
@@ -329,6 +405,28 @@ export function HeroPlayerControls({
       events.forEach((e) => player.removeEventListener(e, sync))
     }
   }, [player])
+
+  useEffect(() => {
+    setStoryboard(null)
+    if (!playbackId) return
+
+    const controller = new AbortController()
+    const loadStoryboard = async () => {
+      try {
+        const response = await fetch(buildMuxStoryboardJsonUrl(playbackId), {
+          signal: controller.signal,
+        })
+        if (!response.ok) return
+        const parsed = parseMuxStoryboard(await response.json())
+        if (!controller.signal.aborted) setStoryboard(parsed)
+      } catch {
+        if (!controller.signal.aborted) setStoryboard(null)
+      }
+    }
+
+    void loadStoryboard()
+    return () => controller.abort()
+  }, [playbackId])
 
   // Fullscreen state now comes from useIsFullscreen() above — no
   // component-local listener needed.
@@ -523,12 +621,12 @@ export function HeroPlayerControls({
   const toggleFullscreen = useCallback(() => {
     const wrapper = wrapperRef.current
     if (!wrapper) return
-    const doc = document as Document & {
-      webkitFullscreenElement?: Element | null
-      webkitExitFullscreen?: () => Promise<void> | undefined
-    }
-    const wrapperEl = wrapper as HTMLDivElement & {
-      webkitRequestFullscreen?: () => Promise<void> | undefined
+    const doc = document as WebKitFullscreenDocument
+    const wrapperEl = wrapper as WebKitFullscreenWrapper
+    const videoEl = getWebKitFullscreenVideo(playerRef.current)
+    if (videoEl?.webkitDisplayingFullscreen) {
+      videoEl.webkitExitFullscreen?.()
+      return
     }
     const isFs = !!(document.fullscreenElement ?? doc.webkitFullscreenElement)
     if (isFs) {
@@ -539,15 +637,20 @@ export function HeroPlayerControls({
         })
       }
     } else {
-      const req =
-        wrapperEl.requestFullscreen?.() ?? wrapperEl.webkitRequestFullscreen?.()
-      if (req && typeof req.then === "function") {
-        req.catch((err: unknown) => {
-          console.warn("[HeroPlayer] requestFullscreen rejected", err)
-        })
+      const requestFullscreen =
+        wrapperEl.requestFullscreen ?? wrapperEl.webkitRequestFullscreen
+      if (requestFullscreen) {
+        const req = requestFullscreen.call(wrapperEl)
+        if (req && typeof req.then === "function") {
+          req.catch((err: unknown) => {
+            console.warn("[HeroPlayer] requestFullscreen rejected", err)
+          })
+        }
+        return
       }
+      videoEl?.webkitEnterFullscreen?.()
     }
-  }, [wrapperRef])
+  }, [playerRef, wrapperRef])
 
   // Compute the 0..1 scrub fraction for a clientX within the timeline rect.
   // Clamped at the edges so dragging past the bar's bounds still produces a
@@ -577,7 +680,10 @@ export function HeroPlayerControls({
     (pct: number) => {
       const p = playerRef.current
       if (!p || !duration) return
-      p.currentTime = pct * duration
+      const nextTime = pct * duration
+      pendingSeekTimeRef.current = nextTime
+      setPendingSeekTime(nextTime)
+      p.currentTime = nextTime
     },
     [playerRef, duration],
   )
@@ -601,7 +707,10 @@ export function HeroPlayerControls({
       if (!p) return
       const d = p.duration
       if (!Number.isFinite(d) || d <= 0) return
-      p.currentTime = pct * d
+      const nextTime = pct * d
+      pendingSeekTimeRef.current = nextTime
+      setPendingSeekTime(nextTime)
+      p.currentTime = nextTime
     })
   }, [playerRef])
 
@@ -639,6 +748,7 @@ export function HeroPlayerControls({
       const pct = computeScrubPct(e.clientX)
       scrubPctRef.current = pct
       setScrubPct(pct)
+      setPreviewPct(pct)
       seekToPct(pct)
     },
     [playerRef, computeScrubPct, seekToPct],
@@ -646,8 +756,9 @@ export function HeroPlayerControls({
 
   const handleTimelinePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!timelineDraggingRef.current) return
       const pct = computeScrubPct(e.clientX)
+      setPreviewPct(pct)
+      if (!timelineDraggingRef.current) return
       // Visual update fires every move — instant cursor-following thumb.
       scrubPctRef.current = pct
       setScrubPct(pct)
@@ -683,6 +794,7 @@ export function HeroPlayerControls({
       if (wasDragging && finalPct != null && p) seekToPct(finalPct)
       setTimelineDragging(false)
       setScrubPct(null)
+      if (finalPct != null) setPreviewPct(finalPct)
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
@@ -698,6 +810,16 @@ export function HeroPlayerControls({
     },
     [playerRef, seekToPct],
   )
+
+  const handleTimelinePointerLeave = useCallback(() => {
+    if (timelineDraggingRef.current) return
+    setPreviewPct(null)
+  }, [])
+
+  const handleTimelineBlur = useCallback(() => {
+    if (timelineDraggingRef.current) return
+    setPreviewPct(null)
+  }, [])
 
   // If the OS revokes pointer capture mid-drag (page hidden, touch preempted,
   // container collapses), pointerup never fires — reset the drag flag, drop
@@ -746,18 +868,25 @@ export function HeroPlayerControls({
       const arrowStep = e.shiftKey ? 10 : 5
       const pageStep = 30
       const cur = p.currentTime
+      let nextTime: number | null = null
       if (e.key === "ArrowRight") {
-        p.currentTime = Math.min(duration, cur + arrowStep)
+        nextTime = Math.min(duration, cur + arrowStep)
       } else if (e.key === "ArrowLeft") {
-        p.currentTime = Math.max(0, cur - arrowStep)
+        nextTime = Math.max(0, cur - arrowStep)
       } else if (e.key === "PageUp") {
-        p.currentTime = Math.min(duration, cur + pageStep)
+        nextTime = Math.min(duration, cur + pageStep)
       } else if (e.key === "PageDown") {
-        p.currentTime = Math.max(0, cur - pageStep)
+        nextTime = Math.max(0, cur - pageStep)
       } else if (e.key === "Home") {
-        p.currentTime = 0
+        nextTime = 0
       } else if (e.key === "End") {
-        p.currentTime = duration
+        nextTime = duration
+      }
+      if (nextTime != null) {
+        pendingSeekTimeRef.current = nextTime
+        setPendingSeekTime(nextTime)
+        setPreviewPct(Math.min(1, Math.max(0, nextTime / duration)))
+        p.currentTime = nextTime
       }
     },
     [playerRef, duration],
@@ -768,9 +897,29 @@ export function HeroPlayerControls({
   // the seek resolves). This is what makes the cursor "lead" the player
   // without visible lag.
   const displayTime =
-    timelineDragging && scrubPct != null ? scrubPct * duration : currentTime
+    timelineDragging && scrubPct != null
+      ? scrubPct * duration
+      : (pendingSeekTime ?? currentTime)
   const progressPct =
     duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0
+  const previewTime =
+    previewPct != null && duration > 0 ? previewPct * duration : null
+  const previewTile =
+    storyboard && previewTime != null
+      ? findStoryboardTile(storyboard, previewTime)
+      : null
+  const previewStoryboard = previewTile ? storyboard : null
+  const previewLeftPct =
+    previewPct == null ? 0 : Math.min(96, Math.max(4, previewPct * 100))
+  const previewWidthPx = previewStoryboard ? previewStoryboard.tileWidth / 2 : 0
+  const previewHeightPx = previewStoryboard
+    ? previewStoryboard.tileHeight / 2
+    : 0
+
+  const handleTimelineFocus = useCallback(() => {
+    if (duration <= 0) return
+    setPreviewPct(Math.min(1, Math.max(0, displayTime / duration)))
+  }, [displayTime, duration])
 
   // Dark gradient that sits BEHIND the chrome bar so the white icons stay
   // legible. It used to live inside the sticky hero wrapper, but the
@@ -783,7 +932,7 @@ export function HeroPlayerControls({
     <div
       aria-hidden="true"
       data-testid="hero-player-chrome-backdrop"
-      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[28vh] min-h-36 max-h-72 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
+      className={`pointer-events-none absolute bottom-0 left-1/2 z-0 h-[28vh] min-h-36 w-screen max-w-none -translate-x-1/2 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
         chromeOpacityClass
       }`}
       style={
@@ -809,6 +958,8 @@ export function HeroPlayerControls({
           setHoveringControls(true)
         }
       }}
+      onPointerDownCapture={onWatchNextInteraction}
+      onKeyDownCapture={onWatchNextInteraction}
       onPointerMove={(event) => {
         event.stopPropagation()
         if (revealControls({ pointerDriven: true })) {
@@ -816,7 +967,7 @@ export function HeroPlayerControls({
         }
       }}
       onPointerLeave={() => setHoveringControls(false)}
-      className={`absolute inset-x-0 bottom-0 z-10 flex w-full items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
+      className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-1 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
         chromeOpacityClass
       }`}
     >
@@ -825,7 +976,17 @@ export function HeroPlayerControls({
         ariaLabel={playing ? t("pause") : t("play")}
         testId="hero-chrome-play"
       >
-        {playing ? <PauseIcon /> : <PlayIcon />}
+        {playbackLoading ? (
+          <span
+            aria-hidden="true"
+            data-testid="hero-chrome-loading"
+            className="h-5 w-5 rounded-full border-2 border-white/25 border-t-white/95 motion-safe:animate-spin"
+          />
+        ) : playing ? (
+          <PauseIcon />
+        ) : (
+          <PlayIcon />
+        )}
       </ChromeButton>
 
       <div
@@ -846,37 +1007,94 @@ export function HeroPlayerControls({
         onPointerMove={handleTimelinePointerMove}
         onPointerUp={handleTimelinePointerUp}
         onPointerCancel={handleTimelinePointerUp}
+        onPointerLeave={handleTimelinePointerLeave}
         onLostPointerCapture={handleTimelineLostPointerCapture}
+        onFocus={handleTimelineFocus}
+        onBlur={handleTimelineBlur}
         onKeyDown={handleTimelineKey}
-        className="group relative h-1 min-w-0 flex-1 cursor-pointer touch-pan-y rounded-full bg-white/20 transition-colors duration-150 hover:bg-white/30 focus:bg-white/30 focus:ring-2 focus:ring-white/60 focus:outline-none"
+        className="group/timeline relative order-first flex h-5 min-w-0 basis-full cursor-pointer touch-pan-y items-center focus-visible:outline-none md:order-none md:h-8 md:flex-1 md:basis-auto"
       >
-        <div
-          className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
-          style={{ width: `${bufferedPct}%` }}
-        />
-        <div
-          className="absolute inset-y-0 left-0 rounded-l-full bg-brand-red"
-          style={{ width: `${progressPct}%` }}
-        />
-        <div
-          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-red shadow transition group-hover:opacity-100 group-focus:opacity-100 ${
-            timelineDragging ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ left: `${progressPct}%` }}
-        />
+        {previewTile && previewStoryboard ? (
+          <div
+            data-testid="hero-chrome-timeline-preview"
+            className="pointer-events-none absolute bottom-5 z-20 overflow-hidden rounded-md shadow-2xl ring-1 ring-white/20 md:bottom-7"
+            style={
+              {
+                "--hero-preview-left": `clamp(${previewWidthPx / 2}px, ${previewLeftPct}%, calc(100% - ${
+                  previewWidthPx / 2
+                }px))`,
+                left: "var(--hero-preview-left)",
+                width: `${previewWidthPx}px`,
+                transform: "translateX(-50%)",
+              } as CSSProperties
+            }
+          >
+            <div
+              className="relative overflow-hidden"
+              style={{
+                width: `${previewWidthPx}px`,
+                height: `${previewHeightPx}px`,
+              }}
+            >
+              <div
+                aria-hidden="true"
+                className="origin-top-left"
+                style={{
+                  width: `${previewStoryboard.tileWidth}px`,
+                  height: `${previewStoryboard.tileHeight}px`,
+                  backgroundImage: `url("${previewStoryboard.url}")`,
+                  backgroundPosition: `-${previewTile.x}px -${previewTile.y}px`,
+                  transform: "scale(0.5)",
+                }}
+              />
+              <div
+                data-testid="hero-chrome-timeline-preview-time"
+                className="absolute right-1 bottom-1 rounded bg-black/65 px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums text-white shadow-sm backdrop-blur-[2px]"
+                style={{
+                  textShadow: "0 1px 2px rgba(0,0,0,0.75)",
+                }}
+              >
+                {formatTime(previewTime ?? 0)}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        <div className="relative h-1 w-full rounded-full bg-white/20 transition-colors duration-150 group-hover/timeline:bg-white/30 group-focus-visible/timeline:bg-white/30 group-focus-visible/timeline:ring-1 group-focus-visible/timeline:ring-brand-red/70 group-focus-visible/timeline:ring-offset-2 group-focus-visible/timeline:ring-offset-black/40">
+          <div
+            className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
+            style={{ width: `${bufferedPct}%` }}
+          />
+          <div
+            className="absolute inset-y-0 left-0 rounded-l-full bg-brand-red"
+            style={{ width: `${progressPct}%` }}
+          />
+          <div
+            className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-red shadow transition group-hover/timeline:opacity-100 group-focus-visible/timeline:opacity-100 ${
+              timelineDragging || previewPct != null
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+            style={{ left: `${progressPct}%` }}
+          />
+        </div>
       </div>
 
       <div
         data-testid="hero-chrome-time"
         data-current-time={Math.floor(displayTime)}
         data-duration={Math.floor(duration)}
-        className="shrink-0 text-sm font-medium tabular-nums text-white drop-shadow md:text-base"
+        className="shrink-0 text-xs font-medium tabular-nums text-white drop-shadow md:text-base"
       >
-        {formatTime(displayTime)} / {formatTime(duration)}
+        <span className="md:hidden">
+          {formatTime(displayTime)}/{formatTime(duration)}
+        </span>
+        <span className="hidden md:inline">
+          {formatTime(displayTime)} / {formatTime(duration)}
+        </span>
       </div>
 
       <div
-        className="relative flex shrink-0 items-center"
+        className="relative ml-auto flex shrink-0 items-center"
         onMouseEnter={() => setVolumeOpen(true)}
         onMouseLeave={() => setVolumeOpen(false)}
         onFocus={() => setVolumeOpen(true)}
@@ -936,23 +1154,64 @@ export function HeroPlayerControls({
         </ChromeButton>
       </div>
 
-      {showLanguageButton && onLanguageClick ? (
-        <ChromeButton
-          onClick={onLanguageClick}
-          ariaLabel={t("changeAudioLanguage")}
-          testId="hero-chrome-language"
-        >
-          <Globe aria-hidden className="h-6 w-6" />
-        </ChromeButton>
-      ) : null}
-
-      <ChromeButton
-        onClick={toggleFullscreen}
-        ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
-        testId="hero-chrome-fullscreen"
+      <div
+        data-testid="hero-chrome-language-controls"
+        className="flex shrink-0 items-center gap-1 md:gap-4"
       >
-        {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
-      </ChromeButton>
+        {showLanguageButton && onLanguageClick ? (
+          <ChromeButton
+            onClick={onLanguageClick}
+            ariaLabel={t("changeAudioLanguage")}
+            testId="hero-chrome-language"
+            className={
+              languageCode
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
+                : undefined
+            }
+          >
+            <AudioLines aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
+            {languageCode ? (
+              <span
+                data-testid="hero-chrome-language-code"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+              >
+                {languageCode}
+              </span>
+            ) : null}
+          </ChromeButton>
+        ) : null}
+
+        {showSubtitleButton && onLanguageClick ? (
+          <ChromeButton
+            onClick={onLanguageClick}
+            ariaLabel={languagePickerT("subtitlesHeading")}
+            testId="hero-chrome-subtitles"
+            className={
+              showSubtitleLanguageCode
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
+                : undefined
+            }
+          >
+            <Captions aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
+            {showSubtitleLanguageCode ? (
+              <span
+                data-testid="hero-chrome-subtitle-language-code"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+              >
+                {subtitleLanguageCode}
+              </span>
+            ) : null}
+          </ChromeButton>
+        ) : null}
+
+        <ChromeButton
+          onClick={toggleFullscreen}
+          ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
+          testId="hero-chrome-fullscreen"
+        >
+          {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
+        </ChromeButton>
+      </div>
     </div>
   )
 

@@ -16,9 +16,8 @@
  *     `container.content: [{t:"containerSlot", gridSpan}, ...content]`
  *   - Strapi numeric `video: <id>` → admin `videoId: <cuid>` resolved by
  *     slug against admin's `video` table; missing slugs degrade to
- *     `videoId: undefined` + `streamingUrl` + `titleOverride`
- *   - Local `/images/thumbnails/*` paths → absolute jesusfilm.org URLs
- *     (admin's BlockSchema requires absolute URLs everywhere)
+ *     `videoId: undefined` + `titleOverride`
+ *   - Local `/images/thumbnails/*` paths are accepted by admin's BlockSchema.
  *
  * Usage:
  *   DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
@@ -48,37 +47,6 @@ type ContainerContentBlock = z.input<typeof ContainerContentBlockSchema>
 
 const EASTER_EXPERIENCE_SLUG = "easter"
 
-// ── Mux streaming URLs (verbatim from apps/cms/src/bootstrap/seed-easter.ts) ─
-const MUX = {
-  heroBackground:
-    "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
-  easterExplained:
-    "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw.m3u8",
-  myLastDay:
-    "https://stream.mux.com/9kSyeRzEyT9uOzKGjTPNMBr6NuoPNaUYpgxoQYIT9J00.m3u8",
-  howDidJesusDie:
-    "https://stream.mux.com/XMrVrxN5T569taEZJF901iRP686a1LwpF7S1bjI81fmw.m3u8",
-  whyDidJesusHaveToDie:
-    "https://stream.mux.com/SjQStsNJ8P9jIZkbvJc5zAebqHhwUtiMUBI4Mp4ovFQ.m3u8",
-  talkWithNicodemus:
-    "https://stream.mux.com/udNH2pbg8TaZcYcGStpY2MC7rTHjW3FVNcR22mG2Lv8.m3u8",
-  didJesusComeBack:
-    "https://stream.mux.com/gaWAaQKnxddoWt7AmoTvQt00DZrPhWaWSNioHlg1s006w.m3u8",
-  theStoryShortFilm:
-    "https://stream.mux.com/ukCsv3wCRfyqBmxjZHJuka4ou9lBg4z3iUSdyHwk7UE.m3u8",
-  chosenWitness:
-    "https://stream.mux.com/9gv5sllVjxiC1qKm5A9iG7A3tWvcrBuxUvztNwtXVcE.m3u8",
-  invitationToKnowJesus:
-    "https://stream.mux.com/00EamMd1vjQPSI3402YD4Mc4QjRzyRByLKSBjkjoTor8Q.m3u8",
-} as const
-
-const DOCUMENTARY_MUX = {
-  whatHappenedNext:
-    "https://stream.mux.com/j5JcToIUxcPWjWMy4DYB0044SAE5IqlFEk25H502C3W00g.m3u8",
-  whyEasterBunnies:
-    "https://stream.mux.com/HwVU0102j988ttK2A9F3pBTZLSrvmxGrIvmTec1WBhvVs.m3u8",
-} as const
-
 // ── Image CDN helpers ───────────────────────────────────────────────────────
 const IMG = "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA"
 const imgCinematic = (id: string) =>
@@ -87,20 +55,6 @@ const imgCinematic = (id: string) =>
 const UNSPLASH = "https://images.unsplash.com"
 const unsplash = (id: string, w = 900) =>
   `${UNSPLASH}/${id}?w=${w}&auto=format&fit=crop&q=60`
-
-// Strapi's seed used /images/thumbnails/* (relative paths served by apps/web).
-// Admin's BlockSchema requires absolute URLs, so we point at the same files
-// served by jesusfilm.org. apps/web/public/images/thumbnails/* is the source
-// of truth for both.
-const POSTER_BASE = "https://www.jesusfilm.org"
-const COLLECTION_POSTERS = {
-  jesus: `${POSTER_BASE}/images/thumbnails/1_jf-0-0-vertical.png`,
-  lifeOfJesus: `${POSTER_BASE}/images/thumbnails/2_GOJ-0-0-vertical.png`,
-  gospelOfMatthew: `${POSTER_BASE}/images/thumbnails/GOMattCollection-vertical.png`,
-  gospelOfMark: `${POSTER_BASE}/images/thumbnails/GOMarkCollection-vertical.png`,
-  gospelOfLuke: `${POSTER_BASE}/images/thumbnails/GOLukeCollection-vertical.png`,
-  gospelOfJohn: `${POSTER_BASE}/images/thumbnails/GOJohnCollection-vertical.png`,
-} as const
 
 const BSF_CTA = "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
 const ISSUES_CTA = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
@@ -129,9 +83,8 @@ const REQUIRED_VIDEO_SLUGS = [
 ] as const
 
 // Slugs that exist in Strapi via findOrCreatePublishedVideo placeholders but
-// not in admin's Core-sourced video catalogue. We omit videoId for these and
-// rely on streamingUrl + titleOverride. Documented so a future update can wire
-// them up if Core ever indexes them.
+// not in admin's Core-sourced video catalogue. We omit videoId for these; they
+// will not resolve playable media until Core indexes them.
 const KNOWN_MISSING_FROM_ADMIN = new Set<string>([
   "easter-hero",
   "33-why-is-easter-celebrated-with-bunnies",
@@ -198,23 +151,6 @@ const JESUS_CHAPTERS = [
     title: "Invitation to Know Jesus Personally",
   },
 ] as const
-
-const CHAPTER_MUX_URLS = [
-  "https://stream.mux.com/02Ry6Gfw77pUUbxR00ZGpwRuH8QmkcIYJQAsUzSv8NivA.m3u8",
-  "https://stream.mux.com/RdzWyJOvlFSGfSchJfJgZo02FZFmRxKKioAlwQLqhP1o.m3u8",
-  "https://stream.mux.com/WqcB9gngC200Xd02jqLtWDH9kpl7SAA9hetPrZNQzEq2w.m3u8",
-  "https://stream.mux.com/86fx02kyx00ofXfTG7nncAgSLyNAzYezJsDH1WBeJ4Jz00.m3u8",
-  "https://stream.mux.com/ReVjLKXcnHpNXgndi3iZwAYVVWWSySLve8zlJOP99jQ.m3u8",
-  "https://stream.mux.com/nDmSEYIs6bAXCyn4oLJ00kqNXZWpOAY7PmrW1WjNwHoE.m3u8",
-  "https://stream.mux.com/02401fH4vQmNwN2dHrYPz02ov4kOSnAP7OR5eCgdkt00VrE.m3u8",
-  "https://stream.mux.com/I9lWD00HnByLjW5wTscLBZWLAusYbJSRfGY4za99f02UE.m3u8",
-  "https://stream.mux.com/ATLrJ8HbYpDkcWYzNdhoXXwg72CmxWpPLqxJAE02OoKQ.m3u8",
-  "https://stream.mux.com/NfZQAEFDpx02daisV7hbnasNgrqsFb02FexupX01limAvM.m3u8",
-  "https://stream.mux.com/hPHNL1W4UfMngRcQD14uK8Ie95kdI6aRKc8Z00wtsrXM.m3u8",
-  "https://stream.mux.com/fYnMTk01h0100p5006Ad8KpS958nev01v1jh4e00jv5yU2WCE.m3u8",
-  "https://stream.mux.com/LbACgzqoNe5pEd00FLKDCprh00BtKSVWzXQoHsGhR01017I.m3u8",
-  MUX.invitationToKnowJesus,
-]
 
 const CHAPTER_IMG_IDS = [
   "1_jf6143-0-0",
@@ -305,7 +241,6 @@ function buildVideoSectionContent(
   opts: {
     sectionKey: string
     videoSlug: string
-    streamingUrl: string
     title: string
     subtitle: string
     description: string[]
@@ -329,7 +264,6 @@ function buildVideoSectionContent(
     sectionKey: opts.sectionKey,
     useRouteVideo: false,
     videoId: lookup(opts.videoSlug),
-    streamingUrl: opts.streamingUrl,
     title: opts.title,
     subtitle: opts.subtitle,
   }
@@ -394,6 +328,8 @@ async function main(): Promise<void> {
 
   const { prisma } = await import("@/db/client")
   const { BlocksSchema } = await import("@/domain/blocks")
+  const { backfillExperienceVideoLanguageIds } =
+    await import("@/services/experience-video-language-backfill")
 
   // Resolve all slug → cuid mappings up front.
   const allSlugs = [
@@ -428,7 +364,6 @@ async function main(): Promise<void> {
     t: "videoHero",
     useRouteVideo: false,
     videoId: lookup("easter-hero"),
-    streamingUrl: MUX.heroBackground,
     heading: "Easter",
     subheading: `Easter ${CURRENT_YEAR} - videos & resources about Lent, Holy Week, Resurrection`,
     ctaLabel: "Watch now",
@@ -443,42 +378,36 @@ async function main(): Promise<void> {
         contentId: "easter-explained/english",
         title: "The True Meaning of Easter",
         category: "Short Video",
-        imageUrl: unsplash("photo-1521106581851-da5b6457f674"),
         backgroundColor: "#1A1815",
       },
       {
         contentId: "my-last-day/english",
         title: "Last hour of Jesus' life from criminal's point of view",
         category: "Short Video",
-        imageUrl: unsplash("photo-1522442676585-c751dab71864"),
         backgroundColor: "#A88E78",
       },
       {
         contentId: "why-did-jesus-have-to-die/english",
         title: "The Purpose of Jesus' Sacrifice",
         category: "Short Video",
-        imageUrl: unsplash("photo-1591561582301-7ce6588cc286"),
         backgroundColor: "#62884C",
       },
       {
         contentId: "did-jesus-come-back-from-the-dead/english",
         title: "The Truth About Jesus' Resurrection",
         category: "Short Video",
-        imageUrl: unsplash("photo-1650658720644-e1588bd66de3"),
         backgroundColor: "#5F4C5E",
       },
       {
         contentId: "the-story-short-film/english",
         title: "The Story: How It All Began and How It Will Never End",
         category: "Short Video",
-        imageUrl: unsplash("photo-1678181896030-11cf0237d704"),
         backgroundColor: "#72593A",
       },
       {
         contentId: "chosen-witness/english",
         title: "Mary Magdalene: A Life Transformed by Jesus",
         category: "Short Video",
-        imageUrl: unsplash("photo-1606876538216-0c70a143dd77"),
         backgroundColor: "#1C160B",
       },
     ],
@@ -521,7 +450,6 @@ async function main(): Promise<void> {
       ...buildVideoSectionContent(lookup, {
         sectionKey: "easter-explained/english",
         videoSlug: "easter-explained",
-        streamingUrl: MUX.easterExplained,
         title: "Easter Explained",
         subtitle:
           "Is Easter about more than bunnies and eggs? Followers of Jesus celebrate His power of life over death on Easter Sunday. Are they right? Was He really raised from the dead?",
@@ -597,6 +525,7 @@ async function main(): Promise<void> {
         sectionKey: "video-bible-collection",
         categoryLabel: "Video Bible Collection",
         variant: "carousel",
+        thumbnailOrientation: "vertical",
         title: "The Easter story is a key part of a bigger picture",
         ctaLink: "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch",
         ctaLabel: "Watch",
@@ -607,7 +536,6 @@ async function main(): Promise<void> {
             videoId: lookup("jesus"),
             labelOverride: "Feature Film",
             collectionSize: "61 chapters",
-            imageOverrideUrl: COLLECTION_POSTERS.jesus,
             subtitleOverride:
               "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
           },
@@ -615,7 +543,6 @@ async function main(): Promise<void> {
             videoId: lookup("life-of-jesus-gospel-of-john"),
             labelOverride: "Feature Film",
             collectionSize: "49 chapters",
-            imageOverrideUrl: COLLECTION_POSTERS.lifeOfJesus,
             subtitleOverride:
               "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
           },
@@ -623,7 +550,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-matthew"),
             labelOverride: "Collection",
             collectionSize: "25 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfMatthew,
             subtitleOverride:
               "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
           },
@@ -631,7 +557,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-mark"),
             labelOverride: "Collection",
             collectionSize: "15 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfMark,
             subtitleOverride:
               "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
           },
@@ -639,7 +564,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-luke"),
             labelOverride: "Collection",
             collectionSize: "26 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfLuke,
             subtitleOverride:
               "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
           },
@@ -647,7 +571,6 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-john"),
             labelOverride: "Collection",
             collectionSize: "22 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfJohn,
             subtitleOverride:
               "The Gospel of John is a word-for-word portrayal of the biblical text.",
           },
@@ -665,7 +588,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "my-last-day/english",
       videoSlug: "my-last-day",
-      streamingUrl: MUX.myLastDay,
       title: "My Last Day",
       subtitle: "Last hour of Jesus' life from criminal's point of view",
       textSubtitle: "My Last Day",
@@ -742,22 +664,16 @@ async function main(): Promise<void> {
         items: [
           {
             videoId: lookup("31-how-did-jesus-die"),
-            streamingUrl: MUX.howDidJesusDie,
-            imageUrl: imgCinematic("7_0-nfs0301"),
             backgroundColor: "#161817",
             titleOverride: "How Did Jesus Die?",
           },
           {
             videoId: lookup("32-what-happened-next"),
-            streamingUrl: DOCUMENTARY_MUX.whatHappenedNext,
-            imageUrl: imgCinematic("7_0-nfs0302"),
             backgroundColor: "#000906",
             titleOverride: "What Happened Next?",
           },
           {
             videoId: lookup("33-why-is-easter-celebrated-with-bunnies"),
-            streamingUrl: DOCUMENTARY_MUX.whyEasterBunnies,
-            imageUrl: imgCinematic("7_0-nfs0303"),
             backgroundColor: "#2B2018",
             titleOverride: "Why is Easter celebrated with bunnies?",
           },
@@ -775,7 +691,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "why-did-jesus-have-to-die/english",
       videoSlug: "why-did-jesus-have-to-die",
-      streamingUrl: MUX.whyDidJesusHaveToDie,
       title: "Why Did Jesus Have to Die?",
       subtitle: "The Purpose of Jesus' Sacrifice",
       textSubtitle: "Why Did Jesus Have to Die?",
@@ -841,7 +756,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "talk-with-nicodemus/english",
       videoSlug: "talk-with-nicodemus",
-      streamingUrl: MUX.talkWithNicodemus,
       title: "From Religion to Relationship",
       subtitle: "The Gospel in One Conversation",
       textSubtitle: "From Religion to Relationship",
@@ -908,7 +822,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "did-jesus-come-back-from-the-dead/english",
       videoSlug: "did-jesus-come-back-from-the-dead",
-      streamingUrl: MUX.didJesusComeBack,
       title: "Did Jesus Come Back From the Dead?",
       subtitle: "The Truth About Jesus' Resurrection",
       textSubtitle: "Did Jesus Come Back From the Dead?",
@@ -981,7 +894,6 @@ async function main(): Promise<void> {
           "Follow along with the events of Easter day by day as described in the Gospel of Luke.",
         items: JESUS_CHAPTERS.map((ch, i) => ({
           videoId: lookup(ch.slug),
-          streamingUrl: CHAPTER_MUX_URLS[i],
           imageUrl: imgCinematic(CHAPTER_IMG_IDS[i]),
           backgroundColor: "#1A1815",
           titleOverride: ch.title,
@@ -999,7 +911,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "the-story-short-film/english",
       videoSlug: "the-story-short-film",
-      streamingUrl: MUX.theStoryShortFilm,
       title: "The Story Short Film",
       subtitle: "The Story: How It All Began and How It Will Never End",
       textSubtitle: "The Story Short Film",
@@ -1072,7 +983,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "chosen-witness/english",
       videoSlug: "chosen-witness",
-      streamingUrl: MUX.chosenWitness,
       title: "Chosen Witness",
       subtitle: "Mary Magdalene: A Life Transformed by Jesus",
       textSubtitle: "Chosen Witness",
@@ -1147,7 +1057,6 @@ async function main(): Promise<void> {
           "If you’ve ever wondered what Christianity is about, or what sort of lifestyle it empowers you to live, the New Believer Course exists to help you understand the Gospel and live your life in response to it.",
         items: NBC.map((n) => ({
           videoId: lookup(n.slug),
-          streamingUrl: n.url,
           imageUrl: imgCinematic(n.img),
           backgroundColor: "#1C160B",
           titleOverride: n.title,
@@ -1165,7 +1074,6 @@ async function main(): Promise<void> {
     content: buildVideoSectionContent(lookup, {
       sectionKey: "invitation-to-know-jesus/english",
       videoSlug: "invitation-to-know-jesus-personally",
-      streamingUrl: MUX.invitationToKnowJesus,
       title: "Invitation to Know Jesus Personally",
       subtitle: "Are you ready to make the next step of faith?",
       textSubtitle: "Are you ready to make the next step of faith?",
@@ -1239,9 +1147,23 @@ async function main(): Promise<void> {
     invitationSection,
   ]
 
+  const { blocks: normalizedBlocks, updatedRecords } =
+    await backfillExperienceVideoLanguageIds({
+      prisma,
+      blocks,
+      locale: "en",
+    })
+
+  process.stdout.write(
+    JSON.stringify({
+      event: "seed-easter.video-language-identity",
+      updatedRecords,
+    }) + "\n",
+  )
+
   // Validate eagerly so we surface errors against the source-of-truth Zod
   // schema rather than the database.
-  const parsed = BlocksSchema.safeParse(blocks)
+  const parsed = BlocksSchema.safeParse(normalizedBlocks)
   if (!parsed.success) {
     process.stderr.write(
       JSON.stringify(

@@ -22,30 +22,32 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { TVFocusGuideView } from "./TVFocusGuideView"
 import { scale } from "../lib/scale"
+import { datadogLog, reportDatadogError } from "../lib/datadog"
+import { extractMuxPlaybackId } from "../lib/muxUrl"
+import {
+  createVideoQoeSession,
+  sanitizeVideoErrorMessage,
+  shouldCountRebuffer,
+} from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "./watch/useFocusAnimation"
+import { useFocusAnimation, useFocusVisual } from "./focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./watch/AnimatedFocusIcon"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
 // Caption resting/lifted offsets (reference dp; SubtitleOverlay scales them).
-// Resting sits near the bottom edge; lifted clears the bottom chrome — the
-// content layer's 46 bottom inset + times row (~37) + scrubber (36) + its
-// 30 gap + the 98 play circle, plus breathing room.
+// Resting sits near the bottom edge; lifted clears the full bottom chrome
+// (inset + times + scrubber + gap + play circle) plus breathing room.
 const SUBTITLE_BOTTOM_RESTING = 64
 const SUBTITLE_BOTTOM_LIFTED = 272
 
 // ── Visual language (U8) ───────────────────────────────────────────────────
-// The player chrome is the "Forge TV Video Page" handoff's player redesign
-// (chats/chat2): full-bleed scrims, a glass Back pill up
-// top; eyebrow + title / circular glass transport / Language + Subtitles
-// pills in a three-column bottom row, and a focusable scrubber with thumb +
-// time bubble. It shares WATCH_THEME + useFocusAnimation with the details
-// page so the screen → fullscreen transition reads as one surface — the two
-// pills carry the SAME icons as the details page's pickers (globe / Aa).
+// Player chrome per the "Forge TV Video Page" handoff. Shares WATCH_THEME +
+// useFocusAnimation with the details page so screen → fullscreen reads as one
+// surface; the pills carry the SAME icons as the details page's pickers.
 
 // ── SVG-free Icon Components ───────────────────────────────────────────────
 
@@ -127,10 +129,9 @@ function PlayIcon({
 }
 
 // ── Chrome building blocks (U8) ─────────────────────────────────────────────
-// Module-level components (NOT defined inside VideoPlayer) so their identity is
-// stable across host re-renders — an inline component would remount per render
-// and drop tvOS focus. Each owns its useFocusAnimation; the host only threads
-// scheduleHide via onFocus and reads focus through callbacks where it must.
+// Module-level (NOT inside VideoPlayer) so identity is stable across host
+// re-renders — an inline component would remount per render and drop tvOS
+// focus. Each owns its useFocusAnimation; host threads scheduleHide via onFocus.
 
 /** Rest→ink icon cross-fade. Icon colour is a prop (not an animatable style),
     so the flip is two stacked copies with opposing opacity — same trick as
@@ -184,7 +185,9 @@ function BackPill({
   hasTVPreferredFocus: boolean
   accessibilityLabel: string
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every host re-render (1Hz timeUpdate) — matches
   // DetailsActionRow's pills.
@@ -198,9 +201,9 @@ function BackPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   const inkStyle = useMemo(
     () => ({
@@ -255,7 +258,9 @@ function CircleControl({
   dimmed: boolean
   accessibilityLabel: string
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: interpolations built once per mount, not per 1Hz host render.
   const circleStyle = useMemo(
     () => ({
@@ -267,9 +272,9 @@ function CircleControl({
         inputRange: [0, 1],
         outputRange: [0, 0.6],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
@@ -315,7 +320,9 @@ function PlayCircle({
   dimmed: boolean
   hasTVPreferredFocus: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: interpolations built once per mount, not per 1Hz host render.
   const ringStyle = useMemo(
     () => ({
@@ -323,9 +330,9 @@ function PlayCircle({
         inputRange: [0, 1],
         outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
@@ -375,7 +382,9 @@ function MenuPill({
   focusable: boolean
   dimmed: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: interpolations built once per mount, not per 1Hz host render.
   const pillStyle = useMemo(
     () => ({
@@ -387,9 +396,9 @@ function MenuPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   const labelInk = useMemo(
     () => ({
@@ -442,11 +451,9 @@ function MenuPill({
   )
 }
 
-/** Focusable scrubber. At rest it's the thin accent-filled track; focused, the
-    track thickens and a white thumb + time bubble appear (the handoff's
-    .pl-scrub states). Left/right seeking while focused is handled by the
-    host's TV-event listener (focus is trapped horizontally by the wrapper, so
-    the press can't move focus — it becomes a seek). */
+/** Focusable scrubber: thin track at rest; focused, it thickens with a white
+    thumb + time bubble. Left/right seeking is handled by the host's TV-event
+    listener — the wrapper traps horizontal focus, so a press becomes a seek. */
 function PlayerScrubber({
   progressPct,
   bufferedPct,
@@ -539,9 +546,8 @@ function PlayerScrubber({
 }
 
 /** Pre-playback veil: dim layer + rotating accent ring. pointerEvents="none"
-    so the focus engine and the autoplay retry keep working beneath it.
-    Looped single timing + interpolation on the native driver — a looped
-    Animated.sequence runs once on Fabric. */
+    so focus engine + autoplay retry keep working beneath it. Looped single
+    timing + interpolation on native driver — a looped sequence runs once on Fabric. */
 function LoadingVeil() {
   const spin = useRef(new Animated.Value(0)).current
   useEffect(() => {
@@ -614,27 +620,23 @@ export function VideoPlayer({
   // statusChange path owns mid-play buffering UX).
   const [hasStarted, setHasStarted] = useState(false)
 
-  // Per-control focus visuals live inside the chrome components
-  // (useFocusAnimation). The host only tracks scrubber focus, via a ref,
-  // because the TV-event listener turns left/right into seeks while the
-  // scrubber owns focus.
+  // Per-control focus visuals live in the chrome components. Host only tracks
+  // scrubber focus (via ref) because the TV-event listener turns left/right
+  // into seeks while the scrubber owns focus.
   const scrubFocusedRef = useRef(false)
 
-  // Fix #5: One-shot flag so `hasTVPreferredFocus` is only true on the
-  // first render. Moved out of the render body into useEffect so React
-  // StrictMode's double-invoke doesn't consume the flag before first
-  // commit (dev-only regression). Leaving it true on every render would
-  // re-steal focus on every state change (react-native-tvos#839).
+  // Fix #5: One-shot flag — `hasTVPreferredFocus` true only on first render;
+  // leaving it true re-steals focus on every state change (react-native-tvos#839).
+  // In useEffect so StrictMode double-invoke doesn't consume it before first commit.
   const [shouldRequestFocus, setShouldRequestFocus] = useState(true)
   useEffect(() => {
     setShouldRequestFocus(false)
   }, [])
 
   // ── Auto-hide state machine (U1 foundation; wired in Units 2-7) ─────
-  // Visibility + focusability drive the chrome fade. `status` mirrors the
-  // expo-video VideoPlayerStatus enum so Unit 5 can branch on buffering
-  // vs error. Accessibility state gates auto-hide entirely (screen reader)
-  // and switches the fade to a snap (reduce motion).
+  // Visibility + focusability drive the chrome fade. `status` mirrors expo-video's
+  // VideoPlayerStatus so U5 can branch on buffering vs error. Accessibility state
+  // gates auto-hide (screen reader) and snaps the fade (reduce motion).
   const [controlsVisible, setControlsVisible] = useState(true)
   const [controlsFocusable, setControlsFocusable] = useState(true)
   const [status, setStatus] = useState<VideoPlayerStatus>("idle")
@@ -642,10 +644,9 @@ export function VideoPlayer({
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false)
   const [isReduceMotionEnabled, setIsReduceMotionEnabled] = useState(false)
 
-  // One-shot focus flags (I6). Each is set true by reveal entry / error
-  // entry respectively and cleared after the render that consumed it,
-  // mirroring Fix #5's `hasTVPreferredFocus` pattern. The if-guard inside
-  // the useEffect prevents the false→false invocation from looping.
+  // One-shot focus flags (I6): set by reveal/error entry, cleared after the
+  // render that consumed it (mirrors Fix #5). The if-guard inside the useEffect
+  // prevents the false→false invocation from looping.
   const [revealFocusPending, setRevealFocusPending] = useState(false)
   useEffect(() => {
     if (revealFocusPending) setRevealFocusPending(false)
@@ -655,17 +656,15 @@ export function VideoPlayer({
     if (errorFocusPending) setErrorFocusPending(false)
   }, [errorFocusPending])
 
-  // Inactivity timer (I3) and shared Animated.Value for chrome opacity.
-  // The timer uses a ref so rapid D-pad resets don't trigger re-renders;
-  // `opacityAnim` is populated once per mount and driven imperatively
-  // from hide/reveal helpers (Unit 2).
+  // Inactivity timer (I3) + shared Animated.Value for chrome opacity. Timer is
+  // a ref so rapid D-pad resets don't re-render; opacityAnim is driven
+  // imperatively from the hide/reveal helpers (Unit 2).
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const opacityAnim = useRef(new Animated.Value(1)).current
 
-  // Clear any pending inactivity timer + in-flight hide animation on
-  // unmount, and flip isMountedRef so late-arriving native emissions
-  // bail out. This prevents setState-on-unmounted warnings from
-  // dangling expo-video callbacks (P1.2 + P2.3).
+  // On unmount: clear pending inactivity timer + in-flight hide animation and
+  // flip isMountedRef so late native emissions bail — prevents
+  // setState-on-unmounted warnings from dangling expo-video callbacks (P1.2 + P2.3).
   useEffect(() => {
     return () => {
       isMountedRef.current = false
@@ -681,9 +680,8 @@ export function VideoPlayer({
   }, [])
 
   // Stable handler refs bridge subscription owners (this unit) and handler
-  // implementers (Units 2-3). Without this pattern, subscriptions would
-  // re-register every time the handlers closed over fresh state, churning
-  // the underlying native event emitter. Mirrors Fix #15's `onDismissRef`.
+  // implementers (Units 2-3) — without them, subscriptions re-register on every
+  // state change and churn the native emitter. Mirrors Fix #15's `onDismissRef`.
   const scheduleHideRef = useRef<() => void>(() => {})
   const revealControlsRef = useRef<() => void>(() => {})
   // Seek handlers behind refs so the ref-stable TV-event callback can seek
@@ -694,24 +692,20 @@ export function VideoPlayer({
   const isScreenReaderEnabledRef = useRef(false)
   const menuKeyEnabledRef = useRef(false)
 
-  // Mirror the gating state into refs so scheduleHide reads ground-truth
-  // values when invoked synchronously from native event callbacks (e.g.
-  // playingChange, statusChange) — before React has committed the state
-  // updates those callbacks just queued. useEffect mirrors update post-
-  // commit and serve as the fall-back; the handlers eagerly sync the
-  // relevant ref BEFORE calling scheduleHideRef so the new gating value
-  // is already in place when the guard runs.
+  // Mirror gating state into refs so scheduleHide reads ground-truth when called
+  // synchronously from native callbacks before React commits. Handlers eagerly
+  // sync the ref BEFORE scheduleHideRef; useEffect mirrors are the post-commit fallback.
   const isPausedRef = useRef(false)
   const statusRef = useRef<VideoPlayerStatus>("idle")
   const hasErrorRef = useRef(false)
   const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+  // Ground-truth "playback has started" for the QoE rebuffer gate, read from the
+  // ref-stable statusChange callback (state would be stale in that closure).
+  const hasStartedRef = useRef(false)
 
-  // isMountedRef guards the handlers of external emissions (expo-video
-  // native events, setTimeout callbacks) from invoking setState after
-  // the component has unmounted. Fix #24's try/catch only catches
-  // thrown onDismiss — it does NOT cover the "callback fires on an
-  // unmounted component" case. Set to false once in the unmount effect
-  // below. P2.3 / reliability rel-2 + rel-3.
+  // isMountedRef guards external-emission handlers (native events, setTimeout)
+  // from setState after unmount — Fix #24's try/catch only catches thrown
+  // onDismiss, not the "callback fires on unmounted component" case. P2.3 / rel-2+3.
   const isMountedRef = useRef(true)
 
   // Keep mirror refs in sync with their state so Unit 3's useTVEventHandler
@@ -731,17 +725,14 @@ export function VideoPlayer({
   useEffect(() => {
     hasErrorRef.current = hasError
   }, [hasError])
+  useEffect(() => {
+    hasStartedRef.current = hasStarted
+  }, [hasStarted])
 
   // ── Screen-reader transition side-effects (U7) ──────────────────────
-  // When SR toggles mid-session, the chrome has to respond:
-  //   - on  → reveal if currently hidden (the user just gained access
-  //     to controls they couldn't navigate) + audible confirmation.
-  //   - off → rearm the inactivity timer so chrome eventually retreats
-  //     again; without this, a passive viewer who briefly toggled VO
-  //     on-then-off would be stuck with permanent controls until they
-  //     pressed D-pad.
-  // The `srSeededRef` guard skips the first invocation so we don't fire
-  // side-effects on the mount-time seed from AccessibilityInfo.
+  // SR toggled mid-session: on → reveal-if-hidden + audible confirm; off →
+  // rearm inactivity timer (else a brief VO on/off leaves chrome stuck visible).
+  // srSeededRef skips the mount-time seed so side-effects don't fire on it.
   const srSeededRef = useRef(false)
   useEffect(() => {
     if (!srSeededRef.current) {
@@ -758,10 +749,9 @@ export function VideoPlayer({
     }
   }, [isScreenReaderEnabled])
 
-  // Accessibility: seed + subscribe to screen-reader and reduce-motion
-  // state. Auto-hide is disabled while a screen reader is active (D13);
-  // reduce-motion switches the fade to an instant snap (D8 reduce-motion
-  // path). Standard AccessibilityInfo reduce-motion subscription shape.
+  // Accessibility: seed + subscribe to screen-reader and reduce-motion. Auto-hide
+  // is disabled while a screen reader is active (D13); reduce-motion snaps the
+  // fade instantly (D8).
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setIsReduceMotionEnabled)
     AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled)
@@ -787,24 +777,9 @@ export function VideoPlayer({
     }
   }, [])
 
-  // Foreground resume (D12 + U6): on AppState 'active', always snap
-  // controls visible, restore a one-shot focus claim (so tvOS
-  // UIFocusEngine has a target — matches react-native-tvos #852), and
-  // rearm a fresh 3.5 s timer.
-  //   - `hasError` branch: skip scheduleHide entirely (error state
-  //     keeps chrome visible permanently) AND route focus to the back
-  //     pill via errorFocusPending since it is the only meaningful
-  //     control in the error state.
-  //   - Non-error branch: route focus to play/pause via
-  //     revealFocusPending (P1.4 / julik-5). Without this flag, the
-  //     catcher unmounts on foreground but hasTVPreferredFocus has no
-  //     signal to claim focus on play/pause — UIFocusEngine orphans.
-  //   - `isPaused` branch: handled IMPLICITLY. scheduleHide's internal
-  //     guard bails on isPausedRef (Unit 2), so calling it here through
-  //     scheduleHideRef is a no-op when the player is paused. No
-  //     explicit guard needed.
-  // Playback resume behaviour is out of scope per the plan's deferred
-  // items — we don't touch player.play()/pause() here.
+  // Foreground resume (D12 + U6): snap controls visible + restore a one-shot focus
+  // claim (UIFocusEngine needs a target, rn-tvos#852). Error → focus back pill, skip
+  // scheduleHide; else focus play/pause (P1.4, else orphans). Don't touch play/pause.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (next !== "active") return
@@ -833,10 +808,9 @@ export function VideoPlayer({
     }
   }, [opacityAnim])
 
-  // tvOS: claim the hardware Menu key so Expo Router's Stack does not
-  // auto-pop before our BackHandler path runs (Unit 3 wires the handler).
-  // menuKeyEnabledRef bookkeeps whether enable succeeded so cleanup only
-  // runs when there is something to release.
+  // tvOS: claim the hardware Menu key so Expo Router's Stack doesn't auto-pop
+  // before our BackHandler runs (U3). menuKeyEnabledRef tracks whether enable
+  // succeeded so cleanup only releases when there's something to release.
   useEffect(() => {
     if (!Platform.isTV) return
     try {
@@ -857,22 +831,9 @@ export function VideoPlayer({
   }, [])
 
   // ── TV event routing (U3) ──────────────────────────────────────────
-  // Ref-stable TV-event callback reads controlsVisibleRef and
-  // isScreenReaderEnabledRef so the underlying native emitter doesn't
-  // re-register on every render (which would drop events during rapid
-  // state changes). Used for directional / Select / media-key input;
-  // hardware Menu goes through BackHandler below (single-channel, no
-  // double-fire).
-  //
-  // IMPORTANT: we DENYLIST synthetic focus/pan events on the hidden-
-  // state branch. react-native-tvos emits synthetic `focus`/`blur`/
-  // `pan*` events when the engine reassigns focus — including when
-  // the catcher mounts with hasTVPreferredFocus. An earlier strict-
-  // whitelist approach (P2.2 pre-fix) excluded these correctly but
-  // ALSO excluded hardware media buttons (playPause/fastForward/
-  // rewind) that some Android TV remotes and Siri remote gen-1 emit,
-  // silently dropping them while chrome was hidden. Denylist flips
-  // that: anything not-synthetic is treated as user intent.
+  // Ref-stable callback reads refs so the native emitter doesn't re-register per
+  // render. DENYLIST synthetic focus/pan events: an earlier whitelist (P2.2 pre-fix)
+  // also dropped hardware media buttons, so anything not-synthetic = user intent.
   const onTVEvent = useCallback(
     (evt: { eventType?: string } | null | undefined) => {
       if (evt == null) return
@@ -890,10 +851,8 @@ export function VideoPlayer({
         revealControlsRef.current()
         return
       }
-      // Scrubber-focused left/right = seek (U8). The scrubber wrapper traps
-      // horizontal focus (it spans the full row), so the press can't move
-      // focus — we translate it into a ±10s seek instead, matching the
-      // handoff's scrub region behavior.
+      // Scrubber-focused left/right = seek (U8). The wrapper traps horizontal
+      // focus, so the press can't move focus — translate it into a ±10s seek.
       if (scrubFocusedRef.current) {
         if (type === "left" || type === "swipeLeft") {
           seekBackwardRef.current()
@@ -906,11 +865,9 @@ export function VideoPlayer({
           return
         }
       }
-      // Visible state: Siri-remote swipes don't fire Pressable.onFocus,
-      // so they won't reset the timer via the usual D14 path. Catch them
-      // here so every D-pad activity resets the timer as D14 requires.
-      // Arrow / Select events already reset via Pressable onFocus/onPress.
-      // Same treatment for hardware media keys — they're user intent.
+      // Siri-remote swipes don't fire Pressable.onFocus, so reset the D14 timer
+      // here (arrows/Select already reset via onFocus/onPress). Hardware media
+      // keys get the same treatment — they're user intent.
       if (
         type.indexOf("swipe") === 0 ||
         type === "playPause" ||
@@ -924,17 +881,14 @@ export function VideoPlayer({
   )
   useTVEventHandler(onTVEvent)
 
-  // Hardware Menu (tvOS) + hardware Back (Android TV) via BackHandler.
-  // react-native-tvos's BackHandler bridges the tvOS Menu event into
-  // 'hardwareBackPress', so one subscription covers both platforms.
-  // Returning `true` consumes the event and prevents Expo Router's Stack
-  // from popping (combined with TVEventControl.enableTVMenuKey on tvOS).
+  // Hardware Menu (tvOS) + Back (Android TV) via BackHandler — rn-tvos bridges the
+  // tvOS Menu event into 'hardwareBackPress', so one subscription covers both.
+  // Returning `true` consumes it so Expo Router's Stack doesn't pop.
   useEffect(() => {
     const handler = () => {
-      // In-player menu open: Back closes the MENU, not playback — without
-      // this branch the menu was a trap (Back exited the video entirely).
-      // menuOpenRef/closeMenu are declared below; the closure only runs
-      // post-commit, and both identities are stable (ref + useCallback).
+      // In-player menu open: Back closes the MENU, not playback — else the menu
+      // was a trap (Back exited the video). menuOpenRef/closeMenu declared below;
+      // closure runs post-commit and both identities are stable.
       if (menuOpenRef.current) {
         closeMenu()
         return true
@@ -957,20 +911,9 @@ export function VideoPlayer({
   }, [])
 
   // ── Frozen creation source (U7 — load-bearing) ──────────────────────
-  // useVideoPlayer recreates (and RELEASES) the player whenever its source
-  // argument changes — its dependency is JSON.stringify(source). Before this
-  // unit the overlay was safe because VideoPlayerOverlay unmounts/remounts the
-  // whole component per playVideo, so the source never changed in place. Live
-  // dub-switching removes that safety: a session dub change would otherwise
-  // recreate the player mid-play (black/stuck frame). So we FREEZE the source
-  // passed to useVideoPlayer to the first value and route every later swap
-  // through player.replaceAsync on the SAME instance (the effect below). The
-  // player instance identity is therefore stable across a dub switch.
-  //
-  // Fix #6: Seed duration synchronously from the initializer. `sourceLoad`
-  // can fire before the useEffect subscription mounts, especially on a
-  // warmed player. Without seeding, duration stays 0 forever and the end
-  // time displays "--:--". The listener below stays as the update path.
+  // useVideoPlayer recreates+RELEASES the player on source change, so live dub-switching
+  // would kill it mid-play (black frame): FREEZE source to first value, route swaps through
+  // replaceAsync. Fix #6: seed duration in the initializer — sourceLoad can fire pre-subscription.
   const creationSource = useRef(streamingUrl).current
   const player = useVideoPlayer(creationSource, (p) => {
     p.timeUpdateEventInterval = 1
@@ -979,27 +922,42 @@ export function VideoPlayer({
     }
   })
 
+  // ── Playback QoE session (U13) ──────────────────────────────────────
+  // Pure accumulator created once per session (mount = ttff origin). content_id
+  // is the Mux playback id, never the title (PII); emits fire from the existing
+  // listeners below via safeDatadogCall-guarded wrappers, so they never throw.
+  const contentIdRef = useRef<string | null>(null)
+  const qoeRef = useRef<ReturnType<typeof createVideoQoeSession> | null>(null)
+  if (qoeRef.current == null) {
+    contentIdRef.current = extractMuxPlaybackId(creationSource)
+    qoeRef.current = createVideoQoeSession({ contentId: contentIdRef.current })
+  }
+
+  // QoE completion summary — emitted on whichever of playToEnd OR unmount fires
+  // first (finalize is guarded to emit once). Most sessions end via Back/unmount,
+  // so this cleanup is what captures abandonment QoE.
+  useEffect(() => {
+    return () => {
+      const summary = qoeRef.current?.finalize("abandoned")
+      if (summary != null) datadogLog.info("video_playback.summary", summary)
+    }
+  }, [])
+
   // Fix #15: Stable onDismiss via ref so the playToEnd listener isn't
   // re-registered every parent render (which would open a window where
   // playToEnd events are dropped).
   const onDismissRef = useRef(onDismiss)
   onDismissRef.current = onDismiss
 
-  // Fix #4: Seeking guard. While this ref holds a positive value, in-flight
-  // `timeUpdate` events are ignored so the optimistic seek position isn't
-  // overwritten by a stale native emission. Cleared when a timeUpdate at
-  // or past the target arrives.
+  // Fix #4: Seeking guard. While this ref holds a target, in-flight timeUpdate
+  // events are ignored so a stale emission can't overwrite the optimistic seek
+  // position. Cleared when a timeUpdate at or past the target arrives.
   const seekTargetRef = useRef<number | null>(null)
 
   // ── Session-driven playback (U7) ────────────────────────────────────
-  // All session-only behavior — the in-player menu, the stale-session-safe
-  // `menuActive` gate, the live dub-switch, the Mux auto-subtitle disabling, and
-  // the active-VTT resolution — lives in this hook. It is INERT for
-  // experience-card playback (no session): `menuActive` is false, the dub-switch
-  // short-circuits on the frozen source, and `activeVttSrc` is null. The host
-  // threads the shared auto-hide refs + seek guard + a one-shot reveal-focus
-  // trigger so the hook can suppress/re-arm auto-hide on menu open/close and
-  // clear the seek guard on a dub switch without reaching into module globals.
+  // All session-only behavior (in-player menu, live dub-switch, VTT) lives here;
+  // INERT for experience-card playback. Host threads shared auto-hide refs + seek
+  // guard + reveal-focus trigger so the hook can re-arm auto-hide without globals.
   const {
     menuActive,
     menuOpen,
@@ -1010,6 +968,7 @@ export function VideoPlayer({
     activeVttSrc,
     audioLabel,
     subtitleLabel,
+    sourceSwappingRef,
   } = useSessionPlayback({
     player,
     streamingUrl,
@@ -1020,11 +979,9 @@ export function VideoPlayer({
     onRequestRevealFocus: () => setRevealFocusPending(true),
   })
 
-  // Auto-play on mount. Wrap in try-catch because on tvOS the player may
-  // not be ready when the effect first fires (expo-video silently ignores
-  // play() in the setup callback; the separate useEffect can also race).
-  // Retry once after a short delay if the first attempt doesn't start,
-  // but only if the user hasn't paused in the meantime.
+  // Auto-play on mount. try-catch because on tvOS the player may not be ready when
+  // the effect first fires. Retry once after a short delay if it didn't start,
+  // but only if the user hasn't paused meanwhile.
   useEffect(() => {
     let cancelled = false
     try {
@@ -1048,24 +1005,13 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // Listen to playToEnd for auto-dismiss.
-  // Fix #15: Depends only on [player] (+ opacityAnim for U6); dismiss is
-  // read through a ref.
-  // Fix #24: Wrap the dismiss call so a throwing onDismiss doesn't
-  // propagate into expo-video's native event dispatch path.
-  // U6: If the chrome is hidden when the video ends, snap it visible for
-  // one paint before dispatching onDismiss. Intent is imperceptible
-  // technical continuity (no black frame) — NOT a visible flash.
-  // setTimeout(0) is used rather than requestAnimationFrame because rAF's
-  // mapping to the native paint thread is less well-specified under
-  // react-native-tvos; if on-device QA ever shows a black frame on a
-  // hidden-to-dismissed transition, switch to requestAnimationFrame.
+  // playToEnd → auto-dismiss. Fix #15: deps [player]+opacityAnim, dismiss via ref.
+  // Fix #24: wrap dismiss so a throw can't reach expo-video's dispatch. U6: if chrome
+  // hidden, snap visible one paint first via setTimeout(0) (rAF's native-paint mapping under-specified on rn-tvos).
   useEffect(() => {
     const doDismiss = () => {
-      // P2.3: if the component has since unmounted, don't fire the
-      // dismiss callback against a dead tree. The parent's onDismiss
-      // typically triggers navigation, which could race with Expo
-      // Router's own unmount path.
+      // P2.3: don't fire dismiss against a dead tree — the parent's onDismiss
+      // triggers navigation, which could race Expo Router's own unmount path.
       if (!isMountedRef.current) return
       try {
         onDismissRef.current()
@@ -1074,6 +1020,10 @@ export function VideoPlayer({
       }
     }
     const subscription = player.addListener("playToEnd", () => {
+      // QoE: natural completion. finalize is idempotent — if unmount already
+      // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
+      const summary = qoeRef.current?.finalize("ended")
+      if (summary != null) datadogLog.info("video_playback.summary", summary)
       if (!isMountedRef.current) return
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
@@ -1093,29 +1043,33 @@ export function VideoPlayer({
     }
   }, [player, opacityAnim])
 
-  // Track playing state changes.
-  // Fix #25: Guard cleanup for consistency with the unmount-pause guard.
-  // U2: also drive the inactivity timer — clear on pause, rearm on play.
-  // playingChange=isPlaying=true is the authoritative "video actually
-  // started" signal, so it arms the INITIAL 3.5 s countdown for D1 (see the
-  // separate 2 s mount fallback below).
+  // Track playing state. Fix #25: guard cleanup. U2: drive the inactivity timer
+  // (clear on pause, rearm on play). playingChange=true is the authoritative
+  // "video started" signal, arming the INITIAL 3.5s countdown for D1.
   useEffect(() => {
     const subscription = player.addListener(
       "playingChange",
       ({ isPlaying }) => {
         // P2.3: ignore late-arriving native events after unmount.
         if (!isMountedRef.current) return
-        // Sync the guard ref BEFORE calling scheduleHideRef so the
-        // scheduleHide closure sees the post-transition value. Without
-        // this, the synchronous call happens before React commits the
-        // setIsPaused update, and scheduleHide's `isPausedRef.current`
-        // guard reads the pre-transition value → bails → timer never
-        // arms. Same pattern applied to statusChange below.
+        // Sync the guard ref BEFORE scheduleHideRef so scheduleHide sees the
+        // post-transition value — else the sync call runs before React commits
+        // setIsPaused, the guard reads stale, bails, and the timer never arms.
         isPausedRef.current = !isPlaying
         setIsPaused(!isPlaying)
         if (isPlaying) {
           // First confirmed playback drops the loading veil permanently (U8).
           setHasStarted(true)
+          hasStartedRef.current = true
+          // QoE: record + emit time-to-first-frame once (mount → first play).
+          // onFirstPlaying returns null on later calls, so this fires exactly once.
+          const ttffMs = qoeRef.current?.onFirstPlaying()
+          if (ttffMs != null) {
+            datadogLog.info("video_playback.ttff", {
+              content_id: contentIdRef.current,
+              ttff_ms: ttffMs,
+            })
+          }
           scheduleHideRef.current()
         } else if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
@@ -1132,10 +1086,9 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // Initial-arming fallback: if playingChange hasn't fired 2 s after mount
-  // (e.g. the stream stalled during autoplay retry), call scheduleHide
-  // anyway so controls don't stick indefinitely. scheduleHide is
-  // idempotent, so the normal playingChange path wins if it fires first.
+  // Initial-arming fallback: if playingChange hasn't fired 2s after mount (e.g.
+  // stream stalled during autoplay retry), call scheduleHide so controls don't
+  // stick. It's idempotent, so the normal playingChange path wins if it fires first.
   useEffect(() => {
     const fallback = setTimeout(() => {
       scheduleHideRef.current()
@@ -1151,6 +1104,9 @@ export function VideoPlayer({
       // P2.3: ignore late-arriving native events after unmount (same guard
       // as playingChange/statusChange).
       if (!isMountedRef.current) return
+      // QoE: track the playhead for the summary's watched_ms (approximate; the
+      // module keeps only the last value). Pure side-effect, no control flow.
+      qoeRef.current?.onTimeUpdate(payload.currentTime)
       // Buffer head feeds the scrubber's buffer hint regardless of the seek
       // guard — it's not a playhead value, so stale emissions can't lie.
       if (
@@ -1185,10 +1141,9 @@ export function VideoPlayer({
     const subscription = player.addListener("sourceLoad", (payload) => {
       if (!isMountedRef.current) return
       setDuration(payload.duration)
-      // A new source (live dub switch) starts with an empty buffer — without
-      // this reset the scrubber's buffer hint keeps painting the PREVIOUS
-      // source's buffered head until the new source's first timeUpdate (the
-      // >= 0 filter preserves stale values through -1 "unknown" emissions).
+      // A new source (live dub switch) starts with an empty buffer — without this
+      // reset the scrubber paints the PREVIOUS source's buffered head until the
+      // new source's first timeUpdate (the >= 0 filter keeps stale values through -1).
       setBuffered(0)
     })
     return () => {
@@ -1200,13 +1155,9 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // U5: expo-video statusChange — drives buffering timer-suspend and
-  // the terminal error state. Status enum is the expo-video
-  // VideoPlayerStatus literal union ('idle' | 'loading' | 'readyToPlay' |
-  // 'error'); no 'buffering' value exists, so 'loading' is the
-  // buffering/suspend signal. Uses `controlsVisibleRef.current` (not the
-  // state) to avoid stale-closure reads of visibility inside the
-  // long-lived subscription callback.
+  // U5: statusChange drives buffering timer-suspend + terminal error. No
+  // 'buffering' value exists in VideoPlayerStatus, so 'loading' is the suspend
+  // signal. Reads controlsVisibleRef (not state) to avoid stale-closure reads.
   useEffect(() => {
     const subscription = player.addListener("statusChange", (payload) => {
       // P2.3: ignore late-arriving native events after unmount.
@@ -1220,16 +1171,25 @@ export function VideoPlayer({
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
       if (next === "error") {
+        // QoE: count + report a tracked RUM error. Sanitize first — the native
+        // message can embed the failing (signed) Mux URL, so cap + strip query.
+        const errorMessage = payload.error?.message
+        qoeRef.current?.onError(errorMessage)
+        reportDatadogError(
+          errorMessage != null
+            ? sanitizeVideoErrorMessage(errorMessage)
+            : "video playback error",
+          { content_id: contentIdRef.current, origin: "video_playback" },
+        )
         hasErrorRef.current = true
         setHasError(true)
         if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
           inactivityTimerRef.current = null
         }
-        // P1.2 / adversarial #4: stop any in-flight hide so its
-        // completion callback doesn't flip controlsVisible=false after
-        // we just force-revealed. Without this, an error landing mid-
-        // fade yields a fleeting "error UI then invisible" flash.
+        // P1.2 / adversarial #4: stop any in-flight hide so its completion
+        // callback doesn't flip controlsVisible=false after a force-reveal — else
+        // an error landing mid-fade flashes "error UI then invisible".
         if (hideAnimRef.current != null) {
           hideAnimRef.current.stop()
           hideAnimRef.current = null
@@ -1250,10 +1210,17 @@ export function VideoPlayer({
         // side and the stall is expected. Without this guard the timer
         // would suspend (and force-reveal) on every 10 s skip press.
         if (seekTargetRef.current !== null) return
-        // Genuine network buffering: clear timer (suspend), and force
-        // controls visible if currently hidden so the user isn't left
-        // staring at an invisible stall. revealControlsRef's early-return
-        // de-dup makes this a no-op if already visible.
+        // QoE rebuffer (rule 3): reached only with seekTargetRef null (guarded
+        // above). A "loading" after playback started that is NOT a dub/source
+        // swap is a genuine rebuffer; seeks and swaps must never count.
+        if (
+          shouldCountRebuffer(hasStartedRef.current, sourceSwappingRef.current)
+        ) {
+          qoeRef.current?.onRebuffer()
+        }
+        // Genuine network buffering: suspend the timer and force controls visible
+        // if hidden so the user isn't staring at an invisible stall.
+        // revealControlsRef's early-return makes it a no-op if already visible.
         if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
           inactivityTimerRef.current = null
@@ -1297,10 +1264,9 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // Fix #9: Decide from React state (`isPaused`), not `player.playing`.
-  // Rapid D-pad selects all see the same native value within one event
-  // cycle and issue redundant calls; using React state gives us a single
-  // monotonic source that toggles once per press.
+  // Fix #9: Decide from React state (`isPaused`), not `player.playing` — rapid
+  // D-pad selects all read the same native value in one event cycle and issue
+  // redundant calls; React state is a monotonic source that toggles once per press.
   const togglePlayPause = () => {
     if (isPaused) {
       player.play()
@@ -1343,23 +1309,13 @@ export function VideoPlayer({
       : "--:--"
 
   // ── Auto-hide helpers (U2) ──────────────────────────────────────────
-  // hideControls: releases focusability → runs the 150 ms ease-out fade
-  // (or snap under reduce-motion) → flips controlsVisible to false so
-  // Unit 3's catcher mounts. I7 ordering — focusable off BEFORE the fade
-  // starts so UIFocusEngine releases the controls before they're invisible.
-  //
-  // Captures the Animated.CompositeAnimation handle in hideAnimRef so
-  // reveal / error paths can .stop() it, preventing the completion
-  // callback from flipping controlsVisible=false after we just force-
-  // revealed (P1.2 / adversarial #4). The completion callback is guarded
-  // by `finished` — when the animation is stopped, finished=false and we
-  // do NOT apply the "hide complete" state update.
+  // hideControls: release focusability BEFORE the 150ms fade (I7 — UIFocusEngine
+  // releases controls before they're invisible), then controlsVisible=false.
+  // Captures the anim in hideAnimRef so reveal/error can .stop() it (P1.2); `finished` guard skips the hide-complete update when stopped.
   const hideControls = () => {
-    // Eager-clear the scrub-focus mirror BEFORE releasing focusability: the
-    // scrubber's onBlur lands a tick after controlsFocusable flips, so a
-    // left/right press inside the 150ms fade window would otherwise pass the
-    // onTVEvent scrub-seek guard and seek on an invisibly-fading control.
-    // Same eager-ref-sync discipline as isPausedRef in playingChange.
+    // Eager-clear the scrub-focus mirror BEFORE releasing focusability: onBlur
+    // lands a tick after controlsFocusable flips, so a left/right press in the
+    // 150ms fade window would otherwise seek on an invisibly-fading control.
     scrubFocusedRef.current = false
     setControlsFocusable(false)
     if (isReduceMotionEnabled) {
@@ -1381,15 +1337,9 @@ export function VideoPlayer({
     })
   }
 
-  // scheduleHide: idempotent timer arm. Clears any in-flight timer first,
-  // then only arms a new 3.5 s if the state supports auto-hide (D3/D15 plus
-  // D9 buffering, D10 error, D13 screen reader gates).
-  //
-  // Reads ground-truth values from refs (not render-closure state) so that
-  // native event callbacks (playingChange, statusChange) can drive this
-  // synchronously before their setState queue has committed. Without the
-  // ref reads, the resume-from-pause and buffering→ready paths would see
-  // stale guard values and bail, leaving auto-hide permanently disarmed.
+  // scheduleHide: idempotent timer arm — clears any in-flight timer, then arms a new
+  // 3.5s only if state supports auto-hide (D3/D15 + D9/D10/D13 gates). Reads refs (not render
+  // state) so native callbacks drive it pre-commit, else resume/buffering→ready stay disarmed.
   const scheduleHide = () => {
     if (inactivityTimerRef.current != null) {
       clearTimeout(inactivityTimerRef.current)
@@ -1411,14 +1361,9 @@ export function VideoPlayer({
     inactivityTimerRef.current = setTimeout(hideControls, 3500)
   }
 
-  // revealControls: early-return when already visible to neutralize the
-  // catcher-onPress vs useTVEventHandler-select double-dispatch race in
-  // Unit 3. Does NOT reset opacityAnim before animating — any in-flight
-  // hide animates smoothly from its current mid-fade value, avoiding a
-  // black flash when the user interrupts a hide. Before starting the
-  // reveal we .stop() any in-flight hide animation so its completion
-  // callback doesn't clobber our just-revealed state with a stale
-  // setControlsVisible(false) (P1.2 / reliability rel-1 / julik-9).
+  // revealControls: early-return when already visible to neutralize the catcher vs
+  // TV-event double-dispatch race (U3). Skips opacityAnim reset (interrupted hide animates
+  // from mid-fade, no black flash); .stop()s in-flight hide so it can't clobber the reveal (P1.2).
   const revealControls = () => {
     if (controlsVisibleRef.current) return
     if (hideAnimRef.current != null) {
@@ -1451,12 +1396,9 @@ export function VideoPlayer({
 
   return (
     <View style={styles.overlay}>
-      {/* Video fills the entire screen behind everything.
-          The pointerEvents="none" wrapper from the documented pattern
-          (tv-videoview-steals-dpad-focus) blocks AVPlayerLayer rendering
-          on tvOS. In this overlay context, TVFocusGuideView with
-          trapFocus* already contains D-pad navigation, so focusable={false}
-          alone is sufficient. */}
+      {/* Video fills the screen behind everything. The pointerEvents="none"
+          wrapper (tv-videoview-steals-dpad-focus pattern) blocks AVPlayerLayer on
+          tvOS; here trapFocus* already contains D-pad, so focusable={false} suffices. */}
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
@@ -1466,15 +1408,9 @@ export function VideoPlayer({
       />
 
       {/* ── VTT subtitle layer (U7) ─────────────────────────────────────
-          Passive absolute-positioned cue renderer (pointerEvents="none"
-          internally), above the VideoView but below the chrome. Mounted only
-          when the session is driving this overlay AND captions are on AND a VTT
-          track resolves (activeVttSrc). For experience-card playback
-          (menuActive false) activeVttSrc is null and nothing mounts. It MUST
-          NOT touch the auto-hide state machine (it never does) — it only
-          FOLLOWS controlsVisible: while the chrome is up, the caption slides
-          above the bottom panel; when the chrome hides, it slides back down
-          (mirrors the web + mobile fullscreen caption lift). */}
+          Passive cue renderer above VideoView, below chrome; mounts only when a session drives
+          this overlay + captions on + activeVttSrc resolves. MUST NOT touch the auto-hide state
+          machine — only FOLLOWS controlsVisible (rises above the panel when chrome is up). */}
       {menuActive && activeVttSrc != null && (
         <SubtitleOverlay
           player={player}
@@ -1487,10 +1423,9 @@ export function VideoPlayer({
       )}
 
       {/* ── Scrims (U8) ──────────────────────────────────────────────────
-          The handoff replaces the old glass panel with full-bleed top/bottom
-          gradients that fade with the chrome (shared opacityAnim).
-          collapsable={false} keeps them above the Android TV VideoView
-          surface; pointerEvents="none" keeps them out of the focus engine. */}
+          Full-bleed top/bottom gradients that fade with the chrome (shared
+          opacityAnim). collapsable={false} keeps them above the Android TV
+          VideoView; pointerEvents="none" keeps them out of the focus engine. */}
       <Animated.View
         style={[styles.scrimTop, { opacity: opacityAnim }]}
         pointerEvents="none"
@@ -1519,11 +1454,9 @@ export function VideoPlayer({
         />
       </Animated.View>
 
-      {/* trapFocus* props prevent focus from escaping to the underlying
-          Stack navigator (which is still mounted behind this overlay).
-          Without trapping, UIFocusEngine may consider the obscured page's
-          focusable elements as potential targets when the user presses
-          D-pad. */}
+      {/* trapFocus* prevents focus escaping to the underlying Stack navigator
+          (still mounted behind this overlay) — else UIFocusEngine may target the
+          obscured page's focusable elements on a D-pad press. */}
       <TVFocusGuideView
         style={styles.contentLayer}
         trapFocusUp
@@ -1532,19 +1465,9 @@ export function VideoPlayer({
         trapFocusRight
       >
         {/* ── Invisible D-pad catcher (U3) ────────────────────────
-            Rendered whenever the real controls are non-focusable AND
-            no screen reader is active. Gating on `!controlsFocusable`
-            (not `!controlsVisible`) means the catcher mounts at the
-            start of the hide transition — synchronously with the
-            setControlsFocusable(false) call — so UIFocusEngine has a
-            valid target throughout the 150 ms fade. Gating on
-            `!controlsVisible` was the previous behavior and it dropped
-            D-pad input during the fade (the catcher only mounted after
-            the animation completed). See P1.3 / julik-1.
-            The catcher's Select → revealControls is the primary reveal
-            path on tvOS; useTVEventHandler handles arrows/swipes as a
-            secondary channel. Lives inside contentLayer (above
-            VideoView on Android TV per I9). */}
+            Gate on `!controlsFocusable` (not `!controlsVisible`) so it mounts at the
+            start of the hide fade — UIFocusEngine keeps a target through the 150ms;
+            `!controlsVisible` dropped D-pad input during the fade (P1.3). Select → reveal is primary; useTVEventHandler secondary. */}
         {!controlsFocusable && !isScreenReaderEnabled && (
           <Pressable
             onPress={revealControls}
@@ -1558,9 +1481,8 @@ export function VideoPlayer({
         )}
 
         {/* ── Top Bar (U8) ─────────────────────────────────────────────
-            Glass Back pill (full-width hit region preserves the vertical
-            spatial column down to the transport). Fades with the shared
-            opacityAnim; collapsable={false} for Android TV z-order. */}
+            Glass Back pill; its full-width hit region preserves the spatial column
+            down to the transport. Fades with opacityAnim; collapsable={false} for z-order. */}
         <Animated.View
           style={[styles.topBar, { opacity: opacityAnim }]}
           collapsable={false}
@@ -1582,10 +1504,8 @@ export function VideoPlayer({
         <View style={styles.spacer} />
 
         {/* ── Bottom Controls (U8) ─────────────────────────────────────
-            Three-column row over the bottom scrim — eyebrow + title left,
-            circular transport centered, Audio & Subtitles pill right — then
-            the scrubber and the times row. Fades with the shared opacityAnim;
-            collapsable={false} preserves z-order on Android TV. */}
+            Three-column row over the bottom scrim (title / transport / pills),
+            then scrubber + times. Fades with opacityAnim; collapsable={false} for z-order. */}
         <Animated.View
           style={[styles.bottomPanel, { opacity: opacityAnim }]}
           collapsable={false}
@@ -1613,13 +1533,9 @@ export function VideoPlayer({
               )}
             </View>
 
-            {/* Transport: −10 / play-pause / +10. When hasError (U5) all
-                are ghosted and unfocusable — layout preserved, the only
-                meaningful action is Back.
-                U4 focus-restore on reveal: each reveal flips
-                `controlsFocusable` false→true, re-adding the play Pressable
-                to UIFocusEngine as a "new" target so hasTVPreferredFocus
-                takes effect per cycle. */}
+            {/* Transport: −10 / play-pause / +10. On hasError (U5) all are ghosted
+                + unfocusable (Back is the only action). U4 focus-restore: each reveal
+                flips controlsFocusable false→true so hasTVPreferredFocus re-fires per cycle. */}
             <View style={styles.transport}>
               <CircleControl
                 icon="replay-10"
@@ -1657,13 +1573,9 @@ export function VideoPlayer({
             </View>
 
             {/* ── In-player menu triggers (U7→U8) ───────────────────────
-                Separate Language / Subtitles pills (same icons as the
-                details page's pickers), each opening its own menu section.
-                Rendered ONLY when the session is driving this overlay
-                (menuActive) — experience-card playback never shows them.
-                No scheduleHide() on press: openMenu() sets
-                menuOpenRef.current=true synchronously and scheduleHide
-                early-returns while the menu is open. */}
+                Language / Subtitles pills, each opening its menu section. Rendered
+                ONLY when a session drives this overlay (menuActive). No scheduleHide()
+                on press — openMenu() sets menuOpenRef synchronously and scheduleHide early-returns. */}
             <View style={styles.rightCol}>
               {menuActive && (
                 <>
@@ -1725,26 +1637,18 @@ export function VideoPlayer({
         </Animated.View>
 
         {/* ── In-player language/subtitle menu (U7) ───────────────────────
-            Absolute-fill scrim with its own trapFocus* TVFocusGuideView +
-            autoFocus, so D-pad stays within the menu while open and the chrome
-            behind it is unreachable. Rendered inside the overlay's content
-            layer (not a Modal) so it shares the overlay's focus trap and the
-            menu's writes feed the live dub-switch + subtitle layer above.
-            Mounted only when the session drives this overlay AND the menu is
-            open — never for experience-card playback. */}
+            Absolute-fill scrim with its own trapFocus* + autoFocus so D-pad stays
+            within the menu. Inside the content layer (not a Modal) to share the
+            overlay's focus trap; mounts only when a session drives this overlay AND open. */}
         {menuActive && menuOpen && (
           <InPlayerMenu section={menuSection} onClose={closeMenu} />
         )}
       </TVFocusGuideView>
 
       {/* ── Loading veil (U8) ─────────────────────────────────────────────
-          Mounted until the first confirmed playback (playingChange true),
-          never on error (the inline error treatment owns that). Conditionally
-          mounted — not faded — so it can never linger over the player. Also
-          unmounts while the in-player menu is open: the veil (zIndex 20)
-          sits ABOVE the contentLayer's stacking context (zIndex 10), so it
-          would otherwise dim the open menu — the menu's internal zIndex 50
-          cannot escape its parent's context. */}
+          Mounted until first confirmed playback, never on error; conditionally
+          mounted (not faded) so it can't linger. Unmounts while the menu is open —
+          the veil (zIndex 20) outranks contentLayer (10) and would dim the menu (its zIndex 50 can't escape its parent's context). */}
       {!hasStarted && !hasError && !menuOpen && <LoadingVeil />}
     </View>
   )
@@ -1784,12 +1688,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Invisible full-screen Pressable that owns focus while controls are
-  // hidden — see the U3 block in the render tree. `absoluteFillObject`
-  // lifts it above the sibling flex layout so it covers the entire
-  // overlay, and the absence of backgroundColor keeps the underlying
-  // VideoView visible. No visible treatment — this element is purely
-  // an input capture surface.
+  // Invisible full-screen Pressable that owns focus while controls are hidden
+  // (U3). absoluteFillObject covers the overlay above the flex layout; no
+  // backgroundColor keeps VideoView visible — purely an input-capture surface.
   catcher: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -1818,10 +1719,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Top Bar ────────────────────────────────────────────────────────────────
-  // `backHit` (inside BackPill) is the full-width Pressable — invisible but
-  // provides the spatial column that overlaps with the play button below, so
-  // tvOS's UIFocusEngine can traverse DOWN from back to play via pure
-  // spatial navigation.
+  // `backHit` (inside BackPill) is the full-width invisible Pressable — its
+  // spatial column overlaps the play button below so tvOS's UIFocusEngine can
+  // traverse DOWN from back to play via pure spatial navigation.
   topBar: {
     flexDirection: "row",
     alignItems: "center",

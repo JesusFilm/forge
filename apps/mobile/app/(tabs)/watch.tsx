@@ -13,14 +13,29 @@ import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
+import { datadogLog } from "../../src/lib/datadog"
+import {
+  generateSearchRequestId,
+  parseSearchErrorCode,
+  resolveWatchSearchOutcome,
+} from "../../src/lib/watchSearchLog"
+import {
+  buildWatchSearchInput,
+  mapWatchSearchResponse,
+  parseSearchError,
+} from "../../src/lib/watchSearch"
 import {
   GET_VIDEO_BY_SLUG,
-  SEARCH,
+  WATCH_SEARCH,
   type SearchResult,
 } from "../../src/lib/queries"
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
+import {
+  REVEAL_FALLBACK_MS,
+  entranceDelayMs,
+} from "../../src/components/search/searchEntrance"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { BrowseTopics } from "../../src/components/search/BrowseTopics"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
@@ -38,44 +53,6 @@ const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
 
-function parseSearchError(e: unknown): string {
-  const gqlErrors = (
-    e as {
-      graphQLErrors?: {
-        message: string
-        extensions?: Record<string, unknown>
-      }[]
-    }
-  )?.graphQLErrors
-
-  if (gqlErrors?.length) {
-    const ext = gqlErrors[0].extensions
-    const code = ext?.code as string | undefined
-
-    if (code === "RATE_LIMITED") {
-      const seconds = ext?.retryAfterSeconds as number | undefined
-      return seconds
-        ? `Too many requests. Please wait ${seconds} seconds.`
-        : "Too many requests. Please try again later."
-    }
-    if (code === "SERVICE_UNAVAILABLE") {
-      return "Search is temporarily unavailable. Please try again."
-    }
-    // Admin rejected the search bearer (missing, or rotated out of the CSV).
-    // Retrying can't help — only a new token (dev) or app update (prod) can.
-    if (code === "UNAUTHENTICATED") {
-      if (__DEV__) {
-        console.warn(
-          "[search] UNAUTHENTICATED — set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN in .env.local and cold-restart Metro",
-        )
-      }
-      return "Search isn't available in this app version. Please update the app."
-    }
-  }
-
-  return "Search failed. Please try again."
-}
-
 export default function DiscoverScreen() {
   const router = useRouter()
   const { selectExperience } = useExperienceSelection()
@@ -90,7 +67,14 @@ export default function DiscoverScreen() {
     if (result.type === "EXPERIENCE") return
     const slug = result.slug
     if (prefetchedRef.current.has(slug)) return
-    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) return
+    // Prefetch cap saturation (R35): a fast scroll-and-press drops warm-ups.
+    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) {
+      datadogLog.info("search.prefetch", {
+        requested: prefetchInFlightRef.current + 1,
+        capped: MAX_PREFETCH_INFLIGHT,
+      })
+      return
+    }
     prefetchedRef.current.add(slug)
     prefetchInFlightRef.current += 1
     getApolloClient()
@@ -110,6 +94,14 @@ export default function DiscoverScreen() {
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
+      // Join the click back to its originating search (result_clicked ↔
+      // watch_search share search_request_id); content_id = slug so the detail
+      // route's content.resolution joins the same journey.
+      datadogLog.info("search.result_clicked", {
+        search_request_id: searchRequestIdRef.current,
+        position: resultsRef.current.indexOf(result),
+        content_id: result.slug,
+      })
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
         router.push(`/experience/${encodeURIComponent(result.slug)}`)
@@ -133,15 +125,46 @@ export default function DiscoverScreen() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [hasMore, setHasMore] = useState(false)
+  // Admin owns the page cursor (rows can be dropped in mapping, so
+  // results.length is not a valid offset).
+  const [nextOffset, setNextOffset] = useState(0)
   const [searched, setSearched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Which request failed, so the footer Retry re-runs the search instead of
+  // paging a query the visible results don't belong to.
+  const [errorSource, setErrorSource] = useState<"search" | "page">("search")
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
+  // Current search's correlation id + a live results mirror, both read by
+  // handleSelectResult to attribute a click to its search without dep churn.
+  const searchRequestIdRef = useRef("")
+  // Term the VISIBLE results belong to. loadMore must page this, not the live
+  // input, which can drift ahead during the debounce window.
+  const submittedTermRef = useRef("")
+  // Generation that produced the visible results. loadMore pages on THIS, not
+  // the live one — borrowing the live id let a page started after a newer
+  // search began pass the staleness guard and append to the wrong results.
+  const submittedRequestIdRef = useRef(0)
+  // Synchronous re-entrancy latch: `loadingMore` state is a render-time snapshot,
+  // so two presses in one frame both read false and double-append.
+  const loadingMoreRef = useRef(false)
+  // First list index of the most recently arrived batch. Cards stagger their
+  // entrance from HERE — from the absolute index, page 2 sat invisible for
+  // ~2.6s while already holding its layout space.
+  const batchStartRef = useRef(0)
+  // Set between "page appended" and "its first row laid out". While armed, the
+  // footer keeps saying Loading… so it can never report done onto a blank gap.
+  const awaitingRevealRef = useRef(false)
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Superseded searches are already discarded by the generation guard; aborting
+  // also stops paying for them. fetchWithTimeout forwards init.signal.
+  const abortRef = useRef<AbortController | null>(null)
+  const resultsRef = useRef<SearchResult[]>([])
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const [resultsKey, setResultsKey] = useState(0)
@@ -154,8 +177,27 @@ export default function DiscoverScreen() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
     }
   }, [])
+
+  // Free the pager. Disarms the reveal latch first, so a pending fallback timer
+  // can never land on a page that claimed the slot after it.
+  const releaseLoadingMore = useCallback(() => {
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current)
+      revealTimerRef.current = null
+    }
+    awaitingRevealRef.current = false
+    loadingMoreRef.current = false
+    setLoadingMore(false)
+  }, [])
+
+  // Keep the click-time position lookup current without re-memoizing the row
+  // handlers (which would churn the FlatList).
+  useEffect(() => {
+    resultsRef.current = results
+  }, [results])
 
   // Fade the browse grid in and out the same way the results animate: fade +
   // slight scale in on enter, fade out then unmount on leave.
@@ -221,10 +263,23 @@ export default function DiscoverScreen() {
       // otherwise a stale result lands over the browse grid after clearing, and
       // its guarded finally never resets loading.
       const thisRequest = ++requestIdRef.current
+      // Bumping the generation orphans any in-flight load-more: its guarded
+      // finally can no longer fire, so release both flags here or "Load more"
+      // stays stuck on "Loading..." for the rest of the session.
+      releaseLoadingMore()
+      // Retire the pager before any await — the footer stays mounted and
+      // hit-testable through animateOut's fade, and a tap there would page the
+      // old term onto whatever replaces it.
+      submittedTermRef.current = ""
+      setHasMore(false)
+      abortRef.current?.abort()
+      abortRef.current = new AbortController()
+      const signal = abortRef.current.signal
       if (!trimmed) {
         await animateOut()
         setResults([])
         setHasMore(false)
+        setNextOffset(0)
         setSearched(false)
         setLoading(false)
         setError(null)
@@ -245,6 +300,7 @@ export default function DiscoverScreen() {
 
       setLoading(true)
       setError(null)
+      setErrorSource("search")
       setSearched(true)
 
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -253,25 +309,53 @@ export default function DiscoverScreen() {
         SKELETON_DELAY_MS,
       )
 
+      // One correlation id per search, joined by result_clicked (R33/R35).
+      const searchRequestId = generateSearchRequestId()
+      searchRequestIdRef.current = searchRequestId
+      const startedAt = Date.now()
+
       try {
         const result = await getApolloClient().query({
-          query: SEARCH,
+          query: WATCH_SEARCH,
           variables: {
-            q: trimmed,
-            locale: "en",
-            limit: PAGE_SIZE,
-            offset: 0,
+            input: buildWatchSearchInput({
+              query: trimmed,
+              clientRequestId: searchRequestId,
+              limit: PAGE_SIZE,
+              offset: 0,
+            }),
           },
           fetchPolicy: "no-cache",
+          context: { fetchOptions: { signal } },
         })
 
         if (requestIdRef.current !== thisRequest) return
 
-        const data = result.data?.search
-        const newResults = [...(data?.results ?? [])]
-        setResults(newResults)
-        setHasMore(data?.hasMore ?? false)
+        const page = mapWatchSearchResponse(
+          result.data?.watchSearch,
+          trimmed,
+          0,
+        )
+        submittedTermRef.current = trimmed
+        submittedRequestIdRef.current = thisRequest
+        batchStartRef.current = 0
+        setResults([...page.results])
+        setHasMore(page.hasMore)
+        setNextOffset(page.nextOffset)
         setResultsKey((k) => k + 1)
+
+        const { outcome, result_count } = resolveWatchSearchOutcome({
+          term: trimmed,
+          results: page.results,
+        })
+        datadogLog.info("watch_search", {
+          term: trimmed,
+          outcome,
+          result_count,
+          latency_ms: Date.now() - startedAt,
+          request_type: "initial",
+          search_request_id: searchRequestId,
+        })
 
         fadeAnim.setValue(0)
         scaleAnim.setValue(0.97)
@@ -290,7 +374,20 @@ export default function DiscoverScreen() {
         ]).start()
       } catch (e: unknown) {
         if (requestIdRef.current !== thisRequest) return
+        // animateOut() faded the retained results to 0 and only the success path
+        // restores it. Without this the screen goes blank: results are still set,
+        // so both error branches (gated on results.length === 0) never render.
+        fadeAnim.setValue(1)
+        scaleAnim.setValue(1)
+        setErrorSource("search")
         setError(parseSearchError(e))
+        // Rate-limit/auth reject as a 200-body GraphQL code, not a 429 (R34).
+        datadogLog.warn("watch_search_failed", {
+          term: trimmed,
+          code: parseSearchErrorCode(e),
+          request_type: "initial",
+          search_request_id: searchRequestId,
+        })
       } finally {
         if (requestIdRef.current === thisRequest) {
           if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -299,7 +396,7 @@ export default function DiscoverScreen() {
         }
       }
     },
-    [fadeAnim, scaleAnim, animateOut, results.length],
+    [fadeAnim, scaleAnim, animateOut, results.length, releaseLoadingMore],
   )
 
   function handleChangeText(text: string) {
@@ -325,51 +422,116 @@ export default function DiscoverScreen() {
   }
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return
+    // A search in flight (or already superseded) owns a different generation
+    // than the visible results — paging now would splice two queries.
+    if (submittedRequestIdRef.current !== requestIdRef.current) return
+    if (loadingMoreRef.current || !hasMore) return
+    loadingMoreRef.current = true
 
-    const thisRequest = requestIdRef.current
+    const thisRequest = submittedRequestIdRef.current
     setLoadingMore(true)
     setError(null)
 
+    // Pagination shares the initiating search's correlation id (request_type
+    // distinguishes the page from the initial fetch).
+    const term = submittedTermRef.current
+    const searchRequestId = searchRequestIdRef.current
+    const startedAt = Date.now()
+
     try {
       const result = await getApolloClient().query({
-        query: SEARCH,
+        query: WATCH_SEARCH,
         variables: {
-          q: query.trim().slice(0, MAX_QUERY_LENGTH),
-          locale: "en",
-          limit: PAGE_SIZE,
-          offset: results.length,
+          input: buildWatchSearchInput({
+            query: term,
+            clientRequestId: searchRequestId,
+            limit: PAGE_SIZE,
+            offset: nextOffset,
+          }),
         },
         fetchPolicy: "no-cache",
+        context: { fetchOptions: { signal: abortRef.current?.signal } },
       })
 
       if (requestIdRef.current !== thisRequest) return
 
-      const data = result.data?.search
-      if (data) {
-        setResults((prev) => [...prev, ...[...data.results]])
-        setHasMore(data.hasMore)
+      const page = mapWatchSearchResponse(
+        result.data?.watchSearch,
+        term,
+        nextOffset,
+      )
+      if (page.results.length > 0) {
+        // Idempotent under a replayed updater: prev is the same list either way.
+        setResults((prev) => {
+          batchStartRef.current = prev.length
+          return [...prev, ...page.results]
+        })
+        // Hold the footer's loading state until these rows report their layout;
+        // the fallback only covers a list that never reports at all.
+        awaitingRevealRef.current = true
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+        revealTimerRef.current = setTimeout(
+          releaseLoadingMore,
+          REVEAL_FALLBACK_MS,
+        )
       }
+      setHasMore(page.hasMore)
+      setNextOffset(page.nextOffset)
+
+      const { outcome, result_count } = resolveWatchSearchOutcome({
+        term,
+        results: page.results,
+      })
+      datadogLog.info("watch_search", {
+        term,
+        outcome,
+        result_count,
+        latency_ms: Date.now() - startedAt,
+        request_type: "page",
+        search_request_id: searchRequestId,
+      })
     } catch (e: unknown) {
       if (requestIdRef.current !== thisRequest) return
+      setErrorSource("page")
       setError(parseSearchError(e))
+      datadogLog.warn("watch_search_failed", {
+        term,
+        code: parseSearchErrorCode(e),
+        request_type: "page",
+        search_request_id: searchRequestId,
+      })
     } finally {
-      // Always clear loadingMore — even if superseded by a new search,
-      // otherwise loadingMore stays true forever and pagination breaks
-      setLoadingMore(false)
+      // Only the owning generation, and not a page awaiting a reveal, releases
+      // here; search() resets both flags unconditionally, and a page awaiting
+      // reveal releases on layout instead — see onAppear.
+      if (requestIdRef.current === thisRequest && !awaitingRevealRef.current) {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      }
     }
-  }, [loadingMore, hasMore, query, results.length])
+  }, [hasMore, nextOffset, releaseLoadingMore])
+
+  // The appended batch's first row has laid out — the results the tap asked for
+  // are on screen, so the footer may finally stop saying Loading…
+  const handleBatchRevealed = useCallback(() => {
+    if (awaitingRevealRef.current) releaseLoadingMore()
+  }, [releaseLoadingMore])
 
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
       <SearchResultCard
         result={item}
-        index={index}
+        entranceDelay={entranceDelayMs(index, batchStartRef.current)}
         onSelect={handleSelectResult}
         onPressIn={handlePrefetch}
+        // Only the batch's leading card reports back; it is the one whose
+        // arrival on screen the footer is waiting for.
+        onAppear={
+          index === batchStartRef.current ? handleBatchRevealed : undefined
+        }
       />
     ),
-    [handleSelectResult, handlePrefetch],
+    [handleSelectResult, handlePrefetch, handleBatchRevealed],
   )
 
   const keyExtractor = useCallback(
@@ -462,7 +624,17 @@ export default function DiscoverScreen() {
                   {error && (
                     <View style={styles.inlineError}>
                       <Text style={styles.errorText}>{error}</Text>
-                      <Text style={styles.retryLink} onPress={loadMore}>
+                      {/* A failed search leaves the PREVIOUS query's results up,
+                          so retrying must re-run the search — paging here would
+                          append a different query onto them. */}
+                      <Text
+                        style={styles.retryLink}
+                        onPress={
+                          errorSource === "page"
+                            ? loadMore
+                            : () => search(query)
+                        }
+                      >
                         Retry
                       </Text>
                     </View>

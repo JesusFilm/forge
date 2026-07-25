@@ -37,19 +37,51 @@ describe("app registry policy", () => {
     ).toBe(true)
   })
 
+  it("allows the Codex MCP client to rely on dynamic loopback redirects", () => {
+    expect(() =>
+      validateAppEnvironmentPolicy({
+        clientId: "jfp_admin_mcp_codex",
+        kind: "production",
+        status: "approved",
+        autoApprove: true,
+        redirectUris: [],
+        allowedOrigins: [],
+        defaultScopes: ["openid"],
+      }),
+    ).not.toThrow()
+  })
+
+  it("still requires static redirects for regular clients", () => {
+    expect(() =>
+      validateAppEnvironmentPolicy({
+        clientId: "jfp_admin_production",
+        kind: "production",
+        status: "approved",
+        autoApprove: true,
+        redirectUris: [],
+        allowedOrigins: ["https://admin.jesusfilm.org"],
+        defaultScopes: ["openid"],
+      }),
+    ).toThrow("App environment must define at least one redirect URI.")
+  })
+
   it("validates first-party seeds", () => {
     const seeds = getFirstPartyAppSeeds()
 
     expect(seeds.map((seed) => seed.key)).toEqual([
       "admin",
       "manager",
+      "web",
       "mastra-studio",
+      "chat",
+      "admin-mcp",
     ])
 
     for (const seed of seeds) {
       for (const environment of seed.environments) {
         expect(() =>
           validateAppEnvironmentPolicy({
+            clientId: environment.clientId,
             kind: environment.kind,
             status: "approved",
             autoApprove: environment.autoApprove,

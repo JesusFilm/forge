@@ -21,7 +21,13 @@ function sampleReport(
     startedAt: "2026-06-08T00:00:00.000Z",
     finishedAt: "2026-06-08T00:00:05.000Z",
     queries: ["AI generated Jesus reel site:instagram.com"],
-    totals: { candidates: 3, instagram: 2, deduped: 2, qualified: 1 },
+    totals: {
+      candidates: 3,
+      instagram: 2,
+      deduped: 2,
+      excludedCommentary: 0,
+      qualified: 1,
+    },
     queryFailures: [],
     posts: [
       {
@@ -110,5 +116,21 @@ describe("instagram discovery artifact store", () => {
     const error = await store.writeReport(report).catch((cause) => cause)
     expect(error).toBeInstanceOf(InstagramDiscoveryArtifactError)
     expect(error.code).toBe("invalid_artifact")
+  })
+
+  it("persists every possible per-source failure for a full run", async () => {
+    const store = createInstagramDiscoveryArtifactStore(rootDir)
+    const report = sampleReport({
+      queryFailures: Array.from({ length: 70 }, (_, index) => ({
+        query: `source-${index}`,
+        code: "upstream_failed" as const,
+        message: "timed out",
+      })),
+      posts: [],
+    })
+
+    await expect(store.writeReport(report)).resolves.toEqual({
+      path: expect.stringContaining("run-123.json"),
+    })
   })
 })

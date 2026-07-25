@@ -6,6 +6,7 @@ import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
 import { InMemoryStore, MastraCompositeStore } from "@mastra/core/storage"
 import { DuckDBStore } from "@mastra/duckdb"
+import { MastraEditor } from "@mastra/editor"
 import { PinoLogger } from "@mastra/loggers"
 import {
   MastraStorageExporter,
@@ -21,15 +22,43 @@ import {
   getMastraStorageDir,
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
+import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { copyAgent } from "./agents/devotional/copy-agent"
+import { highlighterAgent } from "./agents/devotional/highlighter-agent"
+import { setInstructionResolver } from "./agents/devotional/instruction-resolver"
+import { modernizerAgent } from "./agents/devotional/modernizer-agent"
+import { safetyAgent } from "./agents/devotional/safety-agent"
+import { scriptureAgent } from "./agents/devotional/scripture-agent"
+import { spurgeonRankerAgent } from "./agents/devotional/spurgeon-ranker-agent"
+import { buildDefaultChatAgent } from "./agents/default-chat-agent"
+import { buildSpecializedAgents } from "./agents/specialized-agents"
+import { buildAutoEnrichAgent } from "./agents/auto-enrich-agent"
+import {
+  multiStepDraftWorkflow,
+  quickDraftWorkflow,
+} from "./workflows/multi-step-draft"
+import {
+  handleExperienceDraftRouteRequest,
+  type DraftWorkflowMastra,
+} from "./workflows/experience-draft-route"
+import { handleExperienceVariantRouteRequest } from "./workflows/experience-variant-route"
+import {
+  handleExperienceSectionRouteRequest,
+  type SectionAgentMastra,
+} from "./workflows/experience-section-route"
+import {
+  handleExperienceChatRouteRequest,
+  type ExperienceChatRouteMastra,
+} from "./agents/experience-chat-route"
+import {
+  handleSeekerRouteRequest,
+  type SeekerRouteMastra,
+} from "./agents/seeker-route"
 import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
-import {
-  handleSceneEmbeddingRouteRequest,
-  sceneEmbeddingWorkflow,
-} from "./workflows/scene-embedding"
 import {
   experienceEmbeddingWorkflow,
   handleExperienceEmbeddingRouteRequest,
@@ -76,17 +105,87 @@ import {
   smartCropQaWorkflow,
 } from "./workflows/smart-crop-qa"
 import {
+  handleSmartCropRepairRouteRequest,
+  smartCropRepairWorkflow,
+} from "./workflows/smart-crop-repair"
+import {
   handleInstagramDiscoveryRouteRequest,
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
+import { dailyDevotionalWorkflow } from "./workflows/daily-devotional"
+import {
+  devotionalApproveWorkflow,
+  devotionalContentWorkflow,
+  devotionalProduceWorkflow,
+  devotionalPublishWorkflow,
+  devotionalRenderWorkflow,
+  devotionalSourceWorkflow,
+  videoFirstDevotionalWorkflow,
+} from "./workflows/video-first-devotional"
+import {
+  handleVideoFirstCancelRequest,
+  handleVideoFirstResumeRequest,
+  handleVideoFirstRetryRequest,
+  handleVideoFirstStartRequest,
+  handleVideoFirstStatusRequest,
+  reservationOwnerFromState,
+  type VideoFirstLifecycleDeps,
+  type VideoFirstWorkflowAdapter,
+} from "./workflows/video-first-devotional-route"
+import {
+  handleYouTubeDiscoveryRouteRequest,
+  youtubeAiChristianDiscoveryWorkflow,
+} from "./workflows/youtube-ai-christian-discovery"
+import {
+  handlePinterestDiscoveryRouteRequest,
+  pinterestAiChristianDiscoveryWorkflow,
+} from "./workflows/pinterest-ai-christian-discovery"
+import {
+  handleSubtitleEnrichmentRouteRequest,
+  subtitleEnrichmentWorkflow,
+} from "./workflows/subtitle-enrichment"
+import {
+  handleTranscriptScriptureCorrectionRouteRequest,
+  transcriptScriptureCorrectionWorkflow,
+} from "./workflows/transcript-scripture-correction"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import { createUsedClipsStore } from "../services/devotional/used-clips-ledger"
+import { handleDevotionalAssetRequest } from "./devotional-asset-route"
+import {
+  handleAiChatHistoryListRequest,
+  handleAiChatHistoryReplayRequest,
+} from "./ai-chat-history-route"
+import { startAiChatRetentionPurge } from "./ai-chat-retention"
+import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
 
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+const devotionalApprovalKeys = parseServiceApiKeys(
+  env.DEVOTIONAL_APPROVAL_API_KEYS,
+)
+const devotionalPlaybackKeys = parseServiceApiKeys(
+  env.DEVOTIONAL_PLAYBACK_API_KEYS,
+)
+const devotionalStatusKeys = [...serviceKeys, ...devotionalPlaybackKeys]
+const videoFirstLifecycleDeps: VideoFirstLifecycleDeps = {
+  workflow:
+    videoFirstDevotionalWorkflow as unknown as VideoFirstWorkflowAdapter,
+  async renewReservation(state) {
+    const owner = reservationOwnerFromState(state)
+    if (!owner) throw new Error(`reservation not found for run ${state.runId}`)
+    await createUsedClipsStore().renew(owner.chapterId, owner.reservationId)
+  },
+  async releaseReservation(state) {
+    const owner = reservationOwnerFromState(state)
+    // A run cancelled before Source reserved a clip has nothing to release.
+    if (!owner) return
+    await createUsedClipsStore().release(owner.chapterId, owner.reservationId)
+  },
+}
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -115,11 +214,34 @@ const redactPromptBodies: SpanOutputProcessor = {
   shutdown: async () => {},
 }
 
+// Draft/chat agents ported from admin (consolidation U4). Built once here so
+// the experience-chat Memory singleton is shared and the workflow agents are
+// registered by id for the workflow's `getAgentById(...)` lookups. The
+// planner/critic/reviser/skeleton/fill agents are workflow-only (memory-less);
+// experience-default-chat / draft-experience / add-section / rewrite-copy /
+// auto-enrich carry the chat memory.
+const experienceDraftSpecializedAgents = buildSpecializedAgents()
+
 export const mastra = new Mastra({
-  agents: { smokeAgent, webResearchAgent },
+  // Agent Editor: Studio draft/publish editing of agent instructions (stored
+  // configs live in the storage backend). Model/id/name stay in code.
+  editor: new MastraEditor(),
+  agents: {
+    smokeAgent,
+    seekerAgent,
+    webResearchAgent,
+    scriptureAgent,
+    safetyAgent,
+    modernizerAgent,
+    copyAgent,
+    highlighterAgent,
+    spurgeonRankerAgent,
+    "experience-default-chat": buildDefaultChatAgent(),
+    ...experienceDraftSpecializedAgents,
+    "auto-enrich": buildAutoEnrichAgent(),
+  },
   workflows: {
     transcriptEmbeddingWorkflow,
-    sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
     offlineSearchEvalWorkflow,
@@ -131,7 +253,27 @@ export const mastra = new Mastra({
     smartCropPlanWorkflow,
     smartCropAlignWorkflow,
     smartCropQaWorkflow,
+    smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    dailyDevotionalWorkflow,
+    videoFirstDevotionalWorkflow,
+    devotionalSourceWorkflow,
+    devotionalContentWorkflow,
+    devotionalProduceWorkflow,
+    devotionalRenderWorkflow,
+    devotionalApproveWorkflow,
+    devotionalPublishWorkflow,
+    youtubeAiChristianDiscoveryWorkflow,
+    pinterestAiChristianDiscoveryWorkflow,
+    subtitleEnrichmentWorkflow,
+    transcriptScriptureCorrectionWorkflow,
+    // Ported draft-authoring workflows (consolidation U4). Registered by their
+    // workflow id so the U5 route can drive them via
+    // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
+    // injects this Mastra instance so each step's `getAgentById(...)` resolves
+    // the planner/skeleton/fill/critic/reviser agents registered above.
+    "multi-step-draft": multiStepDraftWorkflow,
+    "quick-draft": quickDraftWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -170,6 +312,29 @@ export const mastra = new Mastra({
   }),
   server: {
     studioBase: "/studio",
+    middleware: [
+      {
+        path: "/api/workflows/*",
+        handler: async (c, next) => {
+          if (
+            isBlockedDevotionalNativeMutation(
+              c.req.method,
+              new URL(c.req.url).pathname,
+            )
+          ) {
+            return c.json(
+              {
+                error: "devotional_lifecycle_route_required",
+                message:
+                  "Use the authenticated /forge-daily-devotional lifecycle routes.",
+              },
+              403,
+            )
+          }
+          await next()
+        },
+      },
+    ],
     apiRoutes: [
       registerApiRoute("/forge-smoke", {
         method: "POST",
@@ -205,25 +370,24 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-scene-embeddings", {
+        method: "POST",
+        handler: (c) =>
+          c.json(
+            {
+              error: "Legacy scene embedding workflow has been retired",
+              reason: "legacy_scene_embedding_pipeline_removed",
+              retryable: false,
+              replacement:
+                "Search uses transcript embeddings; historical scene data is retained for feat-199.",
+            },
+            410,
+          ),
+      }),
       registerApiRoute("/forge-firecrawl-web-data", {
         method: "POST",
         handler: async (c) => {
           const outcome = await handleFirecrawlWebDataRouteRequest({
-            authHeader: c.req.header("authorization"),
-            serviceKeys,
-            readJson: () => c.req.json(),
-          })
-
-          return new Response(JSON.stringify(outcome.body), {
-            status: outcome.status,
-            headers: { "content-type": "application/json" },
-          })
-        },
-      }),
-      registerApiRoute("/forge-scene-embeddings", {
-        method: "POST",
-        handler: async (c) => {
-          const outcome = await handleSceneEmbeddingRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
@@ -241,6 +405,119 @@ export const mastra = new Mastra({
           const outcome = await handleExperienceEmbeddingRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-draft", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceDraftRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Thunk resolves at request time, after `mastra` is constructed —
+            // so the workflow steps' `getAgentById(...)` lookups resolve the
+            // registered planner/skeleton/fill/critic/reviser agents. Boundary
+            // cast: the route's `DraftWorkflowMastra` is a deliberately narrow
+            // structural surface (getWorkflowById → createRun → start/cancel),
+            // all present at runtime; the real Mastra's `getWorkflowById` has a
+            // narrower id-union param than `(id: string)`, so the structural
+            // types don't unify. Tests inject a fully-typed fake.
+            getMastra: () => mastra as unknown as DraftWorkflowMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-variant", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceVariantRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Same narrow workflow surface as the draft route (it delegates to
+            // the draft generation path); the thunk resolves post-construction.
+            getMastra: () => mastra as unknown as DraftWorkflowMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-section", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceSectionRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            // Thunk resolves at request time so the agent registry is built.
+            getMastra: () => mastra as unknown as SectionAgentMastra,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-chat", {
+        method: "POST",
+        handler: async (c) =>
+          handleExperienceChatRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+            getMastra: () => mastra as unknown as ExperienceChatRouteMastra,
+            requestSignal: c.req.raw.signal,
+          }),
+      }),
+      // The seeker send route + the two history read routes below are the
+      // ai-chat lane: their flag + bearer preamble lives in the shared lane
+      // admission module (feat-283), which sources the dedicated
+      // AI_CHAT_SERVICE_API_KEYS lane CSV internally (KTD2/feat-250 — never
+      // the shared pool), so no key list is threaded through here.
+      registerApiRoute("/forge-seeker", {
+        method: "POST",
+        handler: async (c) =>
+          handleSeekerRouteRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+            getMastra: () => mastra as unknown as SeekerRouteMastra,
+            requestSignal: c.req.raw.signal,
+          }),
+      }),
+      registerApiRoute("/forge-ai-chat-history-list", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryListRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-ai-chat-history-replay", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryReplayRequest({
+            authHeader: c.req.header("authorization"),
             readJson: () => c.req.json(),
           })
 
@@ -370,6 +647,21 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-smart-crop-repair", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSmartCropRepairRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
       registerApiRoute("/forge-search-eval-baseline-portability", {
         method: "POST",
         handler: async (c) => {
@@ -402,8 +694,202 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-daily-devotional", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstStartRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstStartRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId", {
+        method: "GET",
+        handler: async (c) => {
+          const authHeader = c.req.header("authorization")
+          const outcome = await handleVideoFirstStatusRequest({
+            authHeader,
+            serviceKeys: devotionalStatusKeys,
+            runId: c.req.param("runId"),
+            renewReservationOnRead: isValidServiceBearer({
+              authHeader,
+              allowlist: serviceKeys,
+            }),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId/resume", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstResumeRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys: devotionalApprovalKeys,
+            runId: c.req.param("runId"),
+            approvalActor: {
+              subject: c.req.header("x-forge-user-subject"),
+              email: c.req.header("x-forge-user-email"),
+              role: c.req.header("x-forge-studio-role"),
+            },
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId/cancel", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstCancelRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            runId: c.req.param("runId"),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId/retry", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstRetryRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
+            runId: c.req.param("runId"),
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute(
+        "/forge-video-first-devotional/assets/:assetId/:artifactType/:ext",
+        {
+          method: "GET",
+          handler: async (c) => {
+            return handleDevotionalAssetRequest({
+              authHeader: c.req.header("authorization"),
+              serviceKeys: devotionalPlaybackKeys,
+              assetId: c.req.param("assetId"),
+              artifactType: c.req.param("artifactType"),
+              ext: c.req.param("ext"),
+              range: c.req.header("range"),
+            })
+          },
+        },
+      ),
+      registerApiRoute("/forge-youtube-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleYouTubeDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-pinterest-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePinterestDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-subtitle-enrichment", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSubtitleEnrichmentRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-transcript-scripture-correction", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleTranscriptScriptureCorrectionRouteRequest(
+            {
+              authHeader: c.req.header("authorization"),
+              serviceKeys,
+              readJson: () => c.req.json(),
+            },
+          )
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
     ],
   },
 })
 
 configureSearchEvalNativeSuiteRuntime(() => mastra)
+
+// Studio-published instruction edits (stored agent configs) flow into the
+// devotional pipeline's LLM calls: the hybrid agent-llm adapter consults this
+// resolver before falling back to the coded instructions. Only instructions
+// are taken from the stored config — model/id/name stay pinned in code.
+setInstructionResolver(async (agentId) => {
+  const hydrated = await mastra.getEditor()?.agent.getById(agentId)
+  if (!hydrated) return null
+  const instructions = await hydrated.getInstructions()
+  return typeof instructions === "string" && instructions.trim()
+    ? instructions
+    : null
+})
+
+// ai-chat retention purge (feat-208): boot drain + daily timer over the
+// `ai_chat` schema. Gated to the deployed runtime (NODE_ENV=production) so a
+// build / `mastra dev` CLI-analysis import never fires DB I/O at module load;
+// it additionally no-ops unless a postgres backend is configured at all
+// (canAiChatDataPersist) — deliberately NOT the resolved ai-chat backend: the
+// kill-switch (AI_CHAT_MEMORY_BACKEND=memory) stops writes, never retention
+// on already-stored rows. Single-instance assumption: replicas would each run
+// redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
+if (env.NODE_ENV === "production") {
+  startAiChatRetentionPurge()
+}

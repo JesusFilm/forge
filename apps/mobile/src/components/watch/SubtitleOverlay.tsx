@@ -10,8 +10,12 @@ import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { datadogLog } from "../../lib/datadog"
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
+import { OFFLINE_ROOT } from "../../lib/offlineFileSystem"
+import { readAsStringAsync } from "expo-file-system/legacy"
 
 type SubtitleOverlayProps = {
   player: ExpoVideoPlayer
@@ -43,11 +47,9 @@ function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
       hi = mid - 1
     }
   }
-  // `ans` is the last cue that started at or before t — usually the active one.
-  // But cues can overlap (a short cue nested in a longer one): the most-recent
-  // may have already ended while an earlier, longer cue is still active. Walk
-  // back a BOUNDED number of steps to find it. The bound keeps a gap in a long,
-  // non-overlapping VTT O(1) instead of scanning to the start of the list.
+  // `ans` (last cue starting at or before t) is usually active, but cues can
+  // overlap so an earlier longer cue may still be active. Walk back a BOUNDED
+  // number of steps — keeps a gap in a long non-overlapping VTT O(1).
   for (
     let i = ans, steps = 0;
     i >= 0 && steps < 16 && cues[i].start <= t;
@@ -56,6 +58,17 @@ function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
     if (t < cues[i].end) return cues[i]
   }
   return undefined
+}
+
+// Classify a remote VTT fetch rejection into a stable, low-cardinality reason.
+// AbortError is the 8s deadline; `vtt_http_<status>` is the non-2xx guard throw.
+export function classifyVttFetchError(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") return "timeout"
+    const status = error.message.match(/^vtt_http_(\d+)$/)?.[1]
+    if (status) return `http_${status}`
+  }
+  return "network_error"
 }
 
 export function SubtitleOverlay({
@@ -69,10 +82,9 @@ export function SubtitleOverlay({
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
 
-  // Vertical offset via translateY (native-driver friendly on Fabric). Anchored
-  // at bottom:0 and lifted by -bottomOffset. Animated only when `animate` (the
-  // fullscreen lift-to-clear-the-chrome effect); otherwise it snaps so inline
-  // captions never move.
+  // Vertical offset via translateY (native-driver friendly on Fabric), anchored
+  // at bottom:0 and lifted by -bottomOffset. Animated only when `animate`
+  // (fullscreen lift); otherwise snaps so inline captions never move.
   const translateY = useRef(new Animated.Value(-bottomOffset)).current
   const reduceMotionRef = useRef(false)
   useEffect(() => {
@@ -111,13 +123,51 @@ export function SubtitleOverlay({
   })
 
   useEffect(() => {
-    // Validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
-    if (!vttSrc || !validateActionUrl(vttSrc)) {
+    if (!vttSrc) {
       setCues([])
       setActiveText("")
       return
     }
     let cancelled = false
+
+    // Offline: a locally-saved VTT is read from disk (validated against the
+    // download root). fetch / validateActionUrl reject the file: scheme.
+    if (vttSrc.startsWith("file:")) {
+      if (!validateLocalMediaUrl(vttSrc, OFFLINE_ROOT)) {
+        setCues([])
+        setActiveText("")
+        datadogLog.warn("subtitle.vtt_failed", { reason: "unsafe_url" })
+        return
+      }
+      readAsStringAsync(vttSrc)
+        .then((text) => {
+          if (cancelled) return
+          const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
+          setCues(parsed)
+          if (parsed.length === 0) {
+            datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setCues([])
+            datadogLog.warn("subtitle.vtt_failed", { reason: "read_error" })
+          }
+        })
+      return () => {
+        cancelled = true
+        setCues([])
+        setActiveText("")
+      }
+    }
+
+    // Remote: validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
+    if (!validateActionUrl(vttSrc)) {
+      setCues([])
+      setActiveText("")
+      datadogLog.warn("subtitle.vtt_failed", { reason: "unsafe_url" })
+      return
+    }
     // AbortController so switching language (or unmounting) actually cancels
     // the in-flight request instead of leaking it; the timer is the hard cap
     // so a stalled CDN can't hold the request open indefinitely.
@@ -131,12 +181,20 @@ export function SubtitleOverlay({
         return r.text()
       })
       .then((text) => {
-        if (!cancelled) {
-          setCues([...parseVtt(text)].sort((a, b) => a.start - b.start))
+        if (cancelled) return
+        const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
+        setCues(parsed)
+        if (parsed.length === 0) {
+          datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
         }
       })
-      .catch(() => {
-        if (!cancelled) setCues([])
+      .catch((err) => {
+        if (!cancelled) {
+          setCues([])
+          datadogLog.warn("subtitle.vtt_failed", {
+            reason: classifyVttFetchError(err),
+          })
+        }
       })
       .finally(() => clearTimeout(timeout))
     return () => {
@@ -166,9 +224,8 @@ export function SubtitleOverlay({
         // Player released
       }
     }
-    // Reflect the current position immediately, then poll: fast (100ms) while
-    // playing, slow (400ms) while paused. The slow paused poll is cheap (a
-    // bounded binary search) but still catches a seek/scrub made while paused,
+    // Reflect position immediately, then poll: 100ms playing, 400ms paused. The
+    // slow paused poll is cheap but still catches a seek/scrub made while paused,
     // which a play-only gate would freeze the subtitle through.
     update()
     const interval = setInterval(update, isPlaying ? 100 : 400)

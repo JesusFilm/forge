@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto"
+import type { VisualFrameExtractor } from "./ffmpeg-visual-frame-extraction.js"
+import {
+  isVisualMediaSignatureAlgorithmVersion,
+  type VisualFrameFingerprint,
+} from "./visual-fingerprint.js"
 
 export const OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION =
   "official-media-signature-v1"
@@ -53,6 +58,7 @@ export type MediaSignatureDraft = {
 export type OfficialMediaSignatureExtractionInput = {
   variant: OfficialMediaSignatureVariant
   mediaSample?: OfficialMediaSample
+  sourceMediaUrl?: string
   textSegments?: OfficialTextSegment[]
   algorithmVersion?: string
 }
@@ -63,32 +69,53 @@ export type OfficialMediaSignatureExtractor = {
   ): Promise<MediaSignatureDraft[]>
 }
 
+export type OfficialMediaSignatureExtractorOptions = {
+  visualFrameExtractor?: Pick<VisualFrameExtractor, "extractFromUrl"> | null
+}
+
 export class DeterministicOfficialMediaSignatureExtractor implements OfficialMediaSignatureExtractor {
+  constructor(
+    private readonly options: OfficialMediaSignatureExtractorOptions = {},
+  ) {}
+
   async extract({
     variant,
     mediaSample,
+    sourceMediaUrl,
     textSegments = [],
     algorithmVersion = OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION,
   }: OfficialMediaSignatureExtractionInput): Promise<MediaSignatureDraft[]> {
     const signatures: MediaSignatureDraft[] = []
     const durationMilliseconds = durationFromVariant(variant)
-    const structuralPayload = buildStructuralPayload({
-      variant,
-      mediaSample,
-      durationMilliseconds,
-    })
 
-    if (Object.keys(structuralPayload).length > 1) {
-      signatures.push({
-        coreId: variant.coreId,
-        videoVariantId: variant.videoVariantId,
-        signatureType: "STRUCTURAL_HINT",
-        algorithmVersion,
-        offsetMilliseconds: 0,
+    if (isVisualMediaSignatureAlgorithmVersion(algorithmVersion)) {
+      signatures.push(
+        ...(await this.visualFrameSignatures({
+          variant,
+          sourceMediaUrl,
+          durationMilliseconds,
+          algorithmVersion,
+        })),
+      )
+    } else {
+      const structuralPayload = buildStructuralPayload({
+        variant,
+        mediaSample,
         durationMilliseconds,
-        signature: structuralPayload,
-        sourceMediaHash: mediaSample?.sourceMediaHash ?? null,
       })
+
+      if (Object.keys(structuralPayload).length > 1) {
+        signatures.push({
+          coreId: variant.coreId,
+          videoVariantId: variant.videoVariantId,
+          signatureType: "STRUCTURAL_HINT",
+          algorithmVersion,
+          offsetMilliseconds: 0,
+          durationMilliseconds,
+          signature: structuralPayload,
+          sourceMediaHash: mediaSample?.sourceMediaHash ?? null,
+        })
+      }
     }
 
     for (const segment of textSegments) {
@@ -113,6 +140,57 @@ export class DeterministicOfficialMediaSignatureExtractor implements OfficialMed
     }
 
     return signatures
+  }
+
+  private async visualFrameSignatures({
+    variant,
+    sourceMediaUrl,
+    durationMilliseconds,
+    algorithmVersion,
+  }: {
+    variant: OfficialMediaSignatureVariant
+    sourceMediaUrl: string | undefined
+    durationMilliseconds: number | null
+    algorithmVersion: string
+  }): Promise<MediaSignatureDraft[]> {
+    if (!sourceMediaUrl || !this.options.visualFrameExtractor) return []
+
+    const fingerprints = await this.options.visualFrameExtractor.extractFromUrl(
+      {
+        url: sourceMediaUrl,
+        mediaSourceType: variant.mediaSourceType,
+        durationMilliseconds,
+      },
+    )
+
+    return fingerprints.map((fingerprint) =>
+      visualFrameSignatureDraft({
+        variant,
+        fingerprint,
+        algorithmVersion,
+      }),
+    )
+  }
+}
+
+function visualFrameSignatureDraft({
+  variant,
+  fingerprint,
+  algorithmVersion,
+}: {
+  variant: OfficialMediaSignatureVariant
+  fingerprint: VisualFrameFingerprint
+  algorithmVersion: string
+}): MediaSignatureDraft {
+  return {
+    coreId: variant.coreId,
+    videoVariantId: variant.videoVariantId,
+    signatureType: "VISUAL_FRAME",
+    algorithmVersion,
+    offsetMilliseconds: fingerprint.offsetMilliseconds,
+    durationMilliseconds: fingerprint.durationMilliseconds ?? null,
+    signature: fingerprint.payload,
+    sourceMediaHash: null,
   }
 }
 

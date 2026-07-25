@@ -5,15 +5,29 @@ export const adminNavigationCarouselFragment = adminGraphql(`
     __typename
     t
     sectionKey
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
     items {
       contentId
       title
       category
-      imageUrl
       imageAssetId
+      imageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       backgroundColor
     }
   }

@@ -7,7 +7,9 @@
     "noContent": "कुनै सामग्री उपलब्ध छैन।",
     "homepageMisconfigured": "Watch गृहपृष्ठ गलत कन्फिगर गरिएको छ।",
     "defaultTemplateMisconfigured": "पूर्वनिर्धारित Watch टेम्प्लेट गलत कन्फिगर गरिएको छ।",
-    "authFailed": "सामग्री सेवामा जडान गर्न सकिएन। समस्या जारी रहेमा सहायता टोलीलाई सम्पर्क गर्नुहोस्।"
+    "authFailed": "सामग्री सेवामा जडान गर्न सकिएन। समस्या जारी रहेमा सहायता टोलीलाई सम्पर्क गर्नुहोस्।",
+    "pageLoadFailed": "केही गडबड भयो।",
+    "tryAgain": "फेरि प्रयास गर्नुहोस्"
   },
   "VideosPage": {
     "title": "सबै भिडियोहरू",
@@ -22,7 +24,8 @@
     "promoHeading": "के तपाईं बाइबललाई अझ गहिरो रूपमा बुझ्न चाहनुहुन्छ?",
     "joinBibleStudy": "बाइबल अध्ययनमा सहभागी हुनुहोस्",
     "previousQuote": "अघिल्लो बाइबल पद",
-    "nextQuote": "अर्को बाइबल पद"
+    "nextQuote": "अर्को बाइबल पद",
+    "readPassage": "यो खण्ड आफ्नो बाइबलमा पढ्नुहोस्।"
   },
   "DownloadButton": {
     "checking": "जाँच गर्दै",
@@ -41,6 +44,10 @@
     "termsAgreementSuffix": " स्वीकार गर्छु",
     "close": "बन्द गर्नुहोस्",
     "download": "डाउनलोड गर्नुहोस्",
+    "authRequiredTitle": "यो भिडियो डाउनलोड गर्न चाहनुहुन्छ?",
+    "authRequiredBody": "भिडियो डाउनलोड गर्न निःशुल्क Jesus Film खाता आवश्यक छ।",
+    "signInToDownload": "डाउनलोड गर्न साइन इन गर्नुहोस्",
+    "keepWatching": "हेर्न जारी राख्नुहोस्",
     "checking": "जाँच गर्दै",
     "closeTermsOfUse": "प्रयोगका सर्तहरू बन्द गर्नुहोस्",
     "cancel": "रद्द गर्नुहोस्",
@@ -69,7 +76,8 @@
     "selectLanguage": "भाषा छान्नुहोस्",
     "searchPlaceholder": "भाषा खोज्नुहोस्…",
     "languages": "भाषाहरू",
-    "noMatches": "कुनै मिल्दो परिणाम छैन"
+    "noMatches": "कुनै मिल्दो परिणाम छैन",
+    "notAvailable": "उपलब्ध छैन"
   },
   "LanguagePickerModal": {
     "dialogTitle": "भाषा",
@@ -83,14 +91,23 @@
     "toggleOn": "अन",
     "toggleOff": "अफ",
     "close": "बन्द गर्नुहोस्",
-    "apply": "लागू गर्नुहोस्"
+    "apply": "लागू गर्नुहोस्",
+    "noLanguageSubtitles": "{language} उपशीर्षक छैन",
+    "seeAllLanguages": "सबै भाषाहरू हेर्नुहोस्",
+    "seeAllVideosInLanguage": "{language} भाषाका सबै भिडियोहरू हेर्नुहोस्",
+    "retryLoadingLanguages": "भाषाहरू फेरि लोड गर्ने प्रयास गर्नुहोस्",
+    "notAvailable": "उपलब्ध छैन",
+    "switching": "परिवर्तन हुँदैछ..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोडहरू}}",
     "seriesLabel": "श्रृंखला · {episodes}",
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
     "share": "शेयर गर्नुहोस्",
-    "languages": "भाषाहरू"
+    "languages": "भाषाहरू",
+    "downloadCollection": "संग्रह डाउनलोड गर्नुहोस्",
+    "checkingDownloads": "डाउनलोडहरू जाँचिँदै छन्…",
+    "downloadSessionError": "तपाईंको सत्र जाँच गर्न सकिएन। फेरि प्रयास गर्नुहोस्।"
   },
   "WatchModal": {
     "close": "बन्द गर्नुहोस्"
@@ -102,7 +119,8 @@
     "questions": "सम्बन्धित प्रश्नहरू",
     "askYours": "तपाईंको प्रश्न",
     "chatWithPerson": "कसैसँग कुरा गर्नुहोस्",
-    "askBibleQuestion": "बाइबलबारे प्रश्न सोध्नुहोस्"
+    "askBibleQuestion": "बाइबलबारे प्रश्न सोध्नुहोस्",
+    "quiz": "प्रश्नोत्तरी"
   },
   "WatchQuestionPanel": {
     "messageType": "सन्देशको प्रकार",
@@ -160,7 +178,8 @@
     "searchRegion": "भिडियो खोज्नुहोस्",
     "clearSearch": "खोज खाली गर्नुहोस्",
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
-    "home": "JesusFilm गृहपृष्ठ"
+    "home": "JesusFilm गृहपृष्ठ",
+    "closeSearch": "खोज बन्द गर्नुहोस्"
   },
   "SearchOverlay": {
     "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
@@ -183,23 +202,31 @@
     "categoryStudy": "अध्ययन",
     "categoryFamily": "परिवार",
     "categoryChristmas": "क्रिसमस",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "searchLanguageLabel": "खोज भाषा",
+    "allLanguages": "सबै भाषाहरू",
+    "searchSuggestions": "खोज सुझावहरू",
+    "languages": "भाषाहरू",
+    "recommendedLanguage": "सिफारिस गरिएको भाषा",
+    "searchSuggestion": "{suggestion} खोज्नुहोस्",
+    "searchSuggestionWithLanguage": "{language} मा {suggestion} खोज्नुहोस्",
+    "inLanguage": "{language} मा",
+    "browseByRegion": "क्षेत्रअनुसार ब्राउज गर्नुहोस्",
+    "clearLanguages": "खाली गर्नुहोस्",
+    "queryLanguageDetected": "{language} पत्ता लाग्यो",
+    "searchInLanguage": "{language} मा खोज्नुहोस्",
+    "tryDifferentKeywordsOrLanguage": "अर्का किवर्डहरू प्रयास गर्नुहोस् वा अर्को खोज भाषा छान्नुहोस्",
+    "useWebsiteDefaultLanguage": "वेबसाइटको पूर्वनिर्धारित खोज भाषा प्रयोग गर्नुहोस्",
+    "removeLanguage": "{language} हटाउनुहोस्",
+    "browseMode": "ब्राउज खोज मोड"
   },
   "HeroPlayer": {
     "playWithSound": "अहिले हेर्नुहोस्",
-    "tapToUnmute": "आवाज खोल्नुहोस्"
+    "tapToUnmute": "आवाज खोल्नुहोस्",
+    "nextEpisode": "अर्को एपिसोड"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "सामग्री लोड हुँदैछ"
+    "loadingContent": "सामग्री लोड हुँदैछ",
+    "loadingVideo": "भिडियो लोड हुँदैछ"
   },
   "VideoLabels": {
     "video": "भिडियो",
@@ -210,7 +237,8 @@
     "series": "श्रृंखला",
     "collection": "संग्रह",
     "trailer": "ट्रेलर",
-    "behindTheScenes": "पर्दा पछाडि"
+    "behindTheScenes": "पर्दा पछाडि",
+    "chapter": "अध्याय"
   },
   "SiblingCarousel": {
     "clipPosition": "क्लिप {current} / {total}",
@@ -222,11 +250,288 @@
     "noImage": "तस्बिर छैन",
     "playingNow": "अहिले चलिरहेको",
     "previousChapter": "अघिल्लो अध्याय",
-    "nextChapter": "अर्को अध्याय"
+    "nextChapter": "अर्को अध्याय",
+    "thumbnailAlt": "{title} थम्बनेल",
+    "relatedVideoThumbnail": "सम्बन्धित भिडियो थम्बनेल"
   },
   "SearchResultCard": {
     "experience": "अनुभव",
     "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोड}}",
     "thumbnailAlt": "भिडियो थम्बनेल"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} मा नि:शुल्क ख्रिस्टियन भिडियोहरू | Jesus Film Project",
+    "metadataDescription": "{language} मा डब गरिएको अडियो वा उपशीर्षकसहितका येशूका फिल्महरू, बाइबल कथाहरू, चेला बनाउने श्रृंखलाहरू, र सुसमाचार प्रचारका भिडियोहरू हेर्नुहोस्।",
+    "heroTitle": "{language} मा नि:शुल्क ख्रिस्टियन भिडियोहरू",
+    "heroDescription": "{language} मा उपलब्ध येशूका फिल्महरू, बाइबल कथाहरू, चेला बनाउने श्रृंखलाहरू, र सुसमाचार प्रचारका भिडियोहरू हेर्नुहोस्। पूर्ण रूपमा डब गरिएका भिडियोहरू पहिले देखाइएका छन्, र उपशीर्षक मात्र भएका विकल्पहरू तल छन्।",
+    "languageCollection": "भाषा संग्रह",
+    "itemCount": "{count, plural, one {# सामग्री} other {# सामग्रीहरू}}",
+    "videoCount": "{count, plural, one {# भिडियो} other {# भिडियोहरू}}",
+    "videosInGroups": "{groupCount, plural, one {# समूहमा} other {# समूहहरूमा}} {videoCount, plural, one {# भिडियो} other {# भिडियोहरू}}",
+    "sectionNavLabel": "भाषा सूचीका खण्डहरू",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "नयाँ",
+    "videoBible": "भिडियो बाइबल",
+    "bibleProject": "BibleProject",
+    "sports": "खेलकुद",
+    "collections": "संग्रहहरू",
+    "subtitlesOnly": "उपशीर्षक मात्र",
+    "newlyAdded": "नयाँ थपिएको",
+    "newVideosTitle": "{language} मा नयाँ ख्रिस्टियन भिडियोहरू",
+    "newestFirst": "सबैभन्दा नयाँ पहिले",
+    "noPublishedVideos": "यस भाषाका लागि अहिलेसम्म कुनै प्रकाशित भिडियो भेटिएन।",
+    "bibleAndGospelFilms": "बाइबल र सुसमाचार फिल्महरू",
+    "videoBibleCollectionsTitle": "{language} भिडियो बाइबल संग्रहहरू",
+    "videoBibleDescription": "{language} मा LUMO, JESUS, Magdalena, र Acts लगायतका शास्त्रकेन्द्रित संग्रहहरू।",
+    "noVideoBibleCollections": "यस भाषाका लागि अहिलेसम्म कुनै भिडियो बाइबल संग्रह उपलब्ध छैन।",
+    "bibleProjectCollectionsTitle": "{language} BibleProject संग्रहहरू",
+    "bibleProjectDescription": "{language} मा उपलब्ध BibleProject श्रृंखला र अध्ययनहरू।",
+    "noBibleProjectCollections": "यस भाषाका लागि अहिलेसम्म कुनै BibleProject संग्रह उपलब्ध छैन।",
+    "sportsStories": "खेलकुद कथाहरू",
+    "sportsTitle": "{language} का खेलकुद र खेलाडी कथाहरू",
+    "sportsDescription": "{language} मा उपलब्ध विश्वासकेन्द्रित खेलकुद कथाहरू र खेलाडी केन्द्रित संग्रहहरू।",
+    "noSportsCollections": "यस भाषाका लागि अहिलेसम्म कुनै खेलकुद वा खेलाडी-कथा संग्रह उपलब्ध छैन।",
+    "fullyDubbed": "पूर्ण डब गरिएको",
+    "dubbedVideosTitle": "संग्रहअनुसार {language} भिडियोहरू",
+    "dubbedVideosDescription": "अझ सजिलो खोजका लागि आफ्ना संग्रहहरूसहित समूहीकृत पूर्ण डब गरिएको {language} भिडियोहरू ब्राउज गर्नुहोस्।",
+    "noDubbedVideos": "यस भाषाका लागि अहिलेसम्म कुनै पूर्ण डब गरिएको भिडियो उपलब्ध छैन।",
+    "subtitlesAvailable": "उपशीर्षक उपलब्ध",
+    "subtitlesTitle": "उपशीर्षकसहित {language} भिडियोहरू",
+    "subtitlesDescription": "बोलिने {language} अडियो अझै उपलब्ध नभएका यी भिडियोहरूमा {language} उपशीर्षक छन्।",
+    "noSubtitleVideos": "यस भाषाका लागि अहिलेसम्म उपशीर्षक-मात्र भिडियो उपलब्ध छैन।",
+    "dubbed": "डब गरिएको",
+    "subtitles": "उपशीर्षकहरू",
+    "newLabel": "नयाँ",
+    "fromCollection": "{collection} बाट",
+    "standaloneVideos": "स्वतन्त्र भिडियोहरू",
+    "videosFromCollection": "{collection} बाट भिडियोहरू।",
+    "standaloneDescription": "यस भाषाका स्वतन्त्र भिडियोहरू।",
+    "openCollection": "संग्रह खोल्नुहोस्"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project हेर्नुहोस्",
+    "watch": "हेर्नुहोस्",
+    "watchNow": "अहिले हेर्नुहोस्",
+    "mutePreview": "पूर्वावलोकन म्यूट गर्नुहोस्",
+    "unmutePreview": "पूर्वावलोकनको म्यूट हटाउनुहोस्",
+    "nextVideo": "अर्को भिडियो",
+    "showVideo": "{title} देखाउनुहोस्",
+    "previousVideoPreview": "अघिल्लो भिडियो पूर्वावलोकन",
+    "nextVideoPreview": "अर्को भिडियो पूर्वावलोकन",
+    "featured": "विशेष",
+    "mediaCollection": "मिडिया संग्रह",
+    "scrollToVideo": "{title} भिडियोमा स्क्रोल गर्नुहोस्"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "भाषाहरू",
+    "metadataDescription": "भाषाअनुसार JesusFilm भिडियोहरू ब्राउज गर्नुहोस्।",
+    "eyebrow": "Watch भाषाहरू",
+    "title": "भाषा छान्नुहोस्",
+    "description": "क्षेत्रअनुसार भाषाहरू हेर्नुहोस् वा पूरा सूची ब्राउज गर्नुहोस्।",
+    "searchPlaceholder": "भाषा वा देशहरू खोज्नुहोस्...",
+    "searchLabel": "भाषा वा देशहरू खोज्नुहोस्",
+    "clearSearch": "खोज खाली गर्नुहोस्",
+    "browse": "ब्राउज गर्नुहोस्",
+    "browseByRegion": "क्षेत्र र देशअनुसार ब्राउज गर्नुहोस्",
+    "languageCount": "{count, plural, one {# भाषा} other {# भाषाहरू}}",
+    "region": "क्षेत्र",
+    "countryLanguages": "{country} का भाषाहरू",
+    "showLess": "कम देखाउनुहोस्",
+    "showMore": "अझ {count} देखाउनुहोस्",
+    "noLanguages": "कुनै भाषा भेटिएन",
+    "tryAnotherSearch": "अर्को खोज शब्द प्रयास गर्नुहोस्।"
+  },
+  "WatchHistory": {
+    "metadataTitle": "हेर्ने इतिहास | Jesus Film Project",
+    "title": "हेर्ने इतिहास",
+    "loading": "इतिहास लोड हुँदैछ",
+    "empty": "अहिलेसम्म केही छैन",
+    "emptyDescription": "तपाईं साइन इन हुँदा हेर्नुभएका भिडियोहरू यहाँ देखिनेछन्।",
+    "earlier": "अघिल्लो",
+    "today": "आज",
+    "yesterday": "हिजो"
+  },
+  "AccountControl": {
+    "account": "खाता",
+    "accountMenu": "खाता मेनु",
+    "signIn": "साइन इन गर्नुहोस्",
+    "signOut": "साइन आउट गर्नुहोस्",
+    "signedIn": "साइन इन गरिएको",
+    "history": "इतिहास",
+    "logOut": "लग आउट गर्नुहोस्"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "पृष्ठ भेटिएन",
+    "eyebrow": "पृष्ठ भेटिएन",
+    "screenReaderPrefix": "पृष्ठ भेटिएन:",
+    "title": "यो दृश्य यहाँ छैन।",
+    "description": "पृष्ठ सरेको हुन सक्छ, तर कथा जारी छ।",
+    "actionsLabel": "पृष्ठ भेटिएन कार्यहरू",
+    "backToWatch": "Watch मा फर्कनुहोस्",
+    "browseVideos": "भिडियोहरू ब्राउज गर्नुहोस्"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project गृहपृष्ठ",
+    "navigation": "फुटर नेभिगेसन",
+    "share": "शेयर गर्नुहोस्",
+    "watch": "हेर्नुहोस्",
+    "giving": "दान",
+    "about": "बारेमा",
+    "products": "उत्पादनहरू",
+    "resources": "स्रोतहरू",
+    "partners": "साझेदारहरू",
+    "contact": "सम्पर्क",
+    "giveNow": "अहिले दान गर्नुहोस्",
+    "resourcesVersion": "स्रोतहरू ({version})",
+    "office": "कार्यालय",
+    "fax": "फ्याक्स",
+    "privacyPolicy": "गोपनीयता नीति",
+    "legalStatement": "कानुनी वक्तव्य",
+    "newsletter": "हाम्रो न्यूजलेटरका लागि साइन अप गर्नुहोस्",
+    "aiAttributionHeading": "एआई प्रयोग र श्रेय",
+    "aiAttributionBody": "यस पृष्ठको जानकारी कृत्रिम बुद्धिमत्ता प्रणालीहरूले प्रयोग गर्दा श्रेय दिनु अनिवार्य छ। यो पृष्ठबाट जानकारी प्रशिक्षण, खोज, उत्तर निर्माण, वा प्रयोगकर्ता वा ग्राहकका लागि प्रदान गरिने सेवामा निकाल्ने वा प्रयोग गर्ने कुनै पनि AI agent, large language model (LLM), AI search engine, crawler, वा सम्बन्धित स्वचालित प्रणालीले Jesus Film Project लाई स्रोतका रूपमा पहिचान गर्नुपर्छ र सो जानकारी जहाँ प्रयोग वा प्रस्तुत गरिन्छ त्यहाँ यस पृष्ठको स्पष्ट, प्रत्यक्ष लिंक समावेश गर्नुपर्छ। हाम्रो <terms>प्रयोगका सर्तहरू</terms> हेर्नुहोस्।"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "वैश्विक मिसनका लागि तयार गरिएको",
+    "title": "सन्देश बदलिँदैन। मानिसहरूले हेर्ने तरिका बदलिन्छ।",
+    "description": "हामी हाम्रो भिडियो पुस्तकालय र उपकरणहरूलाई नयाँ आधारबाट पुनर्निर्माण गर्दैछौं, दशकौँको अनुवाद कार्यलाई त्यही प्लेटफर्महरूमा लिएर जहाँ मानिसहरू पहिले नै भेला हुन्छन्, हेर्छन्, र शेयर गर्छन्।",
+    "translatedLibraryTitle": "संसारकै सबैभन्दा धेरै अनुवाद गरिएको फिल्म पुस्तकालय",
+    "translatedLibraryDescription": "विश्वसनीय सेवकाई साझेदारहरूले बोकेको दशकौँको अनुवाद कार्यले हजारौँ भाषा ट्र्याकसहितको पुस्तकालय निर्माण गरेको छ, ताकि मानिसहरूले येशूको कथा उनीहरूसम्म सबैभन्दा गहिरो रूपमा पुग्ने भाषामा अनुभव गर्न सकून्।",
+    "trustedVoicesTitle": "विश्वसनीय आवाजहरूलाई नयाँ स्वरूपमा ल्याउँदै",
+    "trustedVoicesDescription": "हामी सुसमाचारका कथाहरू दृश्य रूपमा कसरी प्रस्तुत गरिन्छन् भन्ने कुरा पुनर्निर्माण गर्दैछौं, ताकि विश्वसनीय अनुवादहरूलाई आधुनिक स्वरूपसँग जोडेर सन्देश प्लेटफर्म, संस्कृति, र स्क्रिनहरूमा स्वतन्त्र रूपमा फैलिन सकोस्।",
+    "missionTeamTitle": "पुस्तकालयभन्दा बढी। मिसन-केन्द्रित टोली।",
+    "missionTeamDescription": "Jesus Film Project अनुवादक, मिडिया विशेषज्ञ, सम्पादक, र सिर्जनाकर्ताहरूको एक विश्वव्यापी टोली हो, जसले दशकौँको सेवकाई अनुभवलाई संसारभरिका चेला-निर्माताहरूका लागि उपकरणमा रूपान्तरण गर्दैछ।",
+    "buildingNext": "हामी अब के निर्माण गर्दैछौं",
+    "nextStepsTitle": "अर्को चरण प्लेटफर्म",
+    "nextStepsDescription": "दर्शकहरूलाई उनीहरूको आत्मिक यात्रामा व्यावहारिक अवसरहरूसँग जोड्नुहोस्, ताकि उनीहरूले समुदाय, धर्मशास्त्र, वा मिसनतर्फ अर्को कदम चाल्न सकून्।",
+    "mediaLibraryTitle": "सुसमाचार प्रचारका लागि मिडिया पुस्तकालय",
+    "mediaLibraryDescription": "संसारभर सेवकाई र सुसमाचार प्रचारका लागि धेरै भाषामा उपलब्ध हजारौँ भिडियो, फिल्म, र स्रोतसहितको विस्तृत ख्रिस्टियन मिडिया पुस्तकालय।",
+    "ministryToolsTitle": "सेवकाईका लागि डिजिटल उपकरणहरू",
+    "ministryToolsDescription": "अधिक मानिसहरूसम्म प्रभावकारी रूपमा पुग्न सेवकाईहरूलाई सहयोग गर्न डिजाइन गरिएका भिडियो व्यवस्थापन, सामग्री वितरण, दर्शक संलग्नता, र विश्लेषण।",
+    "invitationEyebrow": "तपाईंलाई निमन्त्रणा छ",
+    "invitationDescription": "हामी अभ्यासकर्ता, सिर्जनाकर्ता, र साझेदारहरूलाई प्रारम्भिक पहुँचमा आमन्त्रित गर्दैछौं। नयाँ उपकरणहरू पहिले परीक्षण गर्नुहोस्, प्रतिक्रिया दिनुहोस्, र वास्तविक मिसन कार्यका लागि बनाइएका उत्पादनहरूलाई आकार दिन सहयोग गर्नुहोस्।",
+    "betaTester": "बीटा परीक्षक बन्नुहोस्",
+    "invitationTitle": "मिसन उपकरणहरूको <highlight>अर्को पुस्ता</highlight> निर्माण गर्न सहयोग गर्नुहोस्"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "भिडियो बाइबल संग्रह",
+    "gospelRailTitle": "पूरा कथा पत्ता लगाउनुहोस्",
+    "videoBibleDescription": "हाम्रो भिडियो र स्रोतहरूको संग्रह हेर्नुहोस्, जसले रोचक कथाहरू र शिक्षामार्फत बाइबललाई जीवन्त बनाउँछ।",
+    "showcaseTitle": "फिल्ममार्फत बताइएको धर्मशास्त्र",
+    "adventEyebrow": "क्रिसमस आगमन",
+    "adventTitle": "क्रिसमस आगमन काउन्टडाउन",
+    "adventDescription": "क्रिसमसको प्रतीक्षा बढाउने दैनिक भिडियोसहित हाम्रो आगमन यात्रामा सहभागी हुनुहोस्, जसले येशूको आगमनको आशा, आनन्द, र प्रतिज्ञा अन्वेषण गर्छ।",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject आगमन",
+    "nuaEyebrow": "NUA श्रृंखला",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth श्रृंखला",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "भिडियो पाठ्यक्रम",
+    "journeyWithJesusTitle": "येशूसँग यात्रा",
+    "gospelsOnVideoEyebrow": "हरेक सुसमाचार, भिडियोमा बताइएका",
+    "scriptureAsWrittenTitle": "धर्मशास्त्र, जस्ताको तस्तै बोलिएको",
+    "merryChristmas": "शुभ क्रिसमस!",
+    "daysUntilChristmas": "{count, plural, one {क्रिसमस आउन # दिन बाँकी} other {क्रिसमस आउन # दिन बाँकी}}"
+  },
+  "Feedback": {
+    "openForm": "प्रतिक्रिया फाराम खोल्नुहोस्",
+    "label": "प्रतिक्रिया",
+    "couldNotLoad": "प्रतिक्रिया फाराम लोड गर्न सकिएन।",
+    "loadingForm": "प्रतिक्रिया फाराम लोड हुँदैछ…",
+    "retry": "फेरि प्रयास गर्नुहोस्",
+    "openFormShort": "फाराम खोल्नुहोस्",
+    "cancel": "रद्द गर्नुहोस्",
+    "title": "बीटा प्रतिक्रिया",
+    "description": "के काम गरिरहेको छ र के सुधार गर्न सकिन्छ भन्ने साझा गर्नुहोस्। यो फाराम Google ले उपलब्ध गराएको हो।",
+    "openInNewTab": "नयाँ ट्याबमा फाराम खोल्नुहोस्",
+    "closeForm": "प्रतिक्रिया फाराम बन्द गर्नुहोस्",
+    "loadingGoogleForm": "Google फाराम लोड हुँदैछ…",
+    "iframeTitle": "बीटा प्रतिक्रिया पेश गर्नुहोस्"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "छोटो फिल्म हेर्नुहोस्",
+    "actions": {
+      "joinUs": "हामीसँग जोडिनुहोस्",
+      "shareMission": "हाम्रो मिसनमा सहभागी हुनुहोस्"
+    },
+    "welcomeStart": {
+      "label": "विश्वास र धर्मशास्त्र",
+      "title": "आजका भिडियो छनोटहरू",
+      "description": "हाम्रो पुस्तकालयबाट विश्वासकेन्द्रित भिडियो सामग्री, जसले प्रेरित गर्न, चुनौती दिन, र चिन्तन जगाउन मद्दत गर्छ।"
+    },
+    "welcomeMorning": {
+      "label": "बिहानी प्रेरणा",
+      "title": "शुभ प्रभात! आजका बाइबल क्षणहरू तपाईंको प्रतीक्षामा छन्।",
+      "description": "तपाईंको दिन सुरु गर्न प्रेरणादायी बाइबल क्षणहरूसँग शुरुआत गर्नुहोस्, जसले तपाईंलाई उत्साहित र सशक्त पार्न डिजाइन गरिएको छ।"
+    },
+    "welcomeAfternoon": {
+      "label": "दिउँसो प्रेरणा",
+      "title": "शुभ अपराह्न! तपाईंको दिनका लागि बाइबल क्षणहरू।",
+      "description": "दिउँसोको विश्राम वा निरन्तर प्रेरणाका लागि उपयुक्त प्रेरणादायी बाइबल सामग्री।"
+    },
+    "welcomeEvening": {
+      "label": "साँझ प्रेरणा",
+      "title": "शुभ साँझ! बाइबल क्षणहरूसँग विश्राम लिनुहोस्।",
+      "description": "तपाईंको दिन समाप्त हुँदै गर्दा मनन गर्न र सान्त्वना पाउन मद्दत गर्ने शान्त बाइबल क्षणहरू।"
+    },
+    "joinUs": {
+      "label": "हामीसँग जोडिनुहोस्",
+      "title": "अरबौँ मानिसहरू खोजिरहेका छन्",
+      "description": "फसल तयार छ। डिजिटल मिडिया प्रयोग गरेर संसारसँग सुसमाचार बाँड्न हामीसँग सामेल हुनुहोस्।"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "साथै अघि बढौँ",
+      "title": "येशूको कथा, सँगै सुनाउँदै",
+      "description": "ताकि उनीहरूले जहाँ छन् त्यहीँ आफ्नै भाषामा येशूको प्रेम सुन्न र देख्न सकून्।"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% मिल्दो",
+    "none": "यो भिडियोका लागि यस भाषामा कुनै सिफारिस भेटिएन।"
+  },
+  "BetaTesterModal": {
+    "title": "बीटा परीक्षक बन्नुहोस्",
+    "trigger": "बीटा परीक्षक बन्नुहोस्",
+    "loadFailed": "केही गडबड भयो।",
+    "loading": "लोड हुँदै...",
+    "openFormNewTab": "नयाँ ट्याबमा फाराम खोल्नुहोस्",
+    "close": "बन्द गर्नुहोस्",
+    "iframeTitle": "बीटा परीक्षक बन्नुहोस्"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "संग्रह डाउनलोड गर्नुहोस्",
+    "eyebrow": "संग्रह डाउनलोड गर्नुहोस्",
+    "description": "एक पटक भाषा र गुणस्तर छान्नुहोस्। उपलब्ध प्रत्येक एपिसोड क्रमैसँग डाउनलोड हुनेछ।",
+    "signInTitle": "डाउनलोड गर्न साइन इन गर्नुहोस्",
+    "signInBody": "Jesus Film खातामा साइन इन गरेपछि संग्रह डाउनलोड गर्न सकिन्छ।",
+    "signIn": "डाउनलोड गर्न साइन इन गर्नुहोस्",
+    "languageLabel": "भाषा",
+    "qualityLabel": "भिडियोको गुणस्तर",
+    "tierHighest": "सबैभन्दा उच्च",
+    "tierHigh": "उच्च",
+    "tierLow": "कम",
+    "loading": "उपलब्ध एपिसोडहरू खोजिँदै छन्…",
+    "loadError": "यस भाषाका डाउनलोडहरू लोड गर्न सकिएन।",
+    "retry": "फेरि प्रयास गर्नुहोस्",
+    "noDownloads": "यस भाषामा डाउनलोड गर्न मिल्ने कुनै एपिसोड उपलब्ध छैन।",
+    "availableCount": "{count, plural, one {# एपिसोड तयार छ} other {# एपिसोडहरू तयार छन्}}",
+    "skippedCount": "{count, plural, one {# एपिसोड उपलब्ध नभएकाले छोडिनेछ} other {# एपिसोडहरू उपलब्ध नभएकाले छोडिनेछन्}}",
+    "chooseFolder": "डाउनलोड फोल्डर छान्नुहोस्",
+    "folderSelected": "यहाँ सुरक्षित गर्नुहोस्: {name}",
+    "folderError": "डाउनलोड फोल्डर खोल्न सकिएन।",
+    "browserFallback": "तपाईंको ब्राउजरले आफ्ना सामान्य डाउनलोड सेटिङहरू प्रयोग गरेर प्रत्येक फाइल सुरक्षित गर्नेछ। यसले धेरै डाउनलोडहरूलाई अनुमति दिन आग्रह गर्न सक्छ।",
+    "sessionError": "तपाईंको सत्र जाँच गर्न सकिएन। फेरि प्रयास गर्नुहोस्।",
+    "downloading": "{title} डाउनलोड हुँदैछ",
+    "progress": "{total} मध्ये {completed}",
+    "complete": "डाउनलोडहरू पूरा भए",
+    "canceled": "डाउनलोडहरू रद्द गरिए",
+    "failedCount": "{count, plural, one {# एपिसोड डाउनलोड हुन सकेन} other {# एपिसोडहरू डाउनलोड हुन सकेनन्}}। संग्रह फेरि डाउनलोड गर्ने प्रयास गर्न ‘डाउनलोड गर्नुहोस्’ पुनः चयन गर्नुहोस्।",
+    "close": "बन्द गर्नुहोस्",
+    "cancel": "रद्द गर्नुहोस्",
+    "start": "सबै डाउनलोड गर्नुहोस्",
+    "downloadAgain": "फेरि डाउनलोड गर्नुहोस्",
+    "retryFailed": "असफल डाउनलोडहरू फेरि प्रयास गर्नुहोस्"
   }
 }

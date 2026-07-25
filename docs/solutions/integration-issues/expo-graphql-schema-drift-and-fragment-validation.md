@@ -144,6 +144,15 @@ key={`${item.kind}-${item.id}-${index}`}
 
 ### 4. Follow the GraphQL Change Flow
 
+> **Superseded (2026-07-23):** Strapi has been removed and replaced by the Admin
+> CMS; `apps/cms/` no longer holds content types and the Strapi-bound
+> `packages/graphql` client is gone, so the six steps below describe a toolchain
+> that no longer exists. The current flow lives under "The GraphQL Change Flow"
+> in the root `CLAUDE.md` (Pothos types -> `schema:print` -> `admin-graphql
+generate` -> update consumers -> commit the generated artifacts together).
+> Sections 2 and 3 above are likewise Strapi dynamic-zone mechanics with no
+> Admin CMS equivalent. The incident record above stands as history.
+
 Every CMS schema change requires (per `CLAUDE.md`):
 
 1. Modify content type in `apps/cms/`

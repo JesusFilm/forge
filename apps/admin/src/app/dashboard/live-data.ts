@@ -66,7 +66,9 @@ type VideoDubRow = VideoDub & {
   language: {
     bcp47: string | null
     countryLanguages: VideoLanguageCountryRow[]
+    id: string
     iso3: string | null
+    name: unknown
     slug: string | null
   } | null
 }
@@ -87,6 +89,7 @@ type LoadVideoRowSliceOptions = {
   category?: VideoLibraryCategory
   collection?: string
   language?: string
+  preferredLocale?: string
   principal: Principal
   limit: number
   offset: number
@@ -173,9 +176,76 @@ function durationSecondsForDub(
 }
 
 function preferredPlaybackDub(dubs: VideoDubRow[]) {
-  return dubs.find((dub) => dub.hls)?.hls
-    ? (dubs.find((dub) => dub.hls) ?? null)
-    : (dubs.find((dub) => dub.dash || dub.share) ?? null)
+  return (
+    dubs.find((dub) => dub.hls) ??
+    dubs.find((dub) => dub.dash || dub.share) ??
+    null
+  )
+}
+
+function streamUrlForDub(dub: Pick<VideoDubRow, "dash" | "hls" | "share">) {
+  return compactText(dub.hls) ?? compactText(dub.dash) ?? compactText(dub.share)
+}
+
+function localeMatchesDubLanguage(locale: string, dub: VideoDubRow) {
+  const language = dub.language
+  if (!language) return false
+
+  const normalizedLocale = compactText(locale)?.toLowerCase()
+  if (!normalizedLocale) return false
+
+  const baseLocale = normalizedLocale.split("-")[0] ?? normalizedLocale
+  const languageCodes = [
+    language.bcp47?.toLowerCase() ?? "",
+    language.slug?.toLowerCase() ?? "",
+    language.iso3?.toLowerCase() ?? "",
+  ].filter(Boolean)
+
+  return (
+    languageCodes.includes(normalizedLocale) ||
+    languageCodes.includes(baseLocale) ||
+    languageCodes.some((code) => code.startsWith(`${baseLocale}-`))
+  )
+}
+
+function playableDubsForPicker(dubs: VideoDubRow[], locale: string) {
+  const seenByLanguage = new Set<string>()
+  return dubs.flatMap((dub) => {
+    const streamUrl = streamUrlForDub(dub)
+    if (!streamUrl) return []
+
+    const languageKey =
+      dub.language?.slug ??
+      dub.language?.bcp47 ??
+      dub.language?.iso3 ??
+      dub.language?.id ??
+      dub.id
+    if (seenByLanguage.has(languageKey)) return []
+    seenByLanguage.add(languageKey)
+
+    return [
+      {
+        key: dub.id,
+        label: dub.language
+          ? languageOptionLabel(dub.language, locale)
+          : `Dub ${seenByLanguage.size}`,
+        languageId: dub.language?.id ?? null,
+        languageSlug: dub.language?.slug ?? null,
+        bcp47: dub.language?.bcp47 ?? null,
+        streamUrl,
+        duration: formatDuration([dub]),
+        durationSeconds: durationSecondsForDub(dub),
+      },
+    ]
+  })
+}
+
+function preferredPickerDub(dubs: VideoDubRow[], locale: string) {
+  const playableDubs = dubs.filter((dub) => streamUrlForDub(dub))
+  return (
+    playableDubs.find((dub) => localeMatchesDubLanguage(locale, dub)) ??
+    preferredPlaybackDub(playableDubs)
+  )
 }
 
 function muxPlayerUrl(playbackId: string | null | undefined) {
@@ -494,11 +564,7 @@ function previewImageFromBlock(
   block: PreviewBlock,
   videoImagesByVideoId: Map<string, VideoImageRow[]>,
 ): string | null {
-  const direct = directUrl(block, [
-    "imageUrl",
-    "backgroundImageUrl",
-    "mediaUrl",
-  ])
+  const direct = directUrl(block, ["mediaUrl"])
   if (direct) return direct
 
   if (block.t === "video" || block.t === "videoHero") {
@@ -507,34 +573,15 @@ function previewImageFromBlock(
 
   if (block.t === "mediaCollection") {
     for (const item of block.items) {
-      const itemImage =
-        item.imageOverrideUrl ??
-        item.imageUrl ??
-        previewImageForVideo(item.videoId, videoImagesByVideoId)
+      const itemImage = previewImageForVideo(item.videoId, videoImagesByVideoId)
       if (itemImage) return itemImage
     }
   }
 
   if (block.t === "videoCarousel") {
     for (const item of block.items) {
-      const itemImage =
-        item.imageOverrideUrl ??
-        item.imageUrl ??
-        previewImageForVideo(item.videoId, videoImagesByVideoId)
+      const itemImage = previewImageForVideo(item.videoId, videoImagesByVideoId)
       if (itemImage) return itemImage
-    }
-  }
-
-  if (block.t === "navigationCarousel") {
-    for (const item of block.items) {
-      if (item.imageUrl) return item.imageUrl
-    }
-  }
-
-  if (block.t === "bibleQuotesCarousel") {
-    for (const quote of block.quotes) {
-      const quoteImage = quote.backgroundImageUrl ?? quote.imageUrl
-      if (quoteImage) return quoteImage
     }
   }
 
@@ -1738,6 +1785,7 @@ async function loadVideoRowSlice({
   category,
   collection,
   language,
+  preferredLocale,
   principal,
   limit,
   offset,
@@ -1747,7 +1795,7 @@ async function loadVideoRowSlice({
   videoIds,
 }: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
-  const locale = await getAdminLocale()
+  const locale = compactText(preferredLocale) ?? (await getAdminLocale())
   // The downstream locale/dub/image mapping reads only these scalar
   // fields off each video row. Typing `videos` to exactly that subset
   // (Pick'd off the service-list row) lets the `videoIds` top-up branch
@@ -1807,7 +1855,14 @@ async function loadVideoRowSlice({
   let videoLocales: VideoLocaleRow[] = []
   let videoDubs: VideoDubRow[] = []
   let videoImages: VideoImageRow[] = []
-  let videoChildRelations: Array<{ parentId: string }> = []
+  let videoChildRelations: Array<{
+    parentId: string
+    childId: string
+    order: number | null
+    createdAt: Date
+  }> = []
+  let groundingStudyQuestions: Array<{ videoId: string }> = []
+  let groundingBibleCitations: Array<{ videoId: string }> = []
   let routeManifest: Awaited<ReturnType<typeof loadLatestWatchRouteManifest>> =
     null
   try {
@@ -1816,6 +1871,8 @@ async function loadVideoRowSlice({
       videoDubs,
       videoImages,
       videoChildRelations,
+      groundingStudyQuestions,
+      groundingBibleCitations,
       routeManifest,
     ] = await Promise.all([
       prisma.videoLocale.findMany({
@@ -1850,7 +1907,9 @@ async function loadVideoRowSlice({
                   },
                 },
               },
+              id: true,
               iso3: true,
+              name: true,
               slug: true,
             },
           },
@@ -1872,7 +1931,27 @@ async function loadVideoRowSlice({
           parentId: { in: ids },
           child: { deletedAt: null },
         },
-        select: { parentId: true },
+        select: {
+          parentId: true,
+          childId: true,
+          order: true,
+          createdAt: true,
+        },
+        orderBy: [{ parentId: "asc" }, { order: "asc" }, { createdAt: "asc" }],
+      }),
+      // Grounding signal: videos with ≥1 non-empty study question. Batched +
+      // distinct so the library list stays one query per relation regardless
+      // of catalogue size — no per-video content load.
+      prisma.videoStudyQuestion.findMany({
+        where: { videoId: { in: ids }, deletedAt: null, text: { not: "" } },
+        select: { videoId: true },
+        distinct: ["videoId"],
+      }),
+      // Grounding signal: videos with ≥1 non-deleted Bible citation.
+      prisma.bibleCitation.findMany({
+        where: { videoId: { in: ids }, deletedAt: null },
+        select: { videoId: true },
+        distinct: ["videoId"],
       }),
       routeManifestPromise,
     ])
@@ -1915,6 +1994,76 @@ async function loadVideoRowSlice({
     )
   }
 
+  const childPreviewIdsByVideo = new Map<string, string[]>()
+  for (const item of [...videoChildRelations].sort((left, right) => {
+    if (left.parentId !== right.parentId) {
+      return left.parentId.localeCompare(right.parentId)
+    }
+    return compareCollectionChildRelations(left, right)
+  })) {
+    const current = childPreviewIdsByVideo.get(item.parentId) ?? []
+    if (current.length >= 3) continue
+    current.push(item.childId)
+    childPreviewIdsByVideo.set(item.parentId, current)
+  }
+
+  const childPreviewVideoIds = Array.from(
+    new Set(Array.from(childPreviewIdsByVideo.values()).flat()),
+  )
+  const [childPreviewLocales, childPreviewImages] =
+    childPreviewVideoIds.length === 0
+      ? [[], []]
+      : await Promise.all([
+          prisma.videoLocale.findMany({
+            where: {
+              videoId: { in: childPreviewVideoIds },
+              deletedAt: null,
+            },
+            select: {
+              videoId: true,
+              locale: true,
+              title: true,
+              description: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: "desc" },
+          }),
+          prisma.videoImage.findMany({
+            where: { videoId: { in: childPreviewVideoIds } },
+            select: {
+              videoId: true,
+              url: true,
+              kind: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "asc" },
+          }),
+        ])
+
+  const publicChildPreviewLocales = childPreviewLocales.filter(
+    (item): item is VideoLocaleRow & { locale: string } => item.locale != null,
+  )
+  const childPreviewLocalesByVideo = new Map<
+    string,
+    typeof publicChildPreviewLocales
+  >()
+  for (const item of publicChildPreviewLocales) {
+    const current = childPreviewLocalesByVideo.get(item.videoId) ?? []
+    current.push(item)
+    childPreviewLocalesByVideo.set(item.videoId, current)
+  }
+
+  const childPreviewImagesByVideo = new Map<string, VideoImageRow[]>()
+  for (const item of childPreviewImages) {
+    const current = childPreviewImagesByVideo.get(item.videoId) ?? []
+    current.push(item)
+    childPreviewImagesByVideo.set(item.videoId, current)
+  }
+
+  const groundedIds = new Set<string>()
+  for (const item of groundingStudyQuestions) groundedIds.add(item.videoId)
+  for (const item of groundingBibleCitations) groundedIds.add(item.videoId)
+
   return videos.map((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
     const dubRows = dubsByVideo.get(video.id) ?? []
@@ -1922,9 +2071,23 @@ async function loadVideoRowSlice({
     const localeRow = choosePreferredLocale(localeRows, locale)
     const title = localeRow?.title?.trim() || video.slug
     const source = sourceLabel(video.videoSource)
-    const playbackDub = preferredPlaybackDub(dubRows)
+    const playbackDub = preferredPickerDub(dubRows, locale)
+    const playableDubs = playableDubsForPicker(dubRows, locale)
     const coverage = dubCoverageMetric(dubRows)
     const childCount = childCountByVideo.get(video.id) ?? 0
+    const collectionPreviewItems = (
+      childPreviewIdsByVideo.get(video.id) ?? []
+    ).map((childId) => {
+      const childLocaleRows = childPreviewLocalesByVideo.get(childId) ?? []
+      const childLocaleRow = choosePreferredLocale(childLocaleRows, locale)
+      return {
+        key: childId,
+        title: childLocaleRow?.title?.trim() || "Untitled video",
+        previewImageUrl: preferredVideoImage(
+          childPreviewImagesByVideo.get(childId) ?? [],
+        ),
+      }
+    })
 
     return {
       key: video.id,
@@ -1951,6 +2114,9 @@ async function loadVideoRowSlice({
       previewImageUrl: preferredVideoImage(imageRows),
       previewStreamUrl:
         playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
+      playableDubs,
+      hasGrounding: groundedIds.has(video.id),
+      collectionPreviewItems,
       visitorUrl: includeVisitorUrls
         ? resolveVideoVisitorUrl({
             contentSlug: video.slug,
@@ -1965,12 +2131,18 @@ async function loadVideoRowSlice({
 
 export async function loadVideoRows(
   principal: Principal,
-  options: { includeVideoIds?: readonly string[] } = {},
+  options: {
+    category?: VideoLibraryCategory
+    includeVideoIds?: readonly string[]
+    preferredLocale?: string
+  } = {},
 ) {
   const rows = await loadVideoRowSlice({
+    category: options.category,
     principal,
     limit: VIDEO_LIBRARY_PAGE_SIZE,
     offset: 0,
+    preferredLocale: options.preferredLocale,
   })
   const have = new Set(rows.map((row) => row.key))
   const missing = Array.from(new Set(options.includeVideoIds ?? [])).filter(
@@ -1980,12 +2152,58 @@ export async function loadVideoRows(
   // Top-up with AI-referenced videos outside the first library page
   // (experience-AI chat; additive).
   const extras = await loadVideoRowSlice({
+    category: options.category,
     principal,
     limit: missing.length,
     offset: 0,
+    preferredLocale: options.preferredLocale,
     videoIds: missing,
   })
   return [...rows, ...extras]
+}
+
+type CollectionChildRelation = {
+  childId: string
+  order: number | null
+  createdAt: Date
+}
+
+function compareCollectionChildRelations(
+  left: CollectionChildRelation,
+  right: CollectionChildRelation,
+) {
+  const leftOrder = left.order ?? Number.MAX_SAFE_INTEGER
+  const rightOrder = right.order ?? Number.MAX_SAFE_INTEGER
+  if (leftOrder !== rightOrder) return leftOrder - rightOrder
+  return left.createdAt.getTime() - right.createdAt.getTime()
+}
+
+export async function loadVideoCollectionChildren(
+  principal: Principal,
+  parentVideoId: string,
+  options: { preferredLocale?: string } = {},
+) {
+  const relations = await prisma.videoRelation.findMany({
+    where: { parentId: parentVideoId, child: { deletedAt: null } },
+    select: { childId: true, order: true, createdAt: true },
+  })
+  const childIds = relations
+    .sort(compareCollectionChildRelations)
+    .map((relation) => relation.childId)
+  if (childIds.length === 0) return []
+
+  const rows = await loadVideoRowSlice({
+    principal,
+    limit: childIds.length,
+    offset: 0,
+    preferredLocale: options.preferredLocale,
+    videoIds: childIds,
+  })
+  const rowsById = new Map(rows.map((row) => [row.key, row]))
+  return childIds.flatMap((childId) => {
+    const row = rowsById.get(childId)
+    return row ? [row] : []
+  })
 }
 
 export async function loadVideoLibraryPage(

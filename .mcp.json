@@ -16,6 +16,10 @@
         "--chromeArg=--disable-gpu",
         "--chromeArg=--disable-dev-shm-usage"
       ]
+    },
+    "datadog": {
+      "type": "http",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,error-tracking&omit_tools=update_datadog_error_tracking_issue,manage_datadog_error_tracking_issue_comments,create_datadog_notebook,edit_datadog_notebook,upsert_datadog_dashboard"
     }
   }
 }

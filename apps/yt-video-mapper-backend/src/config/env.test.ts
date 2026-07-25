@@ -7,8 +7,12 @@ const envKeys = [
   "ADMIN_GRAPHQL_URL",
   "ADMIN_SERVICE_BEARER_TOKEN",
   "MAPPER_API_TOKEN",
+  "MATCH_JOB_WORKER_ENABLED",
+  "MATCH_JOB_CLEANER_ENABLED",
+  "MATCH_JOB_WORKER_POLL_INTERVAL_MS",
   "MEDIA_SIGNATURE_ALGORITHM_VERSION",
   "MEDIA_INDEX_PAGE_SIZE",
+  "MEDIA_INDEX_CONCURRENCY",
   "MEDIA_INDEX_MAX_FETCH_BYTES",
   "MEDIA_INDEX_FETCH_TIMEOUT_MS",
   "MEDIA_INDEX_ALLOWED_HOSTS",
@@ -74,28 +78,49 @@ describe("runtime env", () => {
 
   it("defaults media indexing settings and treats empty resume cursor as unset", async () => {
     const { env } = await loadEnv({
+      MATCH_JOB_WORKER_ENABLED: "",
+      MATCH_JOB_CLEANER_ENABLED: "",
+      MATCH_JOB_WORKER_POLL_INTERVAL_MS: "",
       MEDIA_SIGNATURE_ALGORITHM_VERSION: "",
       MEDIA_INDEX_PAGE_SIZE: "",
+      MEDIA_INDEX_CONCURRENCY: "",
       MEDIA_INDEX_MAX_FETCH_BYTES: "",
       MEDIA_INDEX_FETCH_TIMEOUT_MS: "",
       MEDIA_INDEX_ALLOWED_HOSTS: "",
       MEDIA_INDEX_RESUME_AFTER_VARIANT_ID: "",
     })
 
+    expect(env.MATCH_JOB_WORKER_ENABLED).toBe("true")
+    expect(env.MATCH_JOB_CLEANER_ENABLED).toBe("true")
+    expect(env.MATCH_JOB_WORKER_POLL_INTERVAL_MS).toBe(1_000)
     expect(env.MEDIA_SIGNATURE_ALGORITHM_VERSION).toBe(
       "official-media-signature-v1",
     )
     expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(100)
+    expect(env.MEDIA_INDEX_CONCURRENCY).toBe(4)
     expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(262_144)
     expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(15_000)
     expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBeUndefined()
     expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBeUndefined()
   })
 
+  it("parses worker and cleaner settings without boolean coercion", async () => {
+    const { env } = await loadEnv({
+      MATCH_JOB_WORKER_ENABLED: "false",
+      MATCH_JOB_CLEANER_ENABLED: "false",
+      MATCH_JOB_WORKER_POLL_INTERVAL_MS: "2500",
+    })
+
+    expect(env.MATCH_JOB_WORKER_ENABLED).toBe("false")
+    expect(env.MATCH_JOB_CLEANER_ENABLED).toBe("false")
+    expect(env.MATCH_JOB_WORKER_POLL_INTERVAL_MS).toBe(2_500)
+  })
+
   it("parses media indexing overrides", async () => {
     const { env } = await loadEnv({
       MEDIA_SIGNATURE_ALGORITHM_VERSION: "official-media-signature-v2",
       MEDIA_INDEX_PAGE_SIZE: "25",
+      MEDIA_INDEX_CONCURRENCY: "4",
       MEDIA_INDEX_MAX_FETCH_BYTES: "1024",
       MEDIA_INDEX_FETCH_TIMEOUT_MS: "5000",
       MEDIA_INDEX_ALLOWED_HOSTS: "media.example.com,cdn.example.com",
@@ -106,12 +131,19 @@ describe("runtime env", () => {
       "official-media-signature-v2",
     )
     expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(25)
+    expect(env.MEDIA_INDEX_CONCURRENCY).toBe(4)
     expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(1_024)
     expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(5_000)
     expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBe(
       "media.example.com,cdn.example.com",
     )
     expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBe("catalog-variant-123")
+  })
+
+  it("rejects media indexing concurrency above the safety limit", async () => {
+    await expect(loadEnv({ MEDIA_INDEX_CONCURRENCY: "5" })).rejects.toThrow(
+      /MEDIA_INDEX_CONCURRENCY/,
+    )
   })
 
   it("requires DATABASE_URL in production", async () => {
@@ -134,6 +166,28 @@ describe("runtime env", () => {
     expect(assertRuntimeEnv).toThrow(
       "MAPPER_API_TOKEN is required for yt-video-mapper-backend production",
     )
+  })
+
+  it("requires an official media host allowlist for production indexing", async () => {
+    const { assertMediaIndexEnv } = await loadEnv({
+      NODE_ENV: "production",
+      MEDIA_INDEX_ALLOWED_HOSTS: "",
+    })
+
+    expect(assertMediaIndexEnv).toThrow(
+      "MEDIA_INDEX_ALLOWED_HOSTS is required to index yt-video-mapper official media in production",
+    )
+  })
+
+  it("returns media index configuration when the production allowlist is set", async () => {
+    const { assertMediaIndexEnv } = await loadEnv({
+      NODE_ENV: "production",
+      MEDIA_INDEX_ALLOWED_HOSTS: "stream.mux.com,api-media-core.jesusfilm.org",
+    })
+
+    expect(assertMediaIndexEnv()).toEqual({
+      allowedHosts: "stream.mux.com,api-media-core.jesusfilm.org",
+    })
   })
 })
 

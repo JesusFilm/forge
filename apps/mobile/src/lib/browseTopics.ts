@@ -1,8 +1,6 @@
-// Six hardcoded browse categories for the Discover empty state, mirroring the
-// web search overlay's categories (apps/web/src/lib/search-categories.ts). The
-// `searchTerm` — not the label — is fed into the existing admin search. Each
-// topic carries a two-stop `gradient` (the web category palette) used as the
-// card fill, and a `glyph` (an Ionicons name) shown top-left.
+// Hardcoded Discover empty-state categories, mirroring web's search overlay
+// (apps/web/src/lib/search-categories.ts). `searchTerm` (not label) drives admin
+// search; `gradient` is the card fill, `glyph` an Ionicons name shown top-left.
 
 export type BrowseTopic = {
   readonly label: string

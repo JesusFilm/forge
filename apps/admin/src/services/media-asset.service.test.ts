@@ -4,6 +4,7 @@ import {
   MediaAssetService,
   mediaAssetDownloadUrl,
   mediaAssetPreviewUrl,
+  publicMediaAssetPreviewUrl,
 } from "./media-asset.service"
 
 function mockPrisma() {
@@ -376,6 +377,42 @@ describe("MediaAssetService", () => {
         }),
       ).toBe("https://image.mux.com/playback-1/thumbnail.jpg")
     })
+
+    it("returns absolute public app routes for public ready assets", () => {
+      expect(
+        publicMediaAssetPreviewUrl(
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PUBLIC",
+            objectKey: "media-assets/asset-1/original/hero.webp",
+            previewObjectKey: null,
+            muxPlaybackId: null,
+          },
+          "https://admin.example.test/dashboard",
+        ),
+      ).toBe(
+        "https://admin.example.test/api/public/media-assets/asset-1/preview",
+      )
+    })
+
+    it("does not return public routes for private or missing assets", () => {
+      expect(
+        publicMediaAssetPreviewUrl(
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PRIVATE",
+            objectKey: "media-assets/asset-1/original/hero.webp",
+            previewObjectKey: null,
+            muxPlaybackId: null,
+          },
+          "https://admin.example.test",
+        ),
+      ).toBeNull()
+    })
   })
 
   describe("usage", () => {
@@ -396,8 +433,8 @@ describe("MediaAssetService", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },
@@ -408,7 +445,7 @@ describe("MediaAssetService", () => {
       expect(result).toEqual([
         expect.objectContaining({
           experienceLocaleId: "loc-1",
-          fieldPath: "$.blocks[0].imageUrl",
+          fieldPath: "$.blocks[0].mediaUrl",
           match: "object-key",
         }),
       ])
@@ -458,8 +495,8 @@ describe("MediaAssetService", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },

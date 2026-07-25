@@ -4,11 +4,12 @@
  * U8 — BibleQuotesSection tests.
  *
  * Covers:
- *  - Empty bibleCitations[] → returns null (section hidden).
+ *  - Empty bibleCitations[] → still renders the hardcoded promo CTA.
  *  - 2 citations → renders 3 list items (2 references + 1 hardcoded promo).
  *  - Reference labels are produced by `formatCitation()` (verified against
  *    the canonical "Galatians 2:20" sample from the live data and a
  *    cross-chapter range).
+ *  - Admin-resolved passages render inline in the card with Bible.com links.
  *  - Click on the in-section Share button calls `onShareClick`.
  *  - Section emits `data-block-type="BibleQuotes"` so the U4 dispatch
  *    contract still holds when the section component owns the element.
@@ -18,7 +19,7 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { emblaApi, emblaHandlers, emblaRefMock, emitEmbla } = vi.hoisted(() => {
+const { emblaApi, emblaHandlers, emblaRefMock } = vi.hoisted(() => {
   const handlers: Record<string, Set<(api: unknown) => void>> = {
     reInit: new Set(),
     select: new Set(),
@@ -41,9 +42,6 @@ const { emblaApi, emblaHandlers, emblaRefMock, emitEmbla } = vi.hoisted(() => {
     emblaApi: api,
     emblaHandlers: handlers,
     emblaRefMock: vi.fn(),
-    emitEmbla: (event: "reInit" | "select") => {
-      for (const handler of handlers[event]) handler(api)
-    },
   }
 })
 
@@ -75,11 +73,8 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
-  // Stub fetch globally so non-fetch-focused tests don't accidentally hit
-  // undici with a cross-realm AbortSignal (which logs a noisy TypeError
-  // through the component's catch block but does not affect rendered DOM).
-  // Tests in the verse-fetch describe block install their own mock and
-  // override this one.
+  // Stub fetch globally so the suite proves the component no longer performs
+  // client-side Bible text fallback requests.
   vi.stubGlobal(
     "fetch",
     vi.fn(() => new Promise(() => undefined)),
@@ -95,9 +90,7 @@ afterEach(() => {
 })
 
 type Citation = WatchBibleQuotesBlock["bibleCitations"][number]
-type YouVersionPassage = NonNullable<
-  WatchBibleQuotesBlock["youVersionPassages"]
->[number]
+type Passage = NonNullable<WatchBibleQuotesBlock["passages"]>[number]
 
 function makeCitation(
   overrides: Partial<{
@@ -124,12 +117,11 @@ function makeCitation(
       documentId: overrides.bibleBookDocumentId ?? "bb-galatians",
       name: overrides.bookName === undefined ? "Galatians" : overrides.bookName,
     },
+    passage: null,
   } satisfies Citation
 }
 
-function makeYouVersionPassage(
-  overrides: Partial<YouVersionPassage> = {},
-): YouVersionPassage {
+function makeYouVersionPassage(overrides: Partial<Passage> = {}): Passage {
   return {
     citationDocumentId: overrides.citationDocumentId ?? "bc-1",
     content: overrides.content ?? "Server-rendered YouVersion passage text.",
@@ -137,12 +129,21 @@ function makeYouVersionPassage(
       overrides.copyright ??
       "Test Bible version copyright from the server response.",
     humanReference: overrides.humanReference ?? "Galatians 2:20",
+    provider: overrides.provider ?? "youversion",
     publisherUrl:
-      overrides.publisherUrl ?? "https://example.test/bible-version",
+      overrides.publisherUrl === undefined
+        ? "https://example.test/bible-version"
+        : overrides.publisherUrl,
     reference: overrides.reference ?? "GAL.2.20",
-    versionAbbreviation: overrides.versionAbbreviation ?? "NIV",
+    versionAbbreviation:
+      overrides.versionAbbreviation === undefined
+        ? "NIV"
+        : overrides.versionAbbreviation,
     versionId: overrides.versionId ?? 111,
-    versionTitle: overrides.versionTitle ?? "New International Version",
+    versionTitle:
+      overrides.versionTitle === undefined
+        ? "New International Version"
+        : overrides.versionTitle,
   }
 }
 
@@ -232,30 +233,26 @@ describe("BibleQuotesSection — promo CTA", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(cta!.className).toContain(token)
     }
+    expect(cta!.className).toContain("max-w-full")
+    expect(cta!.className).toContain("whitespace-normal")
+    expect(cta!.className).toContain("break-words")
   })
 })
 
 describe("BibleQuotesSection — citations + promo", () => {
-  it("uses larger slide geometry and stronger verse typography", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ text: "The verse body." }), {
-          status: 200,
-        }),
-      ),
-    )
+  it("uses larger slide geometry and stronger Admin passage typography", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
           bibleCitations={[makeCitation({ verseEnd: 25 })]}
           onShareClick={vi.fn()}
+          passages={[
+            makeYouVersionPassage({
+              content: "The Admin passage body.",
+            }),
+          ]}
         />,
       )
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
     })
 
     const slide = container.querySelector(
@@ -281,6 +278,7 @@ describe("BibleQuotesSection — citations + promo", () => {
     const verse = container.querySelector(
       '[data-testid="watch-bible-quotes-verse"]',
     )
+    expect(verse?.textContent).toBe("The Admin passage body.")
     const verseClassTokens = (verse?.className ?? "").split(/\s+/)
     expect(verseClassTokens).toContain("text-xl")
     expect(verseClassTokens).toContain("md:text-2xl")
@@ -288,11 +286,10 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(verseClassTokens).not.toContain("md:text-3xl")
     expect(verseClassTokens).toContain("text-balance")
 
-    const readMore = container.querySelector(
-      '[data-testid="watch-bible-quotes-read-more"]',
+    const version = container.querySelector(
+      '[data-testid="watch-bible-quotes-version"]',
     )
-    expect(readMore?.className).toContain("text-xl")
-    expect(readMore?.className).toContain("decoration-2")
+    expect(version?.textContent).toBe("New International Version")
   })
 
   it("happy path: 2 citations renders 3 list items (2 citations + 1 promo)", () => {
@@ -329,13 +326,13 @@ describe("BibleQuotesSection — citations + promo", () => {
     const bleed = container.querySelector(
       '[data-testid="watch-bible-quotes-carousel-bleed"]',
     )
-    expect(bleed?.className).toContain("-mx-10")
-    expect(bleed?.className).toContain("w-[calc(100%+5rem)]")
+    expect(bleed?.className).toContain("-mx-5")
+    expect(bleed?.className).toContain("w-[calc(100%+2.5rem)]")
     expect(bleed?.className).toContain("md:mx-0")
     const content = container.querySelector(
       '[data-testid="watch-bible-quotes-list"]',
     )
-    expect(content?.className).toContain("pl-10")
+    expect(content?.className).toContain("pl-5")
     expect(content?.className).toContain("md:pl-0")
 
     // The two citation items render the formatted reference labels.
@@ -371,7 +368,7 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(spacer!.getAttribute("tabindex")).toBe("-1")
   })
 
-  it("renders visible chapter-style carousel arrow controls", () => {
+  it("renders hover-revealed edge carousel controls", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
@@ -391,8 +388,12 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(next).not.toBeNull()
     expect(prev?.className).toContain("md:inline-flex")
     expect(next?.className).toContain("md:inline-flex")
-    expect(prev?.className).toContain("-left-12")
-    expect(next?.className).toContain("-right-12")
+    expect(prev?.className).toContain("left-3")
+    expect(next?.className).toContain("right-3")
+    expect(prev?.className).toContain("group-hover/carousel:opacity-100")
+    expect(next?.className).toContain("group-hover/carousel:opacity-100")
+    expect(prev?.className).toContain("disabled:hidden")
+    expect(next?.className).toContain("disabled:hidden")
     expect(prev?.className).toContain("text-stone-900")
     expect(next?.className).toContain("text-stone-900")
     expect(prev?.className).not.toContain("sr-only")
@@ -445,6 +446,10 @@ describe("BibleQuotesSection — Share button", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(shareBtn!.className).toContain(token)
     }
+    expect(shareBtn!.className).toContain("cursor-pointer")
+    expect(shareBtn!.className).toContain("[&_*]:pointer-events-none")
+    expect(shareBtn!.className).toContain("[&_*]:cursor-pointer")
+    expect((shareBtn as HTMLElement).style.cursor).toBe("pointer")
     expect(header!.querySelector("h2")?.className).toBe(
       WATCH_SECTION_EYEBROW_CLASS,
     )
@@ -503,6 +508,10 @@ describe("BibleQuotesSection — Share button", () => {
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(link!.className).toContain(token)
     }
+    expect(link!.className).toContain("cursor-pointer")
+    expect(link!.className).toContain("[&_*]:pointer-events-none")
+    expect(link!.className).toContain("[&_*]:cursor-pointer")
+    expect(link!.style.cursor).toBe("pointer")
 
     const clickEvent = new MouseEvent("click", {
       bubbles: true,
@@ -517,74 +526,77 @@ describe("BibleQuotesSection — Share button", () => {
   })
 })
 
-describe("BibleQuotesSection — YouVersion compact embed", () => {
-  it("does not render the YouVersion panel when no server passage data is supplied", () => {
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[makeCitation({})]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
+describe("BibleQuotesSection — Admin-resolved passages", () => {
+  it("renders Admin passage content, version, copyright, and Bible.com link inside the carousel card", () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
 
-    expect(
-      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
-    ).toBeNull()
-  })
-
-  it("renders the first citation in the compact YouVersion panel from server data", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
           bibleCitations={[
-            makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
+            makeCitation({ documentId: "bc-1", osisId: "Col.1.16" }),
           ]}
           onShareClick={vi.fn()}
-          youVersionPassages={[
+          passages={[
             makeYouVersionPassage({
               citationDocumentId: "bc-1",
-              content: "I have been crucified with Christ.",
-              humanReference: "Galatians 2:20",
-              reference: "GAL.2.20",
+              content: "For in Him all things were created.",
+              humanReference: "Colossians 1:16",
+              reference: "COL.1.16",
+              versionAbbreviation: "BSB",
+              versionId: 3034,
+              versionTitle: "Berean Standard Bible",
             }),
           ]}
         />,
       )
     })
 
-    const panel = container.querySelector(
-      '[data-testid="watch-bible-quotes-youversion"]',
-    )
-    const carouselBleed = container.querySelector(
-      '[data-testid="watch-bible-quotes-carousel-bleed"]',
-    )
-    expect(panel).not.toBeNull()
-    expect(carouselBleed).not.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(
-      carouselBleed!.compareDocumentPosition(panel!) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(panel?.textContent).toContain("Galatians 2:20")
-    expect(panel?.getAttribute("data-reference")).toBe("GAL.2.20")
-    expect(panel?.textContent).toContain("I have been crucified with Christ.")
-    expect(panel?.textContent).toContain("NIV")
-    expect(panel?.textContent).toContain("New International Version")
-    expect(panel?.textContent).toContain(
-      "Test Bible version copyright from the server response.",
+      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
+    ).toBeNull()
+    const card = container.querySelector(
+      '[data-testid="watch-bible-quotes-card"]',
+    ) as HTMLElement | null
+    expect(card?.style.backgroundImage).toContain("radial-gradient")
+    expect(card?.style.backgroundImage).toContain("linear-gradient")
+    expect(
+      card?.querySelector('[data-testid="watch-bible-quotes-grain"]'),
+    ).not.toBeNull()
+    const reference = container.querySelector(
+      '[data-testid="watch-bible-quotes-reference"]',
+    ) as HTMLElement | null
+    expect(reference?.textContent).toBe("Colossians 1:16")
+    expect(reference?.querySelector("a")).toBeNull()
+    expect(reference?.className).not.toContain("text-white/72")
+    expect(reference?.style.color).not.toBe("")
+    const verse = container.querySelector(
+      '[data-testid="watch-bible-quotes-verse"]',
     )
-    const attribution = container.querySelector(
-      '[data-testid="watch-bible-quotes-youversion-copyright"]',
+    expect(verse?.textContent).toBe("For in Him all things were created.")
+    expect(verse?.className).toContain("line-clamp-4")
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-version"]')
+        ?.textContent,
+    ).toBe("Berean Standard Bible")
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-copyright"]')
+        ?.textContent,
+    ).toBe("Test Bible version copyright from the server response.")
+    const readMore = container.querySelector(
+      '[data-testid="watch-bible-quotes-read-more"]',
+    ) as HTMLAnchorElement | null
+    expect(readMore?.textContent).toBe("Read more...")
+    expect(readMore?.getAttribute("href")).toBe(
+      "https://www.bible.com/bible/3034/COL.1.16.BSB",
     )
-    expect(attribution?.textContent).toBe(
-      "Test Bible version copyright from the server response.",
-    )
-    expect(panel?.querySelector("a")?.getAttribute("href")).toBe(
-      "https://example.test/bible-version",
-    )
+    expect(readMore?.getAttribute("target")).toBe("_blank")
+    expect(readMore?.getAttribute("rel")).toContain("noopener")
   })
 
-  it("labels narrowed cross-chapter passages with the fetched YouVersion reference", () => {
+  it("uses the Admin human reference for narrowed ranges", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
@@ -599,7 +611,7 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
             }),
           ]}
           onShareClick={vi.fn()}
-          youVersionPassages={[
+          passages={[
             makeYouVersionPassage({
               citationDocumentId: "bc-cross-chapter",
               content: "I have been crucified with Christ.",
@@ -611,103 +623,78 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
       )
     })
 
-    const panel = container.querySelector(
-      '[data-testid="watch-bible-quotes-youversion"]',
+    const reference = container.querySelector(
+      '[data-testid="watch-bible-quotes-reference"]',
     )
-    expect(panel?.textContent).toContain("Galatians 2:20")
-    expect(panel?.textContent).not.toContain("Galatians 2:20–3:5")
+    expect(reference?.textContent).toBe("Galatians 2:20")
+    expect(reference?.textContent).not.toContain("Galatians 2:20–3:5")
   })
 
-  it("updates the compact YouVersion panel when Embla selects another citation", () => {
+  it("renders only the citation reference when Admin passage data is missing", () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
     act(() => {
       root.render(
         <BibleQuotesSection
-          bibleCitations={[
-            makeCitation({ documentId: "bc-gal", osisId: "Gal.2.20" }),
-            makeCitation({
-              documentId: "bc-john",
-              bookName: "John",
-              osisId: "John.3.16",
-              chapterStart: 3,
-              verseStart: 16,
-            }),
-          ]}
+          bibleCitations={[makeCitation({ documentId: "bc-missing" })]}
           onShareClick={vi.fn()}
-          youVersionPassages={[
-            makeYouVersionPassage({
-              citationDocumentId: "bc-gal",
-              content: "Galatians passage.",
-              humanReference: "Galatians 2:20",
-              reference: "GAL.2.20",
-            }),
-            makeYouVersionPassage({
-              citationDocumentId: "bc-john",
-              content: "For God so loved the world.",
-              humanReference: "John 3:16",
-              reference: "JHN.3.16",
-            }),
-          ]}
+          passages={[]}
         />,
       )
     })
 
-    expect(emblaApi.on).toHaveBeenCalledWith("select", expect.any(Function))
-
-    act(() => {
-      emblaApi.selectedScrollSnap.mockReturnValue(1)
-      emitEmbla("select")
-    })
-
-    const panel = container.querySelector(
-      '[data-testid="watch-bible-quotes-youversion"]',
-    )
-    expect(panel?.textContent).toContain("John 3:16")
-    expect(panel?.getAttribute("data-reference")).toBe("JHN.3.16")
-    expect(panel?.textContent).toContain("For God so loved the world.")
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-reference"]')
+        ?.textContent,
+    ).toBe("Galatians 2:20")
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-reference"] a'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-version"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-read-more"]'),
+    ).toBeNull()
   })
 
-  it("hides the YouVersion panel when the active slide is the promo card", () => {
+  it("does not build a Bible.com link without a version abbreviation", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
-          bibleCitations={[
-            makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
-          ]}
+          bibleCitations={[makeCitation({ documentId: "bc-1" })]}
           onShareClick={vi.fn()}
-          youVersionPassages={[makeYouVersionPassage()]}
+          passages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-1",
+              versionAbbreviation: null,
+              versionTitle: "Translation Without Abbreviation",
+            }),
+          ]}
         />,
       )
-    })
-
-    const promo = container.querySelector(
-      '[data-testid="watch-bible-quotes-promo"]',
-    ) as HTMLElement | null
-    expect(promo).not.toBeNull()
-
-    act(() => {
-      promo!.click()
     })
 
     expect(
-      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
+      container.querySelector('[data-testid="watch-bible-quotes-reference"] a'),
     ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-read-more"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-version"]')
+        ?.textContent,
+    ).toBe("Translation Without Abbreviation")
   })
 })
 
-describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
-  const fetchMock = vi.fn()
-
-  beforeEach(() => {
-    vi.stubGlobal("fetch", fetchMock)
-    fetchMock.mockReset()
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it("renders an <img> per citation using the index-cycled Unsplash URLs", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
+describe("BibleQuotesSection — gradient quote cards", () => {
+  it("uses generated gradient backgrounds for citations instead of photo images", () => {
     const citations: Citation[] = [
       makeCitation({
         documentId: "bc-1",
@@ -731,400 +718,25 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
         />,
       )
     })
-    const imgs = container.querySelectorAll(
-      '[data-testid="watch-bible-quotes-item"] img',
-    )
-    // next/image emits an <img> per card; both src values should reference
-    // an Unsplash URL (next/image wraps the original).
-    expect(imgs.length).toBeGreaterThanOrEqual(2)
-    const src0 = imgs[0]?.getAttribute("src") ?? ""
-    const src1 = imgs[1]?.getAttribute("src") ?? ""
-    expect(src0).toContain("images.unsplash.com")
-    expect(src1).toContain("images.unsplash.com")
-    // Different index → different underlying URL.
-    expect(src0).not.toBe(src1)
-  })
-
-  it("fetches the verse text from wldeh/bible-api with lowercased book name", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({ text: "Verse body", reference: "Psalms 139:13" }),
-        { status: 200 },
-      ),
-    )
-    const citation = makeCitation({
-      documentId: "bc-psalms",
-      bookName: "Psalms",
-      chapterStart: 139,
-      verseStart: 13,
-      verseEnd: 18,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    // Effect ran on mount; flush microtasks so the fetched body renders.
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    expect(fetchMock).toHaveBeenCalled()
-    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
-    expect(url).toContain(
-      "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/en-webbe/books/psalms/chapters/139/verses/13.json",
-    )
-    const verse = container.querySelector(
-      '[data-testid="watch-bible-quotes-verse"]',
-    )
-    expect(verse?.textContent).toBe("Verse body")
-  })
-
-  it("uses the locale-mapped Bible version when locale='es'", async () => {
-    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }))
-    const citation = makeCitation({
-      bookName: "Lucas",
-      chapterStart: 8,
-      verseStart: 2,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-          locale="es"
-        />,
-      )
-    })
-    await act(async () => {
-      await Promise.resolve()
-    })
-    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
-    expect(url).toContain("/bibles/es-rvr1960/")
-  })
-
-  it("renders a Read more... link for verse ranges and chapter-only citations, not for single verses", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
-    const citations: Citation[] = [
-      makeCitation({ documentId: "single", verseStart: 20, verseEnd: null }),
-      makeCitation({ documentId: "range", verseStart: 20, verseEnd: 25 }),
-      makeCitation({
-        documentId: "chapter-only",
-        bookName: "Genesis",
-        chapterStart: 3,
-        verseStart: null,
-        verseEnd: null,
-      }),
-    ]
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={citations}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    const readMores = container.querySelectorAll(
-      '[data-testid="watch-bible-quotes-read-more"]',
-    )
-    expect(readMores.length).toBe(2)
-    for (const node of readMores) {
-      const anchor = node as HTMLAnchorElement
-      expect(anchor.getAttribute("target")).toBe("_blank")
-      const rel = anchor.getAttribute("rel") ?? ""
-      expect(rel).toContain("noopener")
-      expect(rel).toContain("noreferrer")
-      expect(anchor.getAttribute("href")).toContain("biblegateway.com/passage/")
-      expect(anchor.getAttribute("href")).toContain("version=WEB")
-    }
-  })
-
-  it("chapter-only citation: label is 'Genesis 3' (no ':0') and Read more points at the whole chapter", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
-    const citation = makeCitation({
-      bookName: "Genesis",
-      chapterStart: 3,
-      verseStart: null,
-      verseEnd: null,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    const label = container.querySelector(
-      '[data-testid="watch-bible-quotes-reference"]',
-    )
-    expect(label?.textContent).toBe("Genesis 3")
-    expect(label?.textContent).not.toContain(":")
-
-    const readMore = container.querySelector(
-      '[data-testid="watch-bible-quotes-read-more"]',
-    ) as HTMLAnchorElement | null
-    expect(readMore).not.toBeNull()
-    // BibleGateway accepts "Genesis 3" as a chapter-level search.
-    expect(decodeURIComponent(readMore!.getAttribute("href") ?? "")).toContain(
-      "search=Genesis 3",
-    )
-  })
-
-  it("chapter-only citation: fetches verse 1 from the jsdelivr API as the body preview", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({ verse: "1", text: "In the beginning..." }),
-        { status: 200 },
-      ),
-    )
-    const citation = makeCitation({
-      bookName: "Genesis",
-      chapterStart: 3,
-      verseStart: null,
-      verseEnd: null,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    // Drain the microtask queue so the effect's fetch + json + setState
-    // settle before we inspect the DOM.
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
-    expect(url).toContain("/books/genesis/chapters/3/verses/1.json")
-
-    const body = container.querySelector(
-      '[data-testid="watch-bible-quotes-verse"]',
-    )
-    expect(body?.textContent).toContain("In the beginning")
-  })
-
-  it("locale='es' maps the BibleGateway Read-more link to version=NVI", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
-    const citation = makeCitation({
-      bookName: "Lucas",
-      chapterStart: 8,
-      verseStart: 2,
-      verseEnd: 5,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-          locale="es"
-        />,
-      )
-    })
-    const anchor = container.querySelector(
-      '[data-testid="watch-bible-quotes-read-more"]',
-    ) as HTMLAnchorElement | null
-    expect(anchor).not.toBeNull()
-    expect(anchor!.getAttribute("href")).toContain("version=NVI")
-  })
-
-  it("multi-word book names are normalized to whitespace-stripped slugs in the jsdelivr URL", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ verse: "1", text: "Body" }), {
-        status: 200,
-      }),
-    )
-    const citation = makeCitation({
-      bookName: "1 Corinthians",
-      chapterStart: 13,
-      verseStart: 4,
-      verseEnd: 7,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    expect(fetchMock).toHaveBeenCalled()
-    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
-    expect(url).toContain("/books/1corinthians/")
-    expect(url).not.toContain("%20")
-    expect(url).not.toContain(" ")
-  })
-
-  it("hostile book names containing path-traversal segments are rejected before fetch", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
-    const citation = makeCitation({
-      bookName: "../etc/passwd",
-      chapterStart: 1,
-      verseStart: 1,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it("null bookName / null chapterStart / null verseStart skip the fetch entirely", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
-    const citations: Citation[] = [
-      makeCitation({
-        documentId: "null-book",
-        bookName: null,
-        chapterStart: 1,
-        verseStart: 1,
-      }),
-    ]
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={citations}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    expect(fetchMock).not.toHaveBeenCalled()
     expect(
-      container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
+      container.querySelector('[data-testid="watch-bible-quotes-item"] img'),
     ).toBeNull()
-  })
-
-  it("fetch is called with cache: 'force-cache' so cross-navigation hits dedupe", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ text: "Body" }), { status: 200 }),
+    const cards = container.querySelectorAll(
+      '[data-testid="watch-bible-quotes-card"]',
     )
-    const citation = makeCitation({
-      bookName: "Psalms",
-      chapterStart: 23,
-      verseStart: 1,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    await act(async () => {
-      await Promise.resolve()
-    })
-    expect(fetchMock).toHaveBeenCalled()
-    const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
-    expect(init?.cache).toBe("force-cache")
-  })
-
-  it("non-ok fetch responses render the card without a verse element", async () => {
-    fetchMock.mockResolvedValue(new Response("", { status: 404 }))
-    const citation = makeCitation({
-      bookName: "Psalms",
-      chapterStart: 1,
-      verseStart: 1,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    expect(
-      container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
-    ).toBeNull()
-  })
-
-  it("fetch reject (network error) renders the card without a verse element", async () => {
-    fetchMock.mockRejectedValue(new TypeError("network unreachable"))
-    const citation = makeCitation({
-      bookName: "Psalms",
-      chapterStart: 1,
-      verseStart: 1,
-    })
-    // Swallow the expected error log so the test output stays clean.
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    try {
-      act(() => {
-        root.render(
-          <BibleQuotesSection
-            bibleCitations={[citation]}
-            onShareClick={vi.fn()}
-          />,
-        )
-      })
-      await act(async () => {
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-      expect(
-        container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
-      ).toBeNull()
-    } finally {
-      errorSpy.mockRestore()
-    }
-  })
-
-  it("formatScripture strips ';N:N…' and ',N:N…' footnote markers before rendering", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          text: "For God so loved the world;1 he gave,2:3 his only Son.",
-        }),
-        { status: 200 },
-      ),
+    expect(cards).toHaveLength(2)
+    expect((cards[0] as HTMLElement).style.backgroundImage).toContain(
+      "radial-gradient",
     )
-    const citation = makeCitation({
-      bookName: "John",
-      chapterStart: 3,
-      verseStart: 16,
-      verseEnd: 16,
-    })
-    act(() => {
-      root.render(
-        <BibleQuotesSection
-          bibleCitations={[citation]}
-          onShareClick={vi.fn()}
-        />,
-      )
-    })
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-    const verse = container.querySelector(
-      '[data-testid="watch-bible-quotes-verse"]',
+    expect((cards[1] as HTMLElement).style.backgroundImage).toContain(
+      "radial-gradient",
     )
-    // Semicolon-footnote regex strips everything from `;1` onward, so the
-    // rendered text is just the lead-in.
-    expect(verse?.textContent).toBe("For God so loved the world")
+    expect((cards[0] as HTMLElement).style.backgroundImage).not.toBe(
+      (cards[1] as HTMLElement).style.backgroundImage,
+    )
   })
 
-  it("BIBLE_IMAGES cycles by index modulo array length (no silent repeat of image 0)", () => {
-    fetchMock.mockImplementation(() => new Promise(() => undefined))
+  it("keeps the promo card image while replacing citation images", () => {
     const citations: Citation[] = Array.from({ length: 9 }).map((_, i) =>
       makeCitation({
         documentId: `bc-${i}`,
@@ -1141,17 +753,12 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
         />,
       )
     })
-    const imgs = container.querySelectorAll(
-      '[data-testid="watch-bible-quotes-item"] img',
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-item"] img'),
+    ).toBeNull()
+    const promoImg = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo"] img',
     )
-    const src0 = imgs[0]?.getAttribute("src") ?? ""
-    const src7 = imgs[7]?.getAttribute("src") ?? ""
-    // 7 % 7 === 0, so the 8th citation card should reuse image 0.
-    expect(src7).toBe(src0)
-    // 8 % 7 === 1, so the 9th citation should reuse image 1 (NOT image 0).
-    const src8 = imgs[8]?.getAttribute("src") ?? ""
-    const src1 = imgs[1]?.getAttribute("src") ?? ""
-    expect(src8).toBe(src1)
-    expect(src8).not.toBe(src0)
+    expect(promoImg?.getAttribute("src")).toContain("images.unsplash.com")
   })
 })

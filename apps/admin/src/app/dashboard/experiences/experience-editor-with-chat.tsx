@@ -18,6 +18,8 @@ import {
   type ExperienceChatPanelActions,
 } from "@/app/dashboard/experiences/experience-editor/experience-chat-panel"
 import { getSuggestedPrompts } from "@/app/dashboard/experiences/experience-editor/experience-chat-suggested-prompts"
+import { PersonaVariantButton } from "@/app/dashboard/experiences/persona-variant-button"
+import type { GenerateVariantActionResult } from "@/app/dashboard/experiences/generate-variant-action"
 
 type ExperienceEditorProps = Parameters<typeof ExperienceEditor>[0]
 
@@ -25,9 +27,13 @@ type ChatGenerateDraftAction = NonNullable<
   Parameters<typeof ExperienceChatPanel>[0]["generateDraftAction"]
 >
 
+type ChatGenerateSectionAction = NonNullable<
+  Parameters<typeof ExperienceChatPanel>[0]["generateSectionAction"]
+>
+
 export type ExperienceEditorWithChatProps = Omit<
   ExperienceEditorProps,
-  "onCanvasController" | "videoLibrary"
+  "loadVideoCollectionChildrenAction" | "onCanvasController" | "videoLibrary"
 > & {
   experienceLocaleId: string
   locale: string
@@ -36,12 +42,28 @@ export type ExperienceEditorWithChatProps = Omit<
   loadVideosByIdsAction: (
     videoIds: readonly string[],
   ) => Promise<VideoLibraryItem[]>
+  loadVideoCollectionChildrenAction: (
+    parentVideoId: string,
+  ) => Promise<VideoLibraryItem[]>
   /**
    * Multi-step draft workflow trigger surfaced as the chat panel's
    * "Generate full page" button. Optional so the editor still renders
    * in environments without the AI surface configured.
    */
   generateDraftAction?: ChatGenerateDraftAction
+  /**
+   * Video-anchored section generator surfaced as the chat panel's
+   * "Generate section from video" control. Optional, like generateDraftAction.
+   */
+  generateSectionAction?: ChatGenerateSectionAction
+  /**
+   * "Create persona version" — duplicates this experience as a new DRAFT
+   * re-toned for a chosen audience persona. Optional; the button only renders
+   * when the AI variant surface is wired.
+   */
+  generateVariantAction?: (input: {
+    personaId: string
+  }) => Promise<GenerateVariantActionResult>
 }
 
 function collectVideoIdsFromBlocks(blocks: readonly unknown[]): string[] {
@@ -69,7 +91,11 @@ export function ExperienceEditorWithChat({
   chatActions,
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
+  loadVideoCollectionChildrenAction,
+  searchVideoLibraryAction,
   generateDraftAction,
+  generateSectionAction,
+  generateVariantAction,
   ...editorProps
 }: ExperienceEditorWithChatProps) {
   const controllerRef = useRef<ExperienceCanvasController | null>(null)
@@ -116,6 +142,43 @@ export function ExperienceEditorWithChat({
         })
     },
     [loadVideosByIdsAction, videoLibrary],
+  )
+
+  const mergeVideoLibraryItems = useCallback((items: VideoLibraryItem[]) => {
+    if (items.length === 0) return
+    setVideoLibrary((current) => {
+      const seen = new Set(current.map((item) => item.key))
+      const merged = [...current]
+      for (const item of items) {
+        if (!seen.has(item.key)) {
+          merged.push(item)
+          seen.add(item.key)
+        }
+      }
+      return merged
+    })
+  }, [])
+
+  const handleSearchVideoLibrary = useCallback(
+    async (
+      query: string,
+      context?: Parameters<NonNullable<typeof searchVideoLibraryAction>>[1],
+    ) => {
+      if (!searchVideoLibraryAction) return []
+      const results = await searchVideoLibraryAction(query, context)
+      mergeVideoLibraryItems(results)
+      return results
+    },
+    [mergeVideoLibraryItems, searchVideoLibraryAction],
+  )
+
+  const handleLoadVideoCollectionChildren = useCallback(
+    async (parentVideoId: string) => {
+      const children = await loadVideoCollectionChildrenAction(parentVideoId)
+      mergeVideoLibraryItems(children)
+      return children
+    },
+    [loadVideoCollectionChildrenAction, mergeVideoLibraryItems],
   )
 
   // Stable proxy controller — the panel sees a single object whose
@@ -183,12 +246,21 @@ export function ExperienceEditorWithChat({
         canvasController={canvasController}
         actions={chatActions}
         suggestedPrompts={suggestedPrompts}
+        videoLibrary={videoLibrary}
         generateDraftAction={generateDraftAction}
+        generateSectionAction={generateSectionAction}
+        utilitySlot={
+          generateVariantAction ? (
+            <PersonaVariantButton action={generateVariantAction} />
+          ) : null
+        }
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <ExperienceEditor
           {...editorProps}
           videoLibrary={videoLibrary}
+          loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
+          searchVideoLibraryAction={handleSearchVideoLibrary}
           onCanvasController={handleCanvasController}
         />
       </div>
