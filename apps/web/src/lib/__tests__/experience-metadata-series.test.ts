@@ -72,10 +72,10 @@ describe("generateSeriesMetadata", () => {
       pathLocale: "english",
     })
     expect(meta.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      "https://www.jesusfilm.org/watch/storyclubs.html",
     )
     expect(meta.openGraph?.url).toBe(
-      "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+      "https://www.jesusfilm.org/watch/storyclubs.html",
     )
   })
 

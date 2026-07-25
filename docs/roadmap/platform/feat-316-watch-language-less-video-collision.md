@@ -8,7 +8,8 @@ start_date: "2026-07-25"
 duration: 1
 depends_on:
   - "feat-315"
-blocks: []
+blocks:
+  - "feat-318"
 tags:
   - "platform"
   - "web"
@@ -41,3 +42,11 @@ evaluates the exact English Video route.
   `oneSegmentSlugs` and the exact English content/audio index.
 - Retain the one-segment collection, no-English, and missing-manifest tests.
 - Run the focused proxy suite, Web typecheck, lint, and production URL matrix.
+
+## 2026-07-25 Supersession Note
+
+The collision precedence shipped here remains unchanged. The follow-up
+canonical contract emits language-less URLs for eligible English content while
+retaining explicit English for content slugs that collide with public language
+homes. Explicit-English remains a direct compatibility/internal route;
+international and contextual browser routes remain language-explicit.

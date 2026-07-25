@@ -3,10 +3,12 @@ import type { WatchVideoMetadataModel } from "@/lib/experience-metadata"
 import {
   WATCH_BASE_PATH,
   WATCH_PUBLIC_METADATA_ORIGIN,
+  parseWatchPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchVideoPath,
 } from "@/lib/routes"
+import { resolveWatchShareUrlFromPathname } from "@/lib/share"
 import type { WatchHomeVisibleDestination } from "@/lib/watch-home-visible-content"
 import {
   isWatchRouteAdmittedByManifest,
@@ -74,6 +76,17 @@ function watchAbsoluteUrl(value: string | null | undefined): string | null {
         !url.pathname.startsWith(`${WATCH_BASE_PATH}/`))
     ) {
       return null
+    }
+    const watchPathname =
+      url.pathname === WATCH_BASE_PATH
+        ? "/"
+        : url.pathname.slice(WATCH_BASE_PATH.length)
+    const parsed = parseWatchPath(watchPathname)
+    if (parsed.kind === "video" || parsed.kind === "episode") {
+      return resolveWatchShareUrlFromPathname({
+        origin: url.origin,
+        pathname: url.pathname,
+      })
     }
     return `${url.origin}${url.pathname}`
   } catch {

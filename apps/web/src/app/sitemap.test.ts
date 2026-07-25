@@ -75,7 +75,7 @@ describe("watch sitemap routes", () => {
     const xml = await response.text()
     expect(xml).toContain("<urlset")
     expect(xml).toContain(
-      "<loc>https://www.jesusfilm.org/watch/jesus.html/english.html</loc>",
+      "<loc>https://www.jesusfilm.org/watch/jesus.html</loc>",
     )
     expect(xml).toContain('hreflang="es"')
     expect(xml).not.toContain("lumo-the-gospel-of-john")

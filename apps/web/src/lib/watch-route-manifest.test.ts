@@ -13,6 +13,7 @@ const manifest: WatchRouteManifest = {
   generatedAt: "2026-05-29T12:00:00.000Z",
   contentSlugs: ["easter", "jesus"],
   oneSegmentSlugs: ["easter"],
+  homepageLocales: ["en", "es"],
   episodePairsByParent: {
     jesus: ["the-beginning", "missing-language"],
   },
@@ -44,6 +45,12 @@ describe("parseWatchRouteManifest", () => {
   })
 
   it("rejects payloads that do not carry bounded admission sets", () => {
+    expect(
+      parseWatchRouteManifest({
+        ...manifest,
+        homepageLocales: [null],
+      }),
+    ).toBeNull()
     expect(
       parseWatchRouteManifest({
         ...manifest,

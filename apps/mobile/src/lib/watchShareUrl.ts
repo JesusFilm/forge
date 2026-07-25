@@ -1,3 +1,8 @@
+import {
+  buildCanonicalWatchVideoPath,
+  DEFAULT_WATCH_LANGUAGE_SLUG,
+} from "@forge/watch-url-policy/routes"
+
 /**
  * Public watch share URL: /watch/{slug}.html(/{language}.html) — the verified-
  * live format (the bare /{slug}.html without /watch/ 404s). The watch screen's
@@ -7,6 +12,9 @@ export function buildWatchShareUrl(
   slug: string,
   languageSlug: string | null | undefined,
 ): string {
-  const base = `https://www.jesusfilm.org/watch/${slug}.html`
-  return languageSlug ? `${base}/${languageSlug}.html` : base
+  const path = buildCanonicalWatchVideoPath(
+    slug,
+    languageSlug ?? DEFAULT_WATCH_LANGUAGE_SLUG,
+  )
+  return `https://www.jesusfilm.org/watch${path}`
 }

@@ -9,7 +9,7 @@ const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>'
 const INDEX_URL = "https://www.jesusfilm.org/watch/sitemap.xml"
 const CHILD_0 = "https://www.jesusfilm.org/watch/sitemap/0.xml"
 const CHILD_1 = "https://www.jesusfilm.org/watch/sitemap/1.xml"
-const JESUS_EN = "https://www.jesusfilm.org/watch/jesus.html/english.html"
+const JESUS_EN = "https://www.jesusfilm.org/watch/jesus.html"
 const JESUS_ES =
   "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"
 const CONTEXTUAL_EN =
@@ -82,6 +82,42 @@ describe("watch sitemap deployed audit", () => {
       { id: 1, locCount: 1 },
     ])
     expect(report.issues).toEqual([])
+  })
+
+  it("rejects eligible explicit-English aliases but allows language-home collisions", () => {
+    const explicitJesus =
+      "https://www.jesusfilm.org/watch/jesus.html/english.html"
+    const explicitRussian =
+      "https://www.jesusfilm.org/watch/russian.html/english.html"
+    const report = auditWatchSitemapDocuments(
+      document(INDEX_URL, indexXml([CHILD_0])),
+      [
+        document(
+          CHILD_0,
+          childXml([
+            {
+              loc: explicitJesus,
+              alternates: [{ href: explicitJesus, hreflang: "en" }],
+            },
+            {
+              loc: explicitRussian,
+              alternates: [{ href: explicitRussian, hreflang: "en" }],
+            },
+          ]),
+        ),
+      ],
+    )
+
+    expect(
+      report.issues.filter((issue) => issue.code === "explicit_english_alias"),
+    ).toHaveLength(2)
+    expect(
+      report.issues.some(
+        (issue) =>
+          issue.code === "explicit_english_alias" &&
+          issue.url === explicitRussian,
+      ),
+    ).toBe(false)
   })
 
   it("audits preview responses against canonical index references", () => {

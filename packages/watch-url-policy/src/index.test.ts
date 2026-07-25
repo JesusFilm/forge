@@ -5,8 +5,60 @@ import {
   isAllowedDownloadOrigin,
   resolveWatchCallbackURL,
 } from "./index"
+import {
+  buildCanonicalWatchVideoPath,
+  buildExplicitWatchVideoPath,
+  isLanguageLessWatchVideoPathEligible,
+  PUBLIC_WATCH_LANGUAGE_SLUGS,
+} from "./routes"
 
 describe("watch URL policy", () => {
+  describe("standalone Watch video paths", () => {
+    it("omits the language only for eligible English content", () => {
+      expect(buildCanonicalWatchVideoPath("jesus", "english")).toBe(
+        "/jesus.html",
+      )
+      expect(buildCanonicalWatchVideoPath("jesus", "spanish-castilian")).toBe(
+        "/jesus.html/spanish-castilian.html",
+      )
+      expect(buildCanonicalWatchVideoPath("jesus", "romanian")).toBe(
+        "/jesus.html/romanian.html",
+      )
+      expect(buildCanonicalWatchVideoPath("jesus", "russian")).toBe(
+        "/jesus.html/russian.html",
+      )
+    })
+
+    it("always emits an explicit language when requested", () => {
+      expect(buildExplicitWatchVideoPath("jesus", "english")).toBe(
+        "/jesus.html/english.html",
+      )
+    })
+
+    it("keeps English explicit for a public language-home collision", () => {
+      expect(isLanguageLessWatchVideoPathEligible("russian")).toBe(false)
+      expect(buildCanonicalWatchVideoPath("russian", "english")).toBe(
+        "/russian.html/english.html",
+      )
+    })
+
+    it("keeps non-language one-segment Experiences eligible", () => {
+      expect(isLanguageLessWatchVideoPathEligible("easter")).toBe(true)
+      expect(buildCanonicalWatchVideoPath("easter", "english")).toBe(
+        "/easter.html",
+      )
+    })
+
+    it("owns the generated public-language collision corpus", () => {
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("english")).toBe(true)
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("romanian")).toBe(true)
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("spanish-latin-american")).toBe(
+        true,
+      )
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("jesus")).toBe(false)
+    })
+  })
+
   it("allows watch-page callbacks from exact configured origins", () => {
     expect(
       resolveWatchCallbackURL("https://preview.example.test/watch/jesus", [

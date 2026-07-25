@@ -1,7 +1,7 @@
 ---
-title: "Public Watch URL contract: use .html route shapes and explicit languages when needed"
+title: "Public Watch URL contract: language-less English and explicit international routes"
 date: "2026-06-08"
-last_updated: "2026-07-24"
+last_updated: "2026-07-25"
 category: "conventions"
 module: "Public watch URLs (apps/web /watch) consumed cross-app"
 problem_type: "convention"
@@ -15,7 +15,7 @@ tags: [watch, url-contract, deep-link, roadmap, cross-app, 404]
 related_components: [apps/roadmap, apps/web]
 ---
 
-# Public Watch URL contract: use .html route shapes and explicit languages when needed
+# Public Watch URL contract: language-less English and explicit international routes
 
 ## Context
 
@@ -31,26 +31,33 @@ the valid one.
 
 ## Guidance
 
-The public Watch route always uses an `.html` content segment. A second
-`.html` language segment is required for a specific language and remains the
-canonical way to link non-English content.
+The public Watch route always uses an `.html` content segment. Eligible English
+content canonically omits the language segment. A second `.html` language
+segment is required for non-English content.
 
 ```
-https://watch.jesusfilm.org/watch/{collection-or-video-slug}.html/{language-slug}.html
+https://watch.jesusfilm.org/watch/{video-slug}.html
+https://watch.jesusfilm.org/watch/{video-slug}.html/{non-english-language-slug}.html
 ```
 
 Valid examples:
 
 - `/watch/jesus.html` (language omitted, so the Video renders in English)
-- `/watch/easter.html/english.html`
-- `/watch/christmas.html/english.html`
-- `/watch/jesus.html/english.html`
+- `/watch/easter.html`
+- `/watch/christmas.html`
 - `/watch/parable-of-the-pharisee-and-tax-collector.html/russian.html`
 
-A language-less `/watch/{video-slug}.html` is a supported English-default
-route. It renders through the same English Video path without redirecting, so
-the visible URL and query string remain unchanged. The proxy admits this form
-only when the route manifest confirms that the Video has an English route.
+A language-less `/watch/{video-slug}.html` is the canonical English route when
+the slug does not collide with a public language home. It renders through the
+same explicit-English internal path without redirecting, so the visible URL
+and query string remain unchanged. The proxy admits this form only when the
+route manifest confirms that the Video has an English route.
+
+`/watch/{video-slug}.html/english.html` remains a direct `200` compatibility
+URL, but its canonical, Open Graph, structured-data, sharing, and sitemap
+identity is language-less. A Video whose slug is itself a public language home
+(for example `russian`) stays explicit-English because `/watch/russian.html`
+belongs to the language home.
 
 A truly bare `/watch/{slug}` without `.html` does **not** 301 to the canonical
 form. The watch route
@@ -62,14 +69,15 @@ with `curl -L`:
 /watch/easter    → 404  (lands on /watch/easter.html/easter.html)
 /watch/christmas → 404  (lands on /watch/christmas.html/christmas.html)
 
-/watch/easter.html/english.html    → 200 (no redirect)
-/watch/christmas.html/english.html → 200 (no redirect)
+/watch/easter.html                 → 200 (canonical English)
+/watch/easter.html/english.html    → 200 (compatibility alias)
+/watch/christmas.html              → 200 (canonical English)
 ```
 
-When the destination language matters, include it explicitly. When an inbound
-or durable Video URL intentionally omits the language, `.html` alone means
-English and should remain visible rather than redirecting to
-`/english.html`.
+When the destination is non-English, include its public language slug
+explicitly. For eligible English, `.html` alone is canonical. Keep contextual
+episode browser routes explicit; only their standalone English identity
+flattens to the language-less child URL.
 
 ## Why This Matters
 
@@ -93,12 +101,12 @@ impress. There is no redirect safety net for routes missing the required
 
 ```diff
 -    href: "https://watch.jesusfilm.org/watch/easter",
-+    href: "https://watch.jesusfilm.org/watch/easter.html/english.html",
++    href: "https://watch.jesusfilm.org/watch/easter.html",
 ```
 
 ```diff
 -    href: "https://watch.jesusfilm.org/watch/christmas",
-+    href: "https://watch.jesusfilm.org/watch/christmas.html/english.html",
++    href: "https://watch.jesusfilm.org/watch/christmas.html",
 ```
 
 Verify any new watch link before shipping:

@@ -52,13 +52,25 @@ describe("buildMetadataLine", () => {
 describe("buildShareUrl", () => {
   it("builds the base watch URL", () => {
     expect(buildShareUrl({ slug: "birth-of-jesus" }, null)).toBe(
-      "https://www.jesusfilm.org/watch/birth-of-jesus",
+      "https://www.jesusfilm.org/watch/birth-of-jesus.html",
+    )
+    expect(buildShareUrl({ slug: "russian" }, null)).toBe(
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
     )
   })
 
   it("appends the active language slug when present", () => {
     expect(buildShareUrl({ slug: "birth-of-jesus" }, "spanish")).toBe(
-      "https://www.jesusfilm.org/watch/birth-of-jesus/spanish",
+      "https://www.jesusfilm.org/watch/birth-of-jesus.html/spanish.html",
+    )
+  })
+
+  it("omits eligible English and preserves collision-owned explicit English", () => {
+    expect(buildShareUrl({ slug: "birth-of-jesus" }, "english")).toBe(
+      "https://www.jesusfilm.org/watch/birth-of-jesus.html",
+    )
+    expect(buildShareUrl({ slug: "russian" }, "english")).toBe(
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
     )
   })
 

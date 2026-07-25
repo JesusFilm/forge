@@ -5,6 +5,7 @@ import {
   WATCH_URL_FIXTURES,
   WATCH_STRUCTURED_DATA_CONTRACTS,
   classifyProbe,
+  parseDocumentIdentity,
   parseJsonLdScripts,
   probeUrl,
   validateStructuredDataContract,
@@ -42,6 +43,7 @@ describe("classifyProbe", () => {
           scriptCount: 1,
           types: ["CollectionPage"],
           parseErrors: [],
+          pageUrls: [],
         },
       }),
       result({ finalPath: "/watch" }),
@@ -54,15 +56,17 @@ describe("classifyProbe", () => {
 
   it("hard-regression: a playable sample emits duplicate VideoObjects", () => {
     const { outcome, note } = classifyProbe(
-      result(),
+      result({ finalPath: "/watch/jesus.html" }),
       result({
+        finalPath: "/watch/jesus.html",
         structuredData: {
           scriptCount: 2,
           types: ["VideoObject", "VideoObject"],
           parseErrors: [],
+          pageUrls: [],
         },
       }),
-      { path: "/watch/jesus.html/english.html", expect: "ok" },
+      { path: "/watch/jesus.html", expect: "ok" },
     )
 
     expect(outcome).toBe("hard-regression")
@@ -77,6 +81,7 @@ describe("classifyProbe", () => {
           scriptCount: 1,
           types: [],
           parseErrors: ["script 1: unexpected token"],
+          pageUrls: [],
         },
       }),
     )
@@ -162,6 +167,51 @@ describe("classifyProbe", () => {
 
     expect(outcome).toBe("hard-regression")
     expect(note).toMatch(/REDIRECT LOOP/)
+  })
+
+  it("hard-regression: an ok fixture may not hide a redirect hop", () => {
+    const { outcome, note } = classifyProbe(
+      result({ finalPath: "/watch/jesus.html" }),
+      result({
+        finalPath: "/watch/jesus.html",
+        redirectHops: 1,
+      }),
+      {
+        path: "/watch/jesus.html",
+        expect: "ok",
+        requireDirect: true,
+      },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("DIRECT ROUTE CONTRACT")
+  })
+
+  it("hard-regression: canonical, Open Graph, and JSON-LD identity must agree", () => {
+    const canonicalResult = result({
+      finalPath: "/watch/jesus.html/english.html",
+      documentIdentity: {
+        canonicalUrl: "https://www.jesusfilm.org/watch/jesus.html",
+        openGraphUrl: "https://www.jesusfilm.org/watch/jesus.html/english.html",
+      },
+      structuredData: {
+        scriptCount: 1,
+        types: ["VideoObject"],
+        parseErrors: [],
+        pageUrls: ["https://www.jesusfilm.org/watch/jesus.html"],
+      },
+    })
+    const { outcome, note } = classifyProbe(canonicalResult, canonicalResult, {
+      path: "/watch/jesus.html/english.html",
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/jesus.html",
+      requireStructuredDataCanonical: true,
+    })
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("CANONICAL IDENTITY CONTRACT")
+    expect(note).toContain("og:url")
   })
 
   it("error: transport error on either side", () => {
@@ -265,7 +315,7 @@ describe("WATCH_URL_FIXTURES integrity", () => {
     expect(groups).toEqual(
       new Set([
         "5.1 roots",
-        "5.2 two-segment",
+        "5.2 standalone videos",
         "5.3 episodes",
         "5.4 normalization redirects",
         "5.5 query params",
@@ -275,12 +325,71 @@ describe("WATCH_URL_FIXTURES integrity", () => {
     )
   })
 
-  it("contains the flagship jesus/english fixture", () => {
+  it("covers canonical English, its compatibility alias, queries, and international URLs", () => {
+    const fixtures = new Map(
+      WATCH_URL_FIXTURES.map((fixture) => [fixture.path, fixture]),
+    )
+
+    expect(fixtures.get("/watch/jesus.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/jesus.html",
+    })
+    expect(fixtures.get("/watch/magdalena-2.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(fixtures.get("/watch/wedding-in-cana.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
     expect(
-      WATCH_URL_FIXTURES.some(
-        (f) => f.path === "/watch/jesus.html/english.html",
-      ),
-    ).toBe(true)
+      fixtures.get("/watch/life-of-jesus-gospel-of-john.html"),
+    ).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(fixtures.get("/watch/easter.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(fixtures.get("/watch/jesus.html/english.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/jesus.html",
+    })
+    expect(fixtures.get("/watch/jesus.html?t=120")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(fixtures.get("/watch/jesus.html/romanian.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(
+      fixtures.get("/watch/jesus.html/spanish-castilian.html"),
+    ).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(fixtures.get("/watch/jesus.html/russian.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+  })
+
+  it("does not impose direct-route semantics on legacy baseline-only fixtures", () => {
+    const russianHome = WATCH_URL_FIXTURES.find(
+      (fixture) => fixture.path === "/watch/russian.html",
+    )
+    const discipleshipEnglish = WATCH_URL_FIXTURES.find(
+      (fixture) => fixture.path === "/watch/discipleship.html/english.html",
+    )
+
+    expect(russianHome?.expect).toBe("ok")
+    expect(russianHome?.requireDirect).toBeUndefined()
+    expect(discipleshipEnglish?.expect).toBe("ok")
+    expect(discipleshipEnglish?.requireDirect).toBeUndefined()
   })
 
   it("covers representative public asset passthrough paths", () => {
@@ -316,6 +425,7 @@ describe("parseJsonLdScripts", () => {
       scriptCount: 2,
       types: ["VideoObject", "ItemList"],
       parseErrors: [],
+      pageUrls: [],
     })
   })
 
@@ -334,20 +444,51 @@ describe("parseJsonLdScripts", () => {
   it("counts entity types nested in a JSON-LD graph", () => {
     expect(
       parseJsonLdScripts(
-        '<script type="application/ld+json">{"@graph":[{"@type":"CollectionPage"},{"@type":["VideoObject","Thing"]}]}</script>',
+        '<script type="application/ld+json">{"@graph":[{"@type":"CollectionPage","url":"https://www.jesusfilm.org/watch"},{"@type":["VideoObject","Thing"],"url":"https://www.jesusfilm.org/watch/jesus.html"}]}</script>',
       ),
     ).toMatchObject({
       scriptCount: 1,
       types: ["CollectionPage", "VideoObject", "Thing"],
       parseErrors: [],
+      pageUrls: [
+        "https://www.jesusfilm.org/watch",
+        "https://www.jesusfilm.org/watch/jesus.html",
+      ],
+    })
+  })
+})
+
+describe("parseDocumentIdentity", () => {
+  it("extracts canonical and Open Graph URLs regardless of attribute order", () => {
+    expect(
+      parseDocumentIdentity(`
+        <link href="https://www.jesusfilm.org/watch/jesus.html" rel="canonical">
+        <meta content="https://www.jesusfilm.org/watch/jesus.html" property="og:url">
+      `),
+    ).toEqual({
+      canonicalUrl: "https://www.jesusfilm.org/watch/jesus.html",
+      openGraphUrl: "https://www.jesusfilm.org/watch/jesus.html",
+    })
+  })
+
+  it("decodes attribute entities exactly once", () => {
+    expect(
+      parseDocumentIdentity(`
+        <link rel="canonical" href="https://www.jesusfilm.org/watch/jesus.html?q=&amp;quot;jesus&amp;quot;">
+        <meta property="og:url" content="https://www.jesusfilm.org/watch/jesus.html?q=fish&amp;amp;chips">
+      `),
+    ).toEqual({
+      canonicalUrl:
+        "https://www.jesusfilm.org/watch/jesus.html?q=&quot;jesus&quot;",
+      openGraphUrl:
+        "https://www.jesusfilm.org/watch/jesus.html?q=fish&amp;chips",
     })
   })
 })
 
 describe("validateStructuredDataContract", () => {
   const homeContract = WATCH_STRUCTURED_DATA_CONTRACTS["/watch"]!
-  const videoContract =
-    WATCH_STRUCTURED_DATA_CONTRACTS["/watch/jesus.html/english.html"]!
+  const videoContract = WATCH_STRUCTURED_DATA_CONTRACTS["/watch/jesus.html"]!
 
   it("fails a required entity that is missing from the initial response", () => {
     expect(validateStructuredDataContract(undefined, homeContract)).toEqual([
@@ -362,6 +503,7 @@ describe("validateStructuredDataContract", () => {
           scriptCount: 2,
           types: ["VideoObject", "VideoObject"],
           parseErrors: [],
+          pageUrls: [],
         },
         videoContract,
       ),
@@ -375,6 +517,7 @@ describe("validateStructuredDataContract", () => {
           scriptCount: 2,
           types: ["CollectionPage", "BreadcrumbList"],
           parseErrors: [],
+          pageUrls: [],
         },
         homeContract,
       ),
@@ -402,7 +545,7 @@ describe("probeUrl (mocked fetch)", () => {
   it("captures structured-data types from final HTML responses", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(
-        '<script type="application/ld+json">{"@type":"CollectionPage"}</script>',
+        '<link rel="canonical" href="https://www.jesusfilm.org/watch"><meta property="og:url" content="https://www.jesusfilm.org/watch"><script type="application/ld+json">{"@type":"CollectionPage","url":"https://www.jesusfilm.org/watch"}</script>',
         {
           status: 200,
           headers: { "content-type": "text/html; charset=utf-8" },
@@ -416,6 +559,11 @@ describe("probeUrl (mocked fetch)", () => {
       scriptCount: 1,
       types: ["CollectionPage"],
       parseErrors: [],
+      pageUrls: ["https://www.jesusfilm.org/watch"],
+    })
+    expect(r.documentIdentity).toEqual({
+      canonicalUrl: "https://www.jesusfilm.org/watch",
+      openGraphUrl: "https://www.jesusfilm.org/watch",
     })
   })
 

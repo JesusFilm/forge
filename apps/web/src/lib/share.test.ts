@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { normalizePublicShareableOrigin } from "./url"
 import { resolveWatchShareUrl, resolveWatchShareUrlFromPathname } from "./share"
 
-const publicPath = "/watch/the-call.html/english.html"
+const publicPath = "/watch/the-call.html"
 
 describe("resolveWatchShareUrl", () => {
   it.each([
@@ -69,6 +69,23 @@ describe("resolveWatchShareUrl", () => {
         ...identity,
       }),
     ).toBeNull()
+  })
+
+  it("keeps international and public-language collision URLs explicit", () => {
+    expect(
+      resolveWatchShareUrl({
+        origin: "https://www.jesusfilm.org",
+        videoSlug: "the-call",
+        languageSlug: "romanian",
+      }),
+    ).toBe("https://www.jesusfilm.org/watch/the-call.html/romanian.html")
+    expect(
+      resolveWatchShareUrl({
+        origin: "https://www.jesusfilm.org",
+        videoSlug: "russian",
+        languageSlug: "english",
+      }),
+    ).toBe("https://www.jesusfilm.org/watch/russian.html/english.html")
   })
 })
 

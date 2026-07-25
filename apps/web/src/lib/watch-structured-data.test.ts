@@ -55,7 +55,7 @@ describe("watchVideoStructuredDataJson", () => {
       "@type": "VideoObject",
       name: "Life < Jesus",
       description: "A page-specific story with <script> content.",
-      url: "https://www.jesusfilm.org/watch/life.html/english.html",
+      url: "https://www.jesusfilm.org/watch/life.html",
       contentUrl: "https://stream.mux.com/life.m3u8",
       thumbnailUrl: ["https://image.mux.com/pb/thumbnail.jpg?width=1200"],
       inLanguage: "en",
@@ -78,12 +78,35 @@ describe("watchVideoStructuredDataJson", () => {
       potentialAction: {
         "@type": "SeekToAction",
         target:
-          "https://www.jesusfilm.org/watch/life.html/english.html?t={seek_to_second_number}",
+          "https://www.jesusfilm.org/watch/life.html?t={seek_to_second_number}",
         "startOffset-input": "required name=seek_to_second_number",
       },
     })
     expect(json).not.toContain("embedUrl")
     expect(json).not.toContain("BreadcrumbList")
+  })
+
+  it("keeps collision-owned English and international canonicals explicit", () => {
+    const collision = JSON.parse(
+      watchVideoStructuredDataJson({
+        ...completeVideo,
+        canonicalUrl:
+          "https://www.jesusfilm.org/watch/russian.html/english.html",
+      })!,
+    )
+    const international = JSON.parse(
+      watchVideoStructuredDataJson({
+        ...completeVideo,
+        canonicalUrl: "https://www.jesusfilm.org/watch/life.html/romanian.html",
+      })!,
+    )
+
+    expect(collision.url).toBe(
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
+    )
+    expect(international.url).toBe(
+      "https://www.jesusfilm.org/watch/life.html/romanian.html",
+    )
   })
 
   it.each([
@@ -264,7 +287,7 @@ describe("collection structured data", () => {
     )
     expect(items[0]).toMatchObject({
       name: "Hero video",
-      url: "https://www.jesusfilm.org/watch/hero-video.html/english.html",
+      url: "https://www.jesusfilm.org/watch/hero-video.html",
     })
     expect(items[2].url).toContain("/spanish-castilian.html")
     expect(json).not.toContain("Hidden legacy section")
@@ -319,7 +342,7 @@ describe("collection structured data", () => {
     expect(visibleContent.destinations).toEqual([
       {
         name: "Visible",
-        url: "https://www.jesusfilm.org/watch/visible.html/english.html",
+        url: "https://www.jesusfilm.org/watch/visible.html",
       },
     ])
   })
@@ -398,13 +421,13 @@ describe("collection structured data", () => {
         "@type": "ListItem",
         position: 1,
         name: "Episode one",
-        url: "https://www.jesusfilm.org/watch/episode-one.html/english.html",
+        url: "https://www.jesusfilm.org/watch/episode-one.html",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Episode two",
-        url: "https://www.jesusfilm.org/watch/episode-two.html/english.html",
+        url: "https://www.jesusfilm.org/watch/episode-two.html",
       },
     ])
   })
@@ -436,7 +459,7 @@ describe("watchRelatedItemListStructuredDataJson", () => {
       "@type": "ListItem",
       position: 1,
       name: "Episode 0",
-      url: "https://www.jesusfilm.org/watch/episode-0.html/english.html",
+      url: "https://www.jesusfilm.org/watch/episode-0.html",
     })
     expect(json).not.toContain("VideoObject")
   })

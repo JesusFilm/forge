@@ -464,9 +464,7 @@ describe("SiblingCarousel — happy path", () => {
     ).toBeNull()
     const headerLink = container.querySelector("header a")
     expect(headerLink?.textContent).toBe("Jesus Collection")
-    expect(headerLink?.getAttribute("href")).toBe(
-      "/jesus-collection.html/english.html",
-    )
+    expect(headerLink?.getAttribute("href")).toBe("/jesus-collection.html")
   })
 
   it("renders one thumbnail per child with the current item highlighted", () => {

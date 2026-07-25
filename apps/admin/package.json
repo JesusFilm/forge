@@ -68,6 +68,7 @@
     "@escape.tech/graphql-armor-max-depth": "2.4.2",
     "@escape.tech/graphql-armor-max-tokens": "2.5.1",
     "@forge/experience-schema": "workspace:*",
+    "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "0.21.1",
     "@mastra/ai-sdk": "1.4.2",
     "@mastra/core": "1.33.1",

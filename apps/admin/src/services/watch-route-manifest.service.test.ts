@@ -22,6 +22,7 @@ describe("WatchRouteManifestService.generate", () => {
     prisma.$queryRaw
       .mockResolvedValueOnce([{ slug: "easter" }, { slug: "jesus" }])
       .mockResolvedValueOnce([{ slug: "easter" }])
+      .mockResolvedValueOnce([{ slug: "en" }, { slug: "es" }])
       .mockResolvedValueOnce([
         { parentSlug: "book-of-acts", childSlug: "pentecost" },
         { parentSlug: "book-of-acts", childSlug: "saul" },
@@ -54,6 +55,7 @@ describe("WatchRouteManifestService.generate", () => {
     prisma.$queryRaw
       .mockResolvedValueOnce([{ slug: "easter" }, { slug: "jesus" }])
       .mockResolvedValueOnce([{ slug: "easter" }])
+      .mockResolvedValueOnce([{ slug: "en" }, { slug: "es" }])
       .mockResolvedValueOnce([
         { parentSlug: "book-of-acts", childSlug: "pentecost" },
         { parentSlug: "book-of-acts", childSlug: "saul" },
@@ -83,6 +85,7 @@ describe("WatchRouteManifestService.generate", () => {
       generatedAt: "2026-05-29T12:00:00.000Z",
       contentSlugs: ["easter", "jesus"],
       oneSegmentSlugs: ["easter"],
+      homepageLocales: ["en", "es"],
       episodePairsByParent: {
         "book-of-acts": ["pentecost", "saul"],
       },
@@ -105,6 +108,7 @@ describe("WatchRouteManifestService.generate", () => {
     prisma.$queryRaw
       .mockResolvedValueOnce([{ slug: "book-of-acts" }])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ slug: "en" }])
       .mockResolvedValueOnce([
         { parentSlug: "book-of-acts", childSlug: "episode-1" },
         { parentSlug: "book-of-acts", childSlug: "episode-2" },
@@ -142,6 +146,7 @@ describe("WatchRouteManifestService.generate", () => {
 
     expect(summary).toMatchObject({
       contentSlugs: 1,
+      homepageLocales: 1,
       parentSlugs: 1,
       parentChildPairs: 2,
       audioLanguageSlugs: 3,
@@ -161,6 +166,7 @@ describe("WatchRouteManifestService.generate", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
 
     const service = new WatchRouteManifestService(prisma)
     await service.generate()
@@ -173,6 +179,7 @@ describe("WatchRouteManifestService.generate", () => {
     expect(allSql).toContain("published_parent_slugs")
     expect(allSql).toContain('"is_template" = FALSE')
     expect(allSql).toContain('"is_homepage" = FALSE')
+    expect(allSql).toContain('"is_homepage" = TRUE')
     expect(allSql).toContain('"path_segment" IS NULL')
   })
 
@@ -180,6 +187,7 @@ describe("WatchRouteManifestService.generate", () => {
     const prisma = mockPrisma()
     prisma.$queryRaw
       .mockResolvedValueOnce([{ slug: "" }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])

@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 24, 2026)
+## Status (July 25, 2026)
 
-- **Total tickets:** 448
-- **Complete:** 340
+- **Total tickets:** 453
+- **Complete:** 345
 - **In progress:** 33
 - **Not started:** 26
 - **Blocked:** 49
-- **Overdue and not complete:** 86
+- **Overdue and not complete:** 87
 
 ## Feature Index
 
@@ -359,13 +359,17 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-303](platform/feat-303-watch-ai-use-attribution-notice.md)                       | Watch AI use attribution notice                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-304](platform/feat-304-watch-sitemap-shard-size-limits.md)                       | Watch sitemap shard size limits                                                  | vlad       | P1       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-302](platform/feat-302-admin-graphql-otel-operation-spans.md)                    | Admin GraphQL OTel operation spans                                               | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-307](platform/feat-307-admin-mcp-oauth-refresh-tokens.md)                        | Persist Admin MCP OAuth sessions for Codex                                       | tataihono  | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-308](platform/feat-308-watch-video-structured-data-search-console.md)            | Fix Watch video structured data Search Console issues                            | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-308](platform/feat-308-web-admin-datadog-sourcemap-build-upload.md)              | Web and Admin Datadog sourcemap build upload                                     | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-309](platform/feat-309-watch-video-structured-data-media-url-audit.md)           | Audit Watch video structured data media URLs                                     | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | not-started |
 | [feat-310](platform/feat-310-watch-canonical-sitemap-routes.md)                        | Watch canonical-only sitemap routes                                              | vlad       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-310](platform/feat-310-watch-download-modal-safeguards.md)                       | Restore Watch download modal safeguards                                          | urim       | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-314](platform/feat-314-watch-legacy-context-redirects.md)                        | Watch legacy contextual route redirects                                          | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-315](platform/feat-315-watch-language-less-english-default.md)                   | Watch language-less Video defaults to English                                    | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-314](platform/feat-314-admin-web-style-next-start.md)                            | Admin Web-style Next start on Railway                                            | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-316](platform/feat-316-watch-language-less-video-collision.md)                   | Resolve Watch language-less Video and Experience collisions                      | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
+| [feat-318](platform/feat-318-watch-language-less-english-canonical.md)                 | Make language-less Watch URLs canonical for English                              | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -423,6 +427,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-311](platform/feat-311-watch-feedback-headset-icon.md)                           | Watch feedback headset icon                                                      | unassigned | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-312](platform/feat-312-watch-faq-row-alignment.md)                               | Watch FAQ row alignment                                                          | unassigned | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-313](platform/feat-313-watch-carousel-hover-controls.md)                         | Watch carousel hover controls                                                    | codex      | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-317](platform/feat-317-watch-faq-disclosure-semantics.md)                        | Watch FAQ disclosure semantics                                                   | vlad       | P2       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |

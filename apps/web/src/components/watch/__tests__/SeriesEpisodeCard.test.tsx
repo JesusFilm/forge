@@ -338,9 +338,7 @@ describe("SeriesEpisodeCard — href", () => {
       parentSlug: "Bad Parent!",
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe(
-      "/nested-series.html/english.html",
-    )
+    expect(anchor?.getAttribute("href")).toBe("/nested-series.html")
   })
 
   it("keeps unlabeled children on the contextual route", () => {

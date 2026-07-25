@@ -80,7 +80,7 @@ describe("BibleQuotesCarousel Share", () => {
     expect(share).toHaveBeenCalledWith({
       title: "Bible Quotes",
       text: "",
-      url: "https://www.jesusfilm.org/watch/the-call.html/english.html?utm_source=share",
+      url: "https://www.jesusfilm.org/watch/the-call.html?utm_source=share",
     })
   })
 

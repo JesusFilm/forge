@@ -5,12 +5,14 @@ const {
   resolveWatchHomeMock,
   resolveWatchPageMock,
   watchHomeExperiencePageMock,
+  watchChromeShellMock,
   experienceEmptyMock,
   experienceErrorMock,
 } = vi.hoisted(() => ({
   resolveWatchHomeMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
   watchHomeExperiencePageMock: vi.fn(() => null),
+  watchChromeShellMock: vi.fn(({ children }) => children),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
 }))
@@ -42,6 +44,10 @@ vi.mock("@/components/ExperienceEmpty", () => ({
 
 vi.mock("@/components/ExperienceError", () => ({
   ExperienceError: experienceErrorMock,
+}))
+
+vi.mock("@/components/WatchChromeShell", () => ({
+  WatchChromeShell: watchChromeShellMock,
 }))
 
 import HomePage, { generateMetadata } from "@/app/[locale]/[htmlLang]/page"
@@ -111,10 +117,12 @@ describe("Watch root homepage", () => {
 
     expect(resolveWatchHomeMock).toHaveBeenCalledWith("en")
     expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
-    expect(Object.keys(element.props.messages)).toEqual([
+    expect(element.type).toBe(watchChromeShellMock)
+    expect(element.props.initialRouteSurface).toBe("language-home")
+    expect(Object.keys(element.props.children.props.messages)).toEqual([
       ...WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
     ])
-    const home = element.props.children.props.children[1]
+    const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
       heroModel,
@@ -128,7 +136,7 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    const home = element.props.children.props.children[1]
+    const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
       heroModel,
@@ -199,7 +207,7 @@ describe("Watch root homepage", () => {
           {
             position: 1,
             name: "JESUS",
-            url: "https://www.jesusfilm.org/watch/jesus.html/english.html",
+            url: "https://www.jesusfilm.org/watch/jesus.html",
           },
         ],
       },
@@ -221,7 +229,7 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.props.children.type).toBe(experienceEmptyMock)
+    expect(element.props.children.props.children.type).toBe(experienceEmptyMock)
   })
 
   it("ignores legacy static sections when deciding whether the builder homepage is empty", async () => {
@@ -247,6 +255,6 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.props.children.type).toBe(experienceEmptyMock)
+    expect(element.props.children.props.children.type).toBe(experienceEmptyMock)
   })
 })

@@ -1,8 +1,16 @@
 /**
  * @vitest-environment jsdom
  */
-import { StrictMode, act, useEffect, useState, type ReactNode } from "react"
+import {
+  Profiler,
+  StrictMode,
+  act,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -15,6 +23,7 @@ import {
   useFloatingSearch,
 } from "@/components/FloatingSearchProvider"
 import { SearchOverlayInstantShell } from "@/components/SearchOverlayInstantShell"
+import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceRegistration"
 import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LAYOUT_CLASS,
@@ -631,6 +640,39 @@ describe("FloatingSearchProvider — search mode", () => {
         <SearchControllerTestShell>
           <SearchModeHarness />
         </SearchControllerTestShell>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="search-mode-harness-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeLanguageSlug: "english",
+        uiLocale: "en",
+      }),
+    )
+  })
+
+  it("uses English as the route language for a registered language-less video", async () => {
+    navigationMocks.pathname = "/jesus.html"
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <WatchRouteSurfaceRegistration surface="english-video" />
+          <SearchControllerTestShell>
+            <SearchModeHarness />
+          </SearchControllerTestShell>
+        </FloatingSearchProvider>,
       )
     })
 
@@ -1964,6 +2006,122 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     )
   })
 
+  it("uses compact English-video chrome on the language-less canonical route and explicit compatibility route", () => {
+    for (const pathname of [
+      "/jesus.html",
+      "/jesus.html/english.html",
+    ] as const) {
+      navigationMocks.pathname = pathname
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <WatchRouteSurfaceRegistration surface="english-video" />
+            <main>English video</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      )
+      expect(logo?.getAttribute("href")).toBe("/")
+      expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+        "/watch/images/jesusfilm-sign.svg",
+      )
+    }
+  })
+
+  it("server-renders manifest-only Experience chrome from the route seed", () => {
+    navigationMocks.pathname = "/new-collection.html"
+
+    const html = renderToString(
+      <FloatingSearchProvider initialRouteSurface="experience">
+        <main>Manifest-only Experience</main>
+      </FloatingSearchProvider>,
+    )
+
+    expect(html).toContain('href="https://www.jesusfilm.org/"')
+    expect(html).toContain("/watch/images/jesus-film-logo-full.svg")
+    expect(html).not.toContain("/watch/images/jesusfilm-sign.svg")
+  })
+
+  it("does not commit a second render when registration confirms the server seed", () => {
+    navigationMocks.pathname = "/new-collection.html"
+    const phases: string[] = []
+
+    act(() => {
+      root.render(
+        <Profiler
+          id="seeded-route-surface"
+          onRender={(_id, phase) => phases.push(phase)}
+        >
+          <FloatingSearchProvider initialRouteSurface="experience">
+            <WatchRouteSurfaceRegistration surface="experience" />
+            <main>Manifest-only Experience</main>
+          </FloatingSearchProvider>
+        </Profiler>,
+      )
+    })
+
+    expect(phases).toEqual(["mount"])
+  })
+
+  it("keeps language homes and manifest-only Experiences home-like after page registration", () => {
+    for (const [pathname, surface] of [
+      ["/russian.html", "language-home"],
+      ["/new-collection.html", "experience"],
+    ] as const) {
+      navigationMocks.pathname = pathname
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <WatchRouteSurfaceRegistration surface={surface} />
+            <main>Home-like page</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      expect(
+        document
+          .querySelector('[data-testid="floating-header-logo"] img')
+          ?.getAttribute("src"),
+      ).toBe("/watch/images/jesus-film-logo-full.svg")
+    }
+  })
+
+  it("ignores a stale page registration after client navigation", () => {
+    navigationMocks.pathname = "/new-collection.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <WatchRouteSurfaceRegistration surface="experience" />
+          <main>Experience</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    expect(
+      document
+        .querySelector('[data-testid="floating-header-logo"] img')
+        ?.getAttribute("src"),
+    ).toBe("/watch/images/jesus-film-logo-full.svg")
+
+    navigationMocks.pathname = "/jesus.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <WatchRouteSurfaceRegistration surface="english-video" />
+          <main>Exact video collision winner</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="floating-header-logo"] img')
+        ?.getAttribute("src"),
+    ).toBe("/watch/images/jesusfilm-sign.svg")
+  })
+
   it("keeps the current custom language when the compact logo returns to Watch home", () => {
     navigationMocks.pathname = "/jesus.html/women-disciples/hindi.html"
     act(() => {
@@ -2814,8 +2972,7 @@ describe("FloatingSearchProvider — search pagination", () => {
     await submitDebouncedSearch(input, "the bible project")
 
     const link = Array.from(document.querySelectorAll("a")).find(
-      (anchor) =>
-        anchor.getAttribute("href") === "/first-result-slug.html/english.html",
+      (anchor) => anchor.getAttribute("href") === "/first-result-slug.html",
     )
     const searchRequestId =
       mockedRunSearch.mock.calls[0]?.[0].analytics?.searchRequestId

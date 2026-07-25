@@ -5,6 +5,7 @@ import type { DraftExperience, VideoCandidate } from "@forge/experience-schema"
 import type { NormalizedExperienceDraft } from "@/services/experience-ai/experience-ai-normalize"
 import {
   assertNotProdUrl,
+  personaVariantReviewUrl,
   runPersonaVariants,
   variantSlug,
   type RunPersonaVariantsDeps,
@@ -155,5 +156,18 @@ describe("generate-persona-variants", () => {
     expect(variantSlug("Who Is Jesus?", "seeker-skeptic")).toBe(
       "who-is-jesus-seeker-skeptic",
     )
+  })
+
+  it("builds canonical operator review URLs from the Experience locale", () => {
+    expect(personaVariantReviewUrl("easter-grieving", "en")).toBe(
+      "http://localhost:3000/watch/easter-grieving.html",
+    )
+    expect(personaVariantReviewUrl("easter-grieving", "es")).toBe(
+      "http://localhost:3000/watch/easter-grieving.html/spanish-castilian.html",
+    )
+    expect(personaVariantReviewUrl("russian", "en")).toBe(
+      "http://localhost:3000/watch/russian.html/english.html",
+    )
+    expect(personaVariantReviewUrl("easter-grieving", "xx")).toBeNull()
   })
 })
