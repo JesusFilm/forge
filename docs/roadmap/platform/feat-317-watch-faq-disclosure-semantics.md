@@ -28,9 +28,11 @@ relationship needed to understand the interaction.
    - implementation plan for this scoped FGE-40 fix.
 2. `apps/web/src/components/sections/RelatedQuestions.tsx`
    - hand-rolled FAQ disclosure and single-open state.
-3. `apps/web/src/components/watch/WatchStudyQuestions.tsx`
+3. `apps/web/src/components/sections/RelatedQuestions.test.tsx`
+   - focused disclosure semantics and state-transition coverage.
+4. `apps/web/src/components/watch/WatchStudyQuestions.tsx`
    - existing per-row `useId`, `aria-expanded`, and `aria-controls` pattern.
-4. `apps/web/src/components/sections/AdventCountdown.tsx`
+5. `apps/web/src/components/sections/AdventCountdown.tsx`
    - existing controlled disclosure relationship in a section component.
 
 ## Grep These

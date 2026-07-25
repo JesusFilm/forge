@@ -46,7 +46,7 @@ function makeData(): Parameters<typeof RelatedQuestions>[0]["data"] {
   } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
 }
 
-function getTriggers() {
+function getFaqTriggers() {
   return Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
 }
 
@@ -65,7 +65,7 @@ describe("RelatedQuestions disclosure semantics", () => {
       root.render(<RelatedQuestions data={makeData()} />)
     })
 
-    const triggers = getTriggers()
+    const triggers = getFaqTriggers()
     expect(triggers).toHaveLength(2)
 
     const panelIds = triggers.map((trigger) => {
@@ -86,7 +86,7 @@ describe("RelatedQuestions disclosure semantics", () => {
       root.render(<RelatedQuestions data={makeData()} />)
     })
 
-    const [firstTrigger, secondTrigger] = getTriggers()
+    const [firstTrigger, secondTrigger] = getFaqTriggers()
     expect(firstTrigger).toBeDefined()
     expect(secondTrigger).toBeDefined()
 

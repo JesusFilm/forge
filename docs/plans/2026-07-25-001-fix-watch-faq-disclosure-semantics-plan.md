@@ -67,7 +67,7 @@ FGE-40 reports that the FAQ buttons rendered by `RelatedQuestions` do not expose
 - **Dependencies:** U1
 - **Files:**
   - `apps/web/src/components/sections/RelatedQuestions.tsx`
-  - `apps/web/src/components/sections/__tests__/RelatedQuestions.test.tsx`
+  - `apps/web/src/components/sections/RelatedQuestions.test.tsx`
 - **Approach:** Generate a panel ID inside each `QuestionItem`, add `type="button"`, `aria-expanded`, and `aria-controls` to the trigger, and give the answer container the matching ID. Render the panel in both states and use `hidden` while collapsed so the relationship always resolves without changing the visible single-open behavior.
 - **Patterns to follow:** `apps/web/src/components/watch/WatchStudyQuestions.tsx`, `apps/web/src/components/sections/AdventCountdown.tsx`, and `apps/web/src/components/sections/EasterDates.tsx`
 - **Test scenarios:**
