@@ -1,6 +1,7 @@
 ---
-title: "Public watch URL contract: link to {slug}.html/{language}.html, never a bare slug"
+title: "Public Watch URL contract: use .html route shapes and explicit languages when needed"
 date: "2026-06-08"
+last_updated: "2026-07-24"
 category: "conventions"
 module: "Public watch URLs (apps/web /watch) consumed cross-app"
 problem_type: "convention"
@@ -14,7 +15,7 @@ tags: [watch, url-contract, deep-link, roadmap, cross-app, 404]
 related_components: [apps/roadmap, apps/web]
 ---
 
-# Public watch URL contract: link to {slug}.html/{language}.html, never a bare slug
+# Public Watch URL contract: use .html route shapes and explicit languages when needed
 
 ## Context
 
@@ -30,8 +31,9 @@ the valid one.
 
 ## Guidance
 
-The public watch URL is **two `.html` segments**: a content segment and a
-language segment.
+The public Watch route always uses an `.html` content segment. A second
+`.html` language segment is required for a specific language and remains the
+canonical way to link non-English content.
 
 ```
 https://watch.jesusfilm.org/watch/{collection-or-video-slug}.html/{language-slug}.html
@@ -39,12 +41,19 @@ https://watch.jesusfilm.org/watch/{collection-or-video-slug}.html/{language-slug
 
 Valid examples:
 
+- `/watch/jesus.html` (language omitted, so the Video renders in English)
 - `/watch/easter.html/english.html`
 - `/watch/christmas.html/english.html`
 - `/watch/jesus.html/english.html`
 - `/watch/parable-of-the-pharisee-and-tax-collector.html/russian.html`
 
-A bare `/watch/{slug}` does **not** 301 to the canonical form. The watch route
+A language-less `/watch/{video-slug}.html` is a supported English-default
+route. It renders through the same English Video path without redirecting, so
+the visible URL and query string remain unchanged. The proxy admits this form
+only when the route manifest confirms that the Video has an English route.
+
+A truly bare `/watch/{slug}` without `.html` does **not** 301 to the canonical
+form. The watch route
 expands the single segment by **duplicating it** into `{slug}.html/{slug}.html`,
 which 404s because the second segment (`easter.html`) is not a language. Observed
 with `curl -L`:
@@ -57,22 +66,26 @@ with `curl -L`:
 /watch/christmas.html/english.html → 200 (no redirect)
 ```
 
-When you have no specific language, default the language segment to
-`english.html`.
+When the destination language matters, include it explicitly. When an inbound
+or durable Video URL intentionally omits the language, `.html` alone means
+English and should remain visible rather than redirecting to
+`/english.html`.
 
 ## Why This Matters
 
 The failure is **invisible until a human clicks**. Typecheck, lint, and CI all
 pass — the href is just a `string`. The link only 404s at runtime, in
 production, often in front of the exact stakeholders a demo link is meant to
-impress. There is no redirect safety net, so "close enough" slugs do not
-self-heal.
+impress. There is no redirect safety net for routes missing the required
+`.html` shape, so "close enough" slugs do not self-heal.
 
 ## When to Apply
 
 - Constructing any link to `watch.jesusfilm.org/watch` content from outside `apps/web`
 - Adding or editing `EXPERIMENTS` demo links in `apps/roadmap/lib/experiments.ts`
 - Cross-app references (admin previews, email CTAs, marketing pages) to a watch collection or video
+- Preserving existing language-less Video links whose default language is
+  English
 
 ## Examples
 
@@ -92,7 +105,8 @@ Verify any new watch link before shipping:
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code} -> %{url_effective}\n" -L "<the href>"
-# expect: 200 -> <the same href>   (a redirect to {slug}.html/{slug}.html means the slug is bare)
+# expect: 200 -> <the same href>
+# a redirect to {slug}.html/{slug}.html means the required .html shape was omitted
 ```
 
 ## Related

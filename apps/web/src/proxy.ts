@@ -4,6 +4,7 @@ import {
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  publicWatchAudioLanguageSlugForLocale,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
@@ -61,7 +62,7 @@ type RewriteDecision =
   | { kind: "not-found" }
 
 type ManifestAdmissionDecision =
-  | { kind: "admit" }
+  | { kind: "admit"; internalPathname?: string }
   | { kind: "redirect"; pathname: string }
   | { kind: "not-found" }
 
@@ -330,6 +331,27 @@ async function classifyManifestAdmission(
     }
   }
 
+  if (decision.manifestRoute.kind === "one-segment") {
+    const defaultAudioLanguageSlug =
+      publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+    if (defaultAudioLanguageSlug) {
+      const defaultLanguageRoute: WatchRouteManifestRoute = {
+        kind: "video",
+        contentSlug: decision.manifestRoute.slug,
+        audioLanguageSlug: defaultAudioLanguageSlug,
+      }
+      if (isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
+        return {
+          kind: "admit",
+          internalPathname: watchVideoPath(
+            asContentSlug(defaultLanguageRoute.contentSlug),
+            asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
+          ),
+        }
+      }
+    }
+  }
+
   return { kind: "not-found" }
 }
 
@@ -386,7 +408,10 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     url.pathname = admission.pathname
     return buildRedirect(url, 301)
   }
-  return rewriteToInternal(request, rewrite)
+  return rewriteToInternal(request, {
+    ...rewrite,
+    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+  })
 }
 
 export const config = {
