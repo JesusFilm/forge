@@ -47,8 +47,10 @@ means English and the browser remains on the language-less URL.
 
 - KTD1. **Omitted language is English.** Keep the public language-less URL and
   render the same English Video model used by the explicit English route.
-- KTD2. **Exact one-segment admission wins.** Collections remain eligible at
-  their authored one-segment route before any Video fallback is considered.
+- KTD2. **Exact Video language admission resolves slug collisions.** When a
+  slug is both a one-segment Experience and a Video, an exact content/audio
+  index selects the English Video. Without an exact Video index, preserve the
+  authored one-segment Experience route, including older manifests.
 - KTD3. **Validate English availability with the current manifest.** Reuse
   standalone Video admission so exact content/audio indexes reject a slug
   without an English Dub.
@@ -96,10 +98,11 @@ means English and the browser remains on the language-less URL.
 - **Files:**
   - `apps/web/src/proxy.ts`
   - `apps/web/src/proxy.test.ts`
-- **Approach:** After exact one-segment admission fails, validate the safe slug
-  as a standalone Video with the public audio slug mapped from
-  `DEFAULT_LOCALE`. Admit the request with an internal-path override to the
-  existing two-segment English Video shape.
+- **Approach:** Validate the safe slug as a standalone Video with the public
+  audio slug mapped from `DEFAULT_LOCALE`. An exact content/audio entry wins a
+  collision with a one-segment Experience; otherwise preserve the Experience
+  route before using the compatibility fallback. Admit the Video request with
+  an internal-path override to the existing two-segment English shape.
 - **Patterns to follow:** `classifyManifestAdmission`;
   `publicWatchAudioLanguageSlugForLocale` for the public English slug; the
   existing `watchVideoPath` and `renderVideo` path for data, structured data,
@@ -107,7 +110,8 @@ means English and the browser remains on the language-less URL.
 - **Test scenarios:**
   1. Exact content/audio admission produces a default-English rewrite.
   2. Exact content/audio rejection produces the fixed 404.
-  3. Existing collection admission terminates before Video fallback.
+  3. Exact English Video admission wins an Experience slug collision while
+     collection-only slugs remain one-segment routes.
   4. The internal rewrite targets the normal English Video route.
   5. Existing two- and three-segment proxy tests remain unchanged.
 - **Verification:** Focused tests, typecheck, lint, HTTP proof, and browser

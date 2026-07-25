@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-07-24"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-316"
 tags:
   - "platform"
   - "web"
@@ -46,8 +47,10 @@ though `/watch/jesus.html/english.html` is a valid canonical route.
 ## What To Build
 
 1. Preserve admitted one-segment collection and language-home behavior.
-2. When a safe one-segment slug is not an admitted collection, evaluate its
-   English standalone Video route against the same manifest.
+2. Evaluate a safe one-segment slug's English standalone Video route against
+   the same manifest. When an exact content/audio entry collides with a
+   one-segment Experience slug, prefer the Video; otherwise preserve the
+   Experience route.
 3. Admit that request only when the English Video/language route exists, then
    internally rewrite it through the existing two-segment English route while
    leaving `/{slug}.html` visible.
@@ -72,3 +75,8 @@ though `/watch/jesus.html/english.html` is a valid canonical route.
   internal rewrite, collection rewrite, and fixed 404 fallback.
 - Browser smoke renders the English Video while the visible language-less URL
   and query string remain unchanged.
+
+## Production Follow-up
+
+`feat-316` records the post-deploy collision found when `jesus` was admitted as
+both a one-segment Experience and an exact standalone Video.
