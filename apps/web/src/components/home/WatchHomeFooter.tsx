@@ -7,7 +7,6 @@ const navLinks = [
   { key: "watch", href: "https://www.jesusfilm.org/watch/" },
   { key: "giving", href: "https://www.jesusfilm.org/give/" },
   { key: "about", href: "https://www.jesusfilm.org/about/" },
-  { key: "products", href: "https://www.jesusfilm.org/products/" },
   {
     key: "resources",
     href: "https://www.jesusfilm.org/partners/resources/",

@@ -108,6 +108,39 @@ describe("WatchHomeFooter", () => {
     expect(container.textContent).not.toContain("Sign Up For Our Newsletter")
   })
 
+  it("omits the broken Products destination and labels remaining navigation links", () => {
+    renderFooter()
+
+    const navigation = container.querySelector(
+      '[data-testid="watch-footer-navigation"]',
+    )
+    const navigationLinks = Array.from(
+      navigation?.querySelectorAll("a") ?? [],
+    ).map((link) => {
+      const destination = new URL(link.href)
+      return [link.textContent, destination.host, destination.pathname]
+    })
+
+    expect(
+      container.querySelector('a[href="https://www.jesusfilm.org/products/"]'),
+    ).toBeNull()
+    expect(navigation?.textContent).not.toContain("Products")
+    expect(navigationLinks).toEqual([
+      ["Share", "www.jesusfilm.org", "/partners/share/"],
+      ["Watch", "www.jesusfilm.org", "/watch/"],
+      ["Giving", "www.jesusfilm.org", "/give/"],
+      ["About", "www.jesusfilm.org", "/about/"],
+      ["Resources", "www.jesusfilm.org", "/partners/resources/"],
+      ["Partners", "www.jesusfilm.org", "/partners/"],
+      ["Contact", "www.jesusfilm.org", "/contact/"],
+      [
+        "Give Now",
+        "www.jesusfilm.org",
+        "/how-to-help/ways-to-donate/give-now/",
+      ],
+    ])
+  })
+
   it("keeps Give Now in the single-row navigation layout from medium widths", () => {
     renderFooter()
 
