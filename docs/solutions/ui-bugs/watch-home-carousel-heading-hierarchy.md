@@ -39,6 +39,8 @@ Experience content and added non-section headings to the document outline.
 - Selecting a hero slide changed the first H2 in the page outline.
 - Thumbnail titles repeated as sibling headings even though their buttons
   already had complete accessible names.
+- After the single-H1 fix, the page-topic promotional block still emitted a
+  Markdown H3 before the later section H2s.
 
 ## What Didn't Work
 
@@ -63,6 +65,9 @@ content:
   typography and animation classes.
 - Keep leaving copy under `aria-hidden` and render thumbnail titles as spans
   inside the existing labelled buttons.
+- Select the promotional Markdown subheading renderer from the parent Text
+  heading level: H1 parents use H2 subheadings, while H2 parents keep H3
+  subheadings with the same typography.
 - Test server markup, hydrated selection changes, and full-player mode so the
   region stays named without contributing H1-H6 elements.
 
@@ -76,6 +81,10 @@ item without turning ephemeral copy into document structure. Because the label
 is owned by the region wrapper, it remains valid when the visual overlay
 unmounts for full-player playback.
 
+The promotional page-topic block now also advances from H1 to H2 before the
+later H2 sections. Reusing the existing subheading classes changes the semantic
+outline without changing the visible layout.
+
 ## Prevention
 
 - Keep rotating, tabbed, or selected-item labels out of the document outline
@@ -85,6 +94,8 @@ unmounts for full-player playback.
   component-isolated heading tests cannot prove the page-wide invariant.
 - Test multiple authored H1 blocks so rendering order determines one stable
   page heading and additional headings are demoted.
+- Derive nested content headings from their rendered parent level instead of
+  hard-coding a level that only fits one parent.
 - Cover both the normal overlay and any state that unmounts it.
 - Pair deterministic DOM tests with desktop and mobile axe checks on the
   rendered page.
