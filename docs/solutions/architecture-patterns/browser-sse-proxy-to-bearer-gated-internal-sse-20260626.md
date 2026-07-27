@@ -180,7 +180,7 @@ REQUIRED if the environment ever hosts services outside this trust boundary.
 > reports the misconfiguration and never throws. Operators must provision the
 > allowlist in every deployed environment BEFORE shipping code that requires it.
 
-> **The rollback premise changed (2026-07-24, feat-305).** The note above says
+> **The rollback premise changed (2026-07-24, feat-305 — #1762).** The note above says
 > chat's `railway.toml` has no healthcheck — true when it was written, false
 > now: `railway.toml` carries `healthcheckPath = "/api/health"` (60s). A
 > throwing `register()` is therefore caught — `prepare()` rejects and (verified
