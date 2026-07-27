@@ -56,6 +56,24 @@ describe("describeFetchError", () => {
 })
 
 describe("postViaNode wall-clock deadline", () => {
+  it("rejects cleanly when request construction throws synchronously (no armed timer left behind)", async () => {
+    // A malformed header makes node's request() throw synchronously. The
+    // deadline is armed AFTER req exists, so this must be a clean rejection
+    // with no timer later firing into a TDZ reference (process crash).
+    await expect(
+      postViaNode(
+        new URL("http://127.0.0.1:9/"),
+        { "x-bad\r\nheader": "v" },
+        "{}",
+        50,
+        { timeoutErrorMessage: "unused" },
+      ),
+    ).rejects.toThrow()
+    // Give a stale timer the chance to fire; an uncaught throw here would
+    // surface as an unhandled error in the run.
+    await new Promise((resolve) => setTimeout(resolve, 120))
+  })
+
   it("bounds a trickling response that never goes idle (wall-clock, not idle timeout)", async () => {
     // A slow-drip upstream sends a byte well inside any idle window forever.
     // `req.setTimeout` alone never fires for this shape — only the wall-clock

@@ -56,20 +56,21 @@ export function postViaNode(
   const maxResponseBytes = options.maxResponseBytes ?? MASTRA_RESPONSE_MAX_BYTES
   const request = target.protocol === "https:" ? httpsRequest : httpRequest
   return new Promise<RawResponse>((resolve, reject) => {
-    // Wall-clock deadline. `req.setTimeout` below is a socket IDLE timeout —
-    // an upstream that trickles a byte every few seconds resets it forever,
-    // which would silently defeat callers whose budget must stay under a
-    // proxy ceiling (the MCP generate path's 90s-under-Cloudflare invariant).
-    // This timer bounds the WHOLE request regardless of activity. Settle
-    // FIRST, then destroy — a mid-stream destroy can emit the response's own
-    // error before the request's, and the promise must carry TimeoutError.
-    const deadline = setTimeout(() => {
-      const error = Object.assign(new Error(options.timeoutErrorMessage), {
-        name: "TimeoutError",
-      })
-      reject(error)
-      req.destroy(error)
-    }, timeoutMs)
+    // Wall-clock deadline (armed AFTER `req` exists — `request()` can throw
+    // synchronously on a malformed header, and a timer armed before that
+    // throw would later fire into a TDZ reference and crash the process).
+    // `req.setTimeout` below is a socket IDLE timeout — an upstream that
+    // trickles a byte every few seconds resets it forever, which would
+    // silently defeat callers whose budget must stay under a proxy ceiling
+    // (the MCP generate path's 90s-under-Cloudflare invariant). This timer
+    // bounds the WHOLE request regardless of activity. Settle FIRST, then
+    // destroy — a mid-stream destroy can emit the response's own error
+    // before the request's, and the promise must carry TimeoutError.
+    // Assigned exactly once below, but cannot be a const: the response
+    // handlers close over it, so it must be declared before `req` yet armed
+    // only after request() returns.
+    // eslint-disable-next-line prefer-const
+    let deadline: ReturnType<typeof setTimeout> | undefined
     const req = request(
       target,
       {
@@ -112,6 +113,13 @@ export function postViaNode(
         })
       },
     )
+    deadline = setTimeout(() => {
+      const error = Object.assign(new Error(options.timeoutErrorMessage), {
+        name: "TimeoutError",
+      })
+      reject(error)
+      req.destroy(error)
+    }, timeoutMs)
     req.setTimeout(timeoutMs, () => {
       req.destroy(
         Object.assign(new Error(options.timeoutErrorMessage), {
