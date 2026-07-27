@@ -18,7 +18,7 @@ tags:
 
 **Shipped:** 2026-07-27 via [PR #1765](https://github.com/JesusFilm/forge/pull/1765)
 (`feat(chat): fail the deploy on a misconfigured Seeker egress pin (feat-306)`)
-and 2026-07-27 via [PR #PENDING-PR-B](https://github.com/JesusFilm/forge/pull/PENDING-PR-B)
+and 2026-07-27 via [PR #1768](https://github.com/JesusFilm/forge/pull/1768)
 (`docs(chat): arc-level fail-closed enforcement-point law, closing feat-304/305/306 (feat-306)`).
 
 **What landed (PR 1).** `apps/chat/src/instrumentation.ts` flipped from
