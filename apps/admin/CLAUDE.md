@@ -2490,7 +2490,7 @@ explicit product approval. Web reads cached passage text through GraphQL
 `BibleCitation.passage(languageSlug:)`; other consumers may pass Core
 `languageId`. Web and consumers must not call the provider API directly.
 
-## Admin MCP (JFP Admin MCP — feat-276 + feat-286)
+## Admin MCP (JFP Admin MCP — feat-276 + feat-320)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,
 Codex) operating on Experiences. Onboarding UI at `/dashboard/mcp`; protected-
@@ -2512,7 +2512,7 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
   `{ error: "insufficient_scope", required_scopes }` — not a JSON-RPC error.
   Scope strings are untyped on the admin side; they must match apps/auth's
   `AUTH_SCOPES` keys byte-for-byte.
-- **Experience-level tools (feat-286):**
+- **Experience-level tools (feat-320):**
   - `experience.create` (scope `experience:create`) — client-supplied
     `{locale, slug, title, blocks}` → new DRAFT Experience owned by the
     delegated principal. Meta/OG fields are deliberately rejected (`.strict()`

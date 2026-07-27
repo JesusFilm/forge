@@ -303,7 +303,7 @@ describe("first-party app seeds", () => {
   })
 
   it("keeps experience-level create and generate scopes distinct from publish", () => {
-    // Scope-isolation invariant (feat-286): creating or generating never
+    // Scope-isolation invariant (feat-320): creating or generating never
     // implies publishing — the grant carries all three as separate,
     // individually grantable/revocable entries, and a grant holding only
     // create + generate is a valid scope set on its own.

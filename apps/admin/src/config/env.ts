@@ -494,7 +494,7 @@ export const env = createEnv({
     // transport ceiling. Admin's abort is the binding ceiling here: the MCP
     // caller gets a clean typed retryable failure instead of a severed 524
     // connection, and nothing is persisted (the create happens only after a
-    // successful mastra response). See feat-286 (R7).
+    // successful mastra response). See feat-320 (R7).
     MASTRA_GENERATE_TIMEOUT_MS: z.coerce
       .number()
       .int()

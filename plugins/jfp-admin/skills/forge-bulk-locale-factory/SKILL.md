@@ -7,7 +7,7 @@ description: Use when creating, updating, validating, reviewing, or publishing t
 
 Use the JFP Admin MCP as the source of truth. The AI runs the loop; Admin owns data, permissions, validation, writes, and publish.
 
-## Creating New Experiences (feat-286)
+## Creating New Experiences (feat-320)
 
 Two experience-level primitives create brand-new Experiences; both stage a
 DRAFT only and never publish:

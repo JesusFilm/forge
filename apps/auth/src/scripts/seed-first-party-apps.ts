@@ -10,8 +10,18 @@ import { prisma } from "@/db/client"
 
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
+// Markers identify PRE-EXISTING dynamically-registered Admin MCP clients so
+// later-added default scopes can be appended. They must exclude every scope
+// added AFTER those clients were registered — offline_access itself and the
+// feat-320 experience-level pair — because a legacy client cannot carry them
+// (the pair reaches clients via re-authentication, not this migration).
+const POST_REGISTRATION_SCOPES: readonly AuthScopeKey[] = [
+  OFFLINE_ACCESS_SCOPE,
+  "experience:create",
+  "experience:generate",
+]
 const ADMIN_MCP_DYNAMIC_SCOPE_MARKERS = ADMIN_MCP_DEFAULT_SCOPES.filter(
-  (scope) => scope !== OFFLINE_ACCESS_SCOPE,
+  (scope) => !POST_REGISTRATION_SCOPES.includes(scope),
 )
 
 export async function seedFirstPartyApps() {

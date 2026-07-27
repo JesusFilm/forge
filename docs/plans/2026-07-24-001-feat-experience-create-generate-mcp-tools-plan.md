@@ -10,7 +10,7 @@ origin: docs/brainstorms/2026-07-21-bulk-locale-factory-mcp-requirements.md
 
 ## Summary
 
-Extend the shipped JFP Admin MCP (PR #1645) with two experience-level primitives — `experience.create` (client-supplied draft → new DRAFT Experience via `ExperienceService.create`) and `experience.generate` (server-side: video candidates → mastra quick-draft → normalize → DRAFT) — plus two new OAuth scopes in apps/auth, gated behind a feat-286 roadmap ticket that Tataihono approves before implementation. Generation reuses the existing hardened admin→mastra pipeline; no new mastra routes, no publish-path changes, no bulk operations.
+Extend the shipped JFP Admin MCP (PR #1645) with two experience-level primitives — `experience.create` (client-supplied draft → new DRAFT Experience via `ExperienceService.create`) and `experience.generate` (server-side: video candidates → mastra quick-draft → normalize → DRAFT) — plus two new OAuth scopes in apps/auth, gated behind a feat-320 roadmap ticket that Tataihono approves before implementation. Generation reuses the existing hardened admin→mastra pipeline; no new mastra routes, no publish-path changes, no bulk operations.
 
 ---
 
@@ -29,7 +29,7 @@ The Bulk Locale Factory MCP (feat-276, see origin) deliberately scoped to locale
 - R5. Every write passes OAuth per-tool scope checks AND admin ABAC; the created Experience is owned by the delegated principal, and revisions record MCP/AI provenance with the delegated user identity (origin R28, R32).
 - R6. Payloads and request rates stay bounded, with byte ceilings sized for non-Latin scripts (origin R31).
 - R7. The `experience.generate` call completes (success or clean typed failure) within the production transport ceiling — Cloudflare's ~100s proxy window in front of admin.
-- R8. Roadmap ticket feat-286 is authored and Tataihono signs off before implementation units land (the proposal-first working agreement).
+- R8. Roadmap ticket feat-320 is authored and Tataihono signs off before implementation units land (the proposal-first working agreement).
 
 **Origin flows preserved:** the locale-factory loop (missing → read → translate → validate → media.check → create/update → publish-on-instruction) is untouched; the new tools compose with it (a generated Experience becomes a source the locale loop can translate).
 
@@ -103,7 +103,7 @@ The Bulk Locale Factory MCP (feat-276, see origin) deliberately scoped to locale
 
 - Where does generation run? — Server-side in admin, reusing the existing pipeline (user decision; see Key Technical Decisions).
 - Does the MCP route need special duration config? — No Vercel-style `maxDuration` applies on Railway; the binding ceiling is Cloudflare's ~100s proxy window, handled by the timeout chain.
-- Next roadmap ID? — feat-286 (285 is the current highest).
+- Next roadmap ID? — feat-320 (285 is the current highest).
 - Is a new mastra credential needed? — No; the existing `MASTRA_SERVICE_API_KEY` caller-side single key is reused (cross-app trigger pattern).
 
 ### Deferred to Implementation
@@ -144,7 +144,7 @@ sequenceDiagram
 
 ## Implementation Units
 
-### U1. Roadmap ticket feat-286 and proposal to Tataihono
+### U1. Roadmap ticket feat-320 and proposal to Tataihono
 
 **Goal:** Author the roadmap ticket proposing both tools and their scopes; obtain Tataihono's sign-off. This is the gate for all later units.
 
@@ -154,11 +154,11 @@ sequenceDiagram
 
 **Files:**
 
-- Create: `docs/roadmap/topic-experiences/feat-286-experience-create-generate-mcp.md`
+- Create: `docs/roadmap/topic-experiences/feat-320-experience-create-generate-mcp.md`
 
 **Approach:**
 
-- Follow the repo's feature-file format (frontmatter: id feat-286, owner ekkasit, lane = directory, no lane field; agent-optimized body with Entry Points, Grep These, What To Build, Constraints, Verification).
+- Follow the repo's feature-file format (frontmatter: id feat-320, owner ekkasit, lane = directory, no lane field; agent-optimized body with Entry Points, Grep These, What To Build, Constraints, Verification).
 - Constraints section carries forward: primitives-only, DRAFT-only, publish never implied, quick-mode-only generation, scope pair rationale.
 - Share with Tataihono for sign-off before U2+ begins; record his ruling in the ticket.
 
@@ -314,7 +314,7 @@ sequenceDiagram
 - Modify: `plugins/jfp-admin/skills/forge-bulk-locale-factory/SKILL.md` (or a sibling skill reference) — document the create/generate primitives and the "generate → then translate via the locale loop" composition
 - Modify: `apps/admin/src/app/dashboard/mcp/page.tsx` (starter prompts, only if the page enumerates tools)
 - Modify: `apps/admin/CLAUDE.md` (MCP section: new tools + scopes)
-- Modify: `docs/roadmap/topic-experiences/feat-286-experience-create-generate-mcp.md` (status flip on completion)
+- Modify: `docs/roadmap/topic-experiences/feat-320-experience-create-generate-mcp.md` (status flip on completion)
 
 **Approach:**
 
