@@ -36,6 +36,19 @@ export function buildMetadataLine(
   return segments.join("  ·  ")
 }
 
+/**
+ * Wire label → hero badge text: `FEATURE_FILM` → `FEATURE FILM`. The badge style
+ * already uppercases, so this only has to unpick the enum's underscores — without
+ * it a film reads "FEATURE_FILM" on screen. Null/blank yields null (no badge).
+ */
+export function formatBadgeLabel(
+  label: string | null | undefined,
+): string | null {
+  if (label == null) return null
+  const text = label.trim().split("_").filter(Boolean).join(" ")
+  return text.length > 0 ? text : null
+}
+
 /** Format a duration in seconds as `M:SS` or `H:MM:SS`. Null for non-positive. */
 export function formatDuration(
   seconds: number | null | undefined,

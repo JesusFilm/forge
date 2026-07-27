@@ -19,13 +19,20 @@ import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
+import {
+  CHAPTER_NOUN,
+  EpisodeRail,
+} from "../../src/components/series/EpisodeRail"
 import { LanguagePanel } from "../../src/components/watch/LanguagePanel"
 import { SubtitlePanel } from "../../src/components/watch/SubtitlePanel"
 import {
   buildBibleQuotesBlock,
   buildRelatedQuestionsBlock,
 } from "../../src/components/watch/detailsAdapters"
-import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
+import {
+  buildMetadataLine,
+  formatBadgeLabel,
+} from "../../src/components/watch/detailsHelpers"
 import {
   WATCH_THEME,
   HERO_PEEK,
@@ -151,9 +158,9 @@ export default function WatchVideoScreen() {
   const backdropSource =
     activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl
 
-  // Hero kicker: the label becomes the badge chip (e.g. "SERIES"); the meta line
+  // Hero kicker: the label becomes the badge chip ("FEATURE FILM"); the meta line
   // carries duration + language count (label omitted — it's now the badge).
-  const badgeLabel = video?.label ?? null
+  const badgeLabel = formatBadgeLabel(video?.label)
   const heroMeta = buildMetadataLine(
     null,
     activeVariant?.duration ?? video?.duration,
@@ -253,6 +260,13 @@ export default function WatchVideoScreen() {
 
         {/* Below the fold — opaque so it covers the backdrop as the user scrolls. */}
         <View style={styles.below}>
+          {/* This film's OWN chapter clips (JESUS: 61), above Up Next — which is
+              the PARENT's other children, a different relation. Renders nothing
+              when childless, so ordinary leaf videos are unaffected. */}
+          {hasVideo && video.chapters.length > 0 ? (
+            <EpisodeRail episodes={video.chapters} noun={CHAPTER_NOUN} />
+          ) : null}
+
           {hasVideo ? <UpNextRail siblings={video.siblings} /> : null}
 
           {/* About + Related Questions share a two-column row. TVFocusGuideView

@@ -60,18 +60,17 @@ describe("resultKindLabel", () => {
     )
   })
 
-  // Agrees with searchResultPath: unlabeled childCount > 0 routes to
-  // /series, so the kind line must say Series, not Video.
-  it("reads unlabeled results with children as Series", () => {
-    expect(resultKindLabel({ type: "VIDEO", label: null, childCount: 8 })).toBe(
-      "Series",
-    )
+  // Agrees with searchResultPath, which no longer routes on children: an
+  // unlabeled result opens /watch, so the kind line must say Video.
+  it("falls back to Video for unlabeled results", () => {
+    expect(resultKindLabel({ type: "VIDEO", label: null })).toBe("Video")
+    expect(resultKindLabel({ type: "VIDEO", label: "" })).toBe("Video")
   })
 
-  it("falls back to Video for unlabeled leaf results", () => {
-    expect(resultKindLabel({ type: "VIDEO", label: null, childCount: 0 })).toBe(
-      "Video",
+  // The mislabel this fix targets: JESUS reads "Feature Film", never "Series".
+  it("reads a feature film with chapter clips as Feature Film", () => {
+    expect(resultKindLabel({ type: "VIDEO", label: "FEATURE_FILM" })).toBe(
+      "Feature Film",
     )
-    expect(resultKindLabel({ type: "VIDEO", label: null })).toBe("Video")
   })
 })

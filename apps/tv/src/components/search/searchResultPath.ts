@@ -2,19 +2,20 @@
 // inside SearchResultsGrid.tsx) so it is unit-testable without loading the
 // component's React/JSX module graph under jest-expo.
 
-import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { type SearchResult } from "../../lib/queries"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 
 /**
- * Series-shaped videos open /series/[slug], leaf videos /watch/[slug], else
- * /experience. Seed gives first paint; series seed playbackId is nulled (never
- * derive a stream from it). encodeWatchSeed already URL-encodes (don't re-encode).
+ * Series-LABELLED videos open /series/[slug], everything else /watch/[slug], else
+ * /experience. `childCount` is NOT consulted — a feature film's chapter clips must
+ * not route it to /series. Seed gives first paint; series seed playbackId is nulled
+ * (never derive a stream from it). encodeWatchSeed already URL-encodes.
  */
 export function searchResultPath(result: SearchResult): string {
   const slug = encodeURIComponent(result.slug)
   if (result.type === "VIDEO") {
-    const isSeries = isSeriesSearchResult(result)
+    const isSeries = isSeriesLabel(result.label)
     const seed = encodeWatchSeed({
       slug: result.slug,
       title: result.title ?? null,

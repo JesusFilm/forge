@@ -1,8 +1,4 @@
-import {
-  isSeriesLabel,
-  isSeriesRecord,
-  isSeriesSearchResult,
-} from "./isSeriesRecord"
+import { isSeriesLabel } from "./isSeriesRecord"
 
 describe("isSeriesLabel", () => {
   it("matches the uppercase wire enums SERIES and COLLECTION", () => {
@@ -22,59 +18,29 @@ describe("isSeriesLabel", () => {
     expect(isSeriesLabel("EPISODE")).toBe(false)
     expect(isSeriesLabel("SEGMENT")).toBe(false)
     expect(isSeriesLabel("FEATURE_FILM")).toBe(false)
+    expect(isSeriesLabel("SHORT_FILM")).toBe(false)
     expect(isSeriesLabel(null)).toBe(false)
     expect(isSeriesLabel(undefined)).toBe(false)
   })
 })
 
-describe("isSeriesRecord", () => {
-  it("is true for a SERIES/COLLECTION label", () => {
-    expect(isSeriesRecord({ label: "SERIES", episodes: [] })).toBe(true)
-    expect(isSeriesRecord({ label: "COLLECTION", episodes: [] })).toBe(true)
+// The regression this module exists to prevent. Every one of these is a real
+// catalog title that has its own published HLS AND its own chapter clips; a
+// predicate that counted children billed all of them as series.
+describe("films that carry their own chapter clips", () => {
+  it.each([
+    ["jesus", "FEATURE_FILM", 61],
+    ["book-of-acts", "FEATURE_FILM", 73],
+    ["life-of-jesus-gospel-of-john", "FEATURE_FILM", 49],
+    ["the-savior", "FEATURE_FILM", 55],
+    ["magdalena", "FEATURE_FILM", 46],
+    ["my-last-day", "SHORT_FILM", 1],
+  ])("%s (%s, %i children) is not series-shaped", (_slug, label) => {
+    expect(isSeriesLabel(label)).toBe(false)
   })
 
-  it("is true for an unlabeled record that has episodes", () => {
-    expect(isSeriesRecord({ label: null, episodes: [{}, {}] })).toBe(true)
-    expect(isSeriesRecord({ label: "EPISODE", episodes: [{}] })).toBe(true)
-  })
-
-  it("is false for a single video with no episodes", () => {
-    expect(isSeriesRecord({ label: "FEATURE_FILM", episodes: [] })).toBe(false)
-    expect(isSeriesRecord({ label: null, episodes: [] })).toBe(false)
-  })
-
-  it("treats absent/null episodes as no children (lean watch record)", () => {
-    expect(isSeriesRecord({ label: "SERIES" })).toBe(true)
-    expect(isSeriesRecord({ label: "EPISODE" })).toBe(false)
-    expect(isSeriesRecord({ label: null, episodes: null })).toBe(false)
-  })
-})
-
-describe("isSeriesSearchResult", () => {
-  it("is true for a SERIES/COLLECTION label regardless of childCount", () => {
-    expect(isSeriesSearchResult({ label: "SERIES", childCount: 0 })).toBe(true)
-    expect(
-      isSeriesSearchResult({ label: "COLLECTION", childCount: null }),
-    ).toBe(true)
-  })
-
-  it("is true for a null label with a positive childCount", () => {
-    expect(isSeriesSearchResult({ label: null, childCount: 3 })).toBe(true)
-    expect(isSeriesSearchResult({ label: "EPISODE", childCount: 1 })).toBe(true)
-  })
-
-  it("is false for a single video (no series label, zero/absent childCount)", () => {
-    expect(isSeriesSearchResult({ label: "FEATURE_FILM", childCount: 0 })).toBe(
-      false,
-    )
-    expect(isSeriesSearchResult({ label: "SEGMENT", childCount: null })).toBe(
-      false,
-    )
-    expect(isSeriesSearchResult({ label: null })).toBe(false)
-    expect(isSeriesSearchResult({})).toBe(false)
-  })
-
-  it("is false for a lowercase label with no children (strict uppercase)", () => {
-    expect(isSeriesSearchResult({ label: "series", childCount: 0 })).toBe(false)
+  it("still treats a labelled container as series-shaped with no children at all", () => {
+    expect(isSeriesLabel("SERIES")).toBe(true)
+    expect(isSeriesLabel("COLLECTION")).toBe(true)
   })
 })

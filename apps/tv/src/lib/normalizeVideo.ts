@@ -62,8 +62,9 @@ export type WatchSibling = {
   muxPlaybackId: string | null
 }
 
-// A child video of a series, rendered as a card in the episode rail — a
-// sibling-shaped card plus the locale text the 10-foot UI can surface on focus.
+// A child video, rendered as a card in the children rail — a sibling-shaped card
+// plus the locale text the 10-foot UI can surface on focus. One shape, two
+// vocabularies: a series calls these episodes, a feature film calls them chapters.
 export type WatchEpisode = WatchSibling & {
   description: string | null
   imageAlt: string | null
@@ -108,6 +109,9 @@ export type WatchVideoRecord = {
   duration: number | null
   primaryLanguageBcp47: string | null
   siblings: WatchSibling[]
+  // This video's OWN children. A feature film's chapter clips — distinct from
+  // `siblings`, which is the PARENT's other children.
+  chapters: WatchEpisode[]
   variants: WatchVariant[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
@@ -117,6 +121,7 @@ export type WatchVideoRecord = {
 // as streamingUrl/variants) plus the episode rail. The language union is fetched
 // lazily (GET_SERIES_LANGUAGES, U1), not carried on the record.
 export type WatchSeriesRecord = WatchVideoRecord & {
+  /** The same array as `chapters`, under the series screen's vocabulary. */
   episodes: WatchEpisode[]
 }
 
@@ -187,9 +192,15 @@ type RawVariant = NonNullable<RawVideo["variants"]>[number]
 type NormalizableVariant = Omit<RawVariant, "duration" | "muxVideo"> &
   Partial<Pick<RawVariant, "duration" | "muxVideo">>
 
-type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
+// Derived from the series operation, never hand-written: the watch query's own
+// `children` selection must stay field-for-field with it or this assignment fails
+// to compile — which is the point.
+type NormalizableChildRel = NonNullable<RawSeriesVideo["children"]>[number]
+
+type NormalizableVideo = Omit<RawVideo, "parents" | "variants" | "children"> & {
   parents?: RawVideo["parents"]
   variants?: readonly NormalizableVariant[] | null
+  children?: readonly NormalizableChildRel[] | null
 }
 
 function pickFirstPlayableVariant(
@@ -380,6 +391,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     duration: firstPlayable?.duration ?? null,
     primaryLanguageBcp47: raw.primaryLanguage?.bcp47 ?? null,
     siblings,
+    chapters: buildChildren(raw),
     variants,
     studyQuestions,
     bibleCitations,
@@ -390,10 +402,14 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
 
 type RawSeriesVideo = NonNullable<SeriesVideoData["videoBySlug"]>
 
-// Own-children → episode cards. KTD5-tolerant: the inverted admin relation can
-// surface self-references and duplicates today, so this self-filters, dedupes,
-// and yields [] rather than a broken rail — correct the moment it's fixed.
-function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
+// Own-children → child cards, shared by the series episode rail and the watch
+// screen's chapter rail. KTD5-tolerant: the inverted admin relation can surface
+// self-references and duplicates today, so this self-filters, dedupes, and yields
+// [] rather than a broken rail — correct the moment it's fixed.
+function buildChildren(raw: {
+  documentId?: string | null
+  children?: readonly NormalizableChildRel[] | null
+}): WatchEpisode[] {
   const selfId = raw.documentId
   const episodes = (raw.children ?? [])
     .filter(
@@ -462,10 +478,9 @@ export function normalizeSeries(
   // RawSeriesVideo is the lean SeriesWatchVideo subset of WatchVideo (no parents
   // chain; per-dub duration/muxVideo dropped). The builder accepts it via
   // NormalizableVideo; dropped fields resolve to siblings=[]/duration=null/muxPlaybackId=null (unused here).
-  const result: WatchSeriesRecord = {
-    ...buildWatchVideoRecord(raw),
-    episodes: buildEpisodes(raw),
-  }
+  const base = buildWatchVideoRecord(raw)
+  // Same array, not a second walk — `episodes` is this screen's name for it.
+  const result: WatchSeriesRecord = { ...base, episodes: base.chapters }
   normalizeSeriesCache.set(raw, result)
   return result
 }

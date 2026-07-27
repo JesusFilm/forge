@@ -202,12 +202,21 @@ describe("shared fragment stays lean (series-only fields never leak in)", () => 
     expect(bulkFragmentSdl).not.toContain("childDubLanguages")
   })
 
-  it("GET_VIDEO_BY_SLUG is unchanged: fragment spread only, no own children selection", () => {
+  it("GET_VIDEO_BY_SLUG adds own children to the operation, never to the fragment", () => {
     expect(bulkSdl).not.toContain("childDubLanguages")
-    // The operation body is just the spread; `children` appears only inside the
-    // fragment's parents.parent.children sibling path.
     expect(bulkOpSdl).toContain("...WatchVideo")
-    expect(bulkOpSdl).not.toContain("children")
+    // Own children (the chapter rail) belong to the operation. The FRAGMENT must
+    // stay free of them: the series query reuses it, and would then pay twice.
+    expect(bulkOpSdl).toContain("children")
+    expect(bulkFragmentSdl).not.toContain("childDubLanguages")
+  })
+
+  // The chapter rail reads these through buildChildren, which is shared with the
+  // series episode rail — a field dropped here silently empties the rail.
+  it("GET_VIDEO_BY_SLUG's own children select the fields the child card renders", () => {
+    for (const field of ["order", "muxPlaybackId", "imageAlt", "thumbnail"]) {
+      expect(bulkOpSdl).toContain(field)
+    }
   })
 })
 

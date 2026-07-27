@@ -14,7 +14,7 @@ import {
 } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { isSeriesLabel, isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -111,16 +111,13 @@ export const HomeCard = memo(function HomeCard({
   )
   // Same predicate as resolveHomeCardPath (homeCardRouting.ts) so the hint
   // can never announce a different destination than the press routes to.
-  const isSeriesShaped = isSeriesSearchResult({
-    label: card.rawLabel,
-    childCount: card.childCount,
-  })
-  // Gate on the LABEL not childCount: a feature film WITH episodes (JESUS, 61 eps)
-  // previews; only COLLECTION/SERIES cards are excluded. Portrait rails opt out —
-  // the preview renders from the LANDSCAPE video and would crop over the poster.
+  const isSeriesShaped = isSeriesLabel(card.rawLabel)
+  // A feature film WITH chapter clips (JESUS, 61) previews; only COLLECTION/SERIES
+  // are excluded. Portrait rails opt out — the preview renders from the LANDSCAPE
+  // video and would crop over the poster.
   const previewUrl = useHoverPreview({
     focused,
-    enabled: !isPortrait && !isSeriesLabel(card.rawLabel),
+    enabled: !isPortrait && !isSeriesShaped,
     playbackId: card.muxPlaybackId,
   })
 
