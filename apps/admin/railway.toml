@@ -20,7 +20,7 @@ watchPatterns = [
 
 [deploy]
 preDeployCommand = "pnpm --filter @forge/admin db:migrate:deploy"
-startCommand = "cd apps/admin && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
+startCommand = "cd apps/admin && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
