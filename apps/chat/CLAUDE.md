@@ -229,11 +229,23 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   actually pointing at `railway.toml` — unwired, there is no probe and the
   broken build promotes; confirm it the way feat-305 did, by seeing the
   healthcheck run in a chat deploy's Railway build log. BOTH layers are armed
-  by the exact string `NODE_ENV === "production"`, so an environment set to
-  `staging` or `prod` disarms the proxies' pin AND the gate at once — and an
-  unset allowlist in that state logs nothing, because `allowlist_unset` is
-  production-only by construction. Verify NODE_ENV alongside the allowlist in
-  every environment you deploy. Outside a production build the hook stays
+  by the production BUILD, not by the deployed environment's `NODE_ENV` — this
+  one is easy to get backwards: `next build` replaces `process.env.NODE_ENV`
+  with the literal `"production"` in the server bundle, and `config/env.ts`
+  reads it by direct member access
+  (`NODE_ENV: emptyToUndefined(process.env.NODE_ENV)`), so
+  `requireSeekerEgressAllowlist()` compiles down to a constant-true comparison.
+  Both layers are therefore armed in EVERY production build — every deployed
+  environment, and a local `next build` + `next start` too. An operator CANNOT
+  opt an environment into report-only by setting `NODE_ENV=staging`; only
+  `next dev` and the test runner stay fail-open, and an unset allowlist logs
+  nothing there because `allowlist_unset` is production-only by construction
+  (verified by hand 2026-07-27: a `NODE_ENV=staging` build still emitted
+  `NODE_ENV: …("production")` into the env chunk, and the resulting server
+  500ed `/api/health` with the pin violated while still listening). The
+  consequence is that there is no staged rollout — provision the allowlist in
+  EVERY environment you deploy, before the code that requires it lands there.
+  Outside a production build the hook stays
   report-only (note `next start` IS a production build, so a mismatched
   allowlist 500s a local build+start run). A failed diagnostic never throws and
   deliberately fails OPEN — `event=diagnostic_failed stage=import|call` means
