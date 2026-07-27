@@ -37,6 +37,46 @@ export function resolveRowScrollTarget(args: {
 }
 
 /**
+ * Row measurements survive a refetch. `sections` is a fresh array on every
+ * setModel even when nothing changed, and onLayout only re-fires for rows whose
+ * geometry actually moved — so WIPING the store leaves unchanged rows unmeasured
+ * forever and resolveRowScrollTarget returns null on every focus, i.e. focus
+ * stops scrolling. Trim to the live row count instead: onLayout corrects any row
+ * that really moved, an unmoved row's old y is still right, and entries past
+ * `rowCount` are never read. Mutates in place — the caller holds it in a ref.
+ */
+export function trimRowMeasurements(
+  rowLayoutYs: (number | undefined)[],
+  rowCount: number,
+): void {
+  rowLayoutYs.length = Math.max(0, rowCount)
+}
+
+/** What a fresh onLayout measurement should trigger. */
+export type RowMeasurementEffect = "flush-pending" | "reanchor" | "none"
+
+/**
+ * A row just reported a new y. "flush-pending": it was focused before it had any
+ * measurement, so run the deferred scroll. "reanchor": it holds focus and its y
+ * MOVED, so the current offset was computed from the stale value. Otherwise the
+ * store update alone is enough — re-scrolling an unfocused row would yank the
+ * page out from under the viewer.
+ */
+export function resolveRowMeasurementEffect(args: {
+  rowIndex: number
+  previousY: number | undefined
+  nextY: number
+  pendingScrollRow: number | null
+  focusedRow: number | null
+}): RowMeasurementEffect {
+  if (args.pendingScrollRow === args.rowIndex) return "flush-pending"
+  if (args.focusedRow === args.rowIndex && args.previousY !== args.nextY) {
+    return "reanchor"
+  }
+  return "none"
+}
+
+/**
  * Opacity of the deep-scrim layer (its background is rgba(6,6,8,.9)):
  * invisible on chrome, a light wash while browsing row 0, fully on when
  * focus is deep in the feed.

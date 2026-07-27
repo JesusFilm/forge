@@ -29,8 +29,10 @@ import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
   resolveBrowseState,
+  resolveRowMeasurementEffect,
   resolveRowScrollTarget,
   ROW_ANCHOR_OFFSET,
+  trimRowMeasurements,
   type HomeBrowseState,
 } from "../src/components/home/homeScrollState"
 import { HomeTopBar } from "../src/components/home/HomeTopBar"
@@ -199,6 +201,10 @@ export default function HomeScreen() {
   // (within-row horizontal moves skip the redundant scroll). Reset to null when
   // focus leaves the rails so re-entering a row re-applies its scroll state.
   const lastFocusedRowRef = useRef<number | null>(null)
+  // Row that currently holds focus, tracked on BOTH platforms — unlike the
+  // Android-only dedupe gate above — so recordRowY can re-anchor when a
+  // re-measure moves the focused row out from under the current offset.
+  const focusedRowRef = useRef<number | null>(null)
   // Last section rail's row index, read by handleMissionFocus so the bottom
   // rails stay windowed-active when focus drops to the mission tail (Up returns
   // to a mounted rail). Assigned each render once the model is known.
@@ -223,6 +229,7 @@ export default function HomeScreen() {
         if (lastFocusedRowRef.current === rowIndex) return
         lastFocusedRowRef.current = rowIndex
       }
+      focusedRowRef.current = rowIndex
       setBrowseState(resolveBrowseState(rowIndex))
       // Topmost section rail = rowIndex 1; anything >= 2 is a rail below it.
       setBelowTopmost(rowIndex >= 2)
@@ -237,9 +244,18 @@ export default function HomeScreen() {
 
   const recordRowY = useCallback(
     (rowIndex: number, y: number) => {
+      const effect = resolveRowMeasurementEffect({
+        rowIndex,
+        previousY: rowYsRef.current[rowIndex],
+        nextY: y,
+        pendingScrollRow: pendingScrollRowRef.current,
+        focusedRow: focusedRowRef.current,
+      })
       rowYsRef.current[rowIndex] = y
-      if (pendingScrollRowRef.current === rowIndex && scrollToRow(rowIndex)) {
-        pendingScrollRowRef.current = null
+      if (effect === "flush-pending") {
+        if (scrollToRow(rowIndex)) pendingScrollRowRef.current = null
+      } else if (effect === "reanchor") {
+        scrollToRow(rowIndex)
       }
     },
     [scrollToRow],
@@ -251,6 +267,7 @@ export default function HomeScreen() {
       lastFocusedRowRef.current = null
       setFocusedRow(0)
     }
+    focusedRowRef.current = null
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
@@ -265,6 +282,7 @@ export default function HomeScreen() {
       // returns to a rail whose images are loaded.
       setFocusedRow(sectionCountRef.current)
     }
+    focusedRowRef.current = null
     setBrowseState("deep")
     // The mission tail is below the topmost rail — keep its autoFocus OFF so a
     // later Up traversal stays column-preserving.
@@ -287,17 +305,26 @@ export default function HomeScreen() {
     [rowCount, recordRowY],
   )
 
-  // Drop stale row measurements when the section set changes (a refetch can
-  // reorder/resize rows), else a focus before re-measure anchors to the old y.
-  // Cleared entries re-populate via onLayout; the null window is deferred above.
+  // TRIM rows that no longer exist — never wipe. `sections` is a fresh array on
+  // every setModel (snapshot hydration, then the network reconcile, which waits
+  // on a possibly-slow top-up fetch), so this runs even when nothing changed.
+  // Wiping here left EVERY row unmeasured, and onLayout only fires when geometry
+  // actually changes — so unchanged rows never re-reported, resolveRowScrollTarget
+  // returned null forever, and D-pad focus scrolled nowhere while the scrim and
+  // top-bar hide (plain state) still reacted. Whether the wipe landed before or
+  // after first layout is the whole "sometimes, after a long idle".
+  //
+  // Keeping measurements is safe: onLayout re-fires for any row whose y really
+  // moved, a row whose y didn't move needs no update, and entries past rowCount
+  // are never read. recordRowY re-anchors focus if a re-measure shifts it.
   const sections = model?.sections
   useEffect(() => {
-    rowYsRef.current = []
+    trimRowMeasurements(rowYsRef.current, rowCount)
     pendingScrollRowRef.current = null
     // A reshape can land focus on the same row index it held pre-refetch; clear
     // the gate so handleRowFocus re-applies scroll + image-window state.
     lastFocusedRowRef.current = null
-  }, [sections])
+  }, [sections, rowCount])
 
   // Shape-based routing (R13): series-shaped → /series, leaf → /watch, both
   // seeded for instant first paint. Null path (no slug) is a no-op press.
