@@ -187,7 +187,7 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "experience.create",
     description:
-      "Create a new Experience with an initial DRAFT locale. Never publishes; set meta/OG fields afterwards via experience.locale.update.",
+      "Create a new Experience with an initial DRAFT locale. Never publishes; set meta/OG fields afterwards via experience.locale.update. Unlike the locale tools, expected failures return a structuredContent envelope {ok:false, reason, retryable, message} instead of a JSON-RPC error — a duplicate (locale, slug) returns reason 'slug_exists' with the existing resource's ids in a conflict field; success returns {ok:true, experience, locale, editorUrl}.",
     requiredScopes: ["experience:create"],
     inputSchema: {
       type: "object",
@@ -205,7 +205,7 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "experience.generate",
     description:
-      "Generate a new DRAFT Experience server-side with AI (video-grounded quick draft; optional persona steering). Never publishes.",
+      "Generate a new DRAFT Experience server-side with AI (video-grounded quick draft; optional persona steering). Never publishes. Expected failures return a structuredContent envelope {ok:false, reason, retryable, message} instead of a JSON-RPC error (reasons: config_missing, auth_failed, network_error, parse_error, invalid_input, timeout, generation_failed, internal_error, slug_exists, candidates_failed, normalization_failed, persist_failed); retry only when retryable is true. Success returns {ok:true, experience, locale, editorUrl, provenance}.",
     requiredScopes: ["experience:generate"],
     inputSchema: {
       type: "object",

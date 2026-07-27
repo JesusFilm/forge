@@ -139,6 +139,44 @@ describe("launchMastraExperienceVariant", () => {
     expect(result).toEqual({ ok: false, reason: "timeout", retryable: true })
   })
 
+  it("round-trips a valid draft over the real node:http transport", async () => {
+    const { createServer } = await import("node:http")
+    let sawAuth: string | undefined
+    const server = createServer((req, res) => {
+      sawAuth = req.headers.authorization
+      const chunks: Buffer[] = []
+      req.on("data", (c: Buffer) => chunks.push(c))
+      req.on("end", () => {
+        res.writeHead(200, { "content-type": "application/json" })
+        res.end(
+          JSON.stringify({
+            ok: true,
+            personaId: "grieving",
+            draft: VALID_DRAFT,
+          }),
+        )
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, resolve))
+    const address = server.address()
+    if (address == null || typeof address === "string") {
+      throw new Error("expected a TCP address")
+    }
+
+    try {
+      const result = await launchMastraExperienceVariant(INPUT, {
+        baseUrl: `http://127.0.0.1:${address.port}`,
+        bearer: "svc-key",
+      })
+      expect(result.ok).toBe(true)
+      if (!result.ok) throw new Error("unreachable")
+      expect(result.personaId).toBe("grieving")
+      expect(sawAuth).toBe("Bearer svc-key")
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
+  })
+
   it("maps an over-cap 200 body to parse_error instead of buffering it", async () => {
     // > 2MB body; the cap discards it and the empty-body ladder classifies
     // the 2xx as parse_error (retryable) — the graceful-failure path.

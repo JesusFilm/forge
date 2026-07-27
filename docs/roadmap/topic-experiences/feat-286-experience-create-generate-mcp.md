@@ -70,7 +70,7 @@ Two experience-level MCP primitives plus their OAuth scopes:
 ## Verification
 
 - Auth + admin suites pass (`pnpm --filter @forge/auth test`, `pnpm --filter @forge/admin test`).
-- Route tests prove scope enforcement fires BEFORE dispatch for both tools; missing scope → -32003 naming the required scope.
+- Route tests prove scope enforcement fires BEFORE dispatch for both tools; missing scope → HTTP 403 `{ error: "insufficient_scope", required_scopes }` naming the required scope (the route's pre-dispatch auth contract — JSON-RPC error codes only apply after dispatch).
 - A real MCP client against local admin can `experience.create` a draft visible in the dashboard editor; nothing appears on the public site (no publish side effects).
 - With mastra running, `experience.generate` returns a draft grounded in real videos within the quick-mode budget; with mastra stopped, it fails `config_missing`/network cleanly and admin stays healthy.
 - A generated/created DRAFT is readable via `experience.locale.read` and passes `experience.locale.validate` (tools compose with the feat-276 loop).

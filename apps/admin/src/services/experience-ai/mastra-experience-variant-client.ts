@@ -13,6 +13,9 @@
  * race and returns a clean `{ reason:"timeout" }` envelope rather than a generic
  * `network_error` retry storm
  * (`docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`).
+ * A client-side abort still classifies as `timeout` (retryable) — not
+ * `network_error` — so callers that inject a budget BELOW mastra's internal
+ * one (the MCP generate path's 90s ceiling) get honest timeout semantics.
  *
  * The response `draft` is re-validated against the single-sourced
  * `DraftExperienceSchema`; admin's `normalizeExperienceDraft` stays the gate

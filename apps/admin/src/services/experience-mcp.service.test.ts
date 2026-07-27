@@ -14,9 +14,10 @@ vi.mock("@/services/watch-route-manifest-refresh.service", () => ({
 function mockPrisma() {
   const contentRevisionCreate = vi.fn()
   const experienceLocaleUpdate = vi.fn()
+  const experienceCreate = vi.fn()
   return {
     experience: {
-      create: vi.fn(),
+      create: experienceCreate,
     },
     experienceLocale: {
       findFirst: vi.fn(),
@@ -28,6 +29,9 @@ function mockPrisma() {
         callback({
           contentRevision: { create: contentRevisionCreate },
           experienceLocale: { update: experienceLocaleUpdate },
+          // The atomic generate persist runs ExperienceService.create through
+          // the transaction client — same handle as the top-level mock.
+          experience: { create: experienceCreate },
         }),
     ),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,21 +140,21 @@ describe("ExperienceMcpService", () => {
     )
   })
 
-  it("VIEWER cannot create and nothing is persisted", async () => {
-    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
-
+  it("VIEWER cannot create — rejected before the slug probe runs", async () => {
+    // The conflict envelope names other owners' draft ids, so the permission
+    // gate must fire BEFORE the lookup, not just before the write.
     await expect(
       service.createExperience({ input: VALID_INPUT, user: VIEWER }),
     ).rejects.toThrow("Forbidden")
+    expect(prisma.experienceLocale.findFirst).not.toHaveBeenCalled()
     expect(prisma.experience.create).not.toHaveBeenCalled()
   })
 
-  it("PUBLIC cannot create and nothing is persisted", async () => {
-    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
-
+  it("PUBLIC cannot create — rejected before the slug probe runs", async () => {
     await expect(
       service.createExperience({ input: VALID_INPUT, user: PUBLIC_USER }),
     ).rejects.toThrow("Forbidden")
+    expect(prisma.experienceLocale.findFirst).not.toHaveBeenCalled()
     expect(prisma.experience.create).not.toHaveBeenCalled()
   })
 
@@ -544,6 +548,13 @@ describe("ExperienceMcpService.generateExperience", () => {
           revisedBy: "admin-1",
           revisedByKind: "AI",
           reason: expect.stringContaining("experience.generate"),
+          // The provenance snapshot records the FULL generated draft as
+          // born, including the AI metaDescription.
+          snapshot: expect.objectContaining({
+            data: expect.objectContaining({
+              metaDescription: "A page about hope.",
+            }),
+          }),
         }),
       }),
     )
@@ -658,6 +669,87 @@ describe("ExperienceMcpService.generateExperience", () => {
     ).rejects.toThrow("Experience not found: exp-missing")
     expect(launchDraft).not.toHaveBeenCalled()
     expect(prisma.experience.create).not.toHaveBeenCalled()
+  })
+
+  it("skips the metaDescription update when the generated meta is empty but still writes the revision", async () => {
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+    prisma.experience.create.mockResolvedValueOnce(CREATED_EXPERIENCE)
+    const whitespaceMeta: DraftExperience = {
+      ...VALID_DRAFT,
+      metaDescription: "   ",
+    }
+    const service = makeService({
+      launchDraft: vi.fn(async () => ({
+        ok: true as const,
+        draft: whitespaceMeta,
+      })),
+    })
+
+    const result = await service.generateExperience({
+      input: GENERATE_INPUT,
+      user: ADMIN,
+    })
+
+    expect(result).toMatchObject({ ok: true })
+    expect(prisma.experienceLocaleUpdate).not.toHaveBeenCalled()
+    expect(prisma.contentRevisionCreate).toHaveBeenCalled()
+  })
+
+  it("clamps a persona-derived slug to the 200-char create cap before any paid work", async () => {
+    primeHappyPersistence()
+    const service = makeService()
+
+    await service.generateExperience({
+      input: {
+        ...GENERATE_INPUT,
+        topic: "h".repeat(200),
+        personaId: "grieving",
+      },
+      user: ADMIN,
+    })
+
+    const probed = prisma.experienceLocale.findFirst.mock.calls[0][0].where.slug
+    expect(probed.length).toBeLessThanOrEqual(200)
+    expect(probed.endsWith("-grieving")).toBe(true)
+  })
+
+  it("reports persist_failed when the atomic transaction rejects (nothing partially persisted)", async () => {
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+    prisma.experience.create.mockResolvedValueOnce(CREATED_EXPERIENCE)
+    prisma.contentRevisionCreate.mockRejectedValueOnce(new Error("db blip"))
+    const service = makeService()
+
+    await expect(
+      service.generateExperience({ input: GENERATE_INPUT, user: ADMIN }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "persist_failed",
+      retryable: false,
+    })
+    // The create ran INSIDE the same transaction as the failing revision
+    // write, so the rejection rolls the whole persist back in production.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+  })
+
+  it("sanitizes CR/LF out of error messages in plain-string logs", async () => {
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const service = makeService({
+        loadCandidates: vi.fn(async () => {
+          throw new Error("first line\r\nevent=forged_entry injected=true")
+        }),
+      })
+
+      await service.generateExperience({ input: GENERATE_INPUT, user: ADMIN })
+
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      const logged = errorSpy.mock.calls[0][0] as string
+      expect(logged).toContain("event=candidates_error")
+      expect(logged).not.toMatch(/[\r\n]/)
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it("VIEWER cannot generate and no paid work happens", async () => {

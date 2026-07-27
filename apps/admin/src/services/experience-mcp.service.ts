@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { env } from "@/config/env"
-import { variantSlug } from "@/scripts/generate-persona-variants"
+import { topicBaseSlug } from "@/domain/slugify"
 import { loadExperienceAiVideoCandidates } from "@/services/experience-ai/experience-ai.service"
 import {
   ExperienceAiNormalizationError,
@@ -54,7 +54,7 @@ const GenerateExperienceToolInput = z
  * carry `retryable` or a reason string. `experience.create` uses only
  * `slug_exists`.
  */
-type ExperienceToolFailureReason =
+export type ExperienceToolFailureReason =
   | "config_missing"
   | "auth_failed"
   | "network_error"
@@ -89,19 +89,36 @@ const TOOL_FAILURE_MESSAGES: Record<ExperienceToolFailureReason, string> = {
 const DEFAULT_GENERATE_TIMEOUT_MS = 90_000
 
 /**
- * Slug for a generated topic (+ optional persona suffix). The persona branch
- * delegates to `variantSlug` so MCP-generated persona variants collide-detect
- * against dashboard/script-generated ones of the same topic. Non-Latin topics
- * collapse to the literal "experience" — callers targeting non-Latin locales
- * should pass an explicit `slug`.
+ * Hard runtime ceiling for the generate budget. It must stay BELOW
+ * Cloudflare's ~100s proxy window or the documented clean-timeout guarantee
+ * silently becomes a severed 524. A Zod `.max()` on the env var would brick
+ * boot on a well-intentioned misconfiguration (the optional-env law), so the
+ * ceiling is enforced here at use instead.
+ */
+const MAX_GENERATE_TIMEOUT_MS = 95_000
+
+/**
+ * Slug for a generated topic (+ optional persona suffix), built on the same
+ * `topicBaseSlug` the operator CLI's `variantSlug` delegates to so
+ * MCP-generated persona variants collide-detect against dashboard/script
+ * generated ones. Clamped so the derived slug always fits
+ * `CreateExperienceInput`'s 200-char cap — otherwise a near-cap topic would
+ * fail Zod only AFTER paid mastra generation. Non-Latin topics collapse to
+ * the literal "experience" — callers targeting non-Latin locales should pass
+ * an explicit `slug`.
  */
 function generatedSlug(topic: string, personaId?: string): string {
-  if (personaId) return variantSlug(topic, personaId)
-  const base = topic
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-  return base || "experience"
+  const suffix = personaId ? `-${personaId}` : ""
+  const base = topicBaseSlug(topic)
+  const clamped =
+    base.slice(0, 200 - suffix.length).replace(/-+$/g, "") || "experience"
+  return `${clamped}${suffix}`
+}
+
+/** One-line, length-clamped, CR/LF-stripped error text for plain-string logs. */
+function describeErrorForLog(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.replace(/[\r\n\t]+/g, " ").slice(0, 200)
 }
 
 /**
@@ -117,9 +134,10 @@ function snapshotGeneratedLocale(
     v: 1,
     data: {
       ...serializeLocale(locale),
+      blocks: locale.blocks as Prisma.InputJsonValue,
       createdAt: locale.createdAt?.toISOString() ?? null,
     },
-  } as Prisma.InputJsonObject
+  }
 }
 
 export type ExperienceMcpServiceOverrides = {
@@ -143,6 +161,12 @@ function editorUrlFor(experienceId: string, locale: string) {
   return url.toString()
 }
 
+/**
+ * Service behind the two experience-LEVEL Admin MCP tools (`experience.create`
+ * and `experience.generate`). The 12 locale-level tools — including
+ * `experience.list` and `experience.media.check` — live in the sibling
+ * `ExperienceLocaleMcpService`.
+ */
 export class ExperienceMcpService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -157,6 +181,13 @@ export class ExperienceMcpService {
     user: Principal | null
   }) {
     const input = CreateExperienceToolInput.parse(raw)
+
+    // Defense-in-depth BEFORE the slug probe (mirrors generateExperience):
+    // the conflict envelope names other owners' draft ids, so a principal
+    // that could never create must not reach the lookup.
+    if (!hasPermission(user, "write:experiences")) {
+      throw new ForbiddenError()
+    }
 
     const conflict = await this.findSlugConflict(input.locale, input.slug)
     if (conflict) {
@@ -247,9 +278,7 @@ export class ExperienceMcpService {
       })
     } catch (error) {
       console.error(
-        `[experience-mcp] event=candidates_error message=${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `[experience-mcp] event=candidates_error message=${describeErrorForLog(error)}`,
       )
       return this.toolFailure("candidates_failed", true)
     }
@@ -257,9 +286,9 @@ export class ExperienceMcpService {
     const launchOptions = {
       baseUrl: config.baseUrl,
       bearer: config.bearer,
-      timeoutMs: resolveTimeoutMs(
-        config.timeoutMs,
-        DEFAULT_GENERATE_TIMEOUT_MS,
+      timeoutMs: Math.min(
+        resolveTimeoutMs(config.timeoutMs, DEFAULT_GENERATE_TIMEOUT_MS),
+        MAX_GENERATE_TIMEOUT_MS,
       ),
     }
     const remote = input.personaId
@@ -313,45 +342,63 @@ export class ExperienceMcpService {
     }
 
     try {
-      const created = await new ExperienceService(this.prisma).create({
-        input: {
-          locale: input.locale,
-          slug,
-          title: normalized.title,
-          blocks: normalized.blocks,
-        },
-        user,
-      })
-      const createdLocale = created.locales[0]!
-
-      // AI-provenance revision + metaDescription in one transaction.
-      // ExperienceService.create writes no revision (nothing existed to
-      // snapshot) and its input surface has no metaDescription; going
-      // through updateLocale here would stamp the wrong provenance
+      // The whole persist is ONE transaction — create, metaDescription, and
+      // the AI-provenance revision commit or roll back together, so a
+      // `persist_failed` envelope always means NOTHING was persisted (no
+      // orphaned DRAFT without provenance). ExperienceService.create only
+      // touches `experience.create`, so handing it the transaction client is
+      // safe; the cast is needed because its constructor names the full
+      // PrismaClient. Its own revision story: it writes none (nothing
+      // existed to snapshot), and its input surface has no metaDescription —
+      // going through updateLocale would stamp the wrong provenance
       // (hardcoded USER kind) and applyChatMutation fires the revalidate
       // webhook even for DRAFT rows. Neither publish side effects nor
       // manifest refreshes may fire from this path.
       const provenanceReason = `Generated via Admin MCP experience.generate (topic: "${input.topic}"${
         input.personaId ? `, persona: ${input.personaId}` : ""
       })`
-      const finalLocale = await this.prisma.$transaction(async (tx) => {
-        await tx.contentRevision.create({
-          data: {
-            entityType: "ExperienceLocale",
-            entityId: createdLocale.id,
-            snapshot: snapshotGeneratedLocale(createdLocale),
-            status: "HISTORICAL",
-            revisedBy: user?.id ?? null,
-            revisedByKind: "AI",
-            reason: provenanceReason,
-          },
-        })
-        if (!normalized.metaDescription) return createdLocale
-        return tx.experienceLocale.update({
-          where: { id: createdLocale.id },
-          data: { metaDescription: normalized.metaDescription },
-        })
-      })
+      const { created, finalLocale } = await this.prisma.$transaction(
+        async (tx) => {
+          const created = await new ExperienceService(
+            tx as unknown as PrismaClient,
+          ).create({
+            input: {
+              locale: input.locale,
+              slug,
+              title: normalized.title,
+              blocks: normalized.blocks,
+            },
+            user,
+          })
+          const createdLocale = created.locales[0]!
+
+          // Meta update FIRST so the provenance snapshot records the full
+          // generated draft (title + metaDescription + blocks) as born.
+          const finalLocale = normalized.metaDescription
+            ? await tx.experienceLocale.update({
+                where: { id: createdLocale.id },
+                data: { metaDescription: normalized.metaDescription },
+              })
+            : createdLocale
+
+          await tx.contentRevision.create({
+            data: {
+              entityType: "ExperienceLocale",
+              entityId: createdLocale.id,
+              snapshot: snapshotGeneratedLocale({
+                ...finalLocale,
+                createdAt: createdLocale.createdAt,
+              }),
+              status: "HISTORICAL",
+              revisedBy: user?.id ?? null,
+              revisedByKind: "AI",
+              reason: provenanceReason,
+            },
+          })
+
+          return { created, finalLocale }
+        },
+      )
 
       return {
         ok: true as const,
@@ -376,9 +423,7 @@ export class ExperienceMcpService {
       }
     } catch (error) {
       console.error(
-        `[experience-mcp] event=generate_persist_error message=${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `[experience-mcp] event=generate_persist_error slug=${slug} message=${describeErrorForLog(error)}`,
       )
       return this.toolFailure("persist_failed", false)
     }

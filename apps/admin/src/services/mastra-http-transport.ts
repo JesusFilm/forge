@@ -56,6 +56,20 @@ export function postViaNode(
   const maxResponseBytes = options.maxResponseBytes ?? MASTRA_RESPONSE_MAX_BYTES
   const request = target.protocol === "https:" ? httpsRequest : httpRequest
   return new Promise<RawResponse>((resolve, reject) => {
+    // Wall-clock deadline. `req.setTimeout` below is a socket IDLE timeout —
+    // an upstream that trickles a byte every few seconds resets it forever,
+    // which would silently defeat callers whose budget must stay under a
+    // proxy ceiling (the MCP generate path's 90s-under-Cloudflare invariant).
+    // This timer bounds the WHOLE request regardless of activity. Settle
+    // FIRST, then destroy — a mid-stream destroy can emit the response's own
+    // error before the request's, and the promise must carry TimeoutError.
+    const deadline = setTimeout(() => {
+      const error = Object.assign(new Error(options.timeoutErrorMessage), {
+        name: "TimeoutError",
+      })
+      reject(error)
+      req.destroy(error)
+    }, timeoutMs)
     const req = request(
       target,
       {
@@ -76,6 +90,7 @@ export function postViaNode(
             // Byte-cap guard: settle FIRST (so the destroy's error event
             // cannot reject), then abort the socket rather than draining it.
             overCap = true
+            clearTimeout(deadline)
             resolve({ status: res.statusCode ?? 0, bodyText: "" })
             res.destroy()
             return
@@ -84,6 +99,7 @@ export function postViaNode(
         })
         res.on("end", () => {
           if (overCap) return
+          clearTimeout(deadline)
           resolve({
             status: res.statusCode ?? 0,
             bodyText: Buffer.concat(chunks).toString("utf8"),
@@ -91,6 +107,7 @@ export function postViaNode(
         })
         res.on("error", (error) => {
           if (overCap) return
+          clearTimeout(deadline)
           reject(error)
         })
       },
@@ -102,7 +119,10 @@ export function postViaNode(
         }),
       )
     })
-    req.on("error", reject)
+    req.on("error", (error) => {
+      clearTimeout(deadline)
+      reject(error)
+    })
     req.end(body)
   })
 }
