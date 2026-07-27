@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const {
   rateLimitMock,
   resolvePrincipalMock,
+  experienceCreate,
   experienceLocaleFindFirst,
   experienceLocaleFindUniqueOrThrow,
   transactionMock,
 } = vi.hoisted(() => ({
   rateLimitMock: vi.fn(),
   resolvePrincipalMock: vi.fn(),
+  experienceCreate: vi.fn(),
   experienceLocaleFindFirst: vi.fn(),
   experienceLocaleFindUniqueOrThrow: vi.fn(),
   transactionMock: vi.fn(),
@@ -29,6 +31,7 @@ vi.mock("@/db/client", () => ({
     experience: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      create: (...args: unknown[]) => experienceCreate(...args),
     },
     experienceLocale: {
       findFirst: (...args: unknown[]) => experienceLocaleFindFirst(...args),
@@ -46,6 +49,9 @@ vi.mock("@/services/watch-route-manifest-refresh.service", () => ({
 
 import { AdminMcpAuthError } from "@/auth/admin-mcp-oauth"
 import { GET as protectedResourceGet } from "@/app/.well-known/oauth-protected-resource/route"
+import { ADMIN_MCP_TOOLS } from "@/mcp/admin-mcp-tools"
+import { emitRevalidateWebhook } from "@/services/revalidate-webhook"
+import { refreshWatchRouteManifest } from "@/services/watch-route-manifest-refresh.service"
 import { GET, POST } from "./route"
 
 function post(body: unknown, headers: Record<string, string> = {}) {
@@ -95,6 +101,7 @@ describe("Admin MCP route", () => {
         "video:read",
         "bible:read",
         "experience:publish",
+        "experience:create",
       ]),
       resource_name: "Jesus Film Admin MCP",
     })
@@ -178,6 +185,9 @@ describe("Admin MCP route", () => {
           }),
           expect.objectContaining({
             name: "video.search_replacements",
+          }),
+          expect.objectContaining({
+            name: "experience.create",
           }),
         ]),
       },
@@ -319,6 +329,260 @@ describe("Admin MCP route", () => {
         ],
       },
     })
+  })
+
+  it("requires the create scope before dispatching experience.create", async () => {
+    experienceLocaleFindFirst.mockResolvedValueOnce(null)
+    experienceCreate.mockResolvedValueOnce({
+      id: "exp-new",
+      isTemplate: false,
+      ownerId: "user_1",
+      locales: [
+        {
+          id: "loc-new",
+          experienceId: "exp-new",
+          locale: "en",
+          slug: "new-page",
+          isHomepage: false,
+          pathSegment: null,
+          title: "New Page",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: [{ t: "text", heading: "New Page" }],
+          status: "DRAFT",
+          publishedAt: null,
+          updatedAt: new Date("2026-07-27T12:00:00.000Z"),
+        },
+      ],
+    })
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 40,
+        method: "tools/call",
+        params: {
+          name: "experience.create",
+          arguments: {
+            locale: "en",
+            slug: "new-page",
+            title: "New Page",
+            blocks: [{ t: "text", heading: "New Page" }],
+          },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(resolvePrincipalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredScopes: ["experience:create"],
+      }),
+    )
+    await expect(res.json()).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          created: true,
+          experience: { id: "exp-new", ownerId: "user_1" },
+          locale: {
+            id: "loc-new",
+            status: "DRAFT",
+            publishedAt: null,
+          },
+          editorUrl:
+            "http://localhost:3003/dashboard/experiences/exp-new?locale=en",
+        },
+      },
+    })
+    // DRAFT creation fires no publish side effects.
+    expect(vi.mocked(emitRevalidateWebhook)).not.toHaveBeenCalled()
+    expect(vi.mocked(refreshWatchRouteManifest)).not.toHaveBeenCalled()
+  })
+
+  it("rejects experience.create without the create scope as HTTP 403 and persists nothing", async () => {
+    resolvePrincipalMock.mockRejectedValueOnce(
+      new AdminMcpAuthError(
+        "insufficient_scope",
+        "Admin MCP token is missing required scope(s): experience:create.",
+        ["experience:create"],
+      ),
+    )
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 41,
+        method: "tools/call",
+        params: {
+          name: "experience.create",
+          arguments: {
+            locale: "en",
+            slug: "new-page",
+            title: "New Page",
+            blocks: [],
+          },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(res.headers.get("www-authenticate")).toBeNull()
+    await expect(res.json()).resolves.toMatchObject({
+      error: "insufficient_scope",
+      required_scopes: ["experience:create"],
+    })
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("maps invalid experience.create blocks to -32602 and persists nothing", async () => {
+    experienceLocaleFindFirst.mockResolvedValueOnce(null)
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 42,
+        method: "tools/call",
+        params: {
+          name: "experience.create",
+          arguments: {
+            locale: "en",
+            slug: "bad-blocks",
+            title: "Bad Blocks",
+            blocks: [{ t: "nonexistent_block_type" }],
+          },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      error: {
+        code: -32602,
+        message: "Invalid tool arguments.",
+      },
+    })
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("reports the existing resource on a duplicate slug instead of creating", async () => {
+    experienceLocaleFindFirst.mockResolvedValueOnce({
+      id: "loc-existing",
+      experienceId: "exp-existing",
+      status: "DRAFT",
+    })
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 43,
+        method: "tools/call",
+        params: {
+          name: "experience.create",
+          arguments: {
+            locale: "en",
+            slug: "hope",
+            title: "Hope",
+            blocks: [],
+          },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          created: false,
+          conflict: {
+            reason: "slug_exists",
+            existingExperienceId: "exp-existing",
+            existingLocaleId: "loc-existing",
+          },
+        },
+      },
+    })
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("accepts a near-cap non-Latin experience.create payload", async () => {
+    // ~17k CJK chars ≈ 51KB UTF-8 on the wire — inside the 64KB body cap.
+    const cjkParagraph = "あ".repeat(17_000)
+    experienceLocaleFindFirst.mockResolvedValueOnce(null)
+    experienceCreate.mockResolvedValueOnce({
+      id: "exp-cjk",
+      isTemplate: false,
+      ownerId: "user_1",
+      locales: [
+        {
+          id: "loc-cjk",
+          experienceId: "exp-cjk",
+          locale: "ja",
+          slug: "kibou",
+          isHomepage: false,
+          pathSegment: null,
+          title: "希望",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: [{ t: "text", contentParagraphs: [cjkParagraph] }],
+          status: "DRAFT",
+          publishedAt: null,
+          updatedAt: new Date("2026-07-27T12:00:00.000Z"),
+        },
+      ],
+    })
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 44,
+        method: "tools/call",
+        params: {
+          name: "experience.create",
+          arguments: {
+            locale: "ja",
+            slug: "kibou",
+            title: "希望",
+            blocks: [{ t: "text", contentParagraphs: [cjkParagraph] }],
+          },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      result: {
+        structuredContent: { created: true },
+      },
+    })
+    expect(experienceCreate).toHaveBeenCalled()
+  })
+
+  it("has a dispatch branch for every declared tool (registry-dispatch parity)", async () => {
+    // A tool definition without a dispatch branch surfaces as JSON-RPC
+    // -32601 at call time and nothing else fails — this loop is the parity
+    // invariant. Empty arguments hit each tool's Zod gate (-32602) or a
+    // downstream error (-32603); NONE may report -32601.
+    for (const tool of ADMIN_MCP_TOOLS) {
+      const res = await POST(
+        post({
+          jsonrpc: "2.0",
+          id: 50,
+          method: "tools/call",
+          params: { name: tool.name, arguments: {} },
+        }),
+      )
+      const body = (await res.json()) as {
+        error?: { code?: number }
+      }
+      expect(
+        body.error?.code,
+        `tool ${tool.name} has no dispatch branch`,
+      ).not.toBe(-32601)
+    }
   })
 
   it("rejects unknown tools before claiming implementation", async () => {

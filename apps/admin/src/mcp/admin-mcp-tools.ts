@@ -184,6 +184,24 @@ export const ADMIN_MCP_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "experience.create",
+    description:
+      "Create a new Experience with an initial DRAFT locale. Never publishes; set meta/OG fields afterwards via experience.locale.update.",
+    requiredScopes: ["experience:create"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        locale: { type: "string" },
+        slug: { type: "string" },
+        title: { type: "string" },
+        blocks: { type: "array" },
+        isTemplate: { type: "boolean" },
+      },
+      required: ["locale", "slug", "title", "blocks"],
+      additionalProperties: false,
+    },
+  },
 ] as const satisfies readonly AdminMcpToolDefinition[]
 
 export function findAdminMcpTool(name: string) {
