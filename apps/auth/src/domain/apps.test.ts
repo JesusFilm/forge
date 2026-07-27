@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   ADMIN_MCP_APP_KEY,
   ADMIN_MCP_APP_SEED,
+  ADMIN_MCP_DEFAULT_SCOPES,
   ADMIN_APP_SEED,
   CHAT_APP_KEY,
   CHAT_APP_SEED,
@@ -14,6 +15,7 @@ import {
   WEB_APP_KEY,
   WEB_APP_SEED,
 } from "./apps"
+import { assertKnownScopes } from "./scopes"
 
 describe("first-party app seeds", () => {
   it("keeps Admin and Manager registered as distinct first-party OAuth apps", () => {
@@ -158,6 +160,8 @@ describe("first-party app seeds", () => {
             "video:read",
             "bible:read",
             "experience:publish",
+            "experience:create",
+            "experience:generate",
           ]),
           autoApprove: true,
         }),
@@ -289,11 +293,28 @@ describe("first-party app seeds", () => {
             "video:read",
             "bible:read",
             "experience:publish",
+            "experience:create",
+            "experience:generate",
           ]),
           autoApprove: true,
         }),
       ]),
     )
+  })
+
+  it("keeps experience-level create and generate scopes distinct from publish", () => {
+    // Scope-isolation invariant (feat-286): a grant carrying
+    // experience:create / experience:generate must remain valid without
+    // experience:publish — creating or generating never implies publishing.
+    const grantWithoutPublish = ADMIN_MCP_DEFAULT_SCOPES.filter(
+      (scope) => scope !== "experience:publish",
+    )
+
+    expect(assertKnownScopes(grantWithoutPublish)).toEqual(grantWithoutPublish)
+    expect(grantWithoutPublish).toEqual(
+      expect.arrayContaining(["experience:create", "experience:generate"]),
+    )
+    expect(grantWithoutPublish).not.toContain("experience:publish")
   })
 
   it("registers Mastra Studio OAuth clients for the gateway", () => {

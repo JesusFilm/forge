@@ -98,6 +98,16 @@ export const AUTH_SCOPES = [
     label: "Publish experience locales",
     description: "Publish localized Experiences after validation.",
   },
+  {
+    key: "experience:create",
+    label: "Create experiences",
+    description: "Create new Experience pages as drafts.",
+  },
+  {
+    key: "experience:generate",
+    label: "Generate experiences",
+    description: "Generate new Experience page drafts with AI.",
+  },
 ] as const
 
 export type AuthScopeKey = (typeof AUTH_SCOPES)[number]["key"]
