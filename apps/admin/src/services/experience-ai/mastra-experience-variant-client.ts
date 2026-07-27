@@ -101,6 +101,15 @@ type RawResponse = { status: number; bodyText: string }
 const DEFAULT_VARIANTS_TIMEOUT_MS = 200_000
 
 /**
+ * Byte ceiling for the buffered route response (OOM guard). A legitimate
+ * variant envelope is a few hundred KB at the extreme (3 bytes per UTF-16
+ * code unit for non-Latin scripts); 2MB leaves an order of magnitude of
+ * headroom. Over-cap resolves with an empty body so the existing ladder
+ * classifies it (parse_error on 2xx / network_error otherwise).
+ */
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+
+/**
  * Normalize the request timeout to a positive number. `env.MASTRA_VARIANTS_TIMEOUT_MS`
  * is TYPED `number` but at runtime can arrive `undefined`/string because t3-env's
  * `skipValidation` path returns raw `process.env` without applying the Zod
@@ -134,14 +143,32 @@ function postViaNode(
       },
       (res) => {
         const chunks: Buffer[] = []
-        res.on("data", (chunk: Buffer) => chunks.push(chunk))
-        res.on("end", () =>
+        let totalBytes = 0
+        let overCap = false
+        res.on("data", (chunk: Buffer) => {
+          if (overCap) return
+          totalBytes += chunk.byteLength
+          if (totalBytes > MAX_RESPONSE_BYTES) {
+            // Byte-cap guard: settle FIRST (so the destroy's error event
+            // cannot reject), then abort the socket rather than draining it.
+            overCap = true
+            resolve({ status: res.statusCode ?? 0, bodyText: "" })
+            res.destroy()
+            return
+          }
+          chunks.push(chunk)
+        })
+        res.on("end", () => {
+          if (overCap) return
           resolve({
             status: res.statusCode ?? 0,
             bodyText: Buffer.concat(chunks).toString("utf8"),
-          }),
-        )
-        res.on("error", reject)
+          })
+        })
+        res.on("error", (error) => {
+          if (overCap) return
+          reject(error)
+        })
       },
     )
     req.setTimeout(timeoutMs, () => {
@@ -170,7 +197,12 @@ async function postViaFetch(
     body,
     signal: AbortSignal.timeout(timeoutMs),
   })
-  return { status: response.status, bodyText: await response.text() }
+  const bodyText = await response.text()
+  // Post-buffering parity with the node path's cap (this path is test-only).
+  if (Buffer.byteLength(bodyText) > MAX_RESPONSE_BYTES) {
+    return { status: response.status, bodyText: "" }
+  }
+  return { status: response.status, bodyText }
 }
 
 function parseVariantRouteResult(
@@ -247,6 +279,15 @@ export async function launchMastraExperienceVariant(
       `[mastra-experience-variant] event=fetch_failed host=${target.host} ` +
         `transport=${options.fetchImpl ? "fetch" : "node-http"} ${describeFetchError(error)}`,
     )
+    // A client-side abort means the admin-side budget elapsed — honest
+    // timeout semantics (the MCP generate path runs a budget BELOW mastra's
+    // internal one, so this is a legitimate, expected outcome there).
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      return { ok: false, reason: "timeout", retryable: true }
+    }
     return { ok: false, reason: "network_error", retryable: true }
   }
 

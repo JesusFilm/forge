@@ -171,6 +171,9 @@ async function callAdminMcpTool(
   if (name === "experience.create") {
     return services.experience.createExperience(args)
   }
+  if (name === "experience.generate") {
+    return services.experience.generateExperience(args)
+  }
   throw new Error("not_implemented")
 }
 

@@ -202,6 +202,24 @@ export const ADMIN_MCP_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "experience.generate",
+    description:
+      "Generate a new DRAFT Experience server-side with AI (video-grounded quick draft; optional persona steering). Never publishes.",
+    requiredScopes: ["experience:generate"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string" },
+        locale: { type: "string" },
+        slug: { type: "string" },
+        personaId: { type: "string" },
+        exemplarExperienceId: { type: "string" },
+      },
+      required: ["topic", "locale"],
+      additionalProperties: false,
+    },
+  },
 ] as const satisfies readonly AdminMcpToolDefinition[]
 
 export function findAdminMcpTool(name: string) {

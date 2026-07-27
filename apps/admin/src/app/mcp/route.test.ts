@@ -102,6 +102,7 @@ describe("Admin MCP route", () => {
         "bible:read",
         "experience:publish",
         "experience:create",
+        "experience:generate",
       ]),
       resource_name: "Jesus Film Admin MCP",
     })
@@ -188,6 +189,9 @@ describe("Admin MCP route", () => {
           }),
           expect.objectContaining({
             name: "experience.create",
+          }),
+          expect.objectContaining({
+            name: "experience.generate",
           }),
         ]),
       },
@@ -559,6 +563,72 @@ describe("Admin MCP route", () => {
       },
     })
     expect(experienceCreate).toHaveBeenCalled()
+  })
+
+  it("requires the generate scope and degrades to config_missing when mastra is unconfigured", async () => {
+    // The test env carries no MASTRA_BASE_URL / MASTRA_SERVICE_API_KEY —
+    // exactly an unprovisioned deployment. The tool must answer with a clean
+    // typed envelope (HTTP 200), never a boot failure or thrown error.
+    experienceLocaleFindFirst.mockResolvedValueOnce(null)
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 45,
+        method: "tools/call",
+        params: {
+          name: "experience.generate",
+          arguments: { topic: "Hope", locale: "en" },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(resolvePrincipalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredScopes: ["experience:generate"],
+      }),
+    )
+    await expect(res.json()).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          ok: false,
+          reason: "config_missing",
+          retryable: false,
+        },
+      },
+    })
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("rejects experience.generate without the generate scope as HTTP 403", async () => {
+    resolvePrincipalMock.mockRejectedValueOnce(
+      new AdminMcpAuthError(
+        "insufficient_scope",
+        "Admin MCP token is missing required scope(s): experience:generate.",
+        ["experience:generate"],
+      ),
+    )
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 46,
+        method: "tools/call",
+        params: {
+          name: "experience.generate",
+          arguments: { topic: "Hope", locale: "en" },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toMatchObject({
+      error: "insufficient_scope",
+      required_scopes: ["experience:generate"],
+    })
+    expect(experienceLocaleFindFirst).not.toHaveBeenCalled()
+    expect(experienceCreate).not.toHaveBeenCalled()
   })
 
   it("has a dispatch branch for every declared tool (registry-dispatch parity)", async () => {

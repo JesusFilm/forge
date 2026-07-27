@@ -126,4 +126,32 @@ describe("launchMastraExperienceVariant", () => {
     expect(_internals.resolveTimeoutMs(-5)).toBe(200_000)
     expect(_internals.resolveTimeoutMs("not-a-number")).toBe(200_000)
   })
+
+  it("classifies a client-side abort as timeout (retryable), not network_error", async () => {
+    const result = await launchMastraExperienceVariant(INPUT, {
+      ...CALLER,
+      fetchImpl: async () => {
+        throw Object.assign(new Error("The operation timed out."), {
+          name: "TimeoutError",
+        })
+      },
+    })
+    expect(result).toEqual({ ok: false, reason: "timeout", retryable: true })
+  })
+
+  it("maps an over-cap 200 body to parse_error instead of buffering it", async () => {
+    // > 2MB body; the cap discards it and the empty-body ladder classifies
+    // the 2xx as parse_error (retryable) — the graceful-failure path.
+    const huge = `{"ok":true,"personaId":"grieving","draft":{"pad":"${"あ".repeat(1_100_000)}"}}`
+    const result = await launchMastraExperienceVariant(INPUT, {
+      ...CALLER,
+      fetchImpl: async () =>
+        ({ status: 200, text: async () => huge }) as unknown as Response,
+    })
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+    })
+  })
 })
