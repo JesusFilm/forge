@@ -8,7 +8,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/web build && pnpm --filter @forge/web datadog:sourcemaps"
+buildCommand = "export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && pnpm install --frozen-lockfile && pnpm --filter @forge/web build && pnpm --filter @forge/web datadog:sourcemaps"
 watchPatterns = [
   "/apps/web/**",
   "/packages/admin-graphql/**",
@@ -22,7 +22,7 @@ watchPatterns = [
 ]
 
 [deploy]
-startCommand = "cd apps/web && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start"
+startCommand = "cd apps/web && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start"
 healthcheckPath = "/watch"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
