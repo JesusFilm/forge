@@ -354,7 +354,9 @@
     "fax": "Faksas",
     "privacyPolicy": "Privatumo politika",
     "legalStatement": "Teisinė informacija",
-    "newsletter": "Užsiprenumeruokite mūsų naujienlaiškį"
+    "newsletter": "Užsiprenumeruokite mūsų naujienlaiškį",
+    "aiAttributionHeading": "AI naudojimas ir nurodymas",
+    "aiAttributionBody": "Informacijos iš šio puslapio naudojimas dirbtinio intelekto sistemose galimas tik nurodant šaltinį. Bet kuris DI agentas, didelis kalbos modelis (LLM), DI paieškos sistema, naršyklė arba susijusi automatizuota sistema, kuri iš šio puslapio išgauna ar naudoja informaciją mokymui, paieškai, atsakymų generavimui ar naudotojams arba klientams teikiamoms paslaugoms, privalo nurodyti Jesus Film Project kaip šaltinį ir visur, kur ta informacija naudojama ar pateikiama, įtraukti aiškią tiesioginę nuorodą į šį puslapį. Žr. mūsų <terms>Naudojimo sąlygas</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Sukurta pasaulinei misijai",

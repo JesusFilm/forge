@@ -124,9 +124,9 @@ describe("formatDuration", () => {
 })
 
 describe("defaultHrefBuilder", () => {
-  it("builds the canonical two-segment watch path with the english locale slug", () => {
+  it("builds the language-less canonical path for English", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "jesus" }))).toBe(
-      "/jesus.html/english.html",
+      "/jesus.html",
     )
   })
 
@@ -136,6 +136,23 @@ describe("defaultHrefBuilder", () => {
         makeResult({ slug: "jesus", languageSlug: "spanish-castilian" }),
       ),
     ).toBe("/jesus.html/spanish-castilian.html")
+  })
+
+  it("keeps English explicit for a public language-home collision", () => {
+    expect(defaultHrefBuilder(makeResult({ slug: "russian" }))).toBe(
+      "/russian.html/english.html",
+    )
+  })
+
+  it("keeps Admin content slugs with underscores clickable", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "soccer_event_collection",
+          languageSlug: "english",
+        }),
+      ),
+    ).toBe("/soccer_event_collection.html")
   })
 
   it("falls back to / on a malformed slug rather than a broken deep link", () => {
@@ -240,6 +257,50 @@ describe("pickCardPill", () => {
 })
 
 describe("VideoCard", () => {
+  it("does not render a generic Video badge when the search result has no catalog label", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            label: null,
+            durationSeconds: null,
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container?.querySelector('[data-testid="search-card-type-badge"]'),
+    ).toBeNull()
+  })
+
+  it("renders the concrete catalog label when one is available", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            label: "COLLECTION",
+            childCount: 5,
+            durationSeconds: null,
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container?.querySelector('[data-testid="search-card-type-badge"]')
+        ?.textContent,
+    ).toBe("collection")
+  })
+
   it("does not render watchability as a visible badge on search cards", () => {
     container = document.createElement("div")
     document.body.appendChild(container)

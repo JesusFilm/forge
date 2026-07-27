@@ -280,6 +280,7 @@ export type WatchVideoRecord = {
   documentId: string
   slug: string | null
   publishedAt: string | null
+  localePublishedAt: string | null
   title: string | null
   snippet: string | null
   description: string | null
@@ -469,6 +470,7 @@ async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
 type AdminLocaleRaw = {
   documentId: string | null
   languageSlug?: string | null
+  publishedAt?: string | null
   title?: string | null
   description?: string | null
   snippet?: string | null
@@ -900,6 +902,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     documentId: raw.documentId,
     slug: raw.slug ?? null,
     publishedAt: raw.publishedAt ?? null,
+    localePublishedAt: localeRow?.publishedAt ?? null,
     title: localeRow?.title ?? null,
     snippet: localeRow?.snippet ?? null,
     description: localeRow?.description ?? null,

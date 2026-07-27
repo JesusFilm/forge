@@ -368,7 +368,7 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(spacer!.getAttribute("tabindex")).toBe("-1")
   })
 
-  it("renders visible chapter-style carousel arrow controls", () => {
+  it("renders hover-revealed edge carousel controls", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
@@ -388,8 +388,12 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(next).not.toBeNull()
     expect(prev?.className).toContain("md:inline-flex")
     expect(next?.className).toContain("md:inline-flex")
-    expect(prev?.className).toContain("-left-12")
-    expect(next?.className).toContain("-right-12")
+    expect(prev?.className).toContain("left-3")
+    expect(next?.className).toContain("right-3")
+    expect(prev?.className).toContain("group-hover/carousel:opacity-100")
+    expect(next?.className).toContain("group-hover/carousel:opacity-100")
+    expect(prev?.className).toContain("disabled:hidden")
+    expect(next?.className).toContain("disabled:hidden")
     expect(prev?.className).toContain("text-stone-900")
     expect(next?.className).toContain("text-stone-900")
     expect(prev?.className).not.toContain("sr-only")

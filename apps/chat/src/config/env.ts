@@ -4,6 +4,8 @@
 
 import { z } from "zod"
 
+import { hostAllowed } from "@/lib/server/mastra-upstream"
+
 // Railway/Doppler can inject an empty string for an unset var; treat "" as absent
 // so optional vars stay truly optional rather than failing a non-empty refinement.
 const emptyToUndefined = (value: string | undefined) =>
@@ -35,8 +37,9 @@ const envSchema = z.object({
   // string-boolean (repo convention): only the literal "true" enables Seeker.
   SEEKER_CHAT_ENABLED: z.string().optional(),
   SEEKER_MASTRA_BASE_URL: z.string().optional(),
-  // CSV SSRF allowlist; unset → operator-set base host trusted (redirect:"error"
-  // still guards). Matches admin's hostAllowed.
+  // CSV SSRF allowlist. Outside a production BUILD: unset → operator-set base
+  // host trusted (redirect:"error" still guards). In production: unset DENIES —
+  // see requireSeekerEgressAllowlist() below.
   SEEKER_MASTRA_ALLOWED_HOSTS: z.string().optional(),
   // The ai-chat lane bearer (Mastra's AI_CHAT_SERVICE_API_KEYS CSV) — since
   // feat-250 the ONLY bearer chat presents: sends AND the history proxies.
@@ -107,6 +110,50 @@ export const env = envSchema.parse({
 /** Whether the chat app should route messages to Seeker (vs the local stub). */
 export function isSeekerChatEnabled(): boolean {
   return env.SEEKER_CHAT_ENABLED === "true"
+}
+
+/**
+ * Whether an unset SEEKER_MASTRA_ALLOWED_HOSTS must DENY the outbound call
+ * rather than trust the operator-set host. The allowlist is the pin that stops
+ * a typo'd or tampered SEEKER_MASTRA_BASE_URL from egressing the ai-chat lane
+ * bearer (and prompt text) to an arbitrary https host, which the scheme floor
+ * alone admits.
+ *
+ * Armed by NODE_ENV, so the trigger is any production BUILD — every deployed
+ * environment AND a local `next build` + `next start`, not just the one an
+ * operator calls "production". Only `next dev` and the test runner stay
+ * fail-open, keeping the "every var optional, boots clean" contract at the top
+ * of this file. Provision the allowlist in EVERY environment you deploy.
+ */
+export function requireSeekerEgressAllowlist(): boolean {
+  return env.NODE_ENV === "production"
+}
+
+/** Why the Seeker egress configuration is unusable, as a fixed enum (never free
+ * text — the R15/KTD7 no-PII log discipline). */
+export type SeekerEgressProblem = "allowlist_unset" | "host_not_allowed"
+
+/**
+ * Boot diagnostic for the egress pin: the problem the proxies WILL refuse on,
+ * or null when the configuration is sound. Pure and side-effect-free — it
+ * changes no behavior and never throws; `instrumentation.ts` logs it at server
+ * start so an operator sees the misconfiguration immediately instead of via a
+ * dogfooder's failed send. Enforcement lives at the proxies (validateBaseUrl),
+ * deliberately NOT here: a boot throw would take the whole app down, including
+ * the stub path that needs no Mastra at all.
+ */
+export function describeSeekerEgressMisconfiguration(): SeekerEgressProblem | null {
+  const baseUrl = env.SEEKER_MASTRA_BASE_URL
+  // No base URL set ≡ Seeker unconfigured (the default-off deploy) — nothing to
+  // pin, and the proxies already refuse with config_missing.
+  if (baseUrl === undefined) return null
+  const requireAllowlist = requireSeekerEgressAllowlist()
+  if (requireAllowlist && env.SEEKER_MASTRA_ALLOWED_HOSTS === undefined) {
+    return "allowlist_unset"
+  }
+  return hostAllowed(baseUrl, env.SEEKER_MASTRA_ALLOWED_HOSTS, requireAllowlist)
+    ? null
+    : "host_not_allowed"
 }
 
 /**

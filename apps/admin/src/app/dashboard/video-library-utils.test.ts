@@ -278,7 +278,21 @@ describe("video-library-utils", () => {
         languageSlug: "english",
         webOrigin: "https://www.jesusfilm.org/",
       }),
-    ).toBe("https://www.jesusfilm.org/watch/jesus.html/english.html")
+    ).toBe("https://www.jesusfilm.org/watch/jesus.html")
+    expect(
+      buildVideoVisitorUrl({
+        contentSlug: "russian",
+        languageSlug: "english",
+        webOrigin: "https://www.jesusfilm.org/",
+      }),
+    ).toBe("https://www.jesusfilm.org/watch/russian.html/english.html")
+    expect(
+      buildVideoVisitorUrl({
+        contentSlug: "jesus",
+        languageSlug: "romanian",
+        webOrigin: "https://www.jesusfilm.org/",
+      }),
+    ).toBe("https://www.jesusfilm.org/watch/jesus.html/romanian.html")
   })
 
   it("normalizes visitor URL origins before appending watch paths", () => {
@@ -288,7 +302,7 @@ describe("video-library-utils", () => {
         languageSlug: "english",
         webOrigin: "https://example.com/root?ignored=true",
       }),
-    ).toBe("https://example.com/watch/jesus.html/english.html")
+    ).toBe("https://example.com/watch/jesus.html")
   })
 
   it("does not emit visitor URLs from non-HTTP origins", () => {
@@ -308,7 +322,7 @@ describe("video-library-utils", () => {
         manifest,
         webOrigin: "https://www.jesusfilm.org",
       }),
-    ).toBe("https://www.jesusfilm.org/watch/jesus.html/english.html")
+    ).toBe("https://www.jesusfilm.org/watch/jesus.html")
   })
 
   it("falls back to row-level public language slugs when manifest data is missing", () => {
@@ -319,9 +333,7 @@ describe("video-library-utils", () => {
         manifest,
         webOrigin: "http://localhost:3000",
       }),
-    ).toBe(
-      "http://localhost:3000/watch/missing-from-manifest.html/english.html",
-    )
+    ).toBe("http://localhost:3000/watch/missing-from-manifest.html")
   })
 
   it("does not emit visitor URLs when the manifest is unavailable", () => {
@@ -352,7 +364,7 @@ describe("video-library-utils", () => {
         manifest,
         webOrigin: "http://localhost:3000",
       }),
-    ).toBe("http://localhost:3000/watch/jesus.html/english.html")
+    ).toBe("http://localhost:3000/watch/jesus.html")
   })
 
   it("does not emit links from internal locale keys", () => {

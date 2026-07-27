@@ -13,6 +13,7 @@ import {
   useFloatingSearchInputAutofocus,
 } from "./FloatingSearchField"
 import {
+  FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
   FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
@@ -99,7 +100,7 @@ export function SearchOverlayInstantShell({
         />
         <div
           data-testid="search-overlay-instant-field-shell"
-          className={`pointer-events-auto min-w-0 flex-1 ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
+          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
             headerLanguageControlVisible ? "" : "col-span-2"
           }`}
         >

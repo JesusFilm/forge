@@ -48,9 +48,10 @@ calls `runSync(syncPrisma, ...)`.
    The command is idempotent and creates the Workflow runtime tables for runs,
    events, steps, hooks, and streams.
 
-4. Deploy a dedicated admin worker service from the same admin build. Postgres
-   World requires the Node process to call `world.start()` on server
-   initialization; admin does this in `src/instrumentation.ts` only when
+4. Deploy a dedicated admin worker service from the same admin build with
+   Railway config-as-code path `apps/admin/railway.worker.toml`. Postgres World
+   requires the Node process to call `world.start()` on server initialization;
+   admin does this in `src/instrumentation.ts` only when
    `WORKFLOW_RUNNER_ENABLED=true` and `WORKFLOW_TARGET_WORLD` is
    `@workflow/world-postgres`. The web service can keep `WORKFLOW_TARGET_WORLD`
    and `WORKFLOW_POSTGRES_URL` for dashboard reads, but should leave

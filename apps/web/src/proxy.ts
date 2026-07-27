@@ -4,9 +4,18 @@ import {
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  publicWatchAudioLanguageSlugForLocale,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
+import {
+  asContentSlug,
+  asLocaleSlug,
+  languageVideosIndexPath,
+  watchVideoExplicitLanguagePath,
+  watchVideoPath,
+} from "@/lib/routes"
+import { getWatchHomepageAvailability } from "@/lib/watch-home-route-admission"
 import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
@@ -21,6 +30,7 @@ import {
 import {
   getWatchRouteManifest,
   isWatchRouteAdmittedByManifest,
+  type WatchRouteManifest,
   type WatchRouteManifestRoute,
 } from "@/lib/watch-route-manifest"
 
@@ -40,7 +50,6 @@ const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
 export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
-const WATCH_INTERNAL_REWRITE_VALUE = "1"
 
 type InternalPrefixDecision =
   | { kind: "none" }
@@ -54,16 +63,48 @@ type RewriteDecision =
       htmlLang: string
       pathname: string
       internalPathname?: string
+      languageHomeSlug?: string
       manifestRoute?: WatchRouteManifestRoute
     }
   | { kind: "pass" }
   | { kind: "not-found" }
 
+type ManifestAdmissionDecision =
+  | { kind: "admit"; internalPathname?: string }
+  | { kind: "redirect"; pathname: string; status?: 301 | 307 }
+  | { kind: "not-found" }
+
+function defaultLanguageVideoAdmission(
+  manifest: WatchRouteManifest,
+  contentSlug: string,
+): Extract<ManifestAdmissionDecision, { kind: "admit" }> | null {
+  const defaultAudioLanguageSlug =
+    publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+  if (!defaultAudioLanguageSlug) return null
+
+  const defaultLanguageRoute: WatchRouteManifestRoute = {
+    kind: "video",
+    contentSlug,
+    audioLanguageSlug: defaultAudioLanguageSlug,
+  }
+  if (!isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
+    return null
+  }
+
+  return {
+    kind: "admit",
+    internalPathname: watchVideoExplicitLanguagePath(
+      asContentSlug(defaultLanguageRoute.contentSlug),
+      asLocaleSlug(defaultLanguageRoute.audioLanguageSlug),
+    ),
+  }
+}
+
 function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
 }
 
-function buildRedirect(url: URL, status: 307 | 308): NextResponse {
+function buildRedirect(url: URL, status: 301 | 307 | 308): NextResponse {
   const response = NextResponse.redirect(url, status)
   response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
   return response
@@ -127,8 +168,21 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   }
 
   const publicPath = rest.length > 0 ? `/${rest.join("/")}` : "/"
-  const canonicalPublicPath =
-    publicPath === "/videos" ? "/languages" : publicPath
+  let canonicalPublicPath = publicPath === "/videos" ? "/languages" : publicPath
+  if (rest.length === 2) {
+    const contentSlug = stripSafeSlug(rest[0] ?? "")
+    const audioLanguageSlug = stripSafeSlug(rest[1] ?? "")
+    if (
+      contentSlug &&
+      audioLanguageSlug &&
+      isPublicWatchLanguageSlug(audioLanguageSlug)
+    ) {
+      canonicalPublicPath = watchVideoPath(
+        asContentSlug(contentSlug),
+        asLocaleSlug(audioLanguageSlug),
+      )
+    }
+  }
   if (
     isUnsafeRedirectPath(canonicalPublicPath) ||
     !isSafeCanonicalPath(canonicalPublicPath)
@@ -165,16 +219,16 @@ function classifyRewrite(pathname: string): RewriteDecision {
     const slug = stripSafeSlug(segment)
     if (!slug) return { kind: "not-found" }
     if (isLocale(slug)) return { kind: "not-found" }
-    const identity = isPublicWatchHomeLanguageSlug(slug)
+    const isLanguageHome = isPublicWatchHomeLanguageSlug(slug)
+    const identity = isLanguageHome
       ? resolveWatchLocaleIdentity(slug)
       : { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
     return {
       kind: "rewrite",
       ...identity,
       pathname,
-      manifestRoute: isPublicWatchHomeLanguageSlug(slug)
-        ? undefined
-        : { kind: "one-segment", slug },
+      ...(isLanguageHome ? { languageHomeSlug: slug } : {}),
+      manifestRoute: isLanguageHome ? undefined : { kind: "one-segment", slug },
     }
   }
 
@@ -263,19 +317,25 @@ function rewriteToInternal(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
 ): NextResponse {
   const url = request.nextUrl.clone()
-  const pathname = decision.internalPathname ?? decision.pathname
-  const suffix = pathname === "/" ? "" : pathname
-  url.pathname = `/${decision.locale}/${decision.htmlLang}${suffix}`
+  url.pathname = internalRewritePathname(decision)
   const requestHeaders = new Headers(request.headers)
-  requestHeaders.set(
-    WATCH_INTERNAL_REWRITE_HEADER,
-    WATCH_INTERNAL_REWRITE_VALUE,
-  )
+  // This is an admission claim, not a trusted boolean. If the rewritten URL
+  // re-enters the proxy, it is reclassified and compared with this public
+  // path before the internal prefix may pass.
+  requestHeaders.set(WATCH_INTERNAL_REWRITE_HEADER, decision.pathname)
   return applyWatchSecurityHeaders(
     NextResponse.rewrite(url, {
       request: { headers: requestHeaders },
     }),
   )
+}
+
+function internalRewritePathname(
+  decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+): string {
+  const pathname = decision.internalPathname ?? decision.pathname
+  const suffix = pathname === "/" ? "" : pathname
+  return `/${decision.locale}/${decision.htmlLang}${suffix}`
 }
 
 function buildNotFound(request: ProxyRequest): NextResponse {
@@ -287,19 +347,120 @@ function buildNotFound(request: ProxyRequest): NextResponse {
   })
 }
 
-async function isRewriteAdmittedByManifest(
+async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
-): Promise<boolean> {
-  if (!decision.manifestRoute) return true
+): Promise<ManifestAdmissionDecision> {
+  let manifest: WatchRouteManifest | null = null
+  if (decision.languageHomeSlug) {
+    manifest = await getWatchRouteManifest()
+    const manifestAvailability = manifest?.homepageLocales
+      ? manifest.homepageLocales.includes(decision.locale)
+      : null
+    const availability =
+      manifestAvailability ??
+      (await getWatchHomepageAvailability(decision.locale))
 
-  const manifest = await getWatchRouteManifest()
-  if (!manifest) {
-    return decision.manifestRoute.kind === "one-segment"
-      ? isOneSegmentCollectionSlug(decision.manifestRoute.slug)
-      : true
+    if (availability === false || availability === "missing") {
+      return {
+        kind: "redirect",
+        pathname: languageVideosIndexPath(
+          asLocaleSlug(decision.languageHomeSlug),
+        ),
+        status: 307,
+      }
+    }
+    // An upstream failure is not proof that a published homepage is absent.
+    // Preserve the existing page-level error behavior instead of redirecting.
   }
 
-  return isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)
+  if (!decision.manifestRoute) return { kind: "admit" }
+
+  manifest ??= await getWatchRouteManifest()
+  if (!manifest) {
+    if (
+      decision.manifestRoute.kind === "one-segment" &&
+      !isOneSegmentCollectionSlug(decision.manifestRoute.slug)
+    ) {
+      return { kind: "not-found" }
+    }
+    return { kind: "admit" }
+  }
+
+  if (decision.manifestRoute.kind === "one-segment") {
+    const { slug } = decision.manifestRoute
+    const defaultVideoAdmission = defaultLanguageVideoAdmission(manifest, slug)
+    const hasExactVideoLanguages = Object.hasOwn(
+      manifest.audioLanguageIndexesByContent ?? {},
+      slug,
+    )
+
+    // A slug can be published as both an Experience and a Video. Prefer the
+    // Video only when the manifest proves its exact language availability;
+    // otherwise preserve the one-segment Experience route.
+    if (hasExactVideoLanguages) {
+      return defaultVideoAdmission ?? { kind: "not-found" }
+    }
+    if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+      return { kind: "admit" }
+    }
+    return defaultVideoAdmission ?? { kind: "not-found" }
+  }
+
+  if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+    return { kind: "admit" }
+  }
+
+  if (decision.manifestRoute.kind === "episode") {
+    const standaloneRoute: WatchRouteManifestRoute = {
+      kind: "video",
+      contentSlug: decision.manifestRoute.childSlug,
+      audioLanguageSlug: decision.manifestRoute.audioLanguageSlug,
+    }
+    if (isWatchRouteAdmittedByManifest(manifest, standaloneRoute)) {
+      return {
+        kind: "redirect",
+        pathname: watchVideoPath(
+          asContentSlug(standaloneRoute.contentSlug),
+          asLocaleSlug(standaloneRoute.audioLanguageSlug),
+        ),
+      }
+    }
+  }
+
+  return { kind: "not-found" }
+}
+
+async function isAdmittedInternalRewrite(
+  pathname: string,
+  claimedPublicPathname: string,
+): Promise<boolean> {
+  if (claimedPublicPathname === "/404") {
+    return pathname === `/${DEFAULT_LOCALE}/${DEFAULT_LOCALE}/404`
+  }
+  if (
+    !claimedPublicPathname.startsWith("/") ||
+    !isSafeCanonicalPath(claimedPublicPathname)
+  ) {
+    return false
+  }
+  if (
+    canonicalizeWatchPath({ rawPathname: claimedPublicPathname }).kind ===
+    "redirect"
+  ) {
+    return false
+  }
+
+  const rewrite = classifyRewrite(claimedPublicPathname)
+  if (rewrite.kind !== "rewrite") return false
+  const admission = await classifyManifestAdmission(rewrite)
+  if (admission.kind !== "admit") return false
+
+  return (
+    internalRewritePathname({
+      ...rewrite,
+      internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+    }) === pathname
+  )
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
@@ -307,15 +468,14 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
 
-  const isInternalRewrite =
-    request.headers.get(WATCH_INTERNAL_REWRITE_HEADER) ===
-    WATCH_INTERNAL_REWRITE_VALUE
+  const claimedPublicPathname = request.headers.get(
+    WATCH_INTERNAL_REWRITE_HEADER,
+  )
   const prefix = internalPrefixDecision(pathname)
-  if (isInternalRewrite) {
-    if (prefix.kind === "redirect") {
-      return applyWatchSecurityHeaders(NextResponse.next())
-    }
-    if (prefix.kind === "not-found") return buildNotFound(request)
+  if (claimedPublicPathname != null) {
+    return (await isAdmittedInternalRewrite(pathname, claimedPublicPathname))
+      ? applyWatchSecurityHeaders(NextResponse.next())
+      : buildNotFound(request)
   }
 
   if (prefix.kind === "not-found") return buildNotFound(request)
@@ -346,10 +506,19 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const rewrite = classifyRewrite(pathname)
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") return buildNotFound(request)
-  if (!(await isRewriteAdmittedByManifest(rewrite))) {
+  const admission = await classifyManifestAdmission(rewrite)
+  if (admission.kind === "not-found") {
     return buildNotFound(request)
   }
-  return rewriteToInternal(request, rewrite)
+  if (admission.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = admission.pathname
+    return buildRedirect(url, admission.status ?? 301)
+  }
+  return rewriteToInternal(request, {
+    ...rewrite,
+    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+  })
 }
 
 export const config = {

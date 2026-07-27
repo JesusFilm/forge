@@ -79,11 +79,21 @@ export type FloatingSearchPinnedContextValue = {
   searchOpen: boolean
 }
 
+export type WatchRouteSurface = "language-home" | "experience" | "english-video"
+
+export type WatchRouteSurfaceContextValue = {
+  surface: WatchRouteSurface | null
+  register: (pathname: string, surface: WatchRouteSurface) => () => void
+}
+
 export const FloatingSearchContext =
   createContext<FloatingSearchContextValue | null>(null)
 
 export const FloatingSearchPinnedContext =
   createContext<FloatingSearchPinnedContextValue | null>(null)
+
+export const WatchRouteSurfaceContext =
+  createContext<WatchRouteSurfaceContextValue | null>(null)
 
 export function useFloatingSearch(): FloatingSearchContextValue {
   const ctx = useContext(FloatingSearchContext)
@@ -100,6 +110,20 @@ export function useFloatingSearchPinned(): FloatingSearchPinnedContextValue {
   if (ctx === null) {
     throw new Error(
       "useFloatingSearchPinned must be used inside <FloatingSearchProvider>",
+    )
+  }
+  return ctx
+}
+
+export function useWatchRouteSurface(): WatchRouteSurface | null {
+  return useContext(WatchRouteSurfaceContext)?.surface ?? null
+}
+
+export function useWatchRouteSurfaceRegistration(): WatchRouteSurfaceContextValue {
+  const ctx = useContext(WatchRouteSurfaceContext)
+  if (ctx === null) {
+    throw new Error(
+      "useWatchRouteSurfaceRegistration must be used inside <FloatingSearchProvider>",
     )
   }
   return ctx

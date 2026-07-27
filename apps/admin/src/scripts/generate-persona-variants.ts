@@ -19,8 +19,10 @@ import pLimit from "p-limit"
 
 import type { PrismaClient } from "@prisma/client"
 import type { DraftExperience, VideoCandidate } from "@forge/experience-schema"
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 
 import type { Principal } from "@/auth/principal"
+import { watchLanguageSlugForLocale } from "@/lib/watch-language-slug"
 import {
   ExperienceAiNormalizationError,
   normalizeExperienceDraft,
@@ -68,6 +70,16 @@ export function variantSlug(topic: string, personaId: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
   return `${base || "experience"}-${personaId}`
+}
+
+export function personaVariantReviewUrl(
+  slug: string,
+  locale: string,
+  origin = "http://localhost:3000",
+): string | null {
+  const languageSlug = watchLanguageSlugForLocale(locale)
+  if (!languageSlug) return null
+  return `${origin}/watch${buildCanonicalWatchVideoPath(slug, languageSlug)}`
 }
 
 // ---------------------------------------------------------------------------
@@ -308,8 +320,9 @@ async function main(): Promise<void> {
     )
     for (const o of outcomes) {
       if (o.status === "succeeded") {
+        const reviewUrl = personaVariantReviewUrl(o.slug, args.locale)
         process.stdout.write(
-          `  ✓ ${o.personaId}  http://localhost:3000/watch/${o.slug}.html/english.html\n`,
+          `  ✓ ${o.personaId}  ${reviewUrl ?? `no public Watch URL mapping for locale ${args.locale}`}\n`,
         )
       } else {
         process.stdout.write(`  ✗ ${o.personaId}  ${o.reason}\n`)

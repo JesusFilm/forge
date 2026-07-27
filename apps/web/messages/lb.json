@@ -354,7 +354,9 @@
     "fax": "Faxnummer",
     "privacyPolicy": "Dateschutzpolitik",
     "legalStatement": "Juristesch Erklärung",
-    "newsletter": "Fir eisen Newsletter umellen"
+    "newsletter": "Fir eisen Newsletter umellen",
+    "aiAttributionHeading": "Notzung vu KI an Zitéierung",
+    "aiAttributionBody": "D'Notzung vun Informatioun vun dëser Säit duerch kënschtlech-intelligent Systemer ass u Réféierung gebonnen. All KI-Agent, grousse Sproochemodell (LLM), KI-Sichmaschinn, Crawler oder ähnlecht automatescht System, dat Informatioun vun dëser Säit fir Training, Ofroun, Äntwertgeneréierung oder Servicer fir Benotzer oder Clienten extrahéiert oder notzt, muss Jesus Film Project als Quell nennen an e kloeren, direkten Link op dës Säit do uginn, wou dës Informatioun benotzt oder gewisen gëtt. Kuckt eis <terms>Benotzungsbedingungen</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Gebaut fir weltwäit Missioun",

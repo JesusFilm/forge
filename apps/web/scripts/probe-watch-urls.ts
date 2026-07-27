@@ -23,12 +23,16 @@ import { writeFileSync } from "node:fs"
 
 import {
   WATCH_URL_FIXTURES,
+  WATCH_STRUCTURED_DATA_CONTRACTS,
   classifyProbe,
   probeUrl,
   type ProbeComparison,
 } from "../src/lib/watch-url-probe"
 
 const SOFT_REGRESSION_BUDGET = 0.02 // ≤2% soft regressions allowed
+const STRUCTURED_DATA_SAMPLES = new Set(
+  Object.keys(WATCH_STRUCTURED_DATA_CONTRACTS),
+)
 
 type Args = { production: string; preview: string; jsonOut?: string }
 
@@ -101,6 +105,18 @@ async function main() {
     error: 0,
   }
   for (const c of comparisons) tally[c.outcome] += 1
+
+  console.log("\nStructured-data samples (literal initial-response scripts):")
+  for (const comparison of comparisons) {
+    if (!STRUCTURED_DATA_SAMPLES.has(comparison.path)) continue
+    const prod = comparison.production.structuredData
+    const preview = comparison.preview.structuredData
+    console.log(
+      `  ${comparison.path}\n` +
+        `      prod ${prod?.scriptCount ?? 0}: ${prod?.types.join(", ") || "none"}\n` +
+        `      preview ${preview?.scriptCount ?? 0}: ${preview?.types.join(", ") || "none"}`,
+    )
+  }
 
   // Print every non-clean outcome (hard first, then soft, then error).
   const order = ["hard-regression", "soft-regression", "error"] as const

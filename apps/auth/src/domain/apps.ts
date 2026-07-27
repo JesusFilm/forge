@@ -79,6 +79,7 @@ export const ADMIN_MCP_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
+  "offline_access",
   "membership:read",
   "experience:read",
   "experience:locale:create",

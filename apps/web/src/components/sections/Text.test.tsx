@@ -50,6 +50,7 @@ describe("Text promotional Markdown", () => {
     expect(container.querySelector("h3")?.textContent).toBe(
       "Why this story matters",
     )
+    expect(container.querySelector("h3")?.classList).toContain("sm:text-2xl")
     expect(
       container.querySelector('[data-testid="promotional-markdown"]')
         ?.classList,
@@ -135,6 +136,42 @@ describe("Text promotional Markdown", () => {
     expect(
       container.querySelector('[data-testid="promotional-markdown"]'),
     ).toBeNull()
+  })
+
+  it("server-renders an authored page topic as the only h1", () => {
+    const { container } = renderText({
+      heading: "Watch free Christian videos, Bible stories, and films",
+      headingLevel: "h1",
+    })
+
+    expect(container.querySelectorAll("h1")).toHaveLength(1)
+    expect(container.querySelector("h1")?.textContent).toBe(
+      "Watch free Christian videos, Bible stories, and films",
+    )
+  })
+
+  it("renders promotional Markdown subheadings at h2 beneath a page h1", () => {
+    const { container } = renderText({
+      heading: "Watch free Christian videos, Bible stories, and films",
+      headingLevel: "h1",
+      contentParagraphs: ["### Explore the story"],
+    })
+
+    expect(
+      Array.from(container.querySelectorAll("h1, h2, h3")).map(
+        (heading) => `${heading.tagName}:${heading.textContent}`,
+      ),
+    ).toEqual([
+      "H1:Watch free Christian videos, Bible stories, and films",
+      "H2:Explore the story",
+    ])
+    expect(container.querySelector("h2")?.classList).toContain("sm:text-2xl")
+  })
+
+  it("does not render a whitespace-only heading", () => {
+    const { container } = renderText({ heading: "   ", headingLevel: "h1" })
+
+    expect(container.querySelector("h1")).toBeNull()
   })
 
   it("does not render decorative rays beside the promotional heading", () => {

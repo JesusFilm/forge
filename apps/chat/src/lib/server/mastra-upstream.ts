@@ -47,13 +47,19 @@ function isRailwayInternalHost(host: string): boolean {
  * dev) and `*.railway.internal` hosts (the prod transport: Railway private
  * networking is plain HTTP at the app layer over a WireGuard-encrypted mesh,
  * and Mastra deliberately has no public https domain). When an allowlist is set
- * the host must be in it. An unset allowlist trusts the operator-set host
- * (admin parity; `redirect:"error"` still blocks off-host hops) but the scheme
- * floor applies regardless.
+ * the host must be in it; the scheme floor applies regardless.
+ *
+ * `requireAllowlist` decides what an UNSET allowlist means, and is required (no
+ * default) so every call site states its policy — a defaulted flag would let a
+ * new caller silently inherit fail-open. `false` trusts the operator-set host
+ * (the local/CI posture: chat boots clean with nothing set). `true` denies,
+ * because without the pin any `https://…` base passes the scheme floor and
+ * would egress the ai-chat lane bearer wherever the base URL points.
  */
 export function hostAllowed(
   baseUrl: string,
   allowedHostsCsv: string | undefined,
+  requireAllowlist: boolean,
 ): boolean {
   let url: URL
   try {
@@ -66,7 +72,7 @@ export function hostAllowed(
     url.protocol === "http:" &&
     (LOOPBACK_HOSTS.has(host) || isRailwayInternalHost(host))
   if (url.protocol !== "https:" && !privateHttp) return false
-  if (!allowedHostsCsv) return true
+  if (!allowedHostsCsv) return !requireAllowlist
   const allowed = new Set(
     allowedHostsCsv
       .split(",")
@@ -104,8 +110,9 @@ export type ValidatedBaseUrl = string & {
 export function validateBaseUrl(
   baseUrl: string,
   allowedHostsCsv: string | undefined,
+  requireAllowlist: boolean,
 ): ValidatedBaseUrl | null {
-  return hostAllowed(baseUrl, allowedHostsCsv)
+  return hostAllowed(baseUrl, allowedHostsCsv, requireAllowlist)
     ? (baseUrl as ValidatedBaseUrl)
     : null
 }

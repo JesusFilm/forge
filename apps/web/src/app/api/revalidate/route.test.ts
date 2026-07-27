@@ -310,6 +310,36 @@ describe("POST /api/revalidate", () => {
     })
   })
 
+  it("does not invalidate a language home as a collision-owned English video canonical", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "video",
+          entry: {
+            slug: "russian",
+            locale: "en",
+          },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/russian.html/english.html",
+    )
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/en/en/russian.html/english.html",
+    )
+    expect(revalidatePathMock).not.toHaveBeenCalledWith("/russian.html")
+  })
+
   it("supports broad video data invalidation without a slug", async () => {
     const { POST } = await import("./route")
 

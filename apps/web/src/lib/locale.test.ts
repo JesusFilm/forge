@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
 
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+
+import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 import {
   isLocale,
   isLocaleSlug,
@@ -83,6 +86,15 @@ describe("isLocaleSlug (bcp47 OR English-name kebab heuristic)", () => {
 })
 
 describe("public watch language slug guards", () => {
+  it("keeps the shared slug-only corpus aligned with Web's BCP-47 map", () => {
+    const expected = new Set([
+      ...Object.keys(LANGUAGE_BCP47_MAP),
+      "spanish-latin-american",
+    ])
+
+    expect(PUBLIC_WATCH_LANGUAGE_SLUGS).toEqual(expected)
+  })
+
   it("accepts English-name audio slugs used in public /watch URLs", () => {
     expect(isPublicWatchLanguageSlug("english")).toBe(true)
     expect(isPublicWatchLanguageSlug("spanish-castilian")).toBe(true)

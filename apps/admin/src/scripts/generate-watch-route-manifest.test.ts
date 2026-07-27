@@ -11,6 +11,7 @@ const manifest = {
   generatedAt: "2026-05-29T12:00:00.000Z",
   contentSlugs: ["jesus"],
   oneSegmentSlugs: ["easter"],
+  homepageLocales: ["en"],
   episodePairsByParent: { series: ["episode-1", "episode-2"] },
   audioLanguageSlugs: ["english"],
   audioLanguageIndexesByContent: { jesus: [0] },
@@ -102,6 +103,7 @@ describe("runGenerateWatchRouteManifest", () => {
       counts: {
         contentSlugs: 1,
         oneSegmentSlugs: 1,
+        homepageLocales: 1,
         parentSlugs: 1,
         parentChildPairs: 2,
         audioLanguageSlugs: 1,
@@ -136,6 +138,7 @@ describe("runGenerateWatchRouteManifest", () => {
       counts: {
         contentSlugs: 1,
         oneSegmentSlugs: 1,
+        homepageLocales: 1,
         parentSlugs: 1,
         parentChildPairs: 2,
         audioLanguageSlugs: 1,
@@ -157,6 +160,7 @@ describe("runGenerateWatchRouteManifest", () => {
       counts: {
         contentSlugs: 1,
         oneSegmentSlugs: 1,
+        homepageLocales: 1,
         parentSlugs: 1,
         parentChildPairs: 2,
         audioLanguageSlugs: 1,

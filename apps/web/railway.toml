@@ -8,7 +8,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/web build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/web build && pnpm --filter @forge/web datadog:sourcemaps"
 watchPatterns = [
   "/apps/web/**",
   "/packages/admin-graphql/**",

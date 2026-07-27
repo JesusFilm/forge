@@ -12,6 +12,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react"
 import { createPortal } from "react-dom"
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import {
   PointerSensor,
   useSensor,
@@ -87,6 +88,7 @@ import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
+import { watchLanguageSlugForLocale } from "@/lib/watch-language-slug"
 import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
 import {
   matchesVideoLibraryCategory,
@@ -1156,46 +1158,11 @@ function cleanWatchOrigin(value: string) {
   }
 }
 
-// SYNC: mirrors PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE in
-// apps/web/src/lib/locale.ts — the watch site resolves the language path
-// segment through that table, so entries here must stay aligned with web.
-// Keys are lowercased to match cleanLocaleCode output.
-const WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE: Readonly<Record<string, string>> = {
-  en: "english",
-  es: "spanish-castilian",
-  fr: "french",
-  pt: "portuguese-brazil",
-  de: "german-standard",
-  ar: "arabic-modern-standard",
-  id: "indonesian-isa",
-  ja: "japanese",
-  ko: "korean",
-  ms: "malay",
-  ne: "nepali",
-  ru: "russian",
-  th: "thai",
-  tl: "tagalog",
-  tr: "turkish",
-  vi: "vietnamese",
-  zh: "mandarin-china",
-  "zh-hans": "chinese-simplified",
-  "zh-hant": "chinese-traditional",
-}
+export { watchLanguageSlugForLocale }
 
-export function watchLanguageSlugForLocale(locale: string) {
-  const normalized = cleanLocaleCode(locale, true)
-  if (!normalized) return null
-
-  return (
-    WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE[normalized] ??
-    WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE[normalized.split("-")[0] ?? ""] ??
-    null
-  )
-}
-
-// Public watch URLs are always two .html segments: {slug}.html/{language}.html.
-// A bare slug expands to the broken {slug}.html/{slug}.html on the watch site.
-// See docs/solutions/conventions/public-watch-url-two-segment-contract-20260608.md.
+// Public Watch URLs always include the content `.html` segment. Eligible
+// English content omits its language; international and collision-owned
+// English routes keep the explicit language segment.
 export function buildPublishedWatchUrl(
   slug: string,
   locale: string,
@@ -1208,7 +1175,10 @@ export function buildPublishedWatchUrl(
   const baseUrl = inferLocalWatchBaseUrl() ?? cleanWatchOrigin(watchOrigin)
   if (!baseUrl) return null
 
-  return `${baseUrl}/watch/${normalizedSlug}.html/${languageSlug}.html`
+  return `${baseUrl}/watch${buildCanonicalWatchVideoPath(
+    normalizedSlug,
+    languageSlug,
+  )}`
 }
 
 export function ExperienceEditor({

@@ -20,6 +20,7 @@
     "@datadog/mobile-react-native": "3.5.2",
     "@datadog/mobile-react-native-session-replay": "3.5.2",
     "@forge/admin-graphql": "workspace:*",
+    "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
     "@kesha-antonov/react-native-background-downloader": "^4.5.5",
     "@react-native-async-storage/async-storage": "^2.2.0",

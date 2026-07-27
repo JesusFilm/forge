@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -11,6 +12,11 @@ import type { WatchHomeModel } from "@/lib/watch-home"
 
 vi.mock("next/image", () => ({
   default: () => null,
+}))
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    key === "pageTitle" ? "Jesus Film Project Watch" : key,
 }))
 
 vi.mock("@/components/home/WatchHomeFooter", () => ({
@@ -31,16 +37,60 @@ vi.mock("@/components/sections", () => ({
     section,
     languageSlug,
   }: {
-    section: { __typename?: string | null }
+    section: {
+      __typename?: string | null
+      content?: Array<Record<string, unknown> | null> | null
+      heading?: string | null
+      headingLevel?: string | null
+      sectionContent?: Array<Record<string, unknown> | null> | null
+    }
     languageSlug: string
-  }) => (
-    <section
-      data-testid="experience-section"
-      data-section-type={section.__typename ?? "unknown"}
-      data-language-slug={languageSlug}
-      data-block-marker={section.__typename ?? "unknown"}
-    />
-  ),
+  }) => {
+    const headings = (
+      block: typeof section | Record<string, unknown> | null,
+    ): Array<{ heading: string; level: "h1" | "h2" }> => {
+      if (!block) return []
+      if (
+        block.__typename === "TextBlock" &&
+        (block.headingLevel === "h1" || block.headingLevel === "h2") &&
+        typeof block.heading === "string" &&
+        block.heading.trim().length > 0
+      ) {
+        return [
+          {
+            heading: block.heading,
+            level: block.headingLevel,
+          },
+        ]
+      }
+
+      const children =
+        block.__typename === "SectionBlock"
+          ? block.sectionContent
+          : block.__typename === "ContainerBlock"
+            ? block.content
+            : null
+
+      return Array.isArray(children) ? children.flatMap(headings) : []
+    }
+
+    return (
+      <section
+        data-testid="experience-section"
+        data-section-type={section.__typename ?? "unknown"}
+        data-language-slug={languageSlug}
+        data-block-marker={section.__typename ?? "unknown"}
+      >
+        {headings(section).map(({ heading, level }) =>
+          level === "h1" ? (
+            <h1 key={heading}>{heading}</h1>
+          ) : (
+            <h2 key={heading}>{heading}</h2>
+          ),
+        )}
+      </section>
+    )
+  },
 }))
 
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
@@ -54,6 +104,35 @@ const heroModel = {
 
 function makeBlock(__typename: string, sectionKey: string) {
   return { __typename, sectionKey } as unknown as Section
+}
+
+function makePageHeadingBlock(
+  heading = "Watch free Christian videos, Bible stories, and films",
+  sectionKey = "page-heading",
+) {
+  return {
+    __typename: "TextBlock",
+    sectionKey,
+    heading,
+    headingLevel: "h1",
+  } as unknown as Section
+}
+
+function makeNestedPageHeadingBlock(
+  heading = "Watch free Christian videos, Bible stories, and films",
+  sectionKey = "page-heading",
+) {
+  return {
+    __typename: "SectionBlock",
+    sectionKey: `${sectionKey}-section`,
+    sectionContent: [
+      {
+        __typename: "ContainerBlock",
+        sectionKey: `${sectionKey}-container`,
+        content: [makePageHeadingBlock(heading, sectionKey)],
+      },
+    ],
+  } as unknown as Section
 }
 
 let container: HTMLDivElement
@@ -73,6 +152,98 @@ afterEach(async () => {
 })
 
 describe("WatchHomeExperiencePage", () => {
+  it("server-renders one fallback h1 without an authored page heading", () => {
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={[]}
+        languageSlug="english"
+      />,
+    )
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+
+    expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
+    expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Jesus Film Project Watch",
+    )
+  })
+
+  it("renders the authored page topic as the only hydrated h1", async () => {
+    const blocks = [makeNestedPageHeadingBlock()]
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={blocks}
+        languageSlug="english"
+      />,
+    )
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+
+    expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
+    expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Watch free Christian videos, Bible stories, and films",
+    )
+
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    expect(container.querySelectorAll("h1")).toHaveLength(1)
+    expect(container.querySelector("h1")?.textContent).toBe(
+      "Watch free Christian videos, Bible stories, and films",
+    )
+  })
+
+  it("keeps the first authored h1 and demotes additional authored h1s", async () => {
+    const blocks = [
+      makePageHeadingBlock("Primary page heading", "primary-heading"),
+      makeNestedPageHeadingBlock("Secondary page heading", "secondary-heading"),
+    ]
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={blocks}
+        languageSlug="english"
+      />,
+    )
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+
+    expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
+    expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Primary page heading",
+    )
+    expect(serverContainer.querySelector("h2")?.textContent).toBe(
+      "Secondary page heading",
+    )
+
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    expect(container.querySelectorAll("h1")).toHaveLength(1)
+    expect(container.querySelector("h1")?.textContent).toBe(
+      "Primary page heading",
+    )
+    expect(container.querySelector("h2")?.textContent).toBe(
+      "Secondary page heading",
+    )
+  })
+
   it("contains only top-level standalone video blocks on the Watch rail", async () => {
     const blocks = [
       makeBlock("WatchHomeHeroBlock", "hero"),

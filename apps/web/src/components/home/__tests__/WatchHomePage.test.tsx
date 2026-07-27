@@ -4,6 +4,7 @@
 
 import { act, useEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
@@ -249,6 +250,29 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  it("server-renders one page heading outside the heading-free carousel", () => {
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = renderToStaticMarkup(
+      <WatchHomePage model={makeModel()} />,
+    )
+
+    const carousel = serverContainer.querySelector(
+      '[data-testid="watch-home-tv-carousel"]',
+    )
+    const activeTitle = carousel?.querySelector(
+      '[data-testid="watch-home-tv-active-title"]',
+    )
+
+    expect(carousel?.getAttribute("aria-label")).toBe("Jesus")
+    expect(activeTitle?.tagName).toBe("P")
+    expect(activeTitle?.textContent).toBe("Jesus")
+    expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
+    expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
+    expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Jesus Film Project Watch",
+    )
+  })
+
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {
     setRequestLocale("ru")
     await act(async () => {
@@ -344,15 +368,33 @@ describe("WatchHomePage", () => {
     const carousel = container.querySelector(
       '[data-testid="watch-home-tv-carousel"]',
     )
-    const slideTitle = Array.from(carousel?.querySelectorAll("h2") ?? []).find(
-      (heading) => heading.textContent === "Jesus",
+    const slideTitle = carousel?.querySelector(
+      '[data-testid="watch-home-tv-active-title"]',
     )
-    expect(slideTitle?.tagName).toBe("H2")
+    expect(carousel?.getAttribute("aria-label")).toBe("Jesus")
+    expect(slideTitle?.tagName).toBe("P")
     expect(slideTitle?.textContent).toBe("Jesus")
-    expect(carousel?.querySelectorAll("h1")).toHaveLength(1)
-    expect(carousel?.querySelector("h1")?.textContent).toBe(
+    expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
+    expect(container.querySelectorAll("h1")).toHaveLength(1)
+    expect(container.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
+    const railTitles =
+      carousel?.querySelectorAll('[data-slot="video-thumbnail-title"]') ?? []
+    expect(railTitles).toHaveLength(1)
+    expect(
+      Array.from(railTitles).every(({ tagName }) => tagName === "SPAN"),
+    ).toBe(true)
+    expect(
+      carousel
+        ?.querySelector('[data-testid="watch-home-tv-carousel-card"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Show Jesus")
+    expect(
+      carousel
+        ?.querySelector('[data-testid="watch-home-tv-carousel-card"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
@@ -413,20 +455,7 @@ describe("WatchHomePage", () => {
     )
     expect(sectionCta?.classList.contains("shrink-0")).toBe(true)
     expect(container.textContent).toContain("Built for global missions")
-    expect(container.textContent).toContain("Sign Up For Our Newsletter")
-    const socialHrefs = [
-      "https://twitter.com/jesusfilm",
-      "https://www.facebook.com/jesusfilm",
-      "https://www.instagram.com/jesusfilm",
-      "https://www.youtube.com/user/jesusfilm",
-    ]
-    for (const href of socialHrefs) {
-      const socialLink = container.querySelector(`a[href="${href}"]`)
-      expect(socialLink?.getAttribute("target")).toBe("_blank")
-      expect(socialLink?.getAttribute("rel")).toBe(
-        "nofollow noopener noreferrer",
-      )
-    }
+    expect(container.textContent).not.toContain("Sign Up For Our Newsletter")
     expect(
       container
         .querySelector('[data-section-id="home-video-gospels"] .grid')
@@ -953,6 +982,19 @@ describe("WatchHomePage", () => {
     expect(heroVideo.getAttribute("src")).toBe(
       "https://stream.mux.com/mux-join.m3u8",
     )
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toContain("Billions are searching")
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-active-title"]'),
+    ).toBeNull()
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.querySelectorAll("h1, h2, h3, h4, h5, h6"),
+    ).toHaveLength(0)
 
     expect(container.textContent).not.toContain("Watch Short Film")
     expect(
@@ -1007,6 +1049,22 @@ describe("WatchHomePage", () => {
         new MouseEvent("click", { bubbles: true }),
       )
     })
+
+    const carousel = container.querySelector(
+      '[data-testid="watch-home-tv-carousel"]',
+    )
+    const activeTitle = carousel?.querySelector(
+      '[data-testid="watch-home-tv-active-title"]',
+    )
+    expect(carousel?.getAttribute("aria-label")).toBe("Queued Two")
+    expect(activeTitle?.tagName).toBe("P")
+    expect(activeTitle?.textContent).toBe("Queued Two")
+    expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
+    expect(
+      Array.from(
+        carousel?.querySelectorAll<HTMLElement>('[aria-hidden="true"]') ?? [],
+      ).some((element) => element.textContent?.includes("Queued One")),
+    ).toBe(true)
 
     expect(carouselApi.scrollTo).toHaveBeenCalledWith(queuedTwoIndex)
     expect(
@@ -1161,36 +1219,6 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('button[aria-label="Next video preview"]'),
     ).not.toBeNull()
-    expect(
-      container
-        .querySelector('button[aria-label="Previous video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("left-6")
-    expect(
-      container
-        .querySelector('button[aria-label="Previous video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("h-12")
-    expect(
-      container
-        .querySelector('button[aria-label="Previous video preview"]')
-        ?.getAttribute("class"),
-    ).toContain("text-stone-900")
-    expect(
-      container
-        .querySelector('button[aria-label="Next video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("right-6")
-    expect(
-      container
-        .querySelector('button[aria-label="Next video preview"]')
-        ?.getAttribute("class"),
-    ).not.toContain("h-12")
-    expect(
-      container
-        .querySelector('button[aria-label="Next video preview"]')
-        ?.getAttribute("class"),
-    ).toContain("text-stone-900")
   })
 
   it("keeps configured Mux inserts when the video queue is empty", async () => {

@@ -354,7 +354,9 @@
     "fax": "Fekisi",
     "privacyPolicy": "Policy ya Phiriwesi",
     "legalStatement": "Tshitatamennde tsha Mulayo",
-    "newsletter": "Ṅwalelani kha newsletter yashu"
+    "newsletter": "Ṅwalelani kha newsletter yashu",
+    "aiAttributionHeading": "U shumiswa ha AI na u sumbedza vhushaka",
+    "aiAttributionBody": "U shumiswa ha mafhungo a kha inoḽiṱi nga masisitimu a vhuṱali ha maitele ho itwaho nga mutheo wa AI hu itwa nga u sumbedza vhushaka. Muhulwane muṅwe na muṅwe wa AI, muodeli wa muambo muhulwane (LLM), injini ya u ṱola ya AI, crawler, kana sisitemu ine ya itwa nga otomatiki ine ya bvisa kana ya shumisa mafhungo a kha inoḽiṱi u itela u guda, u wana, u fhindula, kana tshumelo dzi ṋetshedzwaho vhashumisi kana vharengi, i fanela u sumbedza Jesus Film Project sa tshisima nahone i katse lutumbu lu re khagala, lu tevhekaho kha inoḽiṱi henefhaḽa hune mafhungo ao a shumiswa kana a sumbedzwa hone. Vhonani <terms>Maipfi a U Shumisa</terms> ashu."
   },
   "WatchHomePromo": {
     "eyebrow": "Yo fhaṱwa u itela mishumo ya shango ḽoṱhe",

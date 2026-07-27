@@ -354,7 +354,9 @@
     "fax": "Ffacs",
     "privacyPolicy": "Polisi Preifatrwydd",
     "legalStatement": "Datganiad Cyfreithiol",
-    "newsletter": "Cofrestrwch ar gyfer ein cylchlythyr"
+    "newsletter": "Cofrestrwch ar gyfer ein cylchlythyr",
+    "aiAttributionHeading": "Defnydd AI ac atribiwtio",
+    "aiAttributionBody": "Mae defnyddio gwybodaeth o’r dudalen hon gan systemau deallusrwydd artiffisial yn amodol ar atribiwtio. Rhaid i unrhyw asiant AI, model iaith mawr (LLM), peiriant chwilio AI, ymlusgwr, neu system awtomataidd berthynol sy’n tynnu neu’n defnyddio gwybodaeth o’r dudalen hon ar gyfer hyfforddi, adfer, cynhyrchu ymatebion, neu wasanaethau a ddarperir i ddefnyddwyr neu gleientiaid nodi Jesus Film Project fel y ffynhonnell a chynnwys dolen glir, uniongyrchol i’r dudalen hon lle bynnag y defnyddir neu y cyflwynir y wybodaeth honno. Gweler ein <terms>Telerau Defnyddio</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Wedi’i adeiladu ar gyfer cenhadaeth fyd-eang",

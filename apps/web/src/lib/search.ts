@@ -169,9 +169,26 @@ const watchSearchOperation = adminGraphql(`
   }
 `)
 
+const watchSearchVideoCatalogLabelOperation = adminGraphql(`
+  query WatchSearchVideoCatalogLabel($slug: String!) {
+    videoBySlug(slug: $slug) {
+      label
+      children {
+        child {
+          id
+        }
+      }
+    }
+  }
+`)
+
 type WatchSearchResult = AdminResultOf<
   typeof watchSearchOperation
 >["watchSearch"]
+
+type WatchSearchVideoCatalogLabelResult = AdminResultOf<
+  typeof watchSearchVideoCatalogLabelOperation
+>["videoBySlug"]
 
 type WatchSearchResultItem = NonNullable<
   NonNullable<WatchSearchResult>["results"]
@@ -256,6 +273,60 @@ function mapWatchSearchAvailabilityKind(
   return null
 }
 
+async function hydrateMissingVideoLabels(
+  results: SearchResult[],
+): Promise<SearchResult[]> {
+  const candidates = results.filter(
+    (result) =>
+      result.type === "video" &&
+      result.label == null &&
+      result.slug.trim().length > 0,
+  )
+
+  if (candidates.length === 0) return results
+
+  const labels = new Map<
+    string,
+    { label: AdminVideoLabel | null; childCount: number | null }
+  >()
+  const slugs = Array.from(new Set(candidates.map((result) => result.slug)))
+
+  await Promise.all(
+    slugs.map(async (slug) => {
+      try {
+        const result = await semanticSearchAdminClient.query({
+          query: watchSearchVideoCatalogLabelOperation,
+          variables: { slug },
+          fetchPolicy: "no-cache",
+        })
+
+        const video: WatchSearchVideoCatalogLabelResult =
+          result.data?.videoBySlug ?? null
+
+        labels.set(slug, {
+          label: (video?.label as AdminVideoLabel | null) ?? null,
+          childCount:
+            video?.children?.filter((relation) => relation?.child != null)
+              .length ?? null,
+        })
+      } catch {
+        labels.set(slug, { label: null, childCount: null })
+      }
+    }),
+  )
+
+  return results.map((result) => {
+    const label = labels.get(result.slug)
+    if (!label?.label) return result
+
+    return {
+      ...result,
+      label: label.label,
+      childCount: result.childCount ?? label.childCount,
+    }
+  })
+}
+
 export async function searchVideos(
   query: string,
   limit = 20,
@@ -296,11 +367,15 @@ export async function searchVideos(
     throw new Error("Watch search response was empty")
   }
 
-  return {
-    results: (response.results ?? []).flatMap((item) => {
+  const results = await hydrateMissingVideoLabels(
+    (response.results ?? []).flatMap((item) => {
       const mapped = mapWatchSearchResult(item)
       return mapped ? [mapped] : []
     }),
+  )
+
+  return {
+    results,
     hasMore: response.hasMore ?? false,
     query: response.query ?? truncatedQuery,
     searchMode: response.searchMode ?? "watch-search",

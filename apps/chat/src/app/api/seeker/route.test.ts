@@ -30,6 +30,7 @@ const BASE_CONFIG: SeekerProxyConfig = {
   baseUrl: "https://mastra.internal",
   apiKey: "svc-key",
   allowedHosts: undefined,
+  requireAllowlist: false,
   timeoutMs: 95000,
 }
 
@@ -206,6 +207,42 @@ describe("handleSeekerProxyRequest — gates", () => {
       { event: "error", data: { reason: "ssrf_blocked" } },
     ])
     expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  // Wiring case for the production egress pin: the core must thread
+  // config.requireAllowlist into the guard. Without it an unset allowlist would
+  // trust the base host and egress the lane bearer wherever it points.
+  it("requireAllowlist + unset allowlist → ssrf_blocked, no fetch", async () => {
+    const fetchImpl = vi.fn()
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        allowedHosts: undefined,
+        requireAllowlist: true,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "ssrf_blocked" } },
+    ])
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  // Anti-vacuous companion: the flag must not deny a correctly pinned host,
+  // else the case above would pass on a guard that denies unconditionally.
+  it("requireAllowlist + listed host → proceeds to the upstream fetch", async () => {
+    const fetchImpl = vi.fn(async () => upstream([{ event: "done", data: {} }]))
+    await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: {
+        ...BASE_CONFIG,
+        allowedHosts: "mastra.internal",
+        requireAllowlist: true,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
   it("rejects a non-https base URL (bearer-in-cleartext guard) → ssrf_blocked", async () => {

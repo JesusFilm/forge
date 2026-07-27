@@ -14,6 +14,7 @@ export function getAdminMcpProtectedResourceMetadata() {
     authorization_servers: [getAuthIssuerUrl()],
     bearer_methods_supported: ["header"],
     scopes_supported: [
+      "offline_access",
       ...new Set(ADMIN_MCP_TOOLS.flatMap((tool) => tool.requiredScopes)),
     ],
     resource_name: "Jesus Film Admin MCP",

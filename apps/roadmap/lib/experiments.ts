@@ -1,3 +1,5 @@
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
+
 export type ExperimentLink = { label: string; href: string }
 
 export type ExperimentPreview = {
@@ -20,6 +22,15 @@ export type Experiment = {
   buttonClass: string
 }
 
+const WATCH_ORIGIN = "https://watch.jesusfilm.org"
+
+function watchExperimentHref(contentSlug: string): string {
+  return `${WATCH_ORIGIN}/watch${buildCanonicalWatchVideoPath(
+    contentSlug,
+    "english",
+  )}`
+}
+
 export const EXPERIMENTS: Experiment[] = [
   {
     number: "01",
@@ -30,7 +41,7 @@ export const EXPERIMENTS: Experiment[] = [
     links: [
       {
         label: "View Demo",
-        href: "https://watch.jesusfilm.org/watch/easter.html/english.html",
+        href: watchExperimentHref("easter"),
       },
     ],
     accent: "text-emerald-400",
@@ -47,7 +58,7 @@ export const EXPERIMENTS: Experiment[] = [
     links: [
       {
         label: "View Demo",
-        href: "https://watch.jesusfilm.org/watch/christmas.html/english.html",
+        href: watchExperimentHref("christmas"),
       },
     ],
     accent: "text-violet-400",

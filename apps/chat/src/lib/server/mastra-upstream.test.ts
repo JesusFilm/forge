@@ -19,102 +19,124 @@ import {
 // Mint a ValidatedBaseUrl for the transport tests — the ONLY way to obtain the
 // brand, mirroring production (no `as ValidatedBaseUrl` cast in test code).
 function validBase(url: string): ValidatedBaseUrl {
-  const minted = validateBaseUrl(url, undefined)
+  const minted = validateBaseUrl(url, undefined, false)
   if (minted === null) throw new Error(`test base rejected: ${url}`)
   return minted
 }
 
 describe("hostAllowed — scheme floor + loopback", () => {
   it("allows an https base with no allowlist set", () => {
-    expect(hostAllowed("https://mastra.internal", undefined)).toBe(true)
+    expect(hostAllowed("https://mastra.internal", undefined, false)).toBe(true)
   })
 
   it("rejects an http public host (bearer-in-cleartext guard)", () => {
-    expect(hostAllowed("http://evil.com", undefined)).toBe(false)
+    expect(hostAllowed("http://evil.com", undefined, false)).toBe(false)
   })
 
   it("rejects an unparseable base URL", () => {
-    expect(hostAllowed("not a url", undefined)).toBe(false)
+    expect(hostAllowed("not a url", undefined, false)).toBe(false)
   })
 
   it("allows http for localhost (local dev)", () => {
-    expect(hostAllowed("http://localhost:4111", undefined)).toBe(true)
+    expect(hostAllowed("http://localhost:4111", undefined, false)).toBe(true)
   })
 
   it("allows http for IPv4 loopback", () => {
-    expect(hostAllowed("http://127.0.0.1:4111", undefined)).toBe(true)
+    expect(hostAllowed("http://127.0.0.1:4111", undefined, false)).toBe(true)
   })
 
   it("allows http for bracketed IPv6 loopback", () => {
-    expect(hostAllowed("http://[::1]:4111", undefined)).toBe(true)
+    expect(hostAllowed("http://[::1]:4111", undefined, false)).toBe(true)
   })
 })
 
 describe("hostAllowed — railway.internal label boundary", () => {
   it("allows http for a *.railway.internal host (prod private networking)", () => {
     expect(
-      hostAllowed("http://example-service.railway.internal", undefined),
+      hostAllowed("http://example-service.railway.internal", undefined, false),
     ).toBe(true)
   })
 
   it("allows http for a *.railway.internal host with a port", () => {
     expect(
-      hostAllowed("http://example-service.railway.internal:4111", undefined),
+      hostAllowed(
+        "http://example-service.railway.internal:4111",
+        undefined,
+        false,
+      ),
     ).toBe(true)
   })
 
   it("allows http for an uppercase *.RAILWAY.INTERNAL host (parser lowercases)", () => {
     expect(
-      hostAllowed("http://EXAMPLE-SERVICE.RAILWAY.INTERNAL:4111", undefined),
+      hostAllowed(
+        "http://EXAMPLE-SERVICE.RAILWAY.INTERNAL:4111",
+        undefined,
+        false,
+      ),
     ).toBe(true)
   })
 
   it("rejects railway.internal.evil.com (suffix is a full-label match, not a substring)", () => {
-    expect(hostAllowed("http://railway.internal.evil.com", undefined)).toBe(
+    expect(
+      hostAllowed("http://railway.internal.evil.com", undefined, false),
+    ).toBe(false)
+  })
+
+  it("rejects evilrailway.internal (no dot boundary)", () => {
+    expect(hostAllowed("http://evilrailway.internal", undefined, false)).toBe(
       false,
     )
   })
 
-  it("rejects evilrailway.internal (no dot boundary)", () => {
-    expect(hostAllowed("http://evilrailway.internal", undefined)).toBe(false)
-  })
-
   it("rejects bare railway.internal (no leading label)", () => {
-    expect(hostAllowed("http://railway.internal", undefined)).toBe(false)
+    expect(hostAllowed("http://railway.internal", undefined, false)).toBe(false)
   })
 
   it("rejects .railway.internal (empty leading label)", () => {
-    expect(hostAllowed("http://.railway.internal", undefined)).toBe(false)
+    expect(hostAllowed("http://.railway.internal", undefined, false)).toBe(
+      false,
+    )
   })
 
   it("rejects foo..railway.internal (empty inner label)", () => {
-    expect(hostAllowed("http://foo..railway.internal", undefined)).toBe(false)
+    expect(hostAllowed("http://foo..railway.internal", undefined, false)).toBe(
+      false,
+    )
   })
 
   it("rejects a trailing-dot FQDN railway.internal. host (pins fail-closed)", () => {
     expect(
-      hostAllowed("http://example-service.railway.internal.:4111", undefined),
+      hostAllowed(
+        "http://example-service.railway.internal.:4111",
+        undefined,
+        false,
+      ),
     ).toBe(false)
   })
 })
 
 describe("hostAllowed — allowlist", () => {
   it("allows an https host in the allowlist", () => {
-    expect(hostAllowed("https://mastra.internal", "mastra.internal")).toBe(true)
+    expect(
+      hostAllowed("https://mastra.internal", "mastra.internal", false),
+    ).toBe(true)
   })
 
   it("rejects an https host not in the allowlist", () => {
-    expect(hostAllowed("https://mastra.internal", "trusted.internal")).toBe(
-      false,
-    )
+    expect(
+      hostAllowed("https://mastra.internal", "trusted.internal", false),
+    ).toBe(false)
   })
 
   it("rejects a loopback http host not in a set allowlist", () => {
-    expect(hostAllowed("http://localhost:4111", "trusted.internal")).toBe(false)
+    expect(
+      hostAllowed("http://localhost:4111", "trusted.internal", false),
+    ).toBe(false)
   })
 
   it("allows a loopback http host in the allowlist", () => {
-    expect(hostAllowed("http://localhost:4111", "localhost")).toBe(true)
+    expect(hostAllowed("http://localhost:4111", "localhost", false)).toBe(true)
   })
 
   it("rejects a railway.internal http host not in a set allowlist", () => {
@@ -122,6 +144,7 @@ describe("hostAllowed — allowlist", () => {
       hostAllowed(
         "http://example-service.railway.internal:4111",
         "trusted.internal",
+        false,
       ),
     ).toBe(false)
   })
@@ -131,42 +154,131 @@ describe("hostAllowed — allowlist", () => {
       hostAllowed(
         "http://example-service.railway.internal:4111",
         "example-service.railway.internal",
+        false,
       ),
     ).toBe(true)
   })
 
   it("matches allowlist entries after trimming and lowercasing (CSV hygiene)", () => {
     expect(
-      hostAllowed("https://mastra.internal", " Mastra.Internal , other.host "),
+      hostAllowed(
+        "https://mastra.internal",
+        " Mastra.Internal , other.host ",
+        false,
+      ),
     ).toBe(true)
+  })
+})
+
+// The production posture: an unset allowlist DENIES rather than trusting the
+// operator-set base host. Every case here flips ONLY the third argument
+// relative to a fail-open sibling above, so the flag is what's under test.
+describe("hostAllowed — requireAllowlist (production posture)", () => {
+  it("denies an https base when the allowlist is unset", () => {
+    expect(hostAllowed("https://mastra.internal", undefined, true)).toBe(false)
+  })
+
+  it("denies a *.railway.internal base when the allowlist is unset (the shape production actually runs)", () => {
+    expect(
+      hostAllowed(
+        "http://example-service.railway.internal:4111",
+        undefined,
+        true,
+      ),
+    ).toBe(false)
+  })
+
+  it("denies a loopback base when the allowlist is unset", () => {
+    expect(hostAllowed("http://localhost:4111", undefined, true)).toBe(false)
+  })
+
+  it("denies on an empty-string allowlist (an empty CSV pins nothing)", () => {
+    expect(hostAllowed("https://mastra.internal", "", true)).toBe(false)
+  })
+
+  // emptyToUndefined only maps "" to undefined, so a stray-whitespace or
+  // separator-only Railway value DOES reach the guard as a truthy string and
+  // skips the allowlist_unset branch. `.filter(Boolean)` must still deny it.
+  it.each(["   ", ",", ",,", " , "])(
+    "denies on a separator/whitespace-only allowlist %j",
+    (csv) => {
+      expect(hostAllowed("https://mastra.internal", csv, true)).toBe(false)
+    },
+  )
+
+  // Operator gotcha the pin exists to catch: entries are compared against
+  // `url.hostname`, so a scheme or port in the CSV never matches.
+  it.each(["https://mastra.internal", "mastra.internal:443"])(
+    "denies when the allowlist entry carries a scheme or port (%j)",
+    (entry) => {
+      expect(hostAllowed("https://mastra.internal", entry, true)).toBe(false)
+    },
+  )
+
+  it("allows a listed host — the flag pins the host, it does not deny outright", () => {
+    expect(
+      hostAllowed("https://mastra.internal", "mastra.internal", true),
+    ).toBe(true)
+  })
+
+  it("allows a listed *.railway.internal host (the intended production config)", () => {
+    expect(
+      hostAllowed(
+        "http://example-service.railway.internal:4111",
+        "example-service.railway.internal",
+        true,
+      ),
+    ).toBe(true)
+  })
+
+  it("still denies an unlisted host when the allowlist is set", () => {
+    expect(
+      hostAllowed("https://mastra.internal", "trusted.internal", true),
+    ).toBe(false)
+  })
+
+  it("does NOT relax the scheme floor — an http public host stays denied even when listed", () => {
+    expect(hostAllowed("http://evil.com", "evil.com", true)).toBe(false)
+  })
+
+  it("validateBaseUrl refuses to mint when the allowlist is unset", () => {
+    expect(
+      validateBaseUrl("https://mastra.internal", undefined, true),
+    ).toBeNull()
+  })
+
+  it("validateBaseUrl mints for a listed host under the production posture", () => {
+    expect(
+      validateBaseUrl("https://mastra.internal", "mastra.internal", true),
+    ).toBe("https://mastra.internal")
   })
 })
 
 describe("validateBaseUrl — mint on the guard's success path, null otherwise", () => {
   it("mints the branded base when hostAllowed passes (value === input string)", () => {
-    expect(validateBaseUrl("https://mastra.internal", undefined)).toBe(
+    expect(validateBaseUrl("https://mastra.internal", undefined, false)).toBe(
       "https://mastra.internal",
     )
   })
 
   it("mints for a loopback http base (carve-out preserved through the mint)", () => {
-    expect(validateBaseUrl("http://localhost:4111", undefined)).toBe(
+    expect(validateBaseUrl("http://localhost:4111", undefined, false)).toBe(
       "http://localhost:4111",
     )
   })
 
   it("returns null for an http public host (bearer-in-cleartext guard)", () => {
-    expect(validateBaseUrl("http://evil.com", undefined)).toBeNull()
+    expect(validateBaseUrl("http://evil.com", undefined, false)).toBeNull()
   })
 
   it("returns null when the host is not in a set allowlist", () => {
     expect(
-      validateBaseUrl("https://mastra.internal", "trusted.internal"),
+      validateBaseUrl("https://mastra.internal", "trusted.internal", false),
     ).toBeNull()
   })
 
   it("returns null for an unparseable base URL", () => {
-    expect(validateBaseUrl("not a url", undefined)).toBeNull()
+    expect(validateBaseUrl("not a url", undefined, false)).toBeNull()
   })
 })
 

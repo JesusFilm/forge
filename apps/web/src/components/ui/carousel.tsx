@@ -1,11 +1,13 @@
 "use client"
 
 import * as React from "react"
+import { useLocale } from "next-intl"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react"
 
 import { cn } from "@/lib/utils"
+import { textDirectionForLocale } from "@/lib/locale"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 
@@ -28,10 +30,13 @@ type CarouselContextProps = {
   scrollNext: () => void
   canScrollPrev: boolean
   canScrollNext: boolean
+  direction: "ltr" | "rtl"
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
 const HORIZONTAL_WHEEL_DELTA_THRESHOLD = 8
+const CAROUSEL_EDGE_CONTROL_CLASSES =
+  "pointer-events-none absolute z-20 hidden size-11 touch-manipulation rounded-full border-white/30 bg-white/95 text-stone-900 opacity-0 shadow-xl transition-[opacity,background-color,color,scale] duration-200 group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100 group-focus-within/carousel:pointer-events-auto group-focus-within/carousel:opacity-100 hover:scale-105 hover:bg-white hover:text-stone-950 focus-visible:pointer-events-auto focus-visible:opacity-100 disabled:hidden md:inline-flex"
 
 function useCarousel() {
   const context = React.useContext(CarouselContext)
@@ -52,10 +57,13 @@ function Carousel({
   children,
   ...props
 }: React.ComponentProps<"div"> & CarouselProps) {
+  const locale = useLocale()
+  const direction = opts?.direction ?? textDirectionForLocale(locale)
   const [carouselRef, api] = useEmblaCarousel(
     {
       ...opts,
       axis: orientation === "horizontal" ? "x" : "y",
+      direction,
     },
     plugins,
   )
@@ -118,11 +126,12 @@ function Carousel({
         scrollNext,
         canScrollPrev,
         canScrollNext,
+        direction,
       }}
     >
       <div
         onKeyDownCapture={handleKeyDown}
-        className={cn("relative", className)}
+        className={cn("group/carousel relative", className)}
         role="region"
         aria-roledescription="carousel"
         data-slot="carousel"
@@ -207,7 +216,8 @@ function CarouselPrevious({
   "aria-label": ariaLabelOverride,
   ...props
 }: React.ComponentProps<typeof Button> & { label?: string }) {
-  const { orientation, scrollPrev, canScrollPrev } = useCarousel()
+  const { orientation, direction, scrollPrev, canScrollPrev } = useCarousel()
+  const isRtl = orientation === "horizontal" && direction === "rtl"
   // Single source of truth for the button's accessible name. A caller may
   // pass `aria-label` directly OR the `label` prop; pull `aria-label` out
   // of the prop spread so it never silently overrides `label` while the
@@ -221,9 +231,9 @@ function CarouselPrevious({
       size={size}
       aria-label={accessibleName}
       className={cn(
-        "absolute touch-manipulation rounded-full",
+        CAROUSEL_EDGE_CONTROL_CLASSES,
         orientation === "horizontal"
-          ? "top-1/2 -left-12 -translate-y-1/2"
+          ? cn("top-1/2 -translate-y-1/2", isRtl ? "right-3" : "left-3")
           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
         className,
       )}
@@ -231,7 +241,7 @@ function CarouselPrevious({
       onClick={scrollPrev}
       {...props}
     >
-      <ChevronLeftIcon />
+      {isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />}
     </Button>
   )
 }
@@ -244,7 +254,8 @@ function CarouselNext({
   "aria-label": ariaLabelOverride,
   ...props
 }: React.ComponentProps<typeof Button> & { label?: string }) {
-  const { orientation, scrollNext, canScrollNext } = useCarousel()
+  const { orientation, direction, scrollNext, canScrollNext } = useCarousel()
+  const isRtl = orientation === "horizontal" && direction === "rtl"
   const accessibleName = ariaLabelOverride ?? label
 
   return (
@@ -254,9 +265,9 @@ function CarouselNext({
       size={size}
       aria-label={accessibleName}
       className={cn(
-        "absolute touch-manipulation rounded-full",
+        CAROUSEL_EDGE_CONTROL_CLASSES,
         orientation === "horizontal"
-          ? "top-1/2 -right-12 -translate-y-1/2"
+          ? cn("top-1/2 -translate-y-1/2", isRtl ? "left-3" : "right-3")
           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
         className,
       )}
@@ -264,7 +275,7 @@ function CarouselNext({
       onClick={scrollNext}
       {...props}
     >
-      <ChevronRightIcon />
+      {isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />}
     </Button>
   )
 }

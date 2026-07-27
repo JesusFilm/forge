@@ -354,7 +354,9 @@
     "fax": "Nombor Fax",
     "privacyPolicy": "Ka Polisi Jinglong Shimet",
     "legalStatement": "Ka Jingpynbna Aiñ",
-    "newsletter": "Pynrung kyrteng na bynta ka newsletter jong ngi"
+    "newsletter": "Pynrung kyrteng na bynta ka newsletter jong ngi",
+    "aiAttributionHeading": "Ka jingpyndonkam ia ka AI bad ka jingai jingïohkhubor",
+    "aiAttributionBody": "Ka jingpyndonkam ia ka jingtip na kane ka sla da ki system artificial intelligence ka shong ha ka jingai jingïohkhubor. Mano mano ruh, lada ka AI agent, large language model (LLM), AI search engine, crawler, lane kawei pat ka system automated kaba ïadei, ka sei ne pyndonkam ia ka jingtip na kane ka sla na ka bynta ka training, retrieval, jingpynmih jubab, ne ki jingshakri ba ai sha ki user ne client, ka dei ban pynpaw ia Jesus Film Project kum ka tyllong bad kynthup ia ka link kaba shai, kaba beit sha kane ka sla hangno hangno ruh ba katei ka jingtip ka pyndonkam ne pyni. Peit ia ka <terms>Terms of Use</terms> jong ngi."
   },
   "WatchHomePromo": {
     "eyebrow": "La tei na ka bynta ka mishon paidbah",

@@ -16,14 +16,21 @@ trigger.
 
 ## Canary URLs
 
-These URLs were checked from this worktree on 2026-06-12 with `curl -L`:
+The original set was checked from this worktree on 2026-06-12 with `curl -L`.
+The canonical/compatibility split below was updated on 2026-07-25 and must be
+reconfirmed before enabling or editing monitors:
 
-| Surface                              | URL                                                                                           | Expected |
-| ------------------------------------ | --------------------------------------------------------------------------------------------- | -------- |
-| Watch home, English                  | `https://watch.jesusfilm.org/watch/english.html`                                              | `200`    |
-| Gospel of John, English              | `https://watch.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html`            | `200`    |
-| Jesus, English                       | `https://watch.jesusfilm.org/watch/jesus.html/english.html`                                   | `200`    |
-| LUMO Gospel of John episode, English | `https://watch.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html` | `200`    |
+| Surface                               | URL                                                                                           | Expected |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- | -------- |
+| Watch home, English                   | `https://watch.jesusfilm.org/watch`                                                           | `200`    |
+| Gospel of John, English canonical     | `https://watch.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html`                         | `200`    |
+| Jesus, English canonical              | `https://watch.jesusfilm.org/watch/jesus.html`                                                | `200`    |
+| Jesus, explicit-English compatibility | `https://watch.jesusfilm.org/watch/jesus.html/english.html`                                   | `200`    |
+| LUMO Gospel of John episode, English  | `https://watch.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html` | `200`    |
+
+Romanian, Spanish, and Russian standalone probes remain language-explicit and
+belong in the release URL matrix. Contextual episode browser URLs also remain
+language-explicit.
 
 Do not add `https://watch.jesusfilm.org/watch/reflections-of-hope.html/7-jesus-our-living-water/english.html`
 to the initial canary set without fixing or revalidating it; it returned `500`
@@ -48,6 +55,7 @@ Recommended naming:
 - `Watch availability canary - home English`
 - `Watch availability canary - Gospel of John English`
 - `Watch availability canary - Jesus English`
+- `Watch availability canary - Jesus explicit-English compatibility`
 - `Watch availability canary - LUMO John episode English`
 
 Configuration:
@@ -70,11 +78,12 @@ Datadog reference: https://docs.datadoghq.com/synthetics/api_tests/http_tests/
 
 ## Production Server Log Monitors
 
-Create five logs monitors:
+Create six logs monitors:
 
 - `Watch production server 5xx or timeout logs - home English`
 - `Watch production server 5xx or timeout logs - Gospel of John English`
 - `Watch production server 5xx or timeout logs - Jesus English`
+- `Watch production server 5xx or timeout logs - Jesus explicit-English compatibility`
 - `Watch production server 5xx or timeout logs - LUMO John episode English`
 - `Watch production shared manifest/substrate failures`
 
@@ -119,12 +128,13 @@ service:watch
 
 Use these route matches:
 
-| Monitor                   | `<ROUTE_MATCH>`                                               |
-| ------------------------- | ------------------------------------------------------------- |
-| home English              | `"watch/english.html" OR "page: '/'"`                         |
-| Gospel of John English    | `"life-of-jesus-gospel-of-john.html/english.html"`            |
-| Jesus English             | `"jesus.html/english.html"`                                   |
-| LUMO John episode English | `"lumo-the-gospel-of-john.html/wedding-in-cana/english.html"` |
+| Monitor                      | `<ROUTE_MATCH>`                                               |
+| ---------------------------- | ------------------------------------------------------------- |
+| home English                 | `"page: '/'" OR @http.url_details.path:"/watch"`              |
+| Gospel of John English       | `"life-of-jesus-gospel-of-john.html"`                         |
+| Jesus English                | `"watch/jesus.html" -\"jesus.html/english.html\"`             |
+| Jesus explicit compatibility | `"jesus.html/english.html"`                                   |
+| LUMO John episode English    | `"lumo-the-gospel-of-john.html/wedding-in-cana/english.html"` |
 
 Shared manifest/substrate monitor query:
 

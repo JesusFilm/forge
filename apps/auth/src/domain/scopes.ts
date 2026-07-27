@@ -15,6 +15,12 @@ export const AUTH_SCOPES = [
     description: "Share your verified email address.",
   },
   {
+    key: "offline_access",
+    label: "Stay signed in",
+    description:
+      "Allow the requesting application to keep access active without asking you to sign in again.",
+  },
+  {
     key: "membership:read",
     label: "Read membership status",
     description:

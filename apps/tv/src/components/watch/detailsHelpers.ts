@@ -2,6 +2,11 @@
 // non-trivial string-building logic is unit-testable without
 // @testing-library/react-native (not available in apps/tv).
 
+import {
+  buildCanonicalWatchVideoPath,
+  DEFAULT_WATCH_LANGUAGE_SLUG,
+} from "@forge/watch-url-policy/routes"
+
 import type { WatchVideoRecord } from "../../lib/normalizeVideo"
 
 /**
@@ -59,6 +64,9 @@ export function buildShareUrl(
   activeLanguageSlug: string | null | undefined,
 ): string | null {
   if (!video?.slug) return null
-  const base = `https://www.jesusfilm.org/watch/${video.slug}`
-  return activeLanguageSlug ? `${base}/${activeLanguageSlug}` : base
+  const path = buildCanonicalWatchVideoPath(
+    video.slug,
+    activeLanguageSlug ?? DEFAULT_WATCH_LANGUAGE_SLUG,
+  )
+  return `https://www.jesusfilm.org/watch${path}`
 }

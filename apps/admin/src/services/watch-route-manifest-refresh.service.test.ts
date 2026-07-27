@@ -32,6 +32,7 @@ const manifest = {
   generatedAt: "2026-05-29T12:00:00.000Z",
   contentSlugs: ["jesus"],
   oneSegmentSlugs: [],
+  homepageLocales: ["en"],
   episodePairsByParent: {},
   audioLanguageSlugs: ["english"],
   audioLanguageIndexesByContent: { jesus: [0] },
@@ -69,6 +70,7 @@ describe("watch route manifest refresh", () => {
       payloadSizeBytes: 128,
       counts: {
         contentSlugs: 1,
+        homepageLocales: 1,
         audioLanguageSlugs: 1,
         contentAudioLanguagePairs: 1,
         episodeAudioLanguagePairs: 0,

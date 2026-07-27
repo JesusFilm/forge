@@ -1,7 +1,7 @@
 import {
   normalizeOrigin,
   resolveWatchCallbackURL,
-} from "@forge/watch-url-policy"
+} from "@forge/watch-url-policy/callbacks"
 
 import { getAuthBaseUrl, getAuthTrustedOrigins } from "@/config/env"
 

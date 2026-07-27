@@ -354,7 +354,9 @@
     "fax": "Nambwa n te fax",
     "privacyPolicy": "Kanoan te kamanoaki n rongorongom",
     "legalStatement": "Taeka ni kainibaire",
-    "newsletter": "Korea aram nakon ara newsletter"
+    "newsletter": "Korea aram nakon ara newsletter",
+    "aiAttributionHeading": "AI ngkana n te unano ma te kamatamata",
+    "aiAttributionBody": "Te bong bong n te bong ianakei n te tabo n te page ae riai ma te AI, e kabaneaki ma te kamatamata. Te AI agent, large language model (LLM), AI search engine, crawler, be te boong n te automated system ae kanganga ianako ma te kabaneaki ni kain te page nako n te training, retrieval, response generation, be services aia bwaai n te manga naba aki an te kaiaki, e riai ni kabaneaki Jesus Film Project ni bwaiti, ma ni karaoa te link ae maea, e riki, ni karokoa n te page nei bwa e riai bwa n te taeka n te kabaneaki be te karaoaki naba. Tera nara <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "E taraaki n te mission ni kabane",

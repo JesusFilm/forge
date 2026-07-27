@@ -354,7 +354,9 @@
     "fax": "Faksi",
     "privacyPolicy": "Privacy Polisi",
     "legalStatement": "Ligal Stetmen",
-    "newsletter": "Sain ap long niusleta bilong mipela"
+    "newsletter": "Sain ap long niusleta bilong mipela",
+    "aiAttributionHeading": "AI yus na atreshen",
+    "aiAttributionBody": "Yus bilong ol infomesen long dispela pes long ol artificial intelligence sistem i mas bihainim atreshen. Wanpela AI agent, large language model (LLM), AI search engine, crawler, o narapela automatiks sistem we i kisim o yusim ol infomesen long dispela pes long trening, retrieval, ansa jenaretim, o ol servis i go long ol yusa o klien, i mas makim Jesus Film Project olsem fon na putim klia, stret link long dispela pes long wanem hap dispela infomesen i yusim o soim. Lukim <terms>Terms of Use</terms> bilong mipela."
   },
   "WatchHomePromo": {
     "eyebrow": "Wok bilong helpim olgeta kantri",
