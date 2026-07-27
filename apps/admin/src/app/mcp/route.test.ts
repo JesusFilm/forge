@@ -388,7 +388,7 @@ describe("Admin MCP route", () => {
     await expect(res.json()).resolves.toMatchObject({
       result: {
         structuredContent: {
-          created: true,
+          ok: true,
           experience: { id: "exp-new", ownerId: "user_1" },
           locale: {
             id: "loc-new",
@@ -498,9 +498,9 @@ describe("Admin MCP route", () => {
     await expect(res.json()).resolves.toMatchObject({
       result: {
         structuredContent: {
-          created: false,
+          ok: false,
+          reason: "slug_exists",
           conflict: {
-            reason: "slug_exists",
             existingExperienceId: "exp-existing",
             existingLocaleId: "loc-existing",
           },
@@ -559,7 +559,7 @@ describe("Admin MCP route", () => {
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toMatchObject({
       result: {
-        structuredContent: { created: true },
+        structuredContent: { ok: true },
       },
     })
     expect(experienceCreate).toHaveBeenCalled()

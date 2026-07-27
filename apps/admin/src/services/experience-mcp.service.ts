@@ -1,9 +1,10 @@
 import { z } from "zod"
-import { Prisma, type PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { env } from "@/config/env"
+import { variantSlug } from "@/scripts/generate-persona-variants"
 import { loadExperienceAiVideoCandidates } from "@/services/experience-ai/experience-ai.service"
 import {
   ExperienceAiNormalizationError,
@@ -11,7 +12,12 @@ import {
 } from "@/services/experience-ai/experience-ai-normalize"
 import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
 import { launchMastraExperienceVariant } from "@/services/experience-ai/mastra-experience-variant-client"
+import {
+  serializeLocale,
+  type LocaleRow,
+} from "@/services/experience-locale-mcp.service"
 import { launchMastraExperienceDraft } from "@/services/mastra-experience-draft-client"
+import { resolveTimeoutMs } from "@/services/mastra-http-transport"
 import { ForbiddenError, NotFoundError } from "@/services/errors"
 import { ExperienceService } from "@/services/experience.service"
 
@@ -41,13 +47,14 @@ const GenerateExperienceToolInput = z
   .strict()
 
 /**
- * Failure reasons for `experience.generate`. Mastra launcher reasons pass
- * through verbatim; the admin-side stages add their own. Failures are
+ * Failure reasons for the experience-level tools. Mastra launcher reasons
+ * pass through verbatim; the admin-side stages add their own. Failures are
  * returned as structuredContent envelopes (never thrown) mirroring the
  * launchers' own no-throw discipline — the JSON-RPC error taxonomy cannot
- * carry `retryable` or a reason string.
+ * carry `retryable` or a reason string. `experience.create` uses only
+ * `slug_exists`.
  */
-type GenerateExperienceFailureReason =
+type ExperienceToolFailureReason =
   | "config_missing"
   | "auth_failed"
   | "network_error"
@@ -61,10 +68,7 @@ type GenerateExperienceFailureReason =
   | "normalization_failed"
   | "persist_failed"
 
-const GENERATE_FAILURE_MESSAGES: Record<
-  GenerateExperienceFailureReason,
-  string
-> = {
+const TOOL_FAILURE_MESSAGES: Record<ExperienceToolFailureReason, string> = {
   config_missing:
     "Experience generation is not configured on this environment.",
   auth_failed: "Admin could not authenticate to the generation service.",
@@ -85,36 +89,26 @@ const GENERATE_FAILURE_MESSAGES: Record<
 const DEFAULT_GENERATE_TIMEOUT_MS = 90_000
 
 /**
- * Guard mirroring the mastra clients' `resolveTimeoutMs`: env values can
- * arrive `undefined`/string under t3-env `skipValidation`, and a timer API
- * throws `ERR_INVALID_ARG_TYPE` on those.
- */
-function resolveGenerateTimeoutMs(value: unknown): number {
-  const ms = typeof value === "string" ? Number(value) : value
-  return typeof ms === "number" && Number.isFinite(ms) && ms > 0
-    ? ms
-    : DEFAULT_GENERATE_TIMEOUT_MS
-}
-
-/**
- * Slug for a generated topic (+ optional persona suffix). Mirrors
- * `variantSlug` in generate-persona-variants.ts; non-Latin topics collapse
- * to the literal "experience" — callers targeting non-Latin locales should
- * pass an explicit `slug`.
+ * Slug for a generated topic (+ optional persona suffix). The persona branch
+ * delegates to `variantSlug` so MCP-generated persona variants collide-detect
+ * against dashboard/script-generated ones of the same topic. Non-Latin topics
+ * collapse to the literal "experience" — callers targeting non-Latin locales
+ * should pass an explicit `slug`.
  */
 function generatedSlug(topic: string, personaId?: string): string {
+  if (personaId) return variantSlug(topic, personaId)
   const base = topic
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-  const stem = base || "experience"
-  return personaId ? `${stem}-${personaId}` : stem
+  return base || "experience"
 }
 
 /**
  * Versioned snapshot envelope for the AI-provenance ContentRevision.
- * Duplicates the field list of experience.service.ts's module-private
- * `snapshotExperienceLocale` (deliberately excludes `embedding`).
+ * `serializeLocale` already carries the exact field list of
+ * experience.service.ts's module-private `snapshotExperienceLocale`
+ * (deliberately excluding `embedding`); only `createdAt` is missing.
  */
 function snapshotGeneratedLocale(
   locale: LocaleRow & { createdAt?: Date },
@@ -122,24 +116,10 @@ function snapshotGeneratedLocale(
   return {
     v: 1,
     data: {
-      id: locale.id,
-      experienceId: locale.experienceId,
-      locale: locale.locale,
-      slug: locale.slug,
-      isHomepage: locale.isHomepage,
-      pathSegment: locale.pathSegment,
-      title: locale.title,
-      metaDescription: locale.metaDescription,
-      ogTitle: locale.ogTitle,
-      ogDescription: locale.ogDescription,
-      ogImageUrl: locale.ogImageUrl,
-      blocks: locale.blocks as Prisma.InputJsonValue,
-      status: locale.status,
-      publishedAt: locale.publishedAt?.toISOString() ?? null,
+      ...serializeLocale(locale),
       createdAt: locale.createdAt?.toISOString() ?? null,
-      updatedAt: locale.updatedAt.toISOString(),
     },
-  }
+  } as Prisma.InputJsonObject
 }
 
 export type ExperienceMcpServiceOverrides = {
@@ -151,44 +131,6 @@ export type ExperienceMcpServiceOverrides = {
     baseUrl?: string
     bearer?: string
     timeoutMs?: number
-  }
-}
-
-type LocaleRow = {
-  id: string
-  experienceId: string
-  locale: string
-  slug: string
-  isHomepage: boolean
-  pathSegment: string | null
-  title: string | null
-  metaDescription: string | null
-  ogTitle: string | null
-  ogDescription: string | null
-  ogImageUrl: string | null
-  blocks: unknown
-  status: string
-  publishedAt: Date | null
-  updatedAt: Date
-}
-
-function serializeLocale(locale: LocaleRow) {
-  return {
-    id: locale.id,
-    experienceId: locale.experienceId,
-    locale: locale.locale,
-    slug: locale.slug,
-    isHomepage: locale.isHomepage,
-    pathSegment: locale.pathSegment,
-    title: locale.title,
-    metaDescription: locale.metaDescription,
-    ogTitle: locale.ogTitle,
-    ogDescription: locale.ogDescription,
-    ogImageUrl: locale.ogImageUrl,
-    blocks: locale.blocks,
-    status: locale.status,
-    publishedAt: locale.publishedAt?.toISOString() ?? null,
-    updatedAt: locale.updatedAt.toISOString(),
   }
 }
 
@@ -216,31 +158,9 @@ export class ExperienceMcpService {
   }) {
     const input = CreateExperienceToolInput.parse(raw)
 
-    // Best-effort idempotency: DRAFT slugs have no DB uniqueness (the partial
-    // unique index only covers published rows), so a retrying agent would
-    // silently pile up duplicate drafts. Report the existing resource instead
-    // of creating a second one. Concurrent creates can still race past this
-    // check — acceptable, since the same collision surfaces at publish time.
-    const existing = await this.prisma.experienceLocale.findFirst({
-      where: {
-        locale: input.locale,
-        slug: input.slug,
-        experience: { archivedAt: null },
-      },
-      select: { id: true, experienceId: true, status: true },
-    })
-    if (existing) {
-      return {
-        created: false as const,
-        conflict: {
-          reason: "slug_exists" as const,
-          locale: input.locale,
-          slug: input.slug,
-          existingExperienceId: existing.experienceId,
-          existingLocaleId: existing.id,
-          existingStatus: existing.status,
-        },
-      }
+    const conflict = await this.findSlugConflict(input.locale, input.slug)
+    if (conflict) {
+      return { ...this.toolFailure("slug_exists", false), conflict }
     }
 
     const created = await new ExperienceService(this.prisma).create({
@@ -256,7 +176,7 @@ export class ExperienceMcpService {
     const locale = created.locales[0]!
 
     return {
-      created: true as const,
+      ok: true as const,
       experience: {
         id: created.id,
         isTemplate: created.isTemplate,
@@ -289,31 +209,15 @@ export class ExperienceMcpService {
       timeoutMs: env.MASTRA_GENERATE_TIMEOUT_MS,
     }
     if (!config.baseUrl || !config.bearer) {
-      return this.generateFailure("config_missing", false)
+      return this.toolFailure("config_missing", false)
     }
 
     const slug = input.slug ?? generatedSlug(input.topic, input.personaId)
-    // Same best-effort idempotency pre-check as createExperience — run it
-    // BEFORE any paid work so a retrying agent never double-spends tokens.
-    const existing = await this.prisma.experienceLocale.findFirst({
-      where: {
-        locale: input.locale,
-        slug,
-        experience: { archivedAt: null },
-      },
-      select: { id: true, experienceId: true, status: true },
-    })
-    if (existing) {
-      return {
-        ...this.generateFailure("slug_exists", false),
-        conflict: {
-          locale: input.locale,
-          slug,
-          existingExperienceId: existing.experienceId,
-          existingLocaleId: existing.id,
-          existingStatus: existing.status,
-        },
-      }
+    // Run the conflict check BEFORE any paid work so a retrying agent never
+    // double-spends tokens.
+    const conflict = await this.findSlugConflict(input.locale, slug)
+    if (conflict) {
+      return { ...this.toolFailure("slug_exists", false), conflict }
     }
 
     let exemplar: string | undefined
@@ -323,7 +227,7 @@ export class ExperienceMcpService {
           experienceId: input.exemplarExperienceId,
           experience: { archivedAt: null },
         },
-        // Prefer the requested locale's variant of the exemplar page.
+        // Prefer the freshest variant of the exemplar page.
         orderBy: { updatedAt: "desc" },
         select: { title: true, metaDescription: true, blocks: true },
       })
@@ -347,14 +251,16 @@ export class ExperienceMcpService {
           error instanceof Error ? error.message : String(error)
         }`,
       )
-      return this.generateFailure("candidates_failed", true)
+      return this.toolFailure("candidates_failed", true)
     }
 
-    const timeoutMs = resolveGenerateTimeoutMs(config.timeoutMs)
     const launchOptions = {
       baseUrl: config.baseUrl,
       bearer: config.bearer,
-      timeoutMs,
+      timeoutMs: resolveTimeoutMs(
+        config.timeoutMs,
+        DEFAULT_GENERATE_TIMEOUT_MS,
+      ),
     }
     const remote = input.personaId
       ? await (this.overrides.launchVariant ?? launchMastraExperienceVariant)(
@@ -381,7 +287,7 @@ export class ExperienceMcpService {
       console.warn(
         `[experience-mcp] event=generate_remote_failed reason=${remote.reason} retryable=${remote.retryable}`,
       )
-      const failure = this.generateFailure(remote.reason, remote.retryable)
+      const failure = this.toolFailure(remote.reason, remote.retryable)
       // The launcher parsers discard the route's message field, but the
       // most common invalid_input cause is an unknown persona — name it.
       if (remote.reason === "invalid_input" && input.personaId) {
@@ -399,7 +305,7 @@ export class ExperienceMcpService {
           `[experience-mcp] event=generate_normalize_failed code=${error.code}`,
         )
         return {
-          ...this.generateFailure("normalization_failed", false),
+          ...this.toolFailure("normalization_failed", false),
           normalizationCode: error.code,
         }
       }
@@ -474,19 +380,43 @@ export class ExperienceMcpService {
           error instanceof Error ? error.message : String(error)
         }`,
       )
-      return this.generateFailure("persist_failed", false)
+      return this.toolFailure("persist_failed", false)
     }
   }
 
-  private generateFailure(
-    reason: GenerateExperienceFailureReason,
-    retryable: boolean,
-  ) {
+  /**
+   * Best-effort idempotency pre-check shared by both write tools: DRAFT slugs
+   * have no DB uniqueness (the partial unique index only covers published
+   * rows), so a retrying agent would silently pile up duplicate drafts.
+   * Report the existing resource instead. Concurrent creates can still race
+   * past this check — acceptable, since the same collision surfaces at
+   * publish time.
+   */
+  private async findSlugConflict(locale: string, slug: string) {
+    const existing = await this.prisma.experienceLocale.findFirst({
+      where: {
+        locale,
+        slug,
+        experience: { archivedAt: null },
+      },
+      select: { id: true, experienceId: true, status: true },
+    })
+    if (!existing) return null
+    return {
+      locale,
+      slug,
+      existingExperienceId: existing.experienceId,
+      existingLocaleId: existing.id,
+      existingStatus: existing.status,
+    }
+  }
+
+  private toolFailure(reason: ExperienceToolFailureReason, retryable: boolean) {
     return {
       ok: false as const,
       reason,
       retryable,
-      message: GENERATE_FAILURE_MESSAGES[reason],
+      message: TOOL_FAILURE_MESSAGES[reason],
     }
   }
 }

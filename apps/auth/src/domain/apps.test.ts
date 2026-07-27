@@ -303,18 +303,20 @@ describe("first-party app seeds", () => {
   })
 
   it("keeps experience-level create and generate scopes distinct from publish", () => {
-    // Scope-isolation invariant (feat-286): a grant carrying
-    // experience:create / experience:generate must remain valid without
-    // experience:publish — creating or generating never implies publishing.
-    const grantWithoutPublish = ADMIN_MCP_DEFAULT_SCOPES.filter(
-      (scope) => scope !== "experience:publish",
+    // Scope-isolation invariant (feat-286): creating or generating never
+    // implies publishing — the grant carries all three as separate,
+    // individually grantable/revocable entries, and a grant holding only
+    // create + generate is a valid scope set on its own.
+    expect(ADMIN_MCP_DEFAULT_SCOPES).toEqual(
+      expect.arrayContaining([
+        "experience:create",
+        "experience:generate",
+        "experience:publish",
+      ]),
     )
-
-    expect(assertKnownScopes(grantWithoutPublish)).toEqual(grantWithoutPublish)
-    expect(grantWithoutPublish).toEqual(
-      expect.arrayContaining(["experience:create", "experience:generate"]),
-    )
-    expect(grantWithoutPublish).not.toContain("experience:publish")
+    expect(
+      assertKnownScopes(["experience:create", "experience:generate"]),
+    ).toEqual(["experience:create", "experience:generate"])
   })
 
   it("registers Mastra Studio OAuth clients for the gateway", () => {

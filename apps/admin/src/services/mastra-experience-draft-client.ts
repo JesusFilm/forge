@@ -31,10 +31,15 @@
  * stays the final defense-in-depth gate after this client returns.
  */
 
-import { request as httpRequest } from "node:http"
-import { request as httpsRequest } from "node:https"
-
 import { env } from "@/config/env"
+import {
+  describeFetchError,
+  isClientTimeout,
+  postViaFetch,
+  postViaNode,
+  resolveTimeoutMs,
+  type RawResponse,
+} from "@/services/mastra-http-transport"
 import {
   DraftExperienceSchema,
   type DraftExperience,
@@ -87,140 +92,6 @@ const ROUTE_FAILURE_REASONS = new Set<MastraExperienceDraftFailureReason>([
 
 /** Fallback when the env-configured draft timeout is missing/invalid. */
 const DEFAULT_DRAFT_TIMEOUT_MS = 200_000
-
-/**
- * Byte ceiling for the buffered route response. A legitimate draft envelope
- * is a few hundred KB at the extreme (title + metaDescription + blocks at
- * 3 bytes per UTF-16 code unit for non-Latin scripts); 2MB leaves an order
- * of magnitude of headroom while keeping a misbehaving upstream from
- * buffering a multi-GB body into the shared Node heap. Over-cap resolves
- * with an empty body so the existing ladder classifies it (parse_error on
- * 2xx / network_error otherwise) — never a throw, never a new branch.
- */
-const MAX_RESPONSE_BYTES = 2 * 1024 * 1024
-
-/**
- * Normalize the request timeout to a positive number. `env.MASTRA_DRAFT_TIMEOUT_MS`
- * is TYPED `number` but at runtime can arrive `undefined`/string because t3-env's
- * `skipValidation` path returns raw `process.env` without applying the Zod
- * default — passing that to a timer API throws `ERR_INVALID_ARG_TYPE`. Takes
- * `unknown` so the runtime guards aren't elided by the (wrong) static type.
- */
-function resolveTimeoutMs(value: unknown): number {
-  const ms = typeof value === "string" ? Number(value) : value
-  return typeof ms === "number" && Number.isFinite(ms) && ms > 0
-    ? ms
-    : DEFAULT_DRAFT_TIMEOUT_MS
-}
-
-type RawResponse = { status: number; bodyText: string }
-
-/** POST over `node:http` to dodge the Next-patched global `fetch`. */
-function postViaNode(
-  target: URL,
-  headers: Record<string, string>,
-  body: string,
-  timeoutMs: number,
-): Promise<RawResponse> {
-  const request = target.protocol === "https:" ? httpsRequest : httpRequest
-  return new Promise<RawResponse>((resolve, reject) => {
-    const req = request(
-      target,
-      {
-        method: "POST",
-        headers: {
-          ...headers,
-          "content-length": Buffer.byteLength(body).toString(),
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = []
-        let totalBytes = 0
-        let overCap = false
-        res.on("data", (chunk: Buffer) => {
-          if (overCap) return
-          totalBytes += chunk.byteLength
-          if (totalBytes > MAX_RESPONSE_BYTES) {
-            // Byte-cap guard: settle FIRST (so the destroy's error event
-            // cannot reject), then abort the socket rather than draining it.
-            overCap = true
-            resolve({ status: res.statusCode ?? 0, bodyText: "" })
-            res.destroy()
-            return
-          }
-          chunks.push(chunk)
-        })
-        res.on("end", () => {
-          if (overCap) return
-          resolve({
-            status: res.statusCode ?? 0,
-            bodyText: Buffer.concat(chunks).toString("utf8"),
-          })
-        })
-        res.on("error", (error) => {
-          if (overCap) return
-          reject(error)
-        })
-      },
-    )
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(
-        Object.assign(new Error("draft request timed out"), {
-          name: "TimeoutError",
-        }),
-      )
-    })
-    req.on("error", reject)
-    req.end(body)
-  })
-}
-
-/** Transport used when a caller injects `fetchImpl` (unit tests / overrides). */
-async function postViaFetch(
-  fetchImpl: typeof fetch,
-  target: URL,
-  headers: Record<string, string>,
-  body: string,
-  timeoutMs: number,
-): Promise<RawResponse> {
-  const response = await fetchImpl(target, {
-    method: "POST",
-    headers,
-    body,
-    signal: AbortSignal.timeout(timeoutMs),
-  })
-  const bodyText = await response.text()
-  // Post-buffering parity with the node path's cap (this path is test-only).
-  if (Buffer.byteLength(bodyText) > MAX_RESPONSE_BYTES) {
-    return { status: response.status, bodyText: "" }
-  }
-  return { status: response.status, bodyText }
-}
-
-/**
- * Render an unknown thrown value as a Railway-logsV2-safe plain string (NEVER
- * JSON.stringify — logsV2 silences stringified payloads from the Next runtime).
- */
-function describeFetchError(error: unknown): string {
-  const err = error instanceof Error ? error : undefined
-  const cause = err?.cause instanceof Error ? err.cause : undefined
-  const rawCode =
-    (cause as { code?: unknown } | undefined)?.code ??
-    (err as { code?: unknown } | undefined)?.code
-  return (
-    `name=${err?.name ?? "unknown"} ` +
-    `code=${typeof rawCode === "string" ? rawCode : "none"} ` +
-    `cause=${cause?.name ?? "none"} ` +
-    `message=${err?.message ?? String(error)}`
-  )
-}
-
-function isClientTimeout(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.name === "TimeoutError" || error.name === "AbortError")
-  )
-}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -289,6 +160,7 @@ export async function launchMastraExperienceDraft(
   const bodyText = JSON.stringify(body)
   const timeoutMs = resolveTimeoutMs(
     options.timeoutMs ?? env.MASTRA_DRAFT_TIMEOUT_MS,
+    DEFAULT_DRAFT_TIMEOUT_MS,
   )
 
   let raw: RawResponse
@@ -301,7 +173,9 @@ export async function launchMastraExperienceDraft(
           bodyText,
           timeoutMs,
         )
-      : await postViaNode(target, headers, bodyText, timeoutMs)
+      : await postViaNode(target, headers, bodyText, timeoutMs, {
+          timeoutErrorMessage: "draft request timed out",
+        })
   } catch (error) {
     console.error(
       `[mastra-experience-draft] event=fetch_failed host=${target.host} ` +
@@ -350,5 +224,6 @@ export async function launchMastraExperienceDraft(
 
 export const _internals = {
   parseDraftRouteResult,
-  resolveTimeoutMs,
+  resolveTimeoutMs: (value: unknown) =>
+    resolveTimeoutMs(value, DEFAULT_DRAFT_TIMEOUT_MS),
 }

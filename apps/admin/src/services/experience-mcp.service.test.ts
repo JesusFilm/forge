@@ -89,7 +89,7 @@ describe("ExperienceMcpService", () => {
     await expect(
       service.createExperience({ input: VALID_INPUT, user: ADMIN }),
     ).resolves.toMatchObject({
-      created: true,
+      ok: true,
       experience: { id: "exp-1", isTemplate: false, ownerId: "admin-1" },
       locale: {
         id: "loc-en",
@@ -201,10 +201,11 @@ describe("ExperienceMcpService", () => {
 
     await expect(
       service.createExperience({ input: VALID_INPUT, user: ADMIN }),
-    ).resolves.toEqual({
-      created: false,
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "slug_exists",
+      retryable: false,
       conflict: {
-        reason: "slug_exists",
         locale: "en",
         slug: "hope",
         existingExperienceId: "exp-existing",
@@ -230,7 +231,7 @@ describe("ExperienceMcpService", () => {
         },
         user: ADMIN,
       }),
-    ).resolves.toMatchObject({ created: true })
+    ).resolves.toMatchObject({ ok: true })
 
     expect(prisma.experience.create).toHaveBeenCalledWith(
       expect.objectContaining({

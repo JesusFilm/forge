@@ -19,10 +19,15 @@
  * after this client returns.
  */
 
-import { request as httpRequest } from "node:http"
-import { request as httpsRequest } from "node:https"
-
 import { env } from "@/config/env"
+import {
+  describeFetchError,
+  isClientTimeout,
+  postViaFetch,
+  postViaNode,
+  resolveTimeoutMs,
+  type RawResponse,
+} from "@/services/mastra-http-transport"
 import {
   DraftExperienceSchema,
   type DraftExperience,
@@ -77,133 +82,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
-/**
- * Render an unknown thrown value as a Railway-logsV2-safe plain string (NEVER
- * JSON.stringify — logsV2 silences stringified payloads from the Next runtime).
- */
-function describeFetchError(error: unknown): string {
-  const err = error instanceof Error ? error : undefined
-  const cause = err?.cause instanceof Error ? err.cause : undefined
-  const rawCode =
-    (cause as { code?: unknown } | undefined)?.code ??
-    (err as { code?: unknown } | undefined)?.code
-  return (
-    `name=${err?.name ?? "unknown"} ` +
-    `code=${typeof rawCode === "string" ? rawCode : "none"} ` +
-    `cause=${cause?.name ?? "none"} ` +
-    `message=${err?.message ?? String(error)}`
-  )
-}
-
-type RawResponse = { status: number; bodyText: string }
-
 /** Fallback when the env-configured variants timeout is missing/invalid. */
 const DEFAULT_VARIANTS_TIMEOUT_MS = 200_000
-
-/**
- * Byte ceiling for the buffered route response (OOM guard). A legitimate
- * variant envelope is a few hundred KB at the extreme (3 bytes per UTF-16
- * code unit for non-Latin scripts); 2MB leaves an order of magnitude of
- * headroom. Over-cap resolves with an empty body so the existing ladder
- * classifies it (parse_error on 2xx / network_error otherwise).
- */
-const MAX_RESPONSE_BYTES = 2 * 1024 * 1024
-
-/**
- * Normalize the request timeout to a positive number. `env.MASTRA_VARIANTS_TIMEOUT_MS`
- * is TYPED `number` but at runtime can arrive `undefined`/string because t3-env's
- * `skipValidation` path returns raw `process.env` without applying the Zod
- * default — passing that to a timer API throws `ERR_INVALID_ARG_TYPE`. Takes
- * `unknown` so the runtime guards aren't elided by the (wrong) static type.
- */
-function resolveTimeoutMs(value: unknown): number {
-  const ms = typeof value === "string" ? Number(value) : value
-  return typeof ms === "number" && Number.isFinite(ms) && ms > 0
-    ? ms
-    : DEFAULT_VARIANTS_TIMEOUT_MS
-}
-
-/** POST over `node:http` to dodge the Next-patched global `fetch`. */
-function postViaNode(
-  target: URL,
-  headers: Record<string, string>,
-  body: string,
-  timeoutMs: number,
-): Promise<RawResponse> {
-  const request = target.protocol === "https:" ? httpsRequest : httpRequest
-  return new Promise<RawResponse>((resolve, reject) => {
-    const req = request(
-      target,
-      {
-        method: "POST",
-        headers: {
-          ...headers,
-          "content-length": Buffer.byteLength(body).toString(),
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = []
-        let totalBytes = 0
-        let overCap = false
-        res.on("data", (chunk: Buffer) => {
-          if (overCap) return
-          totalBytes += chunk.byteLength
-          if (totalBytes > MAX_RESPONSE_BYTES) {
-            // Byte-cap guard: settle FIRST (so the destroy's error event
-            // cannot reject), then abort the socket rather than draining it.
-            overCap = true
-            resolve({ status: res.statusCode ?? 0, bodyText: "" })
-            res.destroy()
-            return
-          }
-          chunks.push(chunk)
-        })
-        res.on("end", () => {
-          if (overCap) return
-          resolve({
-            status: res.statusCode ?? 0,
-            bodyText: Buffer.concat(chunks).toString("utf8"),
-          })
-        })
-        res.on("error", (error) => {
-          if (overCap) return
-          reject(error)
-        })
-      },
-    )
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(
-        Object.assign(new Error("variant request timed out"), {
-          name: "TimeoutError",
-        }),
-      )
-    })
-    req.on("error", reject)
-    req.end(body)
-  })
-}
-
-/** Transport used when a caller injects `fetchImpl` (unit tests / overrides). */
-async function postViaFetch(
-  fetchImpl: typeof fetch,
-  target: URL,
-  headers: Record<string, string>,
-  body: string,
-  timeoutMs: number,
-): Promise<RawResponse> {
-  const response = await fetchImpl(target, {
-    method: "POST",
-    headers,
-    body,
-    signal: AbortSignal.timeout(timeoutMs),
-  })
-  const bodyText = await response.text()
-  // Post-buffering parity with the node path's cap (this path is test-only).
-  if (Buffer.byteLength(bodyText) > MAX_RESPONSE_BYTES) {
-    return { status: response.status, bodyText: "" }
-  }
-  return { status: response.status, bodyText }
-}
 
 function parseVariantRouteResult(
   value: unknown,
@@ -261,6 +141,7 @@ export async function launchMastraExperienceVariant(
   const bodyText = JSON.stringify(body)
   const timeoutMs = resolveTimeoutMs(
     options.timeoutMs ?? env.MASTRA_VARIANTS_TIMEOUT_MS,
+    DEFAULT_VARIANTS_TIMEOUT_MS,
   )
 
   let raw: RawResponse
@@ -273,7 +154,9 @@ export async function launchMastraExperienceVariant(
           bodyText,
           timeoutMs,
         )
-      : await postViaNode(target, headers, bodyText, timeoutMs)
+      : await postViaNode(target, headers, bodyText, timeoutMs, {
+          timeoutErrorMessage: "variant request timed out",
+        })
   } catch (error) {
     console.error(
       `[mastra-experience-variant] event=fetch_failed host=${target.host} ` +
@@ -282,10 +165,7 @@ export async function launchMastraExperienceVariant(
     // A client-side abort means the admin-side budget elapsed — honest
     // timeout semantics (the MCP generate path runs a budget BELOW mastra's
     // internal one, so this is a legitimate, expected outcome there).
-    if (
-      error instanceof Error &&
-      (error.name === "TimeoutError" || error.name === "AbortError")
-    ) {
+    if (isClientTimeout(error)) {
       return { ok: false, reason: "timeout", retryable: true }
     }
     return { ok: false, reason: "network_error", retryable: true }
@@ -326,5 +206,6 @@ export async function launchMastraExperienceVariant(
 
 export const _internals = {
   parseVariantRouteResult,
-  resolveTimeoutMs,
+  resolveTimeoutMs: (value: unknown) =>
+    resolveTimeoutMs(value, DEFAULT_VARIANTS_TIMEOUT_MS),
 }
