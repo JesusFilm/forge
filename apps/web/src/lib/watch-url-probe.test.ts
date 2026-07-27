@@ -145,6 +145,10 @@ describe("classifyProbe", () => {
     const { outcome, note } = classifyProbe(
       result({ status: 404 }),
       result({ status: 200 }),
+      {
+        path: "/watch/search.html/search.html",
+        expect: "notfound",
+      },
     )
     expect(outcome).toBe("hard-regression")
     expect(note).toMatch(/EXPECTED-404/)
@@ -154,8 +158,100 @@ describe("classifyProbe", () => {
     const { outcome } = classifyProbe(
       result({ status: 404 }),
       result({ status: 301 }),
+      {
+        path: "/watch/search.html/search.html",
+        expect: "notfound",
+      },
     )
     expect(outcome).toBe("hard-regression")
+  })
+
+  it("acceptable: an explicit ok fixture may intentionally expand a production 404", () => {
+    const contextualPath =
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"
+    const preview = result({
+      status: 200,
+      finalPath: contextualPath,
+      documentIdentity: {
+        canonicalUrl: "https://www.jesusfilm.org/watch/lumo-john-1-1-34.html",
+        openGraphUrl: "https://www.jesusfilm.org/watch/lumo-john-1-1-34.html",
+      },
+      structuredData: {
+        scriptCount: 1,
+        types: ["VideoObject"],
+        parseErrors: [],
+        pageUrls: ["https://www.jesusfilm.org/watch/lumo-john-1-1-34.html"],
+      },
+    })
+
+    const { outcome, note } = classifyProbe(
+      result({ status: 404, finalPath: contextualPath }),
+      preview,
+      {
+        path: contextualPath,
+        expect: "ok",
+        requireDirect: true,
+        expectedCanonicalPath: "/watch/lumo-john-1-1-34.html",
+        requireStructuredDataCanonical: true,
+        allowProductionNotFound: true,
+      },
+    )
+
+    expect(outcome).toBe("acceptable")
+    expect(note).toContain("intentional route expansion")
+  })
+
+  it("hard-regression: a generic ok fixture cannot expand a production 404", () => {
+    const path = "/watch/unrelated-new-route.html"
+    const { outcome, note } = classifyProbe(
+      result({ status: 404, finalPath: path }),
+      result({ status: 200, finalPath: path }),
+      {
+        path,
+        expect: "ok",
+      },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("EXPECTED-404 CONTRACT BROKEN")
+  })
+
+  it("hard-regression: a notfound fixture cannot opt into route expansion", () => {
+    const path = "/watch/must-remain-missing.html"
+    const { outcome, note } = classifyProbe(
+      result({ status: 404, finalPath: path }),
+      result({ status: 200, finalPath: path }),
+      {
+        path,
+        expect: "notfound",
+        allowProductionNotFound: true,
+      },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("EXPECTED-404 CONTRACT BROKEN")
+  })
+
+  it("hard-regression: an expanding ok fixture must still satisfy its direct contract", () => {
+    const contextualPath =
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"
+
+    const { outcome, note } = classifyProbe(
+      result({ status: 404, finalPath: contextualPath }),
+      result({
+        status: 200,
+        finalPath: "/watch/lumo-john-1-1-34.html",
+        redirectHops: 1,
+      }),
+      {
+        path: contextualPath,
+        expect: "ok",
+        requireDirect: true,
+      },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("DIRECT ROUTE CONTRACT")
   })
 
   it("hard-regression: preview hits a redirect loop on a valid content URL", () => {
@@ -373,6 +469,48 @@ describe("WATCH_URL_FIXTURES integrity", () => {
       requireDirect: true,
     })
     expect(fixtures.get("/watch/jesus.html/russian.html")).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+    })
+    expect(
+      fixtures.get("/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
+    ).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/lumo-john-1-1-34.html",
+      requireStructuredDataCanonical: true,
+      allowProductionNotFound: true,
+    })
+    expect(
+      fixtures.get(
+        "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+      ),
+    ).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/lumo-john-1-1-34.html",
+    })
+    expect(
+      fixtures.get(
+        "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+      ),
+    ).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/lumo-john-1-1-34.html/romanian.html",
+    })
+    expect(
+      fixtures.get(
+        "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+      ),
+    ).toMatchObject({
+      expect: "ok",
+      requireDirect: true,
+      expectedCanonicalPath: "/watch/lumo-john-1-1-34.html/russian.html",
+    })
+    expect(
+      fixtures.get("/watch/jesus.html/the-beginning/spanish-castilian.html"),
+    ).toMatchObject({
       expect: "ok",
       requireDirect: true,
     })

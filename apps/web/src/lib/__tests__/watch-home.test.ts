@@ -231,7 +231,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     )
     expect(vertical?.cards).toHaveLength(1)
     expect(vertical?.cards[0]?.title).toBe("Episode One")
-    expect(vertical?.cards[0]?.href).toBe("/lumo.html/episode-one/english.html")
+    expect(vertical?.cards[0]?.href).toBe("/lumo.html/episode-one.html")
     expect(vertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
   })
 
@@ -419,7 +419,7 @@ describe("buildWatchHomeModelFromVideos", () => {
       "Episode Two",
     ])
     expect(course?.cards[0]?.href).toBe(
-      "/new-believer-course.html/episode-one/english.html",
+      "/new-believer-course.html/episode-one.html",
     )
     expect(course?.cards[0]?.parentCoreId).toBe("8_NBC")
     expect(course?.cards.some((card) => card.coreId === "8_NBC")).toBe(false)

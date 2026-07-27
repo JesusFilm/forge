@@ -301,7 +301,7 @@ describe("SeriesEpisodeCard — href", () => {
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html",
     )
   })
 
@@ -348,9 +348,7 @@ describe("SeriesEpisodeCard — href", () => {
       parentSlug: "lumo",
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe(
-      "/lumo.html/unlabeled-child/english.html",
-    )
+    expect(anchor?.getAttribute("href")).toBe("/lumo.html/unlabeled-child.html")
   })
 
   it("renders a plain div (no <a>) when the parent slug is malformed", () => {

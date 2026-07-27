@@ -48,7 +48,12 @@ groups even when they share the same underlying language coverage.
 
 A public Watch URL that identifies a parent collection, child Video, and
 Language together so navigation can preserve the child's collection context
-when that exact relationship is valid.
+when that exact relationship is valid. An eligible English episode uses
+`/watch/{parent-slug}.html/{episode-slug}.html`; non-English episodes use
+`/watch/{parent-slug}.html/{episode-slug}/{language-slug}.html`. Explicit
+`/english.html` remains a direct compatibility/internal route. Episode slugs
+that collide with a current or legacy public language slug also keep explicit
+English so the second segment retains language-route precedence.
 
 ### Standalone Watch Route
 
@@ -58,8 +63,9 @@ collection relationship. Eligible English uses
 `/watch/{video-slug}.html/{language-slug}.html`. Explicit
 `/english.html` remains a direct compatibility/internal route. If the Video
 slug is also a public language-home slug, English stays explicit so the
-language home retains the one-segment URL. Contextual Watch Routes keep their
-parent, child, and explicit language segments in the browser.
+language home retains the one-segment URL. Both English contextual forms use
+the language-less standalone child as canonical, Open Graph, structured-data,
+and share identity.
 
 ### Watch Route Manifest
 

@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   clearWatchRouteManifestCache,
   getWatchRouteManifest,
+  isWatchEpisodePairAdmittedByManifest,
+  isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
   parseWatchRouteManifest,
   type WatchRouteManifest,
@@ -189,6 +191,67 @@ describe("isWatchRouteAdmittedByManifest", () => {
         childSlug: "the-beginning",
         audioLanguageSlug: "english",
       }),
+    ).toBe(false)
+  })
+})
+
+describe("exact episode admission", () => {
+  const spanishEpisode = {
+    kind: "episode",
+    parentSlug: "jesus",
+    childSlug: "the-beginning",
+    audioLanguageSlug: "spanish-latin-american",
+  } as const
+
+  it("proves the parent-child pair and exact audio language independently", () => {
+    expect(isWatchEpisodePairAdmittedByManifest(manifest, spanishEpisode)).toBe(
+      true,
+    )
+    expect(
+      isWatchEpisodeRouteExactlyAdmittedByManifest(manifest, spanishEpisode),
+    ).toBe(true)
+    expect(
+      isWatchEpisodeRouteExactlyAdmittedByManifest(manifest, {
+        ...spanishEpisode,
+        audioLanguageSlug: "english",
+      }),
+    ).toBe(false)
+  })
+
+  it("does not use the global language fallback when exact indexes are absent", () => {
+    const legacyManifest = {
+      ...manifest,
+      audioLanguageIndexesByEpisode: undefined,
+    }
+
+    expect(
+      isWatchEpisodePairAdmittedByManifest(legacyManifest, spanishEpisode),
+    ).toBe(true)
+    expect(
+      isWatchEpisodeRouteExactlyAdmittedByManifest(
+        legacyManifest,
+        spanishEpisode,
+      ),
+    ).toBe(false)
+  })
+
+  it("rejects missing pairs and empty exact-language entries", () => {
+    expect(
+      isWatchEpisodePairAdmittedByManifest(manifest, {
+        ...spanishEpisode,
+        childSlug: "unknown",
+      }),
+    ).toBe(false)
+    expect(
+      isWatchEpisodeRouteExactlyAdmittedByManifest(
+        {
+          ...manifest,
+          audioLanguageIndexesByEpisode: {
+            jesus: { "the-beginning": [] },
+          },
+        },
+        spanishEpisode,
+      ),
     ).toBe(false)
   })
 })

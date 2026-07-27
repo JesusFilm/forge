@@ -102,7 +102,7 @@ describe("SeriesEpisodesGrid — happy path", () => {
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/storyclubs.html/storyclubs-birth-of-jesus/english.html",
+      "/storyclubs.html/storyclubs-birth-of-jesus.html",
     )
   })
 

@@ -696,7 +696,6 @@ describe("FloatingSearchProvider — search mode", () => {
 
   it.each([
     "/not-a-language.html",
-    "/jesus.html/not-a-language.html",
     "/lumo.html/episode/not-a-language.html",
     "/not-a-language.html/languages",
     "/not-a-language.html/history",
@@ -725,6 +724,33 @@ describe("FloatingSearchProvider — search mode", () => {
 
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({ routeLanguageSlug: null }),
+    )
+  })
+
+  it("uses English for a two-segment contextual candidate", async () => {
+    navigationMocks.pathname = "/jesus.html/not-a-language.html"
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="search-mode-harness-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ routeLanguageSlug: "english" }),
     )
   })
 

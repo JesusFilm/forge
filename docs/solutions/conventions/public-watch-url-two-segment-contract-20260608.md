@@ -75,9 +75,28 @@ with `curl -L`:
 ```
 
 When the destination is non-English, include its public language slug
-explicitly. For eligible English, `.html` alone is canonical. Keep contextual
-episode browser routes explicit; only their standalone English identity
-flattens to the language-less child URL.
+explicitly. For eligible English, `.html` alone is canonical.
+
+Contextual episode links preserve the parent while following the same English
+default:
+
+```text
+/watch/{parent}.html/{episode}.html
+/watch/{parent}.html/{episode}/{non-english-language}.html
+```
+
+The short English contextual form is served directly only after the route
+manifest proves the exact parent-child-English relationship. It rewrites
+internally to the established explicit renderer without changing the browser
+URL or query. The explicit
+`/watch/{parent}.html/{episode}/english.html` form remains a direct
+compatibility URL. Both English contextual forms publish the language-less
+standalone child as canonical, Open Graph, structured-data, and share identity;
+contextual routes remain excluded from sitemap output.
+
+If an episode slug collides with a current public language slug or legacy
+language alias, generate explicit English so the second segment keeps its
+language-route meaning.
 
 ## Why This Matters
 

@@ -484,6 +484,16 @@ async function render3Seg(slug: string, episode: string, locale: string) {
   })
 }
 
+async function renderLanguageLessEpisode(series: string, episode: string) {
+  const identity = internalLocaleParams("english")
+  const element = await SlugRestPage({
+    params: Promise.resolve({ ...identity, rest: [series, episode] }),
+  })
+  act(() => {
+    root.render(element)
+  })
+}
+
 async function renderServerHtml(rest: string[], locale: string) {
   const identity = internalLocaleParams(locale)
   const element = await SlugRestPage({
@@ -2083,6 +2093,22 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
 })
 
 describe("Catch-all routing — 3-seg episode branch", () => {
+  it("renders a language-less two-segment episode as contextual English", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    await renderLanguageLessEpisode(
+      "lumo-the-gospel-of-john.html",
+      "wedding-in-cana.html",
+    )
+
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "lumo-the-gospel-of-john",
+      "wedding-in-cana",
+      "english",
+    )
+  })
+
   it("renders WatchPageClient when episode + series resolve", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
     await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")

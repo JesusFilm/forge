@@ -109,7 +109,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
         data-cover-blackout-key={coverBlackoutKey ?? ""}
         onClick={() => {
           onChapterNavigateIntent?.({
-            href: "/parent.html/child-2/english.html",
+            href: "/parent.html/child-2.html",
             languageSlug: "english",
             sourceVideoDocumentId: "video-1",
             targetVideoDocumentId: "child-2",
@@ -128,7 +128,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
         data-testid="watch-section-renderer-selectable-parent"
         onClick={() => {
           onChapterNavigateIntent?.({
-            href: "/second-parent.html/shared-child/english.html",
+            href: "/second-parent.html/shared-child.html",
             languageSlug: "english",
             sourceVideoDocumentId: "video-1",
             targetVideoDocumentId: "shared-child",
@@ -356,11 +356,11 @@ describe("WatchPageClient chapter navigation", () => {
 
     expect(renderer()?.getAttribute("data-pending-target")).toBe("shared-child")
     expect(window.fetch).toHaveBeenCalledWith(
-      "/second-parent.html/shared-child/english.html",
+      "/second-parent.html/shared-child.html",
       expect.objectContaining({ credentials: "same-origin" }),
     )
     expect(routerPrefetchMock).toHaveBeenCalledWith(
-      "/second-parent.html/shared-child/english.html",
+      "/second-parent.html/shared-child.html",
     )
 
     await act(async () => {
@@ -369,7 +369,7 @@ describe("WatchPageClient chapter navigation", () => {
     })
 
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/second-parent.html/shared-child/english.html",
+      "/second-parent.html/shared-child.html",
       { scroll: false },
     )
   })
@@ -388,12 +388,10 @@ describe("WatchPageClient chapter navigation", () => {
     })
 
     expect(window.fetch).toHaveBeenCalledWith(
-      "/parent.html/child-2/english.html",
+      "/parent.html/child-2.html",
       expect.objectContaining({ credentials: "same-origin" }),
     )
-    expect(routerPrefetchMock).toHaveBeenCalledWith(
-      "/parent.html/child-2/english.html",
-    )
+    expect(routerPrefetchMock).toHaveBeenCalledWith("/parent.html/child-2.html")
     expect(renderer()?.getAttribute("data-pending-target")).toBe("child-2")
     expect(renderer()?.getAttribute("data-pending-title")).toBe("Clicked Child")
     expect(renderer()?.getAttribute("data-pending-poster")).toBe(
@@ -406,12 +404,9 @@ describe("WatchPageClient chapter navigation", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/parent.html/child-2/english.html",
-      {
-        scroll: false,
-      },
-    )
+    expect(routerPushMock).toHaveBeenCalledWith("/parent.html/child-2.html", {
+      scroll: false,
+    })
     expect(
       JSON.parse(
         window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY) ??
@@ -424,11 +419,7 @@ describe("WatchPageClient chapter navigation", () => {
       sourceCarouselIndex: 3,
     })
 
-    window.history.replaceState(
-      {},
-      "",
-      "/watch/parent.html/child-2/english.html",
-    )
+    window.history.replaceState({}, "", "/watch/parent.html/child-2.html")
     renderWatchPage(makeVideo("child-2", "Clicked Child"))
 
     expect(renderer()?.getAttribute("data-pending-target")).toBe("")
@@ -476,12 +467,9 @@ describe("WatchPageClient chapter navigation", () => {
       await Promise.resolve()
     })
 
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/parent.html/child-2/english.html",
-      {
-        scroll: false,
-      },
-    )
+    expect(routerPushMock).toHaveBeenCalledWith("/parent.html/child-2.html", {
+      scroll: false,
+    })
   })
 
   it("keeps scroll position stable for chapter clicks below the top", async () => {
@@ -493,12 +481,9 @@ describe("WatchPageClient chapter navigation", () => {
 
     await clickChapterAndFlushNavigation()
 
-    expect(routerPushMock).toHaveBeenCalledWith(
-      "/parent.html/child-2/english.html",
-      {
-        scroll: false,
-      },
-    )
+    expect(routerPushMock).toHaveBeenCalledWith("/parent.html/child-2.html", {
+      scroll: false,
+    })
   })
 
   it("preserves autoplay across chapter clicks only after the player is activated", async () => {
@@ -515,7 +500,7 @@ describe("WatchPageClient chapter navigation", () => {
     await clickChapterAndFlushNavigation()
 
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/parent.html/child-2/english.html?autoplay=1",
+      "/parent.html/child-2.html?autoplay=1",
       {
         scroll: false,
       },

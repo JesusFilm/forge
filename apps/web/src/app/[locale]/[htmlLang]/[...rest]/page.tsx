@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 
+import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
+
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
@@ -55,7 +57,7 @@ import {
   WATCH_PUBLIC_METADATA_ORIGIN,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchEpisodePath,
+  watchEpisodeExplicitLanguagePath,
   watchVideoPath,
 } from "@/lib/routes"
 import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
@@ -203,7 +205,8 @@ function selectableParentsForStandaloneVideo(
 // params, but params.rest preserves the original public path verbatim:
 //
 //   rest.length === 1 → /{lang-or-collection}.html
-//   rest.length === 2 → /{slug}.html/{lang}.html
+//   rest.length === 2 → /{slug}.html/{lang}.html or
+//                       /{series}.html/{episode}.html (default English)
 //   rest.length === 3 → /{series}.html/{episode}/{lang}.html
 //
 // Any other length 404s before resolver calls so malformed paths don't mint
@@ -250,14 +253,22 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     }
   }
   if (rest.length === 2) {
-    const slug = stripSafeSegment(rest[0])
-    const rawLocale = stripSafeSegment(rest[1])
-    if (!slug || !rawLocale) return { kind: "unknown" }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    const firstSlug = stripSafeSegment(rest[0])
+    const secondSlug = stripSafeSegment(rest[1])
+    if (!firstSlug || !secondSlug) return { kind: "unknown" }
+    if (!isPublicWatchLanguageSlug(secondSlug)) {
+      return {
+        kind: "episode",
+        seriesSlug: firstSlug,
+        episodeSlug: secondSlug,
+        rawLocale: DEFAULT_WATCH_LANGUAGE_SLUG,
+        locale: internalLocale,
+      }
+    }
     return {
       kind: "video",
-      slug,
-      rawLocale,
+      slug: firstSlug,
+      rawLocale: secondSlug,
       // The message-catalog key is the prepended internal locale. The raw
       // audio slug stays in params.rest for variant selection and URLs.
       locale: internalLocale,
@@ -598,9 +609,14 @@ async function renderEpisode(shape: {
     const localeSlug = tryAsLocaleSlug(actualSlug)
     if (seriesContentSlug && episodeContentSlug && localeSlug) {
       redirect(
-        watchEpisodePath(seriesContentSlug, episodeContentSlug, localeSlug, {
-          reason: "locale-resolved",
-        }),
+        watchEpisodeExplicitLanguagePath(
+          seriesContentSlug,
+          episodeContentSlug,
+          localeSlug,
+          {
+            reason: "locale-resolved",
+          },
+        ),
       )
     }
   }

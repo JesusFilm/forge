@@ -25,6 +25,8 @@ export type WatchUrlFixture = {
   expectedCanonicalPath?: string
   /** The route must publish a page-level JSON-LD URL matching the canonical. */
   requireStructuredDataCanonical?: boolean
+  /** Production may 404 because this fixture intentionally adds a public route. */
+  allowProductionNotFound?: boolean
 }
 
 const ROOTS: readonly string[] = [
@@ -124,7 +126,14 @@ const EPISODES: readonly string[] = [
   "/watch/lumo-the-gospel-of-luke.html/birth-of-jesus/english.html",
   "/watch/lumo-the-gospel-of-luke.html/birth-of-jesus/spanish-castilian.html",
   "/watch/lumo-the-gospel-of-mark.html/jesus-baptism/english.html",
+  // Language-less contextual English is the preferred public form. The
+  // explicit English form remains a direct compatibility URL below.
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
   "/watch/jesus.html/the-beginning/english.html",
+  "/watch/jesus.html/the-beginning/romanian.html",
   "/watch/jesus.html/the-beginning/spanish-castilian.html",
   "/watch/jesus.html/the-beginning/russian.html",
 ]
@@ -148,6 +157,7 @@ const QUERY_PARAMS: readonly string[] = [
   "/watch/jesus.html?t=120",
   "/watch/jesus.html?autoplay=1",
   "/watch/jesus.html?utm_source=campaign&utm_medium=email",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
 ]
 
 const LANGUAGELESS_ENGLISH: readonly string[] = [
@@ -198,8 +208,16 @@ function fixturesOf(
           requireStructuredDataCanonical: true,
         }
       : {}),
+    ...(WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS.has(path)
+      ? { allowProductionNotFound: true }
+      : {}),
   }))
 }
+
+const WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS: ReadonlySet<string> = new Set([
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
+])
 
 const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
   "/watch/jesus.html": "/watch/jesus.html",
@@ -214,6 +232,18 @@ const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
     "/watch/lumo-the-gospel-of-john.html",
   "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html":
     "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html":
+    "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html":
+    "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/jesus.html/the-beginning/romanian.html":
+    "/watch/the-beginning.html/romanian.html",
   "/watch/jesus.html/the-beginning/spanish-castilian.html":
     "/watch/the-beginning.html/spanish-castilian.html",
 }
@@ -301,6 +331,10 @@ export const WATCH_STRUCTURED_DATA_CONTRACTS: Readonly<
     required: { VideoObject: 1 },
     forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
   },
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
 }
 
 export type ProbeOutcome =
@@ -327,6 +361,7 @@ type ClassifyFixture = {
   requireDirect?: boolean
   expectedCanonicalPath?: string
   requireStructuredDataCanonical?: boolean
+  allowProductionNotFound?: boolean
 }
 
 function passthroughViolation(
@@ -574,7 +609,21 @@ export function classifyProbe(
     }
   }
 
-  // pc === 4 — production 404 (or other 4xx). §5.6: must STAY 404.
+  // pc === 4 — production 404 (or other 4xx). Only an explicitly opted-in
+  // `ok` fixture may expand the public route surface, after its direct,
+  // canonical, and schema contracts above have passed. Every other fixture
+  // must preserve the 4xx baseline.
+  if (
+    fixture?.expect === "ok" &&
+    fixture.allowProductionNotFound === true &&
+    vc === 2
+  ) {
+    return {
+      outcome: "acceptable",
+      note: `intentional route expansion: prod ${production.status} → preview direct ${preview.status}`,
+    }
+  }
+
   if (vc === 4) {
     return { outcome: "match", note: `404 preserved (${preview.status})` }
   }
