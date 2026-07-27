@@ -116,6 +116,10 @@ container, so `DD_LOGS_INJECTION=true` alone is not enough; the app must also
 set `DD_AGENT_SYSLOG_PORT=514` and run code with `DD_AGENT_HOST` present. The
 forwarder preserves normal Railway stdout and sends a second copy to Datadog
 with `service`, `env`, `version`, and active trace/span ids when available.
+For Datadog to treat release metadata as log tags, `ddtags` must be emitted in
+the RFC5424 structured-data section (`[metas ddtags="..."]`); keeping `ddtags`
+only inside the JSON message makes it searchable as an attribute but does not
+promote `env` or `version` into the log's tag set.
 
 Because the Agent service name contains `/`, prefer Railway's variable
 autocomplete when setting `DD_AGENT_HOST`; it will insert the exact reference
