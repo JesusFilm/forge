@@ -2490,6 +2490,71 @@ explicit product approval. Web reads cached passage text through GraphQL
 `BibleCitation.passage(languageSlug:)`; other consumers may pass Core
 `languageId`. Web and consumers must not call the provider API directly.
 
+## Admin MCP (JFP Admin MCP — feat-276 + feat-286)
+
+OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,
+Codex) operating on Experiences. Onboarding UI at `/dashboard/mcp`; protected-
+resource metadata at `/.well-known/oauth-protected-resource` (its
+`scopes_supported` derives automatically from the tool registry).
+
+- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 14 tools).
+  New-tool registration is a three-edit change with no framework glue: registry
+  entry → `callAdminMcpTool` dispatch branch in `src/app/mcp/route.ts` →
+  service method. The route test's registry-dispatch parity loop fails if a
+  declared tool has no branch.
+- **Services:** `src/services/experience-locale-mcp.service.ts` (the 12
+  locale-level tools) and `src/services/experience-mcp.service.ts` (the two
+  experience-level tools). Writes delegate to `ExperienceService`; ABAC stays
+  in the service layer.
+- **Auth:** bearer JWT verified against apps/auth JWKS
+  (`src/auth/admin-mcp-oauth.ts`); per-tool `requiredScopes` are enforced
+  BEFORE dispatch. Insufficient scope is an HTTP **403** with
+  `{ error: "insufficient_scope", required_scopes }` — not a JSON-RPC error.
+  Scope strings are untyped on the admin side; they must match apps/auth's
+  `AUTH_SCOPES` keys byte-for-byte.
+- **Experience-level tools (feat-286):**
+  - `experience.create` (scope `experience:create`) — client-supplied
+    `{locale, slug, title, blocks}` → new DRAFT Experience owned by the
+    delegated principal. Meta/OG fields are deliberately rejected (`.strict()`
+    tool schema) — set them via `experience.locale.update`. Duplicate
+    `(locale, slug)` returns a conflict envelope naming the existing resource.
+  - `experience.generate` (scope `experience:generate`) — server-side chain:
+    `loadExperienceAiVideoCandidates` → mastra quick draft
+    (`/forge-experience-variant` when `personaId` present, else
+    `/forge-experience-draft` with `mode: "quick"`) → `normalizeExperienceDraft`
+    → DRAFT create + AI-provenance ContentRevision + metaDescription in one
+    transaction. Failures return `{ok:false, reason, retryable, message}`
+    envelopes inside `structuredContent` (never thrown) — the JSON-RPC error
+    object cannot carry `retryable`.
+  - Neither tool publishes or fires publish side effects (no ISR webhook, no
+    manifest refresh, no embedding dispatch). Publishing remains exclusively
+    `experience.locale.publish` + `experience:publish` + explicit user
+    instruction + ABAC.
+- **Generate timeout inversion (deliberate):** `MASTRA_GENERATE_TIMEOUT_MS`
+  (default 90s) sits BELOW Cloudflare's ~100s proxy window — the OPPOSITE of
+  the other `MASTRA_*_TIMEOUT_MS` vars — because mastra pins the same 180s
+  internal budget on quick and multi draft modes. Admin's abort is the binding
+  ceiling: the MCP caller gets a clean retryable `timeout` envelope instead of
+  a severed 524, and nothing is persisted (the create only happens after a
+  successful mastra response). Do not "fix" this back to
+  larger-than-mastra without re-deriving the chain.
+- **Cost control:** there is NO per-tool or per-principal budget on
+  `experience.generate` — the 120/min bucket is per-IP and fires pre-auth.
+  Revoking the `experience:generate` scope (independently grantable) is the
+  only cost lever today; per-tool budgets are an explicitly deferred follow-up.
+- **Deploy order (scope additions):** apps/auth deploys FIRST (registry +
+  `ADMIN_MCP_DEFAULT_SCOPES`), then apps/admin (tools). Both autodeploy from
+  `main` in parallel, so the ordering is best-effort within one merge — the
+  exposure is a clean `insufficient_scope`/consent error until both are live.
+  After deploy an operator runs `pnpm --filter @forge/auth
+seed:first-party-apps` (updates the `scope` table + stored client scopes),
+  and **users must re-authenticate their MCP clients** to pick up the new
+  consent scopes — existing grants do not gain them.
+- **Client-side workflow contract:**
+  `plugins/jfp-admin/skills/forge-bulk-locale-factory/SKILL.md` (also the
+  `resource_documentation` target). Fan-out (many topics/languages) stays in
+  the client agent loop; there are no bulk server operations.
+
 ## Common pitfalls (grows with each unit)
 
 - **Per-service `railway.toml` files are ignored until Config-as-code Path is set.** For Admin, set it to `apps/admin/railway.toml` before assuming code-owned config applies. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
