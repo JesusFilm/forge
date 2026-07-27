@@ -19,10 +19,15 @@ const HEADING_TAG = {
   h6: "h6",
 } as const
 
+const PROMOTIONAL_SUBHEADING_CLASS =
+  "mt-10 text-xl leading-snug font-semibold tracking-[-0.01em] text-white first:mt-0 sm:text-2xl"
+
 const PromotionalSubheading = ({ children }: { children?: ReactNode }) => (
-  <h3 className="mt-10 text-xl leading-snug font-semibold tracking-[-0.01em] text-white first:mt-0 sm:text-2xl">
-    {children}
-  </h3>
+  <h3 className={PROMOTIONAL_SUBHEADING_CLASS}>{children}</h3>
+)
+
+const PromotionalPageSubheading = ({ children }: { children?: ReactNode }) => (
+  <h2 className={PROMOTIONAL_SUBHEADING_CLASS}>{children}</h2>
 )
 
 const PROMOTIONAL_MARKDOWN_COMPONENTS = {
@@ -77,6 +82,13 @@ const PROMOTIONAL_MARKDOWN_COMPONENTS = {
   hr: () => <hr className="my-10 border-white/15" />,
 } satisfies Components
 
+const PROMOTIONAL_PAGE_MARKDOWN_COMPONENTS = {
+  ...PROMOTIONAL_MARKDOWN_COMPONENTS,
+  h1: PromotionalPageSubheading,
+  h2: PromotionalPageSubheading,
+  h3: PromotionalPageSubheading,
+} satisfies Components
+
 export function Text({ data }: TextProps) {
   const {
     id,
@@ -94,6 +106,7 @@ export function Text({ data }: TextProps) {
   const paragraphs = Array.isArray(contentParagraphs)
     ? (contentParagraphs as string[])
     : []
+  const hasHeading = typeof heading === "string" && heading.trim().length > 0
 
   if (variant === "promotional") {
     const markdown = paragraphs
@@ -119,7 +132,7 @@ export function Text({ data }: TextProps) {
                 </p>
               )}
             </div>
-            {heading && (
+            {hasHeading && (
               <Tag className="text-3xl leading-[1.08] font-semibold tracking-[-0.025em] text-white sm:text-4xl lg:text-4xl xl:col-start-1 xl:row-start-2 xl:pr-4 xl:text-5xl">
                 {heading}
               </Tag>
@@ -132,7 +145,11 @@ export function Text({ data }: TextProps) {
               data-testid="promotional-markdown"
             >
               <Markdown
-                components={PROMOTIONAL_MARKDOWN_COMPONENTS}
+                components={
+                  headingLevel === "h1"
+                    ? PROMOTIONAL_PAGE_MARKDOWN_COMPONENTS
+                    : PROMOTIONAL_MARKDOWN_COMPONENTS
+                }
                 urlTransform={defaultUrlTransform}
               >
                 {markdown}
@@ -157,7 +174,7 @@ export function Text({ data }: TextProps) {
               {subtitle}
             </p>
           )}
-          {heading && (
+          {hasHeading && (
             <div className="mb-3 flex items-center justify-between">
               <Tag className="mb-0 text-xl font-bold xl:text-2xl 2xl:text-3xl">
                 {heading}
@@ -188,7 +205,7 @@ export function Text({ data }: TextProps) {
       className="space-y-6 text-stone-100"
       data-testid="Text"
     >
-      {heading && (
+      {hasHeading && (
         <Tag
           className={
             variant === "small"

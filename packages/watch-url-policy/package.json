@@ -4,7 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./callbacks": "./src/callbacks.ts",
+    "./download": "./src/download.ts",
+    "./routes": "./src/routes.ts"
   },
   "scripts": {
     "lint": "eslint .",

@@ -403,7 +403,7 @@ describe("WatchPageClient download boundary", () => {
     expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
   })
 
-  it("falls back to the editorial poster when the Dub has no Mux playback", async () => {
+  it("prefers the editorial poster when the Dub also has Mux playback", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
       accountGateEnabled: false,
@@ -414,7 +414,7 @@ describe("WatchPageClient download boundary", () => {
         mobileCinematicHigh:
           "https://imagedelivery.net/account/editorial.jpg/f=jpg,w=120,h=68,q=95",
       },
-      playbackId: null,
+      playbackId: "playback-1",
     })
 
     await act(async () => {

@@ -164,6 +164,22 @@ project+environment, so an unset allowlist's worst-case http misconfig reaches
 only a sibling service in the same environment; treat the allowlist as
 REQUIRED if the environment ever hosts services outside this trust boundary.
 
+> **"Should" became "must" in production (2026-07-24, feat-304 — #1731):** the paragraph above is
+> retained as the original reasoning, but its blanket "an unset allowlist trusts
+> the operator-set host" is no longer true for `apps/chat`. `hostAllowed` /
+> `validateBaseUrl` now take a third required `requireAllowlist` argument, and
+> `requireSeekerEgressAllowlist()` (`apps/chat/src/config/env.ts`) sets it for
+> any production BUILD — so an unset `SEEKER_MASTRA_ALLOWED_HOSTS` DENIES every
+> send and history read there, rather than trusting the base host. The trigger
+> for tightening was not the sibling-service worst case but the wider one the
+> old text did not price: the scheme floor alone admits any `https://` base, so
+> a typo'd or tampered `SEEKER_MASTRA_BASE_URL` egresses the ai-chat lane bearer
+> and prompt text to an arbitrary public host. Enforcement is at the proxies,
+> not a boot throw — chat's `railway.toml` has no healthcheck, so a throwing
+> `register()` would take the whole app down with no rollback; `instrumentation.ts`
+> reports the misconfiguration and never throws. Operators must provision the
+> allowlist in every deployed environment BEFORE shipping code that requires it.
+
 **6. First terminal frame wins (both sides).** The proxy emits exactly one
 terminal frame then closes; the client treats the first `result`/`error` as
 authoritative and ignores later frames. This guards the route-timeout-vs-proxy-

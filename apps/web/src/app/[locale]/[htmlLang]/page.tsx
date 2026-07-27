@@ -14,12 +14,17 @@ import {
 } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
+import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
+import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import {
   loadClientMessages,
   WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
 } from "@/i18n/client-messages"
+import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
+import { watchHomeCollectionStructuredDataJson } from "@/lib/watch-structured-data"
+import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content"
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -81,9 +86,11 @@ export default async function HomePage({ params }: PageProps) {
   ])
 
   const withMessages = (children: ReactNode) => (
-    <NextIntlClientProvider locale={locale} messages={messages}>
-      {children}
-    </NextIntlClientProvider>
+    <WatchChromeShell locale={locale} initialRouteSurface="language-home">
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        {children}
+      </NextIntlClientProvider>
+    </WatchChromeShell>
   )
 
   if (heroResult.error) {
@@ -109,11 +116,28 @@ export default async function HomePage({ params }: PageProps) {
     return withMessages(<ExperienceEmpty />)
   }
 
+  const languageSlug = publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
+  const visibleContent = projectWatchHomeVisibleContent({
+    model: heroResult.data,
+    blocks: builderBlocks,
+    languageSlug,
+  })
+  const structuredData = watchHomeCollectionStructuredDataJson({
+    destinations: visibleContent.destinations,
+    canonicalUrl: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`,
+    inLanguage: locale,
+    name: WATCH_HOME_TITLE,
+    description: WATCH_HOME_DESCRIPTION,
+  })
+
   return withMessages(
-    <WatchHomeExperiencePage
-      heroModel={heroResult.data}
-      blocks={builderBlocks}
-      languageSlug={publicWatchHomeLanguageSlugForLocale(locale) ?? "english"}
-    />,
+    <>
+      <WatchStructuredData json={structuredData} />
+      <WatchHomeExperiencePage
+        heroModel={heroResult.data}
+        blocks={visibleContent.blocks}
+        languageSlug={languageSlug}
+      />
+    </>,
   )
 }

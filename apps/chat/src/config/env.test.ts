@@ -280,3 +280,78 @@ describe("sub-ceiling timeout warning (KTD4)", () => {
     },
   )
 })
+
+// The production egress pin. NODE_ENV is restored per-case because env.ts reads
+// it at module load and every other suite in this file depends on the default.
+describe("requireSeekerEgressAllowlist + describeSeekerEgressMisconfiguration", () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV
+
+  afterEach(() => {
+    vi.stubEnv("NODE_ENV", ORIGINAL_NODE_ENV ?? "test")
+    vi.unstubAllEnvs()
+  })
+
+  async function importEnvAs(nodeEnv: string) {
+    vi.stubEnv("NODE_ENV", nodeEnv)
+    return importEnv()
+  }
+
+  it("requires the allowlist in production", async () => {
+    const { requireSeekerEgressAllowlist } = await importEnvAs("production")
+    expect(requireSeekerEgressAllowlist()).toBe(true)
+  })
+
+  it.each(["development", "test", ""])(
+    "does not require the allowlist for NODE_ENV %j (boots clean with nothing set)",
+    async (nodeEnv) => {
+      const { requireSeekerEgressAllowlist } = await importEnvAs(nodeEnv)
+      expect(requireSeekerEgressAllowlist()).toBe(false)
+    },
+  )
+
+  it("reports no problem when the base URL is unset (Seeker unconfigured)", async () => {
+    const { describeSeekerEgressMisconfiguration } =
+      await importEnvAs("production")
+    expect(describeSeekerEgressMisconfiguration()).toBeNull()
+  })
+
+  it("reports allowlist_unset in production when the base URL is set alone", async () => {
+    process.env.SEEKER_MASTRA_BASE_URL =
+      "http://example-service.railway.internal:4111"
+    const { describeSeekerEgressMisconfiguration } =
+      await importEnvAs("production")
+    expect(describeSeekerEgressMisconfiguration()).toBe("allowlist_unset")
+  })
+
+  it("reports host_not_allowed when the base host is absent from the allowlist", async () => {
+    process.env.SEEKER_MASTRA_BASE_URL = "https://mastra.internal"
+    process.env.SEEKER_MASTRA_ALLOWED_HOSTS = "other.internal"
+    const { describeSeekerEgressMisconfiguration } =
+      await importEnvAs("production")
+    expect(describeSeekerEgressMisconfiguration()).toBe("host_not_allowed")
+  })
+
+  it("reports no problem for a correctly pinned production base URL", async () => {
+    process.env.SEEKER_MASTRA_BASE_URL =
+      "http://example-service.railway.internal:4111"
+    process.env.SEEKER_MASTRA_ALLOWED_HOSTS = "example-service.railway.internal"
+    const { describeSeekerEgressMisconfiguration } =
+      await importEnvAs("production")
+    expect(describeSeekerEgressMisconfiguration()).toBeNull()
+  })
+
+  it("reports host_not_allowed for a scheme-floor failure even when listed", async () => {
+    process.env.SEEKER_MASTRA_BASE_URL = "http://evil.com"
+    process.env.SEEKER_MASTRA_ALLOWED_HOSTS = "evil.com"
+    const { describeSeekerEgressMisconfiguration } =
+      await importEnvAs("production")
+    expect(describeSeekerEgressMisconfiguration()).toBe("host_not_allowed")
+  })
+
+  it("reports no problem outside production with the base URL set alone (fail-open posture)", async () => {
+    process.env.SEEKER_MASTRA_BASE_URL = "http://localhost:4111"
+    const { describeSeekerEgressMisconfiguration } =
+      await importEnvAs("development")
+    expect(describeSeekerEgressMisconfiguration()).toBeNull()
+  })
+})

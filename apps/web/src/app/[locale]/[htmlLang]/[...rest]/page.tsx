@@ -6,11 +6,13 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceRegistration"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
+import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
 import {
   isWatchPageMissingError,
   mergeWatchExperience,
@@ -43,37 +45,41 @@ import {
   isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
+  slugToBcp47Tag,
   type UiLocale,
 } from "@/lib/locale"
 import {
   languageVideosIndexPath,
+  localizedHomePath,
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
+import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
 import {
-  isOneSegmentCollectionSlug,
-  SAFE_SLUG_PATTERN,
-  stripHtmlSuffix,
-} from "@/lib/url-shape"
-import {
-  watchBreadcrumbStructuredDataJson,
-  watchVideoStructuredDataJson,
+  watchHomeCollectionStructuredDataJson,
   watchRelatedItemListStructuredDataJson,
+  watchSeriesCollectionStructuredDataJson,
+  watchVideoStructuredDataJson,
 } from "@/lib/watch-structured-data"
+import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
 } from "@/lib/watch-route-manifest"
+import { resolveSeriesLanguageIdentity } from "@/lib/series-language"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import {
   loadClientMessages,
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
   WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
 } from "@/i18n/client-messages"
+import type { WatchRouteSurface } from "@/components/FloatingSearchContext"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -234,9 +240,6 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!slug) return { kind: "unknown" }
     if (isLocale(slug)) return { kind: "unknown" }
     const isLanguageHome = isPublicWatchHomeLanguageSlug(slug)
-    if (!isLanguageHome && !isOneSegmentCollectionSlug(slug)) {
-      return { kind: "unknown" }
-    }
     return {
       kind: "one-segment",
       slug,
@@ -281,6 +284,16 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     }
   }
   return { kind: "unknown" }
+}
+
+function watchRouteSurfaceForShape(shape: Shape): WatchRouteSurface | null {
+  if (shape.kind === "one-segment") {
+    return shape.isLanguageHome ? "language-home" : "experience"
+  }
+  if (shape.kind === "video" && shape.rawLocale === "english") {
+    return "english-video"
+  }
+  return null
 }
 
 async function getDownloadButtonLabel(
@@ -415,31 +428,6 @@ export async function generateMetadata({
   return {}
 }
 
-function WatchVideoStructuredData({
-  model,
-}: {
-  model: ReturnType<typeof buildWatchVideoMetadataModel>
-}) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: watchVideoStructuredDataJson(model),
-      }}
-    />
-  )
-}
-
-function WatchStructuredData({ json }: { json: string | null | undefined }) {
-  if (!json) return null
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: json }}
-    />
-  )
-}
-
 export default async function SlugRestPage({ params }: PageProps) {
   const { locale: rawInternalLocale, rest } = await params
   const { locale: internalLocale } =
@@ -462,9 +450,13 @@ export default async function SlugRestPage({ params }: PageProps) {
       : shape.kind === "episode"
         ? await renderEpisode(shape)
         : await renderVideo(shape)
+  const routeSurface = watchRouteSurfaceForShape(shape)
 
   return (
     <NextIntlClientProvider locale={shape.locale} messages={messages}>
+      {routeSurface ? (
+        <WatchRouteSurfaceRegistration surface={routeSurface} />
+      ) : null}
       {content}
     </NextIntlClientProvider>
   )
@@ -510,12 +502,29 @@ async function renderOneSegment(shape: {
     if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
       return <ExperienceEmpty />
     }
+    const localeSlug = tryAsLocaleSlug(slug)
+    const visibleContent = projectWatchHomeVisibleContent({
+      model: heroResult.data,
+      blocks: builderBlocks,
+      languageSlug: slug,
+    })
+    const structuredData = localeSlug
+      ? watchHomeCollectionStructuredDataJson({
+          destinations: visibleContent.destinations,
+          canonicalUrl: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${localizedHomePath(localeSlug)}`,
+          inLanguage: slugToBcp47Tag(slug),
+          name: "Watch",
+        })
+      : null
     return (
-      <WatchHomeExperiencePage
-        heroModel={heroResult.data}
-        blocks={builderBlocks}
-        languageSlug={slug}
-      />
+      <>
+        <WatchStructuredData json={structuredData} />
+        <WatchHomeExperiencePage
+          heroModel={heroResult.data}
+          blocks={visibleContent.blocks}
+          languageSlug={slug}
+        />
+      </>
     )
   }
 
@@ -630,24 +639,16 @@ async function renderEpisode(shape: {
     resolved.selectedVariant,
   )
   const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
-  const breadcrumbJson = watchBreadcrumbStructuredDataJson({
-    videoTitle: metadataModel.videoTitle,
-    canonicalUrl: metadataModel.canonicalUrl,
-    languageSlug,
-    series: {
-      slug: resolved.series.slug,
-      title: resolved.series.title,
-    },
-  })
-  const relatedItemsJson = watchRelatedItemListStructuredDataJson({
-    blocks: mergedBlocks,
-    languageSlug,
-  })
+  const relatedItemsJson = metadataModel.noIndex
+    ? null
+    : watchRelatedItemListStructuredDataJson({
+        blocks: mergedBlocks,
+        languageSlug,
+      })
 
   return (
     <>
-      <WatchVideoStructuredData model={metadataModel} />
-      <WatchStructuredData json={breadcrumbJson} />
+      <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
@@ -757,19 +758,17 @@ async function renderVideo(shape: {
       routeSlug: slug,
       pathLocale: rawLocale,
     })
-    const breadcrumbJson = watchBreadcrumbStructuredDataJson({
-      videoTitle: metadataModel.videoTitle,
-      canonicalUrl: metadataModel.canonicalUrl,
-      languageSlug,
-    })
-    const relatedItemsJson = watchRelatedItemListStructuredDataJson({
-      blocks: mergedBlocks,
-      languageSlug,
-    })
+    const relatedItemsJson = metadataModel.noIndex
+      ? null
+      : watchRelatedItemListStructuredDataJson({
+          blocks: mergedBlocks,
+          languageSlug,
+        })
     return (
       <>
-        <WatchVideoStructuredData model={metadataModel} />
-        <WatchStructuredData json={breadcrumbJson} />
+        <WatchStructuredData
+          json={watchVideoStructuredDataJson(metadataModel)}
+        />
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
@@ -789,12 +788,56 @@ async function renderVideo(shape: {
 
   if (routeModel.kind === "series") {
     const series = routeModel
+    const routeManifest = await routeManifestPromise
+    const languageOptions = (series.video.childDubLanguages ?? [])
+      .flatMap((language) =>
+        language?.slug
+          ? [
+              {
+                slug: language.slug,
+                bcp47: language.bcp47,
+                name: language.name ?? language.slug,
+              },
+            ]
+          : [],
+      )
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const seriesLanguage = resolveSeriesLanguageIdentity(
+      languageOptions,
+      rawLocale,
+      { slug: rawLocale },
+    )
+    const contentSlug = tryAsContentSlug(slug)
+    const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")
+    if (contentSlug && localeSlug && seriesLanguage?.slug !== rawLocale) {
+      redirect(
+        watchVideoPath(contentSlug, localeSlug, {
+          reason: "locale-resolved",
+        }),
+      )
+    }
+    const canonicalUrl =
+      contentSlug && localeSlug
+        ? `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(contentSlug, localeSlug)}`
+        : ""
+    const structuredData = watchSeriesCollectionStructuredDataJson({
+      series: series.video,
+      languageSlug: seriesLanguage?.slug ?? "",
+      canonicalUrl,
+      inLanguage:
+        seriesLanguage?.bcp47 ??
+        slugToBcp47Tag(seriesLanguage?.slug ?? rawLocale),
+      routeManifest,
+    })
     return (
-      <SeriesPageClient
-        series={series.video}
-        selectedVariant={series.selectedVariant}
-        locale={rawLocale}
-      />
+      <>
+        <WatchStructuredData json={structuredData} />
+        <SeriesPageClient
+          series={series.video}
+          selectedVariant={series.selectedVariant}
+          locale={seriesLanguage?.slug ?? rawLocale}
+        />
+      </>
     )
   }
 

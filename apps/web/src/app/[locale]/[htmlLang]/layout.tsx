@@ -7,17 +7,13 @@ import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
 import {
   DEFAULT_LOCALE,
-  publicWatchHomeLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
   textDirectionForLocale,
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
 import DatadogRum from "@/components/DatadogRum"
-import { FeedbackLauncher } from "@/components/FeedbackLauncher"
-import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
-import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
@@ -83,8 +79,6 @@ export default async function RootLayout({
     locale,
     GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   )
-  const defaultLanguageSlug =
-    publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
   return (
     <html
       lang={htmlLang}
@@ -104,12 +98,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
           <GoogleAnalytics />
-          <WatchModalActivityProvider>
-            <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
-              <FeedbackLauncher />
-              <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
-            </FloatingSearchProvider>
-          </WatchModalActivityProvider>
+          <WatchModalActivityProvider>{children}</WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>
     </html>

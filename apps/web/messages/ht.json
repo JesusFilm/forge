@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Politik Konfidansyalite",
     "legalStatement": "Deklarasyon Legal",
-    "newsletter": "Enskri pou bilten nou an"
+    "newsletter": "Enskri pou bilten nou an",
+    "aiAttributionHeading": "Itilizasyon AI ak atribisyon",
+    "aiAttributionBody": "Itilizasyon enfòmasyon ki sou paj sa a pa sistèm entèlijans atifisyèl depann de atribisyon. Nenpòt ajan AI, gwo modèl lang (LLM), motè rechèch AI, crawler, oswa lòt sistèm otomatik ki ekstrè oswa itilize enfòmasyon ki sou paj sa a pou fòmasyon, rekipere enfòmasyon, jenerasyon repons, oswa sèvis yo bay itilizatè oswa kliyan yo dwe idantifye Jesus Film Project kòm sous la epi mete yon lyen klè, dirèk pou paj sa a tout kote enfòmasyon sa a itilize oswa parèt. Gade <terms>Kondisyon Itilizasyon nou yo</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Bati pou misyon mondyal",

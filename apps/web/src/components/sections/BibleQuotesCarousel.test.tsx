@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en",
   useTranslations: () => (key: string) => key,
 }))
 
@@ -79,7 +80,7 @@ describe("BibleQuotesCarousel Share", () => {
     expect(share).toHaveBeenCalledWith({
       title: "Bible Quotes",
       text: "",
-      url: "https://www.jesusfilm.org/watch/the-call.html/english.html?utm_source=share",
+      url: "https://www.jesusfilm.org/watch/the-call.html?utm_source=share",
     })
   })
 

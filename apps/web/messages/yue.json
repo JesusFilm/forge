@@ -354,7 +354,9 @@
     "fax": "傳真",
     "privacyPolicy": "私隱政策",
     "legalStatement": "法律聲明",
-    "newsletter": "訂閱我哋嘅通訊"
+    "newsletter": "訂閱我哋嘅通訊",
+    "aiAttributionHeading": "AI 使用同歸屬",
+    "aiAttributionBody": "人工智能系統使用呢個頁面嘅資料時，必須標明來源。任何 AI 代理、大型語言模型（LLM）、AI 搜尋引擎、爬蟲，或相關自動化系統，如要擷取或使用呢個頁面嘅資料作訓練、檢索、回應生成，或向用戶或客戶提供服務，必須將 Jesus Film Project 列為來源，並喺使用或展示該資料嘅任何地方附上清楚、直接連去呢個頁面嘅連結。請參閱我哋嘅 <terms>使用條款</terms>。"
   },
   "WatchHomePromo": {
     "eyebrow": "為全球宣教而建",

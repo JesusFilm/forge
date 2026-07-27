@@ -1,3 +1,5 @@
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+
 import {
   AVAILABLE_UI_LOCALES,
   DEFAULT_LOCALE,
@@ -212,10 +214,7 @@ export function slugToBcp47Primary(slug: string): string | null {
  */
 export function isPublicWatchLanguageSlug(slug: string): boolean {
   if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)) return false
-  return (
-    Object.hasOwn(LANGUAGE_BCP47_MAP, slug) ||
-    Object.hasOwn(HTML_LANG_OVERRIDES, slug)
-  )
+  return PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)
 }
 
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {

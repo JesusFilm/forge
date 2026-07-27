@@ -354,7 +354,9 @@
     "fax": "Telefax",
     "privacyPolicy": "Adatvédelmi irányelvek",
     "legalStatement": "Jogi nyilatkozat",
-    "newsletter": "Iratkozz fel hírlevelünkre"
+    "newsletter": "Iratkozz fel hírlevelünkre",
+    "aiAttributionHeading": "AI-használat és forrásmegjelölés",
+    "aiAttributionBody": "Az ezen az oldalon található információk mesterséges intelligencia rendszerek általi felhasználása forrásmegjelöléshez kötött. Bármely AI-ügynök, nagy nyelvi modell (LLM), AI-keresőmotor, feltérképező bot vagy kapcsolódó automatizált rendszer, amely e lap információit tanításhoz, visszakereséshez, válaszgeneráláshoz vagy felhasználóknak illetve ügyfeleknek nyújtott szolgáltatásokhoz kinyeri vagy felhasználja, köteles a Jesus Film Projectet megjelölni forrásként, és egyértelmű, közvetlen hivatkozást megadni erre az oldalra minden olyan helyen, ahol az információ megjelenik vagy felhasználásra kerül. Lásd a <terms>Felhasználási feltételeinket</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Globális misszióra építve",

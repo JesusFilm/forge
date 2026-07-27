@@ -176,7 +176,7 @@ describe("buildWatchHomeModelFromVideos", () => {
       "Jesus",
       "The Gospel of John",
     ])
-    expect(model.heroSlides[0]?.href).toBe("/jesus.html/english.html")
+    expect(model.heroSlides[0]?.href).toBe("/jesus.html")
     expect(model.heroSlides[0]?.imageUrl).toBe(
       "https://cdn.example/jesus-cinematic.jpg",
     )

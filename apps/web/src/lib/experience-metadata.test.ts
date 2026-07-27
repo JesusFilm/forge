@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { WatchVideoRecord } from "./content"
 
 const { resolveWatchPageMock } = vi.hoisted(() => ({
   resolveWatchPageMock: vi.fn(),
@@ -127,6 +128,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-1",
         slug: "life-of-jesus-gospel-of-john",
         publishedAt: "2026-06-01T12:00:00.000Z",
+        localePublishedAt: null,
         title: "Life of Jesus (Gospel of John)",
         snippet: "A feature film about Jesus.",
         description: "Watch the life of Jesus from the Gospel of John.",
@@ -193,7 +195,7 @@ describe("getWatchPageMetadata", () => {
     )
     expect(metadata.openGraph).toMatchObject({
       title: "Life of Jesus (Gospel of John) | Jesus Film Project",
-      url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
+      url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html",
       images: [
         {
           url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -215,7 +217,7 @@ describe("getWatchPageMetadata", () => {
     })
     expect(metadata.alternates).toMatchObject({
       canonical:
-        "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
+        "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html",
     })
     expect(metadata.alternates).not.toHaveProperty("languages")
   })
@@ -248,6 +250,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-pilate",
         slug: "jesus-is-brought-to-pilate",
         publishedAt: null,
+        localePublishedAt: null,
         title: "Jesus is Brought to Pilate",
         snippet: "Pilate questions Jesus.",
         description: "Pilate questions Jesus before the crowd.",
@@ -267,7 +270,7 @@ describe("getWatchPageMetadata", () => {
     })
 
     const canonical =
-      "https://www.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.html"
+      "https://www.jesusfilm.org/watch/jesus-is-brought-to-pilate.html"
     expect(metadata.alternates?.canonical).toBe(canonical)
     expect(metadata.openGraph).toMatchObject({ url: canonical })
     expect(metadata.alternates).not.toHaveProperty("languages")
@@ -300,6 +303,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-1",
         slug: "jesus",
         publishedAt: null,
+        localePublishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,
@@ -355,6 +359,7 @@ describe("getWatchPageMetadata", () => {
         documentId: "video-1",
         slug: "jesus",
         publishedAt: null,
+        localePublishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,
@@ -387,5 +392,175 @@ describe("getWatchPageMetadata", () => {
         alt: "Jesus teaching outside",
       }),
     ])
+  })
+})
+
+describe("buildWatchVideoMetadataModel", () => {
+  const selectedVariant = {
+    documentId: "dub-en",
+    slug: null,
+    published: true,
+    hls: "https://cdn.example/life-en.m3u8",
+    duration: 120,
+    language: {
+      slug: "english",
+      bcp47: "en",
+      coreId: "529",
+      name: "English",
+      nativeName: "English",
+    },
+    downloads: [],
+    muxVideo: { playbackId: "mux-life" },
+  }
+
+  const video: WatchVideoRecord = {
+    documentId: "video-1",
+    slug: "life-of-jesus",
+    publishedAt: "2026-06-01T12:00:00.000Z",
+    localePublishedAt: null,
+    title: null,
+    snippet: "A feature film about Jesus.",
+    description: "Watch the life of Jesus.",
+    noIndex: false,
+    label: "featureFilm",
+    imageAlt: "Jesus speaks to a crowd",
+    images: [],
+    primaryLanguage: null,
+    parents: [],
+    children: [],
+    childDubLanguages: [],
+    variants: [selectedVariant],
+    subtitles: [],
+    studyQuestions: [],
+    bibleCitations: [],
+  }
+
+  it("uses a trimmed resolved video title for structured data", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: { ...video, title: "  Life of Jesus  " },
+    })
+
+    expect(model.structuredDataTitle).toBe("Life of Jesus")
+  })
+
+  it("aligns English, international, and collision-owned canonical identities", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const build = (routeSlug: string, pathLocale: string) =>
+      buildWatchVideoMetadataModel({
+        routeSlug,
+        pathLocale,
+        selectedVariant,
+        video: { ...video, slug: routeSlug },
+      }).canonicalUrl
+
+    expect(build("life-of-jesus", "english")).toBe(
+      "https://www.jesusfilm.org/watch/life-of-jesus.html",
+    )
+    expect(build("life-of-jesus", "romanian")).toBe(
+      "https://www.jesusfilm.org/watch/life-of-jesus.html/romanian.html",
+    )
+    expect(build("russian", "english")).toBe(
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
+    )
+  })
+
+  it("uses a title-based structured-data description fallback without changing page metadata", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        title: "Life of Jesus",
+        description: null,
+        snippet: null,
+      },
+    })
+
+    expect(model.description).toBe("")
+    expect(model.structuredDataDescription).toBe(
+      "Watch Life of Jesus from Jesus Film Project.",
+    )
+  })
+
+  it("uses localized publish date as the structured-data upload date fallback", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        publishedAt: null,
+        localePublishedAt: "2026-06-02T12:00:00.000Z",
+      },
+    })
+
+    expect(model.uploadDate).toBe("2026-06-02T12:00:00.000Z")
+  })
+
+  it("prefers valid video publish date over localized publish date", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        publishedAt: "2026-06-01T12:00:00.000Z",
+        localePublishedAt: "2026-06-02T12:00:00.000Z",
+      },
+    })
+
+    expect(model.uploadDate).toBe("2026-06-01T12:00:00.000Z")
+  })
+
+  it("uses localized publish date when the video publish date is invalid", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        publishedAt: "not a date",
+        localePublishedAt: "2026-06-02T12:00:00.000Z",
+      },
+    })
+
+    expect(model.uploadDate).toBe("2026-06-02T12:00:00.000Z")
+  })
+
+  it("does not use the slug fallback as a structured-data title", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video,
+    })
+
+    expect(model.structuredDataTitle).toBeNull()
+    expect(model.structuredDataDescription).toBe("Watch the life of Jesus.")
+    expect(model.videoTitle).toBe("life-of-jesus")
+    expect(model.title).toBe("life-of-jesus | Jesus Film Project")
   })
 })

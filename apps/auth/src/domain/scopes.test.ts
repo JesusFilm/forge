@@ -5,6 +5,7 @@ import { assertKnownScopes, describeScopes, isKnownScope } from "./scopes"
 describe("Auth scopes", () => {
   it("recognizes known scope keys", () => {
     expect(isKnownScope("openid")).toBe(true)
+    expect(isKnownScope("offline_access")).toBe(true)
     expect(isKnownScope("admin:access")).toBe(true)
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
@@ -29,6 +30,17 @@ describe("Auth scopes", () => {
     expect(
       describeScopes(["email:read", "openid"]).map((scope) => scope.key),
     ).toEqual(["openid", "email:read"])
+  })
+
+  it("describes offline_access without implying Admin permission", () => {
+    expect(describeScopes(["offline_access"])).toEqual([
+      expect.objectContaining({
+        key: "offline_access",
+        label: "Stay signed in",
+        description:
+          "Allow the requesting application to keep access active without asking you to sign in again.",
+      }),
+    ])
   })
 
   it("describes Admin MCP Experience scopes for consent screens", () => {

@@ -12,6 +12,7 @@ vi.mock("@/lib/watch-font", () => ({
 
 import RootLayout from "./layout"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
+import { WatchChromeShell } from "@/components/WatchChromeShell"
 
 function findElement(
   node: ReactNode,
@@ -35,7 +36,13 @@ describe("Watch root layout", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english" }),
     })
 
-    const provider = findElement(layout, BetaTesterModalProvider)
+    expect(findElement(layout, BetaTesterModalProvider)).toBeNull()
+
+    const routeShell = WatchChromeShell({
+      children: <main>Watch page</main>,
+      locale: "en",
+    })
+    const provider = findElement(routeShell, BetaTesterModalProvider)
     expect(provider).not.toBeNull()
     expect(provider?.props).not.toHaveProperty("showGlobalTrigger")
   })

@@ -30,7 +30,11 @@
 
 import { resolveSeekerResource } from "@/auth/anon-id"
 import { type ChatIdentity } from "@/auth/session-cookie"
-import { env, seekerTimeoutMs } from "@/config/env"
+import {
+  env,
+  requireSeekerEgressAllowlist,
+  seekerTimeoutMs,
+} from "@/config/env"
 import { type SeekerGateDecision } from "@/lib/seeker-gate"
 import {
   classifyUpstreamFailure,
@@ -93,6 +97,10 @@ export type HistoryProxyConfig = {
   baseUrl?: string
   apiKey?: string
   allowedHosts?: string
+  /** Whether an unset `allowedHosts` DENIES (production) rather than trusting
+   * the operator-set host. Carried on the config — not read from env here — so
+   * the cores stay injectable and the policy is explicit at every call site. */
+  requireAllowlist: boolean
   timeoutMs: number
 }
 
@@ -116,6 +124,7 @@ export function buildHistoryProxyConfig(): HistoryProxyConfig {
     baseUrl: env.SEEKER_MASTRA_BASE_URL,
     apiKey: env.AI_CHAT_MASTRA_API_KEY,
     allowedHosts: env.SEEKER_MASTRA_ALLOWED_HOSTS,
+    requireAllowlist: requireSeekerEgressAllowlist(),
     timeoutMs: composeHistoryTimeoutMs(seekerTimeoutMs()),
   }
 }
@@ -196,7 +205,11 @@ async function forwardHistoryRequest(
   }
   // Mint the branded base from the SSRF guard's success path; null → this
   // proxy's own 502 unavailable wire. postMastraUpstream demands the brand.
-  const baseUrl = validateBaseUrl(config.baseUrl, config.allowedHosts)
+  const baseUrl = validateBaseUrl(
+    config.baseUrl,
+    config.allowedHosts,
+    config.requireAllowlist,
+  )
   if (baseUrl === null) {
     console.warn("[history-proxy] event=refused reason=ssrf_blocked")
     return jsonResponse(502, { reason: "unavailable" })

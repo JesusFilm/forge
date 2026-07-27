@@ -208,6 +208,7 @@ export type WatchRouteSnapshotLanguage = {
 export type WatchRouteSnapshotLocale = {
   documentId: string
   languageSlug: string | null
+  publishedAt: string | null
   title: string | null
   description: string | null
   snippet: string | null
@@ -789,6 +790,7 @@ function localeBucketsForSnapshot(
     id: string
     videoId: string
     languageSlug: string | null
+    publishedAt: Date | null
     locale: string | null
     title: string | null
     description: string | null
@@ -808,6 +810,7 @@ function localeBucketsForSnapshot(
   const mapRow = (row: (typeof rows)[number]): WatchRouteSnapshotLocale => ({
     documentId: row.id,
     languageSlug: row.languageSlug,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
     title: row.title,
     description: row.description,
     snippet: row.snippet,
@@ -1424,6 +1427,7 @@ export class VideoService {
           videoId: true,
           locale: true,
           languageSlug: true,
+          publishedAt: true,
           title: true,
           description: true,
           snippet: true,

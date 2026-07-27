@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  DEFAULT_MAX_SITEMAP_BYTES,
+  DEFAULT_MAX_SITEMAP_URLS,
+  WatchSitemapGenerationError,
   createWatchSitemapEntries,
   getWatchSitemapChunks,
   normalizeWatchSitemapChunkId,
@@ -25,10 +28,19 @@ const manifest: WatchSeoManifest = {
       contentSlug: "bad slug",
       alternates: [{ hreflang: "fr", languageSlug: "french" }],
     },
+    {
+      contentSlug: "wedding-in-cana",
+      alternates: [{ hreflang: "en", languageSlug: "english" }],
+    },
   ],
   episodeRouteGroups: [
     {
       parentSlug: "lumo-the-gospel-of-john",
+      childSlug: "wedding-in-cana",
+      alternates: [{ hreflang: "en", languageSlug: "english" }],
+    },
+    {
+      parentSlug: "the-life-of-jesus",
       childSlug: "wedding-in-cana",
       alternates: [{ hreflang: "en", languageSlug: "english" }],
     },
@@ -60,12 +72,12 @@ describe("watch sitemap rendering", () => {
 
     expect(entries).toHaveLength(5)
     expect(entries[0]).toEqual({
-      loc: "https://www.jesusfilm.org/watch/jesus.html/english.html",
+      loc: "https://www.jesusfilm.org/watch/jesus.html",
       alternates: [
         {
           hreflang: "en",
           languageSlug: "english",
-          href: "https://www.jesusfilm.org/watch/jesus.html/english.html",
+          href: "https://www.jesusfilm.org/watch/jesus.html",
         },
         {
           hreflang: "es",
@@ -75,6 +87,9 @@ describe("watch sitemap rendering", () => {
       ],
     })
     expect(entries[2]?.loc).toBe(
+      "https://www.jesusfilm.org/watch/wedding-in-cana.html",
+    )
+    expect(entries.map(({ loc }) => loc)).not.toContain(
       "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
@@ -92,6 +107,19 @@ describe("watch sitemap rendering", () => {
         loc: "https://www.jesusfilm.org/watch/english-british.html",
         alternates: expectedHomepageAlternates,
       },
+    ])
+  })
+
+  it("emits only home entries for a contextual-only manifest", () => {
+    const entries = createWatchSitemapEntries({
+      ...manifest,
+      videoRouteGroups: [],
+    })
+
+    expect(entries).toHaveLength(2)
+    expect(entries.map(({ loc }) => loc)).toEqual([
+      "https://www.jesusfilm.org/watch",
+      "https://www.jesusfilm.org/watch/english-british.html",
     ])
   })
 
@@ -116,12 +144,33 @@ describe("watch sitemap rendering", () => {
     expect(xml).toContain("<urlset")
     expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
     expect(xml).toContain(
-      "<loc>https://www.jesusfilm.org/watch/jesus.html/english.html</loc>",
+      "<loc>https://www.jesusfilm.org/watch/jesus.html</loc>",
     )
     expect(xml).toContain(
       'hreflang="es" href="https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"',
     )
     expect(xml).not.toContain("bad slug")
+  })
+
+  it("keeps collision-owned English explicit while international URLs stay explicit", () => {
+    const entries = createWatchSitemapEntries({
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "russian",
+          alternates: [
+            { hreflang: "en", languageSlug: "english" },
+            { hreflang: "ro", languageSlug: "romanian" },
+          ],
+        },
+      ],
+      episodeRouteGroups: [],
+    })
+
+    expect(entries.slice(0, 2).map(({ loc }) => loc)).toEqual([
+      "https://www.jesusfilm.org/watch/russian.html/english.html",
+      "https://www.jesusfilm.org/watch/russian.html/romanian.html",
+    ])
   })
 
   it("escapes XML attribute and text values", () => {
@@ -144,7 +193,97 @@ describe("watch sitemap rendering", () => {
 
   it("splits chunks by URL count and serialized byte limits", () => {
     expect(getWatchSitemapChunks(manifest, { maxUrls: 1 })).toHaveLength(5)
-    expect(getWatchSitemapChunks(manifest, { maxBytes: 350 })).toHaveLength(5)
+    const byteChunks = getWatchSitemapChunks(manifest, { maxBytes: 600 })
+    expect(byteChunks.length).toBeGreaterThan(1)
+    expect(byteChunks.every((chunk) => chunk.bytes <= 600)).toBe(true)
+  })
+
+  it("uses safety ceilings below search-engine hard limits", () => {
+    expect(DEFAULT_MAX_SITEMAP_BYTES).toBe(35_000_000)
+    expect(DEFAULT_MAX_SITEMAP_URLS).toBe(49_999)
+  })
+
+  it("counts escaped multibyte values as serialized UTF-8 bytes", () => {
+    const multibyteManifest: WatchSeoManifest = {
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [
+            { hreflang: "français", languageSlug: "french" },
+            { hreflang: "日本語", languageSlug: "japanese" },
+          ],
+        },
+      ],
+      episodeRouteGroups: [],
+    }
+
+    const [chunk] = getWatchSitemapChunks(multibyteManifest, {
+      maxBytes: 1_000,
+    })
+    const xml = renderWatchSitemapChunk(multibyteManifest, 0, {
+      maxBytes: 1_000,
+    })
+
+    expect(chunk?.bytes).toBe(Buffer.byteLength(xml ?? "", "utf8"))
+    expect(chunk?.bytes).toBeGreaterThan(xml?.length ?? 0)
+  })
+
+  it("rejects invalid limits and entries that cannot fit", () => {
+    expect(() => getWatchSitemapChunks(manifest, { maxBytes: 0 })).toThrowError(
+      expect.objectContaining<Partial<WatchSitemapGenerationError>>({
+        code: "invalid_max_bytes",
+      }),
+    )
+    expect(() => getWatchSitemapChunks(manifest, { maxUrls: 0 })).toThrowError(
+      expect.objectContaining<Partial<WatchSitemapGenerationError>>({
+        code: "invalid_max_urls",
+      }),
+    )
+    expect(() =>
+      getWatchSitemapChunks(manifest, { maxBytes: 200 }),
+    ).toThrowError(
+      expect.objectContaining<Partial<WatchSitemapGenerationError>>({
+        code: "entry_exceeds_max_bytes",
+      }),
+    )
+  })
+
+  it("rejects duplicate canonical URLs across route groups", () => {
+    expect(() =>
+      getWatchSitemapChunks({
+        ...manifest,
+        videoRouteGroups: [
+          manifest.videoRouteGroups[0]!,
+          manifest.videoRouteGroups[0]!,
+        ],
+        episodeRouteGroups: [],
+      }),
+    ).toThrowError(
+      expect.objectContaining<Partial<WatchSitemapGenerationError>>({
+        code: "duplicate_loc",
+      }),
+    )
+  })
+
+  it("keeps complete reciprocal alternate sets across chunk boundaries", () => {
+    const chunks = getWatchSitemapChunks(manifest, { maxUrls: 1 })
+    const entries = chunks.flatMap((chunk) => chunk.entries)
+    const alternatesByLoc = new Map(
+      entries.map((entry) => [
+        entry.loc,
+        [...entry.alternatesXml.matchAll(/href="([^"]+)"/g)].map(
+          (match) => match[1],
+        ),
+      ]),
+    )
+
+    for (const [loc, alternates] of alternatesByLoc) {
+      expect(alternates).toContain(loc)
+      for (const alternate of alternates) {
+        expect(alternatesByLoc.get(alternate)).toEqual(alternates)
+      }
+    }
   })
 
   it("shares repeated alternate XML within a route group while chunking", () => {

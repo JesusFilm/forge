@@ -104,6 +104,11 @@ type WatchMetadataImage = {
   type: "image/jpeg"
 }
 
+export type WatchStructuredDataCaption = {
+  contentUrl: string
+  inLanguage: string
+}
+
 const MUX_SOCIAL_IMAGE_WIDTH = 1200
 const MUX_SOCIAL_IMAGE_HEIGHT = 630
 
@@ -122,18 +127,35 @@ function buildMuxSocialImage(
   }
 }
 
+function firstValidDate(
+  ...values: Array<string | null | undefined>
+): string | null {
+  for (const value of values) {
+    const candidate = value?.trim()
+    if (candidate && Number.isFinite(Date.parse(candidate))) return candidate
+  }
+  return null
+}
+
 export type WatchVideoMetadataModel = {
   title: string
   videoTitle: string
+  /**
+   * Eligible VideoObject name. Unlike page and social metadata titles, this
+   * intentionally never falls back to the route slug or a generic label.
+   */
+  structuredDataTitle: string | null
+  structuredDataDescription: string | null
   description: string
   canonicalUrl: string
   image: WatchMetadataImage
+  structuredDataThumbnailUrl: string | null
   noIndex: boolean
   inLanguage: string | null
   durationSeconds: number | null
   contentUrl: string | null
-  embedUrl: string
   uploadDate: string | null
+  captions: WatchStructuredDataCaption[]
 }
 
 type WatchVideoMetadataOptions = {
@@ -150,8 +172,15 @@ export function buildWatchVideoMetadataModel(
   const episodeSlug = options.video.slug ?? options.routeSlug
   const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
   const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const structuredDataTitle = options.video.title?.trim() || null
   const title = `${videoTitle} ${TITLE_SUFFIX}`
   const description = options.video.description ?? options.video.snippet ?? ""
+  const structuredDataDescription =
+    options.video.description?.trim() ||
+    options.video.snippet?.trim() ||
+    (structuredDataTitle
+      ? `Watch ${structuredDataTitle} from Jesus Film Project.`
+      : null)
   const imageAlt =
     options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
   const muxSocialImage = buildMuxSocialImage(
@@ -177,18 +206,24 @@ export function buildWatchVideoMetadataModel(
   return {
     title,
     videoTitle,
+    structuredDataTitle,
+    structuredDataDescription,
     description,
     canonicalUrl,
     image,
+    structuredDataThumbnailUrl: muxSocialImage?.url ?? posterUrl,
     noIndex: options.video.noIndex ?? false,
-    inLanguage:
-      options.selectedVariant.language?.bcp47 ??
-      options.selectedVariant.language?.slug ??
-      null,
+    inLanguage: options.selectedVariant.language?.bcp47?.trim() || null,
     durationSeconds: options.selectedVariant.duration ?? null,
-    contentUrl: options.selectedVariant.hls ?? null,
-    embedUrl: canonicalUrl,
-    uploadDate: options.video.publishedAt ?? null,
+    contentUrl: options.selectedVariant.hls?.trim() || null,
+    uploadDate: firstValidDate(
+      options.video.publishedAt,
+      options.video.localePublishedAt,
+    ),
+    captions: options.video.subtitles.map((subtitle) => ({
+      contentUrl: subtitle.vttSrc.trim(),
+      inLanguage: subtitle.language.bcp47.trim(),
+    })),
   }
 }
 

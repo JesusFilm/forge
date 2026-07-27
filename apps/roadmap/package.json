@@ -10,6 +10,7 @@
     "generate:readme": "node ./scripts/generate-roadmap-readme.js"
   },
   "dependencies": {
+    "@forge/watch-url-policy": "workspace:*",
     "@tailwindcss/typography": "0.5.19",
     "gray-matter": "^4.0.3",
     "next": "^16.2.4",

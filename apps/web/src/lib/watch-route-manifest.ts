@@ -5,6 +5,7 @@ export type WatchRouteManifest = {
   generatedAt: string
   contentSlugs: string[]
   oneSegmentSlugs: string[]
+  homepageLocales?: string[]
   episodePairsByParent: Record<string, string[]>
   audioLanguageSlugs: string[]
   audioLanguageIndexesByContent?: Record<string, number[]>
@@ -110,6 +111,12 @@ export function parseWatchRouteManifest(
   }
   if (!isStringArray(record.contentSlugs)) return null
   if (!isStringArray(record.oneSegmentSlugs)) return null
+  if (
+    record.homepageLocales !== undefined &&
+    !isStringArray(record.homepageLocales)
+  ) {
+    return null
+  }
   if (!isEpisodePairsByParent(record.episodePairsByParent)) return null
   if (!isStringArray(record.audioLanguageSlugs)) return null
   if (
@@ -129,6 +136,9 @@ export function parseWatchRouteManifest(
     generatedAt: record.generatedAt,
     contentSlugs: record.contentSlugs,
     oneSegmentSlugs: record.oneSegmentSlugs,
+    ...(record.homepageLocales
+      ? { homepageLocales: record.homepageLocales }
+      : {}),
     episodePairsByParent: record.episodePairsByParent,
     audioLanguageSlugs: record.audioLanguageSlugs,
     ...(record.audioLanguageIndexesByContent

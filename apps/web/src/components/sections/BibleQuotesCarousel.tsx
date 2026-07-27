@@ -14,6 +14,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import {
   CAROUSEL_BLEED_CLASSES,
@@ -47,6 +49,7 @@ function quoteImageUrl(quote: QuoteItem) {
 }
 
 export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
+  const t = useTranslations("BibleQuotes")
   const { heading, quotes } = data
   const validQuotes =
     quotes?.filter(
@@ -89,6 +92,8 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
+          <CarouselPrevious label={t("previousQuote")} />
+          <CarouselNext label={t("nextQuote")} />
         </Carousel>
       </div>
     </div>

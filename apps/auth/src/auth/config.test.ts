@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const authConfigCapture = vi.hoisted(() => ({
   betterAuth: vi.fn((options: unknown) => ({ options })),
+  oauthProvider: vi.fn(() => ({})),
   env: {} as Record<string, string | undefined>,
 }))
 
@@ -22,7 +23,7 @@ vi.mock("better-auth/plugins", () => ({
 }))
 
 vi.mock("@better-auth/oauth-provider", () => ({
-  oauthProvider: vi.fn(() => ({})),
+  oauthProvider: authConfigCapture.oauthProvider,
 }))
 
 vi.mock("@better-auth/prisma-adapter", () => ({
@@ -51,6 +52,16 @@ type CapturedAuthOptions = {
   }
 }
 
+type CapturedOAuthProviderOptions = {
+  accessTokenExpiresIn: number
+  advertisedMetadata: {
+    scopes_supported: string[]
+  }
+  clientRegistrationAllowedScopes: string[]
+  clientRegistrationDefaultScopes: string[]
+  scopes: string[]
+}
+
 function configureProviderEnvironment(
   overrides: Record<string, string | undefined> = {},
 ) {
@@ -73,10 +84,22 @@ function configureProviderEnvironment(
 async function captureAuthOptions() {
   vi.resetModules()
   authConfigCapture.betterAuth.mockClear()
+  authConfigCapture.oauthProvider.mockClear()
 
   await import("./config")
 
   return authConfigCapture.betterAuth.mock.calls[0]?.[0] as CapturedAuthOptions
+}
+
+async function captureOAuthProviderOptions() {
+  vi.resetModules()
+  authConfigCapture.betterAuth.mockClear()
+  authConfigCapture.oauthProvider.mockClear()
+
+  await import("./config")
+
+  const calls = authConfigCapture.oauthProvider.mock.calls as unknown[][]
+  return calls[0]?.[0] as CapturedOAuthProviderOptions
 }
 
 describe("auth provider configuration", () => {
@@ -123,5 +146,19 @@ describe("auth provider configuration", () => {
     const options = await captureAuthOptions()
 
     expect(options.socialProviders).not.toHaveProperty("google")
+  })
+
+  it("advertises offline_access so public PKCE MCP clients can receive refresh tokens", async () => {
+    const options = await captureOAuthProviderOptions()
+
+    expect(options.accessTokenExpiresIn).toBe(60 * 60)
+    expect(options.scopes).toContain("offline_access")
+    expect(options.advertisedMetadata.scopes_supported).toContain(
+      "offline_access",
+    )
+    expect(options.clientRegistrationAllowedScopes).toContain("offline_access")
+    expect(options.clientRegistrationDefaultScopes).not.toContain(
+      "offline_access",
+    )
   })
 })

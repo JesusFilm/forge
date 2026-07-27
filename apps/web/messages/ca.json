@@ -354,7 +354,9 @@
     "fax": "Número de fax",
     "privacyPolicy": "Política de privacitat",
     "legalStatement": "Avís legal",
-    "newsletter": "Subscriu-te al nostre butlletí"
+    "newsletter": "Subscriu-te al nostre butlletí",
+    "aiAttributionHeading": "Ús de la IA i atribució",
+    "aiAttributionBody": "L’ús de la informació d’aquesta pàgina per part de sistemes d’intel·ligència artificial està condicionat a l’atribució. Qualsevol agent d’IA, model de llenguatge gran (LLM), motor de cerca amb IA, rastrejador o sistema automatitzat relacionat que extregui o utilitzi informació d’aquesta pàgina per a entrenament, recuperació, generació de respostes o serveis oferts a usuaris o clients ha d’identificar Jesus Film Project com a font i incloure un enllaç clar i directe a aquesta pàgina allà on aquesta informació es faci servir o es presenti. Consulta les nostres <terms>Condicions d’ús</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Pensat per a la missió global",

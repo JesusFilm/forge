@@ -1,4 +1,8 @@
 import { timingSafeEqual } from "node:crypto"
+import {
+  buildExplicitWatchVideoPath,
+  isLanguageLessWatchVideoPathEligible,
+} from "@forge/watch-url-policy/routes"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
@@ -212,7 +216,7 @@ export async function POST(request: Request) {
     push(`/${seg}`) // legacy bare (overlap)
   }
   const pushTwoSeg = (a: string, b: string) => {
-    const canonical = `/${appendHtmlSuffix(a)}/${appendHtmlSuffix(b)}`
+    const canonical = buildExplicitWatchVideoPath(a, b)
     push(canonical) // public `/{a}.html/{b}.html`
     pushInternal(canonical, b)
     push(`/${a}/${b}`) // legacy bare (overlap)
@@ -244,7 +248,10 @@ export async function POST(request: Request) {
       const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(locale)
       if (!audioLanguageSlug) return
       pushTwoSeg(slug, audioLanguageSlug)
-      if (locale === DEFAULT_LOCALE) {
+      if (
+        locale === DEFAULT_LOCALE &&
+        isLanguageLessWatchVideoPathEligible(slug)
+      ) {
         pushOneSeg(slug)
       }
       return
@@ -252,7 +259,9 @@ export async function POST(request: Request) {
 
     if (!slug) return
 
-    pushOneSeg(slug)
+    if (model === "experience" || isLanguageLessWatchVideoPathEligible(slug)) {
+      pushOneSeg(slug)
+    }
     for (const loc of AVAILABLE_UI_LOCALES) {
       const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(loc)
       if (!audioLanguageSlug) continue

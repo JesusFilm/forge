@@ -32,6 +32,7 @@ import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
   type FloatingSearchResultAnalyticsContext,
+  useWatchRouteSurface,
 } from "./FloatingSearchContext"
 
 import { SearchOverlay } from "./SearchOverlay"
@@ -104,6 +105,7 @@ export function FloatingSearchController({
   // usePathname() does NOT force the Full Route Cache deopt that
   // useSearchParams() would. Keep it only for route-language parsing.
   const pathname = usePathname()
+  const routeSurface = useWatchRouteSurface()
 
   const [results, setResults] = useState<SearchResult[]>([])
   const [displayResults, setDisplayResults] = useState<SearchResult[]>([])
@@ -199,9 +201,14 @@ export function FloatingSearchController({
   )
   const routeLanguageSlug = useMemo(() => {
     const parsed = parseWatchPath(pathname)
+    if (routeSurface === "english-video") return "english"
+    if (routeSurface === "experience") return null
+    if (routeSurface === "language-home" && parsed.kind === "localized-home") {
+      return isPublicWatchLanguageSlug(parsed.lang) ? parsed.lang : null
+    }
     if (!("lang" in parsed)) return null
     return isPublicWatchLanguageSlug(parsed.lang) ? parsed.lang : null
-  }, [pathname])
+  }, [pathname, routeSurface])
   const defaultSearchLanguage = useMemo(
     () =>
       defaultSearchLanguageOption({

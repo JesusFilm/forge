@@ -354,7 +354,9 @@
     "fax": "Numero sang fax",
     "privacyPolicy": "Polisa sa Privacy",
     "legalStatement": "Legal nga Pahayag",
-    "newsletter": "Mag-sign Up Para sa Aming Newsletter"
+    "newsletter": "Mag-sign Up Para sa Aming Newsletter",
+    "aiAttributionHeading": "Paggamit kag atribusyon sang AI",
+    "aiAttributionBody": "Ang paggamit sang impormasyon halin sa sini nga pahina sang mga sistema sang artificial intelligence ginauna sang atribusyon. Ang bisan ano nga AI agent, large language model (LLM), AI search engine, crawler, ukon kaangtanan nga automated system nga nagakuha ukon nagagamit sang impormasyon halin sa sini nga pahina para sa training, retrieval, pag-gwa sang sabat, ukon mga serbisyo para sa mga user ukon kliyente kinahanglan magpakilala sa Jesus Film Project bilang ginhalinan kag mag-upod sang klaro kag direkta nga link sa sini nga pahina kon diin man ina nga impormasyon gamiton ukon ipakita. Tan-awa ang amon <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Ginbuhat para sa global missions",

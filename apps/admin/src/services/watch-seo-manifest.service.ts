@@ -47,6 +47,18 @@ export type WatchSeoManifestCounts = {
   skippedHreflangValues: number
 }
 
+export class WatchSeoManifestCoverageError extends Error {
+  constructor(
+    readonly childSlug: string,
+    readonly languageSlug: string,
+  ) {
+    super(
+      `Watch SEO manifest canonical coverage missing for child "${childSlug}" and language "${languageSlug}"`,
+    )
+    this.name = "WatchSeoManifestCoverageError"
+  }
+}
+
 type QueryablePrisma = Pick<PrismaClient, "$queryRaw">
 type ContentLanguageRow = z.infer<typeof ContentLanguageRowSchema>
 type EpisodeLanguageRow = z.infer<typeof EpisodeLanguageRowSchema>
@@ -73,6 +85,7 @@ export class WatchSeoManifestService {
       episodeRows,
       skippedHreflangValues,
     )
+    assertEpisodeCanonicalCoverage(videoRouteGroups, episodeRouteGroups)
     const generatedAt = (this.options.now?.() ?? new Date()).toISOString()
     const contentForVersion = {
       episodeRouteGroups,
@@ -211,6 +224,32 @@ export class WatchSeoManifestService {
     `
 
     return EpisodeLanguageRowSchema.array().parse(rows)
+  }
+}
+
+function assertEpisodeCanonicalCoverage(
+  videoRouteGroups: WatchSeoManifest["videoRouteGroups"],
+  episodeRouteGroups: WatchSeoManifest["episodeRouteGroups"],
+): void {
+  const canonicalPairs = new Set(
+    videoRouteGroups.flatMap((group) =>
+      group.alternates.map(
+        (alternate) => `${group.contentSlug}\u0000${alternate.languageSlug}`,
+      ),
+    ),
+  )
+
+  for (const group of episodeRouteGroups) {
+    for (const alternate of group.alternates) {
+      if (
+        !canonicalPairs.has(`${group.childSlug}\u0000${alternate.languageSlug}`)
+      ) {
+        throw new WatchSeoManifestCoverageError(
+          group.childSlug,
+          alternate.languageSlug,
+        )
+      }
+    }
   }
 }
 

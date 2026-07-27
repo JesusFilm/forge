@@ -511,18 +511,8 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
-          {validItems.length > 3 && (
-            <>
-              <CarouselPrevious
-                className="hidden md:flex"
-                label={t("previousVideoPreview")}
-              />
-              <CarouselNext
-                className="hidden md:flex"
-                label={t("nextVideoPreview")}
-              />
-            </>
-          )}
+          <CarouselPrevious label={t("previousVideoPreview")} />
+          <CarouselNext label={t("nextVideoPreview")} />
         </Carousel>
       </div>
     </div>

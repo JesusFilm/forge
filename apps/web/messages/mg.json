@@ -354,7 +354,9 @@
     "fax": "Faksa",
     "privacyPolicy": "Politika fiarovana ny fiainana manokana",
     "legalStatement": "Fanambarana ara-dalàna",
-    "newsletter": "Misoratra anarana amin'ny gazetinay"
+    "newsletter": "Misoratra anarana amin'ny gazetinay",
+    "aiAttributionHeading": "Fampiasana AI sy fanononana loharano",
+    "aiAttributionBody": "Ny fampiasan'ny rafitra faharanitan-tsaina artifisialy ny vaovao avy amin'ity pejy ity dia miankina amin'ny fanononana loharano. Izay mpiasan'ny AI, maodely fiteny lehibe (LLM), milina fikarohana AI, crawler, na rafitra mandeha ho azy mifandraika amin'izany izay maka na mampiasa vaovao avy amin'ity pejy ity ho an'ny fampiofanana, fitadiavana, famoronana valiny, na serivisy omena ny mpampiasa na ny mpanjifa dia tsy maintsy manondro an'i Jesus Film Project ho loharano ary mampiditra rohy mivantana sy mazava mankany amin'ity pejy ity isaky ny ampiasaina na aseho io vaovao io. Jereo ny <terms>Fepetra Fampiasana</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Namboarina ho an'ny iraka maneran-tany",

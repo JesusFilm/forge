@@ -20,10 +20,11 @@ export const WATCH_PAGE_LEFT_EDGE_CLASSES =
   "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))] compact-landscape:left-[max(1.25rem,env(safe-area-inset-left,0px))]"
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
   "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))] compact-landscape:right-[max(1.25rem,env(safe-area-inset-right,0px))]"
-export const FLOATING_HEADER_HEIGHT_CLASS = "h-[52px]"
+export const FLOATING_HEADER_LAYOUT_CLASS =
+  "grid h-[52px] grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)] items-center gap-3 sm:grid-cols-[minmax(112px,1fr)_minmax(0,800px)_minmax(112px,1fr)] md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)] md:gap-5"
+export const FLOATING_HEADER_FIELD_WIDTH_CLASS = "min-w-0 w-full max-w-[800px]"
 export const FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS =
   "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]"
-export const FLOATING_HEADER_GAP_CLASS = "gap-3 md:gap-5"
 export const FLOATING_HEADER_TOP_CLASS =
   "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)] compact-landscape:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]"
 export const FLOATING_HEADER_PINNED_TOP_CLASS =
@@ -35,7 +36,7 @@ export const FLOATING_HEADER_HOME_LOGO_SLOT_CLASS =
 export const FLOATING_HEADER_TRAILING_SLOT_CLASS =
   "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
 export const FLOATING_HEADER_TRAILING_GROUP_CLASS =
-  "flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
+  "ml-auto flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
 export const FLOATING_HEADER_LANGUAGE_SLOT_CLASS =
   "h-11 w-11 md:h-[52px] md:w-12"
 /**
@@ -43,13 +44,13 @@ export const FLOATING_HEADER_LANGUAGE_SLOT_CLASS =
  * At the desktop breakpoint it returns to the standard single-row header.
  */
 export const FLOATING_MODAL_HEADER_LAYOUT_CLASS =
-  "grid h-[108px] grid-cols-[minmax(0,1fr)_auto] grid-rows-[44px_52px] items-start gap-3 md:flex md:h-[52px] md:gap-5"
+  "grid h-[108px] grid-cols-[minmax(0,1fr)_auto] grid-rows-[44px_52px] items-start gap-3 md:h-[52px] md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)] md:grid-rows-1 md:gap-5"
 export const FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS =
-  "col-start-1 row-start-1"
+  "col-start-1 row-start-1 md:col-start-1"
 export const FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS =
-  "col-start-1 row-start-2"
+  "col-start-1 row-start-2 md:col-span-1 md:col-start-2 md:row-start-1"
 export const FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS =
-  "pointer-events-none col-start-2 row-span-2 row-start-1 grid h-[108px] grid-rows-[44px_52px] justify-items-end gap-3 md:flex md:h-[52px] md:shrink-0 md:items-center md:justify-end md:gap-2"
+  "pointer-events-none col-start-2 row-span-2 row-start-1 grid h-[108px] grid-rows-[44px_52px] justify-items-end gap-3 md:col-start-3 md:row-span-1 md:flex md:h-[52px] md:shrink-0 md:items-center md:justify-self-end md:gap-2"
 export const FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS =
   "row-start-2 self-center md:self-auto"
 export const FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS =

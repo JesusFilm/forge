@@ -354,7 +354,9 @@
     "fax": "Fesi",
     "privacyPolicy": "Faiga Fa'avae o le Puipuia o Fa'amatalaga",
     "legalStatement": "Fa'amatalaga Fa'aletulafono",
-    "newsletter": "Saini mo la matou nusipepa"
+    "newsletter": "Saini mo la matou nusipepa",
+    "aiAttributionHeading": "Fa'aogaina o le AI ma le fa'ailoaina o le puna",
+    "aiAttributionBody": "O le fa'aogaina o fa'amatalaga mai lenei itulau e faiga fa'apitoa o le atamai fa'akomepiuta e fa'alagolago i le fa'ailoaina o le puna. So'o se sui AI, large language model (LLM), AI search engine, crawler, po'o se isi faiga fa'aautomatika fa'apea e su'e pe fa'aogaina fa'amatalaga mai lenei itulau mo le a'oa'oina, toe su'eina, fa'atupuina o tali, po'o auaunaga e tu'uina atu i tagata fa'aoga po'o tagata fa'atau, e tatau ona fa'ailoa Jesus Film Project o le puna ma aofia ai se so'otaga manino ma tuusa'o i lenei itulau i so'o se mea e fa'aogaina ai pe fa'aalia ai lenā fa'amatalaga. Silasila i a matou <terms>Tu'utu'uga o le Fa'aogaina</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Fausia mo misiona i le lalolagi",

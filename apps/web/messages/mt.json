@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Politika ta' Privatezza",
     "legalStatement": "Dikjarazzjoni Legali",
-    "newsletter": "Irreġistra għan-newsletter tagħna"
+    "newsletter": "Irreġistra għan-newsletter tagħna",
+    "aiAttributionHeading": "Użu tal-IA u attribuzzjoni",
+    "aiAttributionBody": "L-użu ta’ informazzjoni minn din il-paġna minn sistemi ta’ intelliġenza artifiċjali huwa soġġett għal attribuzzjoni. Kull aġent tal-IA, mudell kbir tal-lingwa (LLM), magna ta’ tfittxija tal-IA, crawler, jew sistema awtomatizzata relatata li tiġbed jew tuża informazzjoni minn din il-paġna għat-taħriġ, ir-retrieval, il-ġenerazzjoni ta’ tweġibiet, jew servizzi pprovduti lill-utenti jew lill-klijenti trid tidentifika lil Jesus Film Project bħala s-sors u tinkludi link ċar u dirett għal din il-paġna kull fejn dik l-informazzjoni tintuża jew tintwera. Ara t-<terms>Termini ta’ Użu</terms> tagħna."
   },
   "WatchHomePromo": {
     "eyebrow": "Mibni għall-missjoni globali",

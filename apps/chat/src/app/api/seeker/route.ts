@@ -34,7 +34,11 @@
  * into logs (log-injection + thread-id confidentiality).
  */
 
-import { env, seekerTimeoutMs } from "@/config/env"
+import {
+  env,
+  requireSeekerEgressAllowlist,
+  seekerTimeoutMs,
+} from "@/config/env"
 import { resolveSeekerGate, type SeekerGateDecision } from "@/lib/seeker-gate"
 import {
   classifyUpstreamFailure,
@@ -77,6 +81,10 @@ export type SeekerProxyConfig = {
   baseUrl?: string
   apiKey?: string
   allowedHosts?: string
+  /** Whether an unset `allowedHosts` DENIES (production) rather than trusting
+   * the operator-set host. Carried on the config — not read from env here — so
+   * the core stays injectable and the policy is explicit at every call site. */
+  requireAllowlist: boolean
   timeoutMs: number
 }
 
@@ -194,7 +202,11 @@ export async function handleSeekerProxyRequest({
         }
         // Mint the branded base from the SSRF guard's success path; null → the
         // proxy's own ssrf_blocked wire. postMastraUpstream demands the brand.
-        const baseUrl = validateBaseUrl(config.baseUrl, config.allowedHosts)
+        const baseUrl = validateBaseUrl(
+          config.baseUrl,
+          config.allowedHosts,
+          config.requireAllowlist,
+        )
         if (baseUrl === null) {
           fail("ssrf_blocked")
           return
@@ -326,6 +338,20 @@ export async function handleSeekerProxyRequest({
   return new Response(stream, { status: 200, headers })
 }
 
+/** Build the seeker proxy config from env (the POST wrapper's only source).
+ * Exported so the env-derived values — above all `requireAllowlist`, the
+ * production egress pin whose loss is a silent fail-open — are pinned by a
+ * test, mirroring `buildHistoryProxyConfig`. */
+export function buildSeekerProxyConfig(): SeekerProxyConfig {
+  return {
+    baseUrl: env.SEEKER_MASTRA_BASE_URL,
+    apiKey: env.AI_CHAT_MASTRA_API_KEY,
+    allowedHosts: env.SEEKER_MASTRA_ALLOWED_HOSTS,
+    requireAllowlist: requireSeekerEgressAllowlist(),
+    timeoutMs: seekerTimeoutMs(),
+  }
+}
+
 /** Next.js App Router entry point. Builds config from server env and resolves
  * the memory resource from the request's cookies (feat-208): the verified
  * session `sub` when signed in, else the rolling anonymous id. The sub stays a
@@ -342,12 +368,7 @@ export async function POST(request: Request): Promise<Response> {
   })
   return handleSeekerProxyRequest({
     readJson: () => request.json(),
-    config: {
-      baseUrl: env.SEEKER_MASTRA_BASE_URL,
-      apiKey: env.AI_CHAT_MASTRA_API_KEY,
-      allowedHosts: env.SEEKER_MASTRA_ALLOWED_HOSTS,
-      timeoutMs: seekerTimeoutMs(),
-    },
+    config: buildSeekerProxyConfig(),
     resolveGate: () => resolveSeekerGate(identity, { surface: "route" }),
     resourceId: resolution.resourceId,
     anonSetCookie: resolution.anonIdToSet

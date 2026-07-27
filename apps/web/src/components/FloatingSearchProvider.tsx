@@ -24,6 +24,9 @@ import { SearchOverlayInstantShell } from "./SearchOverlayInstantShell"
 import {
   FloatingSearchPinnedContext,
   type FloatingSearchPinnedContextValue,
+  WatchRouteSurfaceContext,
+  type WatchRouteSurface,
+  type WatchRouteSurfaceContextValue,
 } from "./FloatingSearchContext"
 import { AccountControl } from "@/components/watch/AccountControl"
 import type { GlobalLanguagePickerModalProps } from "@/components/watch/GlobalLanguagePickerModal"
@@ -32,9 +35,9 @@ import {
   useWatchModalActivity,
 } from "@/components/watch/WatchModalActivityProvider"
 import {
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
@@ -50,11 +53,13 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 import {
   localizedHomePath,
   parseWatchPath,
   tryAsLocaleSlug,
 } from "@/lib/routes"
+import { isOneSegmentCollectionSlug } from "@/lib/url-shape"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -112,24 +117,116 @@ type PendingPageLanguageOpen = {
   routeIdentity: RouteIdentity
 }
 
+type WatchRouteSurfaceRegistrationState = {
+  pathname: string
+  surface: WatchRouteSurface
+  owner: symbol
+}
+
+type ParsedWatchPath = ReturnType<typeof parseWatchPath>
+
+function fallbackWatchRouteSurface(
+  parsed: ParsedWatchPath,
+): WatchRouteSurface | null {
+  if (parsed.kind === "home") return "language-home"
+  if (parsed.kind !== "localized-home") return null
+  if (isPublicWatchHomeLanguageSlug(parsed.lang)) return "language-home"
+  if (isOneSegmentCollectionSlug(parsed.lang)) return "experience"
+  return "english-video"
+}
+
+function resolveCurrentWatchLanguageSlug(
+  parsed: ParsedWatchPath,
+  routeSurface: WatchRouteSurface | null,
+  defaultLanguageSlug: string,
+): string {
+  if (parsed.kind === "video" || parsed.kind === "episode") return parsed.lang
+  if (routeSurface === "english-video") return "english"
+  if (routeSurface === "language-home" && parsed.kind === "localized-home") {
+    return parsed.lang
+  }
+  return defaultLanguageSlug
+}
+
 export function FloatingSearchProvider({
   children,
   defaultLanguageSlug = "english",
+  initialRouteSurface = null,
 }: {
   children: ReactNode
   defaultLanguageSlug?: string
+  initialRouteSurface?: WatchRouteSurface | null
 }) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
-  const parsedPath = parseWatchPath(pathname)
-  const currentLanguageSlug =
-    parsedPath.kind === "video" || parsedPath.kind === "episode"
-      ? parsedPath.lang
-      : defaultLanguageSlug
+  const parsedPath = useMemo(() => parseWatchPath(pathname), [pathname])
+  const [initialRoute] = useState(() => ({
+    pathname,
+    surface: initialRouteSurface,
+  }))
+  const [routeSurfaceRegistration, setRouteSurfaceRegistration] =
+    useState<WatchRouteSurfaceRegistrationState | null>(null)
+  const unregisterRouteSurface = useCallback(
+    (registrationPathname: string, owner: symbol) => {
+      setRouteSurfaceRegistration((current) =>
+        current?.pathname === registrationPathname && current.owner === owner
+          ? null
+          : current,
+      )
+    },
+    [],
+  )
+  const registerRouteSurface = useCallback(
+    (registrationPathname: string, surface: WatchRouteSurface) => {
+      const owner = Symbol("watch-route-surface")
+      setRouteSurfaceRegistration((current) => {
+        const baselineSurface =
+          registrationPathname === initialRoute.pathname &&
+          initialRoute.surface != null
+            ? initialRoute.surface
+            : fallbackWatchRouteSurface(parseWatchPath(registrationPathname))
+
+        // A clean registration that confirms the server seed or pathname
+        // fallback does not need to force another pre-paint provider render.
+        if (
+          current?.pathname !== registrationPathname &&
+          surface === baselineSurface
+        ) {
+          return null
+        }
+
+        return {
+          pathname: registrationPathname,
+          surface,
+          owner,
+        }
+      })
+      return () => unregisterRouteSurface(registrationPathname, owner)
+    },
+    [initialRoute, unregisterRouteSurface],
+  )
+  const initialSurface =
+    initialRoute.pathname === pathname ? initialRoute.surface : null
+  const routeSurface =
+    routeSurfaceRegistration?.pathname === pathname
+      ? routeSurfaceRegistration.surface
+      : (initialSurface ?? fallbackWatchRouteSurface(parsedPath))
+  const routeSurfaceValue = useMemo<WatchRouteSurfaceContextValue>(
+    () => ({
+      surface: routeSurface,
+      register: registerRouteSurface,
+    }),
+    [registerRouteSurface, routeSurface],
+  )
+  const currentLanguageSlug = resolveCurrentWatchLanguageSlug(
+    parsedPath,
+    routeSurface,
+    defaultLanguageSlug,
+  )
   const isWatchHome =
-    parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+    routeSurface === "language-home" || routeSurface === "experience"
   const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
   const logoHref = isWatchHome
     ? "https://www.jesusfilm.org/"
@@ -655,191 +752,195 @@ export function FloatingSearchProvider({
   )
 
   return (
-    <FloatingSearchPinnedContext.Provider value={pinnedValue}>
-      <div
-        inert={modalChromeHidden || undefined}
-        aria-hidden={modalChromeHidden || undefined}
-        className={
-          modalChromeHidden
-            ? "blur-[12px] transition-[filter] duration-200"
-            : "transition-[filter] duration-200"
-        }
-      >
-        {children}
-      </div>
-      <div
-        aria-hidden="true"
-        data-testid="floating-header-backdrop"
-        className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
-          headerSurfaceSolid
-            ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-            : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-        } ${headerBackdropMotionClass}`}
-      />
-      <div
-        aria-hidden="true"
-        data-testid="floating-header-hover-zone"
-        onPointerEnter={handleHeaderPointerEnter}
-        className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] ${
-          headerHoverZoneActive ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-      />
-      <header
-        data-testid="floating-header"
-        inert={headerChromeHidden || undefined}
-        aria-hidden={headerChromeHidden || undefined}
-        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
-          modalChromeHidden
-            ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-            : `flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS}`
-        } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
-      >
-        <Link
-          href={logoHref as Route}
-          aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
-          data-testid="floating-header-logo"
-          onClick={handleLogoClick}
-          className={`pointer-events-auto flex ${logoSlotClass} ${
-            modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
-          } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
-        >
-          <Image
-            src={
-              isWatchHome
-                ? "/watch/images/jesus-film-logo-full.svg"
-                : "/watch/images/jesusfilm-sign.svg"
-            }
-            alt="JesusFilm"
-            width={isWatchHome ? 139 : 70}
-            height={isWatchHome ? 36 : 70}
-            unoptimized
-            className={
-              isWatchHome
-                ? "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px]"
-                : "h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
-            }
-          />
-        </Link>
+    <WatchRouteSurfaceContext.Provider value={routeSurfaceValue}>
+      <FloatingSearchPinnedContext.Provider value={pinnedValue}>
         <div
-          className={`min-w-0 flex-1 ${
+          inert={modalChromeHidden || undefined}
+          aria-hidden={modalChromeHidden || undefined}
+          className={
             modalChromeHidden
-              ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
-                  headerLanguageControlVisible ? "" : "col-span-2"
-                }`
-              : ""
-          }`}
+              ? "blur-[12px] transition-[filter] duration-200"
+              : "transition-[filter] duration-200"
+          }
         >
-          <FloatingSearchBar
+          {children}
+        </div>
+        <div
+          aria-hidden="true"
+          data-testid="floating-header-backdrop"
+          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
+            headerSurfaceSolid
+              ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+              : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+          } ${headerBackdropMotionClass}`}
+        />
+        <div
+          aria-hidden="true"
+          data-testid="floating-header-hover-zone"
+          onPointerEnter={handleHeaderPointerEnter}
+          className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] ${
+            headerHoverZoneActive
+              ? "pointer-events-auto"
+              : "pointer-events-none"
+          }`}
+        />
+        <header
+          data-testid="floating-header"
+          inert={headerChromeHidden || undefined}
+          aria-hidden={headerChromeHidden || undefined}
+          className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
+            modalChromeHidden
+              ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
+              : FLOATING_HEADER_LAYOUT_CLASS
+          } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
+        >
+          <Link
+            href={logoHref as Route}
+            aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
+            data-testid="floating-header-logo"
+            onClick={handleLogoClick}
+            className={`pointer-events-auto flex ${logoSlotClass} ${
+              modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
+            } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
+          >
+            <Image
+              src={
+                isWatchHome
+                  ? "/watch/images/jesus-film-logo-full.svg"
+                  : "/watch/images/jesusfilm-sign.svg"
+              }
+              alt="JesusFilm"
+              width={isWatchHome ? 139 : 70}
+              height={isWatchHome ? 36 : 70}
+              unoptimized
+              className={
+                isWatchHome
+                  ? "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px]"
+                  : "h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+              }
+            />
+          </Link>
+          <div
+            className={`${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${
+              modalChromeHidden
+                ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
+                    headerLanguageControlVisible ? "" : "col-span-2"
+                  }`
+                : ""
+            }`}
+          >
+            <FloatingSearchBar
+              open={open}
+              closing={closing}
+              query={query}
+              onOpen={openSearch}
+            />
+          </div>
+          <div
+            data-testid="floating-header-trailing-controls"
+            className={
+              modalChromeHidden
+                ? FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS
+                : `pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`
+            }
+          >
+            {headerLanguageControlVisible ? (
+              <button
+                type="button"
+                ref={globalLanguageTriggerRef}
+                data-testid="floating-header-language-button"
+                onClick={headerLanguageClick}
+                aria-busy={headerLanguageBusy}
+                disabled={headerLanguageBusy}
+                aria-label={globalLanguageLabel}
+                title={globalLanguageLabel}
+                className={`pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                  modalChromeHidden
+                    ? FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS
+                    : ""
+                } cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  headerLanguageCode
+                    ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
+                    : ""
+                }`}
+              >
+                <Globe
+                  aria-hidden
+                  className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+                />
+                {headerLanguageCode ? (
+                  <span
+                    data-testid="floating-header-language-code"
+                    className="text-[10px] font-bold tracking-[0.14em]"
+                  >
+                    {headerLanguageCode}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
+            {globalLanguageLoadFailed ? (
+              <span
+                role="status"
+                data-testid="global-language-picker-load-error"
+                className="sr-only"
+              >
+                {searchT("connectionHint")}
+              </span>
+            ) : null}
+            {modalChromeHidden ? (
+              <button
+                type="button"
+                aria-label={t("closeSearch")}
+                data-testid="floating-header-search-close"
+                onClick={() => setOpen(false)}
+                className={`pointer-events-auto inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
+              >
+                <X
+                  aria-hidden
+                  className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+                />
+              </button>
+            ) : (
+              <AccountControl />
+            )}
+          </div>
+        </header>
+        {searchControllerEnabled ? (
+          <LazyFloatingSearchController
             open={open}
             closing={closing}
             query={query}
-            onOpen={openSearch}
+            setOpen={setOpen}
+            setQuery={setQuery}
+            headerLanguageSwitcherVisible={headerLanguageControlVisible}
+            headerLanguageCode={headerLanguageCode}
+            headerPinned={pinned}
+            resetToken={searchResetToken}
+            onReady={markSearchControllerReady}
           />
-        </div>
-        <div
-          data-testid="floating-header-trailing-controls"
-          className={
-            modalChromeHidden
-              ? FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS
-              : `pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`
-          }
-        >
-          {headerLanguageControlVisible ? (
-            <button
-              type="button"
-              ref={globalLanguageTriggerRef}
-              data-testid="floating-header-language-button"
-              onClick={headerLanguageClick}
-              aria-busy={headerLanguageBusy}
-              disabled={headerLanguageBusy}
-              aria-label={globalLanguageLabel}
-              title={globalLanguageLabel}
-              className={`pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
-                modalChromeHidden
-                  ? FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS
-                  : ""
-              } cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
-                headerLanguageCode
-                  ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
-                  : ""
-              }`}
-            >
-              <Globe
-                aria-hidden
-                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
-              />
-              {headerLanguageCode ? (
-                <span
-                  data-testid="floating-header-language-code"
-                  className="text-[10px] font-bold tracking-[0.14em]"
-                >
-                  {headerLanguageCode}
-                </span>
-              ) : null}
-            </button>
-          ) : null}
-          {globalLanguageLoadFailed ? (
-            <span
-              role="status"
-              data-testid="global-language-picker-load-error"
-              className="sr-only"
-            >
-              {searchT("connectionHint")}
-            </span>
-          ) : null}
-          {modalChromeHidden ? (
-            <button
-              type="button"
-              aria-label={t("closeSearch")}
-              data-testid="floating-header-search-close"
-              onClick={() => setOpen(false)}
-              className={`pointer-events-auto inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
-            >
-              <X
-                aria-hidden
-                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
-              />
-            </button>
-          ) : (
-            <AccountControl />
-          )}
-        </div>
-      </header>
-      {searchControllerEnabled ? (
-        <LazyFloatingSearchController
-          open={open}
-          closing={closing}
-          query={query}
-          setOpen={setOpen}
-          setQuery={setQuery}
-          headerLanguageSwitcherVisible={headerLanguageControlVisible}
-          headerLanguageCode={headerLanguageCode}
-          headerPinned={pinned}
-          resetToken={searchResetToken}
-          onReady={markSearchControllerReady}
-        />
-      ) : null}
-      {modalChromeHidden && !searchControllerReady ? (
-        <SearchOverlayInstantShell
-          open={open}
-          closing={closing}
-          query={query}
-          setOpen={setOpen}
-          setQuery={setQuery}
-          headerTopClass={headerTopClass}
-          logoSlotClass={logoSlotClass}
-          headerLanguageControlVisible={headerLanguageControlVisible}
-        />
-      ) : null}
-      {globalLanguageOpen && !modalChromeHidden ? (
-        <LazyGlobalLanguagePickerModal
-          open={globalLanguageOpen}
-          pathname={pathname}
-          currentLanguageSlug={currentLanguageSlug}
-          onClose={closeGlobalLanguage}
-          returnFocusRef={globalLanguageTriggerRef}
-        />
-      ) : null}
-    </FloatingSearchPinnedContext.Provider>
+        ) : null}
+        {modalChromeHidden && !searchControllerReady ? (
+          <SearchOverlayInstantShell
+            open={open}
+            closing={closing}
+            query={query}
+            setOpen={setOpen}
+            setQuery={setQuery}
+            headerTopClass={headerTopClass}
+            logoSlotClass={logoSlotClass}
+            headerLanguageControlVisible={headerLanguageControlVisible}
+          />
+        ) : null}
+        {globalLanguageOpen && !modalChromeHidden ? (
+          <LazyGlobalLanguagePickerModal
+            open={globalLanguageOpen}
+            pathname={pathname}
+            currentLanguageSlug={currentLanguageSlug}
+            onClose={closeGlobalLanguage}
+            returnFocusRef={globalLanguageTriggerRef}
+          />
+        ) : null}
+      </FloatingSearchPinnedContext.Provider>
+    </WatchRouteSurfaceContext.Provider>
   )
 }

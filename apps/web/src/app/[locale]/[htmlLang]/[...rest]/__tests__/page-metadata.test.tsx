@@ -105,7 +105,7 @@ describe("Watch metadata fallback observability", () => {
       })
 
       expect(metadata.alternates?.canonical).toBe(
-        "https://www.jesusfilm.org/watch/storyclubs.html/english.html",
+        "https://www.jesusfilm.org/watch/storyclubs.html",
       )
       expect(warnSpy).toHaveBeenCalledWith(
         "[watch] event=watch_metadata.video.fallback slug=storyclubs rawLocale=english detail=Apollo_resolver_failed",
@@ -135,7 +135,7 @@ describe("Watch metadata fallback observability", () => {
       })
 
       expect(metadata.alternates?.canonical).toBe(
-        "https://www.jesusfilm.org/watch/wedding-in-cana.html/english.html",
+        "https://www.jesusfilm.org/watch/wedding-in-cana.html",
       )
       expect(warnSpy).toHaveBeenCalledWith(
         "[watch] event=watch_metadata.episode.fallback seriesSlug=lumo-the-gospel-of-john episodeSlug=wedding-in-cana rawLocale=english detail=episode_timeout",
