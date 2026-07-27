@@ -3,7 +3,7 @@ id: "feat-306"
 title: "Fail the deploy on a misconfigured Seeker egress pin"
 owner: "jian wei"
 priority: "P3"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-25"
 duration: 1
 depends_on:
@@ -13,6 +13,130 @@ tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-27 via [PR #1765](https://github.com/JesusFilm/forge/pull/1765)
+(`feat(chat): fail the deploy on a misconfigured Seeker egress pin (feat-306)`)
+and 2026-07-27 via [PR #1768](https://github.com/JesusFilm/forge/pull/1768)
+(`docs(chat): arc-level fail-closed enforcement-point law, closing feat-304/305/306 (feat-306)`).
+
+**What landed (PR 1).** `apps/chat/src/instrumentation.ts` flipped from
+report-only to a throwing DEPLOY GATE: on a non-null `SeekerEgressProblem` in a
+production build the hook logs the `[seeker-egress] event=misconfigured
+reason=… effect=boot_refused_all_requests` enum line and then throws, so the
+build fails its healthcheck and never promotes. The blanket `catch` became two
+NARROW guards, which was the whole risk — a failed diagnostic
+(`event=diagnostic_failed stage=import|call`) never throws and deliberately
+fails OPEN, while the throw itself sits OUTSIDE both guarded regions so a
+failing `requireSeekerEgressAllowlist()` read cannot discard an already-detected
+problem down the fail-open path. The enforcing decision is SOURCED from that
+policy function rather than an inlined `NODE_ENV` read, so a future policy change
+cannot move the proxies and leave the gate behind. The request-path guard was
+left completely alone: `hostAllowed`, `validateBaseUrl`, the `requireAllowlist`
+third parameter, both config builders, and both proxies are untouched — the gate
+is additive, and the proxies remain the actual security control. 645 tests
+across 40 files, typecheck and lint green; the discriminating catch was
+falsified before ship (a blanket `catch {}` turns the
+misconfigured-production case red). The same PR swept the prose that asserted
+the old posture — `apps/chat/CLAUDE.md`'s "Production egress pin" section, the
+`instrumentation.ts` header, the `config/env.ts` JSDoc, and a dated note on the
+SSE-proxy solutions doc — and added the arc's second worked instance to the
+mocked-shape discipline doc.
+
+**What landed (PR 2).** The arc-level solutions doc deliberately deferred
+through feat-304 and feat-305:
+[fail-closed-enforcement-point-follows-rollback-capability](../../solutions/architecture-patterns/fail-closed-enforcement-point-follows-rollback-capability.md).
+It carries the law (the enforcement point is a function of rollback capability,
+not of threat severity — the SAME misconfiguration was correctly report-only in
+feat-304 and correctly fatal in feat-306, with nothing about the threat or the
+detecting code changed in between), the canonical boot-throw mechanism stamped
+verified-by-hand, the `/api/health`-to-`prepare()` coupling and why both halves
+are load-bearing and in tension, the production confirmation with its scope
+caveats, and the scope limits and residual risks below. Three boundaries keep it
+from being over-read: the law presumes a request-path control already contains
+the residual risk (where nothing does, report-only is not an available answer),
+the deploy gate is additive rather than a replacement, and a promotion gate
+never licenses making the env var required. It also names `preDeployCommand` as
+the deploy-failing alternative the arc did not take, and is honest that throwing
+redistributes cost (cheaper on promotion, dearer on the un-probed restart path)
+rather than removing it. Plus a root `CLAUDE.md` "Known Patterns" bullet
+pointing at it, and this ticket's completion. No code changed in PR 2.
+
+**Production verification.** The gating proof feat-305's Resolution named as
+this ticket's job was run on the production chat service on 2026-07-27/28 by
+temporarily setting `SEEKER_MASTRA_ALLOWED_HOSTS` to a non-matching value and
+reverting. The hook threw at 21:18:34 UTC, the healthcheck started the same
+second against `/api/health`, attempts #1–#6 through 21:19:05 all failed, and
+the deployment ended at `1/1 replicas never became healthy!` with post-deploy
+NOT STARTED — so the probe GATES promotion, it does not merely run. The build
+itself still succeeded (Build OK at 8:49), confirming in production what had only
+been shown locally: Next skips `register()` during `phase-production-build`, so
+the boot gate never became a build gate. No observed user impact: 244
+consecutive HTTP 200s from `https://chat.jesusfilm.ai/api/health` polled at a
+~5s cadence from 21:09:35 to 21:31:02 UTC, with no non-200 in the failure window
+(the poll sampled the health route only). On revert the healthcheck passed at
+21:25:08 UTC and the deployment promoted with no gap in the poll record; a live
+Seeker send and the history sidebar were then exercised end-to-end, confirming
+the request-path pin genuinely restored rather than just a clean boot.
+**Scope of that proof, stated honestly:** it establishes the PROMOTION gate
+only, and nothing about the mechanism. Railway reports probe failures as
+"service unavailable", which does not discriminate an HTTP 500 from a refused
+connection — and chat's `restartPolicyType = "on_failure"` /
+`restartPolicyMaxRetries = 3` means an exiting process would also produce
+repeated boot-throw lines, so the log's shape does not discriminate either. The
+listens-and-500s mechanism rests on the local `next@16.2.4` reproduction alone
+(re-reproduced by hand 2026-07-27, which also observed two `Failed to prepare
+server` lines from two requests against one still-running process). This is not
+a Railway-confirmed 500.
+
+**Compound docs.**
+[fail-closed-enforcement-point-follows-rollback-capability](../../solutions/architecture-patterns/fail-closed-enforcement-point-follows-rollback-capability.md)
+(new, PR 2 — the arc law), and the "Empirical MECHANISM claim carried in prose,
+with every test at a different layer" worked instance added to
+[mocked-shape-vs-real-contract-discipline](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md)
+(PR 1 — a distinct, epistemic learning about the near-miss `dead port` claim;
+the arc doc cross-links it rather than restating it).
+
+**Residual risk / follow-ups.** (i) **No CI holds the HTTP-level 500.** Every
+test that exercises the hook asserts on `register()`'s promise, while the gate's
+arming depends on what the server answers over HTTP — a Next bump that changed
+`prepare()`-rejection behavior would disarm the gate silently with the suite
+green. The remedy is a `next build` + `next start` + `curl /api/health` smoke
+(500 with the pin violated, 200 without); not ticketed. (ii) **The arming is a
+property of the BUILD, not of the deployed environment's `NODE_ENV`** —
+`next build` inlines `process.env.NODE_ENV` as the literal `"production"` and
+`config/env.ts` reads it by direct member access, so
+`requireSeekerEgressAllowlist()` compiles to a constant-true comparison. Both
+layers are therefore armed in every production build (every deployed
+environment, and a local `next build` + `next start`); an operator **cannot**
+opt an environment into report-only by setting `NODE_ENV=staging`. Verified by
+hand 2026-07-27 while writing PR 2: a `NODE_ENV=staging` build still emitted
+`NODE_ENV: …("production")` into the server chunk, and the resulting server
+500ed `/api/health` with the pin violated. The consequences that matter are that
+there is **no staged rollout** — the allowlist must be provisioned in an
+environment BEFORE the code lands there — and that a local production build
+inherits full enforcement. **The inverted version of this claim — that a
+`staging`/`prod` value disarms both layers — shipped in PR 1 in
+`apps/chat/CLAUDE.md`'s "Production egress pin" section, and is CORRECTED in
+PR 2, so `main` never carries the contradiction between that section and the new
+arc doc.** Two
+cases are outside the gate's coverage: an already-promoted deployment restarting
+into the same throw (not re-probed; the process never exits so
+`restartPolicyType` does not fire, and recovery is to revert the variable rather
+than the deployment) and a first deploy in a fresh environment with no previous
+deployment to fall back on. The whole net also depends on the service's
+per-environment "Config-as-code Path" pointing at `apps/chat/railway.toml` —
+unwired, there is no probe and the broken build promotes. Separately,
+`apps/admin` still carries the same inert fail-open shape
+(`MASTRA_CHAT_ALLOWED_HOSTS`, `.optional()`, no default) guarding egress of
+`MASTRA_CHAT_API_KEY`; the feat-304 request-path pin applies directly, but the
+feat-306 gate does **not** clear on inspection — admin's Config-as-code Path is
+unconfirmed, its `preDeployCommand` migration means a refused promotion leaves
+old code against a new schema, and the guarded relay is off by default
+(`EXPERIENCE_AI_REMOTE_CHAT`). It still has no ticket.
+
+**Unblocked.** None.
 
 ## Problem
 
