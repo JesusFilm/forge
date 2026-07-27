@@ -3,7 +3,7 @@ id: "feat-306"
 title: "Fail the deploy on a misconfigured Seeker egress pin"
 owner: "jian wei"
 priority: "P3"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-25"
 duration: 1
 depends_on:
@@ -110,15 +110,28 @@ ticket adds a deploy gate on top; it removes nothing.
 ## Constraints
 
 - **Precondition: `healthcheckPath` must be live in `apps/chat/railway.toml`
-  AND observed working against a real deploy** (feat-305's post-merge step).
-  A throwing `register()` behind an inert healthcheck is exactly the
-  unrecoverable outage feat-304 was designed to avoid. If feat-305's
-  verification was not recorded, stop and get it before writing code.
+  AND its probe observed RUNNING against a real feat-305 deploy** (confirmable
+  from the Railway build log). That the probe GATES — blocks promotion of a
+  BROKEN deployment — cannot be observed before this ticket: under the
+  report-only hook a misconfig leaves `/api/health` at 200, so nothing ever
+  fails the probe. Gating is proven by the production env-var experiment AFTER
+  this lands, not before it. A throwing `register()` behind an entirely absent
+  or inert healthcheck would be the unrecoverable outage feat-304 avoided; a
+  probe observed running is the precondition that closes that risk.
+  **Observation of record:** the operator confirmed from a real feat-305 chat
+  deploy's Railway build log that the healthcheck probe ran against
+  `/api/health` and passed. Re-confirm the deployment record's `configFile`
+  field reads `apps/chat/railway.toml` per environment before merging this
+  ticket's code — an unwired "Config-as-code Path" means no probe at all.
 - **Do not throw for a failed diagnostic.** Only a returned
   `SeekerEgressProblem` may fail the deploy.
 - **Do not throw outside a production build.** `next dev` and the test runner
-  keep today's behavior — `requireSeekerEgressAllowlist()` already encodes
-  this; do not add a second environment check.
+  keep today's behavior. Note `requireSeekerEgressAllowlist()` does NOT fully
+  encode this on its own: only the `allowlist_unset` branch is production-only,
+  while `host_not_allowed` fires in any environment (a set-but-mismatched
+  allowlist — the documented local-dogfood footgun, or a malformed base URL).
+  So the THROW must be gated on `requireSeekerEgressAllowlist()` explicitly;
+  that is the same policy function, not a second environment check.
 - **Do not log the caught error object** in the `diagnostic_failed` path — it
   can carry a module path or env-shaped fragment (the KTD7 no-PII rule).
 - No change to the proxies, the guard, or the deny wires.
@@ -134,9 +147,18 @@ pnpm --filter @forge/chat lint
 # during phase-production-build. This must not regress.
 SEEKER_MASTRA_BASE_URL=https://mastra.internal pnpm --filter @forge/chat build
 
-# The SERVER must now refuse to serve with the pin violated (the new behavior)
-SEEKER_MASTRA_BASE_URL=https://mastra.internal pnpm --filter @forge/chat start
-#   expect: the [seeker-egress] line, then a failed start / failing requests
+# The SERVER must now fail every request with the pin violated (the new
+# behavior). NOT a dead port: `register()` throwing rejects Next's prepare()
+# process-wide, so the server still LISTENS and stays up, re-throwing the hook
+# once per request and answering 500 on EVERY route — /api/health included.
+# That 500 (not a refused connection) is exactly what makes Railway's probe
+# fail and the deployment never promote.
+SEEKER_MASTRA_BASE_URL=https://mastra.internal pnpm --filter @forge/chat start &
+#   expect in the log: [seeker-egress] event=misconfigured reason=allowlist_unset
+#   effect=boot_refused_all_requests, then "Failed to prepare server"
+curl -s -o /dev/null -w '%{http_code}\n' localhost:3200/api/health   # expect: 500
+curl -s -o /dev/null -w '%{http_code}\n' localhost:3200/             # expect: 500
+pgrep -f 'next start' # expect: still alive — the process does NOT exit
 
 # And must start cleanly once the pin is correct
 SEEKER_MASTRA_BASE_URL=https://mastra.internal \
@@ -149,11 +171,31 @@ the whole risk:
 
 - misconfigured production → `register()` REJECTS (inverting the existing
   never-throw case for this branch only);
-- rejecting dynamic import → still RESOLVES, logs `diagnostic_failed`;
+- rejecting dynamic import → still RESOLVES, logs
+  `diagnostic_failed stage=import`;
 - throwing `describeSeekerEgressMisconfiguration()` → still RESOLVES, logs
-  `diagnostic_failed`;
+  `diagnostic_failed stage=call`, and NEVER the caught error (sentinel test);
+- throwing `requireSeekerEgressAllowlist()` with a problem already detected →
+  still REJECTS (a failing policy read must not discard a known misconfiguration
+  into the fail-open path);
 - sound config → resolves silently;
-- non-production → resolves silently even when misconfigured.
+- production with NO base URL (the boots-clean default deploy) → resolves
+  silently — this is the guard whose regression would brick every unprovisioned
+  environment;
+- malformed base URL in production → REJECTS with `host_not_allowed` (the URL
+  parse returns false, it does not throw — so it must not read as a diagnostic
+  failure);
+- non-production, nothing to report → resolves silently;
+- non-production with the pin violated (`host_not_allowed`) → resolves and logs
+  report-only (`effect=seeker_sends_and_history_refuse`), never throws;
+- the enforcing decision is SOURCED from `requireSeekerEgressAllowlist()`, not
+  an inlined `NODE_ENV` read — pinned by a mocked-policy pair (policy false under
+  production NODE_ENV → no throw; policy true under development NODE_ENV →
+  throw), so a future policy change cannot move the proxies and leave the deploy
+  gate behind;
+- `src/instrumentation.ts` still sits at a path Next recognizes as the hook —
+  Next silently no-ops a MISSING hook, so a move or rename would disarm the gate
+  in production while every other test stayed green.
 
 **Falsify before shipping.** Replace the discriminating catch with a blanket
 `catch {}` and confirm the misconfigured-production test goes red — that is the
