@@ -43,7 +43,12 @@ Checklist for whoever wires the service:
 4. Deploy, then **verify the deployment record's `configFile` field is
    non-null and reads `/apps/chat/railway.toml`** — this is the proof the
    config file was actually loaded. Build logs are a secondary signal only.
-5. Confirm the app responds on its public hostname and a sent message gets
+5. **Confirm the deploy log shows a healthcheck attempt against
+   `/api/health`** and that promotion waited on it (feat-305). A green
+   deploy is not proof the gate ran. If the service is dashboard-canonical
+   rather than config-as-code, set `healthcheckPath = /api/health` and
+   `healthcheckTimeout = 60` there too — same trap as step 3's `HOSTNAME`.
+6. Confirm the app responds on its public hostname and a sent message gets
    a visibly-stubbed reply.
 
 The public hostname is `chat.jesusfilm.ai`, fronted by Cloudflare (feat-235).

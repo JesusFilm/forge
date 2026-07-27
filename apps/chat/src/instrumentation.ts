@@ -8,9 +8,19 @@
  *
  * This hook only REPORTS. Enforcement is at the proxies (`validateBaseUrl`),
  * so a missing egress pin denies exactly the calls that would carry the bearer
- * while the stub path, the page, and auth keep working. Throwing here would
- * instead reject `prepare()` for the whole server — every request, not just
- * Seeker's — and chat's railway.toml has no healthcheck to roll that back.
+ * while the stub path, the page, and auth keep working. Throwing here takes the
+ * WHOLE server down, not just Seeker: `prepare()` rejects, and — verified under
+ * `next start` — the server still LISTENS but returns HTTP 500 on every route
+ * (including `/api/health`), staying up and re-throwing the hook once per
+ * request. No route serves normally.
+ *
+ * Since feat-305 `railway.toml` carries `healthcheckPath = "/api/health"`, that
+ * failure IS caught: the probe hits `/api/health`, gets 500 (not 2xx), so the
+ * deployment is never promoted. The gate covers promotion only — an
+ * already-promoted deployment restarting into the same throw (say, after a
+ * service-variable edit) is not re-probed, and rollback does not undo an env
+ * change. Flipping this hook to throw is feat-306, gated on first observing the
+ * healthcheck against a real deploy. Until then it stays report-only.
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return
