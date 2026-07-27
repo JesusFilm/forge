@@ -127,7 +127,13 @@ function resolutionOf(resolved: SeriesEpisodeResolution[]) {
   }
 }
 
-const ctx = { subtitleLanguageSlug: null, allowCellular: true }
+const ctx = {
+  subtitleLanguageSlug: null,
+  allowCellular: true,
+  seriesSlug: "storyclubs",
+  seriesTitle: "StoryClubs",
+  enqueuedAt: 1_753_000_000_000,
+}
 
 // ── AE1: total shown pre-confirm + request shape ────────────────────
 
@@ -154,6 +160,7 @@ describe("AE1 — resolved total and request shape", () => {
   it("buildEpisodeRequest mirrors the per-video request shape", () => {
     const ep = resolvedEpisode("a", "dub-a", 1000)
     const req = buildEpisodeRequest(ep, {
+      ...ctx,
       subtitleLanguageSlug: "fr",
       allowCellular: false,
     })
@@ -169,15 +176,28 @@ describe("AE1 — resolved total and request shape", () => {
     expect(req?.rendition.size).toBe("1000")
   })
 
+  // U1: seriesSlug/seriesTitle/enqueuedAt come from ctx (batch-level);
+  // seriesEpisodeIndex/durationSeconds come from the resolved episode itself.
+  it("attaches series/ordering metadata to the built request", () => {
+    const ep: SeriesEpisodeResolution = {
+      ...resolvedEpisode("a", "dub-a", 1000),
+      seriesEpisodeIndex: 3,
+      durationSeconds: 725,
+    }
+    const req = buildEpisodeRequest(ep, ctx)
+    expect(req?.seriesSlug).toBe("storyclubs")
+    expect(req?.seriesTitle).toBe("StoryClubs")
+    expect(req?.seriesEpisodeIndex).toBe(3)
+    expect(req?.durationSeconds).toBe(725)
+    expect(req?.enqueuedAt).toBe(1_753_000_000_000)
+  })
+
   it("keeps the subtitle slug when the episode carries the chosen track", () => {
     const ep: SeriesEpisodeResolution = {
       ...resolvedEpisode("a", "dub-a", 1000),
       subtitleUrl: "vtt-fr",
     }
-    const req = buildEpisodeRequest(ep, {
-      subtitleLanguageSlug: "fr",
-      allowCellular: true,
-    })
+    const req = buildEpisodeRequest(ep, { ...ctx, subtitleLanguageSlug: "fr" })
     expect(req?.subtitleLanguageSlug).toBe("fr")
     expect(req?.subtitleUrl).toBe("vtt-fr")
   })

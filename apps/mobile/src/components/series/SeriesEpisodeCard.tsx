@@ -5,7 +5,12 @@ import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import type { WatchEpisode } from "../../lib/normalizeVideo"
-import { BLACK, SURFACE_COLOR, hexToRgba } from "../../lib/color"
+import {
+  BLACK,
+  STATUS_DONE_COLOR,
+  SURFACE_COLOR,
+  hexToRgba,
+} from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { EpisodeBadgeState } from "../../lib/seriesDownloadAggregate"
 
@@ -14,7 +19,11 @@ const BADGE: Record<
   Exclude<EpisodeBadgeState, "none">,
   { icon: ComponentProps<typeof Ionicons>["name"]; color: string; a11y: string }
 > = {
-  saved: { icon: "checkmark-circle", color: "#34d399", a11y: "saved offline" },
+  saved: {
+    icon: "checkmark-circle",
+    color: STATUS_DONE_COLOR,
+    a11y: "saved offline",
+  },
   downloading: {
     icon: "arrow-down-circle",
     color: "#ffffff",

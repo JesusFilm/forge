@@ -48,8 +48,10 @@ import {
 } from "../lib/batchDownloadQueue"
 import { normalizeDubMedia } from "../lib/normalizeVideo"
 import {
+  buildReattachRequest,
   buildRequestRecord,
   createDownloadLifecycle,
+  retryFailedDownload,
   type DownloadLifecycle,
   type StartDownloadRequest,
   type StartDownloadResult,
@@ -116,6 +118,8 @@ type DownloadsContextValue = {
   pauseDownload: (videoSlug: string) => Promise<void>
   /** Resume a paused download; restarts cleanly if the task didn't survive. */
   resumeDownload: (videoSlug: string) => Promise<void>
+  /** Retry a failed download via restart; a no-op on any other state (R21). */
+  retryDownload: (videoSlug: string) => Promise<void>
   /** Cancel an in-flight download: stop the transfer and remove it (R1). */
   cancelDownload: (videoSlug: string) => Promise<void>
   /** Stop an in-flight task without deleting its record (U4 language-switch). */
@@ -474,24 +478,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               // concurrent native task, abandoning R14 ordering (review #2).
               batchQueueRef.current = [
                 ...batchQueueRef.current,
-                {
-                  videoSlug: record.videoSlug,
-                  title: record.title,
-                  dubDocumentId: record.dubDocumentId,
-                  rendition: {
-                    documentId: record.renditionDocumentId,
-                    quality: record.qualityLabel,
-                    size:
-                      record.totalBytes > 0 ? String(record.totalBytes) : "",
-                    // No persisted URL — startDownload re-resolves; an empty
-                    // fallback fails validation and surfaces a failed badge.
-                    url: "",
-                  },
-                  subtitleLanguageSlug: record.subtitleLanguageSlug,
-                  subtitleUrl: null,
-                  posterUrl: null,
-                  allowCellular: !wifiOnlyRef.current,
-                },
+                buildReattachRequest(record, !wifiOnlyRef.current),
               ]
               batchSlugsRef.current.add(record.videoSlug)
             } else if (record) {
@@ -659,6 +646,23 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [pumpBatchQueue, enterPendingSwap],
   )
 
+  // D2/R21: retry only ever restarts the existing failed record — never a
+  // fresh startDownload (its resolution-failure path deletes the record).
+  const retryDownload = useCallback(
+    (videoSlug: string) =>
+      retryFailedDownload(
+        {
+          getRecord: (slug) => recordsRef.current[slug],
+          restart: lifecycle.restart,
+          // Release the batch slot first: a retried episode still in scope
+          // counts as occupancy and stalls the batch's still-queued siblings.
+          onLeaveBatchScope: removeFromBatchScope,
+        },
+        videoSlug,
+      ),
+    [lifecycle, removeFromBatchScope],
+  )
+
   const value = useMemo<DownloadsContextValue>(
     () => ({
       isReady,
@@ -687,6 +691,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       deleteDownload: lifecycle.deleteDownload,
       pauseDownload: lifecycle.pause,
       resumeDownload: lifecycle.resume,
+      retryDownload,
       cancelDownload: lifecycle.cancel,
       supersedeDownload: lifecycle.supersede,
     }),
@@ -697,6 +702,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       lifecycle,
       queueBatchDownload,
       queueBatchRecords,
+      retryDownload,
     ],
   )
 

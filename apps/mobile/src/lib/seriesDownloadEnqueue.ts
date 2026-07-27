@@ -95,13 +95,22 @@ export function evaluateStorageGate(input: StorageGateInput): StorageGate {
 export type BuildRequestContext = {
   subtitleLanguageSlug: string | null
   allowCellular: boolean
+  /** Series identity, constant across the whole batch. */
+  seriesSlug: string
+  /** undefined (not "") when the series has no title — matches how a written
+   * record hydrates back (asOptionalString coerces "" to undefined too). */
+  seriesTitle: string | undefined
+  /** Captured once per batch, shared by every episode's request. */
+  enqueuedAt: number
 }
 
 /**
  * Build the per-episode StartDownloadRequest from a resolved episode, mirroring
  * app/watch/download.tsx's request shape: videoSlug = episode slug, the resolved
  * rendition + dub, and the batch's subtitle choice (URL from the episode's own
- * resolved track, null when that episode lacks it).
+ * resolved track, null when that episode lacks it). seriesEpisodeIndex/
+ * durationSeconds come from the episode itself (per-episode), NOT ctx — they
+ * vary across the batch, unlike seriesSlug/seriesTitle/enqueuedAt.
  */
 export function buildEpisodeRequest(
   episode: SeriesEpisodeResolution,
@@ -125,6 +134,11 @@ export function buildEpisodeRequest(
     subtitleUrl: episode.subtitleUrl ?? null,
     posterUrl: episode.posterUrl,
     allowCellular: ctx.allowCellular,
+    seriesSlug: ctx.seriesSlug,
+    seriesTitle: ctx.seriesTitle,
+    seriesEpisodeIndex: episode.seriesEpisodeIndex,
+    durationSeconds: episode.durationSeconds,
+    enqueuedAt: ctx.enqueuedAt,
   }
 }
 

@@ -526,7 +526,7 @@ export default function WatchVideoPage() {
                   void pauseDownload(video.slug)
                 } else if (state === "queued") {
                   // Queued in a series batch — no live transfer to pause yet, so
-                  // offer to remove it from the download (matches controlsForState).
+                  // offer to remove it from the download.
                   Alert.alert("Offline download", "This download is queued.", [
                     {
                       text: "Remove download",

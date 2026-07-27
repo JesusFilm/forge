@@ -22,6 +22,8 @@ export type WatchPreferences = {
    * persisted here. Defaults off.
    */
   wifiOnly: boolean
+  /** Whether the Library "touch and hold to select" hint has been shown/used. */
+  longPressHintSeen: boolean
 }
 
 export const WATCH_PREFERENCES_STORAGE_KEY = "watchPreferences"
@@ -32,6 +34,7 @@ export const DEFAULT_WATCH_PREFERENCES: WatchPreferences = {
   subtitleLanguageName: null,
   subtitlesEnabled: false,
   wifiOnly: false,
+  longPressHintSeen: false,
 }
 
 function normalizeNonEmptyString(value: unknown): string | null {
@@ -64,6 +67,7 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
     subtitleLanguageName: normalizeNonEmptyString(obj.subtitleLanguageName),
     subtitlesEnabled: obj.subtitlesEnabled === true,
     wifiOnly: obj.wifiOnly === true,
+    longPressHintSeen: obj.longPressHintSeen === true,
   }
 }
 

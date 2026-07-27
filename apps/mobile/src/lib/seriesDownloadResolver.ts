@@ -90,6 +90,10 @@ export type SeriesEpisodeResolution = {
   sizeBytes?: number
   /** The rendition reported a missing/zero size — the total is a lower bound. */
   sizeUnknown?: boolean
+  /** Episode order within the series (admin's `order` relation field). */
+  seriesEpisodeIndex?: number
+  /** Video runtime in seconds. */
+  durationSeconds?: number
 }
 
 /** One quality tier's total download size across the resolved set. */
@@ -147,6 +151,8 @@ async function resolveEpisode(
     slug: episode.slug,
     title: episode.title,
     posterUrl: episode.posterUrl,
+    seriesEpisodeIndex: episode.seriesEpisodeIndex,
+    durationSeconds: episode.durationSeconds,
   }
 
   const variants = await deps.getEpisodeVariants(episode.slug)
@@ -261,6 +267,8 @@ export async function resolveSeriesDownload(
       slug: episode.slug,
       title: episode.title,
       posterUrl: episode.posterUrl,
+      seriesEpisodeIndex: episode.seriesEpisodeIndex,
+      durationSeconds: episode.durationSeconds,
       status: "failed-resolve",
     }
   })

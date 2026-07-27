@@ -36,11 +36,14 @@ describe("GET_SERIES_BY_SLUG (lean series detail)", () => {
   // Perf guard: series screen only needs `hls` + `language` to pick/swap the
   // trailer. Per-dub `duration` + `muxVideo.playbackId` are player-only — dead
   // weight across ~2,270 dubs (bytes + server-side per-dub muxVideo resolution).
+  // Word-boundary (not substring): U1 adds the lightweight, server-derived
+  // `durationSeconds` scalar on `children.child` (one row per episode, not per
+  // dub) — a substring match would wrongly flag it as the forbidden per-dub field.
   it("KEEPS variants: dubs with hls + language, but EXCLUDES per-dub duration + muxVideo", () => {
     expect(seriesSdl).toContain("variants: dubs")
     expect(seriesSdl).toContain("hls")
     expect(seriesSdl).toMatch(/language\s*\{/)
-    expect(seriesSdl).not.toContain("duration")
+    expect(seriesSdl).not.toMatch(/\bduration\b/)
     expect(seriesSdl).not.toContain("muxVideo")
     expect(seriesSdl).not.toContain("playbackId")
   })
@@ -49,6 +52,14 @@ describe("GET_SERIES_BY_SLUG (lean series detail)", () => {
     expect(operationOnly(seriesSdl)).toMatch(/children\s*\{\s*order/)
     expect(seriesSdl).toContain("childDubLanguages")
     expect(seriesSdl).toContain("bcp47")
+  })
+
+  // U1: the episode grid needs the runtime alongside `order` to persist series
+  // ordering/duration on offline records. Video-level scalar (one row per
+  // episode), not the forbidden per-dub `duration` the guard above excludes.
+  it("selects durationSeconds on each episode (U1)", () => {
+    expect(operationOnly(seriesSdl)).toMatch(/children\s*\{\s*order/)
+    expect(seriesSdl).toContain("durationSeconds")
   })
 })
 

@@ -1,7 +1,7 @@
 ---
 title: "TV SDUI MediaCollection cards: resolve title by coreId hydration, image by rewriting the poster seed to the watch origin"
 date: 2026-07-14
-last_updated: 2026-07-21
+last_updated: 2026-07-27
 category: docs/solutions/architecture-patterns/
 module: apps/web + apps/tv + apps/mobile (Experience media collection renderers)
 problem_type: architecture_pattern
@@ -398,3 +398,10 @@ rather than crashing.
   mocked fixtures. Section 2b's per-Experience `imageOverrideUrl` polymorphism is
   a fresh worked instance — a review asserted a bug (home 404 seed) from an
   assumed uniform shape without verifying the real per-Experience contract.
+- `docs/solutions/integration-issues/expo-downloadasync-non-2xx-body-corrupts-offline-sidecar.md`
+  — the **download-layer counterpart** to the Cloudflare variant trap (Section 3).
+  This doc keeps the variant-less `url` (which 400s) out of _selection_; that one
+  handles the case where a 400ing URL is fetched anyway — `expo-file-system`
+  `downloadAsync` writes the response body to disk for any HTTP status, so an
+  offline poster cached the 400 error body and rendered blank until the sidecar
+  downloader began rejecting non-2xx. Pick a good URL AND don't cache a bad response.
