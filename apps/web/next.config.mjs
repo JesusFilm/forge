@@ -59,8 +59,11 @@ export const nextConfig = {
   // after `next build`; uploads stay opt-in via `pnpm datadog:sourcemaps`.
   productionBrowserSourceMaps: true,
   serverExternalPackages: datadogServerExternalPackages,
-  webpack(config, { isServer }) {
+  webpack(config, { dev, isServer }) {
     if (isServer) {
+      // Next's browser sourcemap flag does not cover server bundles. Generate
+      // Node maps for production APM stack traces while keeping dev defaults.
+      if (!dev) config.devtool = "source-map"
       config.externals.push(...datadogServerExternalPackages)
     } else {
       config.resolve.alias = {

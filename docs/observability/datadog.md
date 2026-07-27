@@ -95,13 +95,14 @@ DATADOG_API_KEY=<Forge-production API key value>
 DATADOG_SITE=datadoghq.com
 ```
 
-Do not set `NODE_OPTIONS=--require dd-trace/init` as a Railway service
-variable. Railway exposes service variables during the Railpack/mise build
-phase, before `dd-trace` is guaranteed to exist. Admin's
-`apps/admin/railway.toml` scopes the preload to runtime:
+Do not set `NODE_OPTIONS=--enable-source-maps --require dd-trace/init` as a
+Railway service variable. Railway exposes service variables during the
+Railpack/mise build phase, before `dd-trace` is guaranteed to exist. Admin's
+`apps/admin/railway.toml` scopes the preload and source-map runtime flag to
+runtime:
 
 ```bash
-cd apps/admin && export DD_VERSION="${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" NEXT_PUBLIC_DATADOG_VERSION="${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" DATADOG_RELEASE_VERSION="${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start
+cd apps/admin && export DD_VERSION="${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" NEXT_PUBLIC_DATADOG_VERSION="${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" DATADOG_RELEASE_VERSION="${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start
 ```
 
 The dedicated Admin worker service should use config-as-code path
@@ -153,6 +154,11 @@ The upload script uses service `forge-admin`, release version
 `RAILWAY_GIT_COMMIT_SHA` aligned through the Railway build/start command stamps
 so RUM events and uploaded maps share the same release identity.
 
+Backend APM stack traces are separate from browser RUM source-map uploads.
+Admin keeps production server sourcemaps with the deployed Next bundle and
+runs Node with `--enable-source-maps`, allowing server exceptions to be
+reported with remapped frames.
+
 ## Web production variables
 
 Set these on the Web production Railway service when enabling Watch server logs
@@ -193,6 +199,11 @@ The upload script uses service `forge-web`, release version
 `apps/web/railway.toml` stamps `DD_VERSION`, `NEXT_PUBLIC_DATADOG_VERSION`, and
 `DATADOG_RELEASE_VERSION` from `RAILWAY_GIT_COMMIT_SHA` inside the build and
 runtime commands when those vars are unset or empty.
+
+Backend APM stack traces are separate from browser RUM source-map uploads.
+Web keeps production server sourcemaps with the deployed Next bundle and runs
+Node with `--enable-source-maps`, allowing `web.request` server exceptions to
+be reported with remapped frames.
 
 ## TV production variables
 
