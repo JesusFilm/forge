@@ -74,3 +74,7 @@ Railway does not expose sibling service container stdout to a standalone Agent
 container. Forge apps therefore forward application logs to the Agent using
 syslog over UDP on the private network. The Agent listens on `514/udp` via
 `syslog.yaml` and forwards logs to Datadog over HTTP via `datadog.yaml`.
+Apps put `ddsource` and `ddtags` in the RFC5424 structured-data section so
+Datadog promotes `env`, `service`, and `version` into log tags. The Agent
+listener must not hardcode a single `service`, because Web and Admin share the
+same UDP endpoint.
