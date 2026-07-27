@@ -31,9 +31,19 @@ describe("resolveSearchMeta", () => {
 })
 
 describe("resultChipLabel", () => {
-  it("shows the episode count when the result carries one", () => {
-    expect(resultChipLabel({ childCount: 12 })).toBe("12 EP")
-    expect(resultChipLabel({ childCount: 1 })).toBe("1 EP")
+  it("shows the episode count for a series-labelled result", () => {
+    expect(resultChipLabel({ label: "SERIES", childCount: 12 })).toBe("12 EP")
+    expect(resultChipLabel({ label: "COLLECTION", childCount: 1 })).toBe("1 EP")
+  })
+
+  // JESUS is a FEATURE_FILM with 61 children; "61 EP" beside a "Feature Film"
+  // kind line and a Chapters rail reads as a different content type.
+  it("shows a chapter count for a film that carries chapter clips", () => {
+    expect(resultChipLabel({ label: "FEATURE_FILM", childCount: 61 })).toBe(
+      "61 CH",
+    )
+    expect(resultChipLabel({ label: "SHORT_FILM", childCount: 1 })).toBe("1 CH")
+    expect(resultChipLabel({ label: null, childCount: 3 })).toBe("3 CH")
   })
 
   it("returns null for leaf results (0 / null / absent childCount)", () => {

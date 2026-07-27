@@ -37,10 +37,9 @@ export function buildMetadataLine(
 }
 
 /**
- * Which below-hero rail a video gets. A film with its own chapters shows ONLY
- * the chapter rail — Up Next lists the PARENT's other children, which beside 46
- * chapters of the same film reads as clutter rather than a next step. Every
- * other video keeps Up Next, and each rail still self-hides when empty.
+ * Chapters win when present: Up Next lists the PARENT's other children, which
+ * beside 46 chapters of the same film is clutter, not a next step. Every other
+ * video keeps Up Next, and each rail still self-hides when empty.
  */
 export function shouldShowUpNextRail(
   record: Pick<WatchVideoRecord, "chapters"> | null | undefined,
@@ -50,9 +49,9 @@ export function shouldShowUpNextRail(
 }
 
 /**
- * Wire label → hero badge text: `FEATURE_FILM` → `FEATURE FILM`. The badge style
- * already uppercases, so this only has to unpick the enum's underscores — without
- * it a film reads "FEATURE_FILM" on screen. Null/blank yields null (no badge).
+ * `FEATURE_FILM` → `FEATURE FILM`. The badge style already uppercases, so this
+ * only unpicks the underscores — without it a film reads "FEATURE_FILM" on
+ * screen. Null/blank yields null (no badge).
  */
 export function formatBadgeLabel(
   label: string | null | undefined,

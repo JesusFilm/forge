@@ -1,12 +1,7 @@
-// The About block, focusable on purpose.
-//
-// tvOS scrolls a ScrollView only as focus moves into things — there is no free
-// scrolling — so any section with no focusable descendant is simply unreachable.
-// About was pure <Text>, and the page relied on the Related Questions column
-// beside it to pull focus into that row. On a video with no study questions
-// (Magdalena) the row had nothing to focus and the synopsis could not be read
-// at all. Focus IS the scroll affordance here, so there is deliberately no
-// press action: focusable, inert on Select.
+// Focusable on purpose: tvOS scrolls only as focus moves, so a section with no
+// focusable descendant is unreachable. About was pure <Text> and leaned on the
+// Related Questions column beside it — which is empty on videos like Magdalena.
+// Focus IS the scroll affordance, hence no press action: focusable, inert on Select.
 
 import { Pressable, StyleSheet, Text, View } from "react-native"
 

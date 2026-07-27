@@ -37,13 +37,9 @@ export function resolveRowScrollTarget(args: {
 }
 
 /**
- * Row measurements survive a refetch. `sections` is a fresh array on every
- * setModel even when nothing changed, and onLayout only re-fires for rows whose
- * geometry actually moved — so WIPING the store leaves unchanged rows unmeasured
- * forever and resolveRowScrollTarget returns null on every focus, i.e. focus
- * stops scrolling. Trim to the live row count instead: onLayout corrects any row
- * that really moved, an unmoved row's old y is still right, and entries past
- * `rowCount` are never read. Mutates in place — the caller holds it in a ref.
+ * Trim, don't wipe: onLayout only re-fires for rows that actually moved, so
+ * clearing the store strands unchanged rows unmeasured and focus stops scrolling.
+ * Mutates in place — the caller holds it in a ref.
  */
 export function trimRowMeasurements(
   rowLayoutYs: (number | undefined)[],
@@ -56,11 +52,9 @@ export function trimRowMeasurements(
 export type RowMeasurementEffect = "flush-pending" | "reanchor" | "none"
 
 /**
- * A row just reported a new y. "flush-pending": it was focused before it had any
- * measurement, so run the deferred scroll. "reanchor": it holds focus and its y
- * MOVED, so the current offset was computed from the stale value. Otherwise the
- * store update alone is enough — re-scrolling an unfocused row would yank the
- * page out from under the viewer.
+ * "flush-pending": focused before it had any measurement, run the deferred scroll.
+ * "reanchor": holds focus and its y MOVED, so the offset came from a stale value.
+ * Otherwise nothing — re-scrolling an unfocused row yanks the page off the viewer.
  */
 export function resolveRowMeasurementEffect(args: {
   rowIndex: number

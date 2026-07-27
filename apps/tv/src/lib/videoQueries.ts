@@ -111,11 +111,9 @@ export const watchVideoFragment = graphql(`
   }
 `)
 
-// Own `children` = this video's chapter clips (JESUS 61, Book of Acts 73), the
-// Chapters rail. Selected on the QUERY not the fragment, and field-for-field with
-// GET_SERIES_BY_SLUG's children, so buildEpisodes normalizes both shapes.
-// Cheap for the ~925 childless videos; the 10 films that have any already carry a
-// heavier `parents → parent → children` sibling chain.
+// Own `children` = this video's chapter clips (JESUS 61), the Chapters rail. On
+// the QUERY not the fragment, field-for-field with GET_SERIES_BY_SLUG's children
+// so the shared buildChildren normalizes both (NormalizableChildRel enforces it).
 export const GET_VIDEO_BY_SLUG = graphql(
   `
     query GetVideoBySlug($locale: String!, $slug: String!) {

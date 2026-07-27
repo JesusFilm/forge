@@ -7,10 +7,9 @@ import { type SearchResult } from "../../lib/queries"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 
 /**
- * Series-LABELLED videos open /series/[slug], everything else /watch/[slug], else
- * /experience. `childCount` is NOT consulted — a feature film's chapter clips must
- * not route it to /series. Seed gives first paint; series seed playbackId is nulled
- * (never derive a stream from it). encodeWatchSeed already URL-encodes.
+ * Series-LABELLED videos open /series, everything else /watch, else /experience.
+ * `childCount` is NOT consulted — a film's chapter clips must not route it to
+ * /series. A series seed nulls playbackId: never derive a stream from it.
  */
 export function searchResultPath(result: SearchResult): string {
   const slug = encodeURIComponent(result.slug)

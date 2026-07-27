@@ -64,11 +64,9 @@ export function pickDefaultTrailer<
 export type LeafBounceDecision = "render" | "bounce" | "pending"
 
 /**
- * Should a /series deep-link bounce to /watch? Same isSeriesLabel predicate as the watch redirect (U5),
- * both replace so seams can't loop — sharing the one predicate is what keeps them exact inverses. "render":
- * series-labelled; "bounce": leaf once `hasSeriesSelection` (the completeness signal that avoids ejecting a
- * warm-cache partial reading leaf-shaped but still gaining children); else "pending". A feature film with
- * chapter clips is a leaf, so an old /series/jesus link self-corrects to /watch.
+ * Should a /series deep-link bounce to /watch? Shares the ONE isSeriesLabel with
+ * the watch redirect (U5), which is what keeps them exact inverses. "bounce" waits
+ * for `hasSeriesSelection` so a warm-cache partial isn't ejected mid-load.
  */
 export function resolveLeafBounce(
   record: { label: string | null } | null | undefined,

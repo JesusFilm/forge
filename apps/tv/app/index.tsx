@@ -305,18 +305,9 @@ export default function HomeScreen() {
     [rowCount, recordRowY],
   )
 
-  // TRIM rows that no longer exist — never wipe. `sections` is a fresh array on
-  // every setModel (snapshot hydration, then the network reconcile, which waits
-  // on a possibly-slow top-up fetch), so this runs even when nothing changed.
-  // Wiping here left EVERY row unmeasured, and onLayout only fires when geometry
-  // actually changes — so unchanged rows never re-reported, resolveRowScrollTarget
-  // returned null forever, and D-pad focus scrolled nowhere while the scrim and
-  // top-bar hide (plain state) still reacted. Whether the wipe landed before or
-  // after first layout is the whole "sometimes, after a long idle".
-  //
-  // Keeping measurements is safe: onLayout re-fires for any row whose y really
-  // moved, a row whose y didn't move needs no update, and entries past rowCount
-  // are never read. recordRowY re-anchors focus if a re-measure shifts it.
+  // TRIM, never wipe. `sections` is a fresh array on every setModel, and onLayout
+  // only fires when geometry actually changes — so wiping left unchanged rows
+  // permanently unmeasured and focus scrolled nowhere (the "after a long idle" bug).
   const sections = model?.sections
   useEffect(() => {
     trimRowMeasurements(rowYsRef.current, rowCount)
@@ -377,6 +368,7 @@ export default function HomeScreen() {
       lastFocusedRowRef.current = null
       setFocusedRow(0)
     }
+    focusedRowRef.current = null
     setBelowTopmost(false)
     setBrowseState("browse")
     scrollRef.current?.scrollTo({ y: 0, animated: true })

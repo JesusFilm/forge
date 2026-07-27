@@ -29,12 +29,9 @@ describe("trimRowMeasurements", () => {
     expect(ys).toEqual([])
   })
 
-  // THE REGRESSION. `sections` is a fresh array on every setModel — the snapshot
-  // hydration, then the network reconcile — so this path runs even when the rows
-  // are byte-identical. The old code assigned `rowYsRef.current = []` here, and
-  // because onLayout only fires when geometry actually CHANGES, unchanged rows
-  // never re-reported: every later focus resolved to a null scroll target, so the
-  // card focused, the scrim and top-bar hide reacted, and the page never moved.
+  // THE REGRESSION. `sections` is a fresh array on every setModel, so this ran on
+  // byte-identical rows; the old `rowYsRef.current = []` then stranded them, since
+  // onLayout only re-fires when geometry CHANGES. Focus resolved null forever.
   it("survives a same-shape refetch, so focus can still resolve a scroll target", () => {
     const ys: (number | undefined)[] = [0, 1200, 1800]
     const anchorOffset = 120

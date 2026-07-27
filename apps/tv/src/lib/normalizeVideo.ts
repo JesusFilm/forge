@@ -403,9 +403,8 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
 type RawSeriesVideo = NonNullable<SeriesVideoData["videoBySlug"]>
 
 // Own-children → child cards, shared by the series episode rail and the watch
-// screen's chapter rail. KTD5-tolerant: the inverted admin relation can surface
-// self-references and duplicates today, so this self-filters, dedupes, and yields
-// [] rather than a broken rail — correct the moment it's fixed.
+// chapter rail. KTD5-tolerant: the inverted admin relation still surfaces
+// self-refs and duplicates, so this self-filters and dedupes rather than break.
 function buildChildren(raw: {
   documentId?: string | null
   children?: readonly NormalizableChildRel[] | null

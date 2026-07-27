@@ -13,11 +13,9 @@ export type RoutableHomeCard = Pick<
 >
 
 /**
- * Series cards → /series/[slug], everything else → /watch/[slug] (predicate fed
- * the RAW `rawLabel`; display `label` is silently rejected). `childCount` is NOT
- * consulted — a feature film's chapter clips must not route it to /series. Carries
- * a seed for instant first paint; string href, not object (object double-encodes
- * the seed). Null when no slug.
+ * Series cards → /series, everything else → /watch. Fed the RAW `rawLabel`, and
+ * `childCount` is NOT consulted — a film's chapter clips must not route it to
+ * /series. String href, not object (an object double-encodes the seed).
  */
 export function resolveHomeCardPath(card: RoutableHomeCard): string | null {
   if (!card.slug) return null
