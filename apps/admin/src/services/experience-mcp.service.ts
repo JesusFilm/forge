@@ -218,6 +218,12 @@ export class ExperienceMcpService {
     }
   }
 
+  // Third composition of the candidates -> mastra -> normalize -> persist
+  // pipeline, alongside generate-variant-action.ts (editor, repair loop) and
+  // generate-persona-variants.ts (operator CLI, fan-out). The three have
+  // real behavioral differences; if a pipeline-shape change lands, update
+  // all three (consolidation is a deliberate non-goal until a fourth
+  // composition appears).
   async generateExperience({
     input: raw,
     user,
@@ -456,7 +462,12 @@ export class ExperienceMcpService {
     }
   }
 
-  private toolFailure(reason: ExperienceToolFailureReason, retryable: boolean) {
+  // Generic over the literal reason so each call site's inferred failure
+  // union stays narrow (createExperience can only ever produce slug_exists).
+  private toolFailure<R extends ExperienceToolFailureReason>(
+    reason: R,
+    retryable: boolean,
+  ) {
     return {
       ok: false as const,
       reason,

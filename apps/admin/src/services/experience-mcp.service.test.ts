@@ -385,6 +385,9 @@ describe("ExperienceMcpService.generateExperience", () => {
     ["timeout", true],
     ["auth_failed", false],
     ["generation_failed", false],
+    ["network_error", true],
+    ["parse_error", true],
+    ["internal_error", false],
   ] as const)(
     "passes through the mastra %s envelope and persists nothing",
     async (reason, retryable) => {
