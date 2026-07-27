@@ -135,12 +135,20 @@ export type SeekerEgressProblem = "allowlist_unset" | "host_not_allowed"
 
 /**
  * Boot diagnostic for the egress pin: the problem the proxies WILL refuse on,
- * or null when the configuration is sound. Pure and side-effect-free — it
- * changes no behavior and never throws; `instrumentation.ts` logs it at server
- * start so an operator sees the misconfiguration immediately instead of via a
- * dogfooder's failed send. Enforcement lives at the proxies (validateBaseUrl),
- * deliberately NOT here: a boot throw would take the whole app down, including
- * the stub path that needs no Mastra at all.
+ * or null when the configuration is sound. THIS FUNCTION stays pure and
+ * side-effect-free — it changes no behavior and never throws; both consumers of
+ * the same verdict live in `instrumentation.ts`, which logs it at server start
+ * and, since feat-306, THROWS on it in a production build. That throw rejects
+ * Next's `prepare()`, so the process answers HTTP 500 on EVERY route — stub
+ * path, page, and auth included. On a PROMOTION that is contained: feat-305's
+ * `/api/health` probe sees the 500 and the build never promotes, with the
+ * previous deployment still serving. It IS a total outage in the two cases the
+ * probe does not cover — an already-promoted deployment restarting into the
+ * same throw (not re-probed; recovery is to revert the variable), and a new
+ * environment with no previous deployment. Request-path enforcement stays at
+ * the proxies (validateBaseUrl); this return value now ALSO gates deploy
+ * promotion, so widen it only with that blast radius in mind. See
+ * apps/chat/CLAUDE.md "Production egress pin" for the full scoping.
  */
 export function describeSeekerEgressMisconfiguration(): SeekerEgressProblem | null {
   const baseUrl = env.SEEKER_MASTRA_BASE_URL
