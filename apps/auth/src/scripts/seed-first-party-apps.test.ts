@@ -36,7 +36,7 @@ describe("seedFirstPartyApps", () => {
       apps: 6,
       environments: 23,
       oauthClients: 27,
-      scopes: 19,
+      scopes: 21,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -174,6 +174,8 @@ describe("seedFirstPartyApps", () => {
             "video:read",
             "bible:read",
             "experience:publish",
+            "experience:create",
+            "experience:generate",
           ],
           redirectUris: [],
           public: true,

@@ -72,7 +72,12 @@ const BibleLookupInput = z.object({
   locale: z.string().min(1).max(35).optional(),
 })
 
-type LocaleRow = {
+/**
+ * Exported for the sibling experience-level MCP service
+ * (experience-mcp.service.ts) so both MCP surfaces emit the identical
+ * serialized locale shape.
+ */
+export type LocaleRow = {
   id: string
   experienceId: string
   locale: string
@@ -827,7 +832,7 @@ function limitVideoReferences(
   }
 }
 
-function serializeLocale(locale: LocaleRow) {
+export function serializeLocale(locale: LocaleRow) {
   return {
     id: locale.id,
     experienceId: locale.experienceId,

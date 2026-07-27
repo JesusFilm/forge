@@ -75,6 +75,9 @@ export const CHAT_DEFAULT_SCOPES = [
   "email:read",
 ] satisfies AuthScopeKey[]
 
+// experience:create / experience:generate are experience-level primitives
+// (feat-320); generate spends paid AI tokens so it stays a separate,
+// independently revocable scope. Neither implies experience:publish.
 export const ADMIN_MCP_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
@@ -89,6 +92,8 @@ export const ADMIN_MCP_DEFAULT_SCOPES = [
   "video:read",
   "bible:read",
   "experience:publish",
+  "experience:create",
+  "experience:generate",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {

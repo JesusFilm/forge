@@ -486,6 +486,20 @@ export const env = createEnv({
       .int()
       .positive()
       .default(200_000),
+    // Outbound HTTP budget for the MCP experience.generate call. DELIBERATELY
+    // strictly BELOW Cloudflare's ~100s proxy window fronting admin — the
+    // inverse of the sibling timeouts above — because mastra pins the SAME
+    // 180s internal budget on quick and multi draft modes (no quickDraft
+    // budget key exists), so "admin waits out mastra's budget" cannot fit the
+    // transport ceiling. Admin's abort is the binding ceiling here: the MCP
+    // caller gets a clean typed retryable failure instead of a severed 524
+    // connection, and nothing is persisted (the create happens only after a
+    // successful mastra response). See feat-320 (R7).
+    MASTRA_GENERATE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(90_000),
     // Flag-gated streaming chat cutover (consolidation U9). When "true",
     // `runMastraChat` relays the token stream from the standalone
     // `/forge-experience-chat` route instead of running the agent in-process;
@@ -790,6 +804,9 @@ export const env = createEnv({
     ),
     MASTRA_VARIANTS_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_VARIANTS_TIMEOUT_MS,
+    ),
+    MASTRA_GENERATE_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_GENERATE_TIMEOUT_MS,
     ),
     EXPERIENCE_AI_REMOTE_CHAT: emptyToUndefined(
       process.env.EXPERIENCE_AI_REMOTE_CHAT,

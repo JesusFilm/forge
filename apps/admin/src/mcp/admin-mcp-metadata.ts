@@ -19,7 +19,7 @@ export function getAdminMcpProtectedResourceMetadata() {
     ],
     resource_name: "Jesus Film Admin MCP",
     resource_documentation:
-      "https://github.com/JesusFilm/core/blob/main/docs/operations/bulk-locale-factory-mcp.md",
+      "https://github.com/JesusFilm/forge/blob/main/plugins/jfp-admin/skills/forge-bulk-locale-factory/SKILL.md",
   }
 }
 
