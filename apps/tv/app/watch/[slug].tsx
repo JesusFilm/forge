@@ -32,6 +32,7 @@ import {
 import {
   buildMetadataLine,
   formatBadgeLabel,
+  shouldShowUpNextRail,
 } from "../../src/components/watch/detailsHelpers"
 import {
   WATCH_THEME,
@@ -260,14 +261,16 @@ export default function WatchVideoScreen() {
 
         {/* Below the fold — opaque so it covers the backdrop as the user scrolls. */}
         <View style={styles.below}>
-          {/* This film's OWN chapter clips (JESUS: 61), above Up Next — which is
-              the PARENT's other children, a different relation. Renders nothing
-              when childless, so ordinary leaf videos are unaffected. */}
+          {/* Chapters and Up Next are mutually exclusive (shouldShowUpNextRail):
+              a film with its own chapter clips shows only those, since Up Next
+              is the PARENT's other children — a different, noisier relation. */}
           {hasVideo && video.chapters.length > 0 ? (
             <EpisodeRail episodes={video.chapters} noun={CHAPTER_NOUN} />
           ) : null}
 
-          {hasVideo ? <UpNextRail siblings={video.siblings} /> : null}
+          {hasVideo && shouldShowUpNextRail(video) ? (
+            <UpNextRail siblings={video.siblings} />
+          ) : null}
 
           {/* About + Related Questions share a two-column row. TVFocusGuideView
               spans the row so vertical D-pad over the non-focusable About column

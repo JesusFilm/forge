@@ -3,7 +3,29 @@ import {
   buildShareUrl,
   formatBadgeLabel,
   formatDuration,
+  shouldShowUpNextRail,
 } from "./detailsHelpers"
+
+describe("shouldShowUpNextRail", () => {
+  const chapter = { documentId: "ch-1" } as never
+
+  // A film with chapters shows the chapter rail INSTEAD of Up Next, never both.
+  it("hides Up Next when the video has its own chapters", () => {
+    expect(shouldShowUpNextRail({ chapters: [chapter] })).toBe(false)
+    expect(
+      shouldShowUpNextRail({ chapters: [chapter, chapter, chapter] }),
+    ).toBe(false)
+  })
+
+  it("keeps Up Next for an ordinary video with no chapters", () => {
+    expect(shouldShowUpNextRail({ chapters: [] })).toBe(true)
+  })
+
+  it("shows nothing before the record resolves", () => {
+    expect(shouldShowUpNextRail(null)).toBe(false)
+    expect(shouldShowUpNextRail(undefined)).toBe(false)
+  })
+})
 
 describe("formatBadgeLabel", () => {
   // Without the split the badge renders the raw enum, underscore and all —
