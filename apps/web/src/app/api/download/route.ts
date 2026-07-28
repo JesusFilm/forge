@@ -29,6 +29,13 @@ export const maxDuration = 60
 
 const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
 const DOWNLOAD_AUTH_REQUIRED = "auth-required"
+const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
+const MAX_DOWNLOAD_FILENAME_LENGTH = 200
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g
+const BIDI_CONTROL_RE = /[\u202a-\u202e\u2066-\u2069]/g
+const FILENAME_UNSAFE_RE = /[\\/;,"]/g
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
@@ -272,10 +279,61 @@ function redirectToTarget(safeUrl: string): NextResponse {
   })
 }
 
+function sanitizeDownloadFilename(raw: string | null): string {
+  const stripped = (raw ?? DEFAULT_DOWNLOAD_FILENAME)
+    .replace(CONTROL_CHARS_RE, "")
+    .replace(BIDI_CONTROL_RE, "")
+    .replace(FILENAME_UNSAFE_RE, "")
+    .trim()
+    .replace(/[.\s]+$/, "")
+
+  const filename = stripped || DEFAULT_DOWNLOAD_FILENAME
+  const basename = filename.toLowerCase().endsWith(".mp4")
+    ? filename.slice(0, -4)
+    : filename
+  return `${basename.slice(0, MAX_DOWNLOAD_FILENAME_LENGTH - 4)}.mp4`
+}
+
+function fallbackFilenameFromTarget(safeUrl: string): string {
+  try {
+    const pathname = new URL(safeUrl).pathname
+    const basename = pathname.split("/").filter(Boolean).at(-1)
+    return sanitizeDownloadFilename(basename ?? null)
+  } catch {
+    return DEFAULT_DOWNLOAD_FILENAME
+  }
+}
+
+function attachmentRedirectUrl(input: {
+  disposition: "attachment" | "inline"
+  filename: string | null
+  safeUrl: string
+}): string {
+  if (input.disposition !== "attachment") return input.safeUrl
+
+  const target = new URL(input.safeUrl)
+  if (
+    target.hostname !== "stream.mux.com" ||
+    !target.pathname.toLowerCase().endsWith(".mp4")
+  ) {
+    return input.safeUrl
+  }
+
+  target.searchParams.set(
+    "download",
+    input.filename
+      ? sanitizeDownloadFilename(input.filename)
+      : fallbackFilenameFromTarget(input.safeUrl),
+  )
+  return target.toString()
+}
+
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
   const anonymousInlineSubtitleRequest =
     isAnonymousInlineSubtitleRequest(searchParams)
+  const disposition =
+    searchParams.get("disposition") === "inline" ? "inline" : "attachment"
   const authGate = await resolveDownloadAccountGate(
     request,
     anonymousInlineSubtitleRequest,
@@ -317,7 +375,13 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
-  return redirectToTarget(safeUrl)
+  return redirectToTarget(
+    attachmentRedirectUrl({
+      disposition,
+      filename: searchParams.get("filename"),
+      safeUrl,
+    }),
+  )
 }
 
 export async function HEAD(request: Request): Promise<Response> {
@@ -334,5 +398,12 @@ export async function HEAD(request: Request): Promise<Response> {
   }
   const { safeUrl } = validation
 
-  return redirectToTarget(safeUrl)
+  return redirectToTarget(
+    attachmentRedirectUrl({
+      disposition:
+        searchParams.get("disposition") === "inline" ? "inline" : "attachment",
+      filename: searchParams.get("filename"),
+      safeUrl,
+    }),
+  )
 }

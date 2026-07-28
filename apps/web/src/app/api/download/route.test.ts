@@ -105,7 +105,9 @@ describe("GET /watch/api/download - DNS pre-flight", () => {
     )
 
     expect(res.status).toBe(302)
-    expect(res.headers.get("location")).toBe("https://stream.mux.com/abc.mp4")
+    expect(res.headers.get("location")).toBe(
+      "https://stream.mux.com/abc.mp4?download=abc.mp4",
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
@@ -187,11 +189,47 @@ describe("GET /watch/api/download - redirect path", () => {
 
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(
-      "https://stream.mux.com/abc.mp4?token=secret",
+      "https://stream.mux.com/abc.mp4?token=secret&download=Jesus-Film_English_eng_360p.mp4",
     )
     expect(res.headers.get("cache-control")).toContain("no-store")
     expect(res.headers.get("x-content-type-options")).toBe("nosniff")
     expect(res.headers.has("content-disposition")).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("sanitizes the Mux download filename parameter", async () => {
+    const fetchMock = vi.fn(async () => new Response("should not happen"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        url: "https://stream.mux.com/abc.mp4",
+        filename: 'bad/name;\r\n"movie"',
+      }),
+    )
+
+    expect(res.status).toBe(302)
+    expect(res.headers.get("location")).toBe(
+      "https://stream.mux.com/abc.mp4?download=badnamemovie.mp4",
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not add Mux download parameters to non-Mux redirects", async () => {
+    const fetchMock = vi.fn(async () => new Response("should not happen"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/media/example.mp4",
+        filename: "video.mp4",
+      }),
+    )
+
+    expect(res.status).toBe(302)
+    expect(res.headers.get("location")).toBe(
+      "https://api-media-core.jesusfilm.org/media/example.mp4",
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
@@ -237,7 +275,7 @@ describe("HEAD /watch/api/download", () => {
 
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(
-      "https://stream.mux.com/abc/1080p.mp4",
+      "https://stream.mux.com/abc/1080p.mp4?download=1080p.mp4",
     )
     expect(res.headers.get("cache-control")).toContain("no-store")
     expect(await res.text()).toBe("")

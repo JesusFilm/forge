@@ -84,6 +84,8 @@ download.
   streaming through Web.
 - `HEAD /watch/api/download` also redirects after validation and no longer
   performs an upstream metadata fetch.
+- Mux static MP4 attachment redirects include `download=<filename>` so Mux
+  returns `Content-Disposition: attachment` without Web proxying the body.
 - Signed-in opaque-ID download events are recorded before redirecting so the
   immediate redirect does not drop the best-effort event work.
 - Collection downloads now trigger browser download anchors instead of
