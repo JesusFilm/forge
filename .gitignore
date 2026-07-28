@@ -74,3 +74,5 @@ apps/mobile/design-mockups/
 # Daily-devotional generated artifacts: rendered videos, downloaded clips, audio,
 # manifests, caches, previews. All reproducible output — never committed.
 devo/
+
+/local/
