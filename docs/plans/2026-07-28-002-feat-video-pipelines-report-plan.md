@@ -32,7 +32,7 @@ report has no "AI" stat segment — only Generated / Not Generated.
 Manager's Studio dashboard currently tracks per-language coverage for
 Subtitles, Audio, and Meta only (`ReportType = "subtitles" | "audio" |
 "meta"`). There is no operator-facing surface for tracking the development
-and status of video *production* workflows — work that doesn't have a
+and status of video _production_ workflows — work that doesn't have a
 per-language dimension and instead produces two output aspect ratios per
 item (mobile / desktop). The devotional video pipeline tickets
 (`docs/roadmap/media-generation/feat-286` through `feat-293`) are the first
@@ -76,7 +76,7 @@ These are inferred decisions made without a synchronous user checkpoint
 unless corrected:
 
 1. **Aggregate status bucketing.** A cell counts toward "Generated" only
-   when *both* mobile and desktop are generated; anything else (zero or one
+   when _both_ mobile and desktop are generated; anything else (zero or one
    generated) counts as "Not Generated" at the aggregate/stat level. The two
    per-cell icons remain independently accurate regardless of this bucket.
 2. **"Media type (tag) - Basic"** refers to the collection tag/pill shown
@@ -120,7 +120,7 @@ unless corrected:
 4. **Local outcome-resolution copy, not `resolveEnrichSelectionOutcome`
    verbatim.** That function's success/failure messages say "enrichment
    job(s)", which is wrong copy for a "Run Now" action. Reuse its
-   *selection-preserved-on-partial-failure* behavior and the shared
+   _selection-preserved-on-partial-failure_ behavior and the shared
    `EnrichFeedback` type/tone contract, but write a small local resolver
    with copy suited to "queued to run" / "failed to run".
 5. **No CSS-in-JS / component library change.** Styling follows the existing
@@ -153,6 +153,7 @@ page (while selecting Subtitles/Audio/Meta from that page navigates back to
 **Dependencies:** None.
 
 **Files:**
+
 - `apps/manager/src/features/shell/manager-shell.tsx` (edit)
 - `apps/manager/src/features/shell/manager-shell-report-switcher.test.ts` (new)
 - `apps/manager/src/app/globals.css` (edit — add
@@ -161,8 +162,9 @@ page (while selecting Subtitles/Audio/Meta from that page navigates back to
   rules around line 7264)
 
 **Approach:**
+
 - Extend `ManagerShellReportType` to `"subtitles" | "audio" | "meta" |
-  "video-pipelines"`.
+"video-pipelines"`.
 - Add an entry to `reportOptions` (label "Video Pipelines", subtitle "Track
   the development and status of video production workflows.", icon `Film`
   from `lucide-react` — add to the existing icon import list).
@@ -183,6 +185,7 @@ page (while selecting Subtitles/Audio/Meta from that page navigates back to
 `renderToStaticMarkup` + `toContain` assertion style for the new test file.
 
 **Test scenarios:**
+
 - Happy path: `reportOptions` contains a `"video-pipelines"` entry with
   label "Video Pipelines" and the exact description text above.
 - Happy path: rendering `StudioReportSwitcher` (via
@@ -215,15 +218,17 @@ deterministic cells.
 **Dependencies:** None.
 
 **Files:**
+
 - `apps/manager/src/features/video-pipelines/video-pipeline-model.ts` (new)
 - `apps/manager/src/features/video-pipelines/video-pipeline-model.test.ts` (new)
 
 **Approach:**
+
 - Types: `VideoPipelineCell = { id: string; title: string; date: string
-  /* YYYY-MM-DD */; thumbnailUrl: string | null; mobileGenerated: boolean;
-  desktopGenerated: boolean }`; `VideoPipelineAggregateStatus = "generated" |
-  "none"`; `VideoPipelineCollection = { id: string; title: string; label:
-  string; labelDisplay: string; cells: VideoPipelineCell[] }`.
+/* YYYY-MM-DD */; thumbnailUrl: string | null; mobileGenerated: boolean;
+desktopGenerated: boolean }`; `VideoPipelineAggregateStatus = "generated" |
+"none"`; `VideoPipelineCollection = { id: string; title: string; label:
+string; labelDisplay: string; cells: VideoPipelineCell[] }`.
 - `buildDevotionsAugustCollection(): VideoPipelineCollection` — generates 31
   cells for `2026-08-01`..`2026-08-31`, id `devotion-2026-08-{DD}`, title
   `Devotional — Aug {D}`, a deterministic (not `Math.random`) pattern for
@@ -238,6 +243,7 @@ deterministic cells.
   hover preview (e.g. "August 3, 2026").
 
 **Test scenarios:**
+
 - Happy path: `buildDevotionsAugustCollection()` returns exactly 31 cells,
   dated `2026-08-01` through `2026-08-31` in order, each with a unique id.
 - Happy path: the container's `label`/`labelDisplay` is `"basic"`/`"Basic"`.
@@ -267,6 +273,7 @@ callers.
 **Dependencies:** None.
 
 **Files:**
+
 - `apps/manager/src/features/coverage/enrich-action-controls.tsx` (edit)
 - `apps/manager/src/features/coverage/enrich-action-controls.test.ts` (edit)
 
@@ -277,6 +284,7 @@ or behavior changes — existing callers in `coverage-report-client.tsx` are
 unaffected because they don't pass the new props.
 
 **Test scenarios:**
+
 - Happy path: rendering with no `actionLabel`/`submittingLabel` still shows
   "Enrich Now" idle and "Creating jobs..." while `isEnrichSubmitting` is
   true (regression coverage for existing callers).
@@ -302,12 +310,14 @@ the shared response envelope shape without dispatching real work.
 **Dependencies:** None (independent of U1–U3, consumed by U5).
 
 **Files:**
+
 - `apps/manager/src/app/api/video-pipelines/run/route.ts` (new)
 - `apps/manager/src/app/api/video-pipelines/run/route.test.ts` (new)
 - `apps/manager/src/features/video-pipelines/run-selection.ts` (new)
 - `apps/manager/src/features/video-pipelines/run-selection.test.ts` (new)
 
 **Approach:**
+
 - Route: authenticate the same way every other Manager API route does
   (reuse the existing `authenticateRequest` helper used elsewhere in
   `src/app/api/**`); parse body `{ videoIds: string[] }` with Zod (cap at,
@@ -316,23 +326,25 @@ the shared response envelope shape without dispatching real work.
   now (no `jobs`/`errors` — there are no real jobs to link to, so omit
   `jobs` entirely rather than fabricate fake job ids/links).
 - `run-selection.ts` exports `resolveRunSelectionOutcome(selectedIds,
-  response): { nextSelectedIds: Set<string>; feedback: EnrichFeedback |
-  null }`, mirroring `resolveEnrichSelectionOutcome`'s
+response): { nextSelectedIds: Set<string>; feedback: EnrichFeedback |
+null }`, mirroring `resolveEnrichSelectionOutcome`'s
   selection-preserved-on-partial-failure rule but with "run" wording (e.g.
   `"${count} video(s) queued to run."` / `"Failed to queue ${count}
-  video(s) to run: ${details}"`), reusing the `EnrichFeedback` type from
+video(s) to run: ${details}"`), reusing the `EnrichFeedback` type from
   `@/features/enrich-selection`.
 
 **Test scenarios (route):**
+
 - Happy path: authenticated POST with 1–100 valid ids returns `200` with
   `created` equal to the id count and `failed: 0`.
 - Error path: unauthenticated request returns the same 401 shape every
   other Manager API route returns.
 - Error path: body failing Zod validation (empty `videoIds`, non-array,
-  >100 ids) returns `400` with validation details, matching the
-  `/api/admin-trigger/*` error-shape convention.
+  > 100 ids) returns `400` with validation details, matching the
+  > `/api/admin-trigger/*` error-shape convention.
 
 **Test scenarios (resolver):**
+
 - Happy path: an all-success response clears the selection to an empty
   set and returns a success-tone feedback mentioning the count.
 - Integration: a partial-failure response keeps only the failed ids in
@@ -361,6 +373,7 @@ Decisions 1–6.
 **Dependencies:** U1, U2, U3, U4.
 
 **Files:**
+
 - `apps/manager/src/app/dashboard/video-pipelines/page.tsx` (new)
 - `apps/manager/src/app/dashboard/video-pipelines/loading.tsx` (new)
 - `apps/manager/src/features/video-pipelines/video-pipelines-client.tsx` (new)
@@ -375,6 +388,7 @@ Decisions 1–6.
   new)
 
 **Approach:**
+
 - `page.tsx` mirrors `apps/manager/src/app/dashboard/coverage/page.tsx`:
   `export const dynamic = "force-dynamic"`, sets `metadata.title`, renders
   `<VideoPipelinesClient />` with no server-fetched data (U2's builder runs
@@ -414,7 +428,7 @@ Decisions 1–6.
   - Clicking a cell toggles it into `selectedCellIds`; when non-empty,
     renders `ManagerShellSidebarSlot` with a simple "N video(s) selected"
     summary and `<EnrichActionControls actionLabel="Run Now"
-    submittingLabel="Running..." onEnrich={...} ... />`, where `onEnrich`
+submittingLabel="Running..." onEnrich={...} ... />`, where `onEnrich`
     POSTs to `/api/video-pipelines/run` and applies
     `resolveRunSelectionOutcome` (U4) to update `selectedCellIds` and the
     feedback message.
@@ -426,6 +440,7 @@ for the preview bar; `ManagerShellSidebarSlot` usage in the same file for
 the job-order sidebar mount point.
 
 **Test scenarios:**
+
 - Happy path: `renderToStaticMarkup` of the collapsed component contains
   "Video Pipelines", the description text, "Devotions - August", the
   "Basic" tag, and "31 video" (count text).
@@ -434,7 +449,7 @@ the job-order sidebar mount point.
   markup (mirrors the existing `CollectionCard` toggle assertion style);
   rendering collapsed shows the reverse.
 - Happy path: for a cell fixture with `mobileGenerated: true,
-  desktopGenerated: false`, the rendered markup contains one
+desktopGenerated: false`, the rendered markup contains one
   `pipeline-cell-icon--generated` and one `pipeline-cell-icon--pending`
   class for that cell's two icons (proves independence from the aggregate
   bucket).
@@ -447,7 +462,7 @@ the job-order sidebar mount point.
   already present and adds one that is not, matching a standard Set-toggle
   test shape.
 - Edge case: rendering with zero cells generated (`counts = {generated: 0,
-  none: 31}`) shows 0% / 100% in `PipelineStatDiagram`'s output, and no "AI"
+none: 31}`) shows 0% / 100% in `PipelineStatDiagram`'s output, and no "AI"
   label appears anywhere in the rendered stat markup.
 - Integration: the search filter narrows the rendered cell list to titles/
   dates matching the query string (e.g. searching "12" only renders the
@@ -473,6 +488,7 @@ Decision 3.
 **Dependencies:** None (consumed by U5).
 
 **Files:**
+
 - `apps/manager/src/features/video-pipelines/pipeline-stat-diagram.tsx` (new)
 - `apps/manager/src/features/video-pipelines/pipeline-stat-diagram.test.ts` (new)
 
@@ -483,6 +499,7 @@ number }` and rendering exactly two segments — no third "ai" entry, no
 `ai`-keyed prop anywhere in its type.
 
 **Test scenarios:**
+
 - Happy path: `counts = {generated: 10, none: 21}` renders "32%" /"68%"-style
   percentages (rounded) for Generated / Not Generated and no other segment
   label.

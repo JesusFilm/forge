@@ -16,7 +16,7 @@ tags:
 
 Manager's Studio dashboard only tracks per-language coverage for Subtitles,
 Audio, and Meta. There is no operator-facing view for tracking the
-development and status of video *production* workflows (e.g. the devotional
+development and status of video _production_ workflows (e.g. the devotional
 video pipeline in feat-286 through feat-293), which produce a full "web" cut
 and a "social short" cut per day rather than per-language coverage.
 
