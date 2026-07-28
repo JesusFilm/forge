@@ -14,8 +14,8 @@ crop-worker owns FFmpeg fingerprint/render byte work.
 ### Core ID
 
 The stable identifier from the Core API for a Core-sourced entity. For source
-video attribution, `Video.coreId` is the canonical video answer and
-`VideoDub.coreId` is Core's `videoVariantId`.
+video attribution, a Video's Core ID is the canonical answer to "which video",
+while a Dub's Core ID is Core's identifier for that specific language variant.
 
 ### Video
 
@@ -483,6 +483,10 @@ Showcase Mode's degradation floor: a slideshow of poster art from the last-good 
 
 A child Video that is a segment of one longer film, not a work in its own right. Chapters are how a feature film is broken up for navigation; the parent film remains a single playable item, and the Chapters are an index into it rather than a season of separate works.
 _Contrast:_ an Episode is a child of a series and stands alone. Because both arrive as parent/child links, the child relationship cannot distinguish them — only the parent's catalog label does.
+
+### Episode
+
+A child Video of a series that is a work in its own right — watchable and meaningful on its own, one installment of an ordered run. Only a Series-Shaped parent has Episodes; a film's children are Chapters.
 
 ### Series-Shaped
 

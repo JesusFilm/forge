@@ -1,7 +1,7 @@
 ---
 title: TV/mobile series-detail 10s render — shared-fragment over-fetch + an un-indexed childDubLanguages aggregation (local timing hides prod cost)
 date: 2026-06-19
-last_updated: 2026-06-30
+last_updated: 2026-07-28
 category: performance-issues
 module: apps/tv, apps/mobile, apps/admin
 problem_type: performance_issue
@@ -25,6 +25,17 @@ tags:
   - local-vs-prod-latency
   - query-split-bytes-vs-latency
 ---
+
+> **2026-07-28 update — the `jesus` example is now TV-historical, but this doc is fully live on mobile.**
+> PR #1767 changed TV's series-vs-watch classification to label-only (SERIES/COLLECTION), so
+> `jesus` — a FEATURE_FILM — no longer reaches `/series` on TV; it renders `/watch/[slug]` via
+> `GET_VIDEO_BY_SLUG`. Treat the `jesus` TV figures below as historical. **Mobile routing is
+> unchanged:** its home shelf and search results still send `jesus` to `/series` via `childCount`,
+> and mobile's `GET_SERIES_BY_SLUG` still fetches `childDubLanguages` on the blocking query — it
+> never received TV's Phase 2 lazy split. So the scenario measured here is still literal live
+> behaviour on mobile. The composite-index recommendation continues to apply to any genuine
+> high-fan-out SERIES/COLLECTION on either client. See
+> [a record's own children are not a container signal](../logic-errors/tv-childcount-not-a-series-container-signal.md).
 
 ## Problem
 
@@ -147,6 +158,15 @@ re-entry).
 The intuitively-guilty field — named "languages," with the visible aggregation cost — was the
 **latency** driver but the **byte** minor. The next, higher-value payload follow-up (trim
 `variants: dubs`) was identifiable **only** from this per-field split.
+
+## New TV fan-out surface from the reclassification (2026-07-28, PR #1767)
+
+`GET_VIDEO_BY_SLUG` (`apps/tv/src/lib/videoQueries.ts`) now selects the video's own
+`children` — card fields only, no `dubs` and no `childDubLanguages` — to power the Chapters
+rail on `/watch` for the ten reclassified films (up to ~61-73 children each). This is a
+different fan-out from the `childDubLanguages` aggregation measured above and has **not** been
+benchmarked against prod. Apply the same per-field `size_download` / `time_total` split from
+Phase 2 before assuming it is negligible; do not carry the numbers above over to it.
 
 ## The META lesson
 

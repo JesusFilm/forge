@@ -112,8 +112,11 @@ for (const v of videos) if (v.coreId) index.set(v.coreId, v)
 ```
 
 Insert children first, then top-level, so a coreId present both ways resolves to the
-top-level record (which carries `children` → a real `childCount` → correct series
-routing). Both the config model and the adapter consume this one builder.
+top-level record (which carries `children` → a real `childCount` for the meta-label
+noun, e.g. "61 chapters"). Series-vs-single routing itself is label-only and does not
+read `childCount` at all — see
+[tv-childcount-not-a-series-container-signal](../logic-errors/tv-childcount-not-a-series-container-signal.md).
+Both the config model and the adapter consume this one builder.
 
 Crucially, **hydration coverage is the index keyset, not the fetched id list** — the
 index is a superset (records ∪ their children). Compute divergence against the keyset,
@@ -258,4 +261,5 @@ coverage in a codebase that can't render hooks in tests.
 - [Cross-client home-hero web parity via a wire-label eligibility gate](cross-client-hero-parity-eligibility-gate.md) — the follow-up that closed the hero-divergence gap this doc flagged (label-gate approximation of web's hls gate; PR #1534).
 - [TV SDUI MediaCollection card image/title resolution](tv-sdui-mediacollection-card-image-title-resolution.md) — extends this doc's coreId-hydration beyond the Home migration to the general SDUI Experience-Details MediaCollection renderer (`ExperienceProvider` / `experienceHydration.ts`), and adds the card image-resolution layer (imageOverrideUrl origin rewrite, field-major cardImage, Mux 640 ceiling) this doc does not cover; PR #1551.
 - [Mobile Home adapter: additive coreId hydration + hero-leak guard](mobile-watch-home-card-hydration-hero-leak-guard.md) — the port of this doc's coreId-index / top-up / versioned-snapshot mechanism to mobile's Home adapter, with two mechanisms absent here: an **additive-not-drop** item-retention policy and a structural **hero-leak guard** (`assembleWatchHomeModel` keeps config vs hydration videos separate so a curated top-up short film can't leak into the client-owned hero); PR #1676.
+- [A record's own children are not a container signal](../logic-errors/tv-childcount-not-a-series-container-signal.md) — corrects this doc's earlier claim that `childCount` drives series routing; classification is label-only, and `childCount` now only feeds the meta-label noun.
 - Plan: `docs/plans/2026-07-08-003-feat-tv-home-experience-parity-plan.md`.
