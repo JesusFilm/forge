@@ -1152,6 +1152,20 @@ export function CoverageReportClient({
       ? shellReportType
       : storedReportType
 
+  // Mount-only: keeps the Studio switcher's highlighted selection in sync
+  // when this page is reached by any path that doesn't go through the
+  // switcher itself (the sidebar "Report" nav link, browser back/forward,
+  // or a direct URL) -- otherwise the switcher can keep showing a stale
+  // report type (e.g. "Video Pipelines") left over from shell state after
+  // navigating away from a different report's page. Empty deps for the
+  // same reason as VideoPipelinesClient's mount effect: `shell` is a new
+  // object reference every time reportType changes, so depending on it
+  // here would re-fire on every report switch.
+  useEffect(() => {
+    shell?.setReportType(reportType)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Snapshot data for instant header bar rendering (pre-computed daily)
   type SnapshotData = {
     totalVideos: number

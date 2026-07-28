@@ -2344,7 +2344,7 @@ html[data-coverage-loading="true"] .collections::after {
 }
 
 .pipeline-cell-icon--pending {
-  color: #d4d4d8;
+  color: #a8a29e;
 }
 
 .collection-empty--no-data {
@@ -7348,7 +7348,7 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 }
 
 .design-system-report-icon.is-video-pipelines {
-  color: #2f6f4e;
+  color: #15803d;
 }
 
 .design-system-report-switch-option > .design-system-report-icon {

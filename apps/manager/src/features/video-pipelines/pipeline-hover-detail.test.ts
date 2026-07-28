@@ -26,4 +26,19 @@ describe("PipelineHoverDetailBar", () => {
     expect(markup).toContain(`alt="${cell.title}"`)
     expect(markup).not.toContain("Hover any cell to see its details.")
   })
+
+  it("falls back to the empty thumbnail placeholder when thumbnailUrl is null", () => {
+    const cell = {
+      ...buildDevotionsAugustCollection().cells[0]!,
+      thumbnailUrl: null,
+    }
+
+    const markup = renderToStaticMarkup(
+      React.createElement(PipelineHoverDetailBar, { hoveredCell: cell }),
+    )
+
+    expect(markup).toContain("detail-thumb--empty")
+    expect(markup).not.toContain("has-detail-bg")
+    expect(markup).not.toContain("<img")
+  })
 })

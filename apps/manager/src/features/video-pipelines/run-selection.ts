@@ -19,9 +19,12 @@ function formatFailedMessage(count: number): string {
 }
 
 /**
- * Mirrors resolveEnrichSelectionOutcome's selection-preserved-on-failure
- * rule, but with copy suited to "Run Now" rather than "Enrich Now" — see
- * Key Technical Decision 4 in the Video Pipelines plan.
+ * On any failure, keeps the ENTIRE original selection rather than
+ * narrowing to just the failed ids the way resolveEnrichSelectionOutcome
+ * does — the stub /api/video-pipelines/run response has no per-id
+ * success/failure breakdown to narrow by (see Key Technical Decision 4 in
+ * the Video Pipelines plan). Re-check this once a real backend response
+ * carries per-id detail.
  */
 export function resolveRunSelectionOutcome(
   selectedIds: ReadonlySet<string>,

@@ -61,6 +61,17 @@ export function VideoPipelinesClient() {
     [collection, searchQuery],
   )
 
+  // Clear the hover preview once a search query filters its cell out of
+  // view, so the detail bar can't keep showing a cell no longer rendered.
+  useEffect(() => {
+    if (
+      hoveredCell &&
+      !filteredCollection.cells.some((cell) => cell.id === hoveredCell.id)
+    ) {
+      setHoveredCell(null)
+    }
+  }, [filteredCollection, hoveredCell])
+
   const handleRunNow = async () => {
     setIsSubmitting(true)
     setFeedback(null)
@@ -87,6 +98,11 @@ export function VideoPipelinesClient() {
       const outcome = resolveRunSelectionOutcome(selectedCellIds, body)
       setSelectedCellIds(outcome.nextSelectedIds)
       setFeedback(outcome.feedback)
+    } catch {
+      setFeedback({
+        tone: "error",
+        message: "Failed to queue videos to run.",
+      })
     } finally {
       setIsSubmitting(false)
     }
