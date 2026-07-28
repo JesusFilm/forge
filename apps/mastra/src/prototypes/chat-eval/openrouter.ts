@@ -23,6 +23,8 @@
  * real implementation must reinstate it.
  */
 
+import { keyHelpText, resolveOpenRouterKey } from "./env"
+
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions"
 
@@ -52,15 +54,11 @@ export class PrototypeLlmError extends Error {
 }
 
 export function getApiKey(): string {
-  const key =
-    process.env.OPENROUTER_API_PAID_KEY ?? process.env.OPENROUTER_API_KEY
-  if (!key) {
-    throw new PrototypeLlmError(
-      "missing_credentials",
-      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY must be set",
-    )
+  const resolved = resolveOpenRouterKey()
+  if (!resolved) {
+    throw new PrototypeLlmError("missing_credentials", keyHelpText())
   }
-  return key
+  return resolved.key
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -181,7 +179,11 @@ export async function completeText(input: {
         { role: "system", content: input.system },
         { role: "user", content: input.user },
       ],
-      max_tokens: input.maxTokens ?? 900,
+      // 1600, raised from 900 after the 2026-07-29 run truncated Sonnet on
+      // q-trinity. The cap must sit well ABOVE the length we want answers to
+      // hit, or the harness silently converts "too long" (a finding) into
+      // "truncated" (an error) and we lose the signal.
+      max_tokens: input.maxTokens ?? 1_600,
       temperature: input.temperature ?? 0.7,
     },
     input.timeoutMs ?? 90_000,

@@ -31,16 +31,33 @@ export type AnsweringModel = {
  * list with the prompt held fixed. Phase B — "did this prompt edit help?" —
  * pins it to the chosen primary (and maybe secondary) and varies the prompt.
  */
+/**
+ * WHY NOT THE `:free` SLUGS PRODUCTION USES
+ * -----------------------------------------
+ * The 2026-07-29 run got HTTP 429 on 6 of 6 `google/gemma-4-31b-it:free`
+ * calls, with `limit_source: upstream_provider_shared_pool`. That is not a
+ * key problem — the same key completed every Sonnet and Haiku call in the
+ * same run. OpenRouter routes `:free` variants through a shared upstream
+ * pool whose rate limit is global, so NO key makes them reliable.
+ *
+ * The paid variants are the SAME model weights on dedicated routing, at
+ * roughly $0.0005 for a whole eval run. So the eval uses them and still
+ * measures the model production actually runs.
+ *
+ * The `:free` unreliability is a real production concern — it is what
+ * seeker-agent.ts:122 hits first on every turn — but it is a routing
+ * decision for that agent, not something the eval should inherit.
+ */
 export const ANSWERING_MODELS: readonly AnsweringModel[] = [
   {
-    id: "google/gemma-4-31b-it:free",
+    id: "google/gemma-4-31b-it",
     label: "gemma-31b",
-    note: "Production primary today (seeker-agent.ts:122).",
+    note: "Same weights as production's primary (seeker-agent.ts:122), paid routing.",
   },
   {
-    id: "google/gemma-4-26b-a4b-it:free",
+    id: "google/gemma-4-26b-a4b-it",
     label: "gemma-26b",
-    note: "Production failover today (seeker-agent.ts:123).",
+    note: "Same weights as production's failover (seeker-agent.ts:123), paid routing.",
   },
   {
     id: "anthropic/claude-sonnet-5",
@@ -56,6 +73,8 @@ export const JUDGE_MODEL = "anthropic/claude-haiku-4.5"
 
 /** USD per token, from OpenRouter's catalog on 2026-07-29. */
 const PRICING: Record<string, { input: number; output: number }> = {
+  "google/gemma-4-31b-it": { input: 0.00000014, output: 0.0000004 },
+  "google/gemma-4-26b-a4b-it": { input: 0.00000015, output: 0.00000045 },
   "google/gemma-4-31b-it:free": { input: 0, output: 0 },
   "google/gemma-4-26b-a4b-it:free": { input: 0, output: 0 },
   "anthropic/claude-sonnet-5": { input: 0.000002, output: 0.00001 },
