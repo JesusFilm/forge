@@ -21,6 +21,7 @@ import {
   FloatingSearchFieldInput,
   useFloatingSearchInputAutofocus,
 } from "./FloatingSearchField"
+import { useSearchModalFocusContainment } from "./useSearchModalFocusContainment"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
@@ -161,50 +162,8 @@ export function SearchOverlay() {
     }
   }, [open])
 
-  // Focus trap — keep Tab cycling inside the overlay.
-  useEffect(() => {
-    if (!open) return
-    function handleTab(e: KeyboardEvent) {
-      if (e.key !== "Tab") return
-      const overlay = overlayRef.current
-      if (!overlay) return
-      const overlayFocusable = Array.from(
-        overlay.querySelectorAll<HTMLElement>(
-          'input, button, a[href], [tabindex]:not([tabindex="-1"])',
-        ),
-      )
-      const headerLogo = document.querySelector<HTMLElement>(
-        '[data-testid="floating-header-logo"]',
-      )
-      const headerLanguage = document.querySelector<HTMLElement>(
-        '[data-testid="floating-header-language-button"]',
-      )
-      const headerClose = document.querySelector<HTMLElement>(
-        '[data-testid="floating-header-search-close"]',
-      )
-      const focusable = [
-        headerLogo,
-        ...overlayFocusable,
-        headerLanguage,
-        headerClose,
-      ].filter((element): element is HTMLElement => element != null)
-      if (focusable.length === 0) return
-      const activeIndex = focusable.indexOf(
-        document.activeElement as HTMLElement,
-      )
-      const nextIndex = e.shiftKey
-        ? activeIndex <= 0
-          ? focusable.length - 1
-          : activeIndex - 1
-        : activeIndex === -1 || activeIndex >= focusable.length - 1
-          ? 0
-          : activeIndex + 1
-      e.preventDefault()
-      focusable[nextIndex]?.focus()
-    }
-    document.addEventListener("keydown", handleTab)
-    return () => document.removeEventListener("keydown", handleTab)
-  }, [open])
+  // Keep the dialog and its persistent-header controls in one Tab sequence.
+  useSearchModalFocusContainment(open || closing, overlayRef)
 
   // Cleanup debounce timer on unmount.
   useEffect(() => {

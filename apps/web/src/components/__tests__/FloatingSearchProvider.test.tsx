@@ -312,6 +312,43 @@ function setInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
+function dispatchTab(shiftKey = false): KeyboardEvent {
+  const event = new KeyboardEvent("keydown", {
+    key: "Tab",
+    shiftKey,
+    bubbles: true,
+    cancelable: true,
+  })
+  document.dispatchEvent(event)
+  return event
+}
+
+function SearchOverlayInstantShellFocusHarness() {
+  const [open, setOpen] = useState(true)
+  const [query, setQuery] = useState("")
+
+  return (
+    <>
+      <button type="button" data-testid="floating-header-logo">
+        Home
+      </button>
+      <SearchOverlayInstantShell
+        open={open}
+        closing={false}
+        query={query}
+        setQuery={setQuery}
+        setOpen={setOpen}
+        headerTopClass="top-0"
+        logoSlotClass=""
+        headerLanguageControlVisible={false}
+      />
+      <button type="button" data-testid="floating-header-search-close">
+        Close search
+      </button>
+    </>
+  )
+}
+
 async function openSearchOverlay(): Promise<HTMLInputElement> {
   act(() => {
     root.render(
@@ -2690,6 +2727,44 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       document.querySelector('[data-testid="language-combobox-trigger"]'),
     ).not.toBeNull()
     expect(document.activeElement).toBe(input)
+  })
+
+  it("contains Tab focus while the instant search shell is visible", () => {
+    act(() => {
+      root.render(<SearchOverlayInstantShellFocusHarness />)
+    })
+
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLButtonElement
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+
+    close.focus()
+    expect(dispatchTab().defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(logo)
+
+    expect(dispatchTab(true).defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(close)
+  })
+
+  it("contains Tab focus after the loaded search overlay replaces its shell", async () => {
+    await openSearchOverlay()
+
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLAnchorElement
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+
+    close.focus()
+    expect(dispatchTab().defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(logo)
+
+    expect(dispatchTab(true).defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(close)
   })
 
   it("keeps the floating header stable while rendering search overlay controls below it", async () => {

@@ -12,6 +12,7 @@ import {
   FloatingSearchFieldInput,
   useFloatingSearchInputAutofocus,
 } from "./FloatingSearchField"
+import { useSearchModalFocusContainment } from "./useSearchModalFocusContainment"
 import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
@@ -49,8 +50,10 @@ export function SearchOverlayInstantShell({
 }: SearchOverlayInstantShellProps) {
   const t = useTranslations("SearchOverlay")
   const inputRef = useRef<HTMLInputElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
   useFloatingSearchInputAutofocus(open, inputRef)
+  useSearchModalFocusContainment(open || closing, overlayRef)
 
   useEffect(() => {
     if (!open) return
@@ -76,6 +79,7 @@ export function SearchOverlayInstantShell({
 
   return (
     <div
+      ref={overlayRef}
       role="dialog"
       aria-modal="true"
       aria-label={t("dialogLabel")}
