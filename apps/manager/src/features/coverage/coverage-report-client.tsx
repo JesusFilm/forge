@@ -1144,7 +1144,13 @@ export function CoverageReportClient({
     useState(false)
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
   const [storedReportType] = useSessionReportType("subtitles")
-  const reportType = shell?.reportType ?? storedReportType
+  const shellReportType = shell?.reportType
+  const reportType: ReportType =
+    shellReportType === "subtitles" ||
+    shellReportType === "audio" ||
+    shellReportType === "meta"
+      ? shellReportType
+      : storedReportType
 
   // Snapshot data for instant header bar rendering (pre-computed daily)
   type SnapshotData = {
