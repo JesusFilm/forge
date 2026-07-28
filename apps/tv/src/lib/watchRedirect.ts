@@ -1,6 +1,6 @@
 // Pure, React-free redirect for /watch/[slug] — mirror seam of seriesScreenState's
-// resolveLeafBounce (watch → /series for label-series, series → /watch for leaves).
-// Predicates partition (isSeriesLabel ⊂ isSeriesRecord) so the seams can't loop.
+// resolveLeafBounce. Both seams read the ONE isSeriesLabel predicate, which is what
+// makes them exact inverses and unable to loop; a second predicate would break that.
 
 import { isSeriesLabel } from "./isSeriesRecord"
 

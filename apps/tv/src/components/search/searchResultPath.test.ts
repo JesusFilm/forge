@@ -32,26 +32,35 @@ describe("searchResultPath", () => {
     expect(path.startsWith("/series/gospel-of-john?seed=")).toBe(true)
   })
 
-  // isSeriesSearchResult's has-children branch: an unlabeled collection still
-  // lands on the series screen when the result carries a child count.
-  it("routes an unlabeled result with childCount > 0 to /series/[slug]", () => {
+  // REGRESSION GUARD: a feature film's chapter clips must not make it a series.
+  // Searching "jesus" and pressing the top hit used to open the series screen.
+  it("routes a feature film WITH chapter clips to /watch/[slug]", () => {
     const path = searchResultPath(
-      makeResult({ slug: "gospel", label: null, childCount: 12 }),
+      makeResult({ slug: "jesus", label: "FEATURE_FILM", childCount: 61 }),
     )
-    expect(path.startsWith("/series/gospel?seed=")).toBe(true)
+    expect(path.startsWith("/watch/jesus?seed=")).toBe(true)
   })
 
-  it("keeps childCount 0 / null results on /watch", () => {
+  it("routes an unlabeled result to /watch, whatever its childCount", () => {
+    expect(
+      searchResultPath(
+        makeResult({ slug: "gospel", label: null, childCount: 12 }),
+      ).startsWith("/watch/gospel?seed="),
+    ).toBe(true)
     expect(
       searchResultPath(makeResult({ label: null, childCount: 0 })).startsWith(
         "/watch/",
       ),
     ).toBe(true)
-    expect(
-      searchResultPath(
-        makeResult({ label: "FEATURE_FILM", childCount: null }),
-      ).startsWith("/watch/"),
-    ).toBe(true)
+  })
+
+  // The film keeps its playbackId (only series seeds null it), so the /watch hero
+  // can paint a preview immediately instead of waiting on the query.
+  it("keeps the playbackId in a film's seed even when it has children", () => {
+    const path = searchResultPath(
+      makeResult({ slug: "jesus", label: "FEATURE_FILM", childCount: 61 }),
+    )
+    expect(decodeWatchSeed(path.split("seed=")[1])?.playbackId).toBe("abc123")
   })
 
   it("routes a non-video (EXPERIENCE) result to /experience/[slug]", () => {

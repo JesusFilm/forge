@@ -42,10 +42,10 @@ describe("WATCH_SEARCH (multilingual watch search)", () => {
     expect(searchSdl).toContain("query WatchSearch(")
   })
 
-  // searchResultPath routes series off label OR childCount, so both must be
-  // selected or every series degrades to the /watch hop. Admin returns null for
-  // both today; selecting them is what makes TV correct once it populates them.
-  it("selects label and childCount for series routing", () => {
+  // `label` alone routes series (searchResultPath); `childCount` only feeds the
+  // result chip's count. Admin returns null for both today, so selecting them is
+  // what makes TV correct once it populates them.
+  it("selects label for series routing and childCount for the result chip", () => {
     expect(searchSdl).toMatch(/\blabel\b/)
     expect(searchSdl).toMatch(/\bchildCount\b/)
   })

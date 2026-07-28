@@ -37,6 +37,40 @@ export function resolveRowScrollTarget(args: {
 }
 
 /**
+ * Trim, don't wipe: onLayout only re-fires for rows that actually moved, so
+ * clearing the store strands unchanged rows unmeasured and focus stops scrolling.
+ * Mutates in place — the caller holds it in a ref.
+ */
+export function trimRowMeasurements(
+  rowLayoutYs: (number | undefined)[],
+  rowCount: number,
+): void {
+  rowLayoutYs.length = Math.max(0, rowCount)
+}
+
+/** What a fresh onLayout measurement should trigger. */
+export type RowMeasurementEffect = "flush-pending" | "reanchor" | "none"
+
+/**
+ * "flush-pending": focused before it had any measurement, run the deferred scroll.
+ * "reanchor": holds focus and its y MOVED, so the offset came from a stale value.
+ * Otherwise nothing — re-scrolling an unfocused row yanks the page off the viewer.
+ */
+export function resolveRowMeasurementEffect(args: {
+  rowIndex: number
+  previousY: number | undefined
+  nextY: number
+  pendingScrollRow: number | null
+  focusedRow: number | null
+}): RowMeasurementEffect {
+  if (args.pendingScrollRow === args.rowIndex) return "flush-pending"
+  if (args.focusedRow === args.rowIndex && args.previousY !== args.nextY) {
+    return "reanchor"
+  }
+  return "none"
+}
+
+/**
  * Opacity of the deep-scrim layer (its background is rgba(6,6,8,.9)):
  * invisible on chrome, a light wash while browsing row 0, fully on when
  * focus is deep in the feed.

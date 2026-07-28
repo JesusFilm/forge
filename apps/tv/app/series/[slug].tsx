@@ -1,6 +1,6 @@
 // Series-details screen (/series/[slug]), counterpart of /watch/[slug]: seed paint + GET_SERIES_BY_SLUG (cache-first/returnPartialData); language (U4) in SeriesLanguageProvider.
 // Static WATCH_THEME hero, no VideoView (tvOS decode slots, tv-backdrop-videoview-decoder-starvation).
-// R1: resolved leaf replace-bounces ONCE to /watch via resolveLeafBounce (shares watch's isSeriesRecord predicate, U5).
+// R1: resolved leaf replace-bounces ONCE to /watch via resolveLeafBounce (shares watch's isSeriesLabel predicate, U5).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
@@ -229,9 +229,9 @@ export default function SeriesScreen() {
     seed?.imageUrl ??
     null
 
-  // Hero kicker: badge reads SERIES/COLLECTION, never the raw wire enum —
-  // childCount-routed records carry leaf labels (FEATURE_FILM) but this IS the
-  // series screen, so all present as series (R3). buildMetadataLine joins slots.
+  // Hero kicker: badge reads SERIES/COLLECTION. A leaf label only reaches here
+  // mid-bounce (resolveLeafBounce is replacing to /watch), so the fallback is a
+  // one-frame value, not a routed outcome. buildMetadataLine joins slots.
   const badgeLabel = isSeriesLabel(record?.label ?? null)
     ? (record?.label ?? "SERIES")
     : "SERIES"

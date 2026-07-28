@@ -19,18 +19,26 @@ import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
+import { AboutSection } from "../../src/components/watch/AboutSection"
+import {
+  CHAPTER_NOUN,
+  EpisodeRail,
+} from "../../src/components/series/EpisodeRail"
 import { LanguagePanel } from "../../src/components/watch/LanguagePanel"
 import { SubtitlePanel } from "../../src/components/watch/SubtitlePanel"
 import {
   buildBibleQuotesBlock,
   buildRelatedQuestionsBlock,
 } from "../../src/components/watch/detailsAdapters"
-import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
+import {
+  buildMetadataLine,
+  formatBadgeLabel,
+  shouldShowUpNextRail,
+} from "../../src/components/watch/detailsHelpers"
 import {
   WATCH_THEME,
   HERO_PEEK,
 } from "../../src/components/watch/watchDetailTheme"
-import { SECTION_HEADING } from "../../src/components/sections/sectionHeading"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
@@ -151,9 +159,9 @@ export default function WatchVideoScreen() {
   const backdropSource =
     activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl
 
-  // Hero kicker: the label becomes the badge chip (e.g. "SERIES"); the meta line
+  // Hero kicker: the label becomes the badge chip ("FEATURE FILM"); the meta line
   // carries duration + language count (label omitted — it's now the badge).
-  const badgeLabel = video?.label ?? null
+  const badgeLabel = formatBadgeLabel(video?.label)
   const heroMeta = buildMetadataLine(
     null,
     activeVariant?.duration ?? video?.duration,
@@ -253,19 +261,27 @@ export default function WatchVideoScreen() {
 
         {/* Below the fold — opaque so it covers the backdrop as the user scrolls. */}
         <View style={styles.below}>
-          {hasVideo ? <UpNextRail siblings={video.siblings} /> : null}
+          {/* Chapters and Up Next are mutually exclusive (shouldShowUpNextRail):
+              a film with its own chapter clips shows only those, since Up Next
+              is the PARENT's other children — a different, noisier relation. */}
+          {hasVideo && video.chapters.length > 0 ? (
+            <EpisodeRail episodes={video.chapters} noun={CHAPTER_NOUN} />
+          ) : null}
+
+          {hasVideo && shouldShowUpNextRail(video) ? (
+            <UpNextRail siblings={video.siblings} />
+          ) : null}
 
           {/* About + Related Questions share a two-column row. TVFocusGuideView
-              spans the row so vertical D-pad over the non-focusable About column
-              redirects into the question rows (offset focusables are else skipped). */}
+              spans the row so vertical D-pad reaches both columns. About is
+              focusable in its own right (AboutSection) — it must never depend on
+              a sibling column to be reachable, or it vanishes on videos with no
+              study questions. */}
           {descriptionText != null || relatedQuestionsBlock != null ? (
             <TVFocusGuideView autoFocus style={styles.aboutRow}>
               {descriptionText != null ? (
                 <View style={styles.aboutCol}>
-                  <Text style={styles.aboutHeading} accessibilityRole="header">
-                    About
-                  </Text>
-                  <Text style={styles.aboutText}>{descriptionText}</Text>
+                  <AboutSection description={descriptionText} />
                 </View>
               ) : null}
 
@@ -394,15 +410,5 @@ const styles = StyleSheet.create({
   },
   questionsCol: {
     flex: 1,
-  },
-  aboutHeading: {
-    ...SECTION_HEADING,
-    marginBottom: scale(18),
-  },
-  aboutText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(25)),
-    lineHeight: Math.round(scale(37)),
-    color: WATCH_THEME.text,
   },
 })

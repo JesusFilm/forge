@@ -31,9 +31,19 @@ describe("resolveSearchMeta", () => {
 })
 
 describe("resultChipLabel", () => {
-  it("shows the episode count when the result carries one", () => {
-    expect(resultChipLabel({ childCount: 12 })).toBe("12 EP")
-    expect(resultChipLabel({ childCount: 1 })).toBe("1 EP")
+  it("shows the episode count for a series-labelled result", () => {
+    expect(resultChipLabel({ label: "SERIES", childCount: 12 })).toBe("12 EP")
+    expect(resultChipLabel({ label: "COLLECTION", childCount: 1 })).toBe("1 EP")
+  })
+
+  // JESUS is a FEATURE_FILM with 61 children; "61 EP" beside a "Feature Film"
+  // kind line and a Chapters rail reads as a different content type.
+  it("shows a chapter count for a film that carries chapter clips", () => {
+    expect(resultChipLabel({ label: "FEATURE_FILM", childCount: 61 })).toBe(
+      "61 CH",
+    )
+    expect(resultChipLabel({ label: "SHORT_FILM", childCount: 1 })).toBe("1 CH")
+    expect(resultChipLabel({ label: null, childCount: 3 })).toBe("3 CH")
   })
 
   it("returns null for leaf results (0 / null / absent childCount)", () => {
@@ -60,18 +70,17 @@ describe("resultKindLabel", () => {
     )
   })
 
-  // Agrees with searchResultPath: unlabeled childCount > 0 routes to
-  // /series, so the kind line must say Series, not Video.
-  it("reads unlabeled results with children as Series", () => {
-    expect(resultKindLabel({ type: "VIDEO", label: null, childCount: 8 })).toBe(
-      "Series",
-    )
+  // Agrees with searchResultPath, which no longer routes on children: an
+  // unlabeled result opens /watch, so the kind line must say Video.
+  it("falls back to Video for unlabeled results", () => {
+    expect(resultKindLabel({ type: "VIDEO", label: null })).toBe("Video")
+    expect(resultKindLabel({ type: "VIDEO", label: "" })).toBe("Video")
   })
 
-  it("falls back to Video for unlabeled leaf results", () => {
-    expect(resultKindLabel({ type: "VIDEO", label: null, childCount: 0 })).toBe(
-      "Video",
+  // The mislabel this fix targets: JESUS reads "Feature Film", never "Series".
+  it("reads a feature film with chapter clips as Feature Film", () => {
+    expect(resultKindLabel({ type: "VIDEO", label: "FEATURE_FILM" })).toBe(
+      "Feature Film",
     )
-    expect(resultKindLabel({ type: "VIDEO", label: null })).toBe("Video")
   })
 })

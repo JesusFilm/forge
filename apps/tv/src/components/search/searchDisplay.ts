@@ -2,7 +2,7 @@
 // kind labels). Pure module — no React/component imports — so jest-expo can
 // unit-test it without loading the .tsx module graph.
 
-import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { type SearchState } from "../../lib/search"
 
 /**
@@ -36,23 +36,24 @@ export function resolveSearchMeta(
 }
 
 type ChipSource = {
+  label?: string | null
   childCount?: number | null
 }
 
 /**
- * Top-right thumb chip (design: .chip). childCount is the only usable quantity
- * (startSeconds is a match offset, not a duration), so it's the episode count or nothing.
+ * Top-right thumb chip (design: .chip). Label-aware for the same reason routing
+ * is: a feature film's children are chapters, not episodes, so billing JESUS
+ * "61 EP" beside a "Feature Film" kind line reads as a different content type.
  */
 export function resultChipLabel(result: ChipSource): string | null {
   const count = result.childCount ?? 0
   if (count <= 0) return null
-  return `${count} EP`
+  return isSeriesLabel(result.label) ? `${count} EP` : `${count} CH`
 }
 
 type KindSource = {
   type: string
   label?: string | null
-  childCount?: number | null
 }
 
 /** "FEATURE_FILM" → "Feature Film". */
@@ -66,14 +67,14 @@ function humanizeLabel(label: string): string {
 
 /**
  * Secondary "kind" line under the result title (design: .card-meta p). Uses the
- * wire label when present; unlabeled series-shaped results (childCount > 0) read
- * as "Series" so the line agrees with where searchResultPath routes them.
+ * wire label when present. An unlabeled result reads "Video" however many children
+ * it has, because that is where searchResultPath now sends it — children alone no
+ * longer imply a series.
  */
 export function resultKindLabel(result: KindSource): string {
   if (result.type === "EXPERIENCE") return "Experience"
   if (result.label != null && result.label.length > 0) {
     return humanizeLabel(result.label)
   }
-  if (isSeriesSearchResult(result)) return "Series"
   return "Video"
 }

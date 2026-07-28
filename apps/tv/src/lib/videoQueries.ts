@@ -111,11 +111,37 @@ export const watchVideoFragment = graphql(`
   }
 `)
 
+// Own `children` = this video's chapter clips (JESUS 61), the Chapters rail. On
+// the QUERY not the fragment, field-for-field with GET_SERIES_BY_SLUG's children
+// so the shared buildChildren normalizes both (NormalizableChildRel enforces it).
 export const GET_VIDEO_BY_SLUG = graphql(
   `
     query GetVideoBySlug($locale: String!, $slug: String!) {
       videoBySlug(slug: $slug) {
         ...WatchVideo
+        children {
+          order
+          child {
+            documentId: id
+            slug
+            label
+            muxPlaybackId
+            locales(locale: $locale) {
+              documentId: id
+              languageSlug
+              title
+              description
+              imageAlt
+            }
+            images {
+              documentId: id
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+          }
+        }
       }
     }
   `,

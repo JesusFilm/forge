@@ -1,4 +1,4 @@
-import { isSeriesSearchResult } from "../isSeriesRecord"
+import { isSeriesLabel } from "../isSeriesRecord"
 import {
   buildWatchHomeSectionsFromExperience,
   experienceItemCoreIds,
@@ -338,23 +338,15 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     expect(single.metaLabel).toBe("1:00:00")
   })
 
+  // The adapter must carry rawLabel, since that is now the ONLY routing signal —
+  // childCount is still reported for the meta line but no longer decides.
   it("carries the series-vs-single routing signal (AE2, R5)", () => {
     const [series, single] = buildWatchHomeSectionsFromExperience(
       [mediaBlock()],
       HYDRATED,
     )[0].cards
-    expect(
-      isSeriesSearchResult({
-        label: series.rawLabel,
-        childCount: series.childCount,
-      }),
-    ).toBe(true)
-    expect(
-      isSeriesSearchResult({
-        label: single.rawLabel,
-        childCount: single.childCount,
-      }),
-    ).toBe(false)
+    expect(isSeriesLabel(series.rawLabel)).toBe(true)
+    expect(isSeriesLabel(single.rawLabel)).toBe(false)
   })
 
   it("threads the item's videoDub playback id onto the card, null when absent (R5, R6)", () => {
@@ -415,12 +407,7 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     const card = sections[0].cards[0]
     expect(card.childCount).toBe(0)
     expect(card.metaLabel).toBe("10:00")
-    expect(
-      isSeriesSearchResult({
-        label: card.rawLabel,
-        childCount: card.childCount,
-      }),
-    ).toBe(false)
+    expect(isSeriesLabel(card.rawLabel)).toBe(false)
   })
 
   it("validates coreId before lookup (KTD10) — an unsafe id is dropped even if indexed", () => {

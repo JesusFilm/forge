@@ -257,8 +257,8 @@ describe("normalizeCard — metaLabel & wire label", () => {
   })
 
   // Producer side of the routing contract: homeCardRouting feeds rawLabel
-  // into isSeriesSearchResult, which matches uppercase wire literals only —
-  // the display-text `label` must never stand in for it.
+  // into isSeriesLabel, which matches uppercase wire literals only — the
+  // display-text `label` must never stand in for it.
   it("carries the raw wire label alongside the display text", () => {
     const card = norm(video("c", { label: "COLLECTION" }))
     expect(card?.label).toBe("Collection")
