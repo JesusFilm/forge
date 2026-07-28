@@ -244,7 +244,13 @@ function makeWatchVideoResult(
       primaryLanguage: null,
       parents: [],
       children: [],
-      childDubLanguages: [],
+      childDubLanguages: [
+        {
+          slug: variantLang.slug,
+          bcp47: variantLang.bcp47,
+          name: variantLang.name,
+        },
+      ],
       variants: [
         selectedVariant,
         {
@@ -1013,7 +1019,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
-  it("redirects series routes to the language used by visible episode cards", async () => {
+  it("returns not found when the requested series language is unavailable", async () => {
     const result = makeSeriesResult("storyclubs")
     result.video.childDubLanguages = [
       {
@@ -1025,9 +1031,98 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     mockRouteSeries(result)
 
     await expect(render2Seg("storyclubs", "english")).rejects.toThrow(
-      "NEXT_REDIRECT:/storyclubs.html/spanish-castilian.html?_lr=1",
+      "NEXT_NOT_FOUND",
     )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("hides nested containers that are not admitted in the selected language", async () => {
+    const result = makeSeriesResult("storyclubs")
+    result.video.children = [
+      {
+        documentId: "nested-available",
+        slug: "nested-available",
+        title: "Available collection",
+        label: "collection",
+        images: [],
+      },
+      {
+        documentId: "nested-unavailable",
+        slug: "nested-unavailable",
+        title: "Unavailable collection",
+        label: "series",
+        images: [],
+      },
+      {
+        documentId: "nested-unindexed",
+        slug: "nested-unindexed",
+        title: "Collection without an exact index",
+        label: "collection",
+        images: [],
+      },
+      {
+        documentId: "episode-1",
+        slug: "episode-1",
+        title: "Episode one",
+        label: "episode",
+        images: [],
+      },
+    ]
+    mockRouteSeries(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-07-27T00:00:00.000Z",
+      contentSlugs: [
+        "nested-available",
+        "nested-unavailable",
+        "nested-unindexed",
+      ],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["english", "afrikaans"],
+      audioLanguageIndexesByContent: {
+        "nested-available": [0],
+        "nested-unavailable": [1],
+      },
+    })
+
+    await render2Seg("storyclubs", "english")
+
+    const series = seriesPageClientMock.mock.calls[0]?.[0]?.series as {
+      children: Array<{ slug: string }>
+    }
+    expect(series.children.map((child) => child.slug)).toEqual([
+      "nested-available",
+      "episode-1",
+    ])
+  })
+
+  it("hides nested containers when the manifest is unavailable", async () => {
+    const result = makeSeriesResult("storyclubs")
+    result.video.children = [
+      {
+        documentId: "nested-collection",
+        slug: "nested-collection",
+        title: "Nested collection",
+        label: "collection",
+        images: [],
+      },
+      {
+        documentId: "episode-1",
+        slug: "episode-1",
+        title: "Episode one",
+        label: "episode",
+        images: [],
+      },
+    ]
+    mockRouteSeries(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const series = seriesPageClientMock.mock.calls[0]?.[0]?.series as {
+      children: Array<{ slug: string }>
+    }
+    expect(series.children.map((child) => child.slug)).toEqual(["episode-1"])
   })
 
   it("omits collection JSON-LD for noIndex series without changing its UI", async () => {
@@ -1955,6 +2050,13 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
       bcp47: "hi",
       name: "Hindi",
     })
+    watchVideo.video.childDubLanguages = [
+      {
+        slug: "spanish-castilian",
+        bcp47: "es",
+        name: "Spanish, Castilian",
+      },
+    ]
     mockRouteSeries(watchVideo)
     await render2Seg("how-did-we-get-here-episode-1", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]

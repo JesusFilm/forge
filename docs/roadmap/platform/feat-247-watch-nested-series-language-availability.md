@@ -3,7 +3,7 @@ id: "feat-247"
 title: "Watch nested-series language availability"
 owner: "vlad"
 priority: "P2"
-status: "not-started"
+status: "complete"
 depends_on: []
 blocks: []
 tags:

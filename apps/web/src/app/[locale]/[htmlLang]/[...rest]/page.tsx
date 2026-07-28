@@ -14,6 +14,7 @@ import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
 import {
+  isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
   type CarouselParent,
@@ -805,23 +806,36 @@ async function renderVideo(shape: {
     const seriesLanguage = resolveSeriesLanguageIdentity(
       languageOptions,
       rawLocale,
-      { slug: rawLocale },
     )
+    if (!seriesLanguage || seriesLanguage.slug !== rawLocale) notFound()
     const contentSlug = tryAsContentSlug(slug)
     const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")
-    if (contentSlug && localeSlug && seriesLanguage?.slug !== rawLocale) {
-      redirect(
-        watchVideoPath(contentSlug, localeSlug, {
-          reason: "locale-resolved",
-        }),
-      )
+    const visibleSeries = {
+      ...series.video,
+      children: series.video.children.filter((child) => {
+        if (!isSeriesRecord(child)) return true
+        if (!routeManifest || !child.slug) return false
+        if (
+          !Object.hasOwn(
+            routeManifest.audioLanguageIndexesByContent ?? {},
+            child.slug,
+          )
+        ) {
+          return false
+        }
+        return isWatchRouteAdmittedByManifest(routeManifest, {
+          kind: "video",
+          contentSlug: child.slug,
+          audioLanguageSlug: seriesLanguage.slug,
+        })
+      }),
     }
     const canonicalUrl =
       contentSlug && localeSlug
         ? `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(contentSlug, localeSlug)}`
         : ""
     const structuredData = watchSeriesCollectionStructuredDataJson({
-      series: series.video,
+      series: visibleSeries,
       languageSlug: seriesLanguage?.slug ?? "",
       canonicalUrl,
       inLanguage:
@@ -833,7 +847,7 @@ async function renderVideo(shape: {
       <>
         <WatchStructuredData json={structuredData} />
         <SeriesPageClient
-          series={series.video}
+          series={visibleSeries}
           selectedVariant={series.selectedVariant}
           locale={seriesLanguage?.slug ?? rawLocale}
         />

@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 27, 2026)
 
-- **Total tickets:** 456
-- **Complete:** 347
+- **Total tickets:** 458
+- **Complete:** 350
 - **In progress:** 34
-- **Not started:** 26
+- **Not started:** 25
 - **Blocked:** 49
 - **Overdue and not complete:** 87
 
@@ -201,6 +201,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-240](platform/feat-240-watch-home-media-item-slug-hotfix.md)                     | Watch Home Media Item Slug Hotfix                                                | codex      | P0       | 2026-07-08 | 1    | 2026-07-08 | complete    |
 | [feat-255](platform/feat-255-admin-video-search-backup-snapshot.md)                    | Admin video-search backup snapshot                                               | codex      | P0       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-301](platform/feat-301-watch-canonical-server-action-origins.md)                 | Allow canonical Watch Server Action origins                                      | unassigned | P0       | 2026-07-23 | 1    | 2026-07-23 | in-progress |
+| [feat-321](platform/feat-321-watch-download-redirects.md)                              | Redirect Watch downloads off Web                                                 | vlad       | P0       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
@@ -372,7 +373,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-318](platform/feat-318-watch-language-less-english-canonical.md)                 | Make language-less Watch URLs canonical for English                              | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-315](platform/feat-315-datadog-railway-release-sha-stamp.md)                     | Datadog Railway release SHA stamping                                             | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-319](platform/feat-319-datadog-syslog-structured-tags.md)                        | Datadog syslog structured log tags                                               | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
-| [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
+| [feat-320](platform/feat-320-datadog-server-apm-sourcemaps.md)                         | Datadog server APM source maps                                                   | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
 | [feat-102](platform/feat-102-admin-login-copy-simplification.md)                       | Admin Login Copy Simplification                                                  | tataihono  | P2       | 2026-04-16 | 1    | 2026-04-16 | complete    |
