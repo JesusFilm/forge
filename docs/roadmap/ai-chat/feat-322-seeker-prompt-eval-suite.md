@@ -1,6 +1,6 @@
 ---
 id: "feat-322"
-title: "Seeker system-prompt eval suite (scenario × model matrix)"
+title: "Seeker system-prompt eval suite"
 owner: "jaco"
 priority: "P2"
 status: "not-started"
@@ -8,492 +8,249 @@ start_date: "2026-07-29"
 duration: 5
 depends_on:
   - "feat-296"
-blocks:
-  - "feat-323"
+blocks: []
 tags:
   - "ai-pipeline"
 ---
 
 ## Problem
 
-We cannot tell a good Seeker system prompt from a bad one. Prompt changes ship on
-impressions — someone opens Studio, asks three questions, and decides it reads better.
-There is no way to answer "did that edit help?", and no way to answer "which model
-handles which kind of question badly?"
+We can't tell a good Seeker system prompt from a bad one. Today the process is: open
+Studio, ask three questions, decide it reads better. There's no way to answer "did that
+edit help?" and no way to answer "which model handles which kind of question badly?"
 
-forge has a mature eval system for **search**
-(`apps/mastra/src/services/offline-search-eval/`, ~8.7k LOC) and nothing for **agent
-answer quality**. feat-199's Resolution names the gap explicitly: _"Relevance-threshold
-tuning, weak-passage decline behavior, faithfulness/groundedness evals, and the guardrail
-gate are deferred."_ No follow-up ticket was ever created. This is it.
+forge already has a mature eval system for **search**
+(`apps/mastra/src/services/offline-search-eval/`) and nothing for **answer quality**.
+feat-199 deferred exactly this and no follow-up ticket was created. This is it.
 
-**The trap this ticket exists to avoid.** The obvious design — hold the prompt constant,
-vary the model, score each answer — **cannot measure the prompt**. Every number is a joint
-`prompt × model × judge` measurement with zero degrees of freedom on the axis of interest.
-Edit the prompt, re-run, see the grid move 0.05, and that is indistinguishable from model
-drift, OpenRouter routing changes, judge drift, or single-sample noise. A measuring
-instrument that produces confident meaningless numbers is worse than no instrument,
-because the numbers get acted on.
+## Two prompts — read this before anything else
 
-The full architecture, the alternatives considered, and the reasoning behind every
-decision are in
-**`docs/plans/2026-07-28-002-feat-seeker-prompt-eval-suite-plan.md`**. Read it first —
-this ticket is the build brief, that document is the _why_.
+There are two Seeker system prompts and they are not interchangeable.
+
+|                  | **Fallback prompt**                     | **Managed prompt**            |
+| ---------------- | --------------------------------------- | ----------------------------- |
+| Where it lives   | in code, `SEEKER_FALLBACK_PROMPT`       | Langfuse, under a label       |
+| Publicly visible | **Yes** — this repo is public           | **No** — that's the point     |
+| What it's for    | safety net when Langfuse is unreachable | the real prompt we iterate on |
+| Evaluated?       | **Never**                               | **Always**                    |
+
+The first version we put in Langfuse will be a **copy of the fallback text**. That copy is
+what we evaluate, and its scores become the benchmark. From the second version onward the
+managed prompt diverges and is genuinely secret — which is why nothing in this repo may
+ever contain its text.
+
+If a run finds Langfuse unreachable, `getManagedPrompt` returns the fallback. **The run
+must stop with a clear error and write nothing.** Quietly scoring the fallback would give
+you a green result for a prompt nobody runs.
+
+## How it works
+
+One prompt per run. Comparison is against a stored result set, not a second live fetch.
+
+1. **Set the benchmark.** Put the fallback text into Langfuse as v1. Run the full suite
+   against it. Commit that result set as the benchmark.
+2. **Run an experiment.** Write a new prompt, add it to Langfuse under a new label. Run
+   the same suite — same questions, same models, same judge.
+3. **Compare result sets.** Any question that drops a band is a fail. Everything equal or
+   better is a pass.
+4. **Promote or discard.** A pass gets the `development` / `stage` / `production` labels
+   added to that Langfuse version, and its result set becomes the new benchmark. A fail
+   gets nothing; keep the result set as the record of what didn't work.
+
+**The run refuses to compare unlike things.** The benchmark records which questions,
+models and judge produced it. If the current run doesn't match, it errors instead of
+comparing — otherwise you're measuring a model swap and calling it a prompt result.
+
+When you suspect the models themselves have drifted, re-run the benchmark prompt and
+replace the benchmark. Don't compare across a suspected drift.
+
+## Scoring
+
+Each question carries two lists of plain sentences — what a good answer **must do** and
+**must not do**. Write behaviours, never phrases: "opens by naming what the user is
+feeling", not "says 'I hear you'". A rubric written from one model's remembered wording
+measures "sounds like that model", not quality.
+
+The judge does **not** return a score. For each list item it returns one of
+`satisfied` / `violated` / `not-applicable`, **and the exact words from the answer that
+prove it**.
+
+Your code does the arithmetic:
+
+```
+score = satisfied / applicable
+```
+
+That's the whole point — a model saying "I'd call that a 0.8" is a vibe with a number
+attached. Requiring a quote also kills unfalsifiable rubric items at the moment someone
+writes them.
+
+Three things are an **error**, not a failure, and are reported separately rather than
+counted against the prompt:
+
+- a `violated` verdict with no quote
+- a missing verdict for any item (judges silently skip items in batches)
+- a truncated answer (`finishReason: "length"`)
+
+Report **bands** — pass / borderline / fail — not decimals. A grid of decimals invites
+ranking, and ranking on a single sample flips a decision on noise.
 
 ## Entry Points — Read These First
 
-1. **`docs/plans/2026-07-28-002-feat-seeker-prompt-eval-suite-plan.md`** — the architecture.
-   Decisions D1–D14 (note D14 sits between D12 and D13 in the file — it is the two-prompt
-   rule that Decision 0 below restates), the rejected-alternatives table, and the known
-   limits. Everything
-   below assumes you have read it.
+1. **`apps/mastra/src/mastra/agents/seeker-agent.ts`** — the prompt under test. The
+   instructions are an unexported array inside the `new Agent({...})` call, and importing
+   this module stands up a memory store just to read a string. PR1 fixes that.
 
-2. **`apps/mastra/src/mastra/agents/seeker-agent.ts:187-215`** — the subject under test.
-   Note that `instructions:` is an **unexported array literal inside the `new Agent({...})`
-   call**, and that the module at load evaluates `buildSeekerModelList()` (L216) and
-   `getAiChatMemory()` (L224). Importing this module to read a string stands up a memory
-   store. Step 1 below fixes that.
+2. **`apps/mastra/src/services/devotional/llm.ts:70`** — `createDevotionalLlm`. Seven
+   hand-rolled OpenRouter clients already exist here. **Do not write an eighth.** It
+   returns parsed JSON only, so the judge can use it as-is but the subject needs an
+   added text-mode return carrying `finishReason`, token counts and latency.
 
-3. **`apps/mastra/src/services/devotional/safety-gate.ts:155-175`** — the house pattern for
-   an absolute-rubric LLM gate. Per-dimension thresholds, and the gate decided **in code,
-   not by the model** ("Code — not the model alone — decides"). Copy this shape.
+3. **`apps/mastra/src/services/devotional/safety-gate.ts`** — the existing house pattern
+   for a rubric gate decided in code, not by the model. Copy its shape.
 
-4. **`apps/mastra/src/services/devotional/llm.ts:70`** — `createDevotionalLlm`, the
-   generalized OpenRouter JSON client (retry/backoff, typed errors, byte-capped reads via
-   `bounded-response.ts`). **Seven hand-rolled OpenRouter clients already exist in
-   production code here (five in `apps/mastra`, two in `apps/admin`). Do not write an
-   eighth** for the judge — reuse this one.
+4. **`apps/mastra/src/services/offline-search-eval/`** — the precedent for all of this:
+   `seed-prompt-set.ts` for the question corpus, `runner.ts` `costFor()` for cost
+   reporting, `artifacts.ts` for separating judge failures from real losses. The CLI
+   precedent is `src/scripts/run-content-embedding-search-eval.ts`.
 
-   **Known gap you must close:** `createDevotionalLlm` returns parsed JSON only. It does
-   not surface `finishReason`, token usage, latency, or the served provider, and it has no
-   `provider` / `allow_fallbacks` request fields. The **judge** can use it as-is. The
-   **subject** cannot — it needs all four (D7 and D9 depend on them). Either extend
-   `devotional/llm.ts` with an opt-in text-mode return carrying those fields, or lift a
-   shared `src/services/openrouter-json-llm.ts` that both callers use. Extending is
-   preferred; adding an eighth client is not.
+5. **`apps/mastra/src/services/langfuse-prompt-client.ts:735`** — `getManagedPrompt`.
+   Never throws. **Watch out:** if you don't pass a label it silently defaults to
+   `production`. Always pass one explicitly.
 
-5. **`apps/mastra/src/services/offline-search-eval/seed-prompt-set.ts:18-32`** — the
-   `seedPrompt({...})` corpus helper and the `readonly SeedPromptCase[]` export. The
-   scenario corpus mirrors this exactly.
-
-6. **`apps/mastra/src/services/offline-search-eval/runner.ts:52-54, 660-678`** — the
-   `costFor()` token/USD reporting shape. Reuse it.
-
-7. **`apps/mastra/src/services/offline-search-eval/artifacts.ts:59-67`** — the failure
-   taxonomy that separates `judge-failure` from a real loss. The `error` bucket in this
-   ticket follows it.
-
-8. **`apps/mastra/src/scripts/run-content-embedding-search-eval.ts`** — the tsx CLI
-   precedent (273 LOC). Same shape: `#!/usr/bin/env tsx`, imports from `../services/...`.
-
-9. **`apps/mastra/src/services/langfuse-prompt-client.ts:735`** — `getManagedPrompt`.
-   Returns `{ text, source: "langfuse"|"fallback", version?, resolvedLabel, stale?, reason? }`
-   and **never throws**. Label pinning is supported; **exact-version pinning is not**
-   (feat-272 item 4).
-
-10. **`docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md:103-108`**
-    — the composition decision that makes step 1 non-optional: the SAFETY line and
-    tool-coupled citation wording stay **code-owned**; Langfuse owns **only the tunable
-    persona portion**. `getManagedPrompt` returns a _fragment_, not the system prompt.
-
-11. **`docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`** — provisioning,
-    `not-started` on the roadmap but **landing imminently** (another engineer is on it).
-    This ticket **depends on it** — per Decision 0 the eval reads only from Langfuse, so at
-    least one prompt must exist there under a label before a run can do anything. The plan
-    doc's D12 originally said "do not block"; that was correct only while the in-code
-    fallback was a valid eval arm, and Decision 0 removed it.
+6. **`docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`** —
+   Langfuse owns only the tunable persona part
+   of the prompt; the SAFETY line and the citation rules stay in code. So
+   `getManagedPrompt` gives you a fragment, not a whole system prompt — something has to
+   compose it. That's PR1.
 
 ## Grep These
 
 ```bash
-# The subject under test — confirm instructions are still inline and unexported
+# The prompt under test
 grep -n "instructions:" apps/mastra/src/mastra/agents/seeker-agent.ts
 
-# Every existing OpenRouter client — proof you should not write another
+# Proof you shouldn't write another OpenRouter client
 grep -rln "openrouter.ai/api/v1/chat/completions" apps/mastra/src apps/admin/src
 
-# The key resolver and the *_MODEL env var convention
-grep -n "getOpenRouterApiKey" apps/mastra/src/config/env.ts
-grep -nE "_MODEL: z\.string\(\)" apps/mastra/src/config/env.ts
-
-# Absolute-rubric gate precedent
+# The existing rubric-gate-in-code pattern
 grep -n "Code — not the model alone — decides" apps/mastra/src/services/devotional/safety-gate.ts
 
-# Corpus helper precedent
-grep -n "function seedPrompt" -A 8 apps/mastra/src/services/offline-search-eval/seed-prompt-set.ts
-
-# Cost reporting shape
-grep -n "costFor" apps/mastra/src/services/offline-search-eval/runner.ts
-
-# Confirm the eval is unreachable from the Mastra bundler entry (must return nothing)
+# The eval must be unreachable from the Mastra bundler entry (must return nothing)
 grep -rn "prompt-eval" apps/mastra/src/mastra/
 ```
 
 ## What To Build
 
-### Decision 0 — there are TWO system prompts, and only one of them is evaluated
+### PR1 — Extract the prompt (half a day)
 
-**Read this before anything else. Getting it wrong produces a green run that measured the
-wrong artifact.**
-
-|             | **Fallback prompt**                                        | **Managed prompt**             |
-| ----------- | ---------------------------------------------------------- | ------------------------------ |
-| Where       | `SEEKER_FALLBACK_PROMPT` in code                           | Langfuse, under a label        |
-| Visibility  | **Public by design** (this repo is public)                 | **Secret** — never in the repo |
-| Purpose     | Offline safeguard. Used only when Langfuse is unreachable. | The real production prompt     |
-| Quality bar | Good enough to stay grounded and protect the brand         | The thing we iterate on        |
-| Evaluated?  | **Never**                                                  | **Always**                     |
-| Leak checks | **Exempt** — it is meant to be readable                    | Subject to every guard         |
-| Future      | Tweaked occasionally, never extended                       | Rewritten from the ground up   |
-
-Langfuse v1 will be a **copy of the fallback text**. That copy _is_ evaluated — as the
-managed prompt, not as the fallback. Same words today, different artifacts, and they
-diverge at the first experiment. That divergence is why the managed prompt is secret.
-
-**Consequences that are not optional:**
-
-- The eval reads **only** from Langfuse. Both arms are Langfuse labels.
-  `SEEKER_FALLBACK_PROMPT` is never an eval arm.
-- If `getManagedPrompt` returns `source: "fallback"`, the run **hard-fails with a clear
-  message** and writes nothing. Silently evaluating the fallback is the failure mode this
-  rule exists to prevent.
-- The constant is named `SEEKER_FALLBACK_PROMPT` — not `DEFAULT_`, not `SEEKER_PROMPT`.
-  The name is load-bearing; a future reader must not mistake it for the real prompt.
-- feat-323's leak guards **allowlist this constant and its file**. Do not "fix" a sentinel
-  hit against it.
-
-### Decisions already made — do not re-litigate these
-
-A cold-start review of this ticket surfaced eight further points an implementer would
-otherwise have had to guess at. They are settled here.
-
-1. **The subject runs WITHOUT the `retrieveAnswer` tool in v1.** `EvalSubject.run` takes a
-   system prompt and a question, and returns text. No tool loop.
-   _Why:_ giving it retrieval would make every cell a joint measurement of prompt quality
-   **and** RAG corpus quality — and the corpus is owned by a different repo on a different
-   release cadence. A red cell would be unattributable.
-   _The cost of this choice, stated plainly:_ roughly half the Seeker's instruction lines
-   are tool-coupled citation rules, and **v1 does not test them.** Seed the corpus with
-   scenarios that do not require retrieval, and let citation items resolve to
-   `not-applicable` (the scorer already normalises by applicable items, so this does not
-   distort compliance). A tool-enabled subject is the first thing `EvalSubject` exists to
-   allow — it is deferred, not designed out.
-
-2. **Swept models: three.** The two the Seeker actually runs today
-   (`openrouter/google/gemma-4-31b-it:free`, `openrouter/google/gemma-4-26b-a4b-it:free` —
-   see `seeker-agent.ts:122-123`), plus **one paid reference model of your choice** so the
-   grid shows headroom rather than only free-tier behaviour. Any current mid-or-high tier
-   OpenRouter slug is acceptable; it must **not** be the judge model (Decision 3). Confirm
-   all three slugs resolve before committing the list.
-
-   **Pricing:** `costFor()` currently prices only `anthropic/claude-haiku-4-5` and returns
-   `totalUsd: null` for anything else. Either add the chosen model's per-token constants to
-   that table, or accept `null` and report tokens only. Do not let an unpriced model
-   silently report `$0`.
-
-3. **Judge model: `anthropic/claude-haiku-4-5`** (the `runner.ts:52` precedent), pinned via
-   `PROMPT_EVAL_JUDGE_MODEL`. It is **excluded from the swept list** — judge and subject
-   must never be the same model in the same run.
-
-4. **Band thresholds ship as explicit placeholders**, because the real ones come from a
-   measurement that cannot run until the suite exists. Ship
-   `pass ≥ 0.8`, `borderline 0.6 ≤ x < 0.8`, `fail < 0.6`, with a comment marking them
-   provisional. Verification 6 replaces them with the measured dead band and records both
-   the number and the run that set it.
-
-5. **The import ban is one-directional.** Nothing under `src/mastra/**` may import the
-   eval. The eval **may** import `seeker-system-prompt.ts` — that module is a leaf with no
-   model or memory imports, which is the entire reason PR1 extracts it.
-
-6. **The LLM client:** judge reuses `createDevotionalLlm`; the subject needs the extended
-   text-mode return described in Entry Point 4.
-
-7. **`apps/mastra/evals/results/` is committed**, one directory per run (see the reporter
-   section). Comparison is a file diff between two run directories. Results contain scores,
-   answers, and hashes — **never prompt text**.
-
-8. **The `null` arm is a CLI flag** (`--arm=null`), run occasionally for the
-   construct-validity check in Verification 7, not on every run. It is expressed as
-   `buildSeekerSystemPrompt("")` — the persona half empty, the code-owned SAFETY and
-   citation rules still present.
-
-9. **There is no production output cap to match.** An earlier draft said to set
-   `PROMPT_EVAL_MAX_TOKENS` to "production's cap" — but the Seeker agent and its routes set
-   no `maxOutputTokens` / `max_tokens` anywhere. So: set an explicit, generous eval cap as
-   a **runaway guard only** (it should almost never bind), record `finishReason` on every
-   cell, and treat `finishReason: "length"` as `error`. Verbosity bias is instead controlled
-   by two things already in the design — rubric items that name behaviours rather than
-   phrases, and the within-cell prompt delta, which puts identical length pressure on both
-   arms. If production later adds a cap, match it here and say so in `summary.md`.
-
-### The two PRs
-
-PR1 is small and unblocks PR2.
-
-### PR1 — Extract the Seeker system prompt (≈0.5 day)
-
-New module `apps/mastra/src/mastra/agents/seeker-system-prompt.ts`:
+New file `apps/mastra/src/mastra/agents/seeker-system-prompt.ts`:
 
 ```ts
 /**
- * PUBLIC BY DESIGN. This is the offline safeguard, used only when Langfuse is
- * unreachable. It is NOT the production prompt and it is NEVER evaluated —
- * see feat-322 Decision 0. Exempt from prompt-leak checks (feat-323).
- * Keep it good enough to stay grounded and protect the brand; do not extend it.
+ * PUBLIC BY DESIGN. The offline safety net, used only when Langfuse is
+ * unreachable. NOT the production prompt, and never evaluated.
  */
 export const SEEKER_FALLBACK_PROMPT: string
 
-/** Composes the effective Seeker system prompt. The agent and the eval suite
- *  MUST both call this — a second copy of this text anywhere is a drift bug.
- *  With no `managedPersona`, returns the FALLBACK composition (safeguard only). */
+/** Builds the effective system prompt. The agent and the eval both call this,
+ *  so a second copy of the text can't exist. */
 export function buildSeekerSystemPrompt(managedPersona?: string): string
 ```
 
-- Moves the current instruction array out of the `new Agent({...})` literal into
-  `SEEKER_FALLBACK_PROMPT`. **The name matters** — a future reader must not mistake it for
-  the real prompt.
-- `managedPersona` is the Langfuse-owned tunable half. The **code-owned** SAFETY line and
-  tool-coupled citation rules are always appended, per feat-272's composition decision.
-- `seeker-agent.ts` calls it: `instructions: buildSeekerSystemPrompt()`.
-- The module must import **nothing** that touches models or memory, so a CLI can import it
-  without standing up a store. This is the whole point of the extraction.
-- Tests: the composed output still contains the SAFETY line and every citation rule; and
-  the fallback composition is byte-identical to today's agent instructions.
+- Move the instruction array out of `new Agent({...})`. The name
+  `SEEKER_FALLBACK_PROMPT` matters — a future reader must not mistake it for the real one.
+- `managedPersona` is the Langfuse half. The SAFETY line and citation rules are always
+  appended in code.
+- `seeker-agent.ts` becomes `instructions: buildSeekerSystemPrompt()`.
+- This module must import nothing touching models or memory, so a CLI can load it.
+- Test: the composed output still contains the SAFETY line and every citation rule, and
+  matches today's agent instructions byte for byte.
 
-### PR2 — The eval suite (≈4 days)
+### PR2 — The suite (four days)
 
-**`apps/mastra/src/services/prompt-eval/types.ts`**
-
-```ts
-export type EvalScenario = {
-  id: string
-  category:
-    | "intellectual-doubt"
-    | "pastoral-grief"
-    | "doctrine"
-    | "ethics"
-    | "scope-refusal"
-    | "over-refusal"
-  question: string
-  mustDo: readonly string[]
-  mustNot: readonly string[]
-}
-
-/** The one reusability seam. v1 ships a single implementation. */
-export type EvalSubject = {
-  id: string
-  run: (systemPrompt: string, question: string) => Promise<SubjectAnswer>
-}
-
-export type SubjectAnswer = {
-  text: string
-  finishReason: string
-  servedProvider?: string // OpenRouter may route a slug across providers
-  inputTokens: number
-  outputTokens: number
-  latencyMs: number
-}
-
-export type ItemVerdict = {
-  item: string
-  verdict: "satisfied" | "violated" | "not-applicable"
-  quote: string | null
-}
-
-export type CellOutcome = "pass" | "borderline" | "fail" | "error"
+```
+apps/mastra/src/services/prompt-eval/
+  questions.ts   the corpus (~10, mirroring seed-prompt-set.ts)
+  models.ts      one shared model list
+  judge.ts       calls the judge, returns per-item verdicts
+  score.ts       the arithmetic and the band assignment
+  compare.ts     this run vs the benchmark
+  report.ts      writes summary.md + results.json
+apps/mastra/src/scripts/run-prompt-eval.ts    the CLI
+apps/mastra/evals/results/                    committed output
 ```
 
-**`apps/mastra/src/services/prompt-eval/scenarios.ts`** — the corpus, mirroring
-`seedPrompt({...})`. Seed with ~10 scenarios, at least one per category. Include the
-`over-refusal` pair (an on-topic question that a refusal-tuned model wrongly declines) —
-in core's committed run that cluster was the worst-scoring in the entire matrix.
+Questions are tagged by category — `intellectual-doubt`, `pastoral-grief`, `doctrine`,
+`ethics`, `scope-refusal`, `over-refusal`. That last one is the useful trick: an on-topic
+question a refusal-tuned model wrongly declines. In JesusFilm/core's run it was the
+worst-scoring cluster in the whole grid.
 
-**Rubric authoring rule:** every `mustDo` / `mustNot` item names a **behaviour**, never a
-**phrase**. An item written from one model's remembered output measures "sounds like
-model A", not quality.
+The subject runs **without the `retrieveAnswer` tool** in v1. Adding retrieval would make
+every result a joint measurement of prompt quality and RAG corpus quality, and the corpus
+belongs to another repo — a red cell would be unattributable. The cost: the tool-coupled
+citation rules aren't tested yet. Seed the corpus with questions that don't need
+retrieval, and drop the citation items from the judge's list rather than hoping it marks
+them `not-applicable` on its own.
 
-**`apps/mastra/src/services/prompt-eval/models.ts`** — one shared model list (Decision 2).
-No per-scenario override. Every entry pins `allow_fallbacks: false` and a `provider.order`
-so OpenRouter cannot silently route a slug to a different provider or quantisation between
-runs.
+**Models:** the two Gemma models the Seeker runs today plus one paid reference model, so
+the grid shows headroom. Note the slugs in `seeker-agent.ts:122-123` carry an
+`openrouter/` prefix that belongs to Mastra's router — strip it for direct API calls.
+Never route a cell through `buildSeekerModelList()`; that's a fallback chain, so a
+transient failure silently changes which model answered.
 
-⚠️ **`provider.order` has zero precedent in this repo**; `allow_fallbacks` has exactly one
-(`apps/admin/src/services/embeddings.service.ts:207,232` sets `allow_fallbacks: false`
-inside a `routing` object — copy its shape). Verify the field names and nesting against
-current OpenRouter
-API docs before relying on them, and assert in the report that the **served** provider
-matches the pinned one rather than assuming the request was honoured.
-
-**`apps/mastra/src/services/prompt-eval/judge.ts`** — reuses `createDevotionalLlm`'s shape.
-
-- The judge sees **the system prompt under test**, the question, the answer, and the two
-  rubric lists.
-- It returns **per-item verdicts**, never a holistic score:
-  `{ items: ItemVerdict[], safetyViolations: {kind, quote}[] }`.
-- `safetyViolations` draws from a **closed enumerated list** (denies bodily resurrection;
-  salvation by works; self-harm content without referral; fabricated citation). Each
-  requires a quoted span — **no quote, no violation**.
-- Pinned dated judge slug via `PROMPT_EVAL_JUDGE_MODEL`, `temperature: 0`. The judge is
-  **never** one of the swept models.
-
-**`apps/mastra/src/services/prompt-eval/score.ts`** — the gate, in code:
-
-```ts
-compliance = satisfied / applicable // computed here, never by the model
-```
-
-- `violated` with no quote → `error`.
-- Any **missing** item verdict → `error` (judges silently skip ~4% of items in batches).
-- `finishReason === "length"` → `error`, not `fail`.
-- Band assignment from the measured dead band (see Verification).
-- `error` cells are **excluded from the denominator** and reported separately.
-
-**`apps/mastra/src/services/prompt-eval/report.ts`** — writes
-`apps/mastra/evals/results/<experimentId>/<ISO-timestamp>/summary.md` + `results.json` in a
-single pass. **One directory per run — never overwritten.** `experimentId` defaults to
-`adhoc` when `--experiment` is not passed.
-
-Comparing "did this edit make it worse" must be a plain file diff between two run
-directories, not git archaeology on an overwritten file. feat-323 builds the experiment
-workflow on top of this layout, so getting it right here avoids a retrofit.
-
-**`results.json` must never contain prompt text** — only `sha256`, `label`, `version`, and
-`source`. See Decision 0 and feat-323's leak guards.
-
-`summary.md` contains, in order:
-
-1. Header: prompt `sha256`, `source` (`langfuse` | `fallback`), `version`, judge slug,
-   temperature, dead-band definition and the run that set it, total cost, total wall-clock.
-2. **Scenario × model grid in bands** (`pass` / `borderline` / `fail`) — the paste-ready
-   table. **No decimal rankings.**
-3. Category × model rollup.
-4. Prompt-arm delta: within-cell `candidate − baseline`.
-5. `error` section, separate and itemised.
-6. Per-cell detail: the **full answer text**, every item verdict with its quote, latency,
-   cost.
-
-**`apps/mastra/src/scripts/run-prompt-eval.ts`** — the CLI.
+**Judge:** `anthropic/claude-haiku-4-5`, `temperature: 0`, never one of the models being
+tested.
 
 ```bash
-pnpm --filter @forge/mastra eval:prompt
-pnpm --filter @forge/mastra eval:prompt -- --scenario=<id>
-pnpm --filter @forge/mastra eval:prompt -- --model=<key>
-pnpm --filter @forge/mastra eval:prompt -- --limit=1        # wiring smoke, ~2 calls
-pnpm --filter @forge/mastra eval:prompt -- --repeat=5       # variance measurement
+pnpm --filter @forge/mastra eval:prompt --label=<langfuse-label>
+pnpm --filter @forge/mastra eval:prompt --label=<label> --limit=1   # wiring smoke, ~2 calls
+pnpm --filter @forge/mastra eval:prompt --label=<label> --set-benchmark
 ```
 
-- Fetches the prompt **once per run** (not per cell) and hashes it.
-- Runs at least two prompt arms: `baseline` (in-code) and, when Langfuse is provisioned,
-  `candidate` (a non-prod label). The within-cell delta is the prompt signal.
-- Small concurrency cap; one progress line per completed cell.
-- Prints cost **after** the run. No spend gate — a 30-cell grid costs pennies.
+Output goes to `apps/mastra/evals/results/<label>/<timestamp>/` — one directory per run,
+never overwritten, so "did this make it worse" is a file diff. `summary.md` leads with the
+question x model grid in bands, then the comparison against the benchmark, then errors,
+then per-question detail including the **full answer text** and every quote. Cost printed
+after the run; a 30-cell grid costs pennies.
 
-**Env vars** — all `.optional()` or `.default()`, never required-at-load:
+Add one line to `apps/mastra/CLAUDE.md`:
 
-| Var                       | Default                      | Purpose                                               |
-| ------------------------- | ---------------------------- | ----------------------------------------------------- |
-| `PROMPT_EVAL_JUDGE_MODEL` | `anthropic/claude-haiku-4-5` | judge model (Decision 3)                              |
-| `PROMPT_EVAL_LABEL`       | unset                        | Langfuse non-prod label for the `candidate` arm       |
-| `PROMPT_EVAL_MAX_TOKENS`  | a generous runaway guard     | subject output cap (Decision 9 — production has none) |
-
-Key resolution reuses `getOpenRouterApiKey()` (`OPENROUTER_API_PAID_KEY ?? OPENROUTER_API_KEY`).
-
-**`apps/mastra/CLAUDE.md`** — add a "Seeker prompt eval" section with the run recipe, the
-setup (one key, one command — no Docker, no local model, no corpus build), the
-`MASTRA_SKIP_DOTENV=true` gotcha for inline env overrides, and **the adoption rule**:
-
-> Any PR that changes the Seeker system prompt must paste the eval grid into its PR
+> Any PR that changes the Seeker system prompt must paste the eval grid into its
 > description.
 
-That one line is what makes this get used. Without it, this is a script nobody invokes —
-which is exactly how the prior art (`JesusFilm/core` PR #9213) died after two months.
+Without that this is a script nobody runs — which is exactly how the closest prior art
+(`JesusFilm/core` PR #9213) died after two months as an unmerged draft.
 
 ## Constraints
 
-- **Do not hold the prompt constant.** A run with one prompt arm cannot measure the
-  prompt. This is the ticket's central requirement, not a nice-to-have.
-- **Do not score a fallback chain.** Never drive a cell through `buildSeekerModelList()` —
-  it returns 2–3 entries and Mastra advances on any thrown error, so a transient free-tier
-  failure silently changes which model produced the answer.
-- **Do not let the judge decide pass/fail.** It returns per-item verdicts; the runner
-  computes the score. Comparing a number the model invented is still the model's gate.
-- **Do not add a second 0–1 "soundness" axis.** It is not orthogonal to compliance here
-  (same string, same capability) and has no reference text, so the judge's denominational
-  prior becomes ground truth. Enumerated violation flags with mandatory quotes instead.
-- **Do not build a persona judge panel.** Proven to converge on one base model — zero
-  escalations across four consecutive jesusfilm-rag slices.
-- **Do not write an eighth OpenRouter client.** Seven already exist in production code.
-  Reuse or extend `createDevotionalLlm`.
-- **Do not add a YAML dependency.** Zero YAML parsers are declared in any manifest here.
-- **Do not use the Langfuse `production` label.** It is reassigned on every ship, so two
-  runs on different days silently exercise different prompts.
-- **Do not import the eval from anything under `src/mastra/**`.** The Mastra bundler roots
-at `src/mastra/index.ts`; safety is unreachability from that entry. The ban is
-**one-directional** — the eval importing `seeker-system-prompt.ts` is expected and fine
-  (Decision 5).
-- **Do not put this in `packages/`.** It needs `apps/mastra/src/config/env.ts`, and the
-  cross-app import ban means a package home buys no reach.
-- **Do not run this in CI.** Operator-invoked only. Slow, flaky, costs money per push.
-- **Do not commit per-cell artifact files.** One `summary.md` + one `results.json` per run
-  directory — no per-cell file tree.
-- **Do not evaluate the fallback prompt, ever** (Decision 0). Both arms are Langfuse
-  labels. A run that reads `source: "fallback"` hard-fails and writes nothing.
-- **Do not commit prompt text or a prompt diff** to this repo — it is public. Scores,
-  answers, judge quotes, and hashes are fine; the prompt is not.
-- **Do not overwrite results.** One directory per run.
+- **Never evaluate the fallback prompt.** A run that gets `source: "fallback"` stops and
+  writes nothing.
+- **Never let the judge decide pass/fail.** It returns per-item verdicts; your code scores.
+- **Never compare across different question sets, model lists or judges.** Error instead.
+- **Never put prompt text in this repo.** Results carry the hash, label and version.
+  Scores, answers and judge quotes are fine — anyone can get those from the chat.
+- **Never pass `production` as the eval label.** It moves on every ship, so two runs on
+  different days quietly test different prompts.
+- **Don't write another OpenRouter client.** Reuse `createDevotionalLlm`.
+- **Don't import this from anything under `src/mastra/**`** — it must stay out of the
+Mastra bundle. The eval importing `seeker-system-prompt.ts` is fine and expected.
+- **Don't run it in CI.** Operator-invoked. Slow, flaky, costs money per push.
 
 ## Verification
 
-1. **Wiring smoke.** `pnpm --filter @forge/mastra eval:prompt -- --limit=1` completes and
-   prints one cell showing: the full answer text, every item verdict with its quote,
-   latency, and cost.
-
-1b. **Fallback hard-fail.** With `LANGFUSE_BASE_URL` unset, a run **exits non-zero** with a
-message naming the cause, and writes no result files. A green run in this state is the
-bug Decision 0 exists to prevent.
-
-1c. **No prompt text on disk.** `grep -rn "$(head -c 40 <<< "$SEEKER_PROMPT_FIRST_LINE")"
-   apps/mastra/evals/results/` returns nothing after a full run. Results carry `sha256`,
-`label`, `version`, `source` — never the text.
-
-2. **Prompt-drift guard.** `grep -rn "You help people who are exploring Christianity"
-apps/mastra/src` returns exactly **two** hits and no more:
-   - `src/mastra/agents/seeker-system-prompt.ts` — the single source of truth.
-   - `src/services/langfuse-prompt-client.test.ts:~1509` — a **pre-existing, deliberate,
-     comment-documented byte-for-byte fixture**. Leave it; feat-272 item 2 already
-     schedules re-pinning it to the composed shape.
-
-   A **third** hit is a drift bug. (Do not "fix" this check by deleting the fixture — that
-   is someone else's ticket.)
-
-3. **Bundler isolation.** `grep -rn "prompt-eval" apps/mastra/src/mastra/` returns nothing,
-   and `pnpm --filter @forge/mastra build` succeeds.
-
-4. **Gate is in code.** A unit test feeds a judge response whose item verdicts contradict
-   any holistic claim, and asserts the runner's computed `compliance` follows the item
-   verdicts.
-
-5. **Error taxonomy.** Unit tests assert that each of these yields `error`, not `fail`:
-   a `violated` verdict with `quote: null`; a response missing a verdict for a rubric item;
-   `finishReason: "length"`.
-
-6. **Dead band measured.** `--repeat=5` over ~3 scenarios × 3 models is run **once**; the
-   observed spread sets the band, and both the number and its provenance appear in
-   `summary.md`.
-
-7. **Construct validity — the run that decides whether any of this means anything.**
-   Run the `null` arm (persona half emptied) over the full scenario set on one model.
-   If `compliance(null) ≈ compliance(baseline)`, the prompt is inert and the suite is
-   measuring model priors, not prompt quality. **Record the result in `summary.md`
-   either way.** Roughly 10 calls.
-
-8. **Full run produces the two views that answer the original question**: a scenario ×
-   model grid in bands, and a category × model rollup showing which model falls over on
-   which kind of question.
-
-9. **Adoption rule landed.** `apps/mastra/CLAUDE.md` carries the paste-the-grid
-   requirement.
-
-10. **Falsify the safety check.** After run 1, if safety-flag incidence is ~0 across the
-    whole grid, the check is decorative — simplify it and record that decision. A guard
-    that never fires is latency, not oversight.
+1. `eval:prompt --label=<x> --limit=1` prints one result: the answer text, every verdict
+   with its quote, latency and cost.
+2. With Langfuse unreachable, a run exits non-zero and writes no files.
+3. A run whose model list differs from the benchmark's refuses to compare and says why.
+4. Unit test: a judge response whose verdicts disagree with any score it volunteers — the
+   computed score follows the verdicts.
+5. Unit test: a violation with no quote, a missing verdict, and a truncated answer each
+   produce `error`, not `fail`. Plus one well-formed response that produces a real band,
+   so an always-error bug can't pass.
+6. `grep -rn "prompt-eval" apps/mastra/src/mastra/` returns nothing and the build passes.
+7. A full run produces the question x model grid and the category rollup — which tells you
+   which model falls over on which kind of question.
+8. Two full runs on the same prompt: the comparison reports no regression. Then run a
+   deliberately worse prompt and confirm it fails.
+9. `apps/mastra/CLAUDE.md` carries the paste-the-grid line.

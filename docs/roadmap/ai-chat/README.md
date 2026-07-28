@@ -13,10 +13,10 @@ from the main DS Year 1 roadmap.
 
 ## Status (July 28, 2026)
 
-- **Total tickets:** 44
+- **Total tickets:** 43
 - ✅ **Complete:** 35
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 9
+- 🔵 **Not started:** 8
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -65,5 +65,4 @@ from the main DS Year 1 roadmap.
 | [feat-304](feat-304-chat-production-egress-pin.md)                 | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | ✅ complete    | [#1731](https://github.com/JesusFilm/forge/pull/1731)                                                        |
 | [feat-305](feat-305-chat-healthcheck.md)                           | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1762](https://github.com/JesusFilm/forge/pull/1762)                                                        |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                 | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | ✅ complete    | [#1765](https://github.com/JesusFilm/forge/pull/1765), [#1768](https://github.com/JesusFilm/forge/pull/1768) |
-| [feat-322](feat-322-seeker-prompt-eval-suite.md)                   | Seeker system-prompt eval suite (scenario × model matrix)                    | jaco     | P2       | 2026-07-29 | 5    | 🔵 not-started | —                                                                                                            |
-| [feat-323](feat-323-prompt-experiment-workflow.md)                 | Prompt experiment workflow — labels, records, promotion, leak guards         | jaco     | P2       | 2026-08-05 | 3    | 🔵 not-started | —                                                                                                            |
+| [feat-322](feat-322-seeker-prompt-eval-suite.md)                   | Seeker system-prompt eval suite                                              | jaco     | P2       | 2026-07-29 | 5    | 🔵 not-started | —                                                                                                            |
