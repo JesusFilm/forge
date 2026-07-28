@@ -3,7 +3,7 @@ id: "feat-322"
 title: "Video Pipelines coverage dashboard (Manager)"
 owner: "vlad"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-28"
 duration: 3
 depends_on: []

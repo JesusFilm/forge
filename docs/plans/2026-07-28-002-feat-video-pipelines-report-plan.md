@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 created: "2026-07-28"
 origin: "Direct user request via /lfg, no upstream brainstorm doc"
 roadmap: "docs/roadmap/platform/feat-322-video-pipelines-coverage-dashboard.md"
