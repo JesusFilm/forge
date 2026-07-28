@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
   buildCollectionDownloadOptions,
+  buildCollectionDownloadOptionsFromDescendants,
   buildCollectionDownloadQueue,
   type CollectionDownloadEpisode,
   type CollectionDownloadQueueItem,
@@ -37,7 +38,7 @@ type LoadState =
       status: "ready"
       options: ReturnType<typeof buildCollectionDownloadOptions>
     }
-  | { status: "error" }
+  | { status: "error" | "traversal-limit" }
 
 type StoredCollectionDownloadResume = Pick<
   CollectionDownloadQueueResult,
@@ -50,6 +51,8 @@ const COLLECTION_THUMBNAIL_STACK_CLASSES = [
   "translate-x-3 translate-y-3.5 min-[700px]:translate-x-4 min-[700px]:translate-y-5",
   "translate-x-6 min-[700px]:translate-x-8",
 ] as const
+const EMPTY_LANGUAGE_OPTIONS: LanguageComboboxOption[] = []
+const EMPTY_COLLECTION_DOWNLOAD_EPISODES: CollectionDownloadEpisode[] = []
 
 function collectionDownloadResumeKey(
   collectionSlug: string,
@@ -155,9 +158,13 @@ export type CollectionDownloadModalProps = {
   open: boolean
   collectionSlug: string
   collectionTitle?: string | null
-  episodes: CollectionDownloadEpisode[]
-  languages: LanguageComboboxOption[]
-  currentLanguageSlug: string
+  /** @deprecated Direct children are retained only for legacy callers/tests. */
+  episodes?: CollectionDownloadEpisode[]
+  /** @deprecated Recursive discovery owns the modal language inventory. */
+  languages?: LanguageComboboxOption[]
+  /** @deprecated Use initialLanguageSlug. */
+  currentLanguageSlug?: string
+  initialLanguageSlug?: string
   accountGateEnabled: boolean
   authRequiredLoginUrl?: string | null
   onClose: () => void
@@ -168,14 +175,20 @@ export function CollectionDownloadModal({
   collectionSlug,
   collectionTitle,
   episodes,
-  languages,
-  currentLanguageSlug,
+  languages: initialLanguages = EMPTY_LANGUAGE_OPTIONS,
+  currentLanguageSlug = "",
+  initialLanguageSlug,
   accountGateEnabled,
   authRequiredLoginUrl = null,
   onClose,
 }: CollectionDownloadModalProps) {
   const t = useTranslations("CollectionDownloadModal")
-  const [languageSlug, setLanguageSlug] = useState(currentLanguageSlug)
+  const legacyEpisodes = episodes ?? EMPTY_COLLECTION_DOWNLOAD_EPISODES
+  const [languageSlug, setLanguageSlug] = useState(
+    initialLanguageSlug ?? currentLanguageSlug,
+  )
+  const [languages, setLanguages] =
+    useState<LanguageComboboxOption[]>(initialLanguages)
   const [loadState, setLoadState] = useState<LoadState>({ status: "idle" })
   const [selectedTier, setSelectedTier] = useState<DownloadTier>("highest")
   const [progress, setProgress] = useState<CollectionDownloadProgress | null>(
@@ -210,10 +223,10 @@ export function CollectionDownloadModal({
       setLoadState({ status: "error" })
       return
     }
-    if (!languageSlug) {
+    if (!languageSlug && initialLanguageSlug === undefined) {
       setLoadState({
         status: "ready",
-        options: buildCollectionDownloadOptions(episodes, []),
+        options: buildCollectionDownloadOptions(legacyEpisodes, []),
       })
       return
     }
@@ -226,7 +239,7 @@ export function CollectionDownloadModal({
     try {
       response = await loadWatchCollectionDownloads({
         collectionSlug,
-        languageSlug,
+        languageSlug: languageSlug || null,
       })
     } catch {
       if (requestVersion !== requestVersionRef.current) return
@@ -235,10 +248,40 @@ export function CollectionDownloadModal({
     }
     if (requestVersion !== requestVersionRef.current) return
     if (!response.ok) {
-      setLoadState({ status: "error" })
+      setLoadState({
+        status:
+          response.reason === "traversal-limit" ? "traversal-limit" : "error",
+      })
       return
     }
-    const nextOptions = buildCollectionDownloadOptions(episodes, response.dubs)
+    const legacyResponse = response as typeof response & {
+      dubs?: Parameters<typeof buildCollectionDownloadOptions>[1]
+    }
+    const nextLanguages = (response.languages ?? initialLanguages).map(
+      (language) => ({
+        slug: language.slug,
+        name: language.name,
+        bcp47: language.bcp47,
+      }),
+    )
+    setLanguages(nextLanguages)
+    const nextLanguageSlug =
+      nextLanguages.find((language) => language.slug === languageSlug)?.slug ??
+      nextLanguages[0]?.slug ??
+      ""
+    if (nextLanguageSlug !== languageSlug) {
+      setLanguageSlug(nextLanguageSlug)
+      if (nextLanguageSlug) return
+    }
+    const nextOptions = response.eligibleLeaves
+      ? buildCollectionDownloadOptionsFromDescendants(
+          response.eligibleLeaves,
+          response.skippedLeaves,
+        )
+      : buildCollectionDownloadOptions(
+          legacyEpisodes,
+          legacyResponse.dubs ?? [],
+        )
     const restoredResult = readCollectionDownloadResume(
       collectionSlug,
       languageSlug,
@@ -249,7 +292,13 @@ export function CollectionDownloadModal({
       setProgress(restoredResult)
       setResult(restoredResult)
     }
-  }, [collectionSlug, episodes, languageSlug])
+  }, [
+    collectionSlug,
+    legacyEpisodes,
+    initialLanguages,
+    initialLanguageSlug,
+    languageSlug,
+  ])
 
   useEffect(() => {
     if (!open) return
@@ -265,6 +314,20 @@ export function CollectionDownloadModal({
       controllerRef.current = null
     }
   }, [loadOptions, open])
+
+  const handleLanguageChange = useCallback(
+    (nextLanguageSlug: string) => {
+      if (nextLanguageSlug === languageSlug) return
+      requestVersionRef.current += 1
+      startVersionRef.current += 1
+      setLoadState({ status: "loading" })
+      setProgress(null)
+      setResult(null)
+      setError(null)
+      setLanguageSlug(nextLanguageSlug)
+    },
+    [languageSlug],
+  )
 
   const close = useCallback(() => {
     if (starting || controllerRef.current) return
@@ -512,8 +575,8 @@ export function CollectionDownloadModal({
                   <LanguageCombobox
                     options={languages}
                     value={languageSlug}
-                    disabled={busy}
-                    onChange={setLanguageSlug}
+                    disabled={busy || loadState.status === "loading"}
+                    onChange={handleLanguageChange}
                     compact
                     triggerClassName="border-white/15 bg-stone-900/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 focus-visible:ring-amber-400"
                   />
@@ -544,17 +607,25 @@ export function CollectionDownloadModal({
                   {t("loading")}
                 </div>
               ) : null}
-              {loadState.status === "error" ? (
-                <div className="rounded-2xl bg-white/5 p-4 text-sm text-stone-300">
+              {loadState.status === "error" ||
+              loadState.status === "traversal-limit" ? (
+                <div
+                  className="rounded-2xl bg-white/5 p-4 text-sm text-stone-300"
+                  role={
+                    loadState.status === "traversal-limit" ? "alert" : undefined
+                  }
+                >
                   <p>{t("loadError")}</p>
-                  <Button
-                    variant="ghost"
-                    className="mt-2"
-                    data-testid="watch-collection-download-load-retry"
-                    onClick={loadOptions}
-                  >
-                    {t("retry")}
-                  </Button>
+                  {loadState.status === "error" ? (
+                    <Button
+                      variant="ghost"
+                      className="mt-2"
+                      data-testid="watch-collection-download-load-retry"
+                      onClick={loadOptions}
+                    >
+                      {t("retry")}
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
               {options && options.candidates.length === 0 ? (
@@ -569,7 +640,7 @@ export function CollectionDownloadModal({
                     data-testid="watch-collection-download-skipped"
                     className="mt-2 list-disc space-y-1 pl-5"
                   >
-                    {options.skipped.map((episode) => (
+                    {options.skipped.slice(0, 100).map((episode) => (
                       <li key={episode.documentId}>
                         {episode.title ?? episode.slug ?? episode.documentId}
                       </li>

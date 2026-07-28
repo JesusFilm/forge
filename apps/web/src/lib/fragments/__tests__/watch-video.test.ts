@@ -81,15 +81,17 @@ describe("WatchVideo split GraphQL operations", () => {
 })
 
 describe("WatchVideo split operation documents", () => {
-  it("keeps collection source URLs inside the server-only lookup", () => {
+  it("uses a safe recursive collection-download projection", () => {
     const printed = print(getWatchCollectionDownloadDubsBySlugOperation)
 
     expect(printed).toMatch(
-      /downloadableChildDubs\(languageSlug:\s*\$languageSlug\)/,
+      /downloadableDescendants\(languageSlug:\s*\$languageSlug\)/,
     )
     expect(printed).toMatch(/downloads\s*\{/)
     expect(printed).toMatch(/documentId\s*:\s*id/)
-    expect(printed).toMatch(/\burl\b/)
+    expect(printed).toMatch(/eligibleLeaves\s*\{/)
+    expect(printed).toMatch(/skippedLeaves\s*\{/)
+    expect(printed).not.toMatch(/\burl\b/)
   })
 
   it("declares only videoSlug for the stable shell lookup", () => {

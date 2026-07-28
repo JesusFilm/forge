@@ -17,6 +17,10 @@ import {
 import type { Passage } from "@/services/scripture-passage.service"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
+  type CollectionDownloadDescendants,
+  type CollectionDownloadLeafRow,
+  type CollectionDownloadLanguageRow,
+  type CollectionDownloadRenditionRow,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
 } from "@/services/video.service"
 import type {
@@ -539,6 +543,92 @@ ChildDubLanguageRef.implement({
   }),
 })
 
+const CollectionDownloadLanguageRef =
+  builder.objectRef<CollectionDownloadLanguageRow>("CollectionDownloadLanguage")
+
+CollectionDownloadLanguageRef.implement({
+  description:
+    "A downloadable language discovered lazily from visible descendant leaf videos.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name,
+    }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
+  }),
+})
+
+const CollectionDownloadLeafRef = builder.objectRef<CollectionDownloadLeafRow>(
+  "CollectionDownloadLeaf",
+)
+
+const CollectionDownloadRenditionRef =
+  builder.objectRef<CollectionDownloadRenditionRow>(
+    "CollectionDownloadRendition",
+  )
+
+CollectionDownloadRenditionRef.implement({
+  description:
+    "Safe rendition metadata for a collection download. The source URL is intentionally never exposed.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    height: t.exposeInt("height", { nullable: true }),
+    quality: t.exposeString("quality"),
+    size: t.string({
+      nullable: true,
+      resolve: (row) => row.size?.toString() ?? null,
+    }),
+  }),
+})
+
+CollectionDownloadLeafRef.implement({
+  description:
+    "Safe metadata for one descendant leaf in a collection download. Source download URLs are intentionally never exposed.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    slug: t.exposeString("slug"),
+    title: t.exposeString("title"),
+    thumbnailUrl: t.exposeString("thumbnailUrl", { nullable: true }),
+    ordinal: t.exposeInt("ordinal"),
+    dubId: t.exposeID("dubId", { nullable: true }),
+    downloads: t.field({
+      type: [CollectionDownloadRenditionRef],
+      nullable: false,
+      resolve: (row) => row.downloads,
+    }),
+  }),
+})
+
+const CollectionDownloadDescendantsRef =
+  builder.objectRef<CollectionDownloadDescendants>(
+    "CollectionDownloadDescendants",
+  )
+
+CollectionDownloadDescendantsRef.implement({
+  description:
+    "Lazy recursive collection-download discovery result. A traversal-limit result never contains a partial batch.",
+  fields: (t) => ({
+    status: t.exposeString("status"),
+    languages: t.field({
+      type: [CollectionDownloadLanguageRef],
+      nullable: false,
+      resolve: (row) => row.languages,
+    }),
+    eligibleLeaves: t.field({
+      type: [CollectionDownloadLeafRef],
+      nullable: false,
+      resolve: (row) => row.eligibleLeaves,
+    }),
+    skippedLeaves: t.field({
+      type: [CollectionDownloadLeafRef],
+      nullable: false,
+      resolve: (row) => row.skippedLeaves,
+    }),
+  }),
+})
+
 /** @classification public-shape */
 builder.prismaObject("Video", {
   description:
@@ -658,6 +748,21 @@ builder.prismaObject("Video", {
           languageSlug: args.languageSlug,
           user: ctx.user,
           query,
+        }),
+    }),
+    downloadableDescendants: t.field({
+      type: CollectionDownloadDescendantsRef,
+      nullable: false,
+      description:
+        "Lazily discovers downloadable descendant leaf videos for a collection. Returns safe metadata only; raw media URLs never cross GraphQL.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.services.video.getDownloadableDescendants({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+          user: ctx.user,
         }),
     }),
     preferredPlayableDub: t.prismaField({

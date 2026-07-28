@@ -7,7 +7,16 @@ import {
   type DownloadTier,
   type WatchDownloadOption,
 } from "@/components/watch/download-options"
-import type { WatchCollectionDownloadDub } from "@/lib/watch-collection-download-actions"
+import type {
+  WatchCollectionDownloadLeaf,
+  WatchCollectionDownloadSkippedLeaf,
+} from "@/lib/watch-collection-download-actions"
+
+type WatchCollectionDownloadDub = {
+  documentId: string
+  videoId: string
+  downloads: WatchCollectionDownloadLeaf["downloads"]
+}
 
 export type CollectionDownloadEpisode = {
   documentId: string
@@ -34,6 +43,15 @@ export type CollectionDownloadOptions = {
 const TIER_ORDER: DownloadTier[] = ["highest", "high", "low"]
 const DOWNLOAD_FILENAME_EXTENSION = ".mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
+
+function commonCollectionDownloadTiers(
+  candidates: CollectionDownloadCandidate[],
+): DownloadTier[] {
+  if (candidates.length === 0) return []
+  return TIER_ORDER.filter((tier) =>
+    candidates.every((candidate) => candidate.tiers[tier] != null),
+  )
+}
 
 function uniqueCollectionDownloadFilename(
   filename: string,
@@ -95,13 +113,56 @@ export function buildCollectionDownloadOptions(
     })
   }
 
-  const commonTiers =
-    candidates.length === 0
+  return {
+    candidates,
+    skipped,
+    commonTiers: commonCollectionDownloadTiers(candidates),
+  }
+}
+
+export function buildCollectionDownloadOptionsFromDescendants(
+  leaves: WatchCollectionDownloadLeaf[],
+  skippedLeaves: WatchCollectionDownloadSkippedLeaf[],
+): CollectionDownloadOptions {
+  const seen = new Set<string>()
+  const candidates = leaves
+    .slice()
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .flatMap((leaf) => {
+      if (seen.has(leaf.documentId)) return []
+      seen.add(leaf.documentId)
+      const bucketed = bucketDownloads(leaf.downloads)
+      if (bucketed.length === 0) return []
+      return [
+        {
+          documentId: leaf.documentId,
+          slug: leaf.slug,
+          title: leaf.title,
+          thumbnailUrl: leaf.thumbnailUrl,
+          variantId: leaf.variantId,
+          tiers: Object.fromEntries(
+            bucketed.map((option) => [option.tier, option.download]),
+          ),
+        } satisfies CollectionDownloadCandidate,
+      ]
+    })
+  const skipped = skippedLeaves.flatMap((leaf) =>
+    seen.has(leaf.documentId)
       ? []
-      : TIER_ORDER.filter((tier) =>
-          candidates.every((candidate) => candidate.tiers[tier] != null),
-        )
-  return { candidates, skipped, commonTiers }
+      : [
+          {
+            documentId: leaf.documentId,
+            slug: leaf.slug,
+            title: leaf.title,
+            thumbnailUrl: leaf.thumbnailUrl,
+          },
+        ],
+  )
+  return {
+    candidates,
+    skipped,
+    commonTiers: commonCollectionDownloadTiers(candidates),
+  }
 }
 
 export type CollectionDownloadQueueItem = {

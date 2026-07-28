@@ -137,6 +137,48 @@ type ChildDubLanguage {
 }
 
 """
+Lazy recursive collection-download discovery result. A traversal-limit result never contains a partial batch.
+"""
+type CollectionDownloadDescendants {
+  eligibleLeaves: [CollectionDownloadLeaf!]!
+  languages: [CollectionDownloadLanguage!]!
+  skippedLeaves: [CollectionDownloadLeaf!]!
+  status: String
+}
+
+"""
+A downloadable language discovered lazily from visible descendant leaf videos.
+"""
+type CollectionDownloadLanguage {
+  bcp47: String
+  name: JSON
+  slug: String
+}
+
+"""
+Safe metadata for one descendant leaf in a collection download. Source download URLs are intentionally never exposed.
+"""
+type CollectionDownloadLeaf {
+  downloads: [CollectionDownloadRendition!]!
+  dubId: ID
+  id: ID
+  ordinal: Int
+  slug: String
+  thumbnailUrl: String
+  title: String
+}
+
+"""
+Safe rendition metadata for a collection download. The source URL is intentionally never exposed.
+"""
+type CollectionDownloadRendition {
+  height: Int
+  id: ID
+  quality: String
+  size: String
+}
+
+"""
 Side-by-side layout container with repeatable slots. `content` dispatches into ContainerContentBlock.
 """
 type ContainerBlock {
@@ -1187,6 +1229,10 @@ type Video {
   One downloadable Dub per visible direct child for an exact language slug. Intended for lazy collection downloads without projecting every child Dub.
   """
   downloadableChildDubs(languageSlug: String!): [VideoDub!]!
+  """
+  Lazily discovers downloadable descendant leaf videos for a collection. Returns safe metadata only; raw media URLs never cross GraphQL.
+  """
+  downloadableDescendants(languageSlug: String): CollectionDownloadDescendants!
   dubs: [VideoDub!]
   """
   Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.

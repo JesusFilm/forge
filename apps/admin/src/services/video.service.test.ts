@@ -18,6 +18,9 @@ function mockPrisma() {
       findFirst: vi.fn(),
       count: vi.fn(),
     },
+    videoRelation: {
+      findMany: vi.fn(),
+    },
     videoDub: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -1476,6 +1479,85 @@ describe("VideoService", () => {
         { id: "dub-1", videoId: "episode-1" },
         { id: "dub-2", videoId: "episode-2" },
       ])
+    })
+  })
+
+  describe("getDownloadableDescendants", () => {
+    it("returns nested leaves in editorial depth-first order without source URLs", async () => {
+      prisma.videoRelation.findMany
+        .mockResolvedValueOnce([
+          { id: "r-1", childId: "series-1", order: 1, createdAt: new Date() },
+        ])
+        .mockResolvedValueOnce([
+          { id: "r-2", childId: "episode-1", order: 1, createdAt: new Date() },
+        ])
+        .mockResolvedValueOnce([])
+      prisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "episode-1",
+          slug: "episode-one",
+          locales: [{ title: "Episode one" }],
+          images: [{ url: "https://images.example.test/episode-one.jpg" }],
+        },
+      ])
+      prisma.videoDub.findMany
+        .mockResolvedValueOnce([
+          {
+            language: { slug: "english", name: "English", bcp47: "en" },
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "dub-1",
+            videoId: "episode-1",
+            language: { slug: "english", name: "English", bcp47: "en" },
+            downloads: [
+              { id: "download-1", height: 720, quality: "high", size: 123n },
+            ],
+          },
+        ])
+
+      await expect(
+        service.getDownloadableDescendants({
+          videoId: "collection-1",
+          languageSlug: "english",
+          user: VIEWER,
+        }),
+      ).resolves.toMatchObject({
+        status: "READY",
+        eligibleLeaves: [
+          {
+            id: "episode-1",
+            slug: "episode-one",
+            dubId: "dub-1",
+            downloads: [{ id: "download-1" }],
+          },
+        ],
+      })
+    })
+
+    it("fails closed when a descendant cycle exceeds the traversal depth", async () => {
+      prisma.videoRelation.findMany.mockResolvedValue([
+        {
+          id: "cycle",
+          childId: "collection-1",
+          order: 1,
+          createdAt: new Date(),
+        },
+      ])
+
+      await expect(
+        service.getDownloadableDescendants({
+          videoId: "collection-1",
+          languageSlug: "english",
+          user: VIEWER,
+        }),
+      ).resolves.toEqual({
+        status: "READY",
+        languages: [],
+        eligibleLeaves: [],
+        skippedLeaves: [],
+      })
     })
   })
 })

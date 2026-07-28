@@ -21,33 +21,34 @@ describe("loadWatchCollectionDownloads", () => {
     consoleError.mockRestore()
   })
 
-  it("returns normalized safe metadata without raw download URLs", async () => {
+  it("returns normalized recursive leaf metadata without raw download URLs", async () => {
     queryMock.mockResolvedValueOnce({
       data: {
         videoBySlug: {
           documentId: "collection-1",
-          downloadableChildDubs: [
-            {
-              documentId: "dub-1",
-              videoId: "episode-1",
-              downloads: [
-                {
-                  documentId: "download-1",
-                  height: 1080,
-                  quality: "high",
-                  size: "12345",
-                  url: "https://cdn.example.test/episode-1.mp4",
-                },
-                {
-                  documentId: "download-without-url",
-                  height: 360,
-                  quality: "low",
-                  size: "2345",
-                  url: null,
-                },
-              ],
-            },
-          ],
+          downloadableDescendants: {
+            status: "READY",
+            languages: [{ slug: "english", name: "English", bcp47: "en" }],
+            eligibleLeaves: [
+              {
+                documentId: "episode-1",
+                slug: "episode-one",
+                title: "Episode one",
+                thumbnailUrl: null,
+                ordinal: 0,
+                variantId: "dub-1",
+                downloads: [
+                  {
+                    documentId: "download-1",
+                    height: 1080,
+                    quality: "high",
+                    size: "12345",
+                  },
+                ],
+              },
+            ],
+            skippedLeaves: [],
+          },
         },
       },
     } as never)
@@ -59,10 +60,15 @@ describe("loadWatchCollectionDownloads", () => {
 
     expect(result).toEqual({
       ok: true,
-      dubs: [
+      languages: [{ slug: "english", name: "English", bcp47: "en" }],
+      eligibleLeaves: [
         {
-          documentId: "dub-1",
-          videoId: "episode-1",
+          documentId: "episode-1",
+          slug: "episode-one",
+          title: "Episode one",
+          thumbnailUrl: null,
+          ordinal: 0,
+          variantId: "dub-1",
           downloads: [
             {
               documentId: "download-1",
@@ -73,6 +79,7 @@ describe("loadWatchCollectionDownloads", () => {
           ],
         },
       ],
+      skippedLeaves: [],
     })
     expect(JSON.stringify(result)).not.toContain("url")
     expect(queryMock).toHaveBeenCalledWith(
@@ -112,5 +119,24 @@ describe("loadWatchCollectionDownloads", () => {
         languageSlug: "english",
       }),
     )
+  })
+
+  it("fails closed when Admin reports a recursive traversal limit", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        videoBySlug: {
+          downloadableDescendants: {
+            status: "TRAVERSAL_LIMIT",
+            languages: [],
+            eligibleLeaves: [],
+            skippedLeaves: [],
+          },
+        },
+      },
+    } as never)
+
+    await expect(
+      loadWatchCollectionDownloads({ collectionSlug: "shine-films" }),
+    ).resolves.toEqual({ ok: false, reason: "traversal-limit" })
   })
 })

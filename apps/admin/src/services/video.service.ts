@@ -144,6 +144,36 @@ export type ChildDubLanguageRow = {
   bcp47: string | null
 }
 
+export type CollectionDownloadLanguageRow = ChildDubLanguageRow
+
+export type CollectionDownloadRenditionRow = {
+  id: string
+  height: number | null
+  quality: string
+  size: bigint | null
+}
+
+export type CollectionDownloadLeafRow = {
+  id: string
+  slug: string
+  title: string
+  thumbnailUrl: string | null
+  ordinal: number
+  dubId: string | null
+  downloads: CollectionDownloadRenditionRow[]
+}
+
+export type CollectionDownloadDescendants = {
+  status: "READY" | "TRAVERSAL_LIMIT"
+  languages: CollectionDownloadLanguageRow[]
+  eligibleLeaves: CollectionDownloadLeafRow[]
+  skippedLeaves: CollectionDownloadLeafRow[]
+}
+
+const COLLECTION_DOWNLOAD_MAX_DEPTH = 8
+const COLLECTION_DOWNLOAD_MAX_TRAVERSAL_ROWS = 2_000
+const COLLECTION_DOWNLOAD_MAX_LEAVES = 1_000
+
 export type WatchLanguageInventoryAvailability = "AUDIO" | "SUBTITLE_ONLY"
 
 export type WatchLanguageInventoryLanguage = {
@@ -363,6 +393,12 @@ const VIDEO_RELATION_ORDER_BY = [
   { createdAt: "asc" as const },
   { id: "asc" as const },
 ] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
+
+const DOWNLOADABLE_DUB_ORDER_BY = [
+  { videoId: "asc" as const },
+  { duration: "desc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoDubOrderByWithRelationInput[]
 
 const PLAYABLE_DUB_WHERE = {
   deletedAt: null,
@@ -2699,7 +2735,6 @@ export class VideoService {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         }
-
     const dubs = await this.prisma.videoDub.findMany({
       where: {
         deletedAt: null,
@@ -2776,9 +2811,225 @@ export class VideoService {
         },
       },
       distinct: ["videoId"],
-      orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
+      orderBy: DOWNLOADABLE_DUB_ORDER_BY,
     })
   }
+
+  /**
+   * Lazy, bounded descendant projection for the Watch collection download
+   * dialog. This deliberately does not return a VideoDub Prisma model: its
+   * public GraphQL shape is a small safe DTO and never contains source URLs.
+   */
+  async getDownloadableDescendants({
+    videoId,
+    languageSlug,
+    user,
+  }: {
+    videoId: string
+    languageSlug: string | null
+    user: Principal | null
+  }): Promise<CollectionDownloadDescendants> {
+    const childVisibility: Prisma.VideoWhereInput = isEditorOrAdmin(user)
+      ? { deletedAt: null }
+      : {
+          deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        }
+    const localeVisibility: Prisma.VideoLocaleWhereInput = isEditorOrAdmin(user)
+      ? { deletedAt: null }
+      : { deletedAt: null, status: "PUBLISHED" }
+
+    type PendingNode = { id: string; depth: number }
+    const pending: PendingNode[] = [{ id: videoId, depth: 0 }]
+    const discovered = new Set<string>([videoId])
+    const leaves: string[] = []
+    let relationCount = 0
+
+    while (pending.length > 0) {
+      const current = pending.pop()
+      if (!current) break
+      if (current.depth >= COLLECTION_DOWNLOAD_MAX_DEPTH) {
+        return emptyCollectionDownloadDescendants("TRAVERSAL_LIMIT")
+      }
+
+      const relations = await this.prisma.videoRelation.findMany({
+        where: {
+          parentId: current.id,
+          child: childVisibility,
+        },
+        select: { childId: true, order: true, createdAt: true, id: true },
+        orderBy: VIDEO_RELATION_ORDER_BY,
+        take: COLLECTION_DOWNLOAD_MAX_TRAVERSAL_ROWS - relationCount + 1,
+      })
+      relationCount += relations.length
+      if (relationCount > COLLECTION_DOWNLOAD_MAX_TRAVERSAL_ROWS) {
+        return emptyCollectionDownloadDescendants("TRAVERSAL_LIMIT")
+      }
+
+      if (relations.length === 0 && current.id !== videoId) {
+        leaves.push(current.id)
+        if (leaves.length > COLLECTION_DOWNLOAD_MAX_LEAVES) {
+          return emptyCollectionDownloadDescendants("TRAVERSAL_LIMIT")
+        }
+        continue
+      }
+
+      for (const relation of [...relations].reverse()) {
+        // Global first-seen tracking makes the first editorial path win and
+        // prevents malformed cycles from ever re-entering the queue.
+        if (discovered.has(relation.childId)) continue
+        discovered.add(relation.childId)
+        pending.push({ id: relation.childId, depth: current.depth + 1 })
+      }
+    }
+
+    if (leaves.length === 0) {
+      return emptyCollectionDownloadDescendants("READY")
+    }
+
+    const leafVideos = await this.prisma.video.findMany({
+      where: { id: { in: leaves }, ...childVisibility },
+      select: {
+        id: true,
+        slug: true,
+        locales: {
+          where: localeVisibility,
+          orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+          select: { title: true },
+          take: 1,
+        },
+        images: {
+          where: { deletedAt: null, url: { not: null } },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: { url: true },
+          take: 1,
+        },
+      },
+    })
+    const leafById = new Map(leafVideos.map((leaf) => [leaf.id, leaf]))
+    const orderedLeafIds = leaves.filter((id) => leafById.has(id))
+
+    const downloadableDubWhere: Prisma.VideoDubWhereInput = {
+      deletedAt: null,
+      published: true,
+      downloadable: true,
+      videoId: { in: orderedLeafIds },
+      downloads: {
+        some: { deletedAt: null, quality: { not: null }, url: { not: null } },
+      },
+    }
+    const inventoryDubs = await this.prisma.videoDub.findMany({
+      where: {
+        ...downloadableDubWhere,
+        language: { slug: { not: null }, deletedAt: null },
+      },
+      distinct: ["languageId"],
+      orderBy: [{ languageId: "asc" }, { id: "asc" }],
+      select: {
+        language: { select: { slug: true, name: true, bcp47: true } },
+      },
+    })
+
+    const languages = Array.from(
+      new Map(
+        inventoryDubs.flatMap((dub) =>
+          dub.language?.slug
+            ? [
+                [
+                  dub.language.slug,
+                  {
+                    slug: dub.language.slug,
+                    name: dub.language.name,
+                    bcp47: dub.language.bcp47,
+                  } satisfies CollectionDownloadLanguageRow,
+                ],
+              ]
+            : [],
+        ),
+      ).values(),
+    ).sort((a, b) => a.slug.localeCompare(b.slug))
+
+    // An omitted language is the discovery request. It intentionally returns
+    // only language metadata, keeping the first modal request inexpensive.
+    if (!languageSlug) {
+      return {
+        status: "READY",
+        languages,
+        eligibleLeaves: [],
+        skippedLeaves: [],
+      }
+    }
+
+    const dubs = await this.prisma.videoDub.findMany({
+      where: {
+        ...downloadableDubWhere,
+        language: { slug: languageSlug, deletedAt: null },
+      },
+      distinct: ["videoId"],
+      orderBy: DOWNLOADABLE_DUB_ORDER_BY,
+      select: {
+        id: true,
+        videoId: true,
+        downloads: {
+          where: {
+            deletedAt: null,
+            quality: { not: null },
+            url: { not: null },
+          },
+          orderBy: [{ height: "desc" }, { id: "asc" }],
+          select: { id: true, height: true, quality: true, size: true },
+        },
+      },
+    })
+
+    const dubByVideoId = new Map<string, (typeof dubs)[number]>()
+    for (const dub of dubs) {
+      if (!dubByVideoId.has(dub.videoId)) dubByVideoId.set(dub.videoId, dub)
+    }
+    const toLeaf = (id: string, ordinal: number): CollectionDownloadLeafRow => {
+      const leaf = leafById.get(id)
+      const dub = dubByVideoId.get(id)
+      const slug = leaf?.slug ?? id
+      return {
+        id,
+        slug,
+        title: leaf?.locales[0]?.title ?? slug,
+        thumbnailUrl: leaf?.images[0]?.url ?? null,
+        ordinal,
+        dubId: dub?.id ?? null,
+        downloads:
+          dub?.downloads.flatMap((download) =>
+            download.quality
+              ? [
+                  {
+                    id: download.id,
+                    height: download.height,
+                    quality: download.quality,
+                    size: download.size,
+                  },
+                ]
+              : [],
+          ) ?? [],
+      }
+    }
+
+    return {
+      status: "READY",
+      languages,
+      eligibleLeaves: orderedLeafIds.flatMap((id, index) =>
+        dubByVideoId.has(id) ? [toLeaf(id, index)] : [],
+      ),
+      skippedLeaves: orderedLeafIds.flatMap((id, index) =>
+        dubByVideoId.has(id) ? [] : [toLeaf(id, index)],
+      ),
+    }
+  }
+}
+
+function emptyCollectionDownloadDescendants(
+  status: CollectionDownloadDescendants["status"],
+): CollectionDownloadDescendants {
+  return { status, languages: [], eligibleLeaves: [], skippedLeaves: [] }
 }
 
 type WatchLanguageInventoryBucket =

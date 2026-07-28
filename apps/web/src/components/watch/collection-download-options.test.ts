@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildCollectionDownloadOptions,
+  buildCollectionDownloadOptionsFromDescendants,
   buildCollectionDownloadQueue,
 } from "./collection-download-options"
 
@@ -77,6 +78,49 @@ describe("collection download options", () => {
     ])
     expect(result.skipped.map((item) => item.documentId)).toEqual(["v3"])
     expect(result.commonTiers).toEqual(["highest", "low"])
+  })
+
+  it("uses recursive leaf order and preserves explicitly skipped leaves", () => {
+    const result = buildCollectionDownloadOptionsFromDescendants(
+      [
+        {
+          documentId: "leaf-2",
+          slug: "second",
+          title: "Second",
+          thumbnailUrl: null,
+          ordinal: 2,
+          variantId: "dub-2",
+          downloads: [
+            { documentId: "download-2", height: 720, quality: "high", size: 2 },
+          ],
+        },
+        {
+          documentId: "leaf-1",
+          slug: "first",
+          title: "First",
+          thumbnailUrl: null,
+          ordinal: 1,
+          variantId: "dub-1",
+          downloads: [
+            { documentId: "download-1", height: 720, quality: "high", size: 1 },
+          ],
+        },
+      ],
+      [
+        {
+          documentId: "leaf-3",
+          slug: "third",
+          title: "Third",
+          thumbnailUrl: null,
+        },
+      ],
+    )
+
+    expect(result.candidates.map((candidate) => candidate.documentId)).toEqual([
+      "leaf-1",
+      "leaf-2",
+    ])
+    expect(result.skipped.map((leaf) => leaf.documentId)).toEqual(["leaf-3"])
   })
 
   it("builds compatible opaque proxy queue items", () => {

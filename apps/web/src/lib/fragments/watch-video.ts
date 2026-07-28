@@ -559,21 +559,38 @@ export const getVideoChildDubLanguagesBySlugOperation = adminGraphql(`
 `)
 
 export const getWatchCollectionDownloadDubsBySlugOperation = adminGraphql(`
-  query GetWatchCollectionDownloadDubs(
+  query GetWatchCollectionDownloadDescendants(
     $videoSlug: String!
-    $languageSlug: String!
+    $languageSlug: String
   ) {
     videoBySlug(slug: $videoSlug) {
       documentId: id
-      downloadableChildDubs(languageSlug: $languageSlug) {
-        documentId: id
-        videoId
-        downloads {
+      downloadableDescendants(languageSlug: $languageSlug) {
+        status
+        languages {
+          slug
+          name
+          bcp47
+        }
+        eligibleLeaves {
           documentId: id
-          height
-          quality
-          size
-          url
+          slug
+          title
+          thumbnailUrl
+          ordinal
+          variantId: dubId
+          downloads {
+            documentId: id
+            height
+            quality
+            size
+          }
+        }
+        skippedLeaves {
+          documentId: id
+          slug
+          title
+          thumbnailUrl
         }
       }
     }

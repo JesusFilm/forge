@@ -10,6 +10,7 @@ depends_on:
   - "feat-196"
 blocks:
   - "feat-266"
+  - "feat-322"
 tags:
   - "web"
   - "admin"
@@ -21,6 +22,9 @@ tags:
 ## Resolution
 
 **Status:** Reopened on 2026-07-20 for the missing Terms acceptance requirement in the collection modal. [PR #1559](https://github.com/JesusFilm/forge/pull/1559) remains the delivery vehicle and returns to complete only after the parity patch and local browser verification pass.
+
+Recursive expansion of nested collection and series children is tracked by
+`feat-322`; this ticket's direct-child flow remains its dependency.
 
 ## Problem
 

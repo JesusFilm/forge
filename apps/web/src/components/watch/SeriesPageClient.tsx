@@ -24,7 +24,6 @@ import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
-import { resolveEpisodeImageUrl } from "@/lib/episode-image"
 import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
@@ -446,14 +445,7 @@ export function SeriesPageClient({
           open
           collectionSlug={series.slug ?? ""}
           collectionTitle={series.title}
-          episodes={episodes.map((episode) => ({
-            documentId: episode.documentId,
-            slug: episode.slug,
-            title: episode.title,
-            thumbnailUrl: resolveEpisodeImageUrl(episode),
-          }))}
-          languages={languageOptions}
-          currentLanguageSlug={currentLanguageSlug}
+          initialLanguageSlug={currentLanguageSlug}
           accountGateEnabled={downloadAccountGateEnabled}
           authRequiredLoginUrl={downloadLoginUrl}
           onClose={closeModal}

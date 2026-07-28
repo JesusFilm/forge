@@ -462,10 +462,7 @@ describe("SeriesPageClient — collection downloads", () => {
     expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         collectionSlug: "storyclubs",
-        episodes: [
-          expect.objectContaining({ documentId: "episode-1" }),
-          expect.objectContaining({ documentId: "episode-2" }),
-        ],
+        initialLanguageSlug: "en",
         accountGateEnabled: false,
         authRequiredLoginUrl: null,
       }),
