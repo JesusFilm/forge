@@ -74,3 +74,7 @@ apps/mobile/design-mockups/
 # Daily-devotional generated artifacts: rendered videos, downloaded clips, audio,
 # manifests, caches, previews. All reproducible output — never committed.
 devo/
+
+# chat-eval prototype run output (answers, judgements, reports). Reproducible —
+# commit a curated sample under the prototype dir instead.
+apps/mastra/prototype-runs/
