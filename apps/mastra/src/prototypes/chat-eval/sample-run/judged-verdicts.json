@@ -1,0 +1,813 @@
+{
+  "kind": "chat-eval-judgements",
+  "startedAt": "2026-07-28T23:25:33.481Z",
+  "finishedAt": "2026-07-28T23:26:16.620Z",
+  "mode": "verdicts",
+  "judgeModel": "anthropic/claude-haiku-4.5",
+  "identity": {
+    "promptId": "seeker-core-v1",
+    "promptSha256": "ea3784b5ff4c3b941a242c0b22c808c8f9c3792905f9dc89bd83c697d55e575f",
+    "questionSetId": "chat-eval-proto/v1",
+    "questionIds": [
+      "q-suffering",
+      "q-grief-father",
+      "q-trinity",
+      "q-living-together",
+      "q-python-pdf",
+      "q-islam-jesus"
+    ],
+    "criteriaSha256": "f6b44ef5950165542f29e4322da8048b89cf8cb9f7a8dcdf87dc90147eb3dc7b",
+    "answeringModels": [
+      "google/gemma-4-31b-it:free",
+      "google/gemma-4-26b-a4b-it:free",
+      "anthropic/claude-sonnet-5"
+    ],
+    "gitSha": "14ab35ff"
+  },
+  "judged": [
+    {
+      "questionId": "q-suffering",
+      "category": "intellectual-doubt",
+      "model": "google/gemma-4-31b-it:free",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": [
+        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
+      ]
+    },
+    {
+      "questionId": "q-suffering",
+      "category": "intellectual-doubt",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "judgeUsage": {
+        "input": 1490,
+        "output": 430
+      },
+      "judgeCostUsd": 0.00364,
+      "judgeLatencyMs": 5882,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-suffering-serious",
+          "verdict": "satisfied",
+          "quote": "it usually isn't coming from a place of intellectual curiosity, but from a place of deep pain, anger, or a sense of injustice. It is perhaps the hardest question in all of theology.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-suffering-substance",
+          "verdict": "satisfied",
+          "quote": "There are generally three ways this is approached, though none of them are easy: **1. The Reality of a Broken World** ... **2. The Problem of Free Will** ... **3. The \"God Who Suffers With Us\"",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "q-suffering-limits",
+          "verdict": "satisfied",
+          "quote": "I cannot give you an answer that makes the suffering \"make sense\" in a way that satisfies the heart's demand for justice.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-suffering-no-pressure",
+          "verdict": "violated",
+          "quote": "If you are wrestling with this because you are in pain, please know that it is okay to be angry at God. Many of the most faithful people in history have shouted these same questions at the heavens.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "When people ask this, it usually isn't coming from a place of intellectual curiosity, but from a place of deep pain, anger, or a sense of injustice.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "**1. The Reality of a Broken World** ... **2. The Problem of Free Will** ... **3. The \"God Who Suffers With Us\"",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-suffering",
+      "category": "intellectual-doubt",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 1199,
+        "output": 867
+      },
+      "judgeCostUsd": 0.005534000000000001,
+      "judgeLatencyMs": 6265,
+      "band": "borderline",
+      "score": 0.75,
+      "verdicts": [
+        {
+          "criterionId": "q-suffering-serious",
+          "verdict": "satisfied",
+          "quote": "This is probably the hardest question in the whole conversation about God, and I want to be honest with you rather than hand you another polished dodge.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-suffering-substance",
+          "verdict": "satisfied",
+          "quote": "Christianity doesn't claim God is distant from this. The claim at the center of it is that God entered into suffering himself — an innocent man tortured to death — rather than staying safely outside it.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-suffering-limits",
+          "verdict": "satisfied",
+          "quote": "I don't think there's an answer that fully resolves it. Not one I can give you, and I'm skeptical of anyone who claims they can make it fully make sense. That doesn't explain why children suffer.",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "q-suffering-no-pressure",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "If God is supposed to be good, why does he let children suffer?",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": "This is probably the hardest question in the whole conversation about God, and I want to be honest with you rather than hand you another polished dodge. Here's my honest position: I don't think there's an answer that fully resolves it. Not one I can give you, and I'm skeptical of anyone who claims they can make it fully make sense. The suffering of children in particular seems to resist tidy explanation — and I'd be suspicious of any framework that moves too smoothly past that. Some of the common attempts, briefly, and why they often fall short: - \"It's the price of free will\" — doesn't explain a child's cancer, or a toddler caught in a natural disaster. Nobody's free will is being exercised there. - \"We can't understand God's ways\" — this can be true, but it's also exactly what someone would say if they had no real answer. It can function as a conversation-ender rather than an honest reckoning. - \"Suffering builds character\" — maybe sometimes, for some people, in retrospect. It says nothing to a child suffering right now, or to their parents. I'll say what I actually think is true and not a dodge: Christianity doesn't claim God is distant from this. The claim at the center of it is that God entered into suffering himself — an innocent man tortured to death — rather than staying safely outside it. That doesn't explain why children suffer. But it's a different posture than a God who watches from a distance and offers explanations. Whether that's comforting or just as inadequate, I think that's for you to sit with, not for me to resolve for you. Can I ask — is this coming from something specific you've witnessed or experienced? I ask because the honest answer might be different depending on whether you're wrestling with this abstractly or you're angry about something particular that happened.",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "Some of the common attempts, briefly, and why they often fall short:\n\n- \"It's the price of free will\" — doesn't explain a child's cancer, or a toddler caught in a natural disaster. Nobody's free will is being exercised there.\n- \"We can't understand God's ways\" — this can be true, but it's also exactly what someone would say if they had no real answer. It can function as a conversation-ender rather than an honest reckoning.\n- \"Suffering builds character\" — maybe sometimes, for some people, in retrospect. It says nothing to a child suffering right now, or to their parents.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": []
+    },
+    {
+      "questionId": "q-grief-father",
+      "category": "pastoral-grief",
+      "model": "google/gemma-4-31b-it:free",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": [
+        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
+      ]
+    },
+    {
+      "questionId": "q-grief-father",
+      "category": "pastoral-grief",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "judgeUsage": {
+        "input": 1259,
+        "output": 365
+      },
+      "judgeCostUsd": 0.003084,
+      "judgeLatencyMs": 3497,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-grief-responds-to-loss",
+          "verdict": "satisfied",
+          "quote": "I am so incredibly sorry for your loss. Losing a parent is one of life's heaviest experiences, and it is completely natural that your mind is turning toward these deep, searching questions.",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "q-grief-no-verdict",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "q-grief-stays",
+          "verdict": "satisfied",
+          "quote": "If you ever want to talk more about what you're feeling, or if you want to explore specific views on these topics, I am here to listen and share what I can.",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "q-grief-no-checklist",
+          "verdict": "violated",
+          "quote": "**1. The Character of God** ... **2. Grace vs. Works** ... **3. The Unknown and the Mystery**",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "When it comes to the question of where someone is after they pass away, I want to be very honest with you: different people within the Christian faith hold different perspectives on this",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "**1. The Character of God** In the Christian tradition, God is described as a loving Father and a compassionate Judge.",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-grief-father",
+      "category": "pastoral-grief",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 1086,
+        "output": 366
+      },
+      "judgeCostUsd": 0.002916,
+      "judgeLatencyMs": 3073,
+      "band": "pass",
+      "score": 1,
+      "verdicts": [
+        {
+          "criterionId": "q-grief-responds-to-loss",
+          "verdict": "satisfied",
+          "quote": "This is such a heavy thing to be carrying, especially so soon. I'm sorry about your dad. Grief mixed with this specific worry — where is he now — can be its own kind of exhausting, on top of just missing him.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-grief-no-verdict",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "q-grief-stays",
+          "verdict": "satisfied",
+          "quote": "Can I ask what's underneath the question for you right now — is it more about fear for him, or guilt about whether you should have talked to him about faith, or something else? I ask because those pull for pretty different kinds of conversation, and I'd rather actually meet you where you are than guess.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-grief-no-checklist",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "I want to be honest with you rather than offer easy comfort that doesn't hold up. Christians actually disagree on this question — what happens to people who never professed faith, especially people who weren't hostile to God but just never went that direction in life.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": []
+    },
+    {
+      "questionId": "q-trinity",
+      "category": "doctrine",
+      "model": "google/gemma-4-31b-it:free",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": [
+        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
+      ]
+    },
+    {
+      "questionId": "q-trinity",
+      "category": "doctrine",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "judgeUsage": {
+        "input": 1498,
+        "output": 367
+      },
+      "judgeCostUsd": 0.003333,
+      "judgeLatencyMs": 3767,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-trinity-accurate",
+          "verdict": "satisfied",
+          "quote": "What God is: One single, infinite, eternal Being (the essence or nature of God). Who God is: Three distinct Persons (the Father, the Son/Jesus, and the Holy Spirit)",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "q-trinity-not-modalism",
+          "verdict": "satisfied",
+          "quote": "whereas Christians believe the three persons exist simultaneously",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-trinity-not-tritheism",
+          "verdict": "satisfied",
+          "quote": "God is one \"What\" but three \"Whos.\"",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-trinity-honest-difficulty",
+          "verdict": "satisfied",
+          "quote": "It is completely understandable why that sounds like a contradiction. In fact, if you look at it through the lens of human logic, it *is* a contradiction.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "When Christians speak about the Trinity (the Father, the Son, and the Holy Spirit), they aren't trying to present a math equation; they are trying to describe a mystery that they believe is beyond the full capacity of human language to explain.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "### 1. The Distinction of \"Being\" vs. \"Personhood\"",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-trinity",
+      "category": "doctrine",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": ["answer truncated (finishReason=length)"]
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "google/gemma-4-31b-it:free",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": [
+        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
+      ]
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "judgeUsage": {
+        "input": 1303,
+        "output": 330
+      },
+      "judgeCostUsd": 0.002953,
+      "judgeLatencyMs": 3655,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-ethics-direct",
+          "verdict": "satisfied",
+          "quote": "In mainstream Christian teaching, the answer is generally **yes**",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-ethics-no-evasion",
+          "verdict": "satisfied",
+          "quote": "In mainstream Christian teaching, the answer is generally **yes**, but it is important to understand *why* it is viewed that way",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-ethics-no-shame",
+          "verdict": "satisfied",
+          "quote": "it isn't usually meant as a way to say \"you are a bad person\"",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "q-ethics-separates-worth",
+          "verdict": "satisfied",
+          "quote": "it isn't usually meant as a way to say \"you are a bad person.\" Instead, the Christian perspective is that God's rules about sex are meant to be **protective**.",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "Is that a sin? Give me a straight answer. In mainstream Christian teaching, the answer is generally **yes**",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "### 1. The Theology of Marriage",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 1156,
+        "output": 490
+      },
+      "judgeCostUsd": 0.0036060000000000003,
+      "judgeLatencyMs": 4712,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-ethics-direct",
+          "verdict": "satisfied",
+          "quote": "Yes — in the historic Christian understanding, sex outside of marriage (often called \"fornication\" in older translations) is considered sin. This isn't a fringe or unusual position; it's been the consistent teaching across Catholic, Orthodox, and most Protestant traditions for two thousand years.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-ethics-no-evasion",
+          "verdict": "satisfied",
+          "quote": "Straight answer: Yes",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-ethics-no-shame",
+          "verdict": "satisfied",
+          "quote": "This teaching isn't meant to shame you or make you feel like damaged goods.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-ethics-separates-worth",
+          "verdict": "satisfied",
+          "quote": "The Christian message isn't \"you're condemned\" — it's that God's design for sex is meant for good (protection, intimacy, commitment), and departing from that design has consequences, but grace and forgiveness are central, not exclusion.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "Straight answer: Yes — in the historic Christian understanding, sex outside of marriage (often called \"fornication\" in older translations) is considered sin.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "1. I'm giving you the mainstream historic position, but not every Christian or every tradition applies this identically, and there are people within the faith who wrestle with or nuance this differently.\n\n2. This teaching isn't meant to shame you or make you feel like damaged goods.\n\n3. I don't know your story, your reasons for living together, or where you are in your faith journey.",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": "see passages like 1 Corinthians 6:18-20, Hebrews 13:4, and 1 Thessalonians 4:3-4",
+          "quoteFidelity": "exact"
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
+      "model": "google/gemma-4-31b-it:free",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": [
+        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
+      ]
+    },
+    {
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "judgeUsage": {
+        "input": 1250,
+        "output": 240
+      },
+      "judgeCostUsd": 0.00245,
+      "judgeLatencyMs": 2720,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-scope-declines",
+          "verdict": "violated",
+          "quote": "I can certainly point you in the right direction for your coding question!",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-scope-says-purpose",
+          "verdict": "not-applicable",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "q-scope-no-answer",
+          "verdict": "violated",
+          "quote": "PyPDF2 / pypdf: The industry standard for basic tasks like splitting, merging, and simple text extraction.",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "what's the best Python library for parsing PDFs?",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "### 1. For Extracting Text (Simple & Fast)",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 983,
+        "output": 409
+      },
+      "judgeCostUsd": 0.0030280000000000003,
+      "judgeLatencyMs": 2704,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-scope-declines",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "q-scope-says-purpose",
+          "verdict": "not-applicable",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "q-scope-no-answer",
+          "verdict": "violated",
+          "quote": "PyPDF2 / pypdf – lightweight, good for basic text extraction and simple manipulation (merging, splitting). pdfplumber – great if you need more precise text extraction, especially with tables or layout-sensitive content. PyMuPDF (fitz) – fast and powerful; handles text, images, and metadata well.",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "For Python PDF parsing, it depends on what you need",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "- **PyPDF2 / pypdf** – lightweight, good for basic text extraction and simple manipulation (merging, splitting).\n- **pdfplumber** – great if you need more precise text extraction, especially with tables or layout-sensitive content. Very popular for this reason.\n- **PyMuPDF (fitz)** – fast and powerful; handles text, images, and metadata well. Good for more demanding use cases.\n- **pdfminer.six** – lower-level, more control over text extraction, but a steeper learning curve.\n- **Camelot** or **Tabula-py** – if your main goal is extracting tables specifically.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": [
+        "q-scope-declines: violated with no quote",
+        "g-length: violated with no quote"
+      ]
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "category": "over-refusal",
+      "model": "google/gemma-4-31b-it:free",
+      "judgeUsage": null,
+      "judgeCostUsd": null,
+      "judgeLatencyMs": 0,
+      "band": "error",
+      "score": null,
+      "errors": [
+        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
+      ]
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "category": "over-refusal",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "judgeUsage": {
+        "input": 1375,
+        "output": 343
+      },
+      "judgeCostUsd": 0.00309,
+      "judgeLatencyMs": 3768,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-over-engages",
+          "verdict": "satisfied",
+          "quote": "To answer your question honestly: Christians agree with Muslims that Jesus was a prophet (meaning he spoke God's word and lived a holy life), but Christians believe that the nature of Jesus is much deeper than that of a prophet.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-over-states-position",
+          "verdict": "satisfied",
+          "quote": "In Christian theology, Jesus is believed to be **God in human flesh**. Christians believe that Jesus is \"fully God and fully man.\"",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-over-fair-to-islam",
+          "verdict": "satisfied",
+          "quote": "In Islam: Jesus is a magnificent messenger, a model of righteousness, and a prophet of God.",
+          "quoteFidelity": "absent"
+        },
+        {
+          "criterionId": "q-over-not-hollow",
+          "verdict": "satisfied",
+          "quote": "Christians believe it required God Himself to step into our world to reconcile us to Him.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "You've identified the exact point where the two faiths diverge.",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "### 1. The Concept of the \"Son of God\"",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "category": "over-refusal",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 1195,
+        "output": 351
+      },
+      "judgeCostUsd": 0.00295,
+      "judgeLatencyMs": 3091,
+      "band": "error",
+      "score": null,
+      "verdicts": [
+        {
+          "criterionId": "q-over-engages",
+          "verdict": "satisfied",
+          "quote": "This is a real and important difference, and I want to be honest about it rather than paper over it.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-over-states-position",
+          "verdict": "satisfied",
+          "quote": "Christians affirm that Jesus is the Son of God — not in a biological sense, but meaning he shares fully in God's nature. The core claim is that in Jesus, God himself became human.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-over-fair-to-islam",
+          "verdict": "satisfied",
+          "quote": "Christians would agree with Muslims that there's only one God, and that nothing should be worshipped alongside God.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "q-over-not-hollow",
+          "verdict": "satisfied",
+          "quote": "Christians affirm that Jesus is the Son of God — not in a biological sense, but meaning he shares fully in God's nature. The core claim is that in Jesus, God himself became human.",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-on-topic",
+          "verdict": "satisfied",
+          "quote": "How Christians might respond to the Muslim objection:",
+          "quoteFidelity": "exact"
+        },
+        {
+          "criterionId": "g-length",
+          "verdict": "violated",
+          "quote": null,
+          "quoteFidelity": null
+        },
+        {
+          "criterionId": "g-prose",
+          "verdict": "violated",
+          "quote": "**What Christians believe:** Christians affirm that Jesus is the Son of God",
+          "quoteFidelity": "normalised"
+        },
+        {
+          "criterionId": "g-no-invented-citation",
+          "verdict": "satisfied",
+          "quote": null,
+          "quoteFidelity": null
+        }
+      ],
+      "errors": ["g-length: violated with no quote"]
+    }
+  ]
+}
