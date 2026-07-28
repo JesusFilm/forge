@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Search } from "lucide-react"
+import { Search, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { CoverageFilterDropdown } from "@/features/coverage/coverage-filter-dropdown"
 import { EnrichActionControls } from "@/features/coverage/enrich-action-controls"
 import type { EnrichFeedback } from "@/features/enrich-selection"
 import {
@@ -31,6 +33,7 @@ export function VideoPipelinesClient() {
   )
   const [hoveredCell, setHoveredCell] = useState<VideoPipelineCell | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [mediaTypeFilter, setMediaTypeFilter] = useState("all")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<EnrichFeedback | null>(null)
 
@@ -60,6 +63,9 @@ export function VideoPipelinesClient() {
     }),
     [collection, searchQuery],
   )
+
+  const isCollectionVisible =
+    mediaTypeFilter === "all" || mediaTypeFilter === collection.label
 
   // Clear the hover preview once a search query filters its cell out of
   // view, so the detail bar can't keep showing a cell no longer rendered.
@@ -110,40 +116,70 @@ export function VideoPipelinesClient() {
 
   return (
     <div className="studio-page studio-page--coverage">
-      <div className="studio-page-header">
-        <p className="studio-page-eyebrow">VIDEO PRODUCTION</p>
-        <h1>Video Pipelines</h1>
-        <p>Track the development and status of video production workflows.</p>
-      </div>
+      <header className="studio-page-intro studio-page-intro--coverage">
+        <div className="studio-page-intro-copy">
+          <span className="studio-page-eyebrow">Video production</span>
+          <h1>Video Pipelines</h1>
+          <p>Track the development and status of video production workflows.</p>
+        </div>
+        <div className="studio-page-intro-diagram">
+          <PipelineStatDiagram counts={counts} />
+        </div>
+      </header>
 
-      <PipelineStatDiagram counts={counts} />
-
-      <div className="translation-toolbar">
-        <div className="relative w-full">
-          <Search
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--ds-muted)]"
-            aria-hidden="true"
-          />
-          <Input
-            aria-label="Search Devotions - August"
-            placeholder="Search by name or date..."
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            className="pl-9"
+      <section className="relative z-[60] mb-5">
+        <div
+          className="flex w-[calc(100vw-2.5rem)] max-w-full flex-row items-center gap-2 sm:w-full"
+          id="video-pipelines-filters"
+        >
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[color:var(--ds-muted)]"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              className="h-10 rounded-xl border-[color:color-mix(in_srgb,var(--ds-black)_14%,transparent)] bg-transparent pl-10 pr-10 text-sm font-medium text-[color:var(--ds-ink)] shadow-none ring-0 transition-colors duration-75 placeholder:text-[color:var(--ds-soft)] hover:bg-[color:color-mix(in_srgb,var(--ds-black)_6%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_10%,transparent)] focus-visible:border-[color:var(--ds-black)] focus-visible:bg-[color:color-mix(in_srgb,var(--ds-black)_3%,transparent)] focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+              placeholder="Search by name or date..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+            {searchQuery.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-1.5 top-1/2 size-7 -translate-y-1/2 rounded-lg text-[color:var(--ds-muted)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_6%,transparent)] hover:text-[color:var(--ds-ink)]"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                <X className="size-[18px]" aria-hidden="true" />
+              </Button>
+            )}
+          </div>
+          <CoverageFilterDropdown
+            value={mediaTypeFilter}
+            onChange={setMediaTypeFilter}
+            options={[
+              { value: "all", label: "Media Type" },
+              { value: collection.label, label: collection.labelDisplay },
+            ]}
           />
         </div>
-      </div>
+      </section>
 
-      <VideoPipelineCollectionCard
-        collection={filteredCollection}
-        isExpanded={isExpanded}
-        onHoverCell={setHoveredCell}
-        onToggleCell={(cellId) =>
-          setSelectedCellIds((prev) => toggleSetMember(prev, cellId))
-        }
-        onToggleExpanded={() => setIsExpanded((prev) => !prev)}
-        selectedCellIds={selectedCellIds}
-      />
+      {isCollectionVisible ? (
+        <VideoPipelineCollectionCard
+          collection={filteredCollection}
+          isExpanded={isExpanded}
+          onHoverCell={setHoveredCell}
+          onToggleCell={(cellId) =>
+            setSelectedCellIds((prev) => toggleSetMember(prev, cellId))
+          }
+          onToggleExpanded={() => setIsExpanded((prev) => !prev)}
+          selectedCellIds={selectedCellIds}
+        />
+      ) : null}
 
       <PipelineHoverDetailBar hoveredCell={hoveredCell} />
 

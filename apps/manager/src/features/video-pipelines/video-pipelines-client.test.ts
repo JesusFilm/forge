@@ -20,6 +20,15 @@ describe("VideoPipelinesClient", () => {
     expect(markup).toContain("Not Generated")
   })
 
+  it("renders a Media Type dropdown alongside the search input", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(VideoPipelinesClient),
+    )
+
+    expect(markup).toContain("Media Type")
+    expect(markup).toContain('aria-haspopup="listbox"')
+  })
+
   it("never renders an 'AI' stat segment or an 'Enrich Now' action", () => {
     const markup = renderToStaticMarkup(
       React.createElement(VideoPipelinesClient),

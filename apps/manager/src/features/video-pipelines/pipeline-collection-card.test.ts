@@ -40,7 +40,7 @@ describe("VideoPipelineCollectionCard", () => {
 
     expect(markup).toContain("Show details")
     expect(markup).not.toContain("Hide details")
-    expect(markup).toContain("pipeline-collection-tiles")
+    expect(markup).toMatch(/class="collection-tiles"/)
     expect(markup).not.toMatch(/collection-details is-open/)
   })
 
@@ -50,7 +50,7 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup).toContain("Hide details")
     expect(markup).not.toContain("Show details")
     expect(markup).toMatch(/collection-details is-open/)
-    expect(markup).toMatch(/pipeline-collection-tiles is-hidden/)
+    expect(markup).toMatch(/collection-tiles is-hidden/)
   })
 
   it("groups the expanded list into Generated / Not Generated headings", () => {
@@ -60,7 +60,49 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup).toContain("Not Generated")
   })
 
-  it("colors each cell's mobile/desktop icons independently of the aggregate bucket", () => {
+  it("renders collapsed cells as plain colored tiles, like the Subtitles report", () => {
+    // The expanded detail rows (with mobile/desktop icons) are always present
+    // in the markup and only CSS-hidden when collapsed -- see
+    // "still shows independent mobile/desktop icons in the expanded detail
+    // rows" below. This asserts the *collapsed grid* button itself renders a
+    // plain colored tile with no icon children, not that the string
+    // "pipeline-cell-icon" is absent from the whole document.
+    const markup = renderCard({ isExpanded: false })
+    const tileButtonMatch = markup.match(
+      /<button[^>]*class="tile tile--video[^"]*"[^>]*>(.*?)<\/button>/,
+    )
+
+    expect(tileButtonMatch).not.toBeNull()
+    expect(markup).toContain("tile--coverage")
+    expect(markup).toContain("pipeline-cell-tile")
+    expect(tileButtonMatch?.[1]).not.toContain("pipeline-cell-icon")
+    expect(tileButtonMatch?.[1]).toContain("tile-checkbox")
+  })
+
+  it("colors collapsed tiles green for fully generated cells and red for anything else", () => {
+    const collection = buildDevotionsAugustCollection()
+    const generatedCell = collection.cells.find(
+      (cell) => cell.mobileGenerated && cell.desktopGenerated,
+    )
+    const pendingCell = collection.cells.find(
+      (cell) => !cell.mobileGenerated || !cell.desktopGenerated,
+    )
+    if (!generatedCell || !pendingCell) {
+      throw new Error(
+        "expected both a generated and a non-generated fixture cell",
+      )
+    }
+
+    const markup = renderCard({
+      collection: { ...collection, cells: [generatedCell, pendingCell] },
+      isExpanded: false,
+    })
+
+    expect(markup).toContain("tile--human")
+    expect(markup).toContain("tile--none")
+  })
+
+  it("still shows independent mobile/desktop icons in the expanded detail rows", () => {
     const collection = buildDevotionsAugustCollection()
     // Aug 2 is mobile-only generated per the deterministic fixture pattern.
     const partialCell = collection.cells.find(
@@ -70,7 +112,7 @@ describe("VideoPipelineCollectionCard", () => {
     expect(partialCell.mobileGenerated).toBe(true)
     expect(partialCell.desktopGenerated).toBe(false)
 
-    const markup = renderCard({ collection })
+    const markup = renderCard({ collection, isExpanded: true })
 
     expect(markup).toContain("pipeline-cell-icon--generated")
     expect(markup).toContain("pipeline-cell-icon--pending")

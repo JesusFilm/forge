@@ -68,21 +68,27 @@ export function VideoPipelineCollectionCard({
 
   const renderCell = (cell: VideoPipelineCell) => {
     const isSelected = selectedCellIds.has(cell.id)
+    const status = computeAggregateStatus(cell)
+    const statusLabel = status === "generated" ? "Generated" : "Not generated"
 
     return (
       <button
         key={cell.id}
         type="button"
-        className={`pipeline-cell${isSelected ? " is-selected" : ""}`}
         aria-pressed={isSelected}
-        aria-label={`${cell.title} — ${formatCellDate(cell.date)}`}
+        className={`tile tile--video tile--coverage pipeline-cell-tile tile--${
+          status === "generated" ? "human" : "none"
+        }${isSelected ? " is-selected" : ""}`}
+        aria-label={`${cell.title} — ${formatCellDate(cell.date)} — ${statusLabel}`}
         onClick={() => onToggleCell(cell.id)}
         onMouseEnter={() => onHoverCell(cell)}
         onMouseLeave={() => onHoverCell(null)}
         onFocus={() => onHoverCell(cell)}
         onBlur={() => onHoverCell(null)}
       >
-        <PipelineCellIcons cell={cell} />
+        <span className="tile-checkbox" aria-hidden="true">
+          <span className="tile-checkbox-box" />
+        </span>
       </button>
     )
   }
@@ -179,9 +185,7 @@ export function VideoPipelineCollectionCard({
         )}
       </div>
 
-      <div
-        className={`pipeline-collection-tiles${isExpanded ? " is-hidden" : ""}`}
-      >
+      <div className={`collection-tiles${isExpanded ? " is-hidden" : ""}`}>
         {collection.cells.map(renderCell)}
       </div>
     </section>
