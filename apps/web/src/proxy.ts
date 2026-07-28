@@ -29,6 +29,7 @@ import {
 } from "@/lib/url-shape"
 import {
   getWatchRouteManifest,
+  isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
   type WatchRouteManifestRoute,
@@ -88,7 +89,15 @@ function defaultLanguageVideoAdmission(
     audioLanguageSlug: defaultAudioLanguageSlug,
   }
   if (!isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
-    return null
+    if (
+      !isWatchParentAdmittedByNestedContainer(
+        manifest,
+        contentSlug,
+        defaultAudioLanguageSlug,
+      )
+    ) {
+      return null
+    }
   }
 
   return {
@@ -407,6 +416,17 @@ async function classifyManifestAdmission(
   }
 
   if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+    return { kind: "admit" }
+  }
+
+  if (
+    decision.manifestRoute.kind === "video" &&
+    isWatchParentAdmittedByNestedContainer(
+      manifest,
+      decision.manifestRoute.contentSlug,
+      decision.manifestRoute.audioLanguageSlug,
+    )
+  ) {
     return { kind: "admit" }
   }
 

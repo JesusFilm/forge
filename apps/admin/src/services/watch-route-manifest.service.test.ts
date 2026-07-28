@@ -31,6 +31,10 @@ describe("WatchRouteManifestService.generate", () => {
       .mockResolvedValueOnce([
         { contentSlug: "jesus", audioLanguageSlug: "english" },
         { contentSlug: "jesus", audioLanguageSlug: "spanish" },
+        {
+          contentSlug: "walking-with-jesus",
+          audioLanguageSlug: "english",
+        },
       ])
       .mockResolvedValueOnce([
         {
@@ -42,6 +46,12 @@ describe("WatchRouteManifestService.generate", () => {
           parentSlug: "book-of-acts",
           childSlug: "saul",
           audioLanguageSlug: "spanish",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          parentSlug: "discipleship",
+          childSlug: "walking-with-jesus",
         },
       ])
 
@@ -64,6 +74,10 @@ describe("WatchRouteManifestService.generate", () => {
       .mockResolvedValueOnce([
         { contentSlug: "jesus", audioLanguageSlug: "english" },
         { contentSlug: "jesus", audioLanguageSlug: "spanish" },
+        {
+          contentSlug: "walking-with-jesus",
+          audioLanguageSlug: "english",
+        },
       ])
       .mockResolvedValueOnce([
         {
@@ -75,6 +89,12 @@ describe("WatchRouteManifestService.generate", () => {
           parentSlug: "book-of-acts",
           childSlug: "saul",
           audioLanguageSlug: "spanish",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          parentSlug: "discipleship",
+          childSlug: "walking-with-jesus",
         },
       ])
 
@@ -92,11 +112,17 @@ describe("WatchRouteManifestService.generate", () => {
       audioLanguageSlugs: ["english", "spanish"],
       audioLanguageIndexesByContent: {
         jesus: [0, 1],
+        "walking-with-jesus": [0],
       },
       audioLanguageIndexesByEpisode: {
         "book-of-acts": {
           pentecost: [0],
           saul: [1],
+        },
+      },
+      nestedContainerAudioLanguageIndexesByParent: {
+        discipleship: {
+          "walking-with-jesus": [0],
         },
       },
     })
@@ -139,6 +165,7 @@ describe("WatchRouteManifestService.generate", () => {
           audioLanguageSlug: "french",
         },
       ])
+      .mockResolvedValueOnce([])
 
     const service = new WatchRouteManifestService(prisma)
     const manifest = await service.generate()
@@ -167,6 +194,8 @@ describe("WatchRouteManifestService.generate", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
 
     const service = new WatchRouteManifestService(prisma)
     await service.generate()
@@ -181,6 +210,13 @@ describe("WatchRouteManifestService.generate", () => {
     expect(allSql).toContain('"is_homepage" = FALSE')
     expect(allSql).toContain('"is_homepage" = TRUE')
     expect(allSql).toContain('"path_segment" IS NULL')
+    expect(allSql).toContain(
+      "child.label IN ('collection'::\"VideoLabel\", 'series'::\"VideoLabel\")",
+    )
+    expect(allSql).toContain(
+      "parent.label IN ('collection'::\"VideoLabel\", 'series'::\"VideoLabel\")",
+    )
+    expect(allSql).toContain('child.slug AS "childSlug"\n      FROM')
   })
 
   it("rejects malformed query rows instead of emitting a partial manifest", async () => {
