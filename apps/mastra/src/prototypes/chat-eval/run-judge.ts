@@ -96,16 +96,46 @@ const VERDICT_SCHEMA = {
   },
 }
 
-function parseVerdicts(value: unknown): CriterionVerdict[] {
+/** Collapse whitespace, case, and smart punctuation for a lenient match. */
+function normaliseForMatch(value: string): string {
+  return value
+    .replace(/[‘’‛]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+/**
+ * Is the judge's quote actually in the answer? A judge that returns a
+ * confident, well-formed, invented quote is the worst possible failure of this
+ * design — it looks like evidence and is not. Measured on every verdict.
+ */
+function quoteFidelity(
+  quote: string | null,
+  answerText: string,
+): CriterionVerdict["quoteFidelity"] {
+  if (quote == null) return null
+  if (answerText.includes(quote)) return "exact"
+  if (normaliseForMatch(answerText).includes(normaliseForMatch(quote))) {
+    return "normalised"
+  }
+  return "absent"
+}
+
+function parseVerdicts(value: unknown, answerText: string): CriterionVerdict[] {
   const raw = (value as { verdicts?: unknown }).verdicts
   if (!Array.isArray(raw)) throw new Error("judge returned no verdicts array")
   return raw.map((entry) => {
     const record = entry as Record<string, unknown>
-    const quote = typeof record.quote === "string" ? record.quote.trim() : ""
+    const rawQuote = typeof record.quote === "string" ? record.quote.trim() : ""
+    const quote = rawQuote.length > 0 ? rawQuote : null
     return {
       criterionId: String(record.criterionId ?? ""),
       verdict: record.verdict as CriterionVerdict["verdict"],
-      quote: quote.length > 0 ? quote : null,
+      quote,
+      quoteFidelity: quoteFidelity(quote, answerText),
     }
   })
 }
@@ -285,7 +315,7 @@ async function judgeOne(
         system: VERDICT_SYSTEM,
         user: userMessage(question.text, answer.text, criteriaBlock),
         jsonSchema: VERDICT_SCHEMA,
-        parse: parseVerdicts,
+        parse: (value) => parseVerdicts(value, answer.text ?? ""),
       })
       const { score, errors } = scoreVerdicts(result.value, criteria)
       return {

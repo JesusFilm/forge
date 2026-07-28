@@ -12,7 +12,13 @@
 import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 
-import type { AnswerRun, Band, JudgedAnswer, JudgeRun } from "./types"
+import {
+  identityMismatch,
+  type AnswerRun,
+  type Band,
+  type JudgedAnswer,
+  type JudgeRun,
+} from "./types"
 
 const DEFAULT_IN = "prototype-runs/chat-eval/judged-verdicts.json"
 const DEFAULT_ANSWERS = "prototype-runs/chat-eval/answers.json"
@@ -93,8 +99,28 @@ async function main(): Promise<void> {
     flag(argv, "out") ?? `prototype-runs/chat-eval/report-${run.mode}.md`,
   )
 
+  // Never render a judgement file against answers it did not come from.
+  if (answers) {
+    const problems = identityMismatch(run.identity, answers.identity)
+    if (problems.length > 0) {
+      throw new Error(
+        `judgement and answer files disagree on: ${problems.join(", ")} — refusing to pair them`,
+      )
+    }
+  }
+
   const models = run.identity.answeringModels
   const errors = run.judged.filter((entry) => entry.errors.length > 0)
+
+  // Quote fidelity: how often did the judge produce evidence that isn't there?
+  const allVerdicts = run.judged.flatMap((entry) => entry.verdicts ?? [])
+  const quoted = allVerdicts.filter((verdict) => verdict.quote != null)
+  const fabricated = quoted.filter(
+    (verdict) => verdict.quoteFidelity === "absent",
+  )
+  const retyped = quoted.filter(
+    (verdict) => verdict.quoteFidelity === "normalised",
+  )
 
   const sections: string[] = [
     `# chat-eval prototype — ${run.mode}`,
@@ -117,6 +143,27 @@ async function main(): Promise<void> {
     categoryRollup(run.judged),
     "",
   ]
+
+  if (quoted.length > 0) {
+    sections.push(
+      "## Quote fidelity",
+      "",
+      "Does the judge's evidence actually appear in the answer? A fabricated",
+      "quote is the failure the quote requirement exists to prevent.",
+      "",
+      `- quotes returned: **${quoted.length}**`,
+      `- verbatim: **${quoted.length - fabricated.length - retyped.length}**`,
+      `- retyped (matched only after normalising): **${retyped.length}**`,
+      `- **fabricated (not in the answer at all): ${fabricated.length}**`,
+      "",
+    )
+    for (const verdict of fabricated.slice(0, 10)) {
+      sections.push(
+        `- \`${verdict.criterionId}\` — “${verdict.quote?.slice(0, 120)}”`,
+      )
+    }
+    if (fabricated.length > 0) sections.push("")
+  }
 
   sections.push("## Errors (not counted as failures)", "")
   if (errors.length === 0) {

@@ -10,6 +10,7 @@
  *   pnpm --filter @forge/mastra proto:answers
  *   pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it:free
  */
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
@@ -17,8 +18,35 @@ import { dirname, resolve } from "node:path"
 import { answeringModelsByIds, costUsd } from "./models"
 import { completeText, PrototypeLlmError } from "./openrouter"
 import { promptVariantById, PROMPT_NO_RETRIEVAL } from "./prompt"
-import { QUESTIONS, QUESTION_SET_ID } from "./questions"
+import {
+  criteriaFor,
+  QUESTIONS,
+  QUESTION_SET_ID,
+  type Question,
+} from "./questions"
 import type { AnswerRecord, AnswerRun } from "./types"
+
+function gitSha(): string | null {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+      encoding: "utf8",
+    }).trim()
+  } catch {
+    return null
+  }
+}
+
+/** Hash the exact criteria under test — editing a rubric breaks comparability. */
+function criteriaHash(questions: readonly Question[]): string {
+  const material = questions
+    .map((question) =>
+      criteriaFor(question)
+        .map((c) => `${question.id}|${c.id}|${c.polarity}|${c.text}`)
+        .join("\n"),
+    )
+    .join("\n")
+  return createHash("sha256").update(material).digest("hex")
+}
 
 const DEFAULT_OUT = "prototype-runs/chat-eval/answers.json"
 
@@ -118,7 +146,10 @@ async function main(): Promise<void> {
       promptId: prompt.id,
       promptSha256,
       questionSetId: QUESTION_SET_ID,
+      questionIds: questions.map((question) => question.id),
+      criteriaSha256: criteriaHash(questions),
       answeringModels: models.map((model) => model.id),
+      gitSha: gitSha(),
     },
     answers,
   }

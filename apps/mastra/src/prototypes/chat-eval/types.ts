@@ -14,7 +14,32 @@ export type RunIdentity = {
   promptId: string
   promptSha256: string
   questionSetId: string
+  /**
+   * The exact questions this run covered. `--limit` changes the evaluated
+   * subset, so questionSetId alone would let a 1-question smoke look
+   * comparable to a full 6-question run. Two runs are comparable only when
+   * these match.
+   */
+  questionIds: string[]
+  /** Covers the criteria text too — editing a rubric must break comparability. */
+  criteriaSha256: string
   answeringModels: string[]
+  gitSha: string | null
+}
+
+/** Two runs may only be compared when every field here agrees. */
+export function identityMismatch(
+  left: RunIdentity,
+  right: RunIdentity,
+): string[] {
+  const problems: string[] = []
+  if (left.promptSha256 !== right.promptSha256) problems.push("prompt")
+  if (left.criteriaSha256 !== right.criteriaSha256) problems.push("criteria")
+  if (left.questionIds.join(",") !== right.questionIds.join(","))
+    problems.push("questions")
+  if (left.answeringModels.join(",") !== right.answeringModels.join(","))
+    problems.push("answering models")
+  return problems
 }
 
 export type AnswerRecord = {
@@ -49,6 +74,21 @@ export type CriterionVerdict = {
   verdict: "satisfied" | "violated" | "not-applicable"
   /** The words from the answer that prove it. Absent = a judge protocol error. */
   quote: string | null
+  /**
+   * Whether `quote` is really present in the answer.
+   *
+   * REPORT-ONLY, deliberately. A non-empty quote that the answer never
+   * contained is a fabricated citation by the judge — the exact failure the
+   * quote requirement is supposed to prevent — and until we have measured how
+   * often it happens, turning it into a hard error would make the first real
+   * run unreadable. Null when there is no quote to check.
+   *
+   *   "exact"      — verbatim substring
+   *   "normalised" — matches after collapsing whitespace, case, and smart
+   *                  punctuation. Still evidence, but the judge retyped it.
+   *   "absent"     — not in the answer at all. Fabricated.
+   */
+  quoteFidelity: "exact" | "normalised" | "absent" | null
 }
 
 /* ------------------------------------------------------------------ */
