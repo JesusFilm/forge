@@ -157,7 +157,7 @@ describe("GET /watch/api/download - account gate", () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get("location")).toBe(
-      "https://stream.mux.com/abc.mp4",
+      "https://stream.mux.com/abc.mp4?download=jesus-highest.mp4",
     )
     expect(queryMock).toHaveBeenCalledWith(
       expect.objectContaining({ variables: { variantId: "variant-1" } }),
@@ -247,7 +247,7 @@ describe("GET /watch/api/download - account gate", () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get("location")).toBe(
-      "https://stream.mux.com/abc.mp4",
+      "https://stream.mux.com/abc.mp4?download=jesus-highest.mp4",
     )
     expect(fetchMock).not.toHaveBeenCalled()
     await vi.waitFor(() =>
@@ -306,7 +306,7 @@ describe("GET /watch/api/download - account gate", () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get("location")).toBe(
-      "https://stream.mux.com/abc.mp4",
+      "https://stream.mux.com/abc.mp4?download=jesus-highest.mp4",
     )
     expect(fetchMock).not.toHaveBeenCalled()
     expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
@@ -334,7 +334,7 @@ describe("HEAD /watch/api/download - opaque download target", () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get("location")).toBe(
-      "https://stream.mux.com/abc.mp4",
+      "https://stream.mux.com/abc.mp4?download=abc.mp4",
     )
     expect(queryMock).toHaveBeenCalledWith(
       expect.objectContaining({ variables: { variantId: "variant-1" } }),
