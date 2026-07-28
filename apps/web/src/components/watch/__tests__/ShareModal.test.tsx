@@ -243,6 +243,7 @@ describe("ShareModal — Embed Code tab", () => {
     // attribute.
     expect(textarea.value).toContain("border:0")
     expect(textarea.value).not.toContain("frameborder")
+    expect(textarea.getAttribute("aria-label")).toBe("Embed Code")
 
     const copyBtn = $(
       '[data-testid="watch-share-modal-embed-copy"]',
@@ -255,6 +256,76 @@ describe("ShareModal — Embed Code tab", () => {
     })
 
     expect(writeText).toHaveBeenCalledWith(textarea.value)
+  })
+
+  it("connects the dual-format tabs to a labelled tabpanel and supports keyboard navigation", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          playbackId="ScBFl3LbJCViZNNdZfa4bpJCEyQr9Mw4Cpiirb7gb00E"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const linkTab = $(
+      '[data-testid="watch-share-modal-tab-link"]',
+    ) as HTMLButtonElement
+    const embedTab = $(
+      '[data-testid="watch-share-modal-tab-embed"]',
+    ) as HTMLButtonElement
+    const panelId = linkTab.getAttribute("aria-controls")
+    const panel = document.getElementById(panelId ?? "")
+
+    expect(linkTab.id).not.toBe("")
+    expect(embedTab.id).not.toBe("")
+    expect(linkTab.id).not.toBe(embedTab.id)
+    expect(embedTab.getAttribute("aria-controls")).toBe(panelId)
+    expect(panel?.getAttribute("role")).toBe("tabpanel")
+    expect(panel?.getAttribute("aria-labelledby")).toBe(linkTab.id)
+    expect(linkTab.getAttribute("aria-selected")).toBe("true")
+    expect(linkTab.tabIndex).toBe(0)
+    expect(embedTab.tabIndex).toBe(-1)
+
+    act(() => {
+      linkTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(embedTab)
+    expect(embedTab.getAttribute("aria-selected")).toBe("true")
+    expect(embedTab.tabIndex).toBe(0)
+    expect(panel?.getAttribute("aria-labelledby")).toBe(embedTab.id)
+    expect($('[data-testid="watch-share-modal-embed-input"]')).not.toBeNull()
+
+    act(() => {
+      embedTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "ArrowLeft" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(linkTab)
+    expect(linkTab.getAttribute("aria-selected")).toBe("true")
+
+    act(() => {
+      linkTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "End" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(embedTab)
+
+    act(() => {
+      embedTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "Home" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(linkTab)
   })
 })
 
@@ -286,8 +357,12 @@ describe("ShareModal — local origin fallback", () => {
     expect(x).not.toBeNull()
     expect(fb?.tagName).toBe("A")
     expect(x?.tagName).toBe("A")
-    expect(fb?.getAttribute("aria-label")).toBe("Share on Facebook")
-    expect(x?.getAttribute("aria-label")).toBe("Share on X")
+    expect(fb?.getAttribute("aria-label")).toBe(
+      "Share on Facebook (opens in a new tab)",
+    )
+    expect(x?.getAttribute("aria-label")).toBe(
+      "Share on X (opens in a new tab)",
+    )
     expect((fb as HTMLAnchorElement).href).toContain(
       encodeURIComponent("https://www.jesusfilm.org/watch/the-call.html"),
     )
@@ -326,6 +401,15 @@ describe("ShareModal — local origin fallback", () => {
     expect($('[data-testid="watch-share-modal-embed-input"]')).not.toBeNull()
     expect($('[data-testid="watch-share-modal-embed-copy"]')).not.toBeNull()
     expect($('[data-testid="watch-share-modal-close"]')).not.toBeNull()
+    expect(document.querySelector('[role="tablist"]')).toBeNull()
+    expect(document.querySelector('[role="tabpanel"]')).toBeNull()
+    expect(
+      (
+        $(
+          '[data-testid="watch-share-modal-embed-input"]',
+        ) as HTMLTextAreaElement
+      ).getAttribute("aria-label"),
+    ).toBe("Embed Code")
   })
 
   it("shows only Close when both share and embed identities are invalid", () => {
@@ -370,12 +454,48 @@ describe("ShareModal — clipboard failure", () => {
       '[data-testid="watch-share-modal-link-copy"]',
     ) as HTMLButtonElement
     await act(async () => {
+      await Promise.resolve()
+    })
+    copyBtn.focus()
+    expect(document.activeElement).toBe(copyBtn)
+    await act(async () => {
       copyBtn.click()
     })
 
     const hint = $('[data-testid="watch-share-modal-link-fallback"]')
     expect(hint).not.toBeNull()
     expect(hint?.textContent ?? "").toContain("manually")
+
+    const status = $('[data-testid="watch-share-modal-copy-status"]')
+    expect(status?.getAttribute("role")).toBe("status")
+    expect(status?.textContent ?? "").toContain("manually")
+    expect(status?.hasAttribute("tabindex")).toBe(false)
+  })
+
+  it("announces successful copies through a non-focusable status region", async () => {
+    setClipboard(() => Promise.resolve())
+
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const copyBtn = $(
+      '[data-testid="watch-share-modal-link-copy"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      copyBtn.click()
+    })
+
+    const status = $('[data-testid="watch-share-modal-copy-status"]')
+    expect(status?.textContent).toBe("Copied")
+    expect(status?.hasAttribute("tabindex")).toBe(false)
   })
 })
 
@@ -426,5 +546,35 @@ describe("ShareModal — lifecycle", () => {
     })
 
     expect($('[data-testid="watch-share-modal"]')).toBeNull()
+  })
+
+  it("labels link-only controls and communicates social new-tab behavior with 44px targets", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const input = $(
+      '[data-testid="watch-share-modal-link-input"]',
+    ) as HTMLInputElement
+    const facebook = $(
+      '[data-testid="watch-share-modal-facebook"]',
+    ) as HTMLAnchorElement
+    const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
+
+    expect(input.getAttribute("aria-label")).toBe("Share Link")
+    expect(document.querySelector('[role="tablist"]')).toBeNull()
+    expect(facebook.getAttribute("aria-label")).toContain("opens in a new tab")
+    expect(x.getAttribute("aria-label")).toContain("opens in a new tab")
+    expect(facebook.className).toContain("h-11")
+    expect(facebook.className).toContain("w-11")
+    expect(x.className).toContain("h-11")
+    expect(x.className).toContain("w-11")
   })
 })
