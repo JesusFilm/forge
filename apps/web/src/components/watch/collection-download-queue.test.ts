@@ -1,3 +1,7 @@
+/**
+ * @vitest-environment jsdom
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -13,130 +17,87 @@ const items = ["one", "two", "three"].map((id) => ({
 }))
 
 describe("collection download queue", () => {
-  it("downloads one item at a time and continues after a failure", async () => {
-    let finishFirstTransfer: ((blob: Blob) => void) | undefined
-    const firstTransfer = new Promise<Blob>((resolve) => {
-      finishFirstTransfer = resolve
-    })
-    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
-      if (String(url).endsWith("one")) {
-        return {
-          body: {},
-          blob: () => firstTransfer,
-          headers: new Headers(),
-          ok: true,
-          status: 200,
-        } as Response
-      }
-      return String(url).endsWith("two")
-        ? new Response("bad", { status: 502 })
-        : new Response("ok")
-    }) as typeof fetch
-    const saveBlob = vi.fn()
+  it("hands each item to browser download navigation in order", async () => {
+    const triggerDownload = vi.fn()
+    const onProgress = vi.fn()
 
-    const queue = runCollectionDownloadQueue({
+    const result = await runCollectionDownloadQueue({
       items,
       signal: new AbortController().signal,
-      fetchImpl,
-      saveBlob,
+      delayMs: 0,
+      triggerDownload,
+      onProgress,
     })
 
-    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1))
-    expect(saveBlob).not.toHaveBeenCalled()
-    finishFirstTransfer?.(new Blob(["one"]))
+    expect(triggerDownload).toHaveBeenCalledTimes(3)
+    expect(triggerDownload.mock.calls.map(([item]) => item.id)).toEqual([
+      "one",
+      "two",
+      "three",
+    ])
+    expect(result.completed).toEqual(items)
+    expect(result.failed).toEqual([])
+    expect(result.authRequired).toBe(false)
+    expect(onProgress).toHaveBeenLastCalledWith({
+      active: null,
+      completed: items,
+      failed: [],
+      total: 3,
+    })
+  })
 
-    const result = await queue
+  it("records trigger failures and continues with the next item", async () => {
+    const triggerDownload = vi.fn((item: (typeof items)[number]) => {
+      if (item.id === "two") throw new Error("blocked")
+    })
 
-    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    const result = await runCollectionDownloadQueue({
+      items,
+      signal: new AbortController().signal,
+      delayMs: 0,
+      triggerDownload,
+    })
+
     expect(result.completed.map((item) => item.id)).toEqual(["one", "three"])
-    expect(result.failed.map(({ item }) => item.id)).toEqual(["two"])
-    expect(saveBlob).toHaveBeenCalledTimes(2)
+    expect(result.failed).toEqual([{ item: items[1], reason: "blocked" }])
     expect(failedCollectionDownloadItems(result)).toEqual([items[1]])
   })
 
-  it("continues after an unmarked upstream 401", async () => {
-    const fetchImpl = vi.fn(async (url: RequestInfo | URL) =>
-      String(url).endsWith("two")
-        ? new Response(null, { status: 401 })
-        : new Response("ok"),
-    ) as typeof fetch
-    const result = await runCollectionDownloadQueue({
-      items,
-      signal: new AbortController().signal,
-      fetchImpl,
-      saveBlob: vi.fn(),
-    })
-
-    expect(result.authRequired).toBe(false)
-    expect(fetchImpl).toHaveBeenCalledTimes(3)
-    expect(result.completed.map((item) => item.id)).toEqual(["one", "three"])
-    expect(result.failed).toEqual([{ item: items[1], reason: "http-401" }])
-  })
-
-  it("stops on marked authentication failure and preserves the retry tail", async () => {
-    const fetchImpl = vi.fn(async (url: RequestInfo | URL) =>
-      String(url).endsWith("two")
-        ? new Response(null, {
-            status: 401,
-            headers: { "x-watch-download-error": "auth-required" },
-          })
-        : new Response("ok"),
-    ) as typeof fetch
-    const result = await runCollectionDownloadQueue({
-      items,
-      signal: new AbortController().signal,
-      fetchImpl,
-      saveBlob: vi.fn(),
-    })
-
-    expect(result.authRequired).toBe(true)
-    expect(fetchImpl).toHaveBeenCalledTimes(2)
-    expect(result.completed).toEqual([items[0]])
-    expect(failedCollectionDownloadItems(result)).toEqual([items[1], items[2]])
-  })
-
-  it("streams to a directory without creating a Blob", async () => {
-    const writes: string[] = []
-    const directory = {
-      getFileHandle: vi.fn(async (name: string) => ({
-        createWritable: async () =>
-          new WritableStream<Uint8Array>({
-            write: () => {
-              writes.push(name)
-            },
-          }),
-      })),
-    }
-    const saveBlob = vi.fn()
-
-    const result = await runCollectionDownloadQueue({
-      items: items.slice(0, 1),
-      signal: new AbortController().signal,
-      directory,
-      fetchImpl: vi.fn(async () => new Response("ok")) as typeof fetch,
-      saveBlob,
-    })
-
-    expect(result.completed).toHaveLength(1)
-    expect(writes).toEqual(["one.mp4"])
-    expect(saveBlob).not.toHaveBeenCalled()
-  })
-
-  it("cancels the active request without starting the next item", async () => {
+  it("cancels before starting the next item", async () => {
     const controller = new AbortController()
-    const fetchImpl = vi.fn(async (_url: RequestInfo | URL) => {
+    const triggerDownload = vi.fn(() => {
       controller.abort()
-      throw new DOMException("Aborted", "AbortError")
-    }) as typeof fetch
+    })
 
     const result = await runCollectionDownloadQueue({
       items,
       signal: controller.signal,
-      fetchImpl,
-      saveBlob: vi.fn(),
+      delayMs: 1,
+      triggerDownload,
     })
 
     expect(result.canceled).toBe(true)
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(triggerDownload).toHaveBeenCalledTimes(1)
+    expect(result.completed).toEqual([items[0]])
+  })
+
+  it("default trigger creates an anchor without fetching the response body", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+    const clicks: string[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      function click(this: HTMLAnchorElement) {
+        clicks.push(`${this.href}|${this.download}`)
+      },
+    )
+
+    const result = await runCollectionDownloadQueue({
+      items: items.slice(0, 1),
+      signal: new AbortController().signal,
+      delayMs: 0,
+    })
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(clicks).toEqual(["http://localhost:3000/download/one|one.mp4"])
+    expect(result.completed).toEqual([items[0]])
   })
 })
