@@ -35,6 +35,21 @@ const MONTH_NAMES = [
   "December",
 ]
 
+const MONTH_NAMES_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+]
+
 function padDay(day: number): string {
   return String(day).padStart(2, "0")
 }
@@ -69,7 +84,7 @@ export function buildDevotionsAugustCollection(): VideoPipelineCollection {
 
       return {
         id: `devotion-2026-08-${padDay(day)}`,
-        title: `Devotional — Aug ${day}`,
+        title: "Devotional",
         date: `2026-08-${padDay(day)}`,
         thumbnailUrl: DEVOTIONAL_THUMBNAIL_URL,
         mobileGenerated,
@@ -98,4 +113,19 @@ export function formatCellDate(date: string): string {
   const monthName = MONTH_NAMES[(month ?? 1) - 1] ?? MONTH_NAMES[0]
 
   return `${monthName} ${day}, ${year}`
+}
+
+/** Short "Aug 1" form (no year) used in the compact expanded-row list. */
+export function formatCellShortDate(date: string): string {
+  const [, month, day] = date.split("-").map((part) => Number(part))
+  const monthName = MONTH_NAMES_SHORT[(month ?? 1) - 1] ?? MONTH_NAMES_SHORT[0]
+
+  return `${monthName} ${day}`
+}
+
+/** "Aug 1 - Devotional" row label used in the expanded detail list. */
+export function formatCellRowLabel(
+  cell: Pick<VideoPipelineCell, "date" | "title">,
+): string {
+  return `${formatCellShortDate(cell.date)} - ${cell.title}`
 }

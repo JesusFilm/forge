@@ -2301,7 +2301,7 @@ html[data-coverage-loading="true"] .collections::after {
 }
 
 .pipeline-cell-icon--pending {
-  color: #a8a29e;
+  color: #ef4444;
 }
 
 .collection-empty--no-data {
@@ -2885,6 +2885,10 @@ html[data-coverage-loading="true"] .collections::after {
 
 .pipeline-detail-row .pipeline-cell-icons {
   margin-left: 10px;
+}
+
+.collection-card--pipeline .detail-group-list {
+  column-gap: 56px;
 }
 
 .detail-group-count {

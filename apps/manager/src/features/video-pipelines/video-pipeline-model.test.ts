@@ -3,6 +3,8 @@ import {
   buildDevotionsAugustCollection,
   computeAggregateStatus,
   formatCellDate,
+  formatCellRowLabel,
+  formatCellShortDate,
 } from "./video-pipeline-model"
 
 describe("buildDevotionsAugustCollection", () => {
@@ -33,6 +35,14 @@ describe("buildDevotionsAugustCollection", () => {
     expect(collection.title).toBe("Devotions - August")
     expect(collection.label).toBe("basic")
     expect(collection.labelDisplay).toBe("Basic")
+  })
+
+  it("gives every cell the plain 'Devotional' title (date carries the day)", () => {
+    const collection = buildDevotionsAugustCollection()
+
+    expect(collection.cells.every((cell) => cell.title === "Devotional")).toBe(
+      true,
+    )
   })
 
   it("includes at least one cell for every (mobileGenerated, desktopGenerated) combination", () => {
@@ -92,5 +102,24 @@ describe("formatCellDate", () => {
   it("handles the first and last day of the month", () => {
     expect(formatCellDate("2026-08-01")).toBe("August 1, 2026")
     expect(formatCellDate("2026-08-31")).toBe("August 31, 2026")
+  })
+})
+
+describe("formatCellShortDate", () => {
+  it("renders an abbreviated month with no year", () => {
+    expect(formatCellShortDate("2026-08-03")).toBe("Aug 3")
+  })
+
+  it("handles the first and last day of the month", () => {
+    expect(formatCellShortDate("2026-08-01")).toBe("Aug 1")
+    expect(formatCellShortDate("2026-08-31")).toBe("Aug 31")
+  })
+})
+
+describe("formatCellRowLabel", () => {
+  it("renders 'Aug D - Title' for the expanded detail list", () => {
+    expect(
+      formatCellRowLabel({ date: "2026-08-01", title: "Devotional" }),
+    ).toBe("Aug 1 - Devotional")
   })
 })

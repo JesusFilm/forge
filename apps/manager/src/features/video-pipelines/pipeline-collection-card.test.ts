@@ -118,6 +118,12 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup).toContain("pipeline-cell-icon--pending")
   })
 
+  it("renders each expanded row as 'Aug D - Devotional'", () => {
+    const markup = renderCard({ isExpanded: true })
+
+    expect(markup).toContain("Aug 1 - Devotional")
+  })
+
   it("renders a checkbox for each cell in the expanded detail rows", () => {
     const collection = buildDevotionsAugustCollection()
     const firstCellId = collection.cells[0]?.id

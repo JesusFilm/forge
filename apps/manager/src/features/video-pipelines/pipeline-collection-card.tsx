@@ -2,6 +2,7 @@ import { Monitor, Smartphone } from "lucide-react"
 import {
   computeAggregateStatus,
   formatCellDate,
+  formatCellRowLabel,
   type VideoPipelineCell,
   type VideoPipelineCollection,
 } from "./video-pipeline-model"
@@ -94,7 +95,7 @@ export function VideoPipelineCollectionCard({
   }
 
   return (
-    <section className="collection-card">
+    <section className="collection-card collection-card--pipeline">
       <div
         className="collection-header"
         role="button"
@@ -186,7 +187,7 @@ export function VideoPipelineCollectionCard({
                         onChange={() => onToggleCell(cell.id)}
                       />
                       <span className="detail-content">
-                        {formatCellDate(cell.date)} — {cell.title}
+                        {formatCellRowLabel(cell)}
                       </span>
                       <PipelineCellIcons cell={cell} />
                     </label>
