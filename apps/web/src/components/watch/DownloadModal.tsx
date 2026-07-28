@@ -268,10 +268,9 @@ export function DownloadModal({
       videoTitle,
     })
 
-    // Route through our same-origin streaming proxy so the browser honors
-    // the `download` attribute and `Content-Disposition: attachment`. A
-    // direct cross-origin link gets navigated by the browser instead of
-    // handed to the download manager.
+    // Route through the same-origin resolver so the browser never sees raw CDN
+    // URLs in markup. The resolver redirects to the media host so Web does not
+    // carry the video stream.
     const proxy = buildDownloadProxyUrl({
       downloadId: selected.download.documentId,
       filename,

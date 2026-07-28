@@ -1,14 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  ChevronRight,
-  Download,
-  FolderOpen,
-  LoaderCircle,
-  LogIn,
-  Square,
-} from "lucide-react"
+import { Download, LoaderCircle, LogIn, Square } from "lucide-react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 
@@ -23,7 +16,6 @@ import {
 import {
   failedCollectionDownloadItems,
   runCollectionDownloadQueue,
-  type CollectionDownloadDirectory,
   type CollectionDownloadProgress,
   type CollectionDownloadQueueResult,
 } from "@/components/watch/collection-download-queue"
@@ -38,14 +30,6 @@ import {
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { languageCodeFor } from "@/lib/language-code"
 import { loadWatchCollectionDownloads } from "@/lib/watch-collection-download-actions"
-
-type DirectoryHandle = CollectionDownloadDirectory & { name?: string }
-
-type WindowWithDirectoryPicker = Window & {
-  showDirectoryPicker?: (options?: {
-    mode?: "readwrite"
-  }) => Promise<DirectoryHandle>
-}
 
 type LoadState =
   | { status: "idle" | "loading" }
@@ -194,7 +178,6 @@ export function CollectionDownloadModal({
   const [languageSlug, setLanguageSlug] = useState(currentLanguageSlug)
   const [loadState, setLoadState] = useState<LoadState>({ status: "idle" })
   const [selectedTier, setSelectedTier] = useState<DownloadTier>("highest")
-  const [directory, setDirectory] = useState<DirectoryHandle | null>(null)
   const [progress, setProgress] = useState<CollectionDownloadProgress | null>(
     null,
   )
@@ -220,10 +203,6 @@ export function CollectionDownloadModal({
   const running = progress?.active != null
   const busy = starting || running
   const effectiveAuthLoginUrl = authRequiredLoginUrl ?? authLoginUrl
-  const directoryPickerSupported =
-    typeof window !== "undefined" &&
-    typeof (window as WindowWithDirectoryPicker).showDirectoryPicker ===
-      "function"
 
   const loadOptions = useCallback(async () => {
     startVersionRef.current += 1
@@ -305,23 +284,6 @@ export function CollectionDownloadModal({
     setStarting(false)
   }, [])
 
-  async function chooseDirectory() {
-    const picker = (window as WindowWithDirectoryPicker).showDirectoryPicker
-    if (!picker) return
-    try {
-      const handle = await picker({ mode: "readwrite" })
-      setDirectory(handle)
-      setError(null)
-    } catch (pickerError) {
-      if (
-        !(pickerError instanceof DOMException) ||
-        pickerError.name !== "AbortError"
-      ) {
-        setError(t("folderError"))
-      }
-    }
-  }
-
   async function startDownload(
     retryItems?: ReturnType<typeof failedCollectionDownloadItems>,
   ) {
@@ -379,7 +341,6 @@ export function CollectionDownloadModal({
     const nextResult = await runCollectionDownloadQueue({
       items,
       signal: controller.signal,
-      directory,
       onProgress: (nextProgress) => setProgress(mergeProgress(nextProgress)),
     })
     const completedRetryIds = new Set(
@@ -617,27 +578,9 @@ export function CollectionDownloadModal({
                 </div>
               ) : null}
 
-              {directoryPickerSupported ? (
-                <Button
-                  variant="ghost"
-                  data-testid="watch-collection-download-folder"
-                  disabled={busy}
-                  onClick={chooseDirectory}
-                  className="h-auto w-full justify-start border-white/15 bg-stone-900/70 px-4 py-3 text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 hover:text-white"
-                >
-                  <FolderOpen size={17} />
-                  <span className="min-w-0 flex-1 truncate text-left">
-                    {directory?.name
-                      ? t("folderSelected", { name: directory.name })
-                      : t("chooseFolder")}
-                  </span>
-                  <ChevronRight className="ml-auto text-stone-500" size={16} />
-                </Button>
-              ) : (
-                <p className="text-xs leading-5 text-stone-400">
-                  {t("browserFallback")}
-                </p>
-              )}
+              <p className="text-xs leading-5 text-stone-400">
+                {t("browserFallback")}
+              </p>
 
               {progress || result ? (
                 <div
