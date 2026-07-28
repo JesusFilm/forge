@@ -166,19 +166,32 @@ export function VideoPipelineCollectionCard({
                 <span className="detail-group-count">{group.cells.length}</span>
               </h3>
               <div className="detail-group-list">
-                {group.cells.map((cell) => (
-                  <div
-                    className="collection-detail-row pipeline-detail-row"
-                    key={cell.id}
-                    onMouseEnter={() => onHoverCell(cell)}
-                    onMouseLeave={() => onHoverCell(null)}
-                  >
-                    <span className="detail-content">
-                      {formatCellDate(cell.date)} — {cell.title}
-                    </span>
-                    <PipelineCellIcons cell={cell} />
-                  </div>
-                ))}
+                {group.cells.map((cell) => {
+                  const isSelected = selectedCellIds.has(cell.id)
+                  const status = computeAggregateStatus(cell)
+
+                  return (
+                    <label
+                      className="collection-detail-row pipeline-detail-row"
+                      key={cell.id}
+                      onMouseEnter={() => onHoverCell(cell)}
+                      onMouseLeave={() => onHoverCell(null)}
+                    >
+                      <input
+                        type="checkbox"
+                        className={`detail-row-checkbox detail-row-checkbox--${
+                          status === "generated" ? "human" : "none"
+                        }`}
+                        checked={isSelected}
+                        onChange={() => onToggleCell(cell.id)}
+                      />
+                      <span className="detail-content">
+                        {formatCellDate(cell.date)} — {cell.title}
+                      </span>
+                      <PipelineCellIcons cell={cell} />
+                    </label>
+                  )
+                })}
               </div>
             </div>
           ),

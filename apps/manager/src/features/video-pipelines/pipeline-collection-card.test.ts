@@ -118,6 +118,24 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup).toContain("pipeline-cell-icon--pending")
   })
 
+  it("renders a checkbox for each cell in the expanded detail rows", () => {
+    const collection = buildDevotionsAugustCollection()
+    const firstCellId = collection.cells[0]?.id
+    if (!firstCellId) throw new Error("expected a first cell")
+
+    const markup = renderCard({
+      collection,
+      isExpanded: true,
+      selectedCellIds: new Set([firstCellId]),
+    })
+
+    expect(markup.match(/type="checkbox"/g)?.length).toBe(
+      collection.cells.length,
+    )
+    expect(markup).toMatch(/detail-row-checkbox--(human|none)/)
+    expect(markup.match(/checked=""/g)?.length).toBe(1)
+  })
+
   it("marks selected cells as pressed", () => {
     const collection = buildDevotionsAugustCollection()
     const firstCellId = collection.cells[0]?.id

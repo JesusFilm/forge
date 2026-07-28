@@ -2880,8 +2880,11 @@ html[data-coverage-loading="true"] .collections::after {
 }
 
 .pipeline-detail-row {
-  justify-content: space-between;
   width: 100%;
+}
+
+.pipeline-detail-row .pipeline-cell-icons {
+  margin-left: 10px;
 }
 
 .detail-group-count {
