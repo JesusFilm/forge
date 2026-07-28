@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react"
 import Image from "next/image"
 import { Copy, Facebook } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -70,6 +77,11 @@ export function ShareModal({
   const [tab, setTab] = useState<ShareTab>("link")
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
   const embedRef = useRef<HTMLTextAreaElement | null>(null)
+  const tabRefs = useRef<Record<ShareTab, HTMLButtonElement | null>>({
+    link: null,
+    embed: null,
+  })
+  const tabIdPrefix = useId()
 
   const shareableUrl = resolveWatchShareUrl({
     origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
@@ -103,6 +115,10 @@ export function ShareModal({
         ? shareableUrl
         : null
   const copyLabel = isEmbed ? t("copyCode") : t("copyLink")
+  const hasShareFormatTabs = Boolean(embedSnippet && shareableUrl)
+  const linkTabId = `${tabIdPrefix}-link-tab`
+  const embedTabId = `${tabIdPrefix}-embed-tab`
+  const tabPanelId = `${tabIdPrefix}-panel`
 
   // Reset the "Copied" pill back to the default label after 2s so a second
   // click reads as a fresh copy. Cleanup clears the timer on unmount or when
@@ -126,6 +142,30 @@ export function ShareModal({
   function selectTab(next: ShareTab) {
     setTab(next)
     setCopyStatus("idle")
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const nextTab =
+      event.key === "Home"
+        ? "link"
+        : event.key === "End"
+          ? "embed"
+          : event.key === "ArrowLeft" ||
+              event.key === "ArrowUp" ||
+              event.key === "ArrowRight" ||
+              event.key === "ArrowDown"
+            ? tab === "link"
+              ? "embed"
+              : "link"
+            : null
+
+    if (!nextTab) return
+
+    event.preventDefault()
+    selectTab(nextTab)
+    // Keep focus with the selected tab so keyboard and assistive-technology
+    // users receive the same active-tab state as pointer users.
+    tabRefs.current[nextTab]?.focus()
   }
 
   async function copy(text: string) {
@@ -232,9 +272,9 @@ export function ShareModal({
                 href={fbHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={t("shareOnFacebook")}
+                aria-label={`${t("shareOnFacebook")} (opens in a new tab)`}
                 data-testid="watch-share-modal-facebook"
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
                 <Facebook size={18} fill="currentColor" stroke="none" />
               </a>
@@ -242,9 +282,9 @@ export function ShareModal({
                 href={xHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={t("shareOnX")}
+                aria-label={`${t("shareOnX")} (opens in a new tab)`}
                 data-testid="watch-share-modal-x"
-                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
                 <XBrandIcon size={16} />
               </a>
@@ -258,7 +298,7 @@ export function ShareModal({
               "Share Link" tab header alone reads as a meaningless
               non-choice, so we hide the whole tablist and let the link
               input flow directly under the social-share row. */}
-          {embedSnippet && shareableUrl ? (
+          {hasShareFormatTabs ? (
             <div
               role="tablist"
               aria-label={t("shareFormat")}
@@ -267,9 +307,16 @@ export function ShareModal({
               <button
                 type="button"
                 role="tab"
-                aria-selected={!isEmbed}
+                id={linkTabId}
+                aria-controls={tabPanelId}
+                aria-selected={tab === "link"}
+                tabIndex={tab === "link" ? 0 : -1}
                 data-testid="watch-share-modal-tab-link"
                 onClick={() => selectTab("link")}
+                onKeyDown={handleTabKeyDown}
+                ref={(element) => {
+                  tabRefs.current.link = element
+                }}
                 className={cn(
                   "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
                   !isEmbed
@@ -282,9 +329,16 @@ export function ShareModal({
               <button
                 type="button"
                 role="tab"
-                aria-selected={isEmbed}
+                id={embedTabId}
+                aria-controls={tabPanelId}
+                aria-selected={tab === "embed"}
+                tabIndex={tab === "embed" ? 0 : -1}
                 data-testid="watch-share-modal-tab-embed"
                 onClick={() => selectTab("embed")}
+                onKeyDown={handleTabKeyDown}
+                ref={(element) => {
+                  tabRefs.current.embed = element
+                }}
                 className={cn(
                   "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
                   isEmbed
@@ -297,11 +351,34 @@ export function ShareModal({
             </div>
           ) : null}
 
-          <div>
+          <p
+            aria-atomic="true"
+            aria-live="polite"
+            className="sr-only"
+            data-testid="watch-share-modal-copy-status"
+            role="status"
+          >
+            {copyStatus === "copied"
+              ? t("copied")
+              : copyStatus === "failed"
+                ? t("copyFailed")
+                : ""}
+          </p>
+
+          <div
+            aria-labelledby={
+              hasShareFormatTabs
+                ? isEmbed
+                  ? embedTabId
+                  : linkTabId
+                : undefined
+            }
+            id={hasShareFormatTabs ? tabPanelId : undefined}
+            role={hasShareFormatTabs ? "tabpanel" : undefined}
+          >
             {copyStatus === "failed" ? (
               <p
                 data-testid="watch-share-modal-link-fallback"
-                role="alert"
                 className="mb-2 text-xs font-semibold text-amber-400"
               >
                 {t("copyFailed")}
@@ -312,6 +389,7 @@ export function ShareModal({
                 ref={embedRef}
                 data-testid="watch-share-modal-embed-input"
                 readOnly
+                aria-label={t("embedCodeTab")}
                 // `rows={2}` is the minimum baseline; the auto-fit effect below
                 // sets `style.height` to `scrollHeight` before paint so the full
                 // snippet is visible without an inner scroll bar (capped at 40vh).
@@ -325,6 +403,7 @@ export function ShareModal({
                 type="text"
                 data-testid="watch-share-modal-link-input"
                 readOnly
+                aria-label={t("shareLinkTab")}
                 value={currentValue ?? ""}
                 onFocus={(e) => e.currentTarget.select()}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
