@@ -1,5 +1,5 @@
 ---
-title: "Seeker System-Prompt Eval Suite - Architecture Plan"
+title: "Seeker System-Prompt Eval Suite — Architecture Plan"
 type: feat
 date: "2026-07-28"
 artifact_contract: ce-unified-plan/v1
@@ -334,7 +334,7 @@ is one type:
 ```ts
 type EvalSubject = {
   id: string
-  run: (systemPrompt: string, question: string) => Promise<string>
+  run: (systemPrompt: string, question: string) => Promise<SubjectAnswer>
 }
 ```
 
@@ -411,7 +411,7 @@ money per push. The gate is a human reading the grid before a prompt ships (D10)
 | `--yes` cost threshold gate             | ~30 cells ≈ pennies. Print cost after.                                                                                                                                                                                                                                                      |
 | YAML + Zod corpus                       | Zero YAML parsers in any manifest; the repo's own eval corpus is TypeScript.                                                                                                                                                                                                                |
 | Per-scenario model override             | Reopens the exact duplicate-model-list gap core flagged. One shared list.                                                                                                                                                                                                                   |
-| A seventh hand-rolled OpenRouter client | Six already exist. Reuse `createDevotionalLlm`'s shape (`devotional/llm.ts:70`) or lift it to a shared module.                                                                                                                                                                              |
+| An eighth hand-rolled OpenRouter client | Seven already exist (five in `apps/mastra`, two in `apps/admin`). Reuse `createDevotionalLlm`'s shape (`devotional/llm.ts:70`) or lift it to a shared module.                                                                                                                               |
 | A `packages/` home                      | Needs `apps/mastra`'s env module; the cross-app import ban means it buys no reach.                                                                                                                                                                                                          |
 
 ---

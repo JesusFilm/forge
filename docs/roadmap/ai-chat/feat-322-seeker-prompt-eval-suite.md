@@ -43,7 +43,9 @@ this ticket is the build brief, that document is the _why_.
 ## Entry Points — Read These First
 
 1. **`docs/plans/2026-07-28-002-feat-seeker-prompt-eval-suite-plan.md`** — the architecture.
-   Decisions D1–D13, the rejected-alternatives table, and the known limits. Everything
+   Decisions D1–D14 (note D14 sits between D12 and D13 in the file — it is the two-prompt
+   rule that Decision 0 below restates), the rejected-alternatives table, and the known
+   limits. Everything
    below assumes you have read it.
 
 2. **`apps/mastra/src/mastra/agents/seeker-agent.ts:187-215`** — the subject under test.
@@ -195,7 +197,7 @@ otherwise have had to guess at. They are settled here.
 
 4. **Band thresholds ship as explicit placeholders**, because the real ones come from a
    measurement that cannot run until the suite exists. Ship
-   `pass ≥ 0.8`, `borderline 0.6–0.8`, `fail < 0.6`, with a comment marking them
+   `pass ≥ 0.8`, `borderline 0.6 ≤ x < 0.8`, `fail < 0.6`, with a comment marking them
    provisional. Verification 6 replaces them with the measured dead band and records both
    the number and the run that set it.
 
@@ -315,8 +317,10 @@ No per-scenario override. Every entry pins `allow_fallbacks: false` and a `provi
 so OpenRouter cannot silently route a slug to a different provider or quantisation between
 runs.
 
-⚠️ **`allow_fallbacks` / `provider.order` have zero precedent in this repo** — every
-existing client omits them. Verify the field names and nesting against current OpenRouter
+⚠️ **`provider.order` has zero precedent in this repo**; `allow_fallbacks` has exactly one
+(`apps/admin/src/services/embeddings.service.ts:207,232` sets `allow_fallbacks: false`
+inside a `routing` object — copy its shape). Verify the field names and nesting against
+current OpenRouter
 API docs before relying on them, and assert in the report that the **served** provider
 matches the pinned one rather than assuming the request was honoured.
 
@@ -430,8 +434,8 @@ at `src/mastra/index.ts`; safety is unreachability from that entry. The ban is
 - **Do not put this in `packages/`.** It needs `apps/mastra/src/config/env.ts`, and the
   cross-app import ban means a package home buys no reach.
 - **Do not run this in CI.** Operator-invoked only. Slow, flaky, costs money per push.
-- **Do not commit per-cell artifact files.** One `summary.md`, one `results.json`,
-  overwritten. Baseline is git history.
+- **Do not commit per-cell artifact files.** One `summary.md` + one `results.json` per run
+  directory — no per-cell file tree.
 - **Do not evaluate the fallback prompt, ever** (Decision 0). Both arms are Langfuse
   labels. A run that reads `source: "fallback"` hard-fails and writes nothing.
 - **Do not commit prompt text or a prompt diff** to this repo — it is public. Scores,
