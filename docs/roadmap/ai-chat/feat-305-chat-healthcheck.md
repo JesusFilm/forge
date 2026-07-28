@@ -3,7 +3,7 @@ id: "feat-305"
 title: "Railway healthcheck for the chat service"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-07-24"
 duration: 1
 depends_on:
@@ -14,6 +14,18 @@ tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-27 via [PR #1762](https://github.com/JesusFilm/forge/pull/1762) (`feat(chat): add Railway deploy healthcheck for the chat service (feat-305)`).
+
+**What landed.** A shallow, dependency-free `GET /api/health` (`force-dynamic`, `200 {ok:true, service:"forge-chat"}`, zero imports) plus `healthcheckPath = "/api/health"` + `healthcheckTimeout = 60` in `apps/chat/railway.toml` (`restartPolicyType` untouched). The body is a fixed literal — the prober is unauthenticated and the route is public, so no config value (e.g. the internal `SEEKER_MASTRA_BASE_URL`) can leak; this deliberately declines `apps/auth`'s config-echo precedent. The colocated suite pins the default-off-boot 200 (the case that matters), an env-invariant companion, `force-dynamic`, a GET-only method surface, a zero-imports depth guard, and a `railway.toml`↔route-path coupling test. It also corrected the throwing-`register()` mechanism description across `instrumentation.ts`, `apps/chat/CLAUDE.md`, and the SSE-proxy solutions doc to the verified behavior — the server keeps **listening** and returns **500 on every route including `/api/health`** because `prepare()` fails process-wide, so the probe gets 500 (not 2xx) and the deploy is not promoted (an initial in-session "dead port / never listens" claim was wrong and was corrected after an independent session reproduced it). Finally, the health route's own comment records the load-bearing coupling: keep it dependency-free **and** never make it survive a process-wide boot failure, or feat-306's gate silently breaks. `register()` stays report-only (comment-only diff).
+
+**Compound docs.** None yet — the arc-level solutions doc is deliberately deferred to after feat-306, when the throw actually ships and is observed gating a real deploy. Two existing docs were amended: a corrected supersession note on [browser-sse-proxy-to-bearer-gated-internal-sse](../../solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md) (the "no healthcheck / boot throw is unrecoverable" rationale is now false), and the mechanism corrections listed above.
+
+**Residual risk / follow-ups.** The healthcheck's PROBE running is confirmable from any deploy log, but that it GATES promotion is only proven once a deploy actually fails it — which cannot happen under this report-only hook (a misconfig leaves `/api/health` at 200). That gating proof is [feat-306](feat-306-chat-egress-pin-boot-throw.md)'s job, via a production env-var experiment — chat has no staging/preview environment, so production is the only deployment. Separately, because the health route imports nothing, a failure confined to one OTHER route or page still promotes; that is deliberate, so a Mastra outage never becomes a chat rollback.
+
+**Unblocked.** [feat-306](feat-306-chat-egress-pin-boot-throw.md) — necessary but not sufficient: feat-306's real precondition is observing the healthcheck gate a real deploy, not merely this merge.
 
 ## Problem
 

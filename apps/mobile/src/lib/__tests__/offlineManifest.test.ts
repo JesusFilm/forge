@@ -132,6 +132,44 @@ describe("parseOfflineRecord", () => {
   })
 })
 
+describe("series & ordering metadata (U1)", () => {
+  const withSeries: OfflineDownloadRecord = {
+    ...RECORD,
+    seriesSlug: "storyclubs",
+    seriesTitle: "StoryClubs",
+    seriesEpisodeIndex: 3,
+    durationSeconds: 725,
+    enqueuedAt: 1_753_000_000_000,
+  }
+
+  it("round-trips all five fields intact", () => {
+    expect(parseOfflineRecord(serializeOfflineRecord(withSeries))).toEqual(
+      withSeries,
+    )
+  })
+
+  it("AE4: a legacy record (none of the five present) parses with all five undefined, not dropped", () => {
+    const out = parseOfflineRecord(serializeOfflineRecord(RECORD))
+    expect(out).not.toBeNull()
+    expect(out?.seriesSlug).toBeUndefined()
+    expect(out?.seriesTitle).toBeUndefined()
+    expect(out?.seriesEpisodeIndex).toBeUndefined()
+    expect(out?.durationSeconds).toBeUndefined()
+    expect(out?.enqueuedAt).toBeUndefined()
+  })
+
+  it("round-trips seriesEpisodeIndex: 0 / durationSeconds: 0 as 0, not absent", () => {
+    const zeroed: OfflineDownloadRecord = {
+      ...withSeries,
+      seriesEpisodeIndex: 0,
+      durationSeconds: 0,
+    }
+    const out = parseOfflineRecord(serializeOfflineRecord(zeroed))
+    expect(out?.seriesEpisodeIndex).toBe(0)
+    expect(out?.durationSeconds).toBe(0)
+  })
+})
+
 describe("parseOfflineIndex", () => {
   it("round-trips a slug list and removes duplicates", () => {
     const raw = serializeOfflineIndex(["a", "b", "a"])

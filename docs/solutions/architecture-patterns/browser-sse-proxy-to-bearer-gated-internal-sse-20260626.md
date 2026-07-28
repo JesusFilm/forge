@@ -1,7 +1,7 @@
 ---
 title: "Browser-facing SSE proxy to a bearer-gated internal SSE service — parse-and-re-emit, classify HTTP status before the stream, one client parse path"
 date: 2026-06-26
-last_updated: 2026-07-14
+last_updated: 2026-07-27
 category: architecture-patterns
 problem_type: architecture_pattern
 component: service_object
@@ -179,6 +179,33 @@ REQUIRED if the environment ever hosts services outside this trust boundary.
 > `register()` would take the whole app down with no rollback; `instrumentation.ts`
 > reports the misconfiguration and never throws. Operators must provision the
 > allowlist in every deployed environment BEFORE shipping code that requires it.
+
+> **The rollback premise changed (2026-07-24, feat-305 — #1762).** The note above says
+> chat's `railway.toml` has no healthcheck — true when it was written, false
+> now: `railway.toml` carries `healthcheckPath = "/api/health"` (60s). A
+> throwing `register()` is therefore caught — `prepare()` rejects and (verified
+> under `next start`) the server still LISTENS but returns HTTP 500 on every
+> route including `/api/health`, so the probe gets 500 (not 2xx) and the
+> deployment is not promoted.
+> The general law survives intact and is the reusable part: **your fail-closed
+> enforcement point is a function of your rollback capability.** Two limits keep
+> the report-only choice standing until feat-306 — the gate covers PROMOTION
+> only (an already-promoted deployment restarting into the same throw is not
+> re-probed, and rollback does not undo a service-variable edit), and the probe
+> has not yet been observed gating a real deploy.
+
+> **The gate is armed (2026-07-27, feat-306).** Both limits above have now been
+> priced and accepted: `apps/chat/src/instrumentation.ts` THROWS on a genuine
+> misconfiguration in a production build, so the 500 on `/api/health` fails the
+> probe and the misconfigured build is never promoted. Read the two notes above
+> as history — "reports the misconfiguration and never throws" is no longer
+> chat's posture. The gate still covers PROMOTION only: an already-promoted
+> deployment restarting into the same throw is not re-probed, and the recovery
+> there is to revert the service variable, not the deployment. Request-path
+> enforcement at the proxies remains the actual security control; the boot throw
+> is a deploy gate on top of it, and a FAILED DIAGNOSTIC deliberately fails open
+> rather than failing the deploy. That the probe GATES (rather than merely runs)
+> is proven by a production experiment after feat-306 lands, not before it.
 
 **6. First terminal frame wins (both sides).** The proxy emits exactly one
 terminal frame then closes; the client treats the first `result`/`error` as

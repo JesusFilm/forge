@@ -1,17 +1,5 @@
 import type { CollectionDownloadQueueItem } from "@/components/watch/collection-download-options"
 
-const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
-const DOWNLOAD_AUTH_REQUIRED = "auth-required"
-
-export type CollectionDownloadDirectory = {
-  getFileHandle(
-    name: string,
-    options: { create: true },
-  ): Promise<{
-    createWritable(): Promise<WritableStream<Uint8Array>>
-  }>
-}
-
 export type CollectionDownloadProgress = {
   active: CollectionDownloadQueueItem | null
   completed: CollectionDownloadQueueItem[]
@@ -30,32 +18,59 @@ export function failedCollectionDownloadItems(
   return result.failed.map(({ item }) => item)
 }
 
-function browserSaveBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
+function defaultTriggerDownload(item: CollectionDownloadQueueItem): void {
   const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = filename
+  anchor.href = item.url
+  anchor.download = item.filename
   anchor.rel = "noopener"
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+function defaultDelay(ms: number, signal: AbortSignal): Promise<void> {
+  if (ms <= 0 || signal.aborted) {
+    return signal.aborted
+      ? Promise.reject(new DOMException("Aborted", "AbortError"))
+      : Promise.resolve()
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(cleanupAndResolve, ms)
+
+    function cleanup() {
+      window.clearTimeout(timeout)
+      signal.removeEventListener("abort", cleanupAndReject)
+    }
+
+    function cleanupAndResolve() {
+      cleanup()
+      resolve()
+    }
+
+    function cleanupAndReject() {
+      cleanup()
+      reject(new DOMException("Aborted", "AbortError"))
+    }
+
+    signal.addEventListener("abort", cleanupAndReject, { once: true })
+  })
 }
 
 export async function runCollectionDownloadQueue(input: {
   items: CollectionDownloadQueueItem[]
   signal: AbortSignal
-  directory?: CollectionDownloadDirectory | null
-  fetchImpl?: typeof fetch
-  saveBlob?: (blob: Blob, filename: string) => void
+  delayMs?: number
+  delay?: (ms: number, signal: AbortSignal) => Promise<void>
+  triggerDownload?: (item: CollectionDownloadQueueItem) => void
   onProgress?: (progress: CollectionDownloadProgress) => void
 }): Promise<CollectionDownloadQueueResult> {
-  const fetchImpl = input.fetchImpl ?? fetch
-  const saveBlob = input.saveBlob ?? browserSaveBlob
   const completed: CollectionDownloadQueueItem[] = []
   const failed: Array<{ item: CollectionDownloadQueueItem; reason: string }> =
     []
-  let authRequired = false
+  const delay = input.delay ?? defaultDelay
+  const delayMs = input.delayMs ?? 750
+  const triggerDownload = input.triggerDownload ?? defaultTriggerDownload
   let canceled = false
 
   const report = (active: CollectionDownloadQueueItem | null) =>
@@ -66,47 +81,17 @@ export async function runCollectionDownloadQueue(input: {
       total: input.items.length,
     })
 
-  for (const [index, item] of input.items.entries()) {
+  for (const item of input.items) {
     if (input.signal.aborted) {
       canceled = true
       break
     }
+
     report(item)
     try {
-      const response = await fetchImpl(item.url, {
-        credentials: "include",
-        signal: input.signal,
-      })
-      if (
-        response.status === 401 &&
-        response.headers.get(DOWNLOAD_ERROR_HEADER) === DOWNLOAD_AUTH_REQUIRED
-      ) {
-        authRequired = true
-        failed.push(
-          ...input.items.slice(index).map((retryItem) => ({
-            item: retryItem,
-            reason: "auth-required",
-          })),
-        )
-        break
-      }
-      if (!response.ok || !response.body) {
-        failed.push({ item, reason: `http-${response.status}` })
-        continue
-      }
-      if (input.directory) {
-        const file = await input.directory.getFileHandle(item.filename, {
-          create: true,
-        })
-        const writable = await file.createWritable()
-        await response.body.pipeTo(writable, { signal: input.signal })
-      } else {
-        const blob = await response.blob()
-        if (input.signal.aborted)
-          throw new DOMException("Aborted", "AbortError")
-        saveBlob(blob, item.filename)
-      }
+      triggerDownload(item)
       completed.push(item)
+      await delay(delayMs, input.signal)
     } catch (error) {
       if (
         input.signal.aborted ||
@@ -125,7 +110,7 @@ export async function runCollectionDownloadQueue(input: {
   report(null)
   return {
     active: null,
-    authRequired,
+    authRequired: false,
     canceled,
     completed,
     failed,

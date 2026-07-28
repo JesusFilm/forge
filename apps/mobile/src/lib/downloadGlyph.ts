@@ -1,10 +1,15 @@
-import { ACCENT_ON_DARK, TEXT_SECONDARY } from "./color"
+import {
+  ACCENT_ON_DARK,
+  STATUS_DONE_COLOR,
+  STATUS_FAILED_COLOR,
+  TEXT_SECONDARY,
+} from "./color"
 import type { OfflineDownloadState } from "./offlineManifest"
 
 /** Green tick for a completed offline copy. */
-export const DOWNLOAD_DONE_COLOR = "#34d399"
+export const DOWNLOAD_DONE_COLOR = STATUS_DONE_COLOR
 /** Rose for a failed transfer (retry). */
-export const DOWNLOAD_FAILED_COLOR = "#fb7185"
+export const DOWNLOAD_FAILED_COLOR = STATUS_FAILED_COLOR
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["downloading", "queued", "paused"])

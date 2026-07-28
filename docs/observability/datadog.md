@@ -81,7 +81,6 @@ DD_SITE=datadoghq.com
 # Admin backend APM
 DD_SERVICE=forge-admin
 DD_ENV=prod
-DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 DD_LOGS_INJECTION=true
 DD_RUNTIME_METRICS_ENABLED=true
 
@@ -90,21 +89,20 @@ NEXT_PUBLIC_DATADOG_APPLICATION_ID=<Forge Admin RUM application ID>
 NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=<Forge Admin RUM client token>
 NEXT_PUBLIC_DATADOG_SITE=datadoghq.com
 NEXT_PUBLIC_DATADOG_ENV=prod
-NEXT_PUBLIC_DATADOG_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 
 # Admin browser sourcemaps
 DATADOG_API_KEY=<Forge-production API key value>
 DATADOG_SITE=datadoghq.com
-DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 ```
 
-Do not set `NODE_OPTIONS=--require dd-trace/init` as a Railway service
-variable. Railway exposes service variables during the Railpack/mise build
-phase, before `dd-trace` is guaranteed to exist. Admin's
-`apps/admin/railway.toml` scopes the preload to runtime:
+Do not set `NODE_OPTIONS=--enable-source-maps --require dd-trace/init` as a
+Railway service variable. Railway exposes service variables during the
+Railpack/mise build phase, before `dd-trace` is guaranteed to exist. Admin's
+`apps/admin/railway.toml` scopes the preload and source-map runtime flag to
+runtime:
 
 ```bash
-cd apps/admin && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start
+cd apps/admin && export DD_VERSION="${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" NEXT_PUBLIC_DATADOG_VERSION="${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" DATADOG_RELEASE_VERSION="${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start
 ```
 
 The dedicated Admin worker service should use config-as-code path
@@ -119,17 +117,25 @@ container, so `DD_LOGS_INJECTION=true` alone is not enough; the app must also
 set `DD_AGENT_SYSLOG_PORT=514` and run code with `DD_AGENT_HOST` present. The
 forwarder preserves normal Railway stdout and sends a second copy to Datadog
 with `service`, `env`, `version`, and active trace/span ids when available.
+For Datadog to treat release metadata as log tags, `ddtags` must be emitted in
+the RFC5424 structured-data section (`[metas ddtags="..."]`); keeping `ddtags`
+only inside the JSON message makes it searchable as an attribute but does not
+promote `env` or `version` into the log's tag set.
 
 Because the Agent service name contains `/`, prefer Railway's variable
 autocomplete when setting `DD_AGENT_HOST`; it will insert the exact reference
 syntax Railway expects for `@forge/datadog-agent.RAILWAY_PRIVATE_DOMAIN`.
 
-Keep release identity aligned:
+Do not define the release identity vars as Railway reference variables to
+`RAILWAY_GIT_COMMIT_SHA`; Railway-provided git vars are available inside the
+build/runtime process, but service-variable aliases to them can resolve empty.
+The Admin Railway config stamps these release vars directly from
+`RAILWAY_GIT_COMMIT_SHA` in both build and start commands:
 
 ```bash
-DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
-NEXT_PUBLIC_DATADOG_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
-DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
+DD_VERSION="${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}"
+NEXT_PUBLIC_DATADOG_VERSION="${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}"
+DATADOG_RELEASE_VERSION="${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}"
 ```
 
 ## Admin sourcemap upload
@@ -145,8 +151,13 @@ pnpm --filter @forge/admin datadog:sourcemaps
 The upload script uses service `forge-admin`, release version
 `DATADOG_RELEASE_VERSION`, and minified path prefix `/_next/static/`. Keep
 `DATADOG_RELEASE_VERSION`, `NEXT_PUBLIC_DATADOG_VERSION`, and
-`RAILWAY_GIT_COMMIT_SHA` aligned so RUM events and uploaded maps share the same
-release identity.
+`RAILWAY_GIT_COMMIT_SHA` aligned through the Railway build/start command stamps
+so RUM events and uploaded maps share the same release identity.
+
+Backend APM stack traces are separate from browser RUM source-map uploads.
+Admin keeps production server sourcemaps with the deployed Next bundle and
+runs Node with `--enable-source-maps`, allowing server exceptions to be
+reported with remapped frames.
 
 ## Web production variables
 
@@ -162,7 +173,6 @@ DD_AGENT_SYSLOG_PORT=514
 # Web backend APM/logs
 DD_SERVICE=forge-web
 DD_ENV=prod
-DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 DD_LOGS_INJECTION=true
 DD_RUNTIME_METRICS_ENABLED=true
 
@@ -171,12 +181,10 @@ NEXT_PUBLIC_DATADOG_APPLICATION_ID=<Forge Watch RUM application ID>
 NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=<Forge Watch RUM client token>
 NEXT_PUBLIC_DATADOG_SITE=datadoghq.com
 NEXT_PUBLIC_DATADOG_ENV=prod
-NEXT_PUBLIC_DATADOG_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 
 # Watch browser sourcemaps
 DATADOG_API_KEY=<Forge-production API key value>
 DATADOG_SITE=datadoghq.com
-DATADOG_RELEASE_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 ```
 
 `apps/web/src/instrumentation.ts` configures Datadog only in the Next.js Node
@@ -188,6 +196,14 @@ Web's Railway config-as-code runs `pnpm --filter @forge/web datadog:sourcemaps`
 after the production build when `DATADOG_API_KEY` or `DD_API_KEY` is present.
 The upload script uses service `forge-web`, release version
 `DATADOG_RELEASE_VERSION`, and minified path prefix `/watch/_next/static/`.
+`apps/web/railway.toml` stamps `DD_VERSION`, `NEXT_PUBLIC_DATADOG_VERSION`, and
+`DATADOG_RELEASE_VERSION` from `RAILWAY_GIT_COMMIT_SHA` inside the build and
+runtime commands when those vars are unset or empty.
+
+Backend APM stack traces are separate from browser RUM source-map uploads.
+Web keeps production server sourcemaps with the deployed Next bundle and runs
+Node with `--enable-source-maps`, allowing `web.request` server exceptions to
+be reported with remapped frames.
 
 ## TV production variables
 

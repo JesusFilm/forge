@@ -72,6 +72,12 @@ export default function DownloadSheetRoute() {
       subtitleUrl: activeSubtitle?.vttSrc ?? null,
       posterUrl: video.posterUrl,
       allowCellular: !wifiOnly,
+      // seriesEpisodeIndex stays undefined here — episode order is a series-batch
+      // concept (R22 falls back to enqueue time for a lone watch-route download).
+      seriesSlug: video.parentSeries?.slug,
+      seriesTitle: video.parentSeries?.title,
+      durationSeconds: video.duration ?? undefined,
+      enqueuedAt: Date.now(),
     })
     if (!result.ok && result.reason === "insufficient-storage") {
       // Stay on the sheet so the user can pick a smaller quality.

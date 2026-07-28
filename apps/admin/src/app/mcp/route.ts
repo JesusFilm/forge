@@ -9,6 +9,7 @@ import { prisma } from "@/db/client"
 import { getAdminMcpResourceUrl } from "@/mcp/admin-mcp-metadata"
 import { ADMIN_MCP_TOOLS, findAdminMcpTool } from "@/mcp/admin-mcp-tools"
 import { ExperienceLocaleMcpService } from "@/services/experience-locale-mcp.service"
+import { ExperienceMcpService } from "@/services/experience-mcp.service"
 import { ForbiddenError, NotFoundError } from "@/services/errors"
 
 const RATE_LIMIT_MAX = 120
@@ -113,8 +114,11 @@ async function handleJsonRpc(request: JsonRpcRequest, user: Principal) {
     const tool = toolName ? findAdminMcpTool(toolName) : undefined
     if (!tool) return jsonRpcError(id, -32602, "Unknown Admin MCP tool.")
     try {
-      const service = new ExperienceLocaleMcpService(prisma)
-      const result = await callAdminMcpTool(service, tool.name, {
+      const services = {
+        locale: new ExperienceLocaleMcpService(prisma),
+        experience: new ExperienceMcpService(prisma),
+      }
+      const result = await callAdminMcpTool(services, tool.name, {
         input: getToolArguments(request.params),
         user,
       })
@@ -136,10 +140,14 @@ async function handleJsonRpc(request: JsonRpcRequest, user: Principal) {
 }
 
 async function callAdminMcpTool(
-  service: ExperienceLocaleMcpService,
+  services: {
+    locale: ExperienceLocaleMcpService
+    experience: ExperienceMcpService
+  },
   name: string,
   args: { input: unknown; user: Principal },
 ) {
+  const service = services.locale
   if (name === "experience.list") return service.listExperiences(args)
   if (name === "experience.locale.list") return service.listLocales(args)
   if (name === "experience.locale.read") return service.readLocale(args)
@@ -160,6 +168,12 @@ async function callAdminMcpTool(
     return service.searchReplacementVideos(args)
   }
   if (name === "bible.lookup") return service.lookupBible(args)
+  if (name === "experience.create") {
+    return services.experience.createExperience(args)
+  }
+  if (name === "experience.generate") {
+    return services.experience.generateExperience(args)
+  }
   throw new Error("not_implemented")
 }
 

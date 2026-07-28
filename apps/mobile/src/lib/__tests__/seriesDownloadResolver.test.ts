@@ -266,6 +266,49 @@ describe("resolveSeriesDownload", () => {
     expect(res.resolved[0].sizeUnknown).toBe(true)
   })
 
+  // U1: seriesEpisodeIndex/durationSeconds are PER-EPISODE — carried from the
+  // input WatchEpisode straight onto the resolution (not synthesized here).
+  it("carries seriesEpisodeIndex and durationSeconds from the input episode", async () => {
+    const deps: SeriesResolveDeps = {
+      getEpisodeVariants: async (slug) => [variant("es", `${slug}-es`)],
+      getDubMedia: async (dubId) => threeTier(dubId),
+    }
+    const withIndex: WatchEpisode = {
+      ...episode("a"),
+      seriesEpisodeIndex: 3,
+      durationSeconds: 725,
+    }
+    const res = await resolveSeriesDownload(
+      [withIndex],
+      {
+        qualityTier: "Highest",
+        languageSlug: "es",
+        subtitleLanguageSlug: null,
+      },
+      deps,
+    )
+    expect(res.resolved[0].seriesEpisodeIndex).toBe(3)
+    expect(res.resolved[0].durationSeconds).toBe(725)
+  })
+
+  it("round-trips seriesEpisodeIndex: 0 without conflating it with absent", async () => {
+    const deps: SeriesResolveDeps = {
+      getEpisodeVariants: async (slug) => [variant("es", `${slug}-es`)],
+      getDubMedia: async (dubId) => threeTier(dubId),
+    }
+    const zeroIndex: WatchEpisode = { ...episode("a"), seriesEpisodeIndex: 0 }
+    const res = await resolveSeriesDownload(
+      [zeroIndex],
+      {
+        qualityTier: "Highest",
+        languageSlug: "es",
+        subtitleLanguageSlug: null,
+      },
+      deps,
+    )
+    expect(res.resolved[0].seriesEpisodeIndex).toBe(0)
+  })
+
   it("maps a fetch error to failed-resolve without dropping siblings", async () => {
     const deps: SeriesResolveDeps = {
       getEpisodeVariants: async (slug) => {

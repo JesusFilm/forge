@@ -29,6 +29,12 @@ export const ACCENT = "#CB333B"
  */
 export const ACCENT_ON_DARK = "#E96067"
 
+/** Completed-download status (semantic-status grouping, KTD10). */
+export const STATUS_DONE_COLOR = "#34d399"
+
+/** Failed-download status. */
+export const STATUS_FAILED_COLOR = "#fb7185"
+
 /** Text rendered on image/gradient overlays. */
 export const TEXT_ON_OVERLAY = "#ffffff"
 

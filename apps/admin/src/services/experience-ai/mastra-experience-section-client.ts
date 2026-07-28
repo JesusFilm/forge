@@ -20,10 +20,14 @@
  * after this client returns.
  */
 
-import { request as httpRequest } from "node:http"
-import { request as httpsRequest } from "node:https"
-
 import { env } from "@/config/env"
+import {
+  describeFetchError,
+  postViaFetch,
+  postViaNode,
+  resolveTimeoutMs,
+  type RawResponse,
+} from "@/services/mastra-http-transport"
 import {
   DraftVideoSectionSchema,
   type DraftVideoSection,
@@ -87,114 +91,8 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
-/**
- * Render an unknown thrown value as a Railway-logsV2-safe plain string. For
- * undici `fetch` failures the useful signal lives on `error.cause` (e.g.
- * ECONNREFUSED / EAI_AGAIN / ETIMEDOUT / UND_ERR_*); for AbortSignal.timeout it
- * is the `TimeoutError` name. NEVER JSON.stringify — Railway logsV2 silences
- * stringified payloads from the Next.js runtime.
- */
-function describeFetchError(error: unknown): string {
-  const err = error instanceof Error ? error : undefined
-  const cause = err?.cause instanceof Error ? err.cause : undefined
-  const rawCode =
-    (cause as { code?: unknown } | undefined)?.code ??
-    (err as { code?: unknown } | undefined)?.code
-  return (
-    `name=${err?.name ?? "unknown"} ` +
-    `code=${typeof rawCode === "string" ? rawCode : "none"} ` +
-    `cause=${cause?.name ?? "none"} ` +
-    `message=${err?.message ?? String(error)}`
-  )
-}
-
-type RawResponse = { status: number; bodyText: string }
-
 /** Fallback when the env-configured section timeout is missing/invalid. */
 const DEFAULT_SECTION_TIMEOUT_MS = 75_000
-
-/**
- * Normalize the request timeout to a positive number. `env.MASTRA_SECTION_TIMEOUT_MS`
- * is TYPED `number`, but at runtime it can arrive `undefined` (or a string)
- * because t3-env's `skipValidation` path returns raw `process.env` without
- * applying the Zod default — and passing that to `req.setTimeout` /
- * `AbortSignal.timeout` throws `ERR_INVALID_ARG_TYPE`. Takes `unknown` so the
- * runtime guards aren't elided by the (wrong) static type.
- */
-function resolveTimeoutMs(value: unknown): number {
-  const ms = typeof value === "string" ? Number(value) : value
-  return typeof ms === "number" && Number.isFinite(ms) && ms > 0
-    ? ms
-    : DEFAULT_SECTION_TIMEOUT_MS
-}
-
-/**
- * POST the request over `node:http` instead of the global `fetch`.
- *
- * Why: in the Next.js standalone runtime the framework-patched global `fetch`
- * fails to reach `forge-mastra` over Railway's private network (a plain `node`
- * process in the SAME container reaches it fine), so the editor only ever saw
- * an opaque "service unavailable". `node:http` is NOT patched by Next, so it
- * uses the same un-instrumented network stack that works from a raw process.
- * The injected-`fetchImpl` path (tests/overrides) keeps using `fetch`.
- */
-function postViaNode(
-  target: URL,
-  headers: Record<string, string>,
-  body: string,
-  timeoutMs: number,
-): Promise<RawResponse> {
-  const request = target.protocol === "https:" ? httpsRequest : httpRequest
-  return new Promise<RawResponse>((resolve, reject) => {
-    const req = request(
-      target,
-      {
-        method: "POST",
-        headers: {
-          ...headers,
-          "content-length": Buffer.byteLength(body).toString(),
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = []
-        res.on("data", (chunk: Buffer) => chunks.push(chunk))
-        res.on("end", () =>
-          resolve({
-            status: res.statusCode ?? 0,
-            bodyText: Buffer.concat(chunks).toString("utf8"),
-          }),
-        )
-        res.on("error", reject)
-      },
-    )
-    req.setTimeout(timeoutMs, () => {
-      req.destroy(
-        Object.assign(new Error("section request timed out"), {
-          name: "TimeoutError",
-        }),
-      )
-    })
-    req.on("error", reject)
-    req.end(body)
-  })
-}
-
-/** Transport used when a caller injects `fetchImpl` (unit tests / overrides). */
-async function postViaFetch(
-  fetchImpl: typeof fetch,
-  target: URL,
-  headers: Record<string, string>,
-  body: string,
-  timeoutMs: number,
-): Promise<RawResponse> {
-  const response = await fetchImpl(target, {
-    method: "POST",
-    headers,
-    body,
-    signal: AbortSignal.timeout(timeoutMs),
-  })
-  return { status: response.status, bodyText: await response.text() }
-}
 
 function parseSectionRouteResult(
   value: unknown,
@@ -259,6 +157,7 @@ export async function launchMastraExperienceSection(
   const bodyText = JSON.stringify(body)
   const timeoutMs = resolveTimeoutMs(
     options.timeoutMs ?? env.MASTRA_SECTION_TIMEOUT_MS,
+    DEFAULT_SECTION_TIMEOUT_MS,
   )
 
   let raw: RawResponse
@@ -274,7 +173,9 @@ export async function launchMastraExperienceSection(
           bodyText,
           timeoutMs,
         )
-      : await postViaNode(target, headers, bodyText, timeoutMs)
+      : await postViaNode(target, headers, bodyText, timeoutMs, {
+          timeoutErrorMessage: "section request timed out",
+        })
   } catch (error) {
     // The connection-level cause was previously swallowed here, leaving the
     // editor with an opaque "service unavailable" and no way to tell a refused
@@ -324,5 +225,6 @@ export async function launchMastraExperienceSection(
 
 export const _internals = {
   parseSectionRouteResult,
-  resolveTimeoutMs,
+  resolveTimeoutMs: (value: unknown) =>
+    resolveTimeoutMs(value, DEFAULT_SECTION_TIMEOUT_MS),
 }

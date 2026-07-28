@@ -1,17 +1,27 @@
 /**
  * Leg-1 caller for the standalone one-shot draft route (consolidation U6).
  *
- * Mirrors `mastra-experience-embedding-client.ts`: `config_missing`
- * short-circuit when the caller vars are unset, `POST /forge-experience-draft`
- * with a `Bearer` (reusing MASTRA_BASE_URL + MASTRA_SERVICE_API_KEY — the same
- * service + receiver CSV the embedding launches use), a single `response.json()`,
- * and a discriminated `{ ok } | { ok:false, reason, retryable }` envelope.
+ * `config_missing` short-circuit when the caller vars are unset,
+ * `POST /forge-experience-draft` with a `Bearer` (reusing MASTRA_BASE_URL +
+ * MASTRA_SERVICE_API_KEY — the same service + receiver CSV the embedding
+ * launches use), and a discriminated `{ ok } | { ok:false, reason, retryable }`
+ * envelope.
+ *
+ * Transport is `node:http` by default (mirroring the variant/section clients,
+ * PR #1339): Next.js patches the global `fetch` in ways that break Railway
+ * private networking, so the draft launch bypasses it. `fetchImpl` switches to
+ * the fetch path (unit tests / overrides only). The timeout is re-guarded at
+ * runtime by `resolveTimeoutMs` (PR #1342 class: t3-env `skipValidation`
+ * returns raw process.env without Zod defaults, and a timer API throws
+ * `ERR_INVALID_ARG_TYPE` on `undefined`). A client-side timeout classifies as
+ * `timeout` (retryable) — not `network_error` — so callers with a budget
+ * BELOW mastra's internal one (the MCP generate path) still get honest
+ * timeout semantics.
  *
  * The request timeout (`MASTRA_DRAFT_TIMEOUT_MS`, default 200s) is deliberately
  * LARGER than mastra's internal multi-step-workflow budget (180s) so the
  * mastra-side timeout wins the race and returns a clean `{ reason:"timeout" }`
- * envelope — admin's fetch aborting first would surface as a generic
- * `network_error` and trip a retry storm
+ * envelope
  * (`docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`).
  *
  * Candidates + exemplar are computed admin-side (admin's pgvector + embeddings)
@@ -22,6 +32,14 @@
  */
 
 import { env } from "@/config/env"
+import {
+  describeFetchError,
+  isClientTimeout,
+  postViaFetch,
+  postViaNode,
+  resolveTimeoutMs,
+  type RawResponse,
+} from "@/services/mastra-http-transport"
 import {
   DraftExperienceSchema,
   type DraftExperience,
@@ -71,6 +89,9 @@ const ROUTE_FAILURE_REASONS = new Set<MastraExperienceDraftFailureReason>([
   "generation_failed",
   "internal_error",
 ])
+
+/** Fallback when the env-configured draft timeout is missing/invalid. */
+const DEFAULT_DRAFT_TIMEOUT_MS = 200_000
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -131,50 +152,78 @@ export async function launchMastraExperienceDraft(
     ...(input.mode == null ? {} : { mode: input.mode }),
   }
 
-  let response: Response
+  const target = new URL("/forge-experience-draft", baseUrl)
+  const headers = {
+    authorization: `Bearer ${bearer}`,
+    "content-type": "application/json",
+  }
+  const bodyText = JSON.stringify(body)
+  const timeoutMs = resolveTimeoutMs(
+    options.timeoutMs ?? env.MASTRA_DRAFT_TIMEOUT_MS,
+    DEFAULT_DRAFT_TIMEOUT_MS,
+  )
+
+  let raw: RawResponse
   try {
-    response = await (options.fetchImpl ?? fetch)(
-      new URL("/forge-experience-draft", baseUrl),
-      {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${bearer}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(
-          options.timeoutMs ?? env.MASTRA_DRAFT_TIMEOUT_MS,
-        ),
-      },
+    raw = options.fetchImpl
+      ? await postViaFetch(
+          options.fetchImpl,
+          target,
+          headers,
+          bodyText,
+          timeoutMs,
+        )
+      : await postViaNode(target, headers, bodyText, timeoutMs, {
+          timeoutErrorMessage: "draft request timed out",
+        })
+  } catch (error) {
+    console.error(
+      `[mastra-experience-draft] event=fetch_failed host=${target.host} ` +
+        `transport=${options.fetchImpl ? "fetch" : "node-http"} ${describeFetchError(error)}`,
     )
-  } catch {
-    // Includes the fetch-side AbortSignal.timeout firing. Because that budget
-    // is strictly larger than mastra's internal budget, a genuine
-    // generation-timeout returns a parsed `{ reason:"timeout" }` envelope on
-    // the happy path below; reaching here means a real transport failure.
+    // A client-side abort means the admin-side budget elapsed — honest
+    // timeout semantics, still retryable. Anything else is transport.
+    if (isClientTimeout(error)) {
+      return { ok: false, reason: "timeout", retryable: true }
+    }
     return { ok: false, reason: "network_error", retryable: true }
   }
 
-  if (response.status === 401) {
+  if (raw.status === 401) {
+    console.warn(`[mastra-experience-draft] event=auth_failed status=401`)
     return { ok: false, reason: "auth_failed", retryable: false }
   }
 
-  const parsed = parseDraftRouteResult(
-    await response.json().catch(() => undefined),
-  )
+  let payload: unknown
+  try {
+    payload = raw.bodyText.length > 0 ? JSON.parse(raw.bodyText) : undefined
+  } catch {
+    payload = undefined
+  }
+
+  const parsed = parseDraftRouteResult(payload)
   if (parsed) return parsed
 
-  if (!response.ok) {
+  if (raw.status < 200 || raw.status >= 300) {
+    console.warn(
+      `[mastra-experience-draft] event=http_error status=${raw.status}`,
+    )
     return {
       ok: false,
       reason: "network_error",
-      retryable: response.status >= 500 || response.status === 429,
+      retryable: raw.status >= 500 || raw.status === 429,
     }
   }
 
+  console.warn(
+    `[mastra-experience-draft] event=parse_error status=${raw.status} ` +
+      `bodyOk=${String(asRecord(payload)?.ok ?? "absent")}`,
+  )
   return { ok: false, reason: "parse_error", retryable: true }
 }
 
 export const _internals = {
   parseDraftRouteResult,
+  resolveTimeoutMs: (value: unknown) =>
+    resolveTimeoutMs(value, DEFAULT_DRAFT_TIMEOUT_MS),
 }

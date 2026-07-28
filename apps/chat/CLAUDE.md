@@ -34,6 +34,7 @@ src/
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
       auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie + consume the feat-240 force-login marker (success only), 302 return_to; single catch → non-PII log + ?signin=failed (marker kept armed)
       auth/logout/route.ts   POST → clear session cookie + set the 30-day single-use force-login marker (feat-240), 303 home (POST so it isn't prefetchable)
+      health/route.ts    feat-305: Railway's deploy healthcheck ('force-dynamic' GET → 200 {ok,service}). Deliberately shallow — no env read, no Mastra call, no session decode — so it passes on the default-off boot and an upstream outage never rolls chat back. Its body is a fixed literal: the prober is unauthenticated and the route is publicly reachable
   auth/                  Chat auth (feat-207), adapted from apps/admin/src/auth/* — SDL of the OAuth flow, no DB, no authorization
     oauth-state.ts       state + PKCE (S256) via node:crypto (verbatim port)
     oauth-client.ts      authorize URL + token exchange + verifyChatIdToken (JWKS-derived alg allowlist, NO access-token fallback — R9 divergence)
@@ -45,7 +46,7 @@ src/
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
     env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205: SEEKER_MASTRA_BASE_URL + SEEKER_MASTRA_ALLOWED_HOSTS + SEEKER_TIMEOUT_MS; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix() + the egress pin's requireSeekerEgressAllowlist() / describeSeekerEgressMisconfiguration(). Boots clean with none set
-  instrumentation.ts     Next server-start hook: REPORTS the Seeker egress misconfiguration ([seeker-egress] event=misconfigured reason=allowlist_unset|host_not_allowed) and never throws — enforcement is at the proxies (see "Production egress pin")
+  instrumentation.ts     Next server-start hook: ENFORCES the Seeker egress pin as a DEPLOY GATE since feat-306 — logs [seeker-egress] event=misconfigured reason=allowlist_unset|host_not_allowed effect=boot_refused_all_requests|seeker_sends_and_history_refuse (the effect= token IS the posture), then THROWS in a production build, so the server listens but 500s every route (incl /api/health) and the healthcheck refuses to promote. Report-only outside a production build — and only host_not_allowed is reachable there, since allowlist_unset is production-only by construction, so an unset allowlist logs NOTHING outside production. A failed diagnostic (event=diagnostic_failed stage=import|call) never throws and fails OPEN. The proxies remain the security control (see "Production egress pin")
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text)
@@ -204,15 +205,57 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   (production only), carried on BOTH proxies' config as `requireAllowlist` and
   threaded into `validateBaseUrl` — the third arg of `hostAllowed` /
   `validateBaseUrl` is required with no default, so a new call site cannot
-  silently inherit fail-open. Enforcement is at the proxies, not at boot:
-  a missing pin denies exactly the calls that would carry the bearer
-  (`ssrf_blocked` frame / history 502) while the stub path, page, and auth
-  keep working. `instrumentation.ts` only REPORTS it — a throwing `register()`
-  rejects Next's `prepare()` for every request, and chat's `railway.toml` has
-  no healthcheck to roll that back. **Deploy ordering:** set the env var in an
-  environment BEFORE shipping code that requires it there, or the first deploy
-  lands with the pin already violated. Value is hostnames only, CSV, no scheme
-  or port (`.env.example` ships `localhost` to match its localhost base URL).
+  silently inherit fail-open. **Request-path enforcement at the proxies is the
+  actual security control** — a missing pin denies exactly the calls that would
+  carry the bearer (`ssrf_blocked` frame / history 502) while the stub path,
+  page, and auth keep working. Since feat-306 `instrumentation.ts` adds a
+  DEPLOY GATE on top: on a genuine misconfiguration in a production build it
+  logs the enum line and then THROWS. A throw rejects Next's `prepare()`
+  process-wide, so under `next start` the server still LISTENS and returns HTTP
+  500 on every route (including `/api/health`), staying alive and re-throwing
+  the hook once per request — it is NOT a dead port (verified by hand
+  2026-07-27 on `next@16.2.4`, non-standalone: `next build` then `next start`
+  with the pin violated, `curl -o /dev/null -w '%{http_code}' /api/health` →
+  500, `pgrep` still finds the process; no CI assertion holds this, so
+  re-verify on a Next bump or if chat adopts `output: "standalone"`).
+  feat-305's `healthcheckPath = "/api/health"` (60s) turns that 500 into a
+  FAILED DEPLOY: the probe gets 500, not 2xx, so the build is never PROMOTED
+  and the previous healthy deployment keeps serving. Scope it honestly — the
+  gate covers PROMOTION only: an already-promoted deployment restarting into
+  the same throw is not re-probed, and rollback does not undo an env change;
+  the recovery there is to revert the variable, not the deployment, and until
+  then chat is fully down (the process never exits, so `restartPolicyType`
+  does not fire). It also depends on the service's "Config-as-code Path"
+  actually pointing at `railway.toml` — unwired, there is no probe and the
+  broken build promotes; confirm it the way feat-305 did, by seeing the
+  healthcheck run in a chat deploy's Railway build log. BOTH layers are armed
+  by the production BUILD, not by the deployed environment's `NODE_ENV` — this
+  one is easy to get backwards: `next build` replaces `process.env.NODE_ENV`
+  with the literal `"production"` in the server bundle, and `config/env.ts`
+  reads it by direct member access
+  (`NODE_ENV: emptyToUndefined(process.env.NODE_ENV)`), so
+  `requireSeekerEgressAllowlist()` compiles down to a constant-true comparison.
+  Both layers are therefore armed in EVERY production build — every deployed
+  environment, and a local `next build` + `next start` too. An operator CANNOT
+  opt an environment into report-only by setting `NODE_ENV=staging`; only
+  `next dev` and the test runner stay fail-open, and an unset allowlist logs
+  nothing there because `allowlist_unset` is production-only by construction
+  (verified by hand 2026-07-27: a `NODE_ENV=staging` build still emitted
+  `NODE_ENV: …("production")` into the env chunk, and the resulting server
+  500ed `/api/health` with the pin violated while still listening). The
+  consequence is that there is no staged rollout — provision the allowlist in
+  EVERY environment you deploy, before the code that requires it lands there.
+  Outside a production build the hook stays
+  report-only (note `next start` IS a production build, so a mismatched
+  allowlist 500s a local build+start run). A failed diagnostic never throws and
+  deliberately fails OPEN — `event=diagnostic_failed stage=import|call` means
+  that deploy promotes with the gate disarmed; treat it as an alert, and note
+  `stage=import` means every real route is 500ing on the same module while the
+  zero-import health route still answers 200. **Deploy
+  ordering:** set the env var in an environment BEFORE shipping code that
+  requires it there, or the first deploy lands with the pin already violated.
+  Value is hostnames only, CSV, no scheme or port (`.env.example` ships
+  `localhost` to match its localhost base URL).
 - **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
   (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
   signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is
@@ -544,6 +587,17 @@ hidden); anonymous/denied users are unaffected.
 Railway via `railway.toml` (railpack builder), but only once the service's
 "Config-as-code Path" points at the file — see README's wiring checklist
 and its `configFile` verification step.
+
+Deploy promotion is gated on `healthcheckPath = "/api/health"` (60s, feat-305).
+Scope it honestly: it catches a deployment that fails the probe — a rejected
+`prepare()` returns HTTP 500 on every route including `/api/health` (the
+feat-306 case, verified), and a bad bind or crashed boot refuses the connection
+outright; either way the probe is non-2xx. It does NOT catch a failure confined
+to one route or page, since the health route imports nothing from the app; `/`
+could 500 on every request while `/api/health` stays 200 and the deploy
+promotes. That shallowness is the deliberate trade: a probe with dependencies
+turns a Mastra outage into a chat rollback. `restartPolicyType = "on_failure"`
+stays — it covers a process that EXITS, which the healthcheck does not.
 
 Production hostname is the Cloudflare-fronted `chat.jesusfilm.ai` (feat-235;
 DNS, WAF, Authenticated Origin Pulls, DNSSEC). Railway env sets

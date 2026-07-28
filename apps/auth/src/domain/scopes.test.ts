@@ -10,7 +10,15 @@ describe("Auth scopes", () => {
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
     expect(isKnownScope("experience:publish")).toBe(true)
+    expect(isKnownScope("experience:create")).toBe(true)
+    expect(isKnownScope("experience:generate")).toBe(true)
     expect(isKnownScope("made:up")).toBe(false)
+  })
+
+  it("rejects a typo'd experience-level scope", () => {
+    expect(() => assertKnownScopes(["experience:creat"])).toThrow(
+      "Unknown Auth scope(s): experience:creat",
+    )
   })
 
   it("deduplicates known scopes", () => {
@@ -67,6 +75,23 @@ describe("Auth scopes", () => {
       expect.objectContaining({
         key: "experience:publish",
         label: "Publish experience locales",
+      }),
+    ])
+  })
+
+  it("describes experience-level create and generate scopes for consent screens", () => {
+    expect(
+      describeScopes(["experience:generate", "experience:create"]),
+    ).toEqual([
+      expect.objectContaining({
+        key: "experience:create",
+        label: "Create experiences",
+        description: "Create new Experience pages as drafts.",
+      }),
+      expect.objectContaining({
+        key: "experience:generate",
+        label: "Generate experiences",
+        description: "Generate new Experience page drafts with AI.",
       }),
     ])
   })

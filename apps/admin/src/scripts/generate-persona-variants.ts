@@ -22,6 +22,7 @@ import type { DraftExperience, VideoCandidate } from "@forge/experience-schema"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 
 import type { Principal } from "@/auth/principal"
+import { topicBaseSlug } from "@/domain/slugify"
 import { watchLanguageSlugForLocale } from "@/lib/watch-language-slug"
 import {
   ExperienceAiNormalizationError,
@@ -65,11 +66,7 @@ export function assertNotProdUrl(raw: string | undefined): void {
 
 /** Slug for a persona variant of a topic, e.g. ("Easter","grieving") → easter-grieving. */
 export function variantSlug(topic: string, personaId: string): string {
-  const base = topic
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-  return `${base || "experience"}-${personaId}`
+  return `${topicBaseSlug(topic)}-${personaId}`
 }
 
 export function personaVariantReviewUrl(

@@ -57,8 +57,13 @@ Then set app-specific unified service tags, for example Admin:
 ```bash
 DD_SERVICE=forge-admin
 DD_ENV=prod
-DD_VERSION=${{RAILWAY_GIT_COMMIT_SHA}}
 ```
+
+Do not set `DD_VERSION` as a Railway service-variable reference to
+`RAILWAY_GIT_COMMIT_SHA`; platform git vars are available inside app build and
+runtime processes, but aliases to them can resolve empty. Stamp `DD_VERSION`
+from `RAILWAY_GIT_COMMIT_SHA` in the app service start command before
+`dd-trace/init` loads.
 
 Future production services should reuse the same Agent and choose their own
 service names, such as `forge-watch`, `forge-manager`, and `forge-chat`.
@@ -69,3 +74,7 @@ Railway does not expose sibling service container stdout to a standalone Agent
 container. Forge apps therefore forward application logs to the Agent using
 syslog over UDP on the private network. The Agent listens on `514/udp` via
 `syslog.yaml` and forwards logs to Datadog over HTTP via `datadog.yaml`.
+Apps put `ddsource` and `ddtags` in the RFC5424 structured-data section so
+Datadog promotes `env`, `service`, and `version` into log tags. The Agent
+listener must not hardcode a single `service`, because Web and Admin share the
+same UDP endpoint.

@@ -89,7 +89,7 @@ describe("buildDatadogSyslogMessage", () => {
     })
 
     expect(message).toContain(
-      "<131>1 2026-06-26T02:00:00.000Z admin-host forge-admin - - - ",
+      '<131>1 2026-06-26T02:00:00.000Z admin-host forge-admin - - [metas ddsource="nodejs" ddtags="env:prod,service:forge-admin,version:abc123"] ',
     )
     expect(message).toContain('"message":"request failed"')
     expect(message).toContain('"status":"error"')

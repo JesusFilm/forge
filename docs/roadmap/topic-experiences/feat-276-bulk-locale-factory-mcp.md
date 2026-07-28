@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-08-15"
 duration: 21
 depends_on: []
-blocks: []
+blocks:
+  - "feat-320"
 tags:
   - "cms"
   - "admin"

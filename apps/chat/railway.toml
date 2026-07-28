@@ -12,6 +12,11 @@ watchPatterns = ["apps/chat/**"]
 
 [deploy]
 startCommand = "cd apps/chat && npx next start -p ${PORT:-3200}"
+# Gates promotion on the new deployment actually serving HTTP (feat-305) —
+# restartPolicyType only covers a process that EXITS, not one that boots and
+# then fails every request. 60s matches admin/auth/manager/mastra/web.
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 

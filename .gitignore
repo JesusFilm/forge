@@ -59,6 +59,15 @@ forge.code-workspace
 # ce-plan HTML explainers (present-html) — disposable, regenerated per plan
 *.explainer.html
 
+# superpowers subagent-driven-development scratch (briefs, reports, ledger)
+.superpowers/
+
+# Design mockups — untracked local reference copies; canonical source is claude.ai/design
+apps/mobile/design-mockups/
+
+# Impeccable live copy-edit hook scratch cache (per-session, per-machine)
+.impeccable/
+
 # local whisper.cpp install + models (devo snippet detector)
 .cache/
 

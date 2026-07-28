@@ -84,6 +84,13 @@ function activeTraceTags(): { spanId?: string; traceId?: string } {
   }
 }
 
+function escapeStructuredDataValue(value: string): string {
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replaceAll("]", "\\]")
+}
+
 export function buildDatadogSyslogMessage(input: SyslogPayloadInput): string {
   const status = levelToStatus[input.level]
   const tags = [
@@ -106,7 +113,8 @@ export function buildDatadogSyslogMessage(input: SyslogPayloadInput): string {
   const priority = 16 * 8 + levelToSeverity[input.level]
   const timestamp = (input.timestamp ?? new Date()).toISOString()
   const appName = input.service.replaceAll(/\s+/g, "-")
-  const syslogMessage = `<${priority}>1 ${timestamp} ${input.hostname} ${appName} - - - ${JSON.stringify(payload)}`
+  const structuredData = `[metas ddsource="nodejs" ddtags="${escapeStructuredDataValue(tags.join(","))}"]`
+  const syslogMessage = `<${priority}>1 ${timestamp} ${input.hostname} ${appName} - - ${structuredData} ${JSON.stringify(payload)}`
 
   return truncateUtf8(syslogMessage, MAX_SYSLOG_MESSAGE_BYTES)
 }

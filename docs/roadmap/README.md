@@ -4,11 +4,11 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 25, 2026)
+## Status (July 27, 2026)
 
-- **Total tickets:** 453
-- **Complete:** 345
-- **In progress:** 33
+- **Total tickets:** 456
+- **Complete:** 347
+- **In progress:** 34
 - **Not started:** 26
 - **Blocked:** 49
 - **Overdue and not complete:** 87
@@ -370,6 +370,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-314](platform/feat-314-admin-web-style-next-start.md)                            | Admin Web-style Next start on Railway                                            | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-316](platform/feat-316-watch-language-less-video-collision.md)                   | Resolve Watch language-less Video and Experience collisions                      | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-318](platform/feat-318-watch-language-less-english-canonical.md)                 | Make language-less Watch URLs canonical for English                              | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
+| [feat-315](platform/feat-315-datadog-railway-release-sha-stamp.md)                     | Datadog Railway release SHA stamping                                             | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-319](platform/feat-319-datadog-syslog-structured-tags.md)                        | Datadog syslog structured log tags                                               | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -478,6 +480,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-262](topic-experiences/feat-262-tv-showcase-mode.md)                                  | TV Showcase Mode: Settings tab + felt-need excerpt reel                          | urim      | P1       | 2026-07-20 | 10   | 2026-07-29 | in-progress |
 | [feat-279](topic-experiences/feat-279-experience-carousel-empty-copy.md)                    | Experience carousel empty copy rendering                                         | urim      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
+| [feat-320](topic-experiences/feat-320-experience-create-generate-mcp.md)                    | Experience create + generate tools for the JFP Admin MCP                         | ekkasit   | P1       | 2026-07-27 | 5    | 2026-07-31 | in-progress |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
