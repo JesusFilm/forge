@@ -82,9 +82,9 @@ management" section in `apps/mastra/CLAUDE.md`, an ownership bullet in
 
 **Residual risk / follow-ups.** Two tracked tickets carry everything deferred:
 
-- **feat-296** — the operational precondition: decide Langfuse hosting posture
-  (Cloud region vs self-hosted), create per-environment projects and key pairs,
-  seed the smoke prompt, and set the env vars in the safe order
+- **feat-296** — the operational precondition: create the `forge-mastra`
+  Langfuse project and its key pairs, seed the smoke prompt, and set the env
+  vars in the safe order
   (`LANGFUSE_ALLOWED_HOSTS` before `LANGFUSE_BASE_URL` — the latter is the only
   Langfuse-driven boot throw).
 - **feat-272** — the integration: seeker wiring and the prompt-composition split

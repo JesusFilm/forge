@@ -215,7 +215,7 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `JESUSFILM_RAG_USER_AGENT`                   | User agent identifying this consumer in RAG access logs. Defaults to `forge-mastra-jesusfilm-rag/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `LANGFUSE_BASE_URL`                          | Langfuse API base URL for managed prompt retrieval. Optional, **no default** — Langfuse cloud keys are region-bound, so unset simply means unconfigured: `getManagedPrompt` serves the caller-supplied fallback (`config_missing`), never a boot failure. In production a set value must use https AND a host listed in `LANGFUSE_ALLOWED_HOSTS`, else boot throws (fail-closed guard mirroring the RAG guard — the one Langfuse-driven boot throw).                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `LANGFUSE_PUBLIC_KEY`                        | Public half of the Langfuse key pair. Optional. Unlike the Bearer siblings in this table, the pair feeds HTTP **Basic** auth (`base64(public:secret)`) — Langfuse's documented scheme. Missing → `config_missing` at runtime, never boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `LANGFUSE_SECRET_KEY`                        | Secret half of the Langfuse key pair. Same posture as the public half. Langfuse keys carry full project access (no read-only prompt scope exists), so they live only in Railway service variables.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `LANGFUSE_SECRET_KEY`                        | Secret half of the Langfuse key pair. Same posture as the public half. Langfuse keys carry full project access (no read-only prompt scope exists) and can **write** as well as read, so a leaked key could repoint a label at attacker text. Two key pairs exist in the one `forge-mastra` project — Railway's and a separate local-dev pair — so a leaked local key is revoked without rotating production's. Never copy the Railway key onto a laptop.                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `LANGFUSE_ALLOWED_HOSTS`                     | CSV host allowlist for production Langfuse egress. Optional, no default — enforced (with https) only when `LANGFUSE_BASE_URL` is set in production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `LANGFUSE_TIMEOUT_MS`                        | Single-attempt prompt-fetch timeout. Defaults to `3000`, schema-capped at `10000` — strictly inside the 90s `chatTurn` budget per the outbound-timeout law.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `LANGFUSE_MAX_RESPONSE_BYTES`                | Byte-cap on the buffered Langfuse prompt response body, applied to both the success and error-path reads (streamed byte counter aborts past the cap). Optional, runtime default `262144` (256 KiB), schema-capped at 5 MiB (`5242880`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -768,11 +768,28 @@ reason=…` line once per failed attempt (`config_missing` once per
 **Retrieval-only boundary:** the helper never creates, updates, or moves
 prompts or labels — authoring and versioning stay in the Langfuse UI.
 
-**Per-environment posture (plan KTD8):** separate Langfuse **projects** per
-environment (dev/staging/prod), each with its own key pair in Railway — a
-leaked dev key must not be able to read tuned production prompt text. Within
-each project, `production` should be a protected label (admin-only mutation).
-The helper itself only ever sees one project's keys.
+**Project posture (2026-07-28; supersedes plan KTD8's per-environment
+projects):** ONE Langfuse project, **`forge-mastra`**, in the same Langfuse
+organisation as `JesusFilm/core`'s Journeys project. Environments are
+distinguished by **labels** on prompt versions — `production` (Railway, the
+default when `LANGFUSE_PROMPT_DEFAULT_LABEL` is unset) and `development`
+(local). Additional agents become additional prompt names in this project,
+never additional projects. Two key pairs live inside it — one for Railway, one
+for local dev — so a leaked local key is revoked without rotating production's;
+never copy the Railway key onto a laptop. `production` should be a protected
+label (admin-only mutation) where the tier allows it, and the label move IS the
+release mechanism, so feat-272's access-control review is what actually bounds
+it. KTD8 mandated per-environment projects; it was reversed before provisioning
+began because `apps/mastra` has one deployed environment, the same people hold
+every key, and prompt versions/labels are project-scoped with no cross-project
+copy (per-environment projects make promotion a manual re-authoring).
+Provisioning is tracked in `docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`.
+
+**No tracing:** the helper only reads prompts, so nothing this module does
+sends data to Langfuse. Mastra's own spans go to a local DuckDB store with
+`sensitiveDataFilter` and `redactPromptBodies` blanking span input/output.
+Langfuse tracing is separate, unbuilt work — see
+`docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`.
 
 **Nothing consumes the helper yet.** It is a standalone module proven by
 tests (including a seeker-scenario block simulating the chat agent resolving
@@ -784,7 +801,7 @@ label-governance review — is the tracked follow-up ticket
 **Smoke seeding convention:** the opt-in real-credential smoke
 (`LANGFUSE_PROMPT_SMOKE_TEST=1`, skipped by default) documents its one-time
 manual seeding convention — one text prompt `forge-mastra-smoke/text-prompt`
-in the dev Langfuse project with two versions under two labels (`production`
+in the `forge-mastra` project with two versions under two labels (`production`
 and the non-default `smoke`), each carrying a distinct exact sentinel body so
 the smoke proves label selection end to end; the test never self-seeds — in
 the header of `src/services/langfuse-prompt-client.smoke.test.ts`.

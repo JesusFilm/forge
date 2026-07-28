@@ -19,7 +19,9 @@ import {
  * ONE-TIME SEEDING CONVENTION (manual, via the Langfuse UI — the test never
  * self-seeds; retrieval is this helper's whole boundary, plan R4):
  *
- *   - Project:  the dev Langfuse project the LANGFUSE_* env vars point at
+ *   - Project:  `forge-mastra` — the one Langfuse project the LANGFUSE_* env
+ *               vars point at (environments are distinguished by prompt
+ *               LABELS, not by separate projects)
  *   - Prompt:   name `forge-mastra-smoke/text-prompt`
  *               (the `/` in the name is deliberate — resolving it live
  *               doubles as proof of the client's URL path-segment encoding)
@@ -102,7 +104,7 @@ describe.skipIf(!RUN_LANGFUSE_SMOKE)(
               (result.status !== undefined ? ` status=${result.status}` : "") +
               (result.detail !== undefined ? ` detail=${result.detail}` : "") +
               `. If this is rejected/404, seed the prompt manually in the ` +
-              `dev Langfuse project per the ONE-TIME SEEDING CONVENTION in ` +
+              `forge-mastra project per the ONE-TIME SEEDING CONVENTION in ` +
               `this file's header (the test never self-seeds).`,
           )
         }

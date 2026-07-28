@@ -41,15 +41,17 @@ two risks the plan explicitly routed here:
   entirely. That must be bounded by access control before consumption is
   enabled.
 
-**Operational precondition (from the plan's Open Questions — decide before
-starting).** Langfuse hosting posture and ownership are undecided: no Langfuse
-account, project, or keys exist anywhere in this repo or its deploy config.
-Someone must decide Langfuse Cloud (EU vs US region — keys and base URLs are
-region-bound) vs self-hosted, and own provisioning the per-environment
-projects, key pairs, and the seeded smoke prompt. This gates BOTH the first
-real run of the opt-in smoke and this integration. That provisioning +
-safe-env-rollout checklist is tracked in **feat-296** (this ticket
-`depends_on` it).
+**Operational precondition.** No Langfuse project or keys exist anywhere in
+this repo or its deploy config yet. Someone must provision **one project,
+`forge-mastra`**, in the same Langfuse organisation as `JesusFilm/core`'s
+Journeys project, with two key pairs (Railway + local dev) and the seeded smoke
+prompt. Environments are distinguished by **labels** (`production` /
+`development`), not by separate projects — the plan's KTD8 mandated
+per-environment projects and was reversed on 2026-07-28; see the topology
+decision in feat-296 and the supersession note beside KTD8 in the plan. This
+gates BOTH the first real run of the opt-in smoke and this integration. That
+provisioning + safe-env-rollout checklist is tracked in **feat-296** (this
+ticket `depends_on` it).
 
 ## Entry Points — Read These First
 
@@ -67,14 +69,16 @@ safe-env-rollout checklist is tracked in **feat-296** (this ticket
    split lands.
 4. `apps/mastra/src/services/langfuse-prompt-client.smoke.test.ts` — the
    header documents the one-time smoke seeding convention
-   (`forge-mastra-smoke/text-prompt`, label `production`, text type, dev
-   project; never self-seeds). Must run green before integration starts.
+   (`forge-mastra-smoke/text-prompt`, label `production`, text type, seeded in
+   the `forge-mastra` project; never self-seeds). Must run green before
+   integration starts.
 5. `apps/mastra/src/config/env.ts` — the `LANGFUSE_*` group,
    `getLangfuseConfig()` (cooldown-≤-TTL clamp), and
    `assertLangfuseBaseUrlAllowedForProduction`.
 6. `docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md` — Scope
-   Boundaries, KTD8 (per-environment projects, protected label), and Risks
-   and Dependencies.
+   Boundaries, Risks and Dependencies, and KTD8 **with its 2026-07-28
+   supersession note** (per-environment projects reversed to one project with
+   labels; the protected-`production`-label half stands).
 
 ## Grep These
 
@@ -122,9 +126,16 @@ The deferred items from the plan's Scope Boundaries, in rough order:
 6. **Langfuse workspace access-control review**, folded into the ai-chat
    lane's guardrail release gate (the deferred "Full persona + safety
    guardrails" gate in `apps/mastra/CLAUDE.md`): who may move the
-   `production` label, the protected-label posture per project (plan KTD8),
-   and the per-environment project/key provisioning from the operational
-   precondition. Consumption stays off until this review passes.
+   `production` label, the protected-label posture, and the key custody from
+   the operational precondition. Consumption stays off until this review
+   passes. **This review is now load-bearing in a way it was not under the
+   plan's original topology:** with one project and labels, moving the
+   `production` label IS the release mechanism, so it is the only gate between
+   an edit in the Langfuse UI and changed production agent behaviour — no PR,
+   no CI, no deploy. Confirm whether the tier actually offers protected labels
+   (feat-296 verifies this) rather than assuming the control exists, and
+   confirm who is in the shared Langfuse organisation, since absent
+   project-scoped RBAC every org member can move that label.
 
 ## Constraints
 
@@ -134,9 +145,15 @@ The deferred items from the plan's Scope Boundaries, in rough order:
   the fallback with no boot impact.
 - No `langfuse` / `@langfuse/*` npm packages (plan KTD1) — the hand-rolled
   client carries house invariants the SDK cannot.
-- Per-environment Langfuse PROJECTS with separate key pairs (plan KTD8) —
-  never labels-within-one-project: a leaked dev key must not read tuned prod
-  prompt text.
+- ONE Langfuse project (`forge-mastra`) with **labels** distinguishing
+  environments, and two key pairs inside it (Railway + local dev). The plan's
+  KTD8 said the opposite; it was reversed on 2026-07-28 — see feat-296's
+  topology decision. Do not reintroduce per-environment projects: prompt
+  versions and labels are project-scoped with no cross-project copy, so it
+  would turn promotion into manual re-authoring.
+- Do not add Langfuse tracing here. The helper only reads prompts; tracing is a
+  separate mechanism with its own content decision, tracked in
+  `docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`.
 - Do not weaken the helper's no-throw, leak-control, or cooldown-≤-TTL
   invariants while adding SWR or version pinning.
 - Do not enable production consumption before the access-control review
@@ -159,9 +176,9 @@ The deferred items from the plan's Scope Boundaries, in rough order:
 
 ## Verification
 
-- The opt-in smoke runs green against the provisioned dev project
-  (`LANGFUSE_PROMPT_SMOKE_TEST=1` + dev keys) — proves the operational
-  precondition landed before wiring starts.
+- The opt-in smoke runs green against the provisioned `forge-mastra` project
+  using the local-dev key pair (`LANGFUSE_PROMPT_SMOKE_TEST=1`) — proves the
+  operational precondition landed before wiring starts.
 - The plan's no-wiring grep gate inverts:
   `grep -r "langfuse" apps/mastra/src/mastra/` now hits exactly the intended
   seeker wiring and nothing else.
