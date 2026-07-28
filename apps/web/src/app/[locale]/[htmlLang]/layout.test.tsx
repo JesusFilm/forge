@@ -30,6 +30,28 @@ function findElement(
 }
 
 describe("Watch root layout", () => {
+  it.each([
+    {
+      params: { locale: "en", htmlLang: "english-british" },
+      expected: { lang: "en-GB", dir: "ltr" },
+    },
+    {
+      params: { locale: "ar", htmlLang: "arabic-modern-standard" },
+      expected: { lang: "ar", dir: "rtl" },
+    },
+  ])(
+    "emits $expected.lang metadata with $expected.dir document direction",
+    async ({ params, expected }) => {
+      const layout = await RootLayout({
+        children: <main>Watch page</main>,
+        params: Promise.resolve(params),
+      })
+
+      const documentRoot = findElement(layout, "html")
+      expect(documentRoot?.props).toMatchObject(expected)
+    },
+  )
+
   it("leaves the runtime beta tester CTA flag out of the static layout", async () => {
     const layout = await RootLayout({
       children: <main>Watch page</main>,
