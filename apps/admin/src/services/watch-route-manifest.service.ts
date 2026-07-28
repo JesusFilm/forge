@@ -39,6 +39,10 @@ export const WatchRouteManifestSchema = z.object({
   audioLanguageIndexesByEpisode: AudioLanguageIndexesByEpisodeSchema.default(
     {},
   ),
+  nestedContainerAudioLanguageIndexesByParent:
+    // Omitted only by legacy snapshots. New snapshots always emit this field,
+    // so web can distinguish a known-empty relation from a pre-feature one.
+    AudioLanguageIndexesByEpisodeSchema.optional(),
 })
 
 export type WatchRouteManifest = z.infer<typeof WatchRouteManifestSchema>
@@ -52,6 +56,7 @@ export type WatchRouteManifestCounts = {
   audioLanguageSlugs: number
   contentAudioLanguagePairs: number
   episodeAudioLanguagePairs: number
+  nestedContainerAudioLanguagePairs: number
 }
 
 type QueryablePrisma = Pick<PrismaClient, "$queryRaw">
@@ -72,6 +77,7 @@ export class WatchRouteManifestService {
       audioLanguageSlugs,
       audioLanguageSlugsByContent,
       audioLanguageSlugsByEpisode,
+      nestedContainerPairsByParent,
     ] = await Promise.all([
       this.loadContentSlugs(),
       this.loadOneSegmentSlugs(),
@@ -80,6 +86,7 @@ export class WatchRouteManifestService {
       this.loadAudioLanguageSlugs(),
       this.loadAudioLanguageSlugsByContent(),
       this.loadAudioLanguageSlugsByEpisode(),
+      this.loadNestedContainerPairsByParent(),
     ])
     const audioLanguageIndexesByContent = toAudioLanguageIndexMap(
       audioLanguageSlugsByContent,
@@ -89,12 +96,19 @@ export class WatchRouteManifestService {
       audioLanguageSlugsByEpisode,
       audioLanguageSlugs,
     )
+    const nestedContainerAudioLanguageIndexesByParent =
+      toNestedContainerAudioLanguageIndexMap(
+        nestedContainerPairsByParent,
+        audioLanguageSlugsByContent,
+        audioLanguageSlugs,
+      )
 
     const generatedAt = (this.options.now?.() ?? new Date()).toISOString()
     const contentForVersion = {
       audioLanguageSlugs,
       audioLanguageIndexesByContent,
       audioLanguageIndexesByEpisode,
+      nestedContainerAudioLanguageIndexesByParent,
       contentSlugs,
       episodePairsByParent: episodePairs,
       homepageLocales,
@@ -114,6 +128,7 @@ export class WatchRouteManifestService {
       audioLanguageSlugs,
       audioLanguageIndexesByContent,
       audioLanguageIndexesByEpisode,
+      nestedContainerAudioLanguageIndexesByParent,
     })
 
     const counts = summarizeWatchRouteManifest(manifest)
@@ -293,20 +308,7 @@ export class WatchRouteManifestService {
       ORDER BY parent.slug ASC, child.slug ASC
     `
 
-    const pairs = EpisodePairRowSchema.array().parse(rows)
-    const byParent = new Map<string, Set<string>>()
-    for (const pair of pairs) {
-      const children = byParent.get(pair.parentSlug) ?? new Set<string>()
-      children.add(pair.childSlug)
-      byParent.set(pair.parentSlug, children)
-    }
-
-    return Object.fromEntries(
-      [...byParent.entries()].map(([parentSlug, childSlugs]) => [
-        parentSlug,
-        [...childSlugs].sort(),
-      ]),
-    )
+    return groupEpisodePairs(EpisodePairRowSchema.array().parse(rows))
   }
 
   private async loadAudioLanguageSlugs(): Promise<string[]> {
@@ -442,26 +444,40 @@ export class WatchRouteManifestService {
       ORDER BY parent.slug ASC, child.slug ASC, child_lang.slug ASC
     `
 
-    const byParent = new Map<string, Map<string, Set<string>>>()
-    for (const row of EpisodeAudioLanguageRowSchema.array().parse(rows)) {
-      const children = byParent.get(row.parentSlug) ?? new Map()
-      const languages = children.get(row.childSlug) ?? new Set<string>()
-      languages.add(row.audioLanguageSlug)
-      children.set(row.childSlug, languages)
-      byParent.set(row.parentSlug, children)
-    }
-
-    return Object.fromEntries(
-      [...byParent.entries()].map(([parentSlug, children]) => [
-        parentSlug,
-        Object.fromEntries(
-          [...children.entries()].map(([childSlug, audioLanguageSlugs]) => [
-            childSlug,
-            [...audioLanguageSlugs].sort(),
-          ]),
-        ),
-      ]),
+    return groupEpisodeAudioLanguageRows(
+      EpisodeAudioLanguageRowSchema.array().parse(rows),
     )
+  }
+
+  private async loadNestedContainerPairsByParent(): Promise<
+    Record<string, string[]>
+  > {
+    const rows = await this.prisma.$queryRaw<unknown[]>`
+      SELECT DISTINCT
+        parent.slug AS "parentSlug",
+        child.slug AS "childSlug"
+      FROM "video_relation" relation
+      JOIN "video" parent
+        ON parent.id = relation."parent_id"
+        AND parent."deleted_at" IS NULL
+        AND parent.slug <> ''
+        AND parent.label IN ('collection'::"VideoLabel", 'series'::"VideoLabel")
+      JOIN "video_locale" parent_locale
+        ON parent_locale."video_id" = parent.id
+        AND parent_locale.status = 'published'::"LocaleStatus"
+        AND parent_locale."deleted_at" IS NULL
+      JOIN "video" child
+        ON child.id = relation."child_id"
+        AND child."deleted_at" IS NULL
+        AND child.slug <> ''
+        AND child.label IN ('collection'::"VideoLabel", 'series'::"VideoLabel")
+      JOIN "video_locale" child_locale
+        ON child_locale."video_id" = child.id
+        AND child_locale.status = 'published'::"LocaleStatus"
+        AND child_locale."deleted_at" IS NULL
+      ORDER BY parent.slug ASC, child.slug ASC
+    `
+    return groupEpisodePairs(EpisodePairRowSchema.array().parse(rows))
   }
 }
 
@@ -517,12 +533,77 @@ function toEpisodeAudioLanguageIndexMap(
   )
 }
 
+function toNestedContainerAudioLanguageIndexMap(
+  pairsByParent: Record<string, string[]>,
+  audioLanguageSlugsByContent: Record<string, string[]>,
+  audioLanguageSlugs: readonly string[],
+): Record<string, Record<string, number[]>> {
+  const languagesByNestedContainer = Object.fromEntries(
+    Object.entries(pairsByParent).flatMap(([parentSlug, childSlugs]) => {
+      const childEntries = childSlugs.flatMap((childSlug) => {
+        const childLanguages = audioLanguageSlugsByContent[childSlug]
+        return childLanguages ? [[childSlug, childLanguages] as const] : []
+      })
+      return childEntries.length
+        ? [[parentSlug, Object.fromEntries(childEntries)] as const]
+        : []
+    }),
+  )
+  return toEpisodeAudioLanguageIndexMap(
+    languagesByNestedContainer,
+    audioLanguageSlugs,
+  )
+}
+
+function groupEpisodePairs(
+  rows: z.infer<typeof EpisodePairRowSchema>[],
+): Record<string, string[]> {
+  const byParent = new Map<string, Set<string>>()
+  for (const { parentSlug, childSlug } of rows) {
+    const children = byParent.get(parentSlug) ?? new Set<string>()
+    children.add(childSlug)
+    byParent.set(parentSlug, children)
+  }
+  return Object.fromEntries(
+    [...byParent.entries()].map(([parentSlug, childSlugs]) => [
+      parentSlug,
+      [...childSlugs].sort(),
+    ]),
+  )
+}
+
+function groupEpisodeAudioLanguageRows(
+  rows: z.infer<typeof EpisodeAudioLanguageRowSchema>[],
+): Record<string, Record<string, string[]>> {
+  const byParent = new Map<string, Map<string, Set<string>>>()
+  for (const row of rows) {
+    const children = byParent.get(row.parentSlug) ?? new Map()
+    const languages = children.get(row.childSlug) ?? new Set<string>()
+    languages.add(row.audioLanguageSlug)
+    children.set(row.childSlug, languages)
+    byParent.set(row.parentSlug, children)
+  }
+
+  return Object.fromEntries(
+    [...byParent.entries()].map(([parentSlug, children]) => [
+      parentSlug,
+      Object.fromEntries(
+        [...children.entries()].map(([childSlug, audioLanguageSlugs]) => [
+          childSlug,
+          [...audioLanguageSlugs].sort(),
+        ]),
+      ),
+    ]),
+  )
+}
+
 export function summarizeWatchRouteManifest(
   manifest: Pick<
     WatchRouteManifest,
     | "audioLanguageSlugs"
     | "audioLanguageIndexesByContent"
     | "audioLanguageIndexesByEpisode"
+    | "nestedContainerAudioLanguageIndexesByParent"
     | "contentSlugs"
     | "episodePairsByParent"
     | "homepageLocales"
@@ -532,6 +613,9 @@ export function summarizeWatchRouteManifest(
   const parentEntries = Object.entries(manifest.episodePairsByParent)
   const episodeAudioEntries = Object.values(
     manifest.audioLanguageIndexesByEpisode,
+  )
+  const nestedContainerAudioEntries = Object.values(
+    manifest.nestedContainerAudioLanguageIndexesByParent ?? {},
   )
   return {
     contentSlugs: manifest.contentSlugs.length,
@@ -550,6 +634,16 @@ export function summarizeWatchRouteManifest(
       0,
     ),
     episodeAudioLanguagePairs: episodeAudioEntries.reduce(
+      (sum, children) =>
+        sum +
+        Object.values(children).reduce(
+          (childSum, audioLanguageIndexes) =>
+            childSum + audioLanguageIndexes.length,
+          0,
+        ),
+      0,
+    ),
+    nestedContainerAudioLanguagePairs: nestedContainerAudioEntries.reduce(
       (sum, children) =>
         sum +
         Object.values(children).reduce(

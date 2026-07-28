@@ -10,6 +10,10 @@ export type WatchRouteManifest = {
   audioLanguageSlugs: string[]
   audioLanguageIndexesByContent?: Record<string, number[]>
   audioLanguageIndexesByEpisode?: Record<string, Record<string, number[]>>
+  nestedContainerAudioLanguageIndexesByParent?: Record<
+    string,
+    Record<string, number[]>
+  >
 }
 
 export type WatchRouteManifestRoute =
@@ -29,6 +33,10 @@ type WatchRouteManifestIndex = {
   audioLanguageSlugs: ReadonlySet<string>
   audioLanguageSlugsByContent: ReadonlyMap<string, ReadonlySet<string>>
   audioLanguageSlugsByEpisode: ReadonlyMap<
+    string,
+    ReadonlyMap<string, ReadonlySet<string>>
+  >
+  nestedContainerAudioLanguageSlugsByParent: ReadonlyMap<
     string,
     ReadonlyMap<string, ReadonlySet<string>>
   >
@@ -131,6 +139,14 @@ export function parseWatchRouteManifest(
   ) {
     return null
   }
+  if (
+    record.nestedContainerAudioLanguageIndexesByParent !== undefined &&
+    !isAudioLanguageIndexesByEpisode(
+      record.nestedContainerAudioLanguageIndexesByParent,
+    )
+  ) {
+    return null
+  }
   return {
     version: record.version,
     generatedAt: record.generatedAt,
@@ -147,6 +163,12 @@ export function parseWatchRouteManifest(
     ...(record.audioLanguageIndexesByEpisode
       ? { audioLanguageIndexesByEpisode: record.audioLanguageIndexesByEpisode }
       : {}),
+    ...(record.nestedContainerAudioLanguageIndexesByParent
+      ? {
+          nestedContainerAudioLanguageIndexesByParent:
+            record.nestedContainerAudioLanguageIndexesByParent,
+        }
+      : {}),
   }
 }
 
@@ -160,6 +182,29 @@ function audioLanguageSetFromIndexes(
     if (slug) slugs.add(slug)
   }
   return slugs
+}
+
+function audioLanguageSlugsByParentAndChild(
+  indexesByParent: Record<string, Record<string, number[]>>,
+  audioLanguageSlugs: readonly string[],
+): ReadonlyMap<string, ReadonlyMap<string, ReadonlySet<string>>> {
+  return new Map(
+    Object.entries(indexesByParent).map(([parentSlug, childEntries]) => [
+      parentSlug,
+      new Map(
+        Object.entries(childEntries).map(
+          ([childSlug, audioLanguageIndexes]) =>
+            [
+              childSlug,
+              audioLanguageSetFromIndexes(
+                audioLanguageIndexes,
+                audioLanguageSlugs,
+              ),
+            ] as const,
+        ),
+      ),
+    ]),
+  )
 }
 
 function getManifestIndex(
@@ -180,26 +225,15 @@ function getManifestIndex(
         ] as const,
     ),
   )
-  const audioLanguageSlugsByEpisode = new Map(
-    Object.entries(manifest.audioLanguageIndexesByEpisode ?? {}).map(
-      ([parentSlug, childEntries]) =>
-        [
-          parentSlug,
-          new Map(
-            Object.entries(childEntries).map(
-              ([childSlug, audioLanguageIndexes]) =>
-                [
-                  childSlug,
-                  audioLanguageSetFromIndexes(
-                    audioLanguageIndexes,
-                    manifest.audioLanguageSlugs,
-                  ),
-                ] as const,
-            ),
-          ),
-        ] as const,
-    ),
+  const audioLanguageSlugsByEpisode = audioLanguageSlugsByParentAndChild(
+    manifest.audioLanguageIndexesByEpisode ?? {},
+    manifest.audioLanguageSlugs,
   )
+  const nestedContainerAudioLanguageSlugsByParent =
+    audioLanguageSlugsByParentAndChild(
+      manifest.nestedContainerAudioLanguageIndexesByParent ?? {},
+      manifest.audioLanguageSlugs,
+    )
 
   const index: WatchRouteManifestIndex = {
     contentSlugs: new Set(manifest.contentSlugs),
@@ -213,6 +247,7 @@ function getManifestIndex(
     audioLanguageSlugs: new Set(manifest.audioLanguageSlugs),
     audioLanguageSlugsByContent,
     audioLanguageSlugsByEpisode,
+    nestedContainerAudioLanguageSlugsByParent,
     hasContentAudioLanguageIndex: audioLanguageSlugsByContent.size > 0,
     hasEpisodeAudioLanguageIndex: audioLanguageSlugsByEpisode.size > 0,
   }
@@ -272,6 +307,60 @@ export function isWatchRouteAdmittedByManifest(
       route.audioLanguageSlug,
     )
   )
+}
+
+export function isWatchNestedContainerRouteAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: {
+    parentSlug: string
+    childSlug: string
+    audioLanguageSlug: string
+  },
+): boolean {
+  return getWatchNestedContainerAudioLanguageSlugs(
+    manifest,
+    route.parentSlug,
+    route.childSlug,
+  ).includes(route.audioLanguageSlug)
+}
+
+export function getWatchNestedContainerAudioLanguageSlugs(
+  manifest: WatchRouteManifest,
+  parentSlug: string,
+  childSlug: string,
+): readonly string[] {
+  const index = getManifestIndex(manifest)
+  if (
+    !index.contentSlugs.has(parentSlug) ||
+    !index.contentSlugs.has(childSlug)
+  ) {
+    return []
+  }
+  const exactLanguages = index.nestedContainerAudioLanguageSlugsByParent
+    .get(parentSlug)
+    ?.get(childSlug)
+  if (exactLanguages) return [...exactLanguages]
+  return []
+}
+
+export function isWatchParentAdmittedByNestedContainer(
+  manifest: WatchRouteManifest,
+  parentSlug: string,
+  audioLanguageSlug: string,
+): boolean {
+  const index = getManifestIndex(manifest)
+  if (!index.contentSlugs.has(parentSlug)) return false
+  for (const [
+    childSlug,
+    languages,
+  ] of index.nestedContainerAudioLanguageSlugsByParent
+    .get(parentSlug)
+    ?.entries() ?? []) {
+    if (index.contentSlugs.has(childSlug) && languages.has(audioLanguageSlug)) {
+      return true
+    }
+  }
+  return false
 }
 
 export function clearWatchRouteManifestCache(): void {

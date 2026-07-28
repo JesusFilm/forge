@@ -31,6 +31,7 @@ const manifest: WatchRouteManifest = {
     collection: [2],
   },
   audioLanguageIndexesByEpisode: {},
+  nestedContainerAudioLanguageIndexesByParent: {},
 }
 
 describe("video-library-utils", () => {

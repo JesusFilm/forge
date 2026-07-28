@@ -362,6 +362,10 @@ Snapshot fields the web branch can rely on:
   dub on a non-deleted video.
 - `version` and `generatedAt` — stable cache/revalidation metadata.
 
+- `nestedContainerAudioLanguageIndexesByParent` is the fail-closed, exact
+  parent-collection-or-series to direct nested-collection-or-series language
+  relation for navigational parent admission.
+
 Refresh triggers:
 
 - Core sync phases `languages`, `videos`, and `video-dubs`.
@@ -373,6 +377,11 @@ Refresh triggers:
 DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
 pnpm --filter @forge/admin watch-route-manifest:generate
 ```
+
+When a manifest schema adds a fail-closed admission relation, deploy Admin and
+complete one of these refresh triggers before deploying Web. Verify the latest
+snapshot includes the new field and a changed `version`; never infer it from a
+pre-feature persisted payload at request time.
 
 The script prints summary-only JSON by default: version, generated timestamp,
 payload size, counts, and duration. Use `--print` only for local debugging when

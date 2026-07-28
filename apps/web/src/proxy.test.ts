@@ -437,6 +437,50 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expectNotFoundRewrite(response)
   })
 
+  it("admits canonical and explicit English parent routes through an English nested collection", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: ["discipleship", "walking-with-jesus"],
+      audioLanguageSlugs: ["english", "afrikaans"],
+      audioLanguageIndexesByContent: {
+        discipleship: [1],
+        "walking-with-jesus": [0],
+      },
+      nestedContainerAudioLanguageIndexesByParent: {
+        discipleship: {
+          "walking-with-jesus": [0],
+        },
+      },
+    }))
+
+    const canonical = await proxy(makeRequest("/discipleship.html"))
+    const explicit = await proxy(makeRequest("/discipleship.html/english.html"))
+
+    expect(rewritePath(canonical)).toBe("/en/en/discipleship.html/english.html")
+    expect(rewritePath(explicit)).toBe("/en/en/discipleship.html/english.html")
+  })
+
+  it("keeps nested parent admission closed until a nested relation snapshot is generated", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: ["discipleship", "walking-with-jesus"],
+      episodePairsByParent: {
+        discipleship: ["walking-with-jesus"],
+      },
+      audioLanguageSlugs: ["english", "afrikaans"],
+      audioLanguageIndexesByContent: {
+        discipleship: [1],
+        "walking-with-jesus": [0],
+      },
+    }))
+
+    const response = await proxy(makeRequest("/discipleship.html"))
+
+    expectNotFoundRewrite(response)
+  })
+
   it("keeps language-less non-collection routes closed when the manifest is unavailable", async () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
