@@ -42,9 +42,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   `getManagedPrompt` with caller-supplied fallback and provenance). Fully
   optional config — unset serves the fallback (`config_missing`), never a
   boot failure. Prompt authoring, versioning, and label moves stay in the
-  Langfuse UI; per-environment Langfuse projects keep dev keys away from
-  tuned prod prompt text. Nothing consumes the helper yet — seeker
-  integration is tracked as feat-272 in the ai-chat lane.
+  Langfuse UI. ONE Langfuse project (`forge-mastra`) holds every agent's
+  prompt, with labels `production` / `development` distinguishing
+  environments; two key pairs (Railway + local dev) live inside it. Nothing
+  consumes the helper yet — seeker integration is tracked as feat-272 in the
+  ai-chat lane, and Langfuse tracing is separate unbuilt work (feat-321).
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized
