@@ -57,8 +57,8 @@ describe("VideoPipelineCollectionCard", () => {
     const markup = renderCard({ isExpanded: true })
 
     expect(markup).not.toContain("detail-group-heading")
-    const dayOrder = Array.from(markup.matchAll(/Aug (\d+) - Devotional/g)).map(
-      (match) => Number(match[1]),
+    const dayOrder = Array.from(markup.matchAll(/Aug (\d+) - /g)).map((match) =>
+      Number(match[1]),
     )
     expect(dayOrder).toEqual(
       Array.from({ length: 31 }, (_, index) => index + 1),
@@ -143,10 +143,14 @@ describe("VideoPipelineCollectionCard", () => {
     )
   })
 
-  it("renders each expanded row as 'Aug D - Devotional'", () => {
+  it("renders each expanded row as 'Aug D - <devotional title>'", () => {
     const markup = renderCard({ isExpanded: true })
 
-    expect(markup).toContain("Aug 1 - Devotional")
+    // Day 24's title has no apostrophe, so this checks the literal joined
+    // string without also asserting on React's HTML entity escaping.
+    expect(markup).toContain(
+      "Aug 24 - He knew what was coming and broke bread anyway",
+    )
   })
 
   it("renders a checkbox for each cell in the expanded detail rows", () => {

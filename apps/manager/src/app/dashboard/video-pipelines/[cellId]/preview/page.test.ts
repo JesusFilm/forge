@@ -21,7 +21,7 @@ describe("VideoPipelinePreviewPage", () => {
     })
     const markup = renderToStaticMarkup(element as React.ReactElement)
 
-    expect(markup).toContain("Devotional")
+    expect(markup).toContain("The night the ordinary sky")
     expect(markup).toContain("August 1, 2026")
     expect(markup).toContain("Mobile")
     expect(markup).toContain("Desktop")

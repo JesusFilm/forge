@@ -38,12 +38,23 @@ describe("buildDevotionsAugustCollection", () => {
     expect(collection.labelDisplay).toBe("Basic")
   })
 
-  it("gives every cell the plain 'Devotional' title (date carries the day)", () => {
+  it("gives each day its own draft devotional title, in order", () => {
     const collection = buildDevotionsAugustCollection()
 
-    expect(collection.cells.every((cell) => cell.title === "Devotional")).toBe(
-      true,
+    expect(collection.cells[0]?.title).toBe(
+      "The night the ordinary sky wasn't ordinary",
     )
+    expect(collection.cells[30]?.title).toBe(
+      "His last words were a job, not a goodbye",
+    )
+  })
+
+  it("gives every cell a non-empty, unique title", () => {
+    const collection = buildDevotionsAugustCollection()
+    const titles = collection.cells.map((cell) => cell.title)
+
+    expect(titles.every((title) => title.trim().length > 0)).toBe(true)
+    expect(new Set(titles).size).toBe(titles.length)
   })
 
   it("includes at least one cell for every (mobileGenerated, desktopGenerated) combination", () => {
