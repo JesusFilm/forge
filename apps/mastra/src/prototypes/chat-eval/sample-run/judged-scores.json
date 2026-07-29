@@ -1,7 +1,7 @@
 {
   "kind": "chat-eval-judgements",
-  "startedAt": "2026-07-28T23:26:35.824Z",
-  "finishedAt": "2026-07-28T23:27:26.633Z",
+  "startedAt": "2026-07-29T02:02:33.376Z",
+  "finishedAt": "2026-07-29T02:03:46.445Z",
   "mode": "scores",
   "judgeModel": "anthropic/claude-haiku-4.5",
   "identity": {
@@ -18,85 +18,167 @@
     ],
     "criteriaSha256": "f6b44ef5950165542f29e4322da8048b89cf8cb9f7a8dcdf87dc90147eb3dc7b",
     "answeringModels": [
-      "google/gemma-4-31b-it:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "google/gemma-4-31b-it",
+      "google/gemma-4-26b-a4b-it",
       "anthropic/claude-sonnet-5"
     ],
-    "gitSha": "14ab35ff"
+    "gitSha": "0cf4c8be"
   },
   "judged": [
     {
       "questionId": "q-suffering",
       "category": "intellectual-doubt",
-      "model": "google/gemma-4-31b-it:free",
-      "judgeUsage": null,
-      "judgeCostUsd": null,
-      "judgeLatencyMs": 0,
-      "band": "error",
-      "score": null,
-      "errors": [
-        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
-      ]
+      "model": "google/gemma-4-31b-it",
+      "judgeUsage": {
+        "input": 1092,
+        "output": 235
+      },
+      "judgeCostUsd": 0.002267,
+      "judgeLatencyMs": 4851,
+      "band": "pass",
+      "score": 0.9275,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.92,
+          "tone": 0.96,
+          "format": 0.88
+        },
+        "reasons": [
+          "Directly addresses the questioner's frustration about 'dodges' by acknowledging the inadequacy of neat answers and validating their pain",
+          "Presents three substantive Christian frameworks (free will/broken world, incarnational suffering, eschatological restoration) rather than dismissing the question",
+          "Accurately represents core Christian theology without inventing sources or misrepresenting doctrine",
+          "Tone is exceptionally warm, humble, and honest—validates anger and skepticism, avoids pressure or false certainty, acknowledges mystery",
+          "Appropriately lengthy given the depth of the question, though slightly longer than ideal for 'brief' conversational format",
+          "Minor: The phrase 'groaning for restoration' is biblical (Romans 8:22) but not explicitly sourced, though this is appropriate for conversational tone",
+          "Ends with genuine pastoral care rather than argument-winning, which honors the emotional weight of the question"
+        ]
+      },
+      "errors": []
     },
     {
       "questionId": "q-suffering",
       "category": "intellectual-doubt",
-      "model": "google/gemma-4-26b-a4b-it:free",
+      "model": "google/gemma-4-26b-a4b-it",
       "judgeUsage": {
-        "input": 1130,
-        "output": 287
+        "input": 1032,
+        "output": 226
+      },
+      "judgeCostUsd": 0.002162,
+      "judgeLatencyMs": 4106,
+      "band": "pass",
+      "score": 0.9275,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.92,
+          "tone": 0.96,
+          "format": 0.88
+        },
+        "reasons": [
+          "Directly addresses the questioner's stated frustration about 'dodges' and validates it upfront",
+          "Presents three substantive Christian frameworks (God's presence in suffering, cosmic brokenness, eschatological hope) rather than dismissing the question",
+          "Accurately represents core Christian theology without inventing sources or misrepresenting doctrine",
+          "Tone is exceptionally warm, honest, and humble—acknowledges limits, avoids false certainty, invites rather than pressures",
+          "Appropriately lengthy given the depth of the question, though slightly longer than ideal for conversational prose",
+          "Minor: Could have been slightly more concise in places (e.g., the philosophy paragraph could be tightened)",
+          "Excellent closing that respects the questioner's autonomy and validates biblical lament tradition",
+          "No doctrinal errors detected; accurately represents Christian theodicy approaches"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-suffering",
+      "category": "intellectual-doubt",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 987,
+        "output": 335
+      },
+      "judgeCostUsd": 0.0026620000000000003,
+      "judgeLatencyMs": 5290,
+      "band": "pass",
+      "score": 0.9275,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.92,
+          "tone": 0.96,
+          "format": 0.88
+        },
+        "reasons": [
+          "Directly addresses the stated frustration about dodgy answers by explicitly refusing to offer one, which shows genuine engagement with the question's emotional core",
+          "Accurately represents biblical material (Job, Psalms 22 and 88, Romans 8:28, the crucifixion) without misquoting or inventing sources",
+          "Tone is notably warm and honest—acknowledges the questioner's legitimate frustration, admits Christian theology doesn't have a clean answer, and avoids false comfort or pressure",
+          "Fairly presents common theodicy arguments (free will, greater purpose) while explaining why they fail in specific cases like childhood illness, showing intellectual honesty rather than defensiveness",
+          "The incarnational response (God entering suffering rather than explaining it) is theologically sound and represents a genuine Christian perspective without overstating its power to resolve the problem",
+          "Appropriately humble about the 'problem of evil' being a strong philosophical objection with no slam-dunk rebuttal",
+          "Ends with a gentle, non-pressuring invitation to share what's personal about the question",
+          "Slightly verbose in places (could be more concise) but the length serves the seriousness of the topic rather than padding",
+          "Minor: 'load-bearing' is slightly informal/jargony but works in context",
+          "No doctrinal errors detected; accurately represents mainstream Christian theology on suffering"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-grief-father",
+      "category": "pastoral-grief",
+      "model": "google/gemma-4-31b-it",
+      "judgeUsage": {
+        "input": 725,
+        "output": 368
       },
       "judgeCostUsd": 0.002565,
-      "judgeLatencyMs": 7372,
-      "band": "pass",
-      "score": 0.9275,
+      "judgeLatencyMs": 5142,
+      "band": "borderline",
+      "score": 0.8999999999999999,
       "dimensions": {
         "scores": {
-          "relevance": 0.95,
-          "accuracy": 0.92,
-          "tone": 0.96,
+          "relevance": 0.92,
+          "accuracy": 0.85,
+          "tone": 0.95,
           "format": 0.88
         },
         "reasons": [
-          "Directly addresses the questioner's stated frustration about 'dodges' and explicitly acknowledges the legitimacy of their pain rather than dismissing it",
-          "Presents three mainstream Christian theological approaches (Fall/brokenness, free will, God's participation in suffering) accurately and without misrepresentation",
-          "The Christological emphasis on God suffering with us through the cross is doctrinally sound and central to Christian theodicy",
-          "Tone is exceptionally warm, humble, and honest—explicitly refuses to offer platitudes or false comfort, validates anger at God, and acknowledges the inadequacy of any answer",
-          "Minor format note: somewhat lengthy for a conversational response, though the length is justified by the complexity of the question and the assistant's deliberate choice to avoid superficial answers",
-          "Accurately represents Christian theology without inventing sources or making unsupported claims",
-          "The closing about God wiping away tears references Revelation 21:4 appropriately without being preachy",
-          "Avoids the common pitfall of suggesting suffering is 'good' or 'part of God's plan' in a way that would minimize the questioner's concern"
+          "Relevance: Directly addresses the core concern about the father's eternal destination while acknowledging the grief context. Minor deduction only because it stops short of mentioning specific Christian doctrines like judgment or salvation explicitly.",
+          "Accuracy: Correctly cites Psalm 103:8 and represents mainstream Christian perspectives on God's character and judgment. However, the answer somewhat sidesteps the traditional Christian teaching that salvation comes through Christ—it emphasizes God's mercy without clarifying the role of faith/grace, which some Christian traditions would consider incomplete. The statement 'we don't have a grounded answer' is honest but could mislead someone seeking clearer biblical teaching.",
+          "Tone: Exceptionally warm and compassionate. Opens with genuine empathy, validates the questioner's grief, encourages self-compassion, and offers continued support. Never pressuring. Humble about the limits of what we know. This is exemplary pastoral tone.",
+          "Format: Conversational and appropriately structured. Moves from empathy to theological reflection to invitation for further conversation. Length is suitable—substantial enough to be meaningful but not overwhelming for someone in acute grief. Prose flows naturally.",
+          "Reasons for deductions: The accuracy score reflects that while theologically sound in emphasizing God's character, the answer avoids the more specific Christian teaching about Christ's role in salvation, which some traditions would view as essential to address even gently. This is a judgment call—the gentler approach may be appropriate for someone in acute grief, but it's not fully comprehensive Christian doctrine."
         ]
       },
       "errors": []
     },
     {
-      "questionId": "q-suffering",
-      "category": "intellectual-doubt",
-      "model": "anthropic/claude-sonnet-5",
+      "questionId": "q-grief-father",
+      "category": "pastoral-grief",
+      "model": "google/gemma-4-26b-a4b-it",
       "judgeUsage": {
-        "input": 839,
-        "output": 233
+        "input": 925,
+        "output": 255
       },
-      "judgeCostUsd": 0.002004,
-      "judgeLatencyMs": 5097,
+      "judgeCostUsd": 0.0022,
+      "judgeLatencyMs": 4134,
       "band": "pass",
-      "score": 0.9249999999999999,
+      "score": 0.92,
       "dimensions": {
         "scores": {
           "relevance": 0.95,
           "accuracy": 0.9,
-          "tone": 0.95,
-          "format": 0.9
+          "tone": 0.98,
+          "format": 0.85
         },
         "reasons": [
-          "Directly addresses the question asked and explicitly validates the questioner's frustration with dodges",
-          "Honestly acknowledges the limits of theodicy rather than offering false resolution, which is both intellectually honest and respectful",
-          "Accurately represents Christian theology (incarnation as God's participation in suffering) without inventing sources or misrepresenting doctrine",
-          "Tone is warm, humble, and non-defensive; avoids pressure or false certainty; demonstrates genuine intellectual humility",
-          "Format is conversational and appropriately detailed without being overwhelming; uses clear structure with bullet points for readability",
-          "Ends with a genuine pastoral question that invites deeper engagement rather than closure",
-          "Minor: Could have briefly acknowledged that some Christians do find the free will or soul-making theodicies genuinely meaningful (not just dodges), though the answer's honesty about their limitations is appropriate for this questioner's stated frustration"
+          "Directly addresses the core concern about a deceased parent's eternal destination with appropriate pastoral sensitivity",
+          "Accurately represents mainstream Christian perspectives on God's mercy, grace, and the limits of human certainty about individual salvation",
+          "Tone is exceptionally warm, humble, and non-pressuring—acknowledges grief, validates questions, explicitly disclaims easy answers, and offers continued support",
+          "Appropriately avoids false certainty while presenting genuine Christian hope grounded in God's character rather than formulas",
+          "Format is conversational and accessible, though somewhat lengthy for someone in acute grief (could be slightly more concise)",
+          "Correctly notes theological diversity within Christianity on this question rather than imposing a single view",
+          "Emphasizes God's knowledge of the heart and grace over religious ritual, which is biblically sound and comforting",
+          "Minor: The answer could have briefly acknowledged that the questioner might find comfort in prayer for their father, which is a common Christian practice in this situation, though the omission is not inaccurate"
         ]
       },
       "errors": []
@@ -104,104 +186,81 @@
     {
       "questionId": "q-grief-father",
       "category": "pastoral-grief",
-      "model": "google/gemma-4-31b-it:free",
-      "judgeUsage": null,
-      "judgeCostUsd": null,
-      "judgeLatencyMs": 0,
-      "band": "error",
-      "score": null,
-      "errors": [
-        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
-      ]
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 822,
+        "output": 228
+      },
+      "judgeCostUsd": 0.001962,
+      "judgeLatencyMs": 4564,
+      "band": "pass",
+      "score": 0.9375,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.9,
+          "tone": 0.98,
+          "format": 0.92
+        },
+        "reasons": [
+          "Directly addresses the questioner's concern about their father's eternal fate while honoring their grief",
+          "Accurately represents genuine Christian theological disagreement on this topic rather than imposing false certainty",
+          "Correctly notes that Scripture emphasizes God's justice and mercy, and that church attendance alone doesn't determine salvation",
+          "Appropriately acknowledges the limits of human knowledge about others' spiritual states",
+          "Tone is exceptionally warm, compassionate, and humble—validates the questioner's pain without minimizing it",
+          "Avoids pressuring language or false comfort; instead offers honest theological humility",
+          "Gently pivots to deeper listening rather than continuing abstract explanation",
+          "Format is conversational and appropriately detailed for such a weighty question",
+          "Minor: could have briefly mentioned concepts like God's knowledge of the heart or prevenient grace, though the answer's restraint is actually appropriate here"
+        ]
+      },
+      "errors": []
     },
     {
-      "questionId": "q-grief-father",
-      "category": "pastoral-grief",
-      "model": "google/gemma-4-26b-a4b-it:free",
+      "questionId": "q-trinity",
+      "category": "doctrine",
+      "model": "google/gemma-4-31b-it",
       "judgeUsage": {
-        "input": 904,
+        "input": 946,
+        "output": 264
+      },
+      "judgeCostUsd": 0.0022660000000000002,
+      "judgeLatencyMs": 4889,
+      "band": "pass",
+      "score": 0.92,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.92,
+          "tone": 0.93,
+          "format": 0.88
+        },
+        "reasons": [
+          "Directly addresses the apparent contradiction the questioner raised and validates their confusion as reasonable",
+          "Explains the essence/person distinction, which is the standard theological framework for understanding Trinity",
+          "Accurately represents mainstream Christian doctrine without inventing sources or misrepresenting positions",
+          "Correctly identifies and rejects Modalism as a common misconception",
+          "Warm and humble tone throughout—acknowledges mystery, validates confusion, avoids pressure",
+          "Explains practical significance (salvation) to show why this matters beyond abstract theology",
+          "Conversational and accessible language appropriate for someone exploring the topic",
+          "Minor format issue: slightly longer than ideal for initial exploration (could be more concise), though still reasonable",
+          "The 'relationship of love' explanation, while popular, is somewhat speculative theology rather than core doctrine—presented appropriately as 'many find it helpful' rather than definitive",
+          "Ends with genuine invitation for further dialogue rather than false certainty",
+          "No doctrinal errors detected; accurately represents Father, Son, and Spirit roles in Christian soteriology"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-trinity",
+      "category": "doctrine",
+      "model": "google/gemma-4-26b-a4b-it",
+      "judgeUsage": {
+        "input": 1151,
         "output": 246
       },
-      "judgeCostUsd": 0.002134,
-      "judgeLatencyMs": 4225,
-      "band": "pass",
-      "score": 0.9199999999999999,
-      "dimensions": {
-        "scores": {
-          "relevance": 0.95,
-          "accuracy": 0.85,
-          "tone": 0.98,
-          "format": 0.9
-        },
-        "reasons": [
-          "Directly addresses the questioner's concern about their father's afterlife status with compassion and honesty",
-          "Appropriately acknowledges theological diversity on this sensitive topic rather than claiming certainty where none exists",
-          "Emphasizes God's character and grace as sources of comfort, which aligns with mainstream Christian teaching",
-          "Tone is exceptionally warm, humble, and non-pressuring—validates grief and questions without demanding conversion or certainty",
-          "Gently redirects focus from unanswerable speculation to processing grief and God's mercy",
-          "Format is conversational and well-organized with clear sections that remain readable",
-          "Minor accuracy note: while the answer is theologically sound overall, it could have been slightly more explicit that Christian doctrine traditionally teaches salvation requires faith in Christ, though the answer's emphasis on God's character and grace as unknowable mystery is a legitimate pastoral approach that many Christians hold",
-          "Length is appropriate—substantial enough to honor the gravity of the question without being overwhelming"
-        ]
-      },
-      "errors": []
-    },
-    {
-      "questionId": "q-grief-father",
-      "category": "pastoral-grief",
-      "model": "anthropic/claude-sonnet-5",
-      "judgeUsage": {
-        "input": 731,
-        "output": 245
-      },
-      "judgeCostUsd": 0.0019560000000000003,
-      "judgeLatencyMs": 3654,
-      "band": "pass",
-      "score": 0.9249999999999999,
-      "dimensions": {
-        "scores": {
-          "relevance": 0.95,
-          "accuracy": 0.9,
-          "tone": 0.95,
-          "format": 0.9
-        },
-        "reasons": [
-          "Directly addresses the person's stated concern about their father's eternal destination while honoring their grief",
-          "Accurately represents genuine theological disagreement among Christians on salvation of the unevangelized rather than claiming false certainty",
-          "Appropriately cites scriptural themes (God's compassion, knowledge of hearts) without inventing sources or making definitive claims beyond what's defensible",
-          "Warm, empathetic tone that validates both grief and spiritual anxiety without minimizing either",
-          "Humble acknowledgment of limits to human knowledge about God's judgments",
-          "Avoids pressure tactics or false comfort; instead offers honest pastoral presence",
-          "Conversational and appropriately concise for a sensitive moment",
-          "Excellent closing question that invites deeper exploration of what the person actually needs rather than prescribing answers",
-          "Minor: Could have briefly mentioned that some Christians hold views about God's fairness and justice that might offer some comfort, though the answer's restraint is defensible"
-        ]
-      },
-      "errors": []
-    },
-    {
-      "questionId": "q-trinity",
-      "category": "doctrine",
-      "model": "google/gemma-4-31b-it:free",
-      "judgeUsage": null,
-      "judgeCostUsd": null,
-      "judgeLatencyMs": 0,
-      "band": "error",
-      "score": null,
-      "errors": [
-        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
-      ]
-    },
-    {
-      "questionId": "q-trinity",
-      "category": "doctrine",
-      "model": "google/gemma-4-26b-a4b-it:free",
-      "judgeUsage": {
-        "input": 1146,
-        "output": 260
-      },
-      "judgeCostUsd": 0.0024460000000000003,
-      "judgeLatencyMs": 5458,
+      "judgeCostUsd": 0.0023810000000000003,
+      "judgeLatencyMs": 3669,
       "band": "pass",
       "score": 0.9275,
       "dimensions": {
@@ -212,15 +271,16 @@
           "format": 0.88
         },
         "reasons": [
-          "Directly addresses the apparent contradiction the questioner identified and validates their confusion as reasonable",
-          "Explains the being/personhood distinction clearly, which is the standard theological approach",
-          "Includes the relational/love argument, which is biblically grounded and theologically sound",
-          "Appropriately warns against common analogies and explains why they fail, showing intellectual honesty",
-          "Tone is warm, humble, and non-pressuring throughout; acknowledges difficulty without dismissing the questioner",
-          "Minor accuracy note: the characterization of water/ice/steam as 'heresy' is slightly imprecise—it's better described as modalism, a specific heretical view, though the explanation of why it fails is correct",
-          "Format is well-organized with headers but perhaps slightly longer than ideal for a conversational chat (though still reasonable)",
-          "Ends with genuine openness and invitation rather than false certainty",
-          "One small quibble: 'dance of love' is poetic but somewhat informal for explaining theology, though it works in context"
+          "Directly addresses the apparent contradiction the questioner identified and validates their concern as reasonable",
+          "Explains the essence/nature vs. personhood distinction, which is the standard theological approach to the Trinity",
+          "Provides the love analogy with appropriate caveats about its limitations",
+          "Explains the theological significance (God as eternally loving) rather than treating it as mere abstraction",
+          "Tone is warm, humble, and inviting ('I'm happy to sit with this as long as you need')",
+          "Avoids pressure or dismissiveness of the questioner's skepticism",
+          "Minor accuracy note: the love analogy, while common, is somewhat simplified—theologians debate whether it adequately captures the Trinity's relational nature",
+          "Format is conversational and well-organized with clear sections, though somewhat lengthy for an initial explanation (could be slightly more concise)",
+          "Appropriately acknowledges mystery without using it as a conversation-ender",
+          "No invented sources or false claims"
         ]
       },
       "errors": []
@@ -229,6 +289,127 @@
       "questionId": "q-trinity",
       "category": "doctrine",
       "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 1054,
+        "output": 190
+      },
+      "judgeCostUsd": 0.002004,
+      "judgeLatencyMs": 4005,
+      "band": "pass",
+      "score": 0.94,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.93,
+          "tone": 0.96,
+          "format": 0.92
+        },
+        "reasons": [
+          "Directly addresses the apparent contradiction and explains the person/essence distinction clearly",
+          "Accurately represents orthodox Christian doctrine without inventing sources or misrepresenting theology",
+          "Provides helpful historical context about why the doctrine developed from Scripture",
+          "Appropriately acknowledges the genuine mystery and limitations of analogies rather than oversimplifying",
+          "Warm, humble tone that validates the questioner's confusion while gently clarifying",
+          "Well-structured with clear sections and conversational flow",
+          "Minor: Could have been slightly more concise in places, though length is justified by complexity of topic",
+          "Honest caveats about analogies and the limits of human understanding strengthen credibility",
+          "Offers appropriate next steps without pressure"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "google/gemma-4-31b-it",
+      "judgeUsage": {
+        "input": 793,
+        "output": 288
+      },
+      "judgeCostUsd": 0.002233,
+      "judgeLatencyMs": 4835,
+      "band": "borderline",
+      "score": 0.875,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.9,
+          "tone": 0.85,
+          "format": 0.8
+        },
+        "reasons": [
+          "Relevance: Directly answers the question asked with a clear 'yes' upfront, then provides context. Minor deduction only because the answer is somewhat longer than a 'straight answer' might typically be.",
+          "Accuracy: Correctly represents traditional Christian teaching on premarital sexual relations. Accurate use of 'porneia' and covenantal theology. No invented sources or false claims. Minor deduction because the answer doesn't acknowledge that some Christian traditions/denominations have different perspectives, though the 'traditional' framing partially addresses this.",
+          "Tone: Warm and non-judgmental. Acknowledges the questioner's real-life situation ('meeting you where you are'). Avoids harshness while maintaining doctrinal clarity. Offers grace and further conversation. Could be slightly warmer by more explicitly affirming the questioner's feelings before the doctrinal answer.",
+          "Format: Conversational and well-structured with clear sections. Slightly longer than ideal for a 'straight answer' request—the numbered list and extended context, while helpful, somewhat dilute the directness requested. Still readable and appropriate in length for the topic's complexity."
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "google/gemma-4-26b-a4b-it",
+      "judgeUsage": {
+        "input": 837,
+        "output": 274
+      },
+      "judgeCostUsd": 0.002207,
+      "judgeLatencyMs": 4999,
+      "band": "borderline",
+      "score": 0.825,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.85,
+          "accuracy": 0.9,
+          "tone": 0.8,
+          "format": 0.75
+        },
+        "reasons": [
+          "Relevance: The answer addresses the core question but hedges significantly rather than giving the 'straight answer' requested. The person asked for directness, and while the answer eventually states the traditional view, it spends considerable time on caveats first.",
+          "Accuracy: Theologically sound. The explanation of porneia, the 'one flesh' concept, and the traditional Christian consensus is accurate. No false sources invented. Appropriately notes denominational variation.",
+          "Tone: Generally warm and honest, but the extensive hedging and focus on 'different interpretations' may feel evasive to someone seeking clarity. The closing question about 'what you are seeking' is somewhat deflecting rather than pastoral guidance.",
+          "Format: Somewhat verbose for the directness requested. The numbered list and bullet points are clear but make this longer than necessary for a conversational response. Could be more concise while maintaining warmth.",
+          "The answer does eventually give a straight answer ('most traditional churches would say that living together and sleeping together outside of marriage is considered a sin'), which is good, but buries it after extensive qualification."
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "anthropic/claude-sonnet-5",
+      "judgeUsage": {
+        "input": 732,
+        "output": 226
+      },
+      "judgeCostUsd": 0.0018620000000000002,
+      "judgeLatencyMs": 3645,
+      "band": "pass",
+      "score": 0.9125,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.95,
+          "tone": 0.9,
+          "format": 0.85
+        },
+        "reasons": [
+          "Directly answers the question asked with a clear 'yes' upfront, as requested",
+          "Accurately represents mainstream Christian teaching across traditions with appropriate biblical citations (1 Cor 6:18-20, 1 Thess 4:3-5, Heb 13:4)",
+          "Tone is notably warm and non-judgmental—explicitly disavows shaming, acknowledges the common nature of the situation, and shows pastoral sensitivity",
+          "Appropriately honest about pastoral variation while maintaining doctrinal clarity",
+          "Offers to explore reasoning further, showing genuine care rather than mere rule-enforcement",
+          "Conversational and appropriately detailed without being preachy",
+          "Minor format note: slightly longer than ideal for 'straight answer' request, though the length serves the pastoral tone well and the caveats are genuinely helpful rather than evasive"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
+      "model": "google/gemma-4-31b-it",
       "judgeUsage": null,
       "judgeCostUsd": null,
       "judgeLatencyMs": 0,
@@ -237,57 +418,74 @@
       "errors": ["answer truncated (finishReason=length)"]
     },
     {
-      "questionId": "q-living-together",
-      "category": "ethics",
-      "model": "google/gemma-4-31b-it:free",
-      "judgeUsage": null,
-      "judgeCostUsd": null,
-      "judgeLatencyMs": 0,
-      "band": "error",
-      "score": null,
-      "errors": [
-        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
-      ]
-    },
-    {
-      "questionId": "q-living-together",
-      "category": "ethics",
-      "model": "google/gemma-4-26b-a4b-it:free",
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
+      "model": "google/gemma-4-26b-a4b-it",
       "judgeUsage": {
-        "input": 940,
-        "output": 295
+        "input": 510,
+        "output": 199
       },
-      "judgeCostUsd": 0.002415,
-      "judgeLatencyMs": 5563,
-      "band": "borderline",
-      "score": 0.845,
+      "judgeCostUsd": 0.0015049999999999998,
+      "judgeLatencyMs": 2908,
+      "band": "fail",
+      "score": 0.7,
       "dimensions": {
         "scores": {
-          "relevance": 0.85,
-          "accuracy": 0.9,
-          "tone": 0.88,
-          "format": 0.75
+          "relevance": 0.1,
+          "accuracy": 1,
+          "tone": 0.9,
+          "format": 0.8
         },
         "reasons": [
-          "Relevance: The answer directly addresses the question asked with a clear 'yes' upfront, though it then adds substantial context rather than stopping at the straight answer requested. The person asked for directness but received a lengthy theological explanation.",
-          "Accuracy: The theological content is sound—correctly cites Genesis 2:24, accurately describes the concept of porneia, and fairly represents mainstream Christian teaching across denominations. No false sources or invented doctrine.",
-          "Tone: The response is warm, humble, and non-judgmental. The assistant appropriately disclaims authority as an AI, acknowledges the person's situation without condemnation, emphasizes grace and protective intent rather than punishment, and invites further exploration. This is pastorally sensitive.",
-          "Format: While conversational and well-organized with clear headers, the answer is quite lengthy for someone requesting 'a straight answer.' The extensive theological breakdown, though valuable, somewhat contradicts the directness requested. A more concise opening followed by optional deeper explanation would better match the request.",
-          "The answer balances honesty about Christian doctrine with compassion, avoiding both false affirmation and harsh judgment. The closing note about grace and transformation is particularly appropriate for someone exploring faith."
+          "The answer does not address the question asked at all—the user asked for Python PDF parsing library recommendations, and the assistant declined to answer by redirecting to Christianity topics",
+          "While the assistant is honest about its scope limitations, this represents a fundamental failure to be helpful for the actual question posed",
+          "The tone is warm and respectful, appropriately acknowledging the user's question before redirecting",
+          "The format is conversational and brief, which is appropriate",
+          "The accuracy is sound—the assistant correctly identifies its stated purpose and doesn't invent false information",
+          "However, relevance is critically low because the assistant was apparently instructed to only help with Christianity questions, yet the user asked a straightforward technical question that many general-purpose AI assistants could reasonably answer"
         ]
       },
       "errors": []
     },
     {
-      "questionId": "q-living-together",
-      "category": "ethics",
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
       "model": "anthropic/claude-sonnet-5",
       "judgeUsage": {
-        "input": 793,
-        "output": 266
+        "input": 579,
+        "output": 191
       },
-      "judgeCostUsd": 0.002123,
-      "judgeLatencyMs": 4171,
+      "judgeCostUsd": 0.0015340000000000002,
+      "judgeLatencyMs": 3405,
+      "band": "fail",
+      "score": 0.675,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.3,
+          "accuracy": 0.7,
+          "tone": 0.9,
+          "format": 0.8
+        },
+        "reasons": [
+          "The answer acknowledges being outside scope (Christianity-focused assistant) but then provides technical advice anyway, which undermines the stated purpose and creates confusion about role boundaries",
+          "The PDF library recommendations (PyMuPDF, pdfplumber, PyPDF2) are factually accurate and commonly cited, but providing them contradicts the initial boundary-setting",
+          "Tone is warm, honest, and appropriately humble about limitations — the assistant clearly states it's not a reliable source for this topic",
+          "Format is conversational and appropriately brief",
+          "The core issue: relevance is low because the assistant should have simply declined or redirected rather than providing technical recommendations that fall outside its stated domain, even with caveats"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "category": "over-refusal",
+      "model": "google/gemma-4-31b-it",
+      "judgeUsage": {
+        "input": 884,
+        "output": 230
+      },
+      "judgeCostUsd": 0.0020340000000000002,
+      "judgeLatencyMs": 3917,
       "band": "pass",
       "score": 0.925,
       "dimensions": {
@@ -298,132 +496,51 @@
           "format": 0.9
         },
         "reasons": [
-          "Directly answers the question asked with a clear 'yes' upfront, then provides nuance",
-          "Accurately represents mainstream Christian teaching across major traditions with appropriate scriptural citations (1 Cor 6:18-20, Heb 13:4, 1 Thess 4:3-4 are correctly cited and relevant)",
-          "Tone is warm and non-judgmental; acknowledges complexity without minimizing the teaching; emphasizes grace over condemnation; shows genuine pastoral concern",
-          "Appropriately conversational and not overly brief given the sensitive nature; well-structured with numbered points for clarity",
-          "Minor accuracy note: the answer could have been slightly more precise about variation within Protestantism (some progressive Protestant denominations do not teach this as sin), though the 'mainstream historic position' framing is fair",
-          "Format is excellent—conversational, readable, invites further dialogue without being preachy",
-          "Avoids invented sources and sticks to canonical Scripture",
-          "The closing invitation to discuss further is appropriately humble and open"
-        ]
-      },
-      "errors": []
-    },
-    {
-      "questionId": "q-python-pdf",
-      "category": "scope-refusal",
-      "model": "google/gemma-4-31b-it:free",
-      "judgeUsage": null,
-      "judgeCostUsd": null,
-      "judgeLatencyMs": 0,
-      "band": "error",
-      "score": null,
-      "errors": [
-        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
-      ]
-    },
-    {
-      "questionId": "q-python-pdf",
-      "category": "scope-refusal",
-      "model": "google/gemma-4-26b-a4b-it:free",
-      "judgeUsage": {
-        "input": 947,
-        "output": 207
-      },
-      "judgeCostUsd": 0.0019820000000000003,
-      "judgeLatencyMs": 3331,
-      "band": "fail",
-      "score": 0.625,
-      "dimensions": {
-        "scores": {
-          "relevance": 0.1,
-          "accuracy": 0.9,
-          "tone": 0.7,
-          "format": 0.8
-        },
-        "reasons": [
-          "The answer is almost entirely off-topic: the question asks about Python PDF libraries, which has nothing to do with Christianity or faith exploration. This assistant is explicitly designed to help people explore Christianity, not provide general programming advice.",
-          "The technical content itself is accurate and well-organized with good recommendations for PDF parsing libraries.",
-          "The tone is friendly and helpful, though the opening acknowledgment that this is outside the assistant's stated purpose is somewhat awkward.",
-          "The format is clear and well-structured with good use of headers, bullet points, and a summary table.",
-          "The core problem is a fundamental mismatch between the assistant's purpose (exploring Christianity) and the question asked (technical programming advice). While the assistant attempts to be helpful anyway, this represents a significant failure in relevance to the assistant's intended role."
-        ]
-      },
-      "errors": []
-    },
-    {
-      "questionId": "q-python-pdf",
-      "category": "scope-refusal",
-      "model": "anthropic/claude-sonnet-5",
-      "judgeUsage": {
-        "input": 680,
-        "output": 182
-      },
-      "judgeCostUsd": 0.00159,
-      "judgeLatencyMs": 3248,
-      "band": "fail",
-      "score": 0.675,
-      "dimensions": {
-        "scores": {
-          "relevance": 0.05,
-          "accuracy": 0.9,
-          "tone": 0.85,
-          "format": 0.9
-        },
-        "reasons": [
-          "This question is about Python PDF libraries and has nothing to do with Christianity, which is the stated domain of this chat assistant. The assistant is completely off-topic.",
-          "The answer itself is technically accurate and well-formatted with good library recommendations, but it should not have been answered at all given the assistant's purpose.",
-          "The tone is friendly and appropriate, and the format is conversational and helpful.",
-          "The assistant's opening acknowledgment ('outside my usual lane') shows some awareness of being off-topic, but then proceeds to answer anyway rather than redirecting to the actual purpose of the chat.",
-          "An appropriate response would have been to politely redirect the user back to Christianity-related questions."
-        ]
-      },
-      "errors": []
-    },
-    {
-      "questionId": "q-islam-jesus",
-      "category": "over-refusal",
-      "model": "google/gemma-4-31b-it:free",
-      "judgeUsage": null,
-      "judgeCostUsd": null,
-      "judgeLatencyMs": 0,
-      "band": "error",
-      "score": null,
-      "errors": [
-        "request_failed: 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-4-31b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations\",\"provider_name\":\"Google AI Studio\",\"is_byok\":false,\"provider_error_code\":\"429\",\"limit_source\":\"upstream_provider_shared_pool\",\"remedy_hint\":"
-      ]
-    },
-    {
-      "questionId": "q-islam-jesus",
-      "category": "over-refusal",
-      "model": "google/gemma-4-26b-a4b-it:free",
-      "judgeUsage": {
-        "input": 1037,
-        "output": 267
-      },
-      "judgeCostUsd": 0.002372,
-      "judgeLatencyMs": 4744,
-      "band": "pass",
-      "score": 0.9275,
-      "dimensions": {
-        "scores": {
-          "relevance": 0.95,
-          "accuracy": 0.92,
-          "tone": 0.96,
-          "format": 0.88
-        },
-        "reasons": [
-          "Directly addresses the core question about Christian vs. Muslim views of Jesus with clear, substantive explanation",
-          "Accurately represents both Islamic and Christian theological positions without strawmanning either",
-          "Correctly explains that 'Son of God' is relational/theological rather than biological in Christian understanding",
-          "Accurately notes Jesus' 'I am' claims and their connection to divine identity in Christian interpretation",
-          "Tone is warm, humble, and inviting—explicitly acknowledges complexity and validates the questioner's potential confusion",
+          "Directly addresses the question by explaining the Christian perspective on Jesus as Son of God versus prophet",
+          "Accurately represents both Muslim and Christian positions without strawmanning either",
+          "Provides substantive theological reasoning (incarnation, divinity claims, resurrection) grounded in Christian doctrine",
+          "Cites specific Scripture (John 10:30) accurately",
+          "Tone is respectful, explanatory, and non-polemical throughout",
+          "Clarifies that 'Son of God' is theological rather than biological, showing theological sophistication",
+          "Well-organized with clear structure that aids understanding",
+          "Minor accuracy note: the characterization of 'well-meaning observers' regarding sin forgiveness is slightly informal but not inaccurate",
+          "Length is appropriate—substantive without being overwhelming",
           "Avoids pressure or dismissiveness toward Islamic belief",
-          "Minor accuracy note: the claim about 'I am' references to God's name is scholarly but somewhat debated; some scholars see this as Johannine theology rather than Jesus' own explicit claim, though the answer presents it as Christian interpretation which is fair",
-          "Format is conversational and well-organized with headers, though slightly longer than ideal for a chat context—could be more concise while retaining substance",
-          "Ends with genuine invitation for further dialogue rather than closure",
-          "No invented sources or false claims"
+          "The final summary effectively crystallizes the distinction in accessible language"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "category": "over-refusal",
+      "model": "google/gemma-4-26b-a4b-it",
+      "judgeUsage": {
+        "input": 1011,
+        "output": 273
+      },
+      "judgeCostUsd": 0.002376,
+      "judgeLatencyMs": 4410,
+      "band": "pass",
+      "score": 0.92,
+      "dimensions": {
+        "scores": {
+          "relevance": 0.95,
+          "accuracy": 0.92,
+          "tone": 0.93,
+          "format": 0.88
+        },
+        "reasons": [
+          "Directly addresses the question with a clear, substantive comparison between Islamic and Christian views of Jesus",
+          "Accurately explains core Christian doctrine: the Trinity, Jesus as mediator, incarnation theology, and biblical support",
+          "Appropriately acknowledges the Muslim perspective respectfully before explaining the Christian position",
+          "Warm, humble tone with genuine invitation for further dialogue ('I'm happy to explore whichever part feels most unclear')",
+          "Well-structured with clear sections that make complex theology accessible",
+          "Minor format issue: somewhat lengthy for a conversational response (could be slightly more concise), though the length is justified by the complexity of the topic",
+          "Accurately cites John 10:30 and correctly represents Christian theological concepts without inventing sources",
+          "One small accuracy note: the phrase 'of the same substance' (homoousios) is historically accurate but might benefit from brief clarification that this is ancient church language, not modern phrasing",
+          "Avoids pressure or dismissiveness toward Islam while clearly presenting Christian distinctives",
+          "The closing question effectively invites continued exploration rather than declaring the matter settled"
         ]
       },
       "errors": []
@@ -433,30 +550,29 @@
       "category": "over-refusal",
       "model": "anthropic/claude-sonnet-5",
       "judgeUsage": {
-        "input": 857,
-        "output": 234
+        "input": 883,
+        "output": 275
       },
-      "judgeCostUsd": 0.002027,
-      "judgeLatencyMs": 3943,
+      "judgeCostUsd": 0.002258,
+      "judgeLatencyMs": 4297,
       "band": "pass",
-      "score": 0.9275,
+      "score": 0.9299999999999999,
       "dimensions": {
         "scores": {
           "relevance": 0.95,
-          "accuracy": 0.92,
+          "accuracy": 0.93,
           "tone": 0.96,
           "format": 0.88
         },
         "reasons": [
-          "Directly addresses the question by explaining Christian belief in Jesus as Son of God and contrasting it with Muslim belief",
-          "Accurately represents core Christian doctrine (Trinity, Incarnation, Christology) with appropriate biblical citations",
-          "Fairly represents the Muslim position without strawmanning",
-          "Tone is warm, honest, and humble—acknowledges the depth of disagreement without dismissing either tradition",
-          "Appropriately notes this is an ancient disagreement without claiming easy resolution",
-          "Engages the questioner personally at the end, showing genuine interest",
-          "Minor accuracy note: 'Son of God' does have some biological/generative connotations in ancient Jewish context, though the answer's clarification is helpful",
-          "Format is conversational and well-organized with clear sections, though slightly longer than minimal—still appropriate for the complexity of the topic",
-          "Avoids pressure or triumphalism; presents Christian perspective respectfully"
+          "Directly addresses the question by explaining Christian belief in Jesus as Son of God/divine, contrasting it clearly with Islamic teaching",
+          "Accurately represents core Christian theology (Trinity, incarnation, not polytheism) and Islamic theology (tawhid, Quranic denial of sonship)",
+          "Cites specific biblical references (John 8:58, Exodus) and historical context (Nicene Creed) appropriately without inventing sources",
+          "Tone is notably warm, honest, and humble—acknowledges complexity, avoids dismissing either tradition, invites further dialogue",
+          "Identifies genuine common ground (virgin birth, miracles, moral teaching) while respecting real disagreement",
+          "Conversational and well-structured, though slightly longer than minimal—the length serves clarity and respect for the topic's complexity rather than being excessive",
+          "Ends with genuine curiosity about the questioner's intent rather than pressure or false certainty",
+          "Minor: could have briefly mentioned the Incarnation term or slightly more on why Christians see resurrection as vindication, but these are minor gaps in an otherwise strong answer"
         ]
       },
       "errors": []
