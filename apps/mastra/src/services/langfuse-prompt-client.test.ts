@@ -1484,25 +1484,28 @@ describe("getManagedPrompt (layer 2)", () => {
 
 /**
  * Seeker scenario (U4) — proves the mechanism in the exact shape the chat
- * agent will consume it: `getManagedPrompt` resolving the seeker's system
- * prompt with the CURRENT inline instructions as the compiled-in fallback.
- * The helper stays unwired (nothing under src/mastra/ imports it); these
- * tests encode the expectation the future wiring inherits:
+ * agent consumes it: `getManagedPrompt` resolving the seeker's system prompt
+ * with the full working instructions as the compiled-in fallback. Since
+ * feat-272 the wiring is LIVE (`seeker-agent.ts` backs its `instructions`
+ * with `getManagedPrompt` through `createSeekerInstructionsResolver`); this
+ * block remains the layer-2 proof of the shape the wiring relies on:
  *
  * - The fallback is the FULL working prompt — never a stub — so a Langfuse
  *   outage degrades to exactly today's shipped behavior.
  * - The helper does NO composition or guarding of safety lines (e.g. it does
- *   not re-append the SAFETY line to a managed prompt that dropped it). That
- *   decision is explicitly deferred to the wiring unit / guardrail gate —
- *   here the managed text is served verbatim, byte-for-byte.
+ *   not re-append the SAFETY line to a managed prompt that dropped it). Under
+ *   the whole-prompt decision (owner, 2026-07-29) there is no composed shape
+ *   anywhere: the ENTIRE prompt — SAFETY line included — is Langfuse-managed,
+ *   and managed text is served verbatim, byte-for-byte. The wiring-level
+ *   companion tests live in seeker-agent.test.ts.
  */
 describe("getManagedPrompt seeker scenario (agent-instructions shape)", () => {
   /**
-   * DUPLICATED byte-for-byte from the `instructions` array in
-   * `apps/mastra/src/mastra/agents/seeker-agent.ts` (joined with "\n", the
-   * same join the agent performs). Deliberately a COPY, never an import:
-   * importing would wire the unshipped helper into the agent's module graph,
-   * and this unit must leave the agent file untouched and the helper unwired.
+   * DUPLICATED byte-for-byte from `SEEKER_SYSTEM_PROMPT_FALLBACK` in
+   * `apps/mastra/src/mastra/agents/seeker-agent.ts` (the same "\n"-joined
+   * text). Deliberately a COPY, never an import: this file is the HELPER's
+   * suite and must not pull the agent module graph (Agent construction,
+   * memory) into it — the wiring itself is tested in seeker-agent.test.ts.
    * If the shipped instructions change, refresh this fixture to match.
    */
   const SEEKER_INLINE_INSTRUCTIONS = [
@@ -1525,7 +1528,10 @@ describe("getManagedPrompt seeker scenario (agent-instructions shape)", () => {
   // realistic shape a prompt-engineering pass produces — NOT a stub string.
   const TUNED_SEEKER_INSTRUCTIONS = `${SEEKER_INLINE_INSTRUCTIONS}\nTUNED (Langfuse-managed variant): prefer concise answers, and ask one clarifying question when the seeker's intent is unclear.`
 
-  const SEEKER_PROMPT_NAME = "seeker/system-prompt"
+  // Matches SEEKER_SYSTEM_PROMPT_NAME in seeker-agent.ts (duplicated, not
+  // imported — see the fixture note above). The wiring test pins the name on
+  // the wire; this block only needs it to be a realistic constant.
+  const SEEKER_PROMPT_NAME = "seeker-system"
 
   beforeEach(() => {
     resetManagedPromptStateForTests()

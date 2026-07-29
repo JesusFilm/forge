@@ -31,6 +31,18 @@ import {
  * The `empty`/`unavailable` message strings are EXPORTED constants — the shared
  * truth that `seeker-agent.ts`'s instruction lines cross-reference, so in-band
  * guidance and instructions cannot drift apart.
+ *
+ * LANGFUSE COUPLING (feat-272): the seeker's live system prompt is the
+ * Langfuse-managed `seeker-system` prompt (whole prompt, no composition
+ * split), and it quotes the `status` literals `'empty'` / `'unavailable'`
+ * and mirrors the two message constants below. CI cannot see Langfuse, so a
+ * rename or rewording here can silently desync from the live prompt. The
+ * pinning test in `../agents/seeker-agent.test.ts` makes such a change loud;
+ * when it fires, update the `seeker-system` prompt in the Langfuse UI (every
+ * label) in the same change — expand-then-contract, since the UI edit and
+ * the deploy cannot land atomically: publish a version covering BOTH
+ * literals and move the labels onto it, deploy the code change, then publish
+ * the contracted version (feat-272 item 2 has the full ordering rule).
  */
 
 /** Contract bounds query at 2000 code points (JSON Schema counts code points). */
@@ -45,7 +57,9 @@ const MAX_PASSAGE_CODEPOINTS = 4000
 
 /**
  * In-band guidance for the agent when retrieval returns zero passages (R4).
- * Cross-referenced by `seeker-agent.ts`'s no-grounded-answer instruction line.
+ * Cross-referenced by `seeker-agent.ts`'s no-grounded-answer instruction line
+ * AND mirrored by the Langfuse-managed `seeker-system` prompt (feat-272) —
+ * update that prompt in the Langfuse UI when changing this wording.
  */
 export const RETRIEVE_ANSWER_EMPTY_MESSAGE =
   "No passages were found for this question. Tell the seeker you do not have a grounded answer, and do not invent sources."
@@ -54,7 +68,9 @@ export const RETRIEVE_ANSWER_EMPTY_MESSAGE =
  * In-band guidance when retrieval cannot run (R5). One NEUTRAL wording — it must
  * not claim the outage is temporary (`config_missing` is permanent for the
  * session; `timeout` is not). Cross-referenced by `seeker-agent.ts`'s
- * retrieval-unavailable instruction line.
+ * retrieval-unavailable instruction line AND mirrored by the Langfuse-managed
+ * `seeker-system` prompt (feat-272) — update that prompt in the Langfuse UI
+ * when changing this wording.
  */
 export const RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE =
   "Retrieval is unavailable. Tell the seeker you cannot provide a grounded answer, and continue the conversation."
@@ -75,6 +91,11 @@ export const retrieveAnswerInputSchema = z
 // exposed.
 export const retrieveAnswerOutputSchema = z
   .object({
+    // The `empty`/`unavailable` literals are quoted verbatim by the seeker's
+    // system prompt — including its live Langfuse-managed copy (feat-272).
+    // Renaming one is a prompt change, not just a schema change: update the
+    // `seeker-system` prompt in Langfuse too (the seeker-agent.test.ts pin
+    // fails to force that).
     status: z.enum(["ok", "empty", "unavailable"]),
     sources: z.array(
       z

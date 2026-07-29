@@ -100,6 +100,12 @@ management" section in `apps/mastra/CLAUDE.md`, an ownership bullet in
   > records the label-move property as a fact to know; item 2's composition
   > split is what actually bounds it. See
   > `docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`.
+  > **[AMENDED 2026-07-29]** The composition split was itself overruled the
+  > same day, and the seeker wiring has landed: feat-272 item 2 records the
+  > owner's whole-prompt decision — the ENTIRE prompt (`seeker-system`),
+  > SAFETY line included, is Langfuse-managed, with the full text in code
+  > only as the compiled-in fallback. Items 3–5 (SWR, version pinning,
+  > alerting + span stamping) remain feat-272's open scope.
 
 Two risks named in the plan remain live and unmitigated by this arc because
 nothing consumes the helper yet — **silent divergence** (production serving the
