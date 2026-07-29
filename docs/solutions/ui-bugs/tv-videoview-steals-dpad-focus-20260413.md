@@ -11,7 +11,7 @@ symptoms:
 root_cause: wrong_api
 resolution_type: code_fix
 severity: medium
-last_updated: "2026-06-25"
+last_updated: "2026-07-29"
 tags:
   - tvos
   - dpad-focus
@@ -81,9 +81,34 @@ const exploreRef = useRef<View>(null)
 
 The tvOS focus engine uses the view hierarchy and spatial layout to determine focus traversal. A native `VideoView` — even with `focusable={false}` — is an opaque native UIView that blocks focus traversal through it. Wrapping it in `pointerEvents="none"` tells React Native to exclude the entire subtree from the responder system. `TVFocusGuideView` with explicit `destinations` then provides a declarative focus target that the tvOS focus engine uses when navigating into that region.
 
+## 2026-07-29 instance: watch-details action row (up-press steals into a PLAYING backdrop)
+
+On `/watch/[slug]`, pressing D-pad UP from the hero action row (Play pill, topmost
+focusable) visually unhighlighted everything; the next DOWN landed on an Up Next card
+instead of Play. `UIFocusDebugger status` (lldb attached to the simulator process)
+showed the focused item was `_AVPlayerViewControllerContainerView` — the
+`VideoBackdrop`'s AVKit container captured the up-move **even though the backdrop
+already has BOTH `pointerEvents="none"` on its container AND `focusable={false}` on
+the `VideoView`**. This confirms the while-playing hijack: the RN-level guards below
+hold for a paused/idle player but not for an actively playing one. Android TV was
+unaffected (no AVKit; the up-press simply had no candidate and focus stayed put).
+
+Containment (third pattern, for interactive elements that must sit ON the playing
+surface): `trapFocusUp` on the action row's existing `TVFocusGuideView`
+(`DetailsActionRow.tsx`) — the trap's 1px guide directly above the row wins the
+up-search before the AVKit container and bounces focus back into the row. Down/left/
+right stay geometry-driven (verified in-sim: down → Up Next, up → back to Play,
+edges hold, Select on Play opens the player). The Experience hero
+(`VideoHeroRenderer`) covers the same hazard differently — its full-bleed
+silent-focus `Pressable` catches UP as the topmost focusable.
+
+Diagnosis technique worth keeping: attach lldb to the simulator app process and run
+`expr -l objc -O -- [UIFocusDebugger status]` — it names the actually-focused
+native item, turning "focus disappeared" from guesswork into a one-line answer.
+
 ## Prevention
 
-- Any **inline** `VideoView` used as a background (non-interactive) layer on TV must be wrapped in `pointerEvents="none"` — `focusable={false}` alone is insufficient.
+- Any **inline** `VideoView` used as a background (non-interactive) layer on TV must be wrapped in `pointerEvents="none"` — `focusable={false}` alone is insufficient. **While the video is actively PLAYING even that pair is insufficient on tvOS** (see the 2026-07-29 instance above): interactive elements sitting on the playing surface additionally need a directional `trapFocus*` on their focus guide (or the silent-focus-Pressable pattern) so the AVKit container can't win a directional search.
 - **Exception: overlay VideoViews** (e.g., fullscreen player) where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already contains D-pad navigation must NOT use the `pointerEvents="none"` wrapper. It blocks AVPlayerLayer rendering on tvOS, producing a black screen with functional controls. Use `focusable={false}` directly on the `VideoView` instead. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md` for the full investigation.
 - **Hero-above-rail layouts** (background video hero that reacts to rail focus): **prefer removing interactivity from the hero entirely** rather than wrapping it in `TVFocusGuideView` with `destinations`. The guide-with-destinations pattern is fragile once the video is actively playing — `VideoView` continues to intercept focus despite every RN-level guard. Make the hero non-interactive and let the adjacent rail own focus. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md`.
 - For layouts where an interactive element _must_ sit above a `VideoView` and the hero pattern above doesn't apply, wrap with `TVFocusGuideView` + explicit `destinations` as a fallback and verify behavior with the video actively playing, not just paused.
