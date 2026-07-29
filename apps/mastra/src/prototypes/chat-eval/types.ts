@@ -33,7 +33,12 @@ export type RunIdentity = {
    */
   retrieval:
     | { mode: "none" }
+    /** Deterministic: our query, committed passages, injected as a completed
+     *  tool exchange. The default and the only comparable mode. */
     | { mode: "fixtures"; corpusSha256: string; topK: number }
+    /** Live loop: the MODEL chose the query, so retrieval quality is part of
+     *  the measurement. Not comparable across runs. */
+    | { mode: "tool-loop"; corpusSha256: string; topK: number }
 }
 
 /** Two runs may only be compared when every field here agrees. */

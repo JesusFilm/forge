@@ -21,6 +21,7 @@ import { requireOpenRouterKey } from "./env"
 import { answeringModelsByIds, costUsd } from "./models"
 import {
   completeText,
+  completeWithInjectedTool,
   completeWithTools,
   PrototypeLlmError,
   type ToolCallRecord,
@@ -143,6 +144,11 @@ async function main(): Promise<void> {
   // With retrieval the SHIPPED prompt is the right one — the ten tool lines are
   // only meaningless when there is no tool. This is the whole point of the mode.
   const withRetrieval = argv.includes("--with-retrieval")
+  // Opt-in only. The live loop lets the model choose its own query, which makes
+  // retrieval quality part of the measurement and two runs incomparable. It is
+  // kept because it answers a different question — "would this model call the
+  // tool at all?" — which injection mode cannot see.
+  const toolLoop = argv.includes("--tool-loop")
   const promptId =
     flag(argv, "prompt") ??
     (withRetrieval ? PROMPT_AS_SHIPPED.id : PROMPT_NO_RETRIEVAL.id)
@@ -170,7 +176,7 @@ async function main(): Promise<void> {
   console.log(
     `retrieval: ${
       fixtures
-        ? `fixtures ${fixtures.corpusSha256.slice(0, 12)} (topK ${fixtures.topK})`
+        ? `${toolLoop ? "live tool loop" : "injected (deterministic)"} · corpus ${fixtures.corpusSha256.slice(0, 12)} · topK ${fixtures.topK}`
         : "none — prompt only"
     }`,
   )
@@ -185,19 +191,47 @@ async function main(): Promise<void> {
       try {
         let toolCalls: ToolCallRecord[] | undefined
         let skippedTool: boolean | undefined
+        const injected = fixtures
+          ? fixtures.fixtures.find((f) => f.questionId === question.id)
+          : undefined
+        if (fixtures && !toolLoop && !injected) {
+          throw new Error(
+            `no RAG fixture for ${question.id} — re-run proto:capture-rag`,
+          )
+        }
         const completion = fixtures
-          ? await (async () => {
-              const result = await completeWithTools({
-                model: model.id,
-                system: prompt.text,
-                user: question.text,
-                tools: [RETRIEVE_ANSWER_TOOL_SPEC],
-                resolve: fixtureResolver(fixtures, question.id),
-              })
-              toolCalls = result.toolCalls
-              skippedTool = result.skippedTool
-              return result
-            })()
+          ? toolLoop
+            ? await (async () => {
+                const result = await completeWithTools({
+                  model: model.id,
+                  system: prompt.text,
+                  user: question.text,
+                  tools: [RETRIEVE_ANSWER_TOOL_SPEC],
+                  resolve: fixtureResolver(fixtures, question.id),
+                })
+                toolCalls = result.toolCalls
+                skippedTool = result.skippedTool
+                return result
+              })()
+            : await (async () => {
+                // Query is OURS — the question verbatim. No model choice.
+                toolCalls = [
+                  {
+                    name: RETRIEVE_ANSWER_TOOL_SPEC.function.name,
+                    arguments: JSON.stringify({ query: question.text }),
+                    servedFrom: "fixture",
+                  },
+                ]
+                skippedTool = false
+                return completeWithInjectedTool({
+                  model: model.id,
+                  system: prompt.text,
+                  user: question.text,
+                  toolSpec: RETRIEVE_ANSWER_TOOL_SPEC,
+                  query: question.text,
+                  toolResult: injected!.result,
+                })
+              })()
           : await completeText({
               model: model.id,
               system: prompt.text,

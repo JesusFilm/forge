@@ -198,6 +198,91 @@ export async function completeText(input: {
   }
 }
 
+/**
+ * Retrieval already done, handed to the model as a completed tool exchange.
+ * THIS IS THE DEFAULT RETRIEVAL MODE.
+ *
+ * We fix the query (it is the eval question, verbatim), we fix the passages
+ * (captured once, committed), and we present the exchange as though the tool
+ * had already run. The model's only job is to answer from what it was given.
+ *
+ * Why this rather than a live tool loop:
+ *   - Deterministic. The model cannot choose a different query, so it cannot
+ *     retrieve different passages, so two runs of the same prompt are
+ *     comparable. A loop makes retrieval quality part of every measurement.
+ *   - No RAG at run time. Fixtures are committed, so any Forge engineer can
+ *     run the eval without the RAG stack on their machine.
+ *
+ * The message SEQUENCE is still exactly what a real tool call produces — an
+ * assistant turn carrying `tool_calls`, then a `tool` turn with the matching
+ * `tool_call_id`. Passages are never pasted into the prompt as prose, because
+ * models treat tool output differently from instructions.
+ *
+ * `tool_choice: "none"` on the final turn forces a text answer. Without it a
+ * model can call the tool again and reintroduce the nondeterminism this mode
+ * exists to remove. The cost: this mode cannot observe whether a model WOULD
+ * have called the tool. That is a real property — gemma-26b skips it — but it
+ * is a separate test, not this eval's job.
+ */
+export async function completeWithInjectedTool(input: {
+  model: string
+  system: string
+  user: string
+  toolSpec: { function: { name: string } }
+  /** The query we searched with — the eval question, verbatim. */
+  query: string
+  /** What the tool returned for that query. */
+  toolResult: unknown
+  maxTokens?: number
+  temperature?: number
+  timeoutMs?: number
+}): Promise<TextCompletion> {
+  const toolCallId = `call_${input.toolSpec.function.name}_eval`
+  const messages = [
+    { role: "system", content: input.system },
+    { role: "user", content: input.user },
+    {
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id: toolCallId,
+          type: "function",
+          function: {
+            name: input.toolSpec.function.name,
+            arguments: JSON.stringify({ query: input.query }),
+          },
+        },
+      ],
+    },
+    {
+      role: "tool",
+      tool_call_id: toolCallId,
+      content: JSON.stringify(input.toolResult),
+    },
+  ]
+
+  const { payload, latencyMs } = await post(
+    {
+      model: input.model,
+      messages,
+      tools: [input.toolSpec],
+      tool_choice: "none",
+      max_tokens: input.maxTokens ?? 1_600,
+      temperature: input.temperature ?? 0.7,
+    },
+    input.timeoutMs ?? 90_000,
+  )
+
+  const { content, finishReason } = readChoice(payload)
+  return {
+    text: content ?? "",
+    finishReason,
+    usage: readUsage(payload),
+    latencyMs,
+  }
+}
+
 export type ToolCallRecord = {
   name: string
   /** The query the MODEL chose — not the question text. Worth recording: a

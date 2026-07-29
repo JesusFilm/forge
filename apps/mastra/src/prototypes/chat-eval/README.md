@@ -65,9 +65,15 @@ pnpm --filter @forge/mastra proto:answers
 # smoke first: one question, one model, ~1 call
 pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it
 
-# with retrieval: the SHIPPED prompt + a real tool-calling loop served from
-# the fixtures. The only mode that can observe the citation rules.
+# with retrieval (DEFAULT, deterministic): the SHIPPED prompt, our query, and
+# the committed passages injected as a completed tool exchange. No RAG needed —
+# fixtures are in the repo, so any engineer can run this.
 pnpm --filter @forge/mastra proto:answers -- --with-retrieval
+
+# opt-in: live tool loop. The MODEL picks its own query, so retrieval quality
+# becomes part of the measurement and runs are not comparable. Kept because it
+# answers a different question — "would this model call the tool at all?"
+pnpm --filter @forge/mastra proto:answers -- --with-retrieval --tool-loop
 
 # Step 2 — judge the saved answers. Re-runnable, cheap.
 pnpm --filter @forge/mastra proto:judge -- --mode=verdicts
