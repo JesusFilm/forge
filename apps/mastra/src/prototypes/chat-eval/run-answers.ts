@@ -304,7 +304,12 @@ async function main(): Promise<void> {
       gitSha: gitSha(),
       retrieval: fixtures
         ? {
-            mode: "fixtures",
+            // MUST distinguish the two modes. They are not comparable: the
+            // live loop lets the model pick its own query, so it retrieves
+            // different passages. Stamping both as "fixtures" made a
+            // deterministic run and a 16-fallback tool-loop run compare as
+            // identical, which is exactly what this field exists to prevent.
+            mode: toolLoop ? "tool-loop" : "fixtures",
             corpusSha256: fixtures.corpusSha256,
             topK: fixtures.topK,
           }

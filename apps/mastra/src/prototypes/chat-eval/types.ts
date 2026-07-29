@@ -53,11 +53,18 @@ export function identityMismatch(
     problems.push("questions")
   if (left.answeringModels.join(",") !== right.answeringModels.join(","))
     problems.push("answering models")
-  if (left.retrieval.mode !== right.retrieval.mode)
-    problems.push("retrieval mode")
+  // Artifacts written before this field existed have no `retrieval` at all.
+  // Treat absence as its own mode rather than dereferencing it — an older file
+  // must report as incomparable, not crash the report.
+  const leftMode = left.retrieval?.mode ?? "unstamped"
+  const rightMode = right.retrieval?.mode ?? "unstamped"
+  if (leftMode !== rightMode) problems.push("retrieval mode")
   else if (
-    left.retrieval.mode === "fixtures" &&
-    right.retrieval.mode === "fixtures" &&
+    // Both retrieval modes carry a corpus snapshot, and a re-index between two
+    // runs of EITHER mode reads as a prompt regression if it goes unnoticed.
+    (leftMode === "fixtures" || leftMode === "tool-loop") &&
+    left.retrieval.mode !== "none" &&
+    right.retrieval.mode !== "none" &&
     left.retrieval.corpusSha256 !== right.retrieval.corpusSha256
   )
     problems.push("corpus snapshot")

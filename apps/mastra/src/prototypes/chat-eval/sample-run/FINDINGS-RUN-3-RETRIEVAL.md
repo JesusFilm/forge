@@ -1,5 +1,15 @@
 # Third run — with retrieval, 2026-07-29
 
+> **Superseded 2026-07-30 — this run used the LIVE TOOL LOOP, which is no longer
+> the default.** Everything below is an accurate record of that run, but the
+> mechanism it describes now requires the opt-in `--tool-loop` flag. The default
+> `--with-retrieval` injects a fixed query and committed passages as a completed
+> tool exchange, so §5 ("every model reformulates the query") cannot happen in
+> the default mode — the query is ours, verbatim. Findings §1–§4 still hold.
+> Artifact: `answers-rag.json` (16 fixture fallbacks). The default mode's
+> artifact is `answers-injected.json` (0 fallbacks). The two are not comparable
+> and, since 2026-07-30, run identity says so.
+
 The first run of this prototype that measures the **shipped** prompt: all 13
 lines including the ten `retrieveAnswer` rules, with a real tool-calling loop and
 real passages from the local RAG.

@@ -12,6 +12,7 @@
 import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 
+import { citableSources, type RagFixtureFile } from "./rag"
 import {
   identityMismatch,
   type AnswerRun,
@@ -22,6 +23,7 @@ import {
 
 const DEFAULT_IN = "prototype-runs/chat-eval/judged-verdicts.json"
 const DEFAULT_ANSWERS = "prototype-runs/chat-eval/answers.json"
+const DEFAULT_FIXTURES = "src/prototypes/chat-eval/fixtures/rag-fixtures.json"
 
 const BAND_GLYPH: Record<Band, string> = {
   pass: "pass",
@@ -85,6 +87,48 @@ async function loadAnswers(path: string): Promise<AnswerRun | null> {
   }
 }
 
+async function loadFixtures(path: string): Promise<RagFixtureFile | null> {
+  try {
+    const file = JSON.parse(await readFile(path, "utf8")) as RagFixtureFile
+    return file.kind === "chat-eval-rag-fixtures" ? file : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Grounding, checked in CODE rather than by the judge.
+ *
+ * The LLM judge passed `g-no-invented-citation` 17 of 17 while answers were
+ * citing scripture from memory, so it cannot be trusted with this. A URL is
+ * either in the passages the model was served or it is not — that is a set
+ * membership test, and set membership does not need a model.
+ */
+function ungroundedCitations(
+  answers: AnswerRun,
+  fixtures: RagFixtureFile,
+): { total: number; offenders: Array<{ cell: string; url: string }> } {
+  const { urls } = citableSources(fixtures)
+  const offenders: Array<{ cell: string; url: string }> = []
+  let total = 0
+  for (const answer of answers.answers) {
+    if (!answer.text) continue
+    // Trailing punctuation is prose, not part of the URL.
+    const cited = answer.text.match(/https?:\/\/[^\s)\]<>"'`]+/g) ?? []
+    for (const raw of cited) {
+      const url = raw.replace(/[.,;:!?]+$/, "")
+      total += 1
+      if (!urls.has(url)) {
+        offenders.push({
+          cell: `${answer.questionId} x ${shortModel(answer.model)}`,
+          url,
+        })
+      }
+    }
+  }
+  return { total, offenders }
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   const inPath = resolve(process.cwd(), flag(argv, "in") ?? DEFAULT_IN)
@@ -94,6 +138,9 @@ async function main(): Promise<void> {
   )
   const run = JSON.parse(await readFile(inPath, "utf8")) as JudgeRun
   const answers = await loadAnswers(answersPath)
+  const fixtures = await loadFixtures(
+    resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
+  )
   const outPath = resolve(
     process.cwd(),
     flag(argv, "out") ?? `prototype-runs/chat-eval/report-${run.mode}.md`,
@@ -163,6 +210,33 @@ async function main(): Promise<void> {
       )
     }
     if (fabricated.length > 0) sections.push("")
+  }
+
+  // Only meaningful when retrieval was in the loop, and only when the run SAYS
+  // so explicitly. With no passages served every citation is ungrounded by
+  // definition, and an unstamped legacy artifact must not be reported on as
+  // though it had retrieval.
+  const retrievalMode = run.identity.retrieval?.mode
+  if (
+    answers &&
+    fixtures &&
+    (retrievalMode === "fixtures" || retrievalMode === "tool-loop")
+  ) {
+    const grounding = ungroundedCitations(answers, fixtures)
+    sections.push(
+      "## Grounding (checked in code, not by the judge)",
+      "",
+      "Every URL the models cited, against the passages they were actually",
+      "served. Set membership — no model involved, so no fabrication.",
+      "",
+      `- URLs cited: **${grounding.total}**`,
+      `- **not retrievable (invented): ${grounding.offenders.length}**`,
+      "",
+    )
+    for (const offender of grounding.offenders.slice(0, 20)) {
+      sections.push(`- \`${offender.cell}\` — ${offender.url}`)
+    }
+    if (grounding.offenders.length > 0) sections.push("")
   }
 
   sections.push("## Errors (not counted as failures)", "")
