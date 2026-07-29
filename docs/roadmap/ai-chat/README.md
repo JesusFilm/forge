@@ -15,8 +15,8 @@ from the main DS Year 1 roadmap.
 
 - **Total tickets:** 43
 - ✅ **Complete:** 37
-- 🟡 **In progress:** 0
-- 🔵 **Not started:** 6
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 5
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -65,4 +65,4 @@ from the main DS Year 1 roadmap.
 | [feat-304](feat-304-chat-production-egress-pin.md)                 | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | ✅ complete    | [#1731](https://github.com/JesusFilm/forge/pull/1731)                                                        |
 | [feat-305](feat-305-chat-healthcheck.md)                           | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1762](https://github.com/JesusFilm/forge/pull/1762)                                                        |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                 | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | ✅ complete    | [#1765](https://github.com/JesusFilm/forge/pull/1765), [#1768](https://github.com/JesusFilm/forge/pull/1768) |
-| [feat-321](feat-321-langfuse-tracing.md)                           | Langfuse tracing for the Seeker agent (stub — decision capture)              | jaco     | P2       | 2026-09-01 | 3    | 🔵 not-started | —                                                                                                            |
+| [feat-321](feat-321-langfuse-tracing.md)                           | Langfuse tracing for the Seeker agent (stub — decision capture)              | jian wei | P2       | 2026-09-01 | 3    | 🟡 in-progress | —                                                                                                            |
