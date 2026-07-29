@@ -5,16 +5,17 @@
  * loads a dotenv file for them. This does it explicitly, and it is the only
  * place a key is read.
  *
- * Resolution order — first one set wins:
- *   1. CHAT_EVAL_OPENROUTER_API_KEY  — dedicated eval key (preferred)
- *   2. OPENROUTER_API_PAID_KEY       — the shared paid key the repo already uses
- *   3. OPENROUTER_API_KEY            — legacy fallback
+ * `CHAT_EVAL_OPENROUTER_API_KEY` IS THE ONLY ACCEPTED KEY. There is no
+ * fallback to `OPENROUTER_API_PAID_KEY` or `OPENROUTER_API_KEY`, on purpose.
  *
- * The dedicated key lives in Doppler under `forge-rag` / `dev`; fetch it with
- * `pnpm --filter @forge/mastra proto:fetch-key`. It exists for cost
- * attribution and independent revocation — the eval bills to its own key
- * rather than to admin's — NOT because the shared keys lack access. The
- * fallbacks stay so a run never hard-blocks on provisioning.
+ * A fallback chain here means an unprovisioned operator silently bills a full
+ * eval run to admin's production credential and never finds out. Either you
+ * have the eval's own key — its own spend, its own revocation, its own rate
+ * limit — or the run stops and says so. Convenience is not worth an
+ * accidental charge against a credential this tool has no business using.
+ *
+ * The key lives in Doppler under `forge-rag` / `dev`; fetch it with
+ * `pnpm --filter @forge/mastra proto:fetch-key`.
  */
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
@@ -49,32 +50,51 @@ export function loadEnvFiles(cwd = process.cwd()): void {
   }
 }
 
-export const KEY_VARIABLES = [
-  "CHAT_EVAL_OPENROUTER_API_KEY",
-  "OPENROUTER_API_PAID_KEY",
-  "OPENROUTER_API_KEY",
-] as const
+/** The one and only key this prototype will use. No siblings, no fallbacks. */
+export const KEY_VARIABLE = "CHAT_EVAL_OPENROUTER_API_KEY" as const
+
+/** Keys that must NEVER be picked up here — see the header. */
+const REFUSED_KEYS = ["OPENROUTER_API_PAID_KEY", "OPENROUTER_API_KEY"] as const
 
 export function resolveOpenRouterKey(): { key: string; source: string } | null {
   loadEnvFiles()
-  for (const name of KEY_VARIABLES) {
-    const value = process.env[name]
-    if (value != null && value.trim().length > 0) {
-      return { key: value.trim(), source: name }
-    }
+  const value = process.env[KEY_VARIABLE]
+  if (value == null || value.trim().length === 0) return null
+  return { key: value.trim(), source: KEY_VARIABLE }
+}
+
+/**
+ * Call before doing any work. A missing key is a setup fault, not a result:
+ * without this the runner grinds through every cell, records a wall of
+ * identical failures, and writes an output file that looks like a run.
+ */
+export function requireOpenRouterKey(): void {
+  if (resolveOpenRouterKey() == null) {
+    throw new Error(keyHelpText())
   }
-  return null
 }
 
 export function keyHelpText(): string {
+  const alsoPresent = REFUSED_KEYS.filter(
+    (name) => (process.env[name] ?? "").trim().length > 0,
+  )
   return [
-    "No OpenRouter key found. Set any one of:",
-    ...KEY_VARIABLES.map((name) => `  ${name}`),
+    `${KEY_VARIABLE} is not set. This is the only key the eval accepts.`,
     "",
-    "Fetch the dedicated key from Doppler (forge-rag / dev):",
+    "Fetch it from Doppler (forge-rag / dev):",
     "  pnpm --filter @forge/mastra proto:fetch-key",
     "",
     "Or set it by hand in apps/mastra/.env.local (gitignored):",
-    "  CHAT_EVAL_OPENROUTER_API_KEY=sk-or-v1-...",
+    `  ${KEY_VARIABLE}=sk-or-v1-...`,
+    ...(alsoPresent.length > 0
+      ? [
+          "",
+          `Refusing to use ${alsoPresent.join(" / ")}, which ${
+            alsoPresent.length > 1 ? "are" : "is"
+          } set here.`,
+          `That credential belongs to another surface; the eval must never`,
+          "bill a run to it.",
+        ]
+      : []),
   ].join("\n")
 }

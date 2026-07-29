@@ -8,13 +8,14 @@
  * step 2 replays against its output for cents.
  *
  *   pnpm --filter @forge/mastra proto:answers
- *   pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it:free
+ *   pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it
  */
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 
+import { requireOpenRouterKey } from "./env"
 import { answeringModelsByIds, costUsd } from "./models"
 import { completeText, PrototypeLlmError } from "./openrouter"
 import { promptVariantById, PROMPT_NO_RETRIEVAL } from "./prompt"
@@ -64,6 +65,10 @@ function csv(value: string | undefined): string[] {
 }
 
 async function main(): Promise<void> {
+  // Before anything paid or slow. A missing key must not become 18 identical
+  // failure rows and an output file that looks like a run happened.
+  requireOpenRouterKey()
+
   const argv = process.argv.slice(2)
 
   const promptId = flag(argv, "prompt") ?? PROMPT_NO_RETRIEVAL.id

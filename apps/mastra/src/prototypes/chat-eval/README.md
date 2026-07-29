@@ -45,8 +45,10 @@ its own key and can be revoked without touching any other surface:
 pnpm --filter @forge/mastra proto:fetch-key   # -> apps/mastra/.env.local (gitignored)
 ```
 
-`OPENROUTER_API_PAID_KEY` / `OPENROUTER_API_KEY` still work as fallbacks, so a run
-never hard-blocks on provisioning.
+**No fallback.** `OPENROUTER_API_PAID_KEY` and `OPENROUTER_API_KEY` are deliberately
+refused, even when set. A fallback chain means an unprovisioned operator silently
+bills a run to admin's production credential and never finds out. Without the eval's
+own key the run stops before its first call.
 
 > **Not a CI job.** No workflow needs a secret for this — it is slow,
 > non-deterministic, and costs money per invocation. Operator-run only.
@@ -56,7 +58,7 @@ never hard-blocks on provisioning.
 pnpm --filter @forge/mastra proto:answers
 
 # smoke first: one question, one model, ~1 call
-pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it:free
+pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it
 
 # Step 2 — judge the saved answers. Re-runnable, cheap.
 pnpm --filter @forge/mastra proto:judge -- --mode=verdicts

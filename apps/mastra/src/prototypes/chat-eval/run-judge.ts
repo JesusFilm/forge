@@ -18,6 +18,7 @@
 import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 
+import { requireOpenRouterKey } from "./env"
 import { costUsd, JUDGE_MODEL } from "./models"
 import { completeJson, PrototypeLlmError } from "./openrouter"
 import { criteriaFor, questionById, type Criterion } from "./questions"
@@ -371,6 +372,8 @@ async function judgeOne(
 }
 
 async function main(): Promise<void> {
+  requireOpenRouterKey()
+
   const argv = process.argv.slice(2)
   const mode = (flag(argv, "mode") ?? "verdicts") as JudgeMode
   if (mode !== "verdicts" && mode !== "scores") {
