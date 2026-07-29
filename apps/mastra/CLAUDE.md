@@ -491,7 +491,11 @@ returns ranked, cited **passages** (`{ status, sources, message? }`) and the
 agent's own LLM synthesizes the source-attributed answer — the tool generates
 nothing. When the RAG env vars are unset (or the service is unreachable), the
 tool returns an explicit `unavailable` status and the agent says it cannot
-ground an answer; retrieval is never required for the app to boot. Model is an
+ground an answer; retrieval is never required for the app to boot. Since
+feat-272 the system prompt is **Langfuse-managed** (prompt `seeker-system`,
+whole prompt — no composition split) with the full working text kept as the
+compiled-in fallback, served byte-identically when Langfuse is unconfigured
+or unreachable — see "Langfuse prompt management" below. Model is an
 env-gated fallback chain built by `buildSeekerModelList()` (feat-237). Default:
 the two free Gemma 4 OpenRouter models —
 `openrouter/google/gemma-4-31b-it:free` (primary, 1 retry) then
@@ -659,7 +663,10 @@ surface to anyone who can reach the Mastra endpoint. "Studio-only" is the
 `apps/mastra-gateway` + Railway **network** boundary, **NOT** the
 `seeker-route-isolation.test.ts` guard (which now pins the single
 default-off `/forge-seeker` exposure and that no OTHER route wires the agent in
-— see "Service route" below). The safety line bounds leaked-output blast radius; the
+— see "Service route" below). Since feat-272 this surface also returns the
+RESOLVED system prompt verbatim (`/api/agents*` serializes
+`getInstructions()`), so the Langfuse-managed tuned text is confidential
+only up to that network boundary and must never carry secrets. The safety line bounds leaked-output blast radius; the
 `redactPromptBodies` processor blanks span `input`/`output` in traces. Do not
 expose to a public surface before the deferred guardrail gate AND a gateway
 access decision.
@@ -781,9 +788,17 @@ the release mechanism** — it changes agent behaviour with no PR, CI or deploy 
 and there is **no technical control over who may move it**: protected labels
 are a Team/Enterprise feature this organisation is not on, and they work by
 blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
-inert here regardless (feat-296). The control that actually bites is feat-272's
-composition split, which keeps the SAFETY line and the `retrieveAnswer`-coupled
-citation wording code-owned so they still go through PR and CI. KTD8 mandated per-environment projects; it was reversed before provisioning
+inert here regardless (feat-296). **Whole-prompt decision (owner,
+2026-07-29, feat-272 item 2 — supersedes the composition split this paragraph
+previously prescribed):** the ENTIRE seeker instruction set — SAFETY line and
+`retrieveAnswer`-coupled citation wording included — is Langfuse-managed as
+one prompt; nothing is code-owned beyond the byte-identical fallback
+constant, so a label move can change every line. What bounds it: the small
+all-developer roster (a snapshot) and the PR-reviewed fallback as known-good
+rollback text. NO control DETECTS a label move to valid-but-wrong text — it
+resolves as a healthy fresh `source: "langfuse"` serve, invisible to
+feat-272 item 5's fallback/stale alerting; item 5's version/source span
+stamping (open) is post-hoc attribution, not detection. KTD8 mandated per-environment projects; it was reversed before provisioning
 began because `apps/mastra` has one deployed environment, the same people hold
 every key, and prompt versions/labels are project-scoped with no cross-project
 copy (per-environment projects make promotion a manual re-authoring).
@@ -795,11 +810,40 @@ sends data to Langfuse. Mastra's own spans go to a local DuckDB store with
 Langfuse tracing is separate, unbuilt work — see
 `docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`.
 
-**Nothing consumes the helper yet.** It is a standalone module proven by
-tests (including a seeker-scenario block simulating the chat agent resolving
-its system prompt). Integration — seeker wiring and the prompt-composition
-split, SWR refresh, version pinning, and sustained-fallback alerting — is the
-tracked follow-up ticket
+**The seeker agent is the helper's one consumer (feat-272, 2026-07-29).**
+`seeker-agent.ts` backs its `instructions` with `getManagedPrompt` — prompt
+name `seeker-system` (compile-time constant `SEEKER_SYSTEM_PROMPT_NAME`), no
+label pinned in code (env resolution: `LANGFUSE_PROMPT_DEFAULT_LABEL` >
+`production`) — through the exported `createSeekerInstructionsResolver`
+factory; `SEEKER_SYSTEM_PROMPT_FALLBACK` is the full working prompt served
+byte-identically whenever Langfuse is unconfigured or unreachable. The WHOLE
+prompt is Langfuse-managed (no composition split — see the whole-prompt
+decision above), so editing the fallback, `retrieve-answer.ts`'s status
+literals, or its message constants requires updating the `seeker-system`
+prompt in the Langfuse UI (every label) in the same change — the pinning
+test in `seeker-agent.test.ts` makes that loud. **Seeding (operator, Langfuse
+UI):** the `seeker-system` prompt must be created manually — version 1 body
+byte-identical to `SEEKER_SYSTEM_PROMPT_FALLBACK`, labels `production` AND
+`development`, and it must never carry secrets (the resolved prompt is
+served verbatim over `/api/agents*` — see Containment); until then every
+environment serves the byte-identical
+fallback (`reason=rejected`/404, one log line per cooldown window).
+**Retraction semantics (decided at wiring, feat-272):** deleting the prompt,
+removing its label, or revoking the key does NOT retract text already cached
+in a running process (serve-stale is the outage protection). Per-trigger:
+bad version on a trusted setup → re-point the label to a known-good version
+(≤ one 60s TTL; up to one extra cooldown window if a failure cooldown is
+active). Prompt deleted or key revoked → the label path is INERT (nothing to
+point at / every refetch 401s and re-arms the cooldown) — unset `LANGFUSE_*`
+and redeploy is the only retraction. Compromised key → label re-pointing is
+a race against a live hostile writer: rotate/revoke the key pair FIRST, then
+unset + redeploy, and do not restore `LANGFUSE_*` until the credential is
+replaced. Teardown order: unset `LANGFUSE_BASE_URL` first (or clear the
+whole group in one Railway edit) — clearing `LANGFUSE_ALLOWED_HOSTS` while
+the base URL is set arms the boot guard, the deploy fails its healthcheck,
+and the OLD process keeps serving the cached text. No other agent, workflow, or
+route consumes the helper. Remaining feat-272 items — SWR refresh, version
+pinning, sustained-fallback alerting + span stamping — stay tracked in
 `docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`.
 
 **Smoke seeding convention:** the opt-in real-credential smoke

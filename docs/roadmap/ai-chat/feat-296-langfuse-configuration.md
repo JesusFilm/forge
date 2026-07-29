@@ -75,6 +75,14 @@ variables are set on the production Railway service in the safe order
   been corrected in place) — with a small, all-developer organisation it was
   ceremony without a control behind it. feat-272 item 6 now records the
   label-move property as a fact to know, not a sign-off to obtain.
+  **[AMENDED 2026-07-29]** The composition split cited above was itself
+  overruled by the owner's whole-prompt decision (feat-272 item 2): the
+  ENTIRE seeker prompt — SAFETY line included — is Langfuse-managed, so a
+  label move is bounded only by the all-developer roster snapshot and the
+  compiled-in fallback as PR-reviewed rollback text. No control DETECTS a
+  label move to valid-but-wrong text — it resolves as a healthy fresh
+  serve, invisible to feat-272 item 5's fallback/stale alerting; item 5's
+  version/source span stamping (open) is post-hoc attribution only.
 - **The production boot guard is CONFIRMED green.** The deploy triggered by
   merging [#1786](https://github.com/JesusFilm/forge/pull/1786) rebuilt
   `apps/mastra` and came up healthy with `LANGFUSE_BASE_URL` set, so
@@ -121,6 +129,7 @@ seed the smoke prompt, and set the env vars.
 > proposed remedy does not: protected labels are unavailable on this tier and
 > role-based, so inert here regardless (see step 6). What bounds a label move
 > is feat-272's composition split, not any access-control process.
+> **[AMENDED 2026-07-29 — the composition split was overruled; see feat-272 item 2's whole-prompt decision and the amended Residual-risk bullet above.]**
 > Supersession notes are recorded beside KTD8 in the plan and beside
 > Ruling 1 in
 > `docs/solutions/tooling-decisions/langfuse-prompt-api-contract-and-sdk-rejection.md`.
@@ -317,7 +326,9 @@ order:
   unreviewed production behavior change — belongs to feat-272. Its item 6
   records the property (no technical control exists) and its item 2, the
   composition split, is what actually bounds the blast radius. There is no
-  review to pass.
+  review to pass. **[AMENDED 2026-07-29]** Item 2 has since been decided the
+  other way — the whole prompt is Langfuse-managed, no composition split;
+  feat-272 items 2 and 6 record what bounds a label move now.
 - **Do not enable Langfuse tracing as part of this ticket.** Nothing sends
   traces today and the prompt helper cannot — it only reads. Traces would land
   in this same project and carry real conversation content, which is a

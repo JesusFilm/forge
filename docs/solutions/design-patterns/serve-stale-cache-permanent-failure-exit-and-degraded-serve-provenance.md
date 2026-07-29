@@ -1,7 +1,7 @@
 ---
 title: "Serve-stale caching with a fallback: exit on permanent failure, tag every degraded serve, validate every arm"
 date: "2026-07-22"
-last_updated: "2026-07-22"
+last_updated: "2026-07-29"
 category: "design-patterns"
 module: "apps/mastra"
 problem_type: "design_pattern"
@@ -493,6 +493,48 @@ bullet protects only the callers whose author read the ticket. The
 prose-obligation form is fine when the ticket is the mandatory next step, as it
 is here — but it decays the moment the helper is consumed by anyone who arrived
 via the module's (excellent) header comment rather than via feat-272.
+
+### Resolution at first consumption (2026-07-29 — feat-272 seeker wiring)
+
+The seeker agent became the helper's first production consumer
+([PR #1788](https://github.com/JesusFilm/forge/pull/1788)), and the three
+prose obligations above resolved as follows. **Laws 1 and 3 as general design
+laws stay open — both code gaps stand by choice**; what follows is the
+decision for THIS consumer, not a closure of either law.
+
+- **Law 1 — documentation branch chosen, serve-stale unweakened.** For the
+  seeker's system prompt, retraction is documented rather than coded, and it
+  is per-trigger: a bad version behind a trusted, intact setup retracts by
+  re-pointing the label to a known-good version (effective within one 60s
+  cache TTL); after a prompt DELETION or key REVOCATION the label path is
+  inert (no version to point at / every refetch 401s and re-arms the
+  cooldown), so unset-`LANGFUSE_*`-and-redeploy is the only retraction; and
+  against a COMPROMISED key, re-pointing races a live hostile writer — rotate
+  the key first, then unset and redeploy. Recorded at the resolver's JSDoc in
+  `apps/mastra/src/mastra/agents/seeker-agent.ts`, in `apps/mastra/CLAUDE.md`'s
+  Langfuse section, and as `[RESOLVED]` on the ticket bullet — so the decision
+  now travels with the code, not only with feat-272. The documentation branch
+  was defensible **here** because the cached content class is an agent prompt
+  whose worst stale outcome is an arbitrary Langfuse-authored version pinned
+  until restart — under feat-272's whole-prompt decision that can include a
+  version missing the SAFETY line entirely, since no portion is code-owned —
+  and that was accepted because the escape hatches are fast for a trusted
+  key, the restart path is unconditional, and serve-stale is the load-bearing
+  outage protection. A future consumer whose cached value carries safety- or
+  compliance-grade content it cannot afford to serve for even one TTL
+  (takedown, legal, PII) should choose the code branch instead: a
+  permanent-failure exit per this law's Guidance, decided at THAT wiring.
+- **Law 3 — pinned at THIS wiring; the code gap is unchanged.**
+  feat-272's tests pin a non-empty, full-working-prompt fallback (finding
+  #8's demand), including a last-line-SAFETY assertion. `buildFallbackResult`
+  still has no emptiness guard (asymmetric with layer 1's `empty_prompt`
+  rejection), so every NEW consumer must pin a non-empty, fully-working
+  fallback in its own wiring tests — nothing in the helper enforces it, and
+  an empty fallback reaches the agent verbatim with no failure signal.
+- **Law 2 — still open, now with the blind spot named at the source.** The
+  ticket's item 5 (sustained-fallback alerting) now records explicitly that a
+  `source: "fallback"`-only trigger misses stale serves and that the wiring's
+  text-only resolver seam must be reworked, not extended, when item 5 lands.
 
 ## Related
 
