@@ -47,10 +47,41 @@ import {
  * The seeded-prompt tests below turn a `rejected`/404 into an actionable
  * assertion failure pointing back at this header.
  *
- * To run:
- *   LANGFUSE_PROMPT_SMOKE_TEST=1 LANGFUSE_BASE_URL=... \
- *   LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=... \
- *   pnpm --filter @forge/mastra test -- langfuse-prompt-client.smoke
+ * TO RUN (this block is canonical — feat-296 points here rather than
+ * duplicating it). Put these THREE values in `apps/mastra/.env` (gitignored).
+ * They are the only ones this suite needs, and each maps to a distinct
+ * `config_missing` detail when absent, so a failure names the one you forgot:
+ *
+ *   LANGFUSE_BASE_URL    -> base_url_missing    (region-bound; the US cloud is
+ *                                                https://us.cloud.langfuse.com)
+ *   LANGFUSE_PUBLIC_KEY  -> public_key_missing  } use the LOCAL-DEV key pair,
+ *   LANGFUSE_SECRET_KEY  -> secret_key_missing  } never Railway's
+ *
+ * `LANGFUSE_ALLOWED_HOSTS` is NOT needed — the boot guard it feeds is
+ * `NODE_ENV === "production"`-gated and never fires locally.
+ * `LANGFUSE_PROMPT_DEFAULT_LABEL` is NOT needed — the tests below pass labels
+ * explicitly.
+ *
+ * Then, from the repo root:
+ *
+ *   (set -a; source <(grep '^LANGFUSE_' apps/mastra/.env); set +a; \
+ *    LANGFUSE_PROMPT_SMOKE_TEST=1 \
+ *    pnpm --filter @forge/mastra test -- langfuse-prompt-client.smoke)
+ *
+ * WHY THAT SHAPE: **Vitest does not load `.env` in this app** — there is no
+ * vitest config and no dotenv anywhere in the test path — so the values must
+ * reach the test process as real environment variables. That is what the
+ * `source` is for, and why a `config_missing` failure here almost always means
+ * the file was never read rather than that the credentials are wrong. The
+ * subshell keeps the values out of the interactive shell; the `grep` keeps
+ * everything else in the file (DATABASE_URL, other API keys) out of the test
+ * process; and no credential value ever reaches the shell history, because
+ * nothing secret appears on the command line. Requires plain `KEY=value` lines
+ * — an `export ` prefix or a quoted multi-line value is silently dropped by the
+ * line-oriented grep. This exact form is the one that ran green and that a
+ * security review approved; if the test path ever gains a vitest setup file
+ * with dotenv, or routes through the mastra CLI (which force-writes `.env`
+ * over process env), the narrowing is silently defeated — revisit this block.
  */
 
 const RUN_LANGFUSE_SMOKE = env.LANGFUSE_PROMPT_SMOKE_TEST === "1"

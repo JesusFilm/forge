@@ -92,6 +92,15 @@ management" section in `apps/mastra/CLAUDE.md`, an ownership bullet in
   stale-while-revalidate, explicit version pinning, sustained-fallback alerting
   and span stamping, and the Langfuse workspace access-control review.
 
+  > **[SUPERSEDED 2026-07-29]** The access-control review was dropped. No
+  > technical control exists behind it — protected labels are a
+  > Team/Enterprise feature this organisation is not on, and they are
+  > role-based so inert here regardless — and a sign-off process over a small
+  > all-developer roster is ceremony without a control. feat-272 item 6 now
+  > records the label-move property as a fact to know; item 2's composition
+  > split is what actually bounds it. See
+  > `docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`.
+
 Two risks named in the plan remain live and unmitigated by this arc because
 nothing consumes the helper yet — **silent divergence** (production serving the
 fallback while operators assume the tuned prompt is live; provenance and the

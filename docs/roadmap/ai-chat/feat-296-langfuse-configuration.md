@@ -3,7 +3,7 @@ id: "feat-296"
 title: "Configure and provision Langfuse for managed seeker prompts"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-27"
 duration: 1
 depends_on: []
@@ -12,6 +12,86 @@ blocks:
 tags:
   - "infrastructure"
   - "ai-pipeline"
+---
+
+## Resolution
+
+**Shipped:** 2026-07-29 via [PR #1783](https://github.com/JesusFilm/forge/pull/1783)
+(`docs(chat): one Langfuse project with labels, reversing KTD8`) for the
+topology reversal, and
+[PR #1786](https://github.com/JesusFilm/forge/pull/1786)
+(`docs(chat): record Langfuse provisioning, complete feat-296`) for the
+provisioning record. Provisioning itself is operator work in the Langfuse and
+Railway dashboards, not code.
+
+**What landed.** One Langfuse project, **`forge-mastra`**, in the **US** region
+of the same organisation as `JesusFilm/core`'s Journeys project — the plan's
+KTD8 per-environment-projects mandate was reversed before any provisioning
+began (see the topology decision below). Two key pairs live in that project,
+one for Railway and one for local dev, so a leaked laptop key is revoked
+without rotating the production credential. The smoke prompt
+`forge-mastra-smoke/text-prompt` is seeded with two versions under two labels
+(`production` / `smoke`), and the opt-in real-credential smoke **runs green** —
+closing the real-contract gate that the mocked suite structurally cannot:
+live HTTP Basic auth, response shape, label selection, URL encoding of the `/`
+in the prompt name, and the 404-as-`rejected` contract. All four `LANGFUSE_*`
+variables are set on the production Railway service in the safe order
+(allowlist and keys first, `LANGFUSE_BASE_URL` last and alone).
+
+**Deviations and findings.**
+
+- **Protected labels are not available and would not help.** They are a
+  Team/Cloud and Enterprise feature, and they work by blocking the `viewer` and
+  `member` roles while still permitting `admin` and `owner`. This organisation
+  is not on that tier (project-level roles are also unavailable), and everyone
+  in it is an admin-or-owner developer, so the control would be inert even if
+  purchased. **There is therefore no technical control over who moves the
+  `production` label.** Step 6 below and the four other places that implied
+  this control was coming have been corrected. See
+  [the Langfuse changelog](https://langfuse.com/changelog/2025-04-02-protected-prompt-labels).
+- **Vitest does not load `.env` in this app** (no vitest config, no dotenv), so
+  the documented smoke invocation did not work as written — the values never
+  reached the test process, which surfaces as `config_missing` and reads like a
+  credentials problem. The corrected, verified invocation is in the header of
+  `apps/mastra/src/services/langfuse-prompt-client.smoke.test.ts`, which is
+  canonical; Verification below points at it rather than duplicating it. It
+  sources only `LANGFUSE_*` inside a subshell, so no credential value reaches
+  the shell history, nothing else in the file is exposed to the test process,
+  and nothing persists in the interactive shell.
+- **No staging Mastra service exists to rehearse the boot guard on**, so the
+  base-URL-last ordering below was the entire safety margin. The two values
+  were verified by running the guard's own logic (`csvSet` + `new URL().hostname`)
+  against them before the final variable landed.
+
+**Residual risk / follow-ups.**
+
+- **Label-move governance is entirely procedural.** With no protected labels,
+  moving `production` changes agent behaviour with no PR, CI or deploy. The
+  mitigation that actually bites is feat-272's composition split, which keeps
+  the SAFETY line and the `retrieveAnswer`-coupled citation wording code-owned
+  so they still go through PR and CI; only tunable persona text is exposed to a
+  label move. **The blocking "access-control review" gate this ticket's body
+  and Constraints originally described was dropped** (those sections have since
+  been corrected in place) — with a small, all-developer organisation it was
+  ceremony without a control behind it. feat-272 item 6 now records the
+  label-move property as a fact to know, not a sign-off to obtain.
+- **The production boot guard was not confirmed green at the time of writing.**
+  An earlier Railway deploy failed with **empty build AND deploy logs**. The
+  evidence says that was a superseded/raced deploy rather than a real failure:
+  the two guard-relevant values were verified by running the guard's own logic
+  (`csvSet` + `new URL().hostname`) against them and they pass, and a guard
+  throw writes to stderr, so it would have appeared in the deploy logs.
+  Merging this PR touches `apps/mastra`, which triggers the rebuild and deploy
+  that confirms the "guard sanity in production" line in Verification below.
+  **If that deploy comes back red, reopen this ticket and fix it before
+  anything else** — this is the one claim here running slightly ahead of its
+  evidence.
+- **feat-272** — the seeker integration this ticket gates — is unblocked.
+- **feat-321** — Langfuse tracing — remains a deliberate stub. Nothing sends
+  traces today and the prompt helper cannot; it only reads.
+
+**Unblocked.** feat-272.
+
 ---
 
 ## Problem
@@ -37,10 +117,12 @@ seed the smoke prompt, and set the env vars.
 > already single-project-with-labels. The cost KTD8 never weighed: prompt
 > versions and labels are project-scoped with no cross-project copy, so
 > per-environment projects turn promotion into manual re-authoring with forked
-> version numbering. KTD8's **governance half survives at full strength** —
-> `production` stays a protected, admin-only label, and the label-move review
-> in feat-272 matters _more_ now, because the label move is the entire release
-> mechanism. Supersession notes are recorded beside KTD8 in the plan and beside
+> version numbering. **KTD8's governance concern survives and matters more
+> now**, because the label move becomes the entire release mechanism — but its
+> proposed remedy does not: protected labels are unavailable on this tier and
+> role-based, so inert here regardless (see step 6). What bounds a label move
+> is feat-272's composition split, not any access-control process.
+> Supersession notes are recorded beside KTD8 in the plan and beside
 > Ruling 1 in
 > `docs/solutions/tooling-decisions/langfuse-prompt-api-contract-and-sdk-rejection.md`.
 >
@@ -65,7 +147,7 @@ this ticket `blocks` feat-272, and feat-272 `depends_on` feat-296):
 
 - **Gates feat-272** (Seeker Langfuse-managed prompt integration).
   feat-272 must not enable production consumption until this provisioning is
-  done and its access-control review has passed.
+  done.
 - **Sibling of feat-279** (Studio-editable prompt block — `blocked` by a
   `@mastra/editor` peer incompatibility). Langfuse is the external
   prompt-management path that does not depend on the Mastra Editor.
@@ -151,9 +233,10 @@ one service's own env vars rather than a two-service receiver/caller handoff).
    one-time smoke-seeding convention (below).
 6. `docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md` — KTD5
    (env-group all-optional), R9 (the fail-closed host guard), and KTD8 **with
-   its 2026-07-28 supersession note**: the per-environment-projects half is
-   reversed (see the topology decision above); the protected-`production`-label
-   half stands. The Open Questions entry on hosting posture is answered by the
+   its 2026-07-28 supersession note and its 2026-07-29 amendment**: the
+   per-environment-projects half is reversed (see the topology decision above),
+   and the protected-`production`-label remedy is dropped as unavailable and
+   inert (see step 6). The Open Questions entry on hosting posture is answered by the
    same-org decision above — Langfuse Cloud, same organisation and therefore
    same region as Journeys.
 
@@ -204,13 +287,16 @@ order:
    the dev-labelled version. Local dev may also leave the whole group unset
    entirely: unconfigured serves the compiled-in fallback, which is the full
    working prompt.
-6. **Verify the tier, then make `production` a protected (admin-only-mutation)
-   label.** Protected labels may be a paid-tier feature — check before
-   promising the control. If the tier does not offer it, say so plainly here
-   and carry label-move discipline into feat-272's access-control review
-   instead of claiming a control that does not exist. Note that on a project
-   with a small admin set a protected label is thin protection anyway (any
-   admin can move it); the review is what carries the weight.
+6. **Protected labels — checked, and NOT available. Nothing to do.** They are a
+   Team/Cloud and Enterprise feature; this organisation is not on that tier
+   (the project-role option in project settings reports the same). Do not
+   spend time looking for the toggle. Even on that tier it would be inert
+   here: protection works by blocking the `viewer` and `member` roles while
+   still permitting `admin` and `owner`, and everyone in this organisation is
+   an admin-or-owner developer. **Conclusion: there is no technical control
+   over who moves the `production` label**, and there is no configuration that
+   would create one. See
+   [the Langfuse changelog](https://langfuse.com/changelog/2025-04-02-protected-prompt-labels).
 
 ## Constraints
 
@@ -229,29 +315,32 @@ order:
   keep it.
 - **Scope is provisioning + safe env rollout only.** Label-move governance —
   who may re-point `production` to a new version, since that becomes an
-  unreviewed production behavior change — belongs to feat-272's access-control
-  review (folded into the ai-chat guardrail release gate). Do not enable
-  production consumption before that review passes.
+  unreviewed production behavior change — belongs to feat-272. Its item 6
+  records the property (no technical control exists) and its item 2, the
+  composition split, is what actually bounds the blast radius. There is no
+  review to pass.
 - **Do not enable Langfuse tracing as part of this ticket.** Nothing sends
   traces today and the prompt helper cannot — it only reads. Traces would land
   in this same project and carry real conversation content, which is a
   deliberate decision tracked separately in
   `docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`.
 
-## Verify in the Langfuse dashboard — do not assume
+## Verified in the Langfuse dashboard — answers recorded
 
-None of this is visible from the repo. Record what you find here as you go.
+None of this was visible from the repo. Answers as of 2026-07-29:
 
-- **Region** of the shared organisation → derives `LANGFUSE_BASE_URL` and the
-  exact `LANGFUSE_ALLOWED_HOSTS` hostname.
-- **Whether protected labels exist on the tier** — step 6 depends on it.
-- **The organisation's member roster**, to confirm the all-developers
-  assumption the same-org decision rests on.
-- **That multiple key pairs per project are supported**, plus the revocation
-  flow — step 3 depends on it.
-- **Whether scoped or read-only API keys have shipped** since the plan's
-  2026-07 research (Langfuse discussions #1692). If so, several risk statements
-  in the plan and the SDK-rejection solutions doc need re-deriving.
+- **Region:** **US** → `LANGFUSE_BASE_URL=https://us.cloud.langfuse.com` and
+  `LANGFUSE_ALLOWED_HOSTS=us.cloud.langfuse.com` (bare hostname).
+- **Protected labels:** **not available** on this tier, and role-based so inert
+  here regardless — see step 6.
+- **Member roster:** all developers, all in-organisation. This is the
+  assumption the same-org decision rests on, and it is a snapshot — revisit if
+  the roster admits non-developers.
+- **Multiple key pairs per project:** supported. Two were created, Railway and
+  local dev.
+- **Scoped / read-only API keys:** still not offered, so the plan's 2026-07
+  research (Langfuse discussions #1692) holds. Re-check at tracing time —
+  feat-321 carries that as an entry condition.
 
 ## Verification
 
@@ -260,9 +349,13 @@ None of this is visible from the repo. Record what you find here as you go.
   (already pinned by the #1621 test suite). Nothing to do beyond confirming the
   deploy is green.
 - **Configured smoke passes:** against the `forge-mastra` project using the
-  local-dev key pair, the opt-in real-credential smoke runs green —
-  `LANGFUSE_PROMPT_SMOKE_TEST=1 LANGFUSE_BASE_URL=… LANGFUSE_PUBLIC_KEY=…
-LANGFUSE_SECRET_KEY=… pnpm --filter @forge/mastra test -- langfuse-prompt-client.smoke`.
+  local-dev key pair, the opt-in real-credential smoke runs green. **Run it via
+  the invocation documented in the header of
+  `apps/mastra/src/services/langfuse-prompt-client.smoke.test.ts`** — that
+  header is canonical and is not duplicated here, because the two would drift.
+  Note that **Vitest does not load `.env` in this app**, so the values have to
+  be sourced into the environment explicitly; a missing-config failure here
+  usually means the file was never read, not that the credentials are wrong.
 - **Guard sanity in production:** base URL `https://` + hostname present in
   `LANGFUSE_ALLOWED_HOSTS` → boots; a mismatch (http, wrong host, port, or
   allowlist unset) → the deploy **fails its healthcheck** and the previous

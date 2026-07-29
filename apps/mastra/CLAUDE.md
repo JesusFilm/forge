@@ -776,10 +776,14 @@ default when `LANGFUSE_PROMPT_DEFAULT_LABEL` is unset) and `development`
 (local). Additional agents become additional prompt names in this project,
 never additional projects. Two key pairs live inside it — one for Railway, one
 for local dev — so a leaked local key is revoked without rotating production's;
-never copy the Railway key onto a laptop. `production` should be a protected
-label (admin-only mutation) where the tier allows it, and the label move IS the
-release mechanism, so feat-272's access-control review is what actually bounds
-it. KTD8 mandated per-environment projects; it was reversed before provisioning
+never copy the Railway key onto a laptop. **Moving the `production` label IS
+the release mechanism** — it changes agent behaviour with no PR, CI or deploy —
+and there is **no technical control over who may move it**: protected labels
+are a Team/Enterprise feature this organisation is not on, and they work by
+blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
+inert here regardless (feat-296). The control that actually bites is feat-272's
+composition split, which keeps the SAFETY line and the `retrieveAnswer`-coupled
+citation wording code-owned so they still go through PR and CI. KTD8 mandated per-environment projects; it was reversed before provisioning
 began because `apps/mastra` has one deployed environment, the same people hold
 every key, and prompt versions/labels are project-scoped with no cross-project
 copy (per-environment projects make promotion a manual re-authoring).
@@ -794,8 +798,8 @@ Langfuse tracing is separate, unbuilt work — see
 **Nothing consumes the helper yet.** It is a standalone module proven by
 tests (including a seeker-scenario block simulating the chat agent resolving
 its system prompt). Integration — seeker wiring and the prompt-composition
-split, SWR refresh, version pinning, sustained-fallback alerting, and the
-label-governance review — is the tracked follow-up ticket
+split, SWR refresh, version pinning, and sustained-fallback alerting — is the
+tracked follow-up ticket
 `docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`.
 
 **Smoke seeding convention:** the opt-in real-credential smoke
