@@ -75,17 +75,16 @@ variables are set on the production Railway service in the safe order
   been corrected in place) — with a small, all-developer organisation it was
   ceremony without a control behind it. feat-272 item 6 now records the
   label-move property as a fact to know, not a sign-off to obtain.
-- **The production boot guard was not confirmed green at the time of writing.**
-  An earlier Railway deploy failed with **empty build AND deploy logs**. The
-  evidence says that was a superseded/raced deploy rather than a real failure:
-  the two guard-relevant values were verified by running the guard's own logic
-  (`csvSet` + `new URL().hostname`) against them and they pass, and a guard
-  throw writes to stderr, so it would have appeared in the deploy logs.
-  Merging this PR touches `apps/mastra`, which triggers the rebuild and deploy
-  that confirms the "guard sanity in production" line in Verification below.
-  **If that deploy comes back red, reopen this ticket and fix it before
-  anything else** — this is the one claim here running slightly ahead of its
-  evidence.
+- **The production boot guard is CONFIRMED green.** The deploy triggered by
+  merging [#1786](https://github.com/JesusFilm/forge/pull/1786) rebuilt
+  `apps/mastra` and came up healthy with `LANGFUSE_BASE_URL` set, so
+  `assertLangfuseBaseUrlAllowedForProduction()` actually ran and was satisfied.
+  That closes the "guard sanity in production" line in Verification below.
+  Worth recording for next time: an **earlier** deploy failed with **empty
+  build AND deploy logs**, which was a superseded/raced deploy rather than a
+  real failure — an env-var-only change redeploys the existing image, so no
+  build logs are produced, and a genuine guard throw writes to stderr and would
+  have appeared. Empty on both is the signature of a deploy that never ran.
 - **feat-272** — the seeker integration this ticket gates — is unblocked.
 - **feat-321** — Langfuse tracing — remains a deliberate stub. Nothing sends
   traces today and the prompt helper cannot; it only reads.
