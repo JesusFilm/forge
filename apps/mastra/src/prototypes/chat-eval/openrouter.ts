@@ -198,6 +198,147 @@ export async function completeText(input: {
   }
 }
 
+export type ToolCallRecord = {
+  name: string
+  /** The query the MODEL chose — not the question text. Worth recording: a
+   *  model that reformulates badly retrieves badly, and that is a real defect. */
+  arguments: string
+  servedFrom: "fixture" | "fixture-fallback"
+}
+
+export type ToolLoopCompletion = TextCompletion & {
+  toolCalls: ToolCallRecord[]
+  /** True when the model never called the tool despite being told to always. */
+  skippedTool: boolean
+}
+
+/**
+ * A real tool-calling turn, the way the agent does it.
+ *
+ * The model is given the tool definition and decides to call it; we serve the
+ * result from a fixture and hand it back as a `role: "tool"` message. This is
+ * deliberately NOT pre-injection of passages into the prompt — the message
+ * sequence a provider sees (assistant with `tool_calls`, then `tool` with the
+ * matching `tool_call_id`) is what production produces, and models behave
+ * differently when passages arrive as a tool result versus as prompt text.
+ *
+ * `resolve` receives the model's own query so a caller can serve a per-query
+ * fixture and report whether it was an exact hit or a fallback.
+ */
+export async function completeWithTools(input: {
+  model: string
+  system: string
+  user: string
+  tools: unknown[]
+  resolve: (
+    toolName: string,
+    args: string,
+  ) => Promise<{ result: unknown; servedFrom: ToolCallRecord["servedFrom"] }>
+  maxTokens?: number
+  temperature?: number
+  timeoutMs?: number
+  maxSteps?: number
+}): Promise<ToolLoopCompletion> {
+  const messages: Record<string, unknown>[] = [
+    { role: "system", content: input.system },
+    { role: "user", content: input.user },
+  ]
+  const toolCalls: ToolCallRecord[] = []
+  const usage: Usage = { input: 0, output: 0 }
+  let latencyMs = 0
+  // Matches STEP_CAPS.toolCallingTurn in the real route.
+  const maxSteps = input.maxSteps ?? 8
+
+  for (let step = 0; step < maxSteps; step++) {
+    const { payload, latencyMs: stepMs } = await post(
+      {
+        model: input.model,
+        messages,
+        tools: input.tools,
+        max_tokens: input.maxTokens ?? 1_600,
+        temperature: input.temperature ?? 0.7,
+      },
+      input.timeoutMs ?? 90_000,
+    )
+    latencyMs += stepMs
+    const stepUsage = readUsage(payload)
+    usage.input += stepUsage.input
+    usage.output += stepUsage.output
+
+    const { content, finishReason, rawToolCalls, message } =
+      readChoiceWithTools(payload)
+
+    if (rawToolCalls.length === 0) {
+      return {
+        text: content ?? "",
+        finishReason,
+        usage,
+        latencyMs,
+        toolCalls,
+        skippedTool: toolCalls.length === 0,
+      }
+    }
+
+    // Echo the assistant turn back verbatim; providers reject a tool result
+    // that does not follow the assistant message that requested it.
+    messages.push(message)
+
+    for (const call of rawToolCalls) {
+      const name = call.function?.name ?? ""
+      const args = call.function?.arguments ?? "{}"
+      const { result, servedFrom } = await input.resolve(name, args)
+      toolCalls.push({ name, arguments: args, servedFrom })
+      messages.push({
+        role: "tool",
+        tool_call_id: call.id,
+        content: JSON.stringify(result),
+      })
+    }
+  }
+
+  throw new PrototypeLlmError(
+    "request_failed",
+    `tool loop exceeded ${maxSteps} steps`,
+  )
+}
+
+type RawToolCall = {
+  id: string
+  function?: { name?: string; arguments?: string }
+}
+
+function readChoiceWithTools(payload: unknown): {
+  content: string | null
+  finishReason: string | null
+  rawToolCalls: RawToolCall[]
+  message: Record<string, unknown>
+} {
+  const empty = {
+    content: null,
+    finishReason: null,
+    rawToolCalls: [],
+    message: {},
+  }
+  if (payload == null || typeof payload !== "object") return empty
+  const choices = (payload as { choices?: unknown }).choices
+  if (!Array.isArray(choices) || choices.length === 0) return empty
+  const choice = choices[0] as {
+    message?: Record<string, unknown>
+    finish_reason?: unknown
+  }
+  const message = choice.message ?? {}
+  const rawToolCalls = Array.isArray(message.tool_calls)
+    ? (message.tool_calls as RawToolCall[])
+    : []
+  return {
+    content: typeof message.content === "string" ? message.content : null,
+    finishReason:
+      typeof choice.finish_reason === "string" ? choice.finish_reason : null,
+    rawToolCalls,
+    message,
+  }
+}
+
 /**
  * Structured completion for the judge.
  *

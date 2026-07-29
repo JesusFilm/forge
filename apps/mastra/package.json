@@ -9,6 +9,7 @@
     "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
     "lint": "eslint .",
     "proto:fetch-key": "../../scripts/fetch-chat-eval-key.sh",
+    "proto:capture-rag": "pnpm exec tsx src/prototypes/chat-eval/capture-rag.ts",
     "proto:answers": "pnpm exec tsx src/prototypes/chat-eval/run-answers.ts",
     "proto:judge": "pnpm exec tsx src/prototypes/chat-eval/run-judge.ts",
     "proto:report": "pnpm exec tsx src/prototypes/chat-eval/run-report.ts",

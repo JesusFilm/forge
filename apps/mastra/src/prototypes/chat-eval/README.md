@@ -54,11 +54,20 @@ own key the run stops before its first call.
 > non-deterministic, and costs money per invocation. Operator-run only.
 
 ```bash
+# Step 0 (retrieval mode only) — record real RAG results as fixtures.
+# Needs a running JesusFilm RAG; commits a corpus snapshot so later runs are
+# reproducible and a re-index can never masquerade as a prompt regression.
+RAG_API_KEY=... pnpm --filter @forge/mastra proto:capture-rag
+
 # Step 1 — capture answers (questions x models). Writes answers.json.
 pnpm --filter @forge/mastra proto:answers
 
 # smoke first: one question, one model, ~1 call
 pnpm --filter @forge/mastra proto:answers -- --limit=1 --models=google/gemma-4-31b-it
+
+# with retrieval: the SHIPPED prompt + a real tool-calling loop served from
+# the fixtures. The only mode that can observe the citation rules.
+pnpm --filter @forge/mastra proto:answers -- --with-retrieval
 
 # Step 2 — judge the saved answers. Re-runnable, cheap.
 pnpm --filter @forge/mastra proto:judge -- --mode=verdicts

@@ -25,6 +25,15 @@ export type RunIdentity = {
   criteriaSha256: string
   answeringModels: string[]
   gitSha: string | null
+  /**
+   * Whether retrieval was in the loop, and over which corpus snapshot. A run
+   * with retrieval is NOT comparable to one without, and two fixture runs with
+   * different corpus hashes are not comparable to each other — otherwise a
+   * re-index reads as a prompt regression.
+   */
+  retrieval:
+    | { mode: "none" }
+    | { mode: "fixtures"; corpusSha256: string; topK: number }
 }
 
 /** Two runs may only be compared when every field here agrees. */
@@ -39,6 +48,14 @@ export function identityMismatch(
     problems.push("questions")
   if (left.answeringModels.join(",") !== right.answeringModels.join(","))
     problems.push("answering models")
+  if (left.retrieval.mode !== right.retrieval.mode)
+    problems.push("retrieval mode")
+  else if (
+    left.retrieval.mode === "fixtures" &&
+    right.retrieval.mode === "fixtures" &&
+    left.retrieval.corpusSha256 !== right.retrieval.corpusSha256
+  )
+    problems.push("corpus snapshot")
   return problems
 }
 
@@ -54,6 +71,14 @@ export type AnswerRecord = {
   costUsd: number | null
   latencyMs: number
   error?: string
+  /** Present only in retrieval mode. The query is the MODEL's, not ours. */
+  toolCalls?: Array<{
+    name: string
+    arguments: string
+    servedFrom: "fixture" | "fixture-fallback"
+  }>
+  /** Model never called the tool despite being told to always call it. */
+  skippedTool?: boolean
 }
 
 export type AnswerRun = {

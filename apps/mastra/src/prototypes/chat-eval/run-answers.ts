@@ -15,10 +15,26 @@ import { createHash } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 
+import { readFileSync } from "node:fs"
+
 import { requireOpenRouterKey } from "./env"
 import { answeringModelsByIds, costUsd } from "./models"
-import { completeText, PrototypeLlmError } from "./openrouter"
-import { promptVariantById, PROMPT_NO_RETRIEVAL } from "./prompt"
+import {
+  completeText,
+  completeWithTools,
+  PrototypeLlmError,
+  type ToolCallRecord,
+} from "./openrouter"
+import {
+  promptVariantById,
+  PROMPT_AS_SHIPPED,
+  PROMPT_NO_RETRIEVAL,
+} from "./prompt"
+import {
+  RETRIEVE_ANSWER_TOOL_SPEC,
+  RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+  type RagFixtureFile,
+} from "./rag"
 import {
   criteriaFor,
   QUESTIONS,
@@ -64,6 +80,59 @@ function csv(value: string | undefined): string[] {
     .filter((entry) => entry.length > 0)
 }
 
+const DEFAULT_FIXTURES = "src/prototypes/chat-eval/fixtures/rag-fixtures.json"
+
+function loadFixtures(path: string): RagFixtureFile {
+  const file = JSON.parse(readFileSync(path, "utf8")) as RagFixtureFile
+  if (file.kind !== "chat-eval-rag-fixtures") {
+    throw new Error(`${path} is not a chat-eval RAG fixture file`)
+  }
+  return file
+}
+
+/**
+ * Serves the tool result for whatever query the model chose.
+ *
+ * Exact query match is the honest case. When the model reformulates — which it
+ * does — we fall back to the fixture captured for THIS question and record that
+ * it was a fallback, because a reformulation served from the original
+ * question\'s passages is a slightly optimistic measurement and the report
+ * should say so rather than hide it.
+ */
+function fixtureResolver(fixtures: RagFixtureFile, questionId: string) {
+  const forQuestion = fixtures.fixtures.find(
+    (fixture) => fixture.questionId === questionId,
+  )
+  return async (_toolName: string, rawArgs: string) => {
+    let query = ""
+    try {
+      query = String(
+        (JSON.parse(rawArgs) as { query?: unknown }).query ?? "",
+      ).trim()
+    } catch {
+      query = ""
+    }
+    const exact = fixtures.fixtures.find(
+      (fixture) => fixture.query.trim() === query,
+    )
+    if (exact) return { result: exact.result, servedFrom: "fixture" as const }
+    if (forQuestion) {
+      return {
+        result: forQuestion.result,
+        servedFrom: "fixture-fallback" as const,
+      }
+    }
+    return {
+      result: {
+        status: "unavailable",
+        sources: [],
+        message: RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+      },
+      servedFrom: "fixture-fallback" as const,
+    }
+  }
+}
+
 async function main(): Promise<void> {
   // Before anything paid or slow. A missing key must not become 18 identical
   // failure rows and an output file that looks like a run happened.
@@ -71,8 +140,18 @@ async function main(): Promise<void> {
 
   const argv = process.argv.slice(2)
 
-  const promptId = flag(argv, "prompt") ?? PROMPT_NO_RETRIEVAL.id
+  // With retrieval the SHIPPED prompt is the right one — the ten tool lines are
+  // only meaningless when there is no tool. This is the whole point of the mode.
+  const withRetrieval = argv.includes("--with-retrieval")
+  const promptId =
+    flag(argv, "prompt") ??
+    (withRetrieval ? PROMPT_AS_SHIPPED.id : PROMPT_NO_RETRIEVAL.id)
   const prompt = promptVariantById(promptId)
+  const fixturesPath = resolve(
+    process.cwd(),
+    flag(argv, "fixtures") ?? DEFAULT_FIXTURES,
+  )
+  const fixtures = withRetrieval ? loadFixtures(fixturesPath) : null
   const models = answeringModelsByIds(csv(flag(argv, "models")))
   const limitRaw = flag(argv, "limit")
   const limit = limitRaw ? Number(limitRaw) : QUESTIONS.length
@@ -88,6 +167,13 @@ async function main(): Promise<void> {
   console.log(`questions: ${questions.length} of ${QUESTIONS.length}`)
   console.log(`models   : ${models.map((model) => model.id).join(", ")}`)
   console.log(`cells    : ${questions.length * models.length}`)
+  console.log(
+    `retrieval: ${
+      fixtures
+        ? `fixtures ${fixtures.corpusSha256.slice(0, 12)} (topK ${fixtures.topK})`
+        : "none — prompt only"
+    }`,
+  )
   console.log("")
 
   const startedAt = new Date().toISOString()
@@ -97,11 +183,26 @@ async function main(): Promise<void> {
     for (const model of models) {
       process.stdout.write(`  ${question.id} x ${model.label} ... `)
       try {
-        const completion = await completeText({
-          model: model.id,
-          system: prompt.text,
-          user: question.text,
-        })
+        let toolCalls: ToolCallRecord[] | undefined
+        let skippedTool: boolean | undefined
+        const completion = fixtures
+          ? await (async () => {
+              const result = await completeWithTools({
+                model: model.id,
+                system: prompt.text,
+                user: question.text,
+                tools: [RETRIEVE_ANSWER_TOOL_SPEC],
+                resolve: fixtureResolver(fixtures, question.id),
+              })
+              toolCalls = result.toolCalls
+              skippedTool = result.skippedTool
+              return result
+            })()
+          : await completeText({
+              model: model.id,
+              system: prompt.text,
+              user: question.text,
+            })
         const record: AnswerRecord = {
           questionId: question.id,
           category: question.category,
@@ -112,12 +213,24 @@ async function main(): Promise<void> {
           usage: completion.usage,
           costUsd: costUsd(model.id, completion.usage),
           latencyMs: completion.latencyMs,
+          ...(toolCalls ? { toolCalls } : {}),
+          ...(skippedTool != null ? { skippedTool } : {}),
         }
         answers.push(record)
         const truncated =
           completion.finishReason === "length" ? " TRUNCATED" : ""
+        const tools =
+          toolCalls == null
+            ? ""
+            : skippedTool
+              ? " NO-TOOL-CALL"
+              : ` ${toolCalls.length} tool call(s)${
+                  toolCalls.some((c) => c.servedFrom === "fixture-fallback")
+                    ? " [fallback]"
+                    : ""
+                }`
         console.log(
-          `${completion.text.length} chars, ${completion.latencyMs}ms${truncated}`,
+          `${completion.text.length} chars, ${completion.latencyMs}ms${truncated}${tools}`,
         )
       } catch (cause) {
         const message =
@@ -155,6 +268,13 @@ async function main(): Promise<void> {
       criteriaSha256: criteriaHash(questions),
       answeringModels: models.map((model) => model.id),
       gitSha: gitSha(),
+      retrieval: fixtures
+        ? {
+            mode: "fixtures",
+            corpusSha256: fixtures.corpusSha256,
+            topK: fixtures.topK,
+          }
+        : { mode: "none" },
     },
     answers,
   }
