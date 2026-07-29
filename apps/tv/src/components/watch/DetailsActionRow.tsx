@@ -81,7 +81,11 @@ export function DetailsActionRow({
 
   return (
     <>
-      <TVFocusGuideView autoFocus style={styles.row}>
+      {/* trapFocusUp: the hero VideoBackdrop's AVPlayer container hijacks an
+          up-press while playing (focusable={false}/pointerEvents="none" don't
+          contain it — tv-videoview-steals-dpad-focus-20260413.md), leaving no
+          visible focus; the trap bounces up back into the row. */}
+      <TVFocusGuideView autoFocus trapFocusUp style={styles.row}>
         <PlayPill
           onPress={handlePlay}
           hasTVPreferredFocus={playPreferredFocus}
