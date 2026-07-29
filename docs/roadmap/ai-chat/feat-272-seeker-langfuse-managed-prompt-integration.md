@@ -38,8 +38,9 @@ two risks the plan explicitly routed here:
 - **Governance shift.** Once anything consumes the helper, moving a Langfuse
   label (e.g. re-pointing `production` to a different version) becomes an
   unreviewed production behavior change that bypasses PR review and CI
-  entirely. That must be bounded by access control before consumption is
-  enabled.
+  entirely. There is no technical control over who may do that — see item 6.
+  What bounds it is the composition split (item 2), which keeps the
+  safety-critical text in code where PR and CI still apply.
 
 **Operational precondition.** No Langfuse project or keys exist anywhere in
 this repo or its deploy config yet. Someone must provision **one project,
@@ -77,8 +78,9 @@ ticket `depends_on` it).
    `assertLangfuseBaseUrlAllowedForProduction`.
 6. `docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md` — Scope
    Boundaries, Risks and Dependencies, and KTD8 **with its 2026-07-28
-   supersession note** (per-environment projects reversed to one project with
-   labels; the protected-`production`-label half stands).
+   supersession note and its 2026-07-29 amendment** (per-environment projects
+   reversed to one project with labels; the protected-`production`-label
+   remedy dropped as unavailable and inert — see item 6).
 
 ## Grep These
 
@@ -103,7 +105,9 @@ The deferred items from the plan's Scope Boundaries, in rough order:
    be assigned directly, since it takes its own options object and returns a
    `ManagedPromptResult`, not a `string`. The helper never throws, so the
    wrapper needs no error handling.) The fallback is the full current working
-   prompt — never a stub.
+   prompt — never a stub. **If you keep the composition split (item 2), land it
+   in the same change:** wiring the full prompt first leaves the SAFETY line
+   Langfuse-managed and label-movable in the meantime.
 2. **The composition decision.** Keep the SAFETY line and the tool-coupled
    citation wording CODE-OWNED (they are coupled to `retrieveAnswer`'s
    contract and the deferred guardrail gate) while Langfuse owns only the
@@ -123,19 +127,19 @@ The deferred items from the plan's Scope Boundaries, in rough order:
    silent-divergence risk), and stamp the served prompt version/source into
    Mastra observability spans — compatible with `redactPromptBodies` (never
    prompt bodies).
-6. **Langfuse workspace access-control review**, folded into the ai-chat
-   lane's guardrail release gate (the deferred "Full persona + safety
-   guardrails" gate in `apps/mastra/CLAUDE.md`): who may move the
-   `production` label, the protected-label posture, and the key custody from
-   the operational precondition. Consumption stays off until this review
-   passes. **This review is now load-bearing in a way it was not under the
-   plan's original topology:** with one project and labels, moving the
-   `production` label IS the release mechanism, so it is the only gate between
-   an edit in the Langfuse UI and changed production agent behaviour — no PR,
-   no CI, no deploy. Confirm whether the tier actually offers protected labels
-   (feat-296 verifies this) rather than assuming the control exists, and
-   confirm who is in the shared Langfuse organisation, since absent
-   project-scoped RBAC every org member can move that label.
+6. **Know the label-move property — no ceremony required.** Moving the
+   `production` label changes agent behaviour with **no PR, CI or deploy**, and
+   there is **no technical control** over who may do it: protected labels are a
+   Team/Enterprise feature this organisation is not on, and they work by
+   blocking `viewer`/`member` while permitting `admin`/`owner`, so they would
+   be inert here anyway (feat-296 records the check). This is a real property
+   of choosing labels over per-environment projects, and it is the thing to
+   revisit if the Langfuse organisation ever admits non-developers — but with
+   the current small, all-developer roster it needs no gate or sign-off
+   process. The mitigation that actually bites is the composition split in
+   item 2: keep the SAFETY line and the `retrieveAnswer`-coupled wording
+   code-owned and a label move can only change tone, never the safety
+   guardrail or citation discipline.
 
 ## Constraints
 
@@ -156,9 +160,9 @@ The deferred items from the plan's Scope Boundaries, in rough order:
   `docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`.
 - Do not weaken the helper's no-throw, leak-control, or cooldown-≤-TTL
   invariants while adding SWR or version pinning.
-- Do not enable production consumption before the access-control review
-  (item 6): an unreviewed label move must not be able to change production
-  agent behavior.
+- Keep the composition split (item 2) — that, not any access-control process,
+  is what stops a label move from touching the SAFETY line or citation
+  discipline.
 - The caller-supplied `fallback` must always be the full working prompt and
   never empty — layer 2 deliberately serves it verbatim with no emptiness
   guard (asymmetric with layer 1's `empty_prompt` rejection). Pin a
