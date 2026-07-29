@@ -36,6 +36,7 @@ import {
   type HomeBrowseState,
 } from "../src/components/home/homeScrollState"
 import { HomeTopBar } from "../src/components/home/HomeTopBar"
+import { isProfileSurfaceEnabled } from "../src/lib/auth/profileFlag"
 import { MissionSection } from "../src/components/home/MissionSection"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import {
@@ -335,6 +336,10 @@ export default function HomeScreen() {
     router.push("/settings")
   }, [router])
 
+  const handleProfilePress = useCallback(() => {
+    router.push("/profile")
+  }, [router])
+
   // True when the focused element is a rail BELOW the topmost. Gates the topmost
   // rail's autoFocus: ON from topmost/hero CTA/top bar (track + restore last card
   // for Down off CTA), OFF coming Up from below (keep column-preserving geometry).
@@ -392,6 +397,9 @@ export default function HomeScreen() {
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
       onSettingsPress={handleSettingsPress}
+      onProfilePress={
+        isProfileSurfaceEnabled() ? handleProfilePress : undefined
+      }
       onChromeFocus={handleChromeFocus}
       onSearchTabNode={setSearchTabNode}
       onFocusNode={captureFocusedNode}
