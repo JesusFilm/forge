@@ -14,8 +14,8 @@ from the main DS Year 1 roadmap.
 ## Status (July 29, 2026)
 
 - **Total tickets:** 43
-- ✅ **Complete:** 36
-- 🟡 **In progress:** 1
+- ✅ **Complete:** 37
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 6
 - 🔴 **Blocked:** 0
 
@@ -52,7 +52,7 @@ from the main DS Year 1 roadmap.
 | [feat-269](feat-269-chat-sources-presentation.md)                  | Chat sources presentation: heading, clamped cards, collapse                  | jian wei | P1       | 2026-07-20 | 2    | ✅ complete    | [#1619](https://github.com/JesusFilm/forge/pull/1619)                                                        |
 | [feat-270](feat-270-chat-ui-cleanup-batch.md)                      | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges    | jian wei | P2       | 2026-07-27 | 3    | ✅ complete    | [#1626](https://github.com/JesusFilm/forge/pull/1626)                                                        |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)          | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)       | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                                                                            |
-| [feat-272](feat-272-seeker-langfuse-managed-prompt-integration.md) | Seeker Langfuse-managed prompt integration (consume getManagedPrompt)        | jaco     | P2       | 2026-08-17 | 3    | 🟡 in-progress | —                                                                                                            |
+| [feat-272](feat-272-seeker-langfuse-managed-prompt-integration.md) | Seeker Langfuse-managed prompt integration (consume getManagedPrompt)        | jaco     | P2       | 2026-08-17 | 3    | ✅ complete    | [#1788](https://github.com/JesusFilm/forge/pull/1788)                                                        |
 | [feat-275](feat-275-ai-chat-docs-audit.md)                         | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                       | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#1638](https://github.com/JesusFilm/forge/pull/1638)                                                        |
 | [feat-281](feat-281-chat-conversation-session-module.md)           | Chat conversation session module (deepen the engine + honest gate denial)    | jian wei | P2       | 2026-07-22 | 4    | ✅ complete    | [#1666](https://github.com/JesusFilm/forge/pull/1666), [#1674](https://github.com/JesusFilm/forge/pull/1674) |
 | [feat-282](feat-282-chat-shared-mastra-transport.md)               | Shared Mastra upstream transport for the chat proxies (narrowed)             | jian wei | P2       | 2026-07-21 | 5    | ✅ complete    | [#1661](https://github.com/JesusFilm/forge/pull/1661), [#1690](https://github.com/JesusFilm/forge/pull/1690) |

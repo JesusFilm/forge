@@ -70,7 +70,7 @@ The seeker chat agent's system prompt is an inline placeholder string in `apps/m
 
 - Wiring the seeker agent (or any agent) to consume the helper — including the composition decision of keeping the SAFETY line and the tool-coupled citation wording code-owned while Langfuse owns the tunable persona portion.
 
-  > **[SUPERSEDED 2026-07-29 — wiring shipped; the composition split was overruled.]** The seeker wiring landed (feat-272 item 1: `createSeekerInstructionsResolver` in `seeker-agent.ts`, prompt name `seeker-system`), and the owner decided the ENTIRE prompt — SAFETY line and tool-coupled citation wording included — is Langfuse-managed as one prompt, with the full text kept in code only as the compiled-in fallback. No composition split exists, and none should be reintroduced. See feat-272 items 1–2.
+  > **[SUPERSEDED 2026-07-29 — wiring shipped; the composition split was overruled.]** The seeker wiring landed (feat-272 item 1, [PR #1788](https://github.com/JesusFilm/forge/pull/1788): `createSeekerInstructionsResolver` in `seeker-agent.ts`, prompt name `seeker-system`), and the owner decided the ENTIRE prompt — SAFETY line and tool-coupled citation wording included — is Langfuse-managed as one prompt, with the full text kept in code only as the compiled-in fallback. No composition split exists, and none should be reintroduced. See feat-272 items 1–2.
 
 - Stale-while-revalidate background refresh (this unit uses a blocking single-attempt refetch; see KTD4).
 - Explicit `version` pinning parameter (additive later; provenance already records the served version).

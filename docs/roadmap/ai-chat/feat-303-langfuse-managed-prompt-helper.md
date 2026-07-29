@@ -101,7 +101,9 @@ management" section in `apps/mastra/CLAUDE.md`, an ownership bullet in
   > split is what actually bounds it. See
   > `docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`.
   > **[AMENDED 2026-07-29]** The composition split was itself overruled the
-  > same day, and the seeker wiring has landed: feat-272 item 2 records the
+  > same day, and the seeker wiring has landed
+  > ([PR #1788](https://github.com/JesusFilm/forge/pull/1788)): feat-272
+  > item 2 records the
   > owner's whole-prompt decision — the ENTIRE prompt (`seeker-system`),
   > SAFETY line included, is Langfuse-managed, with the full text in code
   > only as the compiled-in fallback. Items 3–5 (SWR, version pinning,

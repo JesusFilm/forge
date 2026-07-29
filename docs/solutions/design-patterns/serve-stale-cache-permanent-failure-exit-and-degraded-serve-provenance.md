@@ -496,7 +496,8 @@ via the module's (excellent) header comment rather than via feat-272.
 
 ### Resolution at first consumption (2026-07-29 — feat-272 seeker wiring)
 
-The seeker agent became the helper's first production consumer, and the three
+The seeker agent became the helper's first production consumer
+([PR #1788](https://github.com/JesusFilm/forge/pull/1788)), and the three
 prose obligations above resolved as follows. **Laws 1 and 3 as general design
 laws stay open — both code gaps stand by choice**; what follows is the
 decision for THIS consumer, not a closure of either law.

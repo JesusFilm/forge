@@ -3,7 +3,7 @@ id: "feat-272"
 title: "Seeker Langfuse-managed prompt integration (consume getManagedPrompt)"
 owner: "jaco"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-17"
 duration: 3
 depends_on:
@@ -12,6 +12,44 @@ blocks: []
 tags:
   - "ai-pipeline"
   - "infrastructure"
+---
+
+## Resolution
+
+**Shipped:** 2026-07-29 via
+[PR #1788](https://github.com/JesusFilm/forge/pull/1788)
+(`feat(mastra): back the seeker system prompt with Langfuse-managed seeker-system (feat-272)`).
+
+**What landed.** Item 1 (seeker wiring) plus the item 2 decision record: the
+seeker agent's `instructions` resolve per turn through `getManagedPrompt`
+(prompt `seeker-system`, no label pinned in code) via
+`createSeekerInstructionsResolver`, with the full previous inline text kept
+as the byte-identical compiled-in fallback — under the owner's whole-prompt
+decision (ENTIRE prompt Langfuse-managed, no composition split; the split
+this ticket originally prescribed was overruled 2026-07-29). The retraction
+semantics constraint (finding #9) was decided at wiring — documentation
+branch, per-trigger runbook, serve-stale unweakened. Drift guards couple the
+CI-invisible Langfuse copy to `retrieveAnswer`'s status literals. The
+`seeker-system` prompt was operator-seeded byte-identical under both
+`production` and `development` labels and verified live from both.
+
+**Compound docs.** Updated (not new):
+`docs/solutions/design-patterns/serve-stale-cache-permanent-failure-exit-and-degraded-serve-provenance.md`
+("Resolution at first consumption" — Law 1 resolved for this consumer) and
+`docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+(feat-283 row: paired comment-stripping + occurrence-count source-pin
+refinement).
+
+**Residual risk / follow-ups.** Items 3–5 (stale-while-revalidate, explicit
+version pinning, sustained-fallback alerting + span stamping) remain
+deliberately deferred — this ticket's What To Build items 3–5 stay the
+agent-optimized briefs for them; open a fresh lane ticket when one is picked
+up. Item 6's label-move property stands as accepted: no control detects a
+label move to valid-but-wrong text (span stamping, when built, is post-hoc
+attribution only).
+
+**Unblocked.** None (nothing depends on this ticket).
+
 ---
 
 ## Problem
