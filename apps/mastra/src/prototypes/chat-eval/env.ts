@@ -10,8 +10,11 @@
  *   2. OPENROUTER_API_PAID_KEY       — the shared paid key the repo already uses
  *   3. OPENROUTER_API_KEY            — legacy fallback
  *
- * A dedicated key is preferred for cost attribution and independent
- * revocation, NOT because the shared one lacks access. Either works.
+ * The dedicated key lives in Doppler under `forge-rag` / `dev`; fetch it with
+ * `pnpm --filter @forge/mastra proto:fetch-key`. It exists for cost
+ * attribution and independent revocation — the eval bills to its own key
+ * rather than to admin's — NOT because the shared keys lack access. The
+ * fallbacks stay so a run never hard-blocks on provisioning.
  */
 import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
@@ -68,11 +71,10 @@ export function keyHelpText(): string {
     "No OpenRouter key found. Set any one of:",
     ...KEY_VARIABLES.map((name) => `  ${name}`),
     "",
-    "Either export it, or put it in apps/mastra/.env.local (gitignored):",
-    "  CHAT_EVAL_OPENROUTER_API_KEY=sk-or-v1-...",
+    "Fetch the dedicated key from Doppler (forge-rag / dev):",
+    "  pnpm --filter @forge/mastra proto:fetch-key",
     "",
-    "Or pull the shared one from Doppler:",
-    "  export OPENROUTER_API_PAID_KEY=$(doppler secrets get OPENROUTER_API_PAID_KEY \\",
-    "    --project forge-admin --config dev --plain)",
+    "Or set it by hand in apps/mastra/.env.local (gitignored):",
+    "  CHAT_EVAL_OPENROUTER_API_KEY=sk-or-v1-...",
   ].join("\n")
 }

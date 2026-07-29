@@ -37,7 +37,19 @@ service wiring, committed-results conventions. All of that is ticket material.
 
 ## Run it
 
-Needs `OPENROUTER_API_KEY` (or `OPENROUTER_API_PAID_KEY`) in the environment.
+Needs an OpenRouter key. The dedicated one lives in Doppler under
+**`forge-rag` / `dev`** as `CHAT_EVAL_OPENROUTER_API_KEY`, so eval spend bills to
+its own key and can be revoked without touching any other surface:
+
+```bash
+pnpm --filter @forge/mastra proto:fetch-key   # -> apps/mastra/.env.local (gitignored)
+```
+
+`OPENROUTER_API_PAID_KEY` / `OPENROUTER_API_KEY` still work as fallbacks, so a run
+never hard-blocks on provisioning.
+
+> **Not a CI job.** No workflow needs a secret for this — it is slow,
+> non-deterministic, and costs money per invocation. Operator-run only.
 
 ```bash
 # Step 1 — capture answers (questions x models). Writes answers.json.
