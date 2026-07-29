@@ -54,21 +54,27 @@ function padDay(day: number): string {
   return String(day).padStart(2, "0")
 }
 
+const FULLY_GENERATED_DAY_COUNT = 7
+
 /**
  * Deterministic (not Math.random) mobile/desktop generation pattern, keyed
- * off day-of-month so the fixture always exercises all four
- * (mobileGenerated, desktopGenerated) combinations across the 31 cells.
+ * off day-of-month. The first week (Aug 1-7) is fully generated so the list
+ * opens on a realistic "already done" run; the remaining days cycle through
+ * mobile-only / desktop-only / neither so the fixture still exercises every
+ * (mobileGenerated, desktopGenerated) combination.
  */
 function generationStateForDay(day: number): {
   mobileGenerated: boolean
   desktopGenerated: boolean
 } {
-  switch (day % 4) {
-    case 1:
-      return { mobileGenerated: true, desktopGenerated: true }
-    case 2:
+  if (day <= FULLY_GENERATED_DAY_COUNT) {
+    return { mobileGenerated: true, desktopGenerated: true }
+  }
+
+  switch ((day - FULLY_GENERATED_DAY_COUNT - 1) % 3) {
+    case 0:
       return { mobileGenerated: true, desktopGenerated: false }
-    case 3:
+    case 1:
       return { mobileGenerated: false, desktopGenerated: true }
     default:
       return { mobileGenerated: false, desktopGenerated: false }
@@ -100,6 +106,13 @@ export function buildDevotionsAugustCollection(): VideoPipelineCollection {
     labelDisplay: "Basic",
     cells,
   }
+}
+
+export function findCellById(
+  collection: VideoPipelineCollection,
+  cellId: string,
+): VideoPipelineCell | null {
+  return collection.cells.find((cell) => cell.id === cellId) ?? null
 }
 
 export function computeAggregateStatus(

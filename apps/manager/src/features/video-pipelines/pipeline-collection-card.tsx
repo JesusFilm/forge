@@ -1,4 +1,4 @@
-import { Monitor, Smartphone } from "lucide-react"
+import { ArrowUpRight, Monitor, Smartphone } from "lucide-react"
 import {
   computeAggregateStatus,
   formatCellDate,
@@ -7,7 +7,7 @@ import {
   type VideoPipelineCollection,
 } from "./video-pipeline-model"
 
-function PipelineCellIcons({ cell }: { cell: VideoPipelineCell }) {
+export function PipelineCellIcons({ cell }: { cell: VideoPipelineCell }) {
   return (
     <span className="pipeline-cell-icons">
       <Smartphone
@@ -40,9 +40,10 @@ function PipelineCellIcons({ cell }: { cell: VideoPipelineCell }) {
  * Video Pipelines' equivalent of coverage-report-client.tsx's CollectionCard
  * — expand-by-click, hover-to-preview — but with its own cell shape (two
  * independent mobile/desktop generated icons instead of a single-status
- * colored tile) and grouped-by-aggregate-status detail view (Generated /
- * Not Generated, no AI bucket). See Key Technical Decisions 1 and 3 in the
- * Video Pipelines plan.
+ * colored tile). The expanded detail list is ordered by date (Aug 1 -> Aug
+ * 31), not grouped by generation status; a finished day (both aspects
+ * generated) gets an external-link icon that opens its preview page. See
+ * Key Technical Decisions 1 and 3 in the Video Pipelines plan.
  */
 export function VideoPipelineCollectionCard({
   collection,
@@ -60,12 +61,6 @@ export function VideoPipelineCollectionCard({
   selectedCellIds: ReadonlySet<string>
 }) {
   const total = collection.cells.length
-  const generatedCells = collection.cells.filter(
-    (cell) => computeAggregateStatus(cell) === "generated",
-  )
-  const pendingCells = collection.cells.filter(
-    (cell) => computeAggregateStatus(cell) === "none",
-  )
 
   const renderCell = (cell: VideoPipelineCell) => {
     const isSelected = selectedCellIds.has(cell.id)
@@ -144,59 +139,48 @@ export function VideoPipelineCollectionCard({
       </div>
 
       <div className={`collection-details${isExpanded ? " is-open" : ""}`}>
-        {(
-          [
-            {
-              key: "generated" as const,
-              label: "Generated",
-              cells: generatedCells,
-            },
-            {
-              key: "none" as const,
-              label: "Not Generated",
-              cells: pendingCells,
-            },
-          ] as const
-        ).map((group) =>
-          group.cells.length === 0 ? null : (
-            <div key={group.key} className="detail-group">
-              <h3
-                className={`detail-group-heading detail-group-heading--${group.key}`}
-              >
-                {group.label}
-                <span className="detail-group-count">{group.cells.length}</span>
-              </h3>
-              <div className="detail-group-list">
-                {group.cells.map((cell) => {
-                  const isSelected = selectedCellIds.has(cell.id)
-                  const status = computeAggregateStatus(cell)
+        <div className="detail-group-list">
+          {collection.cells.map((cell) => {
+            const isSelected = selectedCellIds.has(cell.id)
+            const status = computeAggregateStatus(cell)
+            const isFinished = status === "generated"
 
-                  return (
-                    <label
-                      className="collection-detail-row pipeline-detail-row"
-                      key={cell.id}
-                      onMouseEnter={() => onHoverCell(cell)}
-                      onMouseLeave={() => onHoverCell(null)}
-                    >
-                      <input
-                        type="checkbox"
-                        className={`detail-row-checkbox detail-row-checkbox--${
-                          status === "generated" ? "human" : "none"
-                        }`}
-                        checked={isSelected}
-                        onChange={() => onToggleCell(cell.id)}
-                      />
-                      <span className="detail-content">
-                        {formatCellRowLabel(cell)}
-                      </span>
-                      <PipelineCellIcons cell={cell} />
-                    </label>
-                  )
-                })}
+            return (
+              <div
+                className="collection-detail-row pipeline-detail-row"
+                key={cell.id}
+                onMouseEnter={() => onHoverCell(cell)}
+                onMouseLeave={() => onHoverCell(null)}
+              >
+                <label className="pipeline-detail-row-select">
+                  <input
+                    type="checkbox"
+                    className={`detail-row-checkbox ${
+                      isFinished
+                        ? "detail-row-checkbox--human"
+                        : "detail-row-checkbox--pipeline-pending"
+                    }`}
+                    checked={isSelected}
+                    onChange={() => onToggleCell(cell.id)}
+                  />
+                  <span className="detail-content">
+                    {formatCellRowLabel(cell)}
+                  </span>
+                </label>
+                {isFinished ? (
+                  <a
+                    className="pipeline-preview-link"
+                    href={`/dashboard/video-pipelines/${cell.id}/preview`}
+                    aria-label={`Preview ${cell.title} videos`}
+                    title="Preview videos"
+                  >
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                  </a>
+                ) : null}
               </div>
-            </div>
-          ),
-        )}
+            )
+          })}
+        </div>
       </div>
 
       <div className={`collection-tiles${isExpanded ? " is-hidden" : ""}`}>

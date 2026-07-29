@@ -53,11 +53,16 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup).toMatch(/collection-tiles is-hidden/)
   })
 
-  it("groups the expanded list into Generated / Not Generated headings", () => {
+  it("lists the expanded rows by date (Aug 1 -> Aug 31), not grouped by status", () => {
     const markup = renderCard({ isExpanded: true })
 
-    expect(markup).toContain("Generated")
-    expect(markup).toContain("Not Generated")
+    expect(markup).not.toContain("detail-group-heading")
+    const dayOrder = Array.from(markup.matchAll(/Aug (\d+) - Devotional/g)).map(
+      (match) => Number(match[1]),
+    )
+    expect(dayOrder).toEqual(
+      Array.from({ length: 31 }, (_, index) => index + 1),
+    )
   })
 
   it("renders collapsed cells as plain colored tiles, like the Subtitles report", () => {
@@ -102,20 +107,40 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup).toContain("tile--none")
   })
 
-  it("still shows independent mobile/desktop icons in the expanded detail rows", () => {
+  it("does not show mobile/desktop icons inline in the expanded detail rows", () => {
+    // The device icons now live only in the hover popover
+    // (PipelineHoverDetailBar), not inline in the list -- see
+    // pipeline-hover-detail.test.ts.
+    const markup = renderCard({ isExpanded: true })
+
+    expect(markup).not.toContain("pipeline-cell-icon--generated")
+    expect(markup).not.toContain("pipeline-cell-icon--pending")
+  })
+
+  it("shows an external-link preview icon only for finished (fully generated) rows", () => {
     const collection = buildDevotionsAugustCollection()
-    // Aug 2 is mobile-only generated per the deterministic fixture pattern.
-    const partialCell = collection.cells.find(
-      (cell) => cell.date === "2026-08-02",
+    const finishedCell = collection.cells.find(
+      (cell) => cell.mobileGenerated && cell.desktopGenerated,
     )
-    if (!partialCell) throw new Error("expected Aug 2 fixture cell")
-    expect(partialCell.mobileGenerated).toBe(true)
-    expect(partialCell.desktopGenerated).toBe(false)
+    const unfinishedCell = collection.cells.find(
+      (cell) => !cell.mobileGenerated || !cell.desktopGenerated,
+    )
+    if (!finishedCell || !unfinishedCell) {
+      throw new Error("expected both a finished and an unfinished fixture cell")
+    }
 
-    const markup = renderCard({ collection, isExpanded: true })
+    const markup = renderCard({
+      collection: { ...collection, cells: [finishedCell, unfinishedCell] },
+      isExpanded: true,
+    })
 
-    expect(markup).toContain("pipeline-cell-icon--generated")
-    expect(markup).toContain("pipeline-cell-icon--pending")
+    expect(markup.match(/pipeline-preview-link/g)?.length).toBe(1)
+    expect(markup).toContain(
+      `href="/dashboard/video-pipelines/${finishedCell.id}/preview"`,
+    )
+    expect(markup).not.toContain(
+      `href="/dashboard/video-pipelines/${unfinishedCell.id}/preview"`,
+    )
   })
 
   it("renders each expanded row as 'Aug D - Devotional'", () => {
@@ -138,8 +163,15 @@ describe("VideoPipelineCollectionCard", () => {
     expect(markup.match(/type="checkbox"/g)?.length).toBe(
       collection.cells.length,
     )
-    expect(markup).toMatch(/detail-row-checkbox--(human|none)/)
+    expect(markup).toMatch(/detail-row-checkbox--(human|pipeline-pending)/)
     expect(markup.match(/checked=""/g)?.length).toBe(1)
+  })
+
+  it("colors the not-generated checkbox grey, not red", () => {
+    const markup = renderCard({ isExpanded: true })
+
+    expect(markup).toContain("detail-row-checkbox--pipeline-pending")
+    expect(markup).not.toContain("detail-row-checkbox--none")
   })
 
   it("marks selected cells as pressed", () => {

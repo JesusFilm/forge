@@ -1,12 +1,14 @@
 import type { CSSProperties } from "react"
+import { PipelineCellIcons } from "./pipeline-collection-card"
 import type { VideoPipelineCell } from "./video-pipeline-model"
 import { formatCellDate } from "./video-pipeline-model"
 
 /**
  * Replaces the coverage report's description-style hover detail with a
- * thumbnail, title, and date — reusing the existing
- * `.translation-bar.is-detail.is-preview` markup pattern so the visual
- * treatment matches the reference report.
+ * thumbnail, title, date, and the mobile/desktop generated-state icons —
+ * reusing the existing `.translation-bar.is-detail.is-preview` markup
+ * pattern so the visual treatment matches the reference report. The device
+ * icons live only here, not inline in the expanded list rows.
  */
 export function PipelineHoverDetailBar({
   hoveredCell,
@@ -62,6 +64,7 @@ export function PipelineHoverDetailBar({
                 {formatCellDate(hoveredCell.date)}
               </div>
             </div>
+            <PipelineCellIcons cell={hoveredCell} />
           </div>
         </div>
       </div>

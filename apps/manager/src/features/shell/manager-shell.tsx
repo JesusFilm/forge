@@ -220,6 +220,13 @@ function getBreadcrumbs(pathname: string): string[] {
     return ["Studio", "Shorts"]
   }
 
+  if (
+    pathname.startsWith("/dashboard/video-pipelines/") &&
+    pathname.endsWith("/preview")
+  ) {
+    return ["Studio", "Video Pipelines", "Preview"]
+  }
+
   if (pathname.startsWith("/dashboard/video-pipelines")) {
     return ["Studio", "Video Pipelines"]
   }

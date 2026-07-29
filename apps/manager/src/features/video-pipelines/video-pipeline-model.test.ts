@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildDevotionsAugustCollection,
   computeAggregateStatus,
+  findCellById,
   formatCellDate,
   formatCellRowLabel,
   formatCellShortDate,
@@ -56,6 +57,39 @@ describe("buildDevotionsAugustCollection", () => {
     expect(combinations).toEqual(
       new Set(["true:true", "true:false", "false:true", "false:false"]),
     )
+  })
+
+  it("marks exactly the first 7 days (Aug 1-7) as fully generated", () => {
+    const collection = buildDevotionsAugustCollection()
+    const generatedDates = collection.cells
+      .filter((cell) => cell.mobileGenerated && cell.desktopGenerated)
+      .map((cell) => cell.date)
+
+    expect(generatedDates).toEqual([
+      "2026-08-01",
+      "2026-08-02",
+      "2026-08-03",
+      "2026-08-04",
+      "2026-08-05",
+      "2026-08-06",
+      "2026-08-07",
+    ])
+  })
+})
+
+describe("findCellById", () => {
+  it("returns the matching cell", () => {
+    const collection = buildDevotionsAugustCollection()
+
+    expect(findCellById(collection, "devotion-2026-08-05")?.date).toBe(
+      "2026-08-05",
+    )
+  })
+
+  it("returns null for an unknown id", () => {
+    const collection = buildDevotionsAugustCollection()
+
+    expect(findCellById(collection, "not-a-real-id")).toBeNull()
   })
 })
 
