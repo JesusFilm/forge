@@ -18,8 +18,11 @@ tags:
 
 **Shipped:** 2026-07-29 via [PR #1783](https://github.com/JesusFilm/forge/pull/1783)
 (`docs(chat): one Langfuse project with labels, reversing KTD8`) for the
-topology reversal, and this PR for the provisioning record. Provisioning itself
-is operator work in the Langfuse and Railway dashboards, not code.
+topology reversal, and
+[PR #1786](https://github.com/JesusFilm/forge/pull/1786)
+(`docs(chat): record Langfuse provisioning, complete feat-296`) for the
+provisioning record. Provisioning itself is operator work in the Langfuse and
+Railway dashboards, not code.
 
 **What landed.** One Langfuse project, **`forge-mastra`**, in the **US** region
 of the same organisation as `JesusFilm/core`'s Journeys project — the plan's
