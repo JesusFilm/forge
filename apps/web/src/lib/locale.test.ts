@@ -6,8 +6,10 @@ import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 import {
   isLocale,
   isLocaleSlug,
+  isPotentialPublicWatchLanguageSlug,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  isSafeWatchLanguageSlug,
   parseAcceptLanguage,
   publicWatchAudioLanguageSlugForLocale,
   publicWatchHomeLanguageSlugForLocale,
@@ -138,6 +140,15 @@ describe("public watch language slug guards", () => {
     expect(isPublicWatchLanguageSlug("non-existent")).toBe(false)
     expect(isPublicWatchLanguageSlug("français")).toBe(false)
     expect(isPublicWatchLanguageSlug("")).toBe(false)
+  })
+
+  it("separates runtime slug shape from static-corpus admission", () => {
+    expect(isSafeWatchLanguageSlug("jiamao")).toBe(true)
+    expect(isPublicWatchLanguageSlug("jiamao")).toBe(false)
+    expect(isPotentialPublicWatchLanguageSlug("jiamao")).toBe(true)
+    expect(isPotentialPublicWatchLanguageSlug("en")).toBe(false)
+    expect(isPotentialPublicWatchLanguageSlug("pt-br")).toBe(false)
+    expect(isPotentialPublicWatchLanguageSlug("../jiamao")).toBe(false)
   })
 })
 

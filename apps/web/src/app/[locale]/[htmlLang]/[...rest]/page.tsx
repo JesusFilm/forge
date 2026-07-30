@@ -42,8 +42,8 @@ import {
 } from "@/lib/feature-flags"
 import {
   isLocale,
+  isPotentialPublicWatchLanguageSlug,
   isPublicWatchHomeLanguageSlug,
-  isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
   slugToBcp47Tag,
@@ -256,7 +256,9 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     const slug = stripSafeSegment(rest[0])
     const rawLocale = stripSafeSegment(rest[1])
     if (!slug || !rawLocale) return { kind: "unknown" }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    if (!isPotentialPublicWatchLanguageSlug(rawLocale)) {
+      return { kind: "unknown" }
+    }
     return {
       kind: "video",
       slug,
@@ -277,7 +279,9 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!seriesSlug || !episodeSlug || !rawLocale) {
       return { kind: "unknown" }
     }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    if (!isPotentialPublicWatchLanguageSlug(rawLocale)) {
+      return { kind: "unknown" }
+    }
     return {
       kind: "episode",
       seriesSlug,

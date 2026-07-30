@@ -30,6 +30,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "aari",
     "bangla-2",
     "english",
+    "jiamao",
     "mandarin-china",
     "russian",
     "spanish-castilian",
@@ -37,7 +38,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "zulu",
   ],
   audioLanguageIndexesByContent: {
-    jesus: [0, 1, 2, 3, 4, 5, 6, 7],
+    jesus: [0, 1, 2, 3, 4, 5, 6, 7, 8],
   },
 }
 
@@ -193,6 +194,11 @@ describe("proxy — canonicalize integration (§5.4)", () => {
   it("404s bcp47 regional tags in public audio slots", async () => {
     const response = await proxy(makeRequest("/jesus.html/pt-br.html"))
     expectNotFoundRewrite(response)
+  })
+
+  it("admits an exact manifest language missing from the static corpus", async () => {
+    const response = await proxy(makeRequest("/jesus.html/jiamao.html"))
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/jiamao.html")
   })
 
   it("rewrites legacy 4-segment episode shape into canonical 3-segment → 307", async () => {
@@ -557,6 +563,19 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   it("rewrites unsupported-language videos indexes with English chrome fallback", async () => {
     const response = await proxy(makeRequest("/aari.html/videos"))
     expect(rewritePath(response)).toBe("/en/en/videos/aari")
+  })
+
+  it("redirects a dynamic language home to its admitted inventory", async () => {
+    const response = await proxy(makeRequest("/jiamao.html"))
+    expect(response.status).toBe(307)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/jiamao.html/videos",
+    )
+  })
+
+  it("admits a dynamic language inventory with English chrome fallback", async () => {
+    const response = await proxy(makeRequest("/jiamao.html/videos"))
+    expect(rewritePath(response)).toBe("/en/en/videos/jiamao")
   })
 
   it("404s bcp47 catalog keys as one-segment public homes", async () => {

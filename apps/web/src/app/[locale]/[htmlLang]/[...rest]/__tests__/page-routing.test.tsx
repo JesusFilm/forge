@@ -2242,6 +2242,23 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
     const props = watchPageClientMock.mock.calls[0]?.[0] as { locale?: string }
     expect(props?.locale).toBe("en")
   })
+
+  it("renders a manifest-admitted language missing from the static corpus", async () => {
+    mockRouteVideo(
+      makeWatchVideoResult("shortFilm", {
+        slug: "jiamao",
+        bcp47: "jio",
+        name: "Jiamao",
+      }),
+    )
+    await render2Seg("storyclubs.html", "jiamao.html")
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      locale?: string
+      languageSlug?: string
+    }
+    expect(props?.languageSlug).toBe("jiamao")
+    expect(props?.locale).toBe("en")
+  })
 })
 
 describe("Catch-all routing — 3-seg episode branch", () => {

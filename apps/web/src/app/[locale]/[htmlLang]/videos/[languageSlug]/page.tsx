@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { LanguageInventoryPage } from "@/components/watch-language-inventory/LanguageInventoryPage"
 import {
-  isPublicWatchHomeLanguageSlug,
+  isPotentialPublicWatchLanguageSlug,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
@@ -40,7 +40,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { locale: rawLocale, languageSlug } = await params
-  if (!isPublicWatchHomeLanguageSlug(languageSlug)) notFound()
+  if (!isPotentialPublicWatchLanguageSlug(languageSlug)) notFound()
 
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   const inventory = await resolveWatchLanguageInventory(locale, languageSlug)
@@ -76,7 +76,7 @@ export async function generateMetadata({
 
 export default async function LanguageVideosPage({ params }: PageProps) {
   const { locale: rawLocale, languageSlug } = await params
-  if (!isPublicWatchHomeLanguageSlug(languageSlug)) notFound()
+  if (!isPotentialPublicWatchLanguageSlug(languageSlug)) notFound()
 
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)

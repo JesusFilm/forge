@@ -7,6 +7,10 @@ import {
 import type { SearchLanguageOption } from "./search-language"
 
 describe("languageSwitcherTarget", () => {
+  it("accepts a safe Admin-projected language absent from the static corpus", () => {
+    expect(languageSwitcherTarget("/", "jiamao")).toBe("/jiamao.html")
+  })
+
   it.each([
     ["/", "/spanish-latin-american.html"],
     ["/french.html", "/spanish-latin-american.html"],
@@ -44,7 +48,7 @@ describe("languageSwitcherTarget", () => {
     ).toBe("/portuguese-brazil.html/history")
   })
 
-  it.each(["en", "pt-br", "English", "../english", "missing-language"])(
+  it.each(["en", "pt-br", "English", "../english"])(
     "rejects malformed or internal language key %s",
     (slug) => {
       expect(languageSwitcherTarget("/", slug)).toBeNull()
@@ -59,6 +63,20 @@ describe("languageSwitcherTarget", () => {
 })
 
 describe("projectGlobalLanguageOptions", () => {
+  it("keeps a safe Admin-projected language absent from the static corpus", () => {
+    expect(
+      projectGlobalLanguageOptions([
+        {
+          englishName: "Jiamao",
+          nativeName: null,
+          bcp47: null,
+          publicSlug: "jiamao",
+          regionNames: [],
+        },
+      ]),
+    ).toEqual([{ slug: "jiamao", englishName: "Jiamao", nativeName: null }])
+  })
+
   it("keeps only exact public slugs, compacts fields, dedupes, and sorts", () => {
     const options: SearchLanguageOption[] = [
       {

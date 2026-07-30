@@ -1,5 +1,6 @@
 import {
   DEFAULT_LOCALE,
+  isPotentialPublicWatchLanguageSlug,
   isPublicWatchLanguageSlug,
   parseAcceptLanguage,
   publicWatchAudioLanguageSlugForLocale,
@@ -168,9 +169,13 @@ function resolutionFromSlug(
   if (!slug) return null
 
   const identity = resolveWatchLocaleIdentity(slug)
-  const publicSlug = isPublicWatchLanguageSlug(slug)
-    ? slug
-    : publicSlugForLocale(identity.locale)
+  const directOption = isPotentialPublicWatchLanguageSlug(slug)
+    ? optionForPublicSlug(slug, options)
+    : null
+  const publicSlug =
+    isPublicWatchLanguageSlug(slug) || directOption
+      ? slug
+      : publicSlugForLocale(identity.locale)
   const option = optionForPublicSlug(publicSlug, options)
 
   return {
@@ -521,7 +526,7 @@ function languageMetadataKey(
 function publicSlugForLanguage(
   language: SearchLanguageMetadataLanguage,
 ): string | null {
-  if (language.slug && isPublicWatchLanguageSlug(language.slug)) {
+  if (language.slug && isPotentialPublicWatchLanguageSlug(language.slug)) {
     return language.slug
   }
   if (!language.bcp47) return null

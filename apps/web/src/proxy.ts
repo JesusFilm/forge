@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import {
   DEFAULT_LOCALE,
   isLocale,
+  isSafeWatchLanguageSlug,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
@@ -65,6 +66,7 @@ type RewriteDecision =
       pathname: string
       internalPathname?: string
       languageHomeSlug?: string
+      requiredAudioLanguageSlug?: string
       manifestRoute?: WatchRouteManifestRoute
     }
   | { kind: "pass" }
@@ -184,7 +186,7 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
     if (
       contentSlug &&
       audioLanguageSlug &&
-      isPublicWatchLanguageSlug(audioLanguageSlug)
+      isSafeWatchLanguageSlug(audioLanguageSlug)
     ) {
       canonicalPublicPath = watchVideoPath(
         asContentSlug(contentSlug),
@@ -251,13 +253,18 @@ function classifyRewrite(pathname: string): RewriteDecision {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
       if (!rawLanguageSlug) return { kind: "not-found" }
-      if (!isPublicWatchLanguageSlug(rawLanguageSlug)) {
+      if (!isSafeWatchLanguageSlug(rawLanguageSlug)) {
         return { kind: "not-found" }
       }
+      const requiresDynamicAdmission =
+        !isPublicWatchLanguageSlug(rawLanguageSlug)
       return {
         kind: "rewrite",
         ...resolveWatchLocaleIdentity(rawLanguageSlug),
         pathname,
+        ...(requiresDynamicAdmission
+          ? { requiredAudioLanguageSlug: rawLanguageSlug }
+          : {}),
         internalPathname:
           localeSegment === "videos"
             ? `/videos/${rawLanguageSlug}`
@@ -271,7 +278,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!slug) return { kind: "not-found" }
     const rawAudioSlug = stripSafeSlug(localeSegment)
     if (!rawAudioSlug) return { kind: "not-found" }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    if (!isSafeWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     return {
       kind: "rewrite",
@@ -296,7 +303,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!seriesSlug || !episodeSlug || !rawAudioSlug) {
       return { kind: "not-found" }
     }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    if (!isSafeWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     const internalEpisodeSlug =
       resolveLegacyWatchEpisodeAlias(seriesSlug, episodeSlug) ?? episodeSlug
@@ -382,6 +389,16 @@ async function classifyManifestAdmission(
     // Preserve the existing page-level error behavior instead of redirecting.
   }
 
+  if (decision.requiredAudioLanguageSlug) {
+    manifest ??= await getWatchRouteManifest()
+    if (
+      !manifest ||
+      !manifest.audioLanguageSlugs.includes(decision.requiredAudioLanguageSlug)
+    ) {
+      return { kind: "not-found" }
+    }
+  }
+
   if (!decision.manifestRoute) return { kind: "admit" }
 
   manifest ??= await getWatchRouteManifest()
@@ -397,6 +414,16 @@ async function classifyManifestAdmission(
 
   if (decision.manifestRoute.kind === "one-segment") {
     const { slug } = decision.manifestRoute
+    if (
+      !isPublicWatchHomeLanguageSlug(slug) &&
+      manifest.audioLanguageSlugs.includes(slug)
+    ) {
+      return {
+        kind: "redirect",
+        pathname: languageVideosIndexPath(asLocaleSlug(slug)),
+        status: 307,
+      }
+    }
     const defaultVideoAdmission = defaultLanguageVideoAdmission(manifest, slug)
     const hasExactVideoLanguages = Object.hasOwn(
       manifest.audioLanguageIndexesByContent ?? {},

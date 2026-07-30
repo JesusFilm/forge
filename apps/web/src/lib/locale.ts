@@ -217,6 +217,27 @@ export function isPublicWatchLanguageSlug(slug: string): boolean {
   return PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)
 }
 
+/**
+ * Shape-only validation for an audio-language slug that will be checked
+ * against a trusted runtime authority such as the Watch route manifest.
+ *
+ * This is intentionally not an admission claim. `isPublicWatchLanguageSlug`
+ * remains the exact static-corpus check used by one-segment collision rules.
+ */
+export function isSafeWatchLanguageSlug(slug: string): boolean {
+  return PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)
+}
+
+/**
+ * Accept an Admin-projected English-name slug even when Web's generated
+ * language corpus predates it, while continuing to reject raw BCP-47 catalog
+ * keys at client and metadata boundaries.
+ */
+export function isPotentialPublicWatchLanguageSlug(slug: string): boolean {
+  if (!isSafeWatchLanguageSlug(slug)) return false
+  return isPublicWatchLanguageSlug(slug) || !BCP47_TAG_PATTERN.test(slug)
+}
+
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
   return isPublicWatchLanguageSlug(slug)
 }

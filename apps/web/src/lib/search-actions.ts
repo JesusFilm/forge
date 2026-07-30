@@ -4,7 +4,7 @@ import { adminGraphql, type AdminVariablesOf } from "@forge/admin-graphql"
 import { headers } from "next/headers"
 
 import adminClient from "@/lib/admin-client"
-import { isPublicWatchLanguageSlug } from "./locale"
+import { isPotentialPublicWatchLanguageSlug } from "./locale"
 import {
   searchVideos,
   type SearchContentType,
@@ -118,7 +118,8 @@ export async function runSearch(input: {
 
   const truncatedQuery = query.slice(0, 200)
   const validatedRouteLanguageSlug =
-    routeLanguageSlug == null || isPublicWatchLanguageSlug(routeLanguageSlug)
+    routeLanguageSlug == null ||
+    isPotentialPublicWatchLanguageSlug(routeLanguageSlug)
       ? routeLanguageSlug
       : null
   const displayLanguageSlug = publicSlugForLocale(uiLocale)
@@ -566,7 +567,8 @@ function trustedSearchLanguageAttributes({
   }
 
   const explicitSlug =
-    typeof languageSlug === "string" && isPublicWatchLanguageSlug(languageSlug)
+    typeof languageSlug === "string" &&
+    isPotentialPublicWatchLanguageSlug(languageSlug)
       ? languageSlug
       : null
 
@@ -587,7 +589,7 @@ function withResolvedLanguageSlug(
   results: readonly SearchResult[],
   resolvedLanguage: { publicSlug: string },
 ): SearchResult[] {
-  if (!isPublicWatchLanguageSlug(resolvedLanguage.publicSlug)) {
+  if (!isPotentialPublicWatchLanguageSlug(resolvedLanguage.publicSlug)) {
     return [...results]
   }
   return results.map((result) =>

@@ -285,6 +285,21 @@ describe("/{language}.html/videos route", () => {
     )
   })
 
+  it("renders an admitted language inventory missing from the static corpus", async () => {
+    await LanguageVideosPage({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        languageSlug: "jiamao",
+      }),
+    })
+
+    expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
+      "en",
+      "jiamao",
+    )
+  })
+
   it("keeps each collection overview sticky within its desktop group", async () => {
     const page = await LanguageVideosPage({
       params: Promise.resolve({

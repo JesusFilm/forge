@@ -1,6 +1,6 @@
 import type { Route } from "next"
 
-import { isPublicWatchLanguageSlug } from "./locale"
+import { isPotentialPublicWatchLanguageSlug } from "./locale"
 import {
   languageVideosIndexPath,
   localizedHistoryPath,
@@ -25,7 +25,7 @@ export function projectGlobalLanguageOptions(
 
   for (const option of options) {
     const slug = option.publicSlug
-    if (!slug || !isPublicWatchLanguageSlug(slug)) continue
+    if (!slug || !isPotentialPublicWatchLanguageSlug(slug)) continue
 
     const projected = {
       slug,
@@ -52,7 +52,7 @@ export function languageSwitcherTarget(
   pathname: string,
   selectedLanguageSlug: string,
 ): Route | null {
-  if (!isPublicWatchLanguageSlug(selectedLanguageSlug)) return null
+  if (!isPotentialPublicWatchLanguageSlug(selectedLanguageSlug)) return null
   const language = tryAsLocaleSlug(selectedLanguageSlug)
   if (!language) return null
 

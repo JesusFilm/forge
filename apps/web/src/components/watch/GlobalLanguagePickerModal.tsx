@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
-import { isPublicWatchLanguageSlug } from "@/lib/locale"
+import { isPotentialPublicWatchLanguageSlug } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
   languageSwitcherTarget,
@@ -51,7 +51,7 @@ function validGlobalOptions(
 ): GlobalLanguageOption[] {
   const bySlug = new Map<string, GlobalLanguageOption>()
   for (const option of options) {
-    if (!isPublicWatchLanguageSlug(option.slug)) continue
+    if (!isPotentialPublicWatchLanguageSlug(option.slug)) continue
     if (!bySlug.has(option.slug)) bySlug.set(option.slug, option)
   }
   return [...bySlug.values()]
@@ -203,7 +203,7 @@ export function GlobalLanguagePickerModal({
     if (
       !selectedOption ||
       !selectedTarget ||
-      !isPublicWatchLanguageSlug(selectedOption.slug)
+      !isPotentialPublicWatchLanguageSlug(selectedOption.slug)
     ) {
       setInvalidSelection(true)
       return

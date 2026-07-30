@@ -4,7 +4,7 @@ import { adminGraphql } from "@forge/admin-graphql"
 import client from "@/lib/admin-client"
 
 import {
-  isPublicWatchLanguageSlug,
+  isPotentialPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
 } from "./locale"
 import { languageVideosIndexPath, tryAsLocaleSlug } from "./routes"
@@ -568,7 +568,7 @@ function parseDisplaySpeakers(value: string | null | undefined): number | null {
 function publicSlugForLanguage(
   language: WatchLanguageIndexMetadataLanguage,
 ): string | null {
-  if (language.slug && isPublicWatchLanguageSlug(language.slug)) {
+  if (language.slug && isPotentialPublicWatchLanguageSlug(language.slug)) {
     return language.slug
   }
   if (!language.bcp47) return null

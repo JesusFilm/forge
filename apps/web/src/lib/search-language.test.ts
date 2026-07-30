@@ -153,6 +153,29 @@ describe("groupSearchLanguagesByRegion", () => {
 })
 
 describe("buildSearchLanguageOptions", () => {
+  it("keeps an Admin language slug when BCP-47 is null and the static corpus is stale", () => {
+    const result = buildSearchLanguageOptions({
+      languages: [
+        {
+          id: "language-jiamao",
+          coreId: "141173",
+          name: { en: "Jiamao" },
+          bcp47: null,
+          slug: "jiamao",
+        },
+      ],
+    })
+
+    expect(result.options).toMatchObject([
+      {
+        coreId: "141173",
+        englishName: "Jiamao",
+        bcp47: null,
+        publicSlug: "jiamao",
+      },
+    ])
+  })
+
   it("builds facet-limited language options grouped from country metadata", () => {
     const result = buildSearchLanguageOptions({
       availableLanguageFacets: {
