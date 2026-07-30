@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -69,6 +70,12 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 // Stable fallback for useBibleVerses while no video is resolved — a fresh []
 // each render would re-fire the hook's citations-keyed effect.
 const NO_CITATIONS: readonly WatchBibleCitation[] = []
+
+// tvOS-only: the glide's ordering contract (new pill's focus before old pill's
+// blur — see actionRowScrollGlide.ts) is INVERTED on Android TV, and Android's
+// ScrollView already arrow-scrolls the page natively on D-pad, so the JS glide
+// would fight it frame-by-frame. On react-native-tvos, tvOS is Platform.OS "ios".
+const GLIDE_ENABLED = Platform.OS === "ios"
 
 type ActivePanel = "none" | "language" | "subtitle"
 
@@ -207,6 +214,10 @@ export default function WatchVideoScreen() {
           // Per-frame scrollTo needs the JS-side listener above.
           useNativeDriver: false,
         }).start(({ finished }) => {
+          // finished:false is a stopAnimation from a cancel OR a mid-glide
+          // restart; the restart has already set gliding:true for the NEW
+          // glide, so settling here would make its next hop seed from the
+          // lagging settledY (the backward hitch the module exists to avoid).
           if (finished) glideRef.current = onGlideSettled(glideRef.current)
         })
       })
@@ -339,8 +350,8 @@ export default function WatchVideoScreen() {
               title={displayTitle}
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
-              onRowFocus={handleActionRowFocus}
-              onRowBlur={handleActionRowBlur}
+              onRowFocus={GLIDE_ENABLED ? handleActionRowFocus : undefined}
+              onRowBlur={GLIDE_ENABLED ? handleActionRowBlur : undefined}
             />
           </View>
         </View>
