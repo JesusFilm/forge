@@ -3,7 +3,16 @@
 // WatchSession. DEGRADED (R14–R17): empty sections omitted; below-fold last.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
@@ -15,6 +24,15 @@ import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
+import {
+  GLIDE_DURATION_MS,
+  initialGlideState,
+  onGlideSettled,
+  onPillBlur,
+  onPillFocus,
+  type ActionRowPill,
+  type GlideState,
+} from "../../src/components/watch/actionRowScrollGlide"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
@@ -141,6 +159,69 @@ export default function WatchVideoScreen() {
   // rows) on every screen render while a sheet is open.
   const closePanel = useCallback(() => setActivePanel("none"), [])
 
+  // The action row traps D-pad UP (see DetailsActionRow), so once the page has
+  // scrolled down there'd be no way back to the full hero. Returning focus to
+  // the row glides the page to the top instead. A JS-driven eased timing rather
+  // than scrollTo({animated:true}) — the native curve is a fixed ~300ms, too
+  // abrupt for a full-viewport return — so the listener writes each frame with
+  // scrollTo({animated:false}). All the ORDERING decisions live in the pure,
+  // tested actionRowScrollGlide module; this is just the Animated plumbing.
+  const scrollRef = useRef<ScrollView>(null)
+  const scrollYRef = useRef(0)
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollYRef.current = event.nativeEvent.contentOffset.y
+    },
+    [],
+  )
+  const scrollTopAnim = useMemo(() => new Animated.Value(0), [])
+  useEffect(() => {
+    const id = scrollTopAnim.addListener(({ value }) => {
+      scrollRef.current?.scrollTo({ y: value, animated: false })
+    })
+    // Stop the timing too: a listener-less animation would keep ticking after
+    // unmount and resolve into a scrollTo on a dead ref.
+    return () => {
+      scrollTopAnim.removeListener(id)
+      scrollTopAnim.stopAnimation()
+    }
+  }, [scrollTopAnim])
+  const glideRef = useRef<GlideState>(initialGlideState)
+  const handleActionRowFocus = useCallback(
+    (pill: ActionRowPill) => {
+      // stopAnimation yields the animation's CURRENT value, which is the only
+      // trustworthy offset mid-glide — scrollYRef lags it by a throttle window
+      // and would snap the page backwards before resuming.
+      scrollTopAnim.stopAnimation((liveY) => {
+        const { state, action } = onPillFocus(glideRef.current, pill, {
+          settledY: scrollYRef.current,
+          liveY,
+        })
+        glideRef.current = state
+        if (action.kind !== "start") return
+        scrollTopAnim.setValue(action.fromY)
+        Animated.timing(scrollTopAnim, {
+          toValue: 0,
+          duration: GLIDE_DURATION_MS,
+          easing: Easing.out(Easing.cubic),
+          // Per-frame scrollTo needs the JS-side listener above.
+          useNativeDriver: false,
+        }).start(({ finished }) => {
+          if (finished) glideRef.current = onGlideSettled(glideRef.current)
+        })
+      })
+    },
+    [scrollTopAnim],
+  )
+  const handleActionRowBlur = useCallback(
+    (pill: ActionRowPill) => {
+      const { state, action } = onPillBlur(glideRef.current, pill)
+      glideRef.current = state
+      if (action.kind === "cancel") scrollTopAnim.stopAnimation()
+    },
+    [scrollTopAnim],
+  )
+
   const hasVideo = video != null
 
   // Error state: only when the query errored AND there's nothing usable to keep
@@ -205,9 +286,12 @@ export default function WatchVideoScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {/* Hero: backdrop fills the HERO_PEEK-shortened hero so video clips by
             construction (full-height VideoView punches through Up Next on Android —
@@ -255,6 +339,8 @@ export default function WatchVideoScreen() {
               title={displayTitle}
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
+              onRowFocus={handleActionRowFocus}
+              onRowBlur={handleActionRowBlur}
             />
           </View>
         </View>
