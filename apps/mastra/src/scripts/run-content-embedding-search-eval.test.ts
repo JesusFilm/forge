@@ -59,7 +59,7 @@ describe("resolveContentEmbeddingSearchEvalOutPath", () => {
   it("defaults docs report output under docs/search-eval-reports", () => {
     expect(
       resolveContentEmbeddingSearchEvalOutPath("report-1", [], "/repo"),
-    ).toBe("/repo/docs/search-eval-reports/report-1.json")
+    ).toBe(resolve("/repo", "docs/search-eval-reports/report-1.json"))
   })
 
   it("honors absolute and relative --out paths", () => {
@@ -193,7 +193,7 @@ describe("runContentEmbeddingSearchEvalCli", () => {
 
     expect(exitCode).toBe(1)
     expect(deps.writeJson).toHaveBeenCalledWith(
-      "/repo/docs/search-eval-reports/report-1.json",
+      resolve("/repo", "docs/search-eval-reports/report-1.json"),
       expect.objectContaining({
         gate: expect.objectContaining({ backfillReady: false }),
       }),

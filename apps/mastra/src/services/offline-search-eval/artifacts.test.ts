@@ -79,11 +79,11 @@ describe("search eval artifact store", () => {
     const store = createSearchEvalArtifactStore(rootDir)
 
     await expect(store.writeBaseline(baseline())).resolves.toMatchObject({
-      path: expect.stringContaining("baselines/default.json"),
+      path: expect.stringContaining(join("baselines", "default.json")),
     })
     await expect(store.readBaseline("default")).resolves.toEqual(baseline())
     await expect(store.writeReport(report())).resolves.toMatchObject({
-      path: expect.stringContaining("reports/run-1.json"),
+      path: expect.stringContaining(join("reports", "run-1.json")),
     })
     await expect(store.readReport("run-1")).resolves.toEqual(report())
   })
@@ -130,7 +130,7 @@ describe("search eval artifact store", () => {
     }
 
     await expect(store.writeReport(syncedReport)).resolves.toMatchObject({
-      path: expect.stringContaining("reports/run-1.json"),
+      path: expect.stringContaining(join("reports", "run-1.json")),
     })
     await expect(store.readReport("run-1")).resolves.toEqual(syncedReport)
   })

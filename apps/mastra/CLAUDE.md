@@ -129,6 +129,17 @@ into every consumer's tsconfig, and the repo's other packages all stay
 extensionless — so the fix lives here, dev-only. `build`/`start` are unaffected:
 the Rollup deployer transpiles the workspace package into the bundle.
 
+### Programmatic workflow inputs under Mastra 1.55
+
+`run.start({ inputData })` and `run.startAsync({ inputData })` are typed against
+the workflow schema's **output**. For Zod objects with `.default()` fields, that
+means the defaulted fields are required at the direct start call even though
+raw route or Studio input may omit them. Programmatic launchers must validate
+raw input with the exported workflow schema and pass the parsed output; direct
+workflow tests should call `Schema.parse(rawInput)` before starting the run.
+Do not cast incomplete input to the output type, because that removes coverage
+of the defaults and validation contract.
+
 ## Environment
 
 | Variable                                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
