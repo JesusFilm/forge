@@ -14,6 +14,7 @@ import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { buildShareUrl } from "./detailsHelpers"
 import { WATCH_THEME } from "./watchDetailTheme"
+import type { ActionRowPill } from "./actionRowScrollGlide"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
 
@@ -23,12 +24,21 @@ type DetailsActionRowProps = {
   title: string | null
   onOpenLanguage: () => void
   onOpenSubtitles: () => void
+  // Pill-identified so the consumer can tell "focus left the row" from a
+  // within-row hop: tvOS delivers the NEW pill's focus BEFORE the old pill's
+  // blur, so a bare blur callback would cancel work the new focus just started
+  // (verified in-sim on the scroll-to-top glide; contract in
+  // actionRowScrollGlide.ts, which has the tests).
+  onRowFocus?: (pill: ActionRowPill) => void
+  onRowBlur?: (pill: ActionRowPill) => void
 }
 
 export function DetailsActionRow({
   title,
   onOpenLanguage,
   onOpenSubtitles,
+  onRowFocus,
+  onRowBlur,
 }: DetailsActionRowProps) {
   const { playVideo, state } = useVideoPlayerContext()
   const { video, activeVariant, subtitleEnabled } = useWatchSession()
@@ -84,29 +94,43 @@ export function DetailsActionRow({
       {/* trapFocusUp: the hero VideoBackdrop's AVPlayer container hijacks an
           up-press while playing (focusable={false}/pointerEvents="none" don't
           contain it — tv-videoview-steals-dpad-focus-20260413.md), leaving no
-          visible focus; the trap bounces up back into the row. */}
+          visible focus. The trap does not redirect that press: RCTTVView's
+          shouldUpdateFocusInContext: returns NO when nextFocusedItem isn't
+          inside this guide, so UIKit CANCELS the update and focus simply stays
+          put — no onFocus/onBlur fires. That's why the scroll-restore below is
+          keyed on focus ENTERING the row (from the content underneath), not on
+          the trapped press itself: without it the trap would leave the hero
+          stranded half-scrolled with no way up. */}
       <TVFocusGuideView autoFocus trapFocusUp style={styles.row}>
         <PlayPill
           onPress={handlePlay}
           hasTVPreferredFocus={playPreferredFocus}
+          onFocus={() => onRowFocus?.("play")}
+          onBlur={() => onRowBlur?.("play")}
         />
         <SecondaryPill
           icon="globe-outline"
           label="Language"
           sub={langSub}
           onPress={onOpenLanguage}
+          onFocus={() => onRowFocus?.("language")}
+          onBlur={() => onRowBlur?.("language")}
         />
         <SecondaryPill
           icon="text-outline"
           label="Subtitles"
           sub={subsSub}
           onPress={onOpenSubtitles}
+          onFocus={() => onRowFocus?.("subtitles")}
+          onBlur={() => onRowBlur?.("subtitles")}
         />
         {canShare ? (
           <SecondaryPill
             icon="share-outline"
             label="Share"
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
+            onFocus={() => onRowFocus?.("share")}
+            onBlur={() => onRowBlur?.("share")}
           />
         ) : null}
       </TVFocusGuideView>
@@ -134,9 +158,13 @@ const ICON_SIZE = Math.round(scale(30))
 function PlayPill({
   onPress,
   hasTVPreferredFocus,
+  onFocus,
+  onBlur,
 }: {
   onPress: () => void
   hasTVPreferredFocus: boolean
+  onFocus?: () => void
+  onBlur?: () => void
 }) {
   const { setFocused, progress, transform } = useFocusVisual("pill", {
     nativeDriver: false,
@@ -156,8 +184,14 @@ function PlayPill({
   return (
     <Pressable
       onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onFocus={() => {
+        setFocused(true)
+        onFocus?.()
+      }}
+      onBlur={() => {
+        setFocused(false)
+        onBlur?.()
+      }}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel="Play"
@@ -176,12 +210,16 @@ export function SecondaryPill({
   sub,
   onPress,
   hasTVPreferredFocus,
+  onFocus,
+  onBlur,
 }: {
   icon: IconName
   label: string
   sub?: string | null
   onPress: () => void
   hasTVPreferredFocus?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
 }) {
   const { setFocused, progress, transform } = useFocusVisual("pill", {
     nativeDriver: false,
@@ -221,8 +259,14 @@ export function SecondaryPill({
   return (
     <Pressable
       onPress={onPress}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onFocus={() => {
+        setFocused(true)
+        onFocus?.()
+      }}
+      onBlur={() => {
+        setFocused(false)
+        onBlur?.()
+      }}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       // Fold the visible sub-value (current language / "On"/"Off") into the

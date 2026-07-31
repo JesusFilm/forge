@@ -36,11 +36,6 @@ type SeriesEpisodeCardProps = {
   index: number
   languageSlug: string
   parentSlug: string
-  // Backdrop URL surfaced via data-backdrop-url so the parent grid can
-  // delegate pointer/focus events at the container level instead of
-  // attaching per-card handlers (avoids 20+ rerenders during keyboard
-  // tab-through and pointer-event work per card during pan).
-  backdropUrl?: string | null
 }
 
 // Production-style duration label: "M:SS" or "H:MM:SS". Returns null when
@@ -61,7 +56,6 @@ export function SeriesEpisodeCard({
   index,
   languageSlug,
   parentSlug,
-  backdropUrl,
 }: SeriesEpisodeCardProps) {
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
   const parent = tryAsContentSlug(parentSlug)
@@ -162,7 +156,6 @@ export function SeriesEpisodeCard({
     return (
       <div
         data-testid="series-episode-card"
-        data-backdrop-url={backdropUrl ?? ""}
         className={cardClassName}
         style={cardStyle}
       >
@@ -175,7 +168,6 @@ export function SeriesEpisodeCard({
     <Link
       href={href}
       data-testid="series-episode-card"
-      data-backdrop-url={backdropUrl ?? ""}
       className={cardClassName}
       style={cardStyle}
     >

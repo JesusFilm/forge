@@ -33,6 +33,8 @@ describe("searchVideosForAgent", () => {
           imageUrl: "https://cdn/img.png",
           snippet: "About Jesus.",
           playbackId: null, // unplayable in the locale — must be dropped
+          durationSeconds: 7674,
+          languageSlug: "english",
         },
         {
           type: "video",
@@ -42,6 +44,8 @@ describe("searchVideosForAgent", () => {
           imageUrl: null,
           snippet: "Easter video.",
           playbackId: "pb-1", // playable — kept
+          durationSeconds: 312,
+          languageSlug: "english",
         },
       ],
       hasMore: false,
@@ -68,14 +72,19 @@ describe("searchVideosForAgent", () => {
       resultTypes: ["video"],
     })
     // ONLY the playable row survives — this is the assertion a deleted filter
-    // would fail (the null-playback row would leak through).
-    expect(result.videos).toEqual([
+    // would fail (the null-playback row would leak through). toStrictEqual +
+    // populated fixture fields so the playback-field projection is really
+    // pinned (toEqual ignores undefined-valued keys).
+    expect(result.videos).toStrictEqual([
       {
         videoId: "vid-2",
         title: "Easter",
         snippet: "Easter video.",
         slug: "easter",
         imageUrl: null,
+        playbackId: "pb-1",
+        durationSeconds: 312,
+        languageSlug: "english",
       },
     ])
   })

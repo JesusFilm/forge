@@ -1,9 +1,9 @@
 ---
 id: "feat-321"
 title: "Langfuse tracing for the Seeker agent"
-owner: "jaco"
+owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-01"
 duration: 3
 depends_on: []

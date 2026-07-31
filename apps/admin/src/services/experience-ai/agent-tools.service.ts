@@ -48,12 +48,18 @@ export const searchVideosRequestSchema = z.object({
 })
 export type SearchVideosRequest = z.infer<typeof searchVideosRequestSchema>
 
+// Since the playback-field widening this shape is a SUPERSET of the in-process
+// twin's (src/mastra/tools/search-videos.ts) — the two are no longer
+// field-identical; reconcile deliberately if they ever re-converge.
 export type AgentVideoResult = {
   videoId: string
   title: string
   snippet: string
   slug: string
   imageUrl: string | null
+  playbackId: string
+  durationSeconds: number | null
+  languageSlug: string | null
 }
 
 export async function searchVideosForAgent(
@@ -72,18 +78,26 @@ export async function searchVideosForAgent(
     resultTypes: ["video"],
   })
 
-  const videos = response.results
-    // playbackId === null means no playable dub resolved for the locale (the R4
-    // retrievers keep such rows); agents write these videoIds into blocks
-    // verbatim, so unplayable results must never reach them.
-    .filter((result) => result.type === "video" && result.playbackId !== null)
-    .map((result) => ({
-      videoId: result.id,
-      title: result.title,
-      snippet: result.snippet ?? "",
-      slug: result.slug,
-      imageUrl: result.imageUrl,
-    }))
+  // playbackId === null means no playable dub resolved for the locale (the R4
+  // retrievers keep such rows); agents write these videoIds into blocks
+  // verbatim, so unplayable results must never reach them. flatMap (not
+  // filter+map) so the null check narrows playbackId to string.
+  const videos = response.results.flatMap((result) =>
+    result.type === "video" && result.playbackId !== null
+      ? [
+          {
+            videoId: result.id,
+            title: result.title,
+            snippet: result.snippet ?? "",
+            slug: result.slug,
+            imageUrl: result.imageUrl,
+            playbackId: result.playbackId,
+            durationSeconds: result.durationSeconds,
+            languageSlug: result.languageSlug,
+          },
+        ]
+      : [],
+  )
 
   return { videos }
 }
