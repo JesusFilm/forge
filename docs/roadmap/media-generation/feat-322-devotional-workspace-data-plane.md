@@ -64,7 +64,7 @@ idempotency, and the complete edit-to-publish flow.
 
 - Mastra: 1,552 tests passed (3 skipped); typecheck and lint passed.
 - Mastra Gateway: 32 tests passed; typecheck and lint passed.
-- Shorts Worker: 161 tests passed; typecheck and lint passed.
+- Shorts Worker: 162 tests passed; typecheck and lint passed.
 - Shorts Compositions: 68 tests passed; typecheck and lint passed.
 - Mastra's generated server bundle contains the Workspace and data-plane
   singletons, and a local Studio browser smoke rendered `Devotional Workspace`
