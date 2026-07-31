@@ -194,6 +194,12 @@ describe("local storage backend", () => {
     ).rejects.toThrow(/Invalid assetId/)
   })
 
+  it("keeps Workspace paths inside the configured local root", async () => {
+    await expect(
+      storage.workspaceArtifactExists("../../outside.mp4"),
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError)
+  })
+
   it("writes immutable content-addressed Workspace artifacts idempotently", async () => {
     const attempt = {
       workspaceGeneration: 4,

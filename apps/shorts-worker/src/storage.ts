@@ -14,7 +14,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises"
-import { dirname, isAbsolute, join, resolve } from "node:path"
+import { dirname, isAbsolute, resolve, sep } from "node:path"
 import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { env } from "./config/env.js"
@@ -1025,11 +1025,18 @@ function isENOENT(error: unknown): boolean {
 
 function createLocalStorage(config: StorageConfig): Storage {
   const root = isAbsolute(config.localRootDir)
-    ? config.localRootDir
+    ? resolve(config.localRootDir)
     : resolve(process.cwd(), config.localRootDir)
+  const rootPrefix = root.endsWith(sep) ? root : `${root}${sep}`
 
   function localPath(key: string): string {
-    return join(root, key)
+    const candidate = resolve(root, key)
+    if (!candidate.startsWith(rootPrefix)) {
+      throw new ArtifactIntegrityError(
+        `artifact path is outside the configured storage root: ${key}`,
+      )
+    }
+    return candidate
   }
 
   return {
