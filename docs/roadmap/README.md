@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 3, 2026)
 
-- **Total tickets:** 474
-- **Complete:** 362
+- **Total tickets:** 475
+- **Complete:** 363
 - **In progress:** 34
 - **Not started:** 29
 - **Blocked:** 49
@@ -211,6 +211,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-255](platform/feat-255-admin-video-search-backup-snapshot.md)                    | Admin video-search backup snapshot                                               | codex      | P0       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-301](platform/feat-301-watch-canonical-server-action-origins.md)                 | Allow canonical Watch Server Action origins                                      | unassigned | P0       | 2026-07-23 | 1    | 2026-07-23 | in-progress |
 | [feat-321](platform/feat-321-watch-download-redirects.md)                              | Redirect Watch downloads off Web                                                 | vlad       | P0       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-323](platform/feat-323-admin-subtitle-checksum-reconciliation.md)                | Admin subtitle checksum reconciliation                                           | vlad       | P0       | 2026-07-31 | 2    | 2026-08-01 | complete    |
 | [feat-325](platform/feat-325-recover-watch-video-search-metadata-migration.md)         | Recover Watch video search metadata migration                                    | codex      | P0       | 2026-08-01 | 1    | 2026-08-01 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |

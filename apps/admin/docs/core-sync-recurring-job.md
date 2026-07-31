@@ -83,6 +83,41 @@ calls `runSync(syncPrisma, ...)`.
 10. Open `/dashboard/workflows/<runId>` for a recent run and confirm the
     embedded `@workflow/web-shared` trace/detail view shows runtime events.
 
+## Subtitle Parity Rollout
+
+Deploy [JesusFilm/core#9425](https://github.com/JesusFilm/core/pull/9425)
+before the Forge release that consumes its protected subtitle checksum
+manifest. `CORE_API_TOKEN` is mandatory for this phase. In production,
+`CORE_API_URL` must use HTTPS; Admin rejects redirects and never logs either
+interop credential header.
+
+After both releases are deployed, run the normal scheduled Core Sync or start
+one from Admin. Do not repair subtitle rows with a database script. The
+`video-subtitles` phase compares the complete Admin and Core checksums, fetches
+details only for mismatched videos, and permits deletion only inside a video
+whose snapshot-bound Core detail was validated completely. Missing or
+ambiguous Admin relationships remain visible as residual mismatches and are
+not mutated.
+
+Verify the rollout in this order:
+
+1. Confirm the Core Sync workflow execution succeeded and the lock is clear.
+2. Confirm Subtitle parity freshness is `Fresh` and data parity is `In sync` on
+   `/dashboard/system-status`. Record the displayed check ID and completion
+   time; a succeeded workflow alone is not parity evidence.
+3. Confirm the JESUS video `1_jf-0-0` no longer appears in the residual sample.
+4. Open `https://www.jesusfilm.org/watch/jesus.html`, select English, and
+   confirm the transcript block is populated from the restored active
+   subtitle data.
+5. If parity remains out of sync, use the check ID and Core Sync workflow run
+   ledger to inspect the bounded residual reasons. Fix missing relationships or
+   identifier ownership, then rerun the normal sync path.
+
+Roll forward if the reconciler must be disabled: omit `video-subtitles` from
+the dispatched scope until a corrected build is deployed. Do not restore the
+old catalogue-wide "delete anything not stamped by this run" cleanup, and do
+not roll back the additive subtitle version columns.
+
 ## Full-Sync Pool Resilience Notes
 
 Before rerunning a production full sync after a pool-timeout incident, verify

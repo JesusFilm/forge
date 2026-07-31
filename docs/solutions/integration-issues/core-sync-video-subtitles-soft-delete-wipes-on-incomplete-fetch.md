@@ -1,6 +1,7 @@
 ---
 title: "Core-sync video-subtitles soft-delete wipes valid rows when a run's fetch is incomplete"
 date: "2026-07-22"
+last_updated: "2026-07-31"
 category: integration-issues
 module: apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
 problem_type: integration_issue
@@ -11,9 +12,10 @@ symptoms:
   - "Production admin returns englishSubs=0 for the JESUS-segment editions while the Core gateway has the English VTTs"
   - "The TV showcase sentence-aware hop feature is silently data-gated to 1 of 6 centerpieces (only my-last-day has a reachable English VTT in prod)"
 root_cause: logic_error
-resolution_type: documentation_update
+resolution_type: code_fix
 severity: high
 related_components:
+  - apps/admin/src/services/core-sync/phases/video-subtitle-reconciliation.ts
   - apps/admin/src/services/core-sync/phases/sync-video-images.ts
   - apps/tv/src/lib/showcaseMode/sentenceTimingSource.ts
   - apps/tv/src/components/showcaseMode/ShowcaseScreen.tsx
@@ -63,8 +65,28 @@ English VTTs, which in turn data-gates the TV showcase sentence-aware hop featur
 
 ## Solution
 
-Two parts: the local recovery that was applied here, and the code guard that is **recommended but not
-yet applied** (apps/admin is owned by another engineer — surfaced as a hand-off, not fixed in-branch).
+**Durable resolution (2026-07-31).** The historical ratio guard and manual
+recovery notes below are superseded as production guidance. Core PR #9425
+defines a protected, versioned subtitle manifest with a stable snapshot,
+catalogue root, per-video buckets, and snapshot-bound details; Core must deploy
+it before Forge enables this consumer. Admin reproduces checksum version 1
+from every active Core-owned subtitle row. Equal roots are a zero-detail,
+zero-write result; only unequal video buckets request details.
+
+Admin validates the complete requested detail set before writing. Each repair
+transaction is fenced by the current sync-lock row, restores or upserts the
+exact Core records for one video, and may soft-delete only Core-owned rows for
+that same video that are absent from the validated detail. A changed snapshot,
+malformed response, missing or ambiguous relationship, Manager-owned Core-ID
+collision, or lost lock fails closed without a delete. A final checksum match is
+the only state that can be published as in parity.
+
+The normal scheduled/manual Core Sync is the repair path for JESUS video
+`1_jf-0-0`; no direct production SQL patch is required. Existing Watch manifest
+invalidation publishes the restored transcript through the normal data path.
+
+The SQL below records how the disposable local database was recovered during
+the original investigation. It must not be used as the production repair path.
 
 **Local recovery (applied).** The soft-delete only sets `deleted_at`, so the over-deletion is reversible.
 Restore rows this run wrongly deleted — deleted just now, but `synced_at` predates the run:
@@ -76,7 +98,7 @@ WHERE deleted_at >= '<run start>'
   AND (synced_at IS NULL OR synced_at < '<run start>');
 ```
 
-**Recommended guard (admin-owned, not yet applied).** The destructive pass is
+**Superseded historical proposal.** The destructive pass was
 `sync-video-subtitles.ts:319-329`:
 
 ```ts
@@ -95,15 +117,10 @@ if (!since && stats.errors === 0) {
 }
 ```
 
-The only guards today are `firstPageWasEmpty` (page 0 only, `:309`) and `errors === 0`. Neither catches a
-run that returned _some_ pages but far fewer rows than exist. Gate the delete on a **fetch-completeness
-sanity check** — e.g. skip (or hard-fail) the soft-delete when `totalSubtitlesSeen` is implausibly low
-versus the current stored `video_subtitle` count (a run that fetched 208 must never delete 10,695). A short
-fetch should degrade to "sync nothing" or a loud failure, never a silent mass delete.
-
-**Operational mitigation** for a prod re-sync until the guard lands: watch the `video-subtitles`
-phase counts live and kill the run before the delete if `updated` is far below the stored total; or
-re-sync subtitles for the specific affected videos rather than a catalogue-wide `--full`.
+The former idea was to gate the global delete using a fetched/stored ratio. That
+would catch spectacular coverage collapses, but it would not prove that any
+specific row was removed from Core. It was therefore rejected as a deletion
+authority in favor of the snapshot-bound per-video invariant above.
 
 ## Why This Works
 
@@ -124,6 +141,19 @@ learning is not the specific fetch failure but the **soft-delete's lack of a com
 turns any incomplete fetch into silent data loss.
 
 ## Prevention
+
+- **A checksum mismatch identifies work; only authoritative detail authorizes
+  mutation.** Aggregate counts and ratios can alert, but cannot prove a
+  particular record is absent from Core.
+- **Scope absence-based deletes to the exact parent and snapshot that was
+  validated.** Never turn an incomplete catalogue response into a global
+  cleanup.
+- **Fence validation and mutation with the sync-lock row.** A preflight lock
+  check outside the transaction is not enough because ownership can change
+  before commit.
+- **Persist execution, freshness, and data parity independently.** A workflow
+  can succeed while residual videos remain out of parity; stale or malformed
+  evidence must render unknown, never healthy.
 
 - **Never let a "delete everything not re-fetched" pass run destructively without a fetch-completeness
   gate.** Any soft-delete/prune-after-sync (this phase, and any sibling that mirrors the pattern) must
