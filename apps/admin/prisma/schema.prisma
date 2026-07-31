@@ -1468,7 +1468,9 @@ model VideoSubtitle {
   value          String?
   primary        Boolean      @default(false)
   vttSrc         String?      @map("vtt_src")
+  vttVersion     Int          @default(1) @map("vtt_version")
   srtSrc         String?      @map("srt_src")
+  srtVersion     Int          @default(1) @map("srt_version")
   /// Whether this subtitle was AI-generated (transcription/translation).
   aiGenerated    Boolean      @default(false) @map("ai_generated")
   syncedAt       DateTime?    @map("synced_at")
