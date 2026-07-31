@@ -1,4 +1,5 @@
 import { Activity } from "lucide-react"
+import Link from "next/link"
 import {
   DashboardPageHeader,
   PageSection,
@@ -26,31 +27,7 @@ export default async function SystemStatusPage() {
   const data = await loadSystemStatusData()
   const canTriggerSync = hasPermission(principal, "system:trigger-workflow")
   const lockState = metricValue(data.metrics, "Lock State")
-  const exceptionCount = Number(metricValue(data.metrics, "Exceptions"))
   const latestAttemptedSync = metricValue(data.metrics, "Latest Attempted Sync")
-  const isRunning = lockState === "HELD"
-  const needsReview =
-    latestAttemptedSync === "failed" ||
-    latestAttemptedSync === "FAILED" ||
-    exceptionCount > 0
-  const verdict = isRunning
-    ? {
-        label: "Core Sync is running",
-        detail:
-          "The DB-backed lock is held. Wait for this run to finish before starting another.",
-        tone: "info" as const,
-      }
-    : needsReview
-      ? {
-          label: "Core Sync needs review",
-          detail: "A synced data set or recent sync attempt needs review.",
-          tone: "warning" as const,
-        }
-      : {
-          label: "Core Sync is healthy",
-          detail: "No active lock. Sync state is current.",
-          tone: "success" as const,
-        }
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,40 +46,58 @@ export default async function SystemStatusPage() {
         }
       />
 
-      <section className="app-card p-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2">
-              <Activity
-                className="h-4 w-4 text-[var(--color-text-muted)]"
-                strokeWidth={1.5}
-              />
-              <StatusPill tone={verdict.tone}>{verdict.label}</StatusPill>
-            </div>
-            <p className="max-w-3xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-              {verdict.detail}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:min-w-[520px]">
-            {[
-              ["Lock", lockState],
-              ["Latest sync", metricValue(data.metrics, "Latest Sync")],
-              ["Latest attempted sync", latestAttemptedSync],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2"
+      <section aria-labelledby="core-sync-dimensions-title">
+        <div className="mb-3 flex items-center gap-2">
+          <Activity
+            className="h-4 w-4 text-[var(--color-text-muted)]"
+            strokeWidth={1.5}
+          />
+          <h2 id="core-sync-dimensions-title" className="label-text">
+            Core Sync health dimensions
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {data.healthAxes.map((axis) => (
+            <section
+              key={axis.key}
+              aria-labelledby={`core-sync-${axis.key}-title`}
+              className="app-card p-4"
+            >
+              <h3
+                id={`core-sync-${axis.key}-title`}
+                className="mb-2 text-[13px] font-semibold"
               >
-                <div className="label-text mb-1">{label}</div>
-                <div className="font-mono text-[13px]">{value}</div>
-              </div>
-            ))}
-          </div>
+                {axis.label}
+              </h3>
+              <StatusPill tone={axis.statusTone}>{axis.statusLabel}</StatusPill>
+              <p className="mt-3 text-[13px] leading-6 text-[var(--color-text-secondary)]">
+                {axis.detail}
+              </p>
+            </section>
+          ))}
+        </div>
+      </section>
+
+      <section className="app-card p-4" aria-label="Core Sync run summary">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[
+            ["Lock", lockState],
+            ["Latest sync", metricValue(data.metrics, "Latest Sync")],
+            ["Latest attempted sync", latestAttemptedSync],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2"
+            >
+              <div className="label-text mb-1">{label}</div>
+              <div className="font-mono text-[13px]">{value}</div>
+            </div>
+          ))}
         </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <PageSection title="Sync State" meta="SYNC_STATE">
+        <PageSection title="Phase Execution State" meta="EXECUTION_ONLY">
           <table className="w-full border-collapse text-left">
             <thead className="hairline-strong-b">
               <tr className="h-10">
@@ -143,6 +138,107 @@ export default async function SystemStatusPage() {
           />
         </PageSection>
       </div>
+
+      <PageSection title="Subtitle Parity Evidence" meta="LAST_COMPLETED_CHECK">
+        {data.parityEvidence ? (
+          <div className="grid gap-5 p-4 lg:grid-cols-2">
+            <dl className="grid min-w-0 gap-3 text-[13px]">
+              <div className="min-w-0">
+                <dt className="label-text mb-1">Completed</dt>
+                <dd className="font-mono text-[11px]">
+                  <time dateTime={data.parityEvidence.completedAtIso}>
+                    {data.parityEvidence.completedAt} UTC
+                  </time>
+                </dd>
+              </div>
+              {[
+                ["Stable check ID", data.parityEvidence.checkId],
+                ["Core snapshot", data.parityEvidence.snapshot],
+                ["Core root", data.parityEvidence.coreRootChecksum],
+                ["Admin root", data.parityEvidence.adminRootChecksum],
+                [
+                  "Subtitle records",
+                  `Core ${data.parityEvidence.coreTotalCount} / Admin ${data.parityEvidence.adminTotalCount}`,
+                ],
+                [
+                  "Unprojectable Admin rows",
+                  data.parityEvidence.unprojectableCount.toString(),
+                ],
+                [
+                  "Latest attempt",
+                  `${data.parityEvidence.latestAttemptCheckId} (${data.parityEvidence.latestAttemptStatus})`,
+                ],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0">
+                  <dt className="label-text mb-1">{label}</dt>
+                  <dd className="break-all font-mono text-[11px]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <section aria-labelledby="subtitle-parity-residuals-title">
+              <h3
+                id="subtitle-parity-residuals-title"
+                className="text-[13px] font-semibold"
+              >
+                Residual videos
+              </h3>
+              <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                Showing {data.parityEvidence.residualSample.length} of{" "}
+                {data.parityEvidence.residualTotal} residual videos.
+              </p>
+              {data.parityEvidence.residualSample.length > 0 ? (
+                <ul className="mt-3 grid gap-2">
+                  {data.parityEvidence.residualSample.map((residual) => (
+                    <li
+                      key={residual.videoId}
+                      className="rounded-sm border border-[var(--color-hairline)] p-3"
+                    >
+                      <div className="break-all font-mono text-[11px]">
+                        {residual.videoId}
+                      </div>
+                      <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">
+                        {residual.reason ??
+                          "Reason is not present in the bounded diagnostic sample."}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">
+                  No residual videos were recorded for this check.
+                </p>
+              )}
+              {data.parityEvidence.residualReasonTruncatedCount > 0 ? (
+                <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">
+                  {data.parityEvidence.residualReasonTruncatedCount} additional
+                  reason(s) were omitted from the persisted sample.
+                </p>
+              ) : null}
+              <p className="mt-4 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                For complete execution detail, open the{" "}
+                <Link className="underline" href="/dashboard/workflows">
+                  Core Sync run ledger
+                </Link>{" "}
+                and look up stable check ID{" "}
+                <span className="break-all font-mono">
+                  {data.parityEvidence.checkId}
+                </span>
+                .
+              </p>
+            </section>
+          </div>
+        ) : (
+          <div className="p-4 text-[13px] leading-6 text-[var(--color-text-secondary)]">
+            No complete, supported subtitle parity check is available. Open the{" "}
+            <Link className="underline" href="/dashboard/workflows">
+              Core Sync run ledger
+            </Link>{" "}
+            to inspect execution attempts; parity remains unavailable until a
+            completed check is persisted.
+          </div>
+        )}
+      </PageSection>
     </div>
   )
 }
