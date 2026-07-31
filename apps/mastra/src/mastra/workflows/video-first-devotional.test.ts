@@ -152,7 +152,12 @@ async function startAndResume(approved: boolean, runId: string) {
   const workflow = registeredWorkflow
   const run = await workflow.createRun({ runId })
   await run.startAsync({
-    inputData: { chapterIndex: 19, date: "2026-07-21" },
+    inputData: {
+      chapterIndex: 19,
+      date: "2026-07-21",
+      regenerate: false,
+      regenerateAudio: false,
+    },
   })
   let state = await workflow.getWorkflowRunById(runId)
   for (
