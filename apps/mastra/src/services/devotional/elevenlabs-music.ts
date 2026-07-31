@@ -1,4 +1,5 @@
 import { getElevenLabsConfig } from "../../config/env"
+import type { MusicMoodId } from "./authored-data"
 import type { ElevenLabsConfig } from "../../config/env"
 import {
   discardResponseBody,
@@ -34,7 +35,6 @@ export const MAX_MUSIC_MS = 600_000
 /** Default bed length; the render loops it to cover the full devotional.
  *  Owner rule (2026-07-14): at least ONE MINUTE — a 30s pattern looped 5–6×
  *  over a ~3min devotional repeats too noticeably. */
-export const DEFAULT_MUSIC_MS = 60_000
 
 /**
  * Named mood beds. All follow the approved ambient/calm/simple direction — the
@@ -44,17 +44,7 @@ export const DEFAULT_MUSIC_MS = 60_000
 // Family: warm ambient electric-guitar swells with reverb over a soft pad
 // (the owner-approved style). Mood only shifts the emotional color, always
 // background-friendly — no drums, no vocals.
-export const MUSIC_MOODS = {
-  peace:
-    "Calm worshipful ambient. Soft ambient electric guitar swells with reverb over a warm pad, slowly building. Emotive, cinematic, background-friendly. No drums, no percussion, no vocals. Reflective, peaceful, and still.",
-  hope: "Calm worshipful ambient, quietly hopeful. Soft ambient electric guitar swells with reverb over a warm pad, gently rising. Emotive, cinematic, background-friendly. No drums, no percussion, no vocals. Uplifting and tender.",
-  // lament keeps a quiet, subtle cello low under the guitar — never anxious.
-  lament:
-    "Calm ambient, gently sorrowful yet comforting. Soft ambient electric guitar swells with reverb over a warm pad, with a quiet, subtle cello low in the mix underneath. Slow, tender, not anxious, not dramatic. No drums, no percussion, no vocals. Reflective.",
-  awe: "Calm reverent ambient. Soft ambient electric guitar swells with deep reverb over a spacious warm pad. Still, holy, and expansive. No drums, no percussion, no vocals. Worshipful and awe-filled.",
-} as const
-
-export type MusicMood = keyof typeof MUSIC_MOODS
+export type MusicMood = MusicMoodId
 
 export type MusicAudio = {
   format: "mp3"
@@ -86,6 +76,8 @@ export type GenerateMusicInput = {
   prompt?: string
   /** Named mood preset; ignored when an explicit `prompt` is given. */
   mood?: MusicMood
+  moodPrompts?: Readonly<Record<MusicMood, string>>
+  defaultLengthMs?: number
   /** Requested length in ms; clamped to [MIN_MUSIC_MS, MAX_MUSIC_MS]. */
   lengthMs?: number
   /** Injectable for tests; defaults to the resolved ElevenLabs env config. */
@@ -94,8 +86,8 @@ export type GenerateMusicInput = {
   timeoutMs?: number
 }
 
-function clampLength(ms: number): number {
-  if (!Number.isFinite(ms)) return DEFAULT_MUSIC_MS
+function clampLength(ms: number, defaultLengthMs: number): number {
+  if (!Number.isFinite(ms)) return defaultLengthMs
   return Math.min(MAX_MUSIC_MS, Math.max(MIN_MUSIC_MS, Math.round(ms)))
 }
 
@@ -112,17 +104,35 @@ export async function generateMusic(
     }
   }
 
-  const prompt = (input.prompt ?? MUSIC_MOODS[input.mood ?? "peace"]).trim()
+  const prompt = (
+    input.prompt ??
+    input.moodPrompts?.[input.mood ?? "peace"] ??
+    ""
+  ).trim()
   if (!prompt) {
     return {
       ok: false,
       reason: "invalid_input",
       retryable: false,
-      details: "no music prompt (provide `prompt` or `mood`)",
+      details:
+        "/inputs/music/profiles.json: no music prompt (provide prompt or configured mood)",
     }
   }
 
-  const lengthMs = clampLength(input.lengthMs ?? DEFAULT_MUSIC_MS)
+  if (input.defaultLengthMs == null) {
+    return {
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      details:
+        "/inputs/music/profiles.json: defaultLengthMs configuration is required",
+    }
+  }
+
+  const lengthMs = clampLength(
+    input.lengthMs ?? input.defaultLengthMs,
+    input.defaultLengthMs,
+  )
   const fetchImpl = input.fetchImpl ?? fetch
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS
 

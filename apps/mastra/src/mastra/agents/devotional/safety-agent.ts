@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 
-import { SAFETY_SYSTEM_PROMPT } from "../../../services/devotional/safety-gate"
+import { requireResolvedInstructions } from "./instruction-resolver"
 import { devotionalSafetyModel } from "./model"
 
 /**
@@ -13,6 +13,6 @@ import { devotionalSafetyModel } from "./model"
 export const safetyAgent = new Agent({
   id: "devotionalSafety",
   name: "Devotional Safety Judge",
-  instructions: SAFETY_SYSTEM_PROMPT,
+  instructions: () => requireResolvedInstructions("devotionalSafety"),
   model: devotionalSafetyModel,
 })

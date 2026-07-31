@@ -1,7 +1,4 @@
-import {
-  getDevotionalElevenVoiceId,
-  getElevenLabsConfig,
-} from "../../config/env"
+import { getElevenLabsConfig } from "../../config/env"
 import type { ElevenLabsConfig } from "../../config/env"
 import {
   discardResponseBody,
@@ -46,13 +43,7 @@ export const ELEVENLABS_VOICEOVER_MAX_RESPONSE_BYTES = 12 * 1024 * 1024
  * env-configured voice; these are handy named aliases for callers and future
  * per-language / per-tone selection. Ids are stable ElevenLabs voice ids.
  */
-export const DEVOTIONAL_VOICES = {
-  "male-d": "HKFOb9iktHA85uKXydRT",
-  "male-e": "xLeLcqgjUx3wQJFSESKj",
-  "female-c": "WonySogMOJVSOnlOGFQh",
-} as const
-
-export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES
+export type DevotionalVoiceName = string
 
 /**
  * Delivery settings. Lower `stability` + a touch of `style` reads as warm and
@@ -64,13 +55,6 @@ export type ElevenVoiceSettings = {
   similarity_boost: number
   style: number
   use_speaker_boost: boolean
-}
-
-export const DEFAULT_VOICE_SETTINGS: ElevenVoiceSettings = {
-  stability: 0.35,
-  similarity_boost: 0.85,
-  style: 0.45,
-  use_speaker_boost: true,
 }
 
 export type VoiceoverAudio = {
@@ -104,10 +88,12 @@ export type GenerateVoiceoverInput = {
   text?: string
   /** Source devotional; its spoken script is assembled via `buildNarrationText`. */
   devotional?: Devotional
-  /** Voice id OR a named alias from `DEVOTIONAL_VOICES`. Defaults to the env voice. */
+  /** Voice id or a named alias from the selected Workspace voice profiles. */
   voice?: DevotionalVoiceName | string
   /** Override the tuned delivery settings. */
   voiceSettings?: ElevenVoiceSettings
+  /** Workspace-authored alias to provider voice-id map. */
+  voiceProfiles?: Readonly<Record<string, string>>
   /** Injectable for tests; defaults to the resolved ElevenLabs env config. */
   config?: ElevenLabsConfig
   fetchImpl?: typeof fetch
@@ -115,8 +101,11 @@ export type GenerateVoiceoverInput = {
 }
 
 /** Resolve a named alias (e.g. "male-d") to a voice id; pass ids through unchanged. */
-export function resolveVoiceId(voice: string): string {
-  return (DEVOTIONAL_VOICES as Record<string, string>)[voice] ?? voice
+export function resolveVoiceId(
+  voice: string,
+  voiceProfiles: Readonly<Record<string, string>>,
+): string {
+  return voiceProfiles[voice] ?? voice
 }
 
 export async function generateElevenVoiceover(
@@ -146,7 +135,16 @@ export async function generateElevenVoiceover(
     }
   }
 
-  const voiceId = resolveVoiceId(input.voice ?? getDevotionalElevenVoiceId())
+  if (!input.voice || !input.voiceProfiles || !input.voiceSettings) {
+    return {
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      details:
+        "/inputs/voices/profiles.json: voice, profiles, and settings are required",
+    }
+  }
+  const voiceId = resolveVoiceId(input.voice, input.voiceProfiles)
   const fetchImpl = input.fetchImpl ?? fetch
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
@@ -163,7 +161,7 @@ export async function generateElevenVoiceover(
         body: JSON.stringify({
           text,
           model_id: config.ttsModel,
-          voice_settings: input.voiceSettings ?? DEFAULT_VOICE_SETTINGS,
+          voice_settings: input.voiceSettings,
         }),
         signal: AbortSignal.timeout(timeoutMs),
       },

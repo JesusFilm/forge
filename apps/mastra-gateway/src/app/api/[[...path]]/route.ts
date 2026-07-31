@@ -1,5 +1,6 @@
 import {
   isDevotionalNativeWorkflowPath,
+  isWorkspaceApiPath,
   revalidateDevotionalSession,
 } from "@/lib/devotional-access"
 import { proxyMastraRequest } from "@/lib/mastra-proxy"
@@ -30,14 +31,17 @@ export async function DELETE(request: Request, context: RouteContext) {
 
 async function proxyMastraApiPath(request: Request, context: RouteContext) {
   const { path = [] } = await context.params
+  const requiresFreshAccess =
+    isDevotionalNativeWorkflowPath(path) || isWorkspaceApiPath(path)
   return proxyMastraRequest(
     request,
     `/api/${path.join("/")}`,
-    isDevotionalNativeWorkflowPath(path)
+    requiresFreshAccess
       ? {
           allowedRoles: ["admin", "editor"],
           revalidateSession: (session) =>
             revalidateDevotionalSession(session, { recordAccess: false }),
+          workspaceRequest: isWorkspaceApiPath(path),
         }
       : undefined,
   )

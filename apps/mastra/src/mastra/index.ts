@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
+import { randomUUID } from "node:crypto"
 
 import { Mastra } from "@mastra/core"
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
@@ -112,7 +113,6 @@ import {
   handleInstagramDiscoveryRouteRequest,
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
-import { dailyDevotionalWorkflow } from "./workflows/daily-devotional"
 import {
   devotionalApproveWorkflow,
   devotionalContentWorkflow,
@@ -152,7 +152,6 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
-import { createUsedClipsStore } from "../services/devotional/used-clips-ledger"
 import { handleDevotionalAssetRequest } from "./devotional-asset-route"
 import {
   handleAiChatHistoryListRequest,
@@ -160,6 +159,11 @@ import {
 } from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
+import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
+import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
+import { createDevotionalDataPlaneRuntime } from "../services/devotional/workspace/runtime"
+import { createLiveWorkspaceAuthoredDataReader } from "../services/devotional/workspace/attempt-data"
+import { loadPromptBundle } from "../services/devotional/authored-data"
 
 assertMastraRuntimeEnv()
 
@@ -171,21 +175,6 @@ const devotionalPlaybackKeys = parseServiceApiKeys(
   env.DEVOTIONAL_PLAYBACK_API_KEYS,
 )
 const devotionalStatusKeys = [...serviceKeys, ...devotionalPlaybackKeys]
-const videoFirstLifecycleDeps: VideoFirstLifecycleDeps = {
-  workflow:
-    videoFirstDevotionalWorkflow as unknown as VideoFirstWorkflowAdapter,
-  async renewReservation(state) {
-    const owner = reservationOwnerFromState(state)
-    if (!owner) throw new Error(`reservation not found for run ${state.runId}`)
-    await createUsedClipsStore().renew(owner.chapterId, owner.reservationId)
-  },
-  async releaseReservation(state) {
-    const owner = reservationOwnerFromState(state)
-    // A run cancelled before Source reserved a clip has nothing to release.
-    if (!owner) return
-    await createUsedClipsStore().release(owner.chapterId, owner.reservationId)
-  },
-}
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -203,6 +192,34 @@ const observabilityStore = new DuckDBStore({
   id: "mastra-observability-storage",
   path: join(storageDir, "mastra-observability.duckdb"),
 })
+export const devotionalWorkspaceRuntime = createDevotionalWorkspaceRuntime()
+export const devotionalDataPlaneRuntime = createDevotionalDataPlaneRuntime({
+  workspaceRuntime: devotionalWorkspaceRuntime,
+})
+
+const videoFirstLifecycleDeps: VideoFirstLifecycleDeps = {
+  workflow:
+    videoFirstDevotionalWorkflow as unknown as VideoFirstWorkflowAdapter,
+  attempts: devotionalDataPlaneRuntime.attempts,
+  reconcileAttempt: () => devotionalDataPlaneRuntime.reconcileAttempt(),
+  async renewReservation(state) {
+    const owner = reservationOwnerFromState(state)
+    if (!owner) throw new Error(`reservation not found for run ${state.runId}`)
+    await devotionalDataPlaneRuntime.usedClips.renew(
+      owner.chapterId,
+      owner.reservationId,
+    )
+  },
+  async releaseReservation(state) {
+    const owner = reservationOwnerFromState(state)
+    // A run cancelled before Source reserved a clip has nothing to release.
+    if (!owner) return
+    await devotionalDataPlaneRuntime.usedClips.release(
+      owner.chapterId,
+      owner.reservationId,
+    )
+  },
+}
 
 const redactPromptBodies: SpanOutputProcessor = {
   name: "forge-redact-prompt-bodies",
@@ -223,6 +240,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 const experienceDraftSpecializedAgents = buildSpecializedAgents()
 
 export const mastra = new Mastra({
+  workspace: devotionalWorkspaceRuntime.workspace,
   // Agent Editor: Studio draft/publish editing of agent instructions (stored
   // configs live in the storage backend). Model/id/name stay in code.
   editor: new MastraEditor(),
@@ -255,7 +273,6 @@ export const mastra = new Mastra({
     smartCropQaWorkflow,
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
-    dailyDevotionalWorkflow,
     videoFirstDevotionalWorkflow,
     devotionalSourceWorkflow,
     devotionalContentWorkflow,
@@ -313,6 +330,25 @@ export const mastra = new Mastra({
   server: {
     studioBase: "/studio",
     middleware: [
+      {
+        path: "/api/*",
+        handler: async (c, next) => {
+          await runWithWorkspaceMutationContext(
+            {
+              actorId:
+                c.req.header("x-forge-workspace-actor-id")?.slice(0, 200) ??
+                "unknown",
+              requestId:
+                c.req.header("x-forge-workspace-request-id")?.slice(0, 200) ??
+                randomUUID(),
+              trustedEditorialRightsAssertion:
+                c.req.header("x-forge-workspace-editorial-rights-assertion") ===
+                "true",
+            },
+            next,
+          )
+        },
+      },
       {
         path: "/api/workflows/*",
         handler: async (c, next) => {
@@ -779,6 +815,9 @@ export const mastra = new Mastra({
             serviceKeys,
             newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
             runId: c.req.param("runId"),
+            idempotencyKey:
+              c.req.header("idempotency-key") ??
+              c.req.header("x-idempotency-key"),
             readJson: () => c.req.json(),
             deps: videoFirstLifecycleDeps,
           })
@@ -869,17 +908,28 @@ export const mastra = new Mastra({
 
 configureSearchEvalNativeSuiteRuntime(() => mastra)
 
-// Studio-published instruction edits (stored agent configs) flow into the
-// devotional pipeline's LLM calls: the hybrid agent-llm adapter consults this
-// resolver before falling back to the coded instructions. Only instructions
-// are taken from the stored config — model/id/name stay pinned in code.
+const devotionalAgentPromptKeys = {
+  devotionalScripture: "scripture",
+  devotionalSafety: "safety",
+  devotionalModernizer: "modernizer",
+  devotionalCopy: "copy",
+  devotionalHighlighter: "highlighter",
+  devotionalSpurgeonRanker: "ranker",
+} as const
+
+// Direct Studio agent invocations resolve their instructions from the same
+// live Workspace prompt bundle. Workflow attempts use their digest-pinned
+// bundle explicitly and never depend on editor-stored or compiled prose.
 setInstructionResolver(async (agentId) => {
-  const hydrated = await mastra.getEditor()?.agent.getById(agentId)
-  if (!hydrated) return null
-  const instructions = await hydrated.getInstructions()
-  return typeof instructions === "string" && instructions.trim()
-    ? instructions
-    : null
+  const promptKey =
+    devotionalAgentPromptKeys[agentId as keyof typeof devotionalAgentPromptKeys]
+  if (!promptKey) return null
+  const prompts = await loadPromptBundle(
+    createLiveWorkspaceAuthoredDataReader(
+      devotionalWorkspaceRuntime.filesystem,
+    ),
+  )
+  return prompts.prompts[promptKey]
 })
 
 // ai-chat retention purge (feat-208): boot drain + daily timer over the

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { isDevotionalNativeWorkflowPath } from "./devotional-access"
+import {
+  isDevotionalNativeWorkflowPath,
+  isWorkspaceApiPath,
+} from "./devotional-access"
 
 describe("devotional native workflow path detection", () => {
   it("matches parent, legacy, and child workflow paths", () => {
@@ -25,5 +28,18 @@ describe("devotional native workflow path detection", () => {
       isDevotionalNativeWorkflowPath(["workflows", "offline-search-eval"]),
     ).toBe(false)
     expect(isDevotionalNativeWorkflowPath(["agents", "smoke"])).toBe(false)
+  })
+})
+
+describe("Workspace API path detection", () => {
+  it("matches every native Workspace operation without matching stored workspaces", () => {
+    expect(isWorkspaceApiPath(["workspaces"])).toBe(true)
+    expect(
+      isWorkspaceApiPath(["workspaces", "devotional-workspace", "fs", "write"]),
+    ).toBe(true)
+    expect(
+      isWorkspaceApiPath(["workspaces", "devotional-workspace", "search"]),
+    ).toBe(true)
+    expect(isWorkspaceApiPath(["stored-workspaces"])).toBe(false)
   })
 })

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { NextResponse } from "next/server"
 
 import { env, getGatewayBaseUrl } from "@/config/env"
@@ -20,6 +22,16 @@ const hopByHopHeaders = new Set([
 
 const bodyEncodingHeaders = new Set(["content-encoding", "content-length"])
 
+const DEFAULT_WORKSPACE_MAX_REQUEST_BYTES = 12 * 1024 * 1024
+const DEFAULT_WORKSPACE_TIMEOUT_MS = 30_000
+const DEFAULT_WORKSPACE_MAX_CONCURRENCY = 4
+const DEFAULT_WORKSPACE_REQUESTS_PER_MINUTE = 120
+
+const workspaceConcurrency = new Map<string, number>()
+const workspaceRate = new Map<string, { startedAt: number; count: number }>()
+
+class RequestBodyLimitError extends Error {}
+
 export async function proxyMastraRequest(
   request: Request,
   upstreamPath: string,
@@ -29,6 +41,9 @@ export async function proxyMastraRequest(
     revalidateSession?: (
       session: GatewaySession,
     ) => Promise<GatewaySession | null>
+    workspaceRequest?: boolean
+    maxRequestBytes?: number
+    timeoutMs?: number
   } = {},
 ) {
   let session = await readGatewaySessionCookie(
@@ -52,8 +67,82 @@ export async function proxyMastraRequest(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const authorizationKey =
-    options.authorizationKey ?? env.MASTRA_INTERNAL_API_KEY
+  if (options.workspaceRequest) {
+    const rate = workspaceRate.get(session.subject)
+    const now = Date.now()
+    if (!rate || now - rate.startedAt >= 60_000) {
+      workspaceRate.set(session.subject, { startedAt: now, count: 1 })
+    } else {
+      rate.count += 1
+      if (rate.count > DEFAULT_WORKSPACE_REQUESTS_PER_MINUTE) {
+        return NextResponse.json(
+          { error: "Workspace request rate exceeded." },
+          { status: 429 },
+        )
+      }
+    }
+
+    const concurrency = workspaceConcurrency.get(session.subject) ?? 0
+    if (concurrency >= DEFAULT_WORKSPACE_MAX_CONCURRENCY) {
+      return NextResponse.json(
+        { error: "Too many concurrent Workspace requests." },
+        { status: 429 },
+      )
+    }
+    workspaceConcurrency.set(session.subject, concurrency + 1)
+  }
+
+  try {
+    return await proxyAuthorizedMastraRequest(request, upstreamPath, session, {
+      ...options,
+      authorizationKey: options.authorizationKey ?? env.MASTRA_INTERNAL_API_KEY,
+    })
+  } finally {
+    if (options.workspaceRequest) {
+      const concurrency = workspaceConcurrency.get(session.subject) ?? 1
+      if (concurrency <= 1) workspaceConcurrency.delete(session.subject)
+      else workspaceConcurrency.set(session.subject, concurrency - 1)
+    }
+  }
+}
+
+async function proxyAuthorizedMastraRequest(
+  request: Request,
+  upstreamPath: string,
+  session: GatewaySession,
+  options: {
+    authorizationKey?: string
+    workspaceRequest?: boolean
+    maxRequestBytes?: number
+    timeoutMs?: number
+  },
+) {
+  const maxRequestBytes =
+    options.maxRequestBytes ?? DEFAULT_WORKSPACE_MAX_REQUEST_BYTES
+  if (options.workspaceRequest) {
+    const declaredLength = request.headers.get("content-length")
+    if (
+      declaredLength &&
+      (!/^\d+$/u.test(declaredLength) ||
+        Number(declaredLength) > maxRequestBytes)
+    ) {
+      return NextResponse.json(
+        { error: "Workspace request body is too large." },
+        { status: 413 },
+      )
+    }
+    if (
+      canForwardBody(request.method) &&
+      !request.headers.get("content-type")?.includes("application/json")
+    ) {
+      return NextResponse.json(
+        { error: "Workspace mutations require application/json." },
+        { status: 415 },
+      )
+    }
+  }
+
+  const authorizationKey = options.authorizationKey
   if (!env.MASTRA_INTERNAL_BASE_URL || !authorizationKey) {
     return NextResponse.json(
       { error: "Mastra gateway upstream is not configured." },
@@ -72,17 +161,55 @@ export async function proxyMastraRequest(
   headers.delete("host")
   headers.set("accept-encoding", "identity")
   headers.set("authorization", `Bearer ${authorizationKey}`)
+  const requestId = randomUUID()
+  headers.set("x-forge-request-id", requestId)
+  if (options.workspaceRequest) {
+    headers.set("x-forge-workspace-actor-id", session.subject)
+    headers.set("x-forge-workspace-request-id", requestId)
+    if (canForwardBody(request.method) || request.method === "DELETE") {
+      headers.set("x-forge-workspace-editorial-rights-assertion", "true")
+    }
+  }
   headers.set("x-forge-user-subject", session.subject)
   if (session.email) headers.set("x-forge-user-email", session.email)
   headers.set("x-forge-studio-role", session.role)
 
-  const response = await fetch(upstreamUrl, {
-    method: request.method,
-    headers,
-    body: canForwardBody(request.method) ? request.body : undefined,
-    duplex: canForwardBody(request.method) ? "half" : undefined,
-    redirect: "manual",
-  } as RequestInit)
+  const canHaveBody = canForwardBody(request.method)
+  const body =
+    canHaveBody && options.workspaceRequest && request.body
+      ? request.body.pipeThrough(createRequestLimitStream(maxRequestBytes))
+      : canHaveBody
+        ? request.body
+        : undefined
+
+  let response: Response
+  try {
+    response = await fetch(upstreamUrl, {
+      method: request.method,
+      headers,
+      body,
+      duplex: canHaveBody ? "half" : undefined,
+      redirect: "manual",
+      signal: AbortSignal.any([
+        request.signal,
+        AbortSignal.timeout(options.timeoutMs ?? DEFAULT_WORKSPACE_TIMEOUT_MS),
+      ]),
+    } as RequestInit)
+  } catch (error) {
+    if (error instanceof RequestBodyLimitError) {
+      return NextResponse.json(
+        { error: "Workspace request body is too large." },
+        { status: 413 },
+      )
+    }
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return NextResponse.json(
+        { error: "Mastra Workspace request timed out." },
+        { status: 504 },
+      )
+    }
+    throw error
+  }
 
   const responseHeaders = new Headers(response.headers)
   for (const header of hopByHopHeaders) responseHeaders.delete(header)
@@ -103,6 +230,20 @@ export async function proxyMastraRequest(
     status: response.status,
     statusText: response.statusText,
     headers: responseHeaders,
+  })
+}
+
+function createRequestLimitStream(maxBytes: number) {
+  let bytes = 0
+  return new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      bytes += chunk.byteLength
+      if (bytes > maxBytes) {
+        controller.error(new RequestBodyLimitError())
+        return
+      }
+      controller.enqueue(chunk)
+    },
   })
 }
 

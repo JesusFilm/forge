@@ -1,4 +1,3 @@
-import { env } from "../../config/env"
 import type { MusicAudio, MusicMood, MusicResult } from "./elevenlabs-music"
 import {
   generateElevenVoiceover,
@@ -7,7 +6,7 @@ import {
   type VoiceoverAudio,
 } from "./elevenlabs-voiceover"
 import type { GeneratedDevotional } from "./generate-devotional"
-import { loadMusicLibraryTrack } from "./music-library"
+import type { NarrationPolicy } from "./authored-data"
 
 /**
  * Produce the AUDIO for a generated devotional: per-card narration in the
@@ -31,29 +30,20 @@ import { splitReflection } from "./reflection-split"
  * flows as one piece (a RULE for all devotionals), not disjointed clips. Tweak
  * wording here.
  */
-const SPOKEN_MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-]
-const SPOKEN_WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-]
+function requireNarration(policy?: NarrationPolicy): NarrationPolicy {
+  if (!policy) {
+    throw new Error(
+      "/inputs/render/narration.json: narration configuration is required",
+    )
+  }
+  return policy
+}
+
+function interpolate(template: string, values: Record<string, string>): string {
+  return template.replace(/\{\{([a-zA-Z]+)\}\}/g, (token, key: string) =>
+    Object.hasOwn(values, key) ? values[key]! : token,
+  )
+}
 
 /**
  * "YYYY-MM-DD" → spoken "Thursday, July 16" (weekday, full month, day; the TTS
@@ -62,38 +52,22 @@ const SPOKEN_WEEKDAYS = [
  * from a LOCAL-time date construction (not `new Date(iso)`, which parses as UTC
  * and can land on the wrong day).
  */
-export function spokenDate(isoDate: string): string | null {
+export function spokenDate(
+  isoDate: string,
+  narration?: NarrationPolicy,
+): string | null {
+  const policy = requireNarration(narration)
   const m = isoDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!m) return null
-  const month = SPOKEN_MONTHS[Number(m[2]) - 1]
+  const month = policy.months[Number(m[2]) - 1]
   if (!month) return null
   const weekday =
-    SPOKEN_WEEKDAYS[
+    policy.weekdays[
       new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay()
     ]
   if (!weekday) return null
   return `${weekday}, ${month} ${Number(m[3])}`
 }
-
-export const CONNECTORS = {
-  // Owner rule: the voice opens with the weekday + date, then the hook — worded
-  // so "today" isn't said twice: "It's Thursday, July 16. And today's
-  // devotional: …" (TTS reads "July 16" as the ordinal, "the sixteenth").
-  cover: (hook: string, date?: string | null) =>
-    date
-      ? `It's ${date}. And today's devotional: ${hook}`
-      : `Today's devotional. ${hook}`,
-  // "Let's watch" closes the scripture card (over music only) and leads INTO the
-  // video — narrating it ON the video card gets buried under the clip's audio.
-  scripture: (ref: string, verse: string) =>
-    `Here's today's scripture. ${ref ? `${ref}. ` : ""}${verse} Let's watch.`,
-  reflectionOpen: (chunk: string) => `Reflect on this. ${chunk}`,
-  conclusion: (line: string) => line,
-  questions: (question: string, prayer: string) =>
-    [`Here's something to sit with.`, question, prayer]
-      .filter(Boolean)
-      .join("\n\n"),
-} as const
 
 /**
  * The spoken script, per card, in a fixed natural order, with connective phrases
@@ -103,35 +77,57 @@ export const CONNECTORS = {
  */
 export function buildNarrationSegments(
   d: GeneratedDevotional,
+  narration?: NarrationPolicy,
 ): NarrationSegment[] {
+  const policy = requireNarration(narration)
   const segments: NarrationSegment[] = []
   if (d.title.trim()) {
     segments.push({
       id: "cover",
-      text: CONNECTORS.cover(d.title.trim(), spokenDate(d.date)),
+      text: interpolate(
+        spokenDate(d.date, policy)
+          ? policy.templates.coverWithDate
+          : policy.templates.coverWithoutDate,
+        {
+          date: spokenDate(d.date, policy) ?? "",
+          hook: d.title.trim(),
+        },
+      ),
     })
   }
   const ref = d.scripture.reference.trim()
   const verse = d.scripture.text.trim()
   if (verse) {
-    segments.push({ id: "scripture", text: CONNECTORS.scripture(ref, verse) })
+    segments.push({
+      id: "scripture",
+      text: interpolate(policy.templates.scripture, {
+        reference: ref ? `${ref}. ` : "",
+        verse,
+      }),
+    })
   }
   splitReflection(d.reflection.text.trim()).forEach((chunk, i) => {
     // "Reflect on this" opens the first reflection card only.
-    const text = i === 0 ? CONNECTORS.reflectionOpen(chunk) : chunk
+    const text =
+      i === 0 ? interpolate(policy.templates.reflectionOpen, { chunk }) : chunk
     segments.push({ id: `reflection-${i + 1}`, text })
   })
   if (d.conclusion.trim()) {
     segments.push({
       id: "conclusion",
-      text: CONNECTORS.conclusion(d.conclusion.trim()),
+      text: d.conclusion.trim(),
     })
   }
   // Question + invitation-to-pray share ONE card, narrated together.
   const q = d.question.trim()
   const pr = d.prayer.trim()
   if (q || pr)
-    segments.push({ id: "questions", text: CONNECTORS.questions(q, pr) })
+    segments.push({
+      id: "questions",
+      text: [policy.templates.questionsLead, q, pr]
+        .filter(Boolean)
+        .join("\n\n"),
+    })
   return segments
 }
 
@@ -141,16 +137,13 @@ export function buildNarrationSegments(
  * start the story matter-of-factly). The reflection etc. keep the emotive
  * default.
  */
-const PLAIN_VOICE_SETTINGS: ElevenVoiceSettings = {
-  stability: 0.7,
-  similarity_boost: 0.85,
-  style: 0.0,
-  use_speaker_boost: true,
-}
-
 /** Per-segment voice settings; undefined → the service's emotive default. */
-function voiceSettingsFor(id: string): ElevenVoiceSettings | undefined {
-  return id === "cover" ? PLAIN_VOICE_SETTINGS : undefined
+function voiceSettingsFor(
+  id: string,
+  policy: NarrationPolicy,
+  defaults: ElevenVoiceSettings,
+): ElevenVoiceSettings {
+  return id === "cover" ? policy.coverVoiceSettings : defaults
 }
 
 export type ProducedSegment = {
@@ -176,6 +169,9 @@ export type ProduceDevotionalAudioDeps = {
   }) => Promise<MusicResult>
   /** Music bed length in ms (looped to cover the video at render time). */
   musicLengthMs?: number
+  narration?: NarrationPolicy
+  voiceProfiles?: Readonly<Record<string, string>>
+  voiceSettings?: ElevenVoiceSettings
 }
 
 export async function produceDevotionalAudio(
@@ -183,24 +179,33 @@ export async function produceDevotionalAudio(
   deps: ProduceDevotionalAudioDeps = {},
 ): Promise<ProducedDevotionalAudio> {
   const voiceover = deps.voiceover ?? generateElevenVoiceover
-  const music =
-    deps.music ??
-    ((input) =>
-      loadMusicLibraryTrack({
-        directory: env.DEVOTIONAL_MUSIC_LIBRARY_DIR,
-        mood: input.mood,
-        sequence: input.sequence,
-      }))
+  if (!deps.music) {
+    throw new Error(
+      "/inputs/music: Workspace-backed music provider is required",
+    )
+  }
+  const music = deps.music
 
   const segments: ProducedSegment[] = []
   const skipped: string[] = []
+  const narration = requireNarration(deps.narration)
+  if (!deps.voiceProfiles || !deps.voiceSettings) {
+    throw new Error(
+      "/inputs/voices/profiles.json: voice profiles and settings are required",
+    )
+  }
 
-  for (const seg of buildNarrationSegments(devotional)) {
-    const voiceSettings = voiceSettingsFor(seg.id)
+  for (const seg of buildNarrationSegments(devotional, narration)) {
+    const voiceSettings = voiceSettingsFor(
+      seg.id,
+      narration,
+      deps.voiceSettings,
+    )
     const r = await voiceover({
       text: seg.text,
       voice: devotional.voice,
-      ...(voiceSettings ? { voiceSettings } : {}),
+      voiceProfiles: deps.voiceProfiles,
+      voiceSettings,
     })
     if (r.ok) segments.push({ id: seg.id, text: seg.text, audio: r.audio })
     else skipped.push(seg.id)

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Mastra } from "@mastra/core"
 import { InMemoryStore } from "@mastra/core/storage"
+import { LocalFilesystem, Workspace } from "@mastra/core/workspace"
 
 import type { ProducedDevotionalAudio } from "../../services/devotional/devotional-audio"
 import type { GeneratedDevotional } from "../../services/devotional/generate-devotional"
@@ -14,8 +15,8 @@ const mocks = vi.hoisted(() => ({
   render: vi.fn(),
 }))
 
-vi.mock("../../services/devotional/used-clips-ledger", () => ({
-  createUsedClipsStore: () => ({
+vi.mock("../../services/devotional/workspace/postgres-used-clips", () => ({
+  getPostgresUsedClipsStore: () => ({
     read: async () => ({ version: 1, used: {} }),
     reserve: mocks.reserve,
     record: mocks.record,
@@ -30,10 +31,20 @@ vi.mock("../../services/devotional/devotional-worker-client", () => ({
   }) =>
     `/forge-video-first-devotional/assets/${artifact.assetId}/${artifact.artifactType}/mp4`,
   renderDevotionalOnWorker: mocks.render,
+  verifyDevotionalWorkerArtifacts: vi.fn(async () => undefined),
 }))
 
 vi.mock("../../services/devotional/site-publish-client", () => ({
   publishDevotional: mocks.publish,
+}))
+
+vi.mock("../../services/devotional/workspace/source-verification", () => ({
+  verifyWorkflowWorkspaceSources: vi.fn(async () => undefined),
+}))
+
+vi.mock("../../services/devotional/workspace/provenance", () => ({
+  writeInputsUsed: vi.fn(async () => "/runs/test/inputs-used.json"),
+  writeAttemptJsonArtifact: vi.fn(async () => "/runs/test/artifact.json"),
 }))
 
 vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
@@ -41,13 +52,56 @@ vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
   evaluateSafety: async () => SAFETY,
 }))
 
-vi.mock("../../services/devotional/devotional-cache", () => ({
-  cacheDirFor: () => "/tmp/devotional-cache-test",
-  clearCachedDevotional: async () => undefined,
-  loadCachedAudio: async () => AUDIO,
-  loadCachedDevo: async () => null,
-  saveCachedAudio: async () => undefined,
-  saveCachedDevo: async () => undefined,
+vi.mock("../../services/devotional/workspace/attempt-data", () => ({
+  loadDevotionalAttemptAuthoredData: async () => ({
+    prompts: {
+      prompts: {
+        scripture: "scripture",
+        modernizer: "modernizer",
+        highlighter: "highlighter",
+        ranker: "ranker",
+        copy: "copy",
+        writer: "writer",
+        hookNews: "news",
+        hookQuestion: "question",
+        videoMatcher: "video matcher",
+        safety: "safety",
+      },
+      generation: {
+        hookStyles: ["statement"],
+        blockOrders: [["hook", "scripture", "video", "reflection"]],
+        partnerDomains: [],
+      },
+    },
+    safety: {
+      minimumConfidence: 0.6,
+      effectiveMinimumConfidence: 0.6,
+      prompt: "safety",
+    },
+    holidays: {},
+    voices: {
+      profiles: { "male-d": "voice" },
+      settings: {
+        stability: 0.35,
+        similarity_boost: 0.85,
+        style: 0.45,
+        use_speaker_boost: true,
+      },
+      rotation: ["male-d"],
+      filterRotation: ["grain"],
+    },
+    music: {
+      moods: { peace: "p", hope: "h", lament: "l", awe: "a" },
+      defaultLengthMs: 60_000,
+    },
+    narration: {},
+    brand: { name: "Jesus Film", rightsAssertion: "rights" },
+    render: { filters: {}, layouts: {}, nativeLayouts: {} },
+    chapters: [CHAPTER],
+    passages: [CHAPTER],
+    scripture: { verses: {} },
+    corpora: { ryleMatthew: [], matthewHenry: [], spurgeon: [] },
+  }),
 }))
 
 vi.mock("../../services/devotional/devotional-audio", async (importActual) => ({
@@ -143,6 +197,16 @@ function registerWorkflow() {
   const mastra = new Mastra({
     workflows: { videoFirstDevotionalWorkflow },
     storage: new InMemoryStore({ id: "video-first-devotional-test" }),
+    workspace: new Workspace({
+      id: "video-first-devotional-test-workspace",
+      name: "Video First Devotional Test Workspace",
+      filesystem: new LocalFilesystem({
+        id: "video-first-devotional-test-filesystem",
+        basePath: "/tmp/video-first-devotional-test-workspace",
+        contained: true,
+      }),
+      tools: { enabled: false },
+    }),
   })
   return mastra.getWorkflow("videoFirstDevotionalWorkflow")
 }
@@ -152,7 +216,22 @@ async function startAndResume(approved: boolean, runId: string) {
   const workflow = registeredWorkflow
   const run = await workflow.createRun({ runId })
   await run.startAsync({
-    inputData: { chapterIndex: 19, date: "2026-07-21" },
+    inputData: {
+      chapterIndex: 19,
+      date: "2026-07-21",
+      workspaceGeneration: 1,
+      attemptId: runId,
+      selectedSources: [
+        {
+          path: "/inputs/reflections/grace.md",
+          category: "reflections",
+          digest: "a".repeat(64),
+          size: 42,
+          modifiedAt: "2026-07-31T12:00:00.000Z",
+          title: "grace",
+        },
+      ],
+    },
   })
   let state = await workflow.getWorkflowRunById(runId)
   for (

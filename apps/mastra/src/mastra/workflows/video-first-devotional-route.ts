@@ -3,6 +3,8 @@ import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import { isValidServiceBearer } from "../../server/service-bearer"
+import { DevotionalSourceRefSchema } from "../../services/devotional/workspace/state-schema"
+import type { DevotionalAttemptStore } from "../../services/devotional/workspace/state"
 
 const InputSchema = z
   .object({
@@ -12,10 +14,17 @@ const InputSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
+    /** Deprecated compatibility inputs. Every Workspace attempt is fresh. */
     regenerate: z.boolean().optional(),
     regenerateAudio: z.boolean().optional(),
   })
   .strict()
+
+const PersistedInputSchema = InputSchema.extend({
+  workspaceGeneration: z.number().int().positive(),
+  attemptId: z.string().min(1),
+  selectedSources: z.array(DevotionalSourceRefSchema).min(1).max(500),
+})
 
 const ApprovalSchema = z
   .object({
@@ -36,6 +45,7 @@ export type DevotionalApprovalActor = z.infer<typeof ApprovalActorSchema>
 
 const RetrySchema = z
   .object({
+    /** Deprecated compatibility inputs. Every retry reconciles fresh data. */
     regenerate: z.boolean().default(false),
     regenerateAudio: z.boolean().default(false),
   })
@@ -49,6 +59,22 @@ const ArtifactRefSchema = z
       "devotional-output-wide-v1",
     ]),
     ext: z.literal("mp4"),
+    schemaVersion: z.literal("2").optional(),
+    key: z.string().min(1).optional(),
+    digest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    size: z.number().int().positive().optional(),
+    contentType: z.string().min(1).optional(),
+    attempt: z
+      .object({
+        workspaceGeneration: z.number().int().positive(),
+        attemptId: z.string().min(1),
+        runId: z.string().min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 
@@ -107,6 +133,11 @@ export type VideoFirstLifecycleDeps = {
   workflow: VideoFirstWorkflowAdapter
   renewReservation: (state: VideoFirstWorkflowState) => Promise<void>
   releaseReservation: (state: VideoFirstWorkflowState) => Promise<void>
+  attempts?: DevotionalAttemptStore
+  reconcileAttempt?: () => Promise<{
+    generation: number
+    selectedSources: z.infer<typeof DevotionalSourceRefSchema>[]
+  }>
   now?: () => Date
 }
 
@@ -162,12 +193,24 @@ async function withLifecycleLock<T>(key: string, work: () => Promise<T>) {
   }
 }
 
-function retryRunId(parentRunId: string, retry: z.infer<typeof RetrySchema>) {
-  const variant = createHash("sha256")
-    .update(JSON.stringify(retry))
+function retryRequestHash(
+  parentRunId: string,
+  originalInput: z.infer<typeof PersistedInputSchema>,
+  retry: z.infer<typeof RetrySchema>,
+) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        parentRunId,
+        originalInput: {
+          chapterIndex: originalInput.chapterIndex,
+          sequence: originalInput.sequence,
+          date: originalInput.date,
+        },
+        retry,
+      }),
+    )
     .digest("hex")
-    .slice(0, 12)
-  return `${parentRunId}-retry-${variant}`
 }
 
 function normalizeSuspension(
@@ -341,8 +384,26 @@ export async function handleVideoFirstStartRequest(
       }
     }
 
+    if (!input.deps.reconcileAttempt) {
+      return { status: 503, body: { error: "workspace_unavailable" } }
+    }
+    let prepared: Awaited<ReturnType<typeof input.deps.reconcileAttempt>>
+    try {
+      prepared = await input.deps.reconcileAttempt()
+    } catch {
+      return { status: 503, body: { error: "workspace_unavailable" } }
+    }
     const run = await input.deps.workflow.createRun({ runId })
-    await run.startAsync({ inputData: { ...parsed.data, date } })
+    await run.startAsync({
+      inputData: {
+        chapterIndex: parsed.data.chapterIndex,
+        sequence: parsed.data.sequence,
+        date,
+        attemptId: runId,
+        workspaceGeneration: prepared.generation,
+        selectedSources: prepared.selectedSources,
+      },
+    })
     const state = await input.deps.workflow.getWorkflowRunById(runId)
     return {
       status: 202,
@@ -356,6 +417,7 @@ export async function handleVideoFirstStartRequest(
 export async function handleVideoFirstStatusRequest(
   input: CommonRouteInput & {
     runId: string
+    idempotencyKey?: string | null
     renewReservationOnRead?: boolean
     deps: VideoFirstLifecycleDeps
   },
@@ -424,6 +486,7 @@ export async function handleVideoFirstCancelRequest(
 export async function handleVideoFirstRetryRequest(
   input: CommonRouteInput & {
     runId: string
+    idempotencyKey?: string | null
     newRunsEnabled?: boolean
     readJson: () => Promise<unknown>
     deps: VideoFirstLifecycleDeps
@@ -432,6 +495,9 @@ export async function handleVideoFirstRetryRequest(
   if (!isAuthorized(input)) return unauthorized()
   if (input.newRunsEnabled === false) {
     return { status: 503, body: { error: "new_runs_disabled" } }
+  }
+  if (!input.idempotencyKey?.trim()) {
+    return { status: 400, body: { error: "idempotency_key_required" } }
   }
   const parsed = RetrySchema.safeParse(await input.readJson().catch(() => null))
   if (!parsed.success) return { status: 400, body: { error: "invalid_body" } }
@@ -447,22 +513,81 @@ export async function handleVideoFirstRetryRequest(
   ) {
     return { status: 409, body: { error: "published_run_not_retryable" } }
   }
-  const originalInput = InputSchema.safeParse(state.payload)
+  const originalInput = PersistedInputSchema.safeParse(state.payload)
   if (!originalInput.success) {
     return { status: 409, body: { error: "original_input_unavailable" } }
   }
-  const runId = retryRunId(input.runId, parsed.data)
-  return withLifecycleLock(runId, async () => {
-    const existing = await input.deps.workflow.getWorkflowRunById(runId)
-    if (existing) {
+  if (!input.deps.attempts || !input.deps.reconcileAttempt) {
+    return { status: 503, body: { error: "workspace_unavailable" } }
+  }
+  const requestHash = retryRequestHash(
+    input.runId,
+    originalInput.data,
+    parsed.data,
+  )
+  const attemptResult = await input.deps.attempts.beginRetry({
+    parentRunId: input.runId,
+    idempotencyKey: input.idempotencyKey.trim(),
+    requestHash,
+  })
+  if (attemptResult.kind === "conflict") {
+    return { status: 409, body: { error: "idempotency_key_conflict" } }
+  }
+  if (attemptResult.kind === "existing") {
+    const runId = attemptResult.attempt.runId
+    const existing = runId
+      ? await input.deps.workflow.getWorkflowRunById(runId)
+      : null
+    if (existing && runId) {
       return {
         status: 200,
         body: { ...summarizeState(existing), existing: true },
       }
     }
+    return {
+      status: 200,
+      body: {
+        runId:
+          runId ??
+          `${input.runId}-attempt-${attemptResult.attempt.attemptNumber}`,
+        status: attemptResult.attempt.provisioningState,
+        existing: true,
+      },
+    }
+  }
+
+  const attempt = attemptResult.attempt
+  const runId = `${input.runId}-attempt-${attempt.attemptNumber}`
+  return withLifecycleLock(runId, async () => {
+    let prepared: Awaited<
+      ReturnType<NonNullable<typeof input.deps.reconcileAttempt>>
+    >
+    try {
+      prepared = await input.deps.reconcileAttempt!()
+      await input.deps.attempts!.markReady(attempt.id, {
+        catalogGeneration: prepared.generation,
+        runId,
+        selectedSources: prepared.selectedSources,
+      })
+    } catch (error) {
+      await input.deps.attempts!.markFailed(
+        attempt.id,
+        error instanceof Error
+          ? error.message
+          : "Workspace reconciliation failed",
+      )
+      return { status: 503, body: { error: "workspace_unavailable" } }
+    }
     const run = await input.deps.workflow.createRun({ runId })
     await run.startAsync({
-      inputData: { ...originalInput.data, ...parsed.data },
+      inputData: {
+        chapterIndex: originalInput.data.chapterIndex,
+        sequence: originalInput.data.sequence,
+        date: originalInput.data.date,
+        attemptId: attempt.id,
+        workspaceGeneration: prepared.generation,
+        selectedSources: prepared.selectedSources,
+      },
     })
     return {
       status: 202,
@@ -474,7 +599,7 @@ export async function handleVideoFirstRetryRequest(
 export const _internals = {
   normalizeSuspension,
   reservationOwnerFromState,
-  retryRunId,
+  retryRequestHash,
   runIdForDate,
   summarizeState,
 }

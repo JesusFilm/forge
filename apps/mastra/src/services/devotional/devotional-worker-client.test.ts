@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
 
 import type { ProducedDevotionalAudio } from "./devotional-audio"
@@ -61,9 +63,102 @@ const AUDIO: ProducedDevotionalAudio = {
   skipped: [],
 }
 
+const WORKSPACE = {
+  workspaceGeneration: 3,
+  attemptId: "attempt_1",
+  selectedSources: [
+    {
+      path: "/inputs/scripture/web-bible.json",
+      category: "scripture" as const,
+      digest: "c".repeat(64),
+      size: 100,
+      modifiedAt: "2026-07-31T12:00:00.000Z",
+      title: "WEB Bible",
+    },
+  ],
+}
+const ATTEMPT = {
+  workspaceGeneration: WORKSPACE.workspaceGeneration,
+  attemptId: WORKSPACE.attemptId,
+  runId: "run-1",
+}
+const RENDER_CONFIG = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../../devotional-workspace/inputs/render/styles.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+)
+const ATTEMPT_TOKEN = createHash("sha256")
+  .update(WORKSPACE.attemptId)
+  .digest("hex")
+  .slice(0, 24)
+const OUTPUT_ID = `dv2o_g3_${ATTEMPT_TOKEN}_${"b".repeat(64)}_99`
+
+function workspaceUploadResponse(input: URL | RequestInfo, init?: RequestInit) {
+  const match = /\/([^/]+)\.([^/.]+)$/.exec(new URL(String(input)).pathname)!
+  const headers = new Headers(init?.headers)
+  const artifactType = decodeURIComponent(match[1]!)
+  const ext = match[2]!
+  const digest = headers.get("x-content-sha256")!
+  const size = Number(headers.get("x-content-size"))
+  const attempt = {
+    workspaceGeneration: Number(
+      headers.get("x-devotional-workspace-generation"),
+    ),
+    attemptId: headers.get("x-devotional-attempt-id")!,
+    runId: headers.get("x-devotional-run-id")!,
+  }
+  const attemptToken = createHash("sha256")
+    .update(attempt.attemptId)
+    .digest("hex")
+    .slice(0, 24)
+  return Response.json(
+    {
+      artifact: {
+        schemaVersion: "2",
+        key:
+          artifactType === "devotional-input-manifest-v2"
+            ? `runs/g${attempt.workspaceGeneration}/${attemptToken}/run-input/manifest.json`
+            : `runs/g${attempt.workspaceGeneration}/${attemptToken}/run-input/${digest}/${artifactType}.${ext}`,
+        digest,
+        size,
+        contentType: ext === "json" ? "application/json" : "audio/mpeg",
+        attempt,
+      },
+    },
+    { status: 201 },
+  )
+}
+
+function videoArtifact(artifactType: string) {
+  return {
+    assetId: OUTPUT_ID,
+    artifactType,
+    ext: "mp4",
+    schemaVersion: "2",
+    key: `runs/g3/${ATTEMPT_TOKEN}/attempt-output/${"a".repeat(64)}/${
+      artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
+        ? "portrait.mp4"
+        : "wide.mp4"
+    }`,
+    digest: "a".repeat(64),
+    size: 100,
+    contentType: "video/mp4",
+    attempt: ATTEMPT,
+  }
+}
+
 describe("devotional shorts-worker client", () => {
   it("builds a worker-owned media preparation spec without a source URL", () => {
-    const spec = _internals.buildWorkerInput(DEVO, AUDIO)
+    const spec = _internals.buildWorkerInput(
+      DEVO,
+      AUDIO,
+      "grain",
+      RENDER_CONFIG,
+    )
     expect(spec.media).toMatchObject({ mediaId: DEVO.clip.id })
     expect(spec.media).not.toHaveProperty("sourceUrl")
     expect(spec.cards.map((card) => card.kind)).toEqual([
@@ -79,7 +174,12 @@ describe("devotional shorts-worker client", () => {
 
   it("rejects calendar dates that JavaScript would otherwise normalize", () => {
     expect(() =>
-      _internals.buildWorkerInput({ ...DEVO, date: "2026-02-31" }, AUDIO),
+      _internals.buildWorkerInput(
+        { ...DEVO, date: "2026-02-31" },
+        AUDIO,
+        "grain",
+        RENDER_CONFIG,
+      ),
     ).toThrow("invalid devotional date 2026-02-31")
   })
 
@@ -95,7 +195,7 @@ describe("devotional shorts-worker client", () => {
           method,
           ...(typeof init?.body === "string" ? { body: init.body } : {}),
         })
-        if (method === "PUT") return new Response(null, { status: 201 })
+        if (method === "PUT") return workspaceUploadResponse(input, init)
         if (url.endsWith("/jobs") && method === "POST") {
           return Response.json(
             { workerJobId: "wj_1", status: "queued" },
@@ -113,16 +213,8 @@ describe("devotional shorts-worker client", () => {
               ? null
               : {
                   artifacts: [
-                    {
-                      assetId: "devotional_output_run_1",
-                      artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
-                      ext: "mp4",
-                    },
-                    {
-                      assetId: "devotional_output_run_1",
-                      artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
-                      ext: "mp4",
-                    },
+                    videoArtifact(DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE),
+                    videoArtifact(DEVOTIONAL_WIDE_ARTIFACT_TYPE),
                   ],
                 },
         })
@@ -131,7 +223,13 @@ describe("devotional shorts-worker client", () => {
 
     await expect(
       renderDevotionalOnWorker(
-        { runId: "run-1", devotional: DEVO, audio: AUDIO },
+        {
+          runId: "run-1",
+          devotional: DEVO,
+          audio: AUDIO,
+          ...WORKSPACE,
+          renderConfig: RENDER_CONFIG,
+        },
         {
           baseUrl: "https://worker.example.org",
           apiKey: "secret",
@@ -140,27 +238,19 @@ describe("devotional shorts-worker client", () => {
           sleep: async () => undefined,
         },
       ),
-    ).resolves.toEqual({
-      portrait: {
-        assetId: "devotional_output_run_1",
-        artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
-        ext: "mp4",
-      },
-      wide: {
-        assetId: "devotional_output_run_1",
-        artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
-        ext: "mp4",
-      },
+    ).resolves.toMatchObject({
+      portrait: { schemaVersion: "2", digest: "a".repeat(64) },
+      wide: { schemaVersion: "2", digest: "a".repeat(64) },
     })
-    expect(requests.filter(({ method }) => method === "PUT")).toHaveLength(6)
+    expect(requests.filter(({ method }) => method === "PUT")).toHaveLength(7)
     const submission = requests.find(
       ({ url, method }) => url.endsWith("/jobs") && method === "POST",
     )
     expect(JSON.parse(submission!.body!)).toMatchObject({
       kind: "devotional-render",
-      runId: "run_1",
-      inputAssetId: "devotional_input_run_1",
-      outputAssetId: "devotional_output_run_1",
+      runId: "run-1",
+      inputAssetId: expect.stringMatching(/^dv2i_g3_/),
+      outputAssetId: `dv2o_g3_${ATTEMPT_TOKEN}`,
       inputHash: expect.stringMatching(/^[a-f0-9]{64}$/),
     })
   })
@@ -169,7 +259,7 @@ describe("devotional shorts-worker client", () => {
     const fetchImpl = vi.fn(
       async (input: URL | RequestInfo, init?: RequestInit) => {
         const url = String(input)
-        if (init?.method === "PUT") return new Response(null, { status: 201 })
+        if (init?.method === "PUT") return workspaceUploadResponse(input, init)
         if (url.endsWith("/jobs")) {
           return Response.json(
             { workerJobId: "wj_1", status: "queued" },
@@ -182,20 +272,20 @@ describe("devotional shorts-worker client", () => {
           status: "completed",
           error: null,
           result: {
-            artifacts: [
-              {
-                assetId: "devotional_output_run_1",
-                artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
-                ext: "mp4",
-              },
-            ],
+            artifacts: [videoArtifact(DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE)],
           },
         })
       },
     )
     await expect(
       renderDevotionalOnWorker(
-        { runId: "run-1", devotional: DEVO, audio: AUDIO },
+        {
+          runId: "run-1",
+          devotional: DEVO,
+          audio: AUDIO,
+          ...WORKSPACE,
+          renderConfig: RENDER_CONFIG,
+        },
         {
           baseUrl: "https://worker.example.org",
           apiKey: "secret",
@@ -214,7 +304,7 @@ describe("devotional shorts-worker client", () => {
         const url = String(input)
         const method = init?.method ?? "GET"
         methods.push(method)
-        if (method === "PUT") return new Response(null, { status: 201 })
+        if (method === "PUT") return workspaceUploadResponse(input, init)
         if (url.endsWith("/jobs") && method === "POST") {
           return Response.json(
             { workerJobId: "wj_cancel", status: "queued" },
@@ -240,7 +330,15 @@ describe("devotional shorts-worker client", () => {
 
     await expect(
       renderDevotionalOnWorker(
-        { runId: "run-cancel", devotional: DEVO, audio: AUDIO },
+        {
+          runId: "run-cancel",
+          devotional: DEVO,
+          audio: AUDIO,
+          workspaceGeneration: 3,
+          attemptId: "attempt_cancel",
+          selectedSources: WORKSPACE.selectedSources,
+          renderConfig: RENDER_CONFIG,
+        },
         {
           baseUrl: "https://worker.example.org",
           apiKey: "secret",
@@ -260,7 +358,7 @@ describe("devotional shorts-worker client", () => {
         const url = String(input)
         const method = init?.method ?? "GET"
         methods.push(method)
-        if (method === "PUT") return new Response(null, { status: 201 })
+        if (method === "PUT") return workspaceUploadResponse(input, init)
         if (url.endsWith("/jobs") && method === "POST") {
           return Response.json(
             { workerJobId: "wj_timeout", status: "queued" },
@@ -279,7 +377,15 @@ describe("devotional shorts-worker client", () => {
 
     await expect(
       renderDevotionalOnWorker(
-        { runId: "run-timeout", devotional: DEVO, audio: AUDIO },
+        {
+          runId: "run-timeout",
+          devotional: DEVO,
+          audio: AUDIO,
+          workspaceGeneration: 3,
+          attemptId: "attempt_timeout",
+          selectedSources: WORKSPACE.selectedSources,
+          renderConfig: RENDER_CONFIG,
+        },
         {
           baseUrl: "https://worker.example.org",
           apiKey: "secret",

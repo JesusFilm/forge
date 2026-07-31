@@ -26,3 +26,7 @@ export async function revalidateDevotionalSession(
 export function isDevotionalNativeWorkflowPath(path: readonly string[]) {
   return path[0] === "workflows" && DEVOTIONAL_WORKFLOW_IDS.has(path[1] ?? "")
 }
+
+export function isWorkspaceApiPath(path: readonly string[]) {
+  return path[0] === "workspaces"
+}

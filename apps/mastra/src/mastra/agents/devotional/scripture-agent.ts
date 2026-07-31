@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 
-import { SYSTEM_PROMPT } from "../../../services/devotional/passage-scripture"
+import { requireResolvedInstructions } from "./instruction-resolver"
 import { devotionalModel } from "./model"
 
 /**
@@ -12,6 +12,6 @@ import { devotionalModel } from "./model"
 export const scriptureAgent = new Agent({
   id: "devotionalScripture",
   name: "Devotional Scripture",
-  instructions: SYSTEM_PROMPT,
+  instructions: () => requireResolvedInstructions("devotionalScripture"),
   model: devotionalModel,
 })

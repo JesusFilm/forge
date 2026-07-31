@@ -5,8 +5,11 @@ import { Readable } from "node:stream"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ArtifactNotFoundError,
+  ArtifactConflictError,
+  ArtifactIntegrityError,
   artifactKey,
   createStorage,
+  devotionalWorkspaceKey,
   isNoSuchKeyError,
   type Storage,
 } from "./storage.js"
@@ -189,6 +192,43 @@ describe("local storage backend", () => {
       }),
     ).rejects.toThrow(/Invalid assetId/)
   })
+
+  it("writes immutable content-addressed Workspace artifacts idempotently", async () => {
+    const attempt = {
+      workspaceGeneration: 4,
+      attemptId: "attempt_4",
+      runId: "run_4",
+    }
+    const body = Buffer.from("portrait-video")
+    const digest = createHash("sha256").update(body).digest("hex")
+    const ref = {
+      key: devotionalWorkspaceKey(
+        attempt,
+        "attempt-output",
+        digest,
+        "portrait.mp4",
+      ),
+      body,
+      digest,
+      size: body.byteLength,
+      contentType: "video/mp4",
+      attempt,
+    }
+
+    const written = await storage.writeWorkspaceArtifact(ref)
+    await expect(storage.writeWorkspaceArtifact(ref)).resolves.toEqual(written)
+    await expect(
+      storage.verifyWorkspaceArtifact(written),
+    ).resolves.toBeUndefined()
+
+    await writeFile(join(root, written.key), "mutated")
+    await expect(
+      storage.verifyWorkspaceArtifact(written),
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError)
+    await expect(storage.writeWorkspaceArtifact(ref)).rejects.toBeInstanceOf(
+      ArtifactConflictError,
+    )
+  })
 })
 
 describe("s3 storage backend selection", () => {
@@ -270,4 +310,46 @@ describe("s3 storage backend selection", () => {
       storage.readArtifactStream("asset123", "shorts-output-v1", "mp4"),
     ).rejects.toBeInstanceOf(ArtifactNotFoundError)
   })
+
+  it("uses Worker-authored digest metadata before streaming a Workspace range", async () => {
+    const attempt = {
+      workspaceGeneration: 4,
+      attemptId: "attempt_4",
+      runId: "run_4",
+    }
+    const body = Buffer.from("portrait-video")
+    const digest = createHash("sha256").update(body).digest("hex")
+    const key = devotionalWorkspaceKey(
+      attempt,
+      "attempt-output",
+      digest,
+      "portrait.mp4",
+    )
+    s3Send
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        ContentLength: body.byteLength,
+        ContentType: "video/mp4",
+        Metadata: { "forge-sha256": digest },
+      })
+      .mockResolvedValueOnce({ Body: Readable.from(body.subarray(0, 4)) })
+    const storage = s3Storage()
+    const ref = await storage.writeWorkspaceArtifact({
+      key,
+      body,
+      digest,
+      size: body.byteLength,
+      contentType: "video/mp4",
+      attempt,
+    })
+
+    await storage.readWorkspaceArtifactStream(ref, "bytes=0-3")
+
+    expect(s3Send).toHaveBeenCalledTimes(3)
+    expect(s3Send.mock.calls[0][0].input.Metadata).toEqual({
+      "forge-sha256": digest,
+    })
+    expect(s3Send.mock.calls[2][0].input.Range).toBe("bytes=0-3")
+  })
 })
+import { createHash } from "node:crypto"

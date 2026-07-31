@@ -1,16 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  HOOK_STYLES,
-  hookStyleForSequence,
-  writeDevotionalCopy,
-} from "./devotional-copy"
+import { hookStyleForSequence, writeDevotionalCopy } from "./devotional-copy"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 const fakeLlm = (complete: DevotionalLlm["complete"]): DevotionalLlm => ({
   model: "fake",
   complete,
 })
+const SYSTEM_PROMPT = "Write bounded devotional copy and return JSON."
+const HOOK_STYLES = ["statement", "confession", "image"]
 
 describe("writeDevotionalCopy", () => {
   it("returns trimmed title/question/prayer and feeds the model the scene + verse + reflection", async () => {
@@ -27,6 +25,7 @@ describe("writeDevotionalCopy", () => {
       scriptureText: "Where is your faith?",
       reflection: "Christ stilled the storm with a word.",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r.title).toBe("Peace in the Storm")
     expect(r.question).toContain("storm")
@@ -52,6 +51,7 @@ describe("writeDevotionalCopy", () => {
       reflection: "Love flows from being forgiven.",
       hookStyle: "a bold, declarative statement (no question mark)",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(complete.mock.calls[0][0].user).toContain(
       "Hook style for THIS devotional: a bold, declarative statement",
@@ -60,17 +60,19 @@ describe("writeDevotionalCopy", () => {
 
   it("rotates hook styles deterministically by sequence and covers negatives", () => {
     // Same style every HOOK_STYLES.length steps; distinct within one cycle.
-    const cycle = HOOK_STYLES.map((_, i) => hookStyleForSequence(i))
-    expect(new Set(cycle).size).toBe(HOOK_STYLES.length)
-    expect(hookStyleForSequence(HOOK_STYLES.length)).toBe(
-      hookStyleForSequence(0),
+    const cycle = HOOK_STYLES.map((_, i) =>
+      hookStyleForSequence(i, HOOK_STYLES),
     )
-    expect(hookStyleForSequence(HOOK_STYLES.length + 1)).toBe(
-      hookStyleForSequence(1),
+    expect(new Set(cycle).size).toBe(HOOK_STYLES.length)
+    expect(hookStyleForSequence(HOOK_STYLES.length, HOOK_STYLES)).toBe(
+      hookStyleForSequence(0, HOOK_STYLES),
+    )
+    expect(hookStyleForSequence(HOOK_STYLES.length + 1, HOOK_STYLES)).toBe(
+      hookStyleForSequence(1, HOOK_STYLES),
     )
     // Never throws / no undefined on a negative or fractional counter.
-    expect(HOOK_STYLES).toContain(hookStyleForSequence(-1))
-    expect(HOOK_STYLES).toContain(hookStyleForSequence(2.9))
+    expect(HOOK_STYLES).toContain(hookStyleForSequence(-1, HOOK_STYLES))
+    expect(HOOK_STYLES).toContain(hookStyleForSequence(2.9, HOOK_STYLES))
   })
 
   it("wraps an LLM error", async () => {
@@ -84,6 +86,7 @@ describe("writeDevotionalCopy", () => {
         scriptureText: "t",
         reflection: "x",
         llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+        systemPrompt: SYSTEM_PROMPT,
       }),
     ).rejects.toMatchObject({
       name: "DevotionalCopyError",

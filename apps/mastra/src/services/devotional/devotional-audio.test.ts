@@ -53,9 +53,58 @@ const okMusic = () => ({
   },
 })
 
+const NARRATION = {
+  months: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+  weekdays: [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ],
+  templates: {
+    coverWithDate: "It's {{date}}. And today's devotional: {{hook}}",
+    coverWithoutDate: "Today's devotional. {{hook}}",
+    scripture: "Here's today's scripture. {{reference}}{{verse}} Let's watch.",
+    reflectionOpen: "Reflect on this. {{chunk}}",
+    questionsLead: "Here's something to sit with.",
+  },
+  coverVoiceSettings: {
+    stability: 0.7,
+    similarity_boost: 0.85,
+    style: 0,
+    use_speaker_boost: true,
+  },
+}
+const VOICE_POLICY = {
+  voiceProfiles: { "male-d": "voice-d" },
+  voiceSettings: {
+    stability: 0.35,
+    similarity_boost: 0.85,
+    style: 0.45,
+    use_speaker_boost: true,
+  },
+  narration: NARRATION,
+}
+
 describe("buildNarrationSegments", () => {
   it("orders cover → scripture → reflection-N… → conclusion → questions (no video segment)", () => {
-    const ids = buildNarrationSegments(DEVO).map((s) => s.id)
+    const ids = buildNarrationSegments(DEVO, NARRATION).map((s) => s.id)
     expect(ids[0]).toBe("cover")
     expect(ids[1]).toBe("scripture")
     expect(ids).not.toContain("video") // "Let's watch" rides on the scripture card
@@ -79,14 +128,16 @@ describe("buildNarrationSegments", () => {
           "Finally a fifth line drawing it together for today.",
       },
     }
-    const refl = buildNarrationSegments(long).filter((s) =>
+    const refl = buildNarrationSegments(long, NARRATION).filter((s) =>
       /^reflection-\d+$/.test(s.id),
     )
     expect(refl.length).toBeGreaterThan(1)
   })
 
   it("opens the cover with the spoken weekday + date (no doubled 'today')", () => {
-    const s = buildNarrationSegments(DEVO).find((x) => x.id === "cover")
+    const s = buildNarrationSegments(DEVO, NARRATION).find(
+      (x) => x.id === "cover",
+    )
     // DEVO.date is 2026-07-10 → Friday → "It's Friday, July 10. And today's…"
     expect(s?.text).toMatch(/^It's Friday, July 10\. And today's devotional: /)
     // "today" appears exactly once (in "today's devotional").
@@ -94,7 +145,9 @@ describe("buildNarrationSegments", () => {
   })
 
   it("includes the scripture connector and reference", () => {
-    const s = buildNarrationSegments(DEVO).find((x) => x.id === "scripture")
+    const s = buildNarrationSegments(DEVO, NARRATION).find(
+      (x) => x.id === "scripture",
+    )
     expect(s?.text).toMatch(/^Here's today's scripture\. Luke 8:24\. /)
     expect(s?.text).toMatch(/Let's watch\.$/) // leads into the video card
   })
@@ -109,6 +162,7 @@ describe("produceDevotionalAudio", () => {
     const out = await produceDevotionalAudio(DEVO, {
       voiceover: voiceover as never,
       music: music as never,
+      ...VOICE_POLICY,
     })
     expect(out.voice).toBe("male-d")
     // cover, scripture (+"Let's watch"), one reflection chunk, conclusion,
@@ -123,10 +177,10 @@ describe("produceDevotionalAudio", () => {
     expect(voiceover).toHaveBeenCalledTimes(5)
     expect(voiceover.mock.calls[0][0].voice).toBe("male-d")
     // cover uses the PLAIN (high-stability, no-style) delivery; the rest use the
-    // emotive default (no explicit voiceSettings).
+    // Workspace-authored emotive default.
     expect(voiceover.mock.calls[0][0].voiceSettings?.stability).toBe(0.7)
     expect(voiceover.mock.calls[0][0].voiceSettings?.style).toBe(0)
-    expect(voiceover.mock.calls[2][0].voiceSettings).toBeUndefined() // reflection-1
+    expect(voiceover.mock.calls[2][0].voiceSettings?.style).toBe(0.45)
     expect(music.mock.calls[0][0].mood).toBe("peace")
     expect(out.music?.mood).toBe("peace")
     expect(out.skipped).toEqual([])
@@ -141,6 +195,7 @@ describe("produceDevotionalAudio", () => {
     const out = await produceDevotionalAudio(DEVO, {
       voiceover: vi.fn().mockResolvedValue(missing) as never,
       music: vi.fn().mockResolvedValue(missing) as never,
+      ...VOICE_POLICY,
     })
     expect(out.segments).toHaveLength(0)
     expect(out.music).toBeNull()

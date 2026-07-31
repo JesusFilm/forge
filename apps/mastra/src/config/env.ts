@@ -28,6 +28,8 @@ const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
 const DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS = 5
 const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
 const DEFAULT_DEVOTIONAL_MODEL = "anthropic/claude-haiku-4-5"
+const DEFAULT_DEVOTIONAL_WORKSPACE_PREFIX = "devotional"
+const DEFAULT_DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX = 3
 const DEFAULT_YOUTUBE_ALLOWED_HOSTS = "www.googleapis.com"
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
@@ -281,6 +283,26 @@ const envSchema = z.object({
   DEVOTIONAL_SAFETY_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
   DEVOTIONAL_ARTIFACT_DIR: z.string().min(1).optional(),
   DEVOTIONAL_MUSIC_LIBRARY_DIR: z.string().min(1).optional(),
+  // Dedicated devotional content plane. These credentials intentionally do
+  // not reuse the generic RAILWAY_S3_* subtitle/artifact tuple.
+  DEVOTIONAL_WORKSPACE_S3_ENDPOINT: z.string().url().optional(),
+  DEVOTIONAL_WORKSPACE_S3_REGION: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_BUCKET: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_PREFIX: z
+    .string()
+    .min(1)
+    .default(DEFAULT_DEVOTIONAL_WORKSPACE_PREFIX),
+  DEVOTIONAL_WORKSPACE_LOCAL_DIR: z.string().min(1).optional(),
+  // Three direct SQL connections plus one PgVector connection keep the new
+  // data plane inside a four-connection service budget.
+  DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(DEFAULT_DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX)
+    .default(DEFAULT_DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX),
   // Dedicated heavy-media boundary for video-first devotionals. Optional so
   // unprovisioned environments still boot; the render step fails with a typed
   // config error at runtime instead of running ffmpeg/Chromium in Mastra.
@@ -672,6 +694,30 @@ export const env = envSchema.parse({
   DEVOTIONAL_MUSIC_LIBRARY_DIR: emptyToUndefined(
     process.env.DEVOTIONAL_MUSIC_LIBRARY_DIR,
   ),
+  DEVOTIONAL_WORKSPACE_S3_ENDPOINT: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_S3_ENDPOINT,
+  ),
+  DEVOTIONAL_WORKSPACE_S3_REGION: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_S3_REGION,
+  ),
+  DEVOTIONAL_WORKSPACE_S3_BUCKET: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_S3_BUCKET,
+  ),
+  DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID,
+  ),
+  DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY,
+  ),
+  DEVOTIONAL_WORKSPACE_PREFIX: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_PREFIX,
+  ),
+  DEVOTIONAL_WORKSPACE_LOCAL_DIR: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_LOCAL_DIR,
+  ),
+  DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX: emptyToUndefined(
+    process.env.DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX,
+  ),
   SHORTS_WORKER_BASE_URL: emptyToUndefined(process.env.SHORTS_WORKER_BASE_URL),
   SHORTS_WORKER_API_KEY: emptyToUndefined(process.env.SHORTS_WORKER_API_KEY),
   AZURE_SPEECH_KEY: emptyToUndefined(process.env.AZURE_SPEECH_KEY),
@@ -1053,6 +1099,50 @@ export function getMastraStorageDir() {
     return `${env.RAILWAY_VOLUME_MOUNT_PATH.replace(/\/$/, "")}/mastra`
   }
   return ".mastra/storage"
+}
+
+export type DevotionalWorkspaceEnvironment = {
+  nodeEnv: "development" | "test" | "production"
+  localDirectory: string
+  prefix: string
+  databaseUrl: string
+  databasePoolMax: number
+  s3: {
+    endpoint?: string
+    region?: string
+    bucket?: string
+    accessKeyId?: string
+    secretAccessKey?: string
+  }
+  embedding: ContentEmbeddingProviderConfig
+}
+
+/**
+ * Raw infrastructure inputs for the devotional Workspace. Completeness and
+ * readiness are evaluated by the Workspace config module so a broken optional
+ * tuple cannot crash unrelated Mastra routes during process startup.
+ */
+export function getDevotionalWorkspaceEnvironment(): DevotionalWorkspaceEnvironment {
+  return {
+    nodeEnv: env.NODE_ENV,
+    localDirectory:
+      env.DEVOTIONAL_WORKSPACE_LOCAL_DIR ??
+      `${getMastraStorageDir()}/devotional-workspace`,
+    prefix: env.DEVOTIONAL_WORKSPACE_PREFIX,
+    databaseUrl: getMastraDatabaseUrl(),
+    databasePoolMax: env.DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX,
+    s3: {
+      endpoint: env.DEVOTIONAL_WORKSPACE_S3_ENDPOINT,
+      region: env.DEVOTIONAL_WORKSPACE_S3_REGION,
+      bucket: env.DEVOTIONAL_WORKSPACE_S3_BUCKET,
+      accessKeyId: env.DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID,
+      secretAccessKey: env.DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY,
+    },
+    embedding: getContentEmbeddingProviderConfig(
+      env.EXPERIENCE_EMBEDDING_MODEL,
+      env.EXPERIENCE_EMBEDDING_PROVIDER,
+    ),
+  }
 }
 
 export function getOpenRouterApiKey(): string | undefined {

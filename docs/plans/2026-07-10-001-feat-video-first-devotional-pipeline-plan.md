@@ -4,6 +4,13 @@ Status: in-progress. Foundation and the service-bearer lifecycle are built +
 tested; remaining production-readiness work is tracked below. Branch
 `feat/daily-devotional-generator`.
 
+> **Storage boundary superseded — 2026-07-31:**
+> [`2026-07-31-001-feat-devotional-workspace-data-plane-plan.md`](./2026-07-31-001-feat-devotional-workspace-data-plane-plan.md)
+> replaces this plan's local corpus, reusable cache, and JSON used-clips storage
+> assumptions. Workspace `/inputs` is the authored-data authority, Postgres owns
+> workflow state, and generated `/runs` plus `/_system` paths are never inputs;
+> tracked fixtures are migration seeds only, not production fallbacks.
+
 ## Problem / goal
 
 Restructure the daily-devotional generator so it is **video-first** and built

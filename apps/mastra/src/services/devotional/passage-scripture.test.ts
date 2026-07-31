@@ -10,6 +10,7 @@ const fakeLlm = (complete: DevotionalLlm["complete"]): DevotionalLlm => ({
   model: "fake",
   complete,
 })
+const SYSTEM_PROMPT = "Select one key WEB verse and return JSON."
 
 describe("selectScriptureForPassage", () => {
   it("uses the EXACT WEB text for the chosen verse (verified, not model-recalled)", async () => {
@@ -20,6 +21,7 @@ describe("selectScriptureForPassage", () => {
     const r = await selectScriptureForPassage({
       reference: "Luke 8:22-25",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
       lookupVerse: () => "He said to them, “Where is your faith?”",
     })
     expect(r.reference).toBe("Luke 8:25")
@@ -37,6 +39,7 @@ describe("selectScriptureForPassage", () => {
     const r = await selectScriptureForPassage({
       reference: "Revelation 21:1-4",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
       lookupVerse: () => null, // outside the ingested Gospels+Acts
     })
     expect(r.text).toBe("model quote")
@@ -51,6 +54,8 @@ describe("selectScriptureForPassage", () => {
       selectScriptureForPassage({
         reference: "Luke 8:22-25",
         llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+        systemPrompt: SYSTEM_PROMPT,
+        lookupVerse: () => null,
       }),
     ).rejects.toBeInstanceOf(PassageScriptureError)
   })

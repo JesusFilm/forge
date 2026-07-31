@@ -2,6 +2,19 @@
 
 Shared domain vocabulary for this project — entities, named processes, and status concepts with project-specific meaning. Seeded with core domain vocabulary, then accretes as ce-compound and ce-compound-refresh process learnings; direct edits are fine. Glossary only, not a spec or catch-all.
 
+## Devotional generation
+
+### Devotional Workspace
+
+The canonical file and search data plane for devotional generation. It owns
+human-authored inputs and generated artifacts while PostgreSQL owns workflow
+state and the Shorts Worker performs automated media-byte processing.
+
+A workflow attempt reads the current Devotional Workspace inventory and carries
+bounded file references through durable state. The Workspace is live rather
+than versioned, so a new retry can consume files edited after an earlier
+attempt.
+
 ## Video & media
 
 ### Smart Crop

@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { requireAuthoredPrompt } from "./authored-data"
 
 /**
  * Pick the 3 STRONGEST phrases across the WHOLE reflection to emphasize (orange
@@ -27,20 +28,10 @@ const JSON_SCHEMA = {
   },
 }
 
-export const SYSTEM_PROMPT = [
-  "You choose the phrases to visually emphasize in a devotional reflection",
-  "(shown in an accent color).",
-  `From the WHOLE reflection, pick the ${MAX_HIGHLIGHTS} STRONGEST phrases — the`,
-  "lines that carry the most emotional or spiritual weight and should land hardest.",
-  "Each phrase must be SHORT (about 2–7 words) and copied EXACTLY (verbatim, same",
-  "words and punctuation) from the reflection. Do not pick more than",
-  `${MAX_HIGHLIGHTS}. Spread them across the reflection, not all in one place.`,
-  "Return JSON { phrases: string[] }.",
-].join("\n")
-
 export type PickHighlightsInput = {
   chunks: string[]
   llm: DevotionalLlm
+  systemPrompt?: string
 }
 
 /** Per-chunk array: the strongest phrase found in that chunk (one of the top 3),
@@ -49,11 +40,12 @@ export async function pickReflectionHighlights(
   input: PickHighlightsInput,
 ): Promise<string[]> {
   if (input.chunks.length === 0) return []
+  const systemPrompt = requireAuthoredPrompt(input.systemPrompt)
   const full = input.chunks.join(" ")
   let result: z.infer<typeof HighlightsSchema>
   try {
     result = await input.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       user: full,
       jsonSchema: JSON_SCHEMA,
       schema: HighlightsSchema,

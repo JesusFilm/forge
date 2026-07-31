@@ -9,6 +9,7 @@ import {
 function fakeLlm(complete: DevotionalLlm["complete"]): DevotionalLlm {
   return { model: "fake", complete }
 }
+const SYSTEM_PROMPT = "Use a light touch to modernize this classic reflection."
 
 describe("modernizeReflection", () => {
   it("passes the source, focus passage, and word target to the model", async () => {
@@ -19,6 +20,7 @@ describe("modernizeReflection", () => {
       sourceName: "Matthew Henry, Commentary on the Whole Bible",
       approxWords: 80,
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r.adapted).toBe("You are with me.")
     // Credit: "a trusted classic" + just the author (before the first comma).
@@ -39,6 +41,7 @@ describe("modernizeReflection", () => {
       focusReference: "John 11",
       sourceName: "Matthew Henry",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(complete.mock.calls[0][0].user).toContain("about 170 words")
   })
@@ -53,6 +56,7 @@ describe("modernizeReflection", () => {
         focusReference: "Mark 4",
         sourceName: "Matthew Henry",
         llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+        systemPrompt: SYSTEM_PROMPT,
       }),
     ).rejects.toMatchObject({
       name: "ReflectionModernizerError",
@@ -68,6 +72,7 @@ describe("modernizeReflection", () => {
         focusReference: "Mark 4",
         sourceName: "Ryle",
         llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+        systemPrompt: SYSTEM_PROMPT,
       }),
     ).rejects.toBeInstanceOf(ReflectionModernizerError)
   })
