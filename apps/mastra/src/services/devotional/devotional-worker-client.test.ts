@@ -137,8 +137,8 @@ function videoArtifact(artifactType: string) {
   return {
     assetId: OUTPUT_ID,
     artifactType,
-    ext: "mp4",
-    schemaVersion: "2",
+    ext: "mp4" as const,
+    schemaVersion: "2" as const,
     key: `runs/g3/${ATTEMPT_TOKEN}/attempt-output/${"a".repeat(64)}/${
       artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
         ? "portrait.mp4"
@@ -294,6 +294,22 @@ describe("devotional shorts-worker client", () => {
         },
       ),
     ).rejects.toMatchObject({ code: "invalid_response" })
+  })
+
+  it("rejects v2 output references bound to another attempt", () => {
+    const portrait = videoArtifact(DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE)
+    const wide = {
+      ...videoArtifact(DEVOTIONAL_WIDE_ARTIFACT_TYPE),
+      attempt: { ...ATTEMPT, attemptId: "another-attempt" },
+    }
+
+    expect(() =>
+      _internals.expectedArtifacts(
+        `dv2o_g3_${ATTEMPT_TOKEN}`,
+        [portrait, wide],
+        ATTEMPT,
+      ),
+    ).toThrow(/incomplete v2 video reference/u)
   })
 
   it("cancels the worker job when the Mastra run is aborted", async () => {

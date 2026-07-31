@@ -3,7 +3,7 @@ id: "feat-322"
 title: "Devotional Workspace data plane"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-31"
 duration: 10
 depends_on: []
@@ -59,3 +59,16 @@ Mastra, Gateway, Worker, and composition tests prove Workspace registration,
 fresh source discovery, fail-closed hybrid reconciliation, bounded provenance,
 immutable media references, authenticated Studio CRUD/search, migration
 idempotency, and the complete edit-to-publish flow.
+
+## Implementation Evidence
+
+- Mastra: 1,552 tests passed (3 skipped); typecheck and lint passed.
+- Mastra Gateway: 32 tests passed; typecheck and lint passed.
+- Shorts Worker: 161 tests passed; typecheck and lint passed.
+- Shorts Compositions: 68 tests passed; typecheck and lint passed.
+- Mastra's generated server bundle contains the Workspace and data-plane
+  singletons, and a local Studio browser smoke rendered `Devotional Workspace`
+  with native file and directory controls.
+- Production migration, restore attestation, canary generation, and PostgreSQL
+  cutover remain operator-run release gates after the normal PR-to-main Railway
+  deployment. No direct production deployment was performed from the worktree.

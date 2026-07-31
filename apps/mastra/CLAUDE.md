@@ -1132,16 +1132,18 @@ local storage. The Workspace keeps native Studio CRUD/search available, but
 its inherited agent tools are disabled; workflows read it programmatically
 through typed devotional repository code. Native search is an eventual Studio
 browsing aid. Devotional generation remains fail-closed until filesystem,
-embedder, PgVector, and migration version 1 are all ready. Apply the idempotent
+embedder, PgVector, migration version 1, and the authoritative PostgreSQL
+cutover row are all ready. Apply the idempotent
 schema with `pnpm --filter @forge/mastra migrate:devotional-database` before
 enabling new starts. Existing `RAILWAY_S3_*` variables continue to serve only
 the legacy subtitle/general artifact path.
 
 The video-first devotional architecture exception additionally requires the
-Mastra Railway service dashboard to keep `numReplicas = 1`. Its lifecycle lock
-and used-clips ledger serialization are process-local; a second replica can
-launch duplicate same-date work even though workflow state itself is durable.
-Record the replica setting in each devotional release attestation.
+Mastra Railway service dashboard to keep `numReplicas = 1`. Workflow attempts,
+clip reservations, publication intents, and publication history are durable in
+PostgreSQL; the route lifecycle lock remains process-local, so a second replica
+can still race deterministic Mastra run creation. Record the replica setting in
+each devotional release attestation.
 
 Keep `PinoLogger` configured as the app logger so runtime logs continue to flow
 to stdout/stderr for Railway's platform logs.

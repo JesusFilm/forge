@@ -10,11 +10,28 @@ const workspaceSource = readFileSync(
   new URL("../services/devotional/workspace/config.ts", import.meta.url),
   "utf8",
 )
+const workerStorageSource = readFileSync(
+  new URL("../../../shorts-worker/src/storage.ts", import.meta.url),
+  "utf8",
+)
+const workerEnvSource = readFileSync(
+  new URL("../../../shorts-worker/src/config/env.ts", import.meta.url),
+  "utf8",
+)
 
 describe("devotional Workspace registration", () => {
   it("registers exactly one global Workspace without replacing workflow or observability storage", () => {
     expect(mastraSource).toContain(
-      "export const devotionalWorkspaceRuntime = createDevotionalWorkspaceRuntime()",
+      "const devotionalWorkspaceRuntime = createDevotionalWorkspaceRuntime()",
+    )
+    // Mastra extracts the server configuration into a separate bundle. Exported
+    // registration-only singletons are omitted from that bundle and fail at
+    // runtime even though TypeScript accepts the source composition.
+    expect(mastraSource).not.toContain(
+      "export const devotionalWorkspaceRuntime",
+    )
+    expect(mastraSource).not.toContain(
+      "export const devotionalDataPlaneRuntime",
     )
     expect(
       mastraSource.match(/workspace: devotionalWorkspaceRuntime\.workspace/g),
@@ -38,13 +55,26 @@ describe("devotional Workspace registration", () => {
     expect(workspaceSource).toContain("forcePathStyle: false")
   })
 
+  it("keeps Mastra and Worker v2 keys in the same configured namespace", () => {
+    expect(workspaceSource).toContain("prefix: storage.prefix")
+    expect(workerEnvSource).toContain(
+      'DEVOTIONAL_WORKSPACE_PREFIX: z.string().min(1).default("devotional")',
+    )
+    expect(workerStorageSource).toContain(
+      '[normalizedWorkspacePrefix, relativeKey].filter(Boolean).join("/")',
+    )
+    expect(workerStorageSource).toContain(
+      "workspacePrefix: env.DEVOTIONAL_WORKSPACE_PREFIX",
+    )
+  })
+
   it("composes new starts and retries with the durable data plane", () => {
     expect(mastraSource).toContain("createDevotionalDataPlaneRuntime({")
     expect(mastraSource).toContain(
       "attempts: devotionalDataPlaneRuntime.attempts",
     )
     expect(mastraSource).toContain(
-      "reconcileAttempt: () => devotionalDataPlaneRuntime.reconcileAttempt()",
+      "devotionalDataPlaneRuntime.reconcileAttempt(options)",
     )
     expect(mastraSource).toContain(
       "devotionalDataPlaneRuntime.usedClips.renew(",

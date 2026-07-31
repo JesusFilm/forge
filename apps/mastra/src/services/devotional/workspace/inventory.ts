@@ -132,6 +132,46 @@ function failLimit(bound: string, value: number, limit: number): never {
   )
 }
 
+async function withinInventoryDeadline<T>(options: {
+  work: Promise<T>
+  startedAt: number
+  limits: DevotionalInventoryLimits
+}): Promise<T> {
+  const remaining =
+    options.limits.deadlineMs - (options.limits.now() - options.startedAt)
+  if (remaining <= 0) {
+    throw new DevotionalWorkspaceError(
+      "inventory-deadline-exceeded",
+      "Devotional Workspace inventory exceeded its deadline",
+      { details: { deadlineMs: options.limits.deadlineMs }, retryable: true },
+    )
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      options.work,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new DevotionalWorkspaceError(
+                "inventory-deadline-exceeded",
+                "Devotional Workspace inventory exceeded its deadline",
+                {
+                  details: { deadlineMs: options.limits.deadlineMs },
+                  retryable: true,
+                },
+              ),
+            ),
+          remaining,
+        )
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 function sameStat(
   before: InventoryFileStat,
   after: InventoryFileStat,
@@ -154,7 +194,9 @@ export async function inventoryDevotionalInputs(
   // Generated runs and editor-facing system reports share this Workspace but
   // are never source candidates. Keeping traversal rooted at /inputs prevents
   // retained media from consuming source inventory time and file-count bounds.
-  const listed = await filesystem.listFiles("/inputs")
+  const bounded = <T>(work: Promise<T>) =>
+    withinInventoryDeadline({ work, startedAt, limits })
+  const listed = await bounded(filesystem.listFiles("/inputs"))
   if (listed.length > limits.maxFiles) {
     failLimit("maxFiles", listed.length, limits.maxFiles)
   }
@@ -207,11 +249,11 @@ export async function inventoryDevotionalInputs(
     }
 
     try {
-      const before = await filesystem.stat(filePath)
+      const before = await bounded(filesystem.stat(filePath))
       if (before.size > limits.maxTextFileBytes) {
         failLimit("maxTextFileBytes", before.size, limits.maxTextFileBytes)
       }
-      const body = await filesystem.readFile(filePath)
+      const body = await bounded(filesystem.readFile(filePath))
       const bytes = typeof body === "string" ? Buffer.from(body) : body
       if (bytes.byteLength !== before.size) {
         throw new DevotionalWorkspaceError(
@@ -220,7 +262,7 @@ export async function inventoryDevotionalInputs(
           { details: { path: filePath }, retryable: true },
         )
       }
-      const after = await filesystem.stat(filePath)
+      const after = await bounded(filesystem.stat(filePath))
       if (!sameStat(before, after)) {
         throw new DevotionalWorkspaceError(
           "source-changed",
@@ -267,9 +309,15 @@ export async function inventoryDevotionalInputs(
       if (
         isDevotionalWorkspaceError(error) &&
         (error.code === "inventory-limit-exceeded" ||
+          error.code === "inventory-deadline-exceeded" ||
           error.code === "source-changed")
       ) {
-        if (error.code === "inventory-limit-exceeded") throw error
+        if (
+          error.code === "inventory-limit-exceeded" ||
+          error.code === "inventory-deadline-exceeded"
+        ) {
+          throw error
+        }
         excluded.push({
           path: filePath,
           reason: "unstable-read",

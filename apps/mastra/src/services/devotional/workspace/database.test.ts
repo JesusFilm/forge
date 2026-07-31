@@ -5,6 +5,7 @@ import {
   assertDevotionalSchemaReady,
   createDatabaseAuditSink,
   createDevotionalDatabase,
+  getDevotionalCutoverReadiness,
   getDevotionalSchemaReadiness,
   hasDevotionalVectorCapability,
   MAX_DEVOTIONAL_DATABASE_POOL_SIZE,
@@ -43,7 +44,13 @@ describe("devotional Workspace database", () => {
         connectionString: "postgresql://localhost/unused",
         maxConnections: MAX_DEVOTIONAL_DATABASE_POOL_SIZE + 1,
       }),
-    ).toThrow(/1-3 connections/)
+    ).toThrow(/2-3 connections/)
+    expect(() =>
+      createDevotionalDatabase({
+        connectionString: "postgresql://localhost/unused",
+        maxConnections: 1,
+      }),
+    ).toThrow(/2-3 connections/)
   })
 
   it("requires exactly the expected migration version before starts", async () => {
@@ -64,6 +71,37 @@ describe("devotional Workspace database", () => {
     ).resolves.toBe(false)
   })
 
+  it("reads the authoritative cutover gate from PostgreSQL", async () => {
+    await expect(
+      getDevotionalCutoverReadiness(
+        executorWithRows([
+          {
+            ready: true,
+            manifest_digest: "a".repeat(64),
+            reason: null,
+            verified_at: new Date("2026-07-31T12:00:00Z"),
+          },
+        ]),
+      ),
+    ).resolves.toEqual({
+      ready: true,
+      manifestDigest: "a".repeat(64),
+      verifiedAt: "2026-07-31T12:00:00.000Z",
+    })
+    await expect(
+      getDevotionalCutoverReadiness(
+        executorWithRows([
+          {
+            ready: false,
+            manifest_digest: null,
+            reason: "migration pending",
+            verified_at: null,
+          },
+        ]),
+      ),
+    ).resolves.toEqual({ ready: false, reason: "migration pending" })
+  })
+
   it("maps append-only audit fields into a parameterized insert", async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const sink = createDatabaseAuditSink({
@@ -72,6 +110,8 @@ describe("devotional Workspace database", () => {
 
     await sink({
       id: "audit-1",
+      operationId: "operation-1",
+      phase: "completed",
       occurredAt: new Date("2026-07-31T12:00:00Z"),
       actorId: "editor-1",
       requestId: "request-1",
@@ -86,6 +126,8 @@ describe("devotional Workspace database", () => {
     expect(query.mock.calls[0]?.[0]).toContain("filesystem_mutation_audit")
     expect(query.mock.calls[0]?.[1]).toEqual([
       "audit-1",
+      "operation-1",
+      "completed",
       new Date("2026-07-31T12:00:00Z"),
       "editor-1",
       "request-1",

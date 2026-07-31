@@ -73,7 +73,7 @@ function harness(states: Record<string, VideoFirstWorkflowState> = {}) {
     attempts: new InMemoryDevotionalAttemptStore(),
     reconcileAttempt: vi.fn(async () => ({
       generation: 1,
-      selectedSources: [],
+      selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
     })),
     now: () => new Date("2026-07-21T12:00:00Z"),
   }
@@ -201,9 +201,10 @@ describe("video-first devotional lifecycle routes", () => {
       },
       renewReservation: vi.fn(),
       releaseReservation: vi.fn(),
+      attempts: new InMemoryDevotionalAttemptStore(),
       reconcileAttempt: vi.fn(async () => ({
         generation: 1,
-        selectedSources: [],
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
       })),
     }
 
@@ -217,6 +218,56 @@ describe("video-first devotional lifecycle routes", () => {
 
     expect(start).toHaveBeenCalledOnce()
     expect(outcomes.map(({ body }) => body.existing)).toEqual([false, true])
+  })
+
+  it("resumes the same provisioning attempt after reconciliation recovers", async () => {
+    const { deps, start } = harness()
+    const reconcile = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary outage"))
+      .mockResolvedValueOnce({
+        generation: 1,
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+      })
+    deps.reconcileAttempt = reconcile
+    const request = () =>
+      handleVideoFirstStartRequest({
+        ...AUTH,
+        readJson: async () => ({ date: "2026-07-21" }),
+        deps,
+      })
+
+    await expect(request()).resolves.toEqual({
+      status: 503,
+      body: { error: "workspace_unavailable" },
+    })
+    await expect(request()).resolves.toMatchObject({ status: 202 })
+    expect(reconcile).toHaveBeenCalledTimes(2)
+    expect(start).toHaveBeenCalledOnce()
+  })
+
+  it("starts a ready attempt left behind before Mastra run creation", async () => {
+    const { deps, start } = harness()
+    const createRun = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("process interrupted"))
+      .mockResolvedValue({
+        startAsync: start,
+        resume: vi.fn(),
+        cancel: vi.fn(),
+      })
+    deps.workflow.createRun = createRun
+    const request = () =>
+      handleVideoFirstStartRequest({
+        ...AUTH,
+        readJson: async () => ({ date: "2026-07-21" }),
+        deps,
+      })
+
+    await expect(request()).rejects.toThrow("process interrupted")
+    await expect(request()).resolves.toMatchObject({ status: 202 })
+    expect(deps.reconcileAttempt).toHaveBeenCalledOnce()
+    expect(start).toHaveBeenCalledOnce()
   })
 
   it("renews and resumes only suspended runs", async () => {
@@ -433,7 +484,7 @@ describe("video-first devotional lifecycle routes", () => {
       attempts: new InMemoryDevotionalAttemptStore(),
       reconcileAttempt: vi.fn(async () => ({
         generation: 1,
-        selectedSources: [],
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
       })),
     }
     const request = () =>
@@ -506,7 +557,7 @@ describe("video-first devotional lifecycle routes", () => {
     })
 
     expect(first.status).toBe(202)
-    expect(replay).toMatchObject({ status: 200, body: { existing: true } })
+    expect(replay).toMatchObject({ status: 202, body: { existing: true } })
     expect(conflict).toEqual({
       status: 409,
       body: { error: "idempotency_key_conflict" },

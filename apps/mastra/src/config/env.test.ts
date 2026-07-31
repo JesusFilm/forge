@@ -1511,4 +1511,11 @@ describe("Mastra env", () => {
 
     await expect(import("./env")).rejects.toThrow()
   })
+
+  it("rejects a one-connection devotional pool that would self-deadlock", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "1")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
 })

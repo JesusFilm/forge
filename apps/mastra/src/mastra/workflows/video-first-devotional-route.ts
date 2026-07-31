@@ -3,7 +3,10 @@ import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import { isValidServiceBearer } from "../../server/service-bearer"
-import { DevotionalSourceRefSchema } from "../../services/devotional/workspace/state-schema"
+import {
+  DevotionalSourceRefSchema,
+  type DevotionalAttempt,
+} from "../../services/devotional/workspace/state-schema"
 import type { DevotionalAttemptStore } from "../../services/devotional/workspace/state"
 
 const InputSchema = z
@@ -134,7 +137,7 @@ export type VideoFirstLifecycleDeps = {
   renewReservation: (state: VideoFirstWorkflowState) => Promise<void>
   releaseReservation: (state: VideoFirstWorkflowState) => Promise<void>
   attempts?: DevotionalAttemptStore
-  reconcileAttempt?: () => Promise<{
+  reconcileAttempt?: (options?: { query?: string }) => Promise<{
     generation: number
     selectedSources: z.infer<typeof DevotionalSourceRefSchema>[]
   }>
@@ -211,6 +214,109 @@ function retryRequestHash(
       }),
     )
     .digest("hex")
+}
+
+function initialRequestHash(
+  parentRunId: string,
+  input: z.infer<typeof InputSchema>,
+  date: string,
+) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        parentRunId,
+        chapterIndex: input.chapterIndex,
+        sequence: input.sequence,
+        date,
+      }),
+    )
+    .digest("hex")
+}
+
+async function provisionAndStartAttempt(input: {
+  attempt: DevotionalAttempt
+  runId: string
+  workflowInput: z.infer<typeof InputSchema> & { date: string }
+  query: string
+  deps: VideoFirstLifecycleDeps & {
+    attempts: DevotionalAttemptStore
+    reconcileAttempt: NonNullable<VideoFirstLifecycleDeps["reconcileAttempt"]>
+  }
+}): Promise<VideoFirstRouteOutcome> {
+  let attempt = input.attempt
+  if (attempt.provisioningState === "failed") {
+    return { status: 503, body: { error: "workspace_provisioning_failed" } }
+  }
+
+  if (attempt.provisioningState === "provisioning") {
+    let prepared: Awaited<ReturnType<typeof input.deps.reconcileAttempt>>
+    try {
+      prepared = await input.deps.reconcileAttempt({ query: input.query })
+      await input.deps.attempts.markReady(attempt.id, {
+        catalogGeneration: prepared.generation,
+        runId: input.runId,
+        selectedSources: prepared.selectedSources,
+      })
+      attempt = {
+        ...attempt,
+        provisioningState: "ready",
+        catalogGeneration: prepared.generation,
+        runId: input.runId,
+        selectedSources: prepared.selectedSources,
+      }
+    } catch {
+      // Keep the durable row in provisioning so the same idempotency key can
+      // resume after a transient reconciliation or process failure.
+      return { status: 503, body: { error: "workspace_unavailable" } }
+    }
+  }
+
+  if (
+    !["ready", "started"].includes(attempt.provisioningState) ||
+    !attempt.catalogGeneration ||
+    !attempt.runId ||
+    attempt.selectedSources.length === 0
+  ) {
+    return { status: 503, body: { error: "workspace_attempt_not_ready" } }
+  }
+  if (attempt.runId !== input.runId) {
+    return { status: 409, body: { error: "attempt_run_id_conflict" } }
+  }
+
+  const existing = await input.deps.workflow.getWorkflowRunById(input.runId)
+  if (existing) {
+    return {
+      status: 200,
+      body: { ...summarizeState(existing), existing: true },
+    }
+  }
+
+  if (attempt.provisioningState === "started") {
+    return {
+      status: 202,
+      body: { runId: input.runId, status: "pending", existing: true },
+    }
+  }
+
+  const run = await input.deps.workflow.createRun({ runId: input.runId })
+  await run.startAsync({
+    inputData: {
+      chapterIndex: input.workflowInput.chapterIndex,
+      sequence: input.workflowInput.sequence,
+      date: input.workflowInput.date,
+      attemptId: attempt.id,
+      workspaceGeneration: attempt.catalogGeneration,
+      selectedSources: attempt.selectedSources,
+    },
+  })
+  await input.deps.attempts.markStarted(attempt.id)
+  const state = await input.deps.workflow.getWorkflowRunById(input.runId)
+  return {
+    status: 202,
+    body: state
+      ? { ...summarizeState(state), existing: false }
+      : { runId: input.runId, status: "pending", existing: false },
+  }
 }
 
 function normalizeSuspension(
@@ -384,33 +490,28 @@ export async function handleVideoFirstStartRequest(
       }
     }
 
-    if (!input.deps.reconcileAttempt) {
+    if (!input.deps.attempts || !input.deps.reconcileAttempt) {
       return { status: 503, body: { error: "workspace_unavailable" } }
     }
-    let prepared: Awaited<ReturnType<typeof input.deps.reconcileAttempt>>
-    try {
-      prepared = await input.deps.reconcileAttempt()
-    } catch {
-      return { status: 503, body: { error: "workspace_unavailable" } }
+    const attemptResult = await input.deps.attempts.beginRetry({
+      parentRunId: runId,
+      idempotencyKey: "initial",
+      requestHash: initialRequestHash(runId, parsed.data, date),
+    })
+    if (attemptResult.kind === "conflict") {
+      return { status: 409, body: { error: "initial_request_conflict" } }
     }
-    const run = await input.deps.workflow.createRun({ runId })
-    await run.startAsync({
-      inputData: {
-        chapterIndex: parsed.data.chapterIndex,
-        sequence: parsed.data.sequence,
-        date,
-        attemptId: runId,
-        workspaceGeneration: prepared.generation,
-        selectedSources: prepared.selectedSources,
+    return provisionAndStartAttempt({
+      attempt: attemptResult.attempt,
+      runId,
+      workflowInput: { ...parsed.data, date },
+      query: `daily devotional ${date}`,
+      deps: {
+        ...input.deps,
+        attempts: input.deps.attempts,
+        reconcileAttempt: input.deps.reconcileAttempt,
       },
     })
-    const state = await input.deps.workflow.getWorkflowRunById(runId)
-    return {
-      status: 202,
-      body: state
-        ? { ...summarizeState(state), existing: false }
-        : { runId, status: "pending", existing: false },
-    }
   })
 }
 
@@ -533,71 +634,32 @@ export async function handleVideoFirstRetryRequest(
   if (attemptResult.kind === "conflict") {
     return { status: 409, body: { error: "idempotency_key_conflict" } }
   }
-  if (attemptResult.kind === "existing") {
-    const runId = attemptResult.attempt.runId
-    const existing = runId
-      ? await input.deps.workflow.getWorkflowRunById(runId)
-      : null
-    if (existing && runId) {
-      return {
-        status: 200,
-        body: { ...summarizeState(existing), existing: true },
-      }
-    }
-    return {
-      status: 200,
-      body: {
-        runId:
-          runId ??
-          `${input.runId}-attempt-${attemptResult.attempt.attemptNumber}`,
-        status: attemptResult.attempt.provisioningState,
-        existing: true,
-      },
-    }
-  }
-
   const attempt = attemptResult.attempt
   const runId = `${input.runId}-attempt-${attempt.attemptNumber}`
   return withLifecycleLock(runId, async () => {
-    let prepared: Awaited<
-      ReturnType<NonNullable<typeof input.deps.reconcileAttempt>>
-    >
-    try {
-      prepared = await input.deps.reconcileAttempt!()
-      await input.deps.attempts!.markReady(attempt.id, {
-        catalogGeneration: prepared.generation,
-        runId,
-        selectedSources: prepared.selectedSources,
-      })
-    } catch (error) {
-      await input.deps.attempts!.markFailed(
-        attempt.id,
-        error instanceof Error
-          ? error.message
-          : "Workspace reconciliation failed",
-      )
-      return { status: 503, body: { error: "workspace_unavailable" } }
-    }
-    const run = await input.deps.workflow.createRun({ runId })
-    await run.startAsync({
-      inputData: {
+    return provisionAndStartAttempt({
+      attempt,
+      runId,
+      workflowInput: {
         chapterIndex: originalInput.data.chapterIndex,
         sequence: originalInput.data.sequence,
-        date: originalInput.data.date,
-        attemptId: attempt.id,
-        workspaceGeneration: prepared.generation,
-        selectedSources: prepared.selectedSources,
+        date:
+          originalInput.data.date ??
+          (input.deps.now ?? (() => new Date()))().toISOString().slice(0, 10),
+      },
+      query: `daily devotional ${originalInput.data.date ?? ""}`.trim(),
+      deps: {
+        ...input.deps,
+        attempts: input.deps.attempts!,
+        reconcileAttempt: input.deps.reconcileAttempt!,
       },
     })
-    return {
-      status: 202,
-      body: { runId, status: "pending", existing: false },
-    }
   })
 }
 
 export const _internals = {
   normalizeSuspension,
+  initialRequestHash,
   reservationOwnerFromState,
   retryRequestHash,
   runIdForDate,

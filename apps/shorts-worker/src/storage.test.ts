@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -240,6 +241,7 @@ describe("s3 storage backend selection", () => {
         bucket: "artifacts",
         accessKeyId: "access",
         secretAccessKey: "secret",
+        workspacePrefix: "devotional",
       },
       localRootDir: ".tmp/artifacts",
     })
@@ -311,7 +313,7 @@ describe("s3 storage backend selection", () => {
     ).rejects.toBeInstanceOf(ArtifactNotFoundError)
   })
 
-  it("uses Worker-authored digest metadata before streaming a Workspace range", async () => {
+  it("hashes an ETag-bound object before streaming a Workspace range", async () => {
     const attempt = {
       workspaceGeneration: 4,
       attemptId: "attempt_4",
@@ -330,8 +332,10 @@ describe("s3 storage backend selection", () => {
       .mockResolvedValueOnce({
         ContentLength: body.byteLength,
         ContentType: "video/mp4",
+        ETag: '"etag-v1"',
         Metadata: { "forge-sha256": digest },
       })
+      .mockResolvedValueOnce({ Body: Readable.from(body) })
       .mockResolvedValueOnce({ Body: Readable.from(body.subarray(0, 4)) })
     const storage = s3Storage()
     const ref = await storage.writeWorkspaceArtifact({
@@ -345,11 +349,21 @@ describe("s3 storage backend selection", () => {
 
     await storage.readWorkspaceArtifactStream(ref, "bytes=0-3")
 
-    expect(s3Send).toHaveBeenCalledTimes(3)
+    expect(s3Send).toHaveBeenCalledTimes(4)
     expect(s3Send.mock.calls[0][0].input.Metadata).toEqual({
       "forge-sha256": digest,
     })
-    expect(s3Send.mock.calls[2][0].input.Range).toBe("bytes=0-3")
+    expect(s3Send.mock.calls[0][0].input.Key).toBe(`devotional/${key}`)
+    expect(s3Send.mock.calls[1][0].input.Key).toBe(`devotional/${key}`)
+    expect(s3Send.mock.calls[2][0].input).toMatchObject({
+      Key: `devotional/${key}`,
+      IfMatch: '"etag-v1"',
+    })
+    expect(s3Send.mock.calls[2][0].input.Range).toBeUndefined()
+    expect(s3Send.mock.calls[3][0].input).toMatchObject({
+      Key: `devotional/${key}`,
+      IfMatch: '"etag-v1"',
+    })
+    expect(s3Send.mock.calls[3][0].input.Range).toBe("bytes=0-3")
   })
 })
-import { createHash } from "node:crypto"

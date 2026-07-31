@@ -376,11 +376,19 @@ async function jsonResponse(response: Response): Promise<unknown> {
 function expectedArtifacts(
   outputAssetId: string,
   refs: z.infer<typeof ArtifactRefSchema>[],
+  attempt: z.infer<typeof AttemptSchema>,
 ): DevotionalVideoArtifacts {
+  const attemptToken = createHash("sha256")
+    .update(attempt.attemptId)
+    .digest("hex")
+    .slice(0, 24)
+  const assetPattern = new RegExp(
+    `^dv2o_g${attempt.workspaceGeneration}_${attemptToken}_[a-f0-9]{64}_[1-9][0-9]*$`,
+  )
   const find = (artifactType: string) =>
     refs.find(
       (ref) =>
-        (ref.assetId === outputAssetId || ref.assetId.startsWith("dv2o_")) &&
+        (ref.assetId === outputAssetId || assetPattern.test(ref.assetId)) &&
         ref.artifactType === artifactType &&
         ref.ext === "mp4",
     )
@@ -396,7 +404,22 @@ function expectedArtifacts(
   const checked = (ref: z.infer<typeof ArtifactRefSchema>) => {
     if (ref.assetId.startsWith("dv2o_")) {
       const parsed = WorkspaceRefSchema.safeParse(ref)
-      if (!parsed.success || ref.contentType !== "video/mp4") {
+      const filename =
+        ref.artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
+          ? "portrait.mp4"
+          : "wide.mp4"
+      const expectedKey = parsed.success
+        ? `runs/g${attempt.workspaceGeneration}/${attemptToken}/attempt-output/${parsed.data.digest}/${filename}`
+        : ""
+      if (
+        !parsed.success ||
+        !assetPattern.test(ref.assetId) ||
+        ref.contentType !== "video/mp4" ||
+        ref.key !== expectedKey ||
+        ref.attempt?.workspaceGeneration !== attempt.workspaceGeneration ||
+        ref.attempt?.attemptId !== attempt.attemptId ||
+        ref.attempt?.runId !== attempt.runId
+      ) {
         throw new DevotionalWorkerError(
           "invalid_response",
           "shorts-worker returned an incomplete v2 video reference",
@@ -406,7 +429,16 @@ function expectedArtifacts(
     }
     return ref as DevotionalVideoArtifact
   }
-  return { portrait: checked(portrait), wide: checked(wide) }
+  const checkedPortrait = checked(portrait)
+  const checkedWide = checked(wide)
+  if (checkedPortrait.assetId !== checkedWide.assetId) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "shorts-worker returned video references from different output manifests",
+      false,
+    )
+  }
+  return { portrait: checkedPortrait, wide: checkedWide }
 }
 
 export type DevotionalWorkerRenderInput = {
@@ -610,7 +642,11 @@ export async function renderDevotionalOnWorker(
       )
     }
     if (parsed.data.status === "completed" && parsed.data.result) {
-      return expectedArtifacts(outputAssetId, parsed.data.result.artifacts)
+      return expectedArtifacts(
+        outputAssetId,
+        parsed.data.result.artifacts,
+        attempt,
+      )
     }
     if (parsed.data.status === "failed" || parsed.data.status === "cancelled") {
       throw new DevotionalWorkerError(

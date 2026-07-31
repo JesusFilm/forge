@@ -30,6 +30,7 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  DEVOTIONAL_WORKSPACE_PREFIX: z.string().min(1).default("devotional"),
   DEVOTIONAL_WORKSPACE_LOCAL_DIR: z
     .string()
     .min(1)
@@ -141,6 +142,9 @@ export function parseEnv(source: EnvSource): Env {
     ),
     DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE: emptyToUndefined(
       source.DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE,
+    ),
+    DEVOTIONAL_WORKSPACE_PREFIX: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_PREFIX,
     ),
     DEVOTIONAL_WORKSPACE_LOCAL_DIR: emptyToUndefined(
       source.DEVOTIONAL_WORKSPACE_LOCAL_DIR,

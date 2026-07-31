@@ -14,6 +14,7 @@ describe("parseEnv", () => {
     expect(env.SHORTS_WORKER_LOCAL_ARTIFACTS_DIR).toBe(".tmp/artifacts")
     expect(env.DEVOTIONAL_WORKSPACE_LOCAL_DIR).toBe(".tmp/devotional-workspace")
     expect(env.DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE).toBe(false)
+    expect(env.DEVOTIONAL_WORKSPACE_PREFIX).toBe("devotional")
     expect(env.SHORTS_WORKER_ALLOWED_SOURCE_HOSTS).toBe("stream.mux.com")
     expect(env.SHORTS_WORKER_RENDER_CONCURRENCY).toBe(2)
     expect(env.SHORTS_WORKER_QUEUE_LIMIT).toBe(2)

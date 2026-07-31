@@ -67,6 +67,7 @@ export async function proxyMastraRequest(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  let workspaceSlotHeld = false
   if (options.workspaceRequest) {
     const rate = workspaceRate.get(session.subject)
     const now = Date.now()
@@ -90,19 +91,28 @@ export async function proxyMastraRequest(
       )
     }
     workspaceConcurrency.set(session.subject, concurrency + 1)
+    workspaceSlotHeld = true
   }
 
   try {
-    return await proxyAuthorizedMastraRequest(request, upstreamPath, session, {
-      ...options,
-      authorizationKey: options.authorizationKey ?? env.MASTRA_INTERNAL_API_KEY,
-    })
-  } finally {
-    if (options.workspaceRequest) {
-      const concurrency = workspaceConcurrency.get(session.subject) ?? 1
-      if (concurrency <= 1) workspaceConcurrency.delete(session.subject)
-      else workspaceConcurrency.set(session.subject, concurrency - 1)
+    const response = await proxyAuthorizedMastraRequest(
+      request,
+      upstreamPath,
+      session,
+      {
+        ...options,
+        authorizationKey:
+          options.authorizationKey ?? env.MASTRA_INTERNAL_API_KEY,
+      },
+    )
+    if (!workspaceSlotHeld) return response
+    workspaceSlotHeld = false
+    return retainWorkspaceConcurrency(response, session.subject)
+  } catch (error) {
+    if (workspaceSlotHeld) {
+      releaseWorkspaceConcurrency(session.subject)
     }
+    throw error
   }
 }
 
@@ -133,6 +143,7 @@ async function proxyAuthorizedMastraRequest(
     }
     if (
       canForwardBody(request.method) &&
+      request.body !== null &&
       !request.headers.get("content-type")?.includes("application/json")
     ) {
       return NextResponse.json(
@@ -230,6 +241,57 @@ async function proxyAuthorizedMastraRequest(
     status: response.status,
     statusText: response.statusText,
     headers: responseHeaders,
+  })
+}
+
+function releaseWorkspaceConcurrency(subject: string): void {
+  const concurrency = workspaceConcurrency.get(subject) ?? 1
+  if (concurrency <= 1) workspaceConcurrency.delete(subject)
+  else workspaceConcurrency.set(subject, concurrency - 1)
+}
+
+function retainWorkspaceConcurrency(
+  response: Response,
+  subject: string,
+): Response {
+  if (!response.body) {
+    releaseWorkspaceConcurrency(subject)
+    return response
+  }
+  const reader = response.body.getReader()
+  let released = false
+  const release = () => {
+    if (released) return
+    released = true
+    releaseWorkspaceConcurrency(subject)
+  }
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const result = await reader.read()
+        if (result.done) {
+          release()
+          controller.close()
+          return
+        }
+        controller.enqueue(result.value)
+      } catch (error) {
+        release()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      try {
+        await reader.cancel(reason)
+      } finally {
+        release()
+      }
+    },
+  })
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
   })
 }
 

@@ -114,6 +114,7 @@ export type StorageConfig = {
     accessKeyId?: string
     secretAccessKey?: string
     forcePathStyle?: boolean
+    workspacePrefix?: string
   }
   localRootDir: string
 }
@@ -528,6 +529,7 @@ function devotionalWorkspaceConfig(): StorageConfig {
           accessKeyId: env.DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID,
           secretAccessKey: env.DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY,
           forcePathStyle: env.DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE,
+          workspacePrefix: env.DEVOTIONAL_WORKSPACE_PREFIX,
         }
       : undefined,
     localRootDir: env.DEVOTIONAL_WORKSPACE_LOCAL_DIR,
@@ -579,6 +581,65 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
       }
     }
     return _s3
+  }
+
+  const normalizedWorkspacePrefix = s3Config.workspacePrefix
+    ?.replace(/^\/+|\/+$/gu, "")
+    .trim()
+  const workspaceStorageKey = (relativeKey: string) =>
+    [normalizedWorkspacePrefix, relativeKey].filter(Boolean).join("/")
+
+  async function verifyWorkspaceArtifactAndGetEtag(
+    ref: WorkspaceArtifactRef,
+  ): Promise<string> {
+    validateWorkspaceRef(ref)
+    const { GetObjectCommand, HeadObjectCommand } =
+      await import("@aws-sdk/client-s3")
+    const s3 = await getS3()
+    try {
+      const key = workspaceStorageKey(ref.key)
+      const head = await s3.send(
+        new HeadObjectCommand({ Bucket: s3Config.bucket, Key: key }),
+      )
+      if (
+        head.ContentLength !== ref.size ||
+        (head.ContentType != null && head.ContentType !== ref.contentType)
+      ) {
+        throw new ArtifactIntegrityError(
+          `artifact metadata mismatch: ${ref.key}`,
+        )
+      }
+      if (!head.ETag) {
+        throw new ArtifactIntegrityError(
+          `artifact object identity is unavailable: ${ref.key}`,
+        )
+      }
+      const metadataDigest = head.Metadata?.[WORKSPACE_SHA256_METADATA_KEY]
+      if (metadataDigest && metadataDigest !== ref.digest) {
+        throw new ArtifactIntegrityError(
+          `artifact digest metadata mismatch: ${ref.key}`,
+        )
+      }
+      // Metadata is an optimization hint, not content proof: an editor or
+      // storage client may overwrite bytes while retaining user metadata.
+      // Hash one ETag-bound full stream before approval or Range playback.
+      const response = await s3.send(
+        new GetObjectCommand({
+          Bucket: s3Config.bucket,
+          Key: key,
+          IfMatch: head.ETag,
+        }),
+      )
+      if (!response.Body) throw new ArtifactNotFoundError(ref.key)
+      assertDigestAndSize(
+        await digestReadable(response.Body as unknown as Readable),
+        ref,
+      )
+      return head.ETag
+    } catch (error) {
+      if (isNoSuchKeyError(error)) throw new ArtifactNotFoundError(ref.key)
+      throw error
+    }
   }
 
   return {
@@ -770,7 +831,7 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
         await s3.send(
           new PutObjectCommand({
             Bucket: s3Config.bucket,
-            Key: ref.key,
+            Key: workspaceStorageKey(ref.key),
             Body: body,
             ContentLength: ref.size,
             ContentType: ref.contentType,
@@ -801,7 +862,7 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
         await s3.send(
           new PutObjectCommand({
             Bucket: s3Config.bucket,
-            Key: ref.key,
+            Key: workspaceStorageKey(ref.key),
             Body: createReadStream(options.filePath),
             ContentLength: ref.size,
             ContentType: ref.contentType,
@@ -826,7 +887,10 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
       const s3 = await getS3()
       try {
         const response = await s3.send(
-          new GetObjectCommand({ Bucket: s3Config.bucket, Key: ref.key }),
+          new GetObjectCommand({
+            Bucket: s3Config.bucket,
+            Key: workspaceStorageKey(ref.key),
+          }),
         )
         if (!response.Body) throw new ArtifactNotFoundError(ref.key)
         const bytes = await response.Body.transformToByteArray()
@@ -850,7 +914,10 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
       const s3 = await getS3()
       try {
         const response = await s3.send(
-          new GetObjectCommand({ Bucket: s3Config.bucket, Key: ref.key }),
+          new GetObjectCommand({
+            Bucket: s3Config.bucket,
+            Key: workspaceStorageKey(ref.key),
+          }),
         )
         if (!response.Body) throw new ArtifactNotFoundError(ref.key)
         await mkdir(dirname(destinationPath), { recursive: true })
@@ -867,54 +934,19 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
     },
 
     async verifyWorkspaceArtifact(ref) {
-      validateWorkspaceRef(ref)
-      const { GetObjectCommand, HeadObjectCommand } =
-        await import("@aws-sdk/client-s3")
-      const s3 = await getS3()
-      try {
-        const head = await s3.send(
-          new HeadObjectCommand({ Bucket: s3Config.bucket, Key: ref.key }),
-        )
-        if (
-          head.ContentLength !== ref.size ||
-          (head.ContentType != null && head.ContentType !== ref.contentType)
-        ) {
-          throw new ArtifactIntegrityError(
-            `artifact metadata mismatch: ${ref.key}`,
-          )
-        }
-        const metadataDigest = head.Metadata?.[WORKSPACE_SHA256_METADATA_KEY]
-        if (metadataDigest) {
-          if (metadataDigest !== ref.digest) {
-            throw new ArtifactIntegrityError(
-              `artifact digest metadata mismatch: ${ref.key}`,
-            )
-          }
-          return
-        }
-        const response = await s3.send(
-          new GetObjectCommand({ Bucket: s3Config.bucket, Key: ref.key }),
-        )
-        if (!response.Body) throw new ArtifactNotFoundError(ref.key)
-        assertDigestAndSize(
-          await digestReadable(response.Body as unknown as Readable),
-          ref,
-        )
-      } catch (error) {
-        if (isNoSuchKeyError(error)) throw new ArtifactNotFoundError(ref.key)
-        throw error
-      }
+      await verifyWorkspaceArtifactAndGetEtag(ref)
     },
 
     async readWorkspaceArtifactStream(ref, rangeHeader) {
-      await this.verifyWorkspaceArtifact(ref)
+      const etag = await verifyWorkspaceArtifactAndGetEtag(ref)
       const { GetObjectCommand } = await import("@aws-sdk/client-s3")
       const range = parseByteRange(rangeHeader, ref.size)
       const s3 = await getS3()
       const response = await s3.send(
         new GetObjectCommand({
           Bucket: s3Config.bucket,
-          Key: ref.key,
+          Key: workspaceStorageKey(ref.key),
+          IfMatch: etag,
           Range: range ? `bytes=${range.start}-${range.end}` : undefined,
         }),
       )
@@ -934,7 +966,10 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
       const s3 = await getS3()
       try {
         await s3.send(
-          new HeadObjectCommand({ Bucket: s3Config.bucket, Key: key }),
+          new HeadObjectCommand({
+            Bucket: s3Config.bucket,
+            Key: workspaceStorageKey(key),
+          }),
         )
         return true
       } catch (error) {
@@ -949,7 +984,10 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
       const s3 = await getS3()
       try {
         const response = await s3.send(
-          new GetObjectCommand({ Bucket: s3Config.bucket, Key: key }),
+          new GetObjectCommand({
+            Bucket: s3Config.bucket,
+            Key: workspaceStorageKey(key),
+          }),
         )
         if (!response.Body) throw new ArtifactNotFoundError(key)
         const body = await response.Body.transformToByteArray()

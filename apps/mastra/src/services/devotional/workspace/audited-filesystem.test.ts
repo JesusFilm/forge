@@ -49,8 +49,18 @@ describe("AuditedFilesystem", () => {
     await filesystem.writeFile("inputs/reflections/grace.md", "More grace")
     await filesystem.deleteFile("inputs/reflections/grace.md")
 
-    expect(records).toHaveLength(3)
-    expect(records[0]).toMatchObject({
+    expect(records).toHaveLength(6)
+    const completed = records.filter((record) => record.phase === "completed")
+    expect(completed).toHaveLength(3)
+    expect(records.map((record) => record.phase)).toEqual([
+      "intent",
+      "completed",
+      "intent",
+      "completed",
+      "intent",
+      "completed",
+    ])
+    expect(completed[0]).toMatchObject({
       action: "write",
       path: "inputs/reflections/grace.md",
       actorId: "studio-user-1",
@@ -59,12 +69,12 @@ describe("AuditedFilesystem", () => {
       preDigest: undefined,
       postDigest: sha256("Grace"),
     })
-    expect(records[1]).toMatchObject({
+    expect(completed[1]).toMatchObject({
       action: "write",
       preDigest: sha256("Grace"),
       postDigest: sha256("More grace"),
     })
-    expect(records[2]).toMatchObject({
+    expect(completed[2]).toMatchObject({
       action: "delete",
       preDigest: sha256("More grace"),
       postDigest: undefined,
@@ -78,7 +88,7 @@ describe("AuditedFilesystem", () => {
     const filesystem = new AuditedFilesystem(
       new LocalFilesystem({ basePath: directory, contained: true }),
       async (record) => {
-        actions.push(record.action)
+        if (record.phase === "completed") actions.push(record.action)
       },
     )
 
@@ -121,14 +131,53 @@ describe("AuditedFilesystem", () => {
     )
     await filesystem.writeFile("runs/system.txt", "system", { recursive: true })
 
-    expect(records[0]).toMatchObject({
+    const completed = records.filter((record) => record.phase === "completed")
+    expect(completed[0]).toMatchObject({
       actorId: "editor-2",
       requestId: "request-2",
       trustedEditorialRightsAssertion: true,
     })
-    expect(records[1]).toMatchObject({
+    expect(completed[1]).toMatchObject({
       actorId: "unknown",
       trustedEditorialRightsAssertion: false,
     })
+  })
+
+  it("fails before mutation when the durable intent cannot be recorded", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "devo-audit-fail-"))
+    temporaryDirectories.push(directory)
+    const filesystem = new AuditedFilesystem(
+      new LocalFilesystem({ basePath: directory, contained: true }),
+      async () => {
+        throw new Error("audit unavailable")
+      },
+    )
+    await filesystem.init()
+
+    await expect(
+      filesystem.writeFile("inputs/source.txt", "source", { recursive: true }),
+    ).rejects.toThrow("audit unavailable")
+    await expect(filesystem.exists("inputs/source.txt")).resolves.toBe(false)
+  })
+
+  it("retains a durable intent when completion recording fails", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "devo-audit-pending-"))
+    temporaryDirectories.push(directory)
+    const records: WorkspaceMutationAuditRecord[] = []
+    const filesystem = new AuditedFilesystem(
+      new LocalFilesystem({ basePath: directory, contained: true }),
+      async (record) => {
+        if (record.phase === "completed") throw new Error("audit unavailable")
+        records.push(record)
+      },
+    )
+    await filesystem.init()
+
+    await expect(
+      filesystem.writeFile("inputs/source.txt", "source", { recursive: true }),
+    ).rejects.toThrow("audit unavailable")
+    await expect(filesystem.exists("inputs/source.txt")).resolves.toBe(true)
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({ phase: "intent", action: "write" })
   })
 })

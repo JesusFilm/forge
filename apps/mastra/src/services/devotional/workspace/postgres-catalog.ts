@@ -157,7 +157,7 @@ export class PostgresCatalogStore implements CatalogStore {
     generation: number,
     inventoryDigest: string,
   ): Promise<CatalogHead> {
-    const committedAt = await this.database.transaction(async (client) => {
+    const committed = await this.database.transaction(async (client) => {
       const updated = await client.query<{ committed_at: Date | string }>(
         `UPDATE devotional_workspace.catalog_generations
             SET status = 'committed', committed_at = now()
@@ -177,13 +177,20 @@ export class PostgresCatalogStore implements CatalogStore {
                updated_at = excluded.updated_at`,
         [generation],
       )
-      return iso(updated.rows[0].committed_at)
+      // Read the committed document set before the transaction completes. If
+      // this fails, the head update rolls back and the reconciler may safely
+      // delete the uncommitted vector generation.
+      const documents = await readDocuments(client, generation)
+      return {
+        committedAt: iso(updated.rows[0].committed_at),
+        documents,
+      }
     })
     return CatalogHeadSchema.parse({
       generation,
       inventoryDigest,
-      committedAt,
-      documents: await this.getGeneration(generation),
+      committedAt: committed.committedAt,
+      documents: committed.documents,
     })
   }
 
@@ -220,23 +227,38 @@ export class PostgresCatalogStore implements CatalogStore {
   }
 
   async retireBefore(generation: number): Promise<number[]> {
-    const retired = await this.database.query<{ id: string | number }>(
-      `UPDATE devotional_workspace.catalog_generations generation
-          SET status = 'retired', retired_at = now()
-        WHERE generation.id < $1
-          AND generation.status = 'committed'
-          AND NOT EXISTS (
-            SELECT 1 FROM devotional_workspace.catalog_head head
-             WHERE head.generation_id = generation.id
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM devotional_workspace.workflow_attempts attempt
-             WHERE attempt.catalog_generation = generation.id
-               AND attempt.provisioning_state = 'ready'
-          )
-       RETURNING generation.id`,
-      [generation],
-    )
-    return retired.rows.map(({ id }) => Number(id))
+    return this.database.transaction(async (client) => {
+      await client.query(
+        `UPDATE devotional_workspace.catalog_generations generation
+            SET status = 'retired', retired_at = now()
+          WHERE generation.id < $1
+            AND generation.status = 'committed'
+            AND NOT EXISTS (
+              SELECT 1 FROM devotional_workspace.catalog_head head
+               WHERE head.generation_id = generation.id
+            )`,
+        [generation],
+      )
+      // Attempt rows retain the generation identity and their bounded selected
+      // refs. Superseded full content is no longer needed for execution.
+      await client.query(
+        `DELETE FROM devotional_workspace.catalog_entries entry
+          USING devotional_workspace.catalog_generations generation
+          WHERE entry.generation_id = generation.id
+            AND generation.status = 'retired'
+            AND generation.id < $1`,
+        [generation],
+      )
+      const retired = await client.query<{ id: string | number }>(
+        `SELECT id
+           FROM devotional_workspace.catalog_generations
+          WHERE status = 'retired' AND id < $1
+          ORDER BY id`,
+        [generation],
+      )
+      // Returning every retired generation makes failed vector-index cleanup
+      // retryable on the next reconciliation.
+      return retired.rows.map(({ id }) => Number(id))
+    })
   }
 }

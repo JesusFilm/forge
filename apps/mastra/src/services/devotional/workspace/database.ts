@@ -59,11 +59,11 @@ export function createDevotionalDatabase(options: {
     options.maxConnections ?? MAX_DEVOTIONAL_DATABASE_POOL_SIZE
   if (
     !Number.isInteger(maxConnections) ||
-    maxConnections < 1 ||
+    maxConnections < 2 ||
     maxConnections > MAX_DEVOTIONAL_DATABASE_POOL_SIZE
   ) {
     throw new Error(
-      `devotional database pool must contain 1-${MAX_DEVOTIONAL_DATABASE_POOL_SIZE} connections`,
+      `devotional database pool must contain 2-${MAX_DEVOTIONAL_DATABASE_POOL_SIZE} connections`,
     )
   }
 
@@ -151,17 +151,106 @@ export async function hasDevotionalVectorCapability(
   }
 }
 
+export type DevotionalCutoverReadiness =
+  | {
+      ready: true
+      manifestDigest: string
+      verifiedAt: string
+    }
+  | { ready: false; reason: string; manifestDigest?: string }
+
+export async function getDevotionalCutoverReadiness(
+  database: QueryExecutor,
+): Promise<DevotionalCutoverReadiness> {
+  try {
+    const result = await database.query<{
+      ready: boolean
+      manifest_digest: string | null
+      reason: string | null
+      verified_at: Date | string | null
+    }>(
+      `select ready, manifest_digest, reason, verified_at
+         from ${DEVOTIONAL_WORKSPACE_SCHEMA}.workspace_readiness
+        where singleton = true`,
+    )
+    const row = result.rows[0]
+    if (
+      row?.ready === true &&
+      row.manifest_digest != null &&
+      /^[a-f0-9]{64}$/u.test(row.manifest_digest) &&
+      row.verified_at != null
+    ) {
+      return {
+        ready: true,
+        manifestDigest: row.manifest_digest,
+        verifiedAt: (row.verified_at instanceof Date
+          ? row.verified_at
+          : new Date(row.verified_at)
+        ).toISOString(),
+      }
+    }
+    return {
+      ready: false,
+      reason: row?.reason ?? "devotional Workspace cutover is not enabled",
+      ...(row?.manifest_digest ? { manifestDigest: row.manifest_digest } : {}),
+    }
+  } catch {
+    return {
+      ready: false,
+      reason: "devotional Workspace cutover readiness is unavailable",
+    }
+  }
+}
+
+export async function commitDevotionalWorkspaceReadiness(options: {
+  database: DevotionalDatabase
+  manifestDigest: string
+  verifiedAt?: Date
+}): Promise<void> {
+  if (!/^[a-f0-9]{64}$/u.test(options.manifestDigest)) {
+    throw new Error("invalid devotional Workspace manifest digest")
+  }
+  const result = await options.database.query(
+    `update ${DEVOTIONAL_WORKSPACE_SCHEMA}.workspace_readiness
+        set ready = true, manifest_digest = $1, reason = null,
+            verified_at = $2, updated_at = now()
+      where singleton = true`,
+    [options.manifestDigest, options.verifiedAt ?? new Date()],
+  )
+  if (result.rowCount !== 1) {
+    throw new Error("devotional Workspace readiness row is unavailable")
+  }
+}
+
+export async function disableDevotionalWorkspaceReadiness(options: {
+  database: DevotionalDatabase
+  reason: string
+}): Promise<void> {
+  const result = await options.database.query(
+    `update ${DEVOTIONAL_WORKSPACE_SCHEMA}.workspace_readiness
+        set ready = false, reason = $1, verified_at = null, updated_at = now()
+      where singleton = true`,
+    [options.reason.slice(0, 2_000)],
+  )
+  if (result.rowCount !== 1) {
+    throw new Error("devotional Workspace readiness row is unavailable")
+  }
+}
+
 export function createDatabaseAuditSink(
   database: QueryExecutor,
 ): WorkspaceMutationAuditSink {
   return async (record: WorkspaceMutationAuditRecord) => {
     await database.query(
       `insert into ${DEVOTIONAL_WORKSPACE_SCHEMA}.filesystem_mutation_audit
-        (id, occurred_at, actor_id, request_id, action, path, target_path,
-         pre_digest, post_digest, trusted_editorial_rights_assertion)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        (id, operation_id, phase, occurred_at, actor_id, request_id, action,
+         path, target_path, pre_digest, post_digest,
+         trusted_editorial_rights_assertion)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         record.id,
+        record.operationId,
+        record.phase,
         record.occurredAt,
         record.actorId,
         record.requestId,

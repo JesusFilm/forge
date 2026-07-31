@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => ({
   record: vi.fn(),
   release: vi.fn(),
   publish: vi.fn(),
+  durablePublish: vi.fn(),
   render: vi.fn(),
+  verifyArtifacts: vi.fn(),
+  verifySources: vi.fn(),
 }))
 
 vi.mock("../../services/devotional/workspace/postgres-used-clips", () => ({
@@ -31,7 +34,7 @@ vi.mock("../../services/devotional/devotional-worker-client", () => ({
   }) =>
     `/forge-video-first-devotional/assets/${artifact.assetId}/${artifact.artifactType}/mp4`,
   renderDevotionalOnWorker: mocks.render,
-  verifyDevotionalWorkerArtifacts: vi.fn(async () => undefined),
+  verifyDevotionalWorkerArtifacts: mocks.verifyArtifacts,
 }))
 
 vi.mock("../../services/devotional/site-publish-client", () => ({
@@ -39,7 +42,12 @@ vi.mock("../../services/devotional/site-publish-client", () => ({
 }))
 
 vi.mock("../../services/devotional/workspace/source-verification", () => ({
-  verifyWorkflowWorkspaceSources: vi.fn(async () => undefined),
+  verifyWorkflowWorkspaceSources: mocks.verifySources,
+}))
+
+vi.mock("../../services/devotional/workspace/publication", () => ({
+  devotionalPublicationRequestHash: () => "a".repeat(64),
+  publishWithDurableIntent: mocks.durablePublish,
 }))
 
 vi.mock("../../services/devotional/workspace/provenance", () => ({
@@ -211,27 +219,31 @@ function registerWorkflow() {
   return mastra.getWorkflow("videoFirstDevotionalWorkflow")
 }
 
-async function startAndResume(approved: boolean, runId: string) {
+function workflowInput(runId: string) {
+  return {
+    chapterIndex: 19,
+    date: "2026-07-21",
+    workspaceGeneration: 1,
+    attemptId: runId,
+    selectedSources: [
+      {
+        path: "/inputs/reflections/grace.md",
+        category: "reflections" as const,
+        digest: "a".repeat(64),
+        size: 42,
+        modifiedAt: "2026-07-31T12:00:00.000Z",
+        title: "grace",
+      },
+    ],
+  }
+}
+
+async function startUntilSuspended(runId: string) {
   registeredWorkflow ??= registerWorkflow()
   const workflow = registeredWorkflow
   const run = await workflow.createRun({ runId })
   await run.startAsync({
-    inputData: {
-      chapterIndex: 19,
-      date: "2026-07-21",
-      workspaceGeneration: 1,
-      attemptId: runId,
-      selectedSources: [
-        {
-          path: "/inputs/reflections/grace.md",
-          category: "reflections",
-          digest: "a".repeat(64),
-          size: 42,
-          modifiedAt: "2026-07-31T12:00:00.000Z",
-          title: "grace",
-        },
-      ],
-    },
+    inputData: workflowInput(runId),
   })
   let state = await workflow.getWorkflowRunById(runId)
   for (
@@ -253,6 +265,11 @@ async function startAndResume(approved: boolean, runId: string) {
       },
     },
   })
+  return { workflow }
+}
+
+async function startAndResume(approved: boolean, runId: string) {
+  const { workflow } = await startUntilSuspended(runId)
   const resumed = await workflow.createRun({ runId })
   return resumed.resume({
     resumeData: {
@@ -273,6 +290,19 @@ describe("video-first devotional workflow", () => {
     mocks.record.mockResolvedValue(undefined)
     mocks.render.mockResolvedValue({ portrait: PORTRAIT, wide: WIDE })
     mocks.publish.mockResolvedValue({ ok: true, published: true })
+    mocks.verifyArtifacts.mockResolvedValue(undefined)
+    mocks.verifySources.mockResolvedValue(undefined)
+    mocks.durablePublish.mockImplementation(async (input) => {
+      const result = await input.send()
+      if (result.ok && result.published) {
+        await mocks.record(input.chapterId, input.reservationId)
+      } else if (
+        !(!result.ok && result.reason === "upstream_failed" && result.retryable)
+      ) {
+        await mocks.release(input.chapterId, input.reservationId)
+      }
+      return result
+    })
   })
 
   it("renders, suspends with retrievable assets, publishes, then records the clip", async () => {
@@ -325,17 +355,41 @@ describe("video-first devotional workflow", () => {
     expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
   })
 
-  it("stays terminal-published if post-publish ledger recording fails", async () => {
+  it("fails without releasing after receiver acceptance cannot be committed", async () => {
     mocks.record.mockRejectedValue(new Error("ledger disk unavailable"))
     const result = await startAndResume(true, "workflow-ledger-failed")
     expect(result).toMatchObject({
-      status: "success",
-      result: {
-        status: "published",
-        clipRecorded: false,
-        publishReason: "ledger_record_failed",
-      },
+      status: "failed",
     })
     expect(mocks.release).not.toHaveBeenCalled()
+  })
+
+  it("releases the clip when approval-time artifact verification fails", async () => {
+    const { workflow } = await startUntilSuspended("approval-integrity")
+    mocks.verifyArtifacts.mockRejectedValueOnce(new Error("artifact changed"))
+
+    const resumed = await workflow.createRun({ runId: "approval-integrity" })
+    await expect(
+      resumed.resume({
+        resumeData: {
+          approved: true,
+          approvedBy: { subject: "reviewer-1", role: "editor" },
+        },
+      }),
+    ).resolves.toMatchObject({ status: "failed" })
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("releases the clip when pre-publish artifact verification fails", async () => {
+    mocks.verifyArtifacts
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("artifact changed"))
+    const result = await startAndResume(true, "publish-integrity")
+
+    expect(result).toMatchObject({ status: "failed" })
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+    expect(mocks.publish).not.toHaveBeenCalled()
   })
 })

@@ -136,6 +136,7 @@ export class InMemoryCatalogStore implements CatalogStore {
   private sequence = 0
   private readonly generations = new Map<number, StagedGeneration>()
   private head?: CatalogHead
+  private readonly retired = new Set<number>()
 
   async nextGeneration(): Promise<number> {
     this.sequence += 1
@@ -188,10 +189,13 @@ export class InMemoryCatalogStore implements CatalogStore {
     for (const value of this.generations.keys()) {
       if (value < generation && value !== this.head?.generation) {
         this.generations.delete(value)
+        this.retired.add(value)
         retired.push(value)
       }
     }
-    return retired
+    return [...new Set([...retired, ...this.retired])].filter(
+      (value) => value < generation,
+    )
   }
 }
 

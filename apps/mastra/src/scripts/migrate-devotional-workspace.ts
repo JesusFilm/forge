@@ -15,7 +15,13 @@ import {
 import { z } from "zod"
 
 import { getDevotionalWorkspaceEnvironment } from "../config/env"
+import { UsedClipsLedgerSchema } from "../services/devotional/used-clips-ledger"
 import { resolveDevotionalWorkspaceConfig } from "../services/devotional/workspace/config"
+import {
+  commitDevotionalWorkspaceReadiness,
+  getDevotionalDatabase,
+  type DevotionalDatabase,
+} from "../services/devotional/workspace/database"
 import { toNativeWorkspaceFilesystemPath } from "../services/devotional/workspace/inventory"
 
 const ManifestEntrySchema = z
@@ -37,7 +43,6 @@ export const DevotionalMigrationManifestSchema = z
     version: z.literal(1),
     runId: z.string().regex(/^[a-zA-Z0-9_-]+$/u),
     createdAt: z.string().datetime(),
-    restoreDrillPassed: z.literal(true),
     entries: z.array(ManifestEntrySchema).max(20_000),
   })
   .strict()
@@ -45,6 +50,26 @@ export const DevotionalMigrationManifestSchema = z
 export type DevotionalMigrationManifest = z.infer<
   typeof DevotionalMigrationManifestSchema
 >
+
+export const DevotionalRestoreAttestationSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    manifestDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    backupReference: z.string().min(1).max(2_000),
+    completedAt: z.string().datetime(),
+    verifiedBy: z.string().min(1).max(320),
+    checks: z
+      .object({
+        workspaceCrudSearch: z.literal(true),
+        hybridSearch: z.literal(true),
+        workerReadWrite: z.literal(true),
+        singleMastraReplica: z.literal(true),
+        runsDrained: z.literal(true),
+        legacyRefsReadable: z.literal(true),
+      })
+      .strict(),
+  })
+  .strict()
 
 export type DevotionalMigrationFilesystem = {
   exists(path: string): Promise<boolean>
@@ -77,6 +102,7 @@ export type DevotionalMigrationReport = {
     expectedDigest: string
     actualDigest: string
   }>
+  copyVerified: boolean
   ready: boolean
 }
 
@@ -125,6 +151,22 @@ function isNotFound(error: unknown): boolean {
         "",
     )
   )
+}
+
+function assertDestinationForKind(
+  entry: z.infer<typeof ManifestEntrySchema>,
+): void {
+  const expectedPrefix = {
+    "authored-input": "/inputs/",
+    ledger: "/_system/migration/",
+    media: "/source-media/",
+    artifact: "/runs/",
+  }[entry.kind]
+  if (!entry.destinationPath.startsWith(expectedPrefix)) {
+    throw new Error(
+      `Invalid ${entry.kind} destination ${entry.destinationPath}; expected ${expectedPrefix}`,
+    )
+  }
 }
 
 function localMigrationFilesystem(
@@ -291,6 +333,7 @@ export async function migrateDevotionalWorkspace(options: {
   for (const entry of [...manifest.entries].sort((left, right) =>
     left.destinationPath.localeCompare(right.destinationPath),
   )) {
+    assertDestinationForKind(entry)
     if (destinations.has(entry.destinationPath)) {
       throw new Error(
         `Duplicate migration destination: ${entry.destinationPath}`,
@@ -305,23 +348,80 @@ export async function migrateDevotionalWorkspace(options: {
         `Streaming migration adapters are required for ${entry.kind}: ${entry.sourcePath}`,
       )
     }
-    const sourceContent = streaming
-      ? undefined
-      : await options.source.readFile(entry.sourcePath)
-    const sourceBytes =
-      sourceContent === undefined
+    const stagingPath = `/_migrations/${manifest.runId}${entry.destinationPath}`
+
+    if (options.dryRun) {
+      const sourceContent = streaming
         ? undefined
-        : typeof sourceContent === "string"
-          ? Buffer.from(sourceContent)
-          : sourceContent
-    const sourceIdentity = streaming
-      ? await streamSha256(await options.source.readStream!(entry.sourcePath))
-      : { digest: sha256(sourceBytes!), size: sourceBytes!.byteLength }
-    if (
-      sourceIdentity.size !== entry.size ||
-      sourceIdentity.digest !== entry.sha256
-    ) {
-      throw new Error(`Source checksum mismatch: ${entry.sourcePath}`)
+        : await options.source.readFile(entry.sourcePath)
+      const sourceBytes =
+        sourceContent === undefined
+          ? undefined
+          : typeof sourceContent === "string"
+            ? Buffer.from(sourceContent)
+            : sourceContent
+      const sourceIdentity = streaming
+        ? await streamSha256(await options.source.readStream!(entry.sourcePath))
+        : { digest: sha256(sourceBytes!), size: sourceBytes!.byteLength }
+      if (
+        sourceIdentity.size !== entry.size ||
+        sourceIdentity.digest !== entry.sha256
+      ) {
+        throw new Error(`Source checksum mismatch: ${entry.sourcePath}`)
+      }
+    } else {
+      if (!(await options.destination.exists(stagingPath))) {
+        if (streaming) {
+          // Capture one exact source stream into immutable staging. Promotion
+          // reads only this verified snapshot, never a reopened live source.
+          await options.destination.writeStream!(
+            stagingPath,
+            await options.source.readStream!(entry.sourcePath),
+            {
+              recursive: true,
+              overwrite: false,
+              mimeType: entry.contentType,
+              size: entry.size,
+            },
+          )
+        } else {
+          const sourceContent = await options.source.readFile(entry.sourcePath)
+          const sourceBytes =
+            typeof sourceContent === "string"
+              ? Buffer.from(sourceContent)
+              : sourceContent
+          if (
+            sourceBytes.byteLength !== entry.size ||
+            sha256(sourceBytes) !== entry.sha256
+          ) {
+            throw new Error(`Source checksum mismatch: ${entry.sourcePath}`)
+          }
+          await options.destination.writeFile(stagingPath, sourceBytes, {
+            recursive: true,
+            overwrite: false,
+            mimeType: entry.contentType,
+          })
+        }
+      }
+
+      const stagedContent = streaming
+        ? undefined
+        : await options.destination.readFile(stagingPath)
+      const stagedBytes =
+        stagedContent === undefined
+          ? undefined
+          : typeof stagedContent === "string"
+            ? Buffer.from(stagedContent)
+            : stagedContent
+      const stagedIdentity = streaming
+        ? await streamSha256(await options.destination.readStream!(stagingPath))
+        : { digest: sha256(stagedBytes!), size: stagedBytes!.byteLength }
+      if (
+        stagedIdentity.size !== entry.size ||
+        stagedIdentity.digest !== entry.sha256
+      ) {
+        throw new Error(`Source checksum mismatch: ${entry.sourcePath}`)
+      }
     }
 
     if (await options.destination.exists(entry.destinationPath)) {
@@ -354,7 +454,7 @@ export async function migrateDevotionalWorkspace(options: {
       if (streaming) {
         await options.destination.writeStream!(
           entry.destinationPath,
-          await options.source.readStream!(entry.sourcePath),
+          await options.destination.readStream!(stagingPath),
           {
             recursive: true,
             overwrite: false,
@@ -365,7 +465,11 @@ export async function migrateDevotionalWorkspace(options: {
       } else {
         await options.destination.writeFile(
           entry.destinationPath,
-          sourceBytes!,
+          await options.destination
+            .readFile(stagingPath)
+            .then((value) =>
+              typeof value === "string" ? Buffer.from(value) : value,
+            ),
           {
             recursive: true,
             overwrite: false,
@@ -401,19 +505,93 @@ export async function migrateDevotionalWorkspace(options: {
     copied,
     unchanged,
     conflicts,
-    ready: conflicts.length === 0 && !options.dryRun,
+    copyVerified: conflicts.length === 0 && !options.dryRun,
+    // Only main() can turn this on after independent attestation, ledger
+    // import, and the authoritative PostgreSQL readiness commit.
+    ready: false,
   }
+}
+
+export async function importUsedClipsLedger(options: {
+  database: DevotionalDatabase
+  ledger: unknown
+}): Promise<void> {
+  const ledger = UsedClipsLedgerSchema.parse(options.ledger)
+  const entries = Object.entries(ledger.used)
+  const unresolved = entries.find(
+    ([, entry]) => entry.reservationId != null || entry.pendingUntil != null,
+  )
+  if (unresolved) {
+    throw new Error(
+      `Legacy clip ledger contains unresolved reservation: ${unresolved[0]}`,
+    )
+  }
+
+  await options.database.transaction(async (client) => {
+    await client.query(
+      "select pg_advisory_xact_lock(hashtext('devotional-ledger-import'))",
+    )
+    for (const [chapterId, entry] of entries) {
+      const existing = await client.query<{
+        use_count: number
+        last_used_at: Date | string | null
+        reservation_id: string | null
+        pending_until: Date | string | null
+      }>(
+        `select use_count, last_used_at, reservation_id, pending_until
+           from devotional_workspace.clip_state
+          where chapter_id = $1
+          for update`,
+        [chapterId],
+      )
+      const row = existing.rows[0]
+      const lastUsedAt = entry.lastUsedAt || null
+      if (row) {
+        const rowLastUsedAt = row.last_used_at
+          ? (row.last_used_at instanceof Date
+              ? row.last_used_at
+              : new Date(row.last_used_at)
+            ).toISOString()
+          : null
+        if (
+          row.use_count !== entry.count ||
+          rowLastUsedAt !== lastUsedAt ||
+          row.reservation_id !== null ||
+          row.pending_until !== null
+        ) {
+          throw new Error(`Legacy clip ledger conflicts at ${chapterId}`)
+        }
+        continue
+      }
+      await client.query(
+        `insert into devotional_workspace.clip_state
+          (chapter_id, use_count, last_used_at, updated_at)
+         values ($1, $2, $3, now())`,
+        [chapterId, entry.count, lastUsedAt],
+      )
+    }
+  })
 }
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run")
-  const manifestPath = process.argv
-    .slice(2)
-    .find((value) => value !== "--dry-run")
+  const args = process.argv.slice(2)
+  const attestationIndex = args.indexOf("--restore-attestation")
+  const attestationPath =
+    attestationIndex >= 0 ? args[attestationIndex + 1] : undefined
+  const manifestPath = args.find(
+    (value, index) =>
+      value !== "--dry-run" &&
+      value !== "--restore-attestation" &&
+      index !== attestationIndex + 1,
+  )
   if (!manifestPath) {
     throw new Error(
-      "Usage: migrate-devotional-workspace <manifest.json> [--dry-run]",
+      "Usage: migrate-devotional-workspace <manifest.json> [--dry-run] [--restore-attestation <attestation.json>]",
     )
+  }
+  if (!dryRun && !attestationPath) {
+    throw new Error("--restore-attestation is required for cutover readiness")
   }
   const manifest = DevotionalMigrationManifestSchema.parse(
     JSON.parse(await readFile(manifestPath, "utf8")),
@@ -441,6 +619,44 @@ async function main() {
     source,
     destination,
   })
+  if (!dryRun && report.copyVerified) {
+    const ledgerEntries = manifest.entries.filter(
+      (entry) => entry.kind === "ledger",
+    )
+    if (ledgerEntries.length !== 1) {
+      throw new Error("Migration manifest must contain exactly one clip ledger")
+    }
+    const ledgerRaw = await destination.readFile(
+      ledgerEntries[0]!.destinationPath,
+    )
+    const database = getDevotionalDatabase()
+    try {
+      await importUsedClipsLedger({
+        database,
+        ledger: JSON.parse(
+          typeof ledgerRaw === "string"
+            ? ledgerRaw
+            : ledgerRaw.toString("utf8"),
+        ),
+      })
+      const attestation = DevotionalRestoreAttestationSchema.parse(
+        JSON.parse(await readFile(attestationPath!, "utf8")),
+      )
+      if (attestation.manifestDigest !== report.manifestDigest) {
+        throw new Error(
+          "Restore attestation does not match the migration manifest",
+        )
+      }
+      await commitDevotionalWorkspaceReadiness({
+        database,
+        manifestDigest: report.manifestDigest,
+        verifiedAt: new Date(attestation.completedAt),
+      })
+      report.ready = true
+    } finally {
+      await database.close()
+    }
+  }
   process.stdout.write(`${JSON.stringify(report)}\n`)
   if (!report.ready && !dryRun) process.exitCode = 1
 }

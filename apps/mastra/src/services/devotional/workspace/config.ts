@@ -1,3 +1,8 @@
+import { createHash } from "node:crypto"
+import { createReadStream } from "node:fs"
+import { join } from "node:path"
+
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { createOpenAI } from "@ai-sdk/openai"
 import { Workspace, LocalFilesystem } from "@mastra/core/workspace"
 import type {
@@ -25,14 +30,17 @@ import {
   AuditedFilesystem,
   type WorkspaceMutationAuditSink,
   type WorkspaceMutationContext,
+  type WorkspaceDigestReader,
 } from "./audited-filesystem"
 import {
   createDatabaseAuditSink,
+  getDevotionalCutoverReadiness,
   getDevotionalDatabase,
   getDevotionalSchemaReadiness,
   hasDevotionalVectorCapability,
   type QueryExecutor,
 } from "./database"
+import { toNativeWorkspaceFilesystemPath } from "./inventory"
 
 export const DEVOTIONAL_WORKSPACE_ID = "devotional-workspace"
 export const DEVOTIONAL_WORKSPACE_NAME = "Devotional Workspace"
@@ -233,6 +241,7 @@ export function createDevotionalWorkspaceRuntime(options?: {
   filesystem?: WorkspaceFilesystem
   auditSink?: WorkspaceMutationAuditSink
   mutationContext?: () => WorkspaceMutationContext
+  digestReader?: WorkspaceDigestReader
   vectorStore?: PgVector
   embedder?: WorkspaceEmbedder
 }): DevotionalWorkspaceRuntime {
@@ -248,6 +257,8 @@ export function createDevotionalWorkspaceRuntime(options?: {
     baseFilesystem,
     auditSink,
     options?.mutationContext,
+    options?.digestReader ??
+      (options?.filesystem ? undefined : createDigestReader(config.storage)),
   )
 
   const vectorStore =
@@ -279,6 +290,52 @@ export function createDevotionalWorkspaceRuntime(options?: {
   })
 
   return { workspace, filesystem, vectorStore, embedder, config }
+}
+
+function createDigestReader(storage: StorageConfig): WorkspaceDigestReader {
+  if (storage.backend === "unavailable") {
+    return async () => {
+      throw new Error(storage.reason)
+    }
+  }
+  if (storage.backend === "local") {
+    return async (workspacePath) => {
+      const hash = createHash("sha256")
+      for await (const chunk of createReadStream(
+        join(storage.directory, toNativeWorkspaceFilesystemPath(workspacePath)),
+      )) {
+        hash.update(chunk)
+      }
+      return hash.digest("hex")
+    }
+  }
+
+  const client = new S3Client({
+    endpoint: storage.endpoint,
+    region: storage.region,
+    credentials: {
+      accessKeyId: storage.accessKeyId,
+      secretAccessKey: storage.secretAccessKey,
+    },
+    forcePathStyle: storage.forcePathStyle,
+  })
+  const prefix = storage.prefix.replace(/^\/+|\/+$/gu, "")
+  return async (workspacePath) => {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: storage.bucket,
+        Key: [prefix, toNativeWorkspaceFilesystemPath(workspacePath)]
+          .filter(Boolean)
+          .join("/"),
+      }),
+    )
+    if (!response.Body) throw new Error("Workspace S3 object has no body")
+    const hash = createHash("sha256")
+    for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+      hash.update(chunk)
+    }
+    return hash.digest("hex")
+  }
 }
 
 function createFilesystemFromConfig(
@@ -330,6 +387,7 @@ export type DevotionalWorkspaceReadiness = {
   filesystem: { ready: boolean; reason?: string }
   hybridSearch: { ready: boolean; reason?: string }
   databaseSchema: { ready: boolean; reason?: string; version?: number }
+  cutover: { ready: boolean; reason?: string; manifestDigest?: string }
 }
 
 export async function getDevotionalWorkspaceReadiness(
@@ -337,6 +395,7 @@ export async function getDevotionalWorkspaceReadiness(
   database: QueryExecutor,
 ): Promise<DevotionalWorkspaceReadiness> {
   const schema = await getDevotionalSchemaReadiness(database)
+  const cutover = await getDevotionalCutoverReadiness(database)
   let filesystemReady = runtime.config.storage.backend !== "unavailable"
   let filesystemReason =
     runtime.config.storage.backend === "unavailable"
@@ -354,7 +413,7 @@ export async function getDevotionalWorkspaceReadiness(
   const vectorReady = await hasDevotionalVectorCapability(database)
   const hybridReady = runtime.workspace.canHybrid && vectorReady
   return {
-    ready: filesystemReady && hybridReady && schema.ready,
+    ready: filesystemReady && hybridReady && schema.ready && cutover.ready,
     filesystem: filesystemReady
       ? { ready: true }
       : { ready: false, reason: filesystemReason },
@@ -373,6 +432,15 @@ export async function getDevotionalWorkspaceReadiness(
     databaseSchema: schema.ready
       ? { ready: true, version: schema.version }
       : { ready: false, reason: schema.reason, version: schema.version },
+    cutover: cutover.ready
+      ? { ready: true, manifestDigest: cutover.manifestDigest }
+      : {
+          ready: false,
+          reason: cutover.reason,
+          ...(cutover.manifestDigest
+            ? { manifestDigest: cutover.manifestDigest }
+            : {}),
+        },
   }
 }
 
@@ -386,6 +454,7 @@ export async function assertDevotionalWorkspaceReadyForStarts(
       readiness.filesystem.reason,
       readiness.hybridSearch.reason,
       readiness.databaseSchema.reason,
+      readiness.cutover.reason,
     ].filter(Boolean)
     throw new Error(`devotional Workspace is not ready: ${reasons.join("; ")}`)
   }

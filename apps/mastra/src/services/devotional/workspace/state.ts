@@ -26,6 +26,7 @@ export type MarkAttemptReadyInput = {
 export interface DevotionalAttemptStore {
   beginRetry(input: BeginRetryInput): Promise<BeginRetryResult>
   markReady(attemptId: string, input: MarkAttemptReadyInput): Promise<void>
+  markStarted(attemptId: string): Promise<void>
   markFailed(attemptId: string, reason: string): Promise<void>
   get(attemptId: string): Promise<DevotionalAttempt | undefined>
 }
@@ -95,6 +96,22 @@ export class InMemoryDevotionalAttemptStore implements DevotionalAttemptStore {
         ...attempt,
         provisioningState: "failed",
         failureReason: reason.slice(0, 2_000),
+        updatedAt: new Date().toISOString(),
+      }),
+    )
+  }
+
+  async markStarted(attemptId: string): Promise<void> {
+    const attempt = this.require(attemptId)
+    if (attempt.provisioningState === "started") return
+    if (attempt.provisioningState !== "ready") {
+      throw new Error(`Devotional attempt ${attemptId} is not ready`)
+    }
+    this.attempts.set(
+      attemptId,
+      DevotionalAttemptSchema.parse({
+        ...attempt,
+        provisioningState: "started",
         updatedAt: new Date().toISOString(),
       }),
     )
@@ -248,6 +265,18 @@ export class PostgresDevotionalAttemptStore implements DevotionalAttemptStore {
       [attemptId, reason.slice(0, 2_000)],
     )
     if (result.rowCount !== 1) throw new Error(`Unknown attempt ${attemptId}`)
+  }
+
+  async markStarted(attemptId: string): Promise<void> {
+    const result = await this.database.query(
+      `UPDATE devotional_workspace.workflow_attempts
+       SET provisioning_state = 'started', updated_at = now()
+       WHERE id = $1 AND provisioning_state IN ('ready', 'started')`,
+      [attemptId],
+    )
+    if (result.rowCount !== 1) {
+      throw new Error(`Attempt ${attemptId} is not ready`)
+    }
   }
 
   async get(attemptId: string): Promise<DevotionalAttempt | undefined> {

@@ -38,6 +38,10 @@ import { modernizeReflection } from "../../services/devotional/reflection-modern
 import { pickBestSpurgeon } from "../../services/devotional/spurgeon-ranker"
 import { getPostgresUsedClipsStore } from "../../services/devotional/workspace/postgres-used-clips"
 import { publishDevotional } from "../../services/devotional/site-publish-client"
+import {
+  devotionalPublicationRequestHash,
+  publishWithDurableIntent,
+} from "../../services/devotional/workspace/publication"
 import { verifyWorkflowWorkspaceSources } from "../../services/devotional/workspace/source-verification"
 import { DevotionalSourceRefSchema } from "../../services/devotional/workspace/state-schema"
 import { loadDevotionalAttemptAuthoredData } from "../../services/devotional/workspace/attempt-data"
@@ -623,15 +627,29 @@ const approveStep = createStep({
   suspendSchema: ApprovalSuspend,
   outputSchema: ApprovedSchema,
   execute: async ({ inputData, resumeData, suspend, mastra }) => {
-    await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+    try {
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+    } catch (error) {
+      await getPostgresUsedClipsStore()
+        .release(inputData.devotional.clip.id, inputData.reservationId)
+        .catch(() => false)
+      throw error
+    }
     if (inputData.portraitAsset == null || inputData.wideAsset == null) {
       // Safety blocked upstream — nothing to approve.
       return { ...inputData, approved: false, notes: "skipped: safety blocked" }
     }
-    await verifyDevotionalWorkerArtifacts({
-      portrait: inputData.portraitAsset,
-      wide: inputData.wideAsset,
-    })
+    try {
+      await verifyDevotionalWorkerArtifacts({
+        portrait: inputData.portraitAsset,
+        wide: inputData.wideAsset,
+      })
+    } catch (error) {
+      await getPostgresUsedClipsStore()
+        .release(inputData.devotional.clip.id, inputData.reservationId)
+        .catch(() => false)
+      throw error
+    }
     if (!resumeData) {
       await suspend({
         message:
@@ -674,7 +692,6 @@ const publishStep = createStep({
   inputSchema: ApprovedSchema,
   outputSchema: ResultSchema,
   execute: async ({ inputData, abortSignal, mastra, runId }) => {
-    await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
     const {
       devotional,
       safety,
@@ -690,6 +707,20 @@ const publishStep = createStep({
     let publishRetryable: boolean | undefined
     let clipRecorded = false
     const store = getPostgresUsedClipsStore()
+    try {
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+      if (portraitAsset && wideAsset) {
+        await verifyDevotionalWorkerArtifacts({
+          portrait: portraitAsset,
+          wide: wideAsset,
+        })
+      }
+    } catch (error) {
+      await store.release(devotional.clip.id, reservationId).catch(() => false)
+      throw error
+    }
+
+    let publicationIntentOwnsReservation = false
     if (safety.verdict !== "pass") {
       status = "blocked"
     } else if (!approved) {
@@ -698,26 +729,30 @@ const publishStep = createStep({
       status = "publish_failed"
       publishReason = "rendered_assets_missing"
     } else {
-      await verifyDevotionalWorkerArtifacts({
-        portrait: portraitAsset,
-        wide: wideAsset,
-      })
-      const published = await publishDevotional({
-        devotional: toLegacyDevotional(devotional),
-        videoAssets: { portrait: portraitAsset, wide: wideAsset },
-        abortSignal,
+      publicationIntentOwnsReservation = true
+      const legacyDevotional = toLegacyDevotional(devotional)
+      const receiverIdempotencyKey = `daily-devotional:${devotional.date}`
+      const published = await publishWithDurableIntent({
+        attemptId: inputData.attemptId,
+        chapterId: devotional.clip.id,
+        reservationId,
+        receiverIdempotencyKey,
+        requestHash: devotionalPublicationRequestHash({
+          date: devotional.date,
+          chapterId: devotional.clip.id,
+          portraitAsset,
+          wideAsset,
+        }),
+        send: () =>
+          publishDevotional({
+            devotional: legacyDevotional,
+            videoAssets: { portrait: portraitAsset, wide: wideAsset },
+            abortSignal,
+          }),
       })
       if (published.ok && published.published) {
         status = "published"
-        try {
-          await store.record(devotional.clip.id, reservationId)
-          clipRecorded = true
-        } catch {
-          // Publication is irreversible. Keep this terminal as published so a
-          // retry cannot create a second same-date devotional; leave the lease
-          // in place for operator reconciliation instead of releasing it.
-          publishReason = "ledger_record_failed"
-        }
+        clipRecorded = true
       } else if (!published.ok && published.reason === "config_missing") {
         status = "publish_skipped"
         publishReason = published.reason
@@ -733,7 +768,11 @@ const publishStep = createStep({
 
     // Only a confirmed publish burns the clip. Every blocked, rejected,
     // skipped, or failed attempt releases its reservation for a clean retry.
-    if (!clipRecorded && status !== "published") {
+    if (
+      !publicationIntentOwnsReservation &&
+      !clipRecorded &&
+      status !== "published"
+    ) {
       await store.release(devotional.clip.id, reservationId).catch(() => false)
     }
     const result = {

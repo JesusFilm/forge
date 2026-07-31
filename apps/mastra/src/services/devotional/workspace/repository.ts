@@ -29,6 +29,7 @@ export class DevotionalWorkspaceRepository {
   private readonly embedder?: Embedder
   private readonly limits?: Partial<DevotionalInventoryLimits>
   private readonly keywordIndexes = new Map<number, Bm25GenerationIndex>()
+  private readonly embeddingCache = new Map<string, number[]>()
 
   constructor(options: {
     filesystem: InventoryFilesystem
@@ -50,10 +51,17 @@ export class DevotionalWorkspaceRepository {
       catalog: this.catalog,
       vectorIndex: this.vectorIndex,
       embedder: this.embedder,
+      embeddingCache: this.embeddingCache,
       limits: this.limits,
     })
     this.keywordIndexes.set(result.generation, result.keywordIndex)
     return result
+  }
+
+  retireLocalGenerations(generations: readonly number[]): void {
+    for (const generation of generations) {
+      this.keywordIndexes.delete(generation)
+    }
   }
 
   async search(

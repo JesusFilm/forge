@@ -32,6 +32,8 @@ export type WorkspaceMutationContext = {
 
 export type WorkspaceMutationAuditRecord = WorkspaceMutationContext & {
   id: string
+  operationId: string
+  phase: "intent" | "completed"
   occurredAt: Date
   action: WorkspaceMutationAction
   path: string
@@ -43,6 +45,12 @@ export type WorkspaceMutationAuditRecord = WorkspaceMutationContext & {
 export type WorkspaceMutationAuditSink = (
   record: WorkspaceMutationAuditRecord,
 ) => Promise<void>
+
+export type WorkspaceDigestReader = (
+  path: string,
+) => Promise<string | undefined>
+
+const MAX_BUFFERED_AUDIT_DIGEST_BYTES = 16 * 1024 * 1024
 
 const mutationContext = new AsyncLocalStorage<WorkspaceMutationContext>()
 
@@ -67,7 +75,9 @@ function digest(content: FileContent): string {
 /**
  * Decorates any Mastra filesystem without changing its path or lifecycle
  * contract. Mutations remain visible through Studio's native Workspace APIs,
- * while every successful mutation is followed by an append-only audit record.
+ * while every mutation is surrounded by append-only intent and completion
+ * records. A durable intent remains reconcilable if the process stops after
+ * the filesystem mutation but before its completion record.
  */
 export class AuditedFilesystem implements WorkspaceFilesystem {
   readonly id: string
@@ -83,6 +93,7 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
     readonly delegate: WorkspaceFilesystem,
     private readonly sink: WorkspaceMutationAuditSink,
     private readonly contextProvider: () => WorkspaceMutationContext = currentMutationContext,
+    private readonly digestReader?: WorkspaceDigestReader,
   ) {
     this.id = delegate.id
     this.name = delegate.name
@@ -180,14 +191,43 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
   ): Promise<void> {
     const preDigest = await this.readDigest(path)
     const postDigest = digest(content)
+    const operationId = randomUUID()
+    await this.record(
+      operationId,
+      "intent",
+      "write",
+      path,
+      undefined,
+      preDigest,
+      postDigest,
+    )
     await this.delegate.writeFile(path, content, options)
-    await this.record("write", path, undefined, preDigest, postDigest)
+    await this.record(
+      operationId,
+      "completed",
+      "write",
+      path,
+      undefined,
+      preDigest,
+      postDigest,
+    )
   }
 
   async appendFile(path: string, content: FileContent): Promise<void> {
     const preDigest = await this.readDigest(path)
+    const operationId = randomUUID()
+    await this.record(
+      operationId,
+      "intent",
+      "append",
+      path,
+      undefined,
+      preDigest,
+    )
     await this.delegate.appendFile(path, content)
     await this.record(
+      operationId,
+      "completed",
       "append",
       path,
       undefined,
@@ -198,8 +238,24 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
 
   async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
     const preDigest = await this.readDigest(path)
+    const operationId = randomUUID()
+    await this.record(
+      operationId,
+      "intent",
+      "delete",
+      path,
+      undefined,
+      preDigest,
+    )
     await this.delegate.deleteFile(path, options)
-    await this.record("delete", path, undefined, preDigest, undefined)
+    await this.record(
+      operationId,
+      "completed",
+      "delete",
+      path,
+      undefined,
+      preDigest,
+    )
   }
 
   async copyFile(
@@ -208,8 +264,21 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
     options?: CopyOptions,
   ): Promise<void> {
     const preDigest = await this.readDigest(targetPath)
+    const postDigest = await this.readDigest(sourcePath)
+    const operationId = randomUUID()
+    await this.record(
+      operationId,
+      "intent",
+      "copy",
+      sourcePath,
+      targetPath,
+      preDigest,
+      postDigest,
+    )
     await this.delegate.copyFile(sourcePath, targetPath, options)
     await this.record(
+      operationId,
+      "completed",
       "copy",
       sourcePath,
       targetPath,
@@ -224,8 +293,20 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
     options?: CopyOptions,
   ): Promise<void> {
     const preDigest = await this.readDigest(sourcePath)
+    const operationId = randomUUID()
+    await this.record(
+      operationId,
+      "intent",
+      "move",
+      sourcePath,
+      targetPath,
+      preDigest,
+      preDigest,
+    )
     await this.delegate.moveFile(sourcePath, targetPath, options)
     await this.record(
+      operationId,
+      "completed",
       "move",
       sourcePath,
       targetPath,
@@ -235,24 +316,36 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
   }
 
   async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+    const operationId = randomUUID()
+    await this.record(operationId, "intent", "mkdir", path)
     await this.delegate.mkdir(path, options)
-    await this.record("mkdir", path)
+    await this.record(operationId, "completed", "mkdir", path)
   }
 
   async rmdir(path: string, options?: RemoveOptions): Promise<void> {
+    const operationId = randomUUID()
+    await this.record(operationId, "intent", "rmdir", path)
     await this.delegate.rmdir(path, options)
-    await this.record("rmdir", path)
+    await this.record(operationId, "completed", "rmdir", path)
   }
 
   private async readDigest(path: string): Promise<string | undefined> {
     if (!(await this.delegate.exists(path))) return undefined
     const stat = await this.delegate.stat(path)
     if (stat.type !== "file") return undefined
+    if (this.digestReader) return this.digestReader(path)
+    if (stat.size > MAX_BUFFERED_AUDIT_DIGEST_BYTES) {
+      throw new Error(
+        `audit digest requires streaming for files larger than ${MAX_BUFFERED_AUDIT_DIGEST_BYTES} bytes`,
+      )
+    }
     const content = await this.delegate.readFile(path)
     return digest(content)
   }
 
   private async record(
+    operationId: string,
+    phase: WorkspaceMutationAuditRecord["phase"],
     action: WorkspaceMutationAction,
     path: string,
     targetPath?: string,
@@ -261,6 +354,8 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
   ): Promise<void> {
     await this.sink({
       id: randomUUID(),
+      operationId,
+      phase,
       occurredAt: new Date(),
       action,
       path,

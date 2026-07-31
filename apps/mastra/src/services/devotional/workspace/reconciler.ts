@@ -66,6 +66,7 @@ export async function reconcileDevotionalWorkspace(options: {
   catalog: CatalogStore
   vectorIndex?: GenerationVectorIndex
   embedder?: Embedder
+  embeddingCache?: Map<string, number[]>
   limits?: Partial<DevotionalInventoryLimits>
 }): Promise<ReconciliationResult> {
   if (!options.vectorIndex || !options.embedder) {
@@ -85,18 +86,24 @@ export async function reconcileDevotionalWorkspace(options: {
   try {
     await options.catalog.stage(generation, documents)
     const keywordIndex = new Bm25GenerationIndex(documents)
+    const activeEmbeddingKeys = new Set<string>()
     const vectorDocuments = await mapWithConcurrency(
       documents,
       DEVOTIONAL_EMBEDDING_CONCURRENCY,
-      async (document) => ({
-        path: document.path,
-        digest: document.digest,
-        vector: await withinDeadline(
-          options.embedder!(`${document.title}\n${document.content}`),
-          limits.deadlineMs - (limits.now() - startedAt),
-          limits.deadlineMs,
-        ),
-      }),
+      async (document) => {
+        const embeddingKey = `${document.title}\0${document.digest}`
+        activeEmbeddingKeys.add(embeddingKey)
+        let vector = options.embeddingCache?.get(embeddingKey)
+        if (!vector) {
+          vector = await withinDeadline(
+            options.embedder!(`${document.title}\n${document.content}`),
+            limits.deadlineMs - (limits.now() - startedAt),
+            limits.deadlineMs,
+          )
+          options.embeddingCache?.set(embeddingKey, vector)
+        }
+        return { path: document.path, digest: document.digest, vector }
+      },
     )
     await withinDeadline(
       options.vectorIndex.replaceGeneration(generation, vectorDocuments),
@@ -104,6 +111,11 @@ export async function reconcileDevotionalWorkspace(options: {
       limits.deadlineMs,
     )
     const head = await options.catalog.commit(generation, inventoryDigest)
+    if (options.embeddingCache) {
+      for (const key of options.embeddingCache.keys()) {
+        if (!activeEmbeddingKeys.has(key)) options.embeddingCache.delete(key)
+      }
+    }
     return { generation, inventoryDigest, inventory, head, keywordIndex }
   } catch (error) {
     await options.catalog.fail(

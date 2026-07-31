@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import type { UsedClipsStore } from "../used-clips-ledger"
+import { DEVOTIONAL_AUTHORED_PATHS } from "../authored-data"
 import { MastraGenerationVectorIndex } from "./catalog"
 import {
   assertDevotionalWorkspaceReadyForStarts,
@@ -70,7 +71,7 @@ async function writeReconciliationReports(options: {
 
 export type ReconciliationRepository = Pick<
   DevotionalWorkspaceRepository,
-  "reconcile"
+  "reconcile" | "search" | "retireLocalGenerations"
 >
 
 export type PreparedDevotionalWorkspaceAttempt = {
@@ -86,7 +87,9 @@ export type DevotionalDataPlaneRuntime = {
   attempts: DevotionalAttemptStore
   usedClips: UsedClipsStore
   assertReady(): Promise<void>
-  reconcileAttempt(): Promise<PreparedDevotionalWorkspaceAttempt>
+  reconcileAttempt(options?: {
+    query?: string
+  }): Promise<PreparedDevotionalWorkspaceAttempt>
 }
 
 export async function withDevotionalReconciliationLease<T>(
@@ -147,15 +150,51 @@ export function createDevotionalDataPlaneRuntime(
     attempts,
     usedClips,
     assertReady,
-    async reconcileAttempt() {
+    async reconcileAttempt(reconcileOptions = {}) {
       return withDevotionalReconciliationLease(database, async () => {
         await assertReady()
         const result = await repository.reconcile()
-        const selectedSources = SelectedSourcesSchema.parse(
-          result.inventory.eligible.map(
-            ({ content: _content, ...source }) => source,
-          ),
+        const query =
+          reconcileOptions.query ??
+          "daily devotional Jesus scripture reflection faith hope grace prayer"
+        const [scripture, reflections] = await Promise.all([
+          repository.search(query, { category: "scripture", topK: 100 }),
+          repository.search(query, { category: "reflections", topK: 100 }),
+        ])
+        const refsByPath = new Map(
+          result.inventory.eligible.map(({ content: _content, ...source }) => [
+            source.path,
+            source,
+          ]),
         )
+        const selected = new Map<
+          string,
+          z.infer<typeof DevotionalSourceRefSchema>
+        >()
+        for (const requiredPath of Object.values(DEVOTIONAL_AUTHORED_PATHS)) {
+          const required = refsByPath.get(requiredPath)
+          if (!required) {
+            throw new Error(
+              `Required devotional Workspace input is unavailable: ${requiredPath}`,
+            )
+          }
+          selected.set(required.path, required)
+        }
+        for (const source of [...scripture, ...reflections]) {
+          const ref = {
+            path: source.path,
+            category: source.category,
+            digest: source.digest,
+            size: source.size,
+            modifiedAt: source.modifiedAt,
+            ...(source.etag ? { etag: source.etag } : {}),
+            title: source.title,
+          }
+          selected.set(ref.path, ref)
+        }
+        const selectedSources = SelectedSourcesSchema.parse([
+          ...selected.values(),
+        ])
         await writeReconciliationReports({
           runtime: workspaceRuntime,
           generation: result.generation,
@@ -163,6 +202,7 @@ export function createDevotionalDataPlaneRuntime(
           inventory: result.inventory,
         })
         const retiredGenerations = await catalog.retireBefore(result.generation)
+        repository.retireLocalGenerations(retiredGenerations)
         await Promise.all(
           retiredGenerations.map((generation) =>
             vectorIndex?.deleteGeneration(generation).catch(() => undefined),

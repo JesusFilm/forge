@@ -11,6 +11,8 @@ create table if not exists devotional_workspace.schema_migrations (
 create table if not exists devotional_workspace.filesystem_mutation_audit (
   sequence_id bigint generated always as identity primary key,
   id text not null unique,
+  operation_id text not null,
+  phase text not null check (phase in ('intent', 'completed')),
   occurred_at timestamptz not null,
   actor_id text not null,
   request_id text not null,
@@ -21,11 +23,15 @@ create table if not exists devotional_workspace.filesystem_mutation_audit (
   target_path text,
   pre_digest text check (pre_digest is null or pre_digest ~ '^[0-9a-f]{64}$'),
   post_digest text check (post_digest is null or post_digest ~ '^[0-9a-f]{64}$'),
-  trusted_editorial_rights_assertion boolean not null default false
+  trusted_editorial_rights_assertion boolean not null default false,
+  unique (operation_id, phase)
 );
 
 create index if not exists filesystem_mutation_audit_path_time_idx
   on devotional_workspace.filesystem_mutation_audit (path, occurred_at desc);
+
+create index if not exists filesystem_mutation_audit_incomplete_idx
+  on devotional_workspace.filesystem_mutation_audit (operation_id, phase);
 
 create or replace function devotional_workspace.reject_audit_mutation()
 returns trigger
@@ -109,7 +115,7 @@ create table if not exists devotional_workspace.workflow_attempts (
   selected_sources jsonb not null default '[]'::jsonb
     check (jsonb_typeof(selected_sources) = 'array'),
   provisioning_state text not null check (
-    provisioning_state in ('provisioning', 'ready', 'failed')
+    provisioning_state in ('provisioning', 'ready', 'started', 'failed')
   ),
   failure_reason text,
   created_at timestamptz not null default now(),

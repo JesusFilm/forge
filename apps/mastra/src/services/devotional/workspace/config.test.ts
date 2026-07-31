@@ -49,7 +49,16 @@ function readyExecutor(): QueryExecutor {
     ): Promise<QueryResult<T>> {
       const rows = /pg_extension/.test(text)
         ? [{ available: true }]
-        : [{ version: 1 }]
+        : /workspace_readiness/.test(text)
+          ? [
+              {
+                ready: true,
+                manifest_digest: "a".repeat(64),
+                reason: null,
+                verified_at: "2026-07-31T12:00:00.000Z",
+              },
+            ]
+          : [{ version: 1 }]
       return {
         rows: rows as unknown as T[],
         command: "SELECT",
@@ -153,6 +162,7 @@ describe("devotional Workspace configuration", () => {
       filesystem: { ready: true },
       hybridSearch: { ready: false },
       databaseSchema: { ready: false },
+      cutover: { ready: false },
     })
   })
 
@@ -177,6 +187,10 @@ describe("devotional Workspace configuration", () => {
     expect(typeof runtime.embedder).toBe("function")
     expect(runtime.vectorStore).toBeDefined()
     expect(readiness.ready).toBe(true)
+    expect(readiness.cutover).toEqual({
+      ready: true,
+      manifestDigest: "a".repeat(64),
+    })
   })
 
   it("reports a configured filesystem that fails its live health check", async () => {

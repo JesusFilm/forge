@@ -300,7 +300,7 @@ const envSchema = z.object({
   DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX: z.coerce
     .number()
     .int()
-    .positive()
+    .min(2)
     .max(DEFAULT_DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX)
     .default(DEFAULT_DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX),
   // Dedicated heavy-media boundary for video-first devotionals. Optional so

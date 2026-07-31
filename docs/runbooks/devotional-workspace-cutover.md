@@ -23,20 +23,29 @@ code through the normal pull-request-to-main flow.
 ## Stage and verify
 
 1. Run the database migration and confirm the expected schema version.
-2. Validate the migration manifest with
-   `pnpm --filter @forge/mastra devo:workspace:migrate -- <manifest.json>`.
-3. Copy into a unique immutable migration prefix. Never overwrite or delete a
+2. Validate source bytes and the manifest without changing readiness:
+   `pnpm --filter @forge/mastra devo:workspace:migrate -- <manifest.json> --dry-run`.
+3. Require exactly one ledger entry under `/_system/migration/`, with no live
+   `reservationId` or `pendingUntil`. Authored inputs target `/inputs/`, media
+   `/source-media/`, and retained artifacts `/runs/`.
+4. Copy into a unique immutable `/_migrations/<runId>/...` prefix. Never overwrite or delete a
    conflicting destination. Reruns must report existing identical objects as
    unchanged.
-4. Compare source and destination counts, sizes, and streamed SHA-256 values.
-5. Reconcile the Workspace catalog. Required scripture, reflections, and safety
+5. Compare source, staging, and canonical counts, sizes, and streamed SHA-256 values.
+6. Reconcile the Workspace catalog. Required scripture, reflections, and safety
    configuration must be eligible; BM25, vector storage, and the embedder must
    all report ready.
-6. Verify Shorts Worker can read allowed source-media keys, create immutable
+7. Verify Shorts Worker can read allowed source-media keys, create immutable
    attempt outputs, read them by Range, and reject traversal/wrong-prefix keys.
-7. Record readiness in PostgreSQL against the exact manifest digest only after
-   the backup restore drill and all checks pass. `_system/readiness/latest.json`
-   is an editor-facing projection, not the authority.
+8. Create a separate restore-attestation JSON containing the manifest digest,
+   backup reference, completion time, verifier, and all six true checks:
+   Workspace CRUD/search, hybrid search, Worker read/write, one Mastra replica,
+   drained runs, and readable legacy refs.
+9. Import the ledger and atomically record readiness with
+   `pnpm --filter @forge/mastra devo:workspace:migrate -- <manifest.json> --restore-attestation <attestation.json>`.
+   The command rejects a mismatched attestation or conflicting ledger row.
+   `_system/readiness/latest.json` is an editor-facing projection, not the
+   authority.
 
 ## Canary and enable
 

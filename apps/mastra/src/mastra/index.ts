@@ -192,8 +192,8 @@ const observabilityStore = new DuckDBStore({
   id: "mastra-observability-storage",
   path: join(storageDir, "mastra-observability.duckdb"),
 })
-export const devotionalWorkspaceRuntime = createDevotionalWorkspaceRuntime()
-export const devotionalDataPlaneRuntime = createDevotionalDataPlaneRuntime({
+const devotionalWorkspaceRuntime = createDevotionalWorkspaceRuntime()
+const devotionalDataPlaneRuntime = createDevotionalDataPlaneRuntime({
   workspaceRuntime: devotionalWorkspaceRuntime,
 })
 
@@ -201,7 +201,8 @@ const videoFirstLifecycleDeps: VideoFirstLifecycleDeps = {
   workflow:
     videoFirstDevotionalWorkflow as unknown as VideoFirstWorkflowAdapter,
   attempts: devotionalDataPlaneRuntime.attempts,
-  reconcileAttempt: () => devotionalDataPlaneRuntime.reconcileAttempt(),
+  reconcileAttempt: (options) =>
+    devotionalDataPlaneRuntime.reconcileAttempt(options),
   async renewReservation(state) {
     const owner = reservationOwnerFromState(state)
     if (!owner) throw new Error(`reservation not found for run ${state.runId}`)

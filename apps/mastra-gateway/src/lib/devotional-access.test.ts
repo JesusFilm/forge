@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  canonicalizeMastraApiPath,
   isDevotionalNativeWorkflowPath,
   isWorkspaceApiPath,
 } from "./devotional-access"
@@ -41,5 +42,15 @@ describe("Workspace API path detection", () => {
       isWorkspaceApiPath(["workspaces", "devotional-workspace", "search"]),
     ).toBe(true)
     expect(isWorkspaceApiPath(["stored-workspaces"])).toBe(false)
+  })
+
+  it("canonicalizes safe segments and rejects encoded traversal", () => {
+    expect(
+      canonicalizeMastraApiPath(["work%73paces", "devotional-workspace"]),
+    ).toEqual(["workspaces", "devotional-workspace"])
+    expect(
+      canonicalizeMastraApiPath(["unrelated", "%252e%252e", "workspaces"]),
+    ).toBeNull()
+    expect(canonicalizeMastraApiPath(["workspaces%2Fhidden"])).toBeNull()
   })
 })

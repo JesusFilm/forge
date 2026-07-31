@@ -195,6 +195,19 @@ describe("inventoryDevotionalInputs", () => {
     )
   })
 
+  it("bounds a stalled filesystem listing with the shared deadline", async () => {
+    await expect(
+      inventoryDevotionalInputs(
+        {
+          listFiles: async () => new Promise<string[]>(() => undefined),
+          readFile: async () => "",
+          stat: async () => ({ size: 0, modifiedAt: new Date() }),
+        },
+        { deadlineMs: 5 },
+      ),
+    ).rejects.toMatchObject({ code: "inventory-deadline-exceeded" })
+  })
+
   it("rejects traversal and duplicate-normalized paths", async () => {
     await expect(
       inventoryDevotionalInputs(

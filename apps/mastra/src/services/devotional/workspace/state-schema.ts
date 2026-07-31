@@ -25,7 +25,7 @@ export const DevotionalAttemptSchema = z
     attemptNumber: z.number().int().positive(),
     idempotencyKey: z.string().min(1).max(200),
     requestHash: z.string().regex(/^[a-f0-9]{64}$/u),
-    provisioningState: z.enum(["provisioning", "ready", "failed"]),
+    provisioningState: z.enum(["provisioning", "ready", "started", "failed"]),
     catalogGeneration: z.number().int().positive().optional(),
     runId: z.string().min(1).optional(),
     selectedSources: z.array(DevotionalSourceRefSchema).max(500),

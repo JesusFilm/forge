@@ -1,7 +1,7 @@
 ---
 title: "feat: Add devotional Workspace data plane"
 type: feat
-status: active
+status: complete
 date: 2026-07-31
 deepened: 2026-07-31
 ---

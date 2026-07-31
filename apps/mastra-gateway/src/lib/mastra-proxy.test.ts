@@ -362,4 +362,43 @@ describe("Mastra proxy", () => {
       headers.get("x-forge-request-id"),
     )
   })
+
+  it("forwards a bodyless native Workspace DELETE", async () => {
+    vi.stubEnv("MASTRA_GATEWAY_BASE_URL", "https://gateway.example.com")
+    vi.stubEnv(
+      "MASTRA_GATEWAY_SESSION_SECRET",
+      "test-secret-test-secret-test-secret-32",
+    )
+    vi.stubEnv("MASTRA_INTERNAL_BASE_URL", "https://mastra.internal")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "internal-key")
+    const { createGatewaySessionCookie, GATEWAY_SESSION_COOKIE } =
+      await import("./gateway-session")
+    const { proxyMastraRequest } = await import("./mastra-proxy")
+    const token = await createGatewaySessionCookie({
+      subject: "editor-delete",
+      role: "editor",
+    })
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ deleted: true }))
+
+    const response = await proxyMastraRequest(
+      new Request(
+        "https://gateway.example.com/api/workspaces/devotional-workspace/fs/delete?path=%2Finputs%2Freflections%2Fold.md",
+        {
+          method: "DELETE",
+          headers: {
+            cookie: `${GATEWAY_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+          },
+        },
+      ),
+      "/api/workspaces/devotional-workspace/fs/delete",
+      { workspaceRequest: true },
+    )
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const init = fetchMock.mock.calls[0]?.[1]
+    expect(init?.body).toBeNull()
+  })
 })

@@ -4,6 +4,8 @@ import { Readable } from "node:stream"
 import { describe, expect, it } from "vitest"
 
 import {
+  DevotionalRestoreAttestationSchema,
+  importUsedClipsLedger,
   migrateDevotionalWorkspace,
   type DevotionalMigrationFilesystem,
   type DevotionalMigrationManifest,
@@ -41,7 +43,6 @@ function manifest(content: string): DevotionalMigrationManifest {
     version: 1,
     runId: "migration-20260731",
     createdAt: "2026-07-31T12:00:00.000Z",
-    restoreDrillPassed: true,
     entries: [
       {
         sourcePath: "/legacy/grace.md",
@@ -95,7 +96,8 @@ describe("migrateDevotionalWorkspace", () => {
       copied: ["/inputs/reflections/grace.md"],
       unchanged: [],
       conflicts: [],
-      ready: true,
+      copyVerified: true,
+      ready: false,
     })
     await expect(
       migrateDevotionalWorkspace({
@@ -107,7 +109,8 @@ describe("migrateDevotionalWorkspace", () => {
       copied: [],
       unchanged: ["/inputs/reflections/grace.md"],
       conflicts: [],
-      ready: true,
+      copyVerified: true,
+      ready: false,
     })
   })
 
@@ -123,7 +126,12 @@ describe("migrateDevotionalWorkspace", () => {
       destination,
     })
 
-    expect(report).toMatchObject({ ready: false, copied: [], unchanged: [] })
+    expect(report).toMatchObject({
+      copyVerified: false,
+      ready: false,
+      copied: [],
+      unchanged: [],
+    })
     expect(report.conflicts).toHaveLength(1)
     await expect(
       destination.readFile("/inputs/reflections/grace.md"),
@@ -162,6 +170,12 @@ describe("migrateDevotionalWorkspace", () => {
     const source = streamingMemoryFilesystem({
       "/legacy/video.mp4": content,
     })
+    let sourceReads = 0
+    const readSourceStream = source.readStream
+    source.readStream = async (path) => {
+      sourceReads += 1
+      return readSourceStream(path)
+    }
     const destination = streamingMemoryFilesystem()
 
     await expect(
@@ -172,10 +186,79 @@ describe("migrateDevotionalWorkspace", () => {
       }),
     ).resolves.toMatchObject({
       copied: ["/source-media/video.mp4"],
-      ready: true,
+      copyVerified: true,
+      ready: false,
     })
     await expect(
       destination.readFile("/source-media/video.mp4"),
     ).resolves.toEqual(Buffer.from(content))
+    await expect(
+      destination.readFile(
+        "/_migrations/migration-20260731/source-media/video.mp4",
+      ),
+    ).resolves.toEqual(Buffer.from(content))
+    expect(sourceReads).toBe(1)
+  })
+
+  it("rejects migration entries outside the area assigned to their kind", async () => {
+    const source = memoryFilesystem({ "/legacy/grace.md": "Grace" })
+    const badManifest = manifest("Grace")
+    badManifest.entries[0]!.destinationPath = "/runs/grace.md"
+
+    await expect(
+      migrateDevotionalWorkspace({
+        manifest: badManifest,
+        source,
+        destination: memoryFilesystem(),
+      }),
+    ).rejects.toThrow(/Invalid authored-input destination/u)
+  })
+
+  it("requires restore evidence independent from the migration manifest", () => {
+    expect(() =>
+      DevotionalRestoreAttestationSchema.parse({
+        schemaVersion: 1,
+        manifestDigest: "a".repeat(64),
+        backupReference: "backup-2026-07-31",
+        completedAt: "2026-07-31T12:00:00.000Z",
+        verifiedBy: "operator@example.com",
+        checks: {
+          workspaceCrudSearch: true,
+          hybridSearch: true,
+          workerReadWrite: true,
+          singleMastraReplica: true,
+          runsDrained: true,
+          legacyRefsReadable: true,
+        },
+      }),
+    ).not.toThrow()
+    expect(() =>
+      DevotionalRestoreAttestationSchema.parse({
+        schemaVersion: 1,
+        manifestDigest: "a".repeat(64),
+        backupReference: "backup-2026-07-31",
+        completedAt: "2026-07-31T12:00:00.000Z",
+        verifiedBy: "operator@example.com",
+        checks: { workspaceCrudSearch: true },
+      }),
+    ).toThrow()
+  })
+
+  it("refuses to import a legacy ledger with an unresolved reservation", async () => {
+    await expect(
+      importUsedClipsLedger({
+        database: {} as never,
+        ledger: {
+          version: 1,
+          used: {
+            "chapter-1": {
+              count: 0,
+              lastUsedAt: "",
+              reservationId: "49cb0cc4-2fdd-4edb-a1f6-d90664d2c885",
+            },
+          },
+        },
+      }),
+    ).rejects.toThrow(/unresolved reservation/u)
   })
 })

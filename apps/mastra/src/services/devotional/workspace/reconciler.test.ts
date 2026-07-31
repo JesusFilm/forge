@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { DEVOTIONAL_AUTHORED_PATHS } from "../authored-data"
 import {
@@ -147,6 +147,23 @@ describe("DevotionalWorkspaceRepository", () => {
 
     expect(peak).toBeGreaterThan(1)
     expect(peak).toBeLessThanOrEqual(5)
+  })
+
+  it("reuses embeddings for byte-identical documents across attempts", async () => {
+    const embedder = vi.fn(createDeterministicTestEmbedder())
+    const repository = new DevotionalWorkspaceRepository({
+      filesystem: filesystem(files),
+      catalog: new InMemoryCatalogStore(),
+      vectorIndex: new InMemoryGenerationVectorIndex(),
+      embedder,
+    })
+
+    await repository.reconcile()
+    const firstPassCalls = embedder.mock.calls.length
+    await repository.reconcile()
+
+    expect(firstPassCalls).toBeGreaterThan(0)
+    expect(embedder).toHaveBeenCalledTimes(firstPassCalls)
   })
 
   it("fails reconciliation when embedding exceeds the shared deadline", async () => {
