@@ -49,6 +49,7 @@ import {
   writeAttemptJsonArtifact,
   writeInputsUsed,
 } from "../../services/devotional/workspace/provenance"
+import { VideoFirstDevotionalWorkflowInputSchema as InputSchema } from "./video-first-devotional-schema"
 
 /**
  * Video-first daily-devotional pipeline as SIX swappable sub-workflows composed
@@ -134,24 +135,6 @@ function contentDependencies(
 }
 
 // ---- Schemas (the serializable seams between sub-workflows) -----------------
-
-const InputSchema = z
-  .object({
-    /** JESUS-film chapter to use; omit to pick the next UNUSED one (ledger). */
-    chapterIndex: z.number().int().positive().optional(),
-    /** Rotation counter (voice + filter + reflection source). Omit to
-     *  AUTO-INCREMENT: the count of approved devotionals in the ledger. */
-    sequence: z.number().int().nonnegative().optional(),
-    date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
-    /** Committed Workspace catalog generation selected before this run. */
-    workspaceGeneration: z.number().int().positive(),
-    attemptId: z.string().min(1),
-    selectedSources: z.array(DevotionalSourceRefSchema).min(1).max(500),
-  })
-  .strict()
 
 const AttemptContextSchema = z.object({
   workspaceGeneration: z.number().int().positive(),

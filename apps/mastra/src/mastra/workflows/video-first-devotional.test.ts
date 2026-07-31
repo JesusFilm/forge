@@ -6,6 +6,7 @@ import { LocalFilesystem, Workspace } from "@mastra/core/workspace"
 import type { ProducedDevotionalAudio } from "../../services/devotional/devotional-audio"
 import type { GeneratedDevotional } from "../../services/devotional/generate-devotional"
 import { videoFirstDevotionalWorkflow } from "./video-first-devotional"
+import { VideoFirstDevotionalWorkflowInputSchema } from "./video-first-devotional-schema"
 
 const mocks = vi.hoisted(() => ({
   reserve: vi.fn(),
@@ -220,7 +221,7 @@ function registerWorkflow() {
 }
 
 function workflowInput(runId: string) {
-  return {
+  return VideoFirstDevotionalWorkflowInputSchema.parse({
     chapterIndex: 19,
     date: "2026-07-21",
     workspaceGeneration: 1,
@@ -235,7 +236,7 @@ function workflowInput(runId: string) {
         title: "grace",
       },
     ],
-  }
+  })
 }
 
 async function startUntilSuspended(runId: string) {
@@ -369,6 +370,25 @@ describe("video-first devotional workflow", () => {
     mocks.verifyArtifacts.mockRejectedValueOnce(new Error("artifact changed"))
 
     const resumed = await workflow.createRun({ runId: "approval-integrity" })
+    await expect(
+      resumed.resume({
+        resumeData: {
+          approved: true,
+          approvedBy: { subject: "reviewer-1", role: "editor" },
+        },
+      }),
+    ).resolves.toMatchObject({ status: "failed" })
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("releases the clip when a selected source changes before approval resumes", async () => {
+    const { workflow } = await startUntilSuspended("approval-source-changed")
+    mocks.verifySources.mockRejectedValueOnce(new Error("source changed"))
+
+    const resumed = await workflow.createRun({
+      runId: "approval-source-changed",
+    })
     await expect(
       resumed.resume({
         resumeData: {

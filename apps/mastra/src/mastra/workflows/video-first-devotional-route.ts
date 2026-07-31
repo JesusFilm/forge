@@ -8,6 +8,10 @@ import {
   type DevotionalAttempt,
 } from "../../services/devotional/workspace/state-schema"
 import type { DevotionalAttemptStore } from "../../services/devotional/workspace/state"
+import {
+  VideoFirstDevotionalWorkflowInputSchema,
+  type VideoFirstDevotionalWorkflowInput,
+} from "./video-first-devotional-schema"
 
 const InputSchema = z
   .object({
@@ -112,7 +116,7 @@ type VideoFirstWorkflowResult = {
 
 type VideoFirstRun = {
   startAsync: (options: {
-    inputData: Record<string, unknown>
+    inputData: VideoFirstDevotionalWorkflowInput
   }) => Promise<{ runId: string }>
   resume: (options: {
     resumeData: {
@@ -299,15 +303,16 @@ async function provisionAndStartAttempt(input: {
   }
 
   const run = await input.deps.workflow.createRun({ runId: input.runId })
+  const workflowInput = VideoFirstDevotionalWorkflowInputSchema.parse({
+    chapterIndex: input.workflowInput.chapterIndex,
+    sequence: input.workflowInput.sequence,
+    date: input.workflowInput.date,
+    attemptId: attempt.id,
+    workspaceGeneration: attempt.catalogGeneration,
+    selectedSources: attempt.selectedSources,
+  })
   await run.startAsync({
-    inputData: {
-      chapterIndex: input.workflowInput.chapterIndex,
-      sequence: input.workflowInput.sequence,
-      date: input.workflowInput.date,
-      attemptId: attempt.id,
-      workspaceGeneration: attempt.catalogGeneration,
-      selectedSources: attempt.selectedSources,
-    },
+    inputData: workflowInput,
   })
   await input.deps.attempts.markStarted(attempt.id)
   const state = await input.deps.workflow.getWorkflowRunById(input.runId)

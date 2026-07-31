@@ -154,7 +154,12 @@ describe("video-first devotional lifecycle routes", () => {
       },
     })
     expect(start).toHaveBeenCalledWith({
-      inputData: expect.objectContaining({ date: "2026-07-21" }),
+      inputData: {
+        date: "2026-07-21",
+        attemptId: expect.any(String),
+        workspaceGeneration: 1,
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+      },
     })
   })
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
 import { join } from "node:path"
 
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { GetObjectCommand, type S3Client } from "@aws-sdk/client-s3"
 import { createOpenAI } from "@ai-sdk/openai"
 import { Workspace, LocalFilesystem } from "@mastra/core/workspace"
 import type {
@@ -20,6 +20,8 @@ import type {
 } from "@mastra/core/workspace"
 import { PgVector } from "@mastra/pg"
 import { S3Filesystem } from "@mastra/s3"
+import { NodeHttpHandler } from "@smithy/node-http-handler"
+import { StandardRetryStrategy } from "@smithy/util-retry"
 import { embed } from "ai"
 
 import {
@@ -46,6 +48,20 @@ export const DEVOTIONAL_WORKSPACE_ID = "devotional-workspace"
 export const DEVOTIONAL_WORKSPACE_NAME = "Devotional Workspace"
 export const DEVOTIONAL_WORKSPACE_SEARCH_INDEX =
   "devotional_workspace_native_search"
+
+type S3ClientLimits = {
+  connectionTimeoutMs: number
+  requestTimeoutMs: number
+  socketTimeoutMs: number
+  maxAttempts: number
+}
+
+const DEFAULT_S3_CLIENT_LIMITS: S3ClientLimits = {
+  connectionTimeoutMs: 5_000,
+  requestTimeoutMs: 10_000,
+  socketTimeoutMs: 10_000,
+  maxAttempts: 2,
+}
 
 type StorageConfig =
   | { backend: "local"; directory: string }
@@ -244,13 +260,17 @@ export function createDevotionalWorkspaceRuntime(options?: {
   digestReader?: WorkspaceDigestReader
   vectorStore?: PgVector
   embedder?: WorkspaceEmbedder
+  /** Test seam; production uses bounded defaults below the 30-second inventory budget. */
+  s3ClientLimits?: Partial<S3ClientLimits>
 }): DevotionalWorkspaceRuntime {
   const config = resolveDevotionalWorkspaceConfig(
     options?.environment ?? getDevotionalWorkspaceEnvironment(),
   )
 
-  const baseFilesystem =
-    options?.filesystem ?? createFilesystemFromConfig(config.storage)
+  const storageRuntime = options?.filesystem
+    ? undefined
+    : createStorageRuntime(config.storage, options?.s3ClientLimits)
+  const baseFilesystem = options?.filesystem ?? storageRuntime!.filesystem
   const auditSink =
     options?.auditSink ?? createDatabaseAuditSink(getDevotionalDatabase())
   const filesystem = new AuditedFilesystem(
@@ -258,7 +278,7 @@ export function createDevotionalWorkspaceRuntime(options?: {
     auditSink,
     options?.mutationContext,
     options?.digestReader ??
-      (options?.filesystem ? undefined : createDigestReader(config.storage)),
+      (options?.filesystem ? undefined : storageRuntime!.digestReader),
   )
 
   const vectorStore =
@@ -292,33 +312,30 @@ export function createDevotionalWorkspaceRuntime(options?: {
   return { workspace, filesystem, vectorStore, embedder, config }
 }
 
-function createDigestReader(storage: StorageConfig): WorkspaceDigestReader {
+function createDigestReader(
+  storage: Exclude<StorageConfig, { backend: "s3" }>,
+): WorkspaceDigestReader {
   if (storage.backend === "unavailable") {
     return async () => {
       throw new Error(storage.reason)
     }
   }
-  if (storage.backend === "local") {
-    return async (workspacePath) => {
-      const hash = createHash("sha256")
-      for await (const chunk of createReadStream(
-        join(storage.directory, toNativeWorkspaceFilesystemPath(workspacePath)),
-      )) {
-        hash.update(chunk)
-      }
-      return hash.digest("hex")
-    }
-  }
 
-  const client = new S3Client({
-    endpoint: storage.endpoint,
-    region: storage.region,
-    credentials: {
-      accessKeyId: storage.accessKeyId,
-      secretAccessKey: storage.secretAccessKey,
-    },
-    forcePathStyle: storage.forcePathStyle,
-  })
+  return async (workspacePath) => {
+    const hash = createHash("sha256")
+    for await (const chunk of createReadStream(
+      join(storage.directory, toNativeWorkspaceFilesystemPath(workspacePath)),
+    )) {
+      hash.update(chunk)
+    }
+    return hash.digest("hex")
+  }
+}
+
+function createS3DigestReader(
+  storage: Extract<StorageConfig, { backend: "s3" }>,
+  client: S3Client,
+): WorkspaceDigestReader {
   const prefix = storage.prefix.replace(/^\/+|\/+$/gu, "")
   return async (workspacePath) => {
     const response = await client.send(
@@ -338,32 +355,59 @@ function createDigestReader(storage: StorageConfig): WorkspaceDigestReader {
   }
 }
 
-function createFilesystemFromConfig(
+function createStorageRuntime(
   storage: StorageConfig,
-): WorkspaceFilesystem {
+  limitsOverride?: Partial<S3ClientLimits>,
+): {
+  filesystem: WorkspaceFilesystem
+  digestReader: WorkspaceDigestReader
+} {
   if (storage.backend === "local") {
-    return new LocalFilesystem({
-      id: "devotional-workspace-local-filesystem",
-      basePath: storage.directory,
-      contained: true,
-      readOnly: false,
-    })
+    return {
+      filesystem: new LocalFilesystem({
+        id: "devotional-workspace-local-filesystem",
+        basePath: storage.directory,
+        contained: true,
+        readOnly: false,
+      }),
+      digestReader: createDigestReader(storage),
+    }
   }
-  if (storage.backend === "s3") {
-    return new S3Filesystem({
-      id: "devotional-workspace-s3-filesystem",
-      displayName: DEVOTIONAL_WORKSPACE_NAME,
-      bucket: storage.bucket,
-      endpoint: storage.endpoint,
-      region: storage.region,
-      accessKeyId: storage.accessKeyId,
-      secretAccessKey: storage.secretAccessKey,
-      prefix: storage.prefix,
-      forcePathStyle: storage.forcePathStyle,
-      readOnly: false,
-    })
+  if (storage.backend === "unavailable") {
+    return {
+      filesystem: new UnavailableFilesystem(storage.reason),
+      digestReader: createDigestReader(storage),
+    }
   }
-  return new UnavailableFilesystem(storage.reason)
+
+  const filesystem = new S3Filesystem({
+    id: "devotional-workspace-s3-filesystem",
+    displayName: DEVOTIONAL_WORKSPACE_NAME,
+    bucket: storage.bucket,
+    endpoint: storage.endpoint,
+    region: storage.region,
+    accessKeyId: storage.accessKeyId,
+    secretAccessKey: storage.secretAccessKey,
+    prefix: storage.prefix,
+    forcePathStyle: storage.forcePathStyle,
+    readOnly: false,
+  })
+  const limits = { ...DEFAULT_S3_CLIENT_LIMITS, ...limitsOverride }
+  const client = filesystem.client
+  client.config.requestHandler = new NodeHttpHandler({
+    connectionTimeout: limits.connectionTimeoutMs,
+    requestTimeout: limits.requestTimeoutMs,
+    socketTimeout: limits.socketTimeoutMs,
+    throwOnRequestTimeout: true,
+  })
+  client.config.maxAttempts = async () => limits.maxAttempts
+  client.config.retryStrategy = async () =>
+    new StandardRetryStrategy({ maxAttempts: limits.maxAttempts })
+
+  return {
+    filesystem,
+    digestReader: createS3DigestReader(storage, client),
+  }
 }
 
 function createEmbedder(

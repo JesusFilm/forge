@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from "node:fs/promises"
+import { createServer, type Socket } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -108,6 +109,57 @@ describe("devotional Workspace configuration", () => {
       bucket: "devotional-content",
       prefix: "devotional/",
     })
+  })
+
+  it("bounds a stalled S3 request", async () => {
+    const sockets = new Set<Socket>()
+    let connectionCount = 0
+    const server = createServer(() => undefined)
+    server.on("connection", (socket) => {
+      connectionCount += 1
+      sockets.add(socket)
+      socket.once("close", () => sockets.delete(socket))
+    })
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject)
+      server.listen(0, "127.0.0.1", resolve)
+    })
+    const address = server.address()
+    if (!address || typeof address === "string") {
+      throw new Error("Expected a TCP test server address")
+    }
+
+    try {
+      const runtime = createDevotionalWorkspaceRuntime({
+        environment: environment({
+          nodeEnv: "production",
+          s3: {
+            endpoint: `http://127.0.0.1:${address.port}`,
+            region: "auto",
+            bucket: "devotional-content",
+            accessKeyId: "access",
+            secretAccessKey: "secret",
+          },
+        }),
+        auditSink: async () => undefined,
+        s3ClientLimits: {
+          connectionTimeoutMs: 100,
+          requestTimeoutMs: 100,
+          socketTimeoutMs: 100,
+          maxAttempts: 1,
+        },
+      })
+
+      await expect(runtime.filesystem.init()).rejects.toThrow(
+        /request.*exceeded/iu,
+      )
+      expect(connectionCount).toBe(1)
+    } finally {
+      sockets.forEach((socket) => socket.destroy())
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      )
+    }
   })
 
   it("uses an equivalent contained local filesystem without network access", async () => {
