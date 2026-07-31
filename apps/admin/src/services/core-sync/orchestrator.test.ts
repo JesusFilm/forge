@@ -6,6 +6,7 @@ const refreshSeoAfterCoreSyncMock = vi.hoisted(() => vi.fn())
 
 vi.mock("./lock", () => ({
   acquireSyncLock: vi.fn(),
+  assertSyncLockHeld: vi.fn(),
   refreshSyncLock: vi.fn(),
   releaseSyncLock: vi.fn(),
 }))
@@ -301,5 +302,141 @@ describe("runSync", () => {
       }),
     )
     expect(advanceWatermark).toHaveBeenCalled()
+  })
+
+  it("fences an in-parity subtitle watermark in the lock transaction", async () => {
+    const { assertSyncLockHeld, refreshSyncLock } = await import("./lock")
+    const { advanceWatermark } = await import("./watermark")
+    const { syncVideoSubtitles } = await import("./phases/sync-video-subtitles")
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(assertSyncLockHeld as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      undefined,
+    )
+    ;(syncVideoSubtitles as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      created: 0,
+      updated: 1,
+      softDeleted: 0,
+      errors: 0,
+      subtitleParity: {
+        version: 1,
+        latestAttempt: {
+          checkId: "check-1",
+          startedAt: "2026-07-31T00:00:00.000Z",
+          completedAt: "2026-07-31T00:01:00.000Z",
+          status: "completed",
+        },
+        lastCompleted: {
+          checkId: "check-1",
+          startedAt: "2026-07-31T00:00:00.000Z",
+          completedAt: "2026-07-31T00:01:00.000Z",
+          status: "in-sync",
+          manifestVersion: 1,
+          core: { snapshot: "snapshot", rootChecksum: "root", totalCount: 1 },
+          admin: { rootChecksum: "root", totalCount: 1, unprojectableCount: 0 },
+          initialMismatchTotal: 1,
+          repairedTotal: 1,
+          residualTotal: 0,
+          initialMismatchVideoIds: ["video-1"],
+          repairedVideoIds: ["video-1"],
+          residualVideoIds: [],
+          residualReasons: [],
+          residualReasonTruncatedCount: 0,
+        },
+        lastInParity: {
+          checkId: "check-1",
+          completedAt: "2026-07-31T00:01:00.000Z",
+          snapshot: "snapshot",
+          rootChecksum: "root",
+          totalCount: 1,
+        },
+      },
+    })
+
+    const tx = { syncState: {} }
+    const mockPrisma = {
+      $transaction: vi.fn(
+        async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+      $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Parameters<typeof import("./orchestrator").runSyncPhase>[0]
+
+    const { runSyncPhase } = await import("./orchestrator")
+    await runSyncPhase(
+      mockPrisma,
+      {
+        runId: "sync-subtitle-1",
+        incremental: false,
+        phasesToRun: ["video-subtitles"],
+        startedAtMs: Date.now(),
+      },
+      "video-subtitles",
+    )
+
+    expect(syncVideoSubtitles).toHaveBeenCalledWith(
+      expect.objectContaining({ lockOwnerId: "sync-subtitle-1" }),
+    )
+    expect(assertSyncLockHeld).toHaveBeenCalledWith(tx, "sync-subtitle-1")
+    expect(advanceWatermark).toHaveBeenCalledWith(
+      tx,
+      "video-subtitles",
+      expect.any(String),
+      expect.objectContaining({
+        subtitleParity: expect.objectContaining({
+          lastCompleted: expect.objectContaining({ status: "in-sync" }),
+        }),
+      }),
+    )
+  })
+
+  it("does not publish healthy subtitle parity after losing the lock fence", async () => {
+    const { assertSyncLockHeld, refreshSyncLock } = await import("./lock")
+    const { advanceWatermark } = await import("./watermark")
+    const { syncVideoSubtitles } = await import("./phases/sync-video-subtitles")
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(assertSyncLockHeld as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("lock lost"),
+    )
+    ;(syncVideoSubtitles as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      created: 0,
+      updated: 0,
+      softDeleted: 0,
+      errors: 0,
+      subtitleParity: {
+        version: 1,
+        latestAttempt: {
+          checkId: "check-2",
+          startedAt: "2026-07-31T00:00:00.000Z",
+          completedAt: "2026-07-31T00:01:00.000Z",
+          status: "completed",
+        },
+        lastCompleted: { status: "in-sync" },
+        lastInParity: null,
+      },
+    })
+
+    const tx = { syncState: {} }
+    const mockPrisma = {
+      $transaction: vi.fn(
+        async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    } as unknown as Parameters<typeof import("./orchestrator").runSyncPhase>[0]
+
+    const { runSyncPhase } = await import("./orchestrator")
+    await expect(
+      runSyncPhase(
+        mockPrisma,
+        {
+          runId: "sync-subtitle-lost",
+          incremental: false,
+          phasesToRun: ["video-subtitles"],
+          startedAtMs: Date.now(),
+        },
+        "video-subtitles",
+      ),
+    ).rejects.toThrow("lock lost")
+
+    expect(advanceWatermark).not.toHaveBeenCalled()
   })
 })

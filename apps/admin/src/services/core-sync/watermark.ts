@@ -5,8 +5,12 @@
 // the Core query), NOT the completion time — this ensures records that
 // Core updated during the sync run are picked up on the next pass.
 
-import type { PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import type { SyncPhase, SyncStats } from "./types"
+
+type SyncStateWriter =
+  | Pick<PrismaClient, "syncState">
+  | Pick<Prisma.TransactionClient, "syncState">
 
 export async function getWatermark(
   prisma: PrismaClient,
@@ -17,7 +21,7 @@ export async function getWatermark(
 }
 
 export async function advanceWatermark(
-  prisma: PrismaClient,
+  prisma: SyncStateWriter,
   phase: SyncPhase,
   fetchStartedAt: string,
   stats: SyncStats,
@@ -37,7 +41,7 @@ export async function advanceWatermark(
 }
 
 export async function updateStatsOnly(
-  prisma: PrismaClient,
+  prisma: SyncStateWriter,
   phase: SyncPhase,
   stats: SyncStats,
 ): Promise<void> {

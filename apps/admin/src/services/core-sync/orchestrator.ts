@@ -19,7 +19,12 @@ import {
   type SyncPhaseProgress,
   emptySyncStats,
 } from "./types"
-import { acquireSyncLock, refreshSyncLock, releaseSyncLock } from "./lock"
+import {
+  acquireSyncLock,
+  assertSyncLockHeld,
+  refreshSyncLock,
+  releaseSyncLock,
+} from "./lock"
 import {
   getWatermark,
   advanceWatermark,
@@ -39,6 +44,7 @@ import { syncDubDownloads } from "./phases/sync-dub-downloads"
 import { runCoverageAudit, type CoverageAudit } from "./coverage-audit"
 import { refreshWatchRouteManifestAfterCoreSync } from "../watch-route-manifest-refresh.service"
 import { refreshWatchSeoManifestAfterCoreSync } from "../watch-seo-manifest-refresh.service"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "./transaction-options"
 
 const PHASE_RUNNERS: Record<SyncPhase, PhaseRunner> = {
   languages: syncLanguages,
@@ -192,7 +198,12 @@ export async function runSyncPhase(
     let stats: SyncStats
     try {
       const runner = PHASE_RUNNERS[phase]
-      stats = await runner({ prisma, progress, since })
+      stats = await runner({
+        prisma,
+        progress,
+        since,
+        lockOwnerId: run.runId,
+      })
     } catch (err) {
       console.error(
         JSON.stringify({
@@ -207,7 +218,18 @@ export async function runSyncPhase(
 
     // Advance watermark only on zero errors
     if (stats.errors === 0) {
-      await advanceWatermark(prisma, phase, fetchStartedAt, stats)
+      const publishesHealthySubtitleParity =
+        phase === "video-subtitles" &&
+        stats.subtitleParity?.lastCompleted?.status === "in-sync"
+
+      if (publishesHealthySubtitleParity) {
+        await prisma.$transaction(async (tx) => {
+          await assertSyncLockHeld(tx, run.runId)
+          await advanceWatermark(tx, phase, fetchStartedAt, stats)
+        }, CORE_SYNC_TRANSACTION_OPTIONS)
+      } else {
+        await advanceWatermark(prisma, phase, fetchStartedAt, stats)
+      }
     } else {
       await updateStatsOnly(prisma, phase, stats).catch(() => {})
     }

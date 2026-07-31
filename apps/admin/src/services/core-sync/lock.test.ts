@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   acquireSyncLock,
+  assertSyncLockHeld,
   DEFAULT_SYNC_LOCK_STALE_AFTER_MS,
   refreshSyncLock,
   releaseSyncLock,
+  SyncLockFenceError,
 } from "./lock"
 
 function buildPrismaMock(executeResult = 1) {
@@ -66,5 +68,36 @@ describe("core sync lock", () => {
     expect(executedSql(prisma)).toContain("held_by = NULL")
     expect(executedSql(prisma)).toContain("acquired_at = NULL")
     expect(executedSql(prisma)).toContain("WHERE key = ? AND held_by = ?")
+  })
+})
+
+describe("core sync transaction fence", () => {
+  it("locks and validates the current holder using the database clock", async () => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ heldBy: "sync-1" }]),
+    }
+
+    await expect(assertSyncLockHeld(tx as never, "sync-1")).resolves.toBe(
+      undefined,
+    )
+
+    const [strings, ...values] = tx.$queryRaw.mock.calls[0] as [
+      TemplateStringsArray,
+      ...unknown[],
+    ]
+    const sql = strings.join("?").replace(/\s+/g, " ").trim()
+    expect(sql).toContain("held_by = ?")
+    expect(sql).toContain("updated_at >= NOW()")
+    expect(sql).toContain("FOR UPDATE")
+    expect(values).toContain("sync-1")
+    expect(values).toContain(DEFAULT_SYNC_LOCK_STALE_AFTER_MS)
+  })
+
+  it("fails closed when ownership or freshness is not proved", async () => {
+    const tx = { $queryRaw: vi.fn().mockResolvedValue([]) }
+
+    await expect(
+      assertSyncLockHeld(tx as never, "sync-lost"),
+    ).rejects.toBeInstanceOf(SyncLockFenceError)
   })
 })
