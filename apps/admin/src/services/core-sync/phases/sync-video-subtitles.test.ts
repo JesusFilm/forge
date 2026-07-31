@@ -134,8 +134,17 @@ function harness(options: HarnessOptions = {}) {
     { id: "admin-edition-ot", coreId: "core-edition-ot", name: "ot" },
   ]
   const sameVideoEditions = options.sameVideoEditions ?? activeEditions
+  const associatedAdminVideoId = options.videos?.[0]?.id ?? "admin-video-1"
   const videoEditionFindMany = vi.fn((args: { where?: { OR?: unknown } }) =>
-    Promise.resolve(args.where?.OR ? sameVideoEditions : activeEditions),
+    Promise.resolve(
+      args.where?.OR
+        ? sameVideoEditions.map((edition) => ({
+            ...edition,
+            subtitles: [{ videoId: associatedAdminVideoId }],
+            dubs: [],
+          }))
+        : activeEditions,
+    ),
   )
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue(options.existingRows ?? []),

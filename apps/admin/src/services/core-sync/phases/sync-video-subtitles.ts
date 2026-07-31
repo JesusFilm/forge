@@ -448,60 +448,100 @@ async function resolveDetails(
   residualVideoIds: Set<string>,
   residualReasons: SubtitleParityResidualReason[],
 ): Promise<Map<string, ResolvedVideoDetail>> {
-  const [videos, languages, activeEditions] = await Promise.all([
+  const requestedVideoIds = [...details.keys()]
+  const requestedLanguageIds = [
+    ...new Set(
+      [...details.values()].flatMap((detail) =>
+        detail.records.map((record) => record.languageId),
+      ),
+    ),
+  ]
+  const requestedEditionNames = [
+    ...new Set(
+      [...details.values()].flatMap((detail) =>
+        detail.records.map((record) => record.edition),
+      ),
+    ),
+  ]
+
+  const [videos, languages] = await Promise.all([
     prisma.video.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, coreId: { in: requestedVideoIds } },
       select: { id: true, coreId: true },
     }),
     prisma.language.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, coreId: { in: requestedLanguageIds } },
       select: { id: true, coreId: true },
-    }),
-    prisma.videoEdition.findMany({
-      where: { deletedAt: null },
-      select: { id: true, coreId: true, name: true },
     }),
   ])
   const videosByCoreId = new Map(videos.map((video) => [video.coreId, video]))
   const languagesByCoreId = new Map(
     languages.map((language) => [language.coreId, language.id]),
   )
-  const editionsByCoreId = new Map(
-    activeEditions.map((edition) => [edition.coreId, edition]),
-  )
 
   const sameVideoEditions = new Map<
     string,
     Map<string, Array<{ id: string; coreId: string }>>
   >()
+  for (const videoId of requestedVideoIds) {
+    sameVideoEditions.set(videoId, new Map())
+  }
+
+  const adminVideoIds = videos.map((video) => video.id)
+  const coreVideoIdByAdminId = new Map(
+    videos.map((video) => [video.id, video.coreId]),
+  )
+  const associatedEditions =
+    adminVideoIds.length === 0 || requestedEditionNames.length === 0
+      ? []
+      : await prisma.videoEdition.findMany({
+          where: {
+            deletedAt: null,
+            name: { in: requestedEditionNames },
+            OR: [
+              { subtitles: { some: { videoId: { in: adminVideoIds } } } },
+              { dubs: { some: { videoId: { in: adminVideoIds } } } },
+            ],
+          },
+          select: {
+            id: true,
+            coreId: true,
+            name: true,
+            subtitles: {
+              where: { videoId: { in: adminVideoIds } },
+              select: { videoId: true },
+            },
+            dubs: {
+              where: { videoId: { in: adminVideoIds } },
+              select: { videoId: true },
+            },
+          },
+        })
+
+  for (const edition of associatedEditions) {
+    const associatedAdminVideoIds = new Set([
+      ...edition.subtitles.flatMap((subtitle) =>
+        subtitle.videoId ? [subtitle.videoId] : [],
+      ),
+      ...edition.dubs.map((dub) => dub.videoId),
+    ])
+    for (const adminVideoId of associatedAdminVideoIds) {
+      const coreVideoId = coreVideoIdByAdminId.get(adminVideoId)
+      if (!coreVideoId) continue
+      const byName = sameVideoEditions.get(coreVideoId)!
+      const current = byName.get(edition.name) ?? []
+      current.push({ id: edition.id, coreId: edition.coreId })
+      byName.set(edition.name, current)
+    }
+  }
+
   const unresolvedVideoIds = new Set<string>()
 
   for (const detail of details.values()) {
     const adminVideo = videosByCoreId.get(detail.videoId)
     if (!adminVideo || projection.issueVideoIds.has(detail.videoId)) continue
     const names = [...new Set(detail.records.map((record) => record.edition))]
-    if (names.length === 0) {
-      sameVideoEditions.set(detail.videoId, new Map())
-      continue
-    }
-    const candidates = await prisma.videoEdition.findMany({
-      where: {
-        deletedAt: null,
-        name: { in: names },
-        OR: [
-          { subtitles: { some: { videoId: adminVideo.id } } },
-          { dubs: { some: { videoId: adminVideo.id } } },
-        ],
-      },
-      select: { id: true, coreId: true, name: true },
-    })
-    const byName = new Map<string, Array<{ id: string; coreId: string }>>()
-    for (const candidate of candidates) {
-      const current = byName.get(candidate.name) ?? []
-      current.push({ id: candidate.id, coreId: candidate.coreId })
-      byName.set(candidate.name, current)
-    }
-    sameVideoEditions.set(detail.videoId, byName)
+    const byName = sameVideoEditions.get(detail.videoId)!
     if (names.some((name) => byName.get(name)?.length !== 1)) {
       unresolvedVideoIds.add(detail.videoId)
     }
@@ -511,6 +551,26 @@ async function resolveDetails(
   if (unresolvedVideoIds.size > 0) {
     coreRelations = await fetchCoreEditionRelations([...unresolvedVideoIds])
   }
+  const fallbackCoreEditionIds = [
+    ...new Set(
+      [...coreRelations.values()].flatMap((editions) =>
+        editions.map((edition) => edition.id),
+      ),
+    ),
+  ]
+  const fallbackEditions =
+    fallbackCoreEditionIds.length === 0
+      ? []
+      : await prisma.videoEdition.findMany({
+          where: {
+            deletedAt: null,
+            coreId: { in: fallbackCoreEditionIds },
+          },
+          select: { id: true, coreId: true },
+        })
+  const editionsByCoreId = new Map(
+    fallbackEditions.map((edition) => [edition.coreId, edition.id]),
+  )
 
   const resolved = new Map<string, ResolvedVideoDetail>()
   for (const detail of details.values()) {
@@ -563,7 +623,7 @@ async function resolveDetails(
           (edition) => edition.name === record.edition,
         )
         if (coreCandidates.length === 1) {
-          videoEditionId = editionsByCoreId.get(coreCandidates[0]!.id)?.id
+          videoEditionId = editionsByCoreId.get(coreCandidates[0]!.id)
         }
       }
 
@@ -800,8 +860,10 @@ export async function syncVideoSubtitles({
 
     while (true) {
       try {
-        const coreManifest = await fetchVideoSubtitleChecksumManifest()
-        const initialAdmin = await loadAdminProjection(prisma)
+        const [coreManifest, initialAdmin] = await Promise.all([
+          fetchVideoSubtitleChecksumManifest(),
+          loadAdminProjection(prisma),
+        ])
         const bucketMismatches = mismatchedVideoIds(
           coreManifest,
           initialAdmin.manifest,
@@ -906,10 +968,12 @@ export async function syncVideoSubtitles({
           progress.increment()
         }
 
-        const finalCore = await fetchVideoSubtitleChecksumManifest({
-          expectedSnapshot: coreManifest.snapshot,
-        })
-        const finalAdmin = await loadAdminProjection(prisma)
+        const [finalCore, finalAdmin] = await Promise.all([
+          fetchVideoSubtitleChecksumManifest({
+            expectedSnapshot: coreManifest.snapshot,
+          }),
+          loadAdminProjection(prisma),
+        ])
         for (const issue of finalAdmin.issues) {
           addResidual(
             residualVideoIds,
