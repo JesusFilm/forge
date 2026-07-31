@@ -4,6 +4,7 @@ import { coreQuery } from "./core-client"
 import {
   buildVideoSubtitleChecksumManifest,
   fetchVideoSubtitleChecksumManifest,
+  VideoSubtitleSnapshotMismatchError,
   serializeVideoSubtitleChecksumBucket,
   serializeVideoSubtitleChecksumRoot,
   validateVideoSubtitleChecksumManifest,
@@ -168,5 +169,23 @@ describe("video subtitle checksum v1", () => {
       },
       { requireInteropToken: true },
     )
+  })
+
+  it("classifies a successful stale-snapshot response for one safe restart", async () => {
+    const manifest = buildVideoSubtitleChecksumManifest([source])
+    vi.mocked(coreQuery).mockResolvedValue({
+      data: { videoSubtitleChecksumManifest: manifest },
+    })
+
+    const result = fetchVideoSubtitleChecksumManifest({
+      expectedSnapshot: `sha256:${"b".repeat(64)}`,
+    })
+
+    await expect(result).rejects.toBeInstanceOf(
+      VideoSubtitleSnapshotMismatchError,
+    )
+    await expect(result).rejects.toMatchObject({
+      code: "SUBTITLE_SNAPSHOT_MISMATCH",
+    })
   })
 })

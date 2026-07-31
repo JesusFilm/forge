@@ -26,6 +26,7 @@ import type { SubtitleParityDiagnostic } from "../types"
 import {
   buildVideoSubtitleChecksumManifest,
   type VideoSubtitleChecksumSourceRecord,
+  VideoSubtitleSnapshotMismatchError,
 } from "../video-subtitle-checksum"
 import { syncVideoSubtitles } from "./sync-video-subtitles"
 
@@ -114,6 +115,7 @@ type HarnessOptions = {
   languages?: Array<{ id: string; coreId: string }>
   activeEditions?: Array<{ id: string; coreId: string; name: string }>
   sameVideoEditions?: Array<{ id: string; coreId: string; name: string }>
+  managerOnlySameVideoEditions?: boolean
   existingRows?: Array<{
     coreId: string
     source: string
@@ -135,16 +137,25 @@ function harness(options: HarnessOptions = {}) {
   ]
   const sameVideoEditions = options.sameVideoEditions ?? activeEditions
   const associatedAdminVideoId = options.videos?.[0]?.id ?? "admin-video-1"
-  const videoEditionFindMany = vi.fn((args: { where?: { OR?: unknown } }) =>
-    Promise.resolve(
-      args.where?.OR
-        ? sameVideoEditions.map((edition) => ({
-            ...edition,
-            subtitles: [{ videoId: associatedAdminVideoId }],
-            dubs: [],
-          }))
-        : activeEditions,
-    ),
+  const videoEditionFindMany = vi.fn(
+    (args: { where?: { OR?: unknown; source?: string } }) => {
+      if (!args.where?.OR) return Promise.resolve(activeEditions)
+
+      const coreOwnedAssociationQuery =
+        args.where.source === "CORE" &&
+        JSON.stringify(args.where.OR).includes('"source":"CORE"')
+      if (options.managerOnlySameVideoEditions && coreOwnedAssociationQuery) {
+        return Promise.resolve([])
+      }
+
+      return Promise.resolve(
+        sameVideoEditions.map((edition) => ({
+          ...edition,
+          subtitles: [{ videoId: associatedAdminVideoId }],
+          dubs: [],
+        })),
+      )
+    },
   )
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue(options.existingRows ?? []),
@@ -365,6 +376,48 @@ describe("syncVideoSubtitles", () => {
     expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
   })
 
+  it("does not use Manager associations as Core edition proof", async () => {
+    const record = source()
+    const core = buildVideoSubtitleChecksumManifest([record])
+    mocks.fetchManifest
+      .mockResolvedValueOnce(core)
+      .mockResolvedValueOnce(
+        buildVideoSubtitleChecksumManifest([record], ["video-1"]),
+      )
+      .mockResolvedValueOnce(core)
+    mocks.coreQuery.mockResolvedValueOnce({
+      data: { videos: [{ id: "video-1", videoEditions: [] }] },
+    })
+    const { prisma } = harness({
+      projectionRows: [[], []],
+      managerOnlySameVideoEditions: true,
+      sameVideoEditions: [
+        {
+          id: "manager-edition-ot",
+          coreId: "manager-edition-ot",
+          name: "ot",
+        },
+      ],
+    })
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+      lockOwnerId: "run-manager-edition",
+    })
+
+    expect(stats.errors).toBe(0)
+    expect(stats.subtitleParity?.lastCompleted).toMatchObject({
+      status: "out-of-sync",
+      residualTotal: 1,
+      residualVideoIds: ["video-1"],
+    })
+    expect(stats.subtitleParity?.lastCompleted?.residualReasons[0]?.code).toBe(
+      "unresolved-edition",
+    )
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
   it("reports unresolved dependencies as parity residuals without failing execution", async () => {
     const record = source()
     const core = buildVideoSubtitleChecksumManifest([record])
@@ -439,7 +492,7 @@ describe("syncVideoSubtitles", () => {
     const detail = buildVideoSubtitleChecksumManifest([record], ["video-1"])
     mocks.fetchManifest
       .mockResolvedValueOnce(core)
-      .mockRejectedValueOnce(snapshotMismatch())
+      .mockRejectedValueOnce(new VideoSubtitleSnapshotMismatchError())
       .mockResolvedValueOnce(core)
       .mockResolvedValueOnce(detail)
       .mockResolvedValueOnce(core)
@@ -488,6 +541,92 @@ describe("syncVideoSubtitles", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
+  it.each([
+    {
+      name: "a changed manifest identity",
+      expectedCode: "MANIFEST_CHANGED_WITHOUT_SNAPSHOT_ERROR",
+      details: (records: VideoSubtitleChecksumSourceRecord[]) => ({
+        ...buildVideoSubtitleChecksumManifest(records, ["video-1"]),
+        rootChecksum: `sha256:${"b".repeat(64)}`,
+      }),
+    },
+    {
+      name: "an incomplete detail set",
+      expectedCode: "INCOMPLETE_DETAIL_SET",
+      details: (records: VideoSubtitleChecksumSourceRecord[]) => ({
+        ...buildVideoSubtitleChecksumManifest(records, ["video-1"]),
+        details: [],
+      }),
+    },
+  ])(
+    "rejects $name before opening a reconciliation transaction",
+    async ({ expectedCode, details }) => {
+      const record = source()
+      const core = buildVideoSubtitleChecksumManifest([record])
+      mocks.fetchManifest
+        .mockResolvedValueOnce(core)
+        .mockResolvedValueOnce(details([record]))
+      const { prisma, tx } = harness({ projectionRows: [[]] })
+
+      const stats = await syncVideoSubtitles({
+        prisma: prisma as never,
+        progress: progress(),
+        lockOwnerId: "run-invalid-detail",
+      })
+
+      expect(stats.errors).toBe(1)
+      expect(stats.subtitleParity?.latestAttempt).toMatchObject({
+        status: "failed",
+        failure: { code: expectedCode },
+      })
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
+    },
+  )
+
+  it("rejects a duplicate subtitle ID across detail batches before writes", async () => {
+    const records = Array.from({ length: 101 }, (_, index) =>
+      source({
+        id: `subtitle-${index}`,
+        videoId: `video-${index.toString().padStart(3, "0")}`,
+      }),
+    )
+    const core = buildVideoSubtitleChecksumManifest(records)
+    const firstIds = core.buckets.slice(0, 100).map((bucket) => bucket.videoId)
+    const secondIds = core.buckets.slice(100).map((bucket) => bucket.videoId)
+    const secondDetail = buildVideoSubtitleChecksumManifest(records, secondIds)
+    mocks.fetchManifest
+      .mockResolvedValueOnce(core)
+      .mockResolvedValueOnce(
+        buildVideoSubtitleChecksumManifest(records, firstIds),
+      )
+      .mockResolvedValueOnce({
+        ...secondDetail,
+        details: secondDetail.details.map((detail) => ({
+          ...detail,
+          records: detail.records.map((record) => ({
+            ...record,
+            id: "subtitle-0",
+          })),
+        })),
+      })
+    const { prisma, tx } = harness({ projectionRows: [[]] })
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+      lockOwnerId: "run-duplicate-detail",
+    })
+
+    expect(stats.errors).toBe(1)
+    expect(stats.subtitleParity?.latestAttempt).toMatchObject({
+      status: "failed",
+      failure: { code: "DUPLICATE_DETAIL_RECORD" },
+    })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
+  })
+
   it("fails the attempt and performs no delete when the lock fence is lost", async () => {
     const record = source()
     const core = buildVideoSubtitleChecksumManifest([record])
@@ -511,7 +650,7 @@ describe("syncVideoSubtitles", () => {
     expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
   })
 
-  it("batches detail requests at 100 video IDs and samples diagnostics", async () => {
+  it("batches detail requests at 100 video IDs and persists complete ID sets", async () => {
     const records = Array.from({ length: 101 }, (_, index) =>
       source({
         id: `subtitle-${index}`,
@@ -552,7 +691,7 @@ describe("syncVideoSubtitles", () => {
       residualTotal: 101,
     })
     expect(stats.subtitleParity?.lastCompleted?.residualVideoIds).toHaveLength(
-      20,
+      101,
     )
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })

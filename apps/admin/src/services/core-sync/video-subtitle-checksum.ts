@@ -12,6 +12,15 @@ import {
 export const VIDEO_SUBTITLE_CHECKSUM_VERSION = 1 as const
 export const MAX_VIDEO_SUBTITLE_DETAIL_IDS = 100
 
+export class VideoSubtitleSnapshotMismatchError extends Error {
+  readonly code = "SUBTITLE_SNAPSHOT_MISMATCH"
+
+  constructor() {
+    super("Core subtitle checksum manifest snapshot changed")
+    this.name = "VideoSubtitleSnapshotMismatchError"
+  }
+}
+
 const VIDEO_SUBTITLE_BUCKET_DOMAIN = "jfp.subtitle-sync.video"
 const VIDEO_SUBTITLE_ROOT_DOMAIN = "jfp.subtitle-sync.root"
 
@@ -408,7 +417,7 @@ export async function fetchVideoSubtitleChecksumManifest(
     options.expectedSnapshot != null &&
     manifest.snapshot !== options.expectedSnapshot
   ) {
-    throw new Error("Core subtitle checksum manifest snapshot changed")
+    throw new VideoSubtitleSnapshotMismatchError()
   }
   return manifest
 }
