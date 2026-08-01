@@ -20,6 +20,7 @@ import {
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
+import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
@@ -390,7 +391,7 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-5 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
+          className={`relative z-30 grid w-full grid-cols-1 gap-6 px-5 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24 ${SERIES_CONTENT_GLASS_CLASS_NAME}`}
         >
           {description ? (
             <div className="md:col-span-3">
@@ -431,14 +432,13 @@ export function SeriesPageClient({
           (acceptable low-content state per the doc-review deferral —
           editors mid-populating a series still see the hero + metadata
           so they can confirm they're on the right page).
-          The grid owns its own full-bleed section element (bg + padding
-          + z-20 to cover the sticky hero) and accepts the series poster
-          as a default backdrop. SeriesPageClient no longer wraps it. */}
+          The grid owns its full-bleed section and repeats the metadata
+          band's stone glass treatment so the lower page remains visually
+          continuous. */}
       <SeriesEpisodesGrid
         episodes={episodes}
         languageSlug={currentLanguageSlug}
         parentSlug={series.slug ?? ""}
-        seriesPosterUrl={posterUrl}
       />
 
       {modalState === "download" ? (

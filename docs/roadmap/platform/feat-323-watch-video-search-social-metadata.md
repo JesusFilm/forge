@@ -1,5 +1,5 @@
 ---
-id: "feat-322"
+id: "feat-323"
 title: "Add localized Watch video search and social metadata"
 owner: "codex"
 priority: "P1"
@@ -8,7 +8,7 @@ start_date: "2026-07-31"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-323"
+  - "feat-324"
 tags:
   - "platform"
   - "admin"
@@ -72,4 +72,4 @@ Implemented localized Search title, Search description, and managed social-image
 
 Migration `0047_video_locale_search_social_metadata` initializes the canonical English JESUS row with the approved title and description and no image. `pnpm --filter @forge/admin verify:video-search-social-seed` is the read-only promotion check for exact candidate count and field values. The social-image projection preserves its real MIME type and falls back safely when a referenced image is unusable.
 
-Validation completed with Admin/Web/Admin-GraphQL lint and typechecks, generated-schema drift checks, 168 focused Admin tests, 61 focused Web tests, the full Web suite, and the full Admin suite excluding the unrelated Windows `run-embeds` child-process test (its three baseline assertions return a null spawn status on this machine). Browser QA verified the Watch shell and Search open/close interaction with no console errors. Exact live JESUS server HTML could not be rendered in the local browser because the worktree has no valid Admin bearer/database environment; exact head-tag and visible/structured-data isolation remain covered by the passing metadata and route contract tests. Post-release indexing and CTR observation remains tracked by `feat-323`.
+Validation completed with Admin/Web/Admin-GraphQL lint and typechecks, generated-schema drift checks, 168 focused Admin tests, 61 focused Web tests, the full Web suite, and the full Admin suite excluding the unrelated Windows `run-embeds` child-process test (its three baseline assertions return a null spawn status on this machine). Browser QA verified the Watch shell and Search open/close interaction with no console errors. Exact live JESUS server HTML could not be rendered in the local browser because the worktree has no valid Admin bearer/database environment; exact head-tag and visible/structured-data isolation remain covered by the passing metadata and route contract tests. Post-release indexing and CTR observation remains tracked by `feat-324`.

@@ -1,5 +1,5 @@
 ---
-id: "feat-323"
+id: "feat-324"
 title: "Validate Watch video search metadata in Google"
 owner: "codex"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-08-01"
 duration: 14
 depends_on:
-  - "feat-322"
+  - "feat-323"
 blocks: []
 tags:
   - "platform"
@@ -23,7 +23,7 @@ Forge can control the server-rendered title and description, but Google may rewr
 
 ## Entry Points — Read These First
 
-1. `docs/roadmap/platform/feat-322-watch-video-search-social-metadata.md` — source metadata capability and approved JESUS copy.
+1. `docs/roadmap/platform/feat-323-watch-video-search-social-metadata.md` — source metadata capability and approved JESUS copy.
 2. Google Search Console URL Inspection for `https://www.jesusfilm.org/watch/jesus.html` — indexed HTML and recrawl state.
 3. Google Search Console Performance report — query/page impressions, clicks, CTR, and average position.
 
@@ -36,7 +36,7 @@ Forge can control the server-rendered title and description, but Google may rewr
 
 ## What To Build
 
-1. Request or confirm recrawl of the canonical English JESUS URL after `feat-322` is deployed.
+1. Request or confirm recrawl of the canonical English JESUS URL after `feat-323` is deployed.
 2. Record whether Google displays the supplied title and description or rewrites them for the `jesus` query and adjacent high-impression queries.
 3. Compare page/query impressions, clicks, CTR, and average position against a documented pre-release baseline and matched post-release window.
 4. Separate metadata-copy effects from position and query-mix changes; do not attribute CTR movement to copy when rank or query composition materially changed.

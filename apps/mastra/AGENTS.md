@@ -141,6 +141,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   prefer defaults/optional fields that render usable Studio forms.
 - Keep service-bearer auth scoped to explicit `/forge-*` service routes so
   Studio's built-in `/api/workflows` calls continue to work.
+- Parse programmatic workflow input through its exported Zod schema before
+  calling `run.start` or `run.startAsync`. Mastra 1.55 types those calls with
+  the schema output, so fields supplied by `.default()` are required there;
+  do not bypass the contract with casts.
 
 ## Validation
 

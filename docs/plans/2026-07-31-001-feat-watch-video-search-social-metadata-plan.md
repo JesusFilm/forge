@@ -17,7 +17,7 @@ deepened: "2026-07-31"
 - **Authority:** The Product Contract owns page behavior. The Planning Contract owns storage, permissions, propagation, and fallback mechanisms. Existing Forge security, Core-sync, Watch URL, caching, and generated-schema rules remain binding.
 - **Execution profile:** Cross-cutting Prisma migration, Admin service and UI, Pothos schema, generated typed client, Web route projection, metadata, and browser verification.
 - **Stop conditions:** Stop if the English JESUS locale cannot be identified deterministically, if a public Media Library URL cannot be resolved without authenticated Admin access, or if the override would require changing canonical URLs or visible video identity.
-- **Tail ownership:** Complete focused and package-level validation, update `feat-322`, open a pull request, and leave merging to the normal repository flow.
+- **Tail ownership:** Complete focused and package-level validation, update `feat-323`, open a pull request, and leave merging to the normal repository flow.
 
 ---
 
@@ -106,7 +106,7 @@ The current video detail surface is read-only, and the reported language-less ro
 - Published edits invalidate the exact Watch route through the existing best-effort cache boundary.
 - Focused tests prove Core-sync preservation, permission enforcement, route parity, fallback behavior, and structured-data isolation.
 - The change does not introduce request-time dynamic APIs or an N+1 asset lookup on the Watch snapshot path.
-- The shipped guarantee is control of server-rendered source metadata. Google and other search engines may rewrite result titles or snippets, so displayed SERP copy and CTR improvement are measured separately in `feat-323` rather than claimed by this implementation.
+- The shipped guarantee is control of server-rendered source metadata. Google and other search engines may rewrite result titles or snippets, so displayed SERP copy and CTR improvement are measured separately in `feat-324` rather than claimed by this implementation.
 
 ### Scope Boundaries
 
@@ -116,11 +116,11 @@ The current video detail surface is read-only, and the reported language-less ro
 - No arbitrary external image URLs and no initial JESUS social-image assignment.
 - No general `VideoLocale` editor and no widening of Core-owned `write:videos` behavior.
 - Ordinary `EDITOR`-role access is deferred; this scope preserves the existing ADMIN-only video-write boundary unless implementation evidence proves an already-approved narrower permission exists.
-- Search Console indexing, displayed-title, and CTR validation is tracked by `docs/roadmap/platform/feat-323-validate-watch-video-search-metadata.md`; automatic title generation remains separate follow-up work.
+- Search Console indexing, displayed-title, and CTR validation is tracked by `docs/roadmap/platform/feat-324-validate-watch-video-search-metadata.md`; automatic title generation remains separate follow-up work.
 
 ### Sources
 
-- `docs/roadmap/platform/feat-322-watch-video-search-social-metadata.md`
+- `docs/roadmap/platform/feat-323-watch-video-search-social-metadata.md`
 - `docs/solutions/best-practices/admin-asset-backed-experience-media-picker-pattern-20260707.md`
 - `docs/solutions/web/nextjs16-cachecomponents-isr.md`
 - `docs/solutions/database-issues/admin-prisma-client-and-db-migration-drift-after-pull-20260603.md`
@@ -292,6 +292,6 @@ Do not deploy directly or merge the pull request from this work item.
 - U4 is complete when generated contracts and Web normalization carry only the required root locale metadata with bounded query behavior.
 - U5 is complete when every playable route shape emits the overrides while visible content, canonical policy, static caching, and `VideoObject` remain unchanged.
 - All Verification Contract gates applicable to changed files pass or have an explicit evidence-backed environment limitation recorded in the pull request.
-- `docs/roadmap/platform/feat-322-watch-video-search-social-metadata.md` is marked `complete` with final verification notes.
+- `docs/roadmap/platform/feat-323-watch-video-search-social-metadata.md` is marked `complete` with final verification notes.
 - Abandoned experiments, dead branches, temporary fixtures, and unrelated changes are absent from the final diff.
 - A pull request is open, mergeable, and watched through its CI/review tail without direct production deployment.

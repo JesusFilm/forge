@@ -1,7 +1,7 @@
 // Shared image-resolution helper for series-episode rendering.
 //
-// Both SeriesEpisodesGrid (hover backdrop) and SeriesEpisodeCard (card
-// thumbnail) used a byte-for-byte identical 4-tier fallback chain:
+// SeriesEpisodeCard thumbnails and SeriesPageClient's collection-download
+// mapping use the same 4-tier fallback chain:
 // mobileCinematicHigh → thumbnail → mobileCinematicLow → url → null.
 // Keeping it here means a future image-priority change lands in one
 // place instead of drifting between two files.
