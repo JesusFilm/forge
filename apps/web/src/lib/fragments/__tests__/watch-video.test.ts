@@ -113,6 +113,18 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/\bexactLocales\b/)
     expect(printed).toMatch(/\bbroadLocales\b/)
     expect(printed).toMatch(/\benglishLocales\b/)
+    expect(printed).toMatch(/\bsearchTitle\b/)
+    expect(printed).toMatch(/\bsearchDescription\b/)
+    expect(printed).toMatch(
+      /\bsocialImage\s*\{[\s\S]*?\burl\b[\s\S]*?\bwidth\b[\s\S]*?\bheight\b/,
+    )
+    const parentAndChildProjection = printed.slice(
+      printed.indexOf("parents"),
+      printed.indexOf("bibleCitations"),
+    )
+    expect(parentAndChildProjection).not.toMatch(/\bsearchTitle\b/)
+    expect(parentAndChildProjection).not.toMatch(/\bsearchDescription\b/)
+    expect(parentAndChildProjection).not.toMatch(/\bsocialImage\b/)
     expect(printed).toMatch(/\bexactStudyQuestions\b/)
     expect(printed).toMatch(/\bmuxPlaybackId\b/)
     expect(printed).toMatch(/\bplayableDubLanguageCount\b/)

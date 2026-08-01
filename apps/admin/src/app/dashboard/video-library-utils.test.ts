@@ -14,6 +14,7 @@ import {
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
   parseVideoLibrarySelectedVideo,
+  parseVideoLibrarySelectedLocale,
   parseVideoLibrarySort,
   resolveVideoVisitorUrl,
   videoLibraryHref,
@@ -95,6 +96,8 @@ describe("video-library-utils", () => {
     expect(parseVideoLibrarySelectedVideo("core_123")).toBe("core_123")
     expect(parseVideoLibraryCollection("bad value")).toBe("")
     expect(parseVideoLibrarySelectedVideo("/bad")).toBe("")
+    expect(parseVideoLibrarySelectedLocale(" locale_529 ")).toBe("locale_529")
+    expect(parseVideoLibrarySelectedLocale("bad locale")).toBe("")
     expect(parseVideoLibraryCollection("x".repeat(160))).toHaveLength(140)
   })
 

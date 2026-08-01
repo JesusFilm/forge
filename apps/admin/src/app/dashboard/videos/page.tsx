@@ -12,6 +12,7 @@ import {
   Plus,
 } from "lucide-react"
 import { cx, PrimaryButton } from "@/components/admin-ui"
+import { canEditVideo } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import {
   loadVideoLibraryDetail,
@@ -26,6 +27,7 @@ import {
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
   parseVideoLibrarySelectedVideo,
+  parseVideoLibrarySelectedLocale,
   parseVideoLibrarySort,
   type VideoLibraryCategory,
   type VideoLibrarySort,
@@ -33,6 +35,8 @@ import {
 } from "../video-library-utils"
 import { VideoLibraryToolbar } from "./video-library-toolbar"
 import { VideoDetailPage } from "./video-detail-page"
+import { VideoSearchSocialEditor } from "./video-search-social-editor"
+import { loadInitialVideoSearchSocialState } from "./video-search-social-data"
 
 type VideosPageProps = {
   searchParams?: Promise<{
@@ -43,6 +47,7 @@ type VideosPageProps = {
     sort?: string | string[]
     type?: string | string[]
     video?: string | string[]
+    locale?: string | string[]
   }>
 }
 
@@ -461,6 +466,7 @@ export default async function VideosPage({
   const collection = parseVideoLibraryCollection(params.collection)
   const language = parseVideoLibraryLanguage(params.language)
   const selectedVideo = parseVideoLibrarySelectedVideo(params.video)
+  const selectedLocale = parseVideoLibrarySelectedLocale(params.locale)
   const sort = parseVideoLibrarySort(params.sort)
   const paginationState = { category, collection, language, query, sort }
   const closeVideoHref = videoLibraryHref({
@@ -472,11 +478,33 @@ export default async function VideosPage({
     const selectedVideoDetail = await loadVideoLibraryDetail(selectedVideo)
 
     if (selectedVideoDetail) {
+      const canEditSearchSocial = canEditVideo(principal)
+      const searchSocial = canEditSearchSocial
+        ? await loadInitialVideoSearchSocialState({
+            user: principal,
+            videoId: selectedVideoDetail.key,
+            requestedVideoLocaleId: selectedLocale || undefined,
+          })
+        : {
+            initialOptions: [],
+            initialLocale: null,
+          }
+
       return (
         <VideoDetailPage
           backHref={closeVideoHref}
           detail={selectedVideoDetail}
           labels={page.detail}
+          searchSocialEditor={
+            <VideoSearchSocialEditor
+              videoId={selectedVideoDetail.key}
+              canEdit={canEditSearchSocial}
+              initialOptions={searchSocial.initialOptions}
+              initialLocale={searchSocial.initialLocale}
+              mediaLibrary={{ rootLabel: "Library", folders: [], images: [] }}
+              mediaLibraryInitiallyLoaded={false}
+            />
+          }
         />
       )
     }

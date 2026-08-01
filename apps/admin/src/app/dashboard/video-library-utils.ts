@@ -128,6 +128,12 @@ export function parseVideoLibrarySelectedVideo(
   return parseVideoLibraryIdentifier(value)
 }
 
+export function parseVideoLibrarySelectedLocale(
+  value: string | string[] | undefined,
+) {
+  return parseVideoLibraryIdentifier(value)
+}
+
 export function parseVideoLibraryCollection(
   value: string | string[] | undefined,
 ) {

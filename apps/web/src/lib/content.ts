@@ -287,6 +287,9 @@ export type WatchVideoRecord = {
   noIndex: boolean | null
   label: string | null
   imageAlt: string | null
+  searchTitle?: string | null
+  searchDescription?: string | null
+  socialImage?: WatchSocialImage | null
   images: WatchImage[]
   primaryLanguage: { coreId: string | null; bcp47: string | null } | null
   parents: WatchParent[]
@@ -304,12 +307,22 @@ export type WatchVideoRecord = {
   bibleCitations: WatchBibleCitation[]
 }
 
+export type WatchSocialImage = {
+  url: string
+  width: number | null
+  height: number | null
+  mimeType?: string | null
+}
+
 export type RouteVideo = {
   documentId: string
   slug: string
   title: string
   snippet: string | null
   description: string | null
+  searchTitle?: string | null
+  searchDescription?: string | null
+  socialImage?: WatchSocialImage | null
   noIndex: boolean
   imageUrl: string | null
   imageAlt: string | null
@@ -475,6 +488,14 @@ type AdminLocaleRaw = {
   description?: string | null
   snippet?: string | null
   imageAlt?: string | null
+  searchTitle?: string | null
+  searchDescription?: string | null
+  socialImage?: {
+    url?: string | null
+    width?: number | null
+    height?: number | null
+    mimeType?: string | null
+  } | null
 }
 
 type AdminImageRaw = {
@@ -654,6 +675,18 @@ function normalizeImages(
   return (images ?? [])
     .map(normalizeImage)
     .filter((i): i is WatchImage => i != null)
+}
+
+function normalizeSocialImage(
+  image: AdminLocaleRaw["socialImage"],
+): WatchSocialImage | null {
+  if (!image?.url) return null
+  return {
+    url: image.url,
+    width: image.width ?? null,
+    height: image.height ?? null,
+    ...(image.mimeType?.trim() ? { mimeType: image.mimeType.trim() } : {}),
+  }
 }
 
 // Stable-order dedup by documentId. Keeps the first occurrence so the
@@ -909,6 +942,9 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     noIndex: raw.noIndex ?? null,
     label: raw.label ?? null,
     imageAlt: localeRow?.imageAlt ?? null,
+    searchTitle: localeRow?.searchTitle ?? null,
+    searchDescription: localeRow?.searchDescription ?? null,
+    socialImage: normalizeSocialImage(localeRow?.socialImage),
     images: normalizeImages(raw.images),
     primaryLanguage: raw.primaryLanguage
       ? {
@@ -1079,6 +1115,9 @@ function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
     title: video.title ?? "",
     snippet: video.snippet ?? null,
     description: video.description ?? null,
+    searchTitle: video.searchTitle,
+    searchDescription: video.searchDescription,
+    socialImage: video.socialImage,
     noIndex: video.noIndex ?? false,
     imageUrl: video.images?.[0]?.url ?? null,
     imageAlt: video.imageAlt ?? null,
