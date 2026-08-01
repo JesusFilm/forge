@@ -274,6 +274,15 @@ export type WatchRouteSnapshotStudyQuestion = {
   order: number | null
 }
 
+export type WatchRouteSnapshotGeneratedQuestion = {
+  documentId: string
+  sourceStudyQuestionId: string
+  languageSlug: string | null
+  question: string
+  answer: string
+  order: number | null
+}
+
 export type WatchRouteSnapshotPreferredVariant = {
   documentId: string
   slug: string | null
@@ -302,6 +311,9 @@ export type WatchRouteSnapshot = {
   exactStudyQuestions: WatchRouteSnapshotStudyQuestion[]
   broadStudyQuestions: WatchRouteSnapshotStudyQuestion[]
   englishStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  exactGeneratedQuestions: WatchRouteSnapshotGeneratedQuestion[]
+  broadGeneratedQuestions: WatchRouteSnapshotGeneratedQuestion[]
+  englishGeneratedQuestions: WatchRouteSnapshotGeneratedQuestion[]
   playableDubLanguageCount: number
   preferredVariant: WatchRouteSnapshotPreferredVariant | null
 }
@@ -872,6 +884,55 @@ function studyQuestionBucketsForSnapshot(
   }
 }
 
+export function generatedQuestionBucketsForSnapshot(
+  rows: Array<{
+    id: string
+    sourceStudyQuestionId: string
+    languageSlug: string | null
+    locale: string | null
+    question: string
+    answer: string
+    order: number | null
+  }>,
+  {
+    locale,
+    languageSlug,
+  }: {
+    locale: string
+    languageSlug: string | null
+  },
+) {
+  const mapRow = (
+    row: (typeof rows)[number],
+  ): WatchRouteSnapshotGeneratedQuestion => ({
+    documentId: row.id,
+    sourceStudyQuestionId: row.sourceStudyQuestionId,
+    languageSlug: row.languageSlug,
+    question: row.question.trim(),
+    answer: row.answer.trim(),
+    order: row.order,
+  })
+  const validRows = rows.filter(
+    (row) => row.question.trim().length > 0 && row.answer.trim().length > 0,
+  )
+
+  return {
+    exactGeneratedQuestions: validRows
+      .filter(
+        (row) =>
+          row.locale === locale &&
+          (languageSlug == null || row.languageSlug === languageSlug),
+      )
+      .map(mapRow),
+    broadGeneratedQuestions: validRows
+      .filter((row) => row.locale === locale)
+      .map(mapRow),
+    englishGeneratedQuestions: validRows
+      .filter((row) => row.locale === "en")
+      .map(mapRow),
+  }
+}
+
 function imageRowsForSnapshot(
   rows: Array<{
     id: string
@@ -1389,6 +1450,7 @@ export class VideoService {
       imageRows,
       localeRows,
       studyQuestionRows,
+      generatedQuestionRows,
       exactMuxRows,
       fallbackMuxRows,
       durationRows,
@@ -1452,6 +1514,36 @@ export class VideoService {
           locale: true,
           languageSlug: true,
           text: true,
+          order: true,
+        },
+      }),
+      this.prisma.videoGeneratedQuestion.findMany({
+        where: {
+          videoId: root.id,
+          deletedAt: null,
+          question: { not: "" },
+          answer: { not: "" },
+          ...(isEditorOrAdmin(user) ? {} : { status: "PUBLISHED" as const }),
+          OR: [
+            { locale },
+            { locale: "en" },
+            ...(normalizedLanguageSlug == null
+              ? []
+              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+          ],
+        },
+        orderBy: [
+          { order: { sort: "asc", nulls: "last" } },
+          { languageSlug: "asc" },
+          { id: "asc" },
+        ],
+        select: {
+          id: true,
+          sourceStudyQuestionId: true,
+          locale: true,
+          languageSlug: true,
+          question: true,
+          answer: true,
           order: true,
         },
       }),
@@ -1720,6 +1812,7 @@ export class VideoService {
       })),
       ...localeBucketsForSnapshot(localeRows, root.id, localeArgs),
       ...studyQuestionBucketsForSnapshot(studyQuestionRows, localeArgs),
+      ...generatedQuestionBucketsForSnapshot(generatedQuestionRows, localeArgs),
       playableDubLanguageCount,
       preferredVariant: preferredVariant
         ? {

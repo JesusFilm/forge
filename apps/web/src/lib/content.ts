@@ -69,6 +69,19 @@ const GET_WATCH_SETTINGS = adminGraphql(
   [watchExperienceFragment],
 )
 
+const GET_DEFAULT_WATCH_TEMPLATE = adminGraphql(
+  `
+    query GetDefaultWatchTemplate($locale: String!) {
+      watchSetting(locale: $locale) {
+        defaultTemplateExperience {
+          ...WatchExperience
+        }
+      }
+    }
+  `,
+  [watchExperienceFragment],
+)
+
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
 type GetWatchLanguagePickerVariantsData = AdminResultOf<
   typeof getWatchLanguagePickerVariantsBySlugOperation
@@ -301,7 +314,16 @@ export type WatchVideoRecord = {
   playableLanguageCount?: number
   subtitles: WatchSubtitle[]
   studyQuestions: WatchStudyQuestion[]
+  generatedQuestions?: WatchGeneratedQuestion[]
   bibleCitations: WatchBibleCitation[]
+}
+
+export type WatchGeneratedQuestion = {
+  documentId: string
+  sourceStudyQuestionId: string
+  question: string
+  answer: string
+  order: number | null
 }
 
 export type RouteVideo = {
@@ -315,6 +337,7 @@ export type RouteVideo = {
   imageAlt: string | null
   streamingUrl: string | null
   relatedItems: EnrichedMediaItem[]
+  generatedQuestions?: WatchGeneratedQuestion[]
 }
 
 export type ResolvedWatchPage =
@@ -455,6 +478,49 @@ async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
   return result.data?.watchSetting ?? null
 }
 
+const fetchDefaultWatchTemplateExperience = unstable_cache(
+  async (locale: string): Promise<NonNullable<WatchExperience> | null> => {
+    try {
+      const result = await client.query({
+        query: GET_DEFAULT_WATCH_TEMPLATE,
+        variables: { locale },
+        fetchPolicy: "no-cache",
+      })
+
+      const error = graphqlError(
+        result as { error?: ErrorLike; errors?: unknown[] },
+      )
+      if (error) throw error
+
+      return (result.data?.watchSetting?.defaultTemplateExperience ??
+        null) as NonNullable<WatchExperience> | null
+    } catch (error) {
+      // The shared Experience is supplemental. A settings or GraphQL outage
+      // must not take down the canonical video page that already resolved.
+      logWatchServerEvent("watch_template.resolve_failed", {
+        locale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return null
+    }
+  },
+  ["watch-default-template-experience"],
+  {
+    revalidate: 60,
+    tags: [WATCH_CACHE_TAGS.settings, WATCH_CACHE_TAGS.experience],
+  },
+)
+
+/**
+ * Returns the one published shared Experience used as supplemental content on
+ * single-video pages. Missing or failed settings resolve to null so the
+ * generated video page remains independently available.
+ */
+export const resolveDefaultWatchTemplateExperience = cache(
+  async (locale: string): Promise<NonNullable<WatchExperience> | null> =>
+    fetchDefaultWatchTemplateExperience(locale),
+)
+
 // Admin-shape → flat-shape transform. Single normalisation surface
 // consumed by both watch routes (3-segment and 2-segment) since they
 // share the shell/copy/Dub-detail fetch path; keeps the resolver-visible
@@ -579,6 +645,15 @@ type AdminStudyQuestionRaw = {
   order?: number | null
 }
 
+type AdminGeneratedQuestionRaw = {
+  documentId: string | null
+  sourceStudyQuestionId?: string | null
+  languageSlug?: string | null
+  question?: string | null
+  answer?: string | null
+  order?: number | null
+}
+
 type AdminVideoRaw = {
   documentId: string | null
   slug?: string | null
@@ -593,6 +668,7 @@ type AdminVideoRaw = {
   variants?: AdminVideoVariantRaw[] | null
   playableDubLanguageCount?: number | null
   studyQuestions?: AdminStudyQuestionRaw[] | null
+  generatedQuestions?: AdminGeneratedQuestionRaw[] | null
   bibleCitations?: AdminBibleCitationRaw[] | null
 }
 
@@ -608,6 +684,12 @@ type AdminVideoRouteSnapshotStudyQuestionAliases = {
   exactStudyQuestions?: AdminStudyQuestionRaw[] | null
   broadStudyQuestions?: AdminStudyQuestionRaw[] | null
   englishStudyQuestions?: AdminStudyQuestionRaw[] | null
+}
+
+type AdminVideoRouteSnapshotGeneratedQuestionAliases = {
+  exactGeneratedQuestions?: AdminGeneratedQuestionRaw[] | null
+  broadGeneratedQuestions?: AdminGeneratedQuestionRaw[] | null
+  englishGeneratedQuestions?: AdminGeneratedQuestionRaw[] | null
 }
 
 type AdminVideoRouteSnapshotChildRelation = {
@@ -628,7 +710,8 @@ type AdminVideoRouteSnapshotParentRelation = {
 
 type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
-  AdminVideoRouteSnapshotStudyQuestionAliases & {
+  AdminVideoRouteSnapshotStudyQuestionAliases &
+  AdminVideoRouteSnapshotGeneratedQuestionAliases & {
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
@@ -955,6 +1038,27 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
         }
       })
       .filter((q): q is WatchStudyQuestion => q != null),
+    generatedQuestions: (raw.generatedQuestions ?? [])
+      .map((item): WatchGeneratedQuestion | null => {
+        const question = item.question?.trim() ?? ""
+        const answer = item.answer?.trim() ?? ""
+        if (
+          !item.documentId ||
+          !item.sourceStudyQuestionId ||
+          !question ||
+          !answer
+        ) {
+          return null
+        }
+        return {
+          documentId: item.documentId,
+          sourceStudyQuestionId: item.sourceStudyQuestionId,
+          question,
+          answer,
+          order: item.order ?? null,
+        }
+      })
+      .filter((item): item is WatchGeneratedQuestion => item != null),
     bibleCitations: (raw.bibleCitations ?? [])
       .map((c): WatchBibleCitation | null => {
         if (!c.documentId) return null
@@ -1069,8 +1173,12 @@ function normalizeRelatedRouteItems(
     .slice(0, 24)
 }
 
-function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
-  const selectedVariant = selectPlayableVariantForRouteSynth(video)
+export function buildRouteVideo(
+  video: WatchVideoRecord,
+  selectedRouteVariant?: WatchVariant | null,
+): RouteVideo | null {
+  const selectedVariant =
+    selectedRouteVariant ?? selectPlayableVariantForRouteSynth(video)
   if (!selectedVariant?.hls) return null
 
   return {
@@ -1084,6 +1192,7 @@ function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
     imageAlt: video.imageAlt ?? null,
     streamingUrl: selectedVariant.hls ?? null,
     relatedItems: normalizeRelatedRouteItems(video),
+    generatedQuestions: video.generatedQuestions ?? [],
   }
 }
 
@@ -1118,7 +1227,7 @@ async function resolveSlugPage(
     const templateExperience = settings?.defaultTemplateExperience ?? null
     if (!templateExperience) return null
 
-    const routeVideo = normalizeRouteVideo(routeVideoRecord)
+    const routeVideo = buildRouteVideo(routeVideoRecord)
     if (!routeVideo?.streamingUrl) return null
 
     return {
@@ -1391,6 +1500,9 @@ function mergeContentFallback(
     studyQuestions: hasItems(localized.studyQuestions)
       ? localized.studyQuestions
       : fallback.studyQuestions,
+    generatedQuestions: hasItems(localized.generatedQuestions)
+      ? localized.generatedQuestions
+      : fallback.generatedQuestions,
     parents: mergeParentRelationLocales(localized.parents, fallback.parents),
     children: mergeChildRelationLocales(localized.children, fallback.children),
   } as AdminVideoLocalizedCopyRaw
@@ -1420,6 +1532,7 @@ function needsContentFallback(raw: AdminVideoLocalizedCopyRaw): boolean {
   return (
     !hasItems(raw.locales) ||
     !hasItems(raw.studyQuestions) ||
+    !hasItems(raw.generatedQuestions) ||
     parentRelationLocalesMissing(raw.parents) ||
     childRelationLocalesMissing(raw.children)
   )
@@ -1455,6 +1568,23 @@ function snapshotStudyQuestionsForLayer(
       return node.broadStudyQuestions ?? []
     case "english":
       return node.englishStudyQuestions ?? []
+  }
+}
+
+function snapshotGeneratedQuestionsForLayer(
+  node: AdminVideoRouteSnapshotGeneratedQuestionAliases,
+  layer: AdminVideoRouteSnapshotCopyLayer,
+): AdminGeneratedQuestionRaw[] {
+  const legacyGeneratedQuestions = (
+    node as { generatedQuestions?: AdminGeneratedQuestionRaw[] | null }
+  ).generatedQuestions
+  switch (layer) {
+    case "exact":
+      return node.exactGeneratedQuestions ?? legacyGeneratedQuestions ?? []
+    case "broad":
+      return node.broadGeneratedQuestions ?? []
+    case "english":
+      return node.englishGeneratedQuestions ?? []
   }
 }
 
@@ -1500,6 +1630,7 @@ function snapshotCopyForLayer(
     parents: snapshotParentRelationsForLayer(snapshot.parents, layer),
     children: snapshotChildRelationsForLayer(snapshot.children, layer),
     studyQuestions: snapshotStudyQuestionsForLayer(snapshot, layer),
+    generatedQuestions: snapshotGeneratedQuestionsForLayer(snapshot, layer),
   } as AdminVideoLocalizedCopyRaw
 }
 
@@ -1754,6 +1885,11 @@ function mergeWatchVideoShellWithCopy(
     studyQuestions:
       (copy?.studyQuestions as AdminStudyQuestionRaw[] | null | undefined) ??
       [],
+    generatedQuestions:
+      (copy?.generatedQuestions as
+        | AdminGeneratedQuestionRaw[]
+        | null
+        | undefined) ?? [],
   } as AdminVideoRaw
 }
 
@@ -2360,8 +2496,8 @@ export type MergedWatchBlock = WatchBlock | ExperienceBlock
 
 /**
  * Admin `__typename` values that mount their own player and would steal
- * Mux Data attribution from the watch-page HeroPlayer. These are rejected
- * at merge time when targeting the HeroPlayer slot.
+ * Mux Data attribution from the watch-page HeroPlayer. Override mode rejects
+ * these; append mode ignores them.
  */
 const PLAYER_BEARING_BLOCK_TYPES = new Set<string>([
   "VideoHeroBlock",
@@ -2633,6 +2769,12 @@ type MergeWatchExperienceArgs = {
   selectableParents?: CarouselParent[]
   /** Optional Experience override — when omitted, all 6 slots auto-template. */
   experience?: WatchExperience | null
+  /**
+   * `override` lets authored blocks fill generated slots. `append` preserves
+   * every generated slot and renders non-player Experience blocks after them
+   * as one shared supplemental template.
+   */
+  experienceMode?: "override" | "append"
 }
 
 /**
@@ -2650,6 +2792,9 @@ type MergeWatchExperienceArgs = {
  * - Experience blocks not targeting any of the 6 slots (PromoBanner,
  *   InfoBlocks, Cta, etc.) append after the 6 slots in the order the
  *   Experience supplied them.
+ * - In append mode, no authored block fills or replaces a generated slot.
+ *   Non-player Experience blocks follow the generated page in authored order;
+ *   player-bearing blocks are ignored so the page keeps one canonical player.
  *
  * The returned array order matches the visual watch-page order:
  * HeroPlayer → SiblingCarousel → WatchBody → StudyQuestions → BibleQuotes →
@@ -2661,6 +2806,7 @@ export function mergeWatchExperience({
   canonicalParent,
   selectableParents,
   experience,
+  experienceMode = "override",
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
   const passthrough: ExperienceBlock[] = []
@@ -2669,21 +2815,27 @@ export function mergeWatchExperience({
     (b): b is ExperienceBlock => b != null,
   )
 
-  for (const block of experienceBlocks) {
-    const slot = blockSlot(block)
-    if (slot === "HeroPlayer" && !isWatchBlock(block)) {
-      // HeroPlayer slot is type-restricted: only synthetic HeroPlayer blocks
-      // are accepted. Any Experience-typed player block reaching here is
-      // rejected to preserve Mux Data attribution to the watch-page player.
-      throw new WatchVideoError("INVALID_HERO_PLAYER_BLOCK", {
-        message: HERO_PLAYER_REJECTION_MESSAGE,
-      })
-    }
-    if (slot != null) {
-      // Last-write-wins inside Experience for a given slot.
-      overrides.set(slot, block)
-    } else {
-      passthrough.push(block)
+  if (experienceMode === "append") {
+    passthrough.push(
+      ...experienceBlocks.filter((block) => blockSlot(block) !== "HeroPlayer"),
+    )
+  } else {
+    for (const block of experienceBlocks) {
+      const slot = blockSlot(block)
+      if (slot === "HeroPlayer" && !isWatchBlock(block)) {
+        // HeroPlayer slot is type-restricted: only synthetic HeroPlayer blocks
+        // are accepted. Any Experience-typed player block reaching here is
+        // rejected to preserve Mux Data attribution to the watch-page player.
+        throw new WatchVideoError("INVALID_HERO_PLAYER_BLOCK", {
+          message: HERO_PLAYER_REJECTION_MESSAGE,
+        })
+      }
+      if (slot != null) {
+        // Last-write-wins inside Experience for a given slot.
+        overrides.set(slot, block)
+      } else {
+        passthrough.push(block)
+      }
     }
   }
 

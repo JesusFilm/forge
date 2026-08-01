@@ -6,6 +6,7 @@ export const adminRelatedQuestionsFragment = adminGraphql(`
     t
     sectionKey
     heading
+    questionsSource
     ctaEnabled
     ctaLabel
     ctaLink

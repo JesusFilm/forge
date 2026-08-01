@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest"
 import type { Principal } from "@/auth/principal"
 import {
   videoChildrenFilter,
+  videoGeneratedQuestionsFilter,
   videoLocalesFilter,
   videoParentsFilter,
   videoStudyQuestionsFilter,
@@ -134,6 +135,57 @@ describe("videoLocalesFilter", () => {
     expect(videoLocalesFilter({ languageSlug: "" }, PUBLIC_USER)).toEqual({
       where: { status: "PUBLISHED", deletedAt: null },
       orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
+    })
+  })
+})
+
+describe("videoGeneratedQuestionsFilter", () => {
+  const orderBy = [
+    { order: { sort: "asc", nulls: "last" } },
+    { languageSlug: "asc" },
+    { id: "asc" },
+  ]
+
+  it("keeps public reads published, non-deleted, and non-blank", () => {
+    expect(
+      videoGeneratedQuestionsFilter(
+        { locale: "ru", languageSlug: "russian" },
+        PUBLIC_USER,
+      ),
+    ).toEqual({
+      where: {
+        deletedAt: null,
+        question: { not: "" },
+        answer: { not: "" },
+        locale: "ru",
+        languageSlug: "russian",
+        status: "PUBLISHED",
+      },
+      orderBy,
+    })
+  })
+
+  it("lets editors inspect all non-deleted rows, including malformed drafts", () => {
+    expect(videoGeneratedQuestionsFilter({}, EDITOR)).toEqual({
+      where: { deletedAt: null },
+      orderBy,
+    })
+  })
+
+  it("normalizes empty locale arguments", () => {
+    expect(
+      videoGeneratedQuestionsFilter(
+        { locale: "", languageSlug: "" },
+        CONSUMER_BEARER,
+      ),
+    ).toEqual({
+      where: {
+        deletedAt: null,
+        question: { not: "" },
+        answer: { not: "" },
+        status: "PUBLISHED",
+      },
+      orderBy,
     })
   })
 })

@@ -6,6 +6,7 @@ import {
   ContainerBlockSchema,
   ContainerSlotBlockSchema,
   QuizButtonBlockSchema,
+  RelatedQuestionsBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
   TextBlockSchema,
@@ -178,6 +179,28 @@ describe("BlockSchema — all top-level types validate", () => {
       ],
     })
     expect(result.success).toBe(true)
+  })
+
+  it("defaults Related Questions to authored content and accepts the route-video source", () => {
+    const manual = RelatedQuestionsBlockSchema.parse({
+      t: "relatedQuestions",
+      questions: [{ question: "Why?", answer: "Because." }],
+    })
+    expect(manual.questionsSource).toBe("manual")
+
+    expect(
+      RelatedQuestionsBlockSchema.safeParse({
+        t: "relatedQuestions",
+        questionsSource: "routeVideoGeneratedQuestions",
+        questions: [{ question: "Fallback?", answer: "Fallback." }],
+      }).success,
+    ).toBe(true)
+    expect(
+      RelatedQuestionsBlockSchema.safeParse({
+        t: "relatedQuestions",
+        questionsSource: "runtimeGeneration",
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts explicit media collection thumbnail orientations without changing legacy blocks", () => {

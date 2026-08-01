@@ -81,6 +81,46 @@
           "description": "La película sobre la vida de Jesús."
         }
       ],
+      "dubs": [
+        {
+          "fixtureId": "fixt-dub-jesus-feature-english",
+          "languageCoreId": "529",
+          "hls": "https://stream.mux.com/279mJsIfidib02HlmY2Px01yCfAQ5urCkfimsCcJ36rBA.m3u8",
+          "duration": 120
+        }
+      ],
+      "studyQuestions": [
+        {
+          "fixtureId": "fixt-study-jesus-love",
+          "languageCoreId": "529",
+          "text": "What does Jesus reveal about God's love?",
+          "order": 1
+        },
+        {
+          "fixtureId": "fixt-study-jesus-overlooked",
+          "languageCoreId": "529",
+          "text": "How does Jesus respond to people who are overlooked?",
+          "order": 2
+        }
+      ],
+      "generatedQuestions": [
+        {
+          "fixtureId": "fixt-generated-jesus-love",
+          "sourceStudyQuestionFixtureId": "fixt-study-jesus-love",
+          "languageCoreId": "529",
+          "question": "What does Jesus reveal about God's love?",
+          "answer": "Across the film, Jesus moves toward people with compassion, forgiveness, and truth. His actions present God's love as personal: it seeks people out and invites them into restored relationship.",
+          "order": 1
+        },
+        {
+          "fixtureId": "fixt-generated-jesus-overlooked",
+          "sourceStudyQuestionFixtureId": "fixt-study-jesus-overlooked",
+          "languageCoreId": "529",
+          "question": "How does Jesus respond to people who are overlooked?",
+          "answer": "Jesus notices people others pass by, listens to them, and treats them with dignity. The film shows that no one is outside the reach of his attention or invitation.",
+          "order": 2
+        }
+      ],
       "parents": ["fixt-jesus-collection"]
     },
     {
@@ -113,6 +153,32 @@
           "title": "Pâques Expliqué",
           "description": "Ce que Pâques signifie vraiment."
         }
+      ],
+      "dubs": [
+        {
+          "fixtureId": "fixt-dub-easter-explained-english",
+          "languageCoreId": "529",
+          "hls": "https://stream.mux.com/8qf4FwfwVe8LbH651SRJ2vLuQkks3Zz015y2b7Cnfg1A.m3u8",
+          "duration": 120
+        }
+      ],
+      "studyQuestions": [
+        {
+          "fixtureId": "fixt-study-easter-hope",
+          "languageCoreId": "529",
+          "text": "What does the resurrection mean for people facing loss?",
+          "order": 1
+        }
+      ],
+      "generatedQuestions": [
+        {
+          "fixtureId": "fixt-generated-easter-hope",
+          "sourceStudyQuestionFixtureId": "fixt-study-easter-hope",
+          "languageCoreId": "529",
+          "question": "What does the resurrection mean for people facing loss?",
+          "answer": "The video presents the resurrection as God's answer to death and despair. It offers hope that loss is not the end and that new life is possible through Jesus.",
+          "order": 1
+        }
       ]
     },
     {
@@ -125,6 +191,14 @@
           "languageCoreId": "529",
           "title": "My Last Day",
           "description": "The final hours of Jesus' life from a criminal's point of view."
+        }
+      ],
+      "dubs": [
+        {
+          "fixtureId": "fixt-dub-my-last-day-english",
+          "languageCoreId": "529",
+          "hls": "https://stream.mux.com/C3TuBfyhZlXLQu6YGYPq1Ny6zzb9h802MDerNO9opED4.m3u8",
+          "duration": 120
         }
       ]
     }
@@ -227,12 +301,65 @@
           "metaDescription": "Default template applied when a specific watch experience is missing for a locale.",
           "blocks": [
             {
-              "t": "videoHero",
-              "useRouteVideo": false,
-              "videoCoreId": "fixt-jesus-feature",
-              "heading": "Watch",
-              "subheading": "Default fallback template.",
-              "ctaLabel": "Start"
+              "t": "text",
+              "sectionKey": "single-video-question-invitation",
+              "heading": "Go deeper with questions from this video",
+              "headingLevel": "h2",
+              "subtitle": "Explore further",
+              "contentParagraphs": [
+                "Take a moment to reflect on what you watched. Explore the questions below to connect the video's ideas with your faith and everyday life."
+              ],
+              "variant": "promotional"
+            },
+            {
+              "t": "relatedQuestions",
+              "sectionKey": "single-video-shared-questions",
+              "heading": "Questions for this video",
+              "questionsSource": "routeVideoGeneratedQuestions",
+              "questions": [
+                {
+                  "question": "What stood out to you in this video?",
+                  "answer": "Notice the moment, character, or idea that stayed with you and why it felt important."
+                },
+                {
+                  "question": "What could this change in your life this week?",
+                  "answer": "Choose one specific response you can put into practice after watching."
+                }
+              ]
+            },
+            {
+              "t": "container",
+              "sectionKey": "single-video-question-cta",
+              "content": [
+                {
+                  "t": "containerSlot",
+                  "gridSpan": 6
+                },
+                {
+                  "t": "cta",
+                  "sectionKey": "single-video-chat-cta",
+                  "backgroundColor": "transparent",
+                  "heading": "Talk it through",
+                  "body": "Connect with someone who is ready to listen and discuss your questions.",
+                  "buttonLabel": "Chat with a person",
+                  "buttonLink": "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch",
+                  "variant": "secondary"
+                },
+                {
+                  "t": "containerSlot",
+                  "gridSpan": 6
+                },
+                {
+                  "t": "cta",
+                  "sectionKey": "single-video-bible-question-cta",
+                  "backgroundColor": "transparent",
+                  "heading": "Ask a Bible question",
+                  "body": "Send your question and continue exploring what the Bible says.",
+                  "buttonLabel": "Ask a Bible question",
+                  "buttonLink": "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch",
+                  "variant": "secondary"
+                }
+              ]
             }
           ]
         }

@@ -405,11 +405,34 @@ A migration failure state the team has classified as safe for automated failed-r
 
 ### Experience
 
-A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
+An Admin-authored composition of ordered Experience Blocks that supplies an
+editorial frame for Watch content. An Experience can publish as its own themed
+page or be designated as a reusable template whose blocks receive the current
+Watch route's content at render time.
 
 ### Experience Block
 
 An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.
+
+### Single-Video Experience Template
+
+An Experience applied once as the shared supplemental layout for ordinary
+single-Video Watch routes, with route-aware blocks binding to each route's
+Video instead of cloning an Experience per Video.
+
+The template appends to the canonical Watch page. Missing route-owned content
+must degrade to authored fallback content and must not remove or replace the
+player, built-in study questions, Bible content, or sharing.
+
+### Generated Video Q&A
+
+Localized, reviewed question-and-answer content owned by one Video and grounded
+in that same Video's source study questions, intended for reuse by route-aware
+Experience Blocks.
+
+Generated Video Q&A is not public merely because it was generated. Public Watch
+reads admit only published, non-deleted, nonblank items; a missing eligible set
+selects the Single-Video Experience Template's authored fallback as a whole.
 
 ### Media Collection Block
 

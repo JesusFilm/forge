@@ -119,6 +119,7 @@ function asArgs(args: {
   canonicalParent: ReturnType<typeof makeParent> | null
   selectableParents?: ReturnType<typeof makeParent>[]
   experience?: { blocks?: unknown[] } | null
+  experienceMode?: "override" | "append"
 }) {
   return args as never
 }
@@ -448,6 +449,49 @@ describe("mergeWatchExperience — Experience overrides", () => {
     expect(
       (merged[merged.length - 1] as { __typename?: string }).__typename,
     ).toBe("ComponentSectionsPromoBanner")
+  })
+})
+
+describe("mergeWatchExperience — shared Experience append mode", () => {
+  it("preserves generated slots, appends supplemental blocks, and ignores authored players", () => {
+    const video = makeVideo({
+      studyQuestions: [
+        { documentId: "sq-1", value: "Existing video question?", order: 1 },
+      ],
+    })
+    const relatedQuestions = {
+      __typename: "RelatedQuestionsBlock",
+      sectionKey: "shared-questions",
+      heading: "Questions for this video",
+      questions: [],
+    }
+    const authoredPlayer = {
+      __typename: "VideoHeroBlock",
+      sectionKey: "supplemental-video",
+    }
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant: makeVariant(),
+        canonicalParent: null,
+        experience: { blocks: [relatedQuestions, authoredPlayer] },
+        experienceMode: "append",
+      }),
+    )
+
+    expect(
+      merged.filter(
+        (block) => isWatchBlock(block) && block.kind === "HeroPlayer",
+      ),
+    ).toHaveLength(1)
+    expect(
+      merged.some(
+        (block) => isWatchBlock(block) && block.kind === "StudyQuestions",
+      ),
+    ).toBe(true)
+    expect(merged.at(-1)).toEqual(relatedQuestions)
+    expect(merged).not.toContain(authoredPlayer)
   })
 })
 

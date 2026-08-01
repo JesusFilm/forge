@@ -386,6 +386,14 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: Clapperboard,
   },
   {
+    key: "routeRelatedQuestions",
+    label: "Route Related Questions",
+    description:
+      "Published generated Q&A for the current video with authored fallback.",
+    category: "Route",
+    icon: MessagesSquare,
+  },
+  {
     key: "mediaCollection",
     label: "Media Collection",
     description: "Grid or carousel of related media items.",
@@ -524,6 +532,7 @@ type SectionContentTemplateKey =
       | "routeVideoHero"
       | "routeVideo"
       | "routeVideoCarousel"
+      | "routeRelatedQuestions"
     >
   | "quizButton"
 
@@ -573,7 +582,9 @@ function isRouteOnlyBlockPayload(block: unknown) {
     ((type === "videoHero" || type === "video") &&
       asBoolean(record?.useRouteVideo)) ||
     (type === "videoCarousel" &&
-      asString(record?.itemsSource) === "routeVideoChildren")
+      asString(record?.itemsSource) === "routeVideoChildren") ||
+    (type === "relatedQuestions" &&
+      asString(record?.questionsSource) === "routeVideoGeneratedQuestions")
   )
 }
 
@@ -9620,6 +9631,24 @@ export function ExperienceEditor({
                   : null}
                 {type === "relatedQuestions" ? (
                   <div className="mt-4">
+                    {asString(blockRecord?.questionsSource) ===
+                    "routeVideoGeneratedQuestions" ? (
+                      <div className="mb-4 flex w-full items-start gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 text-left">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[rgba(255,255,255,0.04)] text-[var(--color-text-secondary)]">
+                          <Link2 className="h-4 w-4" strokeWidth={1.5} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                            Route video questions enabled
+                          </div>
+                          <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                            Uses published generated Q&amp;A for the current
+                            video. The questions below remain the fallback when
+                            none are available.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
                     <div
                       className={cx(
                         "mb-3 flex items-center justify-between gap-3 transition-[max-height,opacity,transform,margin] duration-[180ms] ease-out",

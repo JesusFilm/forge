@@ -1,10 +1,79 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Principal } from "@/auth/principal"
 import {
+  generatedQuestionBucketsForSnapshot,
   VideoService,
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
 } from "./video.service"
+
+describe("generatedQuestionBucketsForSnapshot", () => {
+  const rows = [
+    {
+      id: "exact",
+      sourceStudyQuestionId: "study-exact",
+      locale: "es",
+      languageSlug: "spanish-latin-america",
+      question: "  Exact question?  ",
+      answer: "  Exact answer.  ",
+      order: 1,
+    },
+    {
+      id: "broad",
+      sourceStudyQuestionId: "study-broad",
+      locale: "es",
+      languageSlug: "spanish",
+      question: "Broad question?",
+      answer: "Broad answer.",
+      order: 2,
+    },
+    {
+      id: "english",
+      sourceStudyQuestionId: "study-english",
+      locale: "en",
+      languageSlug: "english",
+      question: "English question?",
+      answer: "English answer.",
+      order: 1,
+    },
+    {
+      id: "blank",
+      sourceStudyQuestionId: "study-blank",
+      locale: "es",
+      languageSlug: "spanish-latin-america",
+      question: "   ",
+      answer: "Should not leak.",
+      order: 3,
+    },
+  ]
+
+  it("keeps locale tiers separate and removes whitespace-only content", () => {
+    expect(
+      generatedQuestionBucketsForSnapshot(rows, {
+        locale: "es",
+        languageSlug: "spanish-latin-america",
+      }),
+    ).toEqual({
+      exactGeneratedQuestions: [
+        {
+          documentId: "exact",
+          sourceStudyQuestionId: "study-exact",
+          languageSlug: "spanish-latin-america",
+          question: "Exact question?",
+          answer: "Exact answer.",
+          order: 1,
+        },
+      ],
+      broadGeneratedQuestions: [
+        expect.objectContaining({ documentId: "exact" }),
+        expect.objectContaining({ documentId: "broad" }),
+      ],
+      englishGeneratedQuestions: [
+        expect.objectContaining({ documentId: "english" }),
+      ],
+    })
+  })
+})
 
 function mockPrisma() {
   const tx = {

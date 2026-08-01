@@ -4,6 +4,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import {
   type MergedWatchBlock,
+  type RouteVideo,
   type WatchBlock,
   type WatchStudyQuestionsBlock,
 } from "@/lib/content"
@@ -48,6 +49,7 @@ export function WatchSectionRenderer({
   coverBlackoutKey,
   coverBlackoutPhase,
   onChapterNavigateIntent,
+  routeVideo,
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
@@ -67,6 +69,7 @@ export function WatchSectionRenderer({
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  routeVideo?: RouteVideo | null
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -111,6 +114,7 @@ export function WatchSectionRenderer({
           coverBlackoutKey={coverBlackoutKey}
           coverBlackoutPhase={coverBlackoutPhase}
           onChapterNavigateIntent={onChapterNavigateIntent}
+          routeVideo={routeVideo}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -153,6 +157,7 @@ export function WatchSectionRenderer({
                   coverBlackoutKey={coverBlackoutKey}
                   coverBlackoutPhase={coverBlackoutPhase}
                   onChapterNavigateIntent={onChapterNavigateIntent}
+                  routeVideo={routeVideo}
                 />
               ))}
             </div>
@@ -184,6 +189,7 @@ function WatchBlockEntry({
   coverBlackoutKey,
   coverBlackoutPhase,
   onChapterNavigateIntent,
+  routeVideo,
 }: {
   block: MergedWatchBlock
   index: number
@@ -205,6 +211,7 @@ function WatchBlockEntry({
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  routeVideo?: RouteVideo | null
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -236,6 +243,7 @@ function WatchBlockEntry({
       section={block}
       key={`strapi-${index}`}
       languageSlug={languageSlug}
+      routeVideo={routeVideo}
     />
   )
 }

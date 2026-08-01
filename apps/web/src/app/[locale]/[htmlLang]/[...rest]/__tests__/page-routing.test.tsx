@@ -16,6 +16,7 @@ const {
   resolveSeriesEpisodeBySlugMock,
   resolveWatchExperiencePageMock,
   resolveWatchPageMock,
+  resolveDefaultWatchTemplateExperienceMock,
   resolveWatchHomeMock,
   notFoundMock,
   redirectMock,
@@ -36,6 +37,7 @@ const {
   resolveSeriesEpisodeBySlugMock: vi.fn(),
   resolveWatchExperiencePageMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
+  resolveDefaultWatchTemplateExperienceMock: vi.fn(),
   resolveWatchHomeMock: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND")
@@ -75,6 +77,8 @@ vi.mock("@/lib/content", async () => {
     resolveSeriesEpisodeBySlug: resolveSeriesEpisodeBySlugMock,
     resolveWatchExperiencePage: resolveWatchExperiencePageMock,
     resolveWatchPage: resolveWatchPageMock,
+    resolveDefaultWatchTemplateExperience:
+      resolveDefaultWatchTemplateExperienceMock,
   }
 })
 
@@ -153,6 +157,8 @@ beforeEach(() => {
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
   resolveWatchPageMock.mockReset()
+  resolveDefaultWatchTemplateExperienceMock.mockReset()
+  resolveDefaultWatchTemplateExperienceMock.mockResolvedValue(null)
   resolveWatchHomeMock.mockReset()
   notFoundMock.mockClear()
   redirectMock.mockClear()
@@ -265,10 +271,32 @@ function makeWatchVideoResult(
       ],
       subtitles: [],
       studyQuestions: [],
+      generatedQuestions: [] as Array<{
+        documentId: string
+        sourceStudyQuestionId: string
+        question: string
+        answer: string
+        order: number | null
+      }>,
       bibleCitations: [],
     },
     canonicalParent: null,
     selectedVariant,
+  }
+}
+
+function makeSharedTemplateExperience() {
+  const block = {
+    __typename: "RelatedQuestionsBlock",
+    t: "relatedQuestions",
+    sectionKey: "single-video-shared-questions",
+    heading: "Questions for this video",
+    questions: [],
+  }
+
+  return {
+    block,
+    experience: { slug: "default-template", blocks: [block] },
   }
 }
 
@@ -399,6 +427,13 @@ function makeEpisodeResult(
       variants: [selectedVariant],
       subtitles: [],
       studyQuestions: [],
+      generatedQuestions: [] as Array<{
+        documentId: string
+        sourceStudyQuestionId: string
+        question: string
+        answer: string
+        order: number | null
+      }>,
       bibleCitations: [],
     },
     canonicalParent: {
@@ -1215,6 +1250,39 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         (element) => element.getAttribute("data-testid"),
       ),
     ).toEqual(["watch-page-client-mock", "watch-home-footer"])
+  })
+
+  it("appends the shared template after the generated standalone-video blocks", async () => {
+    const sharedTemplate = makeSharedTemplateExperience()
+    resolveDefaultWatchTemplateExperienceMock.mockResolvedValue(
+      sharedTemplate.experience,
+    )
+    const result = makeWatchVideoResult("featureFilm")
+    result.video.generatedQuestions = [
+      {
+        documentId: "generated-jesus-1",
+        sourceStudyQuestionId: "study-jesus-1",
+        question: "What does Jesus offer here?",
+        answer: "A video-specific answer.",
+        order: 1,
+      },
+    ]
+    mockRouteVideo(result)
+
+    await render2Seg("jesus", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<Record<string, unknown>>
+      routeVideo: { generatedQuestions?: Array<{ documentId: string }> }
+      video: { generatedQuestions?: Array<{ documentId: string }> }
+    }
+    expect(resolveDefaultWatchTemplateExperienceMock).toHaveBeenCalledWith("en")
+    expect(props.mergedBlocks.at(-2)).toMatchObject({ kind: "Share" })
+    expect(props.mergedBlocks.at(-1)).toEqual(sharedTemplate.block)
+    expect(props.routeVideo.generatedQuestions?.[0]?.documentId).toBe(
+      "generated-jesus-1",
+    )
+    expect(props.video.generatedQuestions).toEqual([])
   })
 
   it("builds ordered standalone collection choices from exact admitted current-language routes", async () => {
@@ -2262,6 +2330,37 @@ describe("Catch-all routing — 3-seg episode branch", () => {
         (element) => element.getAttribute("data-testid"),
       ),
     ).toEqual(["watch-page-client-mock", "watch-home-footer"])
+  })
+
+  it("appends the shared template after the generated episode blocks", async () => {
+    const sharedTemplate = makeSharedTemplateExperience()
+    resolveDefaultWatchTemplateExperienceMock.mockResolvedValue(
+      sharedTemplate.experience,
+    )
+    const result = makeEpisodeResult()
+    result.video.generatedQuestions = [
+      {
+        documentId: "generated-cana-1",
+        sourceStudyQuestionId: "study-cana-1",
+        question: "Why is this sign important?",
+        answer: "A video-specific episode answer.",
+        order: 1,
+      },
+    ]
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<Record<string, unknown>>
+      routeVideo: { generatedQuestions?: Array<{ documentId: string }> }
+    }
+    expect(resolveDefaultWatchTemplateExperienceMock).toHaveBeenCalledWith("en")
+    expect(props.mergedBlocks.at(-2)).toMatchObject({ kind: "Share" })
+    expect(props.mergedBlocks.at(-1)).toEqual(sharedTemplate.block)
+    expect(props.routeVideo.generatedQuestions?.[0]?.documentId).toBe(
+      "generated-cana-1",
+    )
   })
 
   it("suppresses all JSON-LD for noIndex contextual episodes", async () => {

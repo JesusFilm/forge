@@ -1086,8 +1086,17 @@ type RelatedQuestionsBlock {
   imageAsset: BlockImageAsset
   imageAssetId: String
   questions: [RelatedQuestionItem!]!
+  questionsSource: RelatedQuestionsSource!
   sectionKey: String
   t: String
+}
+
+"""
+Whether Related Questions uses authored Q&A or the current route video's published generated Q&A with authored fallback.
+"""
+enum RelatedQuestionsSource {
+  manual
+  routeVideoGeneratedQuestions
 }
 
 """
@@ -1192,6 +1201,10 @@ type Video {
   Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.
   """
   durationSeconds: Int
+  """
+  Published, non-deleted generated Q&A for consumers; editors can inspect non-deleted drafts.
+  """
+  generatedQuestions(languageSlug: String, locale: String): [VideoGeneratedQuestion!]
   id: ID
   images: [VideoImage!]
   label: VideoLabel
@@ -1379,6 +1392,23 @@ type VideoForEnrichment {
   Requested target locale used for this dispatch lookup; null when the primary-language source projection was requested.
   """
   targetLocale: String
+}
+
+"""A reviewed generated Q&A item grounded in a video study question."""
+type VideoGeneratedQuestion {
+  answer: String
+  generatedAt: String!
+  generationProvider: String
+  id: ID
+  language: Language
+  languageSlug: String
+  locale: String
+  order: Int
+  publishedAt: String
+  question: String
+  sourceStudyQuestion: VideoStudyQuestion
+  sourceStudyQuestionId: ID
+  status: LocaleStatus
 }
 
 """Full-bleed hero video block with optional CTA overlay."""
@@ -1778,12 +1808,15 @@ Route-shaped Watch video snapshot assembled by the video service in bounded batc
 """
 type WatchRouteSnapshot {
   bibleCitations: [WatchRouteSnapshotBibleCitation!]!
+  broadGeneratedQuestions: [WatchRouteSnapshotGeneratedQuestion!]!
   broadLocales: [WatchRouteSnapshotLocale!]!
   broadStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
   children: [WatchRouteSnapshotChildRelation!]!
   documentId: ID!
+  englishGeneratedQuestions: [WatchRouteSnapshotGeneratedQuestion!]!
   englishLocales: [WatchRouteSnapshotLocale!]!
   englishStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  exactGeneratedQuestions: [WatchRouteSnapshotGeneratedQuestion!]!
   exactLocales: [WatchRouteSnapshotLocale!]!
   exactStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
   images: [WatchRouteSnapshotImage!]!
@@ -1835,6 +1868,15 @@ type WatchRouteSnapshotChild {
 
 type WatchRouteSnapshotChildRelation {
   child: WatchRouteSnapshotChild
+}
+
+type WatchRouteSnapshotGeneratedQuestion {
+  answer: String!
+  documentId: ID!
+  languageSlug: String
+  order: Int
+  question: String!
+  sourceStudyQuestionId: ID!
 }
 
 type WatchRouteSnapshotImage {

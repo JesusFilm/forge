@@ -30,6 +30,7 @@ function makeFakePrisma(rowsByModel: Record<string, Array<{ id: string }>>) {
     videoLocale: { findMany: async () => [] },
     videoRelation: { findMany: async () => [] },
     videoStudyQuestion: { findMany: async () => [] },
+    videoGeneratedQuestion: { findMany: async () => [] },
     bibleCitation: { findMany: async () => [] },
     language: make("language"),
     // Loose typing — each test provides only the delegates it exercises.
@@ -47,6 +48,7 @@ describe("createLoaders", () => {
       "videoById",
       "videoByIdWithQuery",
       "videoChildrenByParentId",
+      "videoGeneratedQuestionsByVideoIdAndFilter",
       "videoImagesByVideoId",
       "videoLocalesByVideoIdAndFilter",
       "videoMuxHeroPosterBlurDataUrlByIdAndLanguageSlug",
@@ -266,6 +268,99 @@ describe("createLoaders", () => {
       ["parent-1"],
       ["parent-2"],
     ])
+  })
+})
+
+describe("videoGeneratedQuestionsByVideoIdAndFilter", () => {
+  it("batches public locale reads and applies the publication boundary", async () => {
+    const calls: unknown[] = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoGeneratedQuestion: {
+        findMany: async (args: { where: { videoId: { in: string[] } } }) => {
+          calls.push(args)
+          return args.where.videoId.in.map((videoId) => ({
+            id: `generated-${videoId}`,
+            videoId,
+            question: videoId === "video-2" ? "   " : `Question for ${videoId}`,
+            answer: `Answer for ${videoId}`,
+          }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const rows = await Promise.all([
+      loaders.videoGeneratedQuestionsByVideoIdAndFilter.load({
+        videoId: "video-1",
+        locale: "en",
+        languageSlug: "english",
+        visibleOnly: true,
+      }),
+      loaders.videoGeneratedQuestionsByVideoIdAndFilter.load({
+        videoId: "video-2",
+        locale: "en",
+        languageSlug: "english",
+        visibleOnly: true,
+      }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      where: {
+        videoId: { in: ["video-1", "video-2"] },
+        locale: "en",
+        languageSlug: "english",
+        status: "PUBLISHED",
+        deletedAt: null,
+        question: { not: "" },
+        answer: { not: "" },
+      },
+    })
+    expect(rows.map((group) => group.map((row) => row.videoId))).toEqual([
+      ["video-1"],
+      [],
+    ])
+  })
+
+  it("lets editor-scoped reads inspect malformed non-deleted drafts", async () => {
+    const calls: Array<Record<string, unknown>> = []
+    const draft = {
+      id: "generated-draft",
+      videoId: "video-1",
+      question: "   ",
+      answer: "",
+    }
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoGeneratedQuestion: {
+        findMany: async (args: Record<string, unknown>) => {
+          calls.push(args)
+          return [draft]
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const rows = await createLoaders(
+      prisma,
+    ).videoGeneratedQuestionsByVideoIdAndFilter.load({
+      videoId: "video-1",
+      locale: null,
+      languageSlug: null,
+      visibleOnly: false,
+    })
+
+    expect(rows).toEqual([draft])
+    expect(calls[0]).toMatchObject({ where: { deletedAt: null } })
+    expect(calls[0]).not.toMatchObject({
+      where: expect.objectContaining({ status: expect.anything() }),
+    })
   })
 })
 

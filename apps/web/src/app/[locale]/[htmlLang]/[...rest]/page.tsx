@@ -14,11 +14,13 @@ import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
 import {
+  buildRouteVideo,
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
   type CarouselParent,
   type MergedWatchBlock,
+  resolveDefaultWatchTemplateExperience,
   resolveSeriesEpisodeBySlug,
   resolveWatchRouteBySlug,
   resolveWatchExperiencePage,
@@ -120,6 +122,10 @@ function pruneWatchVideoForClient(
     childDubLanguages: [],
     variants: [pruneWatchVariantForClient(selected)],
     studyQuestions: [],
+    // Generated Q&A is carried once through `routeVideo` for route-aware
+    // Experience blocks. Do not duplicate it in HeroPlayer, WatchBody, and
+    // Share copies of the client video payload.
+    generatedQuestions: [],
     bibleCitations: [],
   }
 }
@@ -609,17 +615,25 @@ async function renderEpisode(shape: {
   }
 
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
-    await Promise.all([
-      getDownloadButtonLabel(route, locale),
-      getQuestionPanelEnabled(route),
-      getHideBibleQuotesEnabled(route),
-    ])
+  const [
+    downloadButtonLabel,
+    questionPanelEnabled,
+    hideBibleQuotes,
+    templateExperience,
+  ] = await Promise.all([
+    getDownloadButtonLabel(route, locale),
+    getQuestionPanelEnabled(route),
+    getHideBibleQuotesEnabled(route),
+    resolveDefaultWatchTemplateExperience(locale),
+  ])
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
+    experience: templateExperience,
+    experienceMode: "append",
   })
+  const routeVideo = buildRouteVideo(resolved.video, resolved.selectedVariant)
   const clientVariant = pruneWatchVariantForClient(resolved.selectedVariant)
   const clientMergedBlocks = pruneMergedWatchBlocksForClient(
     mergedBlocks,
@@ -658,6 +672,7 @@ async function renderEpisode(shape: {
         mergedBlocks={clientMergedBlocks}
         variant={clientVariant}
         video={clientVideo}
+        routeVideo={routeVideo}
         languageSlug={languageSlug}
         collectionSlug={seriesSlug}
         locale={locale}
@@ -722,6 +737,7 @@ async function renderVideo(shape: {
       [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes],
       routeManifest,
       initialTranscript,
+      templateExperience,
     ] = await Promise.all([
       Promise.all([
         getDownloadButtonLabel(route, locale),
@@ -733,6 +749,7 @@ async function renderVideo(shape: {
         watchVideo.video,
         watchVideo.selectedVariant,
       ),
+      resolveDefaultWatchTemplateExperience(locale),
     ])
     const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
     const selectableParents = selectableParentsForStandaloneVideo(
@@ -745,7 +762,13 @@ async function renderVideo(shape: {
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
       selectableParents,
+      experience: templateExperience,
+      experienceMode: "append",
     })
+    const routeVideo = buildRouteVideo(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
     const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
       mergedBlocks,
@@ -778,6 +801,7 @@ async function renderVideo(shape: {
           mergedBlocks={clientMergedBlocks}
           variant={clientVariant}
           video={clientVideo}
+          routeVideo={routeVideo}
           languageSlug={languageSlug}
           locale={locale}
           hideBibleQuotes={hideBibleQuotes}

@@ -47,7 +47,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(21)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(22)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -441,6 +441,11 @@ describe("experience editor block helpers", () => {
       t: "videoCarousel",
       itemsSource: "routeVideoChildren",
     })
+    expect(createTemplateBlock("routeRelatedQuestions", 3)).toMatchObject({
+      t: "relatedQuestions",
+      questionsSource: "routeVideoGeneratedQuestions",
+      questions: [expect.objectContaining({ question: expect.any(String) })],
+    })
 
     expect(
       summarizeBlock(createTemplateBlock("routeVideoHero", 0), 0, []),
@@ -456,6 +461,12 @@ describe("experience editor block helpers", () => {
       typeLabel: "Route Video Carousel",
       title: "Related videos",
       badges: ["ROUTE_VIDEO_CHILDREN"],
+    })
+    expect(
+      summarizeBlock(createTemplateBlock("routeRelatedQuestions", 3), 3, []),
+    ).toMatchObject({
+      typeLabel: "Route Related Questions",
+      badges: ["ROUTE_VIDEO_QUESTIONS"],
     })
   })
 

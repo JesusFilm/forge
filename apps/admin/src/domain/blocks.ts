@@ -301,6 +301,9 @@ export const RelatedQuestionsBlockSchema = z
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
+    questionsSource: z
+      .enum(["manual", "routeVideoGeneratedQuestions"])
+      .default("manual"),
     questions: z.array(RelatedQuestionItemSchema).default([]),
     ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),

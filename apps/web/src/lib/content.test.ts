@@ -157,6 +157,13 @@ describe("resolveWatchPage", () => {
           options: { revalidate: 60, tags: ["watch:experience"] },
         },
         {
+          keyParts: ["watch-default-template-experience"],
+          options: {
+            revalidate: 60,
+            tags: ["watch:settings", "watch:experience"],
+          },
+        },
+        {
           keyParts: ["watch-video"],
           options: { revalidate: 60, tags: ["watch:video"] },
         },
@@ -180,6 +187,57 @@ describe("resolveWatchPage", () => {
         },
       ]),
     )
+  })
+
+  it("returns the published default template for supplemental video-page composition", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          defaultTemplateExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-template-1",
+            slug: "single-video-template",
+            title: "Single Video Template",
+            blocks: [
+              {
+                __typename: "RelatedQuestionsBlock",
+                sectionKey: "shared-questions",
+              },
+            ],
+          },
+        },
+      },
+    })
+
+    const { resolveDefaultWatchTemplateExperience } = await import("./content")
+
+    await expect(
+      resolveDefaultWatchTemplateExperience("en"),
+    ).resolves.toMatchObject({
+      slug: "single-video-template",
+      blocks: [{ __typename: "RelatedQuestionsBlock" }],
+    })
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ variables: { locale: "en" } }),
+    )
+  })
+
+  it("keeps the video page available when default-template lookup fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    queryMock.mockResolvedValueOnce({
+      data: null,
+      errors: [{ message: "Admin unavailable" }],
+    })
+
+    const { resolveDefaultWatchTemplateExperience } = await import("./content")
+
+    await expect(
+      resolveDefaultWatchTemplateExperience("en"),
+    ).resolves.toBeNull()
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("event=watch_template.resolve_failed"),
+    )
+    warn.mockRestore()
   })
 
   it("returns the homepage Experience from watchSetting", async () => {
@@ -712,6 +770,16 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
             broadStudyQuestions: [
               { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
             ],
+            exactGeneratedQuestions: [],
+            broadGeneratedQuestions: [
+              {
+                documentId: "gq-ru-broad",
+                sourceStudyQuestionId: "sq-ru-broad",
+                question: "What is specific to this video?",
+                answer: "A localized generated answer.",
+                order: 1,
+              },
+            ],
           }),
         },
       })
@@ -732,6 +800,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.title).toBe("Jesus RU broad")
     expect(result?.video.studyQuestions).toEqual([
       { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
+    ])
+    expect(result?.video.generatedQuestions).toEqual([
+      {
+        documentId: "gq-ru-broad",
+        sourceStudyQuestionId: "sq-ru-broad",
+        question: "What is specific to this video?",
+        answer: "A localized generated answer.",
+        order: 1,
+      },
     ])
   })
 
@@ -843,6 +920,17 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
             englishStudyQuestions: [
               { documentId: "sq-en", value: "English question?", order: 1 },
             ],
+            exactGeneratedQuestions: [],
+            broadGeneratedQuestions: [],
+            englishGeneratedQuestions: [
+              {
+                documentId: "gq-en",
+                sourceStudyQuestionId: "sq-en",
+                question: "English generated question?",
+                answer: "English generated answer.",
+                order: 1,
+              },
+            ],
           }),
         },
       })
@@ -864,6 +952,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.studyQuestions).toEqual([
       { documentId: "sq-en", value: "English question?", order: 1 },
     ])
+    expect(result?.video.generatedQuestions?.[0]).toMatchObject({
+      documentId: "gq-en",
+      sourceStudyQuestionId: "sq-en",
+      question: "English generated question?",
+    })
     expect(result?.selectedVariant.language?.slug).toBe("russian")
   })
 

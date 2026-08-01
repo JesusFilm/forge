@@ -206,6 +206,51 @@ export function createLoaders(prisma: PrismaClient) {
       { cacheKeyFn: serializeVideoStudyQuestionFilterKey },
     ),
 
+    /** Hydrate reviewed generated Q&A rows by Video id and locale/language. */
+    videoGeneratedQuestionsByVideoIdAndFilter: new DataLoader<
+      VideoGeneratedQuestionFilterKey,
+      VideoGeneratedQuestionRow[],
+      string
+    >(
+      async (keys) =>
+        loadVideoScopedRowsByFilter({
+          keys,
+          filterKey: serializeVideoGeneratedQuestionFilter,
+          findMany: async (videoIds, key) => {
+            const rows = await prisma.videoGeneratedQuestion.findMany({
+              where: {
+                videoId: { in: videoIds },
+                deletedAt: null,
+                ...(key.locale != null ? { locale: key.locale } : {}),
+                ...(key.languageSlug != null
+                  ? { languageSlug: key.languageSlug }
+                  : {}),
+                ...(key.visibleOnly
+                  ? {
+                      status: "PUBLISHED" as const,
+                      question: { not: "" },
+                      answer: { not: "" },
+                    }
+                  : {}),
+              },
+              orderBy: [
+                { order: { sort: "asc", nulls: "last" } },
+                { languageSlug: "asc" },
+                { id: "asc" },
+              ],
+            })
+            return key.visibleOnly
+              ? rows.filter(
+                  (row) =>
+                    row.question.trim().length > 0 &&
+                    row.answer.trim().length > 0,
+                )
+              : rows
+          },
+        }),
+      { cacheKeyFn: serializeVideoGeneratedQuestionFilterKey },
+    ),
+
     /** Hydrate non-deleted BibleCitation rows by Video id. */
     videoBibleCitationsByVideoId: new DataLoader<string, BibleCitationRow[]>(
       async (ids) =>
@@ -721,6 +766,13 @@ export type VideoStudyQuestionFilterKey = {
   languageSlug: string | null
 }
 
+export type VideoGeneratedQuestionFilterKey = {
+  videoId: string
+  locale: string | null
+  languageSlug: string | null
+  visibleOnly: boolean
+}
+
 type VideoScopedRow = { videoId: string }
 
 type VideoScopedFilterKey = { videoId: string }
@@ -893,6 +945,22 @@ function serializeVideoStudyQuestionFilterKey(
   return `${key.videoId}:${serializeVideoStudyQuestionFilter(key)}`
 }
 
+function serializeVideoGeneratedQuestionFilter(
+  key: VideoGeneratedQuestionFilterKey,
+): string {
+  return [
+    normalizeNullableArg(key.locale) ?? "",
+    normalizeNullableArg(key.languageSlug) ?? "",
+    key.visibleOnly ? "public" : "all",
+  ].join(":")
+}
+
+function serializeVideoGeneratedQuestionFilterKey(
+  key: VideoGeneratedQuestionFilterKey,
+): string {
+  return `${key.videoId}:${serializeVideoGeneratedQuestionFilter(key)}`
+}
+
 function serializeVideoByIdWithQuerySelection(query: object): string {
   return JSON.stringify(query)
 }
@@ -978,6 +1046,9 @@ type VideoLocaleRow = Awaited<
 >[number]
 type VideoStudyQuestionRow = Awaited<
   ReturnType<PrismaClient["videoStudyQuestion"]["findMany"]>
+>[number]
+type VideoGeneratedQuestionRow = Awaited<
+  ReturnType<PrismaClient["videoGeneratedQuestion"]["findMany"]>
 >[number]
 type BibleCitationRow = Awaited<
   ReturnType<PrismaClient["bibleCitation"]["findMany"]>

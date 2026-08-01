@@ -130,6 +130,10 @@ describe("public-shape types do not relate to abac-gated types", () => {
     VideoLocale: { language: "Language" },
     VideoSubtitle: { video: "Video", language: "Language" },
     VideoStudyQuestion: { language: "Language" },
+    VideoGeneratedQuestion: {
+      language: "Language",
+      sourceStudyQuestion: "VideoStudyQuestion",
+    },
     VideoDub: {
       language: "Language",
       videoEdition: "VideoEdition",

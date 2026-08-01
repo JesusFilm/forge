@@ -230,6 +230,7 @@ function SectionContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "ComponentSectionsBibleQuotesCarousel":
@@ -343,6 +344,7 @@ function SectionContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "QuizButtonBlock":

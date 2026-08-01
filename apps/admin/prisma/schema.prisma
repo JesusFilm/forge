@@ -823,17 +823,18 @@ model Language {
   updatedAt            DateTime   @updatedAt @map("updated_at")
 
   // Reverse relations
-  keywords          Keyword[]
-  locales           LanguageLocale[]
-  videoDubs         VideoDub[]
-  videoLocales      VideoLocale[]
-  watchEvents       WatchEvent[]
-  videoSubtitles    VideoSubtitle[]
-  studyQuestions    VideoStudyQuestion[]
-  countryLanguages  CountryLanguage[]
-  videosAsPrimary   Video[]              @relation("VideoPrimaryLanguage")
-  fallbackLanguages LanguageFallback[]   @relation("LanguageFallbackSource")
-  fallbackFor       LanguageFallback[]   @relation("LanguageFallbackTarget")
+  keywords           Keyword[]
+  locales            LanguageLocale[]
+  videoDubs          VideoDub[]
+  videoLocales       VideoLocale[]
+  watchEvents        WatchEvent[]
+  videoSubtitles     VideoSubtitle[]
+  studyQuestions     VideoStudyQuestion[]
+  generatedQuestions VideoGeneratedQuestion[]
+  countryLanguages   CountryLanguage[]
+  videosAsPrimary    Video[]                  @relation("VideoPrimaryLanguage")
+  fallbackLanguages  LanguageFallback[]       @relation("LanguageFallbackSource")
+  fallbackFor        LanguageFallback[]       @relation("LanguageFallbackTarget")
 
   @@index([deletedAt])
   @@map("language")
@@ -1196,19 +1197,20 @@ model Video {
   createdAt         DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")
 
-  locales        VideoLocale[]
-  dubs           VideoDub[]
-  studyQuestions VideoStudyQuestion[]
-  images         VideoImage[]
-  subtitles      VideoSubtitle[]
-  bibleCitations BibleCitation[]
-  keywords       VideoKeyword[]
-  scenes         VideoScene[]
-  transcripts    VideoTranscript[]
-  watchEvents    WatchEvent[]
-  parents        VideoRelation[]      @relation("VideoParents")
-  children       VideoRelation[]      @relation("VideoChildren")
-  watchProgress  WatchProgress[]
+  locales            VideoLocale[]
+  dubs               VideoDub[]
+  studyQuestions     VideoStudyQuestion[]
+  generatedQuestions VideoGeneratedQuestion[]
+  images             VideoImage[]
+  subtitles          VideoSubtitle[]
+  bibleCitations     BibleCitation[]
+  keywords           VideoKeyword[]
+  scenes             VideoScene[]
+  transcripts        VideoTranscript[]
+  watchEvents        WatchEvent[]
+  parents            VideoRelation[]          @relation("VideoParents")
+  children           VideoRelation[]          @relation("VideoChildren")
+  watchProgress      WatchProgress[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -1479,26 +1481,28 @@ model VideoSubtitle {
 
 /// A study question authored against a video.
 model VideoStudyQuestion {
-  id             String     @id @default(cuid())
-  coreId         String?    @map("core_id")
-  source         SourceTier @default(CORE)
-  videoId        String     @map("video_id")
-  video          Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  locale         String?
-  languageId     String?    @map("language_id")
-  language       Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  languageSlug   String?    @map("language_slug")
-  languageCoreId String?    @map("language_core_id")
+  id                 String                   @id @default(cuid())
+  coreId             String?                  @map("core_id")
+  source             SourceTier               @default(CORE)
+  videoId            String                   @map("video_id")
+  video              Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  locale             String?
+  languageId         String?                  @map("language_id")
+  language           Language?                @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  generatedQuestions VideoGeneratedQuestion[] @relation("VideoGeneratedQuestionSource")
+  languageSlug       String?                  @map("language_slug")
+  languageCoreId     String?                  @map("language_core_id")
   /// Per-locale study question text. One row per localized Core question.
-  text           String     @default("")
-  primary        Boolean    @default(false)
+  text               String                   @default("")
+  primary            Boolean                  @default(false)
   /// Order within the video (1-based).
-  order          Int?
-  syncedAt       DateTime?  @map("synced_at")
-  deletedAt      DateTime?  @map("deleted_at")
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
+  order              Int?
+  syncedAt           DateTime?                @map("synced_at")
+  deletedAt          DateTime?                @map("deleted_at")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
 
+  @@unique([id, videoId], map: "video_study_question_id_video_id_key")
   @@index([videoId])
   @@index([coreId])
   @@index([languageId])
@@ -1511,6 +1515,43 @@ model VideoStudyQuestion {
   @@index([locale, deletedAt])
   @@index([deletedAt])
   @@map("video_study_question")
+}
+
+/// A reviewed generated Q&A item grounded in a Core-sourced study question.
+/// This is deliberately separate from VideoStudyQuestion: Core owns the prompt,
+/// while Admin owns generated answers and their editorial lifecycle.
+model VideoGeneratedQuestion {
+  id                    String             @id @default(cuid())
+  videoId               String             @map("video_id")
+  video                 Video              @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  sourceStudyQuestionId String             @map("source_study_question_id")
+  sourceStudyQuestion   VideoStudyQuestion @relation("VideoGeneratedQuestionSource", fields: [sourceStudyQuestionId, videoId], references: [id, videoId], onDelete: NoAction)
+  locale                String?
+  languageId            String?            @map("language_id")
+  language              Language?          @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  languageSlug          String?            @map("language_slug")
+  question              String
+  answer                String
+  /// Order within the published FAQ set (1-based).
+  order                 Int?
+  status                LocaleStatus       @default(DRAFT)
+  publishedAt           DateTime?          @map("published_at")
+  sourceContentHash     String?            @map("source_content_hash") @db.VarChar(64)
+  generationProvider    String?            @map("generation_provider") @db.VarChar(64)
+  generationModel       String?            @map("generation_model") @db.VarChar(128)
+  generationMode        String?            @map("generation_mode") @db.VarChar(64)
+  mastraRunId           String?            @map("mastra_run_id") @db.VarChar(128)
+  generatedAt           DateTime           @default(now()) @map("generated_at")
+  deletedAt             DateTime?          @map("deleted_at")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  @@index([videoId])
+  @@index([sourceStudyQuestionId])
+  @@index([languageId])
+  @@index([mastraRunId])
+  @@index([videoId, locale, languageSlug, status, deletedAt, order], map: "video_generated_question_public_lookup_idx")
+  @@map("video_generated_question")
 }
 
 /// A still image associated with a video (poster, still frame, etc.).

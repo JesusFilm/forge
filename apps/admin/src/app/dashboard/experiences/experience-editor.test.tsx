@@ -2273,11 +2273,13 @@ describe("ExperienceEditor", () => {
 
     expect(standardHtml).not.toContain("Route Video Hero")
     expect(standardHtml).not.toContain("Route Video Carousel")
+    expect(standardHtml).not.toContain("Route Related Questions")
 
     const templateHtml = renderEditor([], { isTemplate: true })
 
     expect(templateHtml).toContain("Route Video Hero")
     expect(templateHtml).toContain("Route Video")
     expect(templateHtml).toContain("Route Video Carousel")
+    expect(templateHtml).toContain("Route Related Questions")
   })
 })

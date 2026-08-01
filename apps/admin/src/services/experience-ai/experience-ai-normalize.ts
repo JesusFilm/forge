@@ -370,6 +370,7 @@ function normalizeDraftBlock(
         sectionKey: toTopLevelSectionKey(block, sectionKeys, path),
         backgroundColor: block.backgroundColor,
         heading: block.heading,
+        questionsSource: "manual",
         questions: block.questions.map((question) => compactRecord(question)),
         ctaEnabled: block.ctaEnabled,
         ctaLabel: block.ctaLabel,

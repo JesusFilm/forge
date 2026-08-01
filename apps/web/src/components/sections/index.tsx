@@ -223,6 +223,7 @@ function renderAdminBlock(
           data={
             block as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
           }
+          routeVideo={routeVideo}
         />
       )
     case "VideoCarouselBlock":

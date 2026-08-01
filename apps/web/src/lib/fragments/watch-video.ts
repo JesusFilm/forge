@@ -184,6 +184,14 @@ export const watchVideoLocalizedCopyFragment = adminGraphql(`
       value: text
       order
     }
+    generatedQuestions(locale: $locale, languageSlug: $languageSlug) {
+      documentId: id
+      sourceStudyQuestionId
+      languageSlug
+      question
+      answer
+      order
+    }
   }
 `)
 
@@ -434,6 +442,30 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           documentId
           languageSlug
           value
+          order
+        }
+        exactGeneratedQuestions {
+          documentId
+          sourceStudyQuestionId
+          languageSlug
+          question
+          answer
+          order
+        }
+        broadGeneratedQuestions {
+          documentId
+          sourceStudyQuestionId
+          languageSlug
+          question
+          answer
+          order
+        }
+        englishGeneratedQuestions {
+          documentId
+          sourceStudyQuestionId
+          languageSlug
+          question
+          answer
           order
         }
         playableDubLanguageCount

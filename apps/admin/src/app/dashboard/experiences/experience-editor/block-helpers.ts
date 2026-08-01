@@ -33,6 +33,7 @@ export type BlockTemplateKey =
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
+  | "routeRelatedQuestions"
 
 export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "videoHero",
@@ -42,6 +43,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
+  "routeRelatedQuestions",
   "mediaCollection",
   "text",
   "promotionalText",
@@ -537,13 +539,19 @@ export function summarizeBlock(
 
   if (type === "relatedQuestions") {
     const questions = asArray(value.questions)
+    const usesRouteQuestions =
+      asString(value.questionsSource) === "routeVideoGeneratedQuestions"
     return {
       key: summaryKey,
-      typeLabel: "Related Questions",
+      typeLabel: usesRouteQuestions
+        ? "Route Related Questions"
+        : "Related Questions",
       title: asString(value.heading) || "Related questions",
-      body: `${questions.length || 0} questions configured`,
+      body: usesRouteQuestions
+        ? `${questions.length || 0} authored fallback questions configured`
+        : `${questions.length || 0} questions configured`,
       tone: "standard",
-      badges: [],
+      badges: usesRouteQuestions ? ["ROUTE_VIDEO_QUESTIONS"] : [],
     }
   }
 
@@ -856,6 +864,7 @@ export function createTemplateBlock(
       t: "relatedQuestions",
       sectionKey: `related-questions-${index}`,
       heading: "Related questions",
+      questionsSource: "manual",
       questions: [
         {
           question: "Why does this matter?",
@@ -865,6 +874,25 @@ export function createTemplateBlock(
       ctaEnabled: true,
       ctaLabel: "Read more",
       ctaLink: "/",
+    }
+  }
+
+  if (template === "routeRelatedQuestions") {
+    return {
+      t: "relatedQuestions",
+      sectionKey: `route-related-questions-${index}`,
+      heading: "Questions about this video",
+      questionsSource: "routeVideoGeneratedQuestions",
+      questions: [
+        {
+          question: "What is this video inviting me to consider?",
+          answer:
+            "This video invites you to reflect on its central message and what it could mean for your life.",
+        },
+      ],
+      ctaEnabled: false,
+      ctaLabel: "Ask a question",
+      ctaLink: "/watch",
     }
   }
 

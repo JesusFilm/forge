@@ -35,6 +35,7 @@ const {
     }: {
       section: { __typename?: string }
       languageSlug?: string | null
+      routeVideo?: unknown
     }) => `STRAPI:${section.__typename ?? "unknown"}`,
   ),
   // U5 — `WatchSectionRenderer` now mounts the real `<HeroPlayer>` instead of
@@ -570,12 +571,17 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
       __typename: "ComponentSectionsPromoBanner",
       id: "promo-1",
     } as never
+    const routeVideo = {
+      documentId: "route-video-1",
+      generatedQuestions: [],
+    } as never
 
     act(() => {
       root.render(
         <WatchSectionRenderer
           blocks={[promo]}
           languageSlug="spanish-castilian"
+          routeVideo={routeVideo}
         />,
       )
     })
@@ -586,6 +592,9 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     )
     expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.languageSlug).toBe(
       "spanish-castilian",
+    )
+    expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.routeVideo).toBe(
+      routeVideo,
     )
     // The mock returns a marker string we can find in the DOM.
     expect(container.textContent).toContain(

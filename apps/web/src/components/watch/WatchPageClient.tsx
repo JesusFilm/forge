@@ -55,6 +55,7 @@ import { selectDefaultDownloadTier } from "@/components/watch/download-options"
 import { env } from "@/env"
 import type {
   MergedWatchBlock,
+  RouteVideo,
   ResolvedWatchVideo,
   WatchSiblingCarouselBlock,
   WatchSubtitle,
@@ -170,6 +171,7 @@ type WatchPageClientProps = {
   mergedBlocks: MergedWatchBlock[]
   variant: WatchVariant
   video: WatchVideoRecord
+  routeVideo?: RouteVideo | null
   /**
    * Override for the URL `[locale]` slug. The route may pass an ISO code
    * ("en") even when the picked variant's slug is "english", so navigation
@@ -258,6 +260,7 @@ export function WatchPageClient({
   mergedBlocks,
   variant,
   video,
+  routeVideo,
   languageSlug,
   collectionSlug = null,
   hideBibleQuotes = false,
@@ -762,6 +765,7 @@ export function WatchPageClient({
         coverBlackoutKey={coverBlackoutKey}
         coverBlackoutPhase={coverBlackoutPhase}
         onChapterNavigateIntent={handleChapterNavigateIntent}
+        routeVideo={routeVideo}
       />
 
       <WatchEventRecorder

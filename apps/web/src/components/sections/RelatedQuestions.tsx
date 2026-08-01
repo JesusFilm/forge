@@ -9,11 +9,20 @@ import type {
 import Markdown from "react-markdown"
 import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Button } from "@/components/ui/button"
+import type { RouteVideo } from "@/lib/content"
 
 export { relatedQuestionsFragment }
 
 type RelatedQuestionsProps = {
   data: FragmentOf<typeof relatedQuestionsFragment>
+  routeVideo?: RouteVideo | null
+}
+
+type RenderedQuestion = {
+  id?: string | null
+  documentId?: string
+  question?: string | null
+  answer?: string | null
 }
 
 /** Speech-bubble icon used inside the "Ask yours" pill button. */
@@ -103,29 +112,52 @@ function QuestionItem({
   )
 }
 
-export function RelatedQuestions({ data }: RelatedQuestionsProps) {
+function QuestionList({ questions }: { questions: RenderedQuestion[] }) {
+  // Authored RelatedQuestion items do not carry stable ids, so array position
+  // is the only identifier that can keep one disclosure open at a time.
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
+  return (
+    <div className="relative">
+      {questions.map((question, index) => (
+        <QuestionItem
+          key={question.documentId ?? question.id ?? `q-${index}`}
+          question={question.question ?? ""}
+          answer={question.answer ?? ""}
+          isOpen={openIndex === index}
+          onToggle={() =>
+            setOpenIndex((current) => (current === index ? null : index))
+          }
+        />
+      ))}
+    </div>
+  )
+}
+
+export function RelatedQuestions({ data, routeVideo }: RelatedQuestionsProps) {
   const t = useTranslations("WatchStudyQuestions")
   const { id, sectionKey, heading, questions } = data
   const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
   const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
-  // Identify each question by its array index. Admin's
-  // `RelatedQuestionItemSchema` (apps/admin/src/domain/blocks.ts) does
-  // NOT carry an `id` field on individual items — only `question` +
-  // `answer` — so `q.id` is `undefined` for every item. Without an
-  // index-based identifier, `openQuestion === q.id` (both undefined)
-  // matches every row and clicking one expands all of them.
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const routeIdentity = routeVideo?.documentId ?? null
 
-  const validQuestions =
+  const authoredQuestions: RenderedQuestion[] =
     questions?.filter(
       (q: LegacyFragmentValue): q is NonNullable<typeof q> => q != null,
     ) ?? []
+  const questionsSource = String(
+    (data as Record<string, unknown>).questionsSource ?? "manual",
+  )
+  const generatedQuestions = (routeVideo?.generatedQuestions ?? []).filter(
+    (item) => item.question.trim().length > 0 && item.answer.trim().length > 0,
+  )
+  const validQuestions: RenderedQuestion[] =
+    questionsSource === "routeVideoGeneratedQuestions" &&
+    generatedQuestions.length > 0
+      ? generatedQuestions
+      : authoredQuestions
 
   if (!validQuestions.length) return null
-
-  const handleToggle = (idx: number) => {
-    setOpenIndex(openIndex === idx ? null : idx)
-  }
 
   return (
     <section
@@ -156,17 +188,10 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
         )}
       </div>
 
-      <div className="relative">
-        {validQuestions.map((q: LegacyFragmentValue, idx: number) => (
-          <QuestionItem
-            key={q.id ?? `q-${idx}`}
-            question={q.question ?? ""}
-            answer={q.answer ?? ""}
-            isOpen={openIndex === idx}
-            onToggle={() => handleToggle(idx)}
-          />
-        ))}
-      </div>
+      <QuestionList
+        key={routeIdentity ?? "authored"}
+        questions={validQuestions}
+      />
     </section>
   )
 }

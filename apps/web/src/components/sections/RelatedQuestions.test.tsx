@@ -8,6 +8,7 @@ import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { RelatedQuestions } from "@/components/sections/RelatedQuestions"
+import type { RouteVideo } from "@/lib/content"
 
 let container: HTMLDivElement
 let root: Root
@@ -46,6 +47,25 @@ function makeData(): Parameters<typeof RelatedQuestions>[0]["data"] {
   } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
 }
 
+function makeRouteVideo(
+  documentId: string,
+  generatedQuestions: NonNullable<RouteVideo["generatedQuestions"]>,
+): RouteVideo {
+  return {
+    documentId,
+    slug: documentId,
+    title: documentId,
+    snippet: null,
+    description: null,
+    noIndex: false,
+    imageUrl: null,
+    imageAlt: null,
+    streamingUrl: null,
+    relatedItems: [],
+    generatedQuestions,
+  }
+}
+
 function renderQuestions() {
   act(() => {
     root.render(<RelatedQuestions data={makeData()} />)
@@ -66,6 +86,124 @@ function getControlledPanel(trigger: HTMLButtonElement) {
 }
 
 describe("RelatedQuestions", () => {
+  it("uses the complete route-video Q&A list when the block opts in", () => {
+    const data = {
+      ...makeData(),
+      questionsSource: "routeVideoGeneratedQuestions",
+    } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
+    const routeVideo = makeRouteVideo("video-one", [
+      {
+        documentId: "generated-1",
+        sourceStudyQuestionId: "study-1",
+        question: "What does this video show?",
+        answer: "It shows a video-specific answer.",
+        order: 1,
+      },
+    ])
+
+    act(() => {
+      root.render(<RelatedQuestions data={data} routeVideo={routeVideo} />)
+    })
+
+    expect(container.textContent).toContain("What does this video show?")
+    expect(container.textContent).not.toContain(
+      "Where can I watch the JESUS film online for free?",
+    )
+  })
+
+  it("keeps the authored list as one atomic fallback", () => {
+    const data = {
+      ...makeData(),
+      questionsSource: "routeVideoGeneratedQuestions",
+    } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
+
+    act(() => {
+      root.render(
+        <RelatedQuestions
+          data={data}
+          routeVideo={makeRouteVideo("video-without-generated", [])}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain(
+      "Where can I watch the JESUS film online for free?",
+    )
+    expect(container.textContent).toContain("Why did Jesus come?")
+  })
+
+  it("manual blocks ignore route generated Q&A", () => {
+    act(() => {
+      root.render(
+        <RelatedQuestions
+          data={makeData()}
+          routeVideo={makeRouteVideo("video-one", [
+            {
+              documentId: "generated-1",
+              sourceStudyQuestionId: "study-1",
+              question: "Generated question?",
+              answer: "Generated answer.",
+              order: 1,
+            },
+          ])}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Why did Jesus come?")
+    expect(container.textContent).not.toContain("Generated question?")
+  })
+
+  it("resets an expanded answer when the route video changes", () => {
+    const data = {
+      ...makeData(),
+      questionsSource: "routeVideoGeneratedQuestions",
+    } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
+    const firstRoute = makeRouteVideo("video-one", [
+      {
+        documentId: "generated-1",
+        sourceStudyQuestionId: "study-1",
+        question: "First video question?",
+        answer: "First video answer.",
+        order: 1,
+      },
+    ])
+
+    act(() => {
+      root.render(<RelatedQuestions data={data} routeVideo={firstRoute} />)
+    })
+    act(() => {
+      getFaqTriggers()[0]?.click()
+    })
+    expect(container.textContent).toContain("First video answer.")
+
+    act(() => {
+      root.render(
+        <RelatedQuestions
+          data={data}
+          routeVideo={makeRouteVideo("video-two", [
+            {
+              documentId: "generated-2",
+              sourceStudyQuestionId: "study-2",
+              question: "Second video question?",
+              answer: "Second video answer.",
+              order: 1,
+            },
+          ])}
+        />,
+      )
+    })
+
+    expect(getFaqTriggers()[0]?.getAttribute("aria-expanded")).toBe("false")
+    expect(container.textContent).not.toContain("Second video answer.")
+
+    act(() => {
+      root.render(<RelatedQuestions data={data} routeVideo={firstRoute} />)
+    })
+    expect(getFaqTriggers()[0]?.getAttribute("aria-expanded")).toBe("false")
+    expect(container.textContent).not.toContain("First video answer.")
+  })
+
   it("uses icon-free, normal-weight rows with centered content and equal padding", () => {
     renderQuestions()
 

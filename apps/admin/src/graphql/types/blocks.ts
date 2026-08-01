@@ -340,6 +340,17 @@ const ItemsSourceEnum = builder.enumType("ItemsSource", {
   } as const,
 })
 
+const RelatedQuestionsSourceEnum = builder.enumType("RelatedQuestionsSource", {
+  description:
+    "Whether Related Questions uses authored Q&A or the current route video's published generated Q&A with authored fallback.",
+  values: {
+    manual: { value: "manual" },
+    routeVideoGeneratedQuestions: {
+      value: "routeVideoGeneratedQuestions",
+    },
+  } as const,
+})
+
 const VideoTitleSourceEnum = builder.enumType("VideoTitleSource", {
   values: {
     manual: { value: "manual" },
@@ -954,6 +965,11 @@ RelatedQuestionsBlockRef.implement({
     }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
     heading: t.exposeString("heading", { nullable: true }),
+    questionsSource: t.field({
+      type: RelatedQuestionsSourceEnum,
+      nullable: false,
+      resolve: (row) => row.questionsSource,
+    }),
     questions: t.field({
       type: [RelatedQuestionItemRef],
       nullable: false,

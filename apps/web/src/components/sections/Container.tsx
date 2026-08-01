@@ -123,6 +123,7 @@ function SlotContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          routeVideo={routeVideo}
         />
       )
     // Admin GraphQL typenames inlined directly (rather than bouncing
@@ -172,6 +173,7 @@ function SlotContentRenderer({
       return (
         <RelatedQuestions
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+          routeVideo={routeVideo}
         />
       )
     case "BibleQuotesCarouselBlock":
@@ -275,7 +277,7 @@ export function Container({ data, routeVideo, languageSlug }: ContainerProps) {
   return (
     <section
       id={id ?? undefined}
-      className="grid w-full grid-cols-12 gap-10 py-8 text-stone-100 md:gap-6"
+      className="grid w-full grid-cols-12 gap-x-0 gap-y-10 py-8 text-stone-100 md:gap-6"
       data-testid="Container"
     >
       {groups.map((group, idx) => (

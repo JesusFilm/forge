@@ -30,6 +30,7 @@ import type {
   WatchRouteSnapshotBibleCitation,
   WatchRouteSnapshotChild,
   WatchRouteSnapshotChildRelation,
+  WatchRouteSnapshotGeneratedQuestion,
   WatchRouteSnapshotImage,
   WatchRouteSnapshotLanguage,
   WatchRouteSnapshotLocale,
@@ -115,6 +116,42 @@ export function videoStudyQuestionsFilter(args: {
     },
     orderBy: [
       { order: "asc" as const },
+      { languageSlug: "asc" as const },
+      { id: "asc" as const },
+    ],
+  }
+}
+
+export function videoGeneratedQuestionsFilter(
+  args: { locale?: string | null; languageSlug?: string | null },
+  user: Principal | null,
+): {
+  where: Prisma.VideoGeneratedQuestionWhereInput
+  orderBy: Prisma.VideoGeneratedQuestionOrderByWithRelationInput[]
+} {
+  const locale =
+    typeof args.locale === "string" && args.locale.length > 0
+      ? args.locale
+      : null
+  const languageSlug =
+    typeof args.languageSlug === "string" && args.languageSlug.length > 0
+      ? args.languageSlug
+      : null
+  return {
+    where: {
+      deletedAt: null,
+      ...(locale != null ? { locale } : {}),
+      ...(languageSlug != null ? { languageSlug } : {}),
+      ...(isEditorOrAdmin(user)
+        ? {}
+        : {
+            status: "PUBLISHED" as const,
+            question: { not: "" },
+            answer: { not: "" },
+          }),
+    },
+    orderBy: [
+      { order: { sort: "asc" as const, nulls: "last" as const } },
       { languageSlug: "asc" as const },
       { id: "asc" as const },
     ],
@@ -491,6 +528,38 @@ const VideoStudyQuestionRef = builder.prismaObject("VideoStudyQuestion", {
 })
 
 /** @classification public-shape */
+const VideoGeneratedQuestionRef = builder.prismaObject(
+  "VideoGeneratedQuestion",
+  {
+    description:
+      "A reviewed generated Q&A item grounded in a video study question.",
+    fields: (t) => ({
+      id: t.exposeID("id"),
+      sourceStudyQuestionId: t.exposeID("sourceStudyQuestionId"),
+      locale: t.exposeString("locale", { nullable: true }),
+      languageSlug: t.exposeString("languageSlug", { nullable: true }),
+      question: t.exposeString("question"),
+      answer: t.exposeString("answer"),
+      order: t.exposeInt("order", { nullable: true }),
+      status: t.expose("status", { type: LocaleStatusEnum }),
+      publishedAt: t.string({
+        nullable: true,
+        resolve: (row) => row.publishedAt?.toISOString() ?? null,
+      }),
+      generationProvider: t.exposeString("generationProvider", {
+        nullable: true,
+      }),
+      generatedAt: t.string({
+        nullable: false,
+        resolve: (row) => row.generatedAt.toISOString(),
+      }),
+      language: t.relation("language", { nullable: true }),
+      sourceStudyQuestion: t.relation("sourceStudyQuestion"),
+    }),
+  },
+)
+
+/** @classification public-shape */
 const VideoRelationRef = builder.prismaObject("VideoRelation", {
   description:
     "Self-referential parent/child join between Videos (e.g. series→episode). Exposes the related parent/child Video plus its ordering position.",
@@ -720,6 +789,23 @@ builder.prismaObject("Video", {
           videoId: video.id,
           locale: args.locale ?? null,
           languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    generatedQuestions: t.field({
+      type: [VideoGeneratedQuestionRef],
+      nullable: true,
+      description:
+        "Published, non-deleted generated Q&A for consumers; editors can inspect non-deleted drafts.",
+      args: {
+        locale: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoGeneratedQuestionsByVideoIdAndFilter.load({
+          videoId: video.id,
+          locale: args.locale ?? null,
+          languageSlug: args.languageSlug ?? null,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
         }),
     }),
     bibleCitations: t.field({
@@ -1308,6 +1394,24 @@ WatchRouteSnapshotStudyQuestionRef.implement({
   }),
 })
 
+const WatchRouteSnapshotGeneratedQuestionRef =
+  builder.objectRef<WatchRouteSnapshotGeneratedQuestion>(
+    "WatchRouteSnapshotGeneratedQuestion",
+  )
+
+WatchRouteSnapshotGeneratedQuestionRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    sourceStudyQuestionId: t.exposeID("sourceStudyQuestionId", {
+      nullable: false,
+    }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    question: t.exposeString("question", { nullable: false }),
+    answer: t.exposeString("answer", { nullable: false }),
+    order: t.exposeInt("order", { nullable: true }),
+  }),
+})
+
 const WatchRouteSnapshotPreferredVariantRef =
   builder.objectRef<WatchRouteSnapshotPreferredVariant>(
     "WatchRouteSnapshotPreferredVariant",
@@ -1404,6 +1508,21 @@ WatchRouteSnapshotRef.implement({
       type: [WatchRouteSnapshotStudyQuestionRef],
       nullable: false,
       resolve: (row) => row.englishStudyQuestions,
+    }),
+    exactGeneratedQuestions: t.field({
+      type: [WatchRouteSnapshotGeneratedQuestionRef],
+      nullable: false,
+      resolve: (row) => row.exactGeneratedQuestions,
+    }),
+    broadGeneratedQuestions: t.field({
+      type: [WatchRouteSnapshotGeneratedQuestionRef],
+      nullable: false,
+      resolve: (row) => row.broadGeneratedQuestions,
+    }),
+    englishGeneratedQuestions: t.field({
+      type: [WatchRouteSnapshotGeneratedQuestionRef],
+      nullable: false,
+      resolve: (row) => row.englishGeneratedQuestions,
     }),
     playableDubLanguageCount: t.exposeInt("playableDubLanguageCount", {
       nullable: false,

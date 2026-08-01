@@ -100,10 +100,19 @@ function makePrisma() {
       videoId_languageId: { videoId: r.videoId, languageId: r.languageId },
     }),
   )
+  const videoDub = makeKeyedTable<"coreId">((r) =>
+    JSON.stringify({ coreId: r.coreId }),
+  )
   const videoRelation = makeKeyedTable<"parentId_childId">((r) =>
     JSON.stringify({
       parentId_childId: { parentId: r.parentId, childId: r.childId },
     }),
+  )
+  const videoStudyQuestion = makeKeyedTable<"id">((r) =>
+    JSON.stringify({ id: r.id }),
+  )
+  const videoGeneratedQuestion = makeKeyedTable<"id">((r) =>
+    JSON.stringify({ id: r.id }),
   )
   const experienceLocale = makeKeyedTable<"experienceId_locale">((r) =>
     JSON.stringify({
@@ -156,7 +165,10 @@ function makePrisma() {
     keyword,
     video,
     videoLocale,
+    videoDub,
     videoRelation,
+    videoStudyQuestion,
+    videoGeneratedQuestion,
     experience,
     experienceLocale,
   }
@@ -239,12 +251,30 @@ describe("seedWebFixtures", () => {
       0,
     )
     expect(summary.videoLocales).toBe(totalVideoLocales)
+    expect(summary.videoDubs).toBe(
+      FIXTURES.videos.reduce(
+        (total, video) => total + (video.dubs?.length ?? 0),
+        0,
+      ),
+    )
 
     const totalRelations = FIXTURES.videos.reduce(
       (acc, v) => acc + (v.parents?.length ?? 0),
       0,
     )
     expect(summary.videoRelations).toBe(totalRelations)
+    expect(summary.videoStudyQuestions).toBe(
+      FIXTURES.videos.reduce(
+        (total, video) => total + (video.studyQuestions?.length ?? 0),
+        0,
+      ),
+    )
+    expect(summary.videoGeneratedQuestions).toBe(
+      FIXTURES.videos.reduce(
+        (total, video) => total + (video.generatedQuestions?.length ?? 0),
+        0,
+      ),
+    )
   })
 
   it("seeds a homepage Experience reachable as isHomepage=true", async () => {
@@ -282,7 +312,10 @@ describe("seedWebFixtures", () => {
       keywords: prisma.keyword.store.size,
       videos: prisma.video.store.size,
       videoLocales: prisma.videoLocale.store.size,
+      videoDubs: prisma.videoDub.store.size,
       videoRelations: prisma.videoRelation.store.size,
+      videoStudyQuestions: prisma.videoStudyQuestion.store.size,
+      videoGeneratedQuestions: prisma.videoGeneratedQuestion.store.size,
       experiences: prisma.experience.store.size,
       experienceLocales: prisma.experienceLocale.store.size,
     }
@@ -294,7 +327,10 @@ describe("seedWebFixtures", () => {
       keywords: prisma.keyword.store.size,
       videos: prisma.video.store.size,
       videoLocales: prisma.videoLocale.store.size,
+      videoDubs: prisma.videoDub.store.size,
       videoRelations: prisma.videoRelation.store.size,
+      videoStudyQuestions: prisma.videoStudyQuestion.store.size,
+      videoGeneratedQuestions: prisma.videoGeneratedQuestion.store.size,
       experiences: prisma.experience.store.size,
       experienceLocales: prisma.experienceLocale.store.size,
     }
@@ -418,6 +454,68 @@ describe("seedWebFixtures", () => {
     expect(rows.some((r) => r.slug === "jesus-feature-film")).toBe(true)
   })
 
+  it("seeds playable dubs for every route used by the generated-Q&A demo", async () => {
+    const prisma = makePrisma()
+    await seedWebFixtures(prisma, FIXTURES)
+
+    const demoCoreIds = new Set([
+      "fixt-jesus-feature",
+      "fixt-easter-explained",
+      "fixt-my-last-day",
+    ])
+    const demoVideoIds = new Set(
+      [...prisma.video.store.values()]
+        .filter((video) => demoCoreIds.has(String(video.coreId)))
+        .map((video) => video.id),
+    )
+    const playableDemoVideoIds = new Set(
+      [...prisma.videoDub.store.values()]
+        .filter(
+          (dub) =>
+            dub.published === true &&
+            typeof dub.hls === "string" &&
+            dub.hls.length > 0,
+        )
+        .map((dub) => dub.videoId),
+    )
+
+    expect(playableDemoVideoIds).toEqual(demoVideoIds)
+  })
+
+  it("seeds distinct grounded generated Q&A for two videos and leaves another empty", async () => {
+    const prisma = makePrisma()
+    await seedWebFixtures(prisma, FIXTURES)
+
+    const videosByCoreId = new Map(
+      [...prisma.video.store.values()].map((video) => [
+        video.coreId as string,
+        video,
+      ]),
+    )
+    const generatedRows = [...prisma.videoGeneratedQuestion.store.values()]
+    const featureId = videosByCoreId.get("fixt-jesus-feature")?.id
+    const easterId = videosByCoreId.get("fixt-easter-explained")?.id
+    const noDataId = videosByCoreId.get("fixt-my-last-day")?.id
+
+    expect(
+      generatedRows.filter((row) => row.videoId === featureId),
+    ).not.toHaveLength(0)
+    expect(
+      generatedRows.filter((row) => row.videoId === easterId),
+    ).not.toHaveLength(0)
+    expect(generatedRows.filter((row) => row.videoId === noDataId)).toEqual([])
+    expect(new Set(generatedRows.map((row) => row.question)).size).toBe(
+      generatedRows.length,
+    )
+    expect(
+      generatedRows.every(
+        (row) =>
+          row.status === "PUBLISHED" &&
+          typeof row.sourceStudyQuestionId === "string",
+      ),
+    ).toBe(true)
+  })
+
   it("seeds at least one Experience reachable via (slug, locale)", async () => {
     const prisma = makePrisma()
     await seedWebFixtures(prisma, FIXTURES)
@@ -442,6 +540,50 @@ describe("loadFixtures (web-fixtures.json contract)", () => {
   it("has a default template Experience", () => {
     const fixtures = loadFixtures(FIXTURES_PATH)
     expect(fixtures.experiences.some((e) => e.isTemplate === true)).toBe(true)
+  })
+
+  it("uses an invitation, questions, and two question CTAs for the local default template example", () => {
+    const fixtures = loadFixtures(FIXTURES_PATH)
+    const template = fixtures.experiences.find((e) => e.isTemplate === true)
+    const blocks = template?.locales[0]?.blocks as
+      | Array<Record<string, unknown>>
+      | undefined
+
+    expect(blocks?.map((block) => block.t)).toEqual([
+      "text",
+      "relatedQuestions",
+      "container",
+    ])
+    expect(blocks?.[0]).toMatchObject({
+      sectionKey: "single-video-question-invitation",
+      variant: "promotional",
+    })
+    expect(blocks?.[1]).toMatchObject({
+      sectionKey: "single-video-shared-questions",
+      questionsSource: "routeVideoGeneratedQuestions",
+      questions: expect.any(Array),
+    })
+
+    const ctaContent = blocks?.[2]?.content as
+      | Array<Record<string, unknown>>
+      | undefined
+    expect(ctaContent?.filter((block) => block.t === "cta")).toMatchObject([
+      {
+        buttonLabel: "Chat with a person",
+        buttonLink:
+          "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch",
+      },
+      {
+        buttonLabel: "Ask a Bible question",
+        buttonLink:
+          "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch",
+      },
+    ])
+    expect(
+      blocks?.some((block) =>
+        ["video", "videoHero", "videoCarousel"].includes(String(block.t)),
+      ),
+    ).toBe(false)
   })
 
   it("has at least one Video with parents", () => {

@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 27, 2026)
 
-- **Total tickets:** 458
-- **Complete:** 350
+- **Total tickets:** 459
+- **Complete:** 351
 - **In progress:** 34
 - **Not started:** 25
 - **Blocked:** 49
@@ -483,6 +483,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-279](topic-experiences/feat-279-experience-carousel-empty-copy.md)                    | Experience carousel empty copy rendering                                         | urim      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-320](topic-experiences/feat-320-experience-create-generate-mcp.md)                    | Experience create + generate tools for the JFP Admin MCP                         | ekkasit   | P1       | 2026-07-27 | 5    | 2026-07-31 | in-progress |
+| [feat-322](topic-experiences/feat-322-watch-single-video-shared-experience-template.md)     | Attach the shared Experience template to single-video Watch pages                | codex     | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
+| [feat-323](topic-experiences/feat-323-watch-route-video-generated-questions.md)             | Route generated questions into the shared single-video Experience                | codex     | P1       | 2026-08-01 | 1    | 2026-08-01 | complete    |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |

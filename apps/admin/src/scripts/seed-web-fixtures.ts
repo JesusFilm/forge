@@ -117,12 +117,38 @@ type VideoLocaleFixture = {
   description: string
 }
 
+type VideoDubFixture = {
+  fixtureId: string
+  languageCoreId: string
+  hls: string
+  duration: number
+}
+
+type VideoStudyQuestionFixture = {
+  fixtureId: string
+  languageCoreId: string
+  text: string
+  order: number
+}
+
+type VideoGeneratedQuestionFixture = {
+  fixtureId: string
+  sourceStudyQuestionFixtureId: string
+  languageCoreId: string
+  question: string
+  answer: string
+  order: number
+}
+
 type VideoFixture = {
   coreId: string
   slug: string
   label: string
   publishedAt: string
   locales: VideoLocaleFixture[]
+  dubs?: VideoDubFixture[]
+  studyQuestions?: VideoStudyQuestionFixture[]
+  generatedQuestions?: VideoGeneratedQuestionFixture[]
   parents?: string[]
 }
 
@@ -155,7 +181,10 @@ export type SeedSummary = {
   keywords: number
   videos: number
   videoLocales: number
+  videoDubs: number
   videoRelations: number
+  videoStudyQuestions: number
+  videoGeneratedQuestions: number
   experiences: number
   experienceLocales: number
 }
@@ -260,7 +289,10 @@ export async function seedWebFixtures(
     keywords: 0,
     videos: 0,
     videoLocales: 0,
+    videoDubs: 0,
     videoRelations: 0,
+    videoStudyQuestions: 0,
+    videoGeneratedQuestions: 0,
     experiences: 0,
     experienceLocales: 0,
   }
@@ -381,6 +413,111 @@ export async function seedWebFixtures(
         update: localePayload,
       })
       summary.videoLocales += 1
+    }
+
+    for (const dub of v.dubs ?? []) {
+      const lang = languageByCoreId.get(dub.languageCoreId)
+      if (!lang) {
+        throw new UnknownLanguageCoreIdError(dub.languageCoreId, v.coreId)
+      }
+      const dubPayload = {
+        source: "CORE",
+        slug: lang.slug,
+        duration: dub.duration,
+        hls: dub.hls,
+        published: true,
+        videoId: video.id,
+        languageId: lang.id,
+        deletedAt: null,
+      } satisfies Prisma.VideoDubUncheckedUpdateInput
+      await prisma.videoDub.upsert({
+        where: { coreId: dub.fixtureId },
+        create: {
+          id: dub.fixtureId,
+          coreId: dub.fixtureId,
+          ...dubPayload,
+        } satisfies Prisma.VideoDubUncheckedCreateInput,
+        update: dubPayload,
+      })
+      summary.videoDubs += 1
+    }
+
+    const studyQuestionIdByFixtureId = new Map<string, string>()
+    for (const question of v.studyQuestions ?? []) {
+      const lang = languageByCoreId.get(question.languageCoreId)
+      if (!lang) {
+        throw new UnknownLanguageCoreIdError(question.languageCoreId, v.coreId)
+      }
+      const row = await prisma.videoStudyQuestion.upsert({
+        where: { id: question.fixtureId },
+        create: {
+          id: question.fixtureId,
+          coreId: question.fixtureId,
+          source: "CORE",
+          videoId: video.id,
+          locale: lang.bcp47,
+          languageId: lang.id,
+          languageSlug: lang.slug,
+          languageCoreId: lang.coreId,
+          text: question.text,
+          primary: question.languageCoreId === "529",
+          order: question.order,
+        } satisfies Prisma.VideoStudyQuestionUncheckedCreateInput,
+        update: {
+          videoId: video.id,
+          locale: lang.bcp47,
+          languageId: lang.id,
+          languageSlug: lang.slug,
+          languageCoreId: lang.coreId,
+          text: question.text,
+          primary: question.languageCoreId === "529",
+          order: question.order,
+          deletedAt: null,
+        } satisfies Prisma.VideoStudyQuestionUncheckedUpdateInput,
+      })
+      studyQuestionIdByFixtureId.set(question.fixtureId, row.id)
+      summary.videoStudyQuestions += 1
+    }
+
+    for (const generated of v.generatedQuestions ?? []) {
+      const lang = languageByCoreId.get(generated.languageCoreId)
+      if (!lang) {
+        throw new UnknownLanguageCoreIdError(generated.languageCoreId, v.coreId)
+      }
+      const sourceStudyQuestionId = studyQuestionIdByFixtureId.get(
+        generated.sourceStudyQuestionFixtureId,
+      )
+      if (!sourceStudyQuestionId) {
+        throw new Error(
+          `[seed-web-fixtures] Generated question "${generated.fixtureId}" references missing study question "${generated.sourceStudyQuestionFixtureId}" on video "${v.coreId}".`,
+        )
+      }
+      const generatedPayload = {
+        videoId: video.id,
+        sourceStudyQuestionId,
+        locale: lang.bcp47,
+        languageId: lang.id,
+        languageSlug: lang.slug,
+        question: generated.question,
+        answer: generated.answer,
+        order: generated.order,
+        status: "PUBLISHED",
+        publishedAt: new Date(v.publishedAt),
+        generationProvider: "fixture",
+        generationModel: "fixture-grounded-v1",
+        generationMode: "local-demo",
+        generatedAt: new Date(v.publishedAt),
+        deletedAt: null,
+      } satisfies Prisma.VideoGeneratedQuestionUncheckedUpdateInput
+      await prisma.videoGeneratedQuestion.upsert({
+        where: { id: generated.fixtureId },
+        create: {
+          id: generated.fixtureId,
+          ...generatedPayload,
+        } satisfies Prisma.VideoGeneratedQuestionUncheckedCreateInput,
+        update: generatedPayload,
+      })
+      summary.videoGeneratedQuestions += 1
     }
   }
 
