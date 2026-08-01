@@ -54,8 +54,10 @@ src/
   source-url.ts    SSRF enforcement (exact-host allowlist, https-only-in-prod)
   prepare.ts       Trim + probe + whisper pipeline + prepare artifacts
   render.ts        Baked-bundle Remotion render + output sanity + artifacts
+  devotional-transfer.ts  Validates short-lived Workspace capabilities and
+                   streams digest-bound inputs/outputs without bucket creds
   devotional-render.ts  Arclight lookup/download + ffmpeg prep + one-bundle
-                   portrait/wide render + durable outputs
+                   portrait/wide render + signed output transfer
   clip-server.ts   Loopback single-file static server for renders
   whisper.ts       @remotion/install-whisper-cpp wrapper + hallucination filter
   ffmpeg.ts        RunCommand (spawn) + probeMedia + protocol whitelist
@@ -91,8 +93,12 @@ endSec }, transcription: { language: string | null } }`. `language` is
     `clipUrl` at compose time; `propsHash` is the manager-computed sha256
     treated as an OPAQUE token (shape-checked, never recomputed).
   - **devotional-render**: `{ kind, jobId?, runId, inputAssetId,
-outputAssetId, inputHash }`. The worker owns Arclight lookup/download,
-    ffmpeg preparation, and one-bundle portrait + wide rendering.
+outputAssetId, inputHash, workspaceTransfer? }`. Current Mastra calls include
+    one attempt-bound manifest grant, digest-bound input grants, and portrait/
+    wide upload grants. The worker owns Arclight lookup/download, ffmpeg
+    preparation, and one-bundle portrait + wide rendering, but has no durable
+    Workspace credentials or storage authority. The optional legacy shape is
+    retained only for rolling-deploy compatibility.
 - `GET /jobs/{workerJobId}` → snapshot
   `{ workerJobId, kind, status: queued|running|completed|failed|cancelled, progress
 0..1, message, error, result }`. `error` is structured
@@ -102,10 +108,10 @@ artifactType, ext }], report }` (prepare report: `{ hasAudio,
 clipDurationSec, captionsCount, annotation }`; render report:
   `{ outputDurationSec, width, height }`). 404 `not_found` for unknown ids.
 - `DELETE /jobs/{workerJobId}` cancels devotional jobs and returns 202.
-- `PUT /devotional-inputs/{inputAssetId}/{artifactType}.{ext}` accepts only
+- Legacy `PUT /devotional-inputs/{inputAssetId}/{artifactType}.{ext}` accepts only
   the fixed devotional JSON/narration/music types and enforces auth, content
   type, schema validation, and per-type body caps.
-- `GET /artifacts/{outputAssetId}/{artifactType}.mp4` streams only the
+- Legacy `GET /artifacts/{outputAssetId}/{artifactType}.mp4` streams only the
   authenticated portrait/wide devotional output types. Input and metadata
   artifacts are never exposed by this route. Single-byte ranges return 206
   with `Content-Range`; invalid ranges return 416.
@@ -195,6 +201,12 @@ lane slot) AND again inside `runPrepare` before any ffmpeg/ffprobe spawn
   loopback flag), so loosening the SSRF posture requires a code change and
   review — not a quiet env edit on the Railway dashboard. Do not add the
   env var back.
+- Signed devotional Workspace capabilities are validated separately in
+  `devotional-transfer.ts`: production URLs must use HTTPS, match the exact
+  non-secret `DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN`, reject IP-literal/local
+  hosts, target their declared Workspace key, be unexpired, and remain inside
+  the current attempt's input or temporary-upload prefix. Redirects are
+  rejected. Never log or persist the signed URLs.
 - The render's loopback clip server binds `127.0.0.1` explicitly on an
   ephemeral port, serves EXACTLY `GET/HEAD /clip.mp4` (404s everything
   else), and is torn down in `finally`. `Access-Control-Allow-Origin: *` is
@@ -205,19 +217,19 @@ lane slot) AND again inside `runPrepare` before any ffmpeg/ffprobe spawn
 Key scheme `{assetId}/{artifactType}.{ext}` (validated, flat). `assetId` is
 the per-short prefix minted by manager (`{muxAssetId}-short-{suffix}`).
 
-| Artifact                            | Written by        | Contents                                                               |
-| ----------------------------------- | ----------------- | ---------------------------------------------------------------------- |
-| `shorts-clip-v1.mp4`                | prepare           | trimmed 30fps clip (libx264 veryfast CRF 17 intermediate, +faststart)  |
-| `shorts-clip-meta-v1.json`          | prepare           | HOST-ONLY source provenance, bounds, duration/fps/dimensions, hasAudio |
-| `shorts-captions-v1.json`           | prepare           | whisper word captions + language + model + annotation + generatedAt    |
-| `shorts-output-v1.mp4`              | render            | 1080x1920 H.264 rendered short (ffprobe-verified, duration ±0.5s)      |
-| `shorts-render-meta-v1.json`        | render            | propsHash (echoed verbatim), renderedDraftVersion, compositionsVersion |
-| `devotional-render-input-v1.json`   | upload            | Content, media id/window, segments, and render options                 |
-| `devotional-narration-{id}-v1.mp3`  | upload            | One bounded narration segment                                          |
-| `devotional-music-v1.mp3`           | upload            | Optional bounded music bed                                             |
-| `devotional-output-portrait-v1.mp4` | devotional-render | 1080x1920 H.264 output                                                 |
-| `devotional-output-wide-v1.mp4`     | devotional-render | 1920x1080 H.264 output                                                 |
-| `devotional-render-meta-v1.json`    | devotional-render | Input provenance and both output refs/metadata                         |
+| Artifact                            | Written by   | Contents                                                               |
+| ----------------------------------- | ------------ | ---------------------------------------------------------------------- |
+| `shorts-clip-v1.mp4`                | prepare      | trimmed 30fps clip (libx264 veryfast CRF 17 intermediate, +faststart)  |
+| `shorts-clip-meta-v1.json`          | prepare      | HOST-ONLY source provenance, bounds, duration/fps/dimensions, hasAudio |
+| `shorts-captions-v1.json`           | prepare      | whisper word captions + language + model + annotation + generatedAt    |
+| `shorts-output-v1.mp4`              | render       | 1080x1920 H.264 rendered short (ffprobe-verified, duration ±0.5s)      |
+| `shorts-render-meta-v1.json`        | render       | propsHash (echoed verbatim), renderedDraftVersion, compositionsVersion |
+| `devotional-render-input-v1.json`   | signed read  | Content, media id/window, segments, and render options                 |
+| `devotional-narration-{id}-v1.mp3`  | signed read  | One bounded narration segment                                          |
+| `devotional-music-v1.mp3`           | signed read  | Optional bounded music bed                                             |
+| `devotional-output-portrait-v1.mp4` | signed write | 1080x1920 H.264 temporary output; Mastra verifies and finalizes        |
+| `devotional-output-wide-v1.mp4`     | signed write | 1920x1080 H.264 temporary output; Mastra verifies and finalizes        |
+| `devotional-render-meta-v1.json`    | Mastra-owned | Input provenance and final output refs/metadata                        |
 
 Reads: render reads `shorts-clip-v1.mp4`. Manager-owned artifacts under the
 same prefix (`shorts-draft-v1.json`, `shorts-render-props-v1.json`,
@@ -234,36 +246,31 @@ when `SHORTS_WORKER_BUNDLE_DIR` / `SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR` /
 `SHORTS_WORKER_WHISPER_MODEL_PATH` / `SHORTS_WORKER_WHISPER_CPP_DIR` point at
 paths that don't exist (fail-fast on a broken image).
 
-| Variable                                  | Default                   | Notes                                                                                                                         |
-| ----------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| PORT                                      | 3012                      |                                                                                                                               |
-| NODE_ENV                                  | development               | `test` suppresses self-start                                                                                                  |
-| SHORTS_WORKER_API_KEYS                    | —                         | CSV allowlist; required in production; DISTINCT secret from CROP_WORKER_API_KEYS                                              |
-| RAILWAY_S3_ENDPOINT                       | —                         | required in production                                                                                                        |
-| RAILWAY_S3_REGION                         | —                         | required in production                                                                                                        |
-| RAILWAY_S3_BUCKET                         | —                         | presence toggles S3 mode; req. in prod                                                                                        |
-| RAILWAY_S3_ACCESS_KEY_ID                  | —                         | required in production                                                                                                        |
-| RAILWAY_S3_SECRET_ACCESS_KEY              | —                         | required in production                                                                                                        |
-| DEVOTIONAL_WORKSPACE_S3_ENDPOINT          | —                         | dedicated devotional Workspace endpoint; complete tuple required for v2 devotional artifacts in production                    |
-| DEVOTIONAL_WORKSPACE_S3_REGION            | —                         | dedicated devotional Workspace region                                                                                         |
-| DEVOTIONAL_WORKSPACE_S3_BUCKET            | —                         | dedicated devotional Workspace bucket; must match Mastra                                                                      |
-| DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID     | —                         | dedicated devotional Workspace access key reference                                                                           |
-| DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY | —                         | dedicated devotional Workspace secret reference                                                                               |
-| DEVOTIONAL_WORKSPACE_PREFIX               | devotional                | shared key prefix inside the dedicated bucket; must match Mastra                                                              |
-| DEVOTIONAL_WORKSPACE_LOCAL_DIR            | .tmp/devotional-workspace | contained dev/test fallback when the entire dedicated S3 tuple is absent                                                      |
-| SHORTS_WORKER_LOCAL_ARTIFACTS_DIR         | .tmp/artifacts            | local fallback root (point at manager's `.tmp/artifacts` for parity)                                                          |
-| SHORTS_WORKER_ALLOWED_SOURCE_HOSTS        | stream.mux.com            | exact-host CSV; S3 host deliberately excluded (see SSRF invariants)                                                           |
-| SHORTS_WORKER_RENDER_CONCURRENCY          | 2                         | Remotion renderMedia concurrency (2 on 4 vCPU — x264 needs the rest)                                                          |
-| SHORTS_WORKER_BUNDLE_DIR                  | —                         | baked bundle dir (`/app/bundle` in Docker); required + must exist in prod; absent → runtime-memoized `bundle()` for local dev |
-| SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR       | —                         | baked devotional bundle (`/app/devotional-bundle`); required + must exist in prod; copied per job to stage media              |
-| SHORTS_WORKER_WHISPER_MODEL_PATH          | —                         | required + must exist in prod; unset locally → captions-less degradation                                                      |
-| SHORTS_WORKER_WHISPER_CPP_DIR             | —                         | whisper.cpp install dir; required + must exist in prod                                                                        |
-| SHORTS_WORKER_WHISPER_CPP_VERSION         | 1.7.4                     | SEMVER string (raw commit SHAs break install-whisper-cpp's compareVersions); keep in sync with the Dockerfile pins            |
-| SHORTS_WORKER_QUEUE_LIMIT                 | 2                         | per-LANE cap (pending + running) → 409 `queue_full`                                                                           |
-| SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS      | 2700000                   | 45min per-JOB budget; < manager's 50min prepare poll ceiling                                                                  |
-| SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS       | 4200000                   | 70min per-JOB budget; schema-capped at 4740000ms, leaving 60s below Mastra's 80min devotional poll ceiling                    |
-| SHORTS_WORKER_FFMPEG_TIMEOUT_MS           | 1800000                   | 30min per-invocation cap                                                                                                      |
-| SHORTS_WORKER_WHISPER_TIMEOUT_MS          | 1800000                   | 30min per-invocation cap                                                                                                      |
+| Variable                               | Default                   | Notes                                                                                                                         |
+| -------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| PORT                                   | 3012                      |                                                                                                                               |
+| NODE_ENV                               | development               | `test` suppresses self-start                                                                                                  |
+| SHORTS_WORKER_API_KEYS                 | —                         | CSV allowlist; required in production; DISTINCT secret from CROP_WORKER_API_KEYS                                              |
+| RAILWAY_S3_ENDPOINT                    | —                         | required in production                                                                                                        |
+| RAILWAY_S3_REGION                      | —                         | required in production                                                                                                        |
+| RAILWAY_S3_BUCKET                      | —                         | presence toggles S3 mode; req. in prod                                                                                        |
+| RAILWAY_S3_ACCESS_KEY_ID               | —                         | required in production                                                                                                        |
+| RAILWAY_S3_SECRET_ACCESS_KEY           | —                         | required in production                                                                                                        |
+| DEVOTIONAL_WORKSPACE_LOCAL_DIR         | .tmp/devotional-workspace | legacy rolling-deploy/local-test compatibility only; production v2 transfers use Mastra-issued signed capabilities            |
+| DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN | —                         | exact HTTPS origin for Mastra-issued Workspace capabilities; non-secret and required in production                            |
+| SHORTS_WORKER_LOCAL_ARTIFACTS_DIR      | .tmp/artifacts            | local fallback root (point at manager's `.tmp/artifacts` for parity)                                                          |
+| SHORTS_WORKER_ALLOWED_SOURCE_HOSTS     | stream.mux.com            | exact-host CSV for ordinary source URLs; signed Workspace capabilities use their separate validation contract                 |
+| SHORTS_WORKER_RENDER_CONCURRENCY       | 2                         | Remotion renderMedia concurrency (2 on 4 vCPU — x264 needs the rest)                                                          |
+| SHORTS_WORKER_BUNDLE_DIR               | —                         | baked bundle dir (`/app/bundle` in Docker); required + must exist in prod; absent → runtime-memoized `bundle()` for local dev |
+| SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR    | —                         | baked devotional bundle (`/app/devotional-bundle`); required + must exist in prod; copied per job to stage media              |
+| SHORTS_WORKER_WHISPER_MODEL_PATH       | —                         | required + must exist in prod; unset locally → captions-less degradation                                                      |
+| SHORTS_WORKER_WHISPER_CPP_DIR          | —                         | whisper.cpp install dir; required + must exist in prod                                                                        |
+| SHORTS_WORKER_WHISPER_CPP_VERSION      | 1.7.4                     | SEMVER string (raw commit SHAs break install-whisper-cpp's compareVersions); keep in sync with the Dockerfile pins            |
+| SHORTS_WORKER_QUEUE_LIMIT              | 2                         | per-LANE cap (pending + running) → 409 `queue_full`                                                                           |
+| SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS   | 2700000                   | 45min per-JOB budget; < manager's 50min prepare poll ceiling                                                                  |
+| SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS    | 4200000                   | 70min per-JOB budget; schema-capped at 4740000ms, leaving 60s below Mastra's 80min devotional poll ceiling                    |
+| SHORTS_WORKER_FFMPEG_TIMEOUT_MS        | 1800000                   | 30min per-invocation cap                                                                                                      |
+| SHORTS_WORKER_WHISPER_TIMEOUT_MS       | 1800000                   | 30min per-invocation cap                                                                                                      |
 
 ## Docker build
 
@@ -329,7 +336,8 @@ Keep it that way.
    never saw the POST → spurious 404s → `job_lost` resubmit storms while
    orphaned renders burn CPU. Keep the dashboard replica setting at 1 too.
    Throughput scaling belongs to `SHORTS_WORKER_QUEUE_LIMIT`, not replicas.
-4. Set `RAILWAY_S3_*` + `SHORTS_WORKER_API_KEYS`. The keyring MUST be a
+4. Set `RAILWAY_S3_*`, `SHORTS_WORKER_API_KEYS`, and the exact non-secret
+   `DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN`. The keyring MUST be a
    **distinct secret from `CROP_WORKER_API_KEYS`** — a shared value would
    make one worker's bearer authorize the other.
    Keep the object bucket private and its credentials Worker-only; never expose
@@ -339,8 +347,11 @@ Keep it that way.
    means `SHORTS_WORKER_API_KEYS` isn't set. Only THEN set manager's
    `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Reverse order
    produces a dead minute where manager's first call 401s.
-   Also prove anonymous job submission, cancellation, devotional input upload,
-   and artifact Range reads return 401, and anonymous bucket reads are denied.
+   Also prove anonymous job submission, cancellation, legacy devotional input
+   upload, and legacy artifact Range reads return 401, and anonymous bucket
+   reads are denied. The Worker service must not have
+   `DEVOTIONAL_WORKSPACE_S3_*` references; Mastra supplies only short-lived
+   attempt capabilities in authenticated job requests.
 6. Healthcheck `/health` with `healthcheckTimeout = 120` (railway.toml).
    120s is deliberately BELOW Railway's 300s default: boot does no heavy
    work (the Remotion bundle is pre-baked, the whisper model is loaded

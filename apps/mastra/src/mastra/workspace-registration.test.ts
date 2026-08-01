@@ -10,8 +10,8 @@ const workspaceSource = readFileSync(
   new URL("../services/devotional/workspace/config.ts", import.meta.url),
   "utf8",
 )
-const workerStorageSource = readFileSync(
-  new URL("../../../shorts-worker/src/storage.ts", import.meta.url),
+const workerTransferSource = readFileSync(
+  new URL("../../../shorts-worker/src/devotional-transfer.ts", import.meta.url),
   "utf8",
 )
 const workerEnvSource = readFileSync(
@@ -55,16 +55,18 @@ describe("devotional Workspace registration", () => {
     expect(workspaceSource).toContain("forcePathStyle: false")
   })
 
-  it("keeps Mastra and Worker v2 keys in the same configured namespace", () => {
+  it("keeps Workspace credentials in Mastra and gives Worker bounded capabilities", () => {
     expect(workspaceSource).toContain("prefix: storage.prefix")
-    expect(workerEnvSource).toContain(
-      'DEVOTIONAL_WORKSPACE_PREFIX: z.string().min(1).default("devotional")',
+    expect(mastraSource).toContain(
+      "configureDevotionalWorkerWorkspaceMediaStore(",
     )
-    expect(workerStorageSource).toContain(
-      '[normalizedWorkspacePrefix, relativeKey].filter(Boolean).join("/")',
+    expect(workerEnvSource).not.toContain("DEVOTIONAL_WORKSPACE_S3_")
+    expect(workerEnvSource).not.toContain("DEVOTIONAL_WORKSPACE_PREFIX")
+    expect(workerTransferSource).toContain(
+      "signed Workspace URLs must share one storage origin",
     )
-    expect(workerStorageSource).toContain(
-      "workspacePrefix: env.DEVOTIONAL_WORKSPACE_PREFIX",
+    expect(workerTransferSource).toContain(
+      "signed Workspace URL lifetime is too long",
     )
   })
 

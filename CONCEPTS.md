@@ -16,6 +16,10 @@ than versioned, so a new retry can consume files edited after an earlier
 attempt. A Devotional Catalog Generation snapshots eligible input metadata for
 selection; it does not freeze or version the Workspace bytes themselves.
 
+When media execution crosses into Shorts Worker, the Devotional Workspace owner
+issues attempt-scoped temporary capabilities. The Worker may transfer the
+authorized bytes but never receives durable Workspace credentials or ownership.
+
 ### Devotional Catalog Generation
 
 An atomic, committed projection of the Devotional Workspace inputs used to
