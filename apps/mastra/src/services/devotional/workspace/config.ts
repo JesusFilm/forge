@@ -43,6 +43,11 @@ import {
   type QueryExecutor,
 } from "./database"
 import { toNativeWorkspaceFilesystemPath } from "./inventory"
+import {
+  createDevotionalWorkspaceMediaStore,
+  devotionalWorkspaceObjectKey,
+  type DevotionalWorkspaceMediaStore,
+} from "./media-store"
 
 export const DEVOTIONAL_WORKSPACE_ID = "devotional-workspace"
 export const DEVOTIONAL_WORKSPACE_NAME = "Devotional Workspace"
@@ -245,6 +250,7 @@ class UnavailableFilesystem implements WorkspaceFilesystem {
 export type DevotionalWorkspaceRuntime = {
   workspace: Workspace
   filesystem: AuditedFilesystem
+  mediaStore: DevotionalWorkspaceMediaStore
   vectorStore?: PgVector
   embedder?: WorkspaceEmbedder
   config: DevotionalWorkspaceConfig
@@ -258,6 +264,7 @@ export function createDevotionalWorkspaceRuntime(options?: {
   auditSink?: WorkspaceMutationAuditSink
   mutationContext?: () => WorkspaceMutationContext
   digestReader?: WorkspaceDigestReader
+  mediaStore?: DevotionalWorkspaceMediaStore
   vectorStore?: PgVector
   embedder?: WorkspaceEmbedder
   /** Test seam; production uses bounded defaults below the 30-second inventory budget. */
@@ -273,13 +280,22 @@ export function createDevotionalWorkspaceRuntime(options?: {
   const baseFilesystem = options?.filesystem ?? storageRuntime!.filesystem
   const auditSink =
     options?.auditSink ?? createDatabaseAuditSink(getDevotionalDatabase())
+  const digestReader =
+    options?.digestReader ??
+    (options?.filesystem ? undefined : storageRuntime!.digestReader)
   const filesystem = new AuditedFilesystem(
     baseFilesystem,
     auditSink,
     options?.mutationContext,
-    options?.digestReader ??
-      (options?.filesystem ? undefined : storageRuntime!.digestReader),
+    digestReader,
   )
+  const mediaStore =
+    options?.mediaStore ??
+    createDevotionalWorkspaceMediaStore({
+      filesystem,
+      ...(digestReader ? { digestReader } : {}),
+      ...(storageRuntime?.s3 ? { s3: storageRuntime.s3 } : {}),
+    })
 
   const vectorStore =
     options?.vectorStore ??
@@ -309,7 +325,7 @@ export function createDevotionalWorkspaceRuntime(options?: {
     tools: { enabled: false },
   })
 
-  return { workspace, filesystem, vectorStore, embedder, config }
+  return { workspace, filesystem, mediaStore, vectorStore, embedder, config }
 }
 
 function createDigestReader(
@@ -341,9 +357,10 @@ function createS3DigestReader(
     const response = await client.send(
       new GetObjectCommand({
         Bucket: storage.bucket,
-        Key: [prefix, toNativeWorkspaceFilesystemPath(workspacePath)]
-          .filter(Boolean)
-          .join("/"),
+        Key: devotionalWorkspaceObjectKey(
+          prefix,
+          toNativeWorkspaceFilesystemPath(workspacePath),
+        ),
       }),
     )
     if (!response.Body) throw new Error("Workspace S3 object has no body")
@@ -361,6 +378,7 @@ function createStorageRuntime(
 ): {
   filesystem: WorkspaceFilesystem
   digestReader: WorkspaceDigestReader
+  s3?: { client: S3Client; bucket: string; prefix: string }
 } {
   if (storage.backend === "local") {
     return {
@@ -407,6 +425,7 @@ function createStorageRuntime(
   return {
     filesystem,
     digestReader: createS3DigestReader(storage, client),
+    s3: { client, bucket: storage.bucket, prefix: storage.prefix },
   }
 }
 

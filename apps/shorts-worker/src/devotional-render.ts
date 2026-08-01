@@ -1,7 +1,7 @@
 // Bounded devotional media preparation + dual-aspect Remotion rendering.
-// The durable input is a small uploaded JSON spec plus uploaded narration/music;
-// the worker owns Arclight lookup, source download, ffmpeg preparation, Chromium,
-// and durable portrait/wide outputs.
+// Mastra owns durable Workspace inputs/outputs. The worker owns Arclight lookup,
+// source download, ffmpeg preparation, Chromium, and streamed transfer through
+// short-lived signed capabilities.
 
 import { createHash } from "node:crypto"
 import { createReadStream, createWriteStream } from "node:fs"
@@ -13,10 +13,20 @@ import { dirname, join } from "node:path"
 import { Readable } from "node:stream"
 import { fileURLToPath } from "node:url"
 import { z } from "zod"
+import {
+  devotionalWorkspaceArtifactRefSchema,
+  devotionalWorkspaceManifestSchema,
+} from "@forge/devotional-workspace"
 import { devotionalRenderConfigSchema } from "@forge/shorts-compositions/devotional/styles"
 import { env } from "./config/env.js"
 import { JobDeadlineExceededError, type JobDeadline } from "./deadline.js"
 import { WorkerError } from "./errors.js"
+import {
+  downloadDevotionalWorkspaceGrant,
+  readDevotionalWorkspaceGrant,
+  uploadDevotionalWorkspaceGrant,
+  type DevotionalWorkspaceTransfer,
+} from "./devotional-transfer.js"
 import {
   DEFAULT_PROBE_TIMEOUT_MS,
   defaultRunCommand,
@@ -61,6 +71,8 @@ const DELAY_RENDER_TIMEOUT_MS = 120_000
 const OFFTHREAD_VIDEO_CACHE_BYTES = 1024 * 1024 * 1024
 const OUTPUT_DURATION_TOLERANCE_SEC = 0.5
 const SOURCE_DOWNLOAD_MAX_BYTES = 600 * 1024 * 1024
+const NARRATION_DOWNLOAD_MAX_BYTES = 25 * 1024 * 1024
+const MUSIC_DOWNLOAD_MAX_BYTES = 40 * 1024 * 1024
 const ARCLIGHT_METADATA_MAX_BYTES = 256 * 1024
 const ARCLIGHT_METADATA_TIMEOUT_MS = 15_000
 const SOURCE_DOWNLOAD_TIMEOUT_MS = 120_000
@@ -71,30 +83,9 @@ const BACKGROUND_SAFETY_MARGIN_SEC = 3
 const VIDEO_SPEED = 1.12
 const SOURCE_TRAILER_SEC = 8
 
-const workspaceRefSchema = z.object({
-  schemaVersion: z.literal("2"),
-  key: z.string().min(1),
-  digest: z.string().regex(/^[a-f0-9]{64}$/),
-  size: z.number().int().positive(),
-  contentType: z.string().min(1),
-  attempt: z.object({
-    workspaceGeneration: z.number().int().positive(),
-    attemptId: z.string().regex(SAFE_SEGMENT_ID).max(128),
-    runId: z.string().regex(SAFE_SEGMENT_ID).max(128),
-  }),
-})
+const workspaceRefSchema = devotionalWorkspaceArtifactRefSchema
 
-const workspaceManifestSchema = z.object({
-  schemaVersion: z.literal("2"),
-  kind: z.enum(["run-input", "attempt-output"]),
-  attempt: workspaceRefSchema.shape.attempt,
-  artifacts: z.array(
-    z.object({
-      artifactType: z.string().regex(SAFE_SEGMENT_ID),
-      ext: z.string().regex(SAFE_SEGMENT_ID),
-      ref: workspaceRefSchema,
-    }),
-  ),
+const workspaceManifestSchema = devotionalWorkspaceManifestSchema.extend({
   report: z
     .object({
       portrait: z.object({
@@ -245,6 +236,7 @@ export type RunDevotionalRenderInput = {
   inputAssetId: string
   outputAssetId: string
   inputHash: string
+  workspaceTransfer?: DevotionalWorkspaceTransfer
   deps?: DevotionalRenderDependencies
   onProgress?: DevotionalRenderProgress
 }
@@ -699,6 +691,7 @@ export async function runDevotionalRender({
   inputAssetId,
   outputAssetId,
   inputHash,
+  workspaceTransfer,
   deps = {},
   onProgress,
 }: RunDevotionalRenderInput): Promise<RunDevotionalRenderResult> {
@@ -727,7 +720,75 @@ export async function runDevotionalRender({
     onProgress?.(0.01, "Loading devotional render input")
     const inputManifestRef = devotionalManifestRefFromAssetId(inputAssetId)
     let raw: Uint8Array
-    if (inputManifestRef?.key.includes("/run-input/")) {
+    if (workspaceTransfer) {
+      const manifestBytes = await readDevotionalWorkspaceGrant({
+        grant: workspaceTransfer.manifest,
+        maxBytes: 1_000_000,
+        fetchImpl,
+        signal,
+        nodeEnv,
+      })
+      let manifestPayload: unknown
+      try {
+        manifestPayload = JSON.parse(manifestBytes.toString("utf8"))
+      } catch {
+        throw new DevotionalInputError("devotional input manifest is not JSON")
+      }
+      const parsedManifest = workspaceManifestSchema.safeParse(manifestPayload)
+      if (
+        !parsedManifest.success ||
+        parsedManifest.data.kind !== "run-input" ||
+        parsedManifest.data.attempt.workspaceGeneration !==
+          workspaceTransfer.attempt.workspaceGeneration ||
+        parsedManifest.data.attempt.attemptId !==
+          workspaceTransfer.attempt.attemptId ||
+        parsedManifest.data.attempt.runId !== workspaceTransfer.attempt.runId ||
+        inputManifestRef?.key !== workspaceTransfer.manifest.ref.key ||
+        parsedManifest.data.artifacts.length !== workspaceTransfer.inputs.length
+      ) {
+        throw new DevotionalInputError("devotional input manifest is invalid")
+      }
+      for (const artifact of parsedManifest.data.artifacts) {
+        const grant = workspaceTransfer.inputs.find(
+          (entry) =>
+            entry.artifactType === artifact.artifactType &&
+            entry.ext === artifact.ext,
+        )
+        if (
+          !grant ||
+          grant.ref.key !== artifact.ref.key ||
+          grant.ref.digest !== artifact.ref.digest ||
+          grant.ref.size !== artifact.ref.size ||
+          grant.ref.contentType !== artifact.ref.contentType ||
+          grant.ref.attempt.workspaceGeneration !==
+            artifact.ref.attempt.workspaceGeneration ||
+          grant.ref.attempt.attemptId !== artifact.ref.attempt.attemptId ||
+          grant.ref.attempt.runId !== artifact.ref.attempt.runId
+        ) {
+          throw new DevotionalInputError(
+            `signed transfer omits ${artifact.artifactType}`,
+          )
+        }
+      }
+      workspaceManifest = parsedManifest.data
+      const specGrant = workspaceTransfer.inputs.find(
+        (entry) =>
+          entry.artifactType === DEVOTIONAL_INPUT_ARTIFACT_TYPE &&
+          entry.ext === "json",
+      )
+      if (!specGrant) {
+        throw new DevotionalInputError(
+          "signed transfer omits the devotional render input",
+        )
+      }
+      raw = await readDevotionalWorkspaceGrant({
+        grant: specGrant,
+        maxBytes: 1_000_000,
+        fetchImpl,
+        signal,
+        nodeEnv,
+      })
+    } else if (inputManifestRef?.key.includes("/run-input/")) {
       const manifestBytes =
         await storage.readWorkspaceArtifact(inputManifestRef)
       let manifestPayload: unknown
@@ -783,7 +844,7 @@ export async function runDevotionalRender({
     }
     const input = parsed.data
 
-    if (workspaceManifest) {
+    if (workspaceManifest && !workspaceTransfer) {
       const attempt = workspaceManifest.attempt as DevotionalAttemptIdentity
       const existing = await storage.readWorkspaceManifest(
         attempt,
@@ -875,7 +936,24 @@ export async function runDevotionalRender({
       const narrationRef = workspaceManifest?.artifacts.find(
         (entry) => entry.artifactType === artifactType && entry.ext === "mp3",
       )?.ref
-      if (workspaceManifest) {
+      if (workspaceTransfer) {
+        const narrationGrant = workspaceTransfer.inputs.find(
+          (entry) => entry.artifactType === artifactType && entry.ext === "mp3",
+        )
+        if (!narrationGrant) {
+          throw new DevotionalInputError(
+            `signed transfer omits ${artifactType}`,
+          )
+        }
+        await downloadDevotionalWorkspaceGrant({
+          grant: narrationGrant,
+          filePath,
+          maxBytes: NARRATION_DOWNLOAD_MAX_BYTES,
+          fetchImpl,
+          signal,
+          nodeEnv,
+        })
+      } else if (workspaceManifest) {
         if (!narrationRef) {
           throw new DevotionalInputError(`input manifest omits ${artifactType}`)
         }
@@ -906,7 +984,23 @@ export async function runDevotionalRender({
           entry.artifactType === DEVOTIONAL_MUSIC_ARTIFACT_TYPE &&
           entry.ext === "mp3",
       )?.ref
-      if (workspaceManifest) {
+      if (workspaceTransfer) {
+        const musicGrant = workspaceTransfer.inputs.find(
+          (entry) =>
+            entry.artifactType === DEVOTIONAL_MUSIC_ARTIFACT_TYPE &&
+            entry.ext === "mp3",
+        )
+        if (!musicGrant)
+          throw new DevotionalInputError("signed transfer omits music")
+        await downloadDevotionalWorkspaceGrant({
+          grant: musicGrant,
+          filePath: musicPath,
+          maxBytes: MUSIC_DOWNLOAD_MAX_BYTES,
+          fetchImpl,
+          signal,
+          nodeEnv,
+        })
+      } else if (workspaceManifest) {
         if (!musicRef)
           throw new DevotionalInputError("input manifest omits music")
         await storage.readWorkspaceArtifactToFile(musicRef, musicPath)
@@ -923,10 +1017,27 @@ export async function runDevotionalRender({
     onProgress?.(0.05, "Resolving devotional source")
     const fullPath = join(tempDir, "source.mp4")
     if (input.media.sourceMediaRef) {
-      await storage.readWorkspaceArtifactToFile(
-        input.media.sourceMediaRef,
-        fullPath,
-      )
+      if (workspaceTransfer) {
+        const sourceGrant = workspaceTransfer.inputs.find(
+          (entry) => entry.ref.key === input.media.sourceMediaRef?.key,
+        )
+        if (!sourceGrant) {
+          throw new DevotionalInputError("signed transfer omits source media")
+        }
+        await downloadDevotionalWorkspaceGrant({
+          grant: sourceGrant,
+          filePath: fullPath,
+          maxBytes: SOURCE_DOWNLOAD_MAX_BYTES,
+          fetchImpl,
+          signal,
+          nodeEnv,
+        })
+      } else {
+        await storage.readWorkspaceArtifactToFile(
+          input.media.sourceMediaRef,
+          fullPath,
+        )
+      }
     } else {
       const sourceUrl =
         input.media.sourceUrl ??
@@ -1094,7 +1205,43 @@ export async function runDevotionalRender({
     }
 
     onProgress?.(0.9, "Uploading devotional outputs")
-    if (workspaceManifest) {
+    if (workspaceTransfer) {
+      const portraitGrant = workspaceTransfer.outputs.find(
+        ({ artifactType }) =>
+          artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+      )
+      const wideGrant = workspaceTransfer.outputs.find(
+        ({ artifactType }) => artifactType === DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+      )
+      if (!portraitGrant || !wideGrant) {
+        throw new DevotionalOutputError(
+          "signed transfer omits devotional output grants",
+        )
+      }
+      const [portraitRef, wideRef] = await Promise.all([
+        uploadDevotionalWorkspaceGrant({
+          grant: portraitGrant,
+          attempt: workspaceTransfer.attempt,
+          assetId: outputAssetId,
+          filePath: portraitPath,
+          fetchImpl,
+          signal,
+          nodeEnv,
+        }),
+        uploadDevotionalWorkspaceGrant({
+          grant: wideGrant,
+          attempt: workspaceTransfer.attempt,
+          assetId: outputAssetId,
+          filePath: widePath,
+          fetchImpl,
+          signal,
+          nodeEnv,
+        }),
+      ])
+      portrait.artifact = portraitRef
+      wide.artifact = wideRef
+      written.push(portraitRef, wideRef)
+    } else if (workspaceManifest) {
       const attempt = workspaceManifest.attempt as DevotionalAttemptIdentity
       const outputEntries: Array<{
         artifactType: string

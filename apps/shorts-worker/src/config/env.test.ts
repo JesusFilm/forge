@@ -13,8 +13,7 @@ describe("parseEnv", () => {
     expect(env.PORT).toBe(3012)
     expect(env.SHORTS_WORKER_LOCAL_ARTIFACTS_DIR).toBe(".tmp/artifacts")
     expect(env.DEVOTIONAL_WORKSPACE_LOCAL_DIR).toBe(".tmp/devotional-workspace")
-    expect(env.DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE).toBe(false)
-    expect(env.DEVOTIONAL_WORKSPACE_PREFIX).toBe("devotional")
+    expect(env.DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN).toBeUndefined()
     expect(env.SHORTS_WORKER_ALLOWED_SOURCE_HOSTS).toBe("stream.mux.com")
     expect(env.SHORTS_WORKER_RENDER_CONCURRENCY).toBe(2)
     expect(env.SHORTS_WORKER_QUEUE_LIMIT).toBe(2)
@@ -67,11 +66,7 @@ const fullProductionSource = {
   RAILWAY_S3_BUCKET: "artifacts",
   RAILWAY_S3_ACCESS_KEY_ID: "access",
   RAILWAY_S3_SECRET_ACCESS_KEY: "secret",
-  DEVOTIONAL_WORKSPACE_S3_ENDPOINT: "https://workspace.s3.example",
-  DEVOTIONAL_WORKSPACE_S3_REGION: "auto",
-  DEVOTIONAL_WORKSPACE_S3_BUCKET: "devotional-workspace",
-  DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID: "workspace-access",
-  DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY: "workspace-secret",
+  DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN: "https://workspace.example",
   SHORTS_WORKER_BUNDLE_DIR: "/app/bundle",
   SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR: "/app/devotional-bundle",
   SHORTS_WORKER_WHISPER_MODEL_PATH:
