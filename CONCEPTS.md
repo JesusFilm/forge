@@ -248,6 +248,30 @@ a high-strength source attribution on their own.
 
 ## Search & embeddings
 
+### SEO Evidence Observation
+
+A bounded, timestamped record from one measurement surface used by the SEO
+Marketing Agent. Google Search Console observations describe Google Search
+performance; GA4 observations describe on-site behavior; Firecrawl and direct
+page checks describe fetched page state; grounded LLM responses describe only
+what that provider returned for a versioned prompt. These evidence classes are
+never collapsed into a single source of truth, and a missing row is not a zero.
+
+### SEO Proposal
+
+An immutable, versioned recommendation produced from SEO Evidence Observations
+for one canonical page and locale. Editorial proposals carry an exact
+field-level draft diff; engineering proposals carry an exact ticket brief.
+Approval authorizes only that bounded materialization and never publication.
+
+### SEO Experiment Ledger
+
+The Admin-owned durable history that connects an SEO Proposal to its evidence,
+human decision, draft or engineering ticket, verified production activation,
+matched measurement windows, confounders, outcome, rollback proposal, and any
+reviewed lesson. Mastra orchestrates the work, but the ledger remains the
+authoritative record rather than agent conversation memory.
+
 ### Search Pipeline Mode
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.

@@ -48,6 +48,7 @@ export type PermissionKey =
   | "read:reference"
   | "access:manager"
   | "read:manager-read-models"
+  | "read:manager-seo"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -103,6 +104,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // the editorial role ladder.
   "access:manager": "PUBLIC",
   "read:manager-read-models": "PUBLIC",
+  "read:manager-seo": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -260,6 +262,7 @@ const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
 const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
+  "read:manager-seo",
   "write:manager-jobs",
 ])
 

@@ -637,6 +637,12 @@ importers:
       ai:
         specifier: 6.0.182
         version: 6.0.182(zod@4.3.6)
+      google-auth-library:
+        specifier: 10.6.2
+        version: 10.6.2
+      jose:
+        specifier: ^6.1.3
+        version: 6.2.1
       jsonrepair:
         specifier: 3.14.0
         version: 3.14.0
@@ -20113,7 +20119,7 @@ snapshots:
       hermes-parser: 0.33.3
       invariant: 2.2.4
       nullthrows: 1.1.1
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       yargs: 17.7.2
     optional: true
 
@@ -20124,7 +20130,7 @@ snapshots:
       hermes-parser: 0.33.3
       invariant: 2.2.4
       nullthrows: 1.1.1
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       yargs: 17.7.2
     optional: true
 
@@ -21204,7 +21210,7 @@ snapshots:
       semver: 7.7.4
       slash: 3.0.0
       source-map: 0.7.6
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
     optionalDependencies:
       chokidar: 5.0.0
     transitivePeerDependencies:

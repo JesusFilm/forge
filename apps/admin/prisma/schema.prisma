@@ -73,6 +73,91 @@ enum RevisedByKind {
   SYSTEM @map("system")
 }
 
+/// Persisted execution mode for the SEO automation. The singleton defaults to
+/// OFF so deploying the ledger never starts provider work by itself.
+enum SeoAutomationMode {
+  OFF     @map("off")
+  DRY_RUN @map("dry_run")
+  LIVE    @map("live")
+}
+
+enum SeoRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  FAILED    @map("failed")
+}
+
+enum SeoEvidenceProvider {
+  GSC             @map("gsc")
+  GA4             @map("ga4")
+  FIRECRAWL       @map("firecrawl")
+  DIRECT_PAGE     @map("direct_page")
+  GROUNDED_SEARCH @map("grounded_search")
+}
+
+enum SeoProposalLane {
+  EDITORIAL   @map("editorial")
+  ENGINEERING @map("engineering")
+  ROLLBACK    @map("rollback")
+}
+
+enum SeoProposalStatus {
+  PROPOSED     @map("proposed")
+  APPROVED     @map("approved")
+  REJECTED     @map("rejected")
+  EXPIRED      @map("expired")
+  STALE        @map("stale")
+  MATERIALIZED @map("materialized")
+}
+
+enum SeoDecisionAction {
+  APPROVE          @map("approve")
+  REJECT           @map("reject")
+  REVIEW_LESSON    @map("review_lesson")
+  RECONCILE_TICKET @map("reconcile_ticket")
+}
+
+enum SeoMaterializationStatus {
+  DRAFT_CREATED    @map("draft_created")
+  TICKET_PENDING   @map("ticket_pending")
+  TICKET_CREATED   @map("ticket_created")
+  MANUAL_RECONCILE @map("manual_reconcile")
+  STALE            @map("stale")
+}
+
+enum SeoExperimentStatus {
+  AWAITING_ACTIVATION @map("awaiting_activation")
+  MEASURING           @map("measuring")
+  BENEFICIAL          @map("beneficial")
+  NEUTRAL             @map("neutral")
+  HARMFUL             @map("harmful")
+  INCONCLUSIVE        @map("inconclusive")
+  ROLLBACK_PROPOSED   @map("rollback_proposed")
+}
+
+enum SeoEvaluationKind {
+  ACTIVATION @map("activation")
+  INTERIM    @map("interim")
+  FINAL      @map("final")
+}
+
+enum SeoTicketOutboxStatus {
+  PENDING          @map("pending")
+  CLAIMED          @map("claimed")
+  CREATED          @map("created")
+  RETRYABLE        @map("retryable")
+  MANUAL_RECONCILE @map("manual_reconcile")
+  FAILED           @map("failed")
+}
+
+enum SeoLessonStatus {
+  PENDING_REVIEW @map("pending_review")
+  ACTIVE         @map("active")
+  SUPERSEDED     @map("superseded")
+  RETIRED        @map("retired")
+}
+
 /// Editorial role stored for Auth SSO principals. `SYSTEM` remains an
 /// in-process principal only and is never persisted.
 enum UserRole {
@@ -629,6 +714,309 @@ model ManagerEnrichmentJob {
 }
 
 // -----------------------------------------------------------------------------
+// SEO experiment ledger
+// -----------------------------------------------------------------------------
+
+/// Singleton operator-controlled mode. Keeping this in Postgres makes dry-run
+/// a durable boundary rather than an environment-only convention.
+model SeoAutomationState {
+  key       String            @id @default("global")
+  mode      SeoAutomationMode @default(OFF)
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@map("seo_automation_state")
+}
+
+/// One bounded scheduled or manual collection attempt. Provider coverage and
+/// dry-run suppression counts remain visible even when one lane is unavailable.
+model SeoRun {
+  id                   String                   @id @default(cuid())
+  idempotencyKey       String                   @unique @map("idempotency_key")
+  mode                 SeoAutomationMode
+  status               SeoRunStatus             @default(RUNNING)
+  windowStart          DateTime?                @map("window_start")
+  windowEnd            DateTime?                @map("window_end")
+  providerCoverage     Json                     @default("{}") @map("provider_coverage")
+  report               Json                     @default("{}")
+  eligibleCount        Int                      @default(0) @map("eligible_count")
+  selectedCount        Int                      @default(0) @map("selected_count")
+  wouldProposeCount    Int                      @default(0) @map("would_propose_count")
+  proposedCount        Int                      @default(0) @map("proposed_count")
+  materializationCount Int                      @default(0) @map("materialization_count")
+  ticketCount          Int                      @default(0) @map("ticket_count")
+  experimentCount      Int                      @default(0) @map("experiment_count")
+  suppressedOperations String[]                 @default([]) @map("suppressed_operations")
+  startedAt            DateTime                 @default(now()) @map("started_at")
+  completedAt          DateTime?                @map("completed_at")
+  createdAt            DateTime                 @default(now()) @map("created_at")
+  updatedAt            DateTime                 @updatedAt @map("updated_at")
+  observations         SeoEvidenceObservation[]
+  proposalVersions     SeoProposalVersion[]
+
+  @@index([status, startedAt])
+  @@index([mode, startedAt])
+  @@map("seo_run")
+}
+
+/// Redacted, bounded provider projection. Raw provider bodies, credentials,
+/// headers, cookies, signed query strings, and IPs never belong here.
+model SeoEvidenceObservation {
+  id             String              @id @default(cuid())
+  runId          String              @map("run_id")
+  run            SeoRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+  observationKey String              @map("observation_key")
+  provider       SeoEvidenceProvider
+  schemaVersion  Int                 @default(1) @map("schema_version")
+  scope          Json                @default("{}")
+  payload        Json
+  citations      Json                @default("[]")
+  quality        Json                @default("{}")
+  payloadDigest  String              @map("payload_digest")
+  retrievedAt    DateTime            @map("retrieved_at")
+  expiresAt      DateTime            @map("expires_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  @@unique([runId, observationKey])
+  @@index([provider, retrievedAt])
+  @@index([expiresAt])
+  @@map("seo_evidence_observation")
+}
+
+/// Stable semantic proposal identity. Recommendation changes append a new
+/// SeoProposalVersion; prior decisions remain bound to their original digest.
+model SeoProposal {
+  id                  String               @id @default(cuid())
+  semanticConflictKey String               @map("semantic_conflict_key")
+  lane                SeoProposalLane
+  targetType          String               @map("target_type")
+  targetId            String?              @map("target_id")
+  canonicalUrl        String               @map("canonical_url")
+  locale              String
+  currentVersion      Int                  @default(1) @map("current_version")
+  status              SeoProposalStatus    @default(PROPOSED)
+  expiresAt           DateTime             @map("expires_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  versions            SeoProposalVersion[]
+
+  @@index([status, expiresAt, createdAt])
+  @@index([semanticConflictKey, status])
+  @@index([targetType, targetId, locale])
+  @@map("seo_proposal")
+}
+
+/// Immutable recommendation payload and exact base/treatment snapshots.
+model SeoProposalVersion {
+  id                      String                      @id @default(cuid())
+  proposalId              String                      @map("proposal_id")
+  proposal                SeoProposal                 @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  runId                   String                      @map("run_id")
+  run                     SeoRun                      @relation(fields: [runId], references: [id], onDelete: Restrict)
+  version                 Int
+  idempotencyKey          String                      @unique @map("idempotency_key")
+  payloadDigest           String                      @map("payload_digest")
+  canonicalIdentityDigest String                      @map("canonical_identity_digest")
+  baseContentHash         String?                     @map("base_content_hash")
+  intent                  String
+  expectedOutcome         String                      @map("expected_outcome")
+  risk                    String
+  verificationPlan        String                      @map("verification_plan")
+  rollbackPlan            String                      @map("rollback_plan")
+  editorialDiff           Json?                       @map("editorial_diff")
+  engineeringBrief        Json?                       @map("engineering_brief")
+  evidence                Json                        @default("[]")
+  caveats                 String[]                    @default([])
+  affectedFields          String[]                    @default([]) @map("affected_fields")
+  payload                 Json
+  preChangeSnapshot       Json                        @map("pre_change_snapshot")
+  treatmentSnapshot       Json                        @map("treatment_snapshot")
+  createdAt               DateTime                    @default(now()) @map("created_at")
+  decision                SeoDecision?
+  materialization         SeoProposalMaterialization?
+  experiment              SeoExperiment?
+  ticketOutbox            SeoTicketOutbox?
+  approvalNonces          SeoApprovalNonce[]
+
+  @@unique([proposalId, version])
+  @@unique([proposalId, payloadDigest])
+  @@index([runId, createdAt])
+  @@map("seo_proposal_version")
+}
+
+/// Consumed delegated Manager approval proofs. Only the hash of the nonce is
+/// retained; uniqueness is the cross-replica replay guard.
+model SeoApprovalNonce {
+  id                String             @id @default(cuid())
+  nonceHash         String             @unique @map("nonce_hash")
+  keyId             String             @map("key_id")
+  environment       String
+  audience          String
+  actorId           String             @map("actor_id")
+  action            SeoDecisionAction
+  proposalVersionId String             @map("proposal_version_id")
+  proposalVersion   SeoProposalVersion @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  expiresAt         DateTime           @map("expires_at")
+  consumedAt        DateTime           @default(now()) @map("consumed_at")
+
+  @@index([proposalVersionId, consumedAt])
+  @@index([expiresAt])
+  @@map("seo_approval_nonce")
+}
+
+/// Consumed Mastra workload assertion IDs. Request digest and capability are
+/// persisted so a JTI cannot be replayed across endpoints or bodies.
+model SeoWorkloadAssertion {
+  id            String   @id @default(cuid())
+  jtiHash       String   @unique @map("jti_hash")
+  keyId         String   @map("key_id")
+  environment   String
+  audience      String
+  capability    String
+  requestDigest String   @map("request_digest")
+  expiresAt     DateTime @map("expires_at")
+  consumedAt    DateTime @default(now()) @map("consumed_at")
+
+  @@index([capability, consumedAt])
+  @@index([expiresAt])
+  @@map("seo_workload_assertion")
+}
+
+model SeoDecision {
+  id                  String             @id @default(cuid())
+  proposalVersionId   String             @unique @map("proposal_version_id")
+  proposalVersion     SeoProposalVersion @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  action              SeoDecisionAction
+  actorId             String             @map("actor_id")
+  overlapAcknowledged Boolean            @default(false) @map("overlap_acknowledged")
+  overlapCount        Int                @default(0) @map("overlap_count")
+  reason              String?
+  confounders         Json               @default("[]")
+  decidedAt           DateTime           @default(now()) @map("decided_at")
+
+  @@index([action, decidedAt])
+  @@map("seo_decision")
+}
+
+model SeoProposalMaterialization {
+  id                String                   @id @default(cuid())
+  proposalVersionId String                   @unique @map("proposal_version_id")
+  proposalVersion   SeoProposalVersion       @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  status            SeoMaterializationStatus
+  contentRevisionId String?                  @unique @map("content_revision_id")
+  contentRevision   ContentRevision?         @relation(fields: [contentRevisionId], references: [id], onDelete: SetNull)
+  editorPath        String?                  @map("editor_path")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  @@index([status, updatedAt])
+  @@map("seo_proposal_materialization")
+}
+
+model SeoExperiment {
+  id                     String               @id @default(cuid())
+  proposalVersionId      String               @unique @map("proposal_version_id")
+  proposalVersion        SeoProposalVersion   @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  status                 SeoExperimentStatus  @default(AWAITING_ACTIVATION)
+  preChangeSnapshot      Json                 @map("pre_change_snapshot")
+  treatmentSnapshot      Json                 @map("treatment_snapshot")
+  preChangeHash          String               @map("pre_change_hash")
+  treatmentHash          String               @map("treatment_hash")
+  observedActivationHash String?              @map("observed_activation_hash")
+  activatedAt            DateTime?            @map("activated_at")
+  measurementStartsAt    DateTime?            @map("measurement_starts_at")
+  interimDueAt           DateTime?            @map("interim_due_at")
+  finalDueAt             DateTime?            @map("final_due_at")
+  evaluationFenceGeneration Int               @default(0) @map("evaluation_fence_generation")
+  evaluationClaimTokenHash String?             @map("evaluation_claim_token_hash")
+  evaluationClaimExpiresAt DateTime?            @map("evaluation_claim_expires_at")
+  confounders            Json                 @default("[]")
+  legalHold              Boolean              @default(false) @map("legal_hold")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+  evaluations            SeoEvaluationEvent[]
+  lesson                 SeoLesson?
+
+  @@index([status, interimDueAt])
+  @@index([status, finalDueAt])
+  @@index([status, evaluationClaimExpiresAt])
+  @@map("seo_experiment")
+}
+
+model SeoEvaluationEvent {
+  id             String            @id @default(cuid())
+  experimentId   String            @map("experiment_id")
+  experiment     SeoExperiment     @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  kind           SeoEvaluationKind
+  outcome        String
+  metrics        Json              @default("{}")
+  evidenceDigest String            @map("evidence_digest")
+  confounders    Json              @default("[]")
+  observedAt     DateTime          @map("observed_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  @@index([experimentId, kind, observedAt])
+  @@map("seo_evaluation_event")
+}
+
+model SeoTicketOutbox {
+  id                String                   @id @default(cuid())
+  proposalVersionId String                   @unique @map("proposal_version_id")
+  proposalVersion   SeoProposalVersion       @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  status            SeoTicketOutboxStatus    @default(PENDING)
+  payloadDigest     String                   @map("payload_digest")
+  payload           Json
+  marker            String                   @unique
+  fenceGeneration   Int                      @default(0) @map("fence_generation")
+  leaseTokenHash    String?                  @map("lease_token_hash")
+  leaseExpiresAt    DateTime?                @map("lease_expires_at")
+  attemptCount      Int                      @default(0) @map("attempt_count")
+  nextAttemptAt     DateTime?                @map("next_attempt_at")
+  remoteId          String?                  @map("remote_id")
+  remoteUrl         String?                  @map("remote_url")
+  lastErrorCode     String?                  @map("last_error_code")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  attempts          SeoTicketOutboxAttempt[]
+
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([leaseExpiresAt])
+  @@map("seo_ticket_outbox")
+}
+
+model SeoTicketOutboxAttempt {
+  id          String          @id @default(cuid())
+  outboxId    String          @map("outbox_id")
+  outbox      SeoTicketOutbox @relation(fields: [outboxId], references: [id], onDelete: Cascade)
+  generation  Int
+  outcome     String
+  detail      Json            @default("{}")
+  attemptedAt DateTime        @default(now()) @map("attempted_at")
+  expiresAt   DateTime        @map("expires_at")
+
+  @@index([outboxId, attemptedAt])
+  @@index([expiresAt])
+  @@map("seo_ticket_outbox_attempt")
+}
+
+model SeoLesson {
+  id             String          @id @default(cuid())
+  experimentId   String          @unique @map("experiment_id")
+  experiment     SeoExperiment   @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  status         SeoLessonStatus @default(PENDING_REVIEW)
+  content        String
+  evidenceDigest String          @map("evidence_digest")
+  metrics        Json            @default("{}")
+  confounders    Json            @default("[]")
+  reviewedById   String?         @map("reviewed_by_id")
+  reviewedAt     DateTime?       @map("reviewed_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("seo_lesson")
+}
+
+// -----------------------------------------------------------------------------
 // Editor revision history
 // -----------------------------------------------------------------------------
 
@@ -669,21 +1057,22 @@ model ManagerEnrichmentJob {
 /// Tier 3 (Core-sourced reference data, sync state, join tables) gets no
 /// revision tracking — sync timestamps already capture history.
 model ContentRevision {
-  id            String         @id @default(cuid())
-  entityType    String         @map("entity_type")
-  entityId      String         @map("entity_id")
+  id                  String                       @id @default(cuid())
+  entityType          String                       @map("entity_type")
+  entityId            String                       @map("entity_id")
   /// Full proposed (DRAFT) or prior-canonical (HISTORICAL) row state.
-  snapshot      Json
-  status        RevisionStatus
+  snapshot            Json
+  status              RevisionStatus
   /// `User.id` of the editor who authored the revision; null for sync/system writes.
-  revisedBy     String?        @map("revised_by")
+  revisedBy           String?                      @map("revised_by")
   /// Provenance: USER | AI | SYSTEM.
-  revisedByKind RevisedByKind  @map("revised_by_kind")
+  revisedByKind       RevisedByKind                @map("revised_by_kind")
   /// Optional free-text explaining why; surfaces in diff views and audit logs.
-  reason        String?
-  revisedAt     DateTime       @default(now()) @map("revised_at")
+  reason              String?
+  revisedAt           DateTime                     @default(now()) @map("revised_at")
   /// When a DRAFT was promoted to canonical (HISTORICAL only).
-  appliedAt     DateTime?      @map("applied_at")
+  appliedAt           DateTime?                    @map("applied_at")
+  seoMaterializations SeoProposalMaterialization[]
 
   @@index([entityType, entityId, status, revisedAt])
   @@index([revisedAt])

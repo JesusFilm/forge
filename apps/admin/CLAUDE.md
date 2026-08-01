@@ -2503,6 +2503,28 @@ explicit product approval. Web reads cached passage text through GraphQL
 `BibleCitation.passage(languageSlug:)`; other consumers may pass Core
 `languageId`. Web and consumers must not call the provider API directly.
 
+## SEO Experiment Ledger
+
+Admin is the durable authority for SEO runs, bounded evidence observations,
+immutable proposal versions, human decisions, draft/ticket materialization,
+objective activation, evaluation events, and reviewed lessons. Mastra calls
+only the narrow `/api/seo/ingest`, `/api/seo/evaluate`, and `/api/seo/tickets`
+capabilities. Manager decisions use the GraphQL Manager SEO contract.
+
+`SEO_APPROVAL_PUBLIC_KEYS` and `SEO_WORKLOAD_PUBLIC_KEYS` are JSON objects that
+map key IDs to SPKI Ed25519 public keys. `SEO_ASSERTION_ENVIRONMENT` binds every
+assertion to one of `local`, `preview`, `staging`, or `production`. Missing key
+maps do not block Admin boot; the corresponding SEO surface fails closed.
+Rotate keys with overlapping verifier maps, then remove the retired key after
+the maximum assertion lifetime. On compromise, remove the key immediately and
+leave Mastra `SEO_AUTOMATION_MODE=off` until a replacement is deployed.
+
+SEO approval never publishes canonical content. Editorial materialization
+creates an AI-attributed `ContentRevision` DRAFT after a locked base/draft
+conflict check. Engineering materialization persists an outbox entry before a
+provider call. Approval is not activation, and direct HTTP evidence is not
+Google indexing proof.
+
 ## Admin MCP (JFP Admin MCP — feat-276 + feat-320)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,

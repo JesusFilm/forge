@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { MANAGER_SESSION_COOKIE } from "@/lib/manager-session-cookie"
 import { verifyManagerSession } from "@/lib/auth"
 
-type AuthUser = { username: string; email: string }
+type AuthUser = { id: string; username: string; email: string }
 
 export async function requireAuth(): Promise<AuthUser> {
   const cookieStore = await cookies()
@@ -18,5 +18,5 @@ export async function requireAuth(): Promise<AuthUser> {
     redirect("/login")
   }
 
-  return { username: user.username, email: user.email }
+  return { id: user.id, username: user.username, email: user.email }
 }

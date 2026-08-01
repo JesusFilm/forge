@@ -11,6 +11,18 @@ import {
   type StepStatus,
   type WorkflowStepName,
 } from "@/types/job"
+import {
+  seoLessonSchema,
+  seoProposalDecisionResultSchema,
+  seoProposalSchema,
+  seoTicketReconciliationSchema,
+  seoWorkspaceSchema,
+  type SeoLesson,
+  type SeoProposal,
+  type SeoProposalDecisionResult,
+  type SeoTicketReconciliation,
+  type SeoWorkspace,
+} from "@/features/seo/seo-contract"
 import { z } from "zod"
 
 type FetchLike = typeof fetch
@@ -24,6 +36,32 @@ export type AdminGraphqlClientOptions = {
   graphqlUrl: string
   apiKey?: string
   fetchImpl?: FetchLike
+}
+
+export type AdminSeoProposalDecisionInput = {
+  proposalId: string
+  version: number
+  payloadDigest: string
+  assertion: string
+  overlapAcknowledged: boolean
+}
+
+export type AdminSeoProposalRejectInput = AdminSeoProposalDecisionInput & {
+  reason: string
+}
+
+export type AdminSeoLessonReviewInput = {
+  lessonId: string
+  status: "ACTIVE" | "SUPERSEDED" | "RETIRED"
+  assertion: string
+}
+
+export type AdminSeoTicketReconcileInput = {
+  outboxId: string
+  action: "BIND_EXISTING" | "MARK_FAILED"
+  remoteId?: string
+  remoteUrl?: string
+  assertion: string
 }
 
 type GraphqlResponse<T> = {
@@ -206,6 +244,111 @@ const JOB_SELECTION = `
   errors
 `
 
+const SEO_PROPOSAL_SELECTION = `
+  id
+  version
+  payloadDigest
+  status
+  lane
+  targetType
+  targetId
+  canonicalUrl
+  locale
+  intent
+  expectedOutcome
+  risk
+  verificationPlan
+  rollbackPlan
+  editorialDiff
+  engineeringBrief
+  evidence
+  caveats
+  overlapCount
+  expiresAt
+  createdAt
+  decision {
+    id
+    action
+    actorId
+    overlapAcknowledged
+    overlapCount
+    reason
+    decidedAt
+  }
+  materialization {
+    status
+    draftRevisionId
+    editorPath
+    ticketOutboxId
+  }
+`
+
+const SEO_EXPERIMENT_SELECTION = `
+  id
+  proposalId
+  proposalVersion
+  status
+  canonicalUrl
+  locale
+  lane
+  activatedAt
+  observedActivationHash
+  measurementStartsAt
+  interimDueAt
+  finalDueAt
+  confounders
+  evaluations {
+    id
+    kind
+    outcome
+    metrics
+    evidenceDigest
+    confounders
+    observedAt
+  }
+`
+
+const SEO_LESSON_SELECTION = `
+  id
+  experimentId
+  proposalId
+  proposalVersion
+  status
+  content
+  evidenceDigest
+  metrics
+  confounders
+  reviewedById
+  reviewedAt
+  createdAt
+`
+
+const SEO_RECONCILIATION_SELECTION = `
+  outboxId
+  proposalId
+  proposalVersion
+  status
+  payloadDigest
+  marker
+  attemptCount
+  lastErrorCode
+  remoteId
+  remoteUrl
+  attempts
+  candidateTickets
+`
+
+const SEO_DECISION_RESULT_SELECTION = `
+  status
+  proposalId
+  version
+  decisionId
+  draftRevisionId
+  editorPath
+  ticketOutboxId
+  message
+`
+
 const jobStatusSchema = z.enum(["pending", "running", "completed", "failed"])
 const stepStatusSchema = z.enum([
   "pending",
@@ -342,6 +485,135 @@ export class AdminGraphqlClient {
     }
 
     return payload.data
+  }
+
+  async getSeoWorkspace(limit = 50): Promise<SeoWorkspace> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        query ManagerSeoWorkspace($limit: Int) {
+          managerSeoWorkspace(limit: $limit) {
+            generatedAt
+            proposals { ${SEO_PROPOSAL_SELECTION} }
+            experiments { ${SEO_EXPERIMENT_SELECTION} }
+            lessons { ${SEO_LESSON_SELECTION} }
+            ticketReconciliations { ${SEO_RECONCILIATION_SELECTION} }
+          }
+        }
+      `,
+      { limit },
+    )
+
+    const workspace = readField<unknown>(data, "managerSeoWorkspace")
+    const parsed = seoWorkspaceSchema.safeParse(workspace)
+    if (!parsed.success) {
+      throw new Error(
+        `Admin managerSeoWorkspace returned invalid SEO workspace payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  async getSeoProposal(id: string): Promise<SeoProposal | null> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        query ManagerSeoProposal($id: ID!) {
+          managerSeoProposal(id: $id) { ${SEO_PROPOSAL_SELECTION} }
+        }
+      `,
+      { id },
+    )
+    const proposal = readField<unknown>(data, "managerSeoProposal")
+    if (!proposal) return null
+    const parsed = seoProposalSchema.safeParse(proposal)
+    if (!parsed.success) {
+      throw new Error(
+        `Admin managerSeoProposal returned invalid SEO proposal payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  async approveSeoProposal(
+    input: AdminSeoProposalDecisionInput,
+  ): Promise<SeoProposalDecisionResult> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        mutation ApproveManagerSeoProposal($input: ManagerSeoApproveInput!) {
+          approveManagerSeoProposal(input: $input) { ${SEO_DECISION_RESULT_SELECTION} }
+        }
+      `,
+      { input },
+    )
+    return this.parseSeoDecisionResult(data, "approveManagerSeoProposal")
+  }
+
+  async rejectSeoProposal(
+    input: AdminSeoProposalRejectInput,
+  ): Promise<SeoProposalDecisionResult> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        mutation RejectManagerSeoProposal($input: ManagerSeoRejectInput!) {
+          rejectManagerSeoProposal(input: $input) { ${SEO_DECISION_RESULT_SELECTION} }
+        }
+      `,
+      { input },
+    )
+    return this.parseSeoDecisionResult(data, "rejectManagerSeoProposal")
+  }
+
+  async reviewSeoLesson(input: AdminSeoLessonReviewInput): Promise<SeoLesson> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        mutation ReviewManagerSeoLesson($input: ManagerSeoLessonReviewInput!) {
+          reviewManagerSeoLesson(input: $input) { ${SEO_LESSON_SELECTION} }
+        }
+      `,
+      { input },
+    )
+    const lesson = readField<unknown>(data, "reviewManagerSeoLesson")
+    const parsed = seoLessonSchema.safeParse(lesson)
+    if (!parsed.success) {
+      throw new Error(
+        `Admin reviewManagerSeoLesson returned invalid SEO lesson payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  async reconcileSeoTicket(
+    input: AdminSeoTicketReconcileInput,
+  ): Promise<SeoTicketReconciliation> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        mutation ReconcileManagerSeoTicket($input: ManagerSeoTicketReconcileInput!) {
+          reconcileManagerSeoTicket(input: $input) { ${SEO_RECONCILIATION_SELECTION} }
+        }
+      `,
+      { input },
+    )
+    const reconciliation = readField<unknown>(data, "reconcileManagerSeoTicket")
+    const parsed = seoTicketReconciliationSchema.safeParse(reconciliation)
+    if (!parsed.success) {
+      throw new Error(
+        `Admin reconcileManagerSeoTicket returned invalid SEO reconciliation payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  private parseSeoDecisionResult(
+    data: Record<string, unknown>,
+    fieldName: string,
+  ): SeoProposalDecisionResult {
+    const parsed = seoProposalDecisionResultSchema.safeParse(
+      readField<unknown>(data, fieldName),
+    )
+    if (!parsed.success) {
+      throw new Error(
+        `Admin ${fieldName} returned invalid SEO decision payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
   }
 
   async getLanguageGeo(): Promise<MockLanguageGeo> {

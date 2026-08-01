@@ -538,6 +538,155 @@ enum ManagerRole {
   OPERATOR
 }
 
+input ManagerSeoApproveInput {
+  assertion: String!
+  overlapAcknowledged: Boolean = false
+  payloadDigest: String!
+  proposalId: ID!
+  version: Int!
+}
+
+type ManagerSeoDecisionResult {
+  decisionId: ID
+  draftRevisionId: ID
+  editorPath: String
+  message: String
+  proposalId: ID
+  status: String
+  ticketOutboxId: ID
+  version: Int
+}
+
+type ManagerSeoEvaluation {
+  confounders: JSON
+  evidenceDigest: String
+  id: ID
+  kind: String
+  metrics: JSON
+  observedAt: String
+  outcome: String
+}
+
+type ManagerSeoExperiment {
+  activatedAt: String
+  canonicalUrl: String
+  confounders: JSON
+  evaluations: [ManagerSeoEvaluation!]
+  finalDueAt: String
+  id: ID
+  interimDueAt: String
+  lane: String
+  locale: String
+  measurementStartsAt: String
+  observedActivationHash: String
+  proposalId: ID
+  proposalVersion: Int
+  status: String
+}
+
+type ManagerSeoLesson {
+  confounders: JSON
+  content: String
+  createdAt: String
+  evidenceDigest: String
+  experimentId: ID
+  id: ID
+  metrics: JSON
+  proposalId: ID
+  proposalVersion: Int
+  reviewedAt: String
+  reviewedById: String
+  status: String
+}
+
+input ManagerSeoLessonReviewInput {
+  assertion: String!
+  lessonId: ID!
+  status: String!
+}
+
+type ManagerSeoProposal {
+  canonicalUrl: String
+  caveats: [String!]
+  createdAt: String
+  decision: ManagerSeoProposalDecision
+  editorialDiff: JSON
+  engineeringBrief: JSON
+  evidence: JSON
+  expectedOutcome: String
+  expiresAt: String
+  id: ID
+  intent: String
+  lane: String
+  locale: String
+  materialization: ManagerSeoProposalMaterialization
+  overlapCount: Int
+  payloadDigest: String
+  risk: String
+  rollbackPlan: String
+  status: String
+  targetId: ID
+  targetType: String
+  verificationPlan: String
+  version: Int
+}
+
+type ManagerSeoProposalDecision {
+  action: String
+  actorId: String
+  decidedAt: String
+  id: ID
+  overlapAcknowledged: Boolean
+  overlapCount: Int
+  reason: String
+}
+
+type ManagerSeoProposalMaterialization {
+  draftRevisionId: ID
+  editorPath: String
+  status: String
+  ticketOutboxId: ID
+}
+
+input ManagerSeoRejectInput {
+  assertion: String!
+  payloadDigest: String!
+  proposalId: ID!
+  reason: String
+  version: Int!
+}
+
+input ManagerSeoTicketReconcileInput {
+  action: String!
+  assertion: String!
+  outboxId: ID!
+  remoteId: String
+  remoteUrl: String
+}
+
+type ManagerSeoTicketReconciliation {
+  attemptCount: Int
+  attempts: JSON
+  candidateTickets: JSON
+  lastErrorCode: String
+  marker: String
+  outboxId: ID
+  payloadDigest: String
+  proposalId: ID
+  proposalVersion: Int
+  remoteId: String
+  remoteUrl: String
+  status: String
+}
+
+type ManagerSeoWorkspace {
+  experiments: [ManagerSeoExperiment!]
+  generatedAt: String
+  lessons: [ManagerSeoLesson!]
+  proposals: [ManagerSeoProposal!]
+  ticketReconciliations: [ManagerSeoTicketReconciliation!]
+}
+
 type ManagerVideoCoverage {
   aiMetadata: Boolean
   coreId: String
@@ -790,6 +939,7 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
+  approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
   """Create a new Experience with an initial locale. Caller becomes owner."""
@@ -809,12 +959,15 @@ type Mutation {
   Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
+  reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
+  rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
@@ -985,6 +1138,8 @@ type Query {
   managerJobs(limit: Int, offset: Int): [ManagerJob!]
   managerJobsTotal: Int
   managerLanguageGeo: ManagerLanguageGeo
+  managerSeoProposal(id: ID!): ManagerSeoProposal
+  managerSeoWorkspace(limit: Int = 50): ManagerSeoWorkspace!
   managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
   managerVideosForEnrichment(ids: [String!]!): [ManagerVideoForEnrichment!]
   """
