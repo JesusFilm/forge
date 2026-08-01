@@ -67,6 +67,11 @@ describe("syncVideoLocalizedMetadata", () => {
         }),
       }),
     )
+    for (const [{ data }] of prisma.videoLocale.create.mock.calls) {
+      expect(data).not.toHaveProperty("searchTitle")
+      expect(data).not.toHaveProperty("searchDescription")
+      expect(data).not.toHaveProperty("socialImageAssetId")
+    }
     expect(prisma.videoLocale.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -302,6 +307,41 @@ describe("syncVideoLocalizedMetadata", () => {
     expect(prisma.videoLocale.create).not.toHaveBeenCalled()
   })
 
+  it("preserves editor-owned overlays while refreshing a Core locale", async () => {
+    const prisma = buildPrisma()
+    prisma.videoLocale.findFirst.mockResolvedValueOnce({
+      id: "locale-1",
+      source: "CORE",
+    })
+
+    await syncVideoLocalizedMetadata({
+      prisma: prisma as never,
+      adminVideos: [{ id: "video-1", coreId: "core-video-1" }],
+      coreVideos: [
+        {
+          id: "core-video-1",
+          title: [{ value: "Refreshed title", language: { id: "lang-en" } }],
+          description: [],
+          snippet: [],
+          imageAlt: [],
+          studyQuestions: [],
+        },
+      ],
+      languageIdByCoreId: new Map([["lang-en", "language-en"]]),
+      bcp47ByCoreId: new Map([["lang-en", "en"]]),
+      slugByCoreId: new Map([["lang-en", "english"]]),
+    })
+
+    const update = prisma.videoLocale.update.mock.calls[0]?.[0]
+    expect(update?.data).toMatchObject({
+      title: "Refreshed title",
+      deletedAt: null,
+    })
+    expect(update?.data).not.toHaveProperty("searchTitle")
+    expect(update?.data).not.toHaveProperty("searchDescription")
+    expect(update?.data).not.toHaveProperty("socialImageAssetId")
+  })
+
   it("does not update a locale-keyed row when Core language identity is known", async () => {
     const prisma = buildPrisma()
     prisma.videoLocale.findFirst
@@ -424,6 +464,10 @@ describe("syncVideoLocalizedMetadata", () => {
       },
       data: { deletedAt: now },
     })
+    const staleData = prisma.videoLocale.updateMany.mock.calls[0]?.[0]?.data
+    expect(staleData).not.toHaveProperty("searchTitle")
+    expect(staleData).not.toHaveProperty("searchDescription")
+    expect(staleData).not.toHaveProperty("socialImageAssetId")
     expect(prisma.videoStudyQuestion.updateMany).toHaveBeenCalledWith({
       where: {
         videoId: "video-1",
