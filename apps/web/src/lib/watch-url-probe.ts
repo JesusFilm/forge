@@ -162,6 +162,7 @@ const QUERY_PARAMS: readonly string[] = [
 
 const LANGUAGELESS_ENGLISH: readonly string[] = [
   "/watch/jesus.html",
+  "/watch/lumo-john-1-1-34.html",
   "/watch/magdalena-2.html",
   "/watch/chosen-witness.html",
   "/watch/wedding-in-cana.html",
@@ -221,6 +222,7 @@ const WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS: ReadonlySet<string> = new Set([
 
 const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
   "/watch/jesus.html": "/watch/jesus.html",
+  "/watch/lumo-john-1-1-34.html": "/watch/lumo-john-1-1-34.html",
   "/watch/jesus.html/english.html": "/watch/jesus.html",
   "/watch/jesus.html/romanian.html": "/watch/jesus.html/romanian.html",
   "/watch/jesus.html/russian.html": "/watch/jesus.html/russian.html",
@@ -284,9 +286,11 @@ export type ProbeResult = {
     types: string[]
     parseErrors: string[]
     pageUrls: string[]
+    videoObjects?: VideoObjectIdentity[]
   }
   documentIdentity?: {
     canonicalUrl: string | null
+    canonicalUrls?: string[]
     openGraphUrl: string | null
   }
   /** Set when the request failed at the transport layer (DNS, timeout, etc.). */
@@ -299,6 +303,19 @@ export type StructuredDataContract = {
   /** Entity types that this route class must never publish. */
   forbidden: readonly string[]
 }
+
+export type VideoObjectIdentity = {
+  name: string | null
+  url: string | null
+  contentUrl: string | null
+}
+
+export const WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS = [
+  {
+    contextual: "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+    standalone: "/watch/lumo-john-1-1-34.html",
+  },
+] as const
 
 /**
  * Representative public routes whose schema is part of the cutover contract.
@@ -324,6 +341,10 @@ export const WATCH_STRUCTURED_DATA_CONTRACTS: Readonly<
     forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
   },
   "/watch/jesus.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-john-1-1-34.html": {
     required: { VideoObject: 1 },
     forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
   },
@@ -409,30 +430,37 @@ function canonicalIdentityViolations(
   const expected = fixture.expectedCanonicalPath
   if (!expected) return []
 
-  const canonicalPath = pathnameFromUrl(result.documentIdentity?.canonicalUrl)
-  const openGraphPath = pathnameFromUrl(result.documentIdentity?.openGraphUrl)
+  const expectedAbsolute = `https://www.jesusfilm.org${expected}`
+  const canonicalUrls =
+    result.documentIdentity?.canonicalUrls ??
+    (result.documentIdentity?.canonicalUrl
+      ? [result.documentIdentity.canonicalUrl]
+      : [])
   const violations: string[] = []
-  if (canonicalPath !== expected) {
+  if (canonicalUrls.length !== 1) {
     violations.push(
-      `canonical expected ${expected}, got ${canonicalPath ?? "missing"}`,
+      `expected exactly 1 canonical link, found ${canonicalUrls.length}`,
     )
   }
-  if (openGraphPath !== expected) {
+  if (canonicalUrls[0] !== expectedAbsolute) {
     violations.push(
-      `og:url expected ${expected}, got ${openGraphPath ?? "missing"}`,
+      `canonical expected ${expectedAbsolute}, got ${canonicalUrls[0] ?? "missing"}`,
+    )
+  }
+  if (result.documentIdentity?.openGraphUrl !== expectedAbsolute) {
+    violations.push(
+      `og:url expected ${expectedAbsolute}, got ${result.documentIdentity?.openGraphUrl ?? "missing"}`,
     )
   }
 
-  const pageUrlPaths = (result.structuredData?.pageUrls ?? []).map(
-    pathnameFromUrl,
-  )
-  if (fixture.requireStructuredDataCanonical && pageUrlPaths.length === 0) {
+  const pageUrls = result.structuredData?.pageUrls ?? []
+  if (fixture.requireStructuredDataCanonical && pageUrls.length === 0) {
     violations.push("page-level JSON-LD canonical URL missing")
   }
-  for (const pageUrlPath of pageUrlPaths) {
-    if (pageUrlPath !== expected) {
+  for (const pageUrl of pageUrls) {
+    if (pageUrl !== expectedAbsolute) {
       violations.push(
-        `page-level JSON-LD URL expected ${expected}, got ${pageUrlPath ?? "invalid"}`,
+        `page-level JSON-LD URL expected ${expectedAbsolute}, got ${pageUrl}`,
       )
     }
   }
@@ -646,6 +674,7 @@ export function parseJsonLdScripts(html: string): {
   types: string[]
   parseErrors: string[]
   pageUrls: string[]
+  videoObjects: VideoObjectIdentity[]
 } {
   const scripts = Array.from(
     html.matchAll(
@@ -655,12 +684,14 @@ export function parseJsonLdScripts(html: string): {
   const types: string[] = []
   const parseErrors: string[] = []
   const pageUrls: string[] = []
+  const videoObjects: VideoObjectIdentity[] = []
 
   for (const [index, match] of scripts.entries()) {
     try {
       const parsed = JSON.parse(match[1] ?? "") as unknown
       types.push(...collectJsonLdTypes(parsed))
       pageUrls.push(...collectJsonLdPageUrls(parsed))
+      videoObjects.push(...collectJsonLdVideoObjects(parsed))
     } catch (error) {
       parseErrors.push(
         `script ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
@@ -673,6 +704,7 @@ export function parseJsonLdScripts(html: string): {
     types,
     parseErrors,
     pageUrls,
+    videoObjects,
   }
 }
 
@@ -716,6 +748,61 @@ function collectJsonLdPageUrls(value: unknown): string[] {
   ]
 }
 
+function collectJsonLdVideoObjects(value: unknown): VideoObjectIdentity[] {
+  if (Array.isArray(value)) return value.flatMap(collectJsonLdVideoObjects)
+  if (typeof value !== "object" || value == null) return []
+
+  const record = value as Record<string, unknown>
+  const identity = ownJsonLdTypes(record).includes("VideoObject")
+    ? [
+        {
+          name: typeof record.name === "string" ? record.name : null,
+          url: typeof record.url === "string" ? record.url : null,
+          contentUrl:
+            typeof record.contentUrl === "string" ? record.contentUrl : null,
+        },
+      ]
+    : []
+  return [
+    ...identity,
+    ...Object.values(record).flatMap(collectJsonLdVideoObjects),
+  ]
+}
+
+export function primaryVideoIdentityViolations(
+  contextual: ProbeResult,
+  standalone: ProbeResult,
+): string[] {
+  const contextualVideos = contextual.structuredData?.videoObjects ?? []
+  const standaloneVideos = standalone.structuredData?.videoObjects ?? []
+  const violations: string[] = []
+  if (contextualVideos.length !== 1) {
+    violations.push(
+      `contextual page expected exactly 1 VideoObject identity, found ${contextualVideos.length}`,
+    )
+  }
+  if (standaloneVideos.length !== 1) {
+    violations.push(
+      `standalone page expected exactly 1 VideoObject identity, found ${standaloneVideos.length}`,
+    )
+  }
+  const contextualVideo = contextualVideos[0]
+  const standaloneVideo = standaloneVideos[0]
+  if (!contextualVideo || !standaloneVideo) return violations
+
+  for (const field of ["name", "contentUrl"] as const) {
+    if (
+      !contextualVideo[field] ||
+      contextualVideo[field] !== standaloneVideo[field]
+    ) {
+      violations.push(
+        `primary video ${field} differs: contextual ${contextualVideo[field] ?? "missing"}, standalone ${standaloneVideo[field] ?? "missing"}`,
+      )
+    }
+  }
+  return violations
+}
+
 function htmlAttribute(tag: string, name: string): string | null {
   const match = tag.match(
     new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"),
@@ -734,14 +821,19 @@ function htmlAttribute(tag: string, name: string): string | null {
 
 export function parseDocumentIdentity(html: string): {
   canonicalUrl: string | null
+  canonicalUrls: string[]
   openGraphUrl: string | null
 } {
   const linkTags = Array.from(html.matchAll(/<link\b[^>]*>/gi), ([tag]) => tag)
-  const canonicalTag = linkTags.find((tag) =>
+  const canonicalUrls = linkTags.flatMap((tag) =>
     (htmlAttribute(tag, "rel") ?? "")
       .toLowerCase()
       .split(/\s+/)
-      .includes("canonical"),
+      .includes("canonical")
+      ? [htmlAttribute(tag, "href")].filter(
+          (href): href is string => href != null,
+        )
+      : [],
   )
   const metaTags = Array.from(html.matchAll(/<meta\b[^>]*>/gi), ([tag]) => tag)
   const openGraphTag = metaTags.find(
@@ -752,7 +844,8 @@ export function parseDocumentIdentity(html: string): {
   )
 
   return {
-    canonicalUrl: canonicalTag ? htmlAttribute(canonicalTag, "href") : null,
+    canonicalUrl: canonicalUrls[0] ?? null,
+    canonicalUrls,
     openGraphUrl: openGraphTag ? htmlAttribute(openGraphTag, "content") : null,
   }
 }

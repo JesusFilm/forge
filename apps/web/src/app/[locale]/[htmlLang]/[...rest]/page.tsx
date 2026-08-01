@@ -404,8 +404,9 @@ export async function generateMetadata({
 
   if (shape.kind === "episode") {
     const { seriesSlug, episodeSlug, rawLocale, locale } = shape
-    // The episode IS the playable video; keep metadata on the verified
-    // three-segment public URL when the series parent resolves.
+    // The episode IS the playable Video. Preserve the verified parent for
+    // contextual rendering, but publish the standalone child as metadata
+    // identity when the series parent resolves.
     try {
       const resolved = await resolveSeriesEpisodeBySlug(
         seriesSlug,

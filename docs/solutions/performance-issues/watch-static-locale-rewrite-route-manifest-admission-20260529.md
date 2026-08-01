@@ -1,7 +1,7 @@
 ---
 title: "Bound Watch Static Route Admission with the Admin Route Manifest"
 date: "2026-05-29"
-last_updated: "2026-07-25"
+last_updated: "2026-08-01"
 category: "performance-issues"
 module: "apps/web watch routing"
 problem_type: "performance_issue"

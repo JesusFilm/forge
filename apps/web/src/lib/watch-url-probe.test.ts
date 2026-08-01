@@ -7,6 +7,7 @@ import {
   classifyProbe,
   parseDocumentIdentity,
   parseJsonLdScripts,
+  primaryVideoIdentityViolations,
   probeUrl,
   validateStructuredDataContract,
   type ProbeResult,
@@ -310,6 +311,38 @@ describe("classifyProbe", () => {
     expect(note).toContain("og:url")
   })
 
+  it("hard-regression: a canonical identity must be one absolute production URL", () => {
+    const expectedPath = "/watch/jesus.html"
+    const duplicated = result({
+      finalPath: expectedPath,
+      documentIdentity: {
+        canonicalUrl: expectedPath,
+        canonicalUrls: [
+          expectedPath,
+          `https://www.jesusfilm.org${expectedPath}`,
+        ],
+        openGraphUrl: `https://www.jesusfilm.org${expectedPath}`,
+      },
+      structuredData: {
+        scriptCount: 1,
+        types: ["VideoObject"],
+        parseErrors: [],
+        pageUrls: [`https://www.jesusfilm.org${expectedPath}`],
+      },
+    })
+
+    const { outcome, note } = classifyProbe(duplicated, duplicated, {
+      path: expectedPath,
+      expect: "ok",
+      expectedCanonicalPath: expectedPath,
+      requireStructuredDataCanonical: true,
+    })
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("expected exactly 1 canonical link, found 2")
+    expect(note).toContain("canonical expected https://www.jesusfilm.org")
+  })
+
   it("error: transport error on either side", () => {
     expect(
       classifyProbe(result({ error: "ETIMEDOUT" }), result()).outcome,
@@ -564,6 +597,7 @@ describe("parseJsonLdScripts", () => {
       types: ["VideoObject", "ItemList"],
       parseErrors: [],
       pageUrls: [],
+      videoObjects: [{ name: null, url: null, contentUrl: null }],
     })
   })
 
@@ -605,6 +639,7 @@ describe("parseDocumentIdentity", () => {
       `),
     ).toEqual({
       canonicalUrl: "https://www.jesusfilm.org/watch/jesus.html",
+      canonicalUrls: ["https://www.jesusfilm.org/watch/jesus.html"],
       openGraphUrl: "https://www.jesusfilm.org/watch/jesus.html",
     })
   })
@@ -618,9 +653,24 @@ describe("parseDocumentIdentity", () => {
     ).toEqual({
       canonicalUrl:
         "https://www.jesusfilm.org/watch/jesus.html?q=&quot;jesus&quot;",
+      canonicalUrls: [
+        "https://www.jesusfilm.org/watch/jesus.html?q=&quot;jesus&quot;",
+      ],
       openGraphUrl:
         "https://www.jesusfilm.org/watch/jesus.html?q=fish&amp;chips",
     })
+  })
+
+  it("retains every canonical so duplicate tags cannot hide behind the first", () => {
+    expect(
+      parseDocumentIdentity(`
+        <link rel="canonical" href="https://www.jesusfilm.org/watch/jesus.html">
+        <link href="https://www.jesusfilm.org/watch/other.html" rel="canonical alternate">
+      `).canonicalUrls,
+    ).toEqual([
+      "https://www.jesusfilm.org/watch/jesus.html",
+      "https://www.jesusfilm.org/watch/other.html",
+    ])
   })
 })
 
@@ -698,9 +748,11 @@ describe("probeUrl (mocked fetch)", () => {
       types: ["CollectionPage"],
       parseErrors: [],
       pageUrls: ["https://www.jesusfilm.org/watch"],
+      videoObjects: [],
     })
     expect(r.documentIdentity).toEqual({
       canonicalUrl: "https://www.jesusfilm.org/watch",
+      canonicalUrls: ["https://www.jesusfilm.org/watch"],
       openGraphUrl: "https://www.jesusfilm.org/watch",
     })
   })
@@ -752,5 +804,51 @@ describe("probeUrl (mocked fetch)", () => {
     })
     expect(r.error).toBe("ECONNREFUSED")
     expect(r.status).toBe(0)
+  })
+})
+
+describe("primaryVideoIdentityViolations", () => {
+  const withVideo = (name: string, contentUrl: string): ProbeResult =>
+    result({
+      structuredData: {
+        scriptCount: 1,
+        types: ["VideoObject"],
+        parseErrors: [],
+        pageUrls: ["https://www.jesusfilm.org/watch/video.html"],
+        videoObjects: [
+          {
+            name,
+            contentUrl,
+            url: "https://www.jesusfilm.org/watch/video.html",
+          },
+        ],
+      },
+    })
+
+  it("accepts contextual and standalone pages with the same primary video", () => {
+    const page = withVideo("The Beginning", "https://cdn.example/video.m3u8")
+    expect(primaryVideoIdentityViolations(page, page)).toEqual([])
+  })
+
+  it("rejects a different selected video or duplicate VideoObject identity", () => {
+    const contextual = withVideo(
+      "The Beginning",
+      "https://cdn.example/video.m3u8",
+    )
+    const standalone = withVideo(
+      "Wedding at Cana",
+      "https://cdn.example/other.m3u8",
+    )
+    standalone.structuredData?.videoObjects?.push({
+      name: "Duplicate",
+      contentUrl: "https://cdn.example/duplicate.m3u8",
+      url: "https://www.jesusfilm.org/watch/duplicate.html",
+    })
+
+    expect(primaryVideoIdentityViolations(contextual, standalone)).toEqual([
+      "standalone page expected exactly 1 VideoObject identity, found 2",
+      "primary video name differs: contextual The Beginning, standalone Wedding at Cana",
+      "primary video contentUrl differs: contextual https://cdn.example/video.m3u8, standalone https://cdn.example/other.m3u8",
+    ])
   })
 })

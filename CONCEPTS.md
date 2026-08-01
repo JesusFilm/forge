@@ -100,6 +100,12 @@ when that exact relationship is valid. An eligible English episode uses
 that collide with a current or legacy public language slug also keep explicit
 English so the second segment retains language-route precedence.
 
+A Contextual Watch Route owns playback and collection-navigation context, not
+search, social, or sharing identity. Its corresponding Standalone Watch Route
+owns canonical, Open Graph, structured-data URL, Share, and sitemap identity:
+eligible English resolves to the language-less standalone route, while every
+other Language resolves to that Language's explicit standalone route.
+
 ### Standalone Watch Route
 
 The canonical public Watch URL for a Video and Language independent of any
@@ -108,9 +114,7 @@ collection relationship. Eligible English uses
 `/watch/{video-slug}.html/{language-slug}.html`. Explicit
 `/english.html` remains a direct compatibility/internal route. If the Video
 slug is also a public language-home slug, English stays explicit so the
-language home retains the one-segment URL. Both English contextual forms use
-the language-less standalone child as canonical, Open Graph, structured-data,
-and share identity.
+language home retains the one-segment URL.
 
 ### Watch Route Manifest
 
@@ -682,6 +686,7 @@ During failure windows the last successfully fetched prompt keeps serving (serve
 
 ## Flagged ambiguities
 
+- "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.

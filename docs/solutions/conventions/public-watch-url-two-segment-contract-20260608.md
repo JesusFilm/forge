@@ -1,7 +1,7 @@
 ---
 title: "Public Watch URL contract: language-less English and explicit international routes"
 date: "2026-06-08"
-last_updated: "2026-07-25"
+last_updated: "2026-08-01"
 category: "conventions"
 module: "Public watch URLs (apps/web /watch) consumed cross-app"
 problem_type: "convention"
@@ -11,7 +11,7 @@ applies_when:
   - "Hardcoding or constructing a link to watch.jesusfilm.org/watch content from any app"
   - "Adding demo / experience links in apps/roadmap"
   - "Referencing a watch collection (easter, christmas) or video slug from admin, email, or marketing surfaces"
-tags: [watch, url-contract, deep-link, roadmap, cross-app, 404]
+tags: [watch, url-contract, deep-link, roadmap, cross-app, 404, canonical, seo]
 related_components: [apps/roadmap, apps/web]
 ---
 
@@ -98,6 +98,33 @@ If an episode slug collides with a current public language slug or legacy
 language alias, generate explicit English so the second segment keeps its
 language-route meaning.
 
+### Contextual navigation versus standalone identity
+
+Contextual and standalone URLs are two public addresses for the same playable
+Video, but they have different jobs. Collection cards, episode rails, sibling
+navigation, and player progression use the contextual route so the viewer keeps
+the parent collection. Search, social, sharing, and sitemap discovery use the
+standalone route so one Video/Language pair has one public identity.
+
+| Incoming page                                    | Browser result                            | Canonical, `og:url`, `VideoObject.url`, and Share identity       |
+| ------------------------------------------------ | ----------------------------------------- | ---------------------------------------------------------------- |
+| `/watch/{parent}.html/{episode}.html`            | Direct `200`; URL unchanged               | `https://www.jesusfilm.org/watch/{episode}.html`                 |
+| `/watch/{parent}.html/{episode}/english.html`    | Direct compatibility `200`; URL unchanged | `https://www.jesusfilm.org/watch/{episode}.html`                 |
+| `/watch/{episode}.html`                          | Direct `200`                              | Self-canonical English URL                                       |
+| `/watch/{parent}.html/{episode}/{language}.html` | Direct `200`; URL unchanged               | `https://www.jesusfilm.org/watch/{episode}.html/{language}.html` |
+| `/watch/{episode}.html/{language}.html`          | Direct `200`                              | Self-canonical URL for that Language                             |
+
+Each server-rendered page must contain exactly one absolute canonical. A
+contextual/standalone pair must select the same primary Video and Dub, proven by
+exactly one `VideoObject` on each page with matching `name` and `contentUrl`.
+The contextual page changes only navigation context; it must not change the
+selected media.
+
+Watch sitemap `<loc>` and `hreflang` output contains standalone routes only.
+General discovery links should also use the standalone route. Contextual links
+are deliberate only where preserving collection navigation is part of the user
+experience; eligible English contextual links omit `/english.html`.
+
 ## Why This Matters
 
 The failure is **invisible until a human clicks**. Typecheck, lint, and CI all
@@ -134,6 +161,17 @@ Verify any new watch link before shipping:
 curl -sS -o /dev/null -w "%{http_code} -> %{url_effective}\n" -L "<the href>"
 # expect: 200 -> <the same href>
 # a redirect to {slug}.html/{slug}.html means the required .html shape was omitted
+```
+
+For routing or metadata changes, also run the repository Watch URL probe and
+sitemap audit. The probe is a release gate: it rejects missing, relative, or
+duplicate canonicals; disagreement among canonical, Open Graph, and page-level
+JSON-LD identity; a contextual/standalone primary-video mismatch; and drift in
+the explicit international fixtures.
+
+```bash
+pnpm --filter @forge/web probe:watch-urls --production https://www.jesusfilm.org --preview <preview-origin>
+pnpm --filter @forge/web audit:watch-sitemap --origin <preview-origin>
 ```
 
 ## Related
