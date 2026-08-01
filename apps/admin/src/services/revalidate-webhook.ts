@@ -37,6 +37,8 @@ export type RevalidateWebhookInput = {
   model: RevalidateModel
   slug?: string | null
   locale?: string | null
+  /** Exact public Watch language slug; optional during receiver-first rollout. */
+  languageSlug?: string | null
 }
 
 type RevalidateOutcome =
@@ -70,6 +72,7 @@ export async function emitRevalidateWebhook(
     entry: {
       slug: input.slug ?? undefined,
       locale: input.locale ?? undefined,
+      languageSlug: input.languageSlug ?? undefined,
     },
   })
 
@@ -125,6 +128,7 @@ function logOutcome(
     model: input.model,
     slug: input.slug ?? null,
     locale: input.locale ?? null,
+    languageSlug: input.languageSlug ?? null,
     durationMs,
   }
   if (outcome.status === "sent") {

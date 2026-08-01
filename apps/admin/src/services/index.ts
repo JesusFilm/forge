@@ -15,6 +15,7 @@ import { MediaFolderService } from "@/services/media-folder.service"
 import { ScripturePassageService } from "@/services/scripture-passage.service"
 import { SearchWatchabilityService } from "@/services/search-watchability"
 import { VideoService } from "@/services/video.service"
+import { VideoSearchSocialService } from "@/services/video-search-social.service"
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSearchEventService } from "@/services/watch-search-events.service"
 import { WatchSearchService } from "@/services/watch-search.service"
@@ -33,6 +34,7 @@ export function createServices(prisma: PrismaClient) {
     scripturePassage: new ScripturePassageService(prisma),
     searchWatchability: new SearchWatchabilityService(prisma),
     video: new VideoService(prisma),
+    videoSearchSocial: new VideoSearchSocialService(prisma),
     watchEvent: new WatchEventService(prisma),
     watchSearchEvent: new WatchSearchEventService(prisma),
     watchSearch: new WatchSearchService(prisma),

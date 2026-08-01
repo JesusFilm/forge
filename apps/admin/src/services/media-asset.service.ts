@@ -2,7 +2,7 @@
 // other uploaded files. User-facing metadata lives in localized rows; storage
 // backends remain an implementation detail.
 
-import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
+import { Prisma, type MediaAssetKind, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived, hasPermission } from "@/auth/permissions"
 import { getAdminBaseURL } from "@/auth/origins"
@@ -152,12 +152,28 @@ export class MediaAssetService {
 
     const input = UpdateMediaAssetInput.parse(raw)
     const { id, ...data } = input
-    await assertFolderExists(this.prisma, input.folderId ?? null)
+    const exitsPublicReady =
+      (input.status !== undefined && input.status !== "READY") ||
+      (input.visibility !== undefined && input.visibility !== "PUBLIC")
 
-    return this.prisma.mediaAsset.update({
-      where: { id },
-      data,
-    })
+    return this.prisma.$transaction(
+      async (tx) => {
+        await assertFolderExists(tx, input.folderId ?? null)
+        if (exitsPublicReady) {
+          const socialImageUsageCount = await tx.videoLocale.count({
+            where: { socialImageAssetId: id },
+          })
+          if (socialImageUsageCount > 0) {
+            throw new MediaAssetValidationError(
+              "Clear or replace every video Search & Social image reference before changing this asset from public and ready",
+            )
+          }
+        }
+
+        return tx.mediaAsset.update({ where: { id }, data })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
   }
 
   async listImageLocales({
@@ -506,7 +522,7 @@ function validateBackendShape(input: CreateMediaAssetInput) {
 }
 
 async function assertFolderExists(
-  prisma: PrismaClient,
+  prisma: Pick<PrismaClient, "mediaFolder">,
   folderId: string | null,
 ) {
   if (!folderId) {

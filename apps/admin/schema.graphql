@@ -665,16 +665,19 @@ enum MediaAssetStatus {
 }
 
 """
-A structured reference to an experience metadata or block field that uses a media asset.
+A structured reference to an experience or video locale field that uses a media asset.
 """
 type MediaAssetUsage {
-  experienceId: String
-  experienceLocaleId: String
+  editUrl: String
   fieldName: String
   fieldPath: String
   locale: String
   location: String
   match: String
+  recoverable: Boolean
+  resourceId: String
+  resourceLocaleId: String
+  resourceType: String
   title: String
   value: String
 }
@@ -793,7 +796,7 @@ type Mutation {
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
   """
-  Delete a media asset only when no experience metadata or block fields still reference it.
+  Delete a media asset only when no experience or video locale fields still reference it.
   """
   deleteMediaAsset(id: ID!): DeleteMediaAssetResult
   """
@@ -989,7 +992,7 @@ type Query {
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
-  List experience metadata and block fields that currently reference a media asset.
+  List experience and video locale fields that currently reference a media asset.
   """
   mediaAssetUsage(id: ID!): [MediaAssetUsage!]
   """List media assets ordered by most recent update."""

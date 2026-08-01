@@ -612,9 +612,12 @@ describe("MediaAssetUsage type", () => {
     const fields = fieldsOf("MediaAssetUsage")
     expect(Object.keys(fields)).toEqual(
       expect.arrayContaining([
-        "experienceId",
-        "experienceLocaleId",
+        "resourceType",
+        "resourceId",
+        "resourceLocaleId",
         "locale",
+        "editUrl",
+        "recoverable",
         "location",
         "fieldPath",
         "fieldName",
