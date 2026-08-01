@@ -13,7 +13,39 @@ state and the Shorts Worker performs automated media-byte processing.
 A workflow attempt reads the current Devotional Workspace inventory and carries
 bounded file references through durable state. The Workspace is live rather
 than versioned, so a new retry can consume files edited after an earlier
-attempt.
+attempt. A Devotional Catalog Generation snapshots eligible input metadata for
+selection; it does not freeze or version the Workspace bytes themselves.
+
+### Devotional Catalog Generation
+
+An atomic, committed projection of the Devotional Workspace inputs used to
+select eligible sources during Devotional Attempt provisioning.
+
+A generation stores eligible document content and integrity metadata for
+search. Attempts carry only bounded Devotional Source References and re-read
+Workspace files before use; if a selected file changes, the existing attempt
+fails closed and a retry selects from a newly reconciled generation.
+
+### Devotional Attempt
+
+A durable record of one try to generate a devotional, binding request identity
+to a Devotional Catalog Generation and its selected Devotional Source
+References.
+
+An attempt exists before its workflow run is created so retries, restarts, and
+duplicate requests cannot create competing work. A retry creates a new attempt
+that may observe newer Workspace inputs; it does not silently rewrite the
+sources of an existing attempt.
+
+### Devotional Source Reference
+
+A bounded, content-addressed description of one Devotional Workspace input
+selected for a Devotional Attempt, carried through durable workflow state
+without embedding the source content itself.
+
+The workflow re-reads each selected file and compares its integrity metadata
+before external or irreversible boundaries. A mismatch fails the attempt
+rather than generating or publishing from mixed source versions.
 
 ## Video & media
 
