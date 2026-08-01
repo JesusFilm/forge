@@ -2,7 +2,7 @@
 // other uploaded files. User-facing metadata lives in localized rows; storage
 // backends remain an implementation detail.
 
-import { Prisma, type MediaAssetKind, type PrismaClient } from "@prisma/client"
+import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived, hasPermission } from "@/auth/permissions"
 import { getAdminBaseURL } from "@/auth/origins"
@@ -172,7 +172,7 @@ export class MediaAssetService {
 
         return tx.mediaAsset.update({ where: { id }, data })
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: "Serializable" },
     )
   }
 
