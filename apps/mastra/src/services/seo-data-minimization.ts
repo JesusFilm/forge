@@ -1,3 +1,5 @@
+import { parse, type DefaultTreeAdapterTypes } from "parse5"
+
 const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu
 const PHONE = /(?<!\w)(?:\+?\d[\d ().-]{7,}\d)(?!\w)/gu
 const IPV4 = /\b(?:\d{1,3}\.){3}\d{1,3}\b/gu
@@ -18,6 +20,32 @@ const SENSITIVE_KEYS = new Set([
   "secret",
   "token",
 ])
+
+const NON_CONTENT_ELEMENTS = new Set([
+  "noscript",
+  "script",
+  "style",
+  "template",
+])
+
+function collectVisibleHtmlText(
+  root: DefaultTreeAdapterTypes.Node,
+  chunks: string[],
+): void {
+  const pending = [root]
+  while (pending.length > 0) {
+    const node = pending.pop()
+    if (!node) continue
+    if ("tagName" in node && NON_CONTENT_ELEMENTS.has(node.tagName)) continue
+    if (node.nodeName === "#text" && "value" in node) chunks.push(node.value)
+    if ("childNodes" in node) {
+      for (let index = node.childNodes.length - 1; index >= 0; index -= 1) {
+        const child = node.childNodes[index]
+        if (child) pending.push(child)
+      }
+    }
+  }
+}
 
 export function minimizeSeoText(value: string, maxCharacters = 4_000): string {
   const redacted = value
@@ -80,13 +108,7 @@ export function minimizeSeoValue(
 }
 
 export function normalizeSeoPageText(value: string): string {
-  return minimizeSeoText(
-    value
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, " ")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, " ")
-      .replace(/<[^>]+>/gu, " ")
-      .replace(/\s+/gu, " ")
-      .trim(),
-    100_000,
-  )
+  const chunks: string[] = []
+  collectVisibleHtmlText(parse(value), chunks)
+  return minimizeSeoText(chunks.join(" ").replace(/\s+/gu, " ").trim(), 100_000)
 }

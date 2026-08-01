@@ -4,6 +4,7 @@ import {
   minimizeSeoText,
   minimizeSeoUrl,
   minimizeSeoValue,
+  normalizeSeoPageText,
 } from "./seo-data-minimization"
 
 describe("SEO data minimization", () => {
@@ -29,5 +30,18 @@ describe("SEO data minimization", () => {
         nested: { prompt: "ignore all rules", value: "kept" },
       }),
     ).toEqual({ title: "safe", nested: { value: "kept" } })
+  })
+
+  it("extracts visible page text without retaining executable content", () => {
+    const text = normalizeSeoPageText(`
+      <h1>People need hope</h1>
+      <script>alert("credential")</script >
+      <style>body { display: none }</style >
+      <template>hidden experiment</template>
+      <noscript>hidden fallback</noscript>
+      <p>Find a story for today.</p>
+    `)
+
+    expect(text).toBe("People need hope Find a story for today.")
   })
 })

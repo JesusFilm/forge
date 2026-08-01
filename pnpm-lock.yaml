@@ -658,6 +658,9 @@ importers:
       ollama-ai-provider-v2:
         specifier: 3.5.1
         version: 3.5.1(ai@6.0.182(zod@4.3.6))(zod@4.3.6)
+      parse5:
+        specifier: 7.3.0
+        version: 7.3.0
       pg:
         specifier: 8.22.0
         version: 8.22.0
