@@ -1,7 +1,7 @@
 "use client"
 
 import { ImageIcon, Search, UploadCloud, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cx } from "@/components/admin-ui"
 import type {
   MediaLibraryBrowserData,
@@ -45,6 +45,54 @@ export function ImagePickerBrowser({
   const [draftSelectedAssetId, setDraftSelectedAssetId] = useState<
     string | null
   >(selectedAssetId)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    if (!open) return
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    setDraftSelectedAssetId(selectedAssetId)
+
+    const focusTimer = window.setTimeout(() => {
+      dialogRef.current
+        ?.querySelector<HTMLElement>("[data-image-picker-autofocus]")
+        ?.focus()
+    }, 0)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== "Tab") return
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.removeEventListener("keydown", onKeyDown)
+      opener?.focus()
+    }
+  }, [open, selectedAssetId])
   const normalizedQuery = query.trim().toLowerCase()
   const isSearching = normalizedQuery.length > 0
   const rootImageCount = mediaLibrary.images.filter(
@@ -74,6 +122,8 @@ export function ImagePickerBrowser({
     mediaLibrary.images.find((asset) => asset.id === draftSelectedAssetId) ??
     null
 
+  if (!open) return null
+
   return (
     <div
       className={cx(
@@ -87,9 +137,10 @@ export function ImagePickerBrowser({
         onClose()
       }}
       role="presentation"
-      aria-hidden={!open}
+      aria-hidden="false"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="image-library-title"
@@ -138,6 +189,8 @@ export function ImagePickerBrowser({
                 <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
                   <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
                   <input
+                    data-image-picker-autofocus
+                    aria-label="Search image assets"
                     value={query}
                     onChange={(event) => onQueryChange(event.target.value)}
                     className="w-full border-0 bg-transparent text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
@@ -227,6 +280,11 @@ export function ImagePickerBrowser({
               ? `Selected: ${draftSelectedAsset.displayName}`
               : "Select an image to attach."}
           </div>
+          <span className="sr-only" aria-live="polite">
+            {draftSelectedAsset
+              ? `${draftSelectedAsset.displayName} selected.`
+              : "No image selected."}
+          </span>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
             {canClearImage ? (
               <button

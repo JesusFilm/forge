@@ -12,6 +12,7 @@ import {
   Plus,
 } from "lucide-react"
 import { cx, PrimaryButton } from "@/components/admin-ui"
+import { canEditVideo } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import {
   loadVideoLibraryDetail,
@@ -33,6 +34,12 @@ import {
 } from "../video-library-utils"
 import { VideoLibraryToolbar } from "./video-library-toolbar"
 import { VideoDetailPage } from "./video-detail-page"
+import { VideoSearchSocialEditor } from "./video-search-social-editor"
+import {
+  loadVideoSearchSocialLocale,
+  loadVideoSearchSocialMediaLibrary,
+  searchVideoSearchSocialLocales,
+} from "./video-search-social-data"
 
 type VideosPageProps = {
   searchParams?: Promise<{
@@ -472,11 +479,45 @@ export default async function VideosPage({
     const selectedVideoDetail = await loadVideoLibraryDetail(selectedVideo)
 
     if (selectedVideoDetail) {
+      const canEditSearchSocial = canEditVideo(principal)
+      const searchSocial = canEditSearchSocial
+        ? await (async () => {
+            const [initialOptions, mediaLibrary] = await Promise.all([
+              searchVideoSearchSocialLocales({
+                user: principal,
+                videoId: selectedVideoDetail.key,
+              }),
+              loadVideoSearchSocialMediaLibrary({ user: principal }),
+            ])
+            const initialLocale = initialOptions[0]
+              ? await loadVideoSearchSocialLocale({
+                  user: principal,
+                  videoLocaleId: initialOptions[0].id,
+                  mediaLibrary,
+                })
+              : null
+            return { initialOptions, initialLocale, mediaLibrary }
+          })()
+        : {
+            initialOptions: [],
+            initialLocale: null,
+            mediaLibrary: { rootLabel: "Library", folders: [], images: [] },
+          }
+
       return (
         <VideoDetailPage
           backHref={closeVideoHref}
           detail={selectedVideoDetail}
           labels={page.detail}
+          searchSocialEditor={
+            <VideoSearchSocialEditor
+              videoId={selectedVideoDetail.key}
+              canEdit={canEditSearchSocial}
+              initialOptions={searchSocial.initialOptions}
+              initialLocale={searchSocial.initialLocale}
+              mediaLibrary={searchSocial.mediaLibrary}
+            />
+          }
         />
       )
     }

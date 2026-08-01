@@ -19,6 +19,8 @@ export type MediaLibraryBrowserImage = {
   altText: string | null
   mimeType: string
   byteSize: string
+  width?: number | null
+  height?: number | null
   previewUrl: string | null
   updated: string
   folderId: string | null
@@ -43,6 +45,8 @@ type MediaLibraryImageInput = {
   originalFilename: string | null
   mimeType: string
   byteSize: bigint | null
+  width?: number | null
+  height?: number | null
   objectKey: string | null
   previewObjectKey: string | null
   muxPlaybackId: string | null
@@ -137,6 +141,8 @@ export function buildMediaLibraryBrowserData({
       altText: image.locales[0]?.altText ?? null,
       mimeType: image.mimeType,
       byteSize: formatMediaLibraryBytes(image.byteSize),
+      width: image.width ?? null,
+      height: image.height ?? null,
       previewUrl: mediaAssetPreviewUrl(image),
       updated: formatMediaLibraryDateTime(image.updatedAt),
       folderId: image.folderId,
