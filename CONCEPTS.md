@@ -71,6 +71,16 @@ The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
 
+### Watch Search & Social Metadata Overlay
+
+Editor-owned, per-language promotional metadata for a Watch Video that may
+change the page title, description, and social-card image without changing the
+viewer-visible Video identity, canonical route, or structured media identity.
+
+An absent overlay inherits the selected locale's canonical copy and existing
+image fallback. Managed social art remains promotional: it does not become the
+Video's thumbnail truth.
+
 ## Video source mapper
 
 ### Video Source Mapper
