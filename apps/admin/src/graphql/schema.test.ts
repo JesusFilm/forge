@@ -68,6 +68,24 @@ describe("GraphQL schema — Unit 4 content types", () => {
     )
   })
 
+  it("keeps search/social fields on root Watch locale projections only", () => {
+    expect(Object.keys(fieldsOf("WatchRouteSnapshotRootLocale"))).toEqual(
+      expect.arrayContaining([
+        "searchTitle",
+        "searchDescription",
+        "socialImage",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("WatchRouteSnapshotSocialImage"))).toEqual(
+      expect.arrayContaining(["url", "width", "height"]),
+    )
+
+    const relatedLocaleFields = fieldsOf("WatchRouteSnapshotLocale")
+    expect(relatedLocaleFields.searchTitle).toBeUndefined()
+    expect(relatedLocaleFields.searchDescription).toBeUndefined()
+    expect(relatedLocaleFields.socialImage).toBeUndefined()
+  })
+
   it("Manager session/read/job contract types expose the expected shape", () => {
     expect(Object.keys(fieldsOf("ManagerViewer"))).toEqual(
       expect.arrayContaining([

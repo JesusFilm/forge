@@ -36,6 +36,8 @@ import type {
   WatchRouteSnapshotParent,
   WatchRouteSnapshotParentRelation,
   WatchRouteSnapshotPreferredVariant,
+  WatchRouteSnapshotRootLocale,
+  WatchRouteSnapshotSocialImage,
   WatchRouteSnapshotStudyQuestion,
   VideoMapperCatalogConnection,
   VideoMapperCatalogItem,
@@ -1120,6 +1122,45 @@ WatchRouteSnapshotLocaleRef.implement({
   }),
 })
 
+const WatchRouteSnapshotSocialImageRef =
+  builder.objectRef<WatchRouteSnapshotSocialImage>(
+    "WatchRouteSnapshotSocialImage",
+  )
+
+WatchRouteSnapshotSocialImageRef.implement({
+  description:
+    "Crawler-safe projection of a public, ready Media Library image.",
+  fields: (t) => ({
+    url: t.exposeString("url", { nullable: false }),
+    width: t.exposeInt("width", { nullable: true }),
+    height: t.exposeInt("height", { nullable: true }),
+  }),
+})
+
+const WatchRouteSnapshotRootLocaleRef =
+  builder.objectRef<WatchRouteSnapshotRootLocale>(
+    "WatchRouteSnapshotRootLocale",
+  )
+
+WatchRouteSnapshotRootLocaleRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    description: t.exposeString("description", { nullable: true }),
+    snippet: t.exposeString("snippet", { nullable: true }),
+    imageAlt: t.exposeString("imageAlt", { nullable: true }),
+    searchTitle: t.exposeString("searchTitle", { nullable: true }),
+    searchDescription: t.exposeString("searchDescription", { nullable: true }),
+    socialImage: t.field({
+      type: WatchRouteSnapshotSocialImageRef,
+      nullable: true,
+      resolve: (row) => row.socialImage,
+    }),
+  }),
+})
+
 const WatchRouteSnapshotChildRef = builder.objectRef<WatchRouteSnapshotChild>(
   "WatchRouteSnapshotChild",
 )
@@ -1376,17 +1417,17 @@ WatchRouteSnapshotRef.implement({
       resolve: (row) => row.bibleCitations,
     }),
     exactLocales: t.field({
-      type: [WatchRouteSnapshotLocaleRef],
+      type: [WatchRouteSnapshotRootLocaleRef],
       nullable: false,
       resolve: (row) => row.exactLocales,
     }),
     broadLocales: t.field({
-      type: [WatchRouteSnapshotLocaleRef],
+      type: [WatchRouteSnapshotRootLocaleRef],
       nullable: false,
       resolve: (row) => row.broadLocales,
     }),
     englishLocales: t.field({
-      type: [WatchRouteSnapshotLocaleRef],
+      type: [WatchRouteSnapshotRootLocaleRef],
       nullable: false,
       resolve: (row) => row.englishLocales,
     }),

@@ -26,6 +26,7 @@ import {
   getOrScheduleWatchHeroPosterMuxBlurDataUrl,
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
+import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
 import { ForbiddenError } from "./errors"
 
 /**
@@ -215,6 +216,18 @@ export type WatchRouteSnapshotLocale = {
   imageAlt: string | null
 }
 
+export type WatchRouteSnapshotSocialImage = {
+  url: string
+  width: number | null
+  height: number | null
+}
+
+export type WatchRouteSnapshotRootLocale = WatchRouteSnapshotLocale & {
+  searchTitle: string | null
+  searchDescription: string | null
+  socialImage: WatchRouteSnapshotSocialImage | null
+}
+
 export type WatchRouteSnapshotChild = {
   documentId: string
   slug: string | null
@@ -296,9 +309,9 @@ export type WatchRouteSnapshot = {
   parents: WatchRouteSnapshotParentRelation[]
   children: WatchRouteSnapshotChildRelation[]
   bibleCitations: WatchRouteSnapshotBibleCitation[]
-  exactLocales: WatchRouteSnapshotLocale[]
-  broadLocales: WatchRouteSnapshotLocale[]
-  englishLocales: WatchRouteSnapshotLocale[]
+  exactLocales: WatchRouteSnapshotRootLocale[]
+  broadLocales: WatchRouteSnapshotRootLocale[]
+  englishLocales: WatchRouteSnapshotRootLocale[]
   exactStudyQuestions: WatchRouteSnapshotStudyQuestion[]
   broadStudyQuestions: WatchRouteSnapshotStudyQuestion[]
   englishStudyQuestions: WatchRouteSnapshotStudyQuestion[]
@@ -827,6 +840,152 @@ function localeBucketsForSnapshot(
       .map(mapRow),
     broadLocales: forVideo.filter((row) => row.locale === locale).map(mapRow),
     englishLocales: forVideo.filter((row) => row.locale === "en").map(mapRow),
+  }
+}
+
+type WatchRouteSnapshotRootLocaleRow = {
+  id: string
+  videoId: string
+  languageSlug: string | null
+  publishedAt: Date | null
+  locale: string | null
+  title: string | null
+  description: string | null
+  snippet: string | null
+  imageAlt: string | null
+  searchTitle: string | null
+  searchDescription: string | null
+  socialImageAssetId: string | null
+}
+
+/**
+ * Loads editor-owned search/social fields for the root video only. Related
+ * parent and child locale rows stay on the lean title/copy projection above.
+ * Referenced assets are deduplicated and hydrated in at most one public-safe
+ * batch, keeping snapshot query count independent of locale count.
+ */
+export async function loadWatchRouteSnapshotRootLocaleBuckets({
+  prisma,
+  videoId,
+  locale,
+  languageSlug,
+  includeUnpublished,
+  publicMediaBaseUrl,
+}: {
+  prisma: Pick<PrismaClient, "videoLocale" | "mediaAsset">
+  videoId: string
+  locale: string
+  languageSlug: string | null
+  includeUnpublished: boolean
+  publicMediaBaseUrl?: string
+}): Promise<{
+  exactLocales: WatchRouteSnapshotRootLocale[]
+  broadLocales: WatchRouteSnapshotRootLocale[]
+  englishLocales: WatchRouteSnapshotRootLocale[]
+}> {
+  const rows = (await prisma.videoLocale.findMany({
+    where: {
+      videoId,
+      deletedAt: null,
+      ...(includeUnpublished ? {} : { status: "PUBLISHED" as const }),
+      OR: [
+        { locale },
+        { locale: "en" },
+        ...(languageSlug == null ? [] : [{ locale, languageSlug }]),
+      ],
+    },
+    orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      videoId: true,
+      locale: true,
+      languageSlug: true,
+      publishedAt: true,
+      title: true,
+      description: true,
+      snippet: true,
+      imageAlt: true,
+      searchTitle: true,
+      searchDescription: true,
+      socialImageAssetId: true,
+    },
+  })) as WatchRouteSnapshotRootLocaleRow[]
+
+  const bucketRows = {
+    exactLocales: rows.filter(
+      (row) =>
+        row.locale === locale &&
+        (languageSlug == null || row.languageSlug === languageSlug),
+    ),
+    broadLocales: rows.filter((row) => row.locale === locale),
+    englishLocales: rows.filter((row) => row.locale === "en"),
+  }
+  const selectedRows = [
+    ...bucketRows.exactLocales,
+    ...bucketRows.broadLocales,
+    ...bucketRows.englishLocales,
+  ]
+  const socialImageAssetIds = Array.from(
+    new Set(
+      selectedRows.flatMap((row) =>
+        row.socialImageAssetId ? [row.socialImageAssetId] : [],
+      ),
+    ),
+  )
+  const assets =
+    socialImageAssetIds.length === 0
+      ? []
+      : await prisma.mediaAsset.findMany({
+          where: {
+            id: { in: socialImageAssetIds },
+            kind: "IMAGE",
+            status: "READY",
+            visibility: "PUBLIC",
+          },
+          select: {
+            id: true,
+            backend: true,
+            status: true,
+            visibility: true,
+            objectKey: true,
+            previewObjectKey: true,
+            muxPlaybackId: true,
+            width: true,
+            height: true,
+          },
+        })
+  const socialImageByAssetId = new Map<string, WatchRouteSnapshotSocialImage>()
+  for (const asset of assets) {
+    const url = publicMediaAssetPreviewUrl(asset, publicMediaBaseUrl)
+    if (!url) continue
+    socialImageByAssetId.set(asset.id, {
+      url,
+      width: asset.width,
+      height: asset.height,
+    })
+  }
+
+  const mapRow = (
+    row: WatchRouteSnapshotRootLocaleRow,
+  ): WatchRouteSnapshotRootLocale => ({
+    documentId: row.id,
+    languageSlug: row.languageSlug,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    title: row.title,
+    description: row.description,
+    snippet: row.snippet,
+    imageAlt: row.imageAlt,
+    searchTitle: row.searchTitle,
+    searchDescription: row.searchDescription,
+    socialImage: row.socialImageAssetId
+      ? (socialImageByAssetId.get(row.socialImageAssetId) ?? null)
+      : null,
+  })
+
+  return {
+    exactLocales: bucketRows.exactLocales.map(mapRow),
+    broadLocales: bucketRows.broadLocales.map(mapRow),
+    englishLocales: bucketRows.englishLocales.map(mapRow),
   }
 }
 
@@ -1505,6 +1664,12 @@ export class VideoService {
     ])
 
     const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
+    const rootLocaleBuckets = await loadWatchRouteSnapshotRootLocaleBuckets({
+      prisma: this.prisma,
+      videoId: root.id,
+      ...localeArgs,
+      includeUnpublished: isEditorOrAdmin(user),
+    })
     const exactMuxByVideoId = firstByVideoId(
       exactMuxRows.filter((row) => row.playbackId != null),
     )
@@ -1718,7 +1883,7 @@ export class VideoService {
             }
           : null,
       })),
-      ...localeBucketsForSnapshot(localeRows, root.id, localeArgs),
+      ...rootLocaleBuckets,
       ...studyQuestionBucketsForSnapshot(studyQuestionRows, localeArgs),
       playableDubLanguageCount,
       preferredVariant: preferredVariant

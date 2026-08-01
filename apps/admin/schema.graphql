@@ -1781,13 +1781,13 @@ Route-shaped Watch video snapshot assembled by the video service in bounded batc
 """
 type WatchRouteSnapshot {
   bibleCitations: [WatchRouteSnapshotBibleCitation!]!
-  broadLocales: [WatchRouteSnapshotLocale!]!
+  broadLocales: [WatchRouteSnapshotRootLocale!]!
   broadStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
   children: [WatchRouteSnapshotChildRelation!]!
   documentId: ID!
-  englishLocales: [WatchRouteSnapshotLocale!]!
+  englishLocales: [WatchRouteSnapshotRootLocale!]!
   englishStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
-  exactLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotRootLocale!]!
   exactStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
   images: [WatchRouteSnapshotImage!]!
   label: VideoLabel
@@ -1891,6 +1891,26 @@ type WatchRouteSnapshotPreferredVariant {
   muxHeroPosterDominantColor: String
   published: Boolean
   slug: String
+}
+
+type WatchRouteSnapshotRootLocale {
+  description: String
+  documentId: ID!
+  imageAlt: String
+  languageSlug: String
+  publishedAt: String
+  searchDescription: String
+  searchTitle: String
+  snippet: String
+  socialImage: WatchRouteSnapshotSocialImage
+  title: String
+}
+
+"""Crawler-safe projection of a public, ready Media Library image."""
+type WatchRouteSnapshotSocialImage {
+  height: Int
+  url: String!
+  width: Int
 }
 
 type WatchRouteSnapshotStudyQuestion {

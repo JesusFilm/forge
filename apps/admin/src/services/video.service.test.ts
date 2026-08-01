@@ -1,10 +1,141 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Principal } from "@/auth/principal"
 import {
+  loadWatchRouteSnapshotRootLocaleBuckets,
   VideoService,
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
 } from "./video.service"
+
+describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
+  it("hydrates deduplicated public social images in one bounded root-only batch", async () => {
+    const prisma = {
+      videoLocale: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "locale-exact",
+            videoId: "video-1",
+            locale: "es-419",
+            languageSlug: "spanish-latin-american",
+            publishedAt: new Date("2026-07-31T00:00:00.000Z"),
+            title: "Jesús",
+            description: "Descripción",
+            snippet: "Resumen",
+            imageAlt: "Jesús",
+            searchTitle: "Ver JESÚS",
+            searchDescription: "Película completa",
+            socialImageAssetId: "asset-1",
+          },
+          {
+            id: "locale-broad",
+            videoId: "video-1",
+            locale: "es-419",
+            languageSlug: "spanish",
+            publishedAt: null,
+            title: "Jesús amplio",
+            description: null,
+            snippet: null,
+            imageAlt: null,
+            searchTitle: null,
+            searchDescription: null,
+            socialImageAssetId: "asset-1",
+          },
+          {
+            id: "locale-en",
+            videoId: "video-1",
+            locale: "en",
+            languageSlug: "english",
+            publishedAt: null,
+            title: "Jesus",
+            description: null,
+            snippet: null,
+            imageAlt: null,
+            searchTitle: "Watch JESUS",
+            searchDescription: null,
+            socialImageAssetId: "asset-missing",
+          },
+        ]),
+      },
+      mediaAsset: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PUBLIC",
+            objectKey: "images/jesus.jpg",
+            previewObjectKey: "previews/jesus.jpg",
+            muxPlaybackId: null,
+            width: 1200,
+            height: 630,
+          },
+        ]),
+      },
+    }
+
+    const buckets = await loadWatchRouteSnapshotRootLocaleBuckets({
+      prisma: prisma as never,
+      videoId: "video-1",
+      locale: "es-419",
+      languageSlug: "spanish-latin-american",
+      includeUnpublished: false,
+      publicMediaBaseUrl: "https://admin.example",
+    })
+
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ videoId: "video-1" }),
+        select: expect.objectContaining({
+          searchTitle: true,
+          searchDescription: true,
+          socialImageAssetId: true,
+        }),
+      }),
+    )
+    expect(prisma.mediaAsset.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.mediaAsset.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ["asset-1", "asset-missing"] },
+          kind: "IMAGE",
+          status: "READY",
+          visibility: "PUBLIC",
+        }),
+      }),
+    )
+    expect(buckets.exactLocales[0]).toMatchObject({
+      searchTitle: "Ver JESÚS",
+      searchDescription: "Película completa",
+      socialImage: {
+        url: "https://admin.example/api/public/media-assets/asset-1/preview",
+        width: 1200,
+        height: 630,
+      },
+    })
+    expect(buckets.broadLocales[0]?.socialImage).toEqual(
+      buckets.exactLocales[0]?.socialImage,
+    )
+    expect(buckets.englishLocales[0]?.socialImage).toBeNull()
+  })
+
+  it("does not issue an asset query when selected root buckets have no asset ids", async () => {
+    const prisma = {
+      videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+      mediaAsset: { findMany: vi.fn() },
+    }
+
+    await loadWatchRouteSnapshotRootLocaleBuckets({
+      prisma: prisma as never,
+      videoId: "video-1",
+      locale: "en",
+      languageSlug: "english",
+      includeUnpublished: true,
+      publicMediaBaseUrl: "https://admin.example",
+    })
+
+    expect(prisma.mediaAsset.findMany).not.toHaveBeenCalled()
+  })
+})
 
 function mockPrisma() {
   const tx = {

@@ -399,6 +399,13 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           description
           snippet
           imageAlt
+          searchTitle
+          searchDescription
+          socialImage {
+            url
+            width
+            height
+          }
         }
         broadLocales {
           documentId
@@ -408,6 +415,13 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           description
           snippet
           imageAlt
+          searchTitle
+          searchDescription
+          socialImage {
+            url
+            width
+            height
+          }
         }
         englishLocales {
           documentId
@@ -417,6 +431,13 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           description
           snippet
           imageAlt
+          searchTitle
+          searchDescription
+          socialImage {
+            url
+            width
+            height
+          }
         }
         exactStudyQuestions {
           documentId
