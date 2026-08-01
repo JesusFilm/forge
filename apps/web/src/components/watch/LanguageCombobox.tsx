@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -163,6 +164,8 @@ export function LanguageCombobox({
   popoverPortalContainer,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
+  const comboboxId = useId()
+  const listboxId = `${comboboxId}-listbox`
   // Fall back to the localized default only when the caller did not pass an
   // explicit placeholder (e.g. LanguagePickerModal passes "No subtitles").
   const resolvedPlaceholder = placeholder ?? t("selectLanguage")
@@ -221,7 +224,6 @@ export function LanguageCombobox({
       .sort((a, b) => a.tier - b.tier || a.index - b.index)
       .map((entry) => entry.option)
   }, [options, query])
-
   // Keep ref in sync with state
   useEffect(() => {
     activeIndexRef.current = activeIndex
@@ -387,6 +389,29 @@ export function LanguageCombobox({
     [onChange, options, setComboboxOpen],
   )
 
+  const scrollActiveOptionIntoView = useCallback((index: number) => {
+    if (filteredRef.current.length <= VIRTUALIZATION_THRESHOLD) return
+
+    const listbox = listboxRef.current
+    if (!listbox) return
+
+    const rowTop = index * OPTION_ROW_HEIGHT_PX
+    const rowBottom = rowTop + OPTION_ROW_HEIGHT_PX
+    const viewportTop = listbox.scrollTop
+    const viewportBottom = viewportTop + listbox.clientHeight
+    const nextScrollTop =
+      rowTop < viewportTop
+        ? rowTop
+        : rowBottom > viewportBottom
+          ? rowBottom - listbox.clientHeight
+          : null
+
+    if (nextScrollTop != null) {
+      listbox.scrollTop = nextScrollTop
+      setScrollTop(nextScrollTop)
+    }
+  }, [])
+
   const handleSearchKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "ArrowDown") {
@@ -399,11 +424,13 @@ export function LanguageCombobox({
         )
         activeIndexRef.current = next
         setActiveIndex(next)
+        scrollActiveOptionIntoView(next)
       } else if (event.key === "ArrowUp") {
         event.preventDefault()
         const prev = Math.max(activeIndexRef.current - 1, 0)
         activeIndexRef.current = prev
         setActiveIndex(prev)
+        scrollActiveOptionIntoView(prev)
       } else if (event.key === "Enter") {
         event.preventDefault()
         const option = filteredRef.current[activeIndexRef.current]
@@ -414,7 +441,7 @@ export function LanguageCombobox({
         triggerRef.current?.focus()
       }
     },
-    [handleSelect, setComboboxOpen],
+    [handleSelect, scrollActiveOptionIntoView, setComboboxOpen],
   )
 
   const shouldVirtualize = filtered.length > VIRTUALIZATION_THRESHOLD
@@ -443,6 +470,14 @@ export function LanguageCombobox({
         : filtered,
     [filtered, shouldVirtualize, visibleRange.end, visibleRange.start],
   )
+  const activeOption = filtered[activeIndex]
+  const activeOptionIsMounted =
+    !shouldVirtualize ||
+    (activeIndex >= visibleRange.start && activeIndex < visibleRange.end)
+  const activeOptionId =
+    activeOption && activeOptionIsMounted
+      ? `${comboboxId}-option-${activeOption.slug}`
+      : undefined
 
   useEffect(() => {
     if (!open || !shouldVirtualize) return
@@ -490,6 +525,7 @@ export function LanguageCombobox({
       }}
       aria-expanded={open}
       aria-haspopup="listbox"
+      aria-controls={open ? listboxId : undefined}
       disabled={disabled}
       className={`${triggerClassName} ${triggerClassNameOverride ?? ""}`}
     >
@@ -577,11 +613,13 @@ export function LanguageCombobox({
                   }
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t("searchPlaceholder")}
-                  aria-activedescendant={
-                    filtered[activeIndex]
-                      ? `lcb-opt-${filtered[activeIndex].slug}`
-                      : undefined
-                  }
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls={listboxId}
+                  aria-expanded={open}
+                  aria-haspopup="listbox"
+                  aria-label={t("searchPlaceholder")}
+                  aria-activedescendant={activeOptionId}
                   className="w-full bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
                 />
               </div>
@@ -594,6 +632,7 @@ export function LanguageCombobox({
           */}
               <ul
                 ref={listboxRef}
+                id={listboxId}
                 role="listbox"
                 aria-label={t("languages")}
                 data-virtualized={shouldVirtualize ? "true" : "false"}
@@ -631,7 +670,7 @@ export function LanguageCombobox({
                         <li key={option.slug}>
                           <button
                             type="button"
-                            id={`lcb-opt-${option.slug}`}
+                            id={`${comboboxId}-option-${option.slug}`}
                             role="option"
                             aria-selected={selectedOption}
                             aria-disabled={optionDisabled ? "true" : undefined}

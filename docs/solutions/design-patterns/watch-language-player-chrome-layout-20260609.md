@@ -1,7 +1,7 @@
 ---
 title: Watch language picker, player chrome fade, and measured episode rail overlap
 date: 2026-06-09
-last_updated: 2026-07-17
+last_updated: 2026-07-28
 category: docs/solutions/design-patterns
 module: apps/web
 problem_type: design_pattern
@@ -254,6 +254,34 @@ Reason future agents might regress it:
 - Watching `data-visible` locally looks self-contained, but makes a display
   component infer lifecycle state that its owner already knows. Preserve the
   direct state flow and the visible-hidden-visible regression test.
+
+### 7. Virtualized language comboboxes must keep their active option mounted
+
+Touched files:
+
+- `apps/web/src/components/watch/LanguageCombobox.tsx`
+- `apps/web/src/components/watch/__tests__/LanguageCombobox.test.tsx`
+
+Intent:
+
+- The language search input is an editable ARIA combobox with list
+  autocomplete. Its `aria-controls` points to the listbox, and its
+  `aria-activedescendant` points to the keyboard-active option.
+- Use a per-instance `useId()` prefix for the listbox and option IDs. The same
+  option keeps its ID when filtering changes the visible result set.
+- For virtualized lists, keyboard navigation must update the virtual scroll
+  state at the same time it changes the active index. Otherwise the active
+  option can be scrolled into view imperatively but remain absent from React's
+  rendered window, leaving `aria-activedescendant` dangling.
+- Only expose `aria-activedescendant` while its target is mounted. This avoids
+  a stale reference when pointer scrolling moves a virtual window away from
+  the keyboard-active row.
+
+Reason future agents might regress it:
+
+- A scroll-only fix looks sufficient visually, but assistive technology follows
+  the DOM ID reference rather than the scroll position. Preserve both the
+  regular ARIA relationship test and the virtualized keyboard-navigation test.
 
 ## Verification commands
 
