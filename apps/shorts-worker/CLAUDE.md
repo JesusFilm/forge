@@ -299,7 +299,8 @@ fonts-noto-cjk` (fallback glyphs only; brand fonts are vendored in the
    Finally downloads chrome-headless-shell via `ensureBrowser()` (pinned
    transitively by the exact `@remotion/renderer` version).
 3. **build** — pnpm workspace install + `tsc` + `prebundle` (Remotion
-   `bundle()` over `@forge/shorts-compositions/entry` → `/app/bundle`).
+   `bundle()` over both the Shorts and devotional entries -> `/app/bundle`
+   and `/app/devotional-bundle`).
    Webpack never runs at runtime; the first render after deploy costs the
    same as the Nth. COPYies root `patches/` before `pnpm install` — pnpm
    hashes every root `pnpm.patchedDependencies` file even when the patched
@@ -308,15 +309,17 @@ fonts-noto-cjk` (fallback glyphs only; brand fonts are vendored in the
 4. **prod-deps** — production-only `pnpm install` PRESERVING the workspace
    symlink layout (also COPYies `patches/`, same pnpm requirement as the
    build stage). **Deliberately NOT `pnpm deploy`:** deploy materializes
-   the source-shipped TS compositions package UNDER `node_modules`, where
-   Node refuses type-stripping. The workspace symlink (realpath
-   `/app/packages/shorts-compositions`, outside `node_modules`) is what
-   makes the TS schema importable from compiled dist — which is why
+   the source-shipped TS workspace packages UNDER `node_modules`, where
+   Node refuses type-stripping. The workspace symlinks (realpaths under
+   `/app/packages`, outside `node_modules`) are what make the devotional
+   Workspace and composition modules importable from compiled dist — which is why
    **Node >= 22.18 type stripping is a HARD runtime requirement**.
 5. **runtime** — stable layers first (node_modules, whisper, model, browser
    cache copied to `/app/apps/shorts-worker/node_modules/.remotion`),
-   volatile app layers last (compositions source, dist, bundle). Sets
-   `SHORTS_WORKER_BUNDLE_DIR=/app/bundle` + the whisper paths.
+   volatile app layers last (Workspace/compositions source, dist, and both
+   bundles). Sets `SHORTS_WORKER_BUNDLE_DIR=/app/bundle`,
+   `SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR=/app/devotional-bundle`, and the
+   whisper paths.
 
 **Layer ordering rule:** apt/model/browser layers depend only on pins, never
 app source — code-only deploys push/pull small layers, not the ~1.6GB model.

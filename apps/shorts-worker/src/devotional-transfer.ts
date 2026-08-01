@@ -406,7 +406,7 @@ export async function uploadDevotionalWorkspaceGrant(options: {
       "content-type": options.grant.contentType,
       "content-length": String(file.size),
     },
-    body: body as unknown as BodyInit,
+    body: body as unknown as RequestInit["body"],
     redirect: "error",
     signal: requestSignal(options.signal),
     duplex: "half",
