@@ -19,6 +19,7 @@ import {
   WATCH_CACHE_TAG_GROUPS,
   type WatchCacheTag,
 } from "@/lib/watch-cache-tags"
+import { tryAsLocaleSlug } from "@/lib/routes"
 import { clearWatchRouteManifestCache } from "@/lib/watch-route-manifest"
 import { clearWatchSeoManifestCache } from "@/lib/watch-seo-manifest"
 
@@ -31,6 +32,7 @@ interface RevalidateWebhookPayload {
   entry: {
     slug?: string
     locale?: string
+    languageSlug?: string
   }
 }
 
@@ -71,11 +73,14 @@ function parsePayload(
     return { ok: false, reason: "invalid_payload" }
   }
 
-  const { slug, locale } = value.entry
+  const { slug, locale, languageSlug } = value.entry
   if (slug != null && typeof slug !== "string") {
     return { ok: false, reason: "invalid_payload" }
   }
   if (locale != null && typeof locale !== "string") {
+    return { ok: false, reason: "invalid_payload" }
+  }
+  if (languageSlug != null && typeof languageSlug !== "string") {
     return { ok: false, reason: "invalid_payload" }
   }
 
@@ -86,6 +91,9 @@ function parsePayload(
       entry: {
         ...(slug !== undefined && slug !== null ? { slug } : {}),
         ...(locale !== undefined && locale !== null ? { locale } : {}),
+        ...(languageSlug !== undefined && languageSlug !== null
+          ? { languageSlug }
+          : {}),
       },
     },
   }
@@ -136,13 +144,21 @@ export async function POST(request: Request) {
   }
 
   const { model, entry } = parsedPayload.payload
-  const { slug, locale } = entry
+  const { slug, locale, languageSlug } = entry
 
   if (slug !== undefined && !SLUG_PATTERN.test(slug)) {
     return NextResponse.json({ error: "invalid_slug" }, { status: 400 })
   }
   if (locale !== undefined && !isLocale(locale)) {
     return NextResponse.json({ error: "invalid_locale" }, { status: 400 })
+  }
+  const exactLanguageSlug =
+    languageSlug === undefined ? undefined : tryAsLocaleSlug(languageSlug)
+  if (languageSlug !== undefined && !exactLanguageSlug) {
+    return NextResponse.json(
+      { error: "invalid_language_slug" },
+      { status: 400 },
+    )
   }
 
   const revalidated: string[] = []
@@ -244,6 +260,17 @@ export async function POST(request: Request) {
   }
 
   const revalidateSlugPaths = () => {
+    if (model === "video" && slug && exactLanguageSlug) {
+      pushTwoSeg(slug, exactLanguageSlug)
+      if (
+        locale === DEFAULT_LOCALE &&
+        isLanguageLessWatchVideoPathEligible(slug)
+      ) {
+        pushOneSeg(slug)
+      }
+      return
+    }
+
     if (slug && locale) {
       const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(locale)
       if (!audioLanguageSlug) return
