@@ -521,17 +521,6 @@ function defaultConfig(): StorageConfig {
 
 function devotionalWorkspaceConfig(): StorageConfig {
   return {
-    s3: env.DEVOTIONAL_WORKSPACE_S3_BUCKET
-      ? {
-          endpoint: env.DEVOTIONAL_WORKSPACE_S3_ENDPOINT,
-          region: env.DEVOTIONAL_WORKSPACE_S3_REGION,
-          bucket: env.DEVOTIONAL_WORKSPACE_S3_BUCKET,
-          accessKeyId: env.DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID,
-          secretAccessKey: env.DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY,
-          forcePathStyle: env.DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE,
-          workspacePrefix: env.DEVOTIONAL_WORKSPACE_PREFIX,
-        }
-      : undefined,
     localRootDir: env.DEVOTIONAL_WORKSPACE_LOCAL_DIR,
   }
 }

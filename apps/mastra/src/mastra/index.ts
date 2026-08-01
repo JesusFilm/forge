@@ -162,6 +162,7 @@ import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-gua
 import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
 import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
 import { createDevotionalDataPlaneRuntime } from "../services/devotional/workspace/runtime"
+import { configureDevotionalWorkerWorkspaceMediaStore } from "../services/devotional/devotional-worker-client"
 import { createLiveWorkspaceAuthoredDataReader } from "../services/devotional/workspace/attempt-data"
 import { loadPromptBundle } from "../services/devotional/authored-data"
 
@@ -193,6 +194,9 @@ const observabilityStore = new DuckDBStore({
   path: join(storageDir, "mastra-observability.duckdb"),
 })
 const devotionalWorkspaceRuntime = createDevotionalWorkspaceRuntime()
+configureDevotionalWorkerWorkspaceMediaStore(
+  devotionalWorkspaceRuntime.mediaStore,
+)
 const devotionalDataPlaneRuntime = createDevotionalDataPlaneRuntime({
   workspaceRuntime: devotionalWorkspaceRuntime,
 })

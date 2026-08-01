@@ -9,6 +9,11 @@ import { env } from "../config/env.js"
 import { createJobDeadline } from "../deadline.js"
 import { runDevotionalRender } from "../devotional-render.js"
 import {
+  DevotionalTransferError,
+  devotionalWorkspaceTransferSchema,
+  validateDevotionalWorkspaceTransfer,
+} from "../devotional-transfer.js"
+import {
   InvalidJsonBodyError,
   readJsonBody,
   RequestBodyTooLargeError,
@@ -74,6 +79,8 @@ const devotionalRenderJobSchema = z.looseObject({
   outputAssetId: assetIdSchema.max(128),
   /** Opaque sha256 of the uploaded input set; shape-checked, never recomputed. */
   inputHash: z.string().regex(PROPS_HASH_PATTERN),
+  /** Short-lived, method-specific object capabilities minted by Mastra. */
+  workspaceTransfer: devotionalWorkspaceTransferSchema.optional(),
 })
 
 export const jobRequestSchema = z.discriminatedUnion("kind", [
@@ -104,6 +111,7 @@ export type JobsRouteOptions = {
   /** Drives the production-only loopback-http rejection on source.url (defaults to env). */
   nodeEnv?: string
   allowedSourceHosts?: string[]
+  devotionalWorkspaceAllowedOrigin?: string
   runPrepareImpl?: typeof runPrepare
   runRenderImpl?: typeof runRender
   runDevotionalRenderImpl?: typeof runDevotionalRender
@@ -128,6 +136,7 @@ export function createJobsRoute({
   allowedSourceHosts = parseAllowedHosts(
     env.SHORTS_WORKER_ALLOWED_SOURCE_HOSTS,
   ),
+  devotionalWorkspaceAllowedOrigin = env.DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN,
   runPrepareImpl = runPrepare,
   runRenderImpl = runRender,
   runDevotionalRenderImpl = runDevotionalRender,
@@ -198,6 +207,23 @@ export function createJobsRoute({
         throw error
       }
     }
+    if (body.kind === "devotional-render" && body.workspaceTransfer) {
+      try {
+        validateDevotionalWorkspaceTransfer(body.workspaceTransfer, {
+          nodeEnv,
+          allowedOrigin: devotionalWorkspaceAllowedOrigin,
+        })
+      } catch (error) {
+        if (error instanceof DevotionalTransferError) {
+          console.warn(
+            `[shorts-worker] event=job_rejected reason=workspace_transfer_invalid kind=${body.kind} jobId=${body.jobId ?? "-"} assetId=${body.outputAssetId}`,
+          )
+          sendJson(response, 400, { error: "invalid_body" })
+          return
+        }
+        throw error
+      }
+    }
 
     const dedupeKey = jobDedupeKey(body)
 
@@ -244,6 +270,7 @@ export function createJobsRoute({
                   inputAssetId: body.inputAssetId,
                   outputAssetId: body.outputAssetId,
                   inputHash: body.inputHash,
+                  workspaceTransfer: body.workspaceTransfer,
                   deps: {
                     deadline,
                     allowedHosts: allowedSourceHosts,
