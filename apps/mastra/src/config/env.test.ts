@@ -223,6 +223,62 @@ describe("Mastra env", () => {
     expect(getYouTubeConfig().apiKey).toBeUndefined()
   })
 
+  it("keeps support research disabled and bounded when unconfigured", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SUPPORT_RESEARCH_ENABLED", "")
+    vi.stubEnv("SUPPORT_RESEARCH_PROVIDER_APPROVED", "")
+    vi.stubEnv("HELP_SCOUT_CLIENT_ID", "")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_API_KEY", "")
+
+    const { getSupportResearchConfig } = await import("./env")
+
+    expect(getSupportResearchConfig()).toMatchObject({
+      enabled: false,
+      providerApproved: false,
+      model: "openai/gpt-5.4-mini",
+      allowedWatchHosts: [],
+      maxConversations: 200,
+      maxThreadsPerConversation: 20,
+      maxSanitizedCharacters: 12_000,
+      maxActionsPerRun: 5,
+      retentionDays: 90,
+      helpScout: {
+        clientId: undefined,
+        mailboxIds: [],
+      },
+      linear: { apiKey: undefined },
+    })
+  })
+
+  it("parses support research routing without exposing secret values", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SUPPORT_RESEARCH_ENABLED", "true")
+    vi.stubEnv("SUPPORT_RESEARCH_PROVIDER_APPROVED", "true")
+    vi.stubEnv(
+      "SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS",
+      "WWW.JESUSFILM.ORG, watch.example.org",
+    )
+    vi.stubEnv("HELP_SCOUT_CLIENT_ID", "help-id")
+    vi.stubEnv("HELP_SCOUT_CLIENT_SECRET", "help-secret")
+    vi.stubEnv("HELP_SCOUT_MAILBOX_IDS", "10, 20")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_API_KEY", "linear-secret")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_TEAM_ID", "team-id")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_PROJECT_ID", "project-id")
+
+    const { getSupportResearchConfig } = await import("./env")
+    const config = getSupportResearchConfig()
+
+    expect(config.enabled).toBe(true)
+    expect(config.providerApproved).toBe(true)
+    expect(config.allowedWatchHosts).toEqual([
+      "www.jesusfilm.org",
+      "watch.example.org",
+    ])
+    expect(config.helpScout.mailboxIds).toEqual(["10", "20"])
+    expect(config.helpScout.clientSecret).toBe("help-secret")
+    expect(config.linear.apiKey).toBe("linear-secret")
+  })
+
   it("defaults storage to the local gateway database in development", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("DATABASE_URL", "")
