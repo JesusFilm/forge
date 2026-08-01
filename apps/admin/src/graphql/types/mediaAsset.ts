@@ -113,6 +113,10 @@ const MediaAssetUsageRef = builder
     description:
       "A structured reference to an experience or video locale field that uses a media asset.",
     fields: (t) => ({
+      experienceId: t.exposeString("experienceId", { nullable: true }),
+      experienceLocaleId: t.exposeString("experienceLocaleId", {
+        nullable: true,
+      }),
       resourceType: t.exposeString("resourceType"),
       resourceId: t.exposeString("resourceId"),
       resourceLocaleId: t.exposeString("resourceLocaleId"),

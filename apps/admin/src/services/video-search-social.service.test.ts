@@ -234,6 +234,24 @@ describe("VideoSearchSocialService", () => {
       }),
     ).resolves.toMatchObject({ searchTitle: "Safe public title" })
   })
+
+  it("does not hold the save response open for webhook delivery", async () => {
+    prisma.videoLocale.findFirst.mockResolvedValue(activeLocale)
+    prisma.videoLocale.updateMany.mockResolvedValue({ count: 1 })
+    emitRevalidateWebhook.mockReturnValueOnce(new Promise(() => undefined))
+
+    await expect(
+      service.save({
+        user: ADMIN,
+        input: {
+          videoLocaleId: "locale-1",
+          searchTitle: "Safe public title",
+          searchDescription: null,
+          socialImageAssetId: null,
+        },
+      }),
+    ).resolves.toMatchObject({ searchTitle: "Safe public title" })
+  })
 })
 
 afterAll(() => auditLog.mockRestore())

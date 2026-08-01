@@ -66,6 +66,7 @@ describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
             objectKey: "images/jesus.jpg",
             previewObjectKey: "previews/jesus.jpg",
             muxPlaybackId: null,
+            mimeType: "image/webp",
             width: 1200,
             height: 630,
           },
@@ -110,6 +111,7 @@ describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
         url: "https://admin.example/api/public/media-assets/asset-1/preview",
         width: 1200,
         height: 630,
+        mimeType: "image/webp",
       },
     })
     expect(buckets.broadLocales[0]?.socialImage).toEqual(

@@ -405,6 +405,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
             url
             width
             height
+            mimeType
           }
         }
         broadLocales {
@@ -421,6 +422,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
             url
             width
             height
+            mimeType
           }
         }
         englishLocales {
@@ -437,6 +439,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
             url
             width
             height
+            mimeType
           }
         }
         exactStudyQuestions {

@@ -101,7 +101,7 @@ type WatchMetadataImage = {
   width: number
   height: number
   alt: string
-  type: "image/jpeg"
+  type?: string
 }
 
 export type WatchStructuredDataCaption = {
@@ -123,20 +123,26 @@ function positiveDimension(value: number | null | undefined, fallback: number) {
 
 function buildManagedSocialImage(
   image:
-    | { url: string; width: number | null; height: number | null }
+    | {
+        url: string
+        width: number | null
+        height: number | null
+        mimeType?: string | null
+      }
     | null
     | undefined,
   alt: string,
 ): WatchMetadataImage | null {
   const url = trimmedValue(image?.url)
   if (!url) return null
+  const mimeType = trimmedValue(image?.mimeType)
 
   return {
     url,
     width: positiveDimension(image?.width, DEFAULT_OG_IMAGE.width),
     height: positiveDimension(image?.height, DEFAULT_OG_IMAGE.height),
     alt,
-    type: "image/jpeg",
+    ...(mimeType ? { type: mimeType } : {}),
   }
 }
 

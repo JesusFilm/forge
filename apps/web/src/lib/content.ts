@@ -311,6 +311,7 @@ export type WatchSocialImage = {
   url: string
   width: number | null
   height: number | null
+  mimeType?: string | null
 }
 
 export type RouteVideo = {
@@ -493,6 +494,7 @@ type AdminLocaleRaw = {
     url?: string | null
     width?: number | null
     height?: number | null
+    mimeType?: string | null
   } | null
 }
 
@@ -683,6 +685,7 @@ function normalizeSocialImage(
     url: image.url,
     width: image.width ?? null,
     height: image.height ?? null,
+    ...(image.mimeType?.trim() ? { mimeType: image.mimeType.trim() } : {}),
   }
 }
 

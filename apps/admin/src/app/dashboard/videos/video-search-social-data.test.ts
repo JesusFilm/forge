@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { ForbiddenError } from "@/services/errors"
 import {
   loadVideoSearchSocialMediaLibrary,
+  loadInitialVideoSearchSocialState,
   searchVideoSearchSocialLocales,
 } from "./video-search-social-data"
 
@@ -10,7 +11,7 @@ const editor = { id: "editor-1", role: "EDITOR" } as const
 
 function client() {
   return {
-    videoLocale: { findMany: vi.fn() },
+    videoLocale: { findMany: vi.fn(), findFirst: vi.fn() },
     mediaFolder: { findMany: vi.fn() },
     mediaAsset: { findMany: vi.fn() },
   }
@@ -70,6 +71,59 @@ describe("video Search and Social dashboard data", () => {
         take: 40,
       }),
     )
+    expect(
+      db.videoLocale.findMany.mock.calls[0]?.[0].where.OR[3].language.is.OR,
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          locales: {
+            some: {
+              deletedAt: null,
+              value: {
+                contains: "latin american",
+                mode: "insensitive",
+              },
+            },
+          },
+        },
+      ]),
+    )
+  })
+
+  it("honors a valid locale deep link even when it is outside the first result page", async () => {
+    const db = client()
+    db.videoLocale.findMany.mockResolvedValue([])
+    db.videoLocale.findFirst = vi.fn().mockResolvedValue({
+      id: "locale-deep",
+      videoId: "video-1",
+      locale: "fr",
+      languageSlug: "french",
+      status: "PUBLISHED",
+      title: "JÃ‰SUS",
+      description: "Description",
+      snippet: null,
+      searchTitle: null,
+      searchDescription: null,
+      socialImageAssetId: null,
+      socialImageAsset: null,
+      video: { slug: "jesus" },
+      language: {
+        bcp47: "fr",
+        iso3: "fra",
+        name: { en: "French" },
+        slug: "french",
+      },
+    })
+
+    const state = await loadInitialVideoSearchSocialState({
+      user: admin,
+      videoId: "video-1",
+      requestedVideoLocaleId: "locale-deep",
+      client: db as never,
+    })
+
+    expect(state.initialLocale?.videoLocaleId).toBe("locale-deep")
+    expect(state.initialOptions[0]?.id).toBe("locale-deep")
   })
 
   it("offers only public ready images with a crawler-resolvable object", async () => {

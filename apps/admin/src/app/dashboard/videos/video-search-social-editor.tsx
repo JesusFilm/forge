@@ -112,6 +112,7 @@ export function VideoSearchSocialEditor({
   const [loadingLocale, setLoadingLocale] = useState(false)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
+  const localeLoadRequestRef = useRef(0)
   const [message, setMessage] = useState("")
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -208,6 +209,7 @@ export function VideoSearchSocialEditor({
   }
 
   async function loadLocale(option: VideoSearchSocialLocaleOption) {
+    const requestId = ++localeLoadRequestRef.current
     setLoadingLocale(true)
     setErrorCode(null)
     setMessage(`Loading ${option.languageName}…`)
@@ -215,12 +217,14 @@ export function VideoSearchSocialEditor({
     try {
       result = await loadAction({ videoLocaleId: option.id })
     } catch {
+      if (requestId !== localeLoadRequestRef.current) return
       setLoadingLocale(false)
       setErrorCode("LOAD_FAILED")
       setMessage("Search metadata could not be loaded. Please try again.")
       errorSummaryRef.current?.focus()
       return
     }
+    if (requestId !== localeLoadRequestRef.current) return
     if (!result.ok) {
       setLoadingLocale(false)
       setMessage(result.message)
@@ -236,6 +240,7 @@ export function VideoSearchSocialEditor({
   }
 
   function requestLocale(option: VideoSearchSocialLocaleOption) {
+    if (loadingLocale || savingRef.current) return
     if (option.id === locale?.videoLocaleId) return
     if (dirty) {
       setPendingIntent({ kind: "locale", option })
@@ -314,6 +319,7 @@ export function VideoSearchSocialEditor({
   }
 
   function discardAndContinue() {
+    if (savingRef.current) return
     const intent = pendingIntent
     if (!intent) return
     setDraft(persistedDraft)
@@ -453,10 +459,11 @@ export function VideoSearchSocialEditor({
                     <li key={option.id}>
                       <button
                         type="button"
+                        disabled={loadingLocale || saving}
                         aria-current={selected ? "true" : undefined}
                         onClick={() => requestLocale(option)}
                         className={cx(
-                          "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--color-brand)]",
+                          "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--color-brand)] disabled:cursor-not-allowed disabled:opacity-60",
                           selected && "bg-[var(--color-surface-raised)]",
                         )}
                       >
@@ -796,15 +803,19 @@ export function VideoSearchSocialEditor({
             <div className="mt-5 grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setPendingIntent(null)}
-                className="h-10 rounded-sm border border-[var(--color-hairline)] text-[12px]"
+                disabled={saving}
+                onClick={() => {
+                  if (!savingRef.current) setPendingIntent(null)
+                }}
+                className="h-10 rounded-sm border border-[var(--color-hairline)] text-[12px] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={saving}
                 onClick={discardAndContinue}
-                className="h-10 rounded-sm border border-[var(--color-hairline)] text-[12px] text-[var(--color-danger)]"
+                className="h-10 rounded-sm border border-[var(--color-hairline)] text-[12px] text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Discard
               </button>

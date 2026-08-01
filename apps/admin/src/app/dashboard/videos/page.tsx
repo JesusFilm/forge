@@ -27,6 +27,7 @@ import {
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
   parseVideoLibrarySelectedVideo,
+  parseVideoLibrarySelectedLocale,
   parseVideoLibrarySort,
   type VideoLibraryCategory,
   type VideoLibrarySort,
@@ -35,10 +36,7 @@ import {
 import { VideoLibraryToolbar } from "./video-library-toolbar"
 import { VideoDetailPage } from "./video-detail-page"
 import { VideoSearchSocialEditor } from "./video-search-social-editor"
-import {
-  loadVideoSearchSocialLocale,
-  searchVideoSearchSocialLocales,
-} from "./video-search-social-data"
+import { loadInitialVideoSearchSocialState } from "./video-search-social-data"
 
 type VideosPageProps = {
   searchParams?: Promise<{
@@ -49,6 +47,7 @@ type VideosPageProps = {
     sort?: string | string[]
     type?: string | string[]
     video?: string | string[]
+    locale?: string | string[]
   }>
 }
 
@@ -467,6 +466,7 @@ export default async function VideosPage({
   const collection = parseVideoLibraryCollection(params.collection)
   const language = parseVideoLibraryLanguage(params.language)
   const selectedVideo = parseVideoLibrarySelectedVideo(params.video)
+  const selectedLocale = parseVideoLibrarySelectedLocale(params.locale)
   const sort = parseVideoLibrarySort(params.sort)
   const paginationState = { category, collection, language, query, sort }
   const closeVideoHref = videoLibraryHref({
@@ -480,19 +480,11 @@ export default async function VideosPage({
     if (selectedVideoDetail) {
       const canEditSearchSocial = canEditVideo(principal)
       const searchSocial = canEditSearchSocial
-        ? await (async () => {
-            const initialOptions = await searchVideoSearchSocialLocales({
-              user: principal,
-              videoId: selectedVideoDetail.key,
-            })
-            const initialLocale = initialOptions[0]
-              ? await loadVideoSearchSocialLocale({
-                  user: principal,
-                  videoLocaleId: initialOptions[0].id,
-                })
-              : null
-            return { initialOptions, initialLocale }
-          })()
+        ? await loadInitialVideoSearchSocialState({
+            user: principal,
+            videoId: selectedVideoDetail.key,
+            requestedVideoLocaleId: selectedLocale || undefined,
+          })
         : {
             initialOptions: [],
             initialLocale: null,

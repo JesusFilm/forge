@@ -91,6 +91,7 @@ describe("getWatchPageMetadata", () => {
             url: "https://media.example/jesus-social.jpg",
             width: null,
             height: null,
+            mimeType: "image/png",
           },
           noIndex: false,
           imageUrl: "https://cdn.example/jesus.jpg",
@@ -122,6 +123,7 @@ describe("getWatchPageMetadata", () => {
           width: 1400,
           height: 933,
           alt: "JESUS film still",
+          type: "image/png",
         },
       ],
     })
@@ -544,6 +546,7 @@ describe("buildWatchVideoMetadataModel", () => {
           url: "https://media.example/jesus-social.jpg",
           width: 1200,
           height: 630,
+          mimeType: "image/webp",
         },
       },
     })
@@ -558,6 +561,7 @@ describe("buildWatchVideoMetadataModel", () => {
       url: "https://media.example/jesus-social.jpg",
       width: 1200,
       height: 630,
+      type: "image/webp",
     })
     expect(model.videoTitle).toBe("JESUS")
     expect(model.structuredDataTitle).toBe("JESUS")

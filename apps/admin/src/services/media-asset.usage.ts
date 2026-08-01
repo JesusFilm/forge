@@ -12,6 +12,10 @@ export type MediaAssetUsageTarget = {
 }
 
 export type MediaAssetUsageRow = {
+  /** @deprecated Use resourceId when resourceType is EXPERIENCE_LOCALE. */
+  experienceId: string | null
+  /** @deprecated Use resourceLocaleId when resourceType is EXPERIENCE_LOCALE. */
+  experienceLocaleId: string | null
   resourceType: "EXPERIENCE_LOCALE" | "VIDEO_LOCALE"
   resourceId: string
   resourceLocaleId: string
@@ -94,6 +98,8 @@ export function findVideoLocaleMediaAssetUsages(
   return rows
     .filter((row) => row.socialImageAssetId === target.assetId)
     .map((row) => ({
+      experienceId: null,
+      experienceLocaleId: null,
       resourceType: "VIDEO_LOCALE" as const,
       resourceId: row.videoId,
       resourceLocaleId: row.id,
@@ -181,6 +187,8 @@ function addMatchForField({
   if (!match) return
 
   matches.push({
+    experienceId: row.experienceId,
+    experienceLocaleId: row.id,
     resourceType: "EXPERIENCE_LOCALE",
     resourceId: row.experienceId,
     resourceLocaleId: row.id,

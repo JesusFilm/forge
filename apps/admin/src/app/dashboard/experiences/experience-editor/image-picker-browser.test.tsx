@@ -15,10 +15,16 @@ function PickerHarness({
   onSelect?: ReturnType<typeof vi.fn>
 }) {
   const [open, setOpen] = useState(false)
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(
+    "asset-1",
+  )
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>
         Open picker
+      </button>
+      <button type="button" onClick={() => setSelectedAssetId("asset-2")}>
+        Use second image
       </button>
       <ImagePickerBrowser
         open={open}
@@ -37,12 +43,23 @@ function PickerHarness({
               folderId: null,
               pathLabel: "Library",
             },
+            {
+              id: "asset-2",
+              displayName: "Second public art",
+              altText: null,
+              mimeType: "image/webp",
+              byteSize: "10 KB",
+              previewUrl: "/api/media-assets/asset-2/preview",
+              updated: "today",
+              folderId: null,
+              pathLabel: "Library",
+            },
           ],
         }}
         query=""
         selectedFolderId={null}
-        selectedAssetId={null}
-        canClearImage={false}
+        selectedAssetId={selectedAssetId}
+        canClearImage={Boolean(selectedAssetId)}
         canUpload={false}
         uploadAction={async () => ({ ok: false })}
         onQueryChange={() => {}}
@@ -93,6 +110,48 @@ describe("ImagePickerBrowser accessibility", () => {
       )
       expect(container.querySelector('[aria-hidden="false"]')).toBeNull()
       expect(document.activeElement).toBe(opener)
+    } finally {
+      act(() => root.unmount())
+      container.remove()
+    }
+  })
+
+  it("resets the draft selection from changed props each time it opens", async () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root: Root = createRoot(container)
+    act(() => root.render(<PickerHarness />))
+    const controls = Array.from(container.querySelectorAll("button"))
+    const opener = controls.find((item) => item.textContent === "Open picker")!
+    const useSecond = controls.find(
+      (item) => item.textContent === "Use second image",
+    )!
+
+    try {
+      act(() => opener.click())
+      await act(
+        async () => await new Promise((resolve) => setTimeout(resolve, 1)),
+      )
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        )
+      })
+      act(() => useSecond.click())
+      act(() => opener.click())
+      await act(
+        async () => await new Promise((resolve) => setTimeout(resolve, 1)),
+      )
+
+      const assetButtons = Array.from(container.querySelectorAll("button"))
+      const first = assetButtons.find((item) =>
+        item.textContent?.includes("Public art"),
+      )!
+      const second = assetButtons.find((item) =>
+        item.textContent?.includes("Second public art"),
+      )!
+      expect(first.getAttribute("aria-pressed")).toBe("false")
+      expect(second.getAttribute("aria-pressed")).toBe("true")
     } finally {
       act(() => root.unmount())
       container.remove()

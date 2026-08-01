@@ -214,12 +214,16 @@ export type WatchRouteSnapshotLocale = {
   description: string | null
   snippet: string | null
   imageAlt: string | null
+  searchTitle?: string | null
+  searchDescription?: string | null
+  socialImage?: WatchRouteSnapshotSocialImage | null
 }
 
 export type WatchRouteSnapshotSocialImage = {
   url: string
   width: number | null
   height: number | null
+  mimeType: string | null
 }
 
 export type WatchRouteSnapshotRootLocale = WatchRouteSnapshotLocale & {
@@ -941,6 +945,7 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
             objectKey: true,
             previewObjectKey: true,
             muxPlaybackId: true,
+            mimeType: true,
             width: true,
             height: true,
           },
@@ -953,6 +958,7 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
       url,
       width: asset.width,
       height: asset.height,
+      mimeType: asset.mimeType,
     })
   }
 

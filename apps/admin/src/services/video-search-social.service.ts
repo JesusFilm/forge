@@ -3,10 +3,7 @@ import { z } from "zod"
 import type { Principal } from "@/auth/principal"
 import { canEditVideo } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
-import {
-  emitRevalidateWebhook,
-  type RevalidateOutcome,
-} from "./revalidate-webhook"
+import { emitRevalidateWebhook } from "./revalidate-webhook"
 
 const VideoLocaleIdentityInput = z.object({
   videoLocaleId: z.string().trim().min(1).max(191),
@@ -204,19 +201,17 @@ export class VideoSearchSocialService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     )
 
-    let revalidation:
-      | "not_published"
-      | "missing_language_slug"
-      | RevalidateOutcome["status"] = "not_published"
+    let revalidation: "not_published" | "missing_language_slug" | "dispatched" =
+      "not_published"
     if (committed.metadata.status === "PUBLISHED") {
       if (committed.metadata.languageSlug) {
-        const outcome = await emitRevalidateWebhook({
+        revalidation = "dispatched"
+        void emitRevalidateWebhook({
           model: "video",
           slug: committed.metadata.slug,
           locale: committed.metadata.locale,
           languageSlug: committed.metadata.languageSlug,
         })
-        revalidation = outcome.status
       } else {
         revalidation = "missing_language_slug"
       }

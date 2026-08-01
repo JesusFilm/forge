@@ -59,6 +59,7 @@ export function ImagePickerBrowser({
         ? document.activeElement
         : null
     const focusTimer = window.setTimeout(() => {
+      setDraftSelectedAssetId(selectedAssetId)
       dialogRef.current
         ?.querySelector<HTMLElement>("[data-image-picker-autofocus]")
         ?.focus()

@@ -212,6 +212,17 @@ export async function searchVideoSearchSocialLocales({
                           mode: "insensitive",
                         },
                       },
+                      {
+                        locales: {
+                          some: {
+                            deletedAt: null,
+                            value: {
+                              contains: normalizedQuery,
+                              mode: "insensitive",
+                            },
+                          },
+                        },
+                      },
                     ],
                   },
                 },
@@ -310,4 +321,67 @@ export async function loadVideoSearchSocialLocale({
     languageCode: option.languageCode,
     socialImage: selectedImage,
   }
+}
+
+export async function loadInitialVideoSearchSocialState({
+  user,
+  videoId,
+  requestedVideoLocaleId,
+  client = prisma,
+}: {
+  user: Principal | null
+  videoId: string
+  requestedVideoLocaleId?: string
+  client?: VideoSearchSocialPrisma
+}): Promise<{
+  initialOptions: VideoSearchSocialLocaleOption[]
+  initialLocale: VideoSearchSocialLocaleData | null
+}> {
+  let initialOptions = await searchVideoSearchSocialLocales({
+    user,
+    videoId,
+    client,
+  })
+  let initialLocale: VideoSearchSocialLocaleData | null = null
+
+  if (requestedVideoLocaleId) {
+    try {
+      const requestedLocale = await loadVideoSearchSocialLocale({
+        user,
+        videoLocaleId: requestedVideoLocaleId,
+        client,
+      })
+      if (requestedLocale.videoId === videoId) initialLocale = requestedLocale
+    } catch (error) {
+      if (!(error instanceof VideoSearchSocialLocaleNotFoundError)) throw error
+    }
+  }
+
+  if (!initialLocale && initialOptions[0]) {
+    initialLocale = await loadVideoSearchSocialLocale({
+      user,
+      videoLocaleId: initialOptions[0].id,
+      client,
+    })
+  }
+
+  if (
+    initialLocale &&
+    !initialOptions.some((option) => option.id === initialLocale?.videoLocaleId)
+  ) {
+    initialOptions = [
+      {
+        id: initialLocale.videoLocaleId,
+        languageName: initialLocale.languageName,
+        languageCode: initialLocale.languageCode,
+        languageSlug: initialLocale.languageSlug,
+        locale: initialLocale.locale,
+        status: initialLocale.status,
+        title: initialLocale.sourceTitle,
+      },
+      ...initialOptions,
+    ]
+  }
+
+  return { initialOptions, initialLocale }
 }

@@ -16,6 +16,10 @@ vi.mock("next/navigation", () => ({
 
 import { VideoSearchSocialEditor } from "./video-search-social-editor"
 import type { VideoSearchSocialLocaleData } from "./video-search-social-data"
+import type {
+  VideoSearchSocialLoadResult,
+  VideoSearchSocialSaveResult,
+} from "./video-search-social-actions"
 
 const english = {
   id: "locale-en",
@@ -35,6 +39,23 @@ const french = {
   status: "DRAFT",
   title: "JÉSUS",
 } as const
+const spanish = {
+  id: "locale-es",
+  languageName: "Spanish",
+  languageCode: "es",
+  languageSlug: "spanish-castilian",
+  locale: "es",
+  status: "PUBLISHED",
+  title: "JESÃšS",
+} as const
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next) => {
+    resolve = next
+  })
+  return { promise, resolve }
+}
 
 function locale(
   overrides: Partial<VideoSearchSocialLocaleData> = {},
@@ -326,6 +347,106 @@ describe("VideoSearchSocialEditor", () => {
         "Locales could not be loaded.",
       )
       expect(button(view.container, "Retry")).toBeTruthy()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("ignores an older locale response that resolves after a newer request", async () => {
+    const frenchLoad = deferred<VideoSearchSocialLoadResult>()
+    const spanishLoad = deferred<VideoSearchSocialLoadResult>()
+    const loadAction = vi.fn(({ videoLocaleId }: { videoLocaleId: string }) =>
+      videoLocaleId === "locale-fr" ? frenchLoad.promise : spanishLoad.promise,
+    )
+    const view = renderEditor({
+      initialOptions: [english, french, spanish],
+      loadAction,
+    })
+
+    try {
+      act(() => {
+        buttonContaining(view.container, "French").click()
+        buttonContaining(view.container, "Spanish").click()
+      })
+      await act(async () => {
+        spanishLoad.resolve({
+          ok: true,
+          data: locale({
+            videoLocaleId: "locale-es",
+            locale: "es",
+            languageName: "Spanish",
+            languageCode: "es",
+            languageSlug: "spanish-castilian",
+          }),
+        })
+        await Promise.resolve()
+      })
+      await act(async () => {
+        frenchLoad.resolve({
+          ok: true,
+          data: locale({
+            videoLocaleId: "locale-fr",
+            locale: "fr",
+            languageName: "French",
+            languageCode: "fr",
+            languageSlug: "french",
+          }),
+        })
+        await Promise.resolve()
+      })
+
+      expect(view.container.textContent).toContain("Spanish is ready to edit.")
+      expect(view.container.textContent).not.toContain(
+        "French is ready to edit.",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("locks cancel and discard while save-and-continue is in flight", async () => {
+    const pendingSave = deferred<VideoSearchSocialSaveResult>()
+    const loadAction = vi.fn().mockResolvedValue({
+      ok: true,
+      data: locale({
+        videoLocaleId: "locale-fr",
+        locale: "fr",
+        languageName: "French",
+        languageCode: "fr",
+        languageSlug: "french",
+      }),
+    })
+    const view = renderEditor({
+      loadAction,
+      saveAction: vi.fn(() => pendingSave.promise),
+    })
+
+    try {
+      const title =
+        view.container.querySelector<HTMLInputElement>("#search-title")!
+      act(() => setControlValue(title, "Saved English title"))
+      act(() => buttonContaining(view.container, "French").click())
+      await act(async () => {
+        button(view.container, "Save").click()
+        await Promise.resolve()
+      })
+
+      expect(button(view.container, "Cancel")).toHaveProperty("disabled", true)
+      expect(button(view.container, "Discard")).toHaveProperty("disabled", true)
+      act(() => button(view.container, "Discard").click())
+      expect(loadAction).not.toHaveBeenCalled()
+
+      await act(async () => {
+        pendingSave.resolve({
+          ok: true,
+          data: {
+            ...locale(),
+            searchTitle: "Saved English title",
+          },
+        })
+        await Promise.resolve()
+      })
+      expect(loadAction).toHaveBeenCalledWith({ videoLocaleId: "locale-fr" })
     } finally {
       view.cleanup()
     }

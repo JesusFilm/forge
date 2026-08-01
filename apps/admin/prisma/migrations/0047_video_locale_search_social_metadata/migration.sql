@@ -9,7 +9,7 @@ ALTER TABLE "video_locale"
   ADD COLUMN "search_description" TEXT,
   ADD COLUMN "social_image_asset_id" TEXT;
 
-CREATE INDEX "video_locale_social_image_asset_id_idx"
+CREATE INDEX CONCURRENTLY "video_locale_social_image_asset_id_idx"
   ON "video_locale"("social_image_asset_id");
 
 -- Add the constraint without validating historical rows while holding the

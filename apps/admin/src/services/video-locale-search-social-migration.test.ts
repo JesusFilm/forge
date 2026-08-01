@@ -22,7 +22,7 @@ describe("VideoLocale Search and Social metadata migration", () => {
     expect(migrationSql).toMatch(/ADD COLUMN "search_description" TEXT/)
     expect(migrationSql).toMatch(/ADD COLUMN "social_image_asset_id" TEXT/)
     expect(migrationSql).toContain(
-      'CREATE INDEX "video_locale_social_image_asset_id_idx"',
+      'CREATE INDEX CONCURRENTLY "video_locale_social_image_asset_id_idx"',
     )
     expect(migrationSql).toMatch(
       /FOREIGN KEY \("social_image_asset_id"\) REFERENCES "media_asset"\("id"\)\s+ON DELETE RESTRICT ON UPDATE CASCADE/,
