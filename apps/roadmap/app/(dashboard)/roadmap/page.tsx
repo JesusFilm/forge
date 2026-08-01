@@ -1,5 +1,10 @@
 import Link from "next/link"
 import PlannedRoadmapTimeline from "@/components/PlannedRoadmapTimeline"
+import {
+  PLANNED_GOAL,
+  PLANNED_RANGE_LABEL,
+  PLANNED_TITLE,
+} from "@/lib/plannedRoadmap"
 
 export default function DashboardPage() {
   return (
@@ -8,14 +13,16 @@ export default function DashboardPage() {
         <section className="flex flex-col gap-6 pb-2 pt-8 lg:flex-row lg:justify-between">
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">
-              AI Delivery
+              AI Delivery · August-December 2026
             </p>
             <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-              Roadmap
+              {PLANNED_TITLE}
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-stone-400">
-              Our AI development strategy uses weekly releases to incorporate AI
-              features into existing products where they matter most.
+              {PLANNED_GOAL}
+            </p>
+            <p className="text-sm font-medium text-stone-500">
+              {PLANNED_RANGE_LABEL}
             </p>
           </div>
 
@@ -42,7 +49,8 @@ export default function DashboardPage() {
               <span>Open Task View</span>
             </Link>
             <p className="mt-2 max-w-[240px] text-sm leading-snug text-stone-500/80 lg:ml-auto">
-              See detailed breakdown of the work by person and late
+              See the detailed work breakdown by person, status, and delivery
+              date.
             </p>
           </div>
         </section>

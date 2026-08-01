@@ -107,12 +107,24 @@ function weekWidthPct(spanWeeks: number): number {
 }
 
 function formatCalendarRange(startIsoDate: string, endIsoDate: string): string {
-  const startDate = new Date(`${startIsoDate}T00:00:00`)
-  const endDate = new Date(`${endIsoDate}T00:00:00`)
-  const startMonth = startDate.toLocaleDateString("en-US", { month: "short" })
-  const startDay = startDate.toLocaleDateString("en-US", { day: "numeric" })
-  const endMonth = endDate.toLocaleDateString("en-US", { month: "short" })
-  const endDay = endDate.toLocaleDateString("en-US", { day: "numeric" })
+  const startDate = new Date(`${startIsoDate}T00:00:00Z`)
+  const endDate = new Date(`${endIsoDate}T00:00:00Z`)
+  const startMonth = startDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const startDay = startDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
+  const endMonth = endDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const endDay = endDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
 
   if (startMonth === endMonth) {
     return `${startMonth} ${startDay} - ${endDay}`
@@ -129,8 +141,8 @@ function getPhaseCalendarRangeLabel(phase: PlannedPhase): string {
     return phase.rangeLabel
   }
 
-  const endDate = new Date(`${endWeek.isoDate}T00:00:00`)
-  endDate.setDate(endDate.getDate() + 6)
+  const endDate = new Date(`${endWeek.isoDate}T00:00:00Z`)
+  endDate.setUTCDate(endDate.getUTCDate() + 6)
 
   return `${phase.badge} | ${formatCalendarRange(
     startWeek.isoDate,
@@ -516,29 +528,33 @@ export default function PlannedRoadmapTimeline() {
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-400">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-stone-300" />{" "}
-            Foundation
+            Reliability
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />{" "}
-            Player / Experiences / Homepage
+            Accounts & journeys
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />{" "}
-            Search
+            Localization & quality
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />{" "}
-            Agentic Framework
+            Devotional AI
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />{" "}
+            Distribution experiments
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-lime-400" />{" "}
             Mobile + TV
           </span>
-          <span className="flex items-center gap-2 border-l border-stone-700 pl-3">
-            <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
-            Important events
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-red-500" />{" "}
+            Operating rhythm
           </span>
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 border-l border-stone-700 pl-3">
             <span className="h-3 border-l-2 border-l-red-500" />
             Today
           </span>

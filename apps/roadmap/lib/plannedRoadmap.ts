@@ -9,15 +9,13 @@ export type PlannedTone =
 
 export type PlannedTrackId =
   | "milestones"
-  | "foundation"
-  | "surface"
-  | "search"
-  | "actual-foundation"
-  | "actual-player"
-  | "actual-surface"
-  | "actual-search"
-  | "agentic-framework"
+  | "reliability"
+  | "journeys"
+  | "localization"
+  | "devotional"
+  | "distribution"
   | "mobile-tv"
+  | "operating-rhythm"
 
 export type PlannedTrack = {
   id: PlannedTrackId
@@ -89,18 +87,30 @@ type PlannedWeek = {
 }
 
 const DAY_MS = 86400000
-const WEEK_MS = 7 * 86400000
-const PLANNED_START_DATE = new Date("2026-04-28T00:00:00")
+const WEEK_MS = 7 * DAY_MS
+const PLANNED_START_DATE = new Date("2026-08-03T00:00:00Z")
 
 function addWeeks(date: Date, weeks: number): Date {
   return new Date(date.getTime() + weeks * WEEK_MS)
 }
 
 function formatDateRangeLabel(startDate: Date, endDate: Date): string {
-  const startMonth = startDate.toLocaleDateString("en-US", { month: "short" })
-  const startDay = startDate.toLocaleDateString("en-US", { day: "numeric" })
-  const endMonth = endDate.toLocaleDateString("en-US", { month: "short" })
-  const endDay = endDate.toLocaleDateString("en-US", { day: "numeric" })
+  const startMonth = startDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const startDay = startDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
+  const endMonth = endDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const endDay = endDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
 
   if (startMonth === endMonth) {
     return `${startMonth} ${startDay}-${endDay}`
@@ -109,8 +119,8 @@ function formatDateRangeLabel(startDate: Date, endDate: Date): string {
   return `${startMonth} ${startDay}-${endMonth} ${endDay}`
 }
 
-export const PLANNED_WEEK_COUNT = 15
-export const PLANNED_START_ISO = "2026-04-28"
+export const PLANNED_WEEK_COUNT = 21
+export const PLANNED_START_ISO = "2026-08-03"
 
 export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
   { length: PLANNED_WEEK_COUNT },
@@ -127,287 +137,283 @@ export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
   },
 )
 
-export const PLANNED_TITLE = "FORGE ROADMAP - Next 3 Months"
-export const PLANNED_SUBTITLE = "Starting Apr 28, 2026"
-export const PLANNED_RANGE_LABEL = "Apr 28 - Aug 10, 2026"
+export const PLANNED_TITLE = "August-December 2026 Roadmap"
+export const PLANNED_SUBTITLE = "Starting Aug 3, 2026"
+export const PLANNED_RANGE_LABEL = "Aug 3 - Dec 27, 2026"
 export const PLANNED_GOAL =
-  "Migrate to Forge while shipping real user value, prepare Demo Day, and set up the future AI and creator ecosystem."
+  "Turn the new Watch foundation into reliable, multilingual journeys that grow people in faith across web, YouTube, mobile, and TV, with human judgment protecting every ministry-facing AI workflow."
 
 export const PLANNED_CADENCE = [
-  "2 weeks per feature",
-  "Week 1 = build",
-  "Week 2 = release + polish",
+  "Two-week build and release slices",
+  "Monthly Demo Day with user evidence",
+  "Quarterly strategy and performance review",
 ]
 
 export const PLANNED_TRACKS: PlannedTrack[] = [
   {
     id: "milestones",
     label: "Milestones",
-    description: "External deadline and Demo Day checkpoints",
+    description: "Demo, grant, and review checkpoints",
   },
   {
-    id: "foundation",
-    label: "Foundation",
-    description: "CMS, data, infrastructure, stability, shutdown",
+    id: "reliability",
+    label: "Reliability",
+    description: "Watch performance, operability, and release safety",
   },
   {
-    id: "surface",
-    label: "Surface",
-    description: "Player, experiences, homepage",
+    id: "journeys",
+    label: "Accounts & Journeys",
+    description: "Identity continuity and seeker-to-partner pathways",
   },
   {
-    id: "search",
-    label: "Search",
-    description: "Hybrid and multilingual search",
+    id: "localization",
+    label: "Localization & Quality",
+    description: "Multilingual discovery, translation, and human QA",
   },
   {
-    id: "actual-foundation",
-    label: "Actual Foundation",
-    description: "Actual CMS, data, stability, shutdown delivery",
+    id: "devotional",
+    label: "Devotional AI",
+    description: "Human-reviewed devotional production and distribution",
   },
   {
-    id: "actual-player",
-    label: "Actual Player",
-    description: "Actual player page delivery",
-  },
-  {
-    id: "actual-surface",
-    label: "Actual Surface",
-    description: "Actual experiences and homepage delivery",
-  },
-  {
-    id: "actual-search",
-    label: "Actual Search",
-    description: "Actual hybrid and multilingual search delivery",
-  },
-  {
-    id: "agentic-framework",
-    label: "Agentic Framework",
-    description: "R&D with Mastra AI, non-blocking",
+    id: "distribution",
+    label: "Distribution Experiments",
+    description: "YouTube-first audience learning and journey validation",
   },
   {
     id: "mobile-tv",
     label: "Mobile + TV",
-    description: "RN + Expo buildout, delayed release",
+    description: "Alternating platform delivery toward shared beta quality",
+  },
+  {
+    id: "operating-rhythm",
+    label: "Operating Rhythm",
+    description: "Strategy alignment, demos, metrics, and roadmap decisions",
   },
 ]
 
 export const PLANNED_TIMELINE_ROWS: PlannedTimelineRow[] = [
   {
-    id: "delivery-planned",
-    label: "Delivery Planned",
-    description: "Original migration release plan",
-    trackIds: ["foundation", "surface", "search"],
-  },
-  {
-    id: "delivery-actual",
-    label: "Delivery Actual",
-    description: "Current delivery reality and shifted forecast",
-    trackIds: [
-      "actual-foundation",
-      "actual-player",
-      "actual-surface",
-      "actual-search",
-    ],
+    id: "product-outcomes",
+    label: "Product Outcomes",
+    description: "Reliable, continuous, multilingual Watch journeys",
+    trackIds: ["reliability", "journeys", "localization"],
     sublanes: [
-      {
-        id: "actual-foundation",
-        trackIds: ["actual-foundation"],
-      },
-      {
-        id: "actual-player",
-        trackIds: ["actual-player"],
-      },
-      {
-        id: "actual-follow-on",
-        trackIds: ["actual-surface", "actual-search"],
-      },
+      { id: "reliability", trackIds: ["reliability"] },
+      { id: "journeys", trackIds: ["journeys"] },
+      { id: "localization", trackIds: ["localization"] },
     ],
   },
   {
-    id: "experimentation",
-    label: "Research",
-    description: "Agentic R&D, mobile + TV",
-    trackIds: ["agentic-framework", "mobile-tv"],
+    id: "content-distribution",
+    label: "Content & Distribution",
+    description: "Human-reviewed AI content and audience learning",
+    trackIds: ["devotional", "distribution"],
     sublanes: [
-      {
-        id: "agentic",
-        trackIds: ["agentic-framework"],
-      },
-      {
-        id: "mobile-tv",
-        trackIds: ["mobile-tv"],
-      },
+      { id: "devotional", trackIds: ["devotional"] },
+      { id: "distribution", trackIds: ["distribution"] },
+    ],
+  },
+  {
+    id: "platforms-cadence",
+    label: "Platforms & Cadence",
+    description: "Mobile/TV delivery and a measurable learning loop",
+    trackIds: ["mobile-tv", "operating-rhythm"],
+    sublanes: [
+      { id: "mobile-tv", trackIds: ["mobile-tv"] },
+      { id: "operating-rhythm", trackIds: ["operating-rhythm"] },
     ],
   },
 ]
 
 export const PLANNED_PHASES: PlannedPhase[] = [
   {
-    id: "phase-0",
-    title: "Foundation",
-    shortTitle: "Foundation",
-    track: "foundation",
+    id: "watch-reliability",
+    title: "Watch reliability & operability",
+    shortTitle: "Watch Reliability",
+    track: "reliability",
     tone: "stone",
     startWeek: 0,
-    spanWeeks: 2,
-    badge: "Weeks 1-2",
-    rangeLabel: "Weeks 1-2 | Apr 28 - May 9",
-    summary: "No release while the migration foundation is put in place.",
+    spanWeeks: 4,
+    badge: "August",
+    rangeLabel: "Weeks 1-4",
+    summary:
+      "Make the new Watch stack dependable enough that traffic, content, and release failures are visible before users report them.",
     sections: [
+      {
+        label: "Deliver",
+        items: [
+          "Close remaining loading, timeout, search, and large-series performance risks",
+          "Add visibility for Cloudflare/proxy failures before requests reach Next.js",
+          "Tune availability signals so healthy auxiliary routes cannot mask Watch degradation",
+          "Organize Admin operations around the workflows the team actually uses",
+        ],
+      },
+      {
+        label: "Exit criteria",
+        items: [
+          "Critical Watch routes have release gates, useful traces, and actionable alerts",
+          "The legacy Watch shutdown has a verified rollback and dependency-retirement path",
+          "High-traffic playback, search, homepage, and series flows pass production smoke checks",
+        ],
+      },
+    ],
+  },
+  {
+    id: "accounts-continuity",
+    title: "Accounts & continuity pilot",
+    shortTitle: "Accounts & Continuity",
+    track: "journeys",
+    tone: "amber",
+    startWeek: 2,
+    spanWeeks: 6,
+    badge: "Aug-Sep",
+    rangeLabel: "Weeks 3-8",
+    summary:
+      "Turn optional sign-in into visible continuity across Watch, mobile, and TV without making public ministry content account-gated.",
+    sections: [
+      {
+        label: "Deliver",
+        items: [
+          "Ship saved playback progress and resume behavior on the signed-in Web foundation",
+          "Define one account and session contract for web, mobile, TV, and future partner roles",
+          "Prototype TV sign-in with a remote/QR flow and carry continuity into mobile beta",
+          "Map the manual seeker-to-partner handoff before automating routing or remarketing",
+        ],
+      },
+      {
+        label: "Safety boundaries",
+        items: [
+          "Anonymous browsing and playback stay open",
+          "Downloads in sensitive contexts are not blocked by account creation",
+          "Centralize only the user metadata needed for continuity and consented follow-up",
+        ],
+      },
+    ],
+  },
+  {
+    id: "youtube-journey-validation",
+    title: "YouTube-to-journey validation",
+    shortTitle: "YouTube Journey Tests",
+    track: "distribution",
+    tone: "rose",
+    startWeek: 4,
+    spanWeeks: 6,
+    badge: "Sep-Oct",
+    rangeLabel: "Weeks 5-10",
+    summary:
+      "Test how believers and seekers move between YouTube, Watch, NextSteps, and partner follow-up before scaling an unproven off-platform assumption.",
+    sections: [
+      {
+        label: "Experiments",
+        items: [
+          "Define separate believer-growth and seeker-response hypotheses",
+          "Instrument a small set of YouTube-to-Watch and YouTube-to-NextSteps journeys",
+          "Compare off-platform journeys with experiences that keep viewers on YouTube",
+          "Tag pilot media with Scripture, felt need, audience, and next-step intent",
+        ],
+      },
+      {
+        label: "Decision gate",
+        items: [
+          "Measure reach, retention, downstream engagement, and follow-up completion by cohort",
+          "Scale only journey patterns that outperform their YouTube-native baseline",
+          "Keep manual partner handoff in the loop until value and safety are proven",
+        ],
+      },
+    ],
+  },
+  {
+    id: "devotional-human-review",
+    title: "Devotional pilot with human review",
+    shortTitle: "Devotional Pilot",
+    track: "devotional",
+    tone: "emerald",
+    startWeek: 6,
+    spanWeeks: 8,
+    badge: "Sep-Nov",
+    rangeLabel: "Weeks 7-14",
+    summary:
+      "Productionize one bounded devotional workflow from editable source material to approved web and social cuts.",
+    sections: [
+      {
+        label: "Deliver",
+        items: [
+          "Finish the existing devotional Workspace, composition, and distribution roadmap arc",
+          "Create the full devotional landing/template experience and a short social cut",
+          "Use licensed source media, editable human-authored inputs, and explicit provenance",
+          "Add voice, subtitle, Scripture, and storytelling quality checks",
+        ],
+      },
+      {
+        label: "Publication gate",
+        items: [
+          "A human theology reviewer must approve ministry-facing output before publication",
+          "Reviewers can see the source, model output, risk flags, and final rendered artifact",
+          "The pilot can pause safely and never auto-publishes ambiguous or high-risk content",
+        ],
+      },
+    ],
+  },
+  {
+    id: "multilingual-quality",
+    title: "Multilingual discovery & translation QA",
+    shortTitle: "Multilingual Quality",
+    track: "localization",
+    tone: "sky",
+    startWeek: 10,
+    spanWeeks: 8,
+    badge: "Oct-Dec",
+    rangeLabel: "Weeks 11-18",
+    summary:
+      "Expand beyond the stable base languages with demand-led AI translation and a real human quality loop.",
+    sections: [
+      {
+        label: "Deliver",
+        items: [
+          "Prioritize languages using audience demand, source availability, and reviewer capacity",
+          "Translate inner-page copy, subtitles, metadata, and generated experiences through one governed workflow",
+          "Recruit a reviewer cohort and capture spelling, rhythm, theology, and cultural feedback",
+          "Make unavailable, requested, machine-generated, and human-approved states explicit",
+        ],
+      },
+      {
+        label: "Exit criteria",
+        items: [
+          "Every published translation has a defined automated or human approval path",
+          "Quality, cost, latency, and correction rate are measurable per language",
+          "The product never silently substitutes a translated caption or page experience",
+        ],
+      },
+    ],
+  },
+  {
+    id: "year-end-evaluation",
+    title: "Year-end learning review & 2027 plan",
+    shortTitle: "2027 Planning",
+    track: "operating-rhythm",
+    tone: "red",
+    startWeek: 18,
+    spanWeeks: 3,
+    badge: "December",
+    rangeLabel: "Weeks 19-21",
+    summary:
+      "Convert the year’s delivery and audience evidence into a smaller, prioritized 2027 roadmap.",
+    sections: [
+      {
+        label: "Review",
+        items: [
+          "Compare roadmap promises with shipped outcomes and unresolved production risks",
+          "Review cohort metrics for YouTube journeys, accounts, devotionals, localization, mobile, and TV",
+          "Retire work that did not prove value and preserve only supported follow-on bets",
+        ],
+      },
       {
         label: "Outcome",
         items: [
-          "No release",
-          "Strapi -> Postgres + Custom CMS",
-          "Import Core data",
-          "Stable sync with Core",
+          "Publish a dependency-ordered Q1 2027 roadmap with owners and measurable exit criteria",
+          "Record the external performance baseline for quarterly review",
         ],
-      },
-      {
-        label: "Parallel",
-        items: [
-          "Player page ready behind flag",
-          "Hybrid search in progress",
-          "Agentic (Mastra AI) setup",
-          "Mobile (Expo) base app",
-        ],
-      },
-    ],
-  },
-  {
-    id: "phase-1",
-    title: "Replace Player Page",
-    shortTitle: "Replace Player Page",
-    track: "surface",
-    tone: "amber",
-    startWeek: 2,
-    spanWeeks: 2,
-    badge: "Weeks 3-4",
-    rangeLabel: "Weeks 3-4",
-    summary: "First user-visible Forge release centered on playback.",
-    sections: [
-      {
-        label: "Week 3 (Build)",
-        items: ["Forge player page", "AI subtitles integration"],
-      },
-      {
-        label: "Week 4 (Release #1)",
-        items: ["Player live", "AI subtitles visible"],
-      },
-    ],
-  },
-  {
-    id: "phase-2",
-    title: "Experiences Rollout",
-    shortTitle: "Experiences Rollout",
-    track: "surface",
-    tone: "amber",
-    startWeek: 4,
-    spanWeeks: 2,
-    badge: "Weeks 5-6",
-    rangeLabel: "Weeks 5-6",
-    summary: "Experience engine plus first prototype release.",
-    sections: [
-      {
-        label: "Week 5 (Build)",
-        items: ["Experience engine", "World Cup prototype"],
-      },
-      {
-        label: "Week 6 (Release #2)",
-        items: ["First Experience live", "UX + content polish"],
-      },
-    ],
-  },
-  {
-    id: "phase-3",
-    title: "Search Rollout",
-    shortTitle: "Search Rollout",
-    track: "search",
-    tone: "sky",
-    startWeek: 6,
-    spanWeeks: 2,
-    badge: "Weeks 7-8",
-    rangeLabel: "Weeks 7-8",
-    summary: "Hybrid search rollout with multilingual validation.",
-    sections: [
-      {
-        label: "Week 7 (Build)",
-        items: [
-          "Hybrid search (text + vector)",
-          "Multilingual validation",
-          "Shadow vs Algolia",
-        ],
-      },
-      {
-        label: "Week 8 (Release #3)",
-        items: ["Forge search live", "Algolia fallback active"],
-      },
-    ],
-  },
-  {
-    id: "phase-4",
-    title: "Watch Homepage",
-    shortTitle: "Watch Homepage",
-    track: "surface",
-    tone: "amber",
-    startWeek: 8,
-    spanWeeks: 2,
-    badge: "Weeks 9-10",
-    rangeLabel: "Weeks 9-10",
-    summary: "Homepage migration after player, experiences, and search.",
-    sections: [
-      {
-        label: "Week 9 (Build)",
-        items: ["Homepage on Forge"],
-      },
-      {
-        label: "Week 10 (Release #4)",
-        items: ["Homepage live", "Integrated with search + experiences"],
-      },
-    ],
-  },
-  {
-    id: "phase-5",
-    title: "i18n + Stability",
-    shortTitle: "i18n + Stability",
-    track: "foundation",
-    tone: "stone",
-    startWeek: 10,
-    spanWeeks: 2,
-    badge: "Weeks 11-12",
-    rangeLabel: "Weeks 11-12",
-    summary: "Language and stability hardening before shutdown.",
-    sections: [
-      {
-        label: "Week 11 (Build)",
-        items: ["Internationalization"],
-      },
-      {
-        label: "Week 12 (Release #5)",
-        items: ["Multilingual UI stable", "Bugs fixed"],
-      },
-    ],
-  },
-  {
-    id: "phase-6",
-    title: "Old Watch Shutdown",
-    shortTitle: "Old Watch Shutdown",
-    track: "foundation",
-    tone: "stone",
-    startWeek: 12,
-    spanWeeks: 2,
-    badge: "Weeks 13-14",
-    rangeLabel: "Weeks 13-14",
-    summary: "Retire the old Watch stack after the migration is stable.",
-    sections: [
-      {
-        label: "Week 13 (Build)",
-        items: ["Remove legacy dependencies"],
-      },
-      {
-        label: "Week 14 (Release #6)",
-        items: ["Retire old Watch", "Remove Algolia"],
       },
     ],
   },
@@ -415,303 +421,228 @@ export const PLANNED_PHASES: PlannedPhase[] = [
 
 export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
   {
-    id: "actual-foundation-track",
-    title: "Foundation",
-    summary: "Actual foundation work extended from W1 through the end of W5.",
-    track: "actual-foundation",
-    tone: "stone",
+    id: "tv-observability",
+    title: "TV stability & observability",
+    summary:
+      "Harden crash reporting, performance visibility, and showcase playback.",
+    track: "mobile-tv",
+    tone: "lime",
     startWeek: 0,
-    spanWeeks: 5,
-    badge: "Actual W1-5",
-    overdueStartWeek: 2,
+    spanWeeks: 2,
+    badge: "TV",
     details: [
-      "Foundation work ran from W1 through the end of W5",
-      "Kept CMS, data, infrastructure, stability, and migration base visible as actual delivery",
+      "Verify production crash-reporting access and release diagnostics",
+      "Finish showcase/player stability on real TV hardware",
     ],
   },
   {
-    id: "actual-player-track",
-    title: "Replace Player Page",
-    summary: "Actual player replacement work spans W3 through W6.",
-    track: "actual-player",
-    tone: "amber",
+    id: "mobile-offline",
+    title: "Mobile offline & player",
+    summary:
+      "Make downloads and long-form playback reliable before widening beta.",
+    track: "mobile-tv",
+    tone: "lime",
     startWeek: 2,
-    spanWeeks: 4,
-    badge: "Actual W3-6",
-    overdueStartWeek: 4,
-    details: [
-      "Player page replacement moved from the planned W3-W4 window to W3-W6",
-      "Keeps the player release connected to the extended foundation work",
-    ],
-  },
-  {
-    id: "actual-experiences-track",
-    title: "Experiences Rollout",
-    summary:
-      "Actual experiences rollout starts in W6 and keeps the same duration.",
-    track: "actual-surface",
-    tone: "amber",
-    startWeek: 5,
     spanWeeks: 2,
-    badge: "Actual W6-7",
-    overdueStartWeek: 6,
-    details: ["Experiences rollout starts in W6", "Duration remains two weeks"],
-  },
-  {
-    id: "actual-search-track",
-    title: "Search Rollout",
-    summary: "Shifted two-week search rollout after the experiences block.",
-    track: "actual-search",
-    tone: "sky",
-    startWeek: 7,
-    spanWeeks: 2,
-    badge: "Actual W8-9",
-    overdueStartWeek: 8,
+    badge: "Mobile",
     details: [
-      "Search rollout keeps the planned two-week duration",
-      "Starts after the shifted experiences rollout",
+      "Keep large series downloads off the JavaScript thread",
+      "Validate offline-first behavior and player interaction quality",
     ],
   },
   {
-    id: "actual-homepage-track",
-    title: "Watch Homepage",
-    summary: "Shifted two-week homepage rollout after search.",
-    track: "actual-surface",
-    tone: "amber",
-    startWeek: 9,
-    spanWeeks: 2,
-    badge: "Actual W10-11",
-    overdueStartWeek: 10,
-    details: [
-      "Homepage rollout keeps the planned two-week duration",
-      "Follows the shifted search rollout",
-    ],
-  },
-  {
-    id: "actual-stability-track",
-    title: "i18n + Stability",
-    summary: "Shifted two-week stability block before shutdown.",
-    track: "actual-foundation",
-    tone: "stone",
-    startWeek: 11,
-    spanWeeks: 2,
-    badge: "Actual W12-13",
-    overdueStartWeek: 12,
-    details: [
-      "Internationalization and stability keep the planned two-week duration",
-      "Moves with the shifted delivery forecast",
-    ],
-  },
-  {
-    id: "actual-shutdown-track",
-    title: "Old Watch Shutdown",
-    summary: "Shifted two-week old Watch shutdown block.",
-    track: "actual-foundation",
-    tone: "stone",
-    startWeek: 13,
-    spanWeeks: 2,
-    badge: "Actual W14-15",
-    overdueStartWeek: 14,
-    details: [
-      "Old Watch shutdown keeps the planned two-week duration",
-      "Moves to W14-W15 after the shifted stability block",
-    ],
-  },
-  {
-    id: "agentic-track",
-    title: "Agentic Framework",
-    summary:
-      "Build with Mastra AI, validate workflows, integrate after migration.",
-    track: "agentic-framework",
-    tone: "emerald",
-    startWeek: 0,
-    spanWeeks: 4,
-    details: [
-      "Build with Mastra AI",
-      "Validate workflows for search and experiences",
-      "Integrate after migration, not before",
-    ],
-  },
-  {
-    id: "agentic-deployment-track",
-    title: "First agent deployment",
-    summary: "Deploy the first production agent.",
-    track: "agentic-framework",
-    tone: "emerald",
-    startWeek: 4,
-    spanWeeks: 2,
-    details: [
-      "Deploy first agent to production use",
-      "Validate first real agent workflow after framework setup",
-    ],
-  },
-  {
-    id: "agentic-deployment-track-2",
-    title: "New agent deployment",
-    summary: "Ship another production agent.",
-    track: "agentic-framework",
-    tone: "emerald",
-    startWeek: 6,
-    spanWeeks: 2,
-    details: [
-      "Deploy another agent to production use",
-      "Expand agent workflows beyond the first release",
-    ],
-  },
-  {
-    id: "agentic-deployment-track-3",
-    title: "New agent deployment",
-    summary: "Ship another production agent.",
-    track: "agentic-framework",
-    tone: "emerald",
-    startWeek: 8,
-    spanWeeks: 2,
-    details: [
-      "Deploy another agent to production use",
-      "Continue validating repeatable agent delivery",
-    ],
-  },
-  {
-    id: "agentic-deployment-track-4",
-    title: "New agent deployment",
-    summary: "Ship another production agent.",
-    track: "agentic-framework",
-    tone: "emerald",
-    startWeek: 10,
-    spanWeeks: 2,
-    details: [
-      "Deploy another agent to production use",
-      "Strengthen the deployment cadence for agent workflows",
-    ],
-  },
-  {
-    id: "agentic-deployment-track-5",
-    title: "New agent deployment",
-    summary: "Ship another production agent.",
-    track: "agentic-framework",
-    tone: "emerald",
-    startWeek: 12,
-    spanWeeks: 2,
-    details: [
-      "Deploy another agent to production use",
-      "Finish the roadmap with an ongoing agent release rhythm",
-    ],
-  },
-  {
-    id: "mobile-track",
-    title: "Mobile + TV",
-    summary: "Build the mobile + TV foundation for later rollout.",
-    track: "mobile-tv",
-    tone: "lime",
-    startWeek: 0,
-    spanWeeks: 4,
-    badge: "Beta",
-    details: [
-      "Build the Expo / TV app foundation",
-      "Prepare later Forge connection work",
-      "Keep release for a later phase",
-    ],
-  },
-  {
-    id: "mobile-single-player-track",
-    title: "Single player screen",
-    summary: "Build the first mobile playback screen.",
+    id: "tv-account-prototype",
+    title: "TV account prototype",
+    summary: "Prototype remote/QR sign-in against the shared account contract.",
     track: "mobile-tv",
     tone: "lime",
     startWeek: 4,
     spanWeeks: 2,
-    badge: "Beta",
+    badge: "TV",
     details: [
-      "Build the single-player screen on mobile",
-      "Carry playback UX into the mobile lane",
+      "Prove a remote authentication flow without weakening device safety",
+      "Carry language and playback identity through sign-in",
     ],
   },
   {
-    id: "mobile-experiences-track",
-    title: "Experiences screen",
-    summary: "Roll out experiences to mobile platforms.",
+    id: "mobile-experiences-search",
+    title: "Mobile experiences & search",
+    summary: "Bring the strongest Watch discovery flows into mobile beta.",
     track: "mobile-tv",
     tone: "lime",
     startWeek: 6,
     spanWeeks: 2,
-    badge: "Beta",
+    badge: "Mobile",
     details: [
-      "Port the experiences rollout to mobile + TV",
-      "Carry weeks 5-6 experience work into mobile surfaces",
+      "Validate mobile experience navigation and multilingual search",
+      "Preserve offline and signed-out behavior",
     ],
   },
   {
-    id: "mobile-search-track",
-    title: "Search on mobile + TV",
-    summary: "Roll out search to mobile platforms.",
+    id: "tv-experiences-search",
+    title: "TV experiences & search",
+    summary: "Adapt search and experience rails to ten-foot navigation.",
     track: "mobile-tv",
     tone: "lime",
     startWeek: 8,
     spanWeeks: 2,
-    badge: "Beta",
+    badge: "TV",
     details: [
-      "Port weeks 7-8 search work to mobile + TV",
-      "Validate mobile search UX on the new surfaces",
+      "Tune remote focus, labels, and content hierarchy",
+      "Validate performance on representative devices",
     ],
   },
   {
-    id: "mobile-homepage-track",
-    title: "Mobile homepage rollout",
-    summary: "Port the homepage rollout to mobile + TV.",
+    id: "mobile-beta-quality",
+    title: "Mobile beta quality",
+    summary: "Use tester evidence to close the highest-risk mobile gaps.",
     track: "mobile-tv",
     tone: "lime",
     startWeek: 10,
     spanWeeks: 2,
-    badge: "Beta",
+    badge: "Mobile",
     details: [
-      "Port weeks 9-10 homepage work to mobile + TV",
-      "Carry the main homepage rollout into mobile surfaces",
+      "Run a bounded internal/public beta feedback cycle",
+      "Fix release-blocking crashes, downloads, and playback regressions",
     ],
   },
   {
-    id: "mobile-stability-track",
-    title: "Internationalization and stability",
-    summary: "Stabilize the mobile + TV release.",
+    id: "tv-beta-quality",
+    title: "TV beta quality",
+    summary: "Use device testing to close the highest-risk TV gaps.",
     track: "mobile-tv",
     tone: "lime",
     startWeek: 12,
     spanWeeks: 2,
-    badge: "Beta",
+    badge: "TV",
     details: [
-      "Add internationalization to mobile + TV",
-      "Finish with stability and bug-fix work",
+      "Exercise home, search, series, player, and auth paths on target hardware",
+      "Close focus and telemetry gaps before wider release",
+    ],
+  },
+  {
+    id: "cross-platform-continuity",
+    title: "Cross-platform continuity",
+    summary:
+      "Unify identity, progress, and language behavior across supported platforms.",
+    track: "mobile-tv",
+    tone: "lime",
+    startWeek: 14,
+    spanWeeks: 4,
+    badge: "Shared",
+    details: [
+      "Agree on shared account, progress, and content identity contracts",
+      "Prove continuity without forcing accounts for public playback",
+    ],
+  },
+  {
+    id: "platform-year-end-hardening",
+    title: "Year-end beta hardening",
+    summary:
+      "Finish with cross-platform regression, store readiness, and release evidence.",
+    track: "mobile-tv",
+    tone: "lime",
+    startWeek: 18,
+    spanWeeks: 3,
+    badge: "Mobile + TV",
+    details: [
+      "Run shared release smoke tests and performance checks",
+      "Document deferred parity and the safest 2027 rollout sequence",
+    ],
+  },
+  {
+    id: "strategy-alignment",
+    title: "Strategy & audience alignment",
+    summary:
+      "Set the audience boundaries and product pillars that govern year-end work.",
+    track: "operating-rhythm",
+    tone: "red",
+    startWeek: 0,
+    spanWeeks: 2,
+    details: [
+      "Agree on believer-growth and seeker-response outcomes",
+      "Clarify engineering, product, ministry, and reviewer decision rights",
+    ],
+  },
+  {
+    id: "monthly-demo-learning",
+    title: "Monthly demo & learning loop",
+    summary:
+      "Demo shipped outcomes monthly, review user evidence, and adjust the next slice.",
+    track: "operating-rhythm",
+    tone: "red",
+    startWeek: 2,
+    spanWeeks: 16,
+    badge: "Monthly",
+    details: [
+      "Demo working product, not slideware",
+      "Review audience, quality, reliability, and follow-up measures",
+      "Update the 90-day grant view and task tracker after every review",
+      "Capture onboarding recordings so the team can reuse the new AI workflows",
     ],
   },
 ]
 
 export const PLANNED_MILESTONES: PlannedMilestone[] = [
   {
-    id: "creator-launch",
-    label: "Creator launch",
-    dateLabel: "May 10, 2026",
-    description:
-      "Media Creators Community (Lyuba): launch the AI inspiration board + contest to attract creators and seed future templates/workflows. Visibility only, non-blocking.",
-    track: "milestones",
-    tone: "red",
-    date: "2026-05-10",
-  },
-  {
-    id: "demo-day",
+    id: "august-demo",
     label: "Demo Day",
-    dateLabel: "May 15, 2026",
+    dateLabel: "Aug 4, 2026",
     description:
-      "Show the player with AI subtitles and experience generation. Narrative: User asks -> AI guides -> media responds.",
-    items: ["Player (AI subtitles)", "Experience generation"],
-    quote: "User asks -> AI guides -> media responds",
+      "Reset the monthly cadence with a working-product demonstration.",
+    items: ["Watch baseline", "Mobile + TV beta", "Devotional workflow"],
     track: "milestones",
     tone: "rose",
-    date: "2026-05-15",
+    date: "2026-08-04",
+  },
+  {
+    id: "september-demo",
+    label: "September Demo Day",
+    dateLabel: "Sep 1, 2026",
+    description: "Review accounts, continuity, and first journey experiments.",
+    track: "milestones",
+    tone: "rose",
+    date: "2026-09-01",
+  },
+  {
+    id: "grant-checkpoint",
+    label: "90-day roadmap review",
+    dateLabel: "Oct 30, 2026",
+    description:
+      "Reconcile grant commitments with shipped outcomes and current evidence.",
+    track: "milestones",
+    tone: "red",
+    date: "2026-10-30",
+  },
+  {
+    id: "november-demo",
+    label: "November Demo Day",
+    dateLabel: "Nov 3, 2026",
+    description:
+      "Review the devotional pilot, translation quality, and platform betas.",
+    track: "milestones",
+    tone: "rose",
+    date: "2026-11-03",
+  },
+  {
+    id: "year-end-review",
+    label: "Year-end learning review",
+    dateLabel: "Dec 18, 2026",
+    description:
+      "Select the evidence-backed priorities that continue into 2027.",
+    track: "milestones",
+    tone: "red",
+    date: "2026-12-18",
   },
 ]
 
 export const PLANNED_DEMO_DAY = {
-  title: "Demo Day",
-  dateLabel: "May 15, 2026",
-  showcase: ["Player (AI subtitles)", "Experience generation"],
-  narrative: "User asks -> AI guides -> media responds",
+  title: "Monthly Demo Day",
+  dateLabel: "First Tuesday of each month",
+  showcase: [
+    "Working product outcomes",
+    "Audience and quality evidence",
+    "Next-slice decisions",
+  ],
+  narrative: "Ship -> observe -> learn -> reprioritize",
 }
