@@ -11,8 +11,8 @@
 #
 # Digest pin: node:22-bookworm-slim multi-arch manifest list resolved
 # 2026-06-11 via the Docker Hub API. Node >= 22.18 is REQUIRED (default
-# type stripping loads the source-shipped @forge/shorts-compositions TS at
-# runtime — see the runtime stage notes).
+# type stripping loads the source-shipped @forge/shorts-compositions and
+# @forge/devotional-workspace TS at runtime — see the runtime stage notes).
 ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
 
 # ---------------------------------------------------------------------------
@@ -113,6 +113,7 @@ WORKDIR /app
 # Manifests first so dependency layers cache across source-only changes.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/shorts-worker/package.json apps/shorts-worker/package.json
+COPY packages/devotional-workspace/package.json packages/devotional-workspace/package.json
 COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
 # patches/ is REQUIRED: pnpm hashes every root pnpm.patchedDependencies file
 # at install time even when the patched package is outside the --filter — a
@@ -124,6 +125,7 @@ RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts \
       --filter @forge/shorts-worker...
 
 COPY apps/shorts-worker apps/shorts-worker
+COPY packages/devotional-workspace packages/devotional-workspace
 COPY packages/shorts-compositions packages/shorts-compositions
 RUN pnpm --filter @forge/shorts-worker build \
     && pnpm --filter @forge/shorts-worker prebundle /app/bundle /app/devotional-bundle
@@ -131,10 +133,9 @@ RUN pnpm --filter @forge/shorts-worker build \
 # ---------------------------------------------------------------------------
 # prod-deps — production-only node_modules, PRESERVING the pnpm workspace
 # symlink layout. Deliberately NOT `pnpm deploy`: deploy materializes
-# @forge/shorts-compositions inside node_modules, and Node refuses to
-# type-strip TS under node_modules — the workspace symlink (whose realpath
-# is /app/packages/shorts-compositions, OUTSIDE node_modules) is what makes
-# the source-shipped schema importable from compiled dist at runtime.
+# source-shipped workspace packages inside node_modules, and Node refuses to
+# type-strip TS under node_modules. Workspace symlinks whose realpaths are
+# under /app/packages keep those schemas importable from compiled dist.
 # ---------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS prod-deps
 
@@ -143,6 +144,7 @@ WORKDIR /app
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/shorts-worker/package.json apps/shorts-worker/package.json
+COPY packages/devotional-workspace/package.json packages/devotional-workspace/package.json
 COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
 # patches/ required here too — same pnpm patchedDependencies hashing as the
 # build stage.
@@ -161,12 +163,14 @@ WORKDIR /app
 # Stable layers first (only change when deps/pins change) …
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=prod-deps /app/apps/shorts-worker/node_modules /app/apps/shorts-worker/node_modules
+COPY --from=prod-deps /app/packages/devotional-workspace/node_modules /app/packages/devotional-workspace/node_modules
 COPY --from=prod-deps /app/packages/shorts-compositions/node_modules /app/packages/shorts-compositions/node_modules
 COPY --from=media-deps /opt/whisper /opt/whisper
 COPY --from=media-deps /opt/whisper-models /opt/whisper-models
 COPY --from=media-deps /opt/setup/node_modules/.remotion /app/apps/shorts-worker/node_modules/.remotion
 
 # … volatile app layers last.
+COPY packages/devotional-workspace /app/packages/devotional-workspace
 COPY packages/shorts-compositions /app/packages/shorts-compositions
 COPY apps/shorts-worker/package.json /app/apps/shorts-worker/package.json
 COPY --from=build /app/bundle /app/bundle

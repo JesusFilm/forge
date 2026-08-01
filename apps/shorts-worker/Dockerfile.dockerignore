@@ -1,7 +1,8 @@
 # BuildKit per-Dockerfile ignore (applies when building with
 # -f apps/shorts-worker/Dockerfile from the repo root). Keeps the huge
 # monorepo context out of the daemon — the Dockerfile only COPYies the
-# manifests, apps/shorts-worker, and packages/shorts-compositions.
+# manifests, apps/shorts-worker, packages/devotional-workspace, and
+# packages/shorts-compositions.
 **/node_modules
 **/.env*
 **/dist

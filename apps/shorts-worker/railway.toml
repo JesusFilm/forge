@@ -13,6 +13,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "apps/shorts-worker/Dockerfile"
 watchPatterns = [
   "/apps/shorts-worker/**",
+  "/packages/devotional-workspace/**",
   "/packages/shorts-compositions/**",
   "/package.json",
   "/pnpm-lock.yaml",
