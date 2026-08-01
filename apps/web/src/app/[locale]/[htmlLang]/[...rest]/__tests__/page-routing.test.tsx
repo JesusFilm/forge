@@ -2271,6 +2271,27 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     )
   })
 
+  it("fails closed when an implicit-English episode resolves a non-English fallback", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(
+      makeEpisodeResult({
+        slug: "russian",
+        bcp47: "ru",
+        name: "Russian",
+      }),
+    )
+
+    await expect(
+      renderLanguageLessEpisode(
+        "lumo-the-gospel-of-john.html",
+        "wedding-in-cana.html",
+      ),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+
+    expect(notFoundMock).toHaveBeenCalledTimes(1)
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+  })
+
   it("renders WatchPageClient when episode + series resolve", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
     await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")

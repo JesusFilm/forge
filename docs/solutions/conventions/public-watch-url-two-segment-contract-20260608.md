@@ -86,9 +86,9 @@ default:
 ```
 
 The short English contextual form is served directly only after the route
-manifest proves the exact parent-child-English relationship. It rewrites
-internally to the established explicit renderer without changing the browser
-URL or query. The explicit
+manifest proves the exact parent-child-English relationship. Its short internal
+rest shape dispatches to the established episode renderer without changing the
+browser URL or query. The explicit
 `/watch/{parent}.html/{episode}/english.html` form remains a direct
 compatibility URL. Both English contextual forms publish the language-less
 standalone child as canonical, Open Graph, structured-data, and share identity;
@@ -101,10 +101,11 @@ language-route meaning.
 ### Contextual navigation versus standalone identity
 
 Contextual and standalone URLs are two public addresses for the same playable
-Video, but they have different jobs. Collection cards, episode rails, sibling
-navigation, and player progression use the contextual route so the viewer keeps
-the parent collection. Search, social, sharing, and sitemap discovery use the
-standalone route so one Video/Language pair has one public identity.
+Video, but they have different jobs. Homepage thumbnails, search, social,
+sharing, and sitemap discovery use the standalone route so one Video/Language
+pair has one prominent public identity. Episode rails, sibling navigation, and
+player progression inside an opened collection use the contextual route so the
+viewer keeps the parent collection.
 
 | Incoming page                                    | Browser result                            | Canonical, `og:url`, `VideoObject.url`, and Share identity       |
 | ------------------------------------------------ | ----------------------------------------- | ---------------------------------------------------------------- |
@@ -121,9 +122,10 @@ The contextual page changes only navigation context; it must not change the
 selected media.
 
 Watch sitemap `<loc>` and `hreflang` output contains standalone routes only.
-General discovery links should also use the standalone route. Contextual links
-are deliberate only where preserving collection navigation is part of the user
-experience; eligible English contextual links omit `/english.html`.
+Prominent discovery links, including `/watch/` homepage and search thumbnails,
+also use the standalone route. Contextual links are deliberate only inside a
+collection-navigation experience; eligible English contextual links omit
+`/english.html`.
 
 ## Why This Matters
 

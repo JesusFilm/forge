@@ -71,6 +71,9 @@ const EXPLICIT_LANGUAGE: readonly string[] = [
   "/watch/jesus.html/tamil.html",
   "/watch/jesus.html/zulu.html",
   "/watch/jesus.html/swahili.html",
+  "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/the-beginning.html/spanish-castilian.html",
   "/watch/magdalena-2.html/english.html",
   "/watch/magdalena.html/russian.html",
   "/watch/chosen-witness.html/english.html",
@@ -129,6 +132,7 @@ const EPISODES: readonly string[] = [
   // Language-less contextual English is the preferred public form. The
   // explicit English form remains a direct compatibility URL below.
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
@@ -163,6 +167,7 @@ const QUERY_PARAMS: readonly string[] = [
 const LANGUAGELESS_ENGLISH: readonly string[] = [
   "/watch/jesus.html",
   "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-john-1-35-2-22.html",
   "/watch/magdalena-2.html",
   "/watch/chosen-witness.html",
   "/watch/wedding-in-cana.html",
@@ -217,12 +222,20 @@ function fixturesOf(
 
 const WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS: ReadonlySet<string> = new Set([
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
 ])
 
 const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
   "/watch/jesus.html": "/watch/jesus.html",
   "/watch/lumo-john-1-1-34.html": "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-john-1-35-2-22.html": "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-john-1-1-34.html/romanian.html":
+    "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-john-1-1-34.html/russian.html":
+    "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/the-beginning.html/spanish-castilian.html":
+    "/watch/the-beginning.html/spanish-castilian.html",
   "/watch/jesus.html/english.html": "/watch/jesus.html",
   "/watch/jesus.html/romanian.html": "/watch/jesus.html/romanian.html",
   "/watch/jesus.html/russian.html": "/watch/jesus.html/russian.html",
@@ -233,6 +246,8 @@ const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
   "/watch/lumo-the-gospel-of-john.html/english.html":
     "/watch/lumo-the-gospel-of-john.html",
   "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html":
+    "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html":
     "/watch/lumo-john-1-35-2-22.html",
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html":
     "/watch/lumo-john-1-1-34.html",
@@ -314,6 +329,29 @@ export const WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS = [
   {
     contextual: "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
     standalone: "/watch/lumo-john-1-1-34.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+    standalone: "/watch/lumo-john-1-1-34.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+    standalone: "/watch/lumo-john-1-1-34.html/romanian.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+    standalone: "/watch/lumo-john-1-1-34.html/russian.html",
+  },
+  {
+    contextual: "/watch/jesus.html/the-beginning/spanish-castilian.html",
+    standalone: "/watch/the-beginning.html/spanish-castilian.html",
+  },
+  {
+    contextual: "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+    standalone: "/watch/lumo-john-1-35-2-22.html",
   },
 ] as const
 

@@ -232,6 +232,7 @@ type Shape =
       episodeSlug: string
       rawLocale: string
       locale: UiLocale
+      implicitEnglish: boolean
     }
   | { kind: "unknown" }
 
@@ -266,6 +267,7 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
         episodeSlug: secondSlug,
         rawLocale: DEFAULT_WATCH_LANGUAGE_SLUG,
         locale: internalLocale,
+        implicitEnglish: true,
       }
     }
     return {
@@ -295,6 +297,7 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
       episodeSlug,
       rawLocale,
       locale: internalLocale,
+      implicitEnglish: false,
     }
   }
   return { kind: "unknown" }
@@ -592,8 +595,9 @@ async function renderEpisode(shape: {
   episodeSlug: string
   rawLocale: string
   locale: UiLocale
+  implicitEnglish: boolean
 }) {
-  const { seriesSlug, episodeSlug, rawLocale, locale } = shape
+  const { seriesSlug, episodeSlug, rawLocale, locale, implicitEnglish } = shape
 
   const resolved = await resolveSeriesEpisodeBySlug(
     seriesSlug,
@@ -607,6 +611,9 @@ async function renderEpisode(shape: {
   // rawLocale; emit the canonical .html shape so the proxy doesn't
   // re-normalize through per-segment .html append.
   const actualSlug = resolved.selectedVariant.language?.slug ?? null
+  if (implicitEnglish && actualSlug !== DEFAULT_WATCH_LANGUAGE_SLUG) {
+    notFound()
+  }
   if (actualSlug && rawLocale !== actualSlug) {
     const seriesContentSlug = tryAsContentSlug(seriesSlug)
     const episodeContentSlug = tryAsContentSlug(episodeSlug)

@@ -55,8 +55,10 @@ producer consistently.
 - R1. An exact manifest-admitted English parent-child route at
   `/watch/{parent}.html/{episode}.html` returns HTTP 200 directly, emits no
   `Location` header, and keeps the visible path and query unchanged.
-- R2. Forge-generated English contextual links use the two-segment form when
-  its episode slug is eligible for implicit-English interpretation.
+- R2. Forge-generated English contextual navigation links use the two-segment
+  form when their episode slug is eligible for implicit-English
+  interpretation. Prominent discovery surfaces such as `/watch/` homepage
+  thumbnails continue to link to the standalone Video identity.
 - R3. The existing explicit-English contextual form
   `/watch/{parent}.html/{episode}/english.html` remains a direct HTTP 200
   compatibility route.
@@ -73,9 +75,11 @@ producer consistently.
 - R7. A non-language segment-two token may be classified as an
   implicit-English contextual candidate, but it is admitted only when the
   manifest proves the exact parent, child, and English Dub.
-- R8. An admitted candidate rewrites internally to the existing explicit
-  three-segment English renderer. The internal path is not exposed as a
-  redirect and does not introduce another manifest fetch.
+- R8. An admitted candidate preserves the short internal rest shape and
+  dispatches to the existing episode renderer. The internal path is not exposed
+  as a redirect and does not introduce another manifest fetch. Expanding the
+  internal rest shape to explicit English is prohibited because it causes a
+  server/client hydration mismatch.
 - R9. If the exact context is rejected but the standalone child is independently
   admitted in English, preserve the established one-hop redirect to the
   language-less standalone child. Otherwise return the fixed Watch 404.
@@ -146,7 +150,7 @@ flowchart TD
   D -->|yes| E["Preserve Video-language interpretation"]
   D -->|no| F["Candidate: parent + episode + English"]
   F --> G{"Manifest available and exact context admitted?"}
-  G -->|yes| H["Internal rewrite to explicit English contextual renderer"]
+  G -->|yes| H["Short internal rest shape dispatches to episode renderer"]
   H --> I["200; browser path and query unchanged"]
   G -->|no, standalone child admitted| J["301 to standalone English canonical"]
   G -->|no proof| K["Fixed Watch 404"]
@@ -185,18 +189,18 @@ internal shape, so rendering and Admin data resolution do not change.
   fixed 404 avoids minting uncontrolled static routes. Existing explicit
   three-segment fail-open behavior remains available for durable links during
   an upstream manifest incident.
-- KTD5. **Reuse the existing renderer.** The short public form rewrites to the
-  explicit internal contextual shape. This avoids new Server Component
-  branches, Admin calls, generated types, and static-rendering changes.
+- KTD5. **Reuse the existing renderer.** The short public form preserves the
+  short internal rest shape and dispatches to the existing episode renderer.
+  Expanding it to explicit English causes a server/client hydration mismatch.
+  The route adds no Admin calls, generated types, or static-rendering changes.
 - KTD6. **Preserve standalone SEO identity.** Context affects playback and
   navigation, not indexing identity. Canonical, Open Graph, JSON-LD, share, and
   sitemap behavior continue to converge on the standalone child.
-- KTD7. **Emit the new route, not merely accept it.** Homepage contextual
-  thumbnails, episode cards, sibling navigation, player next links, history,
-  inventory, and language switching all already delegate to the central
-  episode builder. Updating that contract makes the user-visible change
-  consistent while retaining focused regression tests at representative
-  emitters.
+- KTD7. **Emit the new route where context is intentional.** Episode cards,
+  sibling navigation, player next links, history, inventory, and language
+  switching delegate to the central episode builder. Homepage and search
+  thumbnails remain standalone discovery links so crawlers and viewers receive
+  the canonical Video identity from prominent entry points.
 
 ---
 
@@ -272,7 +276,7 @@ internal shape, so rendering and Admin data resolution do not change.
 - **Approach:** In two-segment classification, retain localized utility and
   recognized-language handling first. Convert the remaining safe pair to an
   English episode manifest route, resolve legacy episode aliases, and set the
-  internal pathname with the explicit episode builder. Reuse exact contextual
+  internal pathname with the short episode builder. Reuse exact contextual
   admission and independently admitted standalone fallback. Mark the new
   shorthand so manifest unavailability returns the fixed 404 while the old
   explicit route keeps its current outage behavior. Extend internal-prefix
@@ -283,7 +287,7 @@ internal shape, so rendering and Admin data resolution do not change.
   `isAdmittedInternalRewrite`.
 - **Test scenarios:**
   1. The exact LUMO shorthand returns a rewrite response with no `Location`,
-     an explicit internal English route, and the original query intact.
+     the short internal episode shape, and the original query intact.
   2. The old explicit-English contextual route remains directly admitted.
   3. Romanian, Spanish, and Russian contextual routes retain locale identity
      and internal paths.
@@ -297,8 +301,8 @@ internal shape, so rendering and Admin data resolution do not change.
   8. Re-entered internal rewrites pass only when the claimed public shorthand
      reclassifies to the same exact internal destination.
 - **Verification:** Proxy and page-routing integration tests prove the browser
-  path is short while the catch-all renderer receives the unchanged explicit
-  three-segment shape, with no additional manifest or Admin fetch.
+  path and internal rest shape stay short while the catch-all dispatches to the
+  established episode renderer, with no additional manifest or Admin fetch.
 
 ### U3. Align contextual link producers and client/SEO consumers
 
@@ -332,9 +336,10 @@ internal shape, so rendering and Admin data resolution do not change.
   - `apps/web/src/app/sitemap.test.ts`
   - `apps/web/src/lib/watch-sitemap.test.ts`
   - `apps/web/src/lib/watch-sitemap-audit.test.ts`
-- **Approach:** Let existing emitters inherit the new central builder behavior
-  and replace only assertions that intentionally cover eligible English
-  contextual links. Preserve standalone paths for nested collection children.
+- **Approach:** Let contextual-navigation emitters inherit the new central
+  builder behavior and replace only assertions that intentionally cover
+  eligible English contextual links. Keep homepage, search, and nested-series
+  discovery paths standalone.
   Make parser consumers recognize the shorthand as English context. Retain
   standalone canonical/share/JSON-LD resolution and sitemap exclusion for both
   contextual forms.
@@ -342,8 +347,8 @@ internal shape, so rendering and Admin data resolution do not change.
   `resolveShareUrl`, `watchVideoStructuredDataJson`, and contextual sitemap
   exclusion assertions.
 - **Test scenarios:**
-  1. An English homepage contextual thumbnail, series episode card, sibling
-     card, and player-next action emit the short form.
+  1. An English homepage thumbnail emits the standalone URL; a series episode
+     card, sibling card, and player-next action emit the short contextual form.
   2. History, language inventory, and language-picker English destinations emit
      the short form; international destinations remain explicit.
   3. Switching away from and back to English alternates between explicit
@@ -393,10 +398,11 @@ internal shape, so rendering and Admin data resolution do not change.
   6. A newly introduced shorthand fixture may move from production 404 to its
      specified direct-preview success or redirect, while established
      expected-404 fixtures still hard-fail if they begin resolving.
-  7. Browser smoke proves a `/watch/` English contextual thumbnail opens the
-     short URL, plays the intended English episode in collection context,
-     switches languages correctly, copies the standalone URL, and has no
-     console or failed-request regressions.
+  7. Browser smoke proves a `/watch/` English thumbnail opens the standalone
+     URL, while a directly opened short contextual route plays the intended
+     English episode in collection context, switches languages correctly,
+     copies the standalone URL, and has no console or failed-request
+     regressions.
   8. Same-environment main-versus-branch cold/warm measurements use at least
      five samples and record median TTFB, HTML bytes, request/transfer counts,
      and cache/static classification. The branch adds no request and stays
@@ -417,9 +423,10 @@ internal shape, so rendering and Admin data resolution do not change.
 - **Routing boundary:** The canonicalizer and proxy share a two-segment shape
   with two semantic meanings. Language/alias precedence is resolved before
   manifest-backed implicit context.
-- **Renderer and data flow:** The catch-all page still receives
-  `{parent}/{episode}/english`; its existing parent-child resolution, feature
-  flags, media selection, and metadata code remain unchanged.
+- **Renderer and data flow:** The catch-all page receives the short
+  `{parent}.html/{episode}.html` rest shape, classifies it as implicit English,
+  and reuses the existing parent-child resolution, feature flags, media
+  selection, and metadata code.
 - **Failure propagation:** Exact admission renders; rejected context may use
   the independently admitted standalone redirect; unproved shorthand becomes
   the fixed 404. A manifest outage affects the new shorthand but not the
@@ -469,10 +476,10 @@ internal shape, so rendering and Admin data resolution do not change.
   - **Then:** the route returns 200 without a redirect, keeps that URL and
     query visible, and renders the English episode in LUMO John context.
 - **AE2. Generated English thumbnail**
-  - **Given:** `/watch/` renders the same episode as a contextual card.
+  - **Given:** `/watch/` renders a playable episode thumbnail.
   - **When:** Forge builds the card destination.
-  - **Then:** the href is the two-segment short route, not an explicit
-    `/english.html` contextual route.
+  - **Then:** the href is the language-less standalone Video route, not either
+    contextual form.
 - **AE3. Explicit-English compatibility**
   - **Given:** an existing durable link points to
     `/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html`.

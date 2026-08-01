@@ -108,7 +108,10 @@ A Contextual Watch Route owns playback and collection-navigation context, not
 search, social, or sharing identity. Its corresponding Standalone Watch Route
 owns canonical, Open Graph, structured-data URL, Share, and sitemap identity:
 eligible English resolves to the language-less standalone route, while every
-other Language resolves to that Language's explicit standalone route.
+other Language resolves to that Language's explicit standalone route. Prominent
+discovery surfaces such as Watch homepage and search thumbnails link to the
+Standalone Watch Route; contextual links are reserved for navigation inside an
+opened collection.
 
 ### Standalone Watch Route
 

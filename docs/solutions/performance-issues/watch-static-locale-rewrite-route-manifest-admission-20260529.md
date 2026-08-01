@@ -318,8 +318,10 @@ Eligible English contextual browser routes now use
 `/watch/{parent}.html/{episode}.html`. The proxy treats a non-language second
 segment as only a candidate: it serves the route directly only when the
 manifest's exact parent-child index and exact episode-audio index both admit
-English, then internally rewrites to the established
-`/{parent}.html/{episode}/english.html` renderer.
+English, then preserves the short internal rest shape and dispatches to the
+established episode renderer. Expanding the internal path to explicit English
+causes a server/client hydration mismatch even though the public URL stays
+short, so the short internal form is part of the route contract.
 
 This shorthand fails closed when the manifest is unavailable or lacks the
 exact indexes. Existing explicit-English and international contextual routes

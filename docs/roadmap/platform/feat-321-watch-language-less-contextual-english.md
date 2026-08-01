@@ -94,11 +94,14 @@ renders successfully.
   invalid-context fallback behavior.
 - Preserved the short internal route shape after browser testing exposed that
   expanding it to the explicit-English shape caused a hydration mismatch.
-- Passed the 129-URL production-to-preview matrix with 126 exact matches, 3
+- Passed the 134-URL production-to-preview matrix with 130 exact matches, 4
   intentional accepted differences, 0 soft regressions, 0 hard regressions,
   and 0 errors. The gate also proved exactly one absolute canonical with
-  matching Open Graph/JSON-LD identity and the same primary VideoObject on the
-  contextual and standalone LUMO pages.
+  matching Open Graph/JSON-LD identity and the same primary VideoObject across
+  short English, explicit-English compatibility, legacy-alias, Romanian,
+  Russian, and Spanish contextual/standalone pairs.
+- Kept homepage and search thumbnails on standalone discovery URLs while
+  reserving contextual links for collection-internal navigation.
 - Passed focused and complete Web tests, typecheck, lint, production build, and
   real-browser English/Romanian contextual route verification. A complete
   31,334-URL sitemap audit kept contextual routes out of `<loc>` and hreflang

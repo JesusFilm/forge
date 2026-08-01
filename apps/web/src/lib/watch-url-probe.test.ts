@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   MAX_REDIRECT_HOPS,
+  WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS,
   WATCH_URL_FIXTURES,
   WATCH_STRUCTURED_DATA_CONTRACTS,
   classifyProbe,
@@ -19,6 +20,46 @@ const result = (over: Partial<ProbeResult> = {}): ProbeResult => ({
   redirectHops: 0,
   ms: 1,
   ...over,
+})
+
+describe("WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS", () => {
+  it("gates short, compatibility, alias, and international contextual identity", () => {
+    expect(WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS).toEqual([
+      {
+        contextual: "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+        standalone: "/watch/lumo-john-1-1-34.html",
+      },
+      {
+        contextual:
+          "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+        standalone: "/watch/lumo-john-1-1-34.html",
+      },
+      {
+        contextual:
+          "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+        standalone: "/watch/lumo-john-1-1-34.html/romanian.html",
+      },
+      {
+        contextual:
+          "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+        standalone: "/watch/lumo-john-1-1-34.html/russian.html",
+      },
+      {
+        contextual: "/watch/jesus.html/the-beginning/spanish-castilian.html",
+        standalone: "/watch/the-beginning.html/spanish-castilian.html",
+      },
+      {
+        contextual: "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+        standalone: "/watch/lumo-john-1-35-2-22.html",
+      },
+    ])
+
+    const fixturePaths = new Set(WATCH_URL_FIXTURES.map(({ path }) => path))
+    for (const pair of WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS) {
+      expect(fixturePaths.has(pair.contextual)).toBe(true)
+      expect(fixturePaths.has(pair.standalone)).toBe(true)
+    }
+  })
 })
 
 describe("classifyProbe", () => {
