@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("./video-search-social-actions", () => ({
   loadVideoSearchSocialLocaleAction: vi.fn(),
+  loadVideoSearchSocialMediaLibraryAction: vi.fn(),
   saveVideoSearchSocialAction: vi.fn(),
   searchVideoSearchSocialLocalesAction: vi.fn(),
 }))
@@ -233,6 +234,29 @@ describe("VideoSearchSocialEditor", () => {
       expect(view.container.textContent).toContain(
         "Search and Social metadata saved.",
       )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("defers loading the Media Library until the picker opens", async () => {
+    const loadMediaLibraryAction = vi.fn().mockResolvedValue({
+      ok: true,
+      data: mediaLibrary,
+    })
+    const view = renderEditor({
+      initialLocale: locale({ socialImageAssetId: null }),
+      mediaLibrary: { rootLabel: "Library", folders: [], images: [] },
+      mediaLibraryInitiallyLoaded: false,
+      loadMediaLibraryAction,
+    })
+
+    try {
+      expect(loadMediaLibraryAction).not.toHaveBeenCalled()
+      await act(async () => button(view.container, "Select").click())
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+      expect(view.container.textContent).toContain("Choose an image")
+      expect(view.container.textContent).toContain("JESUS social art")
     } finally {
       view.cleanup()
     }

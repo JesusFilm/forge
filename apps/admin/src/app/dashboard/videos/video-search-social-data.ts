@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client"
+import type { LocaleStatus, Prisma, PrismaClient } from "@prisma/client"
 import { canEditVideo } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import { prisma } from "@/db/client"
@@ -6,9 +6,12 @@ import {
   buildMediaLibraryBrowserData,
   type MediaLibraryBrowserData,
 } from "@/app/dashboard/media/media-library-browser-data"
+import { parseVideoLibraryQuery } from "@/app/dashboard/video-library-utils"
 import { ForbiddenError } from "@/services/errors"
-import { createServices } from "@/services"
-import { VideoSearchSocialLocaleNotFoundError } from "@/services/video-search-social.service"
+import {
+  parseVideoSearchSocialLocaleId,
+  VideoSearchSocialLocaleNotFoundError,
+} from "@/services/video-search-social.service"
 
 const LOCALE_SEARCH_LIMIT = 40
 
@@ -18,7 +21,7 @@ export type VideoSearchSocialLocaleOption = {
   languageCode: string | null
   languageSlug: string | null
   locale: string | null
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  status: LocaleStatus
   title: string | null
 }
 
@@ -30,7 +33,7 @@ export type VideoSearchSocialLocaleData = {
   languageName: string
   languageCode: string | null
   languageSlug: string | null
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  status: LocaleStatus
   sourceTitle: string | null
   sourceDescription: string | null
   searchTitle: string | null
@@ -69,7 +72,7 @@ function localeOption(row: {
   id: string
   locale: string | null
   languageSlug: string | null
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  status: LocaleStatus
   title: string | null
   language: {
     bcp47: string | null
@@ -106,6 +109,55 @@ const localeSelect = {
   },
 } satisfies Prisma.VideoLocaleSelect
 
+const publicReadyImageWhere = {
+  kind: "IMAGE",
+  status: "READY",
+  visibility: "PUBLIC",
+  OR: [{ objectKey: { not: null } }, { previewObjectKey: { not: null } }],
+} satisfies Prisma.MediaAssetWhereInput
+
+const mediaLibraryImageSelect = {
+  id: true,
+  kind: true,
+  status: true,
+  visibility: true,
+  backend: true,
+  originalFilename: true,
+  mimeType: true,
+  byteSize: true,
+  width: true,
+  height: true,
+  objectKey: true,
+  previewObjectKey: true,
+  muxPlaybackId: true,
+  folderId: true,
+  updatedAt: true,
+  locales: {
+    where: { locale: "en" },
+    select: { displayName: true, altText: true },
+    take: 1,
+  },
+} satisfies Prisma.MediaAssetSelect
+
+const localeDetailSelect = {
+  id: true,
+  videoId: true,
+  locale: true,
+  languageSlug: true,
+  status: true,
+  title: true,
+  description: true,
+  snippet: true,
+  searchTitle: true,
+  searchDescription: true,
+  socialImageAssetId: true,
+  video: { select: { slug: true } },
+  language: {
+    select: { bcp47: true, iso3: true, name: true, slug: true },
+  },
+  socialImageAsset: { select: mediaLibraryImageSelect },
+} satisfies Prisma.VideoLocaleSelect
+
 export async function searchVideoSearchSocialLocales({
   user,
   videoId,
@@ -119,7 +171,7 @@ export async function searchVideoSearchSocialLocales({
 }): Promise<VideoSearchSocialLocaleOption[]> {
   assertCanReadVideoSearchSocial(user)
   const normalizedVideoId = videoId.trim()
-  const normalizedQuery = query.replace(/\s+/g, " ").trim().slice(0, 120)
+  const normalizedQuery = parseVideoLibraryQuery(query)
   if (!normalizedVideoId) return []
 
   const rows = await client.videoLocale.findMany({
@@ -190,31 +242,8 @@ export async function loadVideoSearchSocialMediaLibrary({
       orderBy: [{ parentId: "asc" }, { name: "asc" }],
     }),
     client.mediaAsset.findMany({
-      where: {
-        kind: "IMAGE",
-        status: "READY",
-        visibility: "PUBLIC",
-        OR: [{ objectKey: { not: null } }, { previewObjectKey: { not: null } }],
-      },
-      select: {
-        id: true,
-        backend: true,
-        originalFilename: true,
-        mimeType: true,
-        byteSize: true,
-        width: true,
-        height: true,
-        objectKey: true,
-        previewObjectKey: true,
-        muxPlaybackId: true,
-        folderId: true,
-        updatedAt: true,
-        locales: {
-          where: { locale: "en" },
-          select: { displayName: true, altText: true },
-          take: 1,
-        },
-      },
+      where: publicReadyImageWhere,
+      select: mediaLibraryImageSelect,
       orderBy: { updatedAt: "desc" },
     }),
   ])
@@ -234,15 +263,17 @@ export async function loadVideoSearchSocialLocale({
   client?: VideoSearchSocialPrisma
 }): Promise<VideoSearchSocialLocaleData> {
   assertCanReadVideoSearchSocial(user)
-  const metadata = await createServices(
-    client as PrismaClient,
-  ).videoSearchSocial.get({
-    user,
-    input: { videoLocaleId },
+  const normalizedVideoLocaleId = parseVideoSearchSocialLocaleId({
+    videoLocaleId,
   })
   const row = await client.videoLocale.findFirst({
-    where: { id: metadata.videoLocaleId, deletedAt: null },
-    select: localeSelect,
+    where: {
+      id: normalizedVideoLocaleId,
+      deletedAt: null,
+      status: { not: "ARCHIVED" },
+      video: { deletedAt: null },
+    },
+    select: localeDetailSelect,
   })
   if (!row) {
     throw new VideoSearchSocialLocaleNotFoundError()
@@ -250,51 +281,31 @@ export async function loadVideoSearchSocialLocale({
 
   const option = localeOption(row)
   const selectedAsset =
-    !mediaLibrary && metadata.socialImageAssetId
-      ? await client.mediaAsset.findMany({
-          where: {
-            id: metadata.socialImageAssetId,
-            kind: "IMAGE",
-            status: "READY",
-            visibility: "PUBLIC",
-            OR: [
-              { objectKey: { not: null } },
-              { previewObjectKey: { not: null } },
-            ],
-          },
-          select: {
-            id: true,
-            backend: true,
-            originalFilename: true,
-            mimeType: true,
-            byteSize: true,
-            width: true,
-            height: true,
-            objectKey: true,
-            previewObjectKey: true,
-            muxPlaybackId: true,
-            folderId: true,
-            updatedAt: true,
-            locales: {
-              where: { locale: "en" },
-              select: { displayName: true, altText: true },
-              take: 1,
-            },
-          },
-          take: 1,
-        })
+    row.socialImageAsset &&
+    row.socialImageAsset.kind === "IMAGE" &&
+    row.socialImageAsset.status === "READY" &&
+    row.socialImageAsset.visibility === "PUBLIC" &&
+    (row.socialImageAsset.objectKey || row.socialImageAsset.previewObjectKey)
+      ? [row.socialImageAsset]
       : []
   const selectedImage =
-    mediaLibrary?.images.find(
-      (asset) => asset.id === metadata.socialImageAssetId,
-    ) ??
+    mediaLibrary?.images.find((asset) => asset.id === row.socialImageAssetId) ??
     buildMediaLibraryBrowserData({ folders: [], images: selectedAsset })
       .images[0] ??
     null
 
   return {
-    ...metadata,
-    sourceDescription: metadata.sourceDescription ?? row.snippet,
+    videoLocaleId: row.id,
+    videoId: row.videoId,
+    slug: row.video.slug,
+    locale: row.locale,
+    languageSlug: row.languageSlug,
+    status: row.status,
+    sourceTitle: row.title,
+    sourceDescription: row.description ?? row.snippet,
+    searchTitle: row.searchTitle,
+    searchDescription: row.searchDescription,
+    socialImageAssetId: row.socialImageAssetId,
     languageName: option.languageName,
     languageCode: option.languageCode,
     socialImage: selectedImage,

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
+import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { createServices } from "@/services"
 import {
   mapVideoSearchSocialError,
@@ -11,6 +12,7 @@ import {
 } from "@/services/video-search-social.service"
 import {
   loadVideoSearchSocialLocale,
+  loadVideoSearchSocialMediaLibrary,
   searchVideoSearchSocialLocales,
   type VideoSearchSocialLocaleData,
   type VideoSearchSocialLocaleOption,
@@ -28,6 +30,10 @@ export type VideoSearchSocialSearchResult =
 
 export type VideoSearchSocialLoadResult =
   | { ok: true; data: VideoSearchSocialLocaleData }
+  | LoadFailure
+
+export type VideoSearchSocialMediaLibraryResult =
+  | { ok: true; data: MediaLibraryBrowserData }
   | LoadFailure
 
 export type VideoSearchSocialSaveResult =
@@ -51,7 +57,7 @@ function loadFailure(error: unknown): LoadFailure {
 }
 
 function logActionFailure(
-  operation: "load" | "save" | "search",
+  operation: "load" | "load_media_library" | "save" | "search",
   error: unknown,
 ) {
   console.error(
@@ -61,6 +67,17 @@ function logActionFailure(
       errorName: error instanceof Error ? error.name : "UnknownError",
     }),
   )
+}
+
+export async function loadVideoSearchSocialMediaLibraryAction(): Promise<VideoSearchSocialMediaLibraryResult> {
+  try {
+    const user = await requireSession()
+    const data = await loadVideoSearchSocialMediaLibrary({ user })
+    return { ok: true, data }
+  } catch (error) {
+    logActionFailure("load_media_library", error)
+    return loadFailure(error)
+  }
 }
 
 export async function searchVideoSearchSocialLocalesAction(input: {

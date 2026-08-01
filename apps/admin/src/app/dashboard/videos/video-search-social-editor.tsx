@@ -14,9 +14,11 @@ import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-librar
 import { ImagePickerBrowser } from "@/app/dashboard/experiences/experience-editor/image-picker-browser"
 import {
   loadVideoSearchSocialLocaleAction,
+  loadVideoSearchSocialMediaLibraryAction,
   saveVideoSearchSocialAction,
   searchVideoSearchSocialLocalesAction,
   type VideoSearchSocialLoadResult,
+  type VideoSearchSocialMediaLibraryResult,
   type VideoSearchSocialSaveResult,
   type VideoSearchSocialSearchResult,
 } from "./video-search-social-actions"
@@ -41,6 +43,7 @@ type VideoSearchSocialEditorProps = {
   initialOptions: VideoSearchSocialLocaleOption[]
   initialLocale: VideoSearchSocialLocaleData | null
   mediaLibrary: MediaLibraryBrowserData
+  mediaLibraryInitiallyLoaded?: boolean
   searchAction?: (input: {
     videoId: string
     query: string
@@ -48,6 +51,7 @@ type VideoSearchSocialEditorProps = {
   loadAction?: (input: {
     videoLocaleId: string
   }) => Promise<VideoSearchSocialLoadResult>
+  loadMediaLibraryAction?: () => Promise<VideoSearchSocialMediaLibraryResult>
   saveAction?: (input: {
     videoLocaleId: string
     searchTitle: string | null
@@ -91,8 +95,10 @@ export function VideoSearchSocialEditor({
   initialOptions,
   initialLocale,
   mediaLibrary,
+  mediaLibraryInitiallyLoaded = true,
   searchAction = searchVideoSearchSocialLocalesAction,
   loadAction = loadVideoSearchSocialLocaleAction,
+  loadMediaLibraryAction = loadVideoSearchSocialMediaLibraryAction,
   saveAction = saveVideoSearchSocialAction,
 }: VideoSearchSocialEditorProps) {
   const [query, setQuery] = useState("")
@@ -102,13 +108,18 @@ export function VideoSearchSocialEditor({
   >("initial")
   const [locale, setLocale] = useState(initialLocale)
   const [draft, setDraft] = useState(() => draftFromLocale(initialLocale))
-  const [baseline, setBaseline] = useState(() => draftFromLocale(initialLocale))
+  const persistedDraft = useMemo(() => draftFromLocale(locale), [locale])
   const [loadingLocale, setLoadingLocale] = useState(false)
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
   const [message, setMessage] = useState("")
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerLibrary, setPickerLibrary] = useState(mediaLibrary)
+  const [pickerLibraryLoaded, setPickerLibraryLoaded] = useState(
+    mediaLibraryInitiallyLoaded,
+  )
+  const [pickerLoading, setPickerLoading] = useState(false)
   const [pickerQuery, setPickerQuery] = useState("")
   const [pickerFolderId, setPickerFolderId] = useState<string | null>(null)
   const [pendingIntent, setPendingIntent] = useState<PendingIntent | null>(null)
@@ -117,11 +128,11 @@ export function VideoSearchSocialEditor({
   const dirty = useMemo(
     () =>
       JSON.stringify(normalizedDraft(draft)) !==
-      JSON.stringify(normalizedDraft(baseline)),
-    [baseline, draft],
+      JSON.stringify(normalizedDraft(persistedDraft)),
+    [draft, persistedDraft],
   )
   const selectedAsset =
-    mediaLibrary.images.find(
+    pickerLibrary.images.find(
       (asset) => asset.id === draft.socialImageAssetId,
     ) ??
     locale?.socialImage ??
@@ -220,7 +231,6 @@ export function VideoSearchSocialEditor({
     setLocale(result.data)
     const nextDraft = draftFromLocale(result.data)
     setDraft(nextDraft)
-    setBaseline(nextDraft)
     setLoadingLocale(false)
     setMessage(`${result.data.languageName} is ready to edit.`)
   }
@@ -279,7 +289,6 @@ export function VideoSearchSocialEditor({
       socialImageAssetId: result.data.socialImageAssetId,
     }
     setDraft(persisted)
-    setBaseline(persisted)
     setLocale((current) =>
       current
         ? {
@@ -288,7 +297,7 @@ export function VideoSearchSocialEditor({
             searchDescription: result.data.searchDescription,
             socialImageAssetId: result.data.socialImageAssetId,
             socialImage:
-              mediaLibrary.images.find(
+              pickerLibrary.images.find(
                 (asset) => asset.id === result.data.socialImageAssetId,
               ) ?? null,
           }
@@ -307,8 +316,40 @@ export function VideoSearchSocialEditor({
   function discardAndContinue() {
     const intent = pendingIntent
     if (!intent) return
-    setDraft(baseline)
+    setDraft(persistedDraft)
     completeIntent(intent)
+  }
+
+  async function openMediaPicker() {
+    if (pickerLibraryLoaded) {
+      setPickerOpen(true)
+      return
+    }
+
+    setPickerLoading(true)
+    setErrorCode(null)
+    setMessage("Loading Media Libraryâ€¦")
+    let result: VideoSearchSocialMediaLibraryResult
+    try {
+      result = await loadMediaLibraryAction()
+    } catch {
+      setPickerLoading(false)
+      setErrorCode("LOAD_FAILED")
+      setMessage("Media Library could not be loaded. Please try again.")
+      window.setTimeout(() => errorSummaryRef.current?.focus(), 0)
+      return
+    }
+    setPickerLoading(false)
+    if (!result.ok) {
+      setErrorCode(result.code)
+      setMessage(result.message)
+      window.setTimeout(() => errorSummaryRef.current?.focus(), 0)
+      return
+    }
+    setPickerLibrary(result.data)
+    setPickerLibraryLoaded(true)
+    setPickerOpen(true)
+    setMessage("Media Library loaded.")
   }
 
   if (!canEdit) {
@@ -608,10 +649,15 @@ export function VideoSearchSocialEditor({
                       ) : null}
                       <button
                         type="button"
-                        onClick={() => setPickerOpen(true)}
-                        className="h-9 rounded-sm border border-[var(--color-brand)] px-3 text-[12px] font-semibold text-[var(--color-brand)] hover:bg-[var(--color-surface-raised)]"
+                        disabled={pickerLoading}
+                        onClick={() => void openMediaPicker()}
+                        className="h-9 rounded-sm border border-[var(--color-brand)] px-3 text-[12px] font-semibold text-[var(--color-brand)] hover:bg-[var(--color-surface-raised)] disabled:cursor-wait disabled:opacity-60"
                       >
-                        {draft.socialImageAssetId ? "Replace" : "Select"}
+                        {pickerLoading
+                          ? "Loadingâ€¦"
+                          : draft.socialImageAssetId
+                            ? "Replace"
+                            : "Select"}
                       </button>
                     </div>
                   </div>
@@ -698,7 +744,7 @@ export function VideoSearchSocialEditor({
 
       <ImagePickerBrowser
         open={pickerOpen}
-        mediaLibrary={mediaLibrary}
+        mediaLibrary={pickerLibrary}
         query={pickerQuery}
         selectedFolderId={pickerFolderId}
         selectedAssetId={draft.socialImageAssetId}

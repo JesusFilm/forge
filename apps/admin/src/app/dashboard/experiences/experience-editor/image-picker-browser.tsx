@@ -47,7 +47,10 @@ export function ImagePickerBrowser({
   >(selectedAssetId)
   const dialogRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!open) return
@@ -55,8 +58,6 @@ export function ImagePickerBrowser({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
-    setDraftSelectedAssetId(selectedAssetId)
-
     const focusTimer = window.setTimeout(() => {
       dialogRef.current
         ?.querySelector<HTMLElement>("[data-image-picker-autofocus]")
@@ -65,6 +66,7 @@ export function ImagePickerBrowser({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault()
+        setDraftSelectedAssetId(selectedAssetId)
         onCloseRef.current()
         return
       }
@@ -93,6 +95,14 @@ export function ImagePickerBrowser({
       opener?.focus()
     }
   }, [open, selectedAssetId])
+
+  function closePicker() {
+    setDraftSelectedAssetId(selectedAssetId)
+    onClose()
+  }
+
+  if (!open) return null
+
   const normalizedQuery = query.trim().toLowerCase()
   const isSearching = normalizedQuery.length > 0
   const rootImageCount = mediaLibrary.images.filter(
@@ -122,34 +132,21 @@ export function ImagePickerBrowser({
     mediaLibrary.images.find((asset) => asset.id === draftSelectedAssetId) ??
     null
 
-  if (!open) return null
-
   return (
     <div
-      className={cx(
-        "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
-        open
-          ? "pointer-events-auto bg-[rgba(4,6,10,0.78)] backdrop-blur-[8px]"
-          : "pointer-events-none bg-[rgba(4,6,10,0)] backdrop-blur-0",
-      )}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,6,10,0.78)] px-4 backdrop-blur-[8px] transition-all duration-180 ease-out sm:px-6"
       onClick={(event) => {
         if (event.target !== event.currentTarget) return
-        onClose()
+        closePicker()
       }}
       role="presentation"
-      aria-hidden="false"
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="image-library-title"
-        className={cx(
-          "flex h-[min(84dvh,800px)] max-h-[calc(100dvh-2rem)] w-[min(1040px,calc(100vw-2rem))] flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
-          open
-            ? "translate-y-0 scale-100 opacity-100"
-            : "translate-y-2 scale-[0.98] opacity-0",
-        )}
+        className="flex h-[min(84dvh,800px)] max-h-[calc(100dvh-2rem)] w-[min(1040px,calc(100vw-2rem))] translate-y-0 scale-100 flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] opacity-100 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out"
       >
         <div className="flex items-start justify-between gap-4 border-b border-[var(--color-hairline)] p-5">
           <div>
@@ -165,7 +162,7 @@ export function ImagePickerBrowser({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={closePicker}
             className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
             aria-label="Close image library"
           >
@@ -289,7 +286,10 @@ export function ImagePickerBrowser({
             {canClearImage ? (
               <button
                 type="button"
-                onClick={onClearImage}
+                onClick={() => {
+                  setDraftSelectedAssetId(null)
+                  onClearImage()
+                }}
                 className="col-span-2 inline-flex h-10 min-w-28 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:border-[rgba(255,120,120,0.28)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-danger)] sm:col-span-1"
               >
                 Remove image
@@ -297,7 +297,7 @@ export function ImagePickerBrowser({
             ) : null}
             <button
               type="button"
-              onClick={onClose}
+              onClick={closePicker}
               className="inline-flex h-10 min-w-24 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
             >
               Cancel

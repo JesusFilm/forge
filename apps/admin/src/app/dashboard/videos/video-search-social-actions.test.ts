@@ -5,6 +5,7 @@ const revalidatePath = vi.fn()
 const save = vi.fn()
 const searchVideoSearchSocialLocales = vi.fn()
 const loadVideoSearchSocialLocale = vi.fn()
+const loadVideoSearchSocialMediaLibrary = vi.fn()
 
 vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
@@ -20,10 +21,13 @@ vi.mock("./video-search-social-data", () => ({
     searchVideoSearchSocialLocales(...args),
   loadVideoSearchSocialLocale: (...args: unknown[]) =>
     loadVideoSearchSocialLocale(...args),
+  loadVideoSearchSocialMediaLibrary: (...args: unknown[]) =>
+    loadVideoSearchSocialMediaLibrary(...args),
 }))
 
 import {
   loadVideoSearchSocialLocaleAction,
+  loadVideoSearchSocialMediaLibraryAction,
   saveVideoSearchSocialAction,
   searchVideoSearchSocialLocalesAction,
 } from "./video-search-social-actions"
@@ -99,5 +103,21 @@ describe("video Search and Social actions", () => {
     await expect(
       loadVideoSearchSocialLocaleAction({ videoLocaleId: "locale-1" }),
     ).resolves.toMatchObject({ ok: false, code: "LOAD_FAILED" })
+  })
+
+  it("loads the managed Media Library only through an authenticated action", async () => {
+    loadVideoSearchSocialMediaLibrary.mockResolvedValue({
+      rootLabel: "Library",
+      folders: [],
+      images: [],
+    })
+
+    await expect(loadVideoSearchSocialMediaLibraryAction()).resolves.toEqual({
+      ok: true,
+      data: { rootLabel: "Library", folders: [], images: [] },
+    })
+    expect(loadVideoSearchSocialMediaLibrary).toHaveBeenCalledWith({
+      user: { id: "admin-1", role: "ADMIN" },
+    })
   })
 })

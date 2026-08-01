@@ -37,7 +37,6 @@ import { VideoDetailPage } from "./video-detail-page"
 import { VideoSearchSocialEditor } from "./video-search-social-editor"
 import {
   loadVideoSearchSocialLocale,
-  loadVideoSearchSocialMediaLibrary,
   searchVideoSearchSocialLocales,
 } from "./video-search-social-data"
 
@@ -482,26 +481,21 @@ export default async function VideosPage({
       const canEditSearchSocial = canEditVideo(principal)
       const searchSocial = canEditSearchSocial
         ? await (async () => {
-            const [initialOptions, mediaLibrary] = await Promise.all([
-              searchVideoSearchSocialLocales({
-                user: principal,
-                videoId: selectedVideoDetail.key,
-              }),
-              loadVideoSearchSocialMediaLibrary({ user: principal }),
-            ])
+            const initialOptions = await searchVideoSearchSocialLocales({
+              user: principal,
+              videoId: selectedVideoDetail.key,
+            })
             const initialLocale = initialOptions[0]
               ? await loadVideoSearchSocialLocale({
                   user: principal,
                   videoLocaleId: initialOptions[0].id,
-                  mediaLibrary,
                 })
               : null
-            return { initialOptions, initialLocale, mediaLibrary }
+            return { initialOptions, initialLocale }
           })()
         : {
             initialOptions: [],
             initialLocale: null,
-            mediaLibrary: { rootLabel: "Library", folders: [], images: [] },
           }
 
       return (
@@ -515,7 +509,8 @@ export default async function VideosPage({
               canEdit={canEditSearchSocial}
               initialOptions={searchSocial.initialOptions}
               initialLocale={searchSocial.initialLocale}
-              mediaLibrary={searchSocial.mediaLibrary}
+              mediaLibrary={{ rootLabel: "Library", folders: [], images: [] }}
+              mediaLibraryInitiallyLoaded={false}
             />
           }
         />

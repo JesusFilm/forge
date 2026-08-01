@@ -3,11 +3,18 @@ import { z } from "zod"
 import type { Principal } from "@/auth/principal"
 import { canEditVideo } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
-import { emitRevalidateWebhook } from "./revalidate-webhook"
+import {
+  emitRevalidateWebhook,
+  type RevalidateOutcome,
+} from "./revalidate-webhook"
 
 const VideoLocaleIdentityInput = z.object({
   videoLocaleId: z.string().trim().min(1).max(191),
 })
+
+export function parseVideoSearchSocialLocaleId(raw: unknown): string {
+  return VideoLocaleIdentityInput.parse(raw).videoLocaleId
+}
 
 const OptionalMetadataText = z.string().max(10_000).nullable()
 
@@ -118,11 +125,11 @@ export class VideoSearchSocialService {
 
   async get({ user, input: raw }: { user: Principal | null; input: unknown }) {
     assertCanEditVideoSearchSocial(user)
-    const input = VideoLocaleIdentityInput.parse(raw)
+    const videoLocaleId = parseVideoSearchSocialLocaleId(raw)
 
     const locale = await this.prisma.videoLocale.findFirst({
       where: {
-        id: input.videoLocaleId,
+        id: videoLocaleId,
         deletedAt: null,
         status: { not: "ARCHIVED" },
         video: { deletedAt: null },
@@ -197,8 +204,10 @@ export class VideoSearchSocialService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     )
 
-    let revalidation: "not_published" | "missing_language_slug" | string =
-      "not_published"
+    let revalidation:
+      | "not_published"
+      | "missing_language_slug"
+      | RevalidateOutcome["status"] = "not_published"
     if (committed.metadata.status === "PUBLISHED") {
       if (committed.metadata.languageSlug) {
         const outcome = await emitRevalidateWebhook({

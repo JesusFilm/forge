@@ -843,20 +843,24 @@ function localeBucketsForSnapshot(
   }
 }
 
-type WatchRouteSnapshotRootLocaleRow = {
-  id: string
-  videoId: string
-  languageSlug: string | null
-  publishedAt: Date | null
-  locale: string | null
-  title: string | null
-  description: string | null
-  snippet: string | null
-  imageAlt: string | null
-  searchTitle: string | null
-  searchDescription: string | null
-  socialImageAssetId: string | null
-}
+const watchRouteSnapshotRootLocaleSelect = {
+  id: true,
+  videoId: true,
+  locale: true,
+  languageSlug: true,
+  publishedAt: true,
+  title: true,
+  description: true,
+  snippet: true,
+  imageAlt: true,
+  searchTitle: true,
+  searchDescription: true,
+  socialImageAssetId: true,
+} satisfies Prisma.VideoLocaleSelect
+
+type WatchRouteSnapshotRootLocaleRow = Prisma.VideoLocaleGetPayload<{
+  select: typeof watchRouteSnapshotRootLocaleSelect
+}>
 
 /**
  * Loads editor-owned search/social fields for the root video only. Related
@@ -883,7 +887,7 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
   broadLocales: WatchRouteSnapshotRootLocale[]
   englishLocales: WatchRouteSnapshotRootLocale[]
 }> {
-  const rows = (await prisma.videoLocale.findMany({
+  const rows = await prisma.videoLocale.findMany({
     where: {
       videoId,
       deletedAt: null,
@@ -895,21 +899,8 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
       ],
     },
     orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
-    select: {
-      id: true,
-      videoId: true,
-      locale: true,
-      languageSlug: true,
-      publishedAt: true,
-      title: true,
-      description: true,
-      snippet: true,
-      imageAlt: true,
-      searchTitle: true,
-      searchDescription: true,
-      socialImageAssetId: true,
-    },
-  })) as WatchRouteSnapshotRootLocaleRow[]
+    select: watchRouteSnapshotRootLocaleSelect,
+  })
 
   const bucketRows = {
     exactLocales: rows.filter(
@@ -1543,10 +1534,12 @@ export class VideoService {
       ...parentChildRelations.map((relation) => relation.childId),
     ]
     const allVideoIds = Array.from(new Set([root.id, ...relatedVideoIds]))
+    const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
 
     const [
       imageRows,
       localeRows,
+      rootLocaleBuckets,
       studyQuestionRows,
       exactMuxRows,
       fallbackMuxRows,
@@ -1569,7 +1562,7 @@ export class VideoService {
       }),
       this.prisma.videoLocale.findMany({
         where: {
-          videoId: { in: allVideoIds },
+          videoId: { in: relatedVideoIds },
           deletedAt: null,
           ...(isEditorOrAdmin(user) ? {} : { status: "PUBLISHED" as const }),
           OR: [
@@ -1592,6 +1585,12 @@ export class VideoService {
           snippet: true,
           imageAlt: true,
         },
+      }),
+      loadWatchRouteSnapshotRootLocaleBuckets({
+        prisma: this.prisma,
+        videoId: root.id,
+        ...localeArgs,
+        includeUnpublished: isEditorOrAdmin(user),
       }),
       this.prisma.videoStudyQuestion.findMany({
         where: {
@@ -1663,13 +1662,6 @@ export class VideoService {
       this.findPreferredPlayableVariantRow(root.id),
     ])
 
-    const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
-    const rootLocaleBuckets = await loadWatchRouteSnapshotRootLocaleBuckets({
-      prisma: this.prisma,
-      videoId: root.id,
-      ...localeArgs,
-      includeUnpublished: isEditorOrAdmin(user),
-    })
     const exactMuxByVideoId = firstByVideoId(
       exactMuxRows.filter((row) => row.playbackId != null),
     )

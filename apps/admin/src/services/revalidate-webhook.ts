@@ -41,7 +41,7 @@ export type RevalidateWebhookInput = {
   languageSlug?: string | null
 }
 
-type RevalidateOutcome =
+export type RevalidateOutcome =
   | { status: "sent"; httpStatus: number }
   | { status: "skipped"; reason: "config_missing" }
   | { status: "failed"; reason: "network" | "remote_non_2xx"; detail: string }
