@@ -85,6 +85,12 @@ Origin documents:
   cannot drift. This is a _shared generation contract_, not a per-service _wire_
   schema — the "local Zod schemas" rule still governs every `/forge-*` route's
   request/response shape.
+- **Exception (Devotional Workspace authority):** the versioned artifact,
+  manifest, and signed-capability contract is single-sourced from the pure-Zod
+  `@forge/devotional-workspace` package. Mastra owns the Workspace, durable
+  credentials, capability issuance, verification, and finalization; Shorts
+  Worker consumes only the bounded contract while executing media bytes. Keep
+  route envelopes and error mapping local to each service.
 - Experience draft-authoring + chat agents are Mastra-owned (consolidation
   U3–U9): the draft/chat agents + `multi-step-draft`/`quick-draft` workflows +
   repair run here; admin is a thin caller/proxy over authenticated HTTP. Admin
@@ -146,7 +152,7 @@ of the defaults and validation contract.
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `DEVOTIONAL_WORKSPACE_LOCAL_DIR`             | Contained local filesystem root used only in development/test when the entire dedicated S3 tuple is absent. Defaults under `MASTRA_STORAGE_DIR`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `DEVOTIONAL_WORKSPACE_PREFIX`                | Key prefix inside the dedicated bucket. Defaults to `devotional`; Mastra and Worker prefix contracts are relative to it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `DEVOTIONAL_WORKSPACE_PREFIX`                | Key prefix inside the dedicated bucket. Defaults to `devotional`; only Mastra receives bucket credentials and issues attempt-bound signed capabilities to the Worker.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX`     | Direct devotional state/audit SQL pool size. Defaults to and is capped at 3; native Workspace PgVector receives one additional connection.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `DEVOTIONAL_WORKSPACE_S3_ENDPOINT`           | Dedicated Railway Object Storage endpoint for canonical devotional inputs and outputs. Required with every other dedicated S3 field in production; uses virtual-hosted addressing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `DEVOTIONAL_WORKSPACE_S3_REGION`             | Region referenced from the dedicated Railway bucket. No application default in production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -1065,6 +1071,12 @@ dual-aspect rendering to Shorts Worker, suspends for authenticated human review,
 and publishes only after approval. See
 `docs/plans/2026-07-10-001-feat-video-first-devotional-pipeline-plan.md`.
 
+Mastra is the durable media authority: it writes canonical inputs, issues
+short-lived digest-bound read and temporary-upload capabilities, verifies and
+finalizes Worker outputs, writes the output manifest, and serves authenticated
+playback. Shorts Worker performs compute and streams bytes through those
+capabilities; it does not receive permanent Workspace S3 credentials.
+
 ### Owner-approved architecture exception (2026-07-21)
 
 This workflow may keep its durable control loop, approval suspension, worker
@@ -1172,6 +1184,15 @@ cutover row are all ready. Apply the idempotent
 schema with `pnpm --filter @forge/mastra migrate:devotional-database` before
 enabling new starts. Existing `RAILWAY_S3_*` variables continue to serve only
 the legacy subtitle/general artifact path.
+
+Only the Mastra Railway service receives `DEVOTIONAL_WORKSPACE_S3_*`. Signed
+URLs are transient job capabilities and must never enter workflow state or
+logs. Shorts Worker pins them to the configured exact Workspace HTTPS origin
+and verifies their expiry, declared key path, attempt prefix, size, digest, and
+content type before consuming them. Mastra verifies the output SHA-256 before
+finalization, persists the finalized S3 ETag, and checks that immutable object
+identity before approval or publish. Playback binds the response to the same
+ETag with `If-Match`.
 
 The video-first devotional architecture exception additionally requires the
 Mastra Railway service dashboard to keep `numReplicas = 1`. Workflow attempts,

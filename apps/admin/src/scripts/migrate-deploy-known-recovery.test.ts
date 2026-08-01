@@ -10,6 +10,9 @@ import {
   type CommandResult,
 } from "./migrate-deploy-known-recovery"
 
+const videoLocaleSearchSocialMetadataMigration =
+  "0047_video_locale_search_social_metadata"
+
 describe("isKnownRecoverableP3009", () => {
   it("matches only P3009 output for known recoverable migrations", () => {
     expect(
@@ -22,6 +25,14 @@ describe("isKnownRecoverableP3009", () => {
     expect(
       isKnownRecoverableP3009(`Error code: P3018 ${RECOVERABLE_MIGRATION}`),
     ).toBe(false)
+  })
+
+  it("recovers the failed VideoLocale search metadata migration", () => {
+    expect(
+      isKnownRecoverableP3009(
+        `Error code: P3009 ${videoLocaleSearchSocialMetadataMigration}`,
+      ),
+    ).toBe(true)
   })
 })
 
@@ -67,7 +78,7 @@ describe("deployWithKnownRecovery", () => {
   })
 
   it("resolves the known failed migration and retries deploy", async () => {
-    const migration = RECOVERABLE_MIGRATIONS[1]
+    const migration = videoLocaleSearchSocialMetadataMigration
     const runner = vi
       .fn()
       .mockResolvedValueOnce(result(1, `P3009 ${migration}`))

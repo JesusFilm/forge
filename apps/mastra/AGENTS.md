@@ -79,8 +79,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - App-to-runtime calls use service bearer authentication.
 - Owns the owner-approved `video-first-devotional` durable control loop as a
   narrow exception to the default Manager-owned heavy-media orchestration rule.
-  Mastra owns workflow state, approval, polling, and publish handoff; Shorts
-  Worker continues to own all media bytes, ffmpeg, Chromium, and rendering.
+  Mastra owns workflow state, canonical Workspace inputs/outputs, approval,
+  polling, and publish handoff. Shorts Worker owns media processing, ffmpeg,
+  Chromium, and rendering through short-lived attempt-bound capabilities; it
+  has no permanent devotional Workspace credentials.
 
 ## Boundaries
 
@@ -95,8 +97,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Postgres workflow persistence; authenticated, serialized lifecycle routes;
   canonical starts idempotent per UTC date; retries idempotent per parent-run
   and variant identity; attributable human approval; disjoint approval and
-  playback bearers; authenticated worker calls; private durable worker object
-  storage; and a Mastra poll deadline strictly above the capped worker deadline.
+  playback bearers; authenticated worker calls; Mastra-owned private Workspace
+  storage with expiring Worker capabilities; and a Mastra poll deadline
+  strictly above the capped worker deadline.
   Loss of any invariant requires `DEVOTIONAL_NEW_RUNS_ENABLED=false`, scheduler
   shutdown, and restoration or Manager migration before new work resumes. Do
   not generalize this exception without explicit owner approval in root rules.

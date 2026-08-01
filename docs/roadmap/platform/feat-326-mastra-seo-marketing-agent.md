@@ -1,5 +1,5 @@
 ---
-id: "feat-325"
+id: "feat-326"
 title: "Add Mastra SEO marketing agent and Manager workspace"
 owner: "codex"
 priority: "P1"

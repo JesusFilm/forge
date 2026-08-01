@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 1, 2026)
 
-- **Total tickets:** 462
-- **Complete:** 353
+- **Total tickets:** 468
+- **Complete:** 359
 - **In progress:** 34
 - **Not started:** 26
 - **Blocked:** 49
@@ -155,7 +155,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-292](media-generation/feat-292-devotional-questions-guided-prayer.md)                 | Devotional Closing — Questions + Guided Prayer                       | vlad  | P1       | 2026-07-01 | 4    | 2026-07-04 | in-progress |
 | [feat-293](media-generation/feat-293-devotional-assembly-distribution.md)                   | Devotional Assembly & Distribution (web full + social short)         | vlad  | P1       | 2026-07-01 | 10   | 2026-07-10 | in-progress |
 | [feat-254](media-generation/feat-254-instagram-discovery-thumbnail-ingest-observability.md) | Instagram discovery thumbnails and ingest observability              | vlad  | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
+| [feat-322](media-generation/feat-322-devotional-workspace-data-plane.md)                    | Devotional Workspace data plane                                      | vlad  | P1       | 2026-07-31 | 10   | 2026-08-09 | complete    |
 | [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                   | Automated Video Rendering Engine                                     | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
+| [feat-323](media-generation/feat-323-devotional-workspace-signed-media-transfer.md)         | Devotional Workspace signed media transfer                           | vlad  | P1       | 2026-08-01 | 1    | 2026-08-01 | complete    |
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)            | On-Demand Personalized Video Generation                              | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
 | [feat-062](media-generation/feat-062-shareable-custom-video-generation.md)                  | Shareable Custom Video Generation                                    | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                        | vlad  | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
@@ -203,6 +205,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-255](platform/feat-255-admin-video-search-backup-snapshot.md)                    | Admin video-search backup snapshot                                               | codex      | P0       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-301](platform/feat-301-watch-canonical-server-action-origins.md)                 | Allow canonical Watch Server Action origins                                      | unassigned | P0       | 2026-07-23 | 1    | 2026-07-23 | in-progress |
 | [feat-321](platform/feat-321-watch-download-redirects.md)                              | Redirect Watch downloads off Web                                                 | vlad       | P0       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-325](platform/feat-325-recover-watch-video-search-metadata-migration.md)         | Recover Watch video search metadata migration                                    | codex      | P0       | 2026-08-01 | 1    | 2026-08-01 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
@@ -375,9 +378,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-315](platform/feat-315-datadog-railway-release-sha-stamp.md)                     | Datadog Railway release SHA stamping                                             | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-319](platform/feat-319-datadog-syslog-structured-tags.md)                        | Datadog syslog structured log tags                                               | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-320](platform/feat-320-datadog-server-apm-sourcemaps.md)                         | Datadog server APM source maps                                                   | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-322](platform/feat-322-language-picker-aria-combobox.md)                         | Language-picker ARIA combobox                                                    | unassigned | P1       | 2026-07-28 | 1    | 2026-07-28 | complete    |
 | [feat-322](platform/feat-322-update-mastra-runtime-dependencies.md)                    | Update Mastra runtime dependencies                                               | codex      | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
 | [feat-323](platform/feat-323-watch-video-search-social-metadata.md)                    | Add localized Watch video search and social metadata                             | codex      | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
 | [feat-324](platform/feat-324-validate-watch-video-search-metadata.md)                  | Validate Watch video search metadata in Google                                   | codex      | P1       | 2026-08-01 | 14   | 2026-08-14 | not-started |
+| [feat-326](platform/feat-326-mastra-seo-marketing-agent.md)                            | Add Mastra SEO marketing agent and Manager workspace                             | codex      | P1       | 2026-08-01 | 21   | 2026-08-21 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |

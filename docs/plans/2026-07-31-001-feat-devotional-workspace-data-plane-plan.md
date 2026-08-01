@@ -8,6 +8,13 @@ deepened: 2026-07-31
 
 # feat: Add devotional Workspace data plane
 
+> **Revised media credential boundary (2026-08-01):**
+> `feat-323-devotional-workspace-signed-media-transfer` implements the revised
+> KTD9/KTD10 contract below. Mastra is the canonical Workspace writer and
+> credential holder. Shorts Worker is a compute service that streams through
+> short-lived, attempt-bound signed read/write capabilities; it does not hold
+> permanent devotional Workspace credentials.
+
 ## Summary
 
 Register one writable Mastra Workspace backed by Railway object storage and make it the canonical file and search data plane for the video-first devotional workflow. Move human-authored inputs and generated artifacts out of workflow code and process-local storage while preserving PostgreSQL workflow state, fail-closed safety, authenticated Studio editing, and Shorts Worker media execution.
@@ -45,7 +52,7 @@ The target is a single inspectable file hierarchy whose text inputs are searchab
 - R11. An attempt reads the latest Workspace state at reconciliation time, carries only bounded path/digest references through durable workflow steps, and verifies the complete selected digest set before every irreversible side effect; a mismatch terminates the attempt as retryable and releases its reservation.
 - R12. Every newly accepted explicit retry creates a fresh attempt with a fresh inventory while a durable `(parent, idempotency key)` record deduplicates identical request hashes and rejects key reuse with a different payload; replayed keys return the existing attempt without reconciling again.
 - R13. Generated content, narration, render inputs, media sidecars, approval data, publication data, and an `inputs-used.json` provenance record are written under the attempt's Workspace run path; no source bodies or media bytes are stored in PostgreSQL workflow state.
-- R14. Shorts Worker remains the only automated code path that streams MP3/MP4 bytes, uses create-only immutable attempt keys, validates its allowed Workspace media prefixes, and returns versioned opaque references with digest, size, and content type; Mastra writes searchable textual sidecars and never buffers rendered video.
+- R14. Mastra owns canonical Workspace media paths and bucket credentials. It issues short-lived attempt-bound read and temporary-upload capabilities; Shorts Worker streams MP3/MP4 through those grants, returns versioned digest/size/type references, and Mastra verifies and finalizes create-only outputs without buffering rendered video.
 - R15. Approval and playback bind to portrait/wide digests; overwrite or deletion after preview prevents publish, and post-publication mutation produces an integrity failure rather than silently serving bytes different from the approved artifact.
 - R16. Used-clip reservations, retry identity, publication intent, and publication history move from local/derived state to constrained PostgreSQL tables so an upstream publish accepted before a process crash reconciles to exactly one clip-usage commit.
 
@@ -85,8 +92,8 @@ The target is a single inspectable file hierarchy whose text inputs are searchab
 | KTD6  | Build each workflow retrieval generation in an isolated application BM25 engine and generation-scoped PgVector namespace, then activate one PostgreSQL head.                                           | Mastra's native BM25 mutates process memory before vector completion, so it cannot provide atomic generations; workflow selection uses the activated engine while Studio search remains eventual. |
 | KTD7  | Rebuild the committed BM25 generation from catalog rows after restart and retire old vector namespaces after no attempts reference them.                                                               | The derived search index may share PostgreSQL infrastructure without becoming content authority or accumulating stale rows indefinitely.                                                          |
 | KTD8  | Fail when requested hybrid mode is unavailable or yields too few current results after bounded over-fetch, and rebuild/reclaim before stale rows exceed that bound.                                    | Mastra may degrade search mode, while unbounded stale rows would eventually hide valid newly dropped sources.                                                                                     |
-| KTD9  | Preserve Worker media ownership as an automated execution contract, not an exclusive Studio permission boundary.                                                                                       | The user chose default writable Workspace access; mutation audit, upload limits, digest verification, and off-bucket recovery contain that bucket-wide trust decision.                            |
-| KTD10 | Stream binaries directly between Worker and the dedicated Workspace bucket; exchange a versioned relative-key/digest/size/type/attempt reference with Mastra.                                          | This preserves current memory, trust, and Range-playback boundaries and provides a compatibility seam for pre-cutover artifact refs.                                                              |
+| KTD9  | Keep durable Workspace media ownership and credentials in Mastra; Worker owns compute only.                                                                                                            | Canonical writes, finalization, audit, approval, playback, and Studio visibility remain behind one storage authority.                                                                             |
+| KTD10 | Stream binaries between Worker and the dedicated Workspace bucket through short-lived attempt-bound signed reads and temporary uploads; exchange versioned key/digest/size/type refs with Mastra.      | The Worker needs bytes for rendering but not permanent bucket authority; signed capabilities preserve streaming and rolling compatibility while limiting scope and lifetime.                      |
 | KTD11 | Store run provenance without copying source bodies into snapshots.                                                                                                                                     | Paths, digests, ETags, timestamps, and selection metadata explain consumption while preserving the chosen live-file semantics.                                                                    |
 | KTD12 | Persist retry attempts before Mastra run creation with a unique parent/idempotency key, canonical request hash, attempt number, catalog generation, and provisioning state.                            | A later retry must see edits, while process restarts and duplicate network requests must not create competing attempts.                                                                           |
 | KTD13 | Migrate with immutable checksum-verified staging, PostgreSQL readiness, an independent backup/restore path, and retained legacy sources.                                                               | Railway buckets have no versioning, object locks, or lifecycle rules, and an editor-writable readiness file would not be a trustworthy cutover gate.                                              |
@@ -109,12 +116,12 @@ flowchart TB
   Repository --> Search["Atomic application BM25 plus PgVector generation"]
   Repository --> Catalog["PostgreSQL catalog head, generations, and lease"]
   Workflow --> State["PostgreSQL workflow and reservation state"]
-  Workflow --> Worker["Shorts Worker media jobs"]
-  Worker --> Workspace
+  Workflow -->|"Signed attempt capabilities"| Worker["Shorts Worker media jobs"]
+  Worker -->|"Signed read and temporary upload"| Workspace
   Worker --> Workflow
 ```
 
-The Workspace owns files and content. PostgreSQL owns durable workflow/reservation state plus derived catalog generations, reconciliation leases, retry idempotency, publication intent, and mutation audit. Workflow selection uses the atomic application index; native Studio search is an eventual browsing aid and does not decide source eligibility. Worker writes immutable binary media under validated prefixes; Studio editing remains unrestricted by custom Workspace role policy.
+The Workspace owns files and content. PostgreSQL owns durable workflow/reservation state plus derived catalog generations, reconciliation leases, retry idempotency, publication intent, and mutation audit. Workflow selection uses the atomic application index; native Studio search is an eventual browsing aid and does not decide source eligibility. Mastra writes canonical inputs, issues bounded Worker capabilities, verifies temporary outputs, and finalizes immutable binary media under validated prefixes; Studio editing remains unrestricted by custom Workspace role policy.
 
 ### Attempt reconciliation and consumption
 
@@ -297,16 +304,16 @@ The tracked local tree documents and exercises the Workspace contract. Productio
   6. Concurrent dates reserve distinct eligible clips transactionally; same-key replay, same-key/different-payload conflict, ambiguous timeout after receiver acceptance, and restart recovery reconcile to one local publication/clip-usage commit while other terminal outcomes release reservations.
 - **Verification:** Workflow tests prove current start semantics, live retry behavior, bounded persisted state, and no dependency on process-local cache or JSON locking.
 
-### U5. Unify the Worker media namespace and approval integrity
+### U5. Unify the Workspace media namespace and approval integrity
 
 - **Goal:** Store source/generated media under Workspace-visible prefixes without transferring media-byte execution to Mastra, and bind review/publish to exact bytes.
 - **Requirements:** R13-R15, R18; AE7
 - **Dependencies:** U1, U3, U4
 - **Files:** `apps/mastra/src/services/devotional/devotional-worker-client.ts`, `apps/mastra/src/services/devotional/devotional-worker-client.test.ts`, `apps/mastra/src/mastra/devotional-asset-route.ts`, `apps/mastra/src/mastra/devotional-asset-route.test.ts`, `apps/shorts-worker/src/config/env.ts`, `apps/shorts-worker/src/config/env.test.ts`, `apps/shorts-worker/src/storage.ts`, `apps/shorts-worker/src/storage.test.ts`, `apps/shorts-worker/src/routes/devotional-artifacts.ts`, `apps/shorts-worker/src/routes/devotional-artifacts.test.ts`, `apps/shorts-worker/src/devotional-render.ts`, `apps/shorts-worker/src/devotional-render.test.ts`, `packages/shorts-compositions/src/devotional/schema.ts`, `packages/shorts-compositions/src/devotional/schema.test.ts`
-- **Approach:** Give Worker referenced credentials for the dedicated environment bucket and constrain automated keys to source-media, run-input, and content-addressed attempt-output prefixes. Use create-only writes: same-digest replay is a no-op and different-digest replay conflicts. Return a versioned opaque ref with relative key, digest, size, content type, and attempt identity, then commit the complete manifest last. Drain/cancel active and suspended legacy runs before cutover; translate legacy refs for status/playback only. Verify streamed digests before approval, publish, and later playback/status so post-publication mutation becomes an integrity failure.
+- **Approach:** Keep the dedicated environment bucket credentials in Mastra. Mastra writes canonical inputs, issues expiring signed reads plus unique attempt-scoped temporary upload grants, verifies Worker-returned digest/size/type refs, finalizes create-only content-addressed outputs, and commits the complete manifest last. Worker validates the capability origin, expiry, attempt prefixes, size, digest, and content type while streaming bytes and never persists signed URLs. Drain/cancel active and suspended legacy runs before cutover; translate legacy refs for status/playback only. Verify streamed digests before approval, publish, and later playback/status so post-publication mutation becomes an integrity failure.
 - **Patterns to follow:** `apps/shorts-worker/src/storage.ts` streaming S3 adapter; `apps/shorts-worker/src/routes/devotional-artifacts.ts` bounded authenticated inputs and Range outputs; existing opaque artifact refs.
 - **Test scenarios:**
-  1. Worker writes valid audio/video only under allowed Workspace prefixes and rejects traversal, wrong prefix, MIME/size mismatch, different-digest overwrite, or digest mismatch.
+  1. Worker accepts only valid attempt-bound signed reads/uploads and rejects private hosts, redirects, expiry, traversal, wrong prefix, MIME/size mismatch, or digest mismatch; it has no permanent devotional bucket credentials.
   2. Mastra exchanges opaque refs and metadata only; MP4 bytes never enter workflow state or a Mastra buffer.
   3. Existing source media is readable by Worker, and newly dropped unreferenced binaries are stored but remain ineligible as generation sources.
   4. Covers AE7. Overwrite or deletion of either suspended artifact prevents publish; unchanged portrait and wide checksums approve normally; rerender creates immutable new keys and a new approval binding.
@@ -337,16 +344,16 @@ The tracked local tree documents and exercises the Workspace contract. Productio
 - **Requirements:** R17-R20; AE9, AE10
 - **Dependencies:** U1-U6
 - **Files:** `apps/mastra/src/scripts/migrate-devotional-workspace.ts`, `apps/mastra/src/scripts/migrate-devotional-workspace.test.ts`, `apps/mastra/package.json`, `apps/mastra/devotional-workspace/README.md`, `apps/mastra/railway.toml`, `apps/shorts-worker/railway.toml`, `apps/mastra/CLAUDE.md`, `apps/shorts-worker/CLAUDE.md`, `docs/runbooks/devotional-workspace-cutover.md`, `docs/roadmap/media-generation/feat-322-devotional-workspace-data-plane.md`
-- **Approach:** Build an operator-supplied migrator with a unique immutable run prefix and manifest that inventories compiled/tracked/untracked sources, used-clip counts/timestamps, pending reservations, and existing Worker media. Verify destinations by streamed SHA-256, never overwrite/delete conflicts, validate required categories/hybrid/Worker I/O, and commit readiness against the manifest digest in PostgreSQL. Require drained/canceled reservations, scheduled immutable off-bucket backups with RPO/RTO and restore drills, coordinated Mastra/Worker credential rotation/revocation, and a rollback rule preventing an old build from generating until clip state is reconciled. Document Railway dashboard/configFile evidence and do not deploy directly from the worktree.
+- **Approach:** Build an operator-supplied migrator with a unique immutable run prefix and manifest that inventories compiled/tracked/untracked sources, used-clip counts/timestamps, pending reservations, and existing Worker media. Verify destinations by streamed SHA-256, never overwrite/delete conflicts, validate required categories/hybrid/signed Worker transfer, and commit readiness against the manifest digest in PostgreSQL. Require drained/canceled reservations, scheduled immutable off-bucket backups with RPO/RTO and restore drills, Mastra-only credential rotation/revocation, and a rollback rule preventing an old build from generating until clip state is reconciled. Document Railway dashboard/configFile evidence and do not deploy directly from the worktree.
 - **Patterns to follow:** Existing repo migration scripts; optional S3/local fallback learning in `docs/solutions/platform/optional-railway-s3-local-fallback.md`; deployment override checks in `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
 - **Test scenarios:**
   1. Covers AE9. First migration copies and verifies missing objects; an identical rerun is a no-op; a different destination digest is reported and never overwritten.
   2. Interrupted staging resumes idempotently, editor writes during migration cannot alter the immutable run, readiness is absent until the entire inventory and restore drill pass, and reports contain paths/counts/digests but no content or secrets.
-  3. Missing referenced media, invalid required config, unavailable hybrid search, or failed Worker read/write blocks readiness and keeps new starts disabled.
+  3. Missing referenced media, invalid required config, unavailable hybrid search, or failed signed Worker transfer blocks readiness and keeps new starts disabled.
   4. Used-clip ledger import preserves counts/timestamps and rejects unresolved reservations; a post-publish rollback cannot run an old build until new clip usage is exported/reconciled.
   5. Rollback before enablement reads legacy sources; rollback after enablement disables new starts, preserves status/playback, and retains migrated/legacy files for investigation.
   6. Static release checks prove one Mastra replica, the dedicated Railway `BUCKET`, correct endpoint style, private application access, dashboard `configFile` wiring, normal PR-to-main deployment flow, and no credentials in clients/logs.
-  7. A coordinated credential rotation disables starts, updates both services, verifies required operations, revokes old values, and records the accepted bucket-wide boundary; scheduled backup alerts and restore drills meet documented RPO/RTO.
+  7. A credential rotation disables starts, waits for signed transfers to drain, updates Mastra only, verifies required operations with fresh capabilities, revokes old values, and records the accepted bucket-wide boundary; scheduled backup alerts and restore drills meet documented RPO/RTO.
 - **Verification:** A dry run and checksum report are reviewable, a staging-environment migration/canary passes, and every enable/disable gate has recorded evidence.
 
 ### U8. Prove end-to-end behavior and remove legacy fallbacks
@@ -421,7 +428,7 @@ The tracked local tree documents and exercises the Workspace contract. Productio
 
 ## Dependencies and Prerequisites
 
-- Dedicated devotional bucket credentials must be referenced into both Mastra and Shorts Worker for the same environment, using the actual `BUCKET`, `ENDPOINT`, `REGION`, `ACCESS_KEY_ID`, and `SECRET_ACCESS_KEY` values without replacing existing general artifact credentials.
+- Dedicated devotional bucket credentials must be referenced into Mastra only, using the actual `BUCKET`, `ENDPOINT`, `REGION`, `ACCESS_KEY_ID`, and `SECRET_ACCESS_KEY` values without replacing existing general artifact credentials. Shorts Worker must not receive this tuple.
 - PostgreSQL must support the selected `PgVector` schema/index and embedding dimension.
 - The deployed Mastra service must remain at exactly one replica; reconciliation also uses a PostgreSQL lease/CAS so restarts and accidental overlap cannot publish competing generations.
 - Owners must supply untracked reflection/scripture/media inputs and retain the existing NASB, Cru, ElevenLabs, and source-media rights approvals.

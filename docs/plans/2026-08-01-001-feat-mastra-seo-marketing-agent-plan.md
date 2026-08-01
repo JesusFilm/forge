@@ -223,7 +223,7 @@ flowchart TB
 - **Requirements:** R4, R7-R15, R18-R22
 - **Dependencies:** None
 - **Files:**
-  - `docs/roadmap/platform/feat-325-mastra-seo-marketing-agent.md`
+  - `docs/roadmap/platform/feat-326-mastra-seo-marketing-agent.md`
   - `docs/roadmap/platform/feat-324-validate-watch-video-search-metadata.md`
   - `CONCEPTS.md`
   - `apps/admin/prisma/schema.prisma`
@@ -475,7 +475,7 @@ flowchart TB
   - `apps/mastra/CLAUDE.md`
   - `apps/manager/CLAUDE.md`
   - `apps/admin/CLAUDE.md`
-  - `docs/roadmap/platform/feat-325-mastra-seo-marketing-agent.md`
+  - `docs/roadmap/platform/feat-326-mastra-seo-marketing-agent.md`
   - `docs/solutions/architecture-patterns/mastra-seo-experiment-ledger-boundary.md`
 - **Approach:** Document optional capabilities, workload and delegated-approval assertion issuance/custody, per-environment Ed25519 key identifiers, overlapping verifier rotation, revocation and compromise response, Google property access, ADC/Workload Identity preference, Linear setup, schedules/limits/thresholds, evidence limitations, provider-side retention/training expectations, redaction, retry/reconciliation, draft conflicts, activation, rollback, and no-publish authority. Deploy additively in order: ledger migration, Admin contracts, Mastra dry-run, read-only Manager queue, live proposal persistence, Manager decisions and Watch draft handoff, evaluation, then ticket dispatch. Tighten constraints only after observing compatible writes; rollback sets mode `off`, disables capabilities, and uses forward-fix migrations without dropping ledger data.
 - **Patterns to follow:** package-local guides, generated GraphQL contract rules, and solutions frontmatter conventions.
