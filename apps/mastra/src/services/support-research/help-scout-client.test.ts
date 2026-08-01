@@ -268,6 +268,81 @@ describe("HelpScoutClient", () => {
     })
   })
 
+  it("fetches a busy mailbox's next page before advancing past it", async () => {
+    const multiMailboxConfig = {
+      ...config,
+      helpScout: { ...config.helpScout, mailboxIds: ["9", "10"] },
+    }
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(json({ access_token: "token", expires_in: 100 }))
+      .mockResolvedValueOnce(
+        json({
+          _embedded: {
+            conversations: [
+              {
+                id: 91,
+                subject: "Busy first",
+                createdAt: "2026-08-01T01:00:00Z",
+                mailboxId: 9,
+              },
+            ],
+          },
+          _links: {
+            next: {
+              href: "https://api.helpscout.net/v2/conversations?mailbox=9&page=2",
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        json({
+          _embedded: {
+            conversations: [
+              {
+                id: 10,
+                subject: "Quiet later",
+                createdAt: "2026-08-01T03:00:00Z",
+                mailboxId: 10,
+              },
+            ],
+          },
+          _links: {},
+        }),
+      )
+      .mockResolvedValueOnce(
+        json({
+          _embedded: {
+            conversations: [
+              {
+                id: 92,
+                subject: "Busy second",
+                createdAt: "2026-08-01T02:00:00Z",
+                mailboxId: 9,
+              },
+            ],
+          },
+          _links: {},
+        }),
+      )
+    const client = new HelpScoutClient(multiMailboxConfig, fetchImpl)
+
+    const result = await client.listNewConversations({
+      createdAfter: new Date("2026-08-01T00:00:00Z"),
+      createdBefore: new Date("2026-08-02T00:00:00Z"),
+      maxConversations: 2,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        conversations: [{ id: "91" }, { id: "92" }],
+        capped: true,
+        pages: 3,
+      },
+    })
+  })
+
   it("does not report a cap when the final page exactly matches the limit", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()

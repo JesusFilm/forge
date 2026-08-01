@@ -19,7 +19,7 @@ export type SupportResearchQueryable = {
 }
 
 export type RunClaim =
-  | { claimed: true; cursorStart: Date }
+  | { claimed: true; cursorStart: Date; cutoff: Date }
   | { claimed: false; status: string }
 
 export type DueSupportAction = {
@@ -47,16 +47,24 @@ export interface SupportResearchRepository {
     leaseToken: string
     cursor: Date
     counters: SupportRunCounters
+    leaseDurationMs: number
+  }): Promise<void>
+  renewRunLease(input: {
+    runKey: string
+    leaseToken: string
+    leaseDurationMs: number
   }): Promise<void>
   listThemeObservations(input: {
     surface: string
     themeKey: string
+    feedbackKinds: Array<"usability" | "need">
     since: Date
     limit: number
   }): Promise<StoredSupportObservation[]>
   enqueueAction(draft: SupportActionDraft, dryRun: boolean): Promise<boolean>
   claimDueActions(input: {
-    limit: number
+    dailyLimit: number
+    claimLimit: number
     actionTypes: SupportActionType[]
     createdSince: Date
     token: string
@@ -79,6 +87,10 @@ export interface SupportResearchRepository {
     issueId: string
     issueUrl: string
   }): Promise<void>
+  markActionMutationAttempted(input: {
+    idempotencyKey: string
+    token: string
+  }): Promise<void>
   markActionRetryable(input: {
     idempotencyKey: string
     token: string
@@ -94,7 +106,7 @@ export interface SupportResearchRepository {
   purgeExpired(now: Date, observationCutoff: Date): Promise<number>
 }
 
-type RunRow = { cursor_start: Date; status: string }
+type RunRow = { cursor_progress: Date; cutoff: Date; status: string }
 
 type ObservationRow = {
   sanitized_payload: unknown
@@ -153,7 +165,7 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
              updated_at = now()
        where support_research.runs.status = 'running'
          and support_research.runs.lease_expires_at < now()
-       returning cursor_start, status`,
+       returning cursor_progress, cutoff, status`,
       [
         input.runKey,
         input.dryRun,
@@ -164,7 +176,11 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
       ],
     )
     if (result.rows[0]) {
-      return { claimed: true, cursorStart: result.rows[0].cursor_start }
+      return {
+        claimed: true,
+        cursorStart: result.rows[0].cursor_progress,
+        cutoff: result.rows[0].cutoff,
+      }
     }
 
     const existing = await this.database.query<{ status: string }>(
@@ -229,11 +245,13 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
     leaseToken: string
     cursor: Date
     counters: SupportRunCounters
+    leaseDurationMs: number
   }): Promise<void> {
     const result = await this.database.query(
       `update support_research.runs
           set cursor_progress = greatest(cursor_progress, $3),
               counters = $4::jsonb,
+              lease_expires_at = now() + ($5 * interval '1 millisecond'),
               updated_at = now()
         where run_key = $1
           and lease_token = $2
@@ -243,7 +261,26 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
         input.leaseToken,
         input.cursor,
         JSON.stringify(input.counters),
+        input.leaseDurationMs,
       ],
+    )
+    if (result.rowCount !== 1)
+      throw new Error("support research run lease lost")
+  }
+
+  async renewRunLease(input: {
+    runKey: string
+    leaseToken: string
+    leaseDurationMs: number
+  }): Promise<void> {
+    const result = await this.database.query(
+      `update support_research.runs
+          set lease_expires_at = now() + ($3 * interval '1 millisecond'),
+              updated_at = now()
+        where run_key = $1
+          and lease_token = $2
+          and status = 'running'`,
+      [input.runKey, input.leaseToken, input.leaseDurationMs],
     )
     if (result.rowCount !== 1)
       throw new Error("support research run lease lost")
@@ -252,6 +289,7 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
   async listThemeObservations(input: {
     surface: string
     themeKey: string
+    feedbackKinds: Array<"usability" | "need">
     since: Date
     limit: number
   }): Promise<StoredSupportObservation[]> {
@@ -263,9 +301,16 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
           and surface = $1
           and theme_key = $2
           and source_created_at >= $3
+          and feedback_kind = any($4::text[])
         order by source_created_at desc, source_id desc
-        limit $4`,
-      [input.surface, input.themeKey, input.since, input.limit],
+        limit $5`,
+      [
+        input.surface,
+        input.themeKey,
+        input.since,
+        input.feedbackKinds,
+        input.limit,
+      ],
     )
     return result.rows.map(parseObservationRow)
   }
@@ -308,7 +353,8 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
   }
 
   async claimDueActions(input: {
-    limit: number
+    dailyLimit: number
+    claimLimit: number
     actionTypes: SupportActionType[]
     createdSince: Date
     token: string
@@ -328,7 +374,10 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
                 updated_at = now()
            from effective_clock
           where action_type = any($5::text[])
-            and state in ('pending', 'retryable')
+            and (
+              state in ('pending', 'retryable')
+              or (state = 'processing' and processing_expires_at < effective_clock.at)
+            )
             and created_at < effective_clock.at - interval '7 days'
           returning idempotency_key
        ), budget_lock as (
@@ -351,19 +400,24 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
             )
           )
           order by action.next_attempt_at, action.created_at
-          limit greatest(
-            0,
-            $1 - (
+          limit least(
+            $7,
+            greatest(
+              0,
+              $1 - (
               select count(*)::integer
                 from support_research.actions reserved
                where reserved.action_type = any($5::text[])
                  and (
                    reserved.state = 'created'
                    and reserved.terminal_at >= $6
+                 or reserved.state = 'deduplicated'
+                   and reserved.remote_create_attempted_at >= $6
                  or reserved.state = 'processing'
                    and reserved.updated_at >= $6
               )
             )
+          )
           )
           for update of action skip locked
        )
@@ -376,12 +430,13 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
         where idempotency_key in (select idempotency_key from candidates)
        returning idempotency_key, proposed_issue, attempts`,
       [
-        input.limit,
+        input.dailyLimit,
         input.token,
         input.expiresAt,
         input.now,
         input.actionTypes,
         input.createdSince,
+        input.claimLimit,
       ],
     )
     return result.rows.map((row) => ({
@@ -422,6 +477,25 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
     issueUrl: string
   }): Promise<void> {
     await this.finishAction(input, "deduplicated")
+  }
+
+  async markActionMutationAttempted(input: {
+    idempotencyKey: string
+    token: string
+  }): Promise<void> {
+    const result = await this.database.query(
+      `update support_research.actions
+          set remote_create_attempted_at = coalesce(
+                remote_create_attempted_at,
+                now()
+              ),
+              updated_at = now()
+        where idempotency_key = $1
+          and processing_token = $2
+          and state = 'processing'`,
+      [input.idempotencyKey, input.token],
+    )
+    if (result.rowCount !== 1) throw new Error("support action claim lost")
   }
 
   private async finishAction(
@@ -503,10 +577,10 @@ export class PostgresSupportResearchRepository implements SupportResearchReposit
           where run_key = $1
             and lease_token = $8
             and status = 'running'
-          returning run_key
+          returning run_key, dry_run
        ), cursor_advanced as (
          insert into support_research.cursors (source, created_at_cursor)
-         select 'help_scout', $3 from finished
+         select 'help_scout', $3 from finished where not dry_run
          on conflict (source) do update
            set created_at_cursor = greatest(
                  support_research.cursors.created_at_cursor,

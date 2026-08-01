@@ -122,17 +122,30 @@ function normalizeWatchUrl(
     ) {
       return
     }
-    let redactionCount = 0
-    for (const [key, value] of [...url.searchParams.entries()]) {
-      const result = redact(value)
-      if (result.count === 0) continue
-      redactionCount += result.count
-      url.searchParams.set(key, "[redacted]")
-    }
+    const redactionCount = [...url.searchParams].length
+    url.search = ""
     url.hash = ""
     return { url: url.href, redactionCount }
   } catch {
     return
+  }
+}
+
+function sanitizeUrls(
+  value: string,
+  allowedHosts: ReadonlySet<string>,
+  watchUrls: Set<string>,
+): { value: string; count: number } {
+  let count = 0
+  return {
+    value: value.replace(URL_PATTERN, (candidate) => {
+      const normalized = normalizeWatchUrl(candidate, allowedHosts)
+      count += 1 + (normalized?.redactionCount ?? 0)
+      if (!normalized) return "[URL omitted]"
+      if (watchUrls.size < 20) watchUrls.add(normalized.url)
+      return normalized.url
+    }),
+    count,
   }
 }
 
@@ -145,34 +158,25 @@ export function sanitizeSupportConversation(input: {
     input.allowedWatchHosts.map((host) => host.trim().toLowerCase()),
   )
   const watchUrls = new Set<string>()
-  let urlRedactionCount = 0
-  for (const raw of [
-    input.conversation.subject,
-    ...input.conversation.threadBodies,
-  ]) {
-    for (const candidate of raw.match(URL_PATTERN) ?? []) {
-      const normalized = normalizeWatchUrl(candidate, allowedHosts)
-      if (normalized) {
-        watchUrls.add(normalized.url)
-        urlRedactionCount += normalized.redactionCount
-      }
-      if (watchUrls.size >= 20) break
-    }
-  }
-
-  const subjectResult = redact(
+  const subjectUrls = sanitizeUrls(
     normalizeWhitespace(
       removeQuotedHistoryAndSignature(htmlToText(input.conversation.subject)),
     ),
+    allowedHosts,
+    watchUrls,
   )
-  const bodyResult = redact(
+  const bodyUrls = sanitizeUrls(
     normalizeWhitespace(
       input.conversation.threadBodies
         .map((body) => removeQuotedHistoryAndSignature(htmlToText(body)))
         .filter(Boolean)
         .join("\n\n"),
     ),
+    allowedHosts,
+    watchUrls,
   )
+  const subjectResult = redact(subjectUrls.value)
+  const bodyResult = redact(bodyUrls.value)
   const truncated =
     Boolean(input.conversation.truncated) ||
     bodyResult.value.length > input.maxCharacters
@@ -185,7 +189,11 @@ export function sanitizeSupportConversation(input: {
     subject: subjectResult.value.slice(0, 300),
     excerpt: bodyResult.value.slice(0, input.maxCharacters).trimEnd(),
     watchUrls: [...watchUrls],
-    redactionCount: subjectResult.count + bodyResult.count + urlRedactionCount,
+    redactionCount:
+      subjectResult.count +
+      bodyResult.count +
+      subjectUrls.count +
+      bodyUrls.count,
     truncated,
   })
 }

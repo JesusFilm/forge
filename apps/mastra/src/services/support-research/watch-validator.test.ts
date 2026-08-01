@@ -20,6 +20,7 @@ describe("validateWatchReport", () => {
     await expect(
       validateWatchReport({
         urls: ["https://www.jesusfilm.org/watch/missing.html"],
+        target: "url_availability",
         config,
         fetchImpl,
       }),
@@ -44,6 +45,7 @@ describe("validateWatchReport", () => {
     await expect(
       validateWatchReport({
         urls: ["https://www.jesusfilm.org/watch/jesus.html"],
+        target: "url_availability",
         config,
         fetchImpl,
       }),
@@ -54,12 +56,49 @@ describe("validateWatchReport", () => {
     })
   })
 
+  it("does not request or confirm interactive behavior", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+
+    await expect(
+      validateWatchReport({
+        urls: ["https://www.jesusfilm.org/watch/jesus.html"],
+        target: "interactive_or_other",
+        config,
+        fetchImpl,
+      }),
+    ).resolves.toMatchObject({
+      state: "unverified",
+      errorCode: "validation_target_not_supported",
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("keeps access and throttling responses unverified", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 429 }))
+
+    await expect(
+      validateWatchReport({
+        urls: ["https://www.jesusfilm.org/watch/jesus.html"],
+        target: "url_availability",
+        config,
+        fetchImpl,
+      }),
+    ).resolves.toMatchObject({
+      state: "unverified",
+      status: 429,
+      errorCode: "http_status_unverified",
+    })
+  })
+
   it("rejects lookalike hosts before making a request", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
 
     await expect(
       validateWatchReport({
         urls: ["https://www.jesusfilm.org.evil.test/watch/jesus.html"],
+        target: "url_availability",
         config,
         fetchImpl,
       }),
@@ -81,6 +120,7 @@ describe("validateWatchReport", () => {
     await expect(
       validateWatchReport({
         urls: ["https://www.jesusfilm.org/watch/jesus.html"],
+        target: "url_availability",
         config,
         fetchImpl,
       }),
@@ -103,6 +143,7 @@ describe("validateWatchReport", () => {
     await expect(
       validateWatchReport({
         urls: ["https://www.jesusfilm.org/watch/jesus.html"],
+        target: "url_availability",
         config,
         fetchImpl,
       }),
@@ -123,6 +164,7 @@ describe("validateWatchReport", () => {
     await expect(
       validateWatchReport({
         urls: ["https://www.jesusfilm.org/watch/jesus.html"],
+        target: "url_availability",
         config: { ...config, maxResponseBytes: 10 },
         fetchImpl,
       }),

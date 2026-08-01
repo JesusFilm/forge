@@ -62,14 +62,16 @@ class MemoryRepository implements SupportResearchRepository {
   readonly reports: SupportRunReport[] = []
   readonly progress: Date[] = []
   readonly claimedActions = new Set<string>()
+  purgeCalls = 0
+  renewals = 0
   cursor = new Date("2026-08-01T05:00:00.000Z")
 
   async getCursor(): Promise<Date> {
     return this.cursor
   }
 
-  async claimRun(): Promise<RunClaim> {
-    return { claimed: true, cursorStart: this.cursor }
+  async claimRun(input: { cutoff: Date }): Promise<RunClaim> {
+    return { claimed: true, cursorStart: this.cursor, cutoff: input.cutoff }
   }
 
   async recordObservation(
@@ -96,14 +98,22 @@ class MemoryRepository implements SupportResearchRepository {
     this.progress.push(input.cursor)
   }
 
+  async renewRunLease(): Promise<void> {
+    this.renewals += 1
+  }
+
   async listThemeObservations(input: {
     surface: string
     themeKey: string
+    feedbackKinds: Array<"usability" | "need">
   }): Promise<StoredSupportObservation[]> {
     return this.observations.filter(
       (item) =>
         item.analysis.surface === input.surface &&
-        item.analysis.themeKey === input.themeKey,
+        item.analysis.themeKey === input.themeKey &&
+        input.feedbackKinds.includes(
+          item.analysis.kind as "usability" | "need",
+        ),
     )
   }
 
@@ -122,7 +132,8 @@ class MemoryRepository implements SupportResearchRepository {
   }
 
   async claimDueActions(input: {
-    limit: number
+    dailyLimit: number
+    claimLimit: number
     actionTypes: SupportActionDraft["type"][]
   }): Promise<DueSupportAction[]> {
     const due = this.actions
@@ -131,7 +142,7 @@ class MemoryRepository implements SupportResearchRepository {
           input.actionTypes.includes(draft.type) &&
           !this.claimedActions.has(draft.idempotencyKey),
       )
-      .slice(0, input.limit)
+      .slice(0, input.claimLimit)
     for (const draft of due) this.claimedActions.add(draft.idempotencyKey)
     return due.map((draft) => ({
       idempotencyKey: draft.idempotencyKey,
@@ -152,14 +163,16 @@ class MemoryRepository implements SupportResearchRepository {
 
   async markActionCreated(): Promise<void> {}
   async markActionDeduplicated(): Promise<void> {}
+  async markActionMutationAttempted(): Promise<void> {}
   async markActionRetryable(): Promise<void> {}
 
   async finalizeRun(report: SupportRunReport): Promise<void> {
     this.reports.push(report)
-    this.cursor = new Date(report.cursorEnd)
+    if (!report.dryRun) this.cursor = new Date(report.cursorEnd)
   }
 
   async purgeExpired(): Promise<number> {
+    this.purgeCalls += 1
     return 0
   }
 }
@@ -209,6 +222,7 @@ const analysisObject = {
   confidence: 0.9,
   actionability: 0.9,
   validationRecommended: true,
+  validationTarget: "url_availability",
   inference: "The control requires interactive validation.",
 }
 
@@ -250,10 +264,12 @@ describe("daily support research workflow", () => {
     expect(helpScout.listNewConversations).not.toHaveBeenCalled()
     expect(linear.createIssue).not.toHaveBeenCalled()
     expect(repository.reports).toHaveLength(1)
+    expect(repository.purgeCalls).toBe(1)
   })
 
   it("dry-runs analysis and proposed actions with zero Linear mutations", async () => {
     const repository = new MemoryRepository()
+    const liveCursor = repository.cursor.toISOString()
     const linear = {
       findIssueByMarker: vi.fn(),
       createIssue: vi.fn(),
@@ -295,6 +311,8 @@ describe("daily support research workflow", () => {
       "daily_summary",
     ])
     expect(linear.createIssue).not.toHaveBeenCalled()
+    expect(repository.cursor.toISOString()).toBe(liveCursor)
+    expect(repository.renewals).toBeGreaterThan(0)
   })
 
   it("creates evidence-labeled product and daily summary issues in live mode", async () => {
@@ -342,9 +360,36 @@ describe("daily support research workflow", () => {
     expect(createIssue.mock.calls[0]?.[0].description).toContain(
       "HTTP 500 was returned",
     )
+    expect(createIssue.mock.calls[1]?.[0].description).toContain(
+      "https://linear.app/team/issue/confirmed_bug",
+    )
+    expect(repository.renewals).toBeGreaterThan(0)
   })
 
-  it("stops after five consecutive analysis failures and keeps the cursor resumable", async () => {
+  it("surfaces a failed report that cannot be finalized", async () => {
+    const repository = new MemoryRepository()
+    repository.finalizeRun = vi
+      .fn()
+      .mockRejectedValue(new Error("private database error"))
+
+    await expect(
+      executeDailySupportResearch(
+        { dryRun: false },
+        {
+          config: { ...config, enabled: false },
+          repository,
+          helpScout: helpScoutWith(),
+          linear: { findIssueByMarker: vi.fn(), createIssue: vi.fn() },
+          analyzer: { generate: vi.fn() },
+          now: () => now,
+          randomId: () => "fixed-id",
+        },
+      ),
+    ).rejects.toThrow("failed report could not be finalized")
+    expect(repository.purgeCalls).toBe(2)
+  })
+
+  it("stops before persisting a retryable analysis failure", async () => {
     const repository = new MemoryRepository()
     const report = await executeDailySupportResearch(
       { dryRun: true },
@@ -362,9 +407,10 @@ describe("daily support research workflow", () => {
     )
 
     expect(report.status).toBe("partial")
-    expect(report.partialReason).toBe("analysis_error_budget_reached")
-    expect(report.counters.failures).toBe(5)
-    expect(repository.observations).toHaveLength(5)
+    expect(report.partialReason).toBe("analysis_agent_error")
+    expect(report.counters.failures).toBe(1)
+    expect(repository.observations).toHaveLength(0)
+    expect(repository.progress).toHaveLength(0)
     expect(report.errors.join(" ")).not.toContain("private model error")
     expect(report.cursorEnd).not.toBe(now.toISOString())
   })

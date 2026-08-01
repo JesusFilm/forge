@@ -28,6 +28,7 @@ const observation: StoredSupportObservation = {
     confidence: 0.9,
     actionability: 0.85,
     validationRecommended: false,
+    validationTarget: "none",
     inference: "The flow may need research.",
   },
   validation: {

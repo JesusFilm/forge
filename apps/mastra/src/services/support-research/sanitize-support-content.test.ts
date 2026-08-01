@@ -96,8 +96,35 @@ describe("sanitizeSupportConversation", () => {
 
     expect(sanitized.subject).toContain("&#x110000;")
     expect(sanitized.watchUrls[0]).not.toContain("person@example.org")
-    expect(sanitized.watchUrls[0]).toContain("email=%5Bredacted%5D")
-    expect(sanitized.watchUrls[0]).toContain("lang=en")
+    expect(sanitized.watchUrls[0]).toBe(
+      "https://www.jesusfilm.org/watch/jesus.html",
+    )
+    expect(sanitized.excerpt).toBe("https://www.jesusfilm.org/watch/jesus.html")
     expect(sanitized.redactionCount).toBeGreaterThanOrEqual(2)
+  })
+
+  it("removes external, credentialed, and signed URLs from model text", () => {
+    const sanitized = sanitizeSupportConversation({
+      conversation: {
+        sourceId: "46",
+        mailboxId: "9",
+        createdAt: "2026-08-01T10:00:00.000Z",
+        subject: "Reset https://alice:hunter2@example.test/reset?token=abc123",
+        threadBodies: [
+          "Private https://example.test/file?signature=short and Watch https://www.jesusfilm.org/watch/jesus.html?token=abc123",
+        ],
+      },
+      allowedWatchHosts: ["www.jesusfilm.org"],
+      maxCharacters: 12_000,
+    })
+
+    expect(`${sanitized.subject} ${sanitized.excerpt}`).not.toContain("hunter2")
+    expect(`${sanitized.subject} ${sanitized.excerpt}`).not.toContain("abc123")
+    expect(`${sanitized.subject} ${sanitized.excerpt}`).not.toContain(
+      "example.test",
+    )
+    expect(sanitized.watchUrls).toEqual([
+      "https://www.jesusfilm.org/watch/jesus.html",
+    ])
   })
 })

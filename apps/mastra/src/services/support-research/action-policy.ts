@@ -141,6 +141,7 @@ export function decideSupportAction(input: {
   if (observation.analysis.kind === "bug") {
     if (
       observation.validation.state === "confirmed" &&
+      observation.analysis.validationTarget === "url_availability" &&
       observation.analysis.confidence >= input.config.confirmedConfidence
     ) {
       return {
@@ -182,7 +183,12 @@ export function decideSupportAction(input: {
     return { reason: "below_actionability" }
   }
   const distinct = new Map(
-    input.cluster.map((item) => [item.source.sourceId, item]),
+    input.cluster
+      .filter(
+        (item) =>
+          item.analysis.kind === "usability" || item.analysis.kind === "need",
+      )
+      .map((item) => [item.source.sourceId, item]),
   )
   if (distinct.size < input.config.improvementDistinctSources) {
     return { reason: "below_recurrence" }

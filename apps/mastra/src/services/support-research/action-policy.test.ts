@@ -28,6 +28,7 @@ const base: StoredSupportObservation = {
     confidence: 0.9,
     actionability: 0.9,
     validationRecommended: true,
+    validationTarget: "interactive_or_other",
     inference: "The interaction requires browser validation.",
   },
   validation: {
@@ -57,6 +58,7 @@ describe("decideSupportAction", () => {
     const decision = decideSupportAction({
       observation: {
         ...base,
+        analysis: { ...base.analysis, validationTarget: "url_availability" },
         validation: {
           state: "confirmed",
           incomingUrl: "https://www.jesusfilm.org/watch/missing.html",
@@ -103,6 +105,26 @@ describe("decideSupportAction", () => {
     }
   })
 
+  it("does not promote interactive claims from unrelated HTTP evidence", () => {
+    const decision = decideSupportAction({
+      observation: {
+        ...base,
+        validation: {
+          state: "confirmed",
+          incomingUrl: "https://www.jesusfilm.org/watch/jesus.html",
+          status: 404,
+          evidence: ["HTTP 404 was returned for the exact reported URL."],
+        },
+      },
+      cluster: [base],
+      config,
+    })
+
+    expect(decision).toMatchObject({
+      action: { type: "needs_validation" },
+    })
+  })
+
   it("keeps a usability signal report-only until three distinct sources recur", () => {
     const usability = {
       ...base,
@@ -138,6 +160,38 @@ describe("decideSupportAction", () => {
     ).toMatchObject({
       action: { type: "ux_improvement", sourceIds: ["1", "2", "3"] },
     })
+  })
+
+  it("does not count bug observations toward UX recurrence", () => {
+    const usability = {
+      ...base,
+      analysis: {
+        ...base.analysis,
+        kind: "usability" as const,
+        surface: "language_selection" as const,
+        themeKey: "language-picker-confusion",
+      },
+    }
+    const bug = {
+      ...base,
+      source: { ...base.source, sourceId: "bug-2" },
+      analysis: {
+        ...base.analysis,
+        themeKey: "language-picker-confusion",
+      },
+    }
+
+    expect(
+      decideSupportAction({
+        observation: usability,
+        cluster: [
+          usability,
+          bug,
+          { ...bug, source: { ...bug.source, sourceId: "bug-3" } },
+        ],
+        config,
+      }),
+    ).toEqual({ reason: "below_recurrence" })
   })
 
   it("keeps low-confidence reports out of Linear", () => {

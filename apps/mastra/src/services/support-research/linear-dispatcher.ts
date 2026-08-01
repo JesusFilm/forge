@@ -21,6 +21,8 @@ export type LinearDispatchSummary = {
   errors: string[]
 }
 
+const ACTION_CLAIM_MS = 20 * 60_000
+
 function marker(idempotencyKey: string): string {
   return `<!-- support-research-key:${idempotencyKey} -->`
 }
@@ -42,15 +44,9 @@ export async function dispatchDueSupportActions(input: {
   createdSince: Date
   now: Date
   token: string
+  clock?: () => Date
+  heartbeat?: () => Promise<void>
 }): Promise<LinearDispatchSummary> {
-  const actions = await input.repository.claimDueActions({
-    limit: input.config.maxActionsPerRun,
-    actionTypes: input.actionTypes,
-    createdSince: input.createdSince,
-    token: input.token,
-    expiresAt: new Date(input.now.getTime() + 10 * 60_000),
-    now: input.now,
-  })
   const summary: LinearDispatchSummary = {
     created: 0,
     deduplicated: 0,
@@ -60,12 +56,36 @@ export async function dispatchDueSupportActions(input: {
     errors: [],
   }
 
-  for (const action of actions) {
+  for (
+    let processed = 0;
+    processed < input.config.maxActionsPerRun;
+    processed += 1
+  ) {
+    const claimTime = input.clock?.() ?? new Date()
+    const [action] = await input.repository.claimDueActions({
+      dailyLimit: input.config.maxActionsPerRun,
+      claimLimit: 1,
+      actionTypes: input.actionTypes,
+      createdSince: input.createdSince,
+      token: input.token,
+      expiresAt: new Date(claimTime.getTime() + ACTION_CLAIM_MS),
+      now: claimTime,
+    })
+    if (!action) break
+    await input.heartbeat?.()
     const existing = await input.client.findIssueByMarker(
       marker(action.idempotencyKey),
     )
     if (!existing.ok) {
-      await recordFailure(input, action, existing)
+      await recordFailure(
+        {
+          repository: input.repository,
+          now: claimTime,
+          token: input.token,
+        },
+        action,
+        existing,
+      )
       summary.failed += 1
       summary.errors.push(existing.reason)
       continue
@@ -82,9 +102,21 @@ export async function dispatchDueSupportActions(input: {
       continue
     }
 
+    await input.repository.markActionMutationAttempted({
+      idempotencyKey: action.idempotencyKey,
+      token: input.token,
+    })
     const created = await input.client.createIssue(action.draft)
     if (!created.ok) {
-      await recordFailure(input, action, created)
+      await recordFailure(
+        {
+          repository: input.repository,
+          now: claimTime,
+          token: input.token,
+        },
+        action,
+        created,
+      )
       summary.failed += 1
       summary.errors.push(created.reason)
       continue

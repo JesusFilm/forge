@@ -57,6 +57,7 @@ const observation: StoredSupportObservation = {
     confidence: 0.9,
     actionability: 0.9,
     validationRecommended: true,
+    validationTarget: "url_availability",
     inference: "The exact failure still requires a bounded check.",
   },
   validation: {
@@ -74,7 +75,11 @@ describe("PostgresSupportResearchRepository", () => {
     const database = new FakeDatabase()
     database.responses.push(
       result([
-        { cursor_start: new Date("2026-08-01T00:00:00Z"), status: "running" },
+        {
+          cursor_progress: new Date("2026-08-01T00:00:00Z"),
+          cutoff: new Date("2026-08-02T00:00:00Z"),
+          status: "running",
+        },
       ]),
       result(),
       result([{ status: "running" }]),
@@ -123,8 +128,27 @@ describe("PostgresSupportResearchRepository", () => {
         leaseToken: "stale",
         cursor: new Date("2026-08-01T10:00:00Z"),
         counters: emptySupportRunCounters(),
+        leaseDurationMs: 30 * 60_000,
       }),
     ).rejects.toThrow("run lease lost")
+    expect(database.calls[0]?.text).toContain("lease_expires_at = now()")
+  })
+
+  it("renews a run lease only for its current token", async () => {
+    const database = new FakeDatabase()
+    database.responses.push(
+      result([{ run_key: "support-research:2026-08-01" }]),
+    )
+    const repository = new PostgresSupportResearchRepository(database)
+
+    await repository.renewRunLease({
+      runKey: "support-research:2026-08-01",
+      leaseToken: "lease-one",
+      leaseDurationMs: 30 * 60_000,
+    })
+
+    expect(database.calls[0]?.text).toContain("lease_token = $2")
+    expect(database.calls[0]?.values?.[2]).toBe(30 * 60_000)
   })
 
   it("claims due outbox actions with skip-locked semantics", async () => {
@@ -149,7 +173,8 @@ describe("PostgresSupportResearchRepository", () => {
     const repository = new PostgresSupportResearchRepository(database)
 
     const actions = await repository.claimDueActions({
-      limit: 5,
+      dailyLimit: 5,
+      claimLimit: 1,
       actionTypes: ["needs_validation"],
       createdSince: new Date("2026-08-01T00:00:00Z"),
       token: "worker-one",
@@ -164,13 +189,50 @@ describe("PostgresSupportResearchRepository", () => {
     expect(database.calls[0]?.text).toContain("pg_advisory_xact_lock")
     expect(database.calls[0]?.text).toContain("interval '7 days'")
     expect(database.calls[0]?.text).toContain("last_error_code")
+    expect(database.calls[0]?.text).toContain("state = 'processing'")
+    expect(database.calls[0]?.text).toContain(
+      "reserved.remote_create_attempted_at >= $6",
+    )
     expect(database.calls[0]?.text).toContain(
       "greatest($4::timestamptz, now())",
     )
+    expect(database.calls[0]?.text).toContain("limit least")
+    expect(database.calls[0]?.values?.[0]).toBe(5)
+    expect(database.calls[0]?.values?.[6]).toBe(1)
     expect(database.calls[0]?.values?.[4]).toEqual(["needs_validation"])
     expect(database.calls[0]?.values?.[5]).toEqual(
       new Date("2026-08-01T00:00:00Z"),
     )
+  })
+
+  it("filters recurrence queries to UX feedback kinds", async () => {
+    const database = new FakeDatabase()
+    const repository = new PostgresSupportResearchRepository(database)
+
+    await repository.listThemeObservations({
+      surface: "language_selection",
+      themeKey: "language-picker-confusion",
+      feedbackKinds: ["usability", "need"],
+      since: new Date("2026-07-01T00:00:00Z"),
+      limit: 50,
+    })
+
+    expect(database.calls[0]?.text).toContain("feedback_kind = any($4::text[])")
+    expect(database.calls[0]?.values?.[3]).toEqual(["usability", "need"])
+  })
+
+  it("records a remote create attempt before mutation dispatch", async () => {
+    const database = new FakeDatabase()
+    database.responses.push(result([{ idempotency_key: "support-research:a" }]))
+    const repository = new PostgresSupportResearchRepository(database)
+
+    await repository.markActionMutationAttempted({
+      idempotencyKey: "support-research:a",
+      token: "worker-one",
+    })
+
+    expect(database.calls[0]?.text).toContain("remote_create_attempted_at")
+    expect(database.calls[0]?.text).toContain("processing_token = $2")
   })
 
   it("keeps dry-run action keys separate from live action keys", async () => {
@@ -218,6 +280,9 @@ describe("PostgresSupportResearchRepository", () => {
     await repository.finalizeRun(report, 90, "lease-one")
 
     expect(database.calls[0]?.text).toContain("lease_token = $8")
+    expect(database.calls[0]?.text).toContain(
+      "select 'help_scout', $3 from finished where not dry_run",
+    )
     expect(database.calls[0]?.values?.[7]).toBe("lease-one")
   })
 

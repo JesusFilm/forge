@@ -182,6 +182,7 @@ function failedObservation(
     confidence: 0,
     actionability: 0,
     validationRecommended: false,
+    validationTarget: "none" as const,
     inference: `Analysis failed with safe reason: ${reason}`.slice(0, 500),
   }
   return {
@@ -195,6 +196,26 @@ function failedObservation(
     },
     fingerprint: observationFingerprint(analysis),
     analyzedAt: analyzedAt.toISOString(),
+  }
+}
+
+async function purgeSupportResearchRetention(input: {
+  dependencies: DailySupportResearchDependencies
+  config: SupportResearchConfig
+  now: Date
+  counters: ReturnType<typeof emptySupportRunCounters>
+  errors: string[]
+}): Promise<void> {
+  try {
+    await input.dependencies.repository.purgeExpired(
+      input.now,
+      new Date(
+        input.now.getTime() - input.config.retentionDays * 24 * 60 * 60_000,
+      ),
+    )
+  } catch {
+    input.counters.failures += 1
+    input.errors.push("retention:purge_failed")
   }
 }
 
@@ -247,11 +268,14 @@ export async function executeDailySupportResearch(
     })
   }
 
+  const effectiveCursorStart = claim.cursorStart
+  const cutoff = claim.cutoff
+
   const counters = emptySupportRunCounters()
   const observations: StoredSupportObservation[] = []
   const clusterKeys = new Set<string>()
   const errors: string[] = []
-  let cursorProgress = cursorStart
+  let cursorProgress = effectiveCursorStart
   let partialReason: string | undefined
   let consecutiveAnalysisFailures = 0
 
@@ -263,13 +287,20 @@ export async function executeDailySupportResearch(
           ? []
           : readiness.reasons
         : ["invalid_input"]
+      await purgeSupportResearchRetention({
+        dependencies,
+        config,
+        now: cutoff,
+        counters,
+        errors: readinessErrors,
+      })
       const report = buildSupportRunReport({
         runKey,
         status: "disabled",
         dryRun: input.dryRun,
-        cutoff: now.toISOString(),
-        cursorStart: cursorStart.toISOString(),
-        cursorEnd: cursorStart.toISOString(),
+        cutoff: cutoff.toISOString(),
+        cursorStart: effectiveCursorStart.toISOString(),
+        cursorEnd: effectiveCursorStart.toISOString(),
         counters,
         observations,
         actionUrls: [],
@@ -286,8 +317,10 @@ export async function executeDailySupportResearch(
     const ingestion = await ingestSupportConversations({
       client: dependencies.helpScout,
       config,
-      createdAfter: new Date(Math.max(0, cursorStart.getTime() - OVERLAP_MS)),
-      createdBefore: now,
+      createdAfter: new Date(
+        Math.max(0, effectiveCursorStart.getTime() - OVERLAP_MS),
+      ),
+      createdBefore: cutoff,
     })
     counters.fetched =
       ingestion.conversations.length + ingestion.exclusions.length
@@ -309,6 +342,11 @@ export async function executeDailySupportResearch(
     }
 
     for (const source of ingestion.conversations) {
+      await dependencies.repository.renewRunLease({
+        runKey,
+        leaseToken,
+        leaseDurationMs: LEASE_MS,
+      })
       const analysisResult = await analyzeSupportConversation({
         analyzer: dependencies.analyzer,
         conversation: source,
@@ -319,6 +357,10 @@ export async function executeDailySupportResearch(
         counters.failures += 1
         consecutiveAnalysisFailures += 1
         errors.push(`analysis:${source.sourceId}:${analysisResult.reason}`)
+        if (analysisResult.retryable) {
+          partialReason = `analysis_${analysisResult.reason}`
+          break
+        }
         observation = failedObservation(source, analysisResult.reason, now)
       } else {
         consecutiveAnalysisFailures = 0
@@ -328,6 +370,7 @@ export async function executeDailySupportResearch(
           analysisResult.analysis.validationRecommended
             ? await (dependencies.validate ?? validateWatchReport)({
                 urls: source.watchUrls,
+                target: analysisResult.analysis.validationTarget,
                 config,
               })
             : {
@@ -384,17 +427,24 @@ export async function executeDailySupportResearch(
         leaseToken,
         cursor: cursorProgress,
         counters,
+        leaseDurationMs: LEASE_MS,
       })
 
       if (durableObservation.analysis.relevant) {
-        const cluster = await dependencies.repository.listThemeObservations({
-          surface: durableObservation.analysis.surface,
-          themeKey: durableObservation.analysis.themeKey,
-          since: new Date(
-            now.getTime() - config.improvementWindowDays * 24 * 60 * 60_000,
-          ),
-          limit: 50,
-        })
+        const cluster =
+          durableObservation.analysis.kind === "usability" ||
+          durableObservation.analysis.kind === "need"
+            ? await dependencies.repository.listThemeObservations({
+                surface: durableObservation.analysis.surface,
+                themeKey: durableObservation.analysis.themeKey,
+                feedbackKinds: ["usability", "need"],
+                since: new Date(
+                  cutoff.getTime() -
+                    config.improvementWindowDays * 24 * 60 * 60_000,
+                ),
+                limit: 50,
+              })
+            : [durableObservation]
         const clusterKey = `${durableObservation.analysis.surface}:${durableObservation.analysis.themeKey}`
         clusterKeys.add(clusterKey)
         counters.clusters = clusterKeys.size
@@ -427,46 +477,59 @@ export async function executeDailySupportResearch(
       !partialReason &&
       !ingestion.partial &&
       observations.length === ingestion.conversations.length
-    if (fullyProcessed) cursorProgress = now
-
-    const summaryAction = buildDailySummaryAction({
-      runKey,
-      date: dateKey(now),
-      observations,
-      createdIssueUrls: [],
-    })
-    if (summaryAction) {
-      const inserted = await dependencies.repository.enqueueAction(
-        summaryAction,
-        input.dryRun,
-      )
-      if (inserted) counters.actionsPlanned += 1
-      else counters.actionsDeduplicated += 1
-    }
+    if (fullyProcessed) cursorProgress = cutoff
 
     let actionUrls: string[] = []
     if (!input.dryRun) {
-      const createdSince = new Date(`${dateKey(now)}T00:00:00.000Z`)
-      const dispatches = [
-        await dispatchDueSupportActions({
-          repository: dependencies.repository,
-          client: dependencies.linear,
-          config: { maxActionsPerRun: config.maxActionsPerRun },
-          actionTypes: ["confirmed_bug", "needs_validation", "ux_improvement"],
-          createdSince,
-          now,
-          token: leaseToken,
-        }),
-        await dispatchDueSupportActions({
-          repository: dependencies.repository,
-          client: dependencies.linear,
-          config: { maxActionsPerRun: 1 },
-          actionTypes: ["daily_summary"],
-          createdSince,
-          now,
-          token: leaseToken,
-        }),
-      ]
+      const createdSince = new Date(`${dateKey(cutoff)}T00:00:00.000Z`)
+      const heartbeat = () =>
+        dependencies.repository.renewRunLease({
+          runKey,
+          leaseToken,
+          leaseDurationMs: LEASE_MS,
+        })
+      const dispatchClock = dependencies.now ?? (() => new Date())
+      const productDispatch = await dispatchDueSupportActions({
+        repository: dependencies.repository,
+        client: dependencies.linear,
+        config: { maxActionsPerRun: config.maxActionsPerRun },
+        actionTypes: ["confirmed_bug", "needs_validation", "ux_improvement"],
+        createdSince,
+        now: cutoff,
+        token: leaseToken,
+        clock: dispatchClock,
+        heartbeat,
+      })
+      const summaryAction = buildDailySummaryAction({
+        runKey,
+        date: dateKey(cutoff),
+        observations,
+        createdIssueUrls: productDispatch.issueUrls,
+      })
+      if (summaryAction) {
+        const inserted = await dependencies.repository.enqueueAction(
+          summaryAction,
+          false,
+        )
+        if (inserted) counters.actionsPlanned += 1
+        else counters.actionsDeduplicated += 1
+      }
+      const dispatches = [productDispatch]
+      if (summaryAction) {
+        dispatches.push(
+          await dispatchDueSupportActions({
+            repository: dependencies.repository,
+            client: dependencies.linear,
+            config: { maxActionsPerRun: 1 },
+            actionTypes: ["daily_summary"],
+            createdSince,
+            now: cutoff,
+            token: leaseToken,
+            clock: dispatchClock,
+            heartbeat,
+          }),
+        )
+      }
       for (const dispatch of dispatches) {
         counters.actionsCreated += dispatch.created
         counters.actionsDeduplicated += dispatch.deduplicated
@@ -476,14 +539,37 @@ export async function executeDailySupportResearch(
         actionUrls.push(...dispatch.issueUrls)
       }
       actionUrls = actionUrls.slice(0, 25)
+    } else {
+      const summaryAction = buildDailySummaryAction({
+        runKey,
+        date: dateKey(cutoff),
+        observations,
+        createdIssueUrls: [],
+      })
+      if (summaryAction) {
+        const inserted = await dependencies.repository.enqueueAction(
+          summaryAction,
+          true,
+        )
+        if (inserted) counters.actionsPlanned += 1
+        else counters.actionsDeduplicated += 1
+      }
     }
+
+    await purgeSupportResearchRetention({
+      dependencies,
+      config,
+      now: cutoff,
+      counters,
+      errors,
+    })
 
     const report = buildSupportRunReport({
       runKey,
       status: fullyProcessed ? "complete" : "partial",
       dryRun: input.dryRun,
-      cutoff: now.toISOString(),
-      cursorStart: cursorStart.toISOString(),
+      cutoff: cutoff.toISOString(),
+      cursorStart: effectiveCursorStart.toISOString(),
       cursorEnd: cursorProgress.toISOString(),
       counters,
       observations,
@@ -496,18 +582,21 @@ export async function executeDailySupportResearch(
       config.retentionDays,
       leaseToken,
     )
-    await dependencies.repository.purgeExpired(
-      now,
-      new Date(now.getTime() - config.retentionDays * 24 * 60 * 60_000),
-    )
     return report
   } catch {
+    await purgeSupportResearchRetention({
+      dependencies,
+      config,
+      now: cutoff,
+      counters,
+      errors,
+    })
     const failedReport = buildSupportRunReport({
       runKey,
       status: "failed",
       dryRun: input.dryRun,
-      cutoff: now.toISOString(),
-      cursorStart: cursorStart.toISOString(),
+      cutoff: cutoff.toISOString(),
+      cursorStart: effectiveCursorStart.toISOString(),
       cursorEnd: cursorProgress.toISOString(),
       counters,
       observations,
@@ -515,9 +604,15 @@ export async function executeDailySupportResearch(
       errors: [...errors, "unexpected_failure"].slice(0, 50),
       partialReason,
     })
-    await dependencies.repository
-      .finalizeRun(failedReport, config.retentionDays, leaseToken)
-      .catch(() => undefined)
+    try {
+      await dependencies.repository.finalizeRun(
+        failedReport,
+        config.retentionDays,
+        leaseToken,
+      )
+    } catch {
+      throw new Error("support research failed report could not be finalized")
+    }
     return failedReport
   }
 }

@@ -12,6 +12,12 @@ export const supportSurfaceSchema = z.enum([
 
 export const feedbackKindSchema = z.enum(["bug", "usability", "need", "other"])
 
+export const validationTargetSchema = z.enum([
+  "none",
+  "url_availability",
+  "interactive_or_other",
+])
+
 export const validationStateSchema = z.enum([
   "not_attempted",
   "confirmed",
@@ -52,6 +58,7 @@ export const supportObservationAnalysisSchema = z.object({
   confidence: z.number().min(0).max(1),
   actionability: z.number().min(0).max(1),
   validationRecommended: z.boolean(),
+  validationTarget: validationTargetSchema.default("none"),
   inference: z.string().max(500),
 })
 

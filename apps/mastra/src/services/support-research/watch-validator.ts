@@ -64,6 +64,7 @@ function fetchFailure(
 
 export async function validateWatchReport(input: {
   urls: string[]
+  target: "none" | "url_availability" | "interactive_or_other"
   config: ValidatorConfig
   fetchImpl?: typeof fetch
 }): Promise<WatchValidationEvidence> {
@@ -87,6 +88,17 @@ export async function validateWatchReport(input: {
       missingProof:
         "The reported URL is outside the configured public Watch hosts.",
       errorCode: "url_not_allowed",
+    }
+  }
+
+  if (input.target !== "url_availability") {
+    return {
+      state: "unverified",
+      incomingUrl: first.href,
+      evidence: [],
+      missingProof:
+        "The reported behavior is not URL availability and cannot be confirmed by a document request.",
+      errorCode: "validation_target_not_supported",
     }
   }
 
@@ -120,7 +132,7 @@ export async function validateWatchReport(input: {
     }
   }
 
-  if (response.status >= 400) {
+  if (response.status === 404 || response.status === 410) {
     await discardResponseBody(response)
     return {
       state: "confirmed",
@@ -130,6 +142,22 @@ export async function validateWatchReport(input: {
       evidence: [
         `HTTP ${response.status} was returned for the exact reported URL.`,
       ],
+    }
+  }
+
+  if (response.status >= 400) {
+    await discardResponseBody(response)
+    return {
+      state: "unverified",
+      incomingUrl: first.href,
+      finalUrl: finalUrl.href,
+      status: response.status,
+      evidence: [
+        `HTTP ${response.status} was returned for the exact reported URL.`,
+      ],
+      missingProof:
+        "This response may be transient or specific to automated access and does not confirm page unavailability.",
+      errorCode: "http_status_unverified",
     }
   }
 

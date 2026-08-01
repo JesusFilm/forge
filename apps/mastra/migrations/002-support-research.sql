@@ -85,6 +85,7 @@ create table if not exists support_research.actions (
   processing_expires_at timestamptz,
   linear_issue_id text,
   linear_issue_url text,
+  remote_create_attempted_at timestamptz,
   last_error_code text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

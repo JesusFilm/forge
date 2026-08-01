@@ -229,18 +229,21 @@ export class HelpScoutClient {
       return { ok: false, reason: "invalid_config", retryable: false }
     }
 
-    const byId = new Map<string, HelpScoutConversation>()
+    type MailboxCursor = {
+      mailboxId: string
+      conversations: HelpScoutConversation[]
+      index: number
+      next?: URL
+      visited: Set<string>
+    }
+
     let capped = false
     let pages = 0
-    const pageBudgetPerMailbox = Math.max(
-      1,
-      Math.floor(
-        input.maxConversations / this.config.helpScout.mailboxIds.length,
-      ),
-    )
+    const maxPages =
+      this.config.helpScout.mailboxIds.length + input.maxConversations
+    const cursors: MailboxCursor[] = []
+
     for (const mailboxId of this.config.helpScout.mailboxIds) {
-      let mailboxCount = 0
-      let mailboxPages = 0
       const firstPage = new URL("conversations", this.apiBase)
       firstPage.searchParams.set("mailbox", mailboxId)
       firstPage.searchParams.set("status", "all")
@@ -251,57 +254,117 @@ export class HelpScoutClient {
         `(createdAt:[${input.createdAfter.toISOString()} TO ${input.createdBefore.toISOString()}])`,
       )
 
-      let next: URL | undefined = firstPage
-      while (next) {
-        if (mailboxPages >= pageBudgetPerMailbox) {
+      cursors.push({
+        mailboxId,
+        conversations: [],
+        index: 0,
+        next: firstPage,
+        visited: new Set(),
+      })
+    }
+
+    const refill = async (
+      cursor: MailboxCursor,
+    ): Promise<HelpScoutResult<boolean>> => {
+      while (cursor.index >= cursor.conversations.length && cursor.next) {
+        if (pages >= maxPages) {
           capped = true
-          break
+          return { ok: true, value: false }
         }
+        const pageUrl = cursor.next
+        if (cursor.visited.has(pageUrl.href)) {
+          capped = true
+          cursor.next = undefined
+          return { ok: true, value: false }
+        }
+        cursor.visited.add(pageUrl.href)
         pages += 1
-        mailboxPages += 1
-        const pageResult = await this.getJson(next, conversationsPageSchema)
+        const pageResult = await this.getJson(pageUrl, conversationsPageSchema)
         if (!pageResult.ok) return pageResult
         const pageConversations = pageResult.value._embedded.conversations
         const nextHref = pageResult.value._links?.next?.href
-        for (const [index, conversation] of pageConversations.entries()) {
+        cursor.conversations = pageConversations.map((conversation) => {
           const id = String(conversation.id)
-          byId.set(id, {
+          return {
             id,
             mailboxId: String(
-              conversation.mailboxId ?? conversation.mailbox?.id ?? mailboxId,
+              conversation.mailboxId ??
+                conversation.mailbox?.id ??
+                cursor.mailboxId,
             ),
             subject: conversation.subject ?? "",
             createdAt: conversation.createdAt,
             sourceUrl: safeConversationWebUrl(conversation._links?.web?.href),
-          })
-          mailboxCount += 1
-          if (mailboxCount >= input.maxConversations) {
-            capped ||= index < pageConversations.length - 1 || Boolean(nextHref)
-            next = undefined
-            break
           }
-        }
-        if (!next) break
-        if (!nextHref) break
+        })
+        cursor.index = 0
+        cursor.next = undefined
+        if (!nextHref)
+          return { ok: true, value: cursor.conversations.length > 0 }
         const validated = this.validateApiUrl(nextHref, "/v2/conversations")
         if (!validated) {
           return { ok: false, reason: "unsafe_redirect", retryable: false }
         }
-        next = validated
+        cursor.next = validated
+        if (cursor.conversations.length > 0) return { ok: true, value: true }
+      }
+      return {
+        ok: true,
+        value: cursor.index < cursor.conversations.length,
       }
     }
 
-    const conversations = [...byId.values()].sort(
-      (left, right) =>
-        left.createdAt.localeCompare(right.createdAt) ||
-        left.id.localeCompare(right.id),
-    )
-    if (conversations.length > input.maxConversations) capped = true
+    for (const cursor of cursors) {
+      const result = await refill(cursor)
+      if (!result.ok) return result
+      if (capped && !result.value) break
+    }
+
+    const conversations: HelpScoutConversation[] = []
+    const seen = new Set<string>()
+    while (conversations.length < input.maxConversations && !capped) {
+      const available = cursors.filter(
+        (cursor) => cursor.index < cursor.conversations.length,
+      )
+      if (available.length === 0) break
+      available.sort((left, right) => {
+        const leftItem = left.conversations[left.index]
+        const rightItem = right.conversations[right.index]
+        if (!leftItem || !rightItem) return 0
+        return (
+          leftItem.createdAt.localeCompare(rightItem.createdAt) ||
+          leftItem.id.localeCompare(rightItem.id)
+        )
+      })
+      const cursor = available[0]
+      const conversation = cursor?.conversations[cursor.index]
+      if (!cursor || !conversation) break
+      cursor.index += 1
+      if (!seen.has(conversation.id)) {
+        seen.add(conversation.id)
+        conversations.push(conversation)
+      }
+      if (cursor.index >= cursor.conversations.length && cursor.next) {
+        const result = await refill(cursor)
+        if (!result.ok) return result
+        if (capped && !result.value) break
+      }
+    }
+
+    if (
+      conversations.length >= input.maxConversations &&
+      cursors.some(
+        (cursor) =>
+          cursor.index < cursor.conversations.length || Boolean(cursor.next),
+      )
+    ) {
+      capped = true
+    }
 
     return {
       ok: true,
       value: {
-        conversations: conversations.slice(0, input.maxConversations),
+        conversations,
         capped,
         pages,
       },
