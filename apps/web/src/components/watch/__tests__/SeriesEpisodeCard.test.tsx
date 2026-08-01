@@ -38,6 +38,9 @@ vi.mock("next/link", () => ({
 }))
 
 vi.mock("lucide-react", () => ({
+  FolderOpen: ({ size }: { size?: number }) => (
+    <span data-testid="folder-open-icon" data-size={size} />
+  ),
   Play: ({ size }: { size?: number }) => (
     <span data-testid="play-icon" data-size={size} />
   ),
@@ -289,6 +292,33 @@ describe("SeriesEpisodeCard — Episode N label", () => {
     renderCard({ episode: makeEpisode(), index: 2 })
     const label = container.querySelector("span.uppercase")
     expect(label?.textContent).toBe("Episode 3")
+  })
+
+  it("labels nested collections as collections instead of episodes", () => {
+    renderCard({
+      episode: makeEpisode({ label: "COLLECTION", slug: "nested-collection" }),
+    })
+
+    expect(container.querySelector("span.uppercase")?.textContent).toBe(
+      "Collection",
+    )
+    expect(
+      container.querySelector('[data-testid="folder-open-icon"]'),
+    ).not.toBeNull()
+    expect(container.querySelector('[data-testid="play-icon"]')).toBeNull()
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/nested-collection.html",
+    )
+  })
+
+  it("labels nested series as series instead of episodes", () => {
+    renderCard({
+      episode: makeEpisode({ label: "series", slug: "nested-series" }),
+    })
+
+    expect(container.querySelector("span.uppercase")?.textContent).toBe(
+      "Series",
+    )
   })
 })
 

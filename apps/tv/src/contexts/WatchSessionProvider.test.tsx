@@ -52,6 +52,7 @@ function makeVideo(
     duration: null,
     primaryLanguageBcp47: "en",
     siblings: [],
+    chapters: [],
     variants,
     studyQuestions: [],
     bibleCitations: [],

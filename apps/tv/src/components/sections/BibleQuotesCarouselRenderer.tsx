@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   quoteText: {
     fontFamily: "System",
-    // Match the watch "About" body (aboutText): size 25, full-white, lh 37.
+    // Match the watch "About" body (AboutSection): size 25, full-white, lh 37.
     fontSize: Math.round(scale(25)),
     fontWeight: "400",
     fontStyle: "italic",

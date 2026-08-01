@@ -14,6 +14,7 @@ import {
   type WatchHomeSourceConfig,
 } from "./config"
 import { pickCardImage } from "../cardImage"
+import { isSeriesLabel } from "../isSeriesRecord"
 import { buildHeroFeatured, buildHeroSourceMap } from "./heroQueue"
 
 /**
@@ -77,9 +78,9 @@ export type WatchHomeCard = {
   description: string | null
   label: string
   /**
-   * Raw wire enum (e.g. "SERIES") behind display-text `label`. Routing must
-   * read THIS — shape predicates (isSeriesSearchResult) match uppercase wire
-   * literals; display text silently breaks the branch, leaving only childCount.
+   * Raw wire enum (e.g. "SERIES") behind display-text `label`. Routing and the
+   * count nouns must read THIS — isSeriesLabel matches uppercase wire literals
+   * only, and display text silently fails the branch.
    */
   rawLabel: string | null
   metaLabel: string | null
@@ -156,11 +157,15 @@ function formatDuration(seconds: number): string {
 
 function buildMetaLabel(args: {
   label: string
+  rawLabel: string | null
   durationSeconds: number | null
   childCount: number
 }): string | null {
   if (args.childCount > 0) {
-    return `${args.childCount} ${args.childCount === 1 ? "episode" : "episodes"}`
+    // Label-aware like routing: a feature film's children are chapters, so
+    // JESUS reads "61 chapters", matching CHAPTER_NOUN on its watch page.
+    const noun = isSeriesLabel(args.rawLabel) ? "episode" : "chapter"
+    return `${args.childCount} ${noun}${args.childCount === 1 ? "" : "s"}`
   }
   if (args.durationSeconds != null) {
     const duration = formatDuration(args.durationSeconds)
@@ -247,6 +252,7 @@ export function normalizeCard(args: {
     rawLabel: args.video.label ?? null,
     metaLabel: buildMetaLabel({
       label,
+      rawLabel: args.video.label ?? null,
       durationSeconds: args.video.durationSeconds ?? null,
       childCount,
     }),

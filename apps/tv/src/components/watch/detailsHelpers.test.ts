@@ -1,8 +1,55 @@
 import {
   buildMetadataLine,
   buildShareUrl,
+  formatBadgeLabel,
   formatDuration,
+  shouldShowUpNextRail,
 } from "./detailsHelpers"
+
+describe("shouldShowUpNextRail", () => {
+  const chapter = { documentId: "ch-1" } as never
+
+  // A film with chapters shows the chapter rail INSTEAD of Up Next, never both.
+  it("hides Up Next when the video has its own chapters", () => {
+    expect(shouldShowUpNextRail({ chapters: [chapter] })).toBe(false)
+    expect(
+      shouldShowUpNextRail({ chapters: [chapter, chapter, chapter] }),
+    ).toBe(false)
+  })
+
+  it("keeps Up Next for an ordinary video with no chapters", () => {
+    expect(shouldShowUpNextRail({ chapters: [] })).toBe(true)
+  })
+
+  it("shows nothing before the record resolves", () => {
+    expect(shouldShowUpNextRail(null)).toBe(false)
+    expect(shouldShowUpNextRail(undefined)).toBe(false)
+  })
+})
+
+describe("formatBadgeLabel", () => {
+  // Without the split the badge renders the raw enum, underscore and all —
+  // "FEATURE_FILM" instead of "FEATURE FILM". The style uppercases; this only
+  // has to unpick the underscores.
+  it("turns a multi-word wire enum into badge text", () => {
+    expect(formatBadgeLabel("FEATURE_FILM")).toBe("FEATURE FILM")
+    expect(formatBadgeLabel("SHORT_FILM")).toBe("SHORT FILM")
+    expect(formatBadgeLabel("BEHIND_THE_SCENES")).toBe("BEHIND THE SCENES")
+  })
+
+  it("passes single-word enums through untouched", () => {
+    expect(formatBadgeLabel("SERIES")).toBe("SERIES")
+    expect(formatBadgeLabel("EPISODE")).toBe("EPISODE")
+  })
+
+  it("yields null when there is no label to show (no badge chip)", () => {
+    expect(formatBadgeLabel(null)).toBeNull()
+    expect(formatBadgeLabel(undefined)).toBeNull()
+    expect(formatBadgeLabel("")).toBeNull()
+    expect(formatBadgeLabel("   ")).toBeNull()
+    expect(formatBadgeLabel("__")).toBeNull()
+  })
+})
 
 describe("formatDuration", () => {
   it("formats sub-hour durations as M:SS", () => {

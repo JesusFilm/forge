@@ -198,7 +198,7 @@ export function HeroPlayerControls({
         { detail: { playing, muted, preview: false } },
       ),
     )
-  }, [playing, muted])
+  }, [muted, playing])
 
   useEffect(() => {
     return () => {
@@ -216,6 +216,8 @@ export function HeroPlayerControls({
   // Writes happen in commit-phase effects so concurrent rendering replays
   // can't leave the refs in interim/abandoned states.
   const hoveringControlsRef = useRef(false)
+  const [pointerIdle, setPointerIdle] = useState(false)
+  const pointerIdleTimerRef = useRef<number | null>(null)
   useEffect(() => {
     hoveringControlsRef.current = hoveringControls
   }, [hoveringControls])
@@ -326,8 +328,27 @@ export function HeroPlayerControls({
     [scheduleHide],
   )
 
+  const schedulePointerIdle = useCallback(() => {
+    if (pointerIdleTimerRef.current != null) {
+      window.clearTimeout(pointerIdleTimerRef.current)
+      pointerIdleTimerRef.current = null
+    }
+
+    if (!playing) {
+      setPointerIdle(false)
+      return
+    }
+
+    pointerIdleTimerRef.current = window.setTimeout(() => {
+      setPointerIdle(true)
+      pointerIdleTimerRef.current = null
+    }, CHROME_IDLE_HIDE_DELAY_MS)
+  }, [playing])
+
   const handlePointerMove = useCallback(
     (event: PointerEvent) => {
+      setPointerIdle(false)
+      schedulePointerIdle()
       if (pointerRevealLockedRef.current) return
 
       const wrapper = wrapperRef.current
@@ -353,7 +374,7 @@ export function HeroPlayerControls({
       }
       revealDimmedControls({ pointerDriven: true })
     },
-    [revealDimmedControls, scheduleHide, wrapperRef],
+    [revealDimmedControls, scheduleHide, schedulePointerIdle, wrapperRef],
   )
 
   useEffect(() => {
@@ -448,6 +469,16 @@ export function HeroPlayerControls({
       }
     }
   }, [chromeVisibility, hoveringControls, scheduleHide])
+
+  useEffect(() => {
+    schedulePointerIdle()
+    return () => {
+      if (pointerIdleTimerRef.current != null) {
+        window.clearTimeout(pointerIdleTimerRef.current)
+        pointerIdleTimerRef.current = null
+      }
+    }
+  }, [schedulePointerIdle])
 
   // Reveal chrome on any user interaction inside the player wrapper OR on
   // the overlay anchor (where the chrome bar is portaled). Native listeners
@@ -962,6 +993,8 @@ export function HeroPlayerControls({
       onKeyDownCapture={onWatchNextInteraction}
       onPointerMove={(event) => {
         event.stopPropagation()
+        setPointerIdle(false)
+        schedulePointerIdle()
         if (revealControls({ pointerDriven: true })) {
           setHoveringControls(true)
         }
@@ -1227,7 +1260,9 @@ export function HeroPlayerControls({
         data-testid="hero-player-click-surface"
         data-playing={playing ? "true" : "false"}
         onClick={togglePlay}
-        className="absolute inset-0 z-0 cursor-default focus:outline-none"
+        className={`absolute inset-0 z-0 focus:outline-none ${
+          playing && pointerIdle ? "cursor-none" : "cursor-default"
+        }`}
       />
       {/* Chrome stays pointer-active even when dimmed so agent-driven and
           keyboard interactions reach the controls — pointer movement

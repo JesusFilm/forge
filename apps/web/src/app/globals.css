@@ -541,30 +541,6 @@
   }
 }
 
-/* Series episodes grid — ported from core/apps/watch's SectionVideoGrid:
-   a slow horizontal pan + scale pulse over a wider-than-canvas blurred
-   image (paired with `background-size: 200% 200%`) gives the Ken-Burns
-   feel without paying for any GPU-heavy filter animations. Keyframes
-   live outside @layer for the same Tailwind-v4 purge-protection reason
-   the overlay-fade keyframes do. */
-@keyframes series-backdrop-pan-zoom {
-  0% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(25%) scale(1.3);
-  }
-  100% {
-    transform: translateX(100%) scale(1);
-  }
-}
-
-@layer utilities {
-  .animate-series-backdrop-pan-zoom {
-    animation: series-backdrop-pan-zoom 28s ease-in-out infinite;
-  }
-}
-
 /* Search overlay scrollbar */
 @layer base {
   .search-overlay-scroll::-webkit-scrollbar {

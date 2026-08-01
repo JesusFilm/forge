@@ -82,15 +82,32 @@ management" section in `apps/mastra/CLAUDE.md`, an ownership bullet in
 
 **Residual risk / follow-ups.** Two tracked tickets carry everything deferred:
 
-- **feat-296** — the operational precondition: decide Langfuse hosting posture
-  (Cloud region vs self-hosted), create per-environment projects and key pairs,
-  seed the smoke prompt, and set the env vars in the safe order
+- **feat-296** — the operational precondition: create the `forge-mastra`
+  Langfuse project and its key pairs, seed the smoke prompt, and set the env
+  vars in the safe order
   (`LANGFUSE_ALLOWED_HOSTS` before `LANGFUSE_BASE_URL` — the latter is the only
   Langfuse-driven boot throw).
 - **feat-272** — the integration: seeker wiring and the prompt-composition split
   (SAFETY line and tool-coupled citation wording stay code-owned),
   stale-while-revalidate, explicit version pinning, sustained-fallback alerting
   and span stamping, and the Langfuse workspace access-control review.
+
+  > **[SUPERSEDED 2026-07-29]** The access-control review was dropped. No
+  > technical control exists behind it — protected labels are a
+  > Team/Enterprise feature this organisation is not on, and they are
+  > role-based so inert here regardless — and a sign-off process over a small
+  > all-developer roster is ceremony without a control. feat-272 item 6 now
+  > records the label-move property as a fact to know; item 2's composition
+  > split is what actually bounds it. See
+  > `docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`.
+  > **[AMENDED 2026-07-29]** The composition split was itself overruled the
+  > same day, and the seeker wiring has landed
+  > ([PR #1788](https://github.com/JesusFilm/forge/pull/1788)): feat-272
+  > item 2 records the
+  > owner's whole-prompt decision — the ENTIRE prompt (`seeker-system`),
+  > SAFETY line included, is Langfuse-managed, with the full text in code
+  > only as the compiled-in fallback. Items 3–5 (SWR, version pinning,
+  > alerting + span stamping) remain feat-272's open scope.
 
 Two risks named in the plan remain live and unmitigated by this arc because
 nothing consumes the helper yet — **silent divergence** (production serving the

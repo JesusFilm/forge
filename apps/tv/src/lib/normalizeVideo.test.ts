@@ -73,12 +73,14 @@ function makeRawDub(overrides: Record<string, unknown> = {}) {
 
 // makeRawVideo defaults to the CURRENT (inverted) schema shape: the parent's
 // children list contains ONLY this video (self-references), which is what the
-// live videoBySlug(...).children probe returns on main today.
+// live videoBySlug(...).children probe returns on main today. Own `children`
+// defaults to none — an ordinary leaf video, so the chapter rail stays absent.
 function makeRawVideo(overrides: Record<string, unknown> = {}) {
   return {
     documentId: "vid-1",
     slug: "the-crucifixion",
     label: "SEGMENT",
+    children: [] as ReturnType<typeof makeEpisodeRel>[],
     images: [
       {
         documentId: "img-1",
@@ -534,6 +536,58 @@ describe("normalizeSeries — base record + trailer", () => {
     expect(result.muxPlaybackId).toBeNull()
     expect(result.variants[0].duration).toBeNull()
     expect(result.variants[0].muxPlaybackId).toBeNull()
+  })
+})
+
+// The watch screen's chapter rail. Same own-children walk the series rail uses,
+// reached through normalizeVideo instead of normalizeSeries.
+describe("normalizeVideo — chapters (own children)", () => {
+  it("is empty for an ordinary leaf video, so no chapter rail renders", () => {
+    expect(normalizeVideo(makeRawVideo())!.chapters).toEqual([])
+  })
+
+  it("maps a feature film's chapter clips, ordered by the relation field", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        label: "FEATURE_FILM",
+        children: [
+          makeEpisodeRel("ch-2", "chapter-2", "Chapter Two", 2),
+          makeEpisodeRel("ch-1", "chapter-1", "Chapter One", 1),
+        ],
+      }),
+    )!
+    expect(result.chapters.map((c) => c.slug)).toEqual([
+      "chapter-1",
+      "chapter-2",
+    ])
+    expect(result.chapters[0].title).toBe("Chapter One")
+    expect(result.chapters[0].muxPlaybackId).toBe("ch-1-pb")
+  })
+
+  // `chapters` is the video's OWN children; `siblings` is the PARENT's other
+  // children. Conflating them is what a single "children" field would invite.
+  it("keeps chapters distinct from siblings", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        children: [makeEpisodeRel("ch-1", "chapter-1", "Chapter One", 1)],
+      }),
+    )!
+    expect(result.chapters.map((c) => c.documentId)).toEqual(["ch-1"])
+    // The base fixture's parent lists only self-references, so siblings is empty.
+    expect(result.siblings).toEqual([])
+  })
+
+  it("self-filters and dedupes exactly as the series rail does (KTD5)", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        children: [
+          makeEpisodeRel("vid-1", "the-crucifixion", "Self", 1), // self-reference
+          makeEpisodeRel("ch-1", "chapter-1", "Chapter One", 2),
+          makeEpisodeRel("ch-1", "chapter-1", "Chapter One", 3), // duplicate
+        ],
+      }),
+    )!
+    expect(result.chapters.map((c) => c.documentId)).toEqual(["ch-1"])
   })
 })
 

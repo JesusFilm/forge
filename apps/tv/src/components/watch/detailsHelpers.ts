@@ -36,6 +36,31 @@ export function buildMetadataLine(
   return segments.join("  ·  ")
 }
 
+/**
+ * Chapters win when present: Up Next lists the PARENT's other children, which
+ * beside 46 chapters of the same film is clutter, not a next step. Every other
+ * video keeps Up Next, and each rail still self-hides when empty.
+ */
+export function shouldShowUpNextRail(
+  record: Pick<WatchVideoRecord, "chapters"> | null | undefined,
+): boolean {
+  if (record == null) return false
+  return record.chapters.length === 0
+}
+
+/**
+ * `FEATURE_FILM` → `FEATURE FILM`. The badge style already uppercases, so this
+ * only unpicks the underscores — without it a film reads "FEATURE_FILM" on
+ * screen. Null/blank yields null (no badge).
+ */
+export function formatBadgeLabel(
+  label: string | null | undefined,
+): string | null {
+  if (label == null) return null
+  const text = label.trim().split("_").filter(Boolean).join(" ")
+  return text.length > 0 ? text : null
+}
+
 /** Format a duration in seconds as `M:SS` or `H:MM:SS`. Null for non-positive. */
 export function formatDuration(
   seconds: number | null | undefined,

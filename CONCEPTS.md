@@ -2,6 +2,51 @@
 
 Shared domain vocabulary for this project — entities, named processes, and status concepts with project-specific meaning. Seeded with core domain vocabulary, then accretes as ce-compound and ce-compound-refresh process learnings; direct edits are fine. Glossary only, not a spec or catch-all.
 
+## Devotional generation
+
+### Devotional Workspace
+
+The canonical file and search data plane for devotional generation. It owns
+human-authored inputs and generated artifacts while PostgreSQL owns workflow
+state and the Shorts Worker performs automated media-byte processing.
+
+A workflow attempt reads the current Devotional Workspace inventory and carries
+bounded file references through durable state. The Workspace is live rather
+than versioned, so a new retry can consume files edited after an earlier
+attempt. A Devotional Catalog Generation snapshots eligible input metadata for
+selection; it does not freeze or version the Workspace bytes themselves.
+
+### Devotional Catalog Generation
+
+An atomic, committed projection of the Devotional Workspace inputs used to
+select eligible sources during Devotional Attempt provisioning.
+
+A generation stores eligible document content and integrity metadata for
+search. Attempts carry only bounded Devotional Source References and re-read
+Workspace files before use; if a selected file changes, the existing attempt
+fails closed and a retry selects from a newly reconciled generation.
+
+### Devotional Attempt
+
+A durable record of one try to generate a devotional, binding request identity
+to a Devotional Catalog Generation and its selected Devotional Source
+References.
+
+An attempt exists before its workflow run is created so retries, restarts, and
+duplicate requests cannot create competing work. A retry creates a new attempt
+that may observe newer Workspace inputs; it does not silently rewrite the
+sources of an existing attempt.
+
+### Devotional Source Reference
+
+A bounded, content-addressed description of one Devotional Workspace input
+selected for a Devotional Attempt, carried through durable workflow state
+without embedding the source content itself.
+
+The workflow re-reads each selected file and compares its integrity metadata
+before external or irreversible boundaries. A mismatch fails the attempt
+rather than generating or publishing from mixed source versions.
+
 ## Video & media
 
 ### Smart Crop
@@ -14,12 +59,12 @@ crop-worker owns FFmpeg fingerprint/render byte work.
 ### Core ID
 
 The stable identifier from the Core API for a Core-sourced entity. For source
-video attribution, `Video.coreId` is the canonical video answer and
-`VideoDub.coreId` is Core's `videoVariantId`.
+video attribution, a Video's Core ID is the canonical answer to "which video",
+while a Dub's Core ID is Core's identifier for that specific language variant.
 
 ### Video
 
-A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their episodes — and "Up Next" siblings — are formed.
+A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their Episodes, films and their Chapters, and "Up Next" siblings are all formed — so a parent/child link alone does not say whether the parent is a container.
 
 ### Dub
 
@@ -76,6 +121,16 @@ content.
 The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
+
+### Watch Search & Social Metadata Overlay
+
+Editor-owned, per-language promotional metadata for a Watch Video that may
+change the page title, description, and social-card image without changing the
+viewer-visible Video identity, canonical route, or structured media identity.
+
+An absent overlay inherits the selected locale's canonical copy and existing
+image fallback. Managed social art remains promotional: it does not become the
+Video's thumbnail truth.
 
 ## Video source mapper
 
@@ -485,9 +540,20 @@ Its audio has already faded to silence by the window end; only the picture rolls
 
 Showcase Mode's degradation floor: a slideshow of poster art from the last-good reel, entered when consecutive excerpt failures cross the breaker or when nothing playable resolves at all. It is a holding state rather than an end state — it periodically re-attempts resolution and rejoins the reel when one succeeds, which is what keeps a network blip from ending the session.
 
+### Chapter
+
+A child Video that is a segment of one longer film, not a work in its own right. Chapters are how a feature film is broken up for navigation; the parent film remains a single playable item, and the Chapters are an index into it rather than a season of separate works.
+_Contrast:_ an Episode is a child of a series and stands alone. Because both arrive as parent/child links, the child relationship cannot distinguish them — only the parent's catalog label does.
+
+### Episode
+
+A child Video of a series that is a work in its own right — watchable and meaningful on its own, one installment of an ordered run. Only a Series-Shaped parent has Episodes; a film's children are Chapters.
+
 ### Series-Shaped
 
-The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. The test is label-only — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
+
+Children are deliberately **not** part of the test. A feature film may carry its own Chapters as children while remaining one playable item, so presence of children says nothing about whether a record is a container. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
 
 ### First Rail Ready
 
@@ -522,7 +588,7 @@ One curated group of collections whose videos are candidates for the Hero Queue.
 
 The rule deciding which catalog records may appear as Hero Queue slides: individually-playable videos — feature films and short films — are eligible and contribute their own tile, while container records (collections and series) are excluded, even though Carousel Pools are built around such containers.
 
-An eligible film is emitted as a single parent tile, never expanded into its chapter children — a feature film with dozens of episodes still shows as one hero slide. Clients enforce the same rule through different signals: the web client keys on whether a record carries a playable stream, while the leaner native clients, which do not fetch that stream, approximate it from the record's catalog type. That approximation is deliberately looser than exact stream-level playability, so a native client may surface a few films the stream-level check would drop. Because Carousel Pools that yield no eligible video drop out entirely, excluding the containers can also change which later pools the round-robin reaches.
+An eligible film is emitted as a single parent tile, never expanded into its Chapters — a feature film with many of them still shows as one hero slide. Clients enforce the same rule through different signals: the web client keys on whether a record carries a playable stream, while the leaner native clients, which do not fetch that stream, approximate it from the record's catalog type. That approximation is deliberately looser than exact stream-level playability, so a native client may surface a few films the stream-level check would drop. Because Carousel Pools that yield no eligible video drop out entirely, excluding the containers can also change which later pools the round-robin reaches.
 
 ### Played Set
 
@@ -610,9 +676,13 @@ The external `jesusfilm-rag` retrieval service — a standalone system serving b
 
 ### Managed Prompt
 
-A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI — and each environment gets its own Langfuse project and key pair, so a leaked dev key cannot read tuned production prompt text. Nothing consumes the helper yet; agent wiring is tracked follow-up work (feat-272).
+A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI. Every agent's prompt lives in one Langfuse project, with labels marking which version each environment runs, so promoting a tuned prompt is a label move rather than a copy between projects. The seeker agent is the first consumer (feat-272): its whole system prompt — safety and citation wording included, no composition split — is the managed prompt `seeker-system`, with the full working text compiled in as the fallback. Confidentiality of the tuned text extends only to the Mastra network boundary: the runtime's built-in `/api/agents*` surface returns resolved instructions verbatim, so the managed prompt is kept out of the public repo but must never carry secrets.
+
+During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
 
 ## Flagged ambiguities
 
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
+- "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.
+- "Episode" had been used loosely for any child Video, which is what let a film's Chapters be counted and billed as episodes. An Episode is a child of a series and stands alone; a film's children are Chapters.

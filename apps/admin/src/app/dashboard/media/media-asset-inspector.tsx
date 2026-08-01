@@ -39,10 +39,12 @@ type LocaleActionResult =
     }
 
 type UsageItem = {
-  experienceId: string
-  experienceLocaleId: string
+  resourceType: "EXPERIENCE_LOCALE" | "VIDEO_LOCALE"
+  resourceLocaleId: string
   locale: string
   title: string | null
+  editUrl: string
+  recoverable: boolean
   fieldPath: string
 }
 
@@ -407,24 +409,26 @@ export function MediaAssetInspector({
           <div className="divide-y divide-[var(--color-hairline)]">
             {usage.map((item) => (
               <Link
-                key={`${item.experienceLocaleId}:${item.fieldPath}`}
-                href={
-                  `/dashboard/experiences/${item.experienceId}?locale=${item.locale}` as Route
-                }
+                key={`${item.resourceType}:${item.resourceLocaleId}:${item.fieldPath}`}
+                href={item.editUrl as Route}
                 className="grid gap-1 px-3 py-3 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
               >
                 <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
-                  {item.title ?? item.experienceLocaleId}
+                  {item.title ?? item.resourceLocaleId}
                 </div>
                 <div className="mono-meta text-[var(--color-text-muted)]">
-                  {item.locale} / {item.fieldPath}
+                  {item.resourceType === "VIDEO_LOCALE"
+                    ? "Video"
+                    : "Experience"}
+                  {item.recoverable ? " (recoverable)" : ""} / {item.locale} /{" "}
+                  {item.fieldPath}
                 </div>
               </Link>
             ))}
             {usage.length === 0 ? (
               <div className="px-3 py-6 text-[12px] text-[var(--color-text-muted)]">
-                This asset is not currently referenced by any experience
-                metadata or block field.
+                This asset is not currently referenced by any experience or
+                video locale field.
               </div>
             ) : null}
           </div>

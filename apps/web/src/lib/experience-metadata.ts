@@ -101,7 +101,7 @@ type WatchMetadataImage = {
   width: number
   height: number
   alt: string
-  type: "image/jpeg"
+  type?: string
 }
 
 export type WatchStructuredDataCaption = {
@@ -111,6 +111,40 @@ export type WatchStructuredDataCaption = {
 
 const MUX_SOCIAL_IMAGE_WIDTH = 1200
 const MUX_SOCIAL_IMAGE_HEIGHT = 630
+
+function trimmedValue(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+function positiveDimension(value: number | null | undefined, fallback: number) {
+  return value != null && Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+function buildManagedSocialImage(
+  image:
+    | {
+        url: string
+        width: number | null
+        height: number | null
+        mimeType?: string | null
+      }
+    | null
+    | undefined,
+  alt: string,
+): WatchMetadataImage | null {
+  const url = trimmedValue(image?.url)
+  if (!url) return null
+  const mimeType = trimmedValue(image?.mimeType)
+
+  return {
+    url,
+    width: positiveDimension(image?.width, DEFAULT_OG_IMAGE.width),
+    height: positiveDimension(image?.height, DEFAULT_OG_IMAGE.height),
+    alt,
+    ...(mimeType ? { type: mimeType } : {}),
+  }
+}
 
 function buildMuxSocialImage(
   playbackId: string | null | undefined,
@@ -173,8 +207,13 @@ export function buildWatchVideoMetadataModel(
   const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
   const videoTitle = options.video.title || options.routeSlug || "Watch"
   const structuredDataTitle = options.video.title?.trim() || null
-  const title = `${videoTitle} ${TITLE_SUFFIX}`
-  const description = options.video.description ?? options.video.snippet ?? ""
+  const title =
+    trimmedValue(options.video.searchTitle) ?? `${videoTitle} ${TITLE_SUFFIX}`
+  const description =
+    trimmedValue(options.video.searchDescription) ??
+    options.video.description ??
+    options.video.snippet ??
+    ""
   const structuredDataDescription =
     options.video.description?.trim() ||
     options.video.snippet?.trim() ||
@@ -187,11 +226,16 @@ export function buildWatchVideoMetadataModel(
     options.selectedVariant.muxVideo?.playbackId,
     imageAlt,
   )
+  const managedSocialImage = buildManagedSocialImage(
+    options.video.socialImage,
+    imageAlt,
+  )
   const posterUrl = resolvePosterUrl(
     options.video.images?.[0],
     options.selectedVariant.muxVideo?.playbackId,
   )
   const image =
+    managedSocialImage ??
     muxSocialImage ??
     (posterUrl
       ? {
@@ -284,27 +328,32 @@ function toMetadata(
     // routinely below that floor (one-line taglines). Keep snippet as the
     // fallback so videos with no body description still get something.
     const description =
+      trimmedValue(resolvedPage.routeVideo.searchDescription) ??
       resolvedPage.routeVideo.description ??
       resolvedPage.routeVideo.snippet ??
       ""
     const baseTitle = resolvedPage.routeVideo.title || options?.slug || "Watch"
-    // Always append the brand suffix so video pages get the same
-    // "<title> | Jesus Film Project" treatment that experience pages and
-    // series pages already produce (via `experienceToMetadata` and
-    // `generateSeriesMetadata`).
-    const title = `${baseTitle} ${TITLE_SUFFIX}`
-    const ogImage = resolvedPage.routeVideo.imageUrl
+    const title =
+      trimmedValue(resolvedPage.routeVideo.searchTitle) ??
+      `${baseTitle} ${TITLE_SUFFIX}`
+    const imageAlt =
+      resolvedPage.routeVideo.imageAlt ??
+      resolvedPage.routeVideo.title ??
+      DEFAULT_OG_IMAGE.alt
+    const managedSocialImage = buildManagedSocialImage(
+      resolvedPage.routeVideo.socialImage,
+      imageAlt,
+    )
+    const fallbackImage = resolvedPage.routeVideo.imageUrl
       ? {
           url: resolvedPage.routeVideo.imageUrl,
           width: DEFAULT_OG_IMAGE.width,
           height: DEFAULT_OG_IMAGE.height,
-          alt:
-            resolvedPage.routeVideo.imageAlt ??
-            resolvedPage.routeVideo.title ??
-            DEFAULT_OG_IMAGE.alt,
+          alt: imageAlt,
           type: "image/jpeg" as const,
         }
       : DEFAULT_OG_IMAGE
+    const ogImage = managedSocialImage ?? fallbackImage
 
     return {
       title,

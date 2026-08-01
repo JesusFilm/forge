@@ -41,6 +41,7 @@
     "seed-watch-homepage-experience": "tsx --env-file=.env src/scripts/seed-watch-homepage-experience.ts",
     "watch-route-manifest:generate": "tsx --env-file=.env src/scripts/generate-watch-route-manifest.ts",
     "watch-seo-manifest:generate": "tsx --env-file=.env src/scripts/generate-watch-seo-manifest.ts",
+    "verify:video-search-social-seed": "tsx --env-file=.env src/scripts/verify-video-search-social-seed.ts",
     "manager:grant-operator": "tsx --env-file=.env src/scripts/grant-manager-operator.ts",
     "trigger-enrichment": "tsx src/scripts/trigger-enrichment.ts",
     "workflow:setup:postgres": "workflow-postgres-setup",

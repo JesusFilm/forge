@@ -126,48 +126,36 @@ describe("pickDefaultTrailer", () => {
 
 describe("resolveLeafBounce", () => {
   it("renders a series-shaped record (label), even before the series query answers", () => {
-    expect(resolveLeafBounce({ label: "SERIES", episodes: [] }, false)).toBe(
-      "render",
-    )
-    expect(resolveLeafBounce({ label: "COLLECTION", episodes: [] }, true)).toBe(
-      "render",
-    )
-  })
-
-  it("renders an unlabeled record that has episodes", () => {
-    expect(resolveLeafBounce({ label: null, episodes: [{}] }, true)).toBe(
-      "render",
-    )
+    expect(resolveLeafBounce({ label: "SERIES" }, false)).toBe("render")
+    expect(resolveLeafBounce({ label: "COLLECTION" }, true)).toBe("render")
   })
 
   it("bounces a labeled leaf once the series query has answered", () => {
-    expect(
-      resolveLeafBounce({ label: "FEATURE_FILM", episodes: [] }, true),
-    ).toBe("bounce")
-    expect(resolveLeafBounce({ label: "EPISODE", episodes: [] }, true)).toBe(
-      "bounce",
-    )
+    expect(resolveLeafBounce({ label: "FEATURE_FILM" }, true)).toBe("bounce")
+    expect(resolveLeafBounce({ label: "EPISODE" }, true)).toBe("bounce")
   })
 
   it("bounces an unlabeled leaf once the series query has answered", () => {
-    expect(resolveLeafBounce({ label: null, episodes: [] }, true)).toBe(
-      "bounce",
-    )
+    expect(resolveLeafBounce({ label: null }, true)).toBe("bounce")
+  })
+
+  // A stale /series/jesus link (or a warm cache entry from before the fix) must
+  // self-correct: the film is a leaf now, so this bounces to /watch. Its inverse,
+  // resolveWatchRedirect, keeps FEATURE_FILM on /watch — no ping-pong.
+  it("bounces a feature film that has chapter clips, so old /series links self-correct", () => {
+    expect(resolveLeafBounce({ label: "FEATURE_FILM" }, true)).toBe("bounce")
+    expect(resolveLeafBounce({ label: "SHORT_FILM" }, true)).toBe("bounce")
   })
 
   it("is pending for a warm watch-fragment partial, even when it carries a leaf label", () => {
     // Regression (review finding #1): a warm videoBySlug partial (label, no series
     // selection) replays loading=false and looks leaf-shaped; a labeled-with-children
     // series would be ejected to /watch unrecoverably (once-guarded). Stay pending.
-    expect(
-      resolveLeafBounce({ label: "FEATURE_FILM", episodes: [] }, false),
-    ).toBe("pending")
+    expect(resolveLeafBounce({ label: "FEATURE_FILM" }, false)).toBe("pending")
   })
 
   it("is pending for partial data that lacks a label", () => {
-    expect(resolveLeafBounce({ label: null, episodes: [] }, false)).toBe(
-      "pending",
-    )
+    expect(resolveLeafBounce({ label: null }, false)).toBe("pending")
   })
 
   it("is pending when there is no record yet", () => {

@@ -5,7 +5,6 @@ import {
   DevotionalLlmError,
   type DevotionalLlm,
 } from "../../../services/devotional/llm"
-import { resolveStoredInstructions } from "./instruction-resolver"
 
 /**
  * Adapter: run the tuned devotional services on a Mastra Agent's INSTRUCTIONS
@@ -19,7 +18,7 @@ import { resolveStoredInstructions } from "./instruction-resolver"
  * behavior on judgment tasks (the Spurgeon ranker's "none fits" −1 became a
  * forced pick ×3/×3). Parity is a hard requirement, so the transport stays
  * byte-identical; the system prompt is resolved from the Agent per call, so
- * Studio-published instruction edits flow into production requests.
+ * Workspace-authored instruction edits flow into production requests.
  *
  * When Mastra's structured output supports strict mode, flip the transport to
  * native `agent.generate` and re-run the parity scripts.
@@ -35,43 +34,15 @@ export function createAgentLlm(agent: Agent, modelId: string): DevotionalLlm {
   return {
     model: `mastra-agent:${agent.id}:${modelId}`,
     async complete(input) {
-      let system: string
-      try {
-        // Studio-published edits (stored agent config) win; the coded
-        // instructions are the fallback. See instruction-resolver.ts.
-        const stored = await resolveStoredInstructions(agent.id)
-        system = stored ?? coerceInstructions(await agent.getInstructions())
-      } catch (error) {
-        throw new DevotionalLlmError(
-          "request_failed",
-          `agent ${agent.id} instruction resolution failed: ${error instanceof Error ? error.message : String(error)}`,
-          error,
-        )
-      }
-      if (!system.trim()) {
+      const system = input.system?.trim()
+      if (!system) {
         throw new DevotionalLlmError(
           "validation",
-          `agent ${agent.id} resolved empty instructions`,
+          `agent ${agent.id} requires verified Workspace instructions`,
         )
       }
       inner ??= createDevotionalLlm({ model: modelId })
       return inner.complete({ ...input, system })
     },
   }
-}
-
-/** AgentInstructions can be a string, an array, or message-shaped objects. */
-function coerceInstructions(instructions: unknown): string {
-  if (typeof instructions === "string") return instructions
-  if (Array.isArray(instructions)) {
-    return instructions.map((i) => coerceInstructions(i)).join("\n")
-  }
-  if (
-    instructions != null &&
-    typeof instructions === "object" &&
-    "content" in instructions
-  ) {
-    return coerceInstructions((instructions as { content: unknown }).content)
-  }
-  return String(instructions ?? "")
 }

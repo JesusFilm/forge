@@ -913,6 +913,82 @@ describe("LanguageCombobox", () => {
     expect(onChange).toHaveBeenCalledWith("spanish")
   })
 
+  it("connects the search combobox to its active listbox option", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const trigger = $("[data-testid=language-combobox-trigger]")
+    const combobox = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    const listbox = $("[role=listbox]")
+    const options = $$("[role=option]")
+    const spanishOptionId = options[1]?.id
+
+    expect(combobox.getAttribute("role")).toBe("combobox")
+    expect(combobox.getAttribute("aria-autocomplete")).toBe("list")
+    expect(combobox.getAttribute("aria-expanded")).toBe("true")
+    expect(combobox.getAttribute("aria-controls")).toBe(listbox?.id)
+    expect(trigger?.getAttribute("aria-controls")).toBe(listbox?.id)
+    expect(combobox.getAttribute("aria-activedescendant")).toBe(options[0]?.id)
+
+    act(() => {
+      combobox.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+    })
+
+    expect(combobox.getAttribute("aria-activedescendant")).toBe(spanishOptionId)
+
+    act(() => {
+      combobox.value = "span"
+      combobox.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect($$("[role=option]")[0]?.id).toBe(spanishOptionId)
+    expect(combobox.getAttribute("aria-activedescendant")).toBe(spanishOptionId)
+  })
+
+  it("keeps the active option mounted during virtualized keyboard navigation", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={MANY_OPTIONS}
+          value="language-0"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const combobox = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      for (let index = 0; index < 30; index += 1) {
+        combobox.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+        )
+      }
+    })
+
+    const activeOptionId = combobox.getAttribute("aria-activedescendant")
+    expect(activeOptionId).not.toBeNull()
+    expect(document.getElementById(activeOptionId ?? "")).not.toBeNull()
+  })
+
   it("Enter selects the first ranked option after search filtering", () => {
     const onChange = vi.fn()
     const OPTIONS_WITH_RUSSIAN = [

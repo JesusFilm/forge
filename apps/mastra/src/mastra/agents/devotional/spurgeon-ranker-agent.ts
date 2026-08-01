@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 
-import { SYSTEM_PROMPT } from "../../../services/devotional/spurgeon-ranker"
+import { requireResolvedInstructions } from "./instruction-resolver"
 import { devotionalModel } from "./model"
 
 /**
@@ -12,6 +12,6 @@ import { devotionalModel } from "./model"
 export const spurgeonRankerAgent = new Agent({
   id: "devotionalSpurgeonRanker",
   name: "Devotional Spurgeon Ranker",
-  instructions: SYSTEM_PROMPT,
+  instructions: () => requireResolvedInstructions("devotionalSpurgeonRanker"),
   model: devotionalModel,
 })

@@ -42,9 +42,13 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   `getManagedPrompt` with caller-supplied fallback and provenance). Fully
   optional config — unset serves the fallback (`config_missing`), never a
   boot failure. Prompt authoring, versioning, and label moves stay in the
-  Langfuse UI; per-environment Langfuse projects keep dev keys away from
-  tuned prod prompt text. Nothing consumes the helper yet — seeker
-  integration is tracked as feat-272 in the ai-chat lane.
+  Langfuse UI. ONE Langfuse project (`forge-mastra`) holds every agent's
+  prompt, with labels `production` / `development` distinguishing
+  environments; two key pairs (Railway + local dev) live inside it. The
+  seeker agent is the one consumer (feat-272): its `instructions` resolve
+  through `getManagedPrompt` (prompt `seeker-system`, WHOLE prompt — no
+  composition split) with the full working text as compiled-in fallback.
+  Langfuse tracing is separate unbuilt work (feat-321).
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized
@@ -137,6 +141,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   prefer defaults/optional fields that render usable Studio forms.
 - Keep service-bearer auth scoped to explicit `/forge-*` service routes so
   Studio's built-in `/api/workflows` calls continue to work.
+- Parse programmatic workflow input through its exported Zod schema before
+  calling `run.start` or `run.startAsync`. Mastra 1.55 types those calls with
+  the schema output, so fields supplied by `.default()` are required there;
+  do not bypass the contract with casts.
 
 ## Validation
 

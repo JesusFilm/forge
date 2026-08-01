@@ -48,7 +48,9 @@ The symptom that surfaced (user-reported): _"shifting focus across the top carou
 
 2. **Defer the scroll for unmeasured rows.** A row's `y` comes from `onLayout`, which fires asynchronously after mount (and again after a refetch remounts rows). A card focused before its row is measured yields a `null` target; silently dropping it strands the card. Stash the pending row and flush it when `onLayout` lands.
 
-3. **Reset the measured-`y` cache when the model's row set changes.** A background refetch remounts rows; stale `y` values from the previous layout would anchor focus to the wrong position during the re-measure window. Clear the cache (and the pending-scroll ref) and let `onLayout` repopulate — the deferred-scroll path covers the gap.
+3. **~~Reset the measured-`y` cache when the model's row set changes.~~ SUPERSEDED 2026-07-28 — TRIM, never wipe.** The original guidance below (`rowYsRef.current = []` keyed on `sections`) caused a production bug. `useWatchHome` hands the screen a fresh `sections` array on every `setModel` — snapshot hydration, then a network reconcile that waits on a top-up fetch — so the wipe ran routinely on byte-identical rows. React Native's `onLayout` only re-fires when geometry actually _changes_, so unchanged rows never re-reported: `resolveRowScrollTarget` returned `null` on every focus and D-pad scrolling died silently, while the scrim and top-bar hide (plain state) kept reacting. Whether the wipe landed before or after first layout is why it presented as "sometimes, after a long idle."
+
+   Trim to the live row count instead (`trimRowMeasurements`). Keeping measurements is safe by construction: `onLayout` re-fires for any row whose `y` really moved, an unmoved row's old `y` is still correct, and entries past `rowCount` are never read. Pair it with `resolveRowMeasurementEffect`, a three-way discriminator (`flush-pending` / `reanchor` / `none`) that re-anchors when a re-measure shifts the row currently holding focus — that covers the stale-`y` case this rule was originally reaching for, without discarding data to get there. The `focusedRowRef` it reads must be cleared by **every** handler that moves focus out of the rails; missing one leaves a stale positional index that re-anchors to the wrong row.
 
 ```tsx
 // ScrollView — native focus-scroll OFF; all scrolling is programmatic.
@@ -81,11 +83,20 @@ const recordRowY = useCallback((rowIndex: number, y: number) => {
 }, [scrollToRow])
 
 // Reset stale measurements when the section set changes (refetch remounts rows).
+// SUPERSEDED — see rule 3. This wipe silently killed focus-driven scrolling:
+// const sections = model?.sections
+// useEffect(() => {
+//   rowYsRef.current = []
+//   pendingScrollRowRef.current = null
+// }, [sections])
+
+// Current: trim to the live row count, never wipe.
 const sections = model?.sections
 useEffect(() => {
-  rowYsRef.current = []
+  trimRowMeasurements(rowYsRef.current, rowCount)
   pendingScrollRowRef.current = null
-}, [sections])
+  lastFocusedRowRef.current = null
+}, [sections, rowCount])
 ```
 
 Keep the row-target math pure and tested (`resolveRowScrollTarget` in `homeScrollState.ts`): row 0 returns `0`; rows `>= 1` return `max(0, rowY - anchorOffset)`; an unmeasured row returns `null`. The `null` is the contract the deferred-scroll path depends on — do not replace it with a fallback value.

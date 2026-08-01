@@ -184,6 +184,13 @@ vi.mock("@/app/dashboard/live-data", () => ({
   loadVideoLibraryDetail: vi.fn(async () => null),
 }))
 
+vi.mock("@/app/dashboard/videos/video-search-social-data", () => ({
+  loadInitialVideoSearchSocialState: vi.fn(async () => ({
+    initialOptions: [],
+    initialLocale: null,
+  })),
+}))
+
 vi.mock("@/app/dashboard/ops-data", () => ({
   loadDashboardOpsData: vi.fn(async () => ({
     metrics: [

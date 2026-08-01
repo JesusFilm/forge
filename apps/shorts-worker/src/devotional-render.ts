@@ -3,7 +3,8 @@
 // the worker owns Arclight lookup, source download, ffmpeg preparation, Chromium,
 // and durable portrait/wide outputs.
 
-import { createWriteStream } from "node:fs"
+import { createHash } from "node:crypto"
+import { createReadStream, createWriteStream } from "node:fs"
 import { copyFile, cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises"
 import { once } from "node:events"
 import { createRequire } from "node:module"
@@ -12,6 +13,7 @@ import { dirname, join } from "node:path"
 import { Readable } from "node:stream"
 import { fileURLToPath } from "node:url"
 import { z } from "zod"
+import { devotionalRenderConfigSchema } from "@forge/shorts-compositions/devotional/styles"
 import { env } from "./config/env.js"
 import { JobDeadlineExceededError, type JobDeadline } from "./deadline.js"
 import { WorkerError } from "./errors.js"
@@ -23,7 +25,18 @@ import {
 } from "./ffmpeg.js"
 import { createDefaultRenderEngine, type RenderEngine } from "./render.js"
 import { validateSourceUrl } from "./source-url.js"
-import { artifactKey, createStorage, type Storage } from "./storage.js"
+import {
+  artifactKey,
+  createDevotionalStorage,
+  devotionalAttemptToken,
+  devotionalManifestKey,
+  devotionalManifestRefFromAssetId,
+  devotionalWorkspaceAssetId,
+  devotionalWorkspaceKey,
+  type DevotionalAttemptIdentity,
+  type Storage,
+  type WorkspaceArtifactRef,
+} from "./storage.js"
 import type {
   ArtifactRef,
   DevotionalRenderMetaArtifact,
@@ -58,6 +71,46 @@ const BACKGROUND_SAFETY_MARGIN_SEC = 3
 const VIDEO_SPEED = 1.12
 const SOURCE_TRAILER_SEC = 8
 
+const workspaceRefSchema = z.object({
+  schemaVersion: z.literal("2"),
+  key: z.string().min(1),
+  digest: z.string().regex(/^[a-f0-9]{64}$/),
+  size: z.number().int().positive(),
+  contentType: z.string().min(1),
+  attempt: z.object({
+    workspaceGeneration: z.number().int().positive(),
+    attemptId: z.string().regex(SAFE_SEGMENT_ID).max(128),
+    runId: z.string().regex(SAFE_SEGMENT_ID).max(128),
+  }),
+})
+
+const workspaceManifestSchema = z.object({
+  schemaVersion: z.literal("2"),
+  kind: z.enum(["run-input", "attempt-output"]),
+  attempt: workspaceRefSchema.shape.attempt,
+  artifacts: z.array(
+    z.object({
+      artifactType: z.string().regex(SAFE_SEGMENT_ID),
+      ext: z.string().regex(SAFE_SEGMENT_ID),
+      ref: workspaceRefSchema,
+    }),
+  ),
+  report: z
+    .object({
+      portrait: z.object({
+        outputDurationSec: z.number().positive(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+      wide: z.object({
+        outputDurationSec: z.number().positive(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    })
+    .optional(),
+})
+
 const devotionalCardInputSchema = z.object({
   kind: z.enum([
     "cover",
@@ -88,6 +141,7 @@ const devotionalCardInputSchema = z.object({
 
 export const devotionalRenderInputSchema = z.object({
   schemaVersion: z.literal("1"),
+  renderConfig: devotionalRenderConfigSchema,
   headerDate: z.string().min(1).max(128),
   attribution: z.string().max(512).optional(),
   media: z.object({
@@ -97,6 +151,7 @@ export const devotionalRenderInputSchema = z.object({
     clipStartSec: z.number().nonnegative(),
     clipLengthSec: z.number().positive().max(600),
     videoCardSec: z.number().positive().max(600).optional(),
+    sourceMediaRef: workspaceRefSchema.optional(),
   }),
   cards: z
     .array(devotionalCardInputSchema)
@@ -197,6 +252,20 @@ export type RunDevotionalRenderInput = {
 export type RunDevotionalRenderResult = {
   artifacts: ArtifactRef[]
   report: DevotionalRenderReport
+}
+
+async function fileDigest(filePath: string): Promise<{
+  digest: string
+  size: number
+}> {
+  const hash = createHash("sha256")
+  let size = 0
+  for await (const chunk of createReadStream(filePath)) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    hash.update(bytes)
+    size += bytes.byteLength
+  }
+  return { digest: hash.digest("hex"), size }
 }
 
 function timeoutMs(deadline: JobDeadline | undefined, cap: number): number {
@@ -633,7 +702,7 @@ export async function runDevotionalRender({
   deps = {},
   onProgress,
 }: RunDevotionalRenderInput): Promise<RunDevotionalRenderResult> {
-  const storage = deps.storage ?? createStorage()
+  const storage = deps.storage ?? createDevotionalStorage()
   const engine = deps.engine ?? createDefaultRenderEngine()
   const runCommand = deps.runCommand ?? defaultRunCommand
   const fetchImpl = deps.fetchImpl ?? fetch
@@ -651,15 +720,52 @@ export async function runDevotionalRender({
   const publicDir = join(tempDir, "public")
   const serveDir = join(tempDir, "bundle")
   const written: ArtifactRef[] = []
+  let workspaceManifest: z.infer<typeof workspaceManifestSchema> | undefined
   let browser: Awaited<ReturnType<RenderEngine["openBrowser"]>> | undefined
   try {
     await mkdir(publicDir, { recursive: true })
     onProgress?.(0.01, "Loading devotional render input")
-    const raw = await storage.readArtifact(
-      inputAssetId,
-      DEVOTIONAL_INPUT_ARTIFACT_TYPE,
-      "json",
-    )
+    const inputManifestRef = devotionalManifestRefFromAssetId(inputAssetId)
+    let raw: Uint8Array
+    if (inputManifestRef?.key.includes("/run-input/")) {
+      const manifestBytes =
+        await storage.readWorkspaceArtifact(inputManifestRef)
+      let manifestPayload: unknown
+      try {
+        manifestPayload = JSON.parse(
+          Buffer.from(manifestBytes).toString("utf8"),
+        )
+      } catch {
+        throw new DevotionalInputError("devotional input manifest is not JSON")
+      }
+      const parsedManifest = workspaceManifestSchema.safeParse(manifestPayload)
+      if (
+        !parsedManifest.success ||
+        parsedManifest.data.kind !== "run-input" ||
+        devotionalAttemptToken(parsedManifest.data.attempt.attemptId) !==
+          inputManifestRef.key.split("/")[2]
+      ) {
+        throw new DevotionalInputError("devotional input manifest is invalid")
+      }
+      workspaceManifest = parsedManifest.data
+      const specRef = workspaceManifest.artifacts.find(
+        (entry) =>
+          entry.artifactType === DEVOTIONAL_INPUT_ARTIFACT_TYPE &&
+          entry.ext === "json",
+      )?.ref
+      if (!specRef) {
+        throw new DevotionalInputError(
+          "devotional input manifest omits the spec",
+        )
+      }
+      raw = await storage.readWorkspaceArtifact(specRef)
+    } else {
+      raw = await storage.readArtifact(
+        inputAssetId,
+        DEVOTIONAL_INPUT_ARTIFACT_TYPE,
+        "json",
+      )
+    }
     if (raw.byteLength > 1_000_000) {
       throw new DevotionalInputError("devotional render input exceeds 1MB")
     }
@@ -677,6 +783,81 @@ export async function runDevotionalRender({
     }
     const input = parsed.data
 
+    if (workspaceManifest) {
+      const attempt = workspaceManifest.attempt as DevotionalAttemptIdentity
+      const existing = await storage.readWorkspaceManifest(
+        attempt,
+        "attempt-output",
+      )
+      if (existing) {
+        let payload: unknown
+        try {
+          payload = JSON.parse(Buffer.from(existing.body).toString("utf8"))
+        } catch {
+          throw new DevotionalOutputError(
+            "existing output manifest is not JSON",
+          )
+        }
+        const completed = workspaceManifestSchema.safeParse(payload)
+        const portraitRef = completed.success
+          ? completed.data.artifacts.find(
+              (entry) =>
+                entry.artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE &&
+                entry.ext === "mp4",
+            )?.ref
+          : undefined
+        const wideRef = completed.success
+          ? completed.data.artifacts.find(
+              (entry) =>
+                entry.artifactType === DEVOTIONAL_WIDE_ARTIFACT_TYPE &&
+                entry.ext === "mp4",
+            )?.ref
+          : undefined
+        if (
+          !completed.success ||
+          completed.data.kind !== "attempt-output" ||
+          !completed.data.report ||
+          !portraitRef ||
+          !wideRef
+        ) {
+          throw new DevotionalOutputError(
+            "existing output manifest is incomplete",
+          )
+        }
+        await storage.verifyWorkspaceArtifact(portraitRef)
+        await storage.verifyWorkspaceArtifact(wideRef)
+        const finalAssetId = devotionalWorkspaceAssetId({
+          kind: "output",
+          workspaceGeneration: attempt.workspaceGeneration,
+          attemptToken: devotionalAttemptToken(attempt.attemptId),
+          manifestDigest: existing.ref.digest,
+          manifestSize: existing.ref.size,
+        })
+        const portrait: DevotionalRenderOutput = {
+          artifact: {
+            assetId: finalAssetId,
+            artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+            ext: "mp4",
+            ...portraitRef,
+          },
+          ...completed.data.report.portrait,
+        }
+        const wide: DevotionalRenderOutput = {
+          artifact: {
+            assetId: finalAssetId,
+            artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+            ext: "mp4",
+            ...wideRef,
+          },
+          ...completed.data.report.wide,
+        }
+        return {
+          artifacts: [portrait.artifact, wide.artifact],
+          report: { portrait, wide },
+        }
+      }
+    }
+
     const cards: Array<Record<string, unknown>> = []
     for (const card of input.cards) {
       const { narrationId, ...content } = card
@@ -691,12 +872,22 @@ export async function runDevotionalRender({
       const artifactType = devotionalNarrationArtifactType(narrationId)
       const fileName = `${artifactType}.mp3`
       const filePath = join(publicDir, fileName)
-      await storage.readArtifactToFile(
-        inputAssetId,
-        artifactType,
-        "mp3",
-        filePath,
-      )
+      const narrationRef = workspaceManifest?.artifacts.find(
+        (entry) => entry.artifactType === artifactType && entry.ext === "mp3",
+      )?.ref
+      if (workspaceManifest) {
+        if (!narrationRef) {
+          throw new DevotionalInputError(`input manifest omits ${artifactType}`)
+        }
+        await storage.readWorkspaceArtifactToFile(narrationRef, filePath)
+      } else {
+        await storage.readArtifactToFile(
+          inputAssetId,
+          artifactType,
+          "mp3",
+          filePath,
+        )
+      }
       cards.push({
         ...content,
         audioFile: fileName,
@@ -709,31 +900,50 @@ export async function runDevotionalRender({
       })
     }
     if (input.music) {
-      await storage.readArtifactToFile(
-        inputAssetId,
-        DEVOTIONAL_MUSIC_ARTIFACT_TYPE,
-        "mp3",
-        join(publicDir, `${DEVOTIONAL_MUSIC_ARTIFACT_TYPE}.mp3`),
-      )
+      const musicPath = join(publicDir, `${DEVOTIONAL_MUSIC_ARTIFACT_TYPE}.mp3`)
+      const musicRef = workspaceManifest?.artifacts.find(
+        (entry) =>
+          entry.artifactType === DEVOTIONAL_MUSIC_ARTIFACT_TYPE &&
+          entry.ext === "mp3",
+      )?.ref
+      if (workspaceManifest) {
+        if (!musicRef)
+          throw new DevotionalInputError("input manifest omits music")
+        await storage.readWorkspaceArtifactToFile(musicRef, musicPath)
+      } else {
+        await storage.readArtifactToFile(
+          inputAssetId,
+          DEVOTIONAL_MUSIC_ARTIFACT_TYPE,
+          "mp3",
+          musicPath,
+        )
+      }
     }
 
     onProgress?.(0.05, "Resolving devotional source")
-    const sourceUrl =
-      input.media.sourceUrl ??
-      (await resolveArclightSourceUrl(
-        input.media.mediaId,
+    const fullPath = join(tempDir, "source.mp4")
+    if (input.media.sourceMediaRef) {
+      await storage.readWorkspaceArtifactToFile(
+        input.media.sourceMediaRef,
+        fullPath,
+      )
+    } else {
+      const sourceUrl =
+        input.media.sourceUrl ??
+        (await resolveArclightSourceUrl(
+          input.media.mediaId,
+          fetchImpl,
+          deadline,
+          signal,
+        ))
+      await downloadSource(sourceUrl, fullPath, {
         fetchImpl,
+        allowedHosts,
+        nodeEnv,
         deadline,
         signal,
-      ))
-    const fullPath = join(tempDir, "source.mp4")
-    await downloadSource(sourceUrl, fullPath, {
-      fetchImpl,
-      allowedHosts,
-      nodeEnv,
-      deadline,
-      signal,
-    })
+      })
+    }
     const sourceProbe = await probeMedia(fullPath, {
       runCommand,
       timeoutMs: timeoutMs(deadline, DEFAULT_PROBE_TIMEOUT_MS),
@@ -788,6 +998,7 @@ export async function runDevotionalRender({
     })
 
     const inputProps: Record<string, unknown> = {
+      renderConfig: input.renderConfig,
       headerDate: input.headerDate,
       ...(input.attribution ? { attribution: input.attribution } : {}),
       cards,
@@ -883,18 +1094,101 @@ export async function runDevotionalRender({
     }
 
     onProgress?.(0.9, "Uploading devotional outputs")
-    for (const [output, filePath] of [
-      [portrait, portraitPath],
-      [wide, widePath],
-    ] as const) {
-      await storage.writeArtifactFromFile(
-        outputAssetId,
-        output.artifact.artifactType,
-        "mp4",
-        filePath,
-        "video/mp4",
+    if (workspaceManifest) {
+      const attempt = workspaceManifest.attempt as DevotionalAttemptIdentity
+      const outputEntries: Array<{
+        artifactType: string
+        ext: string
+        ref: WorkspaceArtifactRef
+      }> = []
+      for (const [output, filePath, fileName] of [
+        [portrait, portraitPath, "portrait.mp4"],
+        [wide, widePath, "wide.mp4"],
+      ] as const) {
+        const { digest, size } = await fileDigest(filePath)
+        const ref = await storage.writeWorkspaceArtifactFromFile({
+          key: devotionalWorkspaceKey(
+            attempt,
+            "attempt-output",
+            digest,
+            fileName,
+          ),
+          filePath,
+          digest,
+          size,
+          contentType: "video/mp4",
+          attempt,
+        })
+        outputEntries.push({
+          artifactType: output.artifact.artifactType,
+          ext: "mp4",
+          ref,
+        })
+      }
+      const manifestBody = Buffer.from(
+        JSON.stringify({
+          schemaVersion: "2",
+          kind: "attempt-output",
+          attempt,
+          artifacts: outputEntries,
+          report: {
+            portrait: {
+              outputDurationSec: portrait.outputDurationSec,
+              width: portrait.width,
+              height: portrait.height,
+            },
+            wide: {
+              outputDurationSec: wide.outputDurationSec,
+              width: wide.width,
+              height: wide.height,
+            },
+          },
+        }),
       )
-      written.push(output.artifact)
+      const manifestDigest = createHash("sha256")
+        .update(manifestBody)
+        .digest("hex")
+      const manifestRef = await storage.writeWorkspaceArtifact({
+        key: devotionalManifestKey(attempt, "attempt-output"),
+        body: manifestBody,
+        digest: manifestDigest,
+        size: manifestBody.byteLength,
+        contentType: "application/json",
+        attempt,
+      })
+      const finalAssetId = devotionalWorkspaceAssetId({
+        kind: "output",
+        workspaceGeneration: attempt.workspaceGeneration,
+        attemptToken: devotionalAttemptToken(attempt.attemptId),
+        manifestDigest: manifestRef.digest,
+        manifestSize: manifestRef.size,
+      })
+      for (const [output, entry] of [
+        [portrait, outputEntries[0]!],
+        [wide, outputEntries[1]!],
+      ] as const) {
+        output.artifact = {
+          assetId: finalAssetId,
+          artifactType: output.artifact.artifactType,
+          ext: "mp4",
+          ...entry.ref,
+        }
+        written.push(output.artifact)
+      }
+    } else {
+      for (const [output, filePath] of [
+        [portrait, portraitPath],
+        [wide, widePath],
+      ] as const) {
+        await storage.writeArtifactFromFile(
+          outputAssetId,
+          output.artifact.artifactType,
+          "mp4",
+          filePath,
+          "video/mp4",
+        )
+        written.push(output.artifact)
+      }
     }
     const report: DevotionalRenderReport = { portrait, wide }
     const meta: DevotionalRenderMetaArtifact = {
@@ -911,21 +1205,32 @@ export async function runDevotionalRender({
       artifactType: DEVOTIONAL_RENDER_META_ARTIFACT_TYPE,
       ext: "json",
     }
-    written.push(metaRef)
-    await storage.writeArtifact({
-      ...metaRef,
-      body: JSON.stringify(meta, null, 2),
-      contentType: "application/json",
-    })
+    if (!workspaceManifest) {
+      written.push(metaRef)
+      await storage.writeArtifact({
+        ...metaRef,
+        body: JSON.stringify(meta, null, 2),
+        contentType: "application/json",
+      })
+    }
     return { artifacts: [...written], report }
   } catch (error) {
-    await Promise.all(
-      written.map((artifact) =>
-        storage
-          .deleteArtifact(artifact.assetId, artifact.artifactType, artifact.ext)
-          .catch(() => {}),
-      ),
-    )
+    // Workspace artifacts are immutable and content-addressed. A crash before
+    // the manifest is written leaves them unreachable, but they must not be
+    // deleted: another replay may already be relying on the same valid bytes.
+    if (!workspaceManifest) {
+      await Promise.all(
+        written.map((artifact) =>
+          storage
+            .deleteArtifact(
+              artifact.assetId,
+              artifact.artifactType,
+              artifact.ext,
+            )
+            .catch(() => {}),
+        ),
+      )
+    }
     throw error
   } finally {
     if (browser) await browser.close({ silent: true }).catch(() => {})

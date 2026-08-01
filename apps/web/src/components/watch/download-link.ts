@@ -1,8 +1,8 @@
 import type { DownloadTier } from "@/components/watch/download-options"
 
-// Same-origin streaming proxy. Hardcoded against `next.config.mjs`'s
-// `basePath: "/watch"`; if the basePath ever moves, this string moves
-// with it.
+// Same-origin download resolver. Hardcoded against `next.config.mjs`'s
+// `basePath: "/watch"`; if the basePath ever moves, this string moves with it.
+// Successful media downloads redirect to the CDN so Web does not proxy bytes.
 export const DOWNLOAD_PROXY_PATH = "/watch/api/download"
 
 export type DownloadProxyParams = {

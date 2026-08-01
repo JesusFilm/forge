@@ -9,20 +9,20 @@ import type { DevotionalVoiceName } from "./elevenlabs-voiceover"
  * so it is deterministic and stateless here: the same sequence always yields the
  * same voice, which keeps runs reproducible and testable.
  */
-export const VOICE_ROTATION: readonly DevotionalVoiceName[] = [
-  "male-d",
-  "male-e",
-  "female-c",
-]
-
 /**
  * The voice for a given zero-based sequence number. Negative or fractional
  * inputs are normalized (truncated, wrapped) so a bad counter can never throw.
  */
-export function rotateVoice(sequence: number): DevotionalVoiceName {
-  const n = VOICE_ROTATION.length
+export function rotateVoice(
+  sequence: number,
+  rotation?: readonly DevotionalVoiceName[],
+): DevotionalVoiceName {
+  if (!rotation?.length) {
+    throw new Error("/inputs/voices/profiles.json: voice rotation is required")
+  }
+  const n = rotation.length
   const i = ((Math.trunc(sequence) % n) + n) % n
-  return VOICE_ROTATION[i]
+  return rotation[i]!
 }
 
 /**
@@ -31,12 +31,16 @@ export function rotateVoice(sequence: number): DevotionalVoiceName {
  * font/logo/graphics, not a single grade. Active filters only (teal/sepia are
  * legacy). splittone first so sequence 0 keeps the originally-approved look.
  */
-export const FILTER_ROTATION = ["splittone", "grain", "tealorange"] as const
+export type DevotionalFilter = string
 
-export type DevotionalFilter = (typeof FILTER_ROTATION)[number]
-
-export function rotateFilter(sequence: number): DevotionalFilter {
-  const n = FILTER_ROTATION.length
+export function rotateFilter(
+  sequence: number,
+  rotation?: readonly DevotionalFilter[],
+): DevotionalFilter {
+  if (!rotation?.length) {
+    throw new Error("/inputs/voices/profiles.json: filter rotation is required")
+  }
+  const n = rotation.length
   const i = ((Math.trunc(sequence) % n) + n) % n
-  return FILTER_ROTATION[i]
+  return rotation[i]!
 }

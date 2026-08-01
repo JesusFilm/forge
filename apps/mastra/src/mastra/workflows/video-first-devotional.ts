@@ -11,18 +11,11 @@ import { scriptureAgent } from "../agents/devotional/scripture-agent"
 import { spurgeonRankerAgent } from "../agents/devotional/spurgeon-ranker-agent"
 import { SafetyVerdictSchema } from "../../services/devotional/artifacts"
 import { produceDevotionalAudio } from "../../services/devotional/devotional-audio"
-import {
-  cacheDirFor,
-  clearCachedDevotional,
-  loadCachedAudio,
-  loadCachedDevo,
-  saveCachedAudio,
-  saveCachedDevo,
-} from "../../services/devotional/devotional-cache"
 import { writeDevotionalCopy } from "../../services/devotional/devotional-copy"
 import {
   devotionalArtifactProxyPath,
   renderDevotionalOnWorker,
+  verifyDevotionalWorkerArtifacts,
 } from "../../services/devotional/devotional-worker-client"
 import {
   composeDevotionalContent,
@@ -31,17 +24,32 @@ import {
   toLegacyDevotional,
   type GenerateDevotionalDeps,
 } from "../../services/devotional/generate-devotional"
-import { JESUS_FILM_CHAPTERS } from "../../services/devotional/jesus-film-catalog"
 import {
   chapterWithPassage,
   mappedChapterIndices,
 } from "../../services/devotional/jesus-film-passages"
+import { selectScriptureForPassage } from "../../services/devotional/passage-scripture"
+import { lookupVerse } from "../../services/devotional/web-bible"
+import { generateMusic } from "../../services/devotional/elevenlabs-music"
+import { rotateFilter } from "../../services/devotional/voice-rotation"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
 import { pickReflectionHighlights } from "../../services/devotional/reflection-highlighter"
 import { modernizeReflection } from "../../services/devotional/reflection-modernizer"
 import { pickBestSpurgeon } from "../../services/devotional/spurgeon-ranker"
-import { createUsedClipsStore } from "../../services/devotional/used-clips-ledger"
+import { getPostgresUsedClipsStore } from "../../services/devotional/workspace/postgres-used-clips"
 import { publishDevotional } from "../../services/devotional/site-publish-client"
+import {
+  devotionalPublicationRequestHash,
+  publishWithDurableIntent,
+} from "../../services/devotional/workspace/publication"
+import { verifyWorkflowWorkspaceSources } from "../../services/devotional/workspace/source-verification"
+import { DevotionalSourceRefSchema } from "../../services/devotional/workspace/state-schema"
+import { loadDevotionalAttemptAuthoredData } from "../../services/devotional/workspace/attempt-data"
+import {
+  writeAttemptJsonArtifact,
+  writeInputsUsed,
+} from "../../services/devotional/workspace/provenance"
+import { VideoFirstDevotionalWorkflowInputSchema as InputSchema } from "./video-first-devotional-schema"
 
 /**
  * Video-first daily-devotional pipeline as SIX swappable sub-workflows composed
@@ -68,48 +76,79 @@ import { publishDevotional } from "../../services/devotional/site-publish-client
 
 const scriptureLlm = createAgentLlm(scriptureAgent, getDevotionalModel())
 const safetyLlm = createAgentLlm(safetyAgent, getDevotionalSafetyModel())
-const contentDeps: GenerateDevotionalDeps = {
-  modernize: (o) =>
-    modernizeReflection({
-      ...o,
-      llm: createAgentLlm(modernizerAgent, getDevotionalModel()),
-    }),
-  writeCopy: (o) =>
-    writeDevotionalCopy({
-      ...o,
-      llm: createAgentLlm(copyAgent, getDevotionalModel()),
-    }),
-  pickSpurgeon: (o) =>
-    pickBestSpurgeon({
-      ...o,
-      llm: createAgentLlm(spurgeonRankerAgent, getDevotionalModel()),
-    }),
-  pickHighlights: (o) =>
-    pickReflectionHighlights({
-      ...o,
-      llm: createAgentLlm(highlighterAgent, getDevotionalModel()),
-    }),
+type WorkflowWorkspaceOwner = {
+  getWorkspace():
+    | {
+        filesystem?: NonNullable<
+          Parameters<typeof loadDevotionalAttemptAuthoredData>[0]["filesystem"]
+        >
+      }
+    | undefined
+}
+
+async function loadAttemptData(
+  mastra: WorkflowWorkspaceOwner,
+  selectedSources: z.infer<typeof DevotionalSourceRefSchema>[],
+) {
+  const filesystem = mastra.getWorkspace()?.filesystem
+  if (!filesystem) throw new Error("Devotional Workspace is unavailable")
+  return loadDevotionalAttemptAuthoredData({
+    filesystem,
+    sources: selectedSources,
+  })
+}
+
+function contentDependencies(
+  authored: Awaited<ReturnType<typeof loadAttemptData>>,
+): GenerateDevotionalDeps {
+  return {
+    chapters: authored.chapters,
+    passages: authored.passages,
+    corpora: authored.corpora,
+    hookStyles: authored.prompts.generation.hookStyles,
+    voiceRotation: authored.voices.rotation,
+    modernize: (options) =>
+      modernizeReflection({
+        ...options,
+        systemPrompt: authored.prompts.prompts.modernizer,
+        llm: createAgentLlm(modernizerAgent, getDevotionalModel()),
+      }),
+    writeCopy: (options) =>
+      writeDevotionalCopy({
+        ...options,
+        systemPrompt: authored.prompts.prompts.copy,
+        llm: createAgentLlm(copyAgent, getDevotionalModel()),
+      }),
+    pickSpurgeon: (options) =>
+      pickBestSpurgeon({
+        ...options,
+        systemPrompt: authored.prompts.prompts.ranker,
+        llm: createAgentLlm(spurgeonRankerAgent, getDevotionalModel()),
+      }),
+    pickHighlights: (options) =>
+      pickReflectionHighlights({
+        ...options,
+        systemPrompt: authored.prompts.prompts.highlighter,
+        llm: createAgentLlm(highlighterAgent, getDevotionalModel()),
+      }),
+  }
 }
 
 // ---- Schemas (the serializable seams between sub-workflows) -----------------
 
-const InputSchema = z
-  .object({
-    /** JESUS-film chapter to use; omit to pick the next UNUSED one (ledger). */
-    chapterIndex: z.number().int().positive().optional(),
-    /** Rotation counter (voice + filter + reflection source). Omit to
-     *  AUTO-INCREMENT: the count of approved devotionals in the ledger. */
-    sequence: z.number().int().nonnegative().optional(),
-    date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
-    /** Regenerate text+audio instead of reusing the cache. */
-    regenerate: z.boolean().default(false),
-    /** Regenerate only the audio, keeping cached text. */
-    regenerateAudio: z.boolean().default(false),
-  })
-  .strict()
+const AttemptContextSchema = z.object({
+  workspaceGeneration: z.number().int().positive(),
+  attemptId: z.string().min(1),
+  selectedSources: z.array(DevotionalSourceRefSchema).min(1).max(500),
+})
+
+function attemptContext(input: z.infer<typeof AttemptContextSchema>) {
+  return {
+    workspaceGeneration: input.workspaceGeneration,
+    attemptId: input.attemptId,
+    selectedSources: input.selectedSources,
+  }
+}
 
 const ChapterSchema = z.object({
   index: z.number(),
@@ -131,32 +170,32 @@ const ScriptureSchema = z.object({
   needsCanonicalSource: z.boolean(),
 })
 
-const SourcedSchema = z.object({
-  chapter: ChapterSchema,
-  reservationId: z.string().uuid(),
-  scripture: ScriptureSchema,
-  fromCache: z.boolean(),
-  sequence: z.number(),
-  date: z.string(),
-  regenerate: z.boolean(),
-  regenerateAudio: z.boolean(),
-})
+const SourcedSchema = z
+  .object({
+    chapter: ChapterSchema,
+    reservationId: z.string().uuid(),
+    scripture: ScriptureSchema,
+    sequence: z.number(),
+    date: z.string(),
+  })
+  .extend(AttemptContextSchema.shape)
 
-const ContentSchema = z.object({
-  devotional: GeneratedDevotionalSchema,
-  safety: SafetyVerdictSchema,
-  reservationId: z.string().uuid(),
-  regenerate: z.boolean(),
-  regenerateAudio: z.boolean(),
-})
+const ContentSchema = z
+  .object({
+    devotional: GeneratedDevotionalSchema,
+    safety: SafetyVerdictSchema,
+    reservationId: z.string().uuid(),
+  })
+  .extend(AttemptContextSchema.shape)
 
-const ProducedSchema = z.object({
-  devotional: GeneratedDevotionalSchema,
-  safety: SafetyVerdictSchema,
-  reservationId: z.string().uuid(),
-  /** Cache dir holding the produced audio; null when safety blocked. */
-  cacheDir: z.string().nullable(),
-})
+const ProducedSchema = z
+  .object({
+    devotional: GeneratedDevotionalSchema,
+    safety: SafetyVerdictSchema,
+    reservationId: z.string().uuid(),
+    readyForRender: z.boolean(),
+  })
+  .extend(AttemptContextSchema.shape)
 
 const VideoArtifactSchema = z
   .object({
@@ -166,18 +205,36 @@ const VideoArtifactSchema = z
       "devotional-output-wide-v1",
     ]),
     ext: z.literal("mp4"),
+    schemaVersion: z.literal("2").optional(),
+    key: z.string().min(1).optional(),
+    digest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    size: z.number().int().positive().optional(),
+    contentType: z.string().min(1).optional(),
+    attempt: z
+      .object({
+        workspaceGeneration: z.number().int().positive(),
+        attemptId: z.string().min(1),
+        runId: z.string().min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 
-const RenderedSchema = z.object({
-  devotional: GeneratedDevotionalSchema,
-  safety: SafetyVerdictSchema,
-  reservationId: z.string().uuid(),
-  /** Durable 9:16 worker artifact; null when safety blocked. */
-  portraitAsset: VideoArtifactSchema.nullable(),
-  /** Durable 16:9 worker artifact; null when safety blocked. */
-  wideAsset: VideoArtifactSchema.nullable(),
-})
+const RenderedSchema = z
+  .object({
+    devotional: GeneratedDevotionalSchema,
+    safety: SafetyVerdictSchema,
+    reservationId: z.string().uuid(),
+    /** Durable 9:16 worker artifact; null when safety blocked. */
+    portraitAsset: VideoArtifactSchema.nullable(),
+    /** Durable 16:9 worker artifact; null when safety blocked. */
+    wideAsset: VideoArtifactSchema.nullable(),
+  })
+  .extend(AttemptContextSchema.shape)
 
 const ApprovalResume = z.object({
   approved: z.boolean(),
@@ -229,7 +286,7 @@ async function releaseReservation(
   chapterId: string,
   reservationId: string,
 ): Promise<void> {
-  await createUsedClipsStore()
+  await getPostgresUsedClipsStore()
     .release(chapterId, reservationId)
     .catch(() => false)
 }
@@ -242,9 +299,28 @@ const sourceStep = createStep({
     "Pick an unused JESUS-film clip (ledger) and anchor the scripture in its passage (exact WEB verse).",
   inputSchema: InputSchema,
   outputSchema: SourcedSchema,
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, mastra, runId }) => {
+    await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+    const filesystem = mastra.getWorkspace()?.filesystem
+    if (!filesystem) throw new Error("Devotional Workspace is unavailable")
+    await writeInputsUsed({
+      filesystem,
+      runId,
+      attemptId: inputData.attemptId,
+      catalogGeneration: inputData.workspaceGeneration,
+      sources: inputData.selectedSources,
+    })
+    const authored = await loadAttemptData(mastra, inputData.selectedSources)
+    const generationDeps = contentDependencies(authored)
+    generationDeps.selectScripture = (options) =>
+      selectScriptureForPassage({
+        ...options,
+        systemPrompt: authored.prompts.prompts.scripture,
+        lookupVerse: (reference) =>
+          lookupVerse(reference, authored.scripture.verses),
+      })
     const date = inputData.date ?? new Date().toISOString().slice(0, 10)
-    const store = createUsedClipsStore()
+    const store = getPostgresUsedClipsStore()
 
     // AUTO sequence: one step per APPROVED devotional (sum of ledger counts),
     // so voice, filter, and reflection-source rotation advance with each
@@ -260,15 +336,21 @@ const sourceStep = createStep({
     let reservedChapterId: string
     if (chapterIndex == null) {
       // Only chapters with a curated passage mapping are in the pool.
-      const pool = mappedChapterIndices()
-        .map((i) => JESUS_FILM_CHAPTERS[i - 1])
-        .filter(Boolean)
+      const pool = mappedChapterIndices(authored.passages)
+        .map((index) =>
+          chapterWithPassage(index, authored.passages, authored.chapters),
+        )
+        .filter((chapter) => chapter !== null)
       const picked = await store.pick(pool)
       chapterIndex = picked.chapter.index
       reservationId = picked.reservationId
       reservedChapterId = picked.chapter.id
     } else {
-      const requested = chapterWithPassage(chapterIndex)
+      const requested = chapterWithPassage(
+        chapterIndex,
+        authored.passages,
+        authored.chapters,
+      )
       if (!requested)
         throw new Error(`no passage mapping for chapter ${chapterIndex}`)
       const reserved = await store.reserve(requested)
@@ -276,44 +358,20 @@ const sourceStep = createStep({
       reservedChapterId = reserved.chapter.id
     }
 
-    // Reuse the cached devotional's scripture when available (no LLM call);
-    // Content will reuse the full cached text too.
-    const cacheDir = cacheDirFor(chapterIndex, sequence, date)
-    const cached = inputData.regenerate ? null : await loadCachedDevo(cacheDir)
-    if (cached) {
-      const chapter = chapterWithPassage(chapterIndex)
-      if (!chapter) {
-        await releaseReservation(reservedChapterId, reservationId)
-        throw new Error(`no passage mapping for chapter ${chapterIndex}`)
-      }
-      return {
-        chapter,
-        reservationId,
-        scripture: cached.scripture,
-        fromCache: true,
-        sequence,
-        date,
-        regenerate: inputData.regenerate,
-        regenerateAudio: inputData.regenerateAudio,
-      }
-    }
-
-    const sourced = await sourceClipAndScripture({
-      chapterIndex,
-      llm: scriptureLlm,
-    }).catch(async (error) => {
+    const sourced = await sourceClipAndScripture(
+      { chapterIndex, llm: scriptureLlm },
+      generationDeps,
+    ).catch(async (error) => {
       await releaseReservation(reservedChapterId, reservationId)
       throw error
     })
     return {
+      ...attemptContext(inputData),
       chapter: sourced.chapter,
       reservationId,
       scripture: sourced.scripture,
-      fromCache: false,
       sequence,
       date,
-      regenerate: inputData.regenerate,
-      regenerateAudio: inputData.regenerateAudio,
     }
   },
 })
@@ -335,42 +393,43 @@ const contentStep = createStep({
     "Reflection (rotated source, modernized) + highlights + copy, then the safety gate.",
   inputSchema: SourcedSchema,
   outputSchema: ContentSchema,
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, mastra, runId }) => {
     try {
-      const cacheDir = cacheDirFor(
-        inputData.chapter.index,
-        inputData.sequence,
-        inputData.date,
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+      const authored = await loadAttemptData(mastra, inputData.selectedSources)
+      const devotional = await composeDevotionalContent(
+        {
+          chapter: inputData.chapter,
+          scripture: inputData.scripture,
+          sequence: inputData.sequence,
+          date: inputData.date,
+          llm: scriptureLlm,
+        },
+        contentDependencies(authored),
       )
-      let devotional = inputData.fromCache
-        ? await loadCachedDevo(cacheDir)
-        : null
-      if (!devotional) {
-        devotional = await composeDevotionalContent(
-          {
-            chapter: inputData.chapter,
-            scripture: inputData.scripture,
-            sequence: inputData.sequence,
-            date: inputData.date,
-            llm: scriptureLlm, // unused: every LLM-using seam is overridden below
-          },
-          contentDeps,
-        )
-        await saveCachedDevo(cacheDir, devotional)
-      }
 
       // The gate runs on EVERY pass (cached text included) — fail closed.
       const safety = await evaluateSafety({
         devotional: toLegacyDevotional(devotional),
         llm: safetyLlm,
+        systemPrompt: authored.safety.prompt,
+        minConfidence: authored.safety.effectiveMinimumConfidence,
+      })
+
+      const filesystem = mastra.getWorkspace()?.filesystem
+      if (!filesystem) throw new Error("Devotional Workspace is unavailable")
+      await writeAttemptJsonArtifact({
+        filesystem,
+        runId,
+        name: "content",
+        value: { devotional, safety },
       })
 
       return {
+        ...attemptContext(inputData),
         devotional,
         safety,
         reservationId: inputData.reservationId,
-        regenerate: inputData.regenerate,
-        regenerateAudio: inputData.regenerateAudio,
       }
     } catch (error) {
       await releaseReservation(inputData.chapter.id, inputData.reservationId)
@@ -391,40 +450,31 @@ export const devotionalContentWorkflow = createWorkflow({
 // ---- 3 · Produce ---------------------------------------------------------------
 
 const produceStep = createStep({
-  id: "produce-audio",
+  id: "prepare-media",
   description:
-    "Voiceover (rotated voice) + mood music via ElevenLabs, cached to disk. Skipped when safety blocked.",
+    "Validate the exact authored media policy before the transient Worker handoff. Skipped when safety blocked.",
   inputSchema: ContentSchema,
   outputSchema: ProducedSchema,
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, mastra }) => {
     try {
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
       const { devotional, safety } = inputData
       if (safety.verdict !== "pass") {
         return {
+          ...attemptContext(inputData),
           devotional,
           safety,
           reservationId: inputData.reservationId,
-          cacheDir: null,
+          readyForRender: false,
         }
       }
-      const cacheDir = cacheDirFor(
-        devotional.clip.index,
-        devotional.sequence,
-        devotional.date,
-      )
-      const reuse = !inputData.regenerate && !inputData.regenerateAudio
-      let audio = reuse
-        ? await loadCachedAudio(cacheDir, devotional.voice)
-        : null
-      if (!audio) {
-        audio = await produceDevotionalAudio(devotional)
-        await saveCachedAudio(cacheDir, audio)
-      }
+      await loadAttemptData(mastra, inputData.selectedSources)
       return {
+        ...attemptContext(inputData),
         devotional,
         safety,
         reservationId: inputData.reservationId,
-        cacheDir,
+        readyForRender: true,
       }
     } catch (error) {
       await releaseReservation(
@@ -438,7 +488,7 @@ const produceStep = createStep({
 
 export const devotionalProduceWorkflow = createWorkflow({
   id: "devotional-produce",
-  description: "Produce: narration + music bed → disk cache.",
+  description: "Produce: validate authored media policy for this attempt.",
   inputSchema: ContentSchema,
   outputSchema: ProducedSchema,
 })
@@ -453,28 +503,78 @@ const renderStep = createStep({
     "Upload bounded devotional inputs and await the dedicated worker's durable portrait + wide renders. Skipped when blocked.",
   inputSchema: ProducedSchema,
   outputSchema: RenderedSchema,
-  execute: async ({ inputData, runId, abortSignal }) => {
+  execute: async ({ inputData, runId, abortSignal, mastra }) => {
     try {
-      const { devotional, safety, cacheDir } = inputData
-      if (!cacheDir)
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+      const { devotional, safety, readyForRender } = inputData
+      if (!readyForRender)
         return {
+          ...attemptContext(inputData),
           devotional,
           safety,
           reservationId: inputData.reservationId,
           portraitAsset: null,
           wideAsset: null,
         }
-      const audio = await loadCachedAudio(cacheDir, devotional.voice)
-      if (!audio) throw new Error(`no cached audio in ${cacheDir}`)
+      const authored = await loadAttemptData(mastra, inputData.selectedSources)
+      const audio = await produceDevotionalAudio(devotional, {
+        narration: authored.narration,
+        voiceProfiles: authored.voices.profiles,
+        voiceSettings: authored.voices.settings,
+        musicLengthMs: authored.music.defaultLengthMs,
+        music: (options) =>
+          generateMusic({
+            ...options,
+            moodPrompts: authored.music.moods,
+            defaultLengthMs: authored.music.defaultLengthMs,
+          }),
+      })
+      const filesystem = mastra.getWorkspace()?.filesystem
+      if (!filesystem) throw new Error("Devotional Workspace is unavailable")
+      await writeAttemptJsonArtifact({
+        filesystem,
+        runId,
+        name: "audio-sidecar",
+        value: {
+          voice: audio.voice,
+          skipped: audio.skipped,
+          segments: audio.segments.map((segment) => ({
+            id: segment.id,
+            text: segment.text,
+            voiceId: segment.audio.voiceId,
+            model: segment.audio.model,
+            characterCount: segment.audio.characterCount,
+            byteLength: segment.audio.bytes.byteLength,
+          })),
+          music: audio.music
+            ? {
+                mood: audio.music.mood,
+                prompt: audio.music.audio.prompt,
+                lengthMs: audio.music.audio.lengthMs,
+                model: audio.music.audio.model,
+                byteLength: audio.music.audio.bytes.byteLength,
+              }
+            : null,
+        },
+      })
       const rendered = await renderDevotionalOnWorker(
         {
           runId,
           devotional,
           audio,
+          workspaceGeneration: inputData.workspaceGeneration,
+          attemptId: inputData.attemptId,
+          selectedSources: inputData.selectedSources,
+          renderStyle: rotateFilter(
+            devotional.sequence,
+            authored.voices.filterRotation,
+          ),
+          renderConfig: authored.render,
         },
         { abortSignal },
       )
       return {
+        ...attemptContext(inputData),
         devotional,
         safety,
         reservationId: inputData.reservationId,
@@ -509,10 +609,29 @@ const approveStep = createStep({
   resumeSchema: ApprovalResume,
   suspendSchema: ApprovalSuspend,
   outputSchema: ApprovedSchema,
-  execute: async ({ inputData, resumeData, suspend }) => {
+  execute: async ({ inputData, resumeData, suspend, mastra }) => {
+    try {
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+    } catch (error) {
+      await getPostgresUsedClipsStore()
+        .release(inputData.devotional.clip.id, inputData.reservationId)
+        .catch(() => false)
+      throw error
+    }
     if (inputData.portraitAsset == null || inputData.wideAsset == null) {
       // Safety blocked upstream — nothing to approve.
       return { ...inputData, approved: false, notes: "skipped: safety blocked" }
+    }
+    try {
+      await verifyDevotionalWorkerArtifacts({
+        portrait: inputData.portraitAsset,
+        wide: inputData.wideAsset,
+      })
+    } catch (error) {
+      await getPostgresUsedClipsStore()
+        .release(inputData.devotional.clip.id, inputData.reservationId)
+        .catch(() => false)
+      throw error
     }
     if (!resumeData) {
       await suspend({
@@ -555,7 +674,7 @@ const publishStep = createStep({
     "On approval, publish both video assets and record the clip only after site acceptance.",
   inputSchema: ApprovedSchema,
   outputSchema: ResultSchema,
-  execute: async ({ inputData, abortSignal }) => {
+  execute: async ({ inputData, abortSignal, mastra, runId }) => {
     const {
       devotional,
       safety,
@@ -570,7 +689,21 @@ const publishStep = createStep({
     let publishReason: string | undefined
     let publishRetryable: boolean | undefined
     let clipRecorded = false
-    const store = createUsedClipsStore()
+    const store = getPostgresUsedClipsStore()
+    try {
+      await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
+      if (portraitAsset && wideAsset) {
+        await verifyDevotionalWorkerArtifacts({
+          portrait: portraitAsset,
+          wide: wideAsset,
+        })
+      }
+    } catch (error) {
+      await store.release(devotional.clip.id, reservationId).catch(() => false)
+      throw error
+    }
+
+    let publicationIntentOwnsReservation = false
     if (safety.verdict !== "pass") {
       status = "blocked"
     } else if (!approved) {
@@ -579,22 +712,30 @@ const publishStep = createStep({
       status = "publish_failed"
       publishReason = "rendered_assets_missing"
     } else {
-      const published = await publishDevotional({
-        devotional: toLegacyDevotional(devotional),
-        videoAssets: { portrait: portraitAsset, wide: wideAsset },
-        abortSignal,
+      publicationIntentOwnsReservation = true
+      const legacyDevotional = toLegacyDevotional(devotional)
+      const receiverIdempotencyKey = `daily-devotional:${devotional.date}`
+      const published = await publishWithDurableIntent({
+        attemptId: inputData.attemptId,
+        chapterId: devotional.clip.id,
+        reservationId,
+        receiverIdempotencyKey,
+        requestHash: devotionalPublicationRequestHash({
+          date: devotional.date,
+          chapterId: devotional.clip.id,
+          portraitAsset,
+          wideAsset,
+        }),
+        send: () =>
+          publishDevotional({
+            devotional: legacyDevotional,
+            videoAssets: { portrait: portraitAsset, wide: wideAsset },
+            abortSignal,
+          }),
       })
       if (published.ok && published.published) {
         status = "published"
-        try {
-          await store.record(devotional.clip.id, reservationId)
-          clipRecorded = true
-        } catch {
-          // Publication is irreversible. Keep this terminal as published so a
-          // retry cannot create a second same-date devotional; leave the lease
-          // in place for operator reconciliation instead of releasing it.
-          publishReason = "ledger_record_failed"
-        }
+        clipRecorded = true
       } else if (!published.ok && published.reason === "config_missing") {
         status = "publish_skipped"
         publishReason = published.reason
@@ -610,21 +751,14 @@ const publishStep = createStep({
 
     // Only a confirmed publish burns the clip. Every blocked, rejected,
     // skipped, or failed attempt releases its reservation for a clean retry.
-    if (!clipRecorded && status !== "published") {
-      const released = await store
-        .release(devotional.clip.id, reservationId)
-        .catch(() => false)
-      if (released) {
-        await clearCachedDevotional(
-          cacheDirFor(
-            devotional.clip.index,
-            devotional.sequence,
-            devotional.date,
-          ),
-        ).catch(() => undefined)
-      }
+    if (
+      !publicationIntentOwnsReservation &&
+      !clipRecorded &&
+      status !== "published"
+    ) {
+      await store.release(devotional.clip.id, reservationId).catch(() => false)
     }
-    return {
+    const result = {
       status,
       devotional,
       safety,
@@ -636,6 +770,15 @@ const publishStep = createStep({
       notes,
       approvedBy,
     }
+    const filesystem = mastra.getWorkspace()?.filesystem
+    if (!filesystem) throw new Error("Devotional Workspace is unavailable")
+    await writeAttemptJsonArtifact({
+      filesystem,
+      runId,
+      name: "publication",
+      value: result,
+    })
+    return result
   },
 })
 

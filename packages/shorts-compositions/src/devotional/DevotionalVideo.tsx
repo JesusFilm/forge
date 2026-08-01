@@ -33,7 +33,11 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   loadApercu()
   const { durationInFrames, fps, width, height } = useVideoConfig()
   const frame = useCurrentFrame()
-  const style = resolveDevotionalStyle(props.style, props.layout)
+  const style = resolveDevotionalStyle(
+    props.style,
+    props.layout,
+    props.renderConfig,
+  )
   // Scale by the SHORT side: portrait (1080×1920) and landscape (1920×1080)
   // get identical absolute type/spacing sizes, so one design serves both.
   const px = (n: number) => (n * Math.min(width, height)) / REF

@@ -8,7 +8,6 @@ function makeCard(overrides: Partial<RoutableHomeCard> = {}): RoutableHomeCard {
     imageUrl: "https://images.example/jesus.jpg",
     landscapeImageUrl: "https://images.example/jesus.jpg",
     rawLabel: "FEATURE_FILM",
-    childCount: 0,
     ...overrides,
   }
 }
@@ -57,20 +56,28 @@ describe("resolveHomeCardPath", () => {
     ).toBe(true)
   })
 
-  it("routes an unlabeled card with childCount > 0 to /series/[slug]", () => {
+  // REGRESSION GUARD: JESUS is a FEATURE_FILM with 61 chapter clips. Routing on
+  // "has children" sent it to /series, which billed it SERIES and played its full
+  // 2h runtime under a "Play Trailer" button. Only the label may decide.
+  it("routes a feature film WITH chapter clips to /watch, not /series", () => {
     const path = resolveHomeCardPath(
-      makeCard({ slug: "gospel", rawLabel: null, childCount: 12 }),
+      makeCard({ slug: "jesus", rawLabel: "FEATURE_FILM" }),
     )
-    expect(path?.startsWith("/series/gospel?seed=")).toBe(true)
+    expect(path?.startsWith("/watch/jesus?seed=")).toBe(true)
+  })
+
+  it("routes an unlabeled card to /watch, however many children it has", () => {
+    const path = resolveHomeCardPath(
+      makeCard({ slug: "gospel", rawLabel: null }),
+    )
+    expect(path?.startsWith("/watch/gospel?seed=")).toBe(true)
   })
 
   // The predicate matches uppercase wire literals only — a card carrying just
   // the display text must NOT take the series branch (keeps the predicate
   // honest; rawLabel is the contract).
   it("never routes on display-text labels", () => {
-    const path = resolveHomeCardPath(
-      makeCard({ rawLabel: "Series", childCount: 0 }),
-    )
+    const path = resolveHomeCardPath(makeCard({ rawLabel: "Series" }))
     expect(path?.startsWith("/watch/")).toBe(true)
   })
 

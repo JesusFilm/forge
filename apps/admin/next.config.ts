@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   // Required for Datadog RUM stack traces to resolve to original sources after
   // `pnpm --filter @forge/admin datadog:sourcemaps` uploads release artifacts.
   productionBrowserSourceMaps: true,
+  webpack(config, { dev, isServer }) {
+    // Browser sourcemaps are uploaded to Datadog; server maps stay with the
+    // deployed bundle so Node can remap backend APM stack traces.
+    if (isServer && !dev) config.devtool = "source-map"
+
+    return config
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "6mb",

@@ -150,6 +150,7 @@ vi.mock("@/components/watch/LanguagePickerModal", () => ({
 
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { SeriesHero } from "@/components/watch/SeriesHero"
+import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -303,6 +304,25 @@ function listenForHeaderLanguageSwitcher() {
       window.removeEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler),
   }
 }
+
+describe("SeriesPageClient — shared content surface", () => {
+  it("uses the shared glass treatment for the metadata band", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries()}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    const metadata = container.querySelector('[data-testid="series-page-meta"]')
+    for (const className of SERIES_CONTENT_GLASS_CLASS_NAME.split(" ")) {
+      expect(metadata?.className).toContain(className)
+    }
+  })
+})
 
 describe("SeriesPageClient — pluralized label (R8, AE4)", () => {
   it("renders 'SERIES · 13 EPISODES' for 13 children (AE4)", () => {

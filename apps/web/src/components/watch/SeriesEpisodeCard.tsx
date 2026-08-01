@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import { Play } from "lucide-react"
+import { FolderOpen, Play } from "lucide-react"
 
 import {
   VideoThumbnailCaption,
@@ -36,11 +36,6 @@ type SeriesEpisodeCardProps = {
   index: number
   languageSlug: string
   parentSlug: string
-  // Backdrop URL surfaced via data-backdrop-url so the parent grid can
-  // delegate pointer/focus events at the container level instead of
-  // attaching per-card handlers (avoids 20+ rerenders during keyboard
-  // tab-through and pointer-event work per card during pan).
-  backdropUrl?: string | null
 }
 
 // Production-style duration label: "M:SS" or "H:MM:SS". Returns null when
@@ -61,7 +56,6 @@ export function SeriesEpisodeCard({
   index,
   languageSlug,
   parentSlug,
-  backdropUrl,
 }: SeriesEpisodeCardProps) {
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
   const parent = tryAsContentSlug(parentSlug)
@@ -76,10 +70,15 @@ export function SeriesEpisodeCard({
   }
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
+  const isContainer = isSeriesRecord(episode)
+  const containerLabel =
+    episode.label?.toLowerCase() === "collection" ? "Collection" : "Series"
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)
   // rather than being derived from a per-child dub list.
-  const runtimeLabel = formatRuntime(episode.durationSeconds)
+  const runtimeLabel = isContainer
+    ? null
+    : formatRuntime(episode.durationSeconds)
 
   // Shared card surface. When the slug/locale is malformed (rare data bug)
   // the href is undefined, so we render a plain <div> with identical attrs
@@ -122,10 +121,17 @@ export function SeriesEpisodeCard({
         <VideoThumbnailInteractionFrame data-testid="series-episode-card-hover-outline" />
       ) : null}
 
-      {/* Routable cards keep an icon-only play hint when runtime is absent.
-          Static fallbacks may still show real runtime metadata, but never a
-          play affordance or a fake zero runtime. */}
-      {href || runtimeLabel ? (
+      {/* Container cards open another Watch surface; chapters retain their
+          playback/runtime indicator. Static fallbacks never show a play
+          affordance or a fake zero runtime. */}
+      {isContainer && href ? (
+        <div className="absolute top-2 right-2 rounded-full bg-black/40 p-1.5 text-white ring-1 ring-white/10 backdrop-blur-sm">
+          <FolderOpen
+            size={14}
+            aria-label={`Open ${containerLabel.toLowerCase()}`}
+          />
+        </div>
+      ) : href || runtimeLabel ? (
         <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
           {href ? (
             <Play size={12} className="fill-white" strokeWidth={0} />
@@ -137,7 +143,7 @@ export function SeriesEpisodeCard({
       {/* Bottom-left text block — EPISODE eyebrow + episode title. */}
       <VideoThumbnailCaption inset="compact">
         <VideoThumbnailEyebrow size="compact">
-          {`Episode ${index + 1}`}
+          {isContainer ? containerLabel : `Episode ${index + 1}`}
         </VideoThumbnailEyebrow>
         <VideoThumbnailTitle size="compact-md">
           {episode.title ?? ""}
@@ -150,7 +156,6 @@ export function SeriesEpisodeCard({
     return (
       <div
         data-testid="series-episode-card"
-        data-backdrop-url={backdropUrl ?? ""}
         className={cardClassName}
         style={cardStyle}
       >
@@ -163,7 +168,6 @@ export function SeriesEpisodeCard({
     <Link
       href={href}
       data-testid="series-episode-card"
-      data-backdrop-url={backdropUrl ?? ""}
       className={cardClassName}
       style={cardStyle}
     >

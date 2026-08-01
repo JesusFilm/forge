@@ -21,14 +21,49 @@ vi.mock("../../config/env", async (importOriginal) => ({
   // resolver's exact-`"true"` semantics stay pinned by config/env.test.ts (U1).
   isAiGatewaySeekerEnabled: () =>
     mockEnv.env.AI_GATEWAY_SEEKER_ENABLED === "true",
+  // Hermetic Langfuse config (feat-272 review finding): the no-injection
+  // default-path tests below resolve instructions through the module-default
+  // getLangfuseConfig(). Left un-mocked that reads ambient process env, so a
+  // shell that ever exported LANGFUSE_* (e.g. to run the opt-in smoke against
+  // the whole suite) would turn a unit test into a live credentialed fetch of
+  // `seeker-system`. Pinning it unconfigured keeps the default path
+  // deterministic and network-free while still proving the call site sources
+  // its config from the module default (the seam under pin), not a threaded
+  // value. The real getLangfuseConfig() projection stays covered by
+  // config/env.test.ts; the real end-to-end read is the opt-in smoke.
+  getLangfuseConfig: () => ({
+    baseUrl: undefined,
+    publicKey: undefined,
+    secretKey: undefined,
+    timeoutMs: 3_000,
+    userAgent: "forge-test-langfuse/1.0",
+    maxResponseBytes: 262_144,
+    promptDefaultLabel: undefined,
+    promptCacheTtlMs: 60_000,
+    promptFailureCooldownMs: 10_000,
+  }),
 }))
+
+import { readFileSync } from "node:fs"
 
 import { STEP_CAPS, TIME_BUDGET_MS } from "../budgets"
 import { getAiChatMemory } from "../ai-chat-memory"
 import {
+  createManagedPromptCache,
+  type LangfuseConfig,
+} from "../../services/langfuse-prompt-client"
+import {
+  retrieveAnswerOutputSchema,
+  RETRIEVE_ANSWER_EMPTY_MESSAGE,
+  RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+} from "../tools/retrieve-answer"
+import {
   buildSeekerModelList,
   createGatewayFetchWithTimeout,
+  createSeekerInstructionsResolver,
   SEEKER_GATEWAY_FETCH_TIMEOUT_MS,
+  SEEKER_SYSTEM_PROMPT_FALLBACK,
+  SEEKER_SYSTEM_PROMPT_NAME,
   seekerAgent,
 } from "./seeker-agent"
 
@@ -45,6 +80,11 @@ describe("seeker agent", () => {
     expect(seekerAgent.name).toBe("Seeker Agent")
   })
 
+  // Since feat-272 the two instruction-content tests below resolve through the
+  // REAL Langfuse wiring's default path: no LANGFUSE_* vars reach the vitest
+  // process, so getInstructions() serves SEEKER_SYSTEM_PROMPT_FALLBACK. They
+  // double as proof that the unconfigured agent still carries the safety and
+  // citation lines end to end (not merely that the constant contains them).
   it("carries the mandatory safety line in its instructions", async () => {
     const instructions = await seekerAgent.getInstructions()
     const text =
@@ -300,5 +340,172 @@ describe("createGatewayFetchWithTimeout (KTD9 abort mechanism)", () => {
       signal?.addEventListener("abort", resolve, { once: true }),
     )
     expect((signal?.reason as DOMException).name).toBe("TimeoutError")
+  })
+})
+
+describe("Langfuse-managed instructions wiring (feat-272)", () => {
+  // Hand-built config for the INJECTED-path tests only; the default-path tests
+  // below deliberately inject nothing. Mirrors the testConfig shape in
+  // langfuse-prompt-client.test.ts.
+  const wiringConfig: LangfuseConfig = {
+    baseUrl: "https://langfuse.internal",
+    publicKey: "pk-lf-test-public",
+    secretKey: "sk-lf-test-secret",
+    timeoutMs: 3_000,
+    userAgent: "forge-test-langfuse/1.0",
+    maxResponseBytes: 262_144,
+    promptDefaultLabel: undefined,
+    promptCacheTtlMs: 60_000,
+    promptFailureCooldownMs: 10_000,
+  }
+
+  const unconfigured: LangfuseConfig = {
+    ...wiringConfig,
+    baseUrl: undefined,
+    publicKey: undefined,
+    secretKey: undefined,
+  }
+
+  // A realistic tuned managed prompt: full base + delta, never a stub. Serving
+  // it VERBATIM (below) is also the anti-vacuous companion proving the
+  // resolver does not simply always return the fallback.
+  const TUNED_PROMPT = `${SEEKER_SYSTEM_PROMPT_FALLBACK}\nTUNED (Langfuse-managed variant): prefer concise answers.`
+
+  function managedPromptResponse(text: string): Promise<Response> {
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          name: SEEKER_SYSTEM_PROMPT_NAME,
+          version: 7,
+          type: "text",
+          prompt: text,
+          labels: ["production"],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+  }
+
+  it("serves the managed prompt verbatim when Langfuse is configured, requesting the compile-time seeker-system name", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      managedPromptResponse(TUNED_PROMPT),
+    )
+
+    const resolve = createSeekerInstructionsResolver({
+      config: wiringConfig,
+      fetchImpl,
+      cache: createManagedPromptCache(),
+    })
+
+    await expect(resolve()).resolves.toBe(TUNED_PROMPT)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    // Pin the wire contract of the wiring: the compile-time prompt name and
+    // the layer-2-resolved default label (no env default in this config).
+    const calledUrl = String(fetchImpl.mock.calls[0]?.[0])
+    expect(calledUrl).toBe(
+      "https://langfuse.internal/api/public/v2/prompts/seeker-system?label=production",
+    )
+  })
+
+  it("serves the byte-identical full fallback with zero fetch attempts when Langfuse is unconfigured", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+
+    const resolve = createSeekerInstructionsResolver({
+      config: unconfigured,
+      fetchImpl,
+      cache: createManagedPromptCache(),
+      // Silence the (correct) once-per-process config_missing failure log.
+      logSink: () => {},
+    })
+
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(fetchImpl).toHaveBeenCalledTimes(0)
+  })
+
+  it("serves the byte-identical full fallback when Langfuse is unreachable", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.reject(
+        Object.assign(new Error("connect ECONNREFUSED"), {
+          name: "TypeError",
+        }),
+      ),
+    )
+
+    const resolve = createSeekerInstructionsResolver({
+      config: wiringConfig,
+      fetchImpl,
+      cache: createManagedPromptCache(),
+      logSink: () => {},
+    })
+
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("never wires a stub: the fallback is the full working prompt, non-empty, ending in the SAFETY line", () => {
+    // feat-272 constraint: layer 2 serves the fallback verbatim with NO
+    // emptiness guard, so non-emptiness must be pinned at the wiring.
+    expect(SEEKER_SYSTEM_PROMPT_FALLBACK.length).toBeGreaterThan(0)
+    expect(SEEKER_SYSTEM_PROMPT_FALLBACK.trim().length).toBeGreaterThan(0)
+    // The LAST line, not just any line (`/^SAFETY: /m` would pass with the
+    // SAFETY line displaced into the middle of the prompt).
+    const lines = SEEKER_SYSTEM_PROMPT_FALLBACK.split("\n")
+    expect(lines[lines.length - 1]).toMatch(/^SAFETY: /)
+  })
+
+  it("default path: the registered agent resolves instructions to the byte-identical fallback when unconfigured", async () => {
+    // NO injection anywhere — this exercises the production call site's
+    // resolver end to end (module-default config sourcing, real default
+    // cache). The module mock above pins getLangfuseConfig() to the
+    // unconfigured shape, so the test is hermetic (no ambient-env network
+    // reach) while still failing if the call site ever threads a config or
+    // stops resolving through getManagedPrompt.
+    const instructions = await seekerAgent.getInstructions()
+    expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+  })
+
+  it("call-site source pin: exactly one instructions registration, wiring the bare resolver, outside comments", () => {
+    // feat-283 corollary: an injectable seam at a production call site is a
+    // one-line revert surface. Pin that the registration passes NO overrides —
+    // a `createSeekerInstructionsResolver({ config: … })` or a reverted inline
+    // string both fail here. Comments are stripped first and the occurrence
+    // count is pinned to exactly one, so a commented-out registration plus a
+    // second inline-string `instructions:` assignment cannot satisfy the pin
+    // (falsified once during feat-272 review: commenting the registration and
+    // substituting an inline string turns this test red).
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(/instructions:\s*createSeekerInstructionsResolver\(\)/)
+    expect(code.match(/\binstructions:/g)).toHaveLength(1)
+  })
+
+  it("pins the retrieveAnswer status literals and messages the Langfuse-managed prompt mirrors", () => {
+    // Drift guard (feat-272): the LIVE system prompt lives in Langfuse, where
+    // CI cannot see it, and it quotes retrieveAnswer's status literals and
+    // mirrors its message constants. Renaming or rewording any of these must
+    // be loud — this test forces a conscious edit that includes updating the
+    // `seeker-system` prompt in the Langfuse UI (every label).
+    expect(retrieveAnswerOutputSchema.shape.status.options).toEqual([
+      "ok",
+      "empty",
+      "unavailable",
+    ])
+    expect(SEEKER_SYSTEM_PROMPT_FALLBACK).toContain(
+      "When retrieveAnswer returns status 'empty'",
+    )
+    expect(SEEKER_SYSTEM_PROMPT_FALLBACK).toContain(
+      "When retrieveAnswer returns status 'unavailable'",
+    )
+    expect(RETRIEVE_ANSWER_EMPTY_MESSAGE).toBe(
+      "No passages were found for this question. Tell the seeker you do not have a grounded answer, and do not invent sources.",
+    )
+    expect(RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE).toBe(
+      "Retrieval is unavailable. Tell the seeker you cannot provide a grounded answer, and continue the conversation.",
+    )
   })
 })

@@ -5,6 +5,8 @@ import {
   getWatchRouteManifest,
   isWatchEpisodePairAdmittedByManifest,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
+  isWatchNestedContainerRouteAdmittedByManifest,
+  isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
   parseWatchRouteManifest,
   type WatchRouteManifest,
@@ -27,6 +29,11 @@ const manifest: WatchRouteManifest = {
     jesus: {
       "the-beginning": [1],
       "missing-language": [0],
+    },
+  },
+  nestedContainerAudioLanguageIndexesByParent: {
+    jesus: {
+      easter: [0],
     },
   },
 }
@@ -251,6 +258,83 @@ describe("exact episode admission", () => {
           },
         },
         spanishEpisode,
+      ),
+    ).toBe(false)
+  })
+})
+
+describe("nested container Watch route admission", () => {
+  it("requires the exact parent, child, and audio-language entry", () => {
+    expect(
+      isWatchNestedContainerRouteAdmittedByManifest(manifest, {
+        parentSlug: "jesus",
+        childSlug: "easter",
+        audioLanguageSlug: "english",
+      }),
+    ).toBe(true)
+    expect(
+      isWatchNestedContainerRouteAdmittedByManifest(manifest, {
+        parentSlug: "jesus",
+        childSlug: "easter",
+        audioLanguageSlug: "spanish-latin-american",
+      }),
+    ).toBe(false)
+    expect(
+      isWatchNestedContainerRouteAdmittedByManifest(manifest, {
+        parentSlug: "jesus",
+        childSlug: "the-beginning",
+        audioLanguageSlug: "english",
+      }),
+    ).toBe(false)
+  })
+
+  it("admits a parent when any directly indexed nested container has the language", () => {
+    expect(
+      isWatchParentAdmittedByNestedContainer(manifest, "jesus", "english"),
+    ).toBe(true)
+    expect(
+      isWatchParentAdmittedByNestedContainer(
+        manifest,
+        "jesus",
+        "spanish-latin-american",
+      ),
+    ).toBe(false)
+  })
+
+  it("fails closed for nested admission while an older snapshot is cached", () => {
+    const legacyManifest: WatchRouteManifest = {
+      ...manifest,
+      contentSlugs: [...manifest.contentSlugs, "the-beginning"],
+      episodePairsByParent: {
+        jesus: ["easter"],
+      },
+      audioLanguageIndexesByContent: {
+        ...manifest.audioLanguageIndexesByContent,
+        easter: [0],
+        "the-beginning": [0],
+      },
+    }
+    delete legacyManifest.nestedContainerAudioLanguageIndexesByParent
+
+    expect(
+      isWatchNestedContainerRouteAdmittedByManifest(legacyManifest, {
+        parentSlug: "jesus",
+        childSlug: "easter",
+        audioLanguageSlug: "english",
+      }),
+    ).toBe(false)
+    expect(
+      isWatchNestedContainerRouteAdmittedByManifest(legacyManifest, {
+        parentSlug: "jesus",
+        childSlug: "the-beginning",
+        audioLanguageSlug: "english",
+      }),
+    ).toBe(false)
+    expect(
+      isWatchParentAdmittedByNestedContainer(
+        legacyManifest,
+        "jesus",
+        "english",
       ),
     ).toBe(false)
   })

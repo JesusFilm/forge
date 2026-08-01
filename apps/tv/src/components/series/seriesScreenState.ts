@@ -2,7 +2,7 @@
 // panelState.ts) so the bug-prone branches (trailer pick, leaf bounce, state
 // selection) are unit-testable under jest-expo, which cannot load .tsx.
 
-import { isSeriesRecord } from "../../lib/isSeriesRecord"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { resolveDefaultSlug } from "../../lib/resolveDefaultLanguage"
 
 // ── Playable trailer (R4) ──────────────────────────────────────────
@@ -64,19 +64,16 @@ export function pickDefaultTrailer<
 export type LeafBounceDecision = "render" | "bounce" | "pending"
 
 /**
- * Should a /series deep-link bounce to /watch? Same isSeriesRecord predicate as the watch redirect (U5),
- * both replace so seams can't loop. "render": series-shaped; "bounce": leaf once `hasSeriesSelection` (the
- * completeness signal that avoids ejecting a warm-cache partial reading leaf-shaped but still gaining children); else "pending".
+ * Should a /series deep-link bounce to /watch? Shares the ONE isSeriesLabel with
+ * the watch redirect (U5), which is what keeps them exact inverses. "bounce" waits
+ * for `hasSeriesSelection` so a warm-cache partial isn't ejected mid-load.
  */
 export function resolveLeafBounce(
-  record:
-    | { label: string | null; episodes?: { length: number } | null }
-    | null
-    | undefined,
+  record: { label: string | null } | null | undefined,
   hasSeriesSelection: boolean,
 ): LeafBounceDecision {
   if (record == null) return "pending"
-  if (isSeriesRecord(record)) return "render"
+  if (isSeriesLabel(record.label)) return "render"
   return hasSeriesSelection ? "bounce" : "pending"
 }
 

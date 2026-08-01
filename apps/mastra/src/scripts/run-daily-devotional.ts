@@ -25,6 +25,11 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  createExplicitInputsReader,
+  readWorkspaceText,
+  requiredArg,
+} from "./devotional-authored-inputs"
 
 // --- env bootstrap ---------------------------------------------------------
 // config/env validates process.env at import time, so populate it FIRST, before
@@ -119,7 +124,27 @@ async function main(): Promise<void> {
 
   // deps for the run: local video matcher + optional partner-devotional grounding.
   const deps: Record<string, unknown> = {}
-  if (useLocalVideo) deps.matchVideo = createLocalVideoMatcher()
+  if (useLocalVideo) {
+    const inputsRoot = requiredArg("workspace-inputs")
+    const { DEVOTIONAL_AUTHORED_PATHS, loadPromptBundle } =
+      await import("../services/devotional/authored-data")
+    const { parseJesusFilmCatalogDocument } =
+      await import("../services/devotional/jesus-film-catalog")
+    const prompts = await loadPromptBundle(
+      createExplicitInputsReader(inputsRoot),
+    )
+    const catalog = parseJesusFilmCatalogDocument({
+      path: DEVOTIONAL_AUTHORED_PATHS.videoCatalog,
+      content: await readWorkspaceText(
+        inputsRoot,
+        DEVOTIONAL_AUTHORED_PATHS.videoCatalog,
+      ),
+    })
+    deps.matchVideo = createLocalVideoMatcher({
+      catalog,
+      systemPrompt: prompts.prompts.videoMatcher,
+    })
+  }
 
   if (partnerUrl) {
     const { fetchPartnerDevotional, toGroundingSnippet } =

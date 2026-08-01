@@ -4,12 +4,13 @@ import type { SearchLanguageOption } from "./search-language"
 
 export const MIN_QUERY_LANGUAGE_LETTERS = 3
 export const MIN_QUERY_LANGUAGE_TOKENS = 1
-export const MIN_DISTINCTIVE_QUERY_LANGUAGE_LETTERS = 1
 export const MIN_QUERY_LANGUAGE_SCORE = 0.25
 export const MIN_CLEAR_QUERY_LANGUAGE_SCORE = 0.08
 export const MIN_QUERY_LANGUAGE_MARGIN = 0
 export const MIN_QUERY_LANGUAGE_MARGIN_RATIO = 0.35
 export const MIN_CLEAR_QUERY_LANGUAGE_MARGIN_RATIO = 0.5
+export const MIN_ENGLISH_PRIOR_LANGUAGE_TOKENS = 4
+export const MIN_ENGLISH_PRIOR_LANGUAGE_LETTERS = 20
 
 export type SearchLanguageOptionWithPublicSlug = SearchLanguageOption & {
   publicSlug: string
@@ -80,7 +81,8 @@ const SCRIPT_HINTS: ReadonlyArray<{
   { code: "hi", pattern: /\p{Script=Devanagari}/u, minimumCharacters: 1 },
 ])
 
-const DISTINCTIVE_LATIN_MARK_PATTERN = /[À-ÖØ-öø-ÿĀ-žƀ-ɏ]/u
+const LATIN_LETTER_PATTERN = /\p{Script=Latin}/u
+const LATIN_BASE_WITH_COMBINING_MARK_PATTERN = /\p{Script=Latin}\p{Mark}/u
 
 export function detectQueryLanguageSuggestion({
   query,
@@ -88,7 +90,6 @@ export function detectQueryLanguageSuggestion({
   languageOptions,
 }: DetectQueryLanguageSuggestionInput): QueryLanguageSuggestion | null {
   const normalizedQuery = normalizeDetectableQuery(query)
-  if (!hasEnoughLanguageSignal(normalizedQuery)) return null
 
   const scriptSuggestion = detectScriptSuggestion(
     normalizedQuery,
@@ -96,6 +97,14 @@ export function detectQueryLanguageSuggestion({
     languageOptions,
   )
   if (scriptSuggestion) return scriptSuggestion
+
+  if (!hasEnoughLanguageSignal(normalizedQuery)) return null
+  if (
+    currentLanguageSlug === "english" &&
+    isAmbiguousUnaccentedLatinQuery(normalizedQuery)
+  ) {
+    return null
+  }
 
   const candidates = safeDetectAll(normalizedQuery)
   const [top, second] = candidates
@@ -181,16 +190,33 @@ function hasEnoughLanguageSignal(query: string): boolean {
   }
 
   const letterCount = query.match(/\p{Letter}/gu)?.length ?? 0
-  if (
-    letterCount >= MIN_DISTINCTIVE_QUERY_LANGUAGE_LETTERS &&
-    DISTINCTIVE_LATIN_MARK_PATTERN.test(query)
-  ) {
+  if (hasLatinDiacritic(query)) {
     return true
   }
 
   if (letterCount < MIN_QUERY_LANGUAGE_LETTERS) return false
 
   return languageTokens(query).length >= MIN_QUERY_LANGUAGE_TOKENS
+}
+
+function isAmbiguousUnaccentedLatinQuery(query: string): boolean {
+  const letters = query.match(/\p{Letter}/gu) ?? []
+  if (
+    letters.length === 0 ||
+    letters.some((letter) => !LATIN_LETTER_PATTERN.test(letter)) ||
+    hasLatinDiacritic(query)
+  ) {
+    return false
+  }
+
+  return (
+    languageTokens(query).length < MIN_ENGLISH_PRIOR_LANGUAGE_TOKENS ||
+    letters.length < MIN_ENGLISH_PRIOR_LANGUAGE_LETTERS
+  )
+}
+
+function hasLatinDiacritic(query: string): boolean {
+  return LATIN_BASE_WITH_COMBINING_MARK_PATTERN.test(query.normalize("NFD"))
 }
 
 function languageTokens(query: string): string[] {

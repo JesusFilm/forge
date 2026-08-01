@@ -1,6 +1,7 @@
 ---
 title: Next.js 16 dev blocks page-wide hydration when apps/web is loaded from 127.0.0.1 — `allowedDevOrigins` fix
 date: 2026-05-20
+last_updated: 2026-07-31
 category: docs/solutions/runtime-errors
 module: apps/web
 problem_type: runtime_error
@@ -25,6 +26,7 @@ tags:
   - dev-mode
   - cross-origin
   - apps-web
+  - tailscale
 ---
 
 # Next.js 16 dev blocks page-wide hydration when apps/web is loaded from 127.0.0.1 — `allowedDevOrigins` fix
@@ -96,6 +98,56 @@ After restart, hydration completes on the first reload. (A dev-panel click is oc
 
 Production builds strip `allowedDevOrigins` entirely. The field is a dev-only escape hatch.
 
+### HTTPS reverse-proxy follow-up
+
+Remote QA through Tailscale Serve adds a second origin shape: the browser uses
+the public HTTPS hostname while `next dev` still listens on HTTP loopback. The
+current configuration derives the extra development hostname from the public
+origin passed to that child process, while retaining the original loopback
+allowance:
+
+```js
+export function getAllowedDevOrigins(canonicalOrigin) {
+  const origins = new Set(["127.0.0.1"])
+  if (!canonicalOrigin) return [...origins]
+
+  try {
+    origins.add(new globalThis.URL(canonicalOrigin).hostname)
+  } catch {
+    // The optional override must not prevent local development from starting.
+  }
+
+  return [...origins]
+}
+```
+
+`apps/web/next.config.mjs:48-68` passes the hostname-only result to
+`allowedDevOrigins`; it does not admit a wildcard or hardcode a machine or
+tailnet address. `apps/web/scripts/next-config.test.mjs:13-23` covers the
+configured hostname and malformed-input fallback.
+
+The rewrite handles reverse-proxy requests whose `request.nextUrl` has an HTTPS
+scheme and a loopback hostname. An internal Watch locale rewrite clones that URL, so the
+rewrite would otherwise attempt TLS against the HTTP-only local listener. The
+rewrite path therefore normalizes only non-production `localhost` and
+`127.0.0.1` targets back to HTTP:
+
+```ts
+const url = request.nextUrl.clone()
+if (
+  process.env.NODE_ENV !== "production" &&
+  (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+) {
+  url.protocol = "http:"
+}
+url.pathname = internalRewritePathname(decision)
+```
+
+The guard is deliberately narrower than all development rewrites.
+`apps/web/src/proxy.test.ts:375-414` proves that development loopback rewrites
+use HTTP, external development rewrites stay on HTTPS, and production
+loopback-shaped rewrites stay on HTTPS.
+
 ## Why This Works
 
 Next.js 16 introduced a same-origin guard on dev-only resource paths. When the request's `Origin` header doesn't match `http://localhost:<port>`, the framework refuses to serve `/_next/webpack-hmr` and the client chunk manifest. Without those, React-DOM loads but cannot complete RSC hydration — `hydrateRoot` is never called for the subtree below the root `<body>`. The app shell gets a React root; every component tree below it is inert SSR HTML.
@@ -105,6 +157,13 @@ Next.js 16 introduced a same-origin guard on dev-only resource paths. When the r
 The `127.0.0.1` host preference exists in this monorepo specifically because `apps/admin`'s auth-host proxy treats `localhost` as the auth-host and loops `/dashboard` redirects when admin is accessed via `localhost:3003`. The IP variant short-circuits the loop. Browser tabs that follow links from admin to apps/web inherit `127.0.0.1` as the host; apps/web's `basePath: "/watch"` shares that host, so `/watch/easter` loads from `127.0.0.1:3000` and the block fires.
 
 `apps/web/.env.local` already uses `ADMIN_GRAPHQL_URL=http://127.0.0.1:3003/api/graphql` for the server-side GraphQL client, so the `127.0.0.1` host preference is part of the documented dev convention. The hydration block is the side of that preference that hadn't surfaced because nobody had previously opened apps/web at the IP address.
+
+For the HTTPS reverse-proxy case, two boundaries must agree without being
+collapsed. `NEXT_PUBLIC_CANONICAL_ORIGIN` identifies the browser-facing host
+that Next may serve in development, while the cloned loopback rewrite URL must
+match the HTTP listener used by the child process. Keeping the protocol change
+inside the non-production loopback branch preserves public HTTPS URLs and the
+existing locale/htmlLang pathname mapping.
 
 ## Prevention
 
@@ -133,9 +192,21 @@ The `127.0.0.1` host preference exists in this monorepo specifically because `ap
 
 - **`allowedDevOrigins` is dev-only.** Production builds ignore it. Adding it prophylactically to any Next.js app in this monorepo that developers may access via `127.0.0.1` has zero production impact.
 
+- **Exercise one client control through the public HTTPS endpoint.** A remote
+  smoke test should open and close Search, inspect browser errors, and scan the
+  web stderr log for `Blocked cross-origin request`. A loopback HTTP 200 alone
+  does not prove remote hydration or rewrite transport.
+
+- **Keep the rewrite protocol controls together.** Test development loopback,
+  external development, and production loopback cases whenever the internal
+  Watch rewrite changes. This prevents a local proxy fix from weakening public
+  HTTPS behavior.
+
 - **`apps/admin` deliberately does NOT use this fix.** Per the related doc below, admin's auth-host proxy collides with the same setting in unsafe ways; admin's mitigation is to keep CLI workflows (no browser interaction) at `127.0.0.1` and access admin through `apps/auth` at port 3004 in OAuth mode. Do not copy this fix to `apps/admin/next.config.ts`.
 
 ## Related Issues
+
+- [`docs/solutions/performance-issues/watch-static-locale-rewrite-route-manifest-admission-20260529.md`](../performance-issues/watch-static-locale-rewrite-route-manifest-admission-20260529.md) documents the route-admission and locale/htmlLang rewrite contract that the development-only protocol normalization must preserve.
 
 - [`docs/solutions/developer-experience/local-admin-dev-auth-flow-impractical-20260514.md`](../developer-experience/local-admin-dev-auth-flow-impractical-20260514.md) — Counterpart on the apps/admin side. Same dev-origin guard mechanism, same `127.0.0.1` host preference, **opposite resolution**: admin must NOT use `allowedDevOrigins` because of an auth-proxy collision. This doc and that one should be read together — applying the wrong half's fix to the other app reintroduces the problem.
 

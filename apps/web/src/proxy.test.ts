@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   WATCH_INTERNAL_REWRITE_HEADER,
@@ -66,17 +66,22 @@ afterEach(() => {
   resetManifestSource = null
   resetHomepageAvailabilitySource?.()
   resetHomepageAvailabilitySource = null
+  vi.unstubAllEnvs()
 })
 
 function makeRequest(
   pathname: string,
-  options: { acceptLanguage?: string; headers?: HeadersInit } = {},
+  options: {
+    acceptLanguage?: string
+    headers?: HeadersInit
+    origin?: string
+  } = {},
 ): ProxyRequest {
   // Test stand-in for the `ProxyRequest` structural subset proxy() reads.
   // No cast needed — the factory's return type matches the production
   // contract directly. NOTE: proxy() no longer reads cookies — the URL is
   // the sole locale carrier, so there is no cookie field to mock.
-  const url = new URL(`https://www.jesusfilm.org${pathname}`)
+  const url = new URL(pathname, options.origin ?? "https://www.jesusfilm.org")
   return {
     nextUrl: Object.assign(url, {
       clone: () => new URL(url.toString()),
@@ -378,6 +383,48 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }
   })
 
+  it("uses HTTP for development rewrites to an HTTPS loopback request URL", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const response = await proxy(
+      makeRequest("/jesus.html/english.html", {
+        origin: "https://127.0.0.1:3200",
+      }),
+    )
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+
+    expect(rewrite.protocol).toBe("http:")
+    expect(rewrite.host).toBe("127.0.0.1:3200")
+  })
+
+  it("keeps external development rewrite URLs on HTTPS", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const response = await proxy(
+      makeRequest("/jesus.html/english.html", {
+        origin: "https://www.jesusfilm.org",
+      }),
+    )
+
+    expect(
+      new URL(response.headers.get("x-middleware-rewrite") ?? "").protocol,
+    ).toBe("https:")
+  })
+
+  it("keeps loopback rewrite URLs on HTTPS in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    const response = await proxy(
+      makeRequest("/jesus.html/english.html", {
+        origin: "https://127.0.0.1:3200",
+      }),
+    )
+
+    expect(
+      new URL(response.headers.get("x-middleware-rewrite") ?? "").protocol,
+    ).toBe("https:")
+  })
+
   it("redirects legacy /videos to /languages", async () => {
     const response = await proxy(makeRequest("/videos"))
     expect(response.status).toBe(307)
@@ -445,6 +492,50 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }))
 
     const response = await proxy(makeRequest("/jesus.html"))
+    expectNotFoundRewrite(response)
+  })
+
+  it("admits canonical and explicit English parent routes through an English nested collection", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: ["discipleship", "walking-with-jesus"],
+      audioLanguageSlugs: ["english", "afrikaans"],
+      audioLanguageIndexesByContent: {
+        discipleship: [1],
+        "walking-with-jesus": [0],
+      },
+      nestedContainerAudioLanguageIndexesByParent: {
+        discipleship: {
+          "walking-with-jesus": [0],
+        },
+      },
+    }))
+
+    const canonical = await proxy(makeRequest("/discipleship.html"))
+    const explicit = await proxy(makeRequest("/discipleship.html/english.html"))
+
+    expect(rewritePath(canonical)).toBe("/en/en/discipleship.html/english.html")
+    expect(rewritePath(explicit)).toBe("/en/en/discipleship.html/english.html")
+  })
+
+  it("keeps nested parent admission closed until a nested relation snapshot is generated", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: ["discipleship", "walking-with-jesus"],
+      episodePairsByParent: {
+        discipleship: ["walking-with-jesus"],
+      },
+      audioLanguageSlugs: ["english", "afrikaans"],
+      audioLanguageIndexesByContent: {
+        discipleship: [1],
+        "walking-with-jesus": [0],
+      },
+    }))
+
+    const response = await proxy(makeRequest("/discipleship.html"))
+
     expectNotFoundRewrite(response)
   })
 

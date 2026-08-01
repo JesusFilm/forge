@@ -2724,6 +2724,11 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
     expect(chrome.className).toContain("opacity-100")
+    const clickSurface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+    expect(clickSurface.className).toContain("cursor-default")
+    expect(clickSurface.className).not.toContain("cursor-none")
 
     await act(async () => {
       window.dispatchEvent(
@@ -2759,6 +2764,8 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-visible")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("hidden")
     expect(chrome.className).toContain("opacity-0")
+    expect(clickSurface.className).toContain("cursor-none")
+    expect(clickSurface.className).not.toContain("cursor-default")
 
     await act(async () => {
       window.dispatchEvent(
@@ -2773,6 +2780,8 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("dim")
     expect(chrome.className).toContain("opacity-100")
+    expect(clickSurface.className).toContain("cursor-default")
+    expect(clickSurface.className).not.toContain("cursor-none")
 
     await act(async () => {
       chrome.dispatchEvent(makePointerEvent("pointermove"))
@@ -2795,6 +2804,7 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.getAttribute("data-bright")).toBe("false")
     expect(chrome.getAttribute("data-visibility")).toBe("hidden")
     expect(chrome.className).toContain("opacity-0")
+    expect(clickSurface.className).toContain("cursor-none")
   })
 
   it("keeps the top language button mounted during the visible grace state and publishes hidden opacity after 5s", async () => {
@@ -2977,9 +2987,28 @@ describe("HeroPlayer — fade timer", () => {
     expect(chrome.className).toContain("opacity-0")
   })
 
-  it.todo(
-    "does not auto-hide while paused — needs mock listener-invocation upgrade so React state syncs to mock changes",
-  )
+  it("keeps the mouse cursor visible while paused", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = true
+    callPlayerListener("pause")
+
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+    const clickSurface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      vi.advanceTimersByTime(5001)
+    })
+
+    expect(chrome.getAttribute("data-visible")).toBe("false")
+    expect(chrome.getAttribute("data-visibility")).toBe("hidden")
+    expect(chrome.className).toContain("opacity-0")
+    expect(clickSurface.className).toContain("cursor-default")
+    expect(clickSurface.className).not.toContain("cursor-none")
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -4,9 +4,33 @@ import { _internal } from "./devotional-render"
 
 describe("devotional render helpers", () => {
   it("formats the authored devotional date instead of the machine clock", () => {
-    expect(_internal.formatHeaderDate("2026-12-25")).toBe(
-      "Friday · December 25",
-    )
+    expect(
+      _internal.formatHeaderDate("2026-12-25", {
+        months: [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ],
+        weekdays: [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ],
+      } as never),
+    ).toBe("Friday · December 25")
   })
 
   it("budgets the intro, outro, and every non-video card tail", () => {

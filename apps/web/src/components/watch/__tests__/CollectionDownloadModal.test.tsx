@@ -145,7 +145,6 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root.unmount())
-  Reflect.deleteProperty(window, "showDirectoryPicker")
   container.remove()
 })
 
@@ -394,10 +393,6 @@ describe("CollectionDownloadModal", () => {
   })
 
   it("strengthens the form hierarchy without changing action shapes", async () => {
-    Object.defineProperty(window, "showDirectoryPicker", {
-      configurable: true,
-      value: vi.fn(),
-    })
     renderModal()
     await flush()
 
@@ -417,12 +412,6 @@ describe("CollectionDownloadModal", () => {
     )
     expect(quality?.className).toContain("border-white/15")
     expect(quality?.className).toContain("bg-stone-900/70")
-
-    const folder = container.querySelector(
-      '[data-testid="watch-collection-download-folder"]',
-    )
-    expect(folder?.className).toContain("h-auto")
-    expect(folder?.className).toContain("bg-stone-900/70")
 
     const actions = container.querySelector(
       '[data-testid="watch-collection-download-actions"]',

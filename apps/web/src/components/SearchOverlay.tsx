@@ -77,6 +77,16 @@ const CATEGORY_TITLE_KEYS: Record<
 
 const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
 
+function languageSuggestionKey(
+  query: string,
+  selectedLanguageSlug: string | null,
+  suggestedLanguageSlug: string,
+): string {
+  return [query.trim(), selectedLanguageSlug ?? "", suggestedLanguageSlug].join(
+    "\u0000",
+  )
+}
+
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
   const pathname = usePathname()
@@ -134,6 +144,8 @@ export function SearchOverlay() {
     useState(false)
   const [languageMetadataFallbackReady, setLanguageMetadataFallbackReady] =
     useState(false)
+  const [dismissedLanguageSuggestionKey, setDismissedLanguageSuggestionKey] =
+    useState<string | null>(null)
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
     overlayRef.current = node
@@ -227,21 +239,33 @@ export function SearchOverlay() {
     }
   }, [languageOptionsLoaded, open])
 
+  const currentSearchLanguageSlug =
+    selectedSearchLanguageOption?.publicSlug ??
+    defaultSearchLanguageOption?.publicSlug ??
+    null
   const maybeDetectQueryLanguageSuggestion = useCallback(
     (value: string) => {
-      return detectQueryLanguageSuggestion({
+      const suggestion = detectQueryLanguageSuggestion({
         query: value,
-        currentLanguageSlug:
-          selectedSearchLanguageOption?.publicSlug ??
-          defaultSearchLanguageOption?.publicSlug ??
-          null,
+        currentLanguageSlug: currentSearchLanguageSlug,
         languageOptions,
       })
+      if (
+        suggestion &&
+        languageSuggestionKey(
+          value,
+          currentSearchLanguageSlug,
+          suggestion.option.publicSlug,
+        ) === dismissedLanguageSuggestionKey
+      ) {
+        return null
+      }
+      return suggestion
     },
     [
-      defaultSearchLanguageOption,
+      currentSearchLanguageSlug,
+      dismissedLanguageSuggestionKey,
       languageOptions,
-      selectedSearchLanguageOption,
     ],
   )
   const queryLanguageSuggestion = useMemo(
@@ -371,6 +395,15 @@ export function SearchOverlay() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       pendingSearchAfterLanguageLoadRef.current = null
       setLanguageAutocompleteOpen(false)
+      if (queryLanguageSuggestion) {
+        setDismissedLanguageSuggestionKey(
+          languageSuggestionKey(
+            query,
+            language.publicSlug,
+            queryLanguageSuggestion.option.publicSlug,
+          ),
+        )
+      }
       selectSearchLanguage(language, regionName)
       if (query.trim().length > 0) {
         void search(query, {
@@ -379,7 +412,7 @@ export function SearchOverlay() {
         })
       }
     },
-    [query, search, selectSearchLanguage],
+    [query, queryLanguageSuggestion, search, selectSearchLanguage],
   )
 
   const handleResetSearchLanguage = useCallback(() => {
@@ -400,6 +433,7 @@ export function SearchOverlay() {
     inputRef.current?.focus()
   }, [search])
 
+  const languageConfirmationPending = queryLanguageSuggestion != null
   const showCategoryGrid = query.trim().length === 0 && !loading && !searched
   const searchLanguageControlVisible =
     languageOptionsLoading ||
@@ -528,7 +562,11 @@ export function SearchOverlay() {
             </div>
           )}
           {queryLanguageSuggestion && suggestedLanguageName && (
-            <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md">
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md"
+            >
               <span className="font-medium">
                 {t("queryLanguageDetected", {
                   language: suggestedLanguageName,
@@ -626,7 +664,7 @@ export function SearchOverlay() {
             </div>
           )}
 
-          {loading && showSkeleton && (
+          {!languageConfirmationPending && loading && showSkeleton && (
             <div
               className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               aria-hidden="true"
@@ -643,47 +681,48 @@ export function SearchOverlay() {
             </div>
           )}
 
-          {loading && !showSkeleton && (
+          {!languageConfirmationPending && loading && !showSkeleton && (
             <p className="sr-only">{t("searching")}</p>
           )}
 
-          {!loading && searched && displayResults.length === 0 && error && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <h2 className="text-lg font-semibold text-stone-200">{error}</h2>
-              <p className="mt-2 text-sm text-stone-500">
-                {t("connectionHint")}
-              </p>
-              <button
-                type="button"
-                onClick={() => void search(query)}
-                className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
-              >
-                {t("retrySearch")}
-              </button>
-            </div>
-          )}
-
-          {!loading && searched && displayResults.length === 0 && !error && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <h2 className="text-lg font-semibold text-stone-200">
-                {t("noResults", { query: query.trim() })}
-              </h2>
-              <p className="mt-2 text-sm text-stone-500">
-                {t("tryDifferentKeywordsOrLanguage")}
-              </p>
-              {queryLanguageSuggestion && suggestedLanguageName && (
+          {!languageConfirmationPending &&
+            !loading &&
+            searched &&
+            displayResults.length === 0 &&
+            error && (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <h2 className="text-lg font-semibold text-stone-200">
+                  {error}
+                </h2>
+                <p className="mt-2 text-sm text-stone-500">
+                  {t("connectionHint")}
+                </p>
                 <button
                   type="button"
-                  onClick={handleQueryLanguageSuggestionConfirm}
-                  className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-full bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                  onClick={() => void search(query)}
+                  className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
                 >
-                  {t("searchInLanguage", { language: suggestedLanguageName })}
+                  {t("retrySearch")}
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {displayResults.length > 0 && (
+          {!languageConfirmationPending &&
+            !loading &&
+            searched &&
+            displayResults.length === 0 &&
+            !error && (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <h2 className="text-lg font-semibold text-stone-200">
+                  {t("noResults", { query: query.trim() })}
+                </h2>
+                <p className="mt-2 text-sm text-stone-500">
+                  {t("tryDifferentKeywordsOrLanguage")}
+                </p>
+              </div>
+            )}
+
+          {!languageConfirmationPending && displayResults.length > 0 && (
             <>
               <div
                 key={resultsKey}

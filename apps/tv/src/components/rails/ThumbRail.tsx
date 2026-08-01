@@ -85,8 +85,9 @@ const styles = StyleSheet.create({
   head: {
     flexDirection: "row",
     alignItems: "baseline",
+    // No marginBottom: itemWrapper's paddingTop is the whole heading gap, so
+    // adding to it here just stacks two numbers to reason about.
     gap: scale(18),
-    marginBottom: scale(30),
     paddingHorizontal: scale(80),
   },
   headTitle: SECTION_HEADING,
@@ -100,8 +101,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(80),
   },
   // Vertical room so the lift + focus ring + icon overlay never clip neighbours.
+  // Asymmetric: a focused card overflows ~scale(24) up but its shadow reaches
+  // ~scale(41) down (radius 25 + offsetY 16), so the bottom needs the more room.
   itemWrapper: {
-    paddingVertical: scale(40),
+    // Doubles as the gap under the rail heading.
+    paddingTop: scale(35),
+    paddingBottom: scale(40),
   },
   itemGap: {
     marginRight: ITEM_GAP,

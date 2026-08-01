@@ -34,7 +34,8 @@ page currently has 26 episodes, making field preparation slow and error-prone.
 2. `apps/web/src/components/watch/SeriesPageClient.tsx` - collection page orchestration.
 3. `apps/web/src/components/watch/DownloadModal.tsx` - single-video auth, Terms, and proxy pattern.
 4. `apps/admin/src/services/video.service.ts` - bounded child-language query pattern.
-5. `apps/web/src/app/api/download/route.ts` - authenticated streaming proxy.
+5. `apps/web/src/app/api/download/route.ts` - authenticated download resolver
+   that redirects media downloads off Web.
 
 ## Grep These
 
@@ -50,7 +51,8 @@ page currently has 26 episodes, making field preparation slow and error-prone.
 2. Add a collection modal that selects language and relative quality once.
 3. Download eligible children in displayed order with only one active transfer.
 4. Show skipped, completed, failed, canceled, and retry states.
-5. Preserve the existing account, Terms, filename, proxy, analytics, and SSRF contracts.
+5. Preserve the existing account, Terms, filename, resolver, analytics, and
+   SSRF contracts.
 6. Keep all collection download work lazy until viewer intent.
 
 ## Constraints

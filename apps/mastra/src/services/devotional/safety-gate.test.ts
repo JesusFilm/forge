@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { evaluateSafety } from "./safety-gate"
+import { evaluateSafety as evaluateSafetyWithPolicy } from "./safety-gate"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import type { Devotional } from "./types"
 
@@ -51,6 +51,16 @@ function llmThrowing(error: unknown): DevotionalLlm {
       throw error
     },
   }
+}
+
+function evaluateSafety(
+  options: Omit<Parameters<typeof evaluateSafetyWithPolicy>[0], "systemPrompt">,
+) {
+  return evaluateSafetyWithPolicy({
+    ...options,
+    systemPrompt:
+      "Strictly score doctrine, tone, and sensitivity; return JSON.",
+  })
 }
 
 describe("evaluateSafety", () => {
