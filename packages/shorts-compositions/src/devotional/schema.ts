@@ -1,11 +1,11 @@
 // Pure zod schema + constants for the daily-devotional video composition.
 // Self-contained and independent of the production "short" composition.
 import { z } from "zod"
-import { devotionalRenderConfigSchema } from "./styles.js"
+import { devotionalRenderConfigSchema } from "./styles"
 export {
   devotionalRenderConfigSchema,
   type DevotionalRenderConfig,
-} from "./styles.js"
+} from "./styles"
 
 export const DEVOTIONAL_COMPOSITION_ID = "devotional"
 /** Landscape 16:9 variant (desktop/YouTube) — same component, same props; the
