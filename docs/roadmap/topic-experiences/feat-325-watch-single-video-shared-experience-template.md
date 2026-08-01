@@ -1,5 +1,5 @@
 ---
-id: "feat-322"
+id: "feat-325"
 title: "Attach the shared Experience template to single-video Watch pages"
 owner: "codex"
 priority: "P1"
@@ -9,7 +9,7 @@ duration: 1
 depends_on:
   - "feat-047"
 blocks:
-  - "feat-323"
+  - "feat-326"
 tags:
   - "web"
   - "watch-page"

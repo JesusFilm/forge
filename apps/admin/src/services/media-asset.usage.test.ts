@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { findMediaAssetUsages } from "./media-asset.usage"
+import {
+  findMediaAssetUsages,
+  findVideoLocaleMediaAssetUsages,
+} from "./media-asset.usage"
 
 describe("findMediaAssetUsages", () => {
   it("finds canonical asset-id references in nested block JSON", () => {
@@ -21,11 +24,51 @@ describe("findMediaAssetUsages", () => {
 
     expect(matches).toEqual([
       expect.objectContaining({
-        experienceLocaleId: "loc-1",
+        resourceType: "EXPERIENCE_LOCALE",
+        resourceLocaleId: "loc-1",
         location: "blocks",
         fieldPath: "$.blocks[0].items[0].imageAssetId",
         fieldName: "imageAssetId",
         match: "asset-id",
+      }),
+    ])
+  })
+
+  it("reports active and recoverable video-locale social image references", () => {
+    const rows = [
+      {
+        id: "video-locale-active",
+        videoId: "video-1",
+        locale: "en",
+        title: "JESUS",
+        socialImageAssetId: "asset-1",
+        deletedAt: null,
+        video: { slug: "jesus", deletedAt: null },
+      },
+      {
+        id: "video-locale-deleted",
+        videoId: "video-1",
+        locale: "fr",
+        title: "JESUS",
+        socialImageAssetId: "asset-1",
+        deletedAt: new Date("2026-01-01T00:00:00Z"),
+        video: { slug: "jesus", deletedAt: null },
+      },
+    ]
+
+    expect(
+      findVideoLocaleMediaAssetUsages({ assetId: "asset-1" }, rows),
+    ).toEqual([
+      expect.objectContaining({
+        resourceType: "VIDEO_LOCALE",
+        resourceLocaleId: "video-locale-active",
+        recoverable: false,
+        fieldPath: "$.socialImageAssetId",
+      }),
+      expect.objectContaining({
+        resourceType: "VIDEO_LOCALE",
+        resourceLocaleId: "video-locale-deleted",
+        recoverable: true,
       }),
     ])
   })

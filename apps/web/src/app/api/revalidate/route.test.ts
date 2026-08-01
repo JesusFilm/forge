@@ -310,6 +310,103 @@ describe("POST /api/revalidate", () => {
     })
   })
 
+  it("uses an exact languageSlug when the additive video payload provides one", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "video",
+          entry: {
+            slug: "jesus",
+            locale: "es",
+            languageSlug: "spanish-latin-american",
+          },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.paths).toEqual(
+      expect.arrayContaining([
+        "/jesus.html/spanish-latin-american.html",
+        "/es/es-419/jesus.html/spanish-latin-american.html",
+        "/jesus/spanish-latin-american",
+      ]),
+    )
+    expect(revalidatePathMock).not.toHaveBeenCalledWith(
+      "/jesus.html/spanish-castilian.html",
+    )
+  })
+
+  it("revalidates both explicit and language-less English paths for JESUS", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "video",
+          entry: {
+            slug: "jesus",
+            locale: "en",
+            languageSlug: "english",
+          },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.paths).toEqual(
+      expect.arrayContaining([
+        "/jesus.html/english.html",
+        "/en/en/jesus.html/english.html",
+        "/jesus.html",
+        "/en/en/jesus.html",
+      ]),
+    )
+  })
+
+  it("rejects invalid additive languageSlug values without cache side effects", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "video",
+          entry: {
+            slug: "jesus",
+            locale: "en",
+            languageSlug: "spanish/castilian",
+          },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: "invalid_language_slug",
+    })
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(revalidateTagMock).not.toHaveBeenCalled()
+  })
+
   it("does not invalidate a language home as a collision-owned English video canonical", async () => {
     const { POST } = await import("./route")
 

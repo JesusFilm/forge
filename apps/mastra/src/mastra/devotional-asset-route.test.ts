@@ -61,4 +61,15 @@ describe("devotional asset route", () => {
       new Uint8Array([2, 3]).buffer,
     )
   })
+
+  it("fails closed without caching when the worker detects mutation", async () => {
+    const response = await handleDevotionalAssetRequest({
+      ...BASE,
+      fetchArtifact: async () =>
+        Response.json({ error: "artifact_integrity_failed" }, { status: 409 }),
+    })
+
+    expect(response.status).toBe(409)
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
 })

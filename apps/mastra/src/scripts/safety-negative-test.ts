@@ -16,8 +16,14 @@ import { fileURLToPath } from "node:url"
 import { createAgentLlm } from "../mastra/agents/devotional/agent-llm"
 import { getDevotionalSafetyModel } from "../config/env"
 import { safetyAgent } from "../mastra/agents/devotional/safety-agent"
+import { setInstructionResolver } from "../mastra/agents/devotional/instruction-resolver"
+import { loadSafetyPolicy } from "../services/devotional/authored-data"
 import { evaluateSafety } from "../services/devotional/safety-gate"
 import type { Devotional } from "../services/devotional/types"
+import {
+  createExplicitInputsReader,
+  requiredArg,
+} from "./devotional-authored-inputs"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.resolve(HERE, "../../../../devo/baseline/safety-negative.json")
@@ -114,11 +120,22 @@ const CASES: { name: string; expected: "pass" | "block"; d: Devotional }[] = [
 ]
 
 async function main() {
+  const safetyPolicy = await loadSafetyPolicy(
+    createExplicitInputsReader(requiredArg("workspace-inputs")),
+  )
+  setInstructionResolver(async (agentId) =>
+    agentId === "devotionalSafety" ? safetyPolicy.prompt : null,
+  )
   const llm = createAgentLlm(safetyAgent, getDevotionalSafetyModel())
   const results: Record<string, unknown>[] = []
   let ok = 0
   for (const c of CASES) {
-    const v = await evaluateSafety({ devotional: c.d, llm })
+    const v = await evaluateSafety({
+      devotional: c.d,
+      llm,
+      systemPrompt: safetyPolicy.prompt,
+      minConfidence: safetyPolicy.effectiveMinimumConfidence,
+    })
     const hit = v.verdict === c.expected
     if (hit) ok++
     console.log(

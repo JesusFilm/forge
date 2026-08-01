@@ -1,12 +1,9 @@
 import { z } from "zod"
 
-import {
-  getDevotionalPartnerDomains,
-  getFirecrawlConfig,
-  type FirecrawlConfig,
-} from "../../config/env"
+import { getFirecrawlConfig, type FirecrawlConfig } from "../../config/env"
 import { searchFirecrawl } from "../firecrawl-client"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { requireAuthoredPrompt } from "./authored-data"
 import {
   DEVOTIONAL_BLOCKS,
   MAX_DEVOTIONAL_QUESTIONS,
@@ -38,23 +35,6 @@ const MAX_GROUNDING_SNIPPETS = 4
  * formulaic. Reflection precedes questions in every arrangement; the lead
  * ingredients (hook / scripture / video) rotate.
  */
-const BLOCK_ORDERS: DevotionalBlock[][] = [
-  ["hook", "scripture", "video", "reflection", "questions"],
-  ["video", "hook", "scripture", "reflection", "questions"],
-  ["scripture", "hook", "video", "reflection", "questions"],
-  ["hook", "video", "scripture", "reflection", "questions"],
-]
-
-const WRITER_SYSTEM_PROMPT = [
-  "You write a short, warm, original daily Christian devotional.",
-  "Ground your reflection in the supplied trusted-partner teaching, but write it",
-  "entirely in your own words — do NOT copy or quote partner text verbatim.",
-  "Center the reflection on the scripture and connect it to the day's hook.",
-  "End with 2 to 3 open reflection questions that invite the reader to respond.",
-  "If one partner source is genuinely worth further reading, return its URL as",
-  "furtherReading; otherwise omit it. Return JSON only.",
-].join("\n")
-
 const WriterResponseSchema = z
   .object({
     reflection: z.string().trim().min(1).max(MAX_DEVOTIONAL_TEXT_LENGTH),
@@ -129,6 +109,8 @@ export type WriteDevotionalOptions = {
   partnerDomains?: string[]
   firecrawlConfig?: FirecrawlConfig
   grounding?: GroundingSearchFn
+  systemPrompt?: string
+  blockOrders?: DevotionalBlock[][]
 }
 
 function partnerUrl(url: string): URL | null {
@@ -172,8 +154,14 @@ function dateHash(date: string): number {
 export function chooseBlockOrder(
   date: string,
   present: DevotionalBlock[],
+  blockOrders?: DevotionalBlock[][],
 ): DevotionalBlock[] {
-  const base = BLOCK_ORDERS[dateHash(date) % BLOCK_ORDERS.length]
+  if (!blockOrders?.length) {
+    throw new Error(
+      "/inputs/prompts/generation.json: blockOrders configuration is required",
+    )
+  }
+  const base = blockOrders[dateHash(date) % blockOrders.length]!
   const presentSet = new Set(present)
   return base.filter((block) => presentSet.has(block))
 }
@@ -222,7 +210,13 @@ function renderGrounding(snippets: readonly GroundingSnippet[]): string {
 export async function writeDevotional(
   options: WriteDevotionalOptions,
 ): Promise<Devotional> {
-  const partnerDomains = options.partnerDomains ?? getDevotionalPartnerDomains()
+  const systemPrompt = requireAuthoredPrompt(options.systemPrompt)
+  if (!options.partnerDomains) {
+    throw new Error(
+      "/inputs/prompts/generation.json: partnerDomains configuration is required",
+    )
+  }
+  const partnerDomains = options.partnerDomains
   const firecrawlConfig = options.firecrawlConfig ?? getFirecrawlConfig()
   const groundingSearch = options.grounding ?? defaultGroundingSearch
 
@@ -241,7 +235,7 @@ export async function writeDevotional(
   let response: z.infer<typeof WriterResponseSchema>
   try {
     response = await options.llm.complete({
-      system: WRITER_SYSTEM_PROMPT,
+      system: systemPrompt,
       user: [
         `Date: ${options.date}`,
         `Hook (${options.hook.type}): ${options.hook.title} — ${options.hook.summary}`,
@@ -284,13 +278,15 @@ export async function writeDevotional(
     reflection: response.reflection,
     questions: response.questions,
     furtherReading,
-    blockOrder: chooseBlockOrder(options.date, presentBlocks(options.video)),
+    blockOrder: chooseBlockOrder(
+      options.date,
+      presentBlocks(options.video),
+      options.blockOrders,
+    ),
   }
 }
 
 export const _internal = {
-  WRITER_SYSTEM_PROMPT,
-  BLOCK_ORDERS,
   presentBlocks,
   isAllowedPartnerUrl,
   WRITER_JSON_SCHEMA,

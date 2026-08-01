@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 
-import { SYSTEM_PROMPT } from "../../../services/devotional/devotional-copy"
+import { requireResolvedInstructions } from "./instruction-resolver"
 import { devotionalModel } from "./model"
 
 /**
@@ -12,6 +12,6 @@ import { devotionalModel } from "./model"
 export const copyAgent = new Agent({
   id: "devotionalCopy",
   name: "Devotional Copywriter",
-  instructions: SYSTEM_PROMPT,
+  instructions: () => requireResolvedInstructions("devotionalCopy"),
   model: devotionalModel,
 })

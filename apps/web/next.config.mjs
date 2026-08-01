@@ -45,9 +45,27 @@ const adminMediaImageHost = (() => {
   }
 })()
 
+export function getAllowedDevOrigins(canonicalOrigin) {
+  const origins = new Set(["127.0.0.1"])
+
+  if (!canonicalOrigin) return [...origins]
+
+  try {
+    origins.add(new globalThis.URL(canonicalOrigin).hostname)
+  } catch {
+    // Keep local development bootable when an optional override is malformed.
+  }
+
+  return [...origins]
+}
+
+const allowedDevOrigins = getAllowedDevOrigins(
+  process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+)
+
 export const nextConfig = {
   basePath: WATCH_BASE_PATH,
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins,
   // Self-hosted prod (Railway) doesn't always sit behind a compressing
   // proxy. Without this the JS chunks ship at their raw ~1.8 MB size,
   // dominating the simulated-mobile LCP budget. compress:true wires

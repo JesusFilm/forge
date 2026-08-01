@@ -1,21 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Mastra } from "@mastra/core"
 import { InMemoryStore } from "@mastra/core/storage"
+import { LocalFilesystem, Workspace } from "@mastra/core/workspace"
 
 import type { ProducedDevotionalAudio } from "../../services/devotional/devotional-audio"
 import type { GeneratedDevotional } from "../../services/devotional/generate-devotional"
 import { videoFirstDevotionalWorkflow } from "./video-first-devotional"
+import { VideoFirstDevotionalWorkflowInputSchema } from "./video-first-devotional-schema"
 
 const mocks = vi.hoisted(() => ({
   reserve: vi.fn(),
   record: vi.fn(),
   release: vi.fn(),
   publish: vi.fn(),
+  durablePublish: vi.fn(),
   render: vi.fn(),
+  verifyArtifacts: vi.fn(),
+  verifySources: vi.fn(),
 }))
 
-vi.mock("../../services/devotional/used-clips-ledger", () => ({
-  createUsedClipsStore: () => ({
+vi.mock("../../services/devotional/workspace/postgres-used-clips", () => ({
+  getPostgresUsedClipsStore: () => ({
     read: async () => ({ version: 1, used: {} }),
     reserve: mocks.reserve,
     record: mocks.record,
@@ -30,10 +35,25 @@ vi.mock("../../services/devotional/devotional-worker-client", () => ({
   }) =>
     `/forge-video-first-devotional/assets/${artifact.assetId}/${artifact.artifactType}/mp4`,
   renderDevotionalOnWorker: mocks.render,
+  verifyDevotionalWorkerArtifacts: mocks.verifyArtifacts,
 }))
 
 vi.mock("../../services/devotional/site-publish-client", () => ({
   publishDevotional: mocks.publish,
+}))
+
+vi.mock("../../services/devotional/workspace/source-verification", () => ({
+  verifyWorkflowWorkspaceSources: mocks.verifySources,
+}))
+
+vi.mock("../../services/devotional/workspace/publication", () => ({
+  devotionalPublicationRequestHash: () => "a".repeat(64),
+  publishWithDurableIntent: mocks.durablePublish,
+}))
+
+vi.mock("../../services/devotional/workspace/provenance", () => ({
+  writeInputsUsed: vi.fn(async () => "/runs/test/inputs-used.json"),
+  writeAttemptJsonArtifact: vi.fn(async () => "/runs/test/artifact.json"),
 }))
 
 vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
@@ -41,13 +61,56 @@ vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
   evaluateSafety: async () => SAFETY,
 }))
 
-vi.mock("../../services/devotional/devotional-cache", () => ({
-  cacheDirFor: () => "/tmp/devotional-cache-test",
-  clearCachedDevotional: async () => undefined,
-  loadCachedAudio: async () => AUDIO,
-  loadCachedDevo: async () => null,
-  saveCachedAudio: async () => undefined,
-  saveCachedDevo: async () => undefined,
+vi.mock("../../services/devotional/workspace/attempt-data", () => ({
+  loadDevotionalAttemptAuthoredData: async () => ({
+    prompts: {
+      prompts: {
+        scripture: "scripture",
+        modernizer: "modernizer",
+        highlighter: "highlighter",
+        ranker: "ranker",
+        copy: "copy",
+        writer: "writer",
+        hookNews: "news",
+        hookQuestion: "question",
+        videoMatcher: "video matcher",
+        safety: "safety",
+      },
+      generation: {
+        hookStyles: ["statement"],
+        blockOrders: [["hook", "scripture", "video", "reflection"]],
+        partnerDomains: [],
+      },
+    },
+    safety: {
+      minimumConfidence: 0.6,
+      effectiveMinimumConfidence: 0.6,
+      prompt: "safety",
+    },
+    holidays: {},
+    voices: {
+      profiles: { "male-d": "voice" },
+      settings: {
+        stability: 0.35,
+        similarity_boost: 0.85,
+        style: 0.45,
+        use_speaker_boost: true,
+      },
+      rotation: ["male-d"],
+      filterRotation: ["grain"],
+    },
+    music: {
+      moods: { peace: "p", hope: "h", lament: "l", awe: "a" },
+      defaultLengthMs: 60_000,
+    },
+    narration: {},
+    brand: { name: "Jesus Film", rightsAssertion: "rights" },
+    render: { filters: {}, layouts: {}, nativeLayouts: {} },
+    chapters: [CHAPTER],
+    passages: [CHAPTER],
+    scripture: { verses: {} },
+    corpora: { ryleMatthew: [], matthewHenry: [], spurgeon: [] },
+  }),
 }))
 
 vi.mock("../../services/devotional/devotional-audio", async (importActual) => ({
@@ -143,16 +206,45 @@ function registerWorkflow() {
   const mastra = new Mastra({
     workflows: { videoFirstDevotionalWorkflow },
     storage: new InMemoryStore({ id: "video-first-devotional-test" }),
+    workspace: new Workspace({
+      id: "video-first-devotional-test-workspace",
+      name: "Video First Devotional Test Workspace",
+      filesystem: new LocalFilesystem({
+        id: "video-first-devotional-test-filesystem",
+        basePath: "/tmp/video-first-devotional-test-workspace",
+        contained: true,
+      }),
+      tools: { enabled: false },
+    }),
   })
   return mastra.getWorkflow("videoFirstDevotionalWorkflow")
 }
 
-async function startAndResume(approved: boolean, runId: string) {
+function workflowInput(runId: string) {
+  return VideoFirstDevotionalWorkflowInputSchema.parse({
+    chapterIndex: 19,
+    date: "2026-07-21",
+    workspaceGeneration: 1,
+    attemptId: runId,
+    selectedSources: [
+      {
+        path: "/inputs/reflections/grace.md",
+        category: "reflections" as const,
+        digest: "a".repeat(64),
+        size: 42,
+        modifiedAt: "2026-07-31T12:00:00.000Z",
+        title: "grace",
+      },
+    ],
+  })
+}
+
+async function startUntilSuspended(runId: string) {
   registeredWorkflow ??= registerWorkflow()
   const workflow = registeredWorkflow
   const run = await workflow.createRun({ runId })
   await run.startAsync({
-    inputData: { chapterIndex: 19, date: "2026-07-21" },
+    inputData: workflowInput(runId),
   })
   let state = await workflow.getWorkflowRunById(runId)
   for (
@@ -174,6 +266,11 @@ async function startAndResume(approved: boolean, runId: string) {
       },
     },
   })
+  return { workflow }
+}
+
+async function startAndResume(approved: boolean, runId: string) {
+  const { workflow } = await startUntilSuspended(runId)
   const resumed = await workflow.createRun({ runId })
   return resumed.resume({
     resumeData: {
@@ -194,6 +291,19 @@ describe("video-first devotional workflow", () => {
     mocks.record.mockResolvedValue(undefined)
     mocks.render.mockResolvedValue({ portrait: PORTRAIT, wide: WIDE })
     mocks.publish.mockResolvedValue({ ok: true, published: true })
+    mocks.verifyArtifacts.mockResolvedValue(undefined)
+    mocks.verifySources.mockResolvedValue(undefined)
+    mocks.durablePublish.mockImplementation(async (input) => {
+      const result = await input.send()
+      if (result.ok && result.published) {
+        await mocks.record(input.chapterId, input.reservationId)
+      } else if (
+        !(!result.ok && result.reason === "upstream_failed" && result.retryable)
+      ) {
+        await mocks.release(input.chapterId, input.reservationId)
+      }
+      return result
+    })
   })
 
   it("renders, suspends with retrievable assets, publishes, then records the clip", async () => {
@@ -246,17 +356,60 @@ describe("video-first devotional workflow", () => {
     expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
   })
 
-  it("stays terminal-published if post-publish ledger recording fails", async () => {
+  it("fails without releasing after receiver acceptance cannot be committed", async () => {
     mocks.record.mockRejectedValue(new Error("ledger disk unavailable"))
     const result = await startAndResume(true, "workflow-ledger-failed")
     expect(result).toMatchObject({
-      status: "success",
-      result: {
-        status: "published",
-        clipRecorded: false,
-        publishReason: "ledger_record_failed",
-      },
+      status: "failed",
     })
     expect(mocks.release).not.toHaveBeenCalled()
+  })
+
+  it("releases the clip when approval-time artifact verification fails", async () => {
+    const { workflow } = await startUntilSuspended("approval-integrity")
+    mocks.verifyArtifacts.mockRejectedValueOnce(new Error("artifact changed"))
+
+    const resumed = await workflow.createRun({ runId: "approval-integrity" })
+    await expect(
+      resumed.resume({
+        resumeData: {
+          approved: true,
+          approvedBy: { subject: "reviewer-1", role: "editor" },
+        },
+      }),
+    ).resolves.toMatchObject({ status: "failed" })
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("releases the clip when a selected source changes before approval resumes", async () => {
+    const { workflow } = await startUntilSuspended("approval-source-changed")
+    mocks.verifySources.mockRejectedValueOnce(new Error("source changed"))
+
+    const resumed = await workflow.createRun({
+      runId: "approval-source-changed",
+    })
+    await expect(
+      resumed.resume({
+        resumeData: {
+          approved: true,
+          approvedBy: { subject: "reviewer-1", role: "editor" },
+        },
+      }),
+    ).resolves.toMatchObject({ status: "failed" })
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("releases the clip when pre-publish artifact verification fails", async () => {
+    mocks.verifyArtifacts
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("artifact changed"))
+    const result = await startAndResume(true, "publish-integrity")
+
+    expect(result).toMatchObject({ status: "failed" })
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+    expect(mocks.publish).not.toHaveBeenCalled()
   })
 })

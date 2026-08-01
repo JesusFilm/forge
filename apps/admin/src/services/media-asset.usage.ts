@@ -12,11 +12,18 @@ export type MediaAssetUsageTarget = {
 }
 
 export type MediaAssetUsageRow = {
-  experienceId: string
-  experienceLocaleId: string
+  /** @deprecated Use resourceId when resourceType is EXPERIENCE_LOCALE. */
+  experienceId: string | null
+  /** @deprecated Use resourceLocaleId when resourceType is EXPERIENCE_LOCALE. */
+  experienceLocaleId: string | null
+  resourceType: "EXPERIENCE_LOCALE" | "VIDEO_LOCALE"
+  resourceId: string
+  resourceLocaleId: string
   locale: string
   title: string | null
-  location: "metadata" | "blocks"
+  editUrl: string
+  recoverable: boolean
+  location: "metadata" | "blocks" | "search-social"
   fieldPath: string
   fieldName: string
   value: string
@@ -32,6 +39,16 @@ type ExperienceLocaleUsageSource = {
   blocks: unknown
 }
 
+type VideoLocaleUsageSource = {
+  id: string
+  videoId: string
+  locale: string | null
+  title: string | null
+  socialImageAssetId: string | null
+  deletedAt: Date | null
+  video: { slug: string; deletedAt: Date | null }
+}
+
 const URL_FIELD_PATTERN =
   /(^|_)(image|media|backgroundImage|thumbnail|poster|ogImage)(Url|Src)$/i
 const ASSET_ID_FIELD_PATTERN =
@@ -41,19 +58,61 @@ export async function scanMediaAssetUsage(
   prisma: PrismaClient,
   target: MediaAssetUsageTarget,
 ): Promise<MediaAssetUsageRow[]> {
-  const rows = await prisma.experienceLocale.findMany({
-    select: {
-      id: true,
-      experienceId: true,
-      locale: true,
-      title: true,
-      ogImageUrl: true,
-      blocks: true,
-    },
-    orderBy: { updatedAt: "desc" },
-  })
+  const [experienceLocales, videoLocales] = await Promise.all([
+    prisma.experienceLocale.findMany({
+      select: {
+        id: true,
+        experienceId: true,
+        locale: true,
+        title: true,
+        ogImageUrl: true,
+        blocks: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.videoLocale.findMany({
+      where: { socialImageAssetId: target.assetId },
+      select: {
+        id: true,
+        videoId: true,
+        locale: true,
+        title: true,
+        socialImageAssetId: true,
+        deletedAt: true,
+        video: { select: { slug: true, deletedAt: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ])
 
-  return findMediaAssetUsages(target, rows)
+  return [
+    ...findMediaAssetUsages(target, experienceLocales),
+    ...findVideoLocaleMediaAssetUsages(target, videoLocales),
+  ]
+}
+
+export function findVideoLocaleMediaAssetUsages(
+  target: MediaAssetUsageTarget,
+  rows: readonly VideoLocaleUsageSource[],
+): MediaAssetUsageRow[] {
+  return rows
+    .filter((row) => row.socialImageAssetId === target.assetId)
+    .map((row) => ({
+      experienceId: null,
+      experienceLocaleId: null,
+      resourceType: "VIDEO_LOCALE" as const,
+      resourceId: row.videoId,
+      resourceLocaleId: row.id,
+      locale: row.locale ?? "und",
+      title: row.title,
+      editUrl: `/dashboard/videos?video=${encodeURIComponent(row.video.slug)}&locale=${encodeURIComponent(row.id)}`,
+      recoverable: row.deletedAt != null || row.video.deletedAt != null,
+      location: "search-social" as const,
+      fieldPath: "$.socialImageAssetId",
+      fieldName: "socialImageAssetId",
+      value: target.assetId,
+      match: "asset-id" as const,
+    }))
 }
 
 export function findMediaAssetUsages(
@@ -130,8 +189,13 @@ function addMatchForField({
   matches.push({
     experienceId: row.experienceId,
     experienceLocaleId: row.id,
+    resourceType: "EXPERIENCE_LOCALE",
+    resourceId: row.experienceId,
+    resourceLocaleId: row.id,
     locale: row.locale,
     title: row.title,
+    editUrl: `/dashboard/experiences/${encodeURIComponent(row.experienceId)}?locale=${encodeURIComponent(row.locale)}`,
+    recoverable: false,
     location,
     fieldPath,
     fieldName,

@@ -665,9 +665,10 @@ enum MediaAssetStatus {
 }
 
 """
-A structured reference to an experience metadata or block field that uses a media asset.
+A structured reference to an experience or video locale field that uses a media asset.
 """
 type MediaAssetUsage {
+  editUrl: String
   experienceId: String
   experienceLocaleId: String
   fieldName: String
@@ -675,6 +676,10 @@ type MediaAssetUsage {
   locale: String
   location: String
   match: String
+  recoverable: Boolean
+  resourceId: String
+  resourceLocaleId: String
+  resourceType: String
   title: String
   value: String
 }
@@ -793,7 +798,7 @@ type Mutation {
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
   """
-  Delete a media asset only when no experience metadata or block fields still reference it.
+  Delete a media asset only when no experience or video locale fields still reference it.
   """
   deleteMediaAsset(id: ID!): DeleteMediaAssetResult
   """
@@ -989,7 +994,7 @@ type Query {
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
-  List experience metadata and block fields that currently reference a media asset.
+  List experience and video locale fields that currently reference a media asset.
   """
   mediaAssetUsage(id: ID!): [MediaAssetUsage!]
   """List media assets ordered by most recent update."""
@@ -1901,7 +1906,10 @@ type WatchRouteSnapshotLocale {
   imageAlt: String
   languageSlug: String
   publishedAt: String
+  searchDescription: String
+  searchTitle: String
   snippet: String
+  socialImage: WatchRouteSnapshotSocialImage
   title: String
 }
 
@@ -1930,6 +1938,14 @@ type WatchRouteSnapshotPreferredVariant {
   muxHeroPosterDominantColor: String
   published: Boolean
   slug: String
+}
+
+"""Crawler-safe projection of a public, ready Media Library image."""
+type WatchRouteSnapshotSocialImage {
+  height: Int
+  mimeType: String
+  url: String!
+  width: Int
 }
 
 type WatchRouteSnapshotStudyQuestion {

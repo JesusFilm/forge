@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "male-d": "HKFOb9iktHA85uKXydRT",
+    "male-e": "xLeLcqgjUx3wQJFSESKj",
+    "female-c": "WonySogMOJVSOnlOGFQh"
+  },
+  "settings": {
+    "stability": 0.35,
+    "similarity_boost": 0.85,
+    "style": 0.45,
+    "use_speaker_boost": true
+  },
+  "rotation": ["male-d", "male-e", "female-c"],
+  "filterRotation": ["splittone", "grain", "tealorange"]
+}

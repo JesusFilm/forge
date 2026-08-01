@@ -152,12 +152,28 @@ export class MediaAssetService {
 
     const input = UpdateMediaAssetInput.parse(raw)
     const { id, ...data } = input
-    await assertFolderExists(this.prisma, input.folderId ?? null)
+    const exitsPublicReady =
+      (input.status !== undefined && input.status !== "READY") ||
+      (input.visibility !== undefined && input.visibility !== "PUBLIC")
 
-    return this.prisma.mediaAsset.update({
-      where: { id },
-      data,
-    })
+    return this.prisma.$transaction(
+      async (tx) => {
+        await assertFolderExists(tx, input.folderId ?? null)
+        if (exitsPublicReady) {
+          const socialImageUsageCount = await tx.videoLocale.count({
+            where: { socialImageAssetId: id },
+          })
+          if (socialImageUsageCount > 0) {
+            throw new MediaAssetValidationError(
+              "Clear or replace every video Search & Social image reference before changing this asset from public and ready",
+            )
+          }
+        }
+
+        return tx.mediaAsset.update({ where: { id }, data })
+      },
+      { isolationLevel: "Serializable" },
+    )
   }
 
   async listImageLocales({
@@ -506,7 +522,7 @@ function validateBackendShape(input: CreateMediaAssetInput) {
 }
 
 async function assertFolderExists(
-  prisma: PrismaClient,
+  prisma: Pick<PrismaClient, "mediaFolder">,
   folderId: string | null,
 ) {
   if (!folderId) {

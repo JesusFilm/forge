@@ -2,13 +2,23 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { ElevenLabsConfig } from "../../config/env"
 import {
-  DEFAULT_MUSIC_MS,
   ELEVENLABS_MUSIC_MAX_RESPONSE_BYTES,
   generateMusic,
   MAX_MUSIC_MS,
   MIN_MUSIC_MS,
-  MUSIC_MOODS,
 } from "./elevenlabs-music"
+
+const DEFAULT_MUSIC_MS = 60_000
+const MUSIC_MOODS = {
+  peace: "Configured peaceful ambient bed.",
+  hope: "Configured hopeful ambient bed.",
+  lament: "Configured lament ambient bed.",
+  awe: "Configured reverent ambient bed.",
+}
+const AUTHORED_MUSIC = {
+  moodPrompts: MUSIC_MOODS,
+  defaultLengthMs: DEFAULT_MUSIC_MS,
+}
 
 const CONFIG: ElevenLabsConfig = {
   apiKey: "eleven-key",
@@ -22,7 +32,10 @@ function audioResponse(bytes = new Uint8Array([9, 8, 7])): Response {
 
 describe("generateMusic", () => {
   it("returns config_missing when the api key is absent", async () => {
-    const r = await generateMusic({ config: { ...CONFIG, apiKey: undefined } })
+    const r = await generateMusic({
+      config: { ...CONFIG, apiKey: undefined },
+      ...AUTHORED_MUSIC,
+    })
     expect(r).toMatchObject({
       ok: false,
       reason: "config_missing",
@@ -31,7 +44,11 @@ describe("generateMusic", () => {
   })
 
   it("returns invalid_input when an explicit prompt is blank", async () => {
-    const r = await generateMusic({ prompt: "   ", config: CONFIG })
+    const r = await generateMusic({
+      prompt: "   ",
+      config: CONFIG,
+      ...AUTHORED_MUSIC,
+    })
     expect(r).toMatchObject({ ok: false, reason: "invalid_input" })
   })
 
@@ -40,6 +57,7 @@ describe("generateMusic", () => {
     const r = await generateMusic({
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     expect(r.ok).toBe(true)
     if (!r.ok) throw new Error("expected ok")
@@ -65,6 +83,7 @@ describe("generateMusic", () => {
       mood: "lament",
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     if (!r.ok) throw new Error("expected ok")
     expect(r.audio.prompt).toBe(MUSIC_MOODS.lament)
@@ -77,11 +96,13 @@ describe("generateMusic", () => {
       lengthMs: 10,
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     const high = await generateMusic({
       lengthMs: 5_000_000,
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     if (!low.ok || !high.ok) throw new Error("expected ok")
     expect(low.audio.lengthMs).toBe(MIN_MUSIC_MS)
@@ -95,6 +116,7 @@ describe("generateMusic", () => {
     const r = await generateMusic({
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     expect(r).toMatchObject({
       ok: false,
@@ -112,6 +134,7 @@ describe("generateMusic", () => {
       const r = await generateMusic({
         config: CONFIG,
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        ...AUTHORED_MUSIC,
       })
       expect(r).toMatchObject({
         ok: false,
@@ -127,6 +150,7 @@ describe("generateMusic", () => {
     const r = await generateMusic({
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     expect(r).toMatchObject({ ok: false, reason: "transport", retryable: true })
   })
@@ -138,6 +162,7 @@ describe("generateMusic", () => {
     const r = await generateMusic({
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
     expect(r).toMatchObject({
       ok: false,
@@ -161,6 +186,7 @@ describe("generateMusic", () => {
     const r = await generateMusic({
       config: CONFIG,
       fetchImpl: (async () => new Response(stream)) as unknown as typeof fetch,
+      ...AUTHORED_MUSIC,
     })
 
     expect(cancelled).toBe(true)

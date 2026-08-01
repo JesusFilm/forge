@@ -9,24 +9,19 @@ import { repoRoot } from "./repo-root"
 
 import {
   produceDevotionalAudio,
+  type ProduceDevotionalAudioDeps,
   type ProducedDevotionalAudio,
 } from "./devotional-audio"
-import {
-  cacheDirFor,
-  loadCachedAudio,
-  loadCachedDevo,
-  saveCachedAudio,
-  saveCachedDevo,
-} from "./devotional-cache"
+import type { NarrationPolicy } from "./authored-data"
 import {
   buildDevotionalManifest,
   type StagedSegment,
 } from "./devotional-manifest"
 import {
   generateDevotional,
+  type GenerateDevotionalDeps,
   type GeneratedDevotional,
 } from "./generate-devotional"
-import { passageForChapter } from "./jesus-film-passages"
 import type { DevotionalLlm } from "./llm"
 import { rotateFilter } from "./voice-rotation"
 
@@ -47,35 +42,18 @@ const RENDER_SCRIPT = path.join(
   REPO_ROOT,
   "apps/shorts-worker/scripts/render-devotional-video.mjs",
 )
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-]
-const WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-]
 const INTRO_HOLD_SEC = 1
 const OUTRO_HOLD_SEC = 8
 const CARD_TAIL_SEC = 0.4
 const BACKGROUND_SAFETY_MARGIN_SEC = 3
 
-function formatHeaderDate(date: string): string {
+function formatHeaderDate(date: string, narration?: NarrationPolicy): string {
+  if (!narration) {
+    throw new DevotionalRenderError(
+      "invalid_input",
+      "/inputs/render/narration.json: narration configuration is required",
+    )
+  }
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
   if (!match) {
     throw new DevotionalRenderError(
@@ -97,7 +75,7 @@ function formatHeaderDate(date: string): string {
       `invalid devotional date ${date}`,
     )
   }
-  return `${WEEKDAYS[parsed.getUTCDay()]} · ${MONTHS[monthIndex]} ${day}`
+  return `${narration.weekdays[parsed.getUTCDay()]} · ${narration.months[monthIndex]} ${day}`
 }
 
 type BackgroundTimelineCard = {
@@ -490,6 +468,9 @@ export type RenderOptions = {
   /** Render a wide variant from the same prepared media after portrait. */
   renderWideVariant?: boolean
   style?: string
+  /** Workspace-authored rotation used when style is not selected explicitly. */
+  filterRotation?: readonly string[]
+  narration?: NarrationPolicy
   layout?: string
   /** Header date label; defaults to today (Mon D). */
   headerDate?: string
@@ -518,12 +499,14 @@ export async function renderDevotionalVideo(
   const log = options.log ?? ((m: string) => console.log(m))
   // Filter ROTATES per devotional (owner: option b) — splittone → grain →
   // tealorange by sequence; layout stays fixed for readable, consistent text.
-  const style = options.style ?? rotateFilter(devo.sequence)
+  const style =
+    options.style ?? rotateFilter(devo.sequence, options.filterRotation)
   const layout = options.layout ?? "grounded"
   // Owner rule: the cover date carries the weekday — "Monday, Jul 14".
   // Cover date format (owner design): "Thursday · December 25" — full weekday,
   // middot separator, full month; the composition upper-cases + tracks it.
-  const headerDate = options.headerDate ?? formatHeaderDate(devo.date)
+  const headerDate =
+    options.headerDate ?? formatHeaderDate(devo.date, options.narration)
 
   const stage = await mkdtemp(path.join(tmpdir(), "devo-render-"))
   try {
@@ -581,7 +564,10 @@ async function renderInStage(
   // it's less draggy. Pitch-preserved (atempo), so ~1.12× is imperceptible in
   // the dialogue. The on-screen duration shrinks by the same factor.
   const VIDEO_SPEED = 1.12
-  const window = passageForChapter(devo.clip.index)
+  const window = devo.passage as GeneratedDevotional["passage"] & {
+    clipStartSec?: number
+    clipLengthSec?: number
+  }
   let videoCardSec: number
   if (window?.clipStartSec != null && window.clipLengthSec != null) {
     const start = Math.min(window.clipStartSec, usableDur - 1)
@@ -705,11 +691,9 @@ export type PrepareAndRenderInput = RenderOptions & {
   sequence: number
   date: string
   llm: DevotionalLlm
-  /** Regenerate the text (and therefore audio) instead of reusing the cache. */
-  regenerate?: boolean
-  /** Regenerate only the voice/music audio, keeping the cached text. Useful for
-   *  TTS glitches or after hand-editing the cached devo.json. */
-  regenerateAudio?: boolean
+  /** Required Workspace-backed authored inputs for uncached generation. */
+  generationDeps?: GenerateDevotionalDeps
+  audioDeps?: ProduceDevotionalAudioDeps
 }
 
 export type RenderedDevotional = {
@@ -722,33 +706,24 @@ export async function prepareAndRenderDevotional(
 ): Promise<RenderedDevotional> {
   const log = input.log ?? ((m: string) => console.log(m))
 
-  // Text and audio are cached separately so render-only tweaks reuse both, a
-  // TTS glitch can regenerate just the audio (keeping the wording), and a hand
-  // edit to the cached devo.json flows into a fresh audio render.
-  const cacheDir = cacheDirFor(input.chapterIndex, input.sequence, input.date)
-  let devo = input.regenerate ? null : await loadCachedDevo(cacheDir)
-  if (devo) {
-    log("reusing cached devotional text")
-  } else {
-    log(`generate (ch${input.chapterIndex}, seq${input.sequence})…`)
-    devo = await generateDevotional({
+  log(`generate (ch${input.chapterIndex}, seq${input.sequence})…`)
+  if (!input.generationDeps) {
+    throw new Error("Workspace-authored generation dependencies are required")
+  }
+  const devo = await generateDevotional(
+    {
       chapterIndex: input.chapterIndex,
       sequence: input.sequence,
       date: input.date,
       llm: input.llm,
-    })
-    await saveCachedDevo(cacheDir, devo)
+    },
+    input.generationDeps,
+  )
+  if (!input.audioDeps) {
+    throw new Error("Workspace-authored audio dependencies are required")
   }
-
-  const reuseAudio = !input.regenerate && !input.regenerateAudio
-  let audio = reuseAudio ? await loadCachedAudio(cacheDir, devo.voice) : null
-  if (audio) {
-    log("reusing cached audio")
-  } else {
-    log("produce audio…")
-    audio = await produceDevotionalAudio(devo)
-    await saveCachedAudio(cacheDir, audio)
-  }
+  log("produce audio…")
+  const audio = await produceDevotionalAudio(devo, input.audioDeps)
 
   const videoPath = await renderDevotionalVideo(devo, audio, input)
   return { devotional: devo, videoPath }

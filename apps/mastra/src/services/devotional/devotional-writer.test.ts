@@ -37,6 +37,15 @@ function llmReturning(value: unknown): DevotionalLlm {
 }
 
 const emptyGrounding: GroundingSearchFn = async () => []
+const SYSTEM_PROMPT =
+  "Write original prose and do not copy source text verbatim."
+const BLOCK_ORDERS = [
+  ["hook", "scripture", "video", "reflection", "questions"],
+  ["video", "hook", "scripture", "reflection", "questions"],
+  ["scripture", "hook", "video", "reflection", "questions"],
+  ["hook", "video", "scripture", "reflection", "questions"],
+] as import("./types").DevotionalBlock[][]
+const AUTHORED = { systemPrompt: SYSTEM_PROMPT, blockOrders: BLOCK_ORDERS }
 
 describe("writeDevotional", () => {
   it("produces a reflection, questions, and a valid block order", async () => {
@@ -56,6 +65,7 @@ describe("writeDevotional", () => {
           "What would trusting Jesus look like today?",
         ],
       }),
+      ...AUTHORED,
     })
 
     expect(devotional.reflection).toContain("Peace")
@@ -79,6 +89,7 @@ describe("writeDevotional", () => {
         questions: ["q1", "q2"],
         furtherReading: "https://www.desiringgod.org/articles/peace",
       }),
+      ...AUTHORED,
     })
     expect(partner.furtherReading).toBe(
       "https://www.desiringgod.org/articles/peace",
@@ -97,6 +108,7 @@ describe("writeDevotional", () => {
         questions: ["q1", "q2"],
         furtherReading: "https://random-blog.example.com/peace",
       }),
+      ...AUTHORED,
     })
     expect(offlist.furtherReading).toBeNull()
   })
@@ -120,6 +132,7 @@ describe("writeDevotional", () => {
         questions: ["q1", "q2"],
         furtherReading,
       }),
+      ...AUTHORED,
     })
 
     expect(devotional.furtherReading).toBeNull()
@@ -137,6 +150,7 @@ describe("writeDevotional", () => {
         throw new Error("firecrawl down")
       },
       llm: llmReturning({ reflection: "r", questions: ["q1", "q2"] }),
+      ...AUTHORED,
     })
 
     expect(devotional.reflection).toBe("r")
@@ -148,8 +162,8 @@ describe("writeDevotional", () => {
   })
 
   it("instructs the writer to produce original (non-verbatim) prose", () => {
-    expect(_internal.WRITER_SYSTEM_PROMPT).toMatch(/original/i)
-    expect(_internal.WRITER_SYSTEM_PROMPT).toMatch(/verbatim|do not copy/i)
+    expect(SYSTEM_PROMPT).toMatch(/original/i)
+    expect(SYSTEM_PROMPT).toMatch(/verbatim|do not copy/i)
   })
 
   describe("chooseBlockOrder", () => {
@@ -157,7 +171,7 @@ describe("writeDevotional", () => {
 
     it("is always a valid permutation of the present ingredients", () => {
       for (const date of ["2026-06-22", "2026-06-23", "2026-12-25"]) {
-        const order = chooseBlockOrder(date, present)
+        const order = chooseBlockOrder(date, present, BLOCK_ORDERS)
         expect([...order].sort()).toEqual([...present].sort())
         expect(new Set(order).size).toBe(order.length)
       }
@@ -166,7 +180,9 @@ describe("writeDevotional", () => {
     it("varies the arrangement across dates", () => {
       const dates = Array.from({ length: 12 }, (_, i) => `2026-06-${10 + i}`)
       const arrangements = new Set(
-        dates.map((date) => chooseBlockOrder(date, present).join(">")),
+        dates.map((date) =>
+          chooseBlockOrder(date, present, BLOCK_ORDERS).join(">"),
+        ),
       )
       expect(arrangements.size).toBeGreaterThan(1)
     })

@@ -16,6 +16,7 @@ const fakeLlm = (complete: DevotionalLlm["complete"]): DevotionalLlm => ({
   model: "fake",
   complete,
 })
+const SYSTEM_PROMPT = "Pick the best candidate or return index -1."
 
 describe("pickBestSpurgeon", () => {
   it("returns null for an empty shortlist", async () => {
@@ -26,6 +27,7 @@ describe("pickBestSpurgeon", () => {
         reference: "r",
         candidates: [],
         llm,
+        systemPrompt: SYSTEM_PROMPT,
       }),
     ).toBeNull()
   })
@@ -38,6 +40,7 @@ describe("pickBestSpurgeon", () => {
       reference: "r",
       candidates: [only],
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r).toBeNull()
     expect(complete).toHaveBeenCalled()
@@ -51,6 +54,7 @@ describe("pickBestSpurgeon", () => {
       reference: "r",
       candidates: cands,
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r).toBeNull()
   })
@@ -63,6 +67,7 @@ describe("pickBestSpurgeon", () => {
       reference: "Luke 19:1-10",
       candidates: cands,
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r).toBe(cands[1])
   })
@@ -77,6 +82,7 @@ describe("pickBestSpurgeon", () => {
       reference: "r",
       candidates: cands,
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r).toBeNull()
   })
@@ -89,6 +95,7 @@ describe("pickBestSpurgeon", () => {
       reference: "r",
       candidates: cands,
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      systemPrompt: SYSTEM_PROMPT,
     })
     expect(r).toBe(cands[0])
   })

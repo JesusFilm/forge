@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 27, 2026)
+## Status (August 1, 2026)
 
-- **Total tickets:** 459
-- **Complete:** 351
+- **Total tickets:** 464
+- **Complete:** 355
 - **In progress:** 34
-- **Not started:** 25
+- **Not started:** 26
 - **Blocked:** 49
-- **Overdue and not complete:** 87
+- **Overdue and not complete:** 92
 
 ## Feature Index
 
@@ -374,6 +374,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-315](platform/feat-315-datadog-railway-release-sha-stamp.md)                     | Datadog Railway release SHA stamping                                             | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-319](platform/feat-319-datadog-syslog-structured-tags.md)                        | Datadog syslog structured log tags                                               | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-320](platform/feat-320-datadog-server-apm-sourcemaps.md)                         | Datadog server APM source maps                                                   | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-322](platform/feat-322-update-mastra-runtime-dependencies.md)                    | Update Mastra runtime dependencies                                               | codex      | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
+| [feat-323](platform/feat-323-watch-video-search-social-metadata.md)                    | Add localized Watch video search and social metadata                             | codex      | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
+| [feat-324](platform/feat-324-validate-watch-video-search-metadata.md)                  | Validate Watch video search metadata in Google                                   | codex      | P1       | 2026-08-01 | 14   | 2026-08-14 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -432,6 +435,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-312](platform/feat-312-watch-faq-row-alignment.md)                               | Watch FAQ row alignment                                                          | unassigned | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-313](platform/feat-313-watch-carousel-hover-controls.md)                         | Watch carousel hover controls                                                    | codex      | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-317](platform/feat-317-watch-faq-disclosure-semantics.md)                        | Watch FAQ disclosure semantics                                                   | vlad       | P2       | 2026-07-25 | 1    | 2026-07-25 | complete    |
+| [feat-322](platform/feat-322-watch-series-background-parity.md)                        | Watch series background parity                                                   | codex      | P2       | 2026-07-31 | 1    | 2026-07-31 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
@@ -483,8 +487,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-279](topic-experiences/feat-279-experience-carousel-empty-copy.md)                    | Experience carousel empty copy rendering                                         | urim      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-320](topic-experiences/feat-320-experience-create-generate-mcp.md)                    | Experience create + generate tools for the JFP Admin MCP                         | ekkasit   | P1       | 2026-07-27 | 5    | 2026-07-31 | in-progress |
-| [feat-322](topic-experiences/feat-322-watch-single-video-shared-experience-template.md)     | Attach the shared Experience template to single-video Watch pages                | codex     | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
-| [feat-323](topic-experiences/feat-323-watch-route-video-generated-questions.md)             | Route generated questions into the shared single-video Experience                | codex     | P1       | 2026-08-01 | 1    | 2026-08-01 | complete    |
+| [feat-325](topic-experiences/feat-325-watch-single-video-shared-experience-template.md)     | Attach the shared Experience template to single-video Watch pages                | codex     | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
+| [feat-326](topic-experiences/feat-326-watch-route-video-generated-questions.md)             | Route generated questions into the shared single-video Experience                | codex     | P1       | 2026-08-01 | 1    | 2026-08-01 | complete    |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |

@@ -1,0 +1,489 @@
+{
+  "passages": [
+    {
+      "index": 1,
+      "osisRef": "Gen.1.26-Gen.3.24",
+      "reference": "Genesis 1:26-3:24",
+      "mood": "lament",
+      "themes": ["creation", "fall", "sin", "separation", "redemption"]
+    },
+    {
+      "index": 2,
+      "osisRef": "Luke.1.1-Luke.2.20",
+      "reference": "Luke 1:1-2:20",
+      "mood": "awe",
+      "themes": ["incarnation", "promise", "birth", "joy", "salvation"]
+    },
+    {
+      "index": 3,
+      "osisRef": "Luke.2.21-Luke.2.52",
+      "reference": "Luke 2:21-52",
+      "mood": "peace",
+      "themes": ["childhood", "wisdom", "obedience", "growth", "calling"]
+    },
+    {
+      "index": 4,
+      "osisRef": "Luke.3.21-Luke.3.22",
+      "reference": "Luke 3:21-22",
+      "mood": "awe",
+      "themes": ["baptism", "identity", "beloved", "spirit", "prayer"]
+    },
+    {
+      "index": 5,
+      "osisRef": "Luke.4.1-Luke.4.13",
+      "reference": "Luke 4:1-13",
+      "mood": "hope",
+      "themes": ["temptation", "trust", "faith", "obedience", "victory"],
+      "clipStartSec": 52,
+      "clipLengthSec": 46
+    },
+    {
+      "index": 6,
+      "osisRef": "Luke.4.16-Luke.4.30",
+      "reference": "Luke 4:16-30",
+      "mood": "awe",
+      "themes": ["fulfillment", "good news", "freedom", "mission", "rejection"]
+    },
+    {
+      "index": 7,
+      "osisRef": "Luke.18.9-Luke.18.14",
+      "reference": "Luke 18:9-14",
+      "mood": "peace",
+      "themes": ["humility", "prayer", "mercy", "repentance", "justification"]
+    },
+    {
+      "index": 8,
+      "osisRef": "Luke.5.1-Luke.5.11",
+      "reference": "Luke 5:1-11",
+      "mood": "hope",
+      "themes": ["calling", "obedience", "abundance", "trust", "discipleship"]
+    },
+    {
+      "index": 9,
+      "osisRef": "Luke.8.40-Luke.8.56",
+      "reference": "Luke 8:40-56",
+      "mood": "hope",
+      "themes": ["healing", "resurrection", "faith", "compassion", "hope"]
+    },
+    {
+      "index": 10,
+      "osisRef": "Luke.5.27-Luke.5.28",
+      "reference": "Luke 5:27-28",
+      "mood": "hope",
+      "themes": ["calling", "discipleship", "response", "change", "obedience"]
+    },
+    {
+      "index": 11,
+      "osisRef": "Luke.6.20-Luke.6.23",
+      "reference": "Luke 6:20-23",
+      "mood": "hope",
+      "themes": ["blessing", "kingdom", "poverty", "perseverance", "reward"]
+    },
+    {
+      "index": 12,
+      "osisRef": "Luke.6.24-Luke.6.42",
+      "reference": "Luke 6:24-42",
+      "mood": "peace",
+      "themes": ["love", "enemies", "mercy", "generosity", "judgment"]
+    },
+    {
+      "index": 13,
+      "osisRef": "Luke.11.27-Luke.11.28",
+      "reference": "Luke 11:27-28",
+      "mood": "peace",
+      "themes": ["hearing", "obedience", "blessing", "word", "faithfulness"]
+    },
+    {
+      "index": 14,
+      "osisRef": "Luke.7.36-Luke.7.50",
+      "reference": "Luke 7:36-50",
+      "mood": "hope",
+      "themes": ["forgiveness", "grace", "love", "mercy", "repentance"],
+      "clipStartSec": 91.5,
+      "clipLengthSec": 40
+    },
+    {
+      "index": 15,
+      "osisRef": "Luke.8.1-Luke.8.3",
+      "reference": "Luke 8:1-3",
+      "mood": "hope",
+      "themes": ["discipleship", "service", "women", "generosity", "mission"]
+    },
+    {
+      "index": 16,
+      "osisRef": "Luke.7.18-Luke.7.23",
+      "reference": "Luke 7:18-23",
+      "mood": "hope",
+      "themes": ["doubt", "evidence", "healing", "good news", "faith"]
+    },
+    {
+      "index": 17,
+      "osisRef": "Luke.8.4-Luke.8.15",
+      "reference": "Luke 8:4-15",
+      "mood": "peace",
+      "themes": ["word", "heart", "growth", "perseverance", "fruitfulness"]
+    },
+    {
+      "index": 18,
+      "osisRef": "Luke.8.16-Luke.8.18",
+      "reference": "Luke 8:16-18",
+      "mood": "hope",
+      "themes": ["light", "witness", "truth", "hearing", "faithfulness"]
+    },
+    {
+      "index": 19,
+      "osisRef": "Luke.8.22-Luke.8.25",
+      "reference": "Luke 8:22-25",
+      "mood": "peace",
+      "themes": ["storm", "fear", "peace", "trust", "faith"],
+      "clipStartSec": 52,
+      "clipLengthSec": 56
+    },
+    {
+      "index": 20,
+      "osisRef": "Luke.8.26-Luke.8.39",
+      "reference": "Luke 8:26-39",
+      "mood": "hope",
+      "themes": [
+        "deliverance",
+        "freedom",
+        "restoration",
+        "testimony",
+        "authority"
+      ]
+    },
+    {
+      "index": 21,
+      "osisRef": "Luke.9.10-Luke.9.17",
+      "reference": "Luke 9:10-17",
+      "mood": "peace",
+      "themes": ["provision", "compassion", "thanksgiving", "trust", "need"],
+      "clipStartSec": 94,
+      "clipLengthSec": 40
+    },
+    {
+      "index": 22,
+      "osisRef": "Luke.9.18-Luke.9.22",
+      "reference": "Luke 9:18-22",
+      "mood": "awe",
+      "themes": [
+        "identity",
+        "messiah",
+        "confession",
+        "suffering",
+        "discipleship"
+      ]
+    },
+    {
+      "index": 23,
+      "osisRef": "Luke.9.28-Luke.9.36",
+      "reference": "Luke 9:28-36",
+      "mood": "awe",
+      "themes": ["glory", "prayer", "transfiguration", "beloved", "listen"]
+    },
+    {
+      "index": 24,
+      "osisRef": "Luke.9.37-Luke.9.43",
+      "reference": "Luke 9:37-43",
+      "mood": "hope",
+      "themes": ["healing", "deliverance", "compassion", "faith", "majesty"]
+    },
+    {
+      "index": 25,
+      "osisRef": "Luke.11.1-Luke.11.4",
+      "reference": "Luke 11:1-4",
+      "mood": "peace",
+      "themes": ["prayer", "father", "kingdom", "forgiveness", "dependence"]
+    },
+    {
+      "index": 26,
+      "osisRef": "Luke.11.9-Luke.11.13",
+      "reference": "Luke 11:9-13",
+      "mood": "hope",
+      "themes": ["prayer", "asking", "seeking", "trust", "holy spirit"]
+    },
+    {
+      "index": 27,
+      "osisRef": "Luke.17.1-Luke.17.3",
+      "reference": "Luke 17:1-3",
+      "mood": "lament",
+      "themes": ["temptation", "responsibility", "sin", "warning", "repentance"]
+    },
+    {
+      "index": 28,
+      "osisRef": "Luke.13.18-Luke.13.19",
+      "reference": "Luke 13:18-19",
+      "mood": "hope",
+      "themes": [
+        "kingdom",
+        "mustard seed",
+        "growth",
+        "small beginnings",
+        "hope"
+      ]
+    },
+    {
+      "index": 29,
+      "osisRef": "Luke.5.29-Luke.5.32",
+      "reference": "Luke 5:29-32",
+      "mood": "hope",
+      "themes": ["sinners", "welcome", "repentance", "mercy", "calling"]
+    },
+    {
+      "index": 30,
+      "osisRef": "Luke.13.10-Luke.13.17",
+      "reference": "Luke 13:10-17",
+      "mood": "hope",
+      "themes": ["healing", "sabbath", "freedom", "compassion", "dignity"]
+    },
+    {
+      "index": 31,
+      "osisRef": "Luke.10.25-Luke.10.37",
+      "reference": "Luke 10:25-37",
+      "mood": "hope",
+      "themes": ["mercy", "love", "compassion", "kindness", "neighbour"],
+      "clipStartSec": 36,
+      "clipLengthSec": 41
+    },
+    {
+      "index": 32,
+      "osisRef": "Luke.18.35-Luke.18.43",
+      "reference": "Luke 18:35-43",
+      "mood": "hope",
+      "themes": ["healing", "persistence", "mercy", "faith", "sight"]
+    },
+    {
+      "index": 33,
+      "osisRef": "Luke.19.1-Luke.19.10",
+      "reference": "Luke 19:1-10",
+      "mood": "hope",
+      "themes": ["grace", "repentance", "salvation", "seeking", "mercy"],
+      "clipStartSec": 44,
+      "clipLengthSec": 48
+    },
+    {
+      "index": 34,
+      "osisRef": "Luke.18.31-Luke.18.34",
+      "reference": "Luke 18:31-34",
+      "mood": "lament",
+      "themes": ["prophecy", "suffering", "death", "resurrection", "purpose"]
+    },
+    {
+      "index": 35,
+      "osisRef": "Luke.19.28-Luke.19.40",
+      "reference": "Luke 19:28-40",
+      "mood": "awe",
+      "themes": ["king", "praise", "peace", "triumph", "worship"]
+    },
+    {
+      "index": 36,
+      "osisRef": "Luke.19.41-Luke.19.44",
+      "reference": "Luke 19:41-44",
+      "mood": "lament",
+      "themes": ["lament", "peace", "Jerusalem", "judgment", "compassion"]
+    },
+    {
+      "index": 37,
+      "osisRef": "Luke.19.45-Luke.19.46",
+      "reference": "Luke 19:45-46",
+      "mood": "lament",
+      "themes": ["worship", "justice", "prayer", "temple", "holiness"]
+    },
+    {
+      "index": 38,
+      "osisRef": "Luke.21.1-Luke.21.4",
+      "reference": "Luke 21:1-4",
+      "mood": "peace",
+      "themes": ["generosity", "sacrifice", "widow", "trust", "offering"]
+    },
+    {
+      "index": 39,
+      "osisRef": "Luke.20.1-Luke.20.8",
+      "reference": "Luke 20:1-8",
+      "mood": "lament",
+      "themes": ["authority", "truth", "fear", "integrity", "wisdom"]
+    },
+    {
+      "index": 40,
+      "osisRef": "Luke.20.9-Luke.20.18",
+      "reference": "Luke 20:9-18",
+      "mood": "lament",
+      "themes": ["rejection", "faithfulness", "judgment", "son", "cornerstone"]
+    },
+    {
+      "index": 41,
+      "osisRef": "Luke.20.20-Luke.20.26",
+      "reference": "Luke 20:20-26",
+      "mood": "peace",
+      "themes": ["wisdom", "integrity", "stewardship", "God", "government"]
+    },
+    {
+      "index": 42,
+      "osisRef": "Luke.22.14-Luke.22.23",
+      "reference": "Luke 22:14-23",
+      "mood": "awe",
+      "themes": [
+        "covenant",
+        "communion",
+        "sacrifice",
+        "remembrance",
+        "betrayal"
+      ]
+    },
+    {
+      "index": 43,
+      "osisRef": "Luke.22.24-Luke.22.38",
+      "reference": "Luke 22:24-38",
+      "mood": "peace",
+      "themes": ["service", "humility", "leadership", "kingdom", "faithfulness"]
+    },
+    {
+      "index": 44,
+      "osisRef": "Luke.22.39-Luke.22.53",
+      "reference": "Luke 22:39-53",
+      "mood": "lament",
+      "themes": ["prayer", "surrender", "betrayal", "temptation", "arrest"]
+    },
+    {
+      "index": 45,
+      "osisRef": "Luke.22.54-Luke.22.62",
+      "reference": "Luke 22:54-62",
+      "mood": "lament",
+      "themes": ["denial", "failure", "repentance", "sorrow", "grace"]
+    },
+    {
+      "index": 46,
+      "osisRef": "Luke.22.63-Luke.22.71",
+      "reference": "Luke 22:63-71",
+      "mood": "lament",
+      "themes": ["mockery", "suffering", "identity", "injustice", "truth"]
+    },
+    {
+      "index": 47,
+      "osisRef": "Luke.23.1-Luke.23.7",
+      "reference": "Luke 23:1-7",
+      "mood": "lament",
+      "themes": ["accusation", "injustice", "kingdom", "truth", "suffering"]
+    },
+    {
+      "index": 48,
+      "osisRef": "Luke.23.8-Luke.23.11",
+      "reference": "Luke 23:8-11",
+      "mood": "lament",
+      "themes": ["mockery", "silence", "injustice", "power", "suffering"]
+    },
+    {
+      "index": 49,
+      "osisRef": "Luke.23.13-Luke.23.25",
+      "reference": "Luke 23:13-25",
+      "mood": "lament",
+      "themes": [
+        "injustice",
+        "condemnation",
+        "innocence",
+        "rejection",
+        "sacrifice"
+      ]
+    },
+    {
+      "index": 50,
+      "osisRef": "Luke.23.26-Luke.23.32",
+      "reference": "Luke 23:26-32",
+      "mood": "lament",
+      "themes": ["cross", "suffering", "discipleship", "compassion", "warning"]
+    },
+    {
+      "index": 51,
+      "osisRef": "Luke.23.33-Luke.23.35",
+      "reference": "Luke 23:33-35",
+      "mood": "lament",
+      "themes": [
+        "crucifixion",
+        "forgiveness",
+        "sacrifice",
+        "mockery",
+        "salvation"
+      ]
+    },
+    {
+      "index": 52,
+      "osisRef": "Luke.23.34",
+      "reference": "Luke 23:34",
+      "mood": "lament",
+      "themes": ["forgiveness", "crucifixion", "clothing", "prophecy", "mercy"]
+    },
+    {
+      "index": 53,
+      "osisRef": "Luke.23.36-Luke.23.38",
+      "reference": "Luke 23:36-38",
+      "mood": "lament",
+      "themes": ["mockery", "king", "cross", "suffering", "identity"]
+    },
+    {
+      "index": 54,
+      "osisRef": "Luke.23.39-Luke.23.43",
+      "reference": "Luke 23:39-43",
+      "mood": "hope",
+      "themes": ["mercy", "paradise", "faith", "salvation", "repentance"]
+    },
+    {
+      "index": 55,
+      "osisRef": "Luke.23.44-Luke.23.49",
+      "reference": "Luke 23:44-49",
+      "mood": "lament",
+      "themes": ["cross", "sacrifice", "redemption", "sorrow", "forgiveness"],
+      "clipStartSec": 44,
+      "clipLengthSec": 50
+    },
+    {
+      "index": 56,
+      "osisRef": "Luke.23.50-Luke.23.56",
+      "reference": "Luke 23:50-56",
+      "mood": "lament",
+      "themes": ["burial", "courage", "faithfulness", "rest", "grief"]
+    },
+    {
+      "index": 57,
+      "osisRef": "Luke.24.1-Luke.24.7",
+      "reference": "Luke 24:1-7",
+      "mood": "awe",
+      "themes": ["resurrection", "promise", "angels", "remembrance", "hope"]
+    },
+    {
+      "index": 58,
+      "osisRef": "Luke.24.8-Luke.24.12",
+      "reference": "Luke 24:8-12",
+      "mood": "hope",
+      "themes": ["empty tomb", "witness", "belief", "resurrection", "wonder"]
+    },
+    {
+      "index": 59,
+      "osisRef": "Luke.24.36-Luke.24.49",
+      "reference": "Luke 24:36-49",
+      "mood": "awe",
+      "themes": ["resurrection", "hope", "joy", "peace", "victory"],
+      "clipStartSec": 30,
+      "clipLengthSec": 36
+    },
+    {
+      "index": 60,
+      "osisRef": "Luke.24.50-Luke.24.53",
+      "reference": "Luke 24:50-53",
+      "mood": "awe",
+      "themes": ["ascension", "blessing", "worship", "joy", "mission"]
+    },
+    {
+      "index": 61,
+      "osisRef": "Luke.24.46-Luke.24.49",
+      "reference": "Luke 24:46-49",
+      "mood": "hope",
+      "themes": [
+        "invitation",
+        "repentance",
+        "forgiveness",
+        "salvation",
+        "witness"
+      ]
+    }
+  ]
+}

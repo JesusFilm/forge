@@ -276,4 +276,129 @@ describe("Mastra proxy", () => {
     expect(response.status).toBe(403)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it("bounds Workspace request bodies before forwarding them", async () => {
+    vi.stubEnv("MASTRA_GATEWAY_BASE_URL", "https://gateway.example.com")
+    vi.stubEnv(
+      "MASTRA_GATEWAY_SESSION_SECRET",
+      "test-secret-test-secret-test-secret-32",
+    )
+    vi.stubEnv("MASTRA_INTERNAL_BASE_URL", "https://mastra.internal")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "internal-key")
+    const { createGatewaySessionCookie, GATEWAY_SESSION_COOKIE } =
+      await import("./gateway-session")
+    const { proxyMastraRequest } = await import("./mastra-proxy")
+    const token = await createGatewaySessionCookie({
+      subject: "editor-1",
+      role: "editor",
+    })
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+
+    const response = await proxyMastraRequest(
+      new Request(
+        "https://gateway.example.com/api/workspaces/devotional-workspace/fs/write",
+        {
+          method: "POST",
+          headers: {
+            cookie: `${GATEWAY_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+            "content-length": "101",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: "/inputs/reflections/new.md" }),
+        },
+      ),
+      "/api/workspaces/devotional-workspace/fs/write",
+      { workspaceRequest: true, maxRequestBytes: 100 },
+    )
+
+    expect(response.status).toBe(413)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("forwards identical bounded Workspace access for editors without cookies", async () => {
+    vi.stubEnv("MASTRA_GATEWAY_BASE_URL", "https://gateway.example.com")
+    vi.stubEnv(
+      "MASTRA_GATEWAY_SESSION_SECRET",
+      "test-secret-test-secret-test-secret-32",
+    )
+    vi.stubEnv("MASTRA_INTERNAL_BASE_URL", "https://mastra.internal")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "internal-key")
+    const { createGatewaySessionCookie, GATEWAY_SESSION_COOKIE } =
+      await import("./gateway-session")
+    const { proxyMastraRequest } = await import("./mastra-proxy")
+    const token = await createGatewaySessionCookie({
+      subject: "editor-1",
+      email: "editor@example.com",
+      role: "editor",
+    })
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ entries: [] }))
+
+    const response = await proxyMastraRequest(
+      new Request(
+        "https://gateway.example.com/api/workspaces/devotional-workspace/fs/list?path=%2Finputs",
+        {
+          headers: {
+            cookie: `${GATEWAY_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+          },
+        },
+      ),
+      "/api/workspaces/devotional-workspace/fs/list",
+      {
+        workspaceRequest: true,
+        allowedRoles: ["admin", "editor"],
+        revalidateSession: async (session) => session,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    const headers = fetchMock.mock.calls[0]?.[1]?.headers as Headers
+    expect(headers.get("cookie")).toBeNull()
+    expect(headers.get("x-forge-studio-role")).toBe("editor")
+    expect(headers.get("x-forge-request-id")).toMatch(/^[a-f0-9-]+$/u)
+    expect(headers.get("x-forge-workspace-actor-id")).toBe("editor-1")
+    expect(headers.get("x-forge-workspace-request-id")).toBe(
+      headers.get("x-forge-request-id"),
+    )
+  })
+
+  it("forwards a bodyless native Workspace DELETE", async () => {
+    vi.stubEnv("MASTRA_GATEWAY_BASE_URL", "https://gateway.example.com")
+    vi.stubEnv(
+      "MASTRA_GATEWAY_SESSION_SECRET",
+      "test-secret-test-secret-test-secret-32",
+    )
+    vi.stubEnv("MASTRA_INTERNAL_BASE_URL", "https://mastra.internal")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "internal-key")
+    const { createGatewaySessionCookie, GATEWAY_SESSION_COOKIE } =
+      await import("./gateway-session")
+    const { proxyMastraRequest } = await import("./mastra-proxy")
+    const token = await createGatewaySessionCookie({
+      subject: "editor-delete",
+      role: "editor",
+    })
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ deleted: true }))
+
+    const response = await proxyMastraRequest(
+      new Request(
+        "https://gateway.example.com/api/workspaces/devotional-workspace/fs/delete?path=%2Finputs%2Freflections%2Fold.md",
+        {
+          method: "DELETE",
+          headers: {
+            cookie: `${GATEWAY_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+          },
+        },
+      ),
+      "/api/workspaces/devotional-workspace/fs/delete",
+      { workspaceRequest: true },
+    )
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const init = fetchMock.mock.calls[0]?.[1]
+    expect(init?.body).toBeNull()
+  })
 })

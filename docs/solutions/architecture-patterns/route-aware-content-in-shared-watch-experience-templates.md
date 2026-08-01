@@ -163,4 +163,4 @@ row in an isolated schema.
 - [Watch Single-Video Template Pages with Strapi Settings and Next.js Route Resolution](../best-practices/watch-single-video-template-pages-strapi-nextjs-2026-04-11.md) — architectural predecessor; the current Admin-owned implementation extends its explicit route-binding idea with persisted Q&A, publication policy, and atomic fallback.
 - [Admin-owned Watch route manifest](admin-owned-watch-route-manifest-20260530.md) — distinguishes route admission data from rendering payloads.
 - [Implementation plan](../../plans/2026-08-01-001-feat-watch-route-video-questions-plan.md)
-- [Roadmap feature](../../roadmap/topic-experiences/feat-323-watch-route-video-generated-questions.md)
+- [Roadmap feature](../../roadmap/topic-experiences/feat-326-watch-route-video-generated-questions.md)

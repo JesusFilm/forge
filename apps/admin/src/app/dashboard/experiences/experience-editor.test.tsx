@@ -709,7 +709,7 @@ describe("ExperienceEditor", () => {
   })
 
   it("keeps image library browser results in a bounded scroll area", () => {
-    const html = renderEditor([
+    const view = renderEditorDom([
       {
         t: "card",
         sectionKey: "card",
@@ -717,11 +717,21 @@ describe("ExperienceEditor", () => {
         mediaUrl: "https://example.com/card.jpg",
       },
     ])
-
-    expect(html).toContain("flex min-h-0 min-w-0 flex-1 flex-col")
-    expect(html).toContain("flex min-h-0 flex-1 overflow-hidden")
-    expect(html).toContain('class="h-full min-h-0"')
-    expect(html).toContain("h-full overflow-x-hidden overflow-y-auto")
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose card image from asset library",
+        ).click(),
+      )
+      const html = view.container.innerHTML
+      expect(html).toContain("flex min-h-0 min-w-0 flex-1 flex-col")
+      expect(html).toContain("flex min-h-0 flex-1 overflow-hidden")
+      expect(html).toContain('class="h-full min-h-0"')
+      expect(html).toContain("h-full overflow-x-hidden overflow-y-auto")
+    } finally {
+      view.cleanup()
+    }
   })
 
   it("searches the full image library and writes selected image fields", () => {

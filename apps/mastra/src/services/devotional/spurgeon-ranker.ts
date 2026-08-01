@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { requireAuthoredPrompt } from "./authored-data"
 import type { ReflectionEntry } from "./reflection-corpus"
 
 /**
@@ -27,15 +28,6 @@ const PICK_JSON_SCHEMA = {
   },
 }
 
-export const SYSTEM_PROMPT = [
-  "You choose the single best devotional excerpt to pair with a Bible scene.",
-  "You are given the scene and a numbered list of candidate excerpts.",
-  "Pick the ONE that most directly fits and deepens THIS scene's meaning —",
-  "not merely one that shares a word.",
-  "If NONE genuinely fits the scene (only loose word-overlap, wrong focus),",
-  "return index -1. Be strict: a weak fit is worse than none. Return JSON: { index }.",
-].join("\n")
-
 const SNIPPET = 240
 
 export type PickBestSpurgeonInput = {
@@ -43,6 +35,7 @@ export type PickBestSpurgeonInput = {
   reference: string
   candidates: ReflectionEntry[]
   llm: DevotionalLlm
+  systemPrompt?: string
 }
 
 export async function pickBestSpurgeon(
@@ -50,6 +43,7 @@ export async function pickBestSpurgeon(
 ): Promise<ReflectionEntry | null> {
   const { candidates } = input
   if (candidates.length === 0) return null
+  const systemPrompt = requireAuthoredPrompt(input.systemPrompt)
 
   const list = candidates
     .map(
@@ -60,7 +54,7 @@ export async function pickBestSpurgeon(
 
   try {
     const { index } = await input.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       user: [
         `Scene: ${input.sceneTitle} (${input.reference})`,
         "",

@@ -93,6 +93,9 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     noIndex: false,
     label: null,
     imageAlt: null,
+    searchTitle: null,
+    searchDescription: null,
+    socialImage: null,
     images: [],
     primaryLanguage: { coreId: "529", bcp47: "en" },
     parents: [],
@@ -779,6 +782,33 @@ describe("buildHeroBlock — next watch item", () => {
 })
 
 describe("Auto-template builders return null on empty data", () => {
+  it("preserves search/social metadata without replacing visible Watch body copy", () => {
+    const video = makeVideo({
+      title: "Jesus",
+      description: "Visible description",
+      searchTitle: "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+      searchDescription: "Crawler-facing description",
+      socialImage: {
+        url: "https://admin.example/jesus-social.jpg",
+        width: 1200,
+        height: 630,
+      },
+    })
+
+    const block = buildWatchBodyBlock(video as never, makeVariant() as never)
+
+    expect(block.video.title).toBe("Jesus")
+    expect(block.video.description).toBe("Visible description")
+    expect(block.video.searchTitle).toBe(
+      "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+    )
+    expect(block.video.socialImage).toEqual({
+      url: "https://admin.example/jesus-social.jpg",
+      width: 1200,
+      height: 630,
+    })
+  })
+
   it("buildSiblingCarouselBlock returns null when children.length < 2", () => {
     const parent = makeParent({
       children: [makeChild("v", "v", "V")],

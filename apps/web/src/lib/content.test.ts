@@ -371,6 +371,14 @@ describe("resolveWatchPage", () => {
                 description: "A full description",
                 snippet: "The story of Jesus",
                 imageAlt: "Jesus still",
+                searchTitle:
+                  "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+                searchDescription: "Watch the JESUS film free online.",
+                socialImage: {
+                  url: "https://admin.example/public/jesus-social.jpg",
+                  width: 1200,
+                  height: 630,
+                },
               },
             ],
             children: [
@@ -420,6 +428,14 @@ describe("resolveWatchPage", () => {
       routeVideo: {
         slug: "jesus",
         title: "Jesus",
+        searchTitle:
+          "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+        searchDescription: "Watch the JESUS film free online.",
+        socialImage: {
+          url: "https://admin.example/public/jesus-social.jpg",
+          width: 1200,
+          height: 630,
+        },
         streamingUrl: "https://cdn.example/jesus.m3u8",
         relatedItems: [
           {
@@ -566,6 +582,13 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 description: "English description",
                 snippet: "English snippet",
                 imageAlt: "Jesus still",
+                searchTitle: "Watch Jesus in English",
+                searchDescription: "English search description",
+                socialImage: {
+                  url: "https://admin.example/english.jpg",
+                  width: 1200,
+                  height: 630,
+                },
               },
             ],
             studyQuestions: [],
@@ -599,6 +622,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       videoSlug: "jesus",
     })
     expect(result?.video.title).toBe("Jesus (English fallback)")
+    expect(result?.video.searchTitle).toBe("Watch Jesus in English")
+    expect(result?.video.searchDescription).toBe("English search description")
+    expect(result?.video.socialImage?.url).toBe(
+      "https://admin.example/english.jpg",
+    )
     expect(result?.video.localePublishedAt).toBeNull()
   })
 
@@ -646,6 +674,13 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 description: "Russian description",
                 snippet: "Russian snippet",
                 imageAlt: "Russian still",
+                searchTitle: "Смотреть фильм ИИСУС",
+                searchDescription: "Русское описание для поиска",
+                socialImage: {
+                  url: "https://admin.example/russian.jpg",
+                  width: 1200,
+                  height: 630,
+                },
               },
             ],
             studyQuestions: [
@@ -694,6 +729,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       videoSlug: "jesus",
     })
     expect(result?.video.title).toBe("Jesus RU")
+    expect(result?.video.searchTitle).toBe("Смотреть фильм ИИСУС")
+    expect(result?.video.searchDescription).toBe("Русское описание для поиска")
+    expect(result?.video.socialImage?.url).toBe(
+      "https://admin.example/russian.jpg",
+    )
     expect(result?.video.localePublishedAt).toBe("2026-06-02T12:00:00.000Z")
     expect(result?.selectedVariant.language?.slug).toBe("russian")
     expect(result?.selectedVariant.language?.iso3).toBe("rus")
@@ -763,6 +803,13 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 description: "Russian broad description",
                 snippet: "Russian broad snippet",
                 imageAlt: "Russian broad still",
+                searchTitle: "Broad Russian search title",
+                searchDescription: null,
+                socialImage: {
+                  url: "https://admin.example/russian-broad.jpg",
+                  width: null,
+                  height: null,
+                },
               },
             ],
             studyQuestions: [],
@@ -798,6 +845,13 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU broad")
+    expect(result?.video.searchTitle).toBe("Broad Russian search title")
+    expect(result?.video.searchDescription).toBeNull()
+    expect(result?.video.socialImage).toEqual({
+      url: "https://admin.example/russian-broad.jpg",
+      width: null,
+      height: null,
+    })
     expect(result?.video.studyQuestions).toEqual([
       { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
     ])

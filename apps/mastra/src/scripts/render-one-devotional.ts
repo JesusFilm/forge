@@ -39,8 +39,6 @@ async function main() {
     style,
     layout,
     aspect,
-    regenerate: process.argv.includes("--regenerate"),
-    regenerateAudio: process.argv.includes("--regenerate-audio"),
     log: (m) => console.log(m),
   })
   console.log(

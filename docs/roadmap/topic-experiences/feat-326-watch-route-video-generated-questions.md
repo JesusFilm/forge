@@ -1,5 +1,5 @@
 ---
-id: "feat-323"
+id: "feat-326"
 title: "Route generated questions into the shared single-video Experience"
 owner: "codex"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-08-01"
 duration: 1
 depends_on:
-  - "feat-322"
+  - "feat-325"
 blocks: []
 tags:
   - "admin"

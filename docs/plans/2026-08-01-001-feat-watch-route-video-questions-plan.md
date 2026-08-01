@@ -174,14 +174,14 @@ Public Watch reads include only non-deleted `PUBLISHED` rows. The additive migra
 ### U1. Track the route-generated FAQ follow-up
 
 - **Goal:** Add the next topic-experiences roadmap item for this scope and mark it in progress before code changes.
-- **Files:** `docs/roadmap/topic-experiences/feat-323-watch-route-video-generated-questions.md`, `docs/roadmap/README.md`
+- **Files:** `docs/roadmap/topic-experiences/feat-326-watch-route-video-generated-questions.md`, `docs/roadmap/README.md`
 - **Requirements:** R1-R13
 - **Verification:** Roadmap identifiers remain unique and the index entry matches the ticket metadata.
 
 ### U2. Add the generated-question persistence model
 
 - **Goal:** Add the localized per-video generated Q&A model, review lifecycle, provenance fields, and query indexes through an additive migration.
-- **Files:** `apps/admin/prisma/schema.prisma`, `apps/admin/prisma/migrations/0047_video_generated_questions/migration.sql`
+- **Files:** `apps/admin/prisma/schema.prisma`, `apps/admin/prisma/migrations/0048_video_generated_questions/migration.sql`
 - **Requirements:** R1-R4
 - **Patterns:** Follow `LocaleStatus`, localized video identity, and `VideoSceneLocale` generation-provenance conventions while keeping generated rows separate from Core-synced study questions.
 - **Test scenarios:** Empty-table migration is valid; draft and published rows can coexist; soft-deleted rows remain auditable; grounding study-question identity is retained; indexes cover video-plus-locale public reads.
@@ -293,7 +293,7 @@ Public Watch reads include only non-deleted `PUBLISHED` rows. The additive migra
 
 ## Sources and Research
 
-- `docs/roadmap/topic-experiences/feat-322-watch-single-video-shared-experience-template.md` establishes the shared append-only template and defers route-aware generated content.
+- `docs/roadmap/topic-experiences/feat-325-watch-single-video-shared-experience-template.md` establishes the shared append-only template and defers route-aware generated content.
 - `docs/roadmap/topic-experiences/feat-049-single-video-template-related-media-collection.md` establishes explicit route-data source modes with fail-soft rendering.
 - `docs/solutions/best-practices/watch-single-video-template-pages-strapi-nextjs-2026-04-11.md` records route-context injection and authoring-validation patterns.
 - `docs/brainstorms/2026-06-22-video-anchored-experience-generation-requirements.md` requires generated FAQ items to be grounded in real study questions and reviewed before public use.
