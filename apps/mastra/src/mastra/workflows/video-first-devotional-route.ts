@@ -3,6 +3,15 @@ import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import { isValidServiceBearer } from "../../server/service-bearer"
+import {
+  DevotionalSourceRefSchema,
+  type DevotionalAttempt,
+} from "../../services/devotional/workspace/state-schema"
+import type { DevotionalAttemptStore } from "../../services/devotional/workspace/state"
+import {
+  VideoFirstDevotionalWorkflowInputSchema,
+  type VideoFirstDevotionalWorkflowInput,
+} from "./video-first-devotional-schema"
 
 const InputSchema = z
   .object({
@@ -12,10 +21,17 @@ const InputSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
+    /** Deprecated compatibility inputs. Every Workspace attempt is fresh. */
     regenerate: z.boolean().optional(),
     regenerateAudio: z.boolean().optional(),
   })
   .strict()
+
+const PersistedInputSchema = InputSchema.extend({
+  workspaceGeneration: z.number().int().positive(),
+  attemptId: z.string().min(1),
+  selectedSources: z.array(DevotionalSourceRefSchema).min(1).max(500),
+})
 
 const ApprovalSchema = z
   .object({
@@ -36,6 +52,7 @@ export type DevotionalApprovalActor = z.infer<typeof ApprovalActorSchema>
 
 const RetrySchema = z
   .object({
+    /** Deprecated compatibility inputs. Every retry reconciles fresh data. */
     regenerate: z.boolean().default(false),
     regenerateAudio: z.boolean().default(false),
   })
@@ -49,6 +66,22 @@ const ArtifactRefSchema = z
       "devotional-output-wide-v1",
     ]),
     ext: z.literal("mp4"),
+    schemaVersion: z.literal("2").optional(),
+    key: z.string().min(1).optional(),
+    digest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    size: z.number().int().positive().optional(),
+    contentType: z.string().min(1).optional(),
+    attempt: z
+      .object({
+        workspaceGeneration: z.number().int().positive(),
+        attemptId: z.string().min(1),
+        runId: z.string().min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 
@@ -83,7 +116,7 @@ type VideoFirstWorkflowResult = {
 
 type VideoFirstRun = {
   startAsync: (options: {
-    inputData: Record<string, unknown>
+    inputData: VideoFirstDevotionalWorkflowInput
   }) => Promise<{ runId: string }>
   resume: (options: {
     resumeData: {
@@ -107,6 +140,11 @@ export type VideoFirstLifecycleDeps = {
   workflow: VideoFirstWorkflowAdapter
   renewReservation: (state: VideoFirstWorkflowState) => Promise<void>
   releaseReservation: (state: VideoFirstWorkflowState) => Promise<void>
+  attempts?: DevotionalAttemptStore
+  reconcileAttempt?: (options?: { query?: string }) => Promise<{
+    generation: number
+    selectedSources: z.infer<typeof DevotionalSourceRefSchema>[]
+  }>
   now?: () => Date
 }
 
@@ -162,12 +200,128 @@ async function withLifecycleLock<T>(key: string, work: () => Promise<T>) {
   }
 }
 
-function retryRunId(parentRunId: string, retry: z.infer<typeof RetrySchema>) {
-  const variant = createHash("sha256")
-    .update(JSON.stringify(retry))
+function retryRequestHash(
+  parentRunId: string,
+  originalInput: z.infer<typeof PersistedInputSchema>,
+  retry: z.infer<typeof RetrySchema>,
+) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        parentRunId,
+        originalInput: {
+          chapterIndex: originalInput.chapterIndex,
+          sequence: originalInput.sequence,
+          date: originalInput.date,
+        },
+        retry,
+      }),
+    )
     .digest("hex")
-    .slice(0, 12)
-  return `${parentRunId}-retry-${variant}`
+}
+
+function initialRequestHash(
+  parentRunId: string,
+  input: z.infer<typeof InputSchema>,
+  date: string,
+) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        parentRunId,
+        chapterIndex: input.chapterIndex,
+        sequence: input.sequence,
+        date,
+      }),
+    )
+    .digest("hex")
+}
+
+async function provisionAndStartAttempt(input: {
+  attempt: DevotionalAttempt
+  runId: string
+  workflowInput: z.infer<typeof InputSchema> & { date: string }
+  query: string
+  deps: VideoFirstLifecycleDeps & {
+    attempts: DevotionalAttemptStore
+    reconcileAttempt: NonNullable<VideoFirstLifecycleDeps["reconcileAttempt"]>
+  }
+}): Promise<VideoFirstRouteOutcome> {
+  let attempt = input.attempt
+  if (attempt.provisioningState === "failed") {
+    return { status: 503, body: { error: "workspace_provisioning_failed" } }
+  }
+
+  if (attempt.provisioningState === "provisioning") {
+    let prepared: Awaited<ReturnType<typeof input.deps.reconcileAttempt>>
+    try {
+      prepared = await input.deps.reconcileAttempt({ query: input.query })
+      await input.deps.attempts.markReady(attempt.id, {
+        catalogGeneration: prepared.generation,
+        runId: input.runId,
+        selectedSources: prepared.selectedSources,
+      })
+      attempt = {
+        ...attempt,
+        provisioningState: "ready",
+        catalogGeneration: prepared.generation,
+        runId: input.runId,
+        selectedSources: prepared.selectedSources,
+      }
+    } catch {
+      // Keep the durable row in provisioning so the same idempotency key can
+      // resume after a transient reconciliation or process failure.
+      return { status: 503, body: { error: "workspace_unavailable" } }
+    }
+  }
+
+  if (
+    !["ready", "started"].includes(attempt.provisioningState) ||
+    !attempt.catalogGeneration ||
+    !attempt.runId ||
+    attempt.selectedSources.length === 0
+  ) {
+    return { status: 503, body: { error: "workspace_attempt_not_ready" } }
+  }
+  if (attempt.runId !== input.runId) {
+    return { status: 409, body: { error: "attempt_run_id_conflict" } }
+  }
+
+  const existing = await input.deps.workflow.getWorkflowRunById(input.runId)
+  if (existing) {
+    return {
+      status: 200,
+      body: { ...summarizeState(existing), existing: true },
+    }
+  }
+
+  if (attempt.provisioningState === "started") {
+    return {
+      status: 202,
+      body: { runId: input.runId, status: "pending", existing: true },
+    }
+  }
+
+  const run = await input.deps.workflow.createRun({ runId: input.runId })
+  const workflowInput = VideoFirstDevotionalWorkflowInputSchema.parse({
+    chapterIndex: input.workflowInput.chapterIndex,
+    sequence: input.workflowInput.sequence,
+    date: input.workflowInput.date,
+    attemptId: attempt.id,
+    workspaceGeneration: attempt.catalogGeneration,
+    selectedSources: attempt.selectedSources,
+  })
+  await run.startAsync({
+    inputData: workflowInput,
+  })
+  await input.deps.attempts.markStarted(attempt.id)
+  const state = await input.deps.workflow.getWorkflowRunById(input.runId)
+  return {
+    status: 202,
+    body: state
+      ? { ...summarizeState(state), existing: false }
+      : { runId: input.runId, status: "pending", existing: false },
+  }
 }
 
 function normalizeSuspension(
@@ -341,21 +495,35 @@ export async function handleVideoFirstStartRequest(
       }
     }
 
-    const run = await input.deps.workflow.createRun({ runId })
-    await run.startAsync({ inputData: { ...parsed.data, date } })
-    const state = await input.deps.workflow.getWorkflowRunById(runId)
-    return {
-      status: 202,
-      body: state
-        ? { ...summarizeState(state), existing: false }
-        : { runId, status: "pending", existing: false },
+    if (!input.deps.attempts || !input.deps.reconcileAttempt) {
+      return { status: 503, body: { error: "workspace_unavailable" } }
     }
+    const attemptResult = await input.deps.attempts.beginRetry({
+      parentRunId: runId,
+      idempotencyKey: "initial",
+      requestHash: initialRequestHash(runId, parsed.data, date),
+    })
+    if (attemptResult.kind === "conflict") {
+      return { status: 409, body: { error: "initial_request_conflict" } }
+    }
+    return provisionAndStartAttempt({
+      attempt: attemptResult.attempt,
+      runId,
+      workflowInput: { ...parsed.data, date },
+      query: `daily devotional ${date}`,
+      deps: {
+        ...input.deps,
+        attempts: input.deps.attempts,
+        reconcileAttempt: input.deps.reconcileAttempt,
+      },
+    })
   })
 }
 
 export async function handleVideoFirstStatusRequest(
   input: CommonRouteInput & {
     runId: string
+    idempotencyKey?: string | null
     renewReservationOnRead?: boolean
     deps: VideoFirstLifecycleDeps
   },
@@ -424,6 +592,7 @@ export async function handleVideoFirstCancelRequest(
 export async function handleVideoFirstRetryRequest(
   input: CommonRouteInput & {
     runId: string
+    idempotencyKey?: string | null
     newRunsEnabled?: boolean
     readJson: () => Promise<unknown>
     deps: VideoFirstLifecycleDeps
@@ -432,6 +601,9 @@ export async function handleVideoFirstRetryRequest(
   if (!isAuthorized(input)) return unauthorized()
   if (input.newRunsEnabled === false) {
     return { status: 503, body: { error: "new_runs_disabled" } }
+  }
+  if (!input.idempotencyKey?.trim()) {
+    return { status: 400, body: { error: "idempotency_key_required" } }
   }
   const parsed = RetrySchema.safeParse(await input.readJson().catch(() => null))
   if (!parsed.success) return { status: 400, body: { error: "invalid_body" } }
@@ -447,34 +619,54 @@ export async function handleVideoFirstRetryRequest(
   ) {
     return { status: 409, body: { error: "published_run_not_retryable" } }
   }
-  const originalInput = InputSchema.safeParse(state.payload)
+  const originalInput = PersistedInputSchema.safeParse(state.payload)
   if (!originalInput.success) {
     return { status: 409, body: { error: "original_input_unavailable" } }
   }
-  const runId = retryRunId(input.runId, parsed.data)
+  if (!input.deps.attempts || !input.deps.reconcileAttempt) {
+    return { status: 503, body: { error: "workspace_unavailable" } }
+  }
+  const requestHash = retryRequestHash(
+    input.runId,
+    originalInput.data,
+    parsed.data,
+  )
+  const attemptResult = await input.deps.attempts.beginRetry({
+    parentRunId: input.runId,
+    idempotencyKey: input.idempotencyKey.trim(),
+    requestHash,
+  })
+  if (attemptResult.kind === "conflict") {
+    return { status: 409, body: { error: "idempotency_key_conflict" } }
+  }
+  const attempt = attemptResult.attempt
+  const runId = `${input.runId}-attempt-${attempt.attemptNumber}`
   return withLifecycleLock(runId, async () => {
-    const existing = await input.deps.workflow.getWorkflowRunById(runId)
-    if (existing) {
-      return {
-        status: 200,
-        body: { ...summarizeState(existing), existing: true },
-      }
-    }
-    const run = await input.deps.workflow.createRun({ runId })
-    await run.startAsync({
-      inputData: { ...originalInput.data, ...parsed.data },
+    return provisionAndStartAttempt({
+      attempt,
+      runId,
+      workflowInput: {
+        chapterIndex: originalInput.data.chapterIndex,
+        sequence: originalInput.data.sequence,
+        date:
+          originalInput.data.date ??
+          (input.deps.now ?? (() => new Date()))().toISOString().slice(0, 10),
+      },
+      query: `daily devotional ${originalInput.data.date ?? ""}`.trim(),
+      deps: {
+        ...input.deps,
+        attempts: input.deps.attempts!,
+        reconcileAttempt: input.deps.reconcileAttempt!,
+      },
     })
-    return {
-      status: 202,
-      body: { runId, status: "pending", existing: false },
-    }
   })
 }
 
 export const _internals = {
   normalizeSuspension,
+  initialRequestHash,
   reservationOwnerFromState,
-  retryRunId,
+  retryRequestHash,
   runIdForDate,
   summarizeState,
 }

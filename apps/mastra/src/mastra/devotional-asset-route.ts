@@ -41,6 +41,16 @@ export async function handleDevotionalAssetRequest(input: {
     artifact,
     input.range,
   )
+  if (!upstream.ok) {
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "content-type":
+          upstream.headers.get("content-type") ?? "application/json",
+        "cache-control": "no-store",
+      },
+    })
+  }
   return new Response(upstream.body, {
     status: upstream.status,
     headers: {

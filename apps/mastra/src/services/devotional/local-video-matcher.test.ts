@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import path from "node:path"
 
-import {
-  JESUS_FILM_CHAPTERS,
-  JESUS_FILM_CHAPTER_COUNT,
-} from "./jesus-film-catalog"
+import { parseJesusFilmCatalogDocument } from "./jesus-film-catalog"
 import { createLocalVideoMatcher } from "./local-video-matcher"
 import type { DevotionalLlm } from "./llm"
 import type { Hook, ScriptureRef } from "./types"
@@ -25,9 +24,21 @@ function fakeLlm(pick: unknown): DevotionalLlm {
   return { model: "fake", complete: async () => pick as never }
 }
 
+const JESUS_FILM_CHAPTERS = parseJesusFilmCatalogDocument({
+  path: "/inputs/video/jesus-film-catalog.json",
+  content: readFileSync(
+    path.resolve("devotional-workspace/inputs/video/jesus-film-catalog.json"),
+    "utf8",
+  ),
+})
+const AUTHORED = {
+  catalog: JESUS_FILM_CHAPTERS,
+  systemPrompt: "Select the most relevant JESUS-film chapter and return JSON.",
+}
+
 describe("jesus-film-catalog", () => {
   it("has exactly 61 chapters with sequential ids", () => {
-    expect(JESUS_FILM_CHAPTER_COUNT).toBe(61)
+    expect(JESUS_FILM_CHAPTERS).toHaveLength(61)
     expect(JESUS_FILM_CHAPTERS[0]).toMatchObject({
       index: 1,
       id: "1_jf6101-0-0",
@@ -44,7 +55,10 @@ describe("jesus-film-catalog", () => {
 
 describe("createLocalVideoMatcher", () => {
   it("maps the LLM's chosen index to that chapter, marked search", async () => {
-    const match = createLocalVideoMatcher({ llm: fakeLlm({ index: 2 }) })
+    const match = createLocalVideoMatcher({
+      llm: fakeLlm({ index: 2 }),
+      ...AUTHORED,
+    })
     const result = await match({ scripture: SCRIPTURE, hook: HOOK })
     expect(result.videoMatch).toBe("search")
     expect(result.video).toMatchObject({
@@ -55,7 +69,10 @@ describe("createLocalVideoMatcher", () => {
   })
 
   it("falls back by keyword overlap when the LLM index is out of range", async () => {
-    const match = createLocalVideoMatcher({ llm: fakeLlm({ index: 999 }) })
+    const match = createLocalVideoMatcher({
+      llm: fakeLlm({ index: 999 }),
+      ...AUTHORED,
+    })
     const result = await match({ scripture: SCRIPTURE, hook: HOOK })
     expect(result.videoMatch).toBe("fallback")
     expect(result.video).not.toBeNull()
@@ -68,7 +85,7 @@ describe("createLocalVideoMatcher", () => {
         throw new Error("boom")
       },
     }
-    const match = createLocalVideoMatcher({ llm })
+    const match = createLocalVideoMatcher({ llm, ...AUTHORED })
     const result = await match({ scripture: SCRIPTURE, hook: HOOK })
     expect(result.videoMatch).toBe("fallback")
     expect(result.video).not.toBeNull()
@@ -82,11 +99,20 @@ describe("createLocalVideoMatcher", () => {
         throw new Error("force fallback")
       },
     }
-    const match = createLocalVideoMatcher({ llm })
+    const match = createLocalVideoMatcher({ llm, ...AUTHORED })
     const result = await match({
       scripture: { ...SCRIPTURE, reference: "Luke 19:38" },
       hook: { ...HOOK, title: "Triumphal Entry into Jerusalem" },
     })
     expect(result.video?.title).toContain("Triumphal Entry")
+  })
+
+  it("fails before provider construction when authored catalog/prompt are absent", () => {
+    expect(() => createLocalVideoMatcher()).toThrow(
+      "/inputs/video/jesus-film-catalog.json",
+    )
+    expect(() =>
+      createLocalVideoMatcher({ catalog: JESUS_FILM_CHAPTERS }),
+    ).toThrow("/inputs/prompts/generation.json")
   })
 })

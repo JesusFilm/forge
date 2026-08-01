@@ -13,8 +13,13 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { passageForChapter } from "../services/devotional/jesus-film-passages"
+import { DEVOTIONAL_AUTHORED_PATHS } from "../services/devotional/authored-data"
+import {
+  parseJesusFilmPassagesDocument,
+  passageForChapter,
+} from "../services/devotional/jesus-film-passages"
 import { repoRoot } from "../services/devotional/repo-root"
+import { readWorkspaceText, requiredArg } from "./devotional-authored-inputs"
 
 function arg(name: string, fallback?: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`))
@@ -75,7 +80,15 @@ function parseWhisper(raw: string): Array<{ start: number; text: string }> {
 
 async function main() {
   const chapter = Number(arg("chapter", "19"))
-  const win = passageForChapter(chapter)
+  const inputsRoot = requiredArg("workspace-inputs")
+  const passages = parseJesusFilmPassagesDocument({
+    path: DEVOTIONAL_AUTHORED_PATHS.videoPassages,
+    content: await readWorkspaceText(
+      inputsRoot,
+      DEVOTIONAL_AUTHORED_PATHS.videoPassages,
+    ),
+  })
+  const win = passageForChapter(chapter, passages)
   if (!win) throw new Error(`no passage mapping for chapter ${chapter}`)
   const id = `1_jf61${String(chapter).padStart(2, "0")}-0-0`
   const start = win.clipStartSec ?? 0

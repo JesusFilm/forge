@@ -19,6 +19,22 @@ const envSchema = z.object({
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
   RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  // Dedicated Mastra Workspace bucket. Generated devotional media and its
+  // manifests never share the mutable legacy Shorts artifact namespace.
+  DEVOTIONAL_WORKSPACE_S3_ENDPOINT: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_REGION: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_BUCKET: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  DEVOTIONAL_WORKSPACE_PREFIX: z.string().min(1).default("devotional"),
+  DEVOTIONAL_WORKSPACE_LOCAL_DIR: z
+    .string()
+    .min(1)
+    .default(".tmp/devotional-workspace"),
   SHORTS_WORKER_LOCAL_ARTIFACTS_DIR: z
     .string()
     .min(1)
@@ -109,6 +125,30 @@ export function parseEnv(source: EnvSource): Env {
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       source.RAILWAY_S3_SECRET_ACCESS_KEY,
     ),
+    DEVOTIONAL_WORKSPACE_S3_ENDPOINT: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_S3_ENDPOINT,
+    ),
+    DEVOTIONAL_WORKSPACE_S3_REGION: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_S3_REGION,
+    ),
+    DEVOTIONAL_WORKSPACE_S3_BUCKET: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_S3_BUCKET,
+    ),
+    DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID,
+    ),
+    DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY,
+    ),
+    DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_S3_FORCE_PATH_STYLE,
+    ),
+    DEVOTIONAL_WORKSPACE_PREFIX: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_PREFIX,
+    ),
+    DEVOTIONAL_WORKSPACE_LOCAL_DIR: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_LOCAL_DIR,
+    ),
     SHORTS_WORKER_LOCAL_ARTIFACTS_DIR: emptyToUndefined(
       source.SHORTS_WORKER_LOCAL_ARTIFACTS_DIR,
     ),
@@ -179,6 +219,20 @@ export function assertRuntimeEnv(
     ["RAILWAY_S3_BUCKET", target.RAILWAY_S3_BUCKET],
     ["RAILWAY_S3_ACCESS_KEY_ID", target.RAILWAY_S3_ACCESS_KEY_ID],
     ["RAILWAY_S3_SECRET_ACCESS_KEY", target.RAILWAY_S3_SECRET_ACCESS_KEY],
+    [
+      "DEVOTIONAL_WORKSPACE_S3_ENDPOINT",
+      target.DEVOTIONAL_WORKSPACE_S3_ENDPOINT,
+    ],
+    ["DEVOTIONAL_WORKSPACE_S3_REGION", target.DEVOTIONAL_WORKSPACE_S3_REGION],
+    ["DEVOTIONAL_WORKSPACE_S3_BUCKET", target.DEVOTIONAL_WORKSPACE_S3_BUCKET],
+    [
+      "DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID",
+      target.DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID,
+    ],
+    [
+      "DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY",
+      target.DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY,
+    ],
     ["SHORTS_WORKER_BUNDLE_DIR", target.SHORTS_WORKER_BUNDLE_DIR],
     [
       "SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR",

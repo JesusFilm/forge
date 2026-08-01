@@ -1,5 +1,7 @@
 import type { IncomingMessage } from "node:http"
-import { mkdtemp, rm } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Readable, Writable } from "node:stream"
@@ -9,7 +11,13 @@ import {
   DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
 } from "../devotional-render.js"
 import { createHandleRequest } from "../server.js"
-import { createStorage } from "../storage.js"
+import {
+  createStorage,
+  devotionalAttemptToken,
+  devotionalManifestKey,
+  devotionalWorkspaceAssetId,
+  devotionalWorkspaceKey,
+} from "../storage.js"
 
 class TestResponse extends Writable {
   statusCode = 200
@@ -47,7 +55,7 @@ async function setup() {
     artifactStorage: storage,
     auth: { apiKeysCsv: "test-key", nodeEnv: "production" },
   })
-  return { storage, handler }
+  return { root, storage, handler }
 }
 
 async function dispatch(
@@ -74,6 +82,15 @@ async function dispatch(
 
 const validInput = {
   schemaVersion: "1",
+  renderConfig: JSON.parse(
+    readFileSync(
+      new URL(
+        "../../../mastra/devotional-workspace/inputs/render/styles.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ),
   headerDate: "Monday · July 21",
   media: {
     mediaId: "1_jf-0-0",
@@ -88,7 +105,7 @@ const validInput = {
 
 describe("devotional artifact upload", () => {
   it("requires auth and validates the JSON input before persisting", async () => {
-    const { storage, handler } = await setup()
+    const { handler } = await setup()
     const path = `/devotional-inputs/run-1/${DEVOTIONAL_INPUT_ARTIFACT_TYPE}.json`
     const unauthorized = await dispatch(handler, {
       method: "PUT",
@@ -116,12 +133,19 @@ describe("devotional artifact upload", () => {
       headers: {
         authorization: "Bearer test-key",
         "content-type": "application/json",
+        "x-devotional-workspace-generation": "3",
+        "x-devotional-attempt-id": "attempt_1",
+        "x-devotional-run-id": "run_1",
+        "x-content-sha256": createHash("sha256")
+          .update(JSON.stringify(validInput))
+          .digest("hex"),
+        "x-content-size": String(Buffer.byteLength(JSON.stringify(validInput))),
       },
     })
     expect(accepted.statusCode).toBe(201)
-    await expect(
-      storage.artifactExists("run-1", DEVOTIONAL_INPUT_ARTIFACT_TYPE, "json"),
-    ).resolves.toBe(true)
+    expect(JSON.parse(accepted.body.toString())).toMatchObject({
+      artifact: { schemaVersion: "2", contentType: "application/json" },
+    })
   })
 
   it("rejects traversal, unapproved artifact types, and oversized bodies", async () => {
@@ -202,5 +226,82 @@ describe("devotional artifact streaming", () => {
       })
       expect(response.statusCode).toBe(404)
     }
+  })
+
+  it("serves v2 output refs only while manifest-bound bytes remain intact", async () => {
+    const { root, storage, handler } = await setup()
+    const attempt = {
+      workspaceGeneration: 9,
+      attemptId: "attempt_9",
+      runId: "run_9",
+    }
+    const bytes = Buffer.from("immutable-video")
+    const digest = createHash("sha256").update(bytes).digest("hex")
+    const outputRef = await storage.writeWorkspaceArtifact({
+      key: devotionalWorkspaceKey(
+        attempt,
+        "attempt-output",
+        digest,
+        "portrait.mp4",
+      ),
+      body: bytes,
+      digest,
+      size: bytes.byteLength,
+      contentType: "video/mp4",
+      attempt,
+    })
+    const manifestBody = Buffer.from(
+      JSON.stringify({
+        schemaVersion: "2",
+        kind: "attempt-output",
+        attempt,
+        artifacts: [
+          {
+            artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+            ext: "mp4",
+            ref: outputRef,
+          },
+        ],
+      }),
+    )
+    const manifestDigest = createHash("sha256")
+      .update(manifestBody)
+      .digest("hex")
+    const manifestRef = await storage.writeWorkspaceArtifact({
+      key: devotionalManifestKey(attempt, "attempt-output"),
+      body: manifestBody,
+      digest: manifestDigest,
+      size: manifestBody.byteLength,
+      contentType: "application/json",
+      attempt,
+    })
+    const assetId = devotionalWorkspaceAssetId({
+      kind: "output",
+      workspaceGeneration: attempt.workspaceGeneration,
+      attemptToken: devotionalAttemptToken(attempt.attemptId),
+      manifestDigest: manifestRef.digest,
+      manifestSize: manifestRef.size,
+    })
+    const url = `/artifacts/${assetId}/${DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE}.mp4`
+    expect(
+      (
+        await dispatch(handler, {
+          method: "GET",
+          url,
+          headers: { authorization: "Bearer test-key" },
+        })
+      ).body.toString(),
+    ).toBe("immutable-video")
+
+    await writeFile(join(root, outputRef.key), "mutated")
+    expect(
+      (
+        await dispatch(handler, {
+          method: "GET",
+          url,
+          headers: { authorization: "Bearer test-key" },
+        })
+      ).statusCode,
+    ).toBe(409)
   })
 })

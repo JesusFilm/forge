@@ -1,11 +1,9 @@
 import { z } from "zod"
 
 import { getDevotionalModel } from "../../config/env"
+import { requireAuthoredPrompt } from "./authored-data"
 import { createDevotionalLlm, type DevotionalLlm } from "./llm"
-import {
-  JESUS_FILM_CHAPTERS,
-  type JesusFilmChapter,
-} from "./jesus-film-catalog"
+import type { JesusFilmChapter } from "./jesus-film-catalog"
 import type { MatchVideoOptions, VideoMatchResult } from "./video-matcher"
 
 /**
@@ -43,14 +41,6 @@ const PICK_JSON_SCHEMA = {
   },
 }
 
-const SYSTEM_PROMPT = [
-  "You choose the single best chapter of the JESUS film (Gospel of Luke) to",
-  "accompany a daily devotional. Pick the chapter whose scene most directly",
-  "illustrates the devotional's scripture and theme. Prefer a narrative scene",
-  "over a teaching summary when both fit. Return JSON only: the chapter index",
-  "(1-61) and a short reason.",
-].join("\n")
-
 function renderCatalog(chapters: ReadonlyArray<JesusFilmChapter>): string {
   return chapters.map((c) => `${c.index}. ${c.title}`).join("\n")
 }
@@ -76,12 +66,15 @@ function toResult(
  * the most words with the scripture reference + hook title. Guarantees a clip
  * even with no LLM/network.
  */
-function keywordFallback(options: MatchVideoOptions): VideoMatchResult {
+function keywordFallback(
+  options: MatchVideoOptions,
+  catalog: ReadonlyArray<JesusFilmChapter>,
+): VideoMatchResult {
   const needle = `${options.scripture.reference} ${options.hook.title}`
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 3)
-  const scored = JESUS_FILM_CHAPTERS.map((chapter) => {
+  const scored = catalog.map((chapter) => {
     const words = new Set(chapter.title.toLowerCase().split(/[^a-z0-9]+/))
     const overlap = needle.filter((w) => words.has(w)).length
     return { chapter, overlap }
@@ -90,16 +83,14 @@ function keywordFallback(options: MatchVideoOptions): VideoMatchResult {
     cur.overlap > top.overlap ? cur : top,
   )
   // No overlap at all → the opening chapter is a safe, on-theme default.
-  return toResult(
-    best.overlap > 0 ? best.chapter : JESUS_FILM_CHAPTERS[0],
-    "fallback",
-  )
+  return toResult(best.overlap > 0 ? best.chapter : catalog[0]!, "fallback")
 }
 
 export type CreateLocalVideoMatcherDeps = {
   /** Override the picker LLM (tests inject a fake). */
   llm?: DevotionalLlm
   catalog?: ReadonlyArray<JesusFilmChapter>
+  systemPrompt?: string
 }
 
 /**
@@ -110,7 +101,13 @@ export type CreateLocalVideoMatcherDeps = {
 export function createLocalVideoMatcher(
   deps: CreateLocalVideoMatcherDeps = {},
 ): (options: MatchVideoOptions) => Promise<VideoMatchResult> {
-  const catalog = deps.catalog ?? JESUS_FILM_CHAPTERS
+  if (!deps.catalog?.length) {
+    throw new Error(
+      "/inputs/video/jesus-film-catalog.json: local matcher catalog is required",
+    )
+  }
+  const catalog = deps.catalog
+  const systemPrompt = requireAuthoredPrompt(deps.systemPrompt)
 
   return async (options) => {
     let llm = deps.llm
@@ -118,13 +115,13 @@ export function createLocalVideoMatcher(
       try {
         llm = createDevotionalLlm({ model: getDevotionalModel() })
       } catch {
-        return keywordFallback(options)
+        return keywordFallback(options, catalog)
       }
     }
 
     try {
       const pick = await llm.complete({
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         user: [
           `Scripture: ${options.scripture.reference} — ${options.scripture.text}`,
           `Hook (${options.hook.type}): ${options.hook.title} — ${options.hook.summary}`,
@@ -138,10 +135,10 @@ export function createLocalVideoMatcher(
         maxTokens: 200,
       })
       const chapter = catalog.find((c) => c.index === pick.index)
-      if (!chapter) return keywordFallback(options)
+      if (!chapter) return keywordFallback(options, catalog)
       return toResult(chapter, "search")
     } catch {
-      return keywordFallback(options)
+      return keywordFallback(options, catalog)
     }
   }
 }

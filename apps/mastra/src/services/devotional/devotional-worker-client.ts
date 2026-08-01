@@ -3,11 +3,11 @@ import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import { env } from "../../config/env"
+import type { RenderDocument } from "./authored-data"
 import { readResponseJsonCapped } from "./bounded-response"
 import type { ProducedDevotionalAudio } from "./devotional-audio"
 import type { GeneratedDevotional } from "./generate-devotional"
-import { passageForChapter } from "./jesus-film-passages"
-import { rotateFilter } from "./voice-rotation"
+import type { DevotionalSourceRef } from "./workspace/state-schema"
 
 export const DEVOTIONAL_INPUT_ARTIFACT_TYPE = "devotional-render-input-v1"
 export const DEVOTIONAL_MUSIC_ARTIFACT_TYPE = "devotional-music-v1"
@@ -22,14 +22,36 @@ const POLL_TIMEOUT_MS = 80 * 60_000
 const ARTIFACT_STREAM_TIMEOUT_MS = 20 * 60_000
 const MAX_RESPONSE_BYTES = 256 * 1024
 const SAFE_ID = /^[a-zA-Z0-9_-]+$/
+const SHA256 = /^[a-f0-9]{64}$/
+
+const AttemptSchema = z.object({
+  workspaceGeneration: z.number().int().positive(),
+  attemptId: z.string().regex(SAFE_ID).max(128),
+  runId: z.string().regex(SAFE_ID).max(128),
+})
+
+const WorkspaceRefSchema = z.object({
+  schemaVersion: z.literal("2"),
+  key: z.string().min(1),
+  digest: z.string().regex(SHA256),
+  size: z.number().int().positive(),
+  contentType: z.string().min(1),
+  attempt: AttemptSchema,
+})
 
 const ArtifactRefSchema = z
   .object({
     assetId: z.string().regex(SAFE_ID),
     artifactType: z.string().regex(SAFE_ID),
     ext: z.string().regex(SAFE_ID),
+    schemaVersion: z.literal("2").optional(),
+    key: z.string().min(1).optional(),
+    digest: z.string().regex(SHA256).optional(),
+    size: z.number().int().positive().optional(),
+    contentType: z.string().min(1).optional(),
+    attempt: AttemptSchema.optional(),
   })
-  .strict()
+  .passthrough()
 
 const JobStatusSchema = z
   .object({
@@ -58,6 +80,12 @@ export type DevotionalVideoArtifact = {
     | typeof DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
     | typeof DEVOTIONAL_WIDE_ARTIFACT_TYPE
   ext: "mp4"
+  schemaVersion?: "2"
+  key?: string
+  digest?: string
+  size?: number
+  contentType?: string
+  attempt?: z.infer<typeof AttemptSchema>
 }
 
 export type DevotionalVideoArtifacts = {
@@ -170,6 +198,8 @@ function headerDate(date: string): string {
 function buildWorkerInput(
   devotional: GeneratedDevotional,
   audio: ProducedDevotionalAudio,
+  renderStyle: string,
+  renderConfig: RenderDocument,
 ) {
   const cards: Record<string, unknown>[] = []
   const byId = new Map(audio.segments.map((segment) => [segment.id, segment]))
@@ -217,9 +247,13 @@ function buildWorkerInput(
       narrationId: "questions",
     })
   }
-  const passage = passageForChapter(devotional.clip.index)
+  const passage = devotional.passage as GeneratedDevotional["passage"] & {
+    clipStartSec?: number
+    clipLengthSec?: number
+  }
   return {
     schemaVersion: "1" as const,
+    renderConfig,
     headerDate: headerDate(devotional.date),
     ...(devotional.reflection.attribution
       ? { attribution: devotional.reflection.attribution }
@@ -233,7 +267,7 @@ function buildWorkerInput(
     cards,
     music: audio.music != null,
     render: {
-      style: rotateFilter(devotional.sequence),
+      style: renderStyle,
       layout: "grounded" as const,
       musicVolume: 0.12,
       xfadeSec: 1.2,
@@ -272,11 +306,14 @@ async function request(
 
 async function upload(
   client: ResolvedClient,
+  attempt: z.infer<typeof AttemptSchema>,
   assetId: string,
   artifactType: string,
   ext: "json" | "mp3",
   body: Uint8Array | string,
-): Promise<void> {
+): Promise<z.infer<typeof WorkspaceRefSchema>> {
+  const bytes = typeof body === "string" ? Buffer.from(body) : Buffer.from(body)
+  const digest = createHash("sha256").update(bytes).digest("hex")
   const response = await request(
     client,
     `/devotional-inputs/${encodeURIComponent(assetId)}/${encodeURIComponent(
@@ -286,8 +323,15 @@ async function upload(
       method: "PUT",
       headers: {
         "content-type": ext === "json" ? "application/json" : "audio/mpeg",
+        "x-devotional-workspace-generation": String(
+          attempt.workspaceGeneration,
+        ),
+        "x-devotional-attempt-id": attempt.attemptId,
+        "x-devotional-run-id": attempt.runId,
+        "x-content-sha256": digest,
+        "x-content-size": String(bytes.byteLength),
       },
-      body: typeof body === "string" ? body : new Uint8Array(body).buffer,
+      body: bytes,
     },
   )
   if (!response.ok) {
@@ -298,7 +342,31 @@ async function upload(
       response.status >= 500 || response.status === 429,
     )
   }
-  await response.body?.cancel().catch(() => undefined)
+  const payload = z
+    .object({ artifact: WorkspaceRefSchema.passthrough() })
+    .safeParse(await jsonResponse(response))
+  if (!payload.success) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "shorts-worker returned an invalid Workspace artifact reference",
+      false,
+    )
+  }
+  if (
+    payload.data.artifact.digest !== digest ||
+    payload.data.artifact.size !== bytes.byteLength ||
+    payload.data.artifact.attempt.workspaceGeneration !==
+      attempt.workspaceGeneration ||
+    payload.data.artifact.attempt.attemptId !== attempt.attemptId ||
+    payload.data.artifact.attempt.runId !== attempt.runId
+  ) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "shorts-worker returned a mismatched Workspace artifact reference",
+      false,
+    )
+  }
+  return payload.data.artifact
 }
 
 async function jsonResponse(response: Response): Promise<unknown> {
@@ -308,11 +376,19 @@ async function jsonResponse(response: Response): Promise<unknown> {
 function expectedArtifacts(
   outputAssetId: string,
   refs: z.infer<typeof ArtifactRefSchema>[],
+  attempt: z.infer<typeof AttemptSchema>,
 ): DevotionalVideoArtifacts {
+  const attemptToken = createHash("sha256")
+    .update(attempt.attemptId)
+    .digest("hex")
+    .slice(0, 24)
+  const assetPattern = new RegExp(
+    `^dv2o_g${attempt.workspaceGeneration}_${attemptToken}_[a-f0-9]{64}_[1-9][0-9]*$`,
+  )
   const find = (artifactType: string) =>
     refs.find(
       (ref) =>
-        ref.assetId === outputAssetId &&
+        (ref.assetId === outputAssetId || assetPattern.test(ref.assetId)) &&
         ref.artifactType === artifactType &&
         ref.ext === "mp4",
     )
@@ -325,66 +401,177 @@ function expectedArtifacts(
       false,
     )
   }
-  return {
-    portrait: {
-      assetId: portrait.assetId,
-      artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
-      ext: "mp4",
-    },
-    wide: {
-      assetId: wide.assetId,
-      artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
-      ext: "mp4",
-    },
+  const checked = (ref: z.infer<typeof ArtifactRefSchema>) => {
+    if (ref.assetId.startsWith("dv2o_")) {
+      const parsed = WorkspaceRefSchema.safeParse(ref)
+      const filename =
+        ref.artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
+          ? "portrait.mp4"
+          : "wide.mp4"
+      const expectedKey = parsed.success
+        ? `runs/g${attempt.workspaceGeneration}/${attemptToken}/attempt-output/${parsed.data.digest}/${filename}`
+        : ""
+      if (
+        !parsed.success ||
+        !assetPattern.test(ref.assetId) ||
+        ref.contentType !== "video/mp4" ||
+        ref.key !== expectedKey ||
+        ref.attempt?.workspaceGeneration !== attempt.workspaceGeneration ||
+        ref.attempt?.attemptId !== attempt.attemptId ||
+        ref.attempt?.runId !== attempt.runId
+      ) {
+        throw new DevotionalWorkerError(
+          "invalid_response",
+          "shorts-worker returned an incomplete v2 video reference",
+          false,
+        )
+      }
+    }
+    return ref as DevotionalVideoArtifact
   }
+  const checkedPortrait = checked(portrait)
+  const checkedWide = checked(wide)
+  if (checkedPortrait.assetId !== checkedWide.assetId) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "shorts-worker returned video references from different output manifests",
+      false,
+    )
+  }
+  return { portrait: checkedPortrait, wide: checkedWide }
+}
+
+export type DevotionalWorkerRenderInput = {
+  runId: string
+  devotional: GeneratedDevotional
+  audio: ProducedDevotionalAudio
+  workspaceGeneration: number
+  attemptId: string
+  selectedSources: readonly DevotionalSourceRef[]
+  renderStyle?: string
+  renderConfig: RenderDocument
 }
 
 export async function renderDevotionalOnWorker(
-  input: {
-    runId: string
-    devotional: GeneratedDevotional
-    audio: ProducedDevotionalAudio
-  },
+  input: DevotionalWorkerRenderInput,
   options: DevotionalWorkerClientOptions = {},
 ): Promise<DevotionalVideoArtifacts> {
   const client = resolveClient(options)
-  const safeRunId = input.runId.replaceAll("-", "_")
+  const safeRunId = input.runId
   if (!SAFE_ID.test(safeRunId)) {
     throw new DevotionalWorkerError("invalid_response", "invalid run id", false)
   }
-  const inputAssetId = `devotional_input_${safeRunId}`
-  const outputAssetId = `devotional_output_${safeRunId}`
-  const spec = buildWorkerInput(input.devotional, input.audio)
+  if (
+    !input.workspaceGeneration ||
+    !input.attemptId ||
+    !input.renderConfig ||
+    !input.selectedSources?.length
+  ) {
+    throw new DevotionalWorkerError(
+      "config_missing",
+      "workspaceGeneration, attemptId, selectedSources, and renderConfig are required for devotional rendering",
+      false,
+    )
+  }
+  const renderStyle = input.renderStyle ?? "grain"
+  if (!Object.hasOwn(input.renderConfig.filters, renderStyle)) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      `render style ${renderStyle} is not present in the Workspace render config`,
+      false,
+    )
+  }
+  const safeAttemptId = input.attemptId
+  if (!SAFE_ID.test(safeAttemptId) || safeAttemptId.length > 128) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "invalid attempt id",
+      false,
+    )
+  }
+  const attempt = {
+    workspaceGeneration: input.workspaceGeneration,
+    attemptId: safeAttemptId,
+    runId: safeRunId,
+  }
+  const attemptToken = createHash("sha256")
+    .update(safeAttemptId)
+    .digest("hex")
+    .slice(0, 24)
+  const stagingAssetId = `dv2s_g${input.workspaceGeneration}_${attemptToken}`
+  const outputAssetId = `dv2o_g${input.workspaceGeneration}_${attemptToken}`
+  const spec = buildWorkerInput(
+    input.devotional,
+    input.audio,
+    renderStyle,
+    input.renderConfig,
+  )
   const specJson = JSON.stringify(spec)
   const hash = createHash("sha256").update(specJson)
 
+  const uploaded: Array<{
+    artifactType: string
+    ext: "json" | "mp3"
+    ref: z.infer<typeof WorkspaceRefSchema>
+  }> = []
   for (const segment of input.audio.segments) {
     hash.update(segment.audio.bytes)
-    await upload(
+    const artifactType = narrationArtifactType(segment.id)
+    const ref = await upload(
       client,
-      inputAssetId,
-      narrationArtifactType(segment.id),
+      attempt,
+      stagingAssetId,
+      artifactType,
       "mp3",
       segment.audio.bytes,
     )
+    uploaded.push({ artifactType, ext: "mp3", ref })
   }
   if (input.audio.music) {
     hash.update(input.audio.music.audio.bytes)
-    await upload(
+    const ref = await upload(
       client,
-      inputAssetId,
+      attempt,
+      stagingAssetId,
       DEVOTIONAL_MUSIC_ARTIFACT_TYPE,
       "mp3",
       input.audio.music.audio.bytes,
     )
+    uploaded.push({
+      artifactType: DEVOTIONAL_MUSIC_ARTIFACT_TYPE,
+      ext: "mp3",
+      ref,
+    })
   }
-  await upload(
+  const specRef = await upload(
     client,
-    inputAssetId,
+    attempt,
+    stagingAssetId,
     DEVOTIONAL_INPUT_ARTIFACT_TYPE,
     "json",
     specJson,
   )
+  uploaded.push({
+    artifactType: DEVOTIONAL_INPUT_ARTIFACT_TYPE,
+    ext: "json",
+    ref: specRef,
+  })
+  const manifestJson = JSON.stringify({
+    schemaVersion: "2",
+    kind: "run-input",
+    attempt,
+    artifacts: uploaded,
+    selectedSources: input.selectedSources ?? [],
+  })
+  const manifestRef = await upload(
+    client,
+    attempt,
+    stagingAssetId,
+    "devotional-input-manifest-v2",
+    "json",
+    manifestJson,
+  )
+  const inputAssetId = `dv2i_g${input.workspaceGeneration}_${attemptToken}_${manifestRef.digest}_${manifestRef.size}`
 
   const submitted = await request(client, "/jobs", {
     method: "POST",
@@ -455,7 +642,11 @@ export async function renderDevotionalOnWorker(
       )
     }
     if (parsed.data.status === "completed" && parsed.data.result) {
-      return expectedArtifacts(outputAssetId, parsed.data.result.artifacts)
+      return expectedArtifacts(
+        outputAssetId,
+        parsed.data.result.artifacts,
+        attempt,
+      )
     }
     if (parsed.data.status === "failed" || parsed.data.status === "cancelled") {
       throw new DevotionalWorkerError(
@@ -514,6 +705,42 @@ export async function fetchDevotionalWorkerArtifact(
     },
     ARTIFACT_STREAM_TIMEOUT_MS,
   )
+}
+
+export async function verifyDevotionalWorkerArtifacts(
+  artifacts: DevotionalVideoArtifacts,
+  options: DevotionalWorkerClientOptions = {},
+): Promise<void> {
+  const client = resolveClient(options)
+  for (const artifact of [artifacts.portrait, artifacts.wide]) {
+    const response = await request(
+      client,
+      `/artifacts/${encodeURIComponent(artifact.assetId)}/${encodeURIComponent(
+        artifact.artifactType,
+      )}.${artifact.ext}`,
+      { method: "HEAD" },
+      HTTP_TIMEOUT_MS,
+    )
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined)
+      throw new DevotionalWorkerError(
+        "job_failed",
+        `devotional artifact integrity verification failed with HTTP ${response.status}`,
+        false,
+      )
+    }
+    if (
+      artifact.digest &&
+      response.headers.get("x-content-sha256") !== artifact.digest
+    ) {
+      throw new DevotionalWorkerError(
+        "job_failed",
+        "devotional artifact digest changed after rendering",
+        false,
+      )
+    }
+    await response.body?.cancel().catch(() => undefined)
+  }
 }
 
 export const _internals = { buildWorkerInput, expectedArtifacts, headerDate }

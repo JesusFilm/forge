@@ -1,13 +1,7 @@
 /**
- * Bridge from the devotional agents to Studio-published instruction edits.
- *
- * Studio/editor edits live as STORED agent configs resolved via
- * `mastra.getEditor().agent.getById(id)` — a module-level `agent.getInstructions()`
- * does NOT see them (verified empirically). The Mastra index registers a
- * resolver here after constructing the instance; the hybrid agent-llm adapter
- * consults it first and falls back to the coded instructions. A registry module
- * (instead of importing the mastra instance) avoids the index → workflows →
- * adapter → index import cycle.
+ * Bridge from devotional agents to verified Workspace prompt reads. U4
+ * registers the attempt-scoped resolver after reconciliation. There is no
+ * compiled prompt fallback: missing configuration fails before a provider call.
  */
 
 type Resolver = (agentId: string) => Promise<string | null>
@@ -18,8 +12,7 @@ export function setInstructionResolver(r: Resolver): void {
   resolver = r
 }
 
-/** Studio-published instructions for the agent, or null (no editor / no stored
- *  config / any failure → caller falls back to coded instructions). */
+/** Workspace-authored instructions for the agent, or null when unavailable. */
 export async function resolveStoredInstructions(
   agentId: string,
 ): Promise<string | null> {
@@ -29,4 +22,16 @@ export async function resolveStoredInstructions(
   } catch {
     return null
   }
+}
+
+export async function requireResolvedInstructions(
+  agentId: string,
+): Promise<string> {
+  const instructions = await resolveStoredInstructions(agentId)
+  if (!instructions?.trim()) {
+    throw new Error(
+      `/inputs/prompts/generation.json: instructions unavailable for ${agentId}`,
+    )
+  }
+  return instructions
 }

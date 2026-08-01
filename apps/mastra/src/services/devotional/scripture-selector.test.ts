@@ -14,6 +14,7 @@ const HOOK: Hook = {
   summary: "An invitation to bring fear to God.",
   sourceUrl: null,
 }
+const SYSTEM_PROMPT = "Choose one short Bible passage and return JSON."
 
 function llmReturning(value: unknown): DevotionalLlm {
   return { model: "test-model", complete: async () => value as never }
@@ -37,6 +38,7 @@ describe("selectScripture", () => {
         text: "When I am afraid, I put my trust in you.",
         translation: "NIV",
       }),
+      systemPrompt: SYSTEM_PROMPT,
     })
 
     expect(scripture.reference).toBe("Psalm 56:3")
@@ -51,6 +53,7 @@ describe("selectScripture", () => {
         reference: "John 14:27",
         text: "Peace I leave with you.",
       }),
+      systemPrompt: SYSTEM_PROMPT,
     })
 
     expect(scripture.needsCanonicalSource).toBe(true)
@@ -65,6 +68,7 @@ describe("selectScripture", () => {
         reference: "  1 John 4:18.  ",
         text: "There is no fear in love.",
       }),
+      systemPrompt: SYSTEM_PROMPT,
     })
 
     expect(scripture.reference).toBe("1 John 4:18")
@@ -78,6 +82,7 @@ describe("selectScripture", () => {
           reference: "a comforting verse about fear",
           text: "Do not be afraid.",
         }),
+        systemPrompt: SYSTEM_PROMPT,
       }),
     ).rejects.toMatchObject({
       name: "ScriptureSelectorError",
@@ -90,6 +95,7 @@ describe("selectScripture", () => {
       selectScripture({
         hook: HOOK,
         llm: llmThrowing(new DevotionalLlmError("request_failed", "boom")),
+        systemPrompt: SYSTEM_PROMPT,
       }),
     ).rejects.toBeInstanceOf(ScriptureSelectorError)
   })

@@ -234,29 +234,36 @@ when `SHORTS_WORKER_BUNDLE_DIR` / `SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR` /
 `SHORTS_WORKER_WHISPER_MODEL_PATH` / `SHORTS_WORKER_WHISPER_CPP_DIR` point at
 paths that don't exist (fail-fast on a broken image).
 
-| Variable                             | Default        | Notes                                                                                                                         |
-| ------------------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| PORT                                 | 3012           |                                                                                                                               |
-| NODE_ENV                             | development    | `test` suppresses self-start                                                                                                  |
-| SHORTS_WORKER_API_KEYS               | —              | CSV allowlist; required in production; DISTINCT secret from CROP_WORKER_API_KEYS                                              |
-| RAILWAY_S3_ENDPOINT                  | —              | required in production                                                                                                        |
-| RAILWAY_S3_REGION                    | —              | required in production                                                                                                        |
-| RAILWAY_S3_BUCKET                    | —              | presence toggles S3 mode; req. in prod                                                                                        |
-| RAILWAY_S3_ACCESS_KEY_ID             | —              | required in production                                                                                                        |
-| RAILWAY_S3_SECRET_ACCESS_KEY         | —              | required in production                                                                                                        |
-| SHORTS_WORKER_LOCAL_ARTIFACTS_DIR    | .tmp/artifacts | local fallback root (point at manager's `.tmp/artifacts` for parity)                                                          |
-| SHORTS_WORKER_ALLOWED_SOURCE_HOSTS   | stream.mux.com | exact-host CSV; S3 host deliberately excluded (see SSRF invariants)                                                           |
-| SHORTS_WORKER_RENDER_CONCURRENCY     | 2              | Remotion renderMedia concurrency (2 on 4 vCPU — x264 needs the rest)                                                          |
-| SHORTS_WORKER_BUNDLE_DIR             | —              | baked bundle dir (`/app/bundle` in Docker); required + must exist in prod; absent → runtime-memoized `bundle()` for local dev |
-| SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR  | —              | baked devotional bundle (`/app/devotional-bundle`); required + must exist in prod; copied per job to stage media              |
-| SHORTS_WORKER_WHISPER_MODEL_PATH     | —              | required + must exist in prod; unset locally → captions-less degradation                                                      |
-| SHORTS_WORKER_WHISPER_CPP_DIR        | —              | whisper.cpp install dir; required + must exist in prod                                                                        |
-| SHORTS_WORKER_WHISPER_CPP_VERSION    | 1.7.4          | SEMVER string (raw commit SHAs break install-whisper-cpp's compareVersions); keep in sync with the Dockerfile pins            |
-| SHORTS_WORKER_QUEUE_LIMIT            | 2              | per-LANE cap (pending + running) → 409 `queue_full`                                                                           |
-| SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS | 2700000        | 45min per-JOB budget; < manager's 50min prepare poll ceiling                                                                  |
-| SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS  | 4200000        | 70min per-JOB budget; schema-capped at 4740000ms, leaving 60s below Mastra's 80min devotional poll ceiling                    |
-| SHORTS_WORKER_FFMPEG_TIMEOUT_MS      | 1800000        | 30min per-invocation cap                                                                                                      |
-| SHORTS_WORKER_WHISPER_TIMEOUT_MS     | 1800000        | 30min per-invocation cap                                                                                                      |
+| Variable                                  | Default                   | Notes                                                                                                                         |
+| ----------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| PORT                                      | 3012                      |                                                                                                                               |
+| NODE_ENV                                  | development               | `test` suppresses self-start                                                                                                  |
+| SHORTS_WORKER_API_KEYS                    | —                         | CSV allowlist; required in production; DISTINCT secret from CROP_WORKER_API_KEYS                                              |
+| RAILWAY_S3_ENDPOINT                       | —                         | required in production                                                                                                        |
+| RAILWAY_S3_REGION                         | —                         | required in production                                                                                                        |
+| RAILWAY_S3_BUCKET                         | —                         | presence toggles S3 mode; req. in prod                                                                                        |
+| RAILWAY_S3_ACCESS_KEY_ID                  | —                         | required in production                                                                                                        |
+| RAILWAY_S3_SECRET_ACCESS_KEY              | —                         | required in production                                                                                                        |
+| DEVOTIONAL_WORKSPACE_S3_ENDPOINT          | —                         | dedicated devotional Workspace endpoint; complete tuple required for v2 devotional artifacts in production                    |
+| DEVOTIONAL_WORKSPACE_S3_REGION            | —                         | dedicated devotional Workspace region                                                                                         |
+| DEVOTIONAL_WORKSPACE_S3_BUCKET            | —                         | dedicated devotional Workspace bucket; must match Mastra                                                                      |
+| DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID     | —                         | dedicated devotional Workspace access key reference                                                                           |
+| DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY | —                         | dedicated devotional Workspace secret reference                                                                               |
+| DEVOTIONAL_WORKSPACE_PREFIX               | devotional                | shared key prefix inside the dedicated bucket; must match Mastra                                                              |
+| DEVOTIONAL_WORKSPACE_LOCAL_DIR            | .tmp/devotional-workspace | contained dev/test fallback when the entire dedicated S3 tuple is absent                                                      |
+| SHORTS_WORKER_LOCAL_ARTIFACTS_DIR         | .tmp/artifacts            | local fallback root (point at manager's `.tmp/artifacts` for parity)                                                          |
+| SHORTS_WORKER_ALLOWED_SOURCE_HOSTS        | stream.mux.com            | exact-host CSV; S3 host deliberately excluded (see SSRF invariants)                                                           |
+| SHORTS_WORKER_RENDER_CONCURRENCY          | 2                         | Remotion renderMedia concurrency (2 on 4 vCPU — x264 needs the rest)                                                          |
+| SHORTS_WORKER_BUNDLE_DIR                  | —                         | baked bundle dir (`/app/bundle` in Docker); required + must exist in prod; absent → runtime-memoized `bundle()` for local dev |
+| SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR       | —                         | baked devotional bundle (`/app/devotional-bundle`); required + must exist in prod; copied per job to stage media              |
+| SHORTS_WORKER_WHISPER_MODEL_PATH          | —                         | required + must exist in prod; unset locally → captions-less degradation                                                      |
+| SHORTS_WORKER_WHISPER_CPP_DIR             | —                         | whisper.cpp install dir; required + must exist in prod                                                                        |
+| SHORTS_WORKER_WHISPER_CPP_VERSION         | 1.7.4                     | SEMVER string (raw commit SHAs break install-whisper-cpp's compareVersions); keep in sync with the Dockerfile pins            |
+| SHORTS_WORKER_QUEUE_LIMIT                 | 2                         | per-LANE cap (pending + running) → 409 `queue_full`                                                                           |
+| SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS      | 2700000                   | 45min per-JOB budget; < manager's 50min prepare poll ceiling                                                                  |
+| SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS       | 4200000                   | 70min per-JOB budget; schema-capped at 4740000ms, leaving 60s below Mastra's 80min devotional poll ceiling                    |
+| SHORTS_WORKER_FFMPEG_TIMEOUT_MS           | 1800000                   | 30min per-invocation cap                                                                                                      |
+| SHORTS_WORKER_WHISPER_TIMEOUT_MS          | 1800000                   | 30min per-invocation cap                                                                                                      |
 
 ## Docker build
 

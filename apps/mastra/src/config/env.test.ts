@@ -1467,4 +1467,55 @@ describe("Mastra env", () => {
 
     await expect(import("./env")).rejects.toThrow()
   })
+
+  it("defaults the devotional Workspace to a local directory and bounded SQL pool", async () => {
+    vi.stubEnv("NODE_ENV", "test")
+    vi.stubEnv("MASTRA_STORAGE_DIR", ".tmp/mastra")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_LOCAL_DIR", "")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "")
+
+    const { getDevotionalWorkspaceEnvironment } = await import("./env")
+
+    expect(getDevotionalWorkspaceEnvironment()).toMatchObject({
+      nodeEnv: "test",
+      localDirectory: ".tmp/mastra/devotional-workspace",
+      prefix: "devotional",
+      databasePoolMax: 3,
+      s3: {},
+    })
+  })
+
+  it("keeps the dedicated devotional S3 tuple separate from generic artifact storage", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("RAILWAY_S3_BUCKET", "generic-artifacts")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_BUCKET", "devotional-content")
+    vi.stubEnv(
+      "DEVOTIONAL_WORKSPACE_S3_ENDPOINT",
+      "https://objects.example.test",
+    )
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_REGION", "auto")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID", "access")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY", "secret")
+
+    const { env, getDevotionalWorkspaceEnvironment } = await import("./env")
+
+    expect(getDevotionalWorkspaceEnvironment().s3.bucket).toBe(
+      "devotional-content",
+    )
+    expect(env.RAILWAY_S3_BUCKET).toBe("generic-artifacts")
+  })
+
+  it("rejects a devotional direct SQL pool above its service budget", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "4")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a one-connection devotional pool that would self-deadlock", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "1")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
 })

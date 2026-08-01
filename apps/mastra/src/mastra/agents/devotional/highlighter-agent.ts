@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 
-import { SYSTEM_PROMPT } from "../../../services/devotional/reflection-highlighter"
+import { requireResolvedInstructions } from "./instruction-resolver"
 import { devotionalModel } from "./model"
 
 /**
@@ -11,6 +11,6 @@ import { devotionalModel } from "./model"
 export const highlighterAgent = new Agent({
   id: "devotionalHighlighter",
   name: "Devotional Highlighter",
-  instructions: SYSTEM_PROMPT,
+  instructions: () => requireResolvedInstructions("devotionalHighlighter"),
   model: devotionalModel,
 })

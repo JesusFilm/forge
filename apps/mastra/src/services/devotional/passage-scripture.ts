@@ -1,12 +1,12 @@
 import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { requireAuthoredPrompt } from "./authored-data"
 import {
   MAX_DEVOTIONAL_SHORT_TEXT,
   MAX_DEVOTIONAL_TEXT_LENGTH,
   type ScriptureRef,
 } from "./types"
-import { getVerseText } from "./web-bible"
 
 /**
  * Video-first scripture selection: given the clip's Bible passage, pick ONE key
@@ -46,19 +46,12 @@ const SCRIPTURE_JSON_SCHEMA = {
   },
 }
 
-export const SYSTEM_PROMPT = [
-  "You anchor a short devotional video in one Bible verse.",
-  "You are given the Gospel passage the video's clip depicts.",
-  "Choose ONE key verse from within that passage — the heart of the scene.",
-  "Quote it in the World English Bible (WEB, public domain, modern English).",
-  "Keep it to a single verse (or two short ones). Return JSON only.",
-].join("\n")
-
 export type SelectScriptureForPassageOptions = {
   /** Human passage reference, e.g. "Luke 8:22-25". */
   reference: string
   llm: DevotionalLlm
-  /** Exact-verse lookup (defaults to the WEB Bible). Injectable for tests. */
+  systemPrompt?: string
+  /** Exact-verse lookup from the selected Workspace scripture source. */
   lookupVerse?: (reference: string) => string | null
 }
 
@@ -76,10 +69,16 @@ export class PassageScriptureError extends Error {
 export async function selectScriptureForPassage(
   options: SelectScriptureForPassageOptions,
 ): Promise<ScriptureRef> {
+  const systemPrompt = requireAuthoredPrompt(options.systemPrompt)
+  if (!options.lookupVerse) {
+    throw new Error(
+      "/inputs/scripture: required canonical scripture lookup is unavailable",
+    )
+  }
   let response: z.infer<typeof ScriptureResponseSchema>
   try {
     response = await options.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       user: [
         `Passage: ${options.reference}`,
         "Choose the key verse from this passage and quote it (WEB).",
@@ -104,8 +103,7 @@ export async function selectScriptureForPassage(
   // Prefer the EXACT WEB text for the chosen reference; the model only picks
   // WHICH verse. Fall back to the model's quote (flagged) if the reference
   // doesn't resolve (e.g. outside the ingested Gospels+Acts).
-  const lookup = options.lookupVerse ?? getVerseText
-  const exact = lookup(reference)
+  const exact = options.lookupVerse(reference)
   return {
     reference,
     text: exact ?? response.text.trim(),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { lookupVerse, parseReference } from "./web-bible"
+import { lookupVerse, parseReference, parseWebBibleDocument } from "./web-bible"
 
 const verses = {
   "Luke.8.24":
@@ -50,5 +50,16 @@ describe("lookupVerse", () => {
   })
   it("returns null for an unparseable/unknown reference", () => {
     expect(lookupVerse("Genesis 1:1", verses)).toBeNull()
+  })
+})
+
+describe("parseWebBibleDocument", () => {
+  it("validates a selected Workspace scripture document", () => {
+    expect(
+      parseWebBibleDocument({
+        path: "/inputs/scripture/web-bible.json",
+        content: JSON.stringify({ verses }),
+      }),
+    ).toEqual({ verses })
   })
 })
