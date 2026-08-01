@@ -5,6 +5,7 @@ import { spawn } from "node:child_process"
 export const RECOVERABLE_MIGRATIONS = [
   "0027_video_localized_language_slug_identity",
   "0032_video_embedding_qwen",
+  "0047_video_locale_search_social_metadata",
 ] as const
 
 export const RECOVERABLE_MIGRATION = RECOVERABLE_MIGRATIONS[0]

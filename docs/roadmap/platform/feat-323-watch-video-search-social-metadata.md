@@ -9,6 +9,7 @@ duration: 1
 depends_on: []
 blocks:
   - "feat-324"
+  - "feat-325"
 tags:
   - "platform"
   - "admin"

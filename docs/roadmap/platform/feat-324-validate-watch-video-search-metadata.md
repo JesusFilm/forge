@@ -8,6 +8,7 @@ start_date: "2026-08-01"
 duration: 14
 depends_on:
   - "feat-323"
+  - "feat-325"
 blocks: []
 tags:
   - "platform"
