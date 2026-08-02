@@ -32,6 +32,14 @@ That command is intentionally narrow. It restores the reviewed video/content
 slice from `apps/admin/src/scripts/video-db-backup.ts`, not admin users and not
 a full production database clone.
 
+Before any target data is changed, restore preflight requires PostgreSQL 18 or
+newer `pg_restore` and `psql` clients, proves the custom archive is readable,
+matches its `TABLE DATA` entries exactly to the selected profile, and verifies
+the target server major, reviewed public tables, pgvector extension, and
+`public.vector` type. A wrong-profile or structurally incompatible archive
+stops before truncate. Use `--dry-run` to inspect this ordered plan; database
+credentials are redacted.
+
 ## Guidance
 
 Start by fetching admin secrets, because the latest-backup downloader needs the
@@ -204,6 +212,14 @@ The reliable path is: fetch admin secrets, download through the production
 presign-backed restore command, restore with PostgreSQL 18 tooling into a
 PostgreSQL 18 target when needed, verify rows in SQL, then point local admin and
 web at that database.
+
+The destructive phase is intentionally unchanged and is **not failure-atomic**.
+The script first runs `TRUNCATE ... RESTART IDENTITY CASCADE` through `psql`,
+then invokes `pg_restore --single-transaction`. Those are separate processes
+and separate transactions: `--single-transaction` protects only the import. If
+the import fails, its writes roll back, but the earlier committed truncate does
+not. Re-run preflight and restore against a disposable or recoverable local
+target; do not treat this workflow as an atomic slice swap.
 
 ## When to Apply
 

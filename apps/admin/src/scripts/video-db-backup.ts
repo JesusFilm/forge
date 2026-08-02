@@ -130,6 +130,20 @@ type CommandPlan = {
   env?: Record<string, string>
 }
 
+type RestorePreflightCheck =
+  | "pg-restore-client-version"
+  | "psql-client-version"
+  | "archive-manifest"
+  | "target-compatibility"
+
+type RestorePreflightCommandPlan = CommandPlan & {
+  check: RestorePreflightCheck
+}
+
+type RestorePreflightCapture = (
+  plan: RestorePreflightCommandPlan,
+) => Promise<string>
+
 type DatabaseUrlEnv = {
   SOURCE_DATABASE_URL?: string
   TARGET_DATABASE_URL?: string
@@ -176,6 +190,7 @@ export type RestorePlan = {
   targetEnv: TargetEnvironment
   inPath: string
   tables: string[]
+  preflightCommands: RestorePreflightCommandPlan[]
   commands: CommandPlan[]
 }
 
@@ -358,22 +373,21 @@ export function classifyVideoDbBackupFreshness(
     | undefined
 
   for (const object of objects) {
-    if (typeof object.key !== "string" || !object.key.endsWith(".dump")) {
+    const key = object.key
+    if (typeof key !== "string" || !key.endsWith(".dump")) {
       continue
     }
     sawDump = true
+    const lastModified = object.lastModified
     if (
-      !(object.lastModified instanceof Date) ||
-      !Number.isFinite(object.lastModified.getTime())
+      !(lastModified instanceof Date) ||
+      !Number.isFinite(lastModified.getTime())
     ) {
-      unavailable ??= object
+      unavailable ??= { ...object, key }
       continue
     }
-    if (
-      !latest ||
-      object.lastModified.getTime() > latest.lastModified.getTime()
-    ) {
-      latest = { ...object, lastModified: object.lastModified }
+    if (!latest || lastModified.getTime() > latest.lastModified.getTime()) {
+      latest = { ...object, key, lastModified }
     }
   }
 
@@ -492,6 +506,14 @@ function restoreTableArgs(tables: readonly string[]): string[] {
 
 function quoteTable(table: string): string {
   return `"public"."${table.replace(/"/g, '""')}"`
+}
+
+function targetCompatibilitySql(tables: readonly string[]): string {
+  const requiredTables = tables
+    .map((table) => `('${table.replace(/'/g, "''")}')`)
+    .join(", ")
+
+  return `WITH required_table(name) AS (VALUES ${requiredTables}), missing_table AS (SELECT name FROM required_table WHERE to_regclass('public.' || quote_ident(name)) IS NULL) SELECT json_build_object('serverVersionNum', current_setting('server_version_num')::integer, 'missingTables', COALESCE((SELECT json_agg(name ORDER BY name) FROM missing_table), '[]'::json), 'vectorExtensionInstalled', EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector'), 'vectorTypeAvailable', to_regtype('public.vector') IS NOT NULL)::text;`
 }
 
 const PRISMA_ONLY_POSTGRES_QUERY_KEYS = [
@@ -649,6 +671,36 @@ export function buildRestorePlan(
     targetEnv: parsed.targetEnv,
     inPath,
     tables,
+    preflightCommands: [
+      {
+        check: "pg-restore-client-version",
+        command: "pg_restore",
+        args: ["--version"],
+      },
+      {
+        check: "psql-client-version",
+        command: "psql",
+        args: ["--version"],
+      },
+      {
+        check: "archive-manifest",
+        command: "pg_restore",
+        args: ["--list", inPath],
+      },
+      {
+        check: "target-compatibility",
+        command: "psql",
+        args: [
+          "--no-align",
+          "--tuples-only",
+          "--set=ON_ERROR_STOP=1",
+          "--dbname",
+          target,
+          "--command",
+          targetCompatibilitySql(tables),
+        ],
+      },
+    ],
     commands: [
       {
         command: "psql",
@@ -690,7 +742,7 @@ function redactUrl(value: string): string {
 
 function printablePlan(plan: BackupPlan | RestorePlan): object {
   const connectionUrl = plan.mode === "backup" ? plan.source : plan.target
-  const commands = plan.commands.map((command) => ({
+  const printableCommand = (command: CommandPlan) => ({
     command: command.command,
     args: command.args.map((arg) =>
       arg === connectionUrl ? redactUrl(arg) : arg,
@@ -703,7 +755,8 @@ function printablePlan(plan: BackupPlan | RestorePlan): object {
           ]),
         )
       : undefined,
-  }))
+  })
+  const commands = plan.commands.map(printableCommand)
 
   if (plan.mode === "backup") {
     return {
@@ -731,7 +784,197 @@ function printablePlan(plan: BackupPlan | RestorePlan): object {
     targetEnv: plan.targetEnv,
     inPath: plan.inPath,
     tables: plan.tables,
+    preflightCommands: plan.preflightCommands.map((command) => ({
+      check: command.check,
+      ...printableCommand(command),
+    })),
     commands,
+  }
+}
+
+async function captureCommand(plan: CommandPlan): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(plan.command, plan.args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, ...plan.env },
+    })
+    let stdout = ""
+
+    child.stdout?.setEncoding("utf8")
+    child.stdout?.on("data", (chunk: string) => {
+      stdout += chunk
+    })
+    child.on("error", reject)
+    child.on("exit", (code, signal) => {
+      if (code === 0) return resolve(stdout)
+      reject(
+        new Error(
+          `${plan.command} exited with ${signal ? `signal ${signal}` : `code ${code ?? "null"}`}`,
+        ),
+      )
+    })
+  })
+}
+
+function requirePostgres18Client(
+  client: "pg_restore" | "psql",
+  output: string,
+): void {
+  const major = Number.parseInt(
+    output.match(/PostgreSQL\)\s+(\d+)/)?.[1] ?? "",
+    10,
+  )
+  if (!Number.isInteger(major) || major < 18) {
+    throw new VideoDbBackupError(
+      `Restore preflight requires ${client} 18 or newer`,
+    )
+  }
+}
+
+function archiveTableDataEntries(manifest: string): string[] {
+  return manifest
+    .split(/\r?\n/)
+    .map(
+      (line) =>
+        line.match(
+          /^\d+;\s+\d+\s+\d+\s+TABLE DATA\s+public\s+(\S+)(?:\s+.*)?$/,
+        )?.[1],
+    )
+    .filter((table): table is string => typeof table === "string")
+}
+
+function validateArchiveManifest(plan: RestorePlan, manifest: string): void {
+  const entries = archiveTableDataEntries(manifest)
+  const actual = new Set(entries)
+  const expected = new Set(plan.tables)
+  const missing = plan.tables.filter((table) => !actual.has(table))
+  const unexpected = [...actual].filter((table) => !expected.has(table))
+  const duplicates = [...actual].filter(
+    (table) => entries.filter((entry) => entry === table).length > 1,
+  )
+
+  if (
+    missing.length === 0 &&
+    unexpected.length === 0 &&
+    duplicates.length === 0
+  ) {
+    return
+  }
+
+  const details = [
+    missing.length > 0
+      ? `missing TABLE DATA: ${missing.join(", ")}`
+      : undefined,
+    unexpected.length > 0
+      ? `unexpected TABLE DATA: ${unexpected.join(", ")}`
+      : undefined,
+    duplicates.length > 0
+      ? `duplicate TABLE DATA: ${duplicates.join(", ")}`
+      : undefined,
+  ].filter((detail): detail is string => typeof detail === "string")
+  throw new VideoDbBackupError(
+    `Restore archive does not match selected profile ${plan.profile}: ${details.join("; ")}`,
+  )
+}
+
+type TargetCompatibilityState = {
+  serverVersionNum: number
+  missingTables: string[]
+  vectorExtensionInstalled: boolean
+  vectorTypeAvailable: boolean
+}
+
+function parseTargetCompatibilityState(
+  output: string,
+): TargetCompatibilityState {
+  let value: unknown
+  try {
+    value = JSON.parse(output.trim())
+  } catch {
+    throw new VideoDbBackupError(
+      "Restore preflight target compatibility output was invalid",
+    )
+  }
+
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("serverVersionNum" in value) ||
+    !Number.isInteger(value.serverVersionNum) ||
+    !("missingTables" in value) ||
+    !Array.isArray(value.missingTables) ||
+    !value.missingTables.every((table) => typeof table === "string") ||
+    !("vectorExtensionInstalled" in value) ||
+    typeof value.vectorExtensionInstalled !== "boolean" ||
+    !("vectorTypeAvailable" in value) ||
+    typeof value.vectorTypeAvailable !== "boolean"
+  ) {
+    throw new VideoDbBackupError(
+      "Restore preflight target compatibility output was invalid",
+    )
+  }
+
+  return value as TargetCompatibilityState
+}
+
+function validateTargetCompatibility(output: string): void {
+  const state = parseTargetCompatibilityState(output)
+  if (state.serverVersionNum < 180000) {
+    throw new VideoDbBackupError(
+      "Restore preflight requires PostgreSQL server 18 or newer",
+    )
+  }
+  if (state.missingTables.length > 0) {
+    throw new VideoDbBackupError(
+      `Restore target is missing required public tables: ${state.missingTables.join(", ")}`,
+    )
+  }
+  if (!state.vectorExtensionInstalled || !state.vectorTypeAvailable) {
+    throw new VideoDbBackupError(
+      "Restore target requires the pgvector extension and public.vector type",
+    )
+  }
+}
+
+function captureFailureMessage(check: RestorePreflightCheck): string {
+  switch (check) {
+    case "pg-restore-client-version":
+      return "Restore preflight could not verify the PostgreSQL 18 pg_restore client"
+    case "psql-client-version":
+      return "Restore preflight could not verify the PostgreSQL 18 psql client"
+    case "archive-manifest":
+      return "Restore preflight could not read the archive with the PostgreSQL 18 pg_restore client"
+    case "target-compatibility":
+      return "Restore preflight could not verify target schema, pgvector, and PostgreSQL version prerequisites"
+  }
+}
+
+async function runRestorePreflight(
+  plan: RestorePlan,
+  capture: RestorePreflightCapture,
+): Promise<void> {
+  for (const command of plan.preflightCommands) {
+    let output: string
+    try {
+      output = await capture(command)
+    } catch {
+      throw new VideoDbBackupError(captureFailureMessage(command.check))
+    }
+
+    switch (command.check) {
+      case "pg-restore-client-version":
+        requirePostgres18Client("pg_restore", output)
+        break
+      case "psql-client-version":
+        requirePostgres18Client("psql", output)
+        break
+      case "archive-manifest":
+        validateArchiveManifest(plan, output)
+        break
+      case "target-compatibility":
+        validateTargetCompatibility(output)
+        break
+    }
   }
 }
 
@@ -763,6 +1006,24 @@ async function runPlan(plan: BackupPlan | RestorePlan): Promise<void> {
   for (const command of plan.commands) {
     await runCommand(command)
   }
+}
+
+async function executeBuiltRestorePlan(
+  plan: RestorePlan,
+  capture: RestorePreflightCapture,
+): Promise<void> {
+  await runRestorePreflight(plan, capture)
+  await runPlan(plan)
+}
+
+export async function executeRestorePlan(
+  parsed: ParsedArgs,
+  env: DatabaseUrlEnv = currentDatabaseUrlEnv(),
+  capture: RestorePreflightCapture = captureCommand,
+): Promise<RestorePlan> {
+  const plan = buildRestorePlan(parsed, env)
+  await executeBuiltRestorePlan(plan, capture)
+  return plan
 }
 
 async function uploadBackup(plan: BackupPlan): Promise<void> {
@@ -1153,7 +1414,7 @@ export async function main(
     return
   }
 
-  await runPlan(plan)
+  await executeBuiltRestorePlan(plan, captureCommand)
   process.stdout.write(
     `${JSON.stringify({
       event: "video-db.restore.complete",

@@ -42,6 +42,8 @@ import {
   buildBackupObjectKey,
   buildRestorePlan,
   executeBackupPlan,
+  executeRestorePlan,
+  main,
   parseArgs,
   parseProfile,
   restoreLatestMain,
@@ -106,12 +108,75 @@ function configureRestoreStorage(): void {
 
 function mockSuccessfulRestore(inspectInput?: (path: string) => void): void {
   commandMocks.spawn.mockImplementation((command: string, args: string[]) => {
-    if (command === "pg_restore") {
+    if (
+      command === "pg_restore" &&
+      !args.includes("--version") &&
+      !args.includes("--list")
+    ) {
       inspectInput?.(args.at(-1) as string)
     }
-    const child = new EventEmitter()
-    queueMicrotask(() => child.emit("exit", 0, null))
+    const child = new EventEmitter() as EventEmitter & {
+      stdout?: EventEmitter & { setEncoding: (encoding: string) => void }
+    }
+    let capturedOutput: string | undefined
+    if (command === "pg_restore" && args.includes("--version")) {
+      capturedOutput = "pg_restore (PostgreSQL) 18.0"
+    } else if (command === "psql" && args.includes("--version")) {
+      capturedOutput = "psql (PostgreSQL) 18.0"
+    } else if (command === "pg_restore" && args.includes("--list")) {
+      capturedOutput = archiveManifest(VIDEO_DB_BACKUP_PROFILES["video-core"])
+    } else if (command === "psql" && args.includes("--no-align")) {
+      capturedOutput = validRestoreTargetState
+    }
+    if (capturedOutput !== undefined) {
+      const stdout = new EventEmitter() as EventEmitter & {
+        setEncoding: (encoding: string) => void
+      }
+      stdout.setEncoding = vi.fn()
+      child.stdout = stdout
+      queueMicrotask(() => {
+        stdout.emit("data", capturedOutput)
+        child.emit("exit", 0, null)
+      })
+    } else {
+      queueMicrotask(() => child.emit("exit", 0, null))
+    }
     return child
+  })
+}
+
+const validRestoreTargetState = JSON.stringify({
+  serverVersionNum: 180000,
+  missingTables: [],
+  vectorExtensionInstalled: true,
+  vectorTypeAvailable: true,
+})
+
+function archiveManifest(tables: readonly string[]): string {
+  return tables
+    .map(
+      (table, index) =>
+        `${100 + index}; 0 ${200 + index} TABLE DATA public ${table} postgres`,
+    )
+    .join("\n")
+}
+
+function successfulRestorePreflight(
+  profile: keyof typeof VIDEO_DB_BACKUP_PROFILES,
+) {
+  return vi.fn(async (check: { check: string }) => {
+    switch (check.check) {
+      case "pg-restore-client-version":
+        return "pg_restore (PostgreSQL) 18.0"
+      case "psql-client-version":
+        return "psql (PostgreSQL) 18.0"
+      case "archive-manifest":
+        return archiveManifest(VIDEO_DB_BACKUP_PROFILES[profile])
+      case "target-compatibility":
+        return validRestoreTargetState
+      default:
+        throw new Error(`Unexpected preflight check ${check.check}`)
+    }
   })
 }
 
@@ -576,6 +641,68 @@ describe("restore command planning", () => {
     )
   })
 
+  it("plans ordered, read-only restore preflight before the existing destructive commands", () => {
+    const plan = buildRestorePlan(
+      parseArgs("restore", [
+        "--profile=video-search",
+        "--target-env=development",
+        "--in=.tmp/video.dump",
+      ]),
+      {
+        TARGET_DATABASE_URL:
+          "postgresql://private-user:private-password@localhost/dev",
+      },
+    )
+
+    expect(plan.preflightCommands.map(({ check }) => check)).toEqual([
+      "pg-restore-client-version",
+      "psql-client-version",
+      "archive-manifest",
+      "target-compatibility",
+    ])
+    expect(plan.preflightCommands.map(({ command }) => command)).toEqual([
+      "pg_restore",
+      "psql",
+      "pg_restore",
+      "psql",
+    ])
+    expect(plan.preflightCommands[2]?.args).toEqual(["--list", plan.inPath])
+    expect(plan.preflightCommands[3]?.args.join(" ")).not.toContain("TRUNCATE")
+    expect(plan.commands.map(({ command }) => command)).toEqual([
+      "psql",
+      "pg_restore",
+    ])
+  })
+
+  it("prints ordered, redacted restore preflight in dry-run output", async () => {
+    process.env.TARGET_DATABASE_URL =
+      "postgresql://private-user:private-password@localhost/dev"
+    const stdout = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true)
+
+    await main("restore", [
+      "--profile=video-search",
+      "--target-env=development",
+      "--in=.tmp/video.dump",
+      "--dry-run",
+    ])
+
+    const output = stdout.mock.calls.map(([value]) => String(value)).join("")
+    expect(output.indexOf("pg-restore-client-version")).toBeLessThan(
+      output.indexOf("archive-manifest"),
+    )
+    expect(output.indexOf("archive-manifest")).toBeLessThan(
+      output.indexOf("target-compatibility"),
+    )
+    expect(output.indexOf("target-compatibility")).toBeLessThan(
+      output.indexOf("TRUNCATE TABLE"),
+    )
+    expect(output).toContain("REDACTED")
+    expect(output).not.toContain("private-user")
+    expect(output).not.toContain("private-password")
+  })
+
   it("requires an input dump path", () => {
     expect(() =>
       buildRestorePlan(parseArgs("restore", ["--target-env=development"]), {
@@ -607,6 +734,156 @@ describe("restore command planning", () => {
     )
 
     expect(plan.targetEnv).toBe("production")
+  })
+
+  it("keeps production-target protection ahead of restore preflight", async () => {
+    const capture = successfulRestorePreflight("video-core")
+
+    await expect(
+      executeRestorePlan(
+        parseArgs("restore", [
+          "--target-env=production",
+          "--in=.tmp/video.dump",
+        ]),
+        { TARGET_DATABASE_URL: "postgresql://localhost/prod" },
+        capture,
+      ),
+    ).rejects.toThrow("Refusing production restore")
+
+    expect(capture).not.toHaveBeenCalled()
+    expect(commandMocks.spawn).not.toHaveBeenCalled()
+  })
+
+  it("reaches the existing truncate and single-transaction import after valid preflight", async () => {
+    const capture = successfulRestorePreflight("video-search")
+    mockSuccessfulRestore()
+
+    await executeRestorePlan(
+      parseArgs("restore", [
+        "--profile=video-search",
+        "--target-env=development",
+        "--in=.tmp/video.dump",
+      ]),
+      { TARGET_DATABASE_URL: "postgresql://localhost/dev" },
+      capture,
+    )
+
+    expect(capture.mock.calls.map(([check]) => check.check)).toEqual([
+      "pg-restore-client-version",
+      "psql-client-version",
+      "archive-manifest",
+      "target-compatibility",
+    ])
+    expect(commandMocks.spawn).toHaveBeenCalledTimes(2)
+    expect(commandMocks.spawn.mock.calls[0]?.[0]).toBe("psql")
+    expect(commandMocks.spawn.mock.calls[0]?.[1].join(" ")).toContain(
+      "TRUNCATE TABLE",
+    )
+    expect(commandMocks.spawn.mock.calls[1]?.[0]).toBe("pg_restore")
+    expect(commandMocks.spawn.mock.calls[1]?.[1]).toContain(
+      "--single-transaction",
+    )
+  })
+
+  it.each([
+    {
+      name: "an unreadable archive",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockImplementation(async (check: { check: string }) => {
+          if (check.check === "archive-manifest") {
+            throw new Error("pg_restore exited with code 1")
+          }
+          return successfulRestorePreflight("video-search")(check)
+        }),
+      expected: "could not read the archive",
+    },
+    {
+      name: "a wrong-profile archive",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockImplementation(async (check: { check: string }) =>
+          check.check === "archive-manifest"
+            ? archiveManifest(VIDEO_DB_BACKUP_PROFILES["video-core"])
+            : successfulRestorePreflight("video-search")(check),
+        ),
+      expected: "does not match selected profile video-search",
+    },
+    {
+      name: "a missing TABLE DATA manifest entry",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockImplementation(async (check: { check: string }) =>
+          check.check === "archive-manifest"
+            ? archiveManifest(
+                VIDEO_DB_BACKUP_PROFILES["video-search"].filter(
+                  (table) => table !== "video",
+                ),
+              )
+            : successfulRestorePreflight("video-search")(check),
+        ),
+      expected: "missing TABLE DATA",
+    },
+    {
+      name: "a stale target schema",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockImplementation(async (check: { check: string }) =>
+          check.check === "target-compatibility"
+            ? JSON.stringify({
+                ...JSON.parse(validRestoreTargetState),
+                missingTables: ["video_transcript_chunk"],
+              })
+            : successfulRestorePreflight("video-search")(check),
+        ),
+      expected: "missing required public tables: video_transcript_chunk",
+    },
+    {
+      name: "absent vector support",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockImplementation(async (check: { check: string }) =>
+          check.check === "target-compatibility"
+            ? JSON.stringify({
+                ...JSON.parse(validRestoreTargetState),
+                vectorExtensionInstalled: false,
+                vectorTypeAvailable: false,
+              })
+            : successfulRestorePreflight("video-search")(check),
+        ),
+      expected: "pgvector extension and public.vector type",
+    },
+    {
+      name: "an unsupported restore client major",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockResolvedValueOnce("pg_restore (PostgreSQL) 17.6"),
+      expected: "pg_restore 18 or newer",
+    },
+    {
+      name: "an unsupported target server major",
+      mutate: (capture: ReturnType<typeof successfulRestorePreflight>) =>
+        capture.mockImplementation(async (check: { check: string }) =>
+          check.check === "target-compatibility"
+            ? JSON.stringify({
+                ...JSON.parse(validRestoreTargetState),
+                serverVersionNum: 170006,
+              })
+            : successfulRestorePreflight("video-search")(check),
+        ),
+      expected: "PostgreSQL server 18 or newer",
+    },
+  ])("stops $name before truncate", async ({ mutate, expected }) => {
+    const capture = successfulRestorePreflight("video-search")
+    mutate(capture)
+
+    await expect(
+      executeRestorePlan(
+        parseArgs("restore", [
+          "--profile=video-search",
+          "--target-env=development",
+          "--in=.tmp/video.dump",
+        ]),
+        { TARGET_DATABASE_URL: "postgresql://localhost/dev" },
+        capture,
+      ),
+    ).rejects.toThrow(expected)
+
+    expect(commandMocks.spawn).not.toHaveBeenCalled()
   })
 
   it("requires the normal Railway bucket for restore-latest", async () => {
