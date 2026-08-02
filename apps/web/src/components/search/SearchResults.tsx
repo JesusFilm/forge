@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import type { Route } from "next"
-import { runSearch } from "@/lib/search-actions"
 import type { SearchContentType, SearchResult } from "@/lib/search"
+import { searchWatchDirect } from "@/lib/watch-search-client"
 import { VideoCard } from "./VideoCard"
 
 type SearchResultsProps = {
@@ -52,7 +52,7 @@ export function SearchResults({
       typeof performance !== "undefined" ? performance.now() : Date.now()
 
     try {
-      const data = await runSearch({
+      const data = await searchWatchDirect({
         query,
         limit: 20,
         offset,
@@ -62,11 +62,6 @@ export function SearchResults({
       const ended =
         typeof performance !== "undefined" ? performance.now() : Date.now()
       onQueryTimed?.(ended - startedAt)
-
-      if (!data.ok) {
-        setError(data.error.message)
-        return
-      }
 
       setResults((prev) => [...prev, ...data.results])
       setHasMore(data.hasMore)
