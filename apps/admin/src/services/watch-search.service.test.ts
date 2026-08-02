@@ -30,6 +30,11 @@ vi.mock("./embeddings.service", () => ({
   },
   EXPERIENCE_EMBEDDING_DIMENSIONS: 1536,
   OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
+  currentEmbeddingProviderIdentity: () => ({
+    provider: "openrouter",
+    model: "qwen/qwen3-embedding-8b",
+    dimensions: 1536,
+  }),
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
 }))
 

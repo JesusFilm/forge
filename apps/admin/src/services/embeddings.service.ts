@@ -9,7 +9,10 @@ import { toPgVector } from "@/db/pgvector"
 
 export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
 export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
+export const FIREWORKS_EMBEDDING_MODEL = "fireworks/qwen3-embedding-8b"
 const OPENROUTER_EMBEDDING_PROVIDER = "SiliconFlow"
+const FIREWORKS_EMBEDDING_BASE_URL =
+  "https://api.fireworks.ai/inference/v1/embeddings"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -198,6 +201,7 @@ export function buildExperienceEmbeddingSource(
 }
 
 type EmbeddingProvider = {
+  id: "openrouter" | "fireworks"
   apiKey: string
   model: string
   url: string
@@ -207,6 +211,12 @@ type EmbeddingProvider = {
     allow_fallbacks: boolean
     require_parameters: boolean
   }
+}
+
+export type EmbeddingProviderIdentity = {
+  provider: EmbeddingProvider["id"]
+  model: string
+  dimensions: number
 }
 
 type EmbeddingProviderResult =
@@ -219,25 +229,76 @@ type EmbeddingProviderResult =
       status: number
     }
 
-function selectProvider(): EmbeddingProvider {
+function openRouterProvider(): EmbeddingProvider | null {
   const openRouterApiKey = env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
-  if (openRouterApiKey) {
-    return {
-      apiKey: openRouterApiKey,
-      model: OPENROUTER_EMBEDDING_MODEL,
-      url: "https://openrouter.ai/api/v1/embeddings",
-      dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
-      routing: {
-        only: [OPENROUTER_EMBEDDING_PROVIDER],
-        allow_fallbacks: false,
-        require_parameters: true,
-      },
-    }
+  if (!openRouterApiKey) return null
+
+  return {
+    id: "openrouter",
+    apiKey: openRouterApiKey,
+    model: OPENROUTER_EMBEDDING_MODEL,
+    url: "https://openrouter.ai/api/v1/embeddings",
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    routing: {
+      only: [OPENROUTER_EMBEDDING_PROVIDER],
+      allow_fallbacks: false,
+      require_parameters: true,
+    },
   }
+}
+
+function fireworksProvider(): EmbeddingProvider | null {
+  if (!env.FIREWORKS_API_KEY) return null
+
+  return {
+    id: "fireworks",
+    apiKey: env.FIREWORKS_API_KEY,
+    model: env.FIREWORKS_EMBEDDING_MODEL ?? FIREWORKS_EMBEDDING_MODEL,
+    url: env.FIREWORKS_EMBEDDING_BASE_URL ?? FIREWORKS_EMBEDDING_BASE_URL,
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+  }
+}
+
+function selectProvider(): EmbeddingProvider {
+  const preferredProvider = env.QUERY_EMBEDDING_PROVIDER
+
+  if (preferredProvider === "fireworks") {
+    const provider = fireworksProvider()
+    if (provider) return provider
+    throw new EmbeddingsBatchError(
+      "missing_credentials",
+      "FIREWORKS_API_KEY is required when QUERY_EMBEDDING_PROVIDER=fireworks",
+    )
+  }
+
+  if (preferredProvider === "openrouter") {
+    const provider = openRouterProvider()
+    if (provider) return provider
+    throw new EmbeddingsBatchError(
+      "missing_credentials",
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required when QUERY_EMBEDDING_PROVIDER=openrouter",
+    )
+  }
+
+  const openRouter = openRouterProvider()
+  if (openRouter) return openRouter
+
+  const fireworks = fireworksProvider()
+  if (fireworks) return fireworks
+
   throw new EmbeddingsBatchError(
     "missing_credentials",
-    "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for embedding generation",
+    "OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or FIREWORKS_API_KEY is required for embedding generation",
   )
+}
+
+export function currentEmbeddingProviderIdentity(): EmbeddingProviderIdentity {
+  const provider = selectProvider()
+  return {
+    provider: provider.id,
+    model: provider.model,
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+  }
 }
 
 function isAbortError(error: unknown): boolean {

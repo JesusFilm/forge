@@ -544,6 +544,26 @@ function formatNullableDateTime(value: Date | null) {
   return value ? formatDateTime(value) : "None"
 }
 
+function configuredEmbeddingBackend(): "OpenRouter" | "Fireworks" | null {
+  if (env.QUERY_EMBEDDING_PROVIDER === "fireworks") {
+    return env.FIREWORKS_API_KEY ? "Fireworks" : null
+  }
+  if (env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY) {
+    return "OpenRouter"
+  }
+  if (env.FIREWORKS_API_KEY) {
+    return "Fireworks"
+  }
+  return null
+}
+
+function embeddingBackendUnavailableReason(): string {
+  if (env.QUERY_EMBEDDING_PROVIDER === "fireworks") {
+    return "Semantic search requires FIREWORKS_API_KEY when QUERY_EMBEDDING_PROVIDER=fireworks."
+  }
+  return "Semantic search requires OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or FIREWORKS_API_KEY."
+}
+
 function formatAudioPreviewBytes(value: bigint | null) {
   if (value === null) return null
 
@@ -1697,6 +1717,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
     getEmbeddingHealthRows(),
   ])
   const missing = Math.max(counts.total - counts.embedded, 0)
+  const embeddingBackend = configuredEmbeddingBackend()
 
   return {
     metrics: [
@@ -1727,10 +1748,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
     insights: [
       {
         label: "Provider",
-        value:
-          (env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY)
-            ? "OpenRouter"
-            : "Missing",
+        value: embeddingBackend ?? "Missing",
         detail:
           "Embedding generation backend currently configured for admin workflows.",
       },
@@ -1748,9 +1766,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
         detail: "Published locales participating in retrieval once embedded.",
       },
     ],
-    providerReady: Boolean(
-      env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY,
-    ),
+    providerReady: embeddingBackend != null,
   }
 }
 
@@ -2272,6 +2288,7 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
+  const embeddingBackend = configuredEmbeddingBackend()
   const corsOrigins = env.CORS_ALLOWED_ORIGINS
     ? env.CORS_ALLOWED_ORIGINS.split(",")
         .map((item) => item.trim())
@@ -2350,10 +2367,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
       },
       {
         label: "Embedding Backend",
-        value:
-          (env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY)
-            ? "OpenRouter"
-            : "Missing",
+        value: embeddingBackend ?? "Missing",
         detail: "Provider used for admin-side semantic embedding generation.",
       },
     ],
@@ -2368,9 +2382,7 @@ export async function runSemanticSearch(params: {
   const queryText = params.queryText?.trim() ?? ""
   const locale = params.locale?.trim() ?? "en"
   const embeddingCounts = await getEmbeddingCounts()
-  const providerReady = Boolean(
-    env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY,
-  )
+  const providerReady = configuredEmbeddingBackend() != null
 
   const metrics: Metric[] = [
     {
@@ -2428,8 +2440,7 @@ export async function runSemanticSearch(params: {
       results: [],
       queryText,
       locale,
-      unavailableReason:
-        "Semantic search requires OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY.",
+      unavailableReason: embeddingBackendUnavailableReason(),
     }
   }
 
