@@ -19,6 +19,7 @@ import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
 import { mkdir, open, rm, stat } from "node:fs/promises"
 import { basename, dirname, resolve as resolvePath } from "node:path"
+import { performance } from "node:perf_hooks"
 import { Readable } from "node:stream"
 import { finished, pipeline } from "node:stream/promises"
 
@@ -200,6 +201,8 @@ export type VideoDbBackupJobResult = {
   tables: number
   path: string
   size?: number
+  exportDurationMs?: number
+  uploadDurationMs?: number
   upload?: {
     bucket: string
     key: string
@@ -276,6 +279,10 @@ export class VideoDbBackupError extends Error {
     super(message)
     this.name = "VideoDbBackupError"
   }
+}
+
+function elapsedMilliseconds(startedAt: number): number {
+  return Math.max(0, Math.round(performance.now() - startedAt))
 }
 
 function readFlag(args: readonly string[], name: string): string | undefined {
@@ -795,7 +802,7 @@ function printablePlan(plan: BackupPlan | RestorePlan): object {
 async function captureCommand(plan: CommandPlan): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(plan.command, plan.args, {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "ignore"],
       env: { ...process.env, ...plan.env },
     })
     let stdout = ""
@@ -1360,7 +1367,9 @@ export async function executeBackupPlan(
   }
 
   try {
+    const exportStartedAt = performance.now()
     await runPlan(plan)
+    const exportDurationMs = elapsedMilliseconds(exportStartedAt)
     const dumpSize = (await stat(plan.outPath)).size
     process.stdout.write(
       `${JSON.stringify({
@@ -1368,10 +1377,32 @@ export async function executeBackupPlan(
         profile: plan.profile,
         path: plan.outPath,
         size: dumpSize,
+        exportDurationMs,
       })}\n`,
     )
 
-    await uploadBackup(plan)
+    let uploadDurationMs: number | undefined
+    if (plan.upload) {
+      const uploadStartedAt = performance.now()
+      try {
+        await uploadBackup(plan)
+      } catch (error) {
+        uploadDurationMs = elapsedMilliseconds(uploadStartedAt)
+        process.stdout.write(
+          `${JSON.stringify({
+            event: "video-db.backup.upload.failed",
+            profile: plan.profile,
+            bucket: plan.upload.bucket,
+            key: plan.upload.key,
+            size: dumpSize,
+            exportDurationMs,
+            uploadDurationMs,
+          })}\n`,
+        )
+        throw error
+      }
+      uploadDurationMs = elapsedMilliseconds(uploadStartedAt)
+    }
 
     const result: VideoDbBackupJobResult = {
       event: "video-db.backup.complete",
@@ -1379,6 +1410,8 @@ export async function executeBackupPlan(
       tables: plan.tables.length,
       path: plan.outPath,
       size: dumpSize,
+      exportDurationMs,
+      uploadDurationMs,
       upload: plan.upload
         ? { bucket: plan.upload.bucket, key: plan.upload.key }
         : undefined,
@@ -1414,6 +1447,7 @@ export async function main(
     return
   }
 
+  const restoreStartedAt = performance.now()
   await executeBuiltRestorePlan(plan, captureCommand)
   process.stdout.write(
     `${JSON.stringify({
@@ -1421,6 +1455,7 @@ export async function main(
       profile: plan.profile,
       tables: plan.tables.length,
       path: plan.inPath,
+      restoreDurationMs: elapsedMilliseconds(restoreStartedAt),
     })}\n`,
   )
 }

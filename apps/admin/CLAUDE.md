@@ -455,6 +455,29 @@ bucket env vars already managed through Doppler/Railway:
 `RAILWAY_S3_SECRET_ACCESS_KEY`. Backups upload under the fixed
 `admin-video-db-backups/<profile>/` prefix.
 
+There are two scheduled snapshot products:
+
+- `video-core` is the catalog-only default used when no profile flag is
+  supplied.
+- `video-search` is the explicit opt-in (`--profile=video-search`) and adds
+  `video_scene`, `video_scene_locale`, `video_transcript`, and
+  `video_transcript_chunk`, including the vectors already stored in those
+  rows. Publication copies existing database values; it never calls an
+  embedding provider and must not add an embedding-readiness gate.
+
+Application database URLs may contain Prisma-only `connection_limit`,
+`pool_timeout`, and `schema` options that native PostgreSQL clients reject.
+The snapshot script resolves URL precedence once, creates a separate native
+client URL with only those reviewed options removed, and leaves
+`process.env.DATABASE_URL` and `DATABASE_URL_SYNC` unchanged. This boundary is
+load-bearing: transcript embedding concurrency is budgeted against the main
+`connection_limit=10` pool, while Core Sync uses its separately sized pool.
+
+Successful workflow-ledger results retain dump size, export duration, upload
+duration, profile, and exact bucket key. A completed dump logs size and export
+duration before upload, and a failed upload logs its elapsed duration without
+credentials, so capacity and cost evidence survives an upload failure.
+
 The schedule is fixed in code at daily 09:00 UTC. The admin Railway image gets
 PostgreSQL 18 client tools from the admin service's Railpack variable
 `RAILPACK_PACKAGES=postgres@18.1`; keep that in sync with the managed database
@@ -511,6 +534,23 @@ to restore into local or staging Postgres. The restore path reads
 `TARGET_DATABASE_URL` first, then `DATABASE_URL`, truncates only the reviewed
 video manifest tables, and refuses `--target-env=production` unless
 `--allow-production-target` is also present.
+
+Latest restore selects `video-core` by default. Pass
+`--profile=video-search` to opt into the embedding-bearing artifact. Latest
+object discovery is paginated and snapshots older than 36 hours stop before
+download unless the operator explicitly passes `--allow-stale`. Restore logs
+the preflight/import duration after success.
+
+The incremental Railway bill is driven by the compressed artifact size and
+measured export/upload runtime, not embedding API usage. At current published
+rates, a daily artifact of `S` billed GB contributes about `$1.50 × S` monthly
+service egress. With no retention, first-month average bucket storage is about
+`$0.2325 × S`; month-twelve storage alone is about `$5.1825 × S`. Add measured
+compute as `30 × D × ($0.000463 × C + $0.000231 × M)`, where `D` is minutes per
+daily run, `C` average vCPU, and `M` average GB RAM. Railway rounds fractional
+bucket GB-month usage up, so use the workspace bill for the final value.
+Bucket downloads/presigned URLs and S3 operations are free; service uploads to
+the bucket incur egress.
 
 For local/staging self-service, prefer the presigned latest-backup path:
 

@@ -32,6 +32,19 @@ That command is intentionally narrow. It restores the reviewed video/content
 slice from `apps/admin/src/scripts/video-db-backup.ts`, not admin users and not
 a full production database clone.
 
+The default `video-core` profile restores catalog data without embedding
+tables. To restore the stored transcript/scene vectors as well, explicitly use
+the independently published `video-search` profile:
+
+```bash
+pnpm --filter @forge/admin restore:video-db:latest -- \
+  --profile=video-search \
+  --target-env=development
+```
+
+This copies vectors already present in the production snapshot. It does not
+run `run-embeds`, call an embedding provider, or check embedding readiness.
+
 Before any target data is changed, restore preflight requires PostgreSQL 18 or
 newer `pg_restore` and `psql` clients, proves the custom archive is readable,
 matches its `TABLE DATA` entries exactly to the selected profile, and verifies
@@ -67,6 +80,17 @@ such as `connection_limit=10` and `pool_timeout=20` are valid for Prisma but
 ```text
 psql: error: invalid URI query parameter: "connection_limit"
 ```
+
+The restore tool removes those reviewed Prisma-only options from a derived
+native-client URL. It does not modify `DATABASE_URL` or `DATABASE_URL_SYNC`.
+Keep their pool settings intact: transcript embedding backfills deliberately
+cap concurrency at 5 against the documented main `connection_limit=10` pool,
+and Core Sync relies on its separately sized pool and longer timeout.
+
+Latest discovery reads every object-listing page and classifies the selected
+artifact against a 36-hour threshold. A stale latest artifact stops before
+download. Only use `--allow-stale` after confirming that its reported key and
+timestamp are the intended restore source.
 
 If the dump downloads but restore fails with a dump-format error, check the
 client version:
@@ -212,6 +236,19 @@ The reliable path is: fetch admin secrets, download through the production
 presign-backed restore command, restore with PostgreSQL 18 tooling into a
 PostgreSQL 18 target when needed, verify rows in SQL, then point local admin and
 web at that database.
+
+Scheduled workflow results and structured logs provide the measurements needed
+to judge the added cost: compressed dump bytes, export duration, upload
+duration, exact object key, and restore duration. Snapshot publication does not
+generate embeddings, so there is no embedding-provider charge. The recurring
+increase is worker CPU/RAM during export/upload, service egress for the upload,
+and accumulated bucket storage. Bucket downloads, presigned delivery, and S3
+operations are free. At the published Railway rates, a daily artifact of `S`
+billed GB adds about `$1.50 × S` monthly upload egress; with no retention,
+first-month average storage adds about `$0.2325 × S` and month-twelve storage
+adds about `$5.1825 × S`. Railway rounds fractional bucket GB-month usage up,
+so replace `S` and runtime assumptions with ledger/object measurements before
+making a retention or cadence decision.
 
 The destructive phase is intentionally unchanged and is **not failure-atomic**.
 The script first runs `TRUNCATE ... RESTART IDENTITY CASCADE` through `psql`,

@@ -106,7 +106,10 @@ function configureRestoreStorage(): void {
   process.env.RAILWAY_S3_SECRET_ACCESS_KEY = "secret"
 }
 
-function mockSuccessfulRestore(inspectInput?: (path: string) => void): void {
+function mockSuccessfulRestore(
+  inspectInput?: (path: string) => void,
+  profile: keyof typeof VIDEO_DB_BACKUP_PROFILES = "video-core",
+): void {
   commandMocks.spawn.mockImplementation((command: string, args: string[]) => {
     if (
       command === "pg_restore" &&
@@ -124,7 +127,7 @@ function mockSuccessfulRestore(inspectInput?: (path: string) => void): void {
     } else if (command === "psql" && args.includes("--version")) {
       capturedOutput = "psql (PostgreSQL) 18.0"
     } else if (command === "pg_restore" && args.includes("--list")) {
-      capturedOutput = archiveManifest(VIDEO_DB_BACKUP_PROFILES["video-core"])
+      capturedOutput = archiveManifest(VIDEO_DB_BACKUP_PROFILES[profile])
     } else if (command === "psql" && args.includes("--no-align")) {
       capturedOutput = validRestoreTargetState
     }
@@ -435,16 +438,14 @@ describe("backup execution", () => {
     const result = await executeBackupPlan(parseArgs("backup", []))
 
     expect(result.size).toBe(contents.byteLength)
+    expect(result.exportDurationMs).toEqual(expect.any(Number))
+    expect(result.uploadDurationMs).toEqual(expect.any(Number))
     expect(
       stdout.mock.calls.map(([value]) => String(value)).join(""),
-    ).toContain(
-      JSON.stringify({
-        event: "video-db.backup.dump.complete",
-        profile: "video-core",
-        path: generatedPath,
-        size: contents.byteLength,
-      }),
-    )
+    ).toContain('"event":"video-db.backup.dump.complete"')
+    expect(
+      stdout.mock.calls.map(([value]) => String(value)).join(""),
+    ).toContain(`"size":${contents.byteLength},"exportDurationMs":`)
     await expect(stat(generatedPath)).rejects.toMatchObject({ code: "ENOENT" })
   })
 
@@ -465,13 +466,17 @@ describe("backup execution", () => {
     const generatedPath = spawnArgs[spawnArgs.indexOf("--file") + 1] as string
     expect(
       stdout.mock.calls.map(([value]) => String(value)).join(""),
+    ).toContain('"event":"video-db.backup.dump.complete"')
+    expect(
+      stdout.mock.calls.map(([value]) => String(value)).join(""),
+    ).toContain(`"size":${contents.byteLength},"exportDurationMs":`)
+    expect(
+      stdout.mock.calls.map(([value]) => String(value)).join(""),
     ).toContain(
-      JSON.stringify({
-        event: "video-db.backup.dump.complete",
-        profile: "video-search",
-        path: generatedPath,
-        size: contents.byteLength,
-      }),
+      '"event":"video-db.backup.upload.failed","profile":"video-search"',
+    )
+    expect(stdout.mock.calls.map(([value]) => String(value)).join("")).toMatch(
+      /"uploadDurationMs":\d+/,
     )
     await expect(stat(generatedPath)).rejects.toMatchObject({ code: "ENOENT" })
   })
@@ -782,6 +787,24 @@ describe("restore command planning", () => {
     expect(commandMocks.spawn.mock.calls[1]?.[0]).toBe("pg_restore")
     expect(commandMocks.spawn.mock.calls[1]?.[1]).toContain(
       "--single-transaction",
+    )
+  })
+
+  it("records restore duration after successful preflight and import", async () => {
+    process.env.TARGET_DATABASE_URL = "postgresql://localhost/dev"
+    mockSuccessfulRestore(undefined, "video-search")
+    const stdout = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true)
+
+    await main("restore", [
+      "--profile=video-search",
+      "--target-env=development",
+      "--in=.tmp/video.dump",
+    ])
+
+    expect(stdout.mock.calls.map(([value]) => String(value)).join("")).toMatch(
+      /"event":"video-db\.restore\.complete","profile":"video-search","tables":\d+,"path":"[^"]+","restoreDurationMs":\d+/,
     )
   })
 

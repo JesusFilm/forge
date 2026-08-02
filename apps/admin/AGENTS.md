@@ -50,6 +50,15 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   gate report from `docs/search-eval-reports/`.
 - Live user search query embedding generation stays in Admin's search services;
   do not move live search orchestration into Mastra.
+- Video snapshots have two scheduled products: `video-core` is the default
+  local restore, while explicit `--profile=video-search` adds the stored scene
+  and transcript/vector tables. Snapshot publication copies existing vectors;
+  it must not generate embeddings or add an embedding-readiness gate.
+- Native `pg_dump`, `psql`, and `pg_restore` commands receive a sanitized copy
+  of the selected database URL. Never mutate `DATABASE_URL` or
+  `DATABASE_URL_SYNC`, and never remove their Prisma `connection_limit` or
+  `pool_timeout` settings: embedding backfill concurrency and Core Sync pool
+  isolation rely on those application URLs.
 - Localized Core content that is user-facing, retrieval-relevant, or UI-edited
   belongs in per-locale rows (`VideoLocale`, `VideoStudyQuestion`,
   `LanguageLocale`, `CountryLocale`, `ContinentLocale`). Legacy JSON `name`
@@ -86,16 +95,16 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
 
 ## Local-dev scripts (not deployed)
 
-| Script                                                                   | Purpose                                                          | Env requirement                                                                                                                                      |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm --filter @forge/admin run-sync`                                    | Run the Core data sync against any DATABASE_URL                  | DATABASE_URL + Core API creds                                                                                                                        |
-| `pnpm --filter @forge/admin core-sync:backfill-video-localized-metadata` | Backfill Core localized video display text and study questions   | DATABASE_URL + Core API creds; requires `--slug`, `--core-id`, `--limit`, or explicit `--full-catalog`; dry-run unless `--execute`                   |
-| `pnpm --filter @forge/admin core-sync:backfill-video-relation-order`     | Backfill existing video relation order values from Core children | DATABASE_URL + Core API creds; requires `--slug`, `--core-id`, `--limit`, or explicit `--full-catalog`; dry-run unless `--execute` + DB hash confirm |
-| `pnpm --filter @forge/admin run-embeds`                                  | Run gated transcript/experience embedding workflows locally      | DATABASE_URL + manager S3 + Mastra service keys; `--pipeline=all` also requires a provider-bound `--gate-report=docs/search-eval-reports/<id>.json`  |
-| `pnpm --filter @forge/admin restore:video-db`                            | Restore the reviewed video slice into dev/staging Postgres       | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`                                                                                                 |
-| `pnpm --filter @forge/admin restore:video-db:latest`                     | Download latest via prod presign endpoint, then restore locally  | TARGET_DATABASE_URL or DATABASE_URL + BACKUP_DOWNLOAD_API_KEY                                                                                        |
-| `pnpm --filter @forge/admin seed-easter`                                 | Seed Easter experience into local Postgres for UI/E2E fixtures   | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run                                                                                   |
-| `pnpm --filter @forge/admin schema:print`                                | Regenerate the committed admin SDL artifact                      | Admin auth env values, dummy local values are OK for generation                                                                                      |
+| Script                                                                   | Purpose                                                                                                                 | Env requirement                                                                                                                                      |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @forge/admin run-sync`                                    | Run the Core data sync against any DATABASE_URL                                                                         | DATABASE_URL + Core API creds                                                                                                                        |
+| `pnpm --filter @forge/admin core-sync:backfill-video-localized-metadata` | Backfill Core localized video display text and study questions                                                          | DATABASE_URL + Core API creds; requires `--slug`, `--core-id`, `--limit`, or explicit `--full-catalog`; dry-run unless `--execute`                   |
+| `pnpm --filter @forge/admin core-sync:backfill-video-relation-order`     | Backfill existing video relation order values from Core children                                                        | DATABASE_URL + Core API creds; requires `--slug`, `--core-id`, `--limit`, or explicit `--full-catalog`; dry-run unless `--execute` + DB hash confirm |
+| `pnpm --filter @forge/admin run-embeds`                                  | Run gated transcript/experience embedding workflows locally                                                             | DATABASE_URL + manager S3 + Mastra service keys; `--pipeline=all` also requires a provider-bound `--gate-report=docs/search-eval-reports/<id>.json`  |
+| `pnpm --filter @forge/admin restore:video-db`                            | Restore the reviewed video slice into dev/staging Postgres                                                              | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`                                                                                                 |
+| `pnpm --filter @forge/admin restore:video-db:latest`                     | Download latest core (default) or `--profile=video-search`, then restore locally; stale latest requires `--allow-stale` | TARGET_DATABASE_URL or DATABASE_URL + BACKUP_DOWNLOAD_API_KEY                                                                                        |
+| `pnpm --filter @forge/admin seed-easter`                                 | Seed Easter experience into local Postgres for UI/E2E fixtures                                                          | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run                                                                                   |
+| `pnpm --filter @forge/admin schema:print`                                | Regenerate the committed admin SDL artifact                                                                             | Admin auth env values, dummy local values are OK for generation                                                                                      |
 
 ## Boundaries
 

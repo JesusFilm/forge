@@ -155,6 +155,9 @@ describe("video DB backup workflow job", () => {
       profile: "video-core",
       tables: 22,
       path: "/tmp/video.dump",
+      size: 12_345,
+      exportDurationMs: 4_000,
+      uploadDurationMs: 1_500,
       upload: {
         bucket: "admin-storage",
         key: "admin-video-db-backups/video-core/video.dump",
@@ -181,6 +184,13 @@ describe("video DB backup workflow job", () => {
         summary: expect.stringContaining("Backed up 22 table"),
         finishedAt: expect.any(Date),
         durationMs: expect.any(Number),
+        details: {
+          result: expect.objectContaining({
+            size: 12_345,
+            exportDurationMs: 4_000,
+            uploadDurationMs: 1_500,
+          }),
+        },
       }),
     })
   })
