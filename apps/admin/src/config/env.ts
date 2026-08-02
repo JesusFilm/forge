@@ -225,6 +225,10 @@ export const env = createEnv({
     CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
     OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
+    FIREWORKS_API_KEY: z.string().min(1).optional(),
+    FIREWORKS_EMBEDDING_MODEL: z.string().min(1).optional(),
+    FIREWORKS_EMBEDDING_BASE_URL: z.string().url().optional(),
+    QUERY_EMBEDDING_PROVIDER: z.enum(["openrouter", "fireworks"]).optional(),
     OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
@@ -639,6 +643,16 @@ export const env = createEnv({
       process.env.OPENROUTER_API_PAID_KEY,
     ),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+    FIREWORKS_API_KEY: emptyToUndefined(process.env.FIREWORKS_API_KEY),
+    FIREWORKS_EMBEDDING_MODEL: emptyToUndefined(
+      process.env.FIREWORKS_EMBEDDING_MODEL,
+    ),
+    FIREWORKS_EMBEDDING_BASE_URL: emptyToUndefined(
+      process.env.FIREWORKS_EMBEDDING_BASE_URL,
+    ),
+    QUERY_EMBEDDING_PROVIDER: emptyToUndefined(
+      process.env.QUERY_EMBEDDING_PROVIDER,
+    ),
     OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
       process.env.OPENROUTER_IMAGE_TEXT_MODEL,
     ),

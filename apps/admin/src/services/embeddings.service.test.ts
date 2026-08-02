@@ -80,6 +80,10 @@ describe("generateExperienceEmbedding", () => {
     vi.unstubAllGlobals()
     delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -88,6 +92,10 @@ describe("generateExperienceEmbedding", () => {
     vi.unstubAllGlobals()
     delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -181,6 +189,147 @@ describe("generateExperienceEmbedding", () => {
       }),
     )
   })
+
+  it("calls Fireworks when selected for query embeddings", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    process.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const {
+      FIREWORKS_EMBEDDING_MODEL,
+      generateExperienceEmbedding,
+      currentEmbeddingProviderIdentity,
+    } = await import("./embeddings.service")
+
+    const result = await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.fireworks.ai/inference/v1/embeddings",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer test-fireworks-key",
+        }),
+      }),
+    )
+    const [, init] = fetchMock.mock.calls[0]!
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string
+      dimensions: number
+      provider?: unknown
+    }
+    expect(body.model).toBe(FIREWORKS_EMBEDDING_MODEL)
+    expect(body.dimensions).toBe(1536)
+    expect(body.provider).toBeUndefined()
+    expect(result).toEqual({
+      model: FIREWORKS_EMBEDDING_MODEL,
+      dimensions: 1536,
+      embedding: vector,
+    })
+    expect(currentEmbeddingProviderIdentity()).toEqual({
+      provider: "fireworks",
+      model: FIREWORKS_EMBEDDING_MODEL,
+      dimensions: 1536,
+    })
+  })
+
+  it("uses Fireworks model and base URL overrides", async () => {
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    process.env.FIREWORKS_EMBEDDING_MODEL = "accounts/team/models/qwen3-custom"
+    process.env.FIREWORKS_EMBEDDING_BASE_URL =
+      "https://example.fireworks.test/v1/embeddings"
+    process.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    const result = await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.fireworks.test/v1/embeddings",
+      expect.any(Object),
+    )
+    const [, init] = fetchMock.mock.calls[0]!
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string
+    }
+    expect(body.model).toBe("accounts/team/models/qwen3-custom")
+    expect(result.model).toBe("accounts/team/models/qwen3-custom")
+  })
+
+  it("falls back to Fireworks when no provider is selected and OpenRouter is unavailable", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    const result = await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.fireworks.ai/inference/v1/embeddings",
+      expect.any(Object),
+    )
+    expect(result.model).toBe("fireworks/qwen3-embedding-8b")
+  })
+
+  it("requires FIREWORKS_API_KEY when Fireworks is explicitly selected", async () => {
+    process.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+
+    const thrown = await generateExperienceEmbedding("hope").catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("missing_credentials")
+    expect((thrown as Error).message).toBe(
+      "FIREWORKS_API_KEY is required when QUERY_EMBEDDING_PROVIDER=fireworks",
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("requires OpenRouter credentials when OpenRouter is explicitly selected", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    process.env.QUERY_EMBEDDING_PROVIDER = "openrouter"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+
+    const thrown = await generateExperienceEmbedding("hope").catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("missing_credentials")
+    expect((thrown as Error).message).toBe(
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required when QUERY_EMBEDDING_PROVIDER=openrouter",
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe("generateExperienceEmbeddings (batched)", () => {
@@ -189,6 +338,10 @@ describe("generateExperienceEmbeddings (batched)", () => {
     vi.unstubAllGlobals()
     delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -197,6 +350,10 @@ describe("generateExperienceEmbeddings (batched)", () => {
     vi.unstubAllGlobals()
     delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -444,6 +601,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
   it("surfaces missing credentials with EmbeddingsBatchError(missing_credentials)", async () => {
     delete process.env.OPENROUTER_API_KEY
     delete process.env.OPENROUTER_API_PAID_KEY
+    delete process.env.FIREWORKS_API_KEY
     delete process.env.OPENAI_API_KEY
     const { generateExperienceEmbeddings, EmbeddingsBatchError } =
       await import("./embeddings.service")
@@ -455,6 +613,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
   it("does not fall back to OpenAI credentials when OpenRouter is missing", async () => {
     delete process.env.OPENROUTER_API_KEY
     delete process.env.OPENROUTER_API_PAID_KEY
+    delete process.env.FIREWORKS_API_KEY
     process.env.OPENAI_API_KEY = "test-openai-key"
     process.env.OPENAI_BASE_URL = "https://api.openai.example/v1"
     const fetchMock = vi.fn()
@@ -519,6 +678,10 @@ describe("generateExperienceEmbedding (singular) — back-compat error contract"
     vi.unstubAllGlobals()
     delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -527,6 +690,10 @@ describe("generateExperienceEmbedding (singular) — back-compat error contract"
     vi.unstubAllGlobals()
     delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })

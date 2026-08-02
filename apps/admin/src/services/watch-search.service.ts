@@ -2,10 +2,9 @@ import { createHash, randomUUID } from "node:crypto"
 
 import type { PrismaClient } from "@prisma/client"
 import {
+  currentEmbeddingProviderIdentity,
   EmbeddingsBatchError,
-  EXPERIENCE_EMBEDDING_DIMENSIONS,
   generateExperienceEmbedding,
-  OPENROUTER_EMBEDDING_MODEL,
 } from "./embeddings.service"
 import {
   searchByExactTitle,
@@ -41,7 +40,6 @@ const MIN_SEMANTIC_TOTAL_SCORE = 0.35
 const MIN_SEMANTIC_SOURCE_SCORE = 0.5
 const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 7_000
 const QUERY_EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const QUERY_EMBEDDING_PROVIDER = "openrouter"
 export const WATCH_SEARCH_STARTER_QUERIES = [
   "bible stories",
   "parables",
@@ -935,17 +933,18 @@ function normalizeEmbeddingCacheText(text: string): string {
 }
 
 function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
+  const identity = currentEmbeddingProviderIdentity()
   const cacheIdentity = JSON.stringify({
-    provider: QUERY_EMBEDDING_PROVIDER,
-    model: OPENROUTER_EMBEDDING_MODEL,
-    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    provider: identity.provider,
+    model: identity.model,
+    dimensions: identity.dimensions,
     text: normalizeEmbeddingCacheText(text),
   })
 
   return {
-    provider: QUERY_EMBEDDING_PROVIDER,
-    model: OPENROUTER_EMBEDDING_MODEL,
-    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    provider: identity.provider,
+    model: identity.model,
+    dimensions: identity.dimensions,
     queryHash: createHash("sha256").update(cacheIdentity).digest("hex"),
   }
 }

@@ -29,6 +29,11 @@ const { queryRaw, mockEnv } = vi.hoisted(() => ({
       CORS_ALLOWED_ORIGINS: "",
       OPENROUTER_API_PAID_KEY: undefined as string | undefined,
       OPENROUTER_API_KEY: undefined as string | undefined,
+      FIREWORKS_API_KEY: undefined as string | undefined,
+      QUERY_EMBEDDING_PROVIDER: undefined as
+        | "openrouter"
+        | "fireworks"
+        | undefined,
       OPENAI_API_KEY: undefined as string | undefined,
       MASTRA_GATEWAY_BASE_URL: undefined as string | undefined,
       MASTRA_GATEWAY_ADMIN_API_KEY: undefined as string | undefined,
@@ -84,6 +89,8 @@ const ADMIN_PRINCIPAL = {
 function resetMockEnv() {
   mockEnv.env.OPENROUTER_API_PAID_KEY = undefined
   mockEnv.env.OPENROUTER_API_KEY = undefined
+  mockEnv.env.FIREWORKS_API_KEY = undefined
+  mockEnv.env.QUERY_EMBEDDING_PROVIDER = undefined
   mockEnv.env.OPENAI_API_KEY = undefined
   mockEnv.env.MASTRA_GATEWAY_BASE_URL = undefined
   mockEnv.env.MASTRA_GATEWAY_ADMIN_API_KEY = undefined
@@ -254,6 +261,45 @@ describe("embedding provider readiness", () => {
     ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
   })
 
+  it("reports Fireworks as ready when selected for query embeddings", async () => {
+    mockEnv.env.FIREWORKS_API_KEY = "fireworks-key"
+    mockEnv.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    mockEmbeddingCounts({ total: 2, embedded: 2, published: 1 })
+    queryRaw.mockResolvedValueOnce([])
+
+    const embeddings = await loadEmbeddingsData()
+    const settings = await loadSettingsData()
+
+    expect(embeddings.providerReady).toBe(true)
+    expect(
+      embeddings.insights.find((insight) => insight.label === "Provider"),
+    ).toEqual(expect.objectContaining({ value: "Fireworks" }))
+    expect(
+      settings.insights.find(
+        (insight) => insight.label === "Embedding Backend",
+      ),
+    ).toEqual(expect.objectContaining({ value: "Fireworks" }))
+  })
+
+  it("requires FIREWORKS_API_KEY when Fireworks is explicitly selected", async () => {
+    mockEnv.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    mockEnv.env.OPENROUTER_API_KEY = "openrouter-key"
+    mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
+
+    const data = await runSemanticSearch({
+      queryText: "hope",
+      locale: "en",
+      user: ADMIN_PRINCIPAL,
+    })
+
+    expect(data.metrics.find((metric) => metric.label === "Provider")).toEqual(
+      expect.objectContaining({ value: "Missing" }),
+    )
+    expect(data.unavailableReason).toBe(
+      "Semantic search requires FIREWORKS_API_KEY when QUERY_EMBEDDING_PROVIDER=fireworks.",
+    )
+  })
+
   it("keeps semantic search unavailable when only OPENAI_API_KEY is set", async () => {
     mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
     mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
@@ -268,7 +314,7 @@ describe("embedding provider readiness", () => {
       expect.objectContaining({ value: "Missing" }),
     )
     expect(data.unavailableReason).toBe(
-      "Semantic search requires OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY.",
+      "Semantic search requires OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or FIREWORKS_API_KEY.",
     )
   })
 })
