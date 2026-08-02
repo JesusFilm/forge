@@ -17,10 +17,10 @@
 
 import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
-import { mkdir } from "node:fs/promises"
+import { mkdir, open, stat, unlink } from "node:fs/promises"
 import { basename, dirname, resolve as resolvePath } from "node:path"
 import { Readable } from "node:stream"
-import { pipeline } from "node:stream/promises"
+import { finished, pipeline } from "node:stream/promises"
 
 export const VIDEO_DB_BACKUP_PROFILES = {
   "video-core": [
@@ -162,6 +162,7 @@ export type BackupPlan = {
   profile: VideoDbBackupProfile
   source: string
   outPath: string
+  generatedOutPath: boolean
   upload?: BackupUploadPlan
   tables: string[]
   commands: CommandPlan[]
@@ -182,6 +183,7 @@ export type VideoDbBackupJobResult = {
   profile: VideoDbBackupProfile
   tables: number
   path: string
+  size?: number
   upload?: {
     bucket: string
     key: string
@@ -344,6 +346,35 @@ function quoteTable(table: string): string {
   return `"public"."${table.replace(/"/g, '""')}"`
 }
 
+const PRISMA_ONLY_POSTGRES_QUERY_KEYS = [
+  "connection_limit",
+  "pool_timeout",
+  "schema",
+] as const
+
+function normalizeNativePostgresUrl(
+  value: string,
+  role: "source" | "target",
+): string {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new VideoDbBackupError(`Invalid PostgreSQL ${role} connection URL`)
+  }
+
+  if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
+    throw new VideoDbBackupError(
+      `Invalid PostgreSQL ${role} connection URL: expected postgres: or postgresql:`,
+    )
+  }
+
+  for (const key of PRISMA_ONLY_POSTGRES_QUERY_KEYS) {
+    url.searchParams.delete(key)
+  }
+  return url.toString()
+}
+
 export function buildBackupPlan(
   parsed: ParsedArgs,
   env: DatabaseUrlEnv & BackupStorageEnv = {
@@ -355,12 +386,13 @@ export function buildBackupPlan(
     RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
   },
 ): BackupPlan {
-  const source = env.SOURCE_DATABASE_URL ?? env.DATABASE_URL
-  if (!source) {
+  const selectedSource = env.SOURCE_DATABASE_URL ?? env.DATABASE_URL
+  if (!selectedSource) {
     throw new VideoDbBackupError(
       "SOURCE_DATABASE_URL or DATABASE_URL is required for backup",
     )
   }
+  const source = normalizeNativePostgresUrl(selectedSource, "source")
 
   const outPath = resolvePath(parsed.outPath ?? defaultOutPath(parsed.profile))
   const tables = [...VIDEO_DB_BACKUP_PROFILES[parsed.profile]]
@@ -371,6 +403,7 @@ export function buildBackupPlan(
     profile: parsed.profile,
     source,
     outPath,
+    generatedOutPath: parsed.outPath === undefined,
     upload,
     tables,
     commands: [
@@ -439,12 +472,13 @@ export function buildRestorePlan(
   parsed: ParsedArgs,
   env: DatabaseUrlEnv = currentDatabaseUrlEnv(),
 ): RestorePlan {
-  const target = env.TARGET_DATABASE_URL ?? env.DATABASE_URL
-  if (!target) {
+  const selectedTarget = env.TARGET_DATABASE_URL ?? env.DATABASE_URL
+  if (!selectedTarget) {
     throw new VideoDbBackupError(
       "TARGET_DATABASE_URL or DATABASE_URL is required for restore",
     )
   }
+  const target = normalizeNativePostgresUrl(selectedTarget, "target")
   if (!parsed.inPath) {
     throw new VideoDbBackupError("--in=<dump path> is required for restore")
   }
@@ -574,6 +608,11 @@ async function runCommand(plan: CommandPlan): Promise<void> {
 async function runPlan(plan: BackupPlan | RestorePlan): Promise<void> {
   if (plan.mode === "backup") {
     await mkdir(dirname(plan.outPath), { recursive: true })
+    if (plan.generatedOutPath) {
+      const output = await open(plan.outPath, "w", 0o600)
+      await output.chmod(0o600)
+      await output.close()
+    }
   }
   for (const command of plan.commands) {
     await runCommand(command)
@@ -606,6 +645,8 @@ async function uploadBackup(plan: BackupPlan): Promise<void> {
       }),
     )
   } finally {
+    body.destroy()
+    await finished(body).catch(() => undefined)
     s3.destroy()
   }
 }
@@ -819,10 +860,11 @@ function restoreDownloadPath(parsed: ParsedArgs): string {
   )
 }
 
-async function executeBackupPlan(
+export async function executeBackupPlan(
   parsed: ParsedArgs,
+  env?: DatabaseUrlEnv & BackupStorageEnv,
 ): Promise<VideoDbBackupJobResult> {
-  const plan = buildBackupPlan(parsed)
+  const plan = buildBackupPlan(parsed, env)
   process.stdout.write(`${JSON.stringify(printablePlan(plan))}\n`)
 
   if (parsed.dryRun) {
@@ -839,20 +881,39 @@ async function executeBackupPlan(
     return result
   }
 
-  await runPlan(plan)
-  await uploadBackup(plan)
+  try {
+    await runPlan(plan)
+    const dumpSize = (await stat(plan.outPath)).size
+    process.stdout.write(
+      `${JSON.stringify({
+        event: "video-db.backup.dump.complete",
+        profile: plan.profile,
+        path: plan.outPath,
+        size: dumpSize,
+      })}\n`,
+    )
 
-  const result: VideoDbBackupJobResult = {
-    event: "video-db.backup.complete",
-    profile: plan.profile,
-    tables: plan.tables.length,
-    path: plan.outPath,
-    upload: plan.upload
-      ? { bucket: plan.upload.bucket, key: plan.upload.key }
-      : undefined,
+    await uploadBackup(plan)
+
+    const result: VideoDbBackupJobResult = {
+      event: "video-db.backup.complete",
+      profile: plan.profile,
+      tables: plan.tables.length,
+      path: plan.outPath,
+      size: dumpSize,
+      upload: plan.upload
+        ? { bucket: plan.upload.bucket, key: plan.upload.key }
+        : undefined,
+    }
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    return result
+  } finally {
+    if (plan.generatedOutPath) {
+      await unlink(plan.outPath).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error
+      })
+    }
   }
-  process.stdout.write(`${JSON.stringify(result)}\n`)
-  return result
 }
 
 export async function runScheduledVideoDbBackup(

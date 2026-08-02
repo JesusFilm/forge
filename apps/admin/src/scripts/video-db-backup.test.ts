@@ -1,4 +1,33 @@
+import { spawnSync } from "node:child_process"
+import { EventEmitter } from "node:events"
+import { writeFileSync } from "node:fs"
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+const commandMocks = vi.hoisted(() => ({
+  spawn: vi.fn(),
+}))
+
+const s3Mocks = vi.hoisted(() => ({
+  destroy: vi.fn(),
+  putObjectCommand: vi.fn((input: unknown) => ({ input })),
+  send: vi.fn(),
+}))
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>()
+  return { ...actual, spawn: commandMocks.spawn }
+})
+
+vi.mock("@aws-sdk/client-s3", () => ({
+  PutObjectCommand: s3Mocks.putObjectCommand,
+  S3Client: vi.fn(function S3Client() {
+    return { send: s3Mocks.send, destroy: s3Mocks.destroy }
+  }),
+}))
 
 import {
   SCHEDULED_VIDEO_DB_BACKUP_PROFILES,
@@ -7,6 +36,7 @@ import {
   buildBackupPlan,
   buildBackupObjectKey,
   buildRestorePlan,
+  executeBackupPlan,
   parseArgs,
   parseProfile,
   restoreLatestMain,
@@ -16,9 +46,44 @@ afterEach(() => {
   delete process.env.BACKUP_DOWNLOAD_API_KEY
   delete process.env.BACKUP_DOWNLOAD_BASE_URL
   delete process.env.TARGET_DATABASE_URL
+  delete process.env.SOURCE_DATABASE_URL
+  delete process.env.DATABASE_URL
+  delete process.env.RAILWAY_S3_BUCKET
+  delete process.env.RAILWAY_S3_ENDPOINT
+  delete process.env.RAILWAY_S3_REGION
+  delete process.env.RAILWAY_S3_ACCESS_KEY_ID
+  delete process.env.RAILWAY_S3_SECRET_ACCESS_KEY
   vi.restoreAllMocks()
+  vi.clearAllMocks()
   vi.unstubAllGlobals()
 })
+
+function mockSuccessfulPgDump(contents: Buffer): void {
+  commandMocks.spawn.mockImplementation((command: string, args: string[]) => {
+    if (command === "pg_dump") {
+      const fileIndex = args.indexOf("--file")
+      writeFileSync(args[fileIndex + 1] as string, contents)
+    }
+
+    const child = new EventEmitter()
+    queueMicrotask(() => child.emit("exit", 0, null))
+    return child
+  })
+}
+
+const uploadEnv = {
+  SOURCE_DATABASE_URL: "postgresql://user:pass@example.com/prod",
+  RAILWAY_S3_BUCKET: "admin-db-backups",
+  RAILWAY_S3_ENDPOINT: "https://storage.example.com",
+  RAILWAY_S3_REGION: "sjc",
+  RAILWAY_S3_ACCESS_KEY_ID: "key",
+  RAILWAY_S3_SECRET_ACCESS_KEY: "secret",
+} as const
+
+const pgDumpVersion = spawnSync("pg_dump", ["--version"], {
+  encoding: "utf8",
+}).stdout
+const hasPostgres18PgDump = /PostgreSQL\) 18\./.test(pgDumpVersion ?? "")
 
 describe("video DB backup profiles", () => {
   it("keeps video-core focused on catalog data without embedding tables", () => {
@@ -58,6 +123,111 @@ describe("video DB backup profiles", () => {
 })
 
 describe("backup command planning", () => {
+  it.runIf(hasPostgres18PgDump)(
+    "passes the planned URL through the PostgreSQL 18 URI parser without Prisma-only options",
+    () => {
+      const plan = buildBackupPlan(
+        parseArgs("backup", ["--profile=video-core", "--out=.tmp/video.dump"]),
+        {
+          SOURCE_DATABASE_URL:
+            "postgresql://user:pass@127.0.0.1:1/prod?connection_limit=5&connect_timeout=1",
+        },
+      )
+      const result = spawnSync(
+        "pg_dump",
+        ["--schema-only", "--dbname", plan.source],
+        { encoding: "utf8" },
+      )
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).not.toContain(
+        'invalid URI query parameter: "connection_limit"',
+      )
+      expect(result.stderr).toContain("Connection refused")
+    },
+  )
+
+  it.each(["SOURCE_DATABASE_URL", "DATABASE_URL"] as const)(
+    "normalizes Prisma-only options from %s after environment precedence",
+    (envName) => {
+      const applicationUrl =
+        "postgresql://encoded%40user:p%3Ass%2Fword@db.example.com:5432/prod?connection_limit=5&pool_timeout=60&schema=private&sslmode=require&connect_timeout=7&application_name=video%20backup&future_option=keep%2Fme"
+      const plan = buildBackupPlan(
+        parseArgs("backup", [
+          "--profile=video-search",
+          "--out=.tmp/video.dump",
+        ]),
+        { [envName]: applicationUrl },
+      )
+
+      expect(plan.source).toBe(
+        "postgresql://encoded%40user:p%3Ass%2Fword@db.example.com:5432/prod?sslmode=require&connect_timeout=7&application_name=video+backup&future_option=keep%2Fme",
+      )
+      expect(plan.commands[0]?.args).toContain(plan.source)
+      expect(plan.commands[0]?.args.join(" ")).not.toContain("connection_limit")
+      expect(plan.commands[0]?.args.join(" ")).not.toContain("pool_timeout")
+      expect(plan.commands[0]?.args.join(" ")).not.toContain("schema=private")
+    },
+  )
+
+  it("normalizes only the selected explicit source URL", () => {
+    const plan = buildBackupPlan(
+      parseArgs("backup", ["--out=.tmp/video.dump"]),
+      {
+        SOURCE_DATABASE_URL:
+          "postgres://explicit:secret@db.example.com/prod?connection_limit=3&sslmode=verify-full",
+        DATABASE_URL:
+          "postgresql://fallback:secret@other.example.com/prod?future_option=untouched",
+      },
+    )
+
+    expect(plan.source).toBe(
+      "postgres://explicit:secret@db.example.com/prod?sslmode=verify-full",
+    )
+  })
+
+  it("leaves the Prisma application URL and its embedding pool settings unchanged", () => {
+    const applicationUrl =
+      "postgresql://user:secret@db.example.com/prod?connection_limit=10&pool_timeout=20&sslmode=require"
+    process.env.DATABASE_URL = applicationUrl
+
+    const backupPlan = buildBackupPlan(
+      parseArgs("backup", ["--out=.tmp/video.dump"]),
+    )
+    const restorePlan = buildRestorePlan(
+      parseArgs("restore", [
+        "--target-env=development",
+        "--in=.tmp/video.dump",
+      ]),
+    )
+
+    expect(process.env.DATABASE_URL).toBe(applicationUrl)
+    expect(backupPlan.source).toBe(
+      "postgresql://user:secret@db.example.com/prod?sslmode=require",
+    )
+    expect(restorePlan.target).toBe(backupPlan.source)
+  })
+
+  it("rejects an invalid source URL without including credentials", () => {
+    const invalidUrl = "postgresql://private-user:private-password@[invalid"
+
+    expect(() =>
+      buildBackupPlan(parseArgs("backup", []), {
+        SOURCE_DATABASE_URL: invalidUrl,
+      }),
+    ).toThrow("Invalid PostgreSQL source connection URL")
+
+    try {
+      buildBackupPlan(parseArgs("backup", []), {
+        SOURCE_DATABASE_URL: invalidUrl,
+      })
+    } catch (error) {
+      expect(String(error)).not.toContain("private-user")
+      expect(String(error)).not.toContain("private-password")
+      expect(String(error)).not.toContain(invalidUrl)
+    }
+  })
+
   it("builds pg_dump args with one table arg per reviewed table", () => {
     const plan = buildBackupPlan(
       parseArgs("backup", ["--profile=video-core", "--out=.tmp/video.dump"]),
@@ -138,7 +308,194 @@ describe("backup command planning", () => {
   })
 })
 
+describe("backup execution", () => {
+  it("reports completed dump size, uploads an owner-only generated dump, and removes it", async () => {
+    const contents = Buffer.from("completed scheduled dump")
+    mockSuccessfulPgDump(contents)
+    Object.assign(process.env, uploadEnv)
+    let generatedPath = ""
+    s3Mocks.send.mockImplementation(
+      async (command: { input: { Body: unknown } }) => {
+        generatedPath = commandMocks.spawn.mock.calls[0]?.[1][
+          commandMocks.spawn.mock.calls[0]?.[1].indexOf("--file") + 1
+        ] as string
+        expect((await stat(generatedPath)).mode & 0o777).toBe(0o600)
+
+        for await (const _chunk of command.input
+          .Body as AsyncIterable<Buffer>) {
+          // Consume the upload stream before the generated file is removed.
+        }
+        return {}
+      },
+    )
+    const stdout = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true)
+
+    const result = await executeBackupPlan(parseArgs("backup", []))
+
+    expect(result.size).toBe(contents.byteLength)
+    expect(
+      stdout.mock.calls.map(([value]) => String(value)).join(""),
+    ).toContain(
+      JSON.stringify({
+        event: "video-db.backup.dump.complete",
+        profile: "video-core",
+        path: generatedPath,
+        size: contents.byteLength,
+      }),
+    )
+    await expect(stat(generatedPath)).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  it("reports completed dump size and removes a generated dump when upload fails", async () => {
+    const contents = Buffer.from("completed dump before failed upload")
+    mockSuccessfulPgDump(contents)
+    Object.assign(process.env, uploadEnv)
+    s3Mocks.send.mockRejectedValue(new Error("upload unavailable"))
+    const stdout = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true)
+
+    await expect(
+      executeBackupPlan(parseArgs("backup", ["--profile=video-search"])),
+    ).rejects.toThrow("upload unavailable")
+
+    const spawnArgs = commandMocks.spawn.mock.calls[0]?.[1] as string[]
+    const generatedPath = spawnArgs[spawnArgs.indexOf("--file") + 1] as string
+    expect(
+      stdout.mock.calls.map(([value]) => String(value)).join(""),
+    ).toContain(
+      JSON.stringify({
+        event: "video-db.backup.dump.complete",
+        profile: "video-search",
+        path: generatedPath,
+        size: contents.byteLength,
+      }),
+    )
+    await expect(stat(generatedPath)).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  it("preserves an explicit developer-owned output path after upload", async () => {
+    const contents = Buffer.from("developer-owned dump")
+    const directory = await mkdtemp(join(tmpdir(), "video-db-backup-test-"))
+    const outPath = join(directory, "manual.dump")
+    mockSuccessfulPgDump(contents)
+    s3Mocks.send.mockImplementation(
+      async (command: { input: { Body: unknown } }) => {
+        for await (const _chunk of command.input
+          .Body as AsyncIterable<Buffer>) {
+          // Consume the explicit file's upload stream.
+        }
+        return {}
+      },
+    )
+
+    try {
+      const result = await executeBackupPlan(
+        parseArgs("backup", [`--out=${outPath}`]),
+        uploadEnv,
+      )
+
+      expect(result.size).toBe(contents.byteLength)
+      await expect(readFile(outPath)).resolves.toEqual(contents)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects an invalid scheduled URL before spawning and without printing credentials", async () => {
+    process.env.SOURCE_DATABASE_URL =
+      "postgresql://private-user:private-password@[invalid"
+    const stdout = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true)
+
+    await expect(executeBackupPlan(parseArgs("backup", []))).rejects.toThrow(
+      "Invalid PostgreSQL source connection URL",
+    )
+
+    expect(commandMocks.spawn).not.toHaveBeenCalled()
+    const printed = stdout.mock.calls.map(([value]) => String(value)).join("")
+    expect(printed).not.toContain("private-user")
+    expect(printed).not.toContain("private-password")
+  })
+})
+
 describe("restore command planning", () => {
+  it.each(["TARGET_DATABASE_URL", "DATABASE_URL"] as const)(
+    "normalizes Prisma-only options from %s for every native restore command",
+    (envName) => {
+      const applicationUrl =
+        "postgresql://encoded%40user:p%3Ass%2Fword@localhost/dev?connection_limit=10&pool_timeout=20&schema=public&sslmode=prefer&future_option=keep"
+      const plan = buildRestorePlan(
+        parseArgs("restore", [
+          "--target-env=development",
+          "--in=.tmp/video.dump",
+        ]),
+        { [envName]: applicationUrl },
+      )
+
+      expect(plan.target).toBe(
+        "postgresql://encoded%40user:p%3Ass%2Fword@localhost/dev?sslmode=prefer&future_option=keep",
+      )
+      expect(plan.commands).toHaveLength(2)
+      for (const command of plan.commands) {
+        expect(command.args).toContain(plan.target)
+        expect(command.args.join(" ")).not.toContain("connection_limit")
+        expect(command.args.join(" ")).not.toContain("pool_timeout")
+        expect(command.args.join(" ")).not.toContain("schema=public")
+      }
+    },
+  )
+
+  it("normalizes only the selected explicit target URL", () => {
+    const plan = buildRestorePlan(
+      parseArgs("restore", [
+        "--target-env=development",
+        "--in=.tmp/video.dump",
+      ]),
+      {
+        TARGET_DATABASE_URL:
+          "postgres://explicit:secret@localhost/dev?pool_timeout=20&sslmode=disable",
+        DATABASE_URL:
+          "postgresql://fallback:secret@other.example.com/dev?future_option=untouched",
+      },
+    )
+
+    expect(plan.target).toBe(
+      "postgres://explicit:secret@localhost/dev?sslmode=disable",
+    )
+  })
+
+  it("rejects an invalid target URL without including credentials", () => {
+    const invalidUrl = "postgresql://private-user:private-password@[invalid"
+
+    expect(() =>
+      buildRestorePlan(
+        parseArgs("restore", [
+          "--target-env=development",
+          "--in=.tmp/video.dump",
+        ]),
+        { TARGET_DATABASE_URL: invalidUrl },
+      ),
+    ).toThrow("Invalid PostgreSQL target connection URL")
+
+    try {
+      buildRestorePlan(
+        parseArgs("restore", [
+          "--target-env=development",
+          "--in=.tmp/video.dump",
+        ]),
+        { TARGET_DATABASE_URL: invalidUrl },
+      )
+    } catch (error) {
+      expect(String(error)).not.toContain("private-user")
+      expect(String(error)).not.toContain("private-password")
+      expect(String(error)).not.toContain(invalidUrl)
+    }
+  })
+
   it("builds truncate and pg_restore commands for development targets", () => {
     const plan = buildRestorePlan(
       parseArgs("restore", [
