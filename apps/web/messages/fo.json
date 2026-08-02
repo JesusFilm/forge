@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Hygg nú",
     "tapToUnmute": "Trýst fyri at kveikja ljóðið",
-    "nextEpisode": "Næsti partur"
+    "nextEpisode": "Næsti partur",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lesur innihald",

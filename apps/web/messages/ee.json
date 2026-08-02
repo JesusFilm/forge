@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Kpɔ fifi laa",
     "tapToUnmute": "Kɔ nuti be yeatɔ dziwɔ la",
-    "nextEpisode": "Episode si gbɔna"
+    "nextEpisode": "Episode si gbɔna",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Etsɔ content la vɛ",

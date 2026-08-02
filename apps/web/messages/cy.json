@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Gwylio nawr",
     "tapToUnmute": "Tapio i ddad-distewi",
-    "nextEpisode": "Pennod Nesaf"
+    "nextEpisode": "Pennod Nesaf",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wrthi’n llwytho cynnwys",

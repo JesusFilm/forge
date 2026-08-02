@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Elo kucken",
     "tapToUnmute": "Tippt fir den Toun unzeschalten",
-    "nextEpisode": "Nächst Episod"
+    "nextEpisode": "Nächst Episod",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt gëtt geluede",

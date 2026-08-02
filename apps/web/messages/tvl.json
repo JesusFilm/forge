@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
     "tapToUnmute": "Ote ki luga ke fakaola te leo",
-    "nextEpisode": "Episode e sosoa"
+    "nextEpisode": "Episode e sosoa",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Uta content",

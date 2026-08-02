@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",
     "tapToUnmute": "Tap e kar me suara ae",
-    "nextEpisode": "Episode re"
+    "nextEpisode": "Episode re",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content biga ae",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Sjoch no",
     "tapToUnmute": "Tik om it lûd oan te setten",
-    "nextEpisode": "Folgjende ôflevering"
+    "nextEpisode": "Folgjende ôflevering",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ynhâld wurdt laden",

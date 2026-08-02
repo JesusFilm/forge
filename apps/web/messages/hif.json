@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Abhi dekhiye",
     "tapToUnmute": "Awaz chalu karne ke liye tap kariye",
-    "nextEpisode": "Agla Episode"
+    "nextEpisode": "Agla Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content load ho raha hai",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "צפו עכשיו",
     "tapToUnmute": "הקישו כדי לבטל השתקה",
-    "nextEpisode": "הפרק הבא"
+    "nextEpisode": "הפרק הבא",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "טוען תוכן",

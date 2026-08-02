@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Doengh gwn",
     "tapToUnmute": "Tap ndeih saeng lai",
-    "nextEpisode": "Episode lai"
+    "nextEpisode": "Episode lai",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Raenz content",

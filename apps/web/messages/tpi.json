@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",
     "tapToUnmute": "Tap bilong onim nois",
-    "nextEpisode": "Nex Episode"
+    "nextEpisode": "Nex Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Loadim content",

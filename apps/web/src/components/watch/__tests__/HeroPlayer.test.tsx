@@ -98,6 +98,8 @@ vi.mock("next-intl", () => ({
           nextEpisode: "Next Episode",
           playWithSound: "Watch now",
           tapToUnmute: "Tap to Unmute",
+          mostTranslatedFilm: "Most translated film in the world",
+          mostTranslatedFilmSource: "Guinness World Records",
         },
         VideoLabels: {
           episode: "Episode",
@@ -253,6 +255,8 @@ function makeBlock({
   downloads = [],
   subtitles = [],
   publishedAt = null,
+  slug = "jesus",
+  title = "Jesus",
 }: {
   muxHeroPosterBlurDataUrl?: string | null
   playbackId?: string | null
@@ -261,14 +265,16 @@ function makeBlock({
   downloads?: WatchHeroPlayerBlock["variant"]["downloads"]
   subtitles?: WatchHeroPlayerBlock["video"]["subtitles"]
   publishedAt?: string | null
+  slug?: string | null
+  title?: string | null
 } = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
     video: {
       documentId: "video-1",
       label: "EPISODE",
-      slug: "jesus",
-      title: "Jesus",
+      slug,
+      title,
       publishedAt,
       children: [],
       parents: [],
@@ -739,6 +745,100 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-quality-tag"]'),
     ).toBeNull()
     expect(onLanguageClick).not.toHaveBeenCalled()
+  })
+
+  // JESUS holds the Guinness World Records "most translated film" title.
+  it("renders the most-translated-film accolade on the JESUS film hero", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const badge = container.querySelector(
+      '[data-testid="hero-player-accolade-badge"]',
+    ) as HTMLSpanElement
+    expect(badge).not.toBeNull()
+    expect(badge.getAttribute("data-accolade")).toBe("most-translated-film")
+    expect(badge.textContent).toBe(
+      "Most translated film in the worldGuinness World Records",
+    )
+    expect(
+      container.querySelector('[data-testid="hero-player-accolade-source"]')
+        ?.textContent,
+    ).toBe("Guinness World Records")
+    expect(badge.querySelector("svg")).not.toBeNull()
+
+    // The award sits on its own line above the factual tag row rather than
+    // inside it: that row is dimmed to 75%, which a child cannot opt out of,
+    // and this label is far longer than a runtime or quality tag.
+    const metadataTags = container.querySelector(
+      '[data-testid="hero-player-metadata-tags"]',
+    )
+    expect(metadataTags?.contains(badge)).not.toBe(true)
+    expect(badge.className).not.toContain("opacity-75")
+    // Long label, narrow left rail — the pill must stay inside the rail.
+    expect(badge.className).toContain("max-w-full")
+  })
+
+  it.each(["jesus-is-brought-to-pilate", "magdalena", null])(
+    "omits the accolade for %s",
+    (slug) => {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock({ slug, duration: 394 })}
+            playableLanguageCount={1}
+          />,
+        )
+      })
+
+      // The overlay still rendered — the accolade is what is missing, not
+      // the hero.
+      expect(
+        container.querySelector('[data-testid="hero-player-overlay"]'),
+      ).not.toBeNull()
+      expect(
+        container.querySelector('[data-testid="hero-player-accolade-badge"]'),
+      ).toBeNull()
+    },
+  )
+
+  // A chapter click flips the heading to the pending chapter before the route
+  // commits, while `block.video` still describes the parent. Leaving the badge
+  // up would hang the film's record under a chapter title.
+  it("suppresses the accolade while an optimistic chapter visual is showing", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          optimisticVisual={{
+            title: "Clicked Chapter",
+            label: "SEGMENT",
+            posterUrl: "https://cdn.test/clicked.jpg",
+          }}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Clicked Chapter")
+    expect(
+      container.querySelector('[data-testid="hero-player-accolade-badge"]'),
+    ).toBeNull()
+
+    // Route commits: the heading and the badge describe the same video again.
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} optimisticVisual={null} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-title"]')
+        ?.textContent,
+    ).toBe("Jesus")
+    expect(
+      container.querySelector('[data-testid="hero-player-accolade-badge"]'),
+    ).not.toBeNull()
   })
 
   it("removes the metadata strip when Watch now reveals player chrome", async () => {

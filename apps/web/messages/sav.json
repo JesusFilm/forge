@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Xool léegi",
     "tapToUnmute": "Tàppal ngir jàppal wóol bi",
-    "nextEpisode": "Episode bi ci topp"
+    "nextEpisode": "Episode bi ci topp",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Di tënku content bi",

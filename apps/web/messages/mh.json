@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Lale kio",
     "tapToUnmute": "Tap nan Unmute",
-    "nextEpisode": "Episode eo ilo joriane"
+    "nextEpisode": "Episode eo ilo joriane",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ej load content",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Atan ni' ahora",
     "tapToUnmute": "Pùta para na'ongga i bo'ña",
-    "nextEpisode": "Suma' Episode"
+    "nextEpisode": "Suma' Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ma'loada kontiúdo",

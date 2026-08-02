@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",
     "tapToUnmute": "Atinge pentru sunet",
-    "nextEpisode": "Episodul următor"
+    "nextEpisode": "Episodul următor",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Se încarcă conținutul",

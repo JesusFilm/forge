@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "ယခု ကြည့်ပါ",
     "tapToUnmute": "အသံဖွင့်ရန် တို့ပါ",
-    "nextEpisode": "နောက်အပိုင်း"
+    "nextEpisode": "နောက်အပိုင်း",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "အကြောင်းအရာ တင်နေသည်",

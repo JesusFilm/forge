@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "এখন দেখুন",
     "tapToUnmute": "শব্দ চালু করতে ট্যাপ করুন",
-    "nextEpisode": "পরের পর্ব"
+    "nextEpisode": "পরের পর্ব",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "কনটেন্ট লোড হচ্ছে",

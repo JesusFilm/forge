@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "立即觀看",
     "tapToUnmute": "點一下取消靜音",
-    "nextEpisode": "下一集"
+    "nextEpisode": "下一集",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "正在載入內容",

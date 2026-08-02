@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Vaata nüüd",
     "tapToUnmute": "Toksake heli sisselülitamiseks",
-    "nextEpisode": "Järgmine osa"
+    "nextEpisode": "Järgmine osa",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Sisu laadimine",

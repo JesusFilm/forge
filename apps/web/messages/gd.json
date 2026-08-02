@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Coimhead a-nis",
     "tapToUnmute": "Tap gus am balbhachd a thoirt dheth",
-    "nextEpisode": "An ath phrògram"
+    "nextEpisode": "An ath phrògram",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "A’ luchdadh susbaint",

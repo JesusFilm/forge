@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Katso nyt",
     "tapToUnmute": "Napauta poistaaksesi mykistyksen",
-    "nextEpisode": "Seuraava jakso"
+    "nextEpisode": "Seuraava jakso",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ladataan sisältöä",

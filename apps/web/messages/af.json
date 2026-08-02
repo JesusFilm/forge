@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Kyk nou",
     "tapToUnmute": "Tik om te ont-demp",
-    "nextEpisode": "Volgende episode"
+    "nextEpisode": "Volgende episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhoud word gelaai",

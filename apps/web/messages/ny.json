@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Onerani tsopano",
     "tapToUnmute": "Dinani kuti mubwezeretse mawu",
-    "nextEpisode": "Gawo lotsatira"
+    "nextEpisode": "Gawo lotsatira",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kutsegula zomwe zili",

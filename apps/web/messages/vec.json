@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Varda adesso",
     "tapToUnmute": "Toca par ativar el sòno",
-    "nextEpisode": "Episodio dopo"
+    "nextEpisode": "Episodio dopo",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando el contenù",

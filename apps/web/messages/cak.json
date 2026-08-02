@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",
     "tapToUnmute": "Taq'ax richin tich'aw chik",
-    "nextEpisode": "Episode ch'aqa' chik"
+    "nextEpisode": "Episode ch'aqa' chik",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nisamajij content",

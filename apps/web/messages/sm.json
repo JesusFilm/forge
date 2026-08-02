@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
     "tapToUnmute": "Pa'i e tatala le leo",
-    "nextEpisode": "Episode e soso'o ai"
+    "nextEpisode": "Episode e soso'o ai",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "O lo'o utaina le anotusi",

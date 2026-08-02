@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "હમણાં જુઓ",
     "tapToUnmute": "મ્યૂટ દૂર કરવા ટેપ કરો",
-    "nextEpisode": "આગામી એપિસોડ"
+    "nextEpisode": "આગામી એપિસોડ",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "સામગ્રી લોડ થઈ રહી છે",

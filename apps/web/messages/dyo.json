@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Seet léegi",
     "tapToUnmute": "Tappe ngir wutaat kàddu",
-    "nextEpisode": "Episode bu topp"
+    "nextEpisode": "Episode bu topp",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Daan xibaar bi",

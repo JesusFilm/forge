@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Gade kounye a",
     "tapToUnmute": "Tape pou aktive son",
-    "nextEpisode": "Pwochen epizòd"
+    "nextEpisode": "Pwochen epizòd",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ap chaje kontni",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Horfa núna",
     "tapToUnmute": "Pikkaðu til að kveikja á hljóði",
-    "nextEpisode": "Næsti þáttur"
+    "nextEpisode": "Næsti þáttur",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Hleð efni",

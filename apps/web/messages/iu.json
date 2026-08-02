@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Maanna takuguk",
     "tapToUnmute": "Nipaa aammaarlugu tuuguk",
-    "nextEpisode": "Immikkoortoq tullinnguuttoq"
+    "nextEpisode": "Immikkoortoq tullinnguuttoq",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Imarisat ammarneqartut",

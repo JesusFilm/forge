@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
     "tapToUnmute": "Fina mpo na kopesa mongongo",
-    "nextEpisode": "Épisode oyo ekolanda"
+    "nextEpisode": "Épisode oyo ekolanda",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ezali kocharger contenu",

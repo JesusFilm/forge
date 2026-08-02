@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",
     "tapToUnmute": "Tap ke ʻAʻaʻi ʻa e Leʻo",
-    "nextEpisode": "ʻEpisooti Hoko"
+    "nextEpisode": "ʻEpisooti Hoko",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lolotonga laodí ʻa e fakamatala",

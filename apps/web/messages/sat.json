@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "एक्हन देख मे",
     "tapToUnmute": "आवाज खोले ला़गित् टैप मे",
-    "nextEpisode": "आगेय एपिसोड"
+    "nextEpisode": "आगेय एपिसोड",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड होतोना",

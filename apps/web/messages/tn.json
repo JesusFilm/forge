@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
     "tapToUnmute": "Kgotla go buša modumo",
-    "nextEpisode": "Episode e latelago"
+    "nextEpisode": "Episode e latelago",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E laiša dikagare",

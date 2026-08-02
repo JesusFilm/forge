@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Глядзець зараз",
     "tapToUnmute": "Націсніце, каб уключыць гук",
-    "nextEpisode": "Наступны эпізод"
+    "nextEpisode": "Наступны эпізод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Загрузка зместу",

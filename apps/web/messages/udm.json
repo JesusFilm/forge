@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Тагьыр ӧтӥл",
     "tapToUnmute": "Тап кыны, сйлтымты",
-    "nextEpisode": "Икебас эпизод"
+    "nextEpisode": "Икебас эпизод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Материал ӧтӥсько",

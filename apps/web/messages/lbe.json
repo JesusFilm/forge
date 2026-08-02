@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Нунияз кыт",
     "tapToUnmute": "Дэикись кычкан, сӥлӥсэ кышт",
-    "nextEpisode": "Ӧдӥц эпизод"
+    "nextEpisode": "Ӧдӥц эпизод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Кунтент лэсьтӥсько",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Titz'et wakami",
     "tapToUnmute": "Tich'apon richin titzolin q'oxom",
-    "nextEpisode": "Episodio jun chik"
+    "nextEpisode": "Episodio jun chik",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nuk'ut contenido",

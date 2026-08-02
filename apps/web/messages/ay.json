@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",
     "tapToUnmute": "Arsuwi jist’ariñatakix táctil ukar llamkt’aña",
-    "nextEpisode": "Jutiri episodio"
+    "nextEpisode": "Jutiri episodio",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yatiyawi apthapiñaskiwa",

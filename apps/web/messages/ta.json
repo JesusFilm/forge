@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "இப்போது பார்க்கவும்",
     "tapToUnmute": "ஒலியை இயக்கத் தட்டவும்",
-    "nextEpisode": "அடுத்த அத்தியாயம்"
+    "nextEpisode": "அடுத்த அத்தியாயம்",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "உள்ளடக்கம் ஏற்றப்படுகிறது",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Nézd meg most",
     "tapToUnmute": "Érintés a némítás feloldásához",
-    "nextEpisode": "Következő epizód"
+    "nextEpisode": "Következő epizód",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Tartalom betöltése",

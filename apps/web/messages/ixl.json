@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "K'utun wakami",
     "tapToUnmute": "Unmute chi tap",
-    "nextEpisode": "Episode aq'anb'al"
+    "nextEpisode": "Episode aq'anb'al",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content chi yüküj",

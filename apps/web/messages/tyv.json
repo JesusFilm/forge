@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Азыр көр",
     "tapToUnmute": "Дууду ачыш үчүн тий",
-    "nextEpisode": "Кийинки серия"
+    "nextEpisode": "Кийинки серия",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент ажыдып тур",

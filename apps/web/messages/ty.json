@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Mata'ita'i i teie nei",
     "tapToUnmute": "A pato no te faaiti i te oro",
-    "nextEpisode": "Episode i muri mai"
+    "nextEpisode": "Episode i muri mai",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Te uta nei i te tumu parau",

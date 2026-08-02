@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Kunan qhawariy",
     "tapToUnmute": "Upallachinapaq ñit'iy",
-    "nextEpisode": "Qhipa episodio"
+    "nextEpisode": "Qhipa episodio",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Contenido kargachkan",

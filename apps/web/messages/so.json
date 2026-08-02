@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Hadda daawo",
     "tapToUnmute": "Taabo si codka loo daaro",
-    "nextEpisode": "Qaybta xigta"
+    "nextEpisode": "Qaybta xigta",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Waxyaabaha ayaa la soo rarayaa",

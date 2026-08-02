@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Tan-awa karon",
     "tapToUnmute": "I-tap aron buksan ang tunog",
-    "nextEpisode": "Sunod nga Episode"
+    "nextEpisode": "Sunod nga Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Gina-load ang sulod",

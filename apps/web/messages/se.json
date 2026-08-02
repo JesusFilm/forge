@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Geahččal dál",
     "tapToUnmute": "Čuodjat jietna",
-    "nextEpisode": "Boahtte oskkus"
+    "nextEpisode": "Boahtte oskkus",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lohkamin sisdoalu",

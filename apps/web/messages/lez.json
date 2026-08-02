@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Азиздик къарагъун",
     "tapToUnmute": "Тышкъун тӏур",
-    "nextEpisode": "Агъани эпизод"
+    "nextEpisode": "Агъани эпизод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Мәзунин ашкара",

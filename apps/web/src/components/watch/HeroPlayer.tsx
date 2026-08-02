@@ -19,7 +19,7 @@ import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
-import { Captions, Share2 } from "lucide-react"
+import { Award, Captions, Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -48,6 +48,7 @@ import {
   useWatchProgressRecorder,
 } from "@/lib/watch-progress-client"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import { watchAccoladeForSlug } from "@/lib/watch-accolades"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
@@ -86,6 +87,14 @@ const HERO_QUALITY_TAG_CLASS =
   "inline-flex h-4 items-center rounded-sm border border-white/80 bg-white/80 px-0.5 text-[0.6rem] font-medium tracking-wide text-stone-950"
 const HERO_LANGUAGE_TAG_CLASS =
   "inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
+// The accolade is an award, not a spec, so it gets its own line above the
+// runtime / quality / language row instead of sitting inside it: that row is
+// dimmed to 75% (a child cannot opt out of an ancestor's opacity) and its
+// tags are short enough to share a line, which this label is not.
+// `max-w-full` + the wrapping inner span keep the pill inside the left rail
+// on narrow viewports rather than overflowing it.
+const HERO_ACCOLADE_TAG_CLASS =
+  "mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300/50 bg-amber-400/15 px-2.5 py-1 text-xs font-medium text-amber-50 compact-landscape:mt-0 compact-landscape:py-0.5 compact-landscape:text-[0.65rem] md:text-sm"
 const HERO_INTERACTIVE_LANGUAGE_TAG_CLASS =
   "compact-landscape:min-h-11 compact-landscape:min-w-11"
 
@@ -1454,6 +1463,17 @@ export function HeroPlayer({
   const hasSubtitleTrack = video.subtitles.some(
     ({ vttSrc }) => vttSrc.length > 0,
   )
+  // Editorial accolade for this title (JESUS holds the Guinness World Records
+  // "most translated film" title). Suppressed while an optimistic chapter
+  // visual is showing: the title/poster have already flipped to the pending
+  // chapter but `video.slug` still names the committed video, so keeping the
+  // badge would hang the parent's record under a chapter heading (and the
+  // reverse on a chapter -> parent click). It returns as soon as the route
+  // commits and `video` is the video the heading names.
+  const accolade =
+    canUseOptimisticVisual && optimisticVisual != null
+      ? null
+      : watchAccoladeForSlug(video.slug)
   const hasHeroMetadataTags =
     releaseMetadata !== "" ||
     languageCountLabel != null ||
@@ -1936,6 +1956,24 @@ export function HeroPlayer({
                       </button>
                     ) : null}
                   </div>
+                  {accolade === "most-translated-film" ? (
+                    <span
+                      data-testid="hero-player-accolade-badge"
+                      data-accolade={accolade}
+                      className={HERO_ACCOLADE_TAG_CLASS}
+                    >
+                      <Award className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+                        <span>{t("mostTranslatedFilm")}</span>
+                        <span
+                          data-testid="hero-player-accolade-source"
+                          className="text-amber-200/80"
+                        >
+                          {t("mostTranslatedFilmSource")}
+                        </span>
+                      </span>
+                    </span>
+                  ) : null}
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"

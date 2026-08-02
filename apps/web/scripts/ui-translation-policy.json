@@ -1,6 +1,9 @@
 {
   "humanReviewedLocales": ["en", "ru"],
-  "pendingTranslationPaths": [],
+  "pendingTranslationPaths": [
+    "HeroPlayer.mostTranslatedFilm",
+    "HeroPlayer.mostTranslatedFilmSource"
+  ],
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",
     "LanguageInventory.bibleProject",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Nānā i kēia manawa",
     "tapToUnmute": "Kaomi e wehe i ka leo",
-    "nextEpisode": "Mokuna aʻe"
+    "nextEpisode": "Mokuna aʻe",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ke hoʻouka nei i ka maʻiʻo",

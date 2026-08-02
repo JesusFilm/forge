@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "ھازىر كۆرۈش",
     "tapToUnmute": "ئاۋازنى ئاچۇش ئۈچۈن چېكىڭ",
-    "nextEpisode": "كېيىنكى بۆلۈم"
+    "nextEpisode": "كېيىنكى بۆلۈم",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مەزمۇن يۈكلىنىۋاتىدۇ",

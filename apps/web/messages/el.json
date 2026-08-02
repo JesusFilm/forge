@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Παρακολουθήστε τώρα",
     "tapToUnmute": "Πατήστε για κατάργηση σίγασης",
-    "nextEpisode": "Επόμενο επεισόδιο"
+    "nextEpisode": "Επόμενο επεισόδιο",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Φόρτωση περιεχομένου",

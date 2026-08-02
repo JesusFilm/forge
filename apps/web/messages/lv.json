@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Skatīties tagad",
     "tapToUnmute": "Pieskarieties, lai ieslēgtu skaņu",
-    "nextEpisode": "Nākamā sērija"
+    "nextEpisode": "Nākamā sērija",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Notiek satura ielāde",

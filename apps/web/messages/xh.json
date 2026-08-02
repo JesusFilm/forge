@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Bukela ngoku",
     "tapToUnmute": "Chukumisa ukuze ususe ukuthulisa",
-    "nextEpisode": "Isiqendu esilandelayo"
+    "nextEpisode": "Isiqendu esilandelayo",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kulayishwa umxholo",

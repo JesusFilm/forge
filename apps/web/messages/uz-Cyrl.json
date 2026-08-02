@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Ҳозир кўриш",
     "tapToUnmute": "Овозни ёқиш учун босинг",
-    "nextEpisode": "Кейинги қисм"
+    "nextEpisode": "Кейинги қисм",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Мазмун юкланмоқда",

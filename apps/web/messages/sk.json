@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Sledovať teraz",
     "tapToUnmute": "Ťuknite pre zapnutie zvuku",
-    "nextEpisode": "Ďalšia epizóda"
+    "nextEpisode": "Ďalšia epizóda",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Načítava sa obsah",

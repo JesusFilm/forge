@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "ఇప్పుడే చూడండి",
     "tapToUnmute": "మ్యూట్ ఆఫ్ చేయడానికి తాకండి",
-    "nextEpisode": "తదుపరి ఎపిసోడ్"
+    "nextEpisode": "తదుపరి ఎపిసోడ్",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "కంటెంట్ లోడ్ అవుతోంది",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Òglądôj terôz",
     "tapToUnmute": "Dotkni, bë włączëc głos",
-    "nextEpisode": "Nôstãpny òdczińk"
+    "nextEpisode": "Nôstãpny òdczińk",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wczytëwanié trzebła",

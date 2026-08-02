@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Ara issa",
     "tapToUnmute": "Taptap biex terġa' tixgħel il-ħoss",
-    "nextEpisode": "Episodju li jmiss"
+    "nextEpisode": "Episodju li jmiss",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Qed jitgħabba l-kontenut",

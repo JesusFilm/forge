@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Panooren na ngatan",
     "tapToUnmute": "Pinduten para ibalik so tunog",
-    "nextEpisode": "Susundan a Episode"
+    "nextEpisode": "Susundan a Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ilo-load so content",

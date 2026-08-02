@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "មើលឥឡូវនេះ",
     "tapToUnmute": "ចុចដើម្បីបើកសំឡេង",
-    "nextEpisode": "វគ្គបន្ទាប់"
+    "nextEpisode": "វគ្គបន្ទាប់",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "កំពុងផ្ទុកមាតិកា",

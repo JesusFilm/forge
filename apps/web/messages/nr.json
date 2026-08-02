@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Buka manje",
     "tapToUnmute": "Thepha ukuze uvule umsindo",
-    "nextEpisode": "Isiqephu esilandelayo"
+    "nextEpisode": "Isiqephu esilandelayo",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kulayishwa okuqukethwe",

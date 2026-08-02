@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Waɗ now",
     "tapToUnmute": "Tap ngam uddit ñoɓde",
-    "nextEpisode": "Episode fuɗɗiɗo"
+    "nextEpisode": "Episode fuɗɗiɗo",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wonndude ɓiɓɓe",

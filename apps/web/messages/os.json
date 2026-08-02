@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Æрмæст уæд æххæст",
     "tapToUnmute": "Æзæй тæп кæн æмæ звук æнæфæлдис",
-    "nextEpisode": "Иуæгæй эпизод"
+    "nextEpisode": "Иуæгæй эпизод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент æрхæссын",

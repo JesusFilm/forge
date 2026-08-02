@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "지금 보기",
     "tapToUnmute": "음소거 해제",
-    "nextEpisode": "다음 에피소드"
+    "nextEpisode": "다음 에피소드",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "콘텐츠 불러오는 중",

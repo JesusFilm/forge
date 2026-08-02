@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Ikusi orain",
     "tapToUnmute": "Ukitu soinua aktibatzeko",
-    "nextEpisode": "Hurrengo atala"
+    "nextEpisode": "Hurrengo atala",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Edukia kargatzen",

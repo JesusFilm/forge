@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Tananaon yana",
     "tapToUnmute": "Tap basi I-unmute",
-    "nextEpisode": "Sunod nga Episode"
+    "nextEpisode": "Sunod nga Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Gina-load an sulod",

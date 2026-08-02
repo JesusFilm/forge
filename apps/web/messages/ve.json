@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",
     "tapToUnmute": "Kandani u bvisa u fhumutshela",
-    "nextEpisode": "Episode i tevhelaho"
+    "nextEpisode": "Episode i tevhelaho",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Khou laedza zwi re ngomu",

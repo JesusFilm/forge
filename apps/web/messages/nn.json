@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Sjå no",
     "tapToUnmute": "Trykk for å slå på lyd",
-    "nextEpisode": "Neste episode"
+    "nextEpisode": "Neste episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lastar innhald",

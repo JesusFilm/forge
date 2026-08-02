@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Xem ngay",
     "tapToUnmute": "Bật tiếng",
-    "nextEpisode": "Tập tiếp theo"
+    "nextEpisode": "Tập tiếp theo",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Đang tải nội dung",

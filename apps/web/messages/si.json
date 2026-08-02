@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "දැන් නරඹන්න",
     "tapToUnmute": "ශබ්දය සක්‍රිය කිරීමට තට්ටු කරන්න",
-    "nextEpisode": "ඊළඟ කථාංගය"
+    "nextEpisode": "ඊළඟ කථාංගය",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "අන්තර්ගතය පූරණය වෙමින් පවතී",

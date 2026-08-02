@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "اوس یې وګورئ",
     "tapToUnmute": "د غږ فعالولو لپاره ټېپ کړئ",
-    "nextEpisode": "راتلونکی برخه"
+    "nextEpisode": "راتلونکی برخه",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "محتوا بارېږي",

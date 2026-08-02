@@ -231,7 +231,9 @@
   "HeroPlayer": {
     "playWithSound": "Watch now",
     "tapToUnmute": "Tap to Unmute",
-    "nextEpisode": "Next Episode"
+    "nextEpisode": "Next Episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Loading content",

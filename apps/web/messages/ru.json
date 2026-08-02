@@ -231,7 +231,9 @@
   "HeroPlayer": {
     "playWithSound": "Смотреть",
     "tapToUnmute": "Включить звук",
-    "nextEpisode": "Следующая серия"
+    "nextEpisode": "Следующая серия",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Загрузка контента",

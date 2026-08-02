@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "İndi baxın",
     "tapToUnmute": "Səsi açmaq üçün toxunun",
-    "nextEpisode": "Növbəti bölüm"
+    "nextEpisode": "Növbəti bölüm",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Məzmun yüklənir",

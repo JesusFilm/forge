@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Դիտել հիմա",
     "tapToUnmute": "Հպեք՝ ձայնը միացնելու համար",
-    "nextEpisode": "Հաջորդ սերիան"
+    "nextEpisode": "Հաջորդ սերիան",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Բովանդակությունը բեռնվում է",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "މިހާރު ބަލާ",
     "tapToUnmute": "އަޑު ހުޅުވާން tap ކުރާ",
-    "nextEpisode": "ފަހަތަށް އޮތް episode"
+    "nextEpisode": "ފަހަތަށް އޮތް episode",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ކޮންޓެންޓް ލޯޑް ކުރަނީ",

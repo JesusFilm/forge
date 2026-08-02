@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Féach anois",
     "tapToUnmute": "Tapáil chun an fhuaim a chasadh air",
-    "nextEpisode": "An chéad eipeasóid eile"
+    "nextEpisode": "An chéad eipeasóid eile",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ábhar á luchtú",

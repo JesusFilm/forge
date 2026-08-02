@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Hozir tomosha qiling",
     "tapToUnmute": "Ovozni yoqish uchun bosing",
-    "nextEpisode": "Keyingi qism"
+    "nextEpisode": "Keyingi qism",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kontent yuklanmoqda",

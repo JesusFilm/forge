@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Гьанжиде бец",
     "tapToUnmute": "Бацӏараб бекьизе учун тап гьабе",
-    "nextEpisode": "Къваналаб эпизод"
+    "nextEpisode": "Къваналаб эпизод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент загруждай",

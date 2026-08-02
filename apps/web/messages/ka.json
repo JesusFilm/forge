@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "უყურეთ ახლა",
     "tapToUnmute": "ხმის ჩართვისთვის დააჭირეთ",
-    "nextEpisode": "შემდეგი ეპიზოდი"
+    "nextEpisode": "შემდეგი ეპიზოდი",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "შიგთავსი იტვირთება",

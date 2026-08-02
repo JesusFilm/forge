@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "ہنٛز دیکھیو",
     "tapToUnmute": "آواز آن کرنہٕ لئی ٹیپ کرو",
-    "nextEpisode": "اگلی قسط"
+    "nextEpisode": "اگلی قسط",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڈ کران",

@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",
     "tapToUnmute": "Дууг нээхийн тулд товшино уу",
-    "nextEpisode": "Дараагийн анги"
+    "nextEpisode": "Дараагийн анги",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Агуулга ачаалж байна",

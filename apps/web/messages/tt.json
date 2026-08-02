@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Хәзер карау",
     "tapToUnmute": "Тавышны кабызу өчен басыгыз",
-    "nextEpisode": "Киләсе эпизод"
+    "nextEpisode": "Киләсе эпизод",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Эчтәлек йөкләнә",

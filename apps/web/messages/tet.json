@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Haree agora",
     "tapToUnmute": "Toque atu loke mute",
-    "nextEpisode": "Episódiu tuir mai"
+    "nextEpisode": "Episódiu tuir mai",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Karrega kontentu",

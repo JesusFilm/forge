@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Mira ara",
     "tapToUnmute": "Toca per activar el so",
-    "nextEpisode": "Episodi següent"
+    "nextEpisode": "Episodi següent",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "S’està carregant el contingut",

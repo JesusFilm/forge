@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Tarisa zvino",
     "tapToUnmute": "Taphani kuti mubvise kunyarara",
-    "nextEpisode": "Chikamu chinotevera"
+    "nextEpisode": "Chikamu chinotevera",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kurodha zvirimo",

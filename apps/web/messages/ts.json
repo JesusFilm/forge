@@ -222,7 +222,9 @@
   "HeroPlayer": {
     "playWithSound": "Languta sweswi",
     "tapToUnmute": "Khumba leswaku u pfula mpfumawulo",
-    "nextEpisode": "Xiphemu lexi landzelaka"
+    "nextEpisode": "Xiphemu lexi landzelaka",
+    "mostTranslatedFilm": "Most translated film in the world",
+    "mostTranslatedFilmSource": "Guinness World Records"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ku layicha swilo",
