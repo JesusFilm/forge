@@ -615,11 +615,17 @@ export class WatchSearchService {
         watchability: entry.watchability,
       })
     })
-    const imagesByVideoId = await this.imagesForResults(results)
+    const [catalogByVideoId, imagesByVideoId] = await Promise.all([
+      this.catalogFieldsForResults(results),
+      this.imagesForResults(results),
+    ])
 
     return {
       results: results.map((result) =>
-        withSearchResultImage(result, imagesByVideoId.get(result.id)),
+        withSearchResultImage(
+          withSearchResultCatalog(result, catalogByVideoId.get(result.id)),
+          imagesByVideoId.get(result.id),
+        ),
       ),
       hasMore: candidates.length > limit,
       degraded: semanticPipeline.degraded,
@@ -841,6 +847,48 @@ export class WatchSearchService {
     }
     return byVideoId
   }
+
+  private async catalogFieldsForResults(
+    results: readonly WatchSearchResult[],
+  ): Promise<Map<string, WatchSearchResultCatalog>> {
+    const videoIds = uniqueNonNull(
+      results
+        .filter((result) => result.type === "video")
+        .map((result) => result.id),
+    )
+    if (videoIds.length === 0) return new Map()
+
+    const videos = await this.prisma.video.findMany({
+      where: {
+        id: { in: videoIds },
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        label: true,
+        children: {
+          where: {
+            child: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            childId: true,
+          },
+        },
+      },
+    })
+
+    return new Map(
+      videos.map((video) => [
+        video.id,
+        {
+          label: video.label ?? null,
+          childCount: video.children.length,
+        },
+      ]),
+    )
+  }
 }
 
 type ExactTitleCandidate = ExactTitleResult
@@ -872,6 +920,11 @@ type SemanticVideoSearchResult = VideoSemanticResult & {
 type WatchSearchResultImage = {
   imageUrl: string
   imageBlurDataUrl: string | null
+}
+
+type WatchSearchResultCatalog = {
+  label: string | null
+  childCount: number
 }
 
 function laneStatus({
@@ -1220,6 +1273,18 @@ function withSearchResultImage(
     ...result,
     imageUrl: image.imageUrl,
     imageBlurDataUrl: image.imageBlurDataUrl,
+  }
+}
+
+function withSearchResultCatalog(
+  result: WatchSearchResult,
+  catalog: WatchSearchResultCatalog | undefined,
+): WatchSearchResult {
+  if (!catalog || result.type !== "video") return result
+  return {
+    ...result,
+    label: result.label ?? catalog.label,
+    childCount: result.childCount ?? catalog.childCount,
   }
 }
 

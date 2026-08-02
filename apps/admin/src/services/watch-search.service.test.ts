@@ -73,6 +73,9 @@ function mockPrisma() {
     videoImage: {
       findMany: vi.fn(),
     },
+    video: {
+      findMany: vi.fn(),
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 }
@@ -251,6 +254,7 @@ describe("WatchSearchService", () => {
     prisma.$queryRaw.mockResolvedValue([])
     prisma.language.findMany.mockResolvedValue(activeSearchLanguages)
     prisma.videoImage.findMany.mockResolvedValue([])
+    prisma.video.findMany.mockResolvedValue([])
     generateExperienceEmbeddingMock.mockResolvedValue({
       embedding: [0.1, 0.2, 0.3],
     })
@@ -473,6 +477,13 @@ describe("WatchSearchService", () => {
         blurDataUrl: "data:image/jpeg;base64,BLUR==",
       },
     ])
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        label: "FEATURE_FILM",
+        children: [],
+      },
+    ])
 
     const result = await service.search({
       query: "JESUS Russian",
@@ -505,6 +516,8 @@ describe("WatchSearchService", () => {
         imageUrl: "https://cdn.example/hero.jpg",
         imageBlurDataUrl: "data:image/jpeg;base64,BLUR==",
         snippet: "The story of Jesus.",
+        label: "FEATURE_FILM",
+        childCount: 0,
         playbackId: "mux-russian",
         durationSeconds: 7200,
         languageSlug: "russian",
@@ -530,6 +543,65 @@ describe("WatchSearchService", () => {
         },
       }),
     ])
+  })
+
+  it("hydrates catalog fields only for the final result page", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("video-1", "First"),
+          exactTitleResult("video-2", "Second"),
+          exactTitleResult("video-3", "Third"),
+        ],
+      }),
+    )
+    hydrateMock.mockResolvedValue(
+      new Map([
+        ["video-1", targetAudioWatchability("video-1")],
+        ["video-2", targetAudioWatchability("video-2")],
+        ["video-3", targetAudioWatchability("video-3")],
+      ]),
+    )
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        label: "FEATURE_FILM",
+        children: [],
+      },
+      {
+        id: "video-2",
+        label: "SERIES",
+        children: [{ childId: "child-1" }, { childId: "child-2" }],
+      },
+    ])
+
+    const result = await service.search({
+      query: "hope",
+      targetLanguageSlug: "russian",
+      displayLanguageSlug: "english",
+      limit: 2,
+    })
+
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: { in: ["video-1", "video-2"] },
+          deletedAt: null,
+        },
+      }),
+    )
+    expect(result.results).toHaveLength(2)
+    expect(result.hasMore).toBe(true)
+    expect(result.results[0]).toMatchObject({
+      id: "video-1",
+      label: "FEATURE_FILM",
+      childCount: 0,
+    })
+    expect(result.results[1]).toMatchObject({
+      id: "video-2",
+      label: "SERIES",
+      childCount: 2,
+    })
   })
 
   it("uses every watchability tier after whole-title class and relevance tie", async () => {

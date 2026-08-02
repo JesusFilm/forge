@@ -261,6 +261,25 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
+    // Public Admin GraphQL endpoint used by client-side Watch search reads.
+    // Admin's `watchSearch` query is public; production Admin must allow the
+    // Web origin in `CORS_ALLOWED_ORIGINS` before browser-direct calls work.
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: z
+      .url()
+      .default(
+        productionDefault(
+          "https://admin.jesusfilm.org/api/graphql",
+          "http://localhost:3003/api/graphql",
+        ),
+      )
+      .refine(
+        softHostAllowlistRefine(
+          "NEXT_PUBLIC_ADMIN_GRAPHQL_URL",
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS,
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
+        ),
+        { message: "unreachable" },
+      ),
     // U10 — Environment-specific absolute origin used by the watch-page Share
     // modal to build sharable Copy Link / Copy Embed Code values that DO
     // include `/watch/` (the Next.js basePath). Defaults to
@@ -335,6 +354,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID,
     ),
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },
 })
