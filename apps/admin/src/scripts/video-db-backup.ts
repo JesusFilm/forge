@@ -17,7 +17,7 @@
 
 import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
-import { mkdir, open, stat, unlink } from "node:fs/promises"
+import { mkdir, open, rm, stat } from "node:fs/promises"
 import { basename, dirname, resolve as resolvePath } from "node:path"
 import { Readable } from "node:stream"
 import { finished, pipeline } from "node:stream/promises"
@@ -120,6 +120,7 @@ type ParsedArgs = {
   s3Key?: string
   targetEnv: TargetEnvironment
   allowProductionTarget: boolean
+  allowStale: boolean
   dryRun: boolean
 }
 
@@ -196,8 +197,10 @@ export type VideoDbBackupDownloadResult = {
   bucket?: string
   key: string
   path: string
+  selection: "latest" | "explicit-key"
   size?: number
   lastModified?: string
+  freshness?: VideoDbBackupFreshnessAvailable
 }
 
 type PresignedBackupResponse = {
@@ -208,7 +211,50 @@ type PresignedBackupResponse = {
   expiresInSeconds: number
   size?: number
   lastModified?: string
+  freshness: VideoDbBackupFreshnessAvailable
 }
+
+export const VIDEO_DB_BACKUP_MAX_AGE_HOURS = 36
+export const VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS =
+  VIDEO_DB_BACKUP_MAX_AGE_HOURS * 60 * 60 * 1000
+
+export type VideoDbBackupObjectMetadata = {
+  key?: string
+  size?: number
+  lastModified?: Date
+}
+
+export type VideoDbBackupObjectPage = {
+  objects: readonly VideoDbBackupObjectMetadata[]
+  isTruncated?: boolean
+  nextContinuationToken?: string
+}
+
+type VideoDbBackupFreshnessBase = {
+  evaluatedAt: string
+  thresholdHours: number
+  thresholdMilliseconds: number
+}
+
+export type VideoDbBackupFreshnessAvailable = VideoDbBackupFreshnessBase & {
+  status: "fresh" | "stale"
+  key: string
+  size?: number
+  lastModified: string
+  ageMilliseconds: number
+}
+
+export type VideoDbBackupFreshness =
+  | VideoDbBackupFreshnessAvailable
+  | (VideoDbBackupFreshnessBase & {
+      status: "not-found"
+    })
+  | (VideoDbBackupFreshnessBase & {
+      status: "unavailable-metadata"
+      key: string
+      size?: number
+      reason: "missing-or-invalid-last-modified"
+    })
 
 export class VideoDbBackupError extends Error {
   constructor(message: string) {
@@ -291,8 +337,96 @@ export function parseArgs(
     s3Key: readFlag(normalizedArgs, "s3-key"),
     targetEnv: parseTargetEnv(readFlag(normalizedArgs, "target-env")),
     allowProductionTarget: hasFlag(normalizedArgs, "allow-production-target"),
+    allowStale: hasFlag(normalizedArgs, "allow-stale"),
     dryRun: hasFlag(normalizedArgs, "dry-run"),
   }
+}
+
+export function classifyVideoDbBackupFreshness(
+  objects: readonly VideoDbBackupObjectMetadata[],
+  evaluatedAt = new Date(Date.now()),
+): VideoDbBackupFreshness {
+  const evaluation = {
+    evaluatedAt: evaluatedAt.toISOString(),
+    thresholdHours: VIDEO_DB_BACKUP_MAX_AGE_HOURS,
+    thresholdMilliseconds: VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS,
+  }
+  let sawDump = false
+  let unavailable: (VideoDbBackupObjectMetadata & { key: string }) | undefined
+  let latest:
+    | (VideoDbBackupObjectMetadata & { key: string; lastModified: Date })
+    | undefined
+
+  for (const object of objects) {
+    if (typeof object.key !== "string" || !object.key.endsWith(".dump")) {
+      continue
+    }
+    sawDump = true
+    if (
+      !(object.lastModified instanceof Date) ||
+      !Number.isFinite(object.lastModified.getTime())
+    ) {
+      unavailable ??= object
+      continue
+    }
+    if (
+      !latest ||
+      object.lastModified.getTime() > latest.lastModified.getTime()
+    ) {
+      latest = { ...object, lastModified: object.lastModified }
+    }
+  }
+
+  if (!sawDump) return { status: "not-found", ...evaluation }
+  if (unavailable) {
+    return {
+      status: "unavailable-metadata",
+      key: unavailable.key,
+      size: unavailable.size,
+      reason: "missing-or-invalid-last-modified",
+      ...evaluation,
+    }
+  }
+
+  if (!latest) {
+    throw new VideoDbBackupError(
+      "Video DB backup freshness classification reached an invalid state",
+    )
+  }
+
+  const ageMilliseconds = evaluatedAt.getTime() - latest.lastModified.getTime()
+  return {
+    status:
+      ageMilliseconds <= VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS
+        ? "fresh"
+        : "stale",
+    key: latest.key,
+    size: latest.size,
+    lastModified: latest.lastModified.toISOString(),
+    ageMilliseconds,
+    ...evaluation,
+  }
+}
+
+export async function discoverVideoDbBackupFreshnessFromPages(
+  loadPage: (continuationToken?: string) => Promise<VideoDbBackupObjectPage>,
+): Promise<VideoDbBackupFreshness> {
+  const objects: VideoDbBackupObjectMetadata[] = []
+  let continuationToken: string | undefined
+
+  while (true) {
+    const page = await loadPage(continuationToken)
+    objects.push(...page.objects)
+    if (!page.isTruncated) break
+    if (!page.nextContinuationToken) {
+      throw new VideoDbBackupError(
+        "Backup object listing was truncated without a continuation token",
+      )
+    }
+    continuationToken = page.nextContinuationToken
+  }
+
+  return classifyVideoDbBackupFreshness(objects)
 }
 
 function timestamp(): string {
@@ -321,13 +455,27 @@ function normalizeS3Prefix(prefix: string): string {
   return prefix.replace(/^\/+|\/+$/g, "")
 }
 
+function normalizeBackupObjectKey(key: string): string {
+  return key.replace(/^\/+/, "")
+}
+
+async function prepareOwnerOnlyFile(path: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true })
+  const output = await open(path, "w", 0o600)
+  try {
+    await output.chmod(0o600)
+  } finally {
+    await output.close()
+  }
+}
+
 export function buildBackupObjectKey(
   profile: VideoDbBackupProfile,
   outPath: string,
   keyOverride: string | undefined,
   _env: BackupStorageEnv,
 ): string {
-  if (keyOverride) return keyOverride.replace(/^\/+/, "")
+  if (keyOverride) return normalizeBackupObjectKey(keyOverride)
 
   const prefix = normalizeS3Prefix("admin-video-db-backups")
   const filename = basename(outPath)
@@ -609,9 +757,7 @@ async function runPlan(plan: BackupPlan | RestorePlan): Promise<void> {
   if (plan.mode === "backup") {
     await mkdir(dirname(plan.outPath), { recursive: true })
     if (plan.generatedOutPath) {
-      const output = await open(plan.outPath, "w", 0o600)
-      await output.chmod(0o600)
-      await output.close()
+      await prepareOwnerOnlyFile(plan.outPath)
     }
   }
   for (const command of plan.commands) {
@@ -655,10 +801,10 @@ function backupPrefix(profile: VideoDbBackupProfile): string {
   return `admin-video-db-backups/${profile}/`
 }
 
-export async function findLatestBackupObject(
+export async function discoverLatestBackupFreshness(
   profile: VideoDbBackupProfile,
   upload: BackupUploadPlan,
-): Promise<{ key: string; size?: number; lastModified?: Date }> {
+): Promise<VideoDbBackupFreshness> {
   const { ListObjectsV2Command, S3Client } = await import("@aws-sdk/client-s3")
   const s3 = new S3Client({
     endpoint: upload.endpoint,
@@ -671,34 +817,49 @@ export async function findLatestBackupObject(
   })
 
   try {
-    const response = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: upload.bucket,
-        Prefix: backupPrefix(profile),
-      }),
+    return await discoverVideoDbBackupFreshnessFromPages(
+      async (continuationToken) => {
+        const response = await s3.send(
+          new ListObjectsV2Command({
+            Bucket: upload.bucket,
+            Prefix: backupPrefix(profile),
+            ContinuationToken: continuationToken,
+          }),
+        )
+        return {
+          objects: (response.Contents ?? []).map((object) => ({
+            key: object.Key,
+            size: object.Size,
+            lastModified: object.LastModified,
+          })),
+          isTruncated: response.IsTruncated,
+          nextContinuationToken: response.NextContinuationToken,
+        }
+      },
     )
-    const latest = (response.Contents ?? [])
-      .filter((object) => object.Key?.endsWith(".dump"))
-      .sort(
-        (left, right) =>
-          (right.LastModified?.getTime() ?? 0) -
-          (left.LastModified?.getTime() ?? 0),
-      )[0]
-
-    if (!latest?.Key) {
-      throw new VideoDbBackupError(
-        `No video DB backup objects found under ${backupPrefix(profile)}`,
-      )
-    }
-
-    return {
-      key: latest.Key,
-      size: latest.Size,
-      lastModified: latest.LastModified,
-    }
   } finally {
     s3.destroy()
   }
+}
+
+function requireUsableLatestBackup(
+  freshness: VideoDbBackupFreshness,
+  allowStale: boolean,
+): VideoDbBackupFreshnessAvailable {
+  if (freshness.status === "not-found") {
+    throw new VideoDbBackupError("No video DB backup objects were found")
+  }
+  if (freshness.status === "unavailable-metadata") {
+    throw new VideoDbBackupError(
+      `Video DB backup freshness metadata is unavailable for ${freshness.key}`,
+    )
+  }
+  if (freshness.status === "stale" && !allowStale) {
+    throw new VideoDbBackupError(
+      `Latest video DB backup ${freshness.key} is older than ${freshness.thresholdHours} hours; pass --allow-stale to acknowledge this restore`,
+    )
+  }
+  return freshness
 }
 
 function backupDownloadBaseUrl(env: BackupDownloadSignerEnv): string {
@@ -736,15 +897,13 @@ async function requestPresignedBackupDownload(
   })
 
   if (!response.ok) {
-    let body = ""
-    try {
-      body = await response.text()
-    } catch {
-      body = ""
+    let message = `Backup download signer returned ${response.status}`
+    if (response.status === 404) {
+      message = `No video DB backup objects were found for ${parsed.profile}`
+    } else if (response.status === 503) {
+      message = `Video DB backup freshness metadata is unavailable for ${parsed.profile}`
     }
-    throw new VideoDbBackupError(
-      `Backup download signer returned ${response.status}${body ? `: ${body}` : ""}`,
-    )
+    throw new VideoDbBackupError(message)
   }
 
   const payload = (await response.json()) as Partial<PresignedBackupResponse>
@@ -753,7 +912,11 @@ async function requestPresignedBackupDownload(
     typeof payload.key !== "string" ||
     typeof payload.expiresAt !== "string" ||
     typeof payload.expiresInSeconds !== "number" ||
-    payload.profile !== parsed.profile
+    payload.profile !== parsed.profile ||
+    !payload.freshness ||
+    (payload.freshness.status !== "fresh" &&
+      payload.freshness.status !== "stale") ||
+    payload.freshness.key !== payload.key
   ) {
     throw new VideoDbBackupError(
       "Backup download signer returned an invalid response",
@@ -763,12 +926,66 @@ async function requestPresignedBackupDownload(
   return payload as PresignedBackupResponse
 }
 
+type ResolvedBackupDownload =
+  | {
+      via: "admin-signer"
+      key: string
+      selection: "latest"
+      freshness: VideoDbBackupFreshnessAvailable
+      signed: PresignedBackupResponse
+    }
+  | {
+      via: "s3"
+      key: string
+      selection: "latest" | "explicit-key"
+      freshness?: VideoDbBackupFreshnessAvailable
+      upload: BackupUploadPlan
+    }
+
+async function resolveBackupDownload(
+  parsed: ParsedArgs,
+  outPath: string,
+): Promise<ResolvedBackupDownload> {
+  if (shouldUseBackupDownloadSigner(parsed)) {
+    const signed = await requestPresignedBackupDownload(parsed)
+    return {
+      via: "admin-signer",
+      key: signed.key,
+      selection: "latest",
+      freshness: requireUsableLatestBackup(signed.freshness, parsed.allowStale),
+      signed,
+    }
+  }
+
+  const upload = requireBackupStoragePlan(parsed, outPath)
+  if (parsed.s3Key) {
+    return {
+      via: "s3",
+      key: normalizeBackupObjectKey(parsed.s3Key),
+      selection: "explicit-key",
+      upload,
+    }
+  }
+
+  const freshness = requireUsableLatestBackup(
+    await discoverLatestBackupFreshness(parsed.profile, upload),
+    parsed.allowStale,
+  )
+  return {
+    via: "s3",
+    key: freshness.key,
+    selection: "latest",
+    freshness,
+    upload,
+  }
+}
+
 async function downloadPresignedBackupObject(
   parsed: ParsedArgs,
+  source: Extract<ResolvedBackupDownload, { via: "admin-signer" }>,
 ): Promise<VideoDbBackupDownloadResult> {
   const outPath = restoreDownloadPath(parsed)
-  const signed = await requestPresignedBackupDownload(parsed)
-  const response = await fetch(signed.url)
+  const response = await fetch(source.signed.url)
 
   if (!response.ok) {
     throw new VideoDbBackupError(
@@ -779,7 +996,7 @@ async function downloadPresignedBackupObject(
     throw new VideoDbBackupError("Signed backup download body was not readable")
   }
 
-  await mkdir(dirname(outPath), { recursive: true })
+  await prepareOwnerOnlyFile(outPath)
   await pipeline(
     Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]),
     createWriteStream(outPath),
@@ -788,10 +1005,12 @@ async function downloadPresignedBackupObject(
   const result: VideoDbBackupDownloadResult = {
     event: "video-db.backup.download.complete",
     profile: parsed.profile,
-    key: signed.key,
+    key: source.key,
     path: outPath,
-    size: signed.size,
-    lastModified: signed.lastModified,
+    selection: source.selection,
+    size: source.signed.size,
+    lastModified: source.freshness.lastModified,
+    freshness: source.freshness,
   }
   process.stdout.write(`${JSON.stringify(result)}\n`)
   return result
@@ -800,39 +1019,35 @@ async function downloadPresignedBackupObject(
 async function downloadBackupObject(
   parsed: ParsedArgs,
 ): Promise<VideoDbBackupDownloadResult> {
-  if (shouldUseBackupDownloadSigner(parsed)) {
-    return downloadPresignedBackupObject(parsed)
-  }
-
   const outPath = restoreDownloadPath(parsed)
-  const upload = requireBackupStoragePlan(parsed, outPath)
-  const object = parsed.s3Key
-    ? { key: parsed.s3Key.replace(/^\/+/, "") }
-    : await findLatestBackupObject(parsed.profile, upload)
+  const source = await resolveBackupDownload(parsed, outPath)
+  if (source.via === "admin-signer") {
+    return downloadPresignedBackupObject(parsed, source)
+  }
 
   const { GetObjectCommand, S3Client } = await import("@aws-sdk/client-s3")
   const s3 = new S3Client({
-    endpoint: upload.endpoint,
-    region: upload.region,
+    endpoint: source.upload.endpoint,
+    region: source.upload.region,
     credentials: {
-      accessKeyId: upload.accessKeyId,
-      secretAccessKey: upload.secretAccessKey,
+      accessKeyId: source.upload.accessKeyId,
+      secretAccessKey: source.upload.secretAccessKey,
     },
     forcePathStyle: true,
   })
 
   try {
-    await mkdir(dirname(outPath), { recursive: true })
     const response = await s3.send(
       new GetObjectCommand({
-        Bucket: upload.bucket,
-        Key: object.key,
+        Bucket: source.upload.bucket,
+        Key: source.key,
       }),
     )
     if (!response.Body || !("pipe" in response.Body)) {
       throw new VideoDbBackupError("Downloaded backup body was not readable")
     }
 
+    await prepareOwnerOnlyFile(outPath)
     await pipeline(
       response.Body as NodeJS.ReadableStream,
       createWriteStream(outPath),
@@ -841,11 +1056,13 @@ async function downloadBackupObject(
     const result: VideoDbBackupDownloadResult = {
       event: "video-db.backup.download.complete",
       profile: parsed.profile,
-      bucket: upload.bucket,
-      key: object.key,
+      bucket: source.upload.bucket,
+      key: source.key,
       path: outPath,
-      size: object.size ?? response.ContentLength,
-      lastModified: object.lastModified?.toISOString(),
+      selection: source.selection,
+      size: source.freshness?.size ?? response.ContentLength,
+      lastModified: source.freshness?.lastModified,
+      freshness: source.freshness,
     }
     process.stdout.write(`${JSON.stringify(result)}\n`)
     return result
@@ -909,9 +1126,7 @@ export async function executeBackupPlan(
     return result
   } finally {
     if (plan.generatedOutPath) {
-      await unlink(plan.outPath).catch((error: NodeJS.ErrnoException) => {
-        if (error.code !== "ENOENT") throw error
-      })
+      await rm(plan.outPath, { force: true })
     }
   }
 }
@@ -953,47 +1168,48 @@ export async function restoreLatestMain(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<void> {
   const parsed = parseArgs("restore", argv)
-  if (parsed.dryRun) {
-    const outPath = restoreDownloadPath(parsed)
-    const signed = shouldUseBackupDownloadSigner(parsed)
-      ? await requestPresignedBackupDownload(parsed)
-      : null
-    let upload: BackupUploadPlan | null = null
-    let object: { key: string }
-    if (signed) {
-      object = { key: signed.key }
-    } else {
-      upload = requireBackupStoragePlan(parsed, outPath)
-      object = parsed.s3Key
-        ? { key: parsed.s3Key.replace(/^\/+/, "") }
-        : await findLatestBackupObject(parsed.profile, upload)
+  const generatedOutPath = parsed.outPath === undefined
+  const outPath = restoreDownloadPath(parsed)
+
+  try {
+    if (parsed.dryRun) {
+      const download = await resolveBackupDownload(parsed, outPath)
+      const restorePlan = buildRestorePlan(
+        parseArgs("restore", [...argv, `--in=${outPath}`]),
+      )
+
+      process.stdout.write(
+        `${JSON.stringify({
+          event: "video-db.restore-latest.plan",
+          profile: parsed.profile,
+          download: {
+            via: download.via,
+            bucket: download.via === "s3" ? download.upload.bucket : undefined,
+            key: download.key,
+            path: outPath,
+            selection: download.selection,
+            freshness: download.freshness,
+            expiresAt:
+              download.via === "admin-signer"
+                ? download.signed.expiresAt
+                : undefined,
+          },
+          restore: printablePlan(restorePlan),
+        })}\n`,
+      )
+      process.stdout.write(
+        `${JSON.stringify({ event: "video-db.restore-latest.dry-run-complete" })}\n`,
+      )
+      return
     }
-    const restorePlan = buildRestorePlan(
-      parseArgs("restore", [...argv, `--in=${outPath}`]),
-    )
 
-    process.stdout.write(
-      `${JSON.stringify({
-        event: "video-db.restore-latest.plan",
-        profile: parsed.profile,
-        download: {
-          via: signed ? "admin-signer" : "s3",
-          bucket: upload?.bucket,
-          key: object.key,
-          path: outPath,
-          expiresAt: signed?.expiresAt,
-        },
-        restore: printablePlan(restorePlan),
-      })}\n`,
-    )
-    process.stdout.write(
-      `${JSON.stringify({ event: "video-db.restore-latest.dry-run-complete" })}\n`,
-    )
-    return
+    const download = await downloadBackupObject(parsed)
+    await main("restore", [...argv, `--in=${download.path}`])
+  } finally {
+    if (generatedOutPath && !parsed.dryRun) {
+      await rm(outPath, { force: true })
+    }
   }
-
-  const download = await downloadBackupObject(parsed)
-  await main("restore", [...argv, `--in=${download.path}`])
 }
 
 const invokedPath = typeof process.argv[1] === "string" ? process.argv[1] : ""
