@@ -403,6 +403,12 @@ from stored embedding provenance and healthy vector rows, not from the lifetime
 of the trigger request that started it. Resume flows should preserve already
 healthy embeddings and continue from missing, legacy, or incomplete rows.
 
+### Video Database Snapshot
+
+A reviewed, profile-scoped, data-only export of production Admin video data for restoring production-like content into non-production environments. The default `video-core` profile carries catalog and reference data, while the opt-in `video-search` profile adds the scene, transcript, Transcript Chunk, Content Embedding, and Embedding Provenance data needed for local semantic video search.
+
+A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
+
 ## Known-caller auth
 
 ### Known-Caller Check
