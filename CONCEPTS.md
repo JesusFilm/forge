@@ -490,6 +490,12 @@ The single Experience designated as the watch home for a given locale, resolved 
 
 The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
 
+### Continue Watching
+
+The signed-in continuity behavior: a partially watched video shows a progress bar at the account's latest recorded position, and playback resumes from that position with a start-over option — whichever signed-in device or surface recorded it.
+
+Signed-in only: anonymous playback records nothing, and nothing merges into the account at a later sign-in. Distinct from a Continue Watching shelf — a home row listing in-progress videos — which is a separate, deferred surface.
+
 ### Cinematic
 
 A Video's own wide key artwork, framed for a landscape card or hero. It is the fallback every home and search surface falls back to when no editorially curated art is attached, and it is the only artwork the catalog holds for a Video — there is no portrait cut of it.
