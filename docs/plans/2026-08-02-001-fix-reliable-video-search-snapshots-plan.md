@@ -261,16 +261,16 @@ flowchart TD
 
 ### Risks and Mitigations
 
-| Risk | Mitigation |
-|---|---|
-| URL normalization strips a valid PostgreSQL option or hides a typo | Remove only documented Prisma-only keys and preserve every other query key for native-client validation. |
-| A restore discovers archive or schema incompatibility only after truncation | Validate archive identity, target schema, vector prerequisites, and PostgreSQL 18 compatibility first; continue to document that local restore is destructive and not failure-atomic. |
-| Generated dumps remain on worker or developer filesystems | Use restrictive permissions and failure-safe cleanup for workflow-created and restore-latest files while preserving explicitly supplied developer paths. |
-| PostgreSQL 18 container alignment cannot reuse a PostgreSQL 16 data directory | Document an explicit local-only volume reset and resolve the exact scoped volume before any removal. |
-| The search dump is too large for the existing upload path or practical local use | Record size before upload plus export, upload, and restore durations; open follow-up work only if evidence crosses operational limits. |
-| Daily search objects create an unbounded recurring bill without retention | Calculate the measured run rate after the first run and surface the 12-month no-retention projection before closing the roadmap item. |
-| A successful deployment is mistaken for a successful scheduled backup | Require both service revisions, scheduler liveness, exact ledger-to-object correlation for both profiles, and a pristine search-profile restore. |
-| The fixed daily cadence delays proof or the scheduler is inactive | Confirm a current heartbeat and expected `nextRunAt` before waiting; keep the change unclaimed until the eligible run completes and do not invent a manual trigger. |
+| Risk                                                                             | Mitigation                                                                                                                                                                            |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| URL normalization strips a valid PostgreSQL option or hides a typo               | Remove only documented Prisma-only keys and preserve every other query key for native-client validation.                                                                              |
+| A restore discovers archive or schema incompatibility only after truncation      | Validate archive identity, target schema, vector prerequisites, and PostgreSQL 18 compatibility first; continue to document that local restore is destructive and not failure-atomic. |
+| Generated dumps remain on worker or developer filesystems                        | Use restrictive permissions and failure-safe cleanup for workflow-created and restore-latest files while preserving explicitly supplied developer paths.                              |
+| PostgreSQL 18 container alignment cannot reuse a PostgreSQL 16 data directory    | Document an explicit local-only volume reset and resolve the exact scoped volume before any removal.                                                                                  |
+| The search dump is too large for the existing upload path or practical local use | Record size before upload plus export, upload, and restore durations; open follow-up work only if evidence crosses operational limits.                                                |
+| Daily search objects create an unbounded recurring bill without retention        | Calculate the measured run rate after the first run and surface the 12-month no-retention projection before closing the roadmap item.                                                 |
+| A successful deployment is mistaken for a successful scheduled backup            | Require both service revisions, scheduler liveness, exact ledger-to-object correlation for both profiles, and a pristine search-profile restore.                                      |
+| The fixed daily cadence delays proof or the scheduler is inactive                | Confirm a current heartbeat and expected `nextRunAt` before waiting; keep the change unclaimed until the eligible run completes and do not invent a manual trigger.                   |
 
 ### Deferred to Follow-Up Work
 

@@ -13,7 +13,17 @@ applies_when:
   - "Debugging local restore failures from PostgreSQL client or server version mismatches"
   - "Diagnosing native PostgreSQL tools that reject Prisma connection-pool URL options"
   - "Restoring the opt-in video-search snapshot without regenerating embeddings"
-tags: [admin, video-db-backup, local-dev, postgres, libpq, embeddings, video-search, connection-pool]
+tags:
+  [
+    admin,
+    video-db-backup,
+    local-dev,
+    postgres,
+    libpq,
+    embeddings,
+    video-search,
+    connection-pool,
+  ]
 ---
 
 # Admin production video snapshot local restore
