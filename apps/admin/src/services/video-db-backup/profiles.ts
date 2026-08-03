@@ -93,6 +93,9 @@ export type VideoDbBackupJobResult = {
   profile: VideoDbBackupProfile
   tables: number
   path: string
+  size?: number
+  exportDurationMs?: number
+  uploadDurationMs?: number
   upload?: {
     bucket: string
     key: string

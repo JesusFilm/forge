@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 3, 2026)
 
-- **Total tickets:** 475
-- **Complete:** 363
-- **In progress:** 34
+- **Total tickets:** 479
+- **Complete:** 366
+- **In progress:** 35
 - **Not started:** 29
 - **Blocked:** 49
-- **Overdue and not complete:** 92
+- **Overdue and not complete:** 93
 
 ## Feature Index
 
@@ -97,6 +97,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-287](content-discovery/feat-287-admin-watch-search-script-language-detection.md)                         | Admin Watch search script language detection                                                    | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-309](content-discovery/feat-309-watch-english-query-language-detection.md)                               | Watch English query language detection                                                          | codex      | P1       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-311](content-discovery/feat-311-admin-fireworks-query-embeddings.md)                                     | Admin Fireworks query embedding provider                                                        | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
+| [feat-326](content-discovery/feat-326-admin-search-results-pagination.md)                                      | Admin search results pagination                                                                 | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-312](content-discovery/feat-312-admin-query-embedding-fast-fail.md)                                      | Admin query embedding one-second fast fail                                                      | codex      | P1       | 2026-08-03 | 1    | 2026-08-03 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
@@ -213,6 +214,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-321](platform/feat-321-watch-download-redirects.md)                              | Redirect Watch downloads off Web                                                 | vlad       | P0       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-323](platform/feat-323-admin-flat-core-subtitle-sync-repair.md)                  | Admin flat Core subtitle sync repair                                             | vlad       | P0       | 2026-07-31 | 2    | 2026-08-01 | complete    |
 | [feat-325](platform/feat-325-recover-watch-video-search-metadata-migration.md)         | Recover Watch video search metadata migration                                    | codex      | P0       | 2026-08-01 | 1    | 2026-08-01 | complete    |
+| [feat-326](platform/feat-326-admin-video-db-backup-libpq-url.md)                       | Admin video DB backup libpq URL boundary                                         | codex      | P0       | 2026-08-03 | 1    | 2026-08-03 | complete    |
+| [feat-327](platform/feat-327-admin-prisma-adapter-pool-config.md)                      | Admin Prisma adapter pool config                                                 | codex      | P0       | 2026-08-03 | 1    | 2026-08-03 | complete    |
+| [feat-328](platform/feat-328-reliable-video-search-snapshots.md)                       | Reliable video search snapshots                                                  | nisal      | P0       | 2026-08-02 | 1    | 2026-08-02 | in-progress |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
