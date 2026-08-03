@@ -1845,13 +1845,20 @@ export function buildSystemStatusData({
     }))
   const axisIncidents: QueueItem[] = []
   if (execution.statusLabel === "Failed") {
+    const latestWorkflowRow = workflowRows[0]
     axisIncidents.push({
-      title: "Latest Core Sync execution failed",
+      title: latestWorkflowRow
+        ? `${latestWorkflowRow.workflowKey} ${latestWorkflowRow.status}`
+        : "Latest Core Sync execution failed",
       meta:
-        workflowRows[0]?.runtimeRunId ?? workflowRows[0]?.id ?? "run ledger",
-      detail: workflowRows[0]?.error ?? execution.detail,
-      statusLabel: "Failed",
-      statusTone: "danger",
+        latestWorkflowRow?.runtimeRunId ??
+        latestWorkflowRow?.id ??
+        "run ledger",
+      detail: latestWorkflowRow?.error ?? execution.detail,
+      statusLabel: latestWorkflowRow?.status ?? "Failed",
+      statusTone: latestWorkflowRow
+        ? statusToneForWorkflowStatus(latestWorkflowRow.status)
+        : "danger",
     })
   }
   if (freshness.statusLabel === "Stale") {
