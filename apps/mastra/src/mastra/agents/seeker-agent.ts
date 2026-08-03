@@ -1,6 +1,10 @@
 import { createRequire } from "node:module"
 
-import { Agent, type ModelWithRetries } from "@mastra/core/agent"
+import {
+  Agent,
+  type AgentConfig,
+  type ModelWithRetries,
+} from "@mastra/core/agent"
 import type { MastraModelConfig } from "@mastra/core/llm"
 
 import { env, isAiGatewaySeekerEnabled } from "../../config/env"
@@ -14,7 +18,11 @@ import {
   getManagedPrompt,
   type ManagedPromptInput,
 } from "../../services/langfuse-prompt-client"
-import { retrieveAnswerTool } from "../tools/retrieve-answer"
+import {
+  buildRetrieveAnswerTool,
+  retrieveAnswerTool,
+  type RetrieveAnswerSearch,
+} from "../tools/retrieve-answer"
 
 // ESM-compatible `require` for the provider SDK load below. The provider SDK
 // requires survive the Mastra CLI Rollup bundle because they target real
@@ -285,6 +293,32 @@ export function createSeekerInstructionsResolver(
     ).text
 }
 
+/**
+ * Overrides for `buildSeekerAgent` (chat-eval agent-factory seam, PR B).
+ * Each field replaces exactly ONE default construction argument; every
+ * absent field keeps the production wiring byte-identical. The eval suite
+ * ("Real Agent, Frozen World") is the intended caller; production passes
+ * nothing.
+ */
+export type SeekerAgentOverrides = {
+  /**
+   * Fixture-backed replacement for the RAG search client, threaded through
+   * `buildRetrieveAnswerTool({ search })`. This is the ONLY reachable path
+   * to the tool loop's search binding — `executeRetrieveAnswer`'s injectable
+   * option alone cannot reach the module-level tool closure.
+   */
+  ragSearch?: RetrieveAnswerSearch
+  /** Replaces the `buildSeekerModelList()` result. */
+  models?: ModelWithRetries[]
+  /** Replaces the shared ai-chat memory singleton (`getAiChatMemory()`). */
+  memory?: AgentConfig["memory"]
+  /**
+   * Replaces `createSeekerInstructionsResolver()` — the Agent constructor's
+   * own instructions shape (a string or an async resolver).
+   */
+  instructions?: AgentConfig["instructions"]
+}
+
 // GUARDRAIL ATTACH-POINT (R4) — deferred, no logic yet.
 // This is where later honesty / fabrication / AI-disclosure /
 // doctrinal-uncertainty and crisis-handling checks (suicidal-ideation /
@@ -297,36 +331,60 @@ export function createSeekerInstructionsResolver(
 // Any config those checks need must be `.optional()` + runtime fallback — the
 // skeleton adds ZERO required env vars (KTD5), so a placeholder is never
 // promoted to required-at-load and never bricks a Railway deploy.
-export const seekerAgent = new Agent({
-  id: "seekerAgent",
-  name: "Seeker Agent",
-  description:
-    "Skeleton conversational agent for people exploring Christianity and who Jesus is. Studio-only, non-production prototype.",
-  // Langfuse-managed system prompt (feat-272): resolved per turn through
-  // getManagedPrompt (name `seeker-system`, label via env resolution), with
-  // SEEKER_SYSTEM_PROMPT_FALLBACK served byte-identically whenever Langfuse
-  // is unconfigured or unreachable. See createSeekerInstructionsResolver above.
-  instructions: createSeekerInstructionsResolver(),
-  // Env-gated fallback chain (feat-237) — see buildSeekerModelList above for
-  // both branches. Evaluated once at module load; Mastra's fallback loop
-  // walks the resulting array per request.
-  model: buildSeekerModelList(),
 
-  tools: {
-    retrieveAnswer: retrieveAnswerTool,
-  },
-  // ai-chat lane memory (feat-208): Postgres-persisted in the `ai_chat`
-  // schema (or in-memory under the memory backend). Shared with future
-  // ai-chat agents; thread access is gated in seeker-route.ts, not here.
-  memory: getAiChatMemory(),
-  // Step-budget floor (feat-202). The bearer-gated `/forge-seeker` route sets
-  // `maxSteps: STEP_CAPS.toolCallingTurn` at its call site, but the built-in,
-  // code-unauthenticated `/api/agents/seekerAgent` surface (reachable by any
-  // in-network caller) carries no budget. Setting it on `defaultOptions` (the
-  // vNext field `.stream()`/`.generate()` deep-merge in, NOT the unused
-  // `defaultStreamOptionsLegacy`) gives that path a runaway-loop ceiling.
-  // Reuses the route's SAME shared constant so the two paths can't diverge.
-  // It is a DEFAULT floor, not an un-overridable ceiling: deep-merge lets an
-  // explicit per-call `maxSteps` win — the same property the route's budget has.
-  defaultOptions: { maxSteps: STEP_CAPS.toolCallingTurn },
-})
+/**
+ * Build the seeker agent (chat-eval agent-factory seam, PR B). Zero overrides
+ * — the production singleton below — produce exactly today's construction
+ * arguments: same instructions resolver, same model list, same shared tool
+ * singleton, same memory singleton, same `defaultOptions` floor.
+ */
+export function buildSeekerAgent(overrides: SeekerAgentOverrides = {}) {
+  return new Agent({
+    id: "seekerAgent",
+    name: "Seeker Agent",
+    description:
+      "Skeleton conversational agent for people exploring Christianity and who Jesus is. Studio-only, non-production prototype.",
+    // Langfuse-managed system prompt (feat-272): resolved per turn through
+    // getManagedPrompt (name `seeker-system`, label via env resolution), with
+    // SEEKER_SYSTEM_PROMPT_FALLBACK served byte-identically whenever Langfuse
+    // is unconfigured or unreachable. See createSeekerInstructionsResolver
+    // above.
+    instructions: overrides.instructions ?? createSeekerInstructionsResolver(),
+    // Env-gated fallback chain (feat-237) — see buildSeekerModelList above for
+    // both branches. Evaluated once at module load (the singleton call below);
+    // Mastra's fallback loop walks the resulting array per request.
+    model: overrides.models ?? buildSeekerModelList(),
+    tools: {
+      // Default: the shared module-level tool singleton (real RAG client).
+      // With `ragSearch`, the SAME tool code is rebuilt over the injected
+      // search function — the only way the override can reach the tool loop.
+      retrieveAnswer:
+        overrides.ragSearch === undefined
+          ? retrieveAnswerTool
+          : buildRetrieveAnswerTool({ search: overrides.ragSearch }),
+    },
+    // ai-chat lane memory (feat-208): Postgres-persisted in the `ai_chat`
+    // schema (or in-memory under the memory backend). Shared with future
+    // ai-chat agents; thread access is gated in seeker-route.ts, not here.
+    memory: overrides.memory ?? getAiChatMemory(),
+    // Step-budget floor (feat-202). The bearer-gated `/forge-seeker` route sets
+    // `maxSteps: STEP_CAPS.toolCallingTurn` at its call site, but the built-in,
+    // code-unauthenticated `/api/agents/seekerAgent` surface (reachable by any
+    // in-network caller) carries no budget. Setting it on `defaultOptions` (the
+    // vNext field `.stream()`/`.generate()` deep-merge in, NOT the unused
+    // `defaultStreamOptionsLegacy`) gives that path a runaway-loop ceiling.
+    // Reuses the route's SAME shared constant so the two paths can't diverge.
+    // It is a DEFAULT floor, not an un-overridable ceiling: deep-merge lets an
+    // explicit per-call `maxSteps` win — the same property the route's budget
+    // has.
+    defaultOptions: { maxSteps: STEP_CAPS.toolCallingTurn },
+  })
+}
+
+/**
+ * Production singleton — ZERO overrides, pinned by the call-site source-pin
+ * test in seeker-agent.test.ts (feat-283 discipline): passing any override
+ * here is a one-line revert surface that would silently swap the live
+ * agent's instructions, models, tool data source, or memory.
+ */
+export const seekerAgent = buildSeekerAgent()

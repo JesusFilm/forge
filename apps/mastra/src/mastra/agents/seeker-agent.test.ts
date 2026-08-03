@@ -46,18 +46,22 @@ vi.mock("../../config/env", async (importOriginal) => ({
 
 import { readFileSync } from "node:fs"
 
+import type { ModelWithRetries } from "@mastra/core/agent"
+
 import { STEP_CAPS, TIME_BUDGET_MS } from "../budgets"
-import { getAiChatMemory } from "../ai-chat-memory"
+import { buildAiChatMemory, getAiChatMemory } from "../ai-chat-memory"
 import {
   createManagedPromptCache,
   type LangfuseConfig,
 } from "../../services/langfuse-prompt-client"
 import {
   retrieveAnswerOutputSchema,
+  retrieveAnswerTool,
   RETRIEVE_ANSWER_EMPTY_MESSAGE,
   RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
 } from "../tools/retrieve-answer"
 import {
+  buildSeekerAgent,
   buildSeekerModelList,
   createGatewayFetchWithTimeout,
   createSeekerInstructionsResolver,
@@ -464,15 +468,19 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
   })
 
-  it("call-site source pin: exactly one instructions registration, wiring the bare resolver, outside comments", () => {
+  it("call-site source pin: exactly one instructions registration, defaulting to the bare resolver, outside comments", () => {
     // feat-283 corollary: an injectable seam at a production call site is a
-    // one-line revert surface. Pin that the registration passes NO overrides —
-    // a `createSeekerInstructionsResolver({ config: … })` or a reverted inline
+    // one-line revert surface. Since the chat-eval PR B factory seam, the one
+    // registration lives inside buildSeekerAgent: pin that its DEFAULT arm is
+    // the bare `createSeekerInstructionsResolver()` — a
+    // `createSeekerInstructionsResolver({ config: … })` or a reverted inline
     // string both fail here. Comments are stripped first and the occurrence
     // count is pinned to exactly one, so a commented-out registration plus a
     // second inline-string `instructions:` assignment cannot satisfy the pin
     // (falsified once during feat-272 review: commenting the registration and
-    // substituting an inline string turns this test red).
+    // substituting an inline string turns this test red). The companion pin
+    // that the production SINGLETON passes no overrides lives in the
+    // "buildSeekerAgent factory seam" describe below.
     const source = readFileSync(
       new URL("./seeker-agent.ts", import.meta.url),
       "utf8",
@@ -480,7 +488,9 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const code = source
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "")
-    expect(code).toMatch(/instructions:\s*createSeekerInstructionsResolver\(\)/)
+    expect(code).toMatch(
+      /instructions:\s*overrides\.instructions\s*\?\?\s*createSeekerInstructionsResolver\(\)/,
+    )
     expect(code.match(/\binstructions:/g)).toHaveLength(1)
   })
 
@@ -507,5 +517,170 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE).toBe(
       "Retrieval is unavailable. Tell the seeker you cannot provide a grounded answer, and continue the conversation.",
     )
+  })
+})
+
+describe("buildSeekerAgent factory seam (chat-eval PR B)", () => {
+  beforeEach(() => {
+    // Deterministic default branch regardless of what the feat-237 describe
+    // left in the shared mock: no gateway key/flag → the Gemma-only chain.
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = undefined
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = undefined
+    mockEnv.env.AI_GATEWAY_CHAT_MODEL = undefined
+    mockEnv.env.AI_GATEWAY_SEEKER_ENABLED = undefined
+  })
+
+  /**
+   * The wrapped tool execute organizes its own default RequestContext when
+   * the runtime context is omitted (verified against the @mastra/core 1.55
+   * Tool wrapper), and the retrieveAnswer callback reads no context member.
+   * The declared signature still requires the parameter, so tests cast the
+   * omission instead of fabricating a full Mastra invocation context.
+   */
+  const omittedToolContext = undefined as unknown as Parameters<
+    NonNullable<typeof retrieveAnswerTool.execute>
+  >[1]
+
+  // Contract-shaped fixture passage for the injected search stub.
+  const FIXTURE_PASSAGE = {
+    score: 0.91,
+    text: "Jesus wept with those who mourned.",
+    citation: {
+      sourceName: "Fixture Source",
+      title: null,
+      url: "https://fixtures.example.org/passage-1",
+    },
+  }
+
+  it("call-site source pin: the production singleton is buildSeekerAgent() with NO overrides", () => {
+    // feat-283 corollary: every override field is a one-line revert surface at
+    // the production call site — `buildSeekerAgent({ ragSearch: … })` here
+    // would silently swap the live agent's tool data source with every other
+    // test green. Comments are stripped first so a commented-out registration
+    // can neither satisfy nor spoil the pins.
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(/export const seekerAgent = buildSeekerAgent\(\)/)
+    // Exactly one singleton assignment, exactly one Agent construction
+    // (inside the factory), and exactly two buildSeekerAgent occurrences (the
+    // declaration + the zero-override singleton call) — a second construction
+    // path or a competing override-passing call site cannot slip past the
+    // zero-argument pin above.
+    expect(code.match(/\bseekerAgent\s*=/g)).toHaveLength(1)
+    expect(code.match(/\bnew Agent\(/g)).toHaveLength(1)
+    expect(code.match(/\bbuildSeekerAgent\(/g)).toHaveLength(2)
+  })
+
+  it("zero overrides reproduce the production singleton's construction surface", async () => {
+    const built = buildSeekerAgent()
+
+    expect(built.id).toBe(seekerAgent.id)
+    expect(built.name).toBe(seekerAgent.name)
+    expect(built.getDescription()).toBe(seekerAgent.getDescription())
+
+    // Default tool arm: the SHARED module-level singleton by identity — for
+    // both the fresh zero-override build and the production singleton — never
+    // a fresh fixture-capable rebuild.
+    const [builtTools, singletonTools] = await Promise.all([
+      built.listTools(),
+      seekerAgent.listTools(),
+    ])
+    expect(builtTools.retrieveAnswer).toBe(retrieveAnswerTool)
+    expect(singletonTools.retrieveAnswer).toBe(retrieveAnswerTool)
+
+    // Default memory arm: the shared ai-chat memory singleton by identity.
+    await expect(built.getMemory()).resolves.toBe(getAiChatMemory())
+
+    // Default instructions arm: byte-identical resolution to the singleton's
+    // (the hermetic unconfigured-Langfuse mock pins both to the fallback).
+    await expect(built.getInstructions()).resolves.toBe(
+      await seekerAgent.getInstructions(),
+    )
+
+    // Default model arm + the defaultOptions step floor.
+    const [builtModels, singletonModels] = await Promise.all([
+      built.getModelList(),
+      seekerAgent.getModelList(),
+    ])
+    expect(
+      builtModels?.map((m) => ({
+        modelId: m.model.modelId,
+        maxRetries: m.maxRetries,
+      })),
+    ).toEqual(
+      singletonModels?.map((m) => ({
+        modelId: m.model.modelId,
+        maxRetries: m.maxRetries,
+      })),
+    )
+    const options = await built.getDefaultOptions()
+    expect(options.maxSteps).toBe(STEP_CAPS.toolCallingTurn)
+  })
+
+  it("anti-vacuous: ragSearch and instructions overrides change the built agent", async () => {
+    // Positive companion to the source pin above — proves the seam actually
+    // changes behavior, so the no-override pin cannot pass vacuously.
+    let receivedQuery = ""
+    const agent = buildSeekerAgent({
+      instructions: "EVAL STUB INSTRUCTIONS",
+      ragSearch: ({ query }) => {
+        receivedQuery = query
+        return Promise.resolve({ ok: true, results: [FIXTURE_PASSAGE] })
+      },
+    })
+
+    // The override IS the resolved instructions — not the fallback, not a
+    // Langfuse fetch. (`getInstructions()` returns the raw string
+    // synchronously for a string config, so `await` the value rather than
+    // using `.resolves`.)
+    expect(await agent.getInstructions()).toBe("EVAL STUB INSTRUCTIONS")
+
+    const tools = await agent.listTools()
+    const tool = tools.retrieveAnswer
+    // A fresh fixture-backed tool — NOT the shared production singleton.
+    expect(tool).not.toBe(retrieveAnswerTool)
+    // The injected search is live inside the tool loop's execute.
+    const output = await tool.execute?.(
+      { query: "why does God allow suffering?" },
+      omittedToolContext,
+    )
+    expect(receivedQuery).toBe("why does God allow suffering?")
+    expect(output).toMatchObject({
+      status: "ok",
+      sources: [expect.objectContaining({ url: FIXTURE_PASSAGE.citation.url })],
+    })
+  })
+
+  it("anti-vacuous: models and memory overrides replace the default list and memory singleton", async () => {
+    // Reversed order + zeroed retries: unambiguously NOT the default chain
+    // (which is 31b first with maxRetries 1 on both entries).
+    const stubModels: ModelWithRetries[] = [
+      { model: "openrouter/google/gemma-4-26b-a4b-it:free", maxRetries: 0 },
+      { model: "openrouter/google/gemma-4-31b-it:free", maxRetries: 0 },
+    ]
+    // A real Memory over an InMemoryStore — hermetic, and identity-distinct
+    // from the shared singleton the default arm would attach.
+    const stubMemory = buildAiChatMemory({ getBackend: () => "memory" })
+    expect(stubMemory).not.toBe(getAiChatMemory())
+
+    const agent = buildSeekerAgent({ models: stubModels, memory: stubMemory })
+
+    const models = await agent.getModelList()
+    expect(
+      models?.map((m) => ({
+        modelId: m.model.modelId,
+        maxRetries: m.maxRetries,
+      })),
+    ).toEqual([
+      { modelId: "google/gemma-4-26b-a4b-it:free", maxRetries: 0 },
+      { modelId: "google/gemma-4-31b-it:free", maxRetries: 0 },
+    ])
+
+    await expect(agent.getMemory()).resolves.toBe(stubMemory)
   })
 })
