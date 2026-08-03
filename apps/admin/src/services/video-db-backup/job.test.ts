@@ -195,6 +195,30 @@ describe("video DB backup workflow job", () => {
     })
   })
 
+  it("marks missing scheduled bucket configuration as a failed ledger run", async () => {
+    backup.runScheduledVideoDbBackup.mockRejectedValueOnce(
+      new Error("RAILWAY_S3_BUCKET is required for scheduled video DB backups"),
+    )
+    const { runVideoDbBackupJob } = await import("./job")
+
+    await expect(
+      runVideoDbBackupJob({
+        trigger: "scheduled",
+        ledgerRunId: "ledger-run-1",
+        profile: "video-search",
+      }),
+    ).rejects.toThrow("RAILWAY_S3_BUCKET is required")
+
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-run-1" },
+      data: expect.objectContaining({
+        status: "FAILED",
+        error: "RAILWAY_S3_BUCKET is required for scheduled video DB backups",
+        finishedAt: expect.any(Date),
+      }),
+    })
+  })
+
   it("runs catalog and search snapshots from the scheduler", async () => {
     workflowRun.create
       .mockResolvedValueOnce({ id: "ledger-core" })
@@ -255,6 +279,42 @@ describe("video DB backup workflow job", () => {
       1,
       "video-core",
     )
+    expect(backup.runScheduledVideoDbBackup).toHaveBeenNthCalledWith(
+      2,
+      "video-search",
+    )
+  })
+
+  it("attempts video-search after video-core fails", async () => {
+    workflowRun.create
+      .mockResolvedValueOnce({ id: "ledger-core" })
+      .mockResolvedValueOnce({ id: "ledger-search" })
+    backup.runScheduledVideoDbBackup
+      .mockRejectedValueOnce(new Error("core upload timed out"))
+      .mockResolvedValueOnce({
+        event: "video-db.backup.complete",
+        profile: "video-search",
+        tables: 26,
+        path: "/tmp/video-search.dump",
+        upload: {
+          bucket: "admin-storage",
+          key: "admin-video-db-backups/video-search/video.dump",
+        },
+      })
+    const { runVideoDbBackupFromScheduler } = await import("./job")
+
+    await expect(runVideoDbBackupFromScheduler()).resolves.toEqual([
+      {
+        ok: false,
+        ledgerRunId: "ledger-core",
+        error: "core upload timed out",
+      },
+      expect.objectContaining({
+        ok: true,
+        ledgerRunId: "ledger-search",
+        result: expect.objectContaining({ profile: "video-search" }),
+      }),
+    ])
     expect(backup.runScheduledVideoDbBackup).toHaveBeenNthCalledWith(
       2,
       "video-search",

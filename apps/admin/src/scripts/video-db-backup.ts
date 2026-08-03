@@ -17,724 +17,45 @@
 
 import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
-import { mkdir, open, rm, stat } from "node:fs/promises"
-import { basename, dirname, resolve as resolvePath } from "node:path"
+import { mkdir, rm, stat } from "node:fs/promises"
+import { dirname, resolve as resolvePath } from "node:path"
 import { performance } from "node:perf_hooks"
 import { Readable } from "node:stream"
 import { finished, pipeline } from "node:stream/promises"
 
-export const VIDEO_DB_BACKUP_PROFILES = {
-  "video-core": [
-    "language",
-    "language_locale",
-    "continent",
-    "continent_locale",
-    "country",
-    "country_locale",
-    "country_language",
-    "keyword",
-    "video_origin",
-    "video_edition",
-    "mux_video",
-    "bible_book",
-    "video",
-    "video_locale",
-    "video_relation",
-    "video_keyword",
-    "video_dub",
-    "video_dub_download",
-    "video_subtitle",
-    "video_study_question",
-    "video_image",
-    "bible_citation",
-  ],
-  "video-search": [
-    "language",
-    "language_locale",
-    "continent",
-    "continent_locale",
-    "country",
-    "country_locale",
-    "country_language",
-    "keyword",
-    "video_origin",
-    "video_edition",
-    "mux_video",
-    "bible_book",
-    "video",
-    "video_locale",
-    "video_relation",
-    "video_keyword",
-    "video_dub",
-    "video_dub_download",
-    "video_subtitle",
-    "video_study_question",
-    "video_image",
-    "bible_citation",
-    "video_scene",
-    "video_scene_locale",
-    "video_transcript",
-    "video_transcript_chunk",
-  ],
-  "video-full": [
-    "language",
-    "language_locale",
-    "continent",
-    "continent_locale",
-    "country",
-    "country_locale",
-    "country_language",
-    "keyword",
-    "video_origin",
-    "video_edition",
-    "mux_video",
-    "bible_book",
-    "video",
-    "video_locale",
-    "video_relation",
-    "video_keyword",
-    "video_dub",
-    "video_dub_download",
-    "video_subtitle",
-    "video_study_question",
-    "video_image",
-    "bible_citation",
-    "video_scene",
-    "video_scene_locale",
-    "video_transcript",
-    "video_transcript_chunk",
-  ],
-} as const
-
-export type VideoDbBackupProfile = keyof typeof VIDEO_DB_BACKUP_PROFILES
-export const SCHEDULED_VIDEO_DB_BACKUP_PROFILES = [
-  "video-core",
-  "video-search",
-] as const satisfies readonly VideoDbBackupProfile[]
-export type TargetEnvironment = "development" | "staging" | "production"
-
-type ParsedArgs = {
-  command: "backup" | "restore"
-  profile: VideoDbBackupProfile
-  outPath?: string
-  inPath?: string
-  s3Key?: string
-  targetEnv: TargetEnvironment
-  allowProductionTarget: boolean
-  allowStale: boolean
-  dryRun: boolean
-}
-
-type CommandPlan = {
-  command: string
-  args: string[]
-  env?: Record<string, string>
-}
-
-type RestorePreflightCheck =
-  | "pg-restore-client-version"
-  | "psql-client-version"
-  | "archive-manifest"
-  | "target-compatibility"
-
-type RestorePreflightCommandPlan = CommandPlan & {
-  check: RestorePreflightCheck
-}
-
-type RestorePreflightCapture = (
-  plan: RestorePreflightCommandPlan,
-) => Promise<string>
-
-type DatabaseUrlEnv = {
-  SOURCE_DATABASE_URL?: string
-  TARGET_DATABASE_URL?: string
-  DATABASE_URL?: string
-}
-
-type BackupStorageEnv = {
-  RAILWAY_S3_BUCKET?: string
-  RAILWAY_S3_ENDPOINT?: string
-  RAILWAY_S3_REGION?: string
-  RAILWAY_S3_ACCESS_KEY_ID?: string
-  RAILWAY_S3_SECRET_ACCESS_KEY?: string
-}
-
-type BackupDownloadSignerEnv = {
-  BACKUP_DOWNLOAD_API_KEY?: string
-  BACKUP_DOWNLOAD_BASE_URL?: string
-}
-
-export type BackupUploadPlan = {
-  bucket: string
-  key: string
-  endpoint?: string
-  region: string
-  accessKeyId: string
-  secretAccessKey: string
-}
-
-export type BackupPlan = {
-  mode: "backup"
-  profile: VideoDbBackupProfile
-  source: string
-  outPath: string
-  generatedOutPath: boolean
-  upload?: BackupUploadPlan
-  tables: string[]
-  commands: CommandPlan[]
-}
-
-export type RestorePlan = {
-  mode: "restore"
-  profile: VideoDbBackupProfile
-  target: string
-  targetEnv: TargetEnvironment
-  inPath: string
-  tables: string[]
-  preflightCommands: RestorePreflightCommandPlan[]
-  commands: CommandPlan[]
-}
-
-export type VideoDbBackupJobResult = {
-  event: "video-db.backup.complete" | "video-db.backup.dry-run-complete"
-  profile: VideoDbBackupProfile
-  tables: number
-  path: string
-  size?: number
-  exportDurationMs?: number
-  uploadDurationMs?: number
-  upload?: {
-    bucket: string
-    key: string
-  }
-}
-
-export type VideoDbBackupDownloadResult = {
-  event: "video-db.backup.download.complete"
-  profile: VideoDbBackupProfile
-  bucket?: string
-  key: string
-  path: string
-  selection: "latest" | "explicit-key"
-  size?: number
-  lastModified?: string
-  freshness?: VideoDbBackupFreshnessAvailable
-}
-
-type PresignedBackupResponse = {
-  url: string
-  profile: VideoDbBackupProfile
-  key: string
-  expiresAt: string
-  expiresInSeconds: number
-  size?: number
-  lastModified?: string
-  freshness: VideoDbBackupFreshnessAvailable
-}
-
-export const VIDEO_DB_BACKUP_MAX_AGE_HOURS = 36
-export const VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS =
-  VIDEO_DB_BACKUP_MAX_AGE_HOURS * 60 * 60 * 1000
-
-export type VideoDbBackupObjectMetadata = {
-  key?: string
-  size?: number
-  lastModified?: Date
-}
-
-export type VideoDbBackupObjectPage = {
-  objects: readonly VideoDbBackupObjectMetadata[]
-  isTruncated?: boolean
-  nextContinuationToken?: string
-}
-
-type VideoDbBackupFreshnessBase = {
-  evaluatedAt: string
-  thresholdHours: number
-  thresholdMilliseconds: number
-}
-
-export type VideoDbBackupFreshnessAvailable = VideoDbBackupFreshnessBase & {
-  status: "fresh" | "stale"
-  key: string
-  size?: number
-  lastModified: string
-  ageMilliseconds: number
-}
-
-export type VideoDbBackupFreshness =
-  | VideoDbBackupFreshnessAvailable
-  | (VideoDbBackupFreshnessBase & {
-      status: "not-found"
-    })
-  | (VideoDbBackupFreshnessBase & {
-      status: "unavailable-metadata"
-      key: string
-      size?: number
-      reason: "missing-or-invalid-last-modified"
-    })
-
-export class VideoDbBackupError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "VideoDbBackupError"
-  }
-}
-
-function elapsedMilliseconds(startedAt: number): number {
-  return Math.max(0, Math.round(performance.now() - startedAt))
-}
-
-function readFlag(args: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  const match = args.find((arg) => arg.startsWith(prefix))
-  return match?.slice(prefix.length)
-}
-
-function hasFlag(args: readonly string[], name: string): boolean {
-  return args.includes(`--${name}`)
-}
-
-function currentDatabaseUrlEnv(): DatabaseUrlEnv {
-  return {
-    SOURCE_DATABASE_URL: process.env.SOURCE_DATABASE_URL,
-    TARGET_DATABASE_URL: process.env.TARGET_DATABASE_URL,
-    DATABASE_URL: process.env.DATABASE_URL,
-  }
-}
-
-function currentBackupStorageEnv(): BackupStorageEnv {
-  return {
-    RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
-    RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
-    RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
-    RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
-    RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
-  }
-}
-
-function currentBackupDownloadSignerEnv(): BackupDownloadSignerEnv {
-  return {
-    BACKUP_DOWNLOAD_API_KEY: process.env.BACKUP_DOWNLOAD_API_KEY,
-    BACKUP_DOWNLOAD_BASE_URL: process.env.BACKUP_DOWNLOAD_BASE_URL,
-  }
-}
-
-export function parseProfile(raw: string | undefined): VideoDbBackupProfile {
-  const profile = raw ?? "video-core"
-  if (profile in VIDEO_DB_BACKUP_PROFILES) {
-    return profile as VideoDbBackupProfile
-  }
-  throw new VideoDbBackupError(
-    `Unknown profile ${JSON.stringify(profile)}. Use one of: ${Object.keys(
-      VIDEO_DB_BACKUP_PROFILES,
-    ).join(", ")}`,
-  )
-}
-
-export function parseTargetEnv(raw: string | undefined): TargetEnvironment {
-  const targetEnv = raw ?? "development"
-  if (
-    targetEnv === "development" ||
-    targetEnv === "staging" ||
-    targetEnv === "production"
-  ) {
-    return targetEnv
-  }
-  throw new VideoDbBackupError(
-    `Unknown target env ${JSON.stringify(targetEnv)}. Use development, staging, or production.`,
-  )
-}
-
-export function parseArgs(
-  command: "backup" | "restore",
-  args: readonly string[],
-): ParsedArgs {
-  const normalizedArgs = args.filter((arg) => arg !== "--")
-  return {
-    command,
-    profile: parseProfile(readFlag(normalizedArgs, "profile")),
-    outPath: readFlag(normalizedArgs, "out"),
-    inPath: readFlag(normalizedArgs, "in"),
-    s3Key: readFlag(normalizedArgs, "s3-key"),
-    targetEnv: parseTargetEnv(readFlag(normalizedArgs, "target-env")),
-    allowProductionTarget: hasFlag(normalizedArgs, "allow-production-target"),
-    allowStale: hasFlag(normalizedArgs, "allow-stale"),
-    dryRun: hasFlag(normalizedArgs, "dry-run"),
-  }
-}
-
-export function classifyVideoDbBackupFreshness(
-  objects: readonly VideoDbBackupObjectMetadata[],
-  evaluatedAt = new Date(Date.now()),
-): VideoDbBackupFreshness {
-  const evaluation = {
-    evaluatedAt: evaluatedAt.toISOString(),
-    thresholdHours: VIDEO_DB_BACKUP_MAX_AGE_HOURS,
-    thresholdMilliseconds: VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS,
-  }
-  let sawDump = false
-  let unavailable: (VideoDbBackupObjectMetadata & { key: string }) | undefined
-  let latest:
-    | (VideoDbBackupObjectMetadata & { key: string; lastModified: Date })
-    | undefined
-
-  for (const object of objects) {
-    const key = object.key
-    if (typeof key !== "string" || !key.endsWith(".dump")) {
-      continue
-    }
-    sawDump = true
-    const lastModified = object.lastModified
-    if (
-      !(lastModified instanceof Date) ||
-      !Number.isFinite(lastModified.getTime())
-    ) {
-      unavailable ??= { ...object, key }
-      continue
-    }
-    if (!latest || lastModified.getTime() > latest.lastModified.getTime()) {
-      latest = { ...object, key, lastModified }
-    }
-  }
-
-  if (!sawDump) return { status: "not-found", ...evaluation }
-  if (unavailable) {
-    return {
-      status: "unavailable-metadata",
-      key: unavailable.key,
-      size: unavailable.size,
-      reason: "missing-or-invalid-last-modified",
-      ...evaluation,
-    }
-  }
-
-  if (!latest) {
-    throw new VideoDbBackupError(
-      "Video DB backup freshness classification reached an invalid state",
-    )
-  }
-
-  const ageMilliseconds = evaluatedAt.getTime() - latest.lastModified.getTime()
-  return {
-    status:
-      ageMilliseconds <= VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS
-        ? "fresh"
-        : "stale",
-    key: latest.key,
-    size: latest.size,
-    lastModified: latest.lastModified.toISOString(),
-    ageMilliseconds,
-    ...evaluation,
-  }
-}
-
-export async function discoverVideoDbBackupFreshnessFromPages(
-  loadPage: (continuationToken?: string) => Promise<VideoDbBackupObjectPage>,
-): Promise<VideoDbBackupFreshness> {
-  const objects: VideoDbBackupObjectMetadata[] = []
-  let continuationToken: string | undefined
-
-  while (true) {
-    const page = await loadPage(continuationToken)
-    objects.push(...page.objects)
-    if (!page.isTruncated) break
-    if (!page.nextContinuationToken) {
-      throw new VideoDbBackupError(
-        "Backup object listing was truncated without a continuation token",
-      )
-    }
-    continuationToken = page.nextContinuationToken
-  }
-
-  return classifyVideoDbBackupFreshness(objects)
-}
-
-function timestamp(): string {
-  return new Date().toISOString().replace(/[:.]/g, "-")
-}
-
-function defaultOutPath(profile: VideoDbBackupProfile): string {
-  return resolvePath(
-    process.cwd(),
-    ".tmp",
-    "db-backups",
-    `video-db-${profile}-${timestamp()}.dump`,
-  )
-}
-
-function defaultRestoreDownloadPath(profile: VideoDbBackupProfile): string {
-  return resolvePath(
-    process.cwd(),
-    ".tmp",
-    "db-backups",
-    `video-db-${profile}-latest.dump`,
-  )
-}
-
-function normalizeS3Prefix(prefix: string): string {
-  return prefix.replace(/^\/+|\/+$/g, "")
-}
-
-function normalizeBackupObjectKey(key: string): string {
-  return key.replace(/^\/+/, "")
-}
-
-async function prepareOwnerOnlyFile(path: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true })
-  const output = await open(path, "w", 0o600)
-  try {
-    await output.chmod(0o600)
-  } finally {
-    await output.close()
-  }
-}
-
-export function buildBackupObjectKey(
-  profile: VideoDbBackupProfile,
-  outPath: string,
-  keyOverride: string | undefined,
-  _env: BackupStorageEnv,
-): string {
-  if (keyOverride) return normalizeBackupObjectKey(keyOverride)
-
-  const prefix = normalizeS3Prefix("admin-video-db-backups")
-  const filename = basename(outPath)
-  return prefix.length > 0 ? `${prefix}/${profile}/${filename}` : filename
-}
-
-function tableArgs(tables: readonly string[]): string[] {
-  return tables.map((table) => `--table=public.${table}`)
-}
-
-function restoreTableArgs(tables: readonly string[]): string[] {
-  return tables.map((table) => `--table=${table}`)
-}
-
-function quoteTable(table: string): string {
-  return `"public"."${table.replace(/"/g, '""')}"`
-}
-
-function targetCompatibilitySql(tables: readonly string[]): string {
-  const requiredTables = tables
-    .map((table) => `('${table.replace(/'/g, "''")}')`)
-    .join(", ")
-
-  return `WITH required_table(name) AS (VALUES ${requiredTables}), missing_table AS (SELECT name FROM required_table WHERE to_regclass('public.' || quote_ident(name)) IS NULL) SELECT json_build_object('serverVersionNum', current_setting('server_version_num')::integer, 'missingTables', COALESCE((SELECT json_agg(name ORDER BY name) FROM missing_table), '[]'::json), 'vectorExtensionInstalled', EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector'), 'vectorTypeAvailable', to_regtype('public.vector') IS NOT NULL)::text;`
-}
-
-const PRISMA_ONLY_POSTGRES_QUERY_KEYS = [
-  "connection_limit",
-  "pool_timeout",
-  "schema",
-] as const
-
-function normalizeNativePostgresUrl(
-  value: string,
-  role: "source" | "target",
-): string {
-  let url: URL
-  try {
-    url = new URL(value)
-  } catch {
-    throw new VideoDbBackupError(`Invalid PostgreSQL ${role} connection URL`)
-  }
-
-  if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
-    throw new VideoDbBackupError(
-      `Invalid PostgreSQL ${role} connection URL: expected postgres: or postgresql:`,
-    )
-  }
-
-  for (const key of PRISMA_ONLY_POSTGRES_QUERY_KEYS) {
-    url.searchParams.delete(key)
-  }
-  return url.toString()
-}
-
-export function buildBackupPlan(
-  parsed: ParsedArgs,
-  env: DatabaseUrlEnv & BackupStorageEnv = {
-    ...currentDatabaseUrlEnv(),
-    RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
-    RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
-    RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
-    RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
-    RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
-  },
-): BackupPlan {
-  const selectedSource = env.SOURCE_DATABASE_URL ?? env.DATABASE_URL
-  if (!selectedSource) {
-    throw new VideoDbBackupError(
-      "SOURCE_DATABASE_URL or DATABASE_URL is required for backup",
-    )
-  }
-  const source = normalizeNativePostgresUrl(selectedSource, "source")
-
-  const outPath = resolvePath(parsed.outPath ?? defaultOutPath(parsed.profile))
-  const tables = [...VIDEO_DB_BACKUP_PROFILES[parsed.profile]]
-  const upload = resolveBackupUploadPlan(parsed, outPath, env)
-
-  return {
-    mode: "backup",
-    profile: parsed.profile,
-    source,
-    outPath,
-    generatedOutPath: parsed.outPath === undefined,
-    upload,
-    tables,
-    commands: [
-      {
-        command: "pg_dump",
-        args: [
-          "--format=custom",
-          "--data-only",
-          "--no-owner",
-          "--no-acl",
-          "--dbname",
-          source,
-          "--file",
-          outPath,
-          ...tableArgs(tables),
-        ],
-      },
-    ],
-  }
-}
-
-export function resolveBackupUploadPlan(
-  parsed: ParsedArgs,
-  outPath: string,
-  env: BackupStorageEnv,
-): BackupUploadPlan | undefined {
-  const bucket = env.RAILWAY_S3_BUCKET
-
-  if (!bucket) {
-    return undefined
-  }
-
-  const accessKeyId = env.RAILWAY_S3_ACCESS_KEY_ID
-  const secretAccessKey = env.RAILWAY_S3_SECRET_ACCESS_KEY
-  if (!accessKeyId || !secretAccessKey) {
-    throw new VideoDbBackupError(
-      "S3 upload requires RAILWAY_S3_ACCESS_KEY_ID and RAILWAY_S3_SECRET_ACCESS_KEY when RAILWAY_S3_BUCKET is set",
-    )
-  }
-
-  return {
-    bucket,
-    key: buildBackupObjectKey(parsed.profile, outPath, parsed.s3Key, env),
-    endpoint: env.RAILWAY_S3_ENDPOINT,
-    region: env.RAILWAY_S3_REGION ?? "auto",
-    accessKeyId,
-    secretAccessKey,
-  }
-}
-
-function requireBackupStoragePlan(
-  parsed: ParsedArgs,
-  outPath: string,
-  env: BackupStorageEnv = currentBackupStorageEnv(),
-): BackupUploadPlan {
-  const plan = resolveBackupUploadPlan(parsed, outPath, env)
-  if (!plan) {
-    throw new VideoDbBackupError(
-      "RAILWAY_S3_BUCKET is required to download the latest video DB backup",
-    )
-  }
-  return plan
-}
-
-export function buildRestorePlan(
-  parsed: ParsedArgs,
-  env: DatabaseUrlEnv = currentDatabaseUrlEnv(),
-): RestorePlan {
-  const selectedTarget = env.TARGET_DATABASE_URL ?? env.DATABASE_URL
-  if (!selectedTarget) {
-    throw new VideoDbBackupError(
-      "TARGET_DATABASE_URL or DATABASE_URL is required for restore",
-    )
-  }
-  const target = normalizeNativePostgresUrl(selectedTarget, "target")
-  if (!parsed.inPath) {
-    throw new VideoDbBackupError("--in=<dump path> is required for restore")
-  }
-  if (parsed.targetEnv === "production" && !parsed.allowProductionTarget) {
-    throw new VideoDbBackupError(
-      "Refusing production restore without --allow-production-target",
-    )
-  }
-
-  const inPath = resolvePath(parsed.inPath)
-  const tables = [...VIDEO_DB_BACKUP_PROFILES[parsed.profile]]
-  const truncateSql = `TRUNCATE TABLE ${tables
-    .map(quoteTable)
-    .join(", ")} RESTART IDENTITY CASCADE;`
-
-  return {
-    mode: "restore",
-    profile: parsed.profile,
-    target,
-    targetEnv: parsed.targetEnv,
-    inPath,
-    tables,
-    preflightCommands: [
-      {
-        check: "pg-restore-client-version",
-        command: "pg_restore",
-        args: ["--version"],
-      },
-      {
-        check: "psql-client-version",
-        command: "psql",
-        args: ["--version"],
-      },
-      {
-        check: "archive-manifest",
-        command: "pg_restore",
-        args: ["--list", inPath],
-      },
-      {
-        check: "target-compatibility",
-        command: "psql",
-        args: [
-          "--no-align",
-          "--tuples-only",
-          "--set=ON_ERROR_STOP=1",
-          "--dbname",
-          target,
-          "--command",
-          targetCompatibilitySql(tables),
-        ],
-      },
-    ],
-    commands: [
-      {
-        command: "psql",
-        args: [
-          "--set=ON_ERROR_STOP=1",
-          "--dbname",
-          target,
-          "--command",
-          truncateSql,
-        ],
-      },
-      {
-        command: "pg_restore",
-        args: [
-          "--data-only",
-          "--no-owner",
-          "--no-acl",
-          "--single-transaction",
-          "--dbname",
-          target,
-          ...restoreTableArgs(tables),
-          inPath,
-        ],
-      },
-    ],
-  }
-}
+import {
+  type BackupDownloadSignerEnv,
+  type BackupPlan,
+  type BackupPreflightCapture,
+  type BackupStorageEnv,
+  type BackupUploadPlan,
+  type CommandPlan,
+  type DatabaseUrlEnv,
+  type ParsedArgs,
+  type PresignedBackupResponse,
+  type RestorePlan,
+  type RestorePreflightCapture,
+  type RestorePreflightCheck,
+  type VideoDbBackupDownloadResult,
+  type VideoDbBackupFreshness,
+  type VideoDbBackupFreshnessAvailable,
+  type VideoDbBackupJobResult,
+  type VideoDbBackupProfile,
+  VideoDbBackupError,
+  buildBackupPlan,
+  buildRestorePlan,
+  currentBackupDownloadSignerEnv,
+  currentDatabaseUrlEnv,
+  defaultRestoreDownloadPath,
+  discoverVideoDbBackupFreshnessFromPages,
+  elapsedMilliseconds,
+  normalizeBackupObjectKey,
+  parseArgs,
+  prepareOwnerOnlyFile,
+  requireBackupStoragePlan,
+} from "./video-db-backup-core"
+
+export * from "./video-db-backup-core"
 
 function redactUrl(value: string): string {
   try {
@@ -780,6 +101,10 @@ function printablePlan(plan: BackupPlan | RestorePlan): object {
           }
         : null,
       tables: plan.tables,
+      preflightCommands: plan.preflightCommands.map((command) => ({
+        check: command.check,
+        ...printableCommand(command),
+      })),
       commands,
     }
   }
@@ -889,6 +214,7 @@ type TargetCompatibilityState = {
   missingTables: string[]
   vectorExtensionInstalled: boolean
   vectorTypeAvailable: boolean
+  requiredMigrationApplied: boolean
 }
 
 function parseTargetCompatibilityState(
@@ -914,7 +240,9 @@ function parseTargetCompatibilityState(
     !("vectorExtensionInstalled" in value) ||
     typeof value.vectorExtensionInstalled !== "boolean" ||
     !("vectorTypeAvailable" in value) ||
-    typeof value.vectorTypeAvailable !== "boolean"
+    typeof value.vectorTypeAvailable !== "boolean" ||
+    !("requiredMigrationApplied" in value) ||
+    typeof value.requiredMigrationApplied !== "boolean"
   ) {
     throw new VideoDbBackupError(
       "Restore preflight target compatibility output was invalid",
@@ -941,6 +269,61 @@ function validateTargetCompatibility(output: string): void {
       "Restore target requires the pgvector extension and public.vector type",
     )
   }
+  if (!state.requiredMigrationApplied) {
+    throw new VideoDbBackupError(
+      "Restore target must have migration 0047_video_locale_search_social_metadata applied",
+    )
+  }
+}
+
+type SourceProfileCompatibilityState = {
+  externalSocialImageReferences: number
+}
+
+function validateSourceProfileCompatibility(output: string): void {
+  let value: unknown
+  try {
+    value = JSON.parse(output.trim())
+  } catch {
+    throw new VideoDbBackupError(
+      "Backup preflight source compatibility output was invalid",
+    )
+  }
+
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("externalSocialImageReferences" in value) ||
+    !Number.isInteger(value.externalSocialImageReferences)
+  ) {
+    throw new VideoDbBackupError(
+      "Backup preflight source compatibility output was invalid",
+    )
+  }
+
+  const state = value as SourceProfileCompatibilityState
+  if (state.externalSocialImageReferences > 0) {
+    throw new VideoDbBackupError(
+      "Video DB backup profile excludes editorial media assets but the source has video locale social image references",
+    )
+  }
+}
+
+async function runBackupPreflight(
+  plan: BackupPlan,
+  capture: BackupPreflightCapture,
+): Promise<void> {
+  for (const command of plan.preflightCommands) {
+    let output: string
+    try {
+      output = await capture(command)
+    } catch {
+      throw new VideoDbBackupError(
+        "Backup preflight could not verify source profile compatibility",
+      )
+    }
+    validateSourceProfileCompatibility(output)
+  }
 }
 
 function captureFailureMessage(check: RestorePreflightCheck): string {
@@ -951,6 +334,8 @@ function captureFailureMessage(check: RestorePreflightCheck): string {
       return "Restore preflight could not verify the PostgreSQL 18 psql client"
     case "archive-manifest":
       return "Restore preflight could not read the archive with the PostgreSQL 18 pg_restore client"
+    case "archive-payload":
+      return "Restore preflight could not decode the selected archive payload"
     case "target-compatibility":
       return "Restore preflight could not verify target schema, pgvector, and PostgreSQL version prerequisites"
   }
@@ -977,6 +362,8 @@ async function runRestorePreflight(
         break
       case "archive-manifest":
         validateArchiveManifest(plan, output)
+        break
+      case "archive-payload":
         break
       case "target-compatibility":
         validateTargetCompatibility(output)
@@ -1166,10 +553,28 @@ async function requestPresignedBackupDownload(
 
   if (!response.ok) {
     let message = `Backup download signer returned ${response.status}`
-    if (response.status === 404) {
-      message = `No video DB backup objects were found for ${parsed.profile}`
-    } else if (response.status === 503) {
-      message = `Video DB backup freshness metadata is unavailable for ${parsed.profile}`
+    let errorCode: string | undefined
+    try {
+      const errorPayload = (await response.json()) as { error?: unknown }
+      if (typeof errorPayload.error === "string") {
+        errorCode = errorPayload.error
+      }
+    } catch {
+      // Keep the status-only fallback for malformed or non-JSON responses.
+    }
+    switch (errorCode) {
+      case "backup-not-found":
+        message = `No video DB backup objects were found for ${parsed.profile}`
+        break
+      case "backup-freshness-unavailable":
+        message = `Video DB backup freshness metadata is unavailable for ${parsed.profile}`
+        break
+      case "backup-storage-not-configured":
+        message = "Video DB backup storage is not configured"
+        break
+      case "backup-storage-unavailable":
+        message = "Video DB backup storage is unavailable"
+        break
     }
     throw new VideoDbBackupError(message)
   }
@@ -1368,6 +773,7 @@ export async function executeBackupPlan(
 
   try {
     const exportStartedAt = performance.now()
+    await runBackupPreflight(plan, captureCommand)
     await runPlan(plan)
     const exportDurationMs = elapsedMilliseconds(exportStartedAt)
     const dumpSize = (await stat(plan.outPath)).size
@@ -1463,6 +869,11 @@ export async function main(
 export async function restoreLatestMain(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<void> {
+  if (argv.some((arg) => arg.startsWith("--in="))) {
+    throw new VideoDbBackupError(
+      "restore:video-db:latest does not accept --in; it restores the verified downloaded snapshot",
+    )
+  }
   const parsed = parseArgs("restore", argv)
   const generatedOutPath = parsed.outPath === undefined
   const outPath = restoreDownloadPath(parsed)

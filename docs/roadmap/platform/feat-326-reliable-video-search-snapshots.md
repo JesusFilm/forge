@@ -1,7 +1,7 @@
 ---
 id: "feat-326"
 title: "Reliable video search snapshots"
-owner: "codex"
+owner: "nisal"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-08-02"
@@ -27,22 +27,26 @@ local development.
 
 ## Entry Points — Read These First
 
-1. `apps/admin/src/scripts/video-db-backup.ts` — profile manifests, native
-   backup and restore commands, object discovery, and latest restore flow.
-2. `apps/admin/src/scripts/video-db-backup.test.ts` — command, profile, and
-   restore regression tests.
-3. `apps/admin/src/app/api/internal/video-db-backups/presign/route.ts` —
+1. `apps/admin/src/scripts/video-db-backup-core.ts` — profile manifests,
+   native URL boundary, and backup/restore plans.
+2. `apps/admin/src/scripts/video-db-backup.ts` — native process execution,
+   object discovery, and latest restore flow.
+3. `apps/admin/src/scripts/video-db-backup.test.ts`,
+   `video-db-backup-restore.test.ts`, and `video-db-backup-latest.test.ts` —
+   focused profile, process, and latest-download contracts.
+4. `apps/admin/src/app/api/internal/video-db-backups/presign/route.ts` —
    production latest-object signer.
-4. `apps/admin/src/services/video-db-backup/job.ts` — scheduled profile job
+5. `apps/admin/src/services/video-db-backup/job.ts` — scheduled profile job
    result persisted to the workflow ledger.
-5. `docs/plans/2026-08-02-001-fix-reliable-video-search-snapshots-plan.md` —
+6. `docs/plans/2026-08-02-001-fix-reliable-video-search-snapshots-plan.md` —
    accepted product and implementation contract.
 
 ## Grep These
 
 - `buildBackupPlan`
 - `buildRestorePlan`
-- `findLatestBackupObject`
+- `discoverLatestBackupFreshness`
+- `discoverVideoDbBackupFreshnessFromPages`
 - `restoreLatestMain`
 - `SCHEDULED_VIDEO_DB_BACKUP_PROFILES`
 

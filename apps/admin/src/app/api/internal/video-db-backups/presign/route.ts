@@ -12,7 +12,7 @@ import {
   type VideoDbBackupFreshness,
   type VideoDbBackupProfile,
   VIDEO_DB_BACKUP_PROFILES,
-} from "@/scripts/video-db-backup"
+} from "@/scripts/video-db-backup-core"
 
 export const runtime = "nodejs"
 

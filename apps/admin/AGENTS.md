@@ -59,6 +59,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   `DATABASE_URL_SYNC`, and never remove their Prisma `connection_limit` or
   `pool_timeout` settings: embedding backfill concurrency and Core Sync pool
   isolation rely on those application URLs.
+- Preserve libpq multi-host authorities and raw percent encoding when removing
+  Prisma-only URL keys. Scheduled exports require bucket storage, refuse
+  external `video_locale.social_image_asset_id` references outside the reviewed
+  profile, and restore preflight decodes the archive payload before truncate.
 - Localized Core content that is user-facing, retrieval-relevant, or UI-edited
   belongs in per-locale rows (`VideoLocale`, `VideoStudyQuestion`,
   `LanguageLocale`, `CountryLocale`, `ContinentLocale`). Legacy JSON `name`

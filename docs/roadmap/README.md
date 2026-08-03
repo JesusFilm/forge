@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 2, 2026)
+## Status (August 3, 2026)
 
 - **Total tickets:** 469
 - **Complete:** 359
 - **In progress:** 35
 - **Not started:** 26
 - **Blocked:** 49
-- **Overdue and not complete:** 92
+- **Overdue and not complete:** 93
 
 ## Feature Index
 
@@ -207,7 +207,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-301](platform/feat-301-watch-canonical-server-action-origins.md) | Allow canonical Watch Server Action origins | unassigned | P0 | 2026-07-23 | 1 | 2026-07-23 | in-progress |
 | [feat-321](platform/feat-321-watch-download-redirects.md) | Redirect Watch downloads off Web | vlad | P0 | 2026-07-27 | 1 | 2026-07-27 | complete |
 | [feat-325](platform/feat-325-recover-watch-video-search-metadata-migration.md) | Recover Watch video search metadata migration | codex | P0 | 2026-08-01 | 1 | 2026-08-01 | complete |
-| [feat-326](platform/feat-326-reliable-video-search-snapshots.md) | Reliable video search snapshots | codex | P0 | 2026-08-02 | 1 | 2026-08-02 | in-progress |
+| [feat-326](platform/feat-326-reliable-video-search-snapshots.md) | Reliable video search snapshots | nisal | P0 | 2026-08-02 | 1 | 2026-08-02 | in-progress |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md) | Watch Russian authored content localization | unassigned | P1 | — | 2 | — | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility | tataihono | P1 | 2026-04-01 | 1 | 2026-04-01 | complete |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md) | Scaffolding Support for Urim | tataihono | P1 | 2026-04-07 | 21 | 2026-04-27 | blocked |

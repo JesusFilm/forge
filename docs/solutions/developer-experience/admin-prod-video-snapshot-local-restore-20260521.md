@@ -29,8 +29,8 @@ pnpm --filter @forge/admin restore:video-db:latest -- --target-env=development
 ```
 
 That command is intentionally narrow. It restores the reviewed video/content
-slice from `apps/admin/src/scripts/video-db-backup.ts`, not admin users and not
-a full production database clone.
+slice defined in `apps/admin/src/scripts/video-db-backup-core.ts`, not admin
+users and not a full production database clone.
 
 The default `video-core` profile restores catalog data without embedding
 tables. To restore the stored transcript/scene vectors as well, explicitly use
@@ -46,12 +46,15 @@ This copies vectors already present in the production snapshot. It does not
 run `run-embeds`, call an embedding provider, or check embedding readiness.
 
 Before any target data is changed, restore preflight requires PostgreSQL 18 or
-newer `pg_restore` and `psql` clients, proves the custom archive is readable,
-matches its `TABLE DATA` entries exactly to the selected profile, and verifies
-the target server major, reviewed public tables, pgvector extension, and
-`public.vector` type. A wrong-profile or structurally incompatible archive
-stops before truncate. Use `--dry-run` to inspect this ordered plan; database
-credentials are redacted.
+newer `pg_restore` and `psql` clients, matches the custom archive's `TABLE DATA`
+entries exactly to the selected profile, decodes the selected payload to
+`/dev/null`, and verifies the target server major, reviewed public tables,
+pgvector extension, `public.vector` type, and migration
+`0047_video_locale_search_social_metadata`. A wrong-profile, truncated, or
+structurally incompatible archive stops before truncate. Use `--dry-run` to
+inspect this ordered plan; database credentials are redacted. The latest
+command rejects `--in`, keeping the verified downloaded object identical to
+the destructive restore input.
 
 ## Guidance
 
@@ -86,6 +89,16 @@ native-client URL. It does not modify `DATABASE_URL` or `DATABASE_URL_SYNC`.
 Keep their pool settings intact: transcript embedding backfills deliberately
 cap concurrency at 5 against the documented main `connection_limit=10` pool,
 and Core Sync relies on its separately sized pool and longer timeout.
+The filter preserves the raw libpq URI outside those exact keys, including
+comma-separated failover hosts and percent-encoded supported option values.
+
+Scheduled exports require bucket configuration before native work starts. The
+profile intentionally excludes editorial media assets and Admin users, so
+source preflight also refuses a non-null
+`video_locale.social_image_asset_id`; that produces an explicit failed profile
+instead of a dump that would violate the pristine target's foreign key. If the
+snapshot contract later needs social-image identity, add a reviewed sanitized
+dependency closure rather than broadening it to Admin users.
 
 Latest discovery reads every object-listing page and classifies the selected
 artifact against a 36-hour threshold. A stale latest artifact stops before
@@ -303,5 +316,6 @@ To shut down the temporary database after testing:
 - `apps/admin/AGENTS.md` lists the local-dev restore scripts.
 - `apps/admin/CLAUDE.md` documents the video DB backup prefix and presigned
   restore flow.
-- `apps/admin/src/scripts/video-db-backup.ts` is the source of truth for the
-  reviewed backup profiles and restore behavior.
+- `apps/admin/src/scripts/video-db-backup-core.ts` is the source of truth for
+  reviewed profiles and plans; `video-db-backup.ts` owns native execution and
+  latest download orchestration.

@@ -472,6 +472,18 @@ client URL with only those reviewed options removed, and leaves
 `process.env.DATABASE_URL` and `DATABASE_URL_SYNC` unchanged. This boundary is
 load-bearing: transcript embedding concurrency is budgeted against the main
 `connection_limit=10` pool, while Core Sync uses its separately sized pool.
+The native URL filter operates on the raw query component so libpq multi-host
+authorities and percent-encoded supported values are preserved byte-for-byte.
+Scheduled/generated exports also require configured bucket storage before any
+native process starts; only an explicit developer-owned `--out` may omit an
+upload destination.
+
+The reviewed profiles intentionally exclude editorial `media_asset` rows and
+Admin users. Before `pg_dump`, source preflight therefore requires every
+`video_locale.social_image_asset_id` to be null. A non-null reference fails the
+profile attempt visibly instead of publishing an archive that cannot restore
+into a pristine database. If snapshots later need social-image identity,
+design a sanitized dependency closure rather than silently adding Admin users.
 
 Successful workflow-ledger results retain dump size, export duration, upload
 duration, profile, and exact bucket key. A completed dump logs size and export
@@ -540,6 +552,12 @@ Latest restore selects `video-core` by default. Pass
 object discovery is paginated and snapshots older than 36 hours stop before
 download unless the operator explicitly passes `--allow-stale`. Restore logs
 the preflight/import duration after success.
+Restore preflight requires migration
+`0047_video_locale_search_social_metadata`, validates the exact table-data
+manifest, and fully decodes the selected payload to `/dev/null` before the
+existing truncate. `restore:video-db:latest` rejects caller-supplied `--in` so
+the archive named by freshness metadata is always the archive handed to
+`pg_restore`.
 
 The incremental Railway bill is driven by the compressed artifact size and
 measured export/upload runtime, not embedding API usage. At current published
