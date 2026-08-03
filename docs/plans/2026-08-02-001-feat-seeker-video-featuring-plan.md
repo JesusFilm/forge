@@ -114,6 +114,13 @@ findings, which this plan's decisions cite:
   locale `en` almost every playable row is `target_audio`, so English-only
   testing leaves any target-audio filter **vacuously green** — the identified
   test blind spot (see Test Strategy).
+
+  > **Correction (2026-08-03, U1 implementation):** playable fallback rows
+  > are `related_language`'s shape — `watchabilityFromSubtitle` hardcodes
+  > `playbackId: null`, so a playable `target_subtitle` row is unreachable
+  > through the playability filter today. The E10 blind-spot TEST requirement
+  > stands unchanged (client-level fixtures need no production reachability).
+
 - **E11 — Browser→Mux playback needs no chat egress change.** The browser
   talks to `stream.mux.com` / `image.mux.com` directly; chat's production
   egress pin (`SEEKER_MASTRA_ALLOWED_HOSTS`) covers only chat-server→Mastra.
@@ -486,6 +493,19 @@ or GraphQL surface is involved.
   dropped regardless of availability kind.
 - Route shape: `routes.test.ts` asserts the serialized response carries
   `availability.kind` for a playable fixture.
+
+> **Correction (2026-08-03, U1 implementation):** the kind-fidelity
+> scenario's parenthetical mischaracterizes `target_subtitle` — "a playable
+> dub in another language" is `related_language`'s shape.
+> `watchabilityFromSubtitle` hardcodes `playbackId: null`, so a playable
+> `target_subtitle` row is unreachable through the playability filter today;
+> only `target_audio` and `related_language` reach this endpoint's wire. The
+> scenario stands: the fixture is deliberately synthetic (labeled in-place)
+> and pins the no-kind-filter contract, and the U1 suite's playable
+> `related_language` fixture covers the production-reachable fallback shape.
+> Practical consequence for U2/feat-327: its `target_audio`-only filter will
+> in practice only ever see `target_audio` / `related_language` from this
+> route unless upstream watchability semantics change.
 
 **Verification:** admin unit suite green; typecheck green. No env, migration,
 or codegen surface is touched.

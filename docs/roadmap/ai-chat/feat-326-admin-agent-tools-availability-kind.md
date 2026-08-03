@@ -26,6 +26,18 @@ FALLBACK row (`availability.kind` of `target_subtitle` / `related_language` —
 e.g. an English dub offered for a non-English query). Today the projection
 drops availability entirely.
 
+> **Correction (2026-08-03, during U1 implementation):** the fallback example
+> above overstates `target_subtitle` — a playable row cannot currently be a
+> `target_subtitle` row: `watchabilityFromSubtitle`
+> (`apps/admin/src/services/search-watchability.ts`) hardcodes
+> `playbackId: null`, so only `target_audio` and `related_language` rows pass
+> the playability filter today. "A playable dub in another language" is
+> `related_language`'s shape. The required playable `target_subtitle` test
+> fixture stands — it is deliberately synthetic, labeled as such in-place,
+> and pins the no-kind-filter contract for kinds a future upstream change
+> could make playable; the suite's playable `related_language` fixture covers
+> the production-reachable fallback shape.
+
 This is the arc's PR 1 — tiny, additive, admin-only. Template: PR
 [#1789](https://github.com/JesusFilm/forge/pull/1789) (commit `546a4361`),
 which added `playbackId`/`durationSeconds`/`languageSlug` the same way.
