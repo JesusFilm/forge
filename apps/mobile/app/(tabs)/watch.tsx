@@ -345,7 +345,6 @@ export default function DiscoverScreen() {
         setResultsKey((k) => k + 1)
 
         const { outcome, result_count } = resolveWatchSearchOutcome({
-          term: trimmed,
           results: page.results,
         })
         datadogLog.info("watch_search", {
@@ -479,7 +478,6 @@ export default function DiscoverScreen() {
       setNextOffset(page.nextOffset)
 
       const { outcome, result_count } = resolveWatchSearchOutcome({
-        term,
         results: page.results,
       })
       datadogLog.info("watch_search", {
