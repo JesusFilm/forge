@@ -12,13 +12,40 @@ const combinedError = (code?: string) =>
     errors: [{ message: "boom", extensions: code ? { code } : undefined }],
   })
 
+const V4_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+// Admin's request-id validator; ids outside this shape are dropped server-side.
+const ADMIN_REQUEST_ID = /^[A-Za-z0-9_-]{8,80}$/
+
 describe("generateSearchRequestId", () => {
-  it("returns a distinct, monotonic id on each call", () => {
+  it("returns a distinct v4 uuid on each call", () => {
     const a = generateSearchRequestId()
     const b = generateSearchRequestId()
     expect(a).not.toBe(b)
-    expect(a).toMatch(/^search-\d+$/)
-    expect(b).toMatch(/^search-\d+$/)
+    expect(a).toMatch(V4_UUID)
+    expect(b).toMatch(V4_UUID)
+  })
+
+  it("satisfies admin's request-id pattern", () => {
+    expect(generateSearchRequestId()).toMatch(ADMIN_REQUEST_ID)
+  })
+
+  it("still returns a v4-shaped id when crypto.randomUUID is absent (Hermes)", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto")
+    Object.defineProperty(globalThis, "crypto", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    })
+    try {
+      const id = generateSearchRequestId()
+      expect(id).toMatch(V4_UUID)
+      expect(id).toMatch(ADMIN_REQUEST_ID)
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, "crypto", descriptor)
+      else delete (globalThis as { crypto?: unknown }).crypto
+    }
   })
 })
 

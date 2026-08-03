@@ -1,17 +1,16 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import { uuidV4Fallback } from "./viewer-id"
 
 // Pure, React-free helpers for the watch_search Log (search screen), so
 // request-id generation, outcome selection, and error-code classification are
 // unit-testable without the native Datadog SDK. The emit stays in watch.tsx.
 
-// Monotonic per-process counter — a stable, unique id per search that a result
-// click can join back to. No Date.now()/Math.random() at import time.
-let searchRequestCounter = 0
-
-/** Fresh correlation id for one search; monotonic within the JS process. */
+/** Fresh correlation id for one search — unique across installs, not per-process. */
 export function generateSearchRequestId(): string {
-  searchRequestCounter += 1
-  return `search-${searchRequestCounter}`
+  const runtimeCrypto = (
+    globalThis as { crypto?: { randomUUID?: () => string } }
+  ).crypto
+  return runtimeCrypto?.randomUUID?.() ?? uuidV4Fallback()
 }
 
 // Admin returns these in a 200 body; Apollo v4 throws CombinedGraphQLErrors
