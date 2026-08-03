@@ -378,12 +378,22 @@ describe("syncVideoSubtitles", () => {
     expect(prisma.$executeRaw).not.toHaveBeenCalled()
   })
 
-  it("fails closed and skips deletes when a Core subtitle cannot resolve its Admin parent", async () => {
-    mockedCoreQuery.mockResolvedValueOnce(
-      coreRowsPage([
-        coreSubtitle({ videoEdition: { id: "missing-edition-core" } }),
-      ]) as never,
-    )
+  it("tracks Core subtitles with missing Admin parents as unattachable skips", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(
+        coreRowsPage([
+          coreSubtitle({
+            id: "subtitle-core-missing-parent",
+            videoId: "missing-video-core",
+          }),
+        ]) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-missing-parent"]) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-missing-parent"]) as never,
+      )
     const { prisma, tx } = harness()
 
     const stats = await syncVideoSubtitles({
@@ -392,9 +402,9 @@ describe("syncVideoSubtitles", () => {
     })
 
     expect(tx.$executeRaw).not.toHaveBeenCalled()
-    expect(stats.errors).toBe(1)
-    expect(prisma.$executeRaw).not.toHaveBeenCalled()
-    expect(mockedCoreQuery).toHaveBeenCalledOnce()
+    expect(stats).toMatchObject({ errors: 0, updated: 0 })
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
+    expect(mockedCoreQuery).toHaveBeenCalledTimes(3)
   })
 
   it("fails closed and skips deletes when a Core page request fails", async () => {

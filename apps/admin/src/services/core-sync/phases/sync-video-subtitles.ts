@@ -324,6 +324,7 @@ export async function syncVideoSubtitles({
   since?: string
 }): Promise<SyncStats> {
   const stats = { ...emptySyncStats }
+  const skippedMissingParentIds = new Set<string>()
 
   const [videos, languages, editions] = await Promise.all([
     prisma.video.findMany({ select: { id: true, coreId: true } }),
@@ -396,6 +397,7 @@ export async function syncVideoSubtitles({
           const videoEditionId = editionMap.get(subtitle.videoEdition.id)
           if (!videoId || !videoEditionId) {
             pageSkippedMissingParent++
+            skippedMissingParentIds.add(subtitle.id)
             if (missingParentSamples.length < 5) {
               missingParentSamples.push({
                 subtitleId: subtitle.id,
@@ -430,7 +432,6 @@ export async function syncVideoSubtitles({
 
       stats.updated += pageUpdated
       if (pageSkippedMissingParent > 0) {
-        stats.errors++
         console.warn(
           JSON.stringify({
             event: "core-sync.video-subtitle.skipped-missing-parent",
@@ -557,6 +558,9 @@ export async function syncVideoSubtitles({
   }
 
   const remainingMissingAdminIds = difference(inventory.ids, activeAdminIds)
+  for (const subtitleId of skippedMissingParentIds) {
+    remainingMissingAdminIds.delete(subtitleId)
+  }
   if (remainingMissingAdminIds.size > 0) {
     stats.errors++
     console.error(
