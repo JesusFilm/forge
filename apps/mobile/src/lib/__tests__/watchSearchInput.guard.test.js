@@ -12,6 +12,15 @@ const path = require("path")
 // builder — every request routes through buildWatchSearchInput.
 const ALLOWED = new Set(["src/lib/watchSearch.ts"])
 
+// The event-mutation files (feat-334 U5) carry `routeLanguageSlug` as the
+// recordWatchSearchEvent wire VARIABLE pinned to null — not a search input
+// key. Only that key is tolerated there; every other key still flags.
+const TOLERATED_KEYS = new Map([
+  ["src/lib/queries.ts", /\brouteLanguageSlug\b/g],
+  ["src/lib/watchSearchEvents.ts", /\brouteLanguageSlug\b/g],
+  ["src/lib/watchSearchEvents.test.ts", /\brouteLanguageSlug\b/g],
+])
+
 // Bare identifier, not `key:` — shorthand (`{ displayLanguageSlug }`) and a
 // spread override would slip past a colon-anchored pattern. Matches the sibling
 // useManagedVideoPlayer guard; these names appear nowhere else in src/app.
@@ -23,14 +32,14 @@ const LANGUAGE_INPUT_KEY =
 function findInlineLanguageInput(entries) {
   return entries
     .filter((entry) => !ALLOWED.has(entry.relative))
-    .filter((entry) =>
-      entry.content
-        .split("\n")
-        .some(
-          (line) =>
-            !/^\s*(\/\/|\*|\/\*)/.test(line) && LANGUAGE_INPUT_KEY.test(line),
-        ),
-    )
+    .filter((entry) => {
+      const tolerated = TOLERATED_KEYS.get(entry.relative)
+      return entry.content.split("\n").some((line) => {
+        if (/^\s*(\/\/|\*|\/\*)/.test(line)) return false
+        const effective = tolerated ? line.replace(tolerated, "") : line
+        return LANGUAGE_INPUT_KEY.test(effective)
+      })
+    })
     .map((entry) => entry.relative)
 }
 
@@ -88,12 +97,23 @@ describe("watchSearch language input stays behind the builder", () => {
         relative: "src/lib/watchSearch.ts",
         content: "displayLanguageSlug: SEARCH_LANGUAGE_SLUG,",
       },
+      {
+        // Tolerated: the event mutation's wire variable, not a search input.
+        relative: "src/lib/watchSearchEvents.ts",
+        content: "  routeLanguageSlug: null,",
+      },
+      {
+        // The tolerance is per-KEY: any other key in a tolerated file flags.
+        relative: "src/lib/queries.ts",
+        content: '  routeLanguageSlug: null,\n  displayLanguageSlug: "en",',
+      },
     ])
     expect(offenders).toEqual([
       "app/(tabs)/watch.tsx",
       "src/components/search/Rogue.tsx",
       "src/components/search/Shorthand.tsx",
       "src/components/search/Spread.tsx",
+      "src/lib/queries.ts",
     ])
   })
 })
