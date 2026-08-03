@@ -3,7 +3,7 @@ id: "feat-326"
 title: "Admin agent-tools search-videos: expose availability.kind"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-03"
 duration: 1
 depends_on: []
@@ -13,6 +13,18 @@ tags:
   - "ai-pipeline"
   - "search"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-03 via [PR #1813](https://github.com/JesusFilm/forge/pull/1813) (`feat(admin): expose availability.kind on agent-tools search-videos (ai-chat feat-326)`).
+
+**What landed.** The nested `availability: { kind }` projection exactly per the brief — report-only, no server-side kind filtering, in-process twin untouched. The notable discovery: the brief's own fallback example overstated `target_subtitle` — `watchabilityFromSubtitle` hardcodes `playbackId: null`, so a playable `target_subtitle` row is structurally unreachable through the playability filter today (see the dated correction notes in this ticket and the arc plan, incl. E10). The REQUIRED playable `target_subtitle` fixture ships as a deliberately synthetic, self-labeled contract pin with a dated verified-by-hand stamp; the playable `related_language` fixture covers the production-reachable fallback shape. A platform-lane feat-326 was created independently on main the same weekend — cross-lane duplicate IDs are accepted lane convention; this is the ai-chat feat-326.
+
+**Compound docs.** [mocked-shape-vs-real-contract-discipline-20260506.md](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — twenty-second worked instance ("deliberately synthetic contract-pinning fixture unlabeled as synthetic") + prevention checklist item 8.
+
+**Residual risk / follow-ups.** The reachable-kind invariant is unpinned: a future watchability change letting subtitle rows carry a dub's playbackId would silently make `target_subtitle` reachable with no test going red (`watchabilityFromSubtitle` is unexported; a real-DB smoke was out of scope). feat-327 should treat "only `target_audio`/`related_language` arrive from this route" as an observation, not a contract.
+
+**Unblocked.** [feat-327](feat-327-seeker-video-tools-result-projection.md).
 
 ## Problem
 
@@ -25,6 +37,18 @@ response filters `playbackId !== null` but a playable row can still be a
 FALLBACK row (`availability.kind` of `target_subtitle` / `related_language` —
 e.g. an English dub offered for a non-English query). Today the projection
 drops availability entirely.
+
+> **Correction (2026-08-03, during U1 implementation):** the fallback example
+> above overstates `target_subtitle` — a playable row cannot currently be a
+> `target_subtitle` row: `watchabilityFromSubtitle`
+> (`apps/admin/src/services/search-watchability.ts`) hardcodes
+> `playbackId: null`, so only `target_audio` and `related_language` rows pass
+> the playability filter today. "A playable dub in another language" is
+> `related_language`'s shape. The required playable `target_subtitle` test
+> fixture stands — it is deliberately synthetic, labeled as such in-place,
+> and pins the no-kind-filter contract for kinds a future upstream change
+> could make playable; the suite's playable `related_language` fixture covers
+> the production-reachable fallback shape.
 
 This is the arc's PR 1 — tiny, additive, admin-only. Template: PR
 [#1789](https://github.com/JesusFilm/forge/pull/1789) (commit `546a4361`),
