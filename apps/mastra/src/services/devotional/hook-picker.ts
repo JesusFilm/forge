@@ -3,6 +3,7 @@ import { z } from "zod"
 import { getFirecrawlConfig, type FirecrawlConfig } from "../../config/env"
 import { searchFirecrawl } from "../firecrawl-client"
 import type { DevotionalLlm } from "./llm"
+import { requireAuthoredPrompt, type HolidayTable } from "./authored-data"
 import { MAX_DEVOTIONAL_SHORT_TEXT, type Hook } from "./types"
 
 /**
@@ -20,54 +21,6 @@ const MAX_NEWS_CANDIDATES = 6
  * (Easter, Pentecost, Good Friday) are intentionally omitted — they cannot be
  * keyed by MM-DD and would need a computed liturgical calendar.
  */
-const HOLIDAY_TABLE: Record<string, { title: string; summary: string }> = {
-  "01-01": {
-    title: "New Year's Day",
-    summary:
-      "A threshold moment — looking back with gratitude and forward with hope.",
-  },
-  "01-06": {
-    title: "Epiphany",
-    summary:
-      "The revealing of Christ to the nations, remembered with the visit of the magi.",
-  },
-  "10-31": {
-    title: "Reformation Day",
-    summary:
-      "A day recalling renewal and return to scripture in the life of the church.",
-  },
-  "11-01": {
-    title: "All Saints' Day",
-    summary:
-      "Remembering the faithful who have gone before across every nation and age.",
-  },
-  "12-24": {
-    title: "Christmas Eve",
-    summary:
-      "The eve of the Nativity — waiting on the edge of the story of God-with-us.",
-  },
-  "12-25": {
-    title: "Christmas Day",
-    summary: "The birth of Jesus — the Word made flesh, dwelling among us.",
-  },
-}
-
-const NEWS_SYSTEM_PROMPT = [
-  "You select one current world-news item to anchor a daily Christian devotional.",
-  "Choose a broadly relevant, widely understood event — not a niche or local story.",
-  "Frame it neutrally: do NOT take a partisan or political side, do NOT name parties,",
-  "candidates, or campaigns, and do NOT frame any tragedy opportunistically.",
-  "If no candidate is suitable for a respectful devotional, return chosen=false.",
-  "Return JSON only.",
-].join("\n")
-
-const QUESTION_SYSTEM_PROMPT = [
-  "You write one short, intriguing, open-hearted question to open a daily",
-  "Christian devotional when there is no timely news or holiday hook.",
-  "It should invite reflection and feel evergreen, not tied to any current event.",
-  "Return JSON only.",
-].join("\n")
-
 const NewsSelectionSchema = z
   .object({
     chosen: z.boolean(),
@@ -142,6 +95,9 @@ export type PickHookOptions = {
   llm: DevotionalLlm
   search?: HookSearchFn
   firecrawlConfig?: FirecrawlConfig
+  holidays?: HolidayTable
+  newsSystemPrompt?: string
+  questionSystemPrompt?: string
 }
 
 function holidayKey(date: string): string {
@@ -195,7 +151,7 @@ async function tryNewsHook(
 
   try {
     const selection = await options.llm.complete({
-      system: NEWS_SYSTEM_PROMPT,
+      system: requireAuthoredPrompt(options.newsSystemPrompt),
       user: [
         `Date: ${options.date}`,
         "Candidate news items:",
@@ -232,8 +188,8 @@ async function tryNewsHook(
   }
 }
 
-function holidayHook(date: string): Hook | null {
-  const entry = HOLIDAY_TABLE[holidayKey(date)]
+function holidayHook(date: string, holidays: HolidayTable): Hook | null {
+  const entry = holidays[holidayKey(date)]
   if (!entry) return null
   return {
     type: "holiday",
@@ -245,7 +201,7 @@ function holidayHook(date: string): Hook | null {
 
 async function questionHook(options: PickHookOptions): Promise<Hook> {
   const result = await options.llm.complete({
-    system: QUESTION_SYSTEM_PROMPT,
+    system: requireAuthoredPrompt(options.questionSystemPrompt),
     user: `Date: ${options.date}. Write one intriguing opening question and a one-sentence summary.`,
     jsonSchema: QUESTION_JSON_SCHEMA,
     schema: QuestionSchema,
@@ -261,21 +217,23 @@ async function questionHook(options: PickHookOptions): Promise<Hook> {
 }
 
 export async function pickHook(options: PickHookOptions): Promise<Hook> {
+  if (!options.holidays) {
+    throw new Error(
+      "/inputs/calendar/holidays.json: holiday configuration is required",
+    )
+  }
   const firecrawlConfig = options.firecrawlConfig ?? getFirecrawlConfig()
   const search = options.search ?? defaultHookSearch
 
   const news = await tryNewsHook(options, firecrawlConfig, search)
   if (news) return news
 
-  const holiday = holidayHook(options.date)
+  const holiday = holidayHook(options.date, options.holidays)
   if (holiday) return holiday
 
   return questionHook(options)
 }
 
 export const _internal = {
-  HOLIDAY_TABLE,
-  NEWS_SYSTEM_PROMPT,
-  QUESTION_SYSTEM_PROMPT,
   holidayKey,
 }

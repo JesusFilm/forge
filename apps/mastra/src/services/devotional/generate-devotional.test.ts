@@ -29,6 +29,25 @@ const corpora: ReflectionCorpora = {
 }
 
 const deps = {
+  chapters: [
+    {
+      index: 19,
+      id: "1_jf6119-0-0",
+      title: "Jesus Calms the Storm",
+      start: "0:45:44",
+    },
+  ],
+  passages: [
+    {
+      index: 19,
+      osisRef: "Luke.8.22-Luke.8.25",
+      reference: "Luke 8:22-25",
+      mood: "peace" as const,
+      themes: ["peace", "trust"],
+    },
+  ],
+  hookStyles: ["a bold statement"],
+  voiceRotation: ["male-d", "male-e", "female-c"],
   corpora,
   selectScripture: vi.fn().mockResolvedValue({
     reference: "Luke 8:25",

@@ -6,7 +6,6 @@ import type { DevotionalLlm } from "./llm"
 import { hookStyleForSequence, writeDevotionalCopy } from "./devotional-copy"
 import { selectScriptureForPassage } from "./passage-scripture"
 import {
-  loadReflectionCorpora,
   matchReflection,
   selectReflection,
   shortlistSpurgeonByTheme,
@@ -15,8 +14,10 @@ import {
 } from "./reflection-corpus"
 import {
   chapterWithPassage,
+  type ChapterPassage,
   type ChapterWithPassage,
 } from "./jesus-film-passages"
+import type { JesusFilmChapter } from "./jesus-film-catalog"
 import { modernizeReflection } from "./reflection-modernizer"
 import { pickReflectionHighlights } from "./reflection-highlighter"
 import { splitReflection } from "./reflection-split"
@@ -57,7 +58,12 @@ export function stripDashes(text: string): string {
 export type GeneratedDevotional = {
   date: string
   clip: { index: number; id: string; title: string }
-  passage: { reference: string; osisRef: string }
+  passage: {
+    reference: string
+    osisRef: string
+    clipStartSec?: number
+    clipLengthSec?: number
+  }
   /** Short cover/hook line. */
   title: string
   scripture: ScriptureRef
@@ -88,7 +94,12 @@ export type GeneratedDevotional = {
 export const GeneratedDevotionalSchema = z.object({
   date: z.string(),
   clip: z.object({ index: z.number(), id: z.string(), title: z.string() }),
-  passage: z.object({ reference: z.string(), osisRef: z.string() }),
+  passage: z.object({
+    reference: z.string(),
+    osisRef: z.string(),
+    clipStartSec: z.number().nonnegative().optional(),
+    clipLengthSec: z.number().positive().optional(),
+  }),
   title: z.string(),
   scripture: z.object({
     reference: z.string(),
@@ -107,12 +118,16 @@ export const GeneratedDevotionalSchema = z.object({
   question: z.string(),
   prayer: z.string(),
   mood: z.enum(["peace", "hope", "lament", "awe"]),
-  voice: z.enum(["male-d", "male-e", "female-c"]),
+  voice: z.string().min(1),
   sequence: z.number(),
 }) satisfies z.ZodType<GeneratedDevotional>
 
 export type GenerateDevotionalDeps = {
-  corpora?: ReflectionCorpora
+  chapters: readonly JesusFilmChapter[]
+  passages: readonly ChapterPassage[]
+  corpora: ReflectionCorpora
+  hookStyles: readonly string[]
+  voiceRotation: readonly DevotionalVoiceName[]
   selectScripture?: typeof selectScriptureForPassage
   modernize?: typeof modernizeReflection
   writeCopy?: typeof writeDevotionalCopy
@@ -136,7 +151,7 @@ export type GenerateDevotionalInput = {
 
 export async function generateDevotional(
   input: GenerateDevotionalInput,
-  deps: GenerateDevotionalDeps = {},
+  deps: GenerateDevotionalDeps,
 ): Promise<GeneratedDevotional> {
   const sourced = await sourceClipAndScripture(
     { chapterIndex: input.chapterIndex, llm: input.llm },
@@ -164,9 +179,13 @@ export type SourcedDevotional = {
 
 export async function sourceClipAndScripture(
   input: { chapterIndex: number; llm: DevotionalLlm },
-  deps: GenerateDevotionalDeps = {},
+  deps: GenerateDevotionalDeps,
 ): Promise<SourcedDevotional> {
-  const chapter = chapterWithPassage(input.chapterIndex)
+  const chapter = chapterWithPassage(
+    input.chapterIndex,
+    deps.passages,
+    deps.chapters,
+  )
   if (!chapter) {
     throw new Error(`no passage mapping for chapter ${input.chapterIndex}`)
   }
@@ -194,10 +213,10 @@ export type ComposeContentInput = {
 
 export async function composeDevotionalContent(
   input: ComposeContentInput,
-  deps: GenerateDevotionalDeps = {},
+  deps: GenerateDevotionalDeps,
 ): Promise<GeneratedDevotional> {
   const { chapter, scripture } = input
-  const corpora = deps.corpora ?? loadReflectionCorpora()
+  const corpora = deps.corpora
   const modernize = deps.modernize ?? modernizeReflection
   const writeCopy = deps.writeCopy ?? writeDevotionalCopy
   const pickSpurgeon = deps.pickSpurgeon ?? pickBestSpurgeon
@@ -269,7 +288,7 @@ export async function composeDevotionalContent(
     reflection: reflectionText,
     // Rotate the cover-hook form by sequence so openings vary (not always a
     // question / "What if...").
-    hookStyle: hookStyleForSequence(input.sequence),
+    hookStyle: hookStyleForSequence(input.sequence, deps.hookStyles),
     llm: input.llm,
   })
 
@@ -282,7 +301,16 @@ export async function composeDevotionalContent(
   return {
     date: input.date,
     clip: { index: chapter.index, id: chapter.id, title: chapter.title },
-    passage: { reference: chapter.reference, osisRef: chapter.osisRef },
+    passage: {
+      reference: chapter.reference,
+      osisRef: chapter.osisRef,
+      ...(chapter.clipStartSec != null
+        ? { clipStartSec: chapter.clipStartSec }
+        : {}),
+      ...(chapter.clipLengthSec != null
+        ? { clipLengthSec: chapter.clipLengthSec }
+        : {}),
+    },
     title: stripDashes(copy.title),
     scripture,
     reflection: {
@@ -296,7 +324,7 @@ export async function composeDevotionalContent(
     question: stripDashes(copy.question),
     prayer: stripDashes(copy.prayer),
     mood: chapter.mood,
-    voice: rotateVoice(input.sequence),
+    voice: rotateVoice(input.sequence, deps.voiceRotation),
     sequence: input.sequence,
   }
 }

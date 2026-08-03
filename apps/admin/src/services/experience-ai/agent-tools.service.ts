@@ -24,7 +24,10 @@
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
-import { WatchSearchService } from "@/services/watch-search.service"
+import {
+  WatchSearchService,
+  type WatchSearchAvailabilityKind,
+} from "@/services/watch-search.service"
 import { pickLocalisedName } from "./citation-reference"
 
 // ---------------------------------------------------------------------------
@@ -48,12 +51,22 @@ export const searchVideosRequestSchema = z.object({
 })
 export type SearchVideosRequest = z.infer<typeof searchVideosRequestSchema>
 
+// Since the playback-field (#1789) and availability.kind (feat-326) widenings
+// this shape is a SUPERSET of the in-process twin's
+// (src/mastra/tools/search-videos.ts) — the two are no longer field-identical;
+// reconcile deliberately if they ever re-converge. availability is a nested
+// object mirroring the upstream WatchSearchAvailability shape so later
+// widening (languageSlug, audio/subtitles) is additive, not a rename.
 export type AgentVideoResult = {
   videoId: string
   title: string
   snippet: string
   slug: string
   imageUrl: string | null
+  playbackId: string
+  durationSeconds: number | null
+  languageSlug: string | null
+  availability: { kind: WatchSearchAvailabilityKind }
 }
 
 export async function searchVideosForAgent(
@@ -72,18 +85,35 @@ export async function searchVideosForAgent(
     resultTypes: ["video"],
   })
 
-  const videos = response.results
-    // playbackId === null means no playable dub resolved for the locale (the R4
-    // retrievers keep such rows); agents write these videoIds into blocks
-    // verbatim, so unplayable results must never reach them.
-    .filter((result) => result.type === "video" && result.playbackId !== null)
-    .map((result) => ({
-      videoId: result.id,
-      title: result.title,
-      snippet: result.snippet ?? "",
-      slug: result.slug,
-      imageUrl: result.imageUrl,
-    }))
+  // playbackId === null means no playable dub resolved for the locale (the R4
+  // retrievers keep such rows); agents write these videoIds into blocks
+  // verbatim, so unplayable results must never reach them. flatMap (not
+  // filter+map) so the null check narrows playbackId to string.
+  const videos = response.results.flatMap((result) =>
+    result.type === "video" && result.playbackId !== null
+      ? [
+          {
+            videoId: result.id,
+            title: result.title,
+            snippet: result.snippet ?? "",
+            slug: result.slug,
+            imageUrl: result.imageUrl,
+            playbackId: result.playbackId,
+            durationSeconds: result.durationSeconds,
+            languageSlug: result.languageSlug,
+            // kind only, never the whole availability object (allowlist
+            // projection). Fallback kinds (target_subtitle/related_language)
+            // are REPORTED, never filtered — this endpoint serves multiple
+            // agent consumers; the seeker's target_audio-only rule is mastra
+            // policy (feat-327). Note: the playability filter above bounds
+            // today's reachable kinds to target_audio | related_language
+            // (target_subtitle/unavailable watchability always carries
+            // playbackId null — search-watchability.ts).
+            availability: { kind: result.availability.kind },
+          },
+        ]
+      : [],
+  )
 
   return { videos }
 }

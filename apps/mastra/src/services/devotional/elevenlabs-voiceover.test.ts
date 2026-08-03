@@ -2,8 +2,6 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { ElevenLabsConfig } from "../../config/env"
 import {
-  DEFAULT_VOICE_SETTINGS,
-  DEVOTIONAL_VOICES,
   ELEVENLABS_VOICEOVER_MAX_RESPONSE_BYTES,
   generateElevenVoiceover,
   resolveVoiceId,
@@ -36,6 +34,21 @@ const DEVOTIONAL: Devotional = {
   furtherReading: null,
   blockOrder: ["hook", "scripture", "video", "reflection", "questions"],
 }
+const DEVOTIONAL_VOICES = {
+  "male-d": "voice-d",
+  "female-c": "voice-c",
+}
+const DEFAULT_VOICE_SETTINGS = {
+  stability: 0.35,
+  similarity_boost: 0.85,
+  style: 0.45,
+  use_speaker_boost: true,
+}
+const AUTHORED_VOICE = {
+  voice: "male-d",
+  voiceProfiles: DEVOTIONAL_VOICES,
+  voiceSettings: DEFAULT_VOICE_SETTINGS,
+}
 
 const CONFIG: ElevenLabsConfig = {
   apiKey: "eleven-key",
@@ -49,12 +62,16 @@ function audioResponse(bytes = new Uint8Array([1, 2, 3])): Response {
 
 describe("resolveVoiceId", () => {
   it("maps a named alias to its voice id", () => {
-    expect(resolveVoiceId("male-d")).toBe(DEVOTIONAL_VOICES["male-d"])
-    expect(resolveVoiceId("female-c")).toBe(DEVOTIONAL_VOICES["female-c"])
+    expect(resolveVoiceId("male-d", DEVOTIONAL_VOICES)).toBe(
+      DEVOTIONAL_VOICES["male-d"],
+    )
+    expect(resolveVoiceId("female-c", DEVOTIONAL_VOICES)).toBe(
+      DEVOTIONAL_VOICES["female-c"],
+    )
   })
 
   it("passes a raw voice id through unchanged", () => {
-    expect(resolveVoiceId("abc123raw")).toBe("abc123raw")
+    expect(resolveVoiceId("abc123raw", DEVOTIONAL_VOICES)).toBe("abc123raw")
   })
 })
 
@@ -63,6 +80,7 @@ describe("generateElevenVoiceover", () => {
     const r = await generateElevenVoiceover({
       text: "Hi",
       config: { ...CONFIG, apiKey: undefined },
+      ...AUTHORED_VOICE,
     })
     expect(r).toMatchObject({
       ok: false,
@@ -72,7 +90,11 @@ describe("generateElevenVoiceover", () => {
   })
 
   it("returns invalid_input when there is no narration text", async () => {
-    const r = await generateElevenVoiceover({ text: "   ", config: CONFIG })
+    const r = await generateElevenVoiceover({
+      text: "   ",
+      config: CONFIG,
+      ...AUTHORED_VOICE,
+    })
     expect(r).toMatchObject({ ok: false, reason: "invalid_input" })
   })
 
@@ -80,9 +102,9 @@ describe("generateElevenVoiceover", () => {
     const fetchImpl = vi.fn().mockResolvedValue(audioResponse())
     const r = await generateElevenVoiceover({
       devotional: DEVOTIONAL,
-      voice: "male-d",
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_VOICE,
     })
     expect(r.ok).toBe(true)
     if (!r.ok) throw new Error("expected ok")
@@ -111,6 +133,7 @@ describe("generateElevenVoiceover", () => {
       text: "Hi",
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_VOICE,
     })
     expect(r).toMatchObject({
       ok: false,
@@ -129,6 +152,7 @@ describe("generateElevenVoiceover", () => {
         text: "Hi",
         config: CONFIG,
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        ...AUTHORED_VOICE,
       })
       expect(r).toMatchObject({
         ok: false,
@@ -147,6 +171,7 @@ describe("generateElevenVoiceover", () => {
       text: "Hi",
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_VOICE,
     })
     expect(r).toMatchObject({
       ok: false,
@@ -162,6 +187,7 @@ describe("generateElevenVoiceover", () => {
       text: "Hi",
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_VOICE,
     })
     expect(r).toMatchObject({ ok: false, reason: "transport", retryable: true })
   })
@@ -174,6 +200,7 @@ describe("generateElevenVoiceover", () => {
       text: "Hi",
       config: CONFIG,
       fetchImpl: fetchImpl as unknown as typeof fetch,
+      ...AUTHORED_VOICE,
     })
     expect(r).toMatchObject({
       ok: false,
@@ -198,6 +225,7 @@ describe("generateElevenVoiceover", () => {
       text: "Hi",
       config: CONFIG,
       fetchImpl: (async () => new Response(stream)) as unknown as typeof fetch,
+      ...AUTHORED_VOICE,
     })
 
     expect(cancelled).toBe(true)

@@ -29,6 +29,7 @@ import {
 } from "@/lib/url-shape"
 import {
   getWatchRouteManifest,
+  isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
   type WatchRouteManifestRoute,
@@ -88,7 +89,15 @@ function defaultLanguageVideoAdmission(
     audioLanguageSlug: defaultAudioLanguageSlug,
   }
   if (!isWatchRouteAdmittedByManifest(manifest, defaultLanguageRoute)) {
-    return null
+    if (
+      !isWatchParentAdmittedByNestedContainer(
+        manifest,
+        contentSlug,
+        defaultAudioLanguageSlug,
+      )
+    ) {
+      return null
+    }
   }
 
   return {
@@ -317,6 +326,15 @@ function rewriteToInternal(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
 ): NextResponse {
   const url = request.nextUrl.clone()
+  // HTTPS reverse proxies (including Tailscale Serve) can leave Next's dev
+  // request URL with an https protocol and a loopback upstream host. Internal
+  // rewrites must keep using the actual HTTP loopback listener in development.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+  ) {
+    url.protocol = "http:"
+  }
   url.pathname = internalRewritePathname(decision)
   const requestHeaders = new Headers(request.headers)
   // This is an admission claim, not a trusted boolean. If the rewritten URL
@@ -407,6 +425,17 @@ async function classifyManifestAdmission(
   }
 
   if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+    return { kind: "admit" }
+  }
+
+  if (
+    decision.manifestRoute.kind === "video" &&
+    isWatchParentAdmittedByNestedContainer(
+      manifest,
+      decision.manifestRoute.contentSlug,
+      decision.manifestRoute.audioLanguageSlug,
+    )
+  ) {
     return { kind: "admit" }
   }
 

@@ -38,6 +38,16 @@ const NEWS_CANDIDATES: HookPickerCandidate[] = [
   },
 ]
 
+const AUTHORED = {
+  holidays: {
+    "12-24": { title: "Christmas Eve", summary: "Waiting for the Nativity." },
+    "12-25": { title: "Christmas Day", summary: "The birth of Jesus." },
+  },
+  newsSystemPrompt:
+    "Frame current news neutrally, without partisan claims or exploiting tragedy.",
+  questionSystemPrompt: "Write one evergreen devotional question.",
+}
+
 describe("pickHook", () => {
   it("returns a news hook when search yields events and the LLM selects one", async () => {
     const llm = fakeLlm({
@@ -56,6 +66,7 @@ describe("pickHook", () => {
       llm,
       firecrawlConfig: FIRECRAWL_STUB,
       search: async () => NEWS_CANDIDATES,
+      ...AUTHORED,
     })
 
     expect(hook.type).toBe("news")
@@ -86,6 +97,7 @@ describe("pickHook", () => {
       llm,
       firecrawlConfig: FIRECRAWL_STUB,
       search: async () => candidates,
+      ...AUTHORED,
     })
 
     expect(hook.sourceUrl).toBe("https://news.example.org/peace-talks")
@@ -101,6 +113,7 @@ describe("pickHook", () => {
       llm,
       firecrawlConfig: FIRECRAWL_STUB,
       search: async () => [],
+      ...AUTHORED,
     })
 
     expect(hook.type).toBe("holiday")
@@ -122,6 +135,7 @@ describe("pickHook", () => {
       llm,
       firecrawlConfig: FIRECRAWL_STUB,
       search: async () => [],
+      ...AUTHORED,
     })
 
     expect(hook.type).toBe("question")
@@ -139,6 +153,7 @@ describe("pickHook", () => {
       llm,
       firecrawlConfig: FIRECRAWL_STUB,
       search: async () => NEWS_CANDIDATES,
+      ...AUTHORED,
     })
 
     expect(hook.type).toBe("holiday")
@@ -155,6 +170,7 @@ describe("pickHook", () => {
       search: async () => {
         throw new Error("firecrawl exploded")
       },
+      ...AUTHORED,
     })
 
     expect(hook.type).toBe("holiday")
@@ -164,13 +180,13 @@ describe("pickHook", () => {
 
   it("instructs the news framing to stay neutral and non-partisan", () => {
     // Guard the prompt contract (the model is mocked in behavior tests).
-    expect(_internal.NEWS_SYSTEM_PROMPT).toMatch(/neutrally/i)
-    expect(_internal.NEWS_SYSTEM_PROMPT).toMatch(/partisan/i)
-    expect(_internal.NEWS_SYSTEM_PROMPT).toMatch(/tragedy/i)
+    expect(AUTHORED.newsSystemPrompt).toMatch(/neutrally/i)
+    expect(AUTHORED.newsSystemPrompt).toMatch(/partisan/i)
+    expect(AUTHORED.newsSystemPrompt).toMatch(/tragedy/i)
   })
 
   it("keys the holiday table on the MM-DD tail of the date", () => {
     expect(_internal.holidayKey("2026-12-25")).toBe("12-25")
-    expect(_internal.HOLIDAY_TABLE["12-25"]?.title).toBe("Christmas Day")
+    expect(AUTHORED.holidays["12-25"]?.title).toBe("Christmas Day")
   })
 })

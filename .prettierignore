@@ -39,3 +39,5 @@ apps/*/.impeccable
 # superpowers SDD scratch + local design mockups (both gitignored, non-source)
 .superpowers
 apps/mobile/design-mockups
+
+/local/

@@ -135,6 +135,10 @@ describe("agent-tools routes", () => {
             snippet: "Easter video.",
             slug: "easter",
             imageUrl: null,
+            playbackId: "pb-1",
+            durationSeconds: 312,
+            languageSlug: "english",
+            availability: { kind: "target_audio" },
           },
         ],
       })
@@ -150,6 +154,10 @@ describe("agent-tools routes", () => {
             snippet: "Easter video.",
             slug: "easter",
             imageUrl: null,
+            playbackId: "pb-1",
+            durationSeconds: 312,
+            languageSlug: "english",
+            availability: { kind: "target_audio" },
           },
         ],
       })

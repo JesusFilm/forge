@@ -1,19 +1,34 @@
-import { readFileSync } from "node:fs"
-import path from "node:path"
-import { repoRoot } from "./repo-root"
-
-import { getDevotionalCorpusDir } from "../../config/env"
+import { z } from "zod"
 
 /**
  * World English Bible (WEB, public domain) verse lookup — so devotional
  * scripture is the EXACT verse text, not model-recalled. Verses are keyed osis
  * (e.g. "Luke.8.24") in `devo/corpus/web-bible.json` (Gospels + Acts).
  *
- * Pure parsing/lookup; loading is a thin fs wrapper (same corpus dir + override
- * as reflection-corpus).
+ * Pure parsing/lookup. Workspace discovery and verified reads are injected by
+ * the attempt repository; there is no process-local cache or repo fallback.
  */
 
 export type WebBible = { verses: Record<string, string> }
+
+const WebBibleSchema = z
+  .object({
+    verses: z.record(z.string().trim().min(1), z.string().trim().min(1)),
+  })
+  .strict()
+
+export function parseWebBibleDocument(options: {
+  path: string
+  content: string
+}): WebBible {
+  try {
+    return WebBibleSchema.parse(JSON.parse(options.content))
+  } catch (error) {
+    throw new Error(`${options.path}: invalid WEB scripture source`, {
+      cause: error,
+    })
+  }
+}
 
 const BOOK_TO_OSIS: Record<string, string> = {
   matthew: "Matt",
@@ -65,33 +80,4 @@ export function lookupVerse(
     out.push(t)
   }
   return out.length ? out.join(" ") : null
-}
-
-// ---- Loading (fs) ----------------------------------------------------------
-
-function defaultCorpusDir(): string {
-  // cwd-walk root — correct in source AND the mastra bundle (see repo-root.ts).
-  return path.join(repoRoot(), "devo/corpus")
-}
-
-let cache: { dir: string; bible: WebBible } | null = null
-
-export function loadWebBible(dir?: string): WebBible {
-  const resolved = dir ?? getDevotionalCorpusDir() ?? defaultCorpusDir()
-  if (cache && cache.dir === resolved) return cache.bible
-  let bible: WebBible = { verses: {} }
-  try {
-    const raw = readFileSync(path.join(resolved, "web-bible.json"), "utf8")
-    const parsed = JSON.parse(raw) as { verses?: Record<string, string> }
-    bible = { verses: parsed.verses ?? {} }
-  } catch {
-    bible = { verses: {} }
-  }
-  cache = { dir: resolved, bible }
-  return bible
-}
-
-/** Convenience: exact WEB text for a reference using the loaded (cached) bible. */
-export function getVerseText(reference: string, dir?: string): string | null {
-  return lookupVerse(reference, loadWebBible(dir).verses)
 }

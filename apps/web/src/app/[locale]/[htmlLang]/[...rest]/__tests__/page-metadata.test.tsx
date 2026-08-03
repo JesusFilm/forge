@@ -78,6 +78,57 @@ vi.mock("@/lib/feature-flags", () => ({
 
 import { generateMetadata } from "@/app/[locale]/[htmlLang]/[...rest]/page"
 
+const approvedTitle =
+  "Watch JESUS — Full Movie Free Online | Jesus Film Project"
+const approvedDescription =
+  "Watch the JESUS film free online. Follow his life, teachings, miracles, death, and resurrection through the Gospel of Luke in more than 2,000 languages."
+
+const selectedVariant = {
+  documentId: "dub-es",
+  slug: null,
+  published: true,
+  hls: "https://cdn.example/jesus-es.m3u8",
+  duration: 7200,
+  language: {
+    slug: "spanish-castilian",
+    bcp47: "es",
+    coreId: "21028",
+    name: "Spanish, Castilian",
+    nativeName: "Español",
+  },
+  downloads: [],
+  muxVideo: { playbackId: "mux-es" },
+}
+
+const videoWithOverrides = {
+  documentId: "video-jesus",
+  slug: "jesus",
+  publishedAt: "2026-06-01T12:00:00.000Z",
+  localePublishedAt: null,
+  title: "JESÚS",
+  snippet: "Resumen visible",
+  description: "Descripción visible",
+  searchTitle: `  ${approvedTitle}  `,
+  searchDescription: `  ${approvedDescription}  `,
+  socialImage: {
+    url: "https://media.example/jesus-social.jpg",
+    width: 1200,
+    height: 630,
+  },
+  noIndex: false,
+  label: "featureFilm",
+  imageAlt: "JESÚS film still",
+  images: [],
+  primaryLanguage: null,
+  parents: [],
+  children: [],
+  childDubLanguages: [],
+  variants: [selectedVariant],
+  subtitles: [],
+  studyQuestions: [],
+  bibleCitations: [],
+}
+
 beforeEach(() => {
   resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
@@ -143,5 +194,79 @@ describe("Watch metadata fallback observability", () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+describe("Watch Search and Social metadata route parity", () => {
+  it("emits the exact approved overrides for an explicit playable route", async () => {
+    resolveWatchRouteBySlugMock.mockResolvedValue({
+      kind: "video",
+      video: videoWithOverrides,
+      selectedVariant,
+    })
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "es",
+        htmlLang: "es",
+        rest: ["jesus.html", "spanish-castilian.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe(approvedTitle)
+    expect(metadata.description).toBe(approvedDescription)
+    expect(metadata.openGraph).toMatchObject({
+      title: approvedTitle,
+      description: approvedDescription,
+      siteName: "Jesus Film Project",
+      locale: "es_ES",
+      images: [{ url: "https://media.example/jesus-social.jpg" }],
+    })
+    expect(metadata.twitter).toMatchObject({
+      title: approvedTitle,
+      description: approvedDescription,
+      images: [{ url: "https://media.example/jesus-social.jpg" }],
+    })
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html",
+    )
+    expect(metadata.robots).toEqual({ index: true, follow: true })
+  })
+
+  it("uses the same override semantics for a playable episode route", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue({
+      series: { documentId: "series-1", slug: "jesus-series" },
+      video: {
+        ...videoWithOverrides,
+        documentId: "episode-1",
+        slug: "jesus-is-born",
+        title: "Jesús nace",
+      },
+      selectedVariant,
+    })
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "es",
+        htmlLang: "es",
+        rest: ["jesus-series.html", "jesus-is-born", "spanish-castilian.html"],
+      }),
+    })
+
+    expect(metadata.title).toBe(approvedTitle)
+    expect(metadata.description).toBe(approvedDescription)
+    expect(metadata.openGraph).toMatchObject({
+      title: approvedTitle,
+      description: approvedDescription,
+      images: [{ url: "https://media.example/jesus-social.jpg" }],
+    })
+    expect(metadata.twitter).toMatchObject({
+      title: approvedTitle,
+      description: approvedDescription,
+      images: [{ url: "https://media.example/jesus-social.jpg" }],
+    })
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/jesus-is-born.html/spanish-castilian.html",
+    )
   })
 })

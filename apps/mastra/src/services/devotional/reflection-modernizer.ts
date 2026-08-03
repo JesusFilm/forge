@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { requireAuthoredPrompt } from "./authored-data"
 import { MAX_DEVOTIONAL_TEXT_LENGTH } from "./types"
 
 /**
@@ -56,28 +57,6 @@ const MODERNIZED_JSON_SCHEMA = {
   },
 }
 
-export const SYSTEM_PROMPT = [
-  "You turn a passage from a classic, public-domain Christian writer into a short",
-  "spoken REFLECTION for a devotional video.",
-  "The viewer has JUST WATCHED this Bible scene on video. Therefore:",
-  "- Do NOT recount what happened. Do NOT describe the characters or their actions.",
-  '- Do NOT quote what anyone in the scene said (e.g. no "Master, we are',
-  '  perishing", no "Where is your faith?"). Zero narration, zero dialogue.',
-  "- Begin from the TRUTH or the APPLICATION. Never begin from the story.",
-  "Give ONLY the author's INSIGHT, MEANING, and APPLICATION: what this reveals about",
-  "God and what it means for the viewer's own life today.",
-  "- Use the author's own applicational thoughts; do NOT invent new ones.",
-  "- Do NOT change, soften, or embellish the theology.",
-  "- Light touch on language, but thorough: modernize archaic words ('thee/thou'",
-  "  become 'you') AND replace obscure, old-fashioned, or churchy words with plain",
-  "  everyday words. No archaic or scholarly vocabulary should remain. Break up",
-  "  long sentences. Keep the author's voice.",
-  "- Write 2 to 3 short paragraphs, speaking straight to the viewer ('you').",
-  "PUNCTUATION: do NOT use em dashes or en dashes (the '—' or '–' characters)",
-  "anywhere. They read as AI writing. Use a period, comma, or colon, or restructure.",
-  "Return JSON only: an object with an 'adapted' string.",
-].join("\n")
-
 export type ModernizeReflectionOptions = {
   /** Source excerpt (may be a whole chapter; focus on the passage). */
   sourceText: string
@@ -88,6 +67,7 @@ export type ModernizeReflectionOptions = {
   /** Target spoken length in words (~60–75s ≈ 170; 2–3 short paragraphs). */
   approxWords?: number
   llm: DevotionalLlm
+  systemPrompt?: string
 }
 
 export type ModernizedReflection = {
@@ -100,6 +80,7 @@ export type ModernizedReflection = {
 export async function modernizeReflection(
   options: ModernizeReflectionOptions,
 ): Promise<ModernizedReflection> {
+  const systemPrompt = requireAuthoredPrompt(options.systemPrompt)
   const approxWords = options.approxWords ?? 170
   const user = [
     `Passage to focus on: ${options.focusReference}`,
@@ -113,7 +94,7 @@ export async function modernizeReflection(
   let result: z.infer<typeof ModernizedSchema>
   try {
     result = await options.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       user,
       jsonSchema: MODERNIZED_JSON_SCHEMA,
       schema: ModernizedSchema,

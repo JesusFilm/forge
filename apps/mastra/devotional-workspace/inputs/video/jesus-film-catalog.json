@@ -1,0 +1,370 @@
+{
+  "chapters": [
+    {
+      "index": 1,
+      "id": "1_jf6101-0-0",
+      "title": "The Beginning",
+      "start": "0:00:00"
+    },
+    {
+      "index": 2,
+      "id": "1_jf6102-0-0",
+      "title": "Birth of Jesus",
+      "start": "0:08:08"
+    },
+    {
+      "index": 3,
+      "id": "1_jf6103-0-0",
+      "title": "Childhood of Jesus",
+      "start": "0:11:51"
+    },
+    {
+      "index": 4,
+      "id": "1_jf6104-0-0",
+      "title": "Baptism of Jesus by John",
+      "start": "0:14:06"
+    },
+    {
+      "index": 5,
+      "id": "1_jf6105-0-0",
+      "title": "The Devil Tempts Jesus",
+      "start": "0:17:53"
+    },
+    {
+      "index": 6,
+      "id": "1_jf6106-0-0",
+      "title": "Jesus Proclaims Fulfillment of the Scriptures",
+      "start": "0:20:16"
+    },
+    {
+      "index": 7,
+      "id": "1_jf6107-0-0",
+      "title": "Parable of the Pharisee and Tax Collector",
+      "start": "0:23:23"
+    },
+    {
+      "index": 8,
+      "id": "1_jf6108-0-0",
+      "title": "Miraculous Catch of Fish",
+      "start": "0:24:25"
+    },
+    {
+      "index": 9,
+      "id": "1_jf6109-0-0",
+      "title": "Jairus's Daughter Brought Back to Life",
+      "start": "0:26:26"
+    },
+    {
+      "index": 10,
+      "id": "1_jf6110-0-0",
+      "title": "Disciples Chosen",
+      "start": "0:28:41"
+    },
+    {
+      "index": 11,
+      "id": "1_jf6111-0-0",
+      "title": "Beatitudes",
+      "start": "0:31:52"
+    },
+    {
+      "index": 12,
+      "id": "1_jf6112-0-0",
+      "title": "Sermon on the Mount",
+      "start": "0:32:55"
+    },
+    {
+      "index": 13,
+      "id": "1_jf6113-0-0",
+      "title": "Blessed are those Who Hear and Obey",
+      "start": "0:36:34"
+    },
+    {
+      "index": 14,
+      "id": "1_jf6114-0-0",
+      "title": "Sinful Woman Forgiven",
+      "start": "0:36:53"
+    },
+    {
+      "index": 15,
+      "id": "1_jf6115-0-0",
+      "title": "Women Disciples",
+      "start": "0:39:50"
+    },
+    {
+      "index": 16,
+      "id": "1_jf6116-0-0",
+      "title": "John the Baptist in Prison",
+      "start": "0:40:33"
+    },
+    {
+      "index": 17,
+      "id": "1_jf6117-0-0",
+      "title": "Parable of the Sower and the Seed",
+      "start": "0:42:29"
+    },
+    {
+      "index": 18,
+      "id": "1_jf6118-0-0",
+      "title": "Parable of the Lamp",
+      "start": "0:44:48"
+    },
+    {
+      "index": 19,
+      "id": "1_jf6119-0-0",
+      "title": "Jesus Calms the Storm",
+      "start": "0:45:44"
+    },
+    {
+      "index": 20,
+      "id": "1_jf6120-0-0",
+      "title": "Healing of the Demoniac",
+      "start": "0:47:42"
+    },
+    {
+      "index": 21,
+      "id": "1_jf6121-0-0",
+      "title": "Jesus Feeds 5,000",
+      "start": "0:49:59"
+    },
+    {
+      "index": 22,
+      "id": "1_jf6122-0-0",
+      "title": "Peter Declares Jesus to be the Christ",
+      "start": "0:52:28"
+    },
+    {
+      "index": 23,
+      "id": "1_jf6123-0-0",
+      "title": "The Transfiguration",
+      "start": "0:53:52"
+    },
+    {
+      "index": 24,
+      "id": "1_jf6124-0-0",
+      "title": "Jesus Heals Boy from Evil Spirit",
+      "start": "0:55:38"
+    },
+    {
+      "index": 25,
+      "id": "1_jf6125-0-0",
+      "title": "The Lord's Prayer",
+      "start": "0:57:53"
+    },
+    {
+      "index": 26,
+      "id": "1_jf6126-0-0",
+      "title": "Teaching About Prayer and Faith",
+      "start": "0:58:51"
+    },
+    {
+      "index": 27,
+      "id": "1_jf6127-0-0",
+      "title": "Woe to Those Who Cause Others to Sin",
+      "start": "1:01:14"
+    },
+    {
+      "index": 28,
+      "id": "1_jf6128-0-0",
+      "title": "The Kingdom of God as a Mustard Seed",
+      "start": "1:02:09"
+    },
+    {
+      "index": 29,
+      "id": "1_jf6129-0-0",
+      "title": "Jesus Spends Time with Sinners",
+      "start": "1:02:37"
+    },
+    {
+      "index": 30,
+      "id": "1_jf6130-0-0",
+      "title": "Healing on the Sabbath",
+      "start": "1:03:07"
+    },
+    {
+      "index": 31,
+      "id": "1_jf6131-0-0",
+      "title": "Parable of the Good Samaritan",
+      "start": "1:05:04"
+    },
+    {
+      "index": 32,
+      "id": "1_jf6132-0-0",
+      "title": "Healing of Bartimaeus",
+      "start": "1:06:42"
+    },
+    {
+      "index": 33,
+      "id": "1_jf6133-0-0",
+      "title": "Jesus and Zaccheus",
+      "start": "1:08:27"
+    },
+    {
+      "index": 34,
+      "id": "1_jf6134-0-0",
+      "title": "Jesus Predicts His Death and Resurrection",
+      "start": "1:10:49"
+    },
+    {
+      "index": 35,
+      "id": "1_jf6135-0-0",
+      "title": "Jesus's Triumphal Entry",
+      "start": "1:11:31"
+    },
+    {
+      "index": 36,
+      "id": "1_jf6136-0-0",
+      "title": "Jesus Weeps Over Jerusalem",
+      "start": "1:12:41"
+    },
+    {
+      "index": 37,
+      "id": "1_jf6137-0-0",
+      "title": "Jesus Drives Out Money Changers",
+      "start": "1:13:41"
+    },
+    {
+      "index": 38,
+      "id": "1_jf6138-0-0",
+      "title": "Widow's Offering",
+      "start": "1:15:33"
+    },
+    {
+      "index": 39,
+      "id": "1_jf6139-0-0",
+      "title": "Annas Questions Jesus's Authority",
+      "start": "1:16:19"
+    },
+    {
+      "index": 40,
+      "id": "1_jf6140-0-0",
+      "title": "Parable of the Vineyard and Tenants",
+      "start": "1:17:19"
+    },
+    {
+      "index": 41,
+      "id": "1_jf6141-0-0",
+      "title": "Paying Taxes to Caesar",
+      "start": "1:19:09"
+    },
+    {
+      "index": 42,
+      "id": "1_jf6142-0-0",
+      "title": "The Last Supper",
+      "start": "1:20:07"
+    },
+    {
+      "index": 43,
+      "id": "1_jf6143-0-0",
+      "title": "Upper Room Teaching",
+      "start": "1:23:03"
+    },
+    {
+      "index": 44,
+      "id": "1_jf6144-0-0",
+      "title": "Jesus is Betrayed and Arrested",
+      "start": "1:25:32"
+    },
+    {
+      "index": 45,
+      "id": "1_jf6145-0-0",
+      "title": "Peter Disowns Jesus",
+      "start": "1:29:54"
+    },
+    {
+      "index": 46,
+      "id": "1_jf6146-0-0",
+      "title": "Jesus is Mocked and Questioned",
+      "start": "1:32:18"
+    },
+    {
+      "index": 47,
+      "id": "1_jf6147-0-0",
+      "title": "Jesus is Brought To Pilate",
+      "start": "1:34:16"
+    },
+    {
+      "index": 48,
+      "id": "1_jf6148-0-0",
+      "title": "Jesus is Brought to Herod",
+      "start": "1:36:00"
+    },
+    {
+      "index": 49,
+      "id": "1_jf6149-0-0",
+      "title": "Jesus is Sentenced",
+      "start": "1:37:24"
+    },
+    {
+      "index": 50,
+      "id": "1_jf6150-0-0",
+      "title": "Jesus Carries His Cross",
+      "start": "1:40:21"
+    },
+    {
+      "index": 51,
+      "id": "1_jf6151-0-0",
+      "title": "Jesus is Crucified",
+      "start": "1:43:55"
+    },
+    {
+      "index": 52,
+      "id": "1_jf6152-0-0",
+      "title": "Soldiers Gamble for Jesus's Clothes",
+      "start": "1:46:44"
+    },
+    {
+      "index": 53,
+      "id": "1_jf6153-0-0",
+      "title": "Sign on the Cross",
+      "start": "1:47:41"
+    },
+    {
+      "index": 54,
+      "id": "1_jf6154-0-0",
+      "title": "Crucified Convicts",
+      "start": "1:48:48"
+    },
+    {
+      "index": 55,
+      "id": "1_jf6155-0-0",
+      "title": "Death of Jesus",
+      "start": "1:50:28"
+    },
+    {
+      "index": 56,
+      "id": "1_jf6156-0-0",
+      "title": "Burial of Jesus",
+      "start": "1:52:13"
+    },
+    {
+      "index": 57,
+      "id": "1_jf6157-0-0",
+      "title": "Angels at the Tomb",
+      "start": "1:54:14"
+    },
+    {
+      "index": 58,
+      "id": "1_jf6158-0-0",
+      "title": "The Tomb Is Empty",
+      "start": "1:55:43"
+    },
+    {
+      "index": 59,
+      "id": "1_jf6159-0-0",
+      "title": "Resurrected Jesus Appears",
+      "start": "1:57:05"
+    },
+    {
+      "index": 60,
+      "id": "1_jf6160-0-0",
+      "title": "Great Commission and Ascension",
+      "start": "1:59:01"
+    },
+    {
+      "index": 61,
+      "id": "1_jf6161-0-0",
+      "title": "Invitation to Know Jesus Personally",
+      "start": "2:00:17"
+    }
+  ]
+}

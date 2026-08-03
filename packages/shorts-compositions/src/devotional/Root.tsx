@@ -16,7 +16,7 @@ import {
 
 // Placeholder defaults; real inputProps are always injected at render time and
 // calculateDevotionalMetadata derives the true duration from audioDurationSec.
-const defaultProps: DevotionalInputProps = {
+const defaultProps = {
   headerDate: "Dec 25",
   cards: [
     {
@@ -42,7 +42,7 @@ const defaultProps: DevotionalInputProps = {
   textAnim: "block",
   filmTreatment: false,
   bgAudio: false,
-}
+} as DevotionalInputProps
 
 export const DevotionalRoot = () => (
   <>

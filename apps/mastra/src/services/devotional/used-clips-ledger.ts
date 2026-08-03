@@ -88,7 +88,7 @@ export function emptyLedger(): UsedClipsLedger {
   return { version: USED_CLIPS_LEDGER_VERSION, used: {} }
 }
 
-const UsedClipsLedgerSchema = z
+export const UsedClipsLedgerSchema = z
   .object({
     version: z.literal(USED_CLIPS_LEDGER_VERSION),
     used: z.record(

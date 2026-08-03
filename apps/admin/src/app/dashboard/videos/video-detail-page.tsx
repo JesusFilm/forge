@@ -18,6 +18,7 @@ type VideoDetailPageProps = {
     eyebrow: string
     openVisitor: string
   }
+  searchSocialEditor?: ReactNode
 }
 
 function countLabel(template: string, count: number) {
@@ -170,6 +171,7 @@ export function VideoDetailPage({
   backHref,
   detail,
   labels,
+  searchSocialEditor,
 }: VideoDetailPageProps) {
   return (
     <article className="flex min-w-0 flex-col gap-5">
@@ -251,6 +253,8 @@ export function VideoDetailPage({
           ) : null}
         </div>
       </header>
+
+      {searchSocialEditor}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <div className="flex min-w-0 flex-col gap-4">

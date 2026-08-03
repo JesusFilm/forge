@@ -184,6 +184,13 @@ vi.mock("@/app/dashboard/live-data", () => ({
   loadVideoLibraryDetail: vi.fn(async () => null),
 }))
 
+vi.mock("@/app/dashboard/videos/video-search-social-data", () => ({
+  loadInitialVideoSearchSocialState: vi.fn(async () => ({
+    initialOptions: [],
+    initialLocale: null,
+  })),
+}))
+
 vi.mock("@/app/dashboard/ops-data", () => ({
   loadDashboardOpsData: vi.fn(async () => ({
     metrics: [
@@ -405,6 +412,10 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         latencyMs: 120,
         clickedPosition: 1,
         clickCount: 1,
+        collapsedRequestCount: 1,
+        collapsedQueryStart: null,
+        collapsedStartedAtIso: null,
+        collapsedRequests: [],
         createdAt: "10/24/2023, 14:02",
         createdAtIso: "2023-10-24T14:02:00.000Z",
         results: [
@@ -434,6 +445,14 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         ],
       },
     ],
+    pagination: {
+      currentPage: 1,
+      totalPages: 1,
+      pageSize: 25,
+      totalRequests: 1,
+      startIndex: 0,
+      endIndex: 1,
+    },
     selectedRequest: null,
   })),
   loadUsersData: vi.fn(async () => ({

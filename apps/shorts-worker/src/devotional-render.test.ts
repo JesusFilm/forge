@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -12,9 +14,17 @@ import {
   devotionalNarrationArtifactType,
   runDevotionalRender,
 } from "./devotional-render.js"
+import type { DevotionalWorkspaceTransfer } from "./devotional-transfer.js"
 import type { RunCommand } from "./ffmpeg.js"
 import type { RenderEngine } from "./render.js"
-import { createStorage } from "./storage.js"
+import {
+  createStorage,
+  devotionalAttemptToken,
+  devotionalManifestKey,
+  devotionalWorkspaceAssetId,
+  devotionalWorkspaceKey,
+  type Storage,
+} from "./storage.js"
 
 const roots: string[] = []
 afterEach(async () => {
@@ -25,6 +35,15 @@ afterEach(async () => {
 
 const inputSpec = {
   schemaVersion: "1",
+  renderConfig: JSON.parse(
+    readFileSync(
+      new URL(
+        "../../mastra/devotional-workspace/inputs/render/styles.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ),
   headerDate: "Monday · July 21",
   media: {
     mediaId: "1_jf-0-0",
@@ -58,6 +77,83 @@ async function setup() {
     })
   }
   return { storage }
+}
+
+async function setupV2() {
+  const { storage } = await setup()
+  const attempt = {
+    workspaceGeneration: 2,
+    attemptId: "attempt_2",
+    runId: "run_2",
+  }
+  const artifacts = []
+  for (const [artifactType, ext, body, contentType] of [
+    [
+      DEVOTIONAL_INPUT_ARTIFACT_TYPE,
+      "json",
+      Buffer.from(JSON.stringify(inputSpec)),
+      "application/json",
+    ],
+    [
+      devotionalNarrationArtifactType("cover"),
+      "mp3",
+      Buffer.from("audio-cover"),
+      "audio/mpeg",
+    ],
+    [
+      devotionalNarrationArtifactType("questions"),
+      "mp3",
+      Buffer.from("audio-questions"),
+      "audio/mpeg",
+    ],
+  ] as const) {
+    const digest = createHash("sha256").update(body).digest("hex")
+    const ref = await storage.writeWorkspaceArtifact({
+      key: devotionalWorkspaceKey(
+        attempt,
+        "run-input",
+        digest,
+        `${artifactType}.${ext}`,
+      ),
+      body,
+      digest,
+      size: body.byteLength,
+      contentType,
+      attempt,
+    })
+    artifacts.push({ artifactType, ext, ref })
+  }
+  const manifestBody = Buffer.from(
+    JSON.stringify({
+      schemaVersion: "2",
+      kind: "run-input",
+      attempt,
+      artifacts,
+    }),
+  )
+  const digest = createHash("sha256").update(manifestBody).digest("hex")
+  const manifestRef = await storage.writeWorkspaceArtifact({
+    key: devotionalManifestKey(attempt, "run-input"),
+    body: manifestBody,
+    digest,
+    size: manifestBody.byteLength,
+    contentType: "application/json",
+    attempt,
+  })
+  return {
+    storage,
+    attempt,
+    artifacts,
+    manifestBody,
+    manifestRef,
+    inputAssetId: devotionalWorkspaceAssetId({
+      kind: "input",
+      workspaceGeneration: attempt.workspaceGeneration,
+      attemptToken: devotionalAttemptToken(attempt.attemptId),
+      manifestDigest: manifestRef.digest,
+      manifestSize: manifestRef.size,
+    }),
+  }
 }
 
 function fakeFetch(): typeof fetch {
@@ -199,6 +295,120 @@ describe("runDevotionalRender", () => {
     }
   })
 
+  it("reads and writes devotional media only through signed Workspace capabilities", async () => {
+    const {
+      storage,
+      attempt,
+      artifacts,
+      manifestBody,
+      manifestRef,
+      inputAssetId,
+    } = await setupV2()
+    const { engine } = fakeEngine()
+    const expiresAt = "2030-01-01T00:00:00.000Z"
+    const bodies = new Map<string, Buffer>([
+      ["/manifest", manifestBody],
+      ...artifacts.map(
+        (artifact, index) =>
+          [
+            `/input-${index}`,
+            Buffer.from(
+              artifact.ext === "json"
+                ? JSON.stringify(inputSpec)
+                : artifact.artifactType.endsWith("cover-v1")
+                  ? "audio-cover"
+                  : "audio-questions",
+            ),
+          ] as [string, Buffer],
+      ),
+    ])
+    const uploads = new Map<string, Buffer>()
+    const outputRoot = `runs/g2/${devotionalAttemptToken(attempt.attemptId)}/worker-upload/upload_1`
+    const workspaceTransfer = {
+      schemaVersion: "1" as const,
+      attempt,
+      manifest: {
+        ref: manifestRef,
+        url: "https://bucket.example/manifest?signed=secret",
+        expiresAt,
+      },
+      inputs: artifacts.map((artifact, index) => ({
+        ...artifact,
+        ext: artifact.ext as "json" | "mp3",
+        url: `https://bucket.example/input-${index}?signed=secret`,
+        expiresAt,
+      })),
+      outputs: [
+        {
+          artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+          ext: "mp4" as const,
+          key: `${outputRoot}/portrait.mp4`,
+          contentType: "video/mp4" as const,
+          url: "https://bucket.example/portrait?signed=secret",
+          expiresAt,
+        },
+        {
+          artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+          ext: "mp4" as const,
+          key: `${outputRoot}/wide.mp4`,
+          contentType: "video/mp4" as const,
+          url: "https://bucket.example/wide?signed=secret",
+          expiresAt,
+        },
+      ],
+    } satisfies DevotionalWorkspaceTransfer
+    const baseFetch = fakeFetch()
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = new URL(String(input))
+      if (url.hostname !== "bucket.example") return baseFetch(input, init)
+      if (init?.method === "PUT") {
+        uploads.set(
+          url.pathname,
+          Buffer.from(await new Response(init.body).arrayBuffer()),
+        )
+        return new Response(null, { status: 200 })
+      }
+      const body = bodies.get(url.pathname)
+      return body
+        ? new Response(new Uint8Array(body), {
+            status: 200,
+            headers: { "content-length": String(body.byteLength) },
+          })
+        : new Response(null, { status: 404 })
+    }
+
+    const result = await runDevotionalRender({
+      runId: attempt.runId,
+      inputAssetId,
+      outputAssetId: `dv2o_g2_${devotionalAttemptToken(attempt.attemptId)}`,
+      inputHash: "a".repeat(64),
+      workspaceTransfer,
+      deps: {
+        storage,
+        engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl,
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir: undefined,
+      },
+    })
+
+    expect(uploads.get("/portrait")?.toString()).toBe("rendered")
+    expect(uploads.get("/wide")?.toString()).toBe("rendered")
+    expect(result.artifacts).toHaveLength(2)
+    expect(result.artifacts[0]).toMatchObject({
+      schemaVersion: "2",
+      key: `${outputRoot}/portrait.mp4`,
+      digest: createHash("sha256").update("rendered").digest("hex"),
+    })
+    await expect(
+      storage.workspaceArtifactExists(
+        devotionalManifestKey(attempt, "attempt-output"),
+      ),
+    ).resolves.toBe(false)
+  })
+
   it("does not persist a portrait when the wide render fails", async () => {
     const { storage } = await setup()
     const { engine, calls } = fakeEngine({ failWide: true })
@@ -227,6 +437,87 @@ describe("runDevotionalRender", () => {
         "mp4",
       ),
     ).resolves.toBe(false)
+  })
+
+  it("keeps an immutable portrait blob when output upload crashes before the manifest", async () => {
+    const { storage, attempt, inputAssetId } = await setupV2()
+    const { engine } = fakeEngine()
+    let writes = 0
+    const failingStorage: Storage = {
+      ...storage,
+      async writeWorkspaceArtifactFromFile(options) {
+        writes += 1
+        if (writes === 2) throw new Error("wide upload failed")
+        return storage.writeWorkspaceArtifactFromFile(options)
+      },
+    }
+    await expect(
+      runDevotionalRender({
+        runId: "run_2",
+        inputAssetId,
+        outputAssetId: `dv2o_g2_${devotionalAttemptToken(attempt.attemptId)}`,
+        inputHash: "a".repeat(64),
+        deps: {
+          storage: failingStorage,
+          engine,
+          runCommand: fakeRunCommand(),
+          fetchImpl: fakeFetch(),
+          allowedHosts: ["cdn.example.org"],
+          nodeEnv: "production",
+          bundleDir: undefined,
+        },
+      }),
+    ).rejects.toThrow("wide upload failed")
+
+    const outputDigest = createHash("sha256").update("rendered").digest("hex")
+    await expect(
+      storage.workspaceArtifactExists(
+        devotionalWorkspaceKey(
+          attempt,
+          "attempt-output",
+          outputDigest,
+          "portrait.mp4",
+        ),
+      ),
+    ).resolves.toBe(true)
+    await expect(
+      storage.workspaceArtifactExists(
+        devotionalManifestKey(attempt, "attempt-output"),
+      ),
+    ).resolves.toBe(false)
+  })
+
+  it("replays a completed attempt from its immutable output manifest", async () => {
+    const { storage, attempt, inputAssetId } = await setupV2()
+    const outputAssetId = `dv2o_g2_${devotionalAttemptToken(attempt.attemptId)}`
+    const firstEngine = fakeEngine()
+    const first = await runDevotionalRender({
+      runId: "run_2",
+      inputAssetId,
+      outputAssetId,
+      inputHash: "a".repeat(64),
+      deps: {
+        storage,
+        engine: firstEngine.engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl: fakeFetch(),
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir: undefined,
+      },
+    })
+
+    const replayEngine = fakeEngine({ failWide: true })
+    const replay = await runDevotionalRender({
+      runId: "run_2",
+      inputAssetId,
+      outputAssetId,
+      inputHash: "a".repeat(64),
+      deps: { storage, engine: replayEngine.engine },
+    })
+
+    expect(replayEngine.calls.renders).toEqual([])
+    expect(replay.artifacts).toEqual(first.artifacts)
   })
 
   it("closes Chromium and leaves no output when the job deadline expires", async () => {

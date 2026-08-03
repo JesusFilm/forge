@@ -68,6 +68,20 @@ describe("GraphQL schema — Unit 4 content types", () => {
     )
   })
 
+  it("extends the stable Watch locale contract with search/social fields", () => {
+    expect(Object.keys(fieldsOf("WatchRouteSnapshotLocale"))).toEqual(
+      expect.arrayContaining([
+        "searchTitle",
+        "searchDescription",
+        "socialImage",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("WatchRouteSnapshotSocialImage"))).toEqual(
+      expect.arrayContaining(["url", "width", "height", "mimeType"]),
+    )
+    expect(schema.getType("WatchRouteSnapshotRootLocale")).toBeUndefined()
+  })
+
   it("Manager session/read/job contract types expose the expected shape", () => {
     expect(Object.keys(fieldsOf("ManagerViewer"))).toEqual(
       expect.arrayContaining([
@@ -612,9 +626,12 @@ describe("MediaAssetUsage type", () => {
     const fields = fieldsOf("MediaAssetUsage")
     expect(Object.keys(fields)).toEqual(
       expect.arrayContaining([
-        "experienceId",
-        "experienceLocaleId",
+        "resourceType",
+        "resourceId",
+        "resourceLocaleId",
         "locale",
+        "editUrl",
+        "recoverable",
         "location",
         "fieldPath",
         "fieldName",

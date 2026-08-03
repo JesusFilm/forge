@@ -19,6 +19,22 @@ const envSchema = z.object({
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
   RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  // Local-only compatibility for pre-signed-transfer devotional tests/tools.
+  // Production Workspace access is granted per job by short-lived URLs.
+  DEVOTIONAL_WORKSPACE_LOCAL_DIR: z
+    .string()
+    .min(1)
+    .default(".tmp/devotional-workspace"),
+  // Non-secret defense-in-depth boundary for Mastra-issued S3 capabilities.
+  // Exact origin only: no path, credentials, query, or fragment.
+  DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN: z
+    .string()
+    .url()
+    .refine((value) => {
+      const url = new URL(value)
+      return url.protocol === "https:" && value === url.origin
+    }, "must be an exact https origin")
+    .optional(),
   SHORTS_WORKER_LOCAL_ARTIFACTS_DIR: z
     .string()
     .min(1)
@@ -109,6 +125,12 @@ export function parseEnv(source: EnvSource): Env {
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       source.RAILWAY_S3_SECRET_ACCESS_KEY,
     ),
+    DEVOTIONAL_WORKSPACE_LOCAL_DIR: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_LOCAL_DIR,
+    ),
+    DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN: emptyToUndefined(
+      source.DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN,
+    ),
     SHORTS_WORKER_LOCAL_ARTIFACTS_DIR: emptyToUndefined(
       source.SHORTS_WORKER_LOCAL_ARTIFACTS_DIR,
     ),
@@ -179,6 +201,10 @@ export function assertRuntimeEnv(
     ["RAILWAY_S3_BUCKET", target.RAILWAY_S3_BUCKET],
     ["RAILWAY_S3_ACCESS_KEY_ID", target.RAILWAY_S3_ACCESS_KEY_ID],
     ["RAILWAY_S3_SECRET_ACCESS_KEY", target.RAILWAY_S3_SECRET_ACCESS_KEY],
+    [
+      "DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN",
+      target.DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN,
+    ],
     ["SHORTS_WORKER_BUNDLE_DIR", target.SHORTS_WORKER_BUNDLE_DIR],
     [
       "SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR",

@@ -70,6 +70,8 @@ import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
+  getWatchNestedContainerAudioLanguageSlugs,
+  isWatchNestedContainerRouteAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
 } from "@/lib/watch-route-manifest"
@@ -790,7 +792,8 @@ async function renderVideo(shape: {
   if (routeModel.kind === "series") {
     const series = routeModel
     const routeManifest = await routeManifestPromise
-    const languageOptions = (series.video.childDubLanguages ?? [])
+    const contentSlug = tryAsContentSlug(slug)
+    const directLanguageOptions = (series.video.childDubLanguages ?? [])
       .flatMap((language) =>
         language?.slug
           ? [
@@ -803,31 +806,51 @@ async function renderVideo(shape: {
           : [],
       )
       .sort((a, b) => a.name.localeCompare(b.name))
+    const nestedLanguageOptions =
+      routeManifest && contentSlug
+        ? series.video.children.flatMap((child) => {
+            if (!isSeriesRecord(child) || !child.slug) return []
+            const childSlug = child.slug
+            return getWatchNestedContainerAudioLanguageSlugs(
+              routeManifest,
+              contentSlug,
+              childSlug,
+            ).map((nestedLanguageSlug) => ({
+              slug: nestedLanguageSlug,
+              bcp47: slugToBcp47Tag(nestedLanguageSlug),
+              name: nestedLanguageSlug,
+            }))
+          })
+        : []
+    const languageOptions = Array.from(
+      new Map(
+        [...nestedLanguageOptions, ...directLanguageOptions].map((language) => [
+          language.slug,
+          language,
+        ]),
+      ).values(),
+    ).sort((a, b) => a.name.localeCompare(b.name))
     const seriesLanguage = resolveSeriesLanguageIdentity(
       languageOptions,
       rawLocale,
     )
     if (!seriesLanguage || seriesLanguage.slug !== rawLocale) notFound()
-    const contentSlug = tryAsContentSlug(slug)
     const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")
     const visibleSeries = {
       ...series.video,
+      childDubLanguages: languageOptions,
       children: series.video.children.filter((child) => {
         if (!isSeriesRecord(child)) return true
-        if (!routeManifest || !child.slug) return false
-        if (
-          !Object.hasOwn(
-            routeManifest.audioLanguageIndexesByContent ?? {},
-            child.slug,
-          )
-        ) {
-          return false
-        }
-        return isWatchRouteAdmittedByManifest(routeManifest, {
-          kind: "video",
-          contentSlug: child.slug,
-          audioLanguageSlug: seriesLanguage.slug,
-        })
+        return Boolean(
+          routeManifest &&
+          contentSlug &&
+          child.slug &&
+          isWatchNestedContainerRouteAdmittedByManifest(routeManifest, {
+            parentSlug: contentSlug,
+            childSlug: child.slug,
+            audioLanguageSlug: seriesLanguage.slug,
+          }),
+        )
       }),
     }
     const canonicalUrl =
@@ -848,7 +871,11 @@ async function renderVideo(shape: {
         <WatchStructuredData json={structuredData} />
         <SeriesPageClient
           series={visibleSeries}
-          selectedVariant={series.selectedVariant}
+          selectedVariant={
+            series.selectedVariant?.language?.slug === seriesLanguage.slug
+              ? series.selectedVariant
+              : null
+          }
           locale={seriesLanguage?.slug ?? rawLocale}
         />
       </>

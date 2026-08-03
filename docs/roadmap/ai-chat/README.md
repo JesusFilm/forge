@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 27, 2026)
+## Status (August 3, 2026)
 
-- **Total tickets:** 42
-- ✅ **Complete:** 35
-- 🟡 **In progress:** 0
-- 🔵 **Not started:** 7
+- **Total tickets:** 48
+- ✅ **Complete:** 38
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 9
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -52,7 +52,7 @@ from the main DS Year 1 roadmap.
 | [feat-269](feat-269-chat-sources-presentation.md)                  | Chat sources presentation: heading, clamped cards, collapse                  | jian wei | P1       | 2026-07-20 | 2    | ✅ complete    | [#1619](https://github.com/JesusFilm/forge/pull/1619)                                                        |
 | [feat-270](feat-270-chat-ui-cleanup-batch.md)                      | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges    | jian wei | P2       | 2026-07-27 | 3    | ✅ complete    | [#1626](https://github.com/JesusFilm/forge/pull/1626)                                                        |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)          | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)       | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                                                                            |
-| [feat-272](feat-272-seeker-langfuse-managed-prompt-integration.md) | Seeker Langfuse-managed prompt integration (consume getManagedPrompt)        | jaco     | P2       | 2026-08-17 | 3    | 🔵 not-started | —                                                                                                            |
+| [feat-272](feat-272-seeker-langfuse-managed-prompt-integration.md) | Seeker Langfuse-managed prompt integration (consume getManagedPrompt)        | jaco     | P2       | 2026-08-17 | 3    | ✅ complete    | [#1788](https://github.com/JesusFilm/forge/pull/1788)                                                        |
 | [feat-275](feat-275-ai-chat-docs-audit.md)                         | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                       | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#1638](https://github.com/JesusFilm/forge/pull/1638)                                                        |
 | [feat-281](feat-281-chat-conversation-session-module.md)           | Chat conversation session module (deepen the engine + honest gate denial)    | jian wei | P2       | 2026-07-22 | 4    | ✅ complete    | [#1666](https://github.com/JesusFilm/forge/pull/1666), [#1674](https://github.com/JesusFilm/forge/pull/1674) |
 | [feat-282](feat-282-chat-shared-mastra-transport.md)               | Shared Mastra upstream transport for the chat proxies (narrowed)             | jian wei | P2       | 2026-07-21 | 5    | ✅ complete    | [#1661](https://github.com/JesusFilm/forge/pull/1661), [#1690](https://github.com/JesusFilm/forge/pull/1690) |
@@ -60,8 +60,14 @@ from the main DS Year 1 roadmap.
 | [feat-284](feat-284-mastra-thread-ownership-read-resolver.md)      | Mastra thread-ownership read-path resolver (owned-existing-thread)           | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1670](https://github.com/JesusFilm/forge/pull/1670)                                                        |
 | [feat-285](feat-285-mastra-ai-chat-memory-module.md)               | Extract the Mastra ai-chat memory module + keying policy (ride-along)        | jian wei | P2       | 2026-08-17 | 1    | ✅ complete    | [#1672](https://github.com/JesusFilm/forge/pull/1672)                                                        |
 | [feat-294](feat-294-chat-validated-base-url-brand.md)              | Branded ValidatedBaseUrl input for the shared Mastra transport               | jian wei | P3       | 2026-07-27 | 1    | ✅ complete    | [#1702](https://github.com/JesusFilm/forge/pull/1702)                                                        |
-| [feat-296](feat-296-langfuse-configuration.md)                     | Configure & provision Langfuse for managed seeker prompts (safe env rollout) | jaco     | P2       | 2026-08-10 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-296](feat-296-langfuse-configuration.md)                     | Configure & provision Langfuse for managed seeker prompts (safe env rollout) | jian wei | P2       | 2026-07-27 | 1    | ✅ complete    | [#1783](https://github.com/JesusFilm/forge/pull/1783), [#1786](https://github.com/JesusFilm/forge/pull/1786) |
 | [feat-303](feat-303-langfuse-managed-prompt-helper.md)             | Langfuse managed-prompt retrieval helper (retroactive record)                | jaco     | P2       | 2026-07-20 | 3    | ✅ complete    | [#1621](https://github.com/JesusFilm/forge/pull/1621)                                                        |
 | [feat-304](feat-304-chat-production-egress-pin.md)                 | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | ✅ complete    | [#1731](https://github.com/JesusFilm/forge/pull/1731)                                                        |
 | [feat-305](feat-305-chat-healthcheck.md)                           | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1762](https://github.com/JesusFilm/forge/pull/1762)                                                        |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                 | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | ✅ complete    | [#1765](https://github.com/JesusFilm/forge/pull/1765), [#1768](https://github.com/JesusFilm/forge/pull/1768) |
+| [feat-321](feat-321-langfuse-tracing.md)                           | Langfuse tracing for the Seeker agent (stub — decision capture)              | jian wei | P2       | 2026-09-01 | 3    | 🟡 in-progress | —                                                                                                            |
+| [feat-326](feat-326-admin-agent-tools-availability-kind.md)        | Admin agent-tools search-videos: expose availability.kind                    | jian wei | P1       | 2026-08-03 | 1    | ✅ complete    | [#1813](https://github.com/JesusFilm/forge/pull/1813)                                                        |
+| [feat-327](feat-327-seeker-video-tools-result-projection.md)       | Seeker video tools + declared-video result projection (SEEKER_VIDEO_ENABLED) | jian wei | P1       | 2026-08-04 | 3    | 🔵 not-started | —                                                                                                            |
+| [feat-328](feat-328-chat-inline-video-rendering.md)                | Chat inline video rendering from the result frame                            | jian wei | P1       | 2026-08-07 | 2    | 🔵 not-started | —                                                                                                            |
+| [feat-329](feat-329-chat-video-sources-replay-persistence.md)      | Replay persistence: featured video + sources survive thread reload           | jian wei | P1       | 2026-08-10 | 2    | 🔵 not-started | —                                                                                                            |
+| [feat-330](feat-330-seeker-video-prompt-langfuse.md)               | Durable video-featuring guidance in the Langfuse seeker prompt               | jian wei | P1       | 2026-08-10 | 1    | 🔵 not-started | —                                                                                                            |

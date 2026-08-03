@@ -1,8 +1,4 @@
-import { readFileSync } from "node:fs"
-import path from "node:path"
-import { repoRoot } from "./repo-root"
-
-import { getDevotionalCorpusDir } from "../../config/env"
+import { z } from "zod"
 
 /**
  * Reflection corpus reader + matcher.
@@ -13,9 +9,8 @@ import { getDevotionalCorpusDir } from "../../config/env"
  *   - Mark/Luke/John    → Matthew Henry, Commentary (whole-chapter)
  * (Spurgeon is loaded for future thematic use but not part of passage routing.)
  *
- * Matching (`matchReflection`) is pure and file-free so it is trivially tested;
- * loading is a thin fs wrapper. Corpora live in `devo/corpus` by default,
- * overridable with `DEVOTIONAL_CORPUS_DIR` for bundled deploys.
+ * Matching is pure. Workspace inventory/catalog code owns discovery and live
+ * reads; this module only validates a selected document and runs algorithms.
  */
 
 export type ReflectionEntry = {
@@ -33,6 +28,54 @@ export type ReflectionCorpora = {
   ryleMatthew: ReflectionEntry[]
   matthewHenry: ReflectionEntry[]
   spurgeon: ReflectionEntry[]
+}
+
+const ReflectionEntrySchema = z
+  .object({
+    source: z.string().trim().min(1),
+    reference: z.string().trim().min(1),
+    osisRef: z.string().trim().min(1).nullable(),
+    text: z.string().trim().min(1),
+    verse: z.string().trim().min(1).optional(),
+    book: z.string().trim().min(1).optional(),
+    chapter: z.number().int().positive().optional(),
+  })
+  .strict()
+
+const ReflectionEntriesSchema = z
+  .object({ entries: z.array(ReflectionEntrySchema).min(1) })
+  .strict()
+
+/** Parse a selected JSON corpus file. Content-only prose is a single eligible
+ * entry whose source/reference come from the selected Workspace path. */
+export function parseReflectionDocument(options: {
+  path: string
+  content: string
+}): ReflectionEntry[] {
+  const content = options.content.trim()
+  if (!content) throw new Error(`${options.path}: reflection source is empty`)
+  if (options.path.toLowerCase().endsWith(".json")) {
+    try {
+      return ReflectionEntriesSchema.parse(JSON.parse(content)).entries
+    } catch (error) {
+      throw new Error(`${options.path}: invalid reflection corpus`, {
+        cause: error,
+      })
+    }
+  }
+  const name = options.path
+    .split("/")
+    .at(-1)
+    ?.replace(/\.[^.]+$/, "")
+  if (!name) throw new Error(`${options.path}: invalid reflection path`)
+  return [
+    {
+      source: name,
+      reference: name,
+      osisRef: null,
+      text: content,
+    },
+  ]
 }
 
 export type ReflectionMatch = {
@@ -238,45 +281,4 @@ export function selectReflection(
   const primary = preferSpurgeon ? spurgeon() : commentary()
   if (primary) return primary
   return preferSpurgeon ? commentary() : spurgeon()
-}
-
-// ---- Loading (fs) ----------------------------------------------------------
-
-function defaultCorpusDir(): string {
-  // cwd-walk root: works in source (tsx/vitest) AND the mastra dev/build bundle
-  // (import.meta.url no longer points at the source tree there). Override with
-  // DEVOTIONAL_CORPUS_DIR on a deploy that doesn't ship devo/corpus.
-  return path.join(repoRoot(), "devo/corpus")
-}
-
-function readCorpus(dir: string, file: string): ReflectionEntry[] {
-  try {
-    const raw = readFileSync(path.join(dir, file), "utf8")
-    const parsed = JSON.parse(raw) as { entries?: ReflectionEntry[] }
-    return parsed.entries ?? []
-  } catch {
-    return []
-  }
-}
-
-let cache: { dir: string; corpora: ReflectionCorpora } | null = null
-
-export function loadReflectionCorpora(dir?: string): ReflectionCorpora {
-  const resolved = dir ?? getDevotionalCorpusDir() ?? defaultCorpusDir()
-  if (cache && cache.dir === resolved) return cache.corpora
-  const corpora: ReflectionCorpora = {
-    ryleMatthew: readCorpus(resolved, "ryle-matthew.json"),
-    matthewHenry: readCorpus(resolved, "matthew-henry-gospels.json"),
-    spurgeon: readCorpus(resolved, "spurgeon-morning-evening.json"),
-  }
-  cache = { dir: resolved, corpora }
-  return corpora
-}
-
-/** Convenience: load (cached) + match in one call. */
-export function findReflection(
-  passageOsis: string,
-  dir?: string,
-): ReflectionMatch | null {
-  return matchReflection(passageOsis, loadReflectionCorpora(dir))
 }

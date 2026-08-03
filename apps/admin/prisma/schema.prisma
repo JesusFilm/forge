@@ -732,6 +732,7 @@ model MediaAsset {
   createdById                 String?                    @map("created_by_id")
   createdBy                   User?                      @relation(fields: [createdById], references: [id], onDelete: SetNull)
   locales                     MediaAssetLocale[]
+  socialImageVideoLocales     VideoLocale[]              @relation("VideoLocaleSocialImage")
   createdAt                   DateTime                   @default(now()) @map("created_at")
   updatedAt                   DateTime                   @updatedAt @map("updated_at")
 
@@ -1246,26 +1247,31 @@ model WatchProgress {
 /// Per-locale Video content. Editors curate localized title / description /
 /// snippet / imageAlt and publish them independently of other locales.
 model VideoLocale {
-  id             String                   @id @default(cuid())
-  videoId        String                   @map("video_id")
-  video          Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  id                 String                   @id @default(cuid())
+  videoId            String                   @map("video_id")
+  video              Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale         String?
-  languageId     String?                  @map("language_id")
-  language       Language?                @relation(fields: [languageId], references: [id], onDelete: SetNull)
-  languageSlug   String?                  @map("language_slug")
-  languageCoreId String?                  @map("language_core_id")
-  source         SourceTier               @default(CORE)
-  title          String?
-  description    String?
-  snippet        String?
-  imageAlt       String?                  @map("image_alt")
-  status         LocaleStatus             @default(DRAFT)
-  publishedAt    DateTime?                @map("published_at")
-  syncedAt       DateTime?                @map("synced_at")
-  deletedAt      DateTime?                @map("deleted_at")
-  createdAt      DateTime                 @default(now()) @map("created_at")
-  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  locale             String?
+  languageId         String?                  @map("language_id")
+  language           Language?                @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  languageSlug       String?                  @map("language_slug")
+  languageCoreId     String?                  @map("language_core_id")
+  source             SourceTier               @default(CORE)
+  title              String?
+  description        String?
+  snippet            String?
+  imageAlt           String?                  @map("image_alt")
+  /// Editor-owned crawler metadata. Core sync must not write these fields.
+  searchTitle        String?                  @map("search_title")
+  searchDescription  String?                  @map("search_description")
+  socialImageAssetId String?                  @map("social_image_asset_id")
+  socialImageAsset   MediaAsset?              @relation("VideoLocaleSocialImage", fields: [socialImageAssetId], references: [id], onDelete: Restrict)
+  status             LocaleStatus             @default(DRAFT)
+  publishedAt        DateTime?                @map("published_at")
+  syncedAt           DateTime?                @map("synced_at")
+  deletedAt          DateTime?                @map("deleted_at")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
   /// STORED generated tsvector columns — derived from `title` /
   /// `description` by `0009_keyword_first_lexical/migration.sql`. Backed by
   /// `video_locale_lexical_weighted_idx` (GIN over the per-field weighted
@@ -1276,8 +1282,8 @@ model VideoLocale {
   /// the generated expression requires a coordinated DROP CASCADE + ADD
   /// COLUMN migration (Postgres has no in-place editor for stored
   /// generated expressions).
-  titleTsv       Unsupported("tsvector")? @map("title_tsv")
-  descriptionTsv Unsupported("tsvector")? @map("description_tsv")
+  titleTsv           Unsupported("tsvector")? @map("title_tsv")
+  descriptionTsv     Unsupported("tsvector")? @map("description_tsv")
 
   @@unique([videoId, languageId])
   @@index([locale])
@@ -1286,6 +1292,7 @@ model VideoLocale {
   @@index([languageSlug])
   @@index([videoId, languageSlug])
   @@index([languageCoreId])
+  @@index([socialImageAssetId])
   @@index([locale, status, deletedAt])
   @@index([deletedAt])
   @@map("video_locale")

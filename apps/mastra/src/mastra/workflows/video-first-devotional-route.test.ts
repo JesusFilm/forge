@@ -10,6 +10,7 @@ import {
   type VideoFirstLifecycleDeps,
   type VideoFirstWorkflowState,
 } from "./video-first-devotional-route"
+import { InMemoryDevotionalAttemptStore } from "../../services/devotional/workspace/state"
 
 const AUTH = { authHeader: "Bearer secret", serviceKeys: ["secret"] }
 const APPROVAL_ACTOR = {
@@ -40,6 +41,20 @@ const SUSPENSION = {
   reference: "Luke 1:1",
   reflectionPreview: "Preview",
 }
+const PERSISTED_WORKSPACE_INPUT = {
+  workspaceGeneration: 1,
+  attemptId: "attempt_0",
+  selectedSources: [
+    {
+      path: "/inputs/reflections/grace.md",
+      category: "reflections" as const,
+      digest: "a".repeat(64),
+      size: 5,
+      modifiedAt: "2026-07-31T12:00:00.000Z",
+      title: "Grace",
+    },
+  ],
+}
 
 function harness(states: Record<string, VideoFirstWorkflowState> = {}) {
   const start = vi.fn(async () => ({ runId: "daily-devotional-20260721" }))
@@ -55,6 +70,11 @@ function harness(states: Record<string, VideoFirstWorkflowState> = {}) {
     },
     renewReservation: vi.fn(async () => undefined),
     releaseReservation: vi.fn(async () => undefined),
+    attempts: new InMemoryDevotionalAttemptStore(),
+    reconcileAttempt: vi.fn(async () => ({
+      generation: 1,
+      selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+    })),
     now: () => new Date("2026-07-21T12:00:00Z"),
   }
   return { deps, start, resume, cancel }
@@ -134,7 +154,12 @@ describe("video-first devotional lifecycle routes", () => {
       },
     })
     expect(start).toHaveBeenCalledWith({
-      inputData: expect.objectContaining({ date: "2026-07-21" }),
+      inputData: {
+        date: "2026-07-21",
+        attemptId: expect.any(String),
+        workspaceGeneration: 1,
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+      },
     })
   })
 
@@ -181,6 +206,11 @@ describe("video-first devotional lifecycle routes", () => {
       },
       renewReservation: vi.fn(),
       releaseReservation: vi.fn(),
+      attempts: new InMemoryDevotionalAttemptStore(),
+      reconcileAttempt: vi.fn(async () => ({
+        generation: 1,
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+      })),
     }
 
     const request = () =>
@@ -193,6 +223,56 @@ describe("video-first devotional lifecycle routes", () => {
 
     expect(start).toHaveBeenCalledOnce()
     expect(outcomes.map(({ body }) => body.existing)).toEqual([false, true])
+  })
+
+  it("resumes the same provisioning attempt after reconciliation recovers", async () => {
+    const { deps, start } = harness()
+    const reconcile = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary outage"))
+      .mockResolvedValueOnce({
+        generation: 1,
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+      })
+    deps.reconcileAttempt = reconcile
+    const request = () =>
+      handleVideoFirstStartRequest({
+        ...AUTH,
+        readJson: async () => ({ date: "2026-07-21" }),
+        deps,
+      })
+
+    await expect(request()).resolves.toEqual({
+      status: 503,
+      body: { error: "workspace_unavailable" },
+    })
+    await expect(request()).resolves.toMatchObject({ status: 202 })
+    expect(reconcile).toHaveBeenCalledTimes(2)
+    expect(start).toHaveBeenCalledOnce()
+  })
+
+  it("starts a ready attempt left behind before Mastra run creation", async () => {
+    const { deps, start } = harness()
+    const createRun = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("process interrupted"))
+      .mockResolvedValue({
+        startAsync: start,
+        resume: vi.fn(),
+        cancel: vi.fn(),
+      })
+    deps.workflow.createRun = createRun
+    const request = () =>
+      handleVideoFirstStartRequest({
+        ...AUTH,
+        readJson: async () => ({ date: "2026-07-21" }),
+        deps,
+      })
+
+    await expect(request()).rejects.toThrow("process interrupted")
+    await expect(request()).resolves.toMatchObject({ status: 202 })
+    expect(deps.reconcileAttempt).toHaveBeenCalledOnce()
+    expect(start).toHaveBeenCalledOnce()
   })
 
   it("renews and resumes only suspended runs", async () => {
@@ -334,23 +414,27 @@ describe("video-first devotional lifecycle routes", () => {
     const state: VideoFirstWorkflowState = {
       runId: "run1",
       status: "failed",
-      payload: { date: "2026-07-20", chapterIndex: 4 },
+      payload: {
+        date: "2026-07-20",
+        chapterIndex: 4,
+        ...PERSISTED_WORKSPACE_INPUT,
+      },
     }
     const { deps, start } = harness({ run1: state })
     const outcome = await handleVideoFirstRetryRequest({
       ...AUTH,
       runId: "run1",
+      idempotencyKey: "retry-audio-1",
       readJson: async () => ({ regenerateAudio: true }),
       deps,
     })
-    expect(outcome.body.runId).toMatch(/^run1-retry-[a-f0-9]{12}$/)
+    expect(outcome.body.runId).toBe("run1-attempt-1")
     expect(start).toHaveBeenCalledWith({
-      inputData: {
+      inputData: expect.objectContaining({
         date: "2026-07-20",
         chapterIndex: 4,
-        regenerate: false,
-        regenerateAudio: true,
-      },
+        workspaceGeneration: 1,
+      }),
     })
   })
 
@@ -359,12 +443,13 @@ describe("video-first devotional lifecycle routes", () => {
       run1: {
         runId: "run1",
         status: "failed",
-        payload: { date: "2026-07-20" },
+        payload: { date: "2026-07-20", ...PERSISTED_WORKSPACE_INPUT },
       },
     })
     const outcome = await handleVideoFirstRetryRequest({
       ...AUTH,
       runId: "run1",
+      idempotencyKey: "disabled-retry-1",
       newRunsEnabled: false,
       readJson: async () => ({}),
       deps,
@@ -381,7 +466,7 @@ describe("video-first devotional lifecycle routes", () => {
       run1: {
         runId: "run1",
         status: "failed",
-        payload: { date: "2026-07-20" },
+        payload: { date: "2026-07-20", ...PERSISTED_WORKSPACE_INPUT },
       },
     }
     const start = vi.fn(
@@ -401,11 +486,17 @@ describe("video-first devotional lifecycle routes", () => {
       },
       renewReservation: vi.fn(),
       releaseReservation: vi.fn(),
+      attempts: new InMemoryDevotionalAttemptStore(),
+      reconcileAttempt: vi.fn(async () => ({
+        generation: 1,
+        selectedSources: PERSISTED_WORKSPACE_INPUT.selectedSources,
+      })),
     }
     const request = () =>
       handleVideoFirstRetryRequest({
         ...AUTH,
         runId: "run1",
+        idempotencyKey: "duplicate-retry-1",
         readJson: async () => ({ regenerateAudio: true }),
         deps,
       })
@@ -430,6 +521,7 @@ describe("video-first devotional lifecycle routes", () => {
       await handleVideoFirstRetryRequest({
         ...AUTH,
         runId: "run1",
+        idempotencyKey: "published-retry-1",
         readJson: async () => ({}),
         deps,
       }),
@@ -437,5 +529,45 @@ describe("video-first devotional lifecycle routes", () => {
       status: 409,
       body: { error: "published_run_not_retryable" },
     })
+  })
+
+  it("reconciles once per new retry key and rejects key reuse with different input", async () => {
+    const state: VideoFirstWorkflowState = {
+      runId: "run1",
+      status: "failed",
+      payload: { date: "2026-07-20", ...PERSISTED_WORKSPACE_INPUT },
+    }
+    const { deps, start } = harness({ run1: state })
+
+    const first = await handleVideoFirstRetryRequest({
+      ...AUTH,
+      runId: "run1",
+      idempotencyKey: "retry-key",
+      readJson: async () => ({ regenerateAudio: true }),
+      deps,
+    })
+    const replay = await handleVideoFirstRetryRequest({
+      ...AUTH,
+      runId: "run1",
+      idempotencyKey: "retry-key",
+      readJson: async () => ({ regenerateAudio: true }),
+      deps,
+    })
+    const conflict = await handleVideoFirstRetryRequest({
+      ...AUTH,
+      runId: "run1",
+      idempotencyKey: "retry-key",
+      readJson: async () => ({ regenerate: true }),
+      deps,
+    })
+
+    expect(first.status).toBe(202)
+    expect(replay).toMatchObject({ status: 202, body: { existing: true } })
+    expect(conflict).toEqual({
+      status: 409,
+      body: { error: "idempotency_key_conflict" },
+    })
+    expect(deps.reconcileAttempt).toHaveBeenCalledOnce()
+    expect(start).toHaveBeenCalledOnce()
   })
 })

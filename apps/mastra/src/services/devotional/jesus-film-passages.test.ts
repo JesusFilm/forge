@@ -1,15 +1,27 @@
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import path from "node:path"
 
-import { JESUS_FILM_CHAPTERS } from "./jesus-film-catalog"
+import { parseJesusFilmCatalogDocument } from "./jesus-film-catalog"
 import {
   chapterWithPassage,
-  JESUS_FILM_PASSAGES,
   mappedChapterIndices,
+  parseJesusFilmPassagesDocument,
   passageForChapter,
 } from "./jesus-film-passages"
 import { matchReflection, parseOsis } from "./reflection-corpus"
 
 const CURATED_WINDOW_INDICES = [5, 14, 19, 21, 31, 33, 55, 59]
+const fixture = (name: string) =>
+  readFileSync(path.resolve("devotional-workspace/inputs/video", name), "utf8")
+const JESUS_FILM_CHAPTERS = parseJesusFilmCatalogDocument({
+  path: "/inputs/video/jesus-film-catalog.json",
+  content: fixture("jesus-film-catalog.json"),
+})
+const JESUS_FILM_PASSAGES = parseJesusFilmPassagesDocument({
+  path: "/inputs/video/jesus-film-passages.json",
+  content: fixture("jesus-film-passages.json"),
+})
 
 function humanReferenceToOsis(reference: string): string | null {
   const match = reference.match(
@@ -25,7 +37,7 @@ function humanReferenceToOsis(reference: string): string | null {
 describe("JESUS_FILM_PASSAGES", () => {
   it("has exactly one mapping for each of the 61 catalog chapters", () => {
     const expected = Array.from({ length: 61 }, (_, index) => index + 1)
-    const indices = mappedChapterIndices()
+    const indices = mappedChapterIndices(JESUS_FILM_PASSAGES)
 
     expect(JESUS_FILM_PASSAGES).toHaveLength(61)
     expect(new Set(indices).size).toBe(61)
@@ -50,7 +62,11 @@ describe("JESUS_FILM_PASSAGES", () => {
 
   it("joins every passage to the matching catalog index, id, and title", () => {
     for (const chapter of JESUS_FILM_CHAPTERS) {
-      const joined = chapterWithPassage(chapter.index)
+      const joined = chapterWithPassage(
+        chapter.index,
+        JESUS_FILM_PASSAGES,
+        JESUS_FILM_CHAPTERS,
+      )
       expect(joined, `index ${chapter.index}`).not.toBeNull()
       expect(joined?.index).toBe(chapter.index)
       expect(joined?.id).toBe(chapter.id)
@@ -119,13 +135,21 @@ describe("JESUS_FILM_PASSAGES", () => {
 
 describe("passage lookups", () => {
   it("passageForChapter returns the mapping or null", () => {
-    expect(passageForChapter(19)?.reference).toBe("Luke 8:22-25")
-    expect(passageForChapter(61)?.reference).toBe("Luke 24:46-49")
-    expect(passageForChapter(999)).toBeNull()
+    expect(passageForChapter(19, JESUS_FILM_PASSAGES)?.reference).toBe(
+      "Luke 8:22-25",
+    )
+    expect(passageForChapter(61, JESUS_FILM_PASSAGES)?.reference).toBe(
+      "Luke 24:46-49",
+    )
+    expect(passageForChapter(999, JESUS_FILM_PASSAGES)).toBeNull()
   })
 
   it("chapterWithPassage joins the catalog identity and start offset", () => {
-    const chapter = chapterWithPassage(19)
+    const chapter = chapterWithPassage(
+      19,
+      JESUS_FILM_PASSAGES,
+      JESUS_FILM_CHAPTERS,
+    )
     expect(chapter?.title).toBe("Jesus Calms the Storm")
     expect(chapter?.id).toMatch(/^1_jf/)
     expect(chapter?.start).toBe("0:45:44")

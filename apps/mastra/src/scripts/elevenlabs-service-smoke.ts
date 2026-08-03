@@ -12,13 +12,30 @@ import path from "node:path"
 
 import { generateMusic } from "../services/devotional/elevenlabs-music"
 import { generateElevenVoiceover } from "../services/devotional/elevenlabs-voiceover"
+import {
+  loadMusicProfiles,
+  loadVoiceProfiles,
+} from "../services/devotional/authored-data"
+import {
+  createExplicitInputsReader,
+  requiredArg,
+} from "./devotional-authored-inputs"
 
 const OUT = path.join(homedir(), "Desktop", "voice-options")
 
 async function main() {
+  const reader = createExplicitInputsReader(requiredArg("workspace-inputs"))
+  const [voices, musicProfiles] = await Promise.all([
+    loadVoiceProfiles(reader),
+    loadMusicProfiles(reader),
+  ])
+  const voice = voices.rotation[0]
+  if (!voice) throw new Error("Workspace voice rotation is empty")
   const vo = await generateElevenVoiceover({
     text: "Be still, and know that I am God. This narration came through the real service function.",
-    voice: "male-d",
+    voice,
+    voiceProfiles: voices.profiles,
+    voiceSettings: voices.settings,
   })
   if (!vo.ok)
     throw new Error(`voiceover failed: ${vo.reason} ${vo.details ?? ""}`)
@@ -27,7 +44,12 @@ async function main() {
     `✓ voiceover  ${vo.audio.characterCount} chars, voice ${vo.audio.voiceId}`,
   )
 
-  const music = await generateMusic({ mood: "peace", lengthMs: 12_000 })
+  const music = await generateMusic({
+    mood: "peace",
+    moodPrompts: musicProfiles.moods,
+    defaultLengthMs: musicProfiles.defaultLengthMs,
+    lengthMs: 12_000,
+  })
   if (!music.ok)
     throw new Error(`music failed: ${music.reason} ${music.details ?? ""}`)
   await writeFile(path.join(OUT, "service-music.mp3"), music.audio.bytes)

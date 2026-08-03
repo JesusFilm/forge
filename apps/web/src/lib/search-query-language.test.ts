@@ -16,19 +16,23 @@ import {
 const english = option("English", "english", "en")
 const spanish = option("Spanish, Castilian", "spanish-castilian", "es-ES")
 const french = option("French", "french", "fr")
+const estonian = option("Estonian", "estonian", "et")
 const norwegian = option("Norwegian", "norwegian", "no")
 const arabic = option("Arabic, Modern Standard", "arabic-modern-standard", "ar")
 const hindi = option("Hindi", "hindi", "hi")
 const japanese = option("Japanese", "japanese", "ja")
+const vietnamese = option("Vietnamese", "vietnamese", "vi")
 
 const languageOptions = [
   english,
   spanish,
   french,
+  estonian,
   norwegian,
   arabic,
   hindi,
   japanese,
+  vietnamese,
 ]
 
 describe("detectQueryLanguageSuggestion", () => {
@@ -93,6 +97,90 @@ describe("detectQueryLanguageSuggestion", () => {
       }),
     ).toMatchObject({
       option: spanish,
+      source: "tinyld",
+    })
+  })
+
+  it.each(["ự", "u\u031B\u0323"])(
+    "recognizes a canonically decomposable Latin diacritic in %j",
+    (query) => {
+      detectAllMock.mockReturnValue([{ lang: "vi", accuracy: 1 }])
+
+      expect(
+        detectQueryLanguageSuggestion({
+          query,
+          currentLanguageSlug: "english",
+          languageOptions,
+        }),
+      ).toMatchObject({
+        option: vietnamese,
+        source: "tinyld",
+      })
+    },
+  )
+
+  it.each([
+    ["three tokens and 20 letters", "aaaaaa bbbbbb cccccccc"],
+    ["four tokens and 19 letters", "aaaa bbbb cccc ddddddd"],
+  ])(
+    "retains selected English for an unaccented Latin query with %s",
+    (_boundary, query) => {
+      detectAllMock.mockReturnValue([{ lang: "fr", accuracy: 1 }])
+
+      expect(
+        detectQueryLanguageSuggestion({
+          query,
+          currentLanguageSlug: "english",
+          languageOptions,
+        }),
+      ).toBeNull()
+    },
+  )
+
+  it.each([
+    ["prodigal son", "et"],
+    ["resur", "fr"],
+  ])(
+    "retains selected English for FGE-4 query %j despite TinyLD detecting %s",
+    (query, detectorCode) => {
+      detectAllMock.mockReturnValue([{ lang: detectorCode, accuracy: 1 }])
+
+      expect(
+        detectQueryLanguageSuggestion({
+          query,
+          currentLanguageSlug: "english",
+          languageOptions,
+        }),
+      ).toBeNull()
+    },
+  )
+
+  it("accepts a foreign TinyLD result at four tokens and 20 letters", () => {
+    detectAllMock.mockReturnValue([{ lang: "fr", accuracy: 1 }])
+
+    expect(
+      detectQueryLanguageSuggestion({
+        query: "aaaaa bbbbb ccccc ddddd",
+        currentLanguageSlug: "english",
+        languageOptions,
+      }),
+    ).toMatchObject({
+      option: french,
+      source: "tinyld",
+    })
+  })
+
+  it("does not apply the selected-English prior to another selected language", () => {
+    detectAllMock.mockReturnValue([{ lang: "fr", accuracy: 1 }])
+
+    expect(
+      detectQueryLanguageSuggestion({
+        query: "resur",
+        currentLanguageSlug: "spanish-castilian",
+        languageOptions,
+      }),
+    ).toMatchObject({
+      option: french,
       source: "tinyld",
     })
   })

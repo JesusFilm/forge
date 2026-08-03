@@ -1,6 +1,11 @@
 // Pure zod schema + constants for the daily-devotional video composition.
 // Self-contained and independent of the production "short" composition.
 import { z } from "zod"
+import { devotionalRenderConfigSchema } from "./styles"
+export {
+  devotionalRenderConfigSchema,
+  type DevotionalRenderConfig,
+} from "./styles"
 
 export const DEVOTIONAL_COMPOSITION_ID = "devotional"
 /** Landscape 16:9 variant (desktop/YouTube) — same component, same props; the
@@ -80,6 +85,8 @@ export const devotionalCardSchema = z.object({
 export type DevotionalCard = z.infer<typeof devotionalCardSchema>
 
 export const devotionalInputPropsSchema = z.object({
+  /** Validated Workspace-authored render/brand tokens. No compiled palette fallback. */
+  renderConfig: devotionalRenderConfigSchema,
   /** Human date shown in the header, e.g. "Dec 25". */
   headerDate: z.string().default("Dec 25"),
   /** Source credit for the reflection (e.g. "Adapted from Matthew Henry"),

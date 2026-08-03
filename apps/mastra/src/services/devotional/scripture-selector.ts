@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { requireAuthoredPrompt } from "./authored-data"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import {
   MAX_DEVOTIONAL_SHORT_TEXT,
@@ -67,13 +68,6 @@ const SCRIPTURE_JSON_SCHEMA = {
   },
 }
 
-const SYSTEM_PROMPT = [
-  "You choose one short Bible passage to anchor a daily Christian devotional.",
-  "The passage must cohere with the day's hook. Keep it focused — 1 to 4 verses.",
-  "Return the reference (for example 'John 3:16' or '1 John 4:7-12'), the quoted",
-  "passage, and the translation you are quoting. Return JSON only.",
-].join("\n")
-
 function normalizeReference(reference: string): string {
   return reference.trim().replace(/\s+/g, " ").replace(/\.$/, "")
 }
@@ -85,6 +79,7 @@ function isWellFormedReference(reference: string): boolean {
 export type SelectScriptureOptions = {
   hook: Hook
   llm: DevotionalLlm
+  systemPrompt?: string
 }
 
 export async function selectScripture(
@@ -93,7 +88,7 @@ export async function selectScripture(
   let response: z.infer<typeof ScriptureResponseSchema>
   try {
     response = await options.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: requireAuthoredPrompt(options.systemPrompt),
       user: [
         `Hook type: ${options.hook.type}`,
         `Hook: ${options.hook.title}`,
@@ -134,7 +129,6 @@ export async function selectScripture(
 }
 
 export const _internal = {
-  SYSTEM_PROMPT,
   normalizeReference,
   isWellFormedReference,
 }

@@ -2,6 +2,55 @@
 
 Shared domain vocabulary for this project — entities, named processes, and status concepts with project-specific meaning. Seeded with core domain vocabulary, then accretes as ce-compound and ce-compound-refresh process learnings; direct edits are fine. Glossary only, not a spec or catch-all.
 
+## Devotional generation
+
+### Devotional Workspace
+
+The canonical file and search data plane for devotional generation. It owns
+human-authored inputs and generated artifacts while PostgreSQL owns workflow
+state and the Shorts Worker performs automated media-byte processing.
+
+A workflow attempt reads the current Devotional Workspace inventory and carries
+bounded file references through durable state. The Workspace is live rather
+than versioned, so a new retry can consume files edited after an earlier
+attempt. A Devotional Catalog Generation snapshots eligible input metadata for
+selection; it does not freeze or version the Workspace bytes themselves.
+
+When media execution crosses into Shorts Worker, the Devotional Workspace owner
+issues attempt-scoped temporary capabilities. The Worker may transfer the
+authorized bytes but never receives durable Workspace credentials or ownership.
+
+### Devotional Catalog Generation
+
+An atomic, committed projection of the Devotional Workspace inputs used to
+select eligible sources during Devotional Attempt provisioning.
+
+A generation stores eligible document content and integrity metadata for
+search. Attempts carry only bounded Devotional Source References and re-read
+Workspace files before use; if a selected file changes, the existing attempt
+fails closed and a retry selects from a newly reconciled generation.
+
+### Devotional Attempt
+
+A durable record of one try to generate a devotional, binding request identity
+to a Devotional Catalog Generation and its selected Devotional Source
+References.
+
+An attempt exists before its workflow run is created so retries, restarts, and
+duplicate requests cannot create competing work. A retry creates a new attempt
+that may observe newer Workspace inputs; it does not silently rewrite the
+sources of an existing attempt.
+
+### Devotional Source Reference
+
+A bounded, content-addressed description of one Devotional Workspace input
+selected for a Devotional Attempt, carried through durable workflow state
+without embedding the source content itself.
+
+The workflow re-reads each selected file and compares its integrity metadata
+before external or irreversible boundaries. A mismatch fails the attempt
+rather than generating or publishing from mixed source versions.
+
 ## Video & media
 
 ### Smart Crop
@@ -70,6 +119,16 @@ content.
 The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
+
+### Watch Search & Social Metadata Overlay
+
+Editor-owned, per-language promotional metadata for a Watch Video that may
+change the page title, description, and social-card image without changing the
+viewer-visible Video identity, canonical route, or structured media identity.
+
+An absent overlay inherits the selected locale's canonical copy and existing
+image fallback. Managed social art remains promotional: it does not become the
+Video's thumbnail truth.
 
 ## Video source mapper
 
@@ -271,6 +330,8 @@ Search Language identity should travel as the public language slug selected or c
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
 
+Only the target-audio and related-language states can carry a playable Dub; the target-subtitle and no-option states name what exists (subtitles in the target language, or nothing) without one.
+
 ### Query Language Suggestion
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
@@ -353,6 +414,12 @@ For large corpora, an Embedding Backfill's completion state should be judged
 from stored embedding provenance and healthy vector rows, not from the lifetime
 of the trigger request that started it. Resume flows should preserve already
 healthy embeddings and continue from missing, legacy, or incomplete rows.
+
+### Video Database Snapshot
+
+A reviewed, profile-scoped, data-only export of production Admin video data for restoring production-like content into non-production environments. Its default form carries catalog and reference data, while its opt-in search form adds current transcript search state plus retained historical scene-search state.
+
+A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
 
 ## Known-caller auth
 
@@ -625,7 +692,9 @@ The external `jesusfilm-rag` retrieval service — a standalone system serving b
 
 ### Managed Prompt
 
-A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI — and each environment gets its own Langfuse project and key pair, so a leaked dev key cannot read tuned production prompt text. Nothing consumes the helper yet; agent wiring is tracked follow-up work (feat-272).
+A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI. Every agent's prompt lives in one Langfuse project, with labels marking which version each environment runs, so promoting a tuned prompt is a label move rather than a copy between projects. The seeker agent is the first consumer (feat-272): its whole system prompt — safety and citation wording included, no composition split — is the managed prompt `seeker-system`, with the full working text compiled in as the fallback. Confidentiality of the tuned text extends only to the Mastra network boundary: the runtime's built-in `/api/agents*` surface returns resolved instructions verbatim, so the managed prompt is kept out of the public repo but must never carry secrets.
+
+During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
 
 ## Flagged ambiguities
 

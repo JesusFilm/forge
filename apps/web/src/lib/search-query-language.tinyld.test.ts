@@ -7,6 +7,7 @@ const languageOptions: SearchLanguageOption[] = [
   option("English", "english", "en"),
   option("Spanish, Castilian", "spanish-castilian", "es-ES"),
   option("French", "french", "fr"),
+  option("Estonian", "estonian", "et"),
   option("Portuguese, Brazil", "portuguese-brazil", "pt-BR"),
   option("German, Standard", "german-standard", "de"),
   option("Italian", "italian", "it"),
@@ -14,14 +15,23 @@ const languageOptions: SearchLanguageOption[] = [
   option("Turkish", "turkish", "tr"),
   option("Indonesian", "indonesian-isa", "id"),
   option("Norwegian", "norwegian", "no"),
+  option("Vietnamese", "vietnamese", "vi"),
+  option("Arabic, Modern Standard", "arabic-modern-standard", "ar"),
 ]
 
 describe("detectQueryLanguageSuggestion with real TinyLD outputs", () => {
   it.each([
+    "prodigal son",
+    "resur",
+    "Bible Project",
     "Bible stories",
     "Jesus Bible stories",
     "kids bible videos",
     "christmas story",
+    "faith",
+    "grace",
+    "salvation",
+    "resurrection",
   ])(
     "does not suggest another language for common English query %j",
     (query) => {
@@ -42,9 +52,10 @@ describe("detectQueryLanguageSuggestion with real TinyLD outputs", () => {
     ["histórias bíblicas para crianças", "portuguese-brazil"],
     ["biblische geschichten fur kinder", "german-standard"],
     ["storie bibliche per bambini", "italian"],
-    ["bijbelverhalen voor kinderen", "dutch"],
+    ["mooie bijbelverhalen voor kinderen", "dutch"],
     ["çocuklar için incil hikayeleri", "turkish"],
     ["kisah alkitab untuk anak", "indonesian-isa"],
+    ["sự sống đời đời", "vietnamese"],
   ])("suggests %s as %s", (query, expectedSlug) => {
     expect(
       detectQueryLanguageSuggestion({
@@ -55,6 +66,19 @@ describe("detectQueryLanguageSuggestion with real TinyLD outputs", () => {
     ).toMatchObject({
       option: { publicSlug: expectedSlug },
       source: "tinyld",
+    })
+  })
+
+  it("keeps the explicit Arabic script hint ahead of TinyLD", () => {
+    expect(
+      detectQueryLanguageSuggestion({
+        query: "يسوع",
+        currentLanguageSlug: "english",
+        languageOptions,
+      }),
+    ).toMatchObject({
+      option: { publicSlug: "arabic-modern-standard" },
+      source: "script",
     })
   })
 })

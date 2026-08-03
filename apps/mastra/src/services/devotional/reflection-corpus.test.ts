@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   matchReflection,
   matchSpurgeonTheme,
+  parseReflectionDocument,
   parseOsis,
   selectReflection,
 } from "./reflection-corpus"
@@ -64,6 +65,24 @@ describe("parseOsis", () => {
   })
   it("returns null on garbage", () => {
     expect(parseOsis("nonsense")).toBeNull()
+  })
+})
+
+describe("parseReflectionDocument", () => {
+  it("accepts a content-only Workspace reflection without frontmatter", () => {
+    expect(
+      parseReflectionDocument({
+        path: "/inputs/reflections/new-source.md",
+        content: "A newly dropped reflection.",
+      }),
+    ).toEqual([
+      {
+        source: "new-source",
+        reference: "new-source",
+        osisRef: null,
+        text: "A newly dropped reflection.",
+      },
+    ])
   })
 })
 

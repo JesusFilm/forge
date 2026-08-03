@@ -1073,6 +1073,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       version: "test",
       generatedAt: "2026-07-27T00:00:00.000Z",
       contentSlugs: [
+        "storyclubs",
         "nested-available",
         "nested-unavailable",
         "nested-unindexed",
@@ -1083,6 +1084,12 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       audioLanguageIndexesByContent: {
         "nested-available": [0],
         "nested-unavailable": [1],
+      },
+      nestedContainerAudioLanguageIndexesByParent: {
+        storyclubs: {
+          "nested-available": [0],
+          "nested-unavailable": [1],
+        },
       },
     })
 
@@ -1123,6 +1130,59 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       children: Array<{ slug: string }>
     }
     expect(series.children.map((child) => child.slug)).toEqual(["episode-1"])
+  })
+
+  it("renders an English parent through an English nested collection without using its Afrikaans trailer", async () => {
+    const result = makeSeriesResult("discipleship")
+    result.video.childDubLanguages = [
+      { slug: "afrikaans", bcp47: "af", name: "Afrikaans" },
+    ]
+    result.video.children = [
+      {
+        documentId: "walking-with-jesus",
+        slug: "walking-with-jesus",
+        title: "Walking With Jesus",
+        label: "collection",
+        images: [],
+      },
+    ]
+    mockRouteSeries(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-07-27T00:00:00.000Z",
+      contentSlugs: ["discipleship", "walking-with-jesus"],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["english", "afrikaans"],
+      audioLanguageIndexesByContent: {
+        discipleship: [1],
+        "walking-with-jesus": [0],
+      },
+      nestedContainerAudioLanguageIndexesByParent: {
+        discipleship: {
+          "walking-with-jesus": [0],
+        },
+      },
+    })
+
+    await render2Seg("discipleship", "english")
+
+    const args = seriesPageClientMock.mock.calls[0]?.[0] as {
+      locale: string
+      selectedVariant: unknown
+      series: {
+        childDubLanguages: Array<{ slug: string }>
+        children: Array<{ slug: string }>
+      }
+    }
+    expect(args.locale).toBe("english")
+    expect(args.selectedVariant).toBeNull()
+    expect(
+      args.series.childDubLanguages.map((language) => language.slug),
+    ).toEqual(["afrikaans", "english"])
+    expect(args.series.children.map((child) => child.slug)).toEqual([
+      "walking-with-jesus",
+    ])
   })
 
   it("omits collection JSON-LD for noIndex series without changing its UI", async () => {
@@ -2044,7 +2104,7 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
     expect(args?.locale).toBe("spanish-castilian")
   })
 
-  it("does not redirect a series route when the optional parent variant language differs from the URL language", async () => {
+  it("does not redirect a series route and suppresses a parent trailer whose language differs from the URL", async () => {
     const watchVideo = makeWatchVideoResult("collection", {
       slug: "hindi",
       bcp47: "hi",
@@ -2061,7 +2121,7 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
     await render2Seg("how-did-we-get-here-episode-1", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(redirectMock).not.toHaveBeenCalled()
-    expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
+    expect(args?.selectedVariant).toBeNull()
     expect(args?.locale).toBe("spanish-castilian")
   })
 

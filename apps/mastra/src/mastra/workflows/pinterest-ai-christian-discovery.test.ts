@@ -276,13 +276,18 @@ describe("pinterestAiChristianDiscoveryWorkflow", () => {
       })
 
     try {
-      const { pinterestAiChristianDiscoveryWorkflow: workflow } =
-        await import("./pinterest-ai-christian-discovery")
+      const {
+        PinterestDiscoveryWorkflowInputSchema,
+        pinterestAiChristianDiscoveryWorkflow: workflow,
+      } = await import("./pinterest-ai-christian-discovery")
       const run = await workflow.createRun({
         runId: "run-studio-saved-pinterest",
       })
       const result = await run.start({
-        inputData: { boards: [], persistArtifact: false },
+        inputData: PinterestDiscoveryWorkflowInputSchema.parse({
+          boards: [],
+          persistArtifact: false,
+        }),
       })
 
       expect(result.status).toBe("success")
@@ -314,9 +319,13 @@ describe("pinterestAiChristianDiscoveryWorkflow", () => {
       const {
         _internals,
         launchPinterestDiscoveryWorkflow,
+        PinterestDiscoveryWorkflowInputSchema,
         pinterestAiChristianDiscoveryWorkflow: workflow,
       } = await import("./pinterest-ai-christian-discovery")
-      const input = { boards: [], persistArtifact: false }
+      const input = PinterestDiscoveryWorkflowInputSchema.parse({
+        boards: [],
+        persistArtifact: false,
+      })
       const run = await workflow.createRun({
         runId: "run-studio-failed-pinterest-sources",
       })

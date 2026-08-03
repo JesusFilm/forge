@@ -69,6 +69,80 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.robots).toEqual({ index: false, follow: false })
   })
 
+  it("uses the approved localized JESUS overrides verbatim on language-less pages", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "video-template",
+        template: {
+          documentId: "exp-template-jesus",
+          slug: "single-video",
+        },
+        routeVideo: {
+          documentId: "video-jesus",
+          slug: "jesus",
+          title: "JESUS",
+          snippet: "The story of Jesus.",
+          description: "Visible description",
+          searchTitle:
+            "  Watch JESUS — Full Movie Free Online | Jesus Film Project  ",
+          searchDescription:
+            "  Watch the JESUS film free online. Follow his life, teachings, miracles, death, and resurrection through the Gospel of Luke in more than 2,000 languages.  ",
+          socialImage: {
+            url: "https://media.example/jesus-social.jpg",
+            width: null,
+            height: null,
+            mimeType: "image/png",
+          },
+          noIndex: false,
+          imageUrl: "https://cdn.example/jesus.jpg",
+          imageAlt: "JESUS film still",
+          streamingUrl: "https://cdn.example/jesus.m3u8",
+          relatedItems: [],
+        },
+      },
+      error: null,
+    })
+
+    const { getWatchPageMetadata } = await import("./experience-metadata")
+    const metadata = await getWatchPageMetadata("en", { slug: "jesus" })
+    const approvedTitle =
+      "Watch JESUS — Full Movie Free Online | Jesus Film Project"
+    const approvedDescription =
+      "Watch the JESUS film free online. Follow his life, teachings, miracles, death, and resurrection through the Gospel of Luke in more than 2,000 languages."
+
+    expect(metadata.title).toBe(approvedTitle)
+    expect(metadata.description).toBe(approvedDescription)
+    expect(metadata.openGraph).toMatchObject({
+      title: approvedTitle,
+      description: approvedDescription,
+      siteName: "Jesus Film Project",
+      locale: "en_US",
+      images: [
+        {
+          url: "https://media.example/jesus-social.jpg",
+          width: 1400,
+          height: 933,
+          alt: "JESUS film still",
+          type: "image/png",
+        },
+      ],
+    })
+    expect(metadata.twitter).toMatchObject({
+      title: approvedTitle,
+      description: approvedDescription,
+      images: [
+        {
+          url: "https://media.example/jesus-social.jpg",
+          alt: "JESUS film still",
+        },
+      ],
+    })
+    expect(metadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/jesus.html",
+    )
+    expect(metadata.robots).toEqual({ index: true, follow: true })
+  })
+
   it("falls back to snippet when description is null", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
@@ -447,6 +521,83 @@ describe("buildWatchVideoMetadataModel", () => {
     })
 
     expect(model.structuredDataTitle).toBe("Life of Jesus")
+  })
+
+  it("isolates approved search and social overrides from VideoObject fields", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const { watchVideoStructuredDataJson } =
+      await import("./watch-structured-data")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        slug: "jesus",
+        title: "JESUS",
+        description: "Visible JESUS description",
+        searchTitle:
+          "  Watch JESUS — Full Movie Free Online | Jesus Film Project  ",
+        searchDescription:
+          "  Watch the JESUS film free online. Follow his life, teachings, miracles, death, and resurrection through the Gospel of Luke in more than 2,000 languages.  ",
+        socialImage: {
+          url: "https://media.example/jesus-social.jpg",
+          width: 1200,
+          height: 630,
+          mimeType: "image/webp",
+        },
+      },
+    })
+
+    expect(model.title).toBe(
+      "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+    )
+    expect(model.description).toBe(
+      "Watch the JESUS film free online. Follow his life, teachings, miracles, death, and resurrection through the Gospel of Luke in more than 2,000 languages.",
+    )
+    expect(model.image).toMatchObject({
+      url: "https://media.example/jesus-social.jpg",
+      width: 1200,
+      height: 630,
+      type: "image/webp",
+    })
+    expect(model.videoTitle).toBe("JESUS")
+    expect(model.structuredDataTitle).toBe("JESUS")
+    expect(model.structuredDataDescription).toBe("Visible JESUS description")
+    expect(model.structuredDataThumbnailUrl).toBe(
+      "https://image.mux.com/mux-life/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+    )
+    const structuredData = JSON.parse(
+      watchVideoStructuredDataJson(model) as string,
+    ) as Record<string, unknown>
+    expect(structuredData.name).toBe("JESUS")
+    expect(structuredData.description).toBe("Visible JESUS description")
+    expect(structuredData.thumbnailUrl).toEqual([
+      "https://image.mux.com/mux-life/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+    ])
+  })
+
+  it("falls back field-by-field for blank localized overrides", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "spanish-castilian",
+      selectedVariant,
+      video: {
+        ...video,
+        title: "Jesús",
+        description: "Descripción localizada",
+        searchTitle: "   ",
+        searchDescription: "\n\t",
+      },
+    })
+
+    expect(model.title).toBe("Jesús | Jesus Film Project")
+    expect(model.description).toBe("Descripción localizada")
   })
 
   it("aligns English, international, and collision-owned canonical identities", async () => {
