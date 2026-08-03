@@ -70,6 +70,16 @@ export type RunIdentity = {
   /** Stamped by the judge run; null on answer runs (the judge is not known
    *  yet). Compared only when both sides carry it. */
   judge: JudgeStamp | null
+  /**
+   * Hash over the scoring weights (`weightsHash()` in hashes.ts:
+   * WEIGHTS_VERSION + CRITERION_CLASSES + CLASS_WEIGHTS), stamped at judge
+   * time since 2026-08-04. A criterion reclassification changes which gate
+   * lane a flip lands in, so it must break comparability. ABSENT on
+   * artifacts written before the field existed (the committed baseline,
+   * verification runs, and reference runs) — legacy-compatible: compared
+   * only when BOTH sides carry it.
+   */
+  weightsSha256?: string
 }
 
 /**
@@ -144,6 +154,19 @@ export function identityMismatch(
     if (left.judge.rubricSha256 !== right.judge.rubricSha256)
       problems.push("judge rubric")
   }
+
+  // Weights stamp: same both-sides-only rule as the judge stamp — artifacts
+  // written before the field existed (committed baseline, verification and
+  // reference runs) stay comparable; two runs that BOTH stamp a weighting
+  // scheme must agree on it, or a criterion reclassification silently moves
+  // verdict flips between the gate's red and triage lanes.
+  if (
+    scope !== "generation" &&
+    left.weightsSha256 != null &&
+    right.weightsSha256 != null &&
+    left.weightsSha256 !== right.weightsSha256
+  )
+    problems.push("weights")
 
   return problems
 }

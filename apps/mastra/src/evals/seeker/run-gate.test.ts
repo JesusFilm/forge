@@ -635,6 +635,25 @@ describe("evaluateGate", () => {
     })
     expect(report.fixturesCorpusSha256).toBe("corpus-1")
   })
+
+  it("REFUSES when both runs stamp a weights fingerprint and they differ — a reclassification is not the same measurement", () => {
+    const report = evaluateGate({
+      current: makeRunPair({ identity: { weightsSha256: "w-2-reclassified" } }),
+      baseline: makeRunPair({ identity: { weightsSha256: "w-1" } }),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn).toContain("weights")
+  })
+
+  it("does NOT refuse when the baseline predates the weights stamp — legacy artifacts stay gateable", () => {
+    const report = evaluateGate({
+      current: makeRunPair({ identity: { weightsSha256: "w-1" } }),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("green")
+  })
 })
 
 describe("loadFixtures — fail closed (finding #4)", () => {

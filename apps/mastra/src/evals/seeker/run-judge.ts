@@ -32,7 +32,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { requireOpenRouterKey } from "./env"
-import { criteriaHash, sha256 } from "./hashes"
+import { criteriaHash, sha256, weightsHash } from "./hashes"
 import { costUsd, JUDGE_MODEL } from "./models"
 import { completeJson, EvalLlmError, type Usage } from "./openrouter"
 import { criteriaFor, questionById, type Criterion } from "./questions"
@@ -505,6 +505,10 @@ async function main(): Promise<void> {
         run.identity.questionIds.map((id) => questionById(id)),
       ),
       judge: { model: JUDGE_MODEL, rubricSha256: rubricSha256() },
+      // The weighting scheme these verdicts will be SCORED under (weights.ts
+      // classes + class weights) — a reclassification must break
+      // comparability, not silently move flips between gate lanes.
+      weightsSha256: weightsHash(),
     },
     judged,
   }

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 
 import { describe, expect, it } from "vitest"
 
+import { corpusHash } from "./capture-rag"
 import {
   citableSources,
   loadableFixtureFile,
@@ -9,6 +10,7 @@ import {
   RETRIEVE_ANSWER_EMPTY_MESSAGE,
   RETRIEVE_ANSWER_TOOL_SPEC,
   RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+  type RagFixture,
   type RagFixtureFile,
 } from "./rag"
 import {
@@ -120,6 +122,10 @@ describe("committed fixture file (real contract)", () => {
     expect(file!.corpusSha256).toBe(
       "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
     )
+    // The MACHINE, not just the pin (finding #8): recomputing over the
+    // committed fixtures must reproduce the recorded fingerprint — so the
+    // hardcoded hex above and corpusHash() can never drift apart silently.
+    expect(corpusHash(file!.fixtures)).toBe(file!.corpusSha256)
     expect(file!.fixtures).toHaveLength(10)
     for (const fixture of file!.fixtures) {
       if (fixture.questionId === "q-python-pdf") {
@@ -137,5 +143,51 @@ describe("committed fixture file (real contract)", () => {
   it("rejects a file with the wrong kind", () => {
     expect(loadableFixtureFile({ kind: "other" })).toBeNull()
     expect(loadableFixtureFile(null)).toBeNull()
+  })
+})
+
+describe("corpusHash (the fingerprint machine)", () => {
+  // NOTE the machine's known, accepted limitation (see the comment on
+  // corpusHash): text is hashed by LENGTH, not content, and title is
+  // omitted — sensitivity below covers the material that IS hashed.
+  function makeFixture(overrides: {
+    url?: string
+    sourceName?: string
+    text?: string
+  }): RagFixture {
+    return {
+      questionId: "q-a",
+      query: "a",
+      capturedAt: "2026-08-01T00:00:00.000Z",
+      result: {
+        status: "ok",
+        sources: [
+          {
+            text: overrides.text ?? "passage text",
+            sourceName: overrides.sourceName ?? "Cru",
+            title: "Title",
+            url: overrides.url ?? "https://example.com/1",
+            score: 0.9,
+          },
+        ],
+      },
+    }
+  }
+
+  it("is deterministic for identical fixtures", () => {
+    expect(corpusHash([makeFixture({})])).toBe(corpusHash([makeFixture({})]))
+    expect(corpusHash([makeFixture({})])).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it("changes when a source's url changes", () => {
+    expect(
+      corpusHash([makeFixture({ url: "https://example.com/moved" })]),
+    ).not.toBe(corpusHash([makeFixture({})]))
+  })
+
+  it("changes when a source's sourceName changes", () => {
+    expect(corpusHash([makeFixture({ sourceName: "EveryStudent" })])).not.toBe(
+      corpusHash([makeFixture({})]),
+    )
   })
 })

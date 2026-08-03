@@ -77,6 +77,23 @@ describe("identityMismatch — refuse-to-compare", () => {
     ).toEqual([])
   })
 
+  it("compares the weights stamp only when both sides carry one — absent means legacy-compatible", () => {
+    const stamped = identity({ weightsSha256: "w-1" })
+    const restamped = identity({ weightsSha256: "w-2-reclassified" })
+    // Two runs that BOTH stamp a weighting scheme must agree on it.
+    expect(identityMismatch(stamped, restamped)).toContain("weights")
+    // A pre-stamp artifact (committed baseline / reference runs) pairs with
+    // a stamped run — no refusal, the field did not exist when it was
+    // written.
+    expect(identityMismatch(stamped, identity())).toEqual([])
+    expect(identityMismatch(identity(), identity())).toEqual([])
+    // Gate scope refuses on it too; generation scope never compares it.
+    expect(identityMismatch(stamped, restamped, "gate")).toContain("weights")
+    expect(identityMismatch(stamped, restamped, "generation")).not.toContain(
+      "weights",
+    )
+  })
+
   it("compares the judge stamp only when both sides carry one", () => {
     const judged = identity({
       judge: { model: "anthropic/claude-haiku-4.5", rubricSha256: "r1" },

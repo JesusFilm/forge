@@ -36,7 +36,12 @@ function flag(argv: readonly string[], name: string): string | undefined {
   return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
 }
 
-/** Fingerprint every passage, so a re-index is visible as a changed hash. */
+/** Fingerprint every passage, so a re-index is visible as a changed hash.
+ *  KNOWN LIMITATION (accepted): the material hashes `text.length` — not the
+ *  text CONTENT — and omits `title`, so a same-length passage rewrite or a
+ *  title-only change is invisible. Changing the material invalidates the
+ *  committed corpusSha256 pin, the baseline, and every stamped run identity,
+ *  so it requires a deliberate re-capture, never a drive-by edit. */
 export function corpusHash(fixtures: readonly RagFixture[]): string {
   const material = fixtures
     .map((fixture) =>
