@@ -1,6 +1,7 @@
 ---
 title: "Admin production video snapshot local restore"
 date: 2026-05-21
+last_updated: 2026-08-03
 category: developer-experience
 module: apps/admin
 problem_type: developer_experience
@@ -10,7 +11,9 @@ applies_when:
   - "Running Forge web watch pages locally against production-like admin video data"
   - "Restoring the reviewed admin video/content slice with `restore:video-db:latest`"
   - "Debugging local restore failures from PostgreSQL client or server version mismatches"
-tags: [admin, video-db-backup, local-dev, postgres, snapshot, watch-page]
+  - "Diagnosing native PostgreSQL tools that reject Prisma connection-pool URL options"
+  - "Restoring the opt-in video-search snapshot without regenerating embeddings"
+tags: [admin, video-db-backup, local-dev, postgres, libpq, embeddings, video-search, connection-pool]
 ---
 
 # Admin production video snapshot local restore
@@ -33,8 +36,9 @@ slice defined in `apps/admin/src/scripts/video-db-backup-core.ts`, not admin
 users and not a full production database clone.
 
 The default `video-core` profile restores catalog data without embedding
-tables. To restore the stored transcript/scene vectors as well, explicitly use
-the independently published `video-search` profile:
+tables. To restore current transcript-search data and the retained historical
+scene-search rows as well, explicitly use the independently published
+`video-search` profile:
 
 ```bash
 pnpm --filter @forge/admin restore:video-db:latest -- \
@@ -59,7 +63,7 @@ the destructive restore input.
 ## Guidance
 
 Start by fetching admin secrets, because the latest-backup downloader needs the
-restore-client bearer from `apps/admin/.env`.
+restore-client bearer from the untracked local Admin environment file.
 
 ```bash
 pnpm --filter @forge/admin fetch-secrets
@@ -319,3 +323,13 @@ To shut down the temporary database after testing:
 - `apps/admin/src/scripts/video-db-backup-core.ts` is the source of truth for
   reviewed profiles and plans; `video-db-backup.ts` owns native execution and
   latest download orchestration.
+- [Bounded parallelism per target workflow pattern](../best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md)
+  explains why embedding concurrency remains coupled to the main Prisma pool.
+- [Core Sync Prisma pool timeout resilience](../database-issues/admin-core-sync-video-phase-prisma-pool-timeout-resilience.md)
+  documents the separately sized `DATABASE_URL_SYNC` pool.
+- [Admin search pool and keyword-first fanout](../performance-issues/admin-search-pool-and-keyword-first-fanout.md)
+  records the production rationale for the main Admin pool settings.
+- [Mastra transcript embedding workflow](../platform/mastra-transcript-embedding-workflow-pattern.md)
+  documents current transcript-vector generation ownership.
+- [Legacy embedding pipeline retirement](../architecture-patterns/legacy-embedding-pipeline-retirement-tombstone-pattern.md)
+  distinguishes retained scene rows from active transcript search evidence.
