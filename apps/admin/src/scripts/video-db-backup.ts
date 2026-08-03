@@ -129,6 +129,11 @@ type CommandPlan = {
   env?: Record<string, string>
 }
 
+type LibpqConnectionConfig = {
+  database: string
+  env: Record<string, string>
+}
+
 type DatabaseUrlEnv = {
   SOURCE_DATABASE_URL?: string
   TARGET_DATABASE_URL?: string
@@ -340,6 +345,52 @@ function restoreTableArgs(tables: readonly string[]): string[] {
   return tables.map((table) => `--table=${table}`)
 }
 
+function decodeUrlPart(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+function libpqConnectionConfigFromUrl(rawUrl: string): LibpqConnectionConfig {
+  let url: URL
+  try {
+    url = new URL(rawUrl)
+  } catch {
+    throw new VideoDbBackupError("Database URL is not a parseable URL")
+  }
+
+  const database = decodeUrlPart(url.pathname.replace(/^\/+/, ""))
+  if (!database) {
+    throw new VideoDbBackupError("Database URL must include a database name")
+  }
+
+  const env: Record<string, string> = {
+    PGDATABASE: database,
+  }
+  if (url.hostname) env.PGHOST = url.hostname
+  if (url.port) env.PGPORT = url.port
+  if (url.username) env.PGUSER = decodeUrlPart(url.username)
+  if (url.password) env.PGPASSWORD = decodeUrlPart(url.password)
+
+  const supportedQueryEnv = {
+    application_name: "PGAPPNAME",
+    connect_timeout: "PGCONNECT_TIMEOUT",
+    sslcert: "PGSSLCERT",
+    sslkey: "PGSSLKEY",
+    sslmode: "PGSSLMODE",
+    sslrootcert: "PGSSLROOTCERT",
+    target_session_attrs: "PGTARGETSESSIONATTRS",
+  } as const
+  for (const [parameter, envKey] of Object.entries(supportedQueryEnv)) {
+    const value = url.searchParams.get(parameter)
+    if (value) env[envKey] = value
+  }
+
+  return { database, env }
+}
+
 function quoteTable(table: string): string {
   return `"public"."${table.replace(/"/g, '""')}"`
 }
@@ -365,6 +416,7 @@ export function buildBackupPlan(
   const outPath = resolvePath(parsed.outPath ?? defaultOutPath(parsed.profile))
   const tables = [...VIDEO_DB_BACKUP_PROFILES[parsed.profile]]
   const upload = resolveBackupUploadPlan(parsed, outPath, env)
+  const connection = libpqConnectionConfigFromUrl(source)
 
   return {
     mode: "backup",
@@ -382,11 +434,12 @@ export function buildBackupPlan(
           "--no-owner",
           "--no-acl",
           "--dbname",
-          source,
+          connection.database,
           "--file",
           outPath,
           ...tableArgs(tables),
         ],
+        env: connection.env,
       },
     ],
   }
@@ -515,10 +568,9 @@ function printablePlan(plan: BackupPlan | RestorePlan): object {
     ),
     env: command.env
       ? Object.fromEntries(
-          Object.entries(command.env).map(([key, value]) => [
-            key,
-            redactUrl(value),
-          ]),
+          Object.entries(command.env)
+            .filter(([key]) => key !== "PGPASSWORD")
+            .map(([key, value]) => [key, redactUrl(value)]),
         )
       : undefined,
   }))

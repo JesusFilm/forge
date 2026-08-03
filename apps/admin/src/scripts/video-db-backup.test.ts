@@ -66,7 +66,12 @@ describe("backup command planning", () => {
 
     expect(plan.commands).toHaveLength(1)
     expect(plan.commands[0]?.command).toBe("pg_dump")
-    expect(plan.commands[0]?.env).toBeUndefined()
+    expect(plan.commands[0]?.env).toEqual({
+      PGDATABASE: "prod",
+      PGHOST: "example.com",
+      PGPASSWORD: "pass",
+      PGUSER: "user",
+    })
     expect(plan.commands[0]?.args).toEqual(
       expect.arrayContaining([
         "--format=custom",
@@ -74,7 +79,7 @@ describe("backup command planning", () => {
         "--no-owner",
         "--no-acl",
         "--dbname",
-        "postgresql://user:pass@example.com/prod",
+        "prod",
         "--file",
         plan.outPath,
         "--table=public.video",

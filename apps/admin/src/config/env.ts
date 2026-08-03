@@ -168,12 +168,10 @@ export const env = createEnv({
   server: {
     // Unit 2 — Prisma / Postgres
     //
-    // DATABASE_URL: main pool. Recommend `?connection_limit=10&pool_timeout=20`.
-    // DATABASE_URL_SYNC: dedicated pool for Core sync workflow. Production
-    // should start around `?connection_limit=5&pool_timeout=60`, then tune
-    // against total Postgres capacity — see src/db/client.ts.
+    // DATABASE_URL: plain Postgres connection URL. Prisma pool configuration
+    // lives in src/db/client.ts via @prisma/adapter-pg so the same URL remains
+    // compatible with libpq tools such as pg_dump, psql, and pg_restore.
     DATABASE_URL: z.string().url(),
-    DATABASE_URL_SYNC: z.string().url().optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -578,7 +576,6 @@ export const env = createEnv({
     DD_ENV: datadogServerEnvFallback(),
     DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
     DD_VERSION: datadogVersionFallback(),
-    DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
     ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
     AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),

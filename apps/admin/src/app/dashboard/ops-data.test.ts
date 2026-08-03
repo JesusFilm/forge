@@ -7,6 +7,9 @@ const { userCount, userFindMany, managerMembershipFindMany } = vi.hoisted(
     managerMembershipFindMany: vi.fn(),
   }),
 )
+const { syncLockFindUnique } = vi.hoisted(() => ({
+  syncLockFindUnique: vi.fn(),
+}))
 const {
   searchTraceFindMany,
   watchSearchEventFindMany,
@@ -51,6 +54,9 @@ vi.mock("@/db/client", () => ({
     managerMembership: {
       findMany: (...args: unknown[]) => managerMembershipFindMany(...args),
     },
+    syncLock: {
+      findUnique: (...args: unknown[]) => syncLockFindUnique(...args),
+    },
     searchTrace: {
       findMany: (...args: unknown[]) => searchTraceFindMany(...args),
     },
@@ -67,12 +73,16 @@ vi.mock("@/db/client", () => ({
 }))
 
 vi.mock("@/config/env", () => mockEnv)
+vi.mock("@/services/core-sync/watermark", () => ({
+  getAllWatermarks: vi.fn(async () => []),
+}))
 
 import {
   buildUserTableRow,
   buildLanguageDiagnosticRow,
   loadEmbeddingsData,
   loadSettingsData,
+  loadSystemStatusData,
   loadWatchSearchAnalyticsData,
   loadUsersData,
   runSemanticSearch,
@@ -116,6 +126,8 @@ function mockEmbeddingCounts({
 
 beforeEach(() => {
   queryRaw.mockReset()
+  syncLockFindUnique.mockReset()
+  syncLockFindUnique.mockResolvedValue(null)
   searchTraceFindMany.mockReset()
   watchSearchEventFindMany.mockReset()
   videoFindMany.mockReset()
@@ -315,6 +327,45 @@ describe("embedding provider readiness", () => {
     )
     expect(data.unavailableReason).toBe(
       "Semantic search requires OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or FIREWORKS_API_KEY.",
+    )
+  })
+})
+
+describe("system status workflow incidents", () => {
+  it("shows stored workflow errors before start summaries for failed backup runs", async () => {
+    queryRaw.mockResolvedValueOnce([
+      {
+        id: "backup-run-1",
+        runtimeRunId: "runtime-run-1",
+        workflowKey: "video-db-backup",
+        trigger: "SCHEDULED",
+        status: "FAILED",
+        summary: "Video DB video-search backup workflow started by scheduler.",
+        error:
+          'pg_dump: error: invalid URI query parameter: "connection_limit"',
+        createdAt: new Date("2026-08-03T09:00:00.000Z"),
+        startedAt: new Date("2026-08-03T09:00:01.000Z"),
+        finishedAt: new Date("2026-08-03T09:00:02.000Z"),
+        durationMs: 1000,
+        skippedLock: null,
+      },
+    ])
+
+    const data = await loadSystemStatusData()
+
+    expect(data.incidents).toContainEqual(
+      expect.objectContaining({
+        title: "video-db-backup FAILED",
+        detail:
+          'pg_dump: error: invalid URI query parameter: "connection_limit"',
+        statusLabel: "FAILED",
+        statusTone: "danger",
+      }),
+    )
+    expect(data.incidents).not.toContainEqual(
+      expect.objectContaining({
+        detail: "Video DB video-search backup workflow started by scheduler.",
+      }),
     )
   })
 })
