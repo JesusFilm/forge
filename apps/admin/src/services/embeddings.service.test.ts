@@ -415,52 +415,45 @@ describe("generateExperienceEmbeddings (batched)", () => {
     expect(result.dimensions).toBe(1536)
   })
 
-  it("retries a timed-out single-input request once", async () => {
+  it("fails a timed-out single-input request after one second without retrying", async () => {
     vi.useFakeTimers()
-    const vector = vectorOf(0.1)
-    const fetchMock = vi
-      .fn()
-      .mockImplementationOnce(
-        (_url: string, init: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            init.signal?.addEventListener("abort", () => {
-              const error = new Error("aborted")
-              error.name = "AbortError"
-              reject(error)
-            })
-          }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
+    const fetchMock = vi.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            const error = new Error("aborted")
+            error.name = "AbortError"
+            reject(error)
+          })
         }),
-      )
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     try {
-      const { generateExperienceEmbeddings } =
+      const { generateExperienceEmbeddings, EmbeddingsBatchError } =
         await import("./embeddings.service")
 
-      const resultPromise = generateExperienceEmbeddings(["single input"])
+      const resultPromise = generateExperienceEmbeddings([
+        "single input",
+      ]).catch((error) => error)
       expect(fetchMock).toHaveBeenCalledTimes(1)
 
-      await vi.advanceTimersByTimeAsync(2_500)
+      await vi.advanceTimersByTimeAsync(1_000)
 
-      const result = await resultPromise
-      expect(fetchMock).toHaveBeenCalledTimes(2)
-      expect(result.embeddings).toEqual([vector])
+      const thrown = await resultPromise
+      expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+      expect((thrown as { code: string }).code).toBe("request_timed_out")
+      expect(fetchMock).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it("retries when a single-input response body stalls after headers", async () => {
+  it("fails when a single-input response body stalls after headers", async () => {
     vi.useFakeTimers()
-    const vector = vectorOf(0.1)
     const fetchMock = vi
       .fn()
-      .mockImplementationOnce((_url: string, init: RequestInit) =>
+      .mockImplementation((_url: string, init: RequestInit) =>
         Promise.resolve({
           ok: true,
           status: 200,
@@ -474,26 +467,23 @@ describe("generateExperienceEmbeddings (batched)", () => {
             }),
         }),
       )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      )
     vi.stubGlobal("fetch", fetchMock)
 
     try {
-      const { generateExperienceEmbeddings } =
+      const { generateExperienceEmbeddings, EmbeddingsBatchError } =
         await import("./embeddings.service")
 
-      const resultPromise = generateExperienceEmbeddings(["single input"])
+      const resultPromise = generateExperienceEmbeddings([
+        "single input",
+      ]).catch((error) => error)
       expect(fetchMock).toHaveBeenCalledTimes(1)
 
-      await vi.advanceTimersByTimeAsync(2_500)
+      await vi.advanceTimersByTimeAsync(1_000)
 
-      const result = await resultPromise
-      expect(fetchMock).toHaveBeenCalledTimes(2)
-      expect(result.embeddings).toEqual([vector])
+      const thrown = await resultPromise
+      expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+      expect((thrown as { code: string }).code).toBe("request_timed_out")
+      expect(fetchMock).toHaveBeenCalledTimes(1)
     } finally {
       vi.useRealTimers()
     }

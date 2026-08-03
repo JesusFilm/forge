@@ -21,8 +21,8 @@ const FIREWORKS_EMBEDDING_BASE_URL =
  * fans out across many scenes.
  */
 const EMBEDDING_REQUEST_TIMEOUT_MS = 30_000
-const SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS = 2_500
-const SINGLE_EMBEDDING_REQUEST_ATTEMPTS = 2
+const SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS = 1_000
+const SINGLE_EMBEDDING_REQUEST_ATTEMPTS = 1
 
 const BLOCK_TEXT_IGNORE_KEY =
   /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|orientation$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
