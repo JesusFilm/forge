@@ -451,6 +451,10 @@ export type WatchSearchAnalyticsRequestRow = {
   clickCount: number
   createdAt: string
   createdAtIso: string
+  collapsedRequestCount: number
+  collapsedQueryStart: string | null
+  collapsedStartedAtIso: string | null
+  collapsedRequests: WatchSearchAnalyticsRequestRow[]
   results: WatchSearchAnalyticsResultRow[]
   lanes: WatchSearchAnalyticsLaneRow[]
 }
@@ -459,11 +463,21 @@ export type WatchSearchAnalyticsData = {
   metrics: Metric[]
   insights: Insight[]
   requests: WatchSearchAnalyticsRequestRow[]
+  pagination: WatchSearchAnalyticsPagination
   selectedRequest: WatchSearchAnalyticsRequestRow | null
   window: WatchSearchAnalyticsWindow
 }
 
 export type WatchSearchAnalyticsWindow = "24h" | "7d" | "30d"
+
+export type WatchSearchAnalyticsPagination = {
+  currentPage: number
+  pageSize: number
+  totalPages: number
+  totalRequests: number
+  startIndex: number
+  endIndex: number
+}
 
 type EmbeddingHealthRow = {
   id: string
@@ -2799,6 +2813,7 @@ function eventVisibleIds(metadata: Prisma.JsonValue | null) {
 
 export async function loadWatchSearchAnalyticsData(
   params: {
+    page?: number | string | null
     requestId?: string | null
     window?: string | null
     now?: Date
@@ -2822,7 +2837,7 @@ export async function loadWatchSearchAnalyticsData(
           createdAt: { gte: since },
         },
         orderBy: { createdAt: "desc" },
-        take: window === "24h" ? 50 : 100,
+        take: window === "24h" ? 200 : window === "7d" ? 500 : 1000,
         select: {
           id: true,
           requestId: true,
@@ -2917,7 +2932,7 @@ export async function loadWatchSearchAnalyticsData(
     ...targetLanguageValues,
   ])
 
-  const requests: WatchSearchAnalyticsRequestRow[] = traceGroups.map(
+  const allRequests: WatchSearchAnalyticsRequestRow[] = traceGroups.map(
     (group) => {
       const trace = group.primaryTrace
       const requestId = group.requestId
@@ -2962,6 +2977,10 @@ export async function loadWatchSearchAnalyticsData(
         clickCount: clickedIds.size,
         createdAt: formatDateTime(trace.createdAt),
         createdAtIso: trace.createdAt.toISOString(),
+        collapsedRequestCount: 1,
+        collapsedQueryStart: null,
+        collapsedStartedAtIso: null,
+        collapsedRequests: [],
         lanes: watchSearchTraceLanes(trace.metadata),
         results: resultIds.map((id, index) => {
           const row = resultsById.get(id)
@@ -2994,21 +3013,33 @@ export async function loadWatchSearchAnalyticsData(
     },
   )
 
+  const displayRequests = collapseWatchSearchTypingBursts(allRequests)
+
+  const pagination = paginateWatchSearchRequests({
+    requestedPage: params.page,
+    totalRequests: displayRequests.length,
+  })
+  const requests = displayRequests.slice(
+    pagination.startIndex,
+    pagination.endIndex,
+  )
+
   const selectedRequest =
     params.requestId == null
       ? null
-      : (requests.find((request) => request.requestId === params.requestId) ??
-        null)
-  const clickedRequests = requests.filter(
+      : (allRequests.find(
+          (request) => request.requestId === params.requestId,
+        ) ?? null)
+  const clickedRequests = allRequests.filter(
     (request) => request.clickCount > 0,
   ).length
-  const noResultRequests = requests.filter(
+  const noResultRequests = allRequests.filter(
     (request) => request.resultCount === 0,
   ).length
-  const degradedRequests = requests.filter(
+  const degradedRequests = allRequests.filter(
     (request) => request.outcome === "degraded",
   ).length
-  const latencies = requests
+  const latencies = allRequests
     .map((request) => request.latencyMs)
     .filter((value): value is number => value !== null)
     .sort((left, right) => left - right)
@@ -3021,12 +3052,12 @@ export async function loadWatchSearchAnalyticsData(
     metrics: [
       {
         label: "Searches",
-        value: requests.length.toString(),
+        value: allRequests.length.toString(),
         footer: `LAST_${window.toUpperCase()}_RAW_ROWS`,
       },
       {
         label: "Click Rate",
-        value: formatPercent(clickedRequests, requests.length),
+        value: formatPercent(clickedRequests, allRequests.length),
         footer: "REQUESTS_WITH_CLICK",
       },
       {
@@ -3055,15 +3086,18 @@ export async function loadWatchSearchAnalyticsData(
       },
       {
         label: "Raw Query",
-        value: requests.some((request) => request.queryText)
-          ? "Visible"
-          : "None",
+        value:
+          allRequests.length === displayRequests.length
+            ? allRequests.some((request) => request.queryText)
+              ? "Visible"
+              : "None"
+            : `${allRequests.length - displayRequests.length} hidden`,
         detail:
-          "This operator view reads short-lived SearchTrace rows under the existing retention policy.",
+          "Typing bursts collapse one-letter query increments in the result list.",
       },
       {
         label: "Unavailable",
-        value: requests
+        value: allRequests
           .reduce(
             (count, request) =>
               count +
@@ -3077,8 +3111,133 @@ export async function loadWatchSearchAnalyticsData(
       },
     ],
     requests,
+    pagination,
     selectedRequest,
     window,
+  }
+}
+
+const WATCH_SEARCH_ANALYTICS_PAGE_SIZE = 25
+const WATCH_SEARCH_TYPING_BURST_MAX_GAP_MS = 10_000
+
+function collapseWatchSearchTypingBursts(
+  requests: WatchSearchAnalyticsRequestRow[],
+): WatchSearchAnalyticsRequestRow[] {
+  const chronologicalRequests = [...requests].reverse()
+  const bursts: WatchSearchAnalyticsRequestRow[][] = []
+
+  for (const request of chronologicalRequests) {
+    const currentBurst = bursts.at(-1)
+    const previousRequest = currentBurst?.at(-1)
+
+    if (
+      currentBurst &&
+      previousRequest &&
+      isWatchSearchTypingBurstStep(previousRequest, request) &&
+      currentBurst.every((row) => row.clickCount === 0) &&
+      request.clickCount === 0
+    ) {
+      currentBurst.push(request)
+      continue
+    }
+
+    bursts.push([request])
+  }
+
+  return bursts
+    .map<WatchSearchAnalyticsRequestRow>((burst) => {
+      const finalRequest = burst[burst.length - 1]
+      if (!finalRequest) {
+        throw new Error("Watch search typing burst cannot be empty")
+      }
+      const collapsedRequests: WatchSearchAnalyticsRequestRow[] =
+        burst.length > 1
+          ? burst.slice(0, -1).map((request) => ({
+              ...request,
+              collapsedRequestCount: 1,
+              collapsedQueryStart: null,
+              collapsedStartedAtIso: null,
+              collapsedRequests: [],
+            }))
+          : []
+
+      return {
+        ...finalRequest,
+        collapsedRequestCount: burst.length,
+        collapsedQueryStart:
+          burst.length > 1 ? (burst[0]?.queryText ?? null) : null,
+        collapsedStartedAtIso:
+          burst.length > 1 ? (burst[0]?.createdAtIso ?? null) : null,
+        collapsedRequests,
+      }
+    })
+    .reverse()
+}
+
+function isWatchSearchTypingBurstStep(
+  previousRequest: WatchSearchAnalyticsRequestRow,
+  nextRequest: WatchSearchAnalyticsRequestRow,
+) {
+  if (
+    previousRequest.locale !== nextRequest.locale ||
+    previousRequest.targetLanguageSlug !== nextRequest.targetLanguageSlug
+  ) {
+    return false
+  }
+
+  const previousQuery = normalizeWatchSearchBurstQuery(
+    previousRequest.queryText,
+  )
+  const nextQuery = normalizeWatchSearchBurstQuery(nextRequest.queryText)
+  if (!previousQuery || !nextQuery) return false
+  if (nextQuery.length !== previousQuery.length + 1) return false
+  if (!nextQuery.startsWith(previousQuery)) return false
+
+  const elapsedMs =
+    new Date(nextRequest.createdAtIso).getTime() -
+    new Date(previousRequest.createdAtIso).getTime()
+  return (
+    Number.isFinite(elapsedMs) &&
+    elapsedMs >= 0 &&
+    elapsedMs <= WATCH_SEARCH_TYPING_BURST_MAX_GAP_MS
+  )
+}
+
+function normalizeWatchSearchBurstQuery(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase()
+}
+
+function paginateWatchSearchRequests({
+  requestedPage,
+  totalRequests,
+}: {
+  requestedPage: number | string | null | undefined
+  totalRequests: number
+}): WatchSearchAnalyticsPagination {
+  const parsed =
+    typeof requestedPage === "number"
+      ? requestedPage
+      : Number.parseInt(requestedPage ?? "", 10)
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalRequests / WATCH_SEARCH_ANALYTICS_PAGE_SIZE),
+  )
+  const currentPage = Number.isFinite(parsed)
+    ? Math.min(Math.max(1, parsed), totalPages)
+    : 1
+  const startIndex = (currentPage - 1) * WATCH_SEARCH_ANALYTICS_PAGE_SIZE
+  const endIndex = Math.min(
+    startIndex + WATCH_SEARCH_ANALYTICS_PAGE_SIZE,
+    totalRequests,
+  )
+
+  return {
+    currentPage,
+    pageSize: WATCH_SEARCH_ANALYTICS_PAGE_SIZE,
+    totalPages,
+    totalRequests,
+    startIndex,
+    endIndex,
   }
 }
 

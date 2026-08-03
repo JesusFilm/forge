@@ -604,7 +604,7 @@ describe("loadWatchSearchAnalyticsData", () => {
           routeSource: "GRAPHQL",
           createdAt: { gte: new Date("2026-07-08T12:30:00.000Z") },
         }),
-        take: 100,
+        take: 500,
       }),
     )
     expect(watchSearchEventFindMany).toHaveBeenCalledWith(
@@ -840,6 +840,135 @@ describe("loadWatchSearchAnalyticsData", () => {
     expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
       expect.objectContaining({ value: "0" }),
     )
+  })
+
+  it("paginates Watch search requests after grouping traces", async () => {
+    searchTraceFindMany.mockResolvedValueOnce(
+      Array.from({ length: 30 }, (_, index) => ({
+        id: `trace_${index + 1}`,
+        requestId: `req_${String(index + 1).padStart(2, "0")}`,
+        queryText: `query ${index + 1}`,
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "en",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date(
+          `2026-07-15T12:${String(index).padStart(2, "0")}:00.000Z`,
+        ),
+      })),
+    )
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      page: 2,
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.pagination).toEqual({
+      currentPage: 2,
+      pageSize: 25,
+      totalPages: 2,
+      totalRequests: 30,
+      startIndex: 25,
+      endIndex: 30,
+    })
+    expect(data.requests).toHaveLength(5)
+    expect(data.requests[0]?.requestId).toBe("req_26")
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "30" }),
+    )
+  })
+
+  it("collapses one-letter Watch search typing bursts before pagination", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_jesus",
+        requestId: "req_jesus",
+        queryText: "jesus",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 2,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:06.000Z"),
+      },
+      {
+        id: "trace_jesu",
+        requestId: "req_jesu",
+        queryText: "jesu",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 1,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:03.000Z"),
+      },
+      {
+        id: "trace_jes",
+        requestId: "req_jes",
+        queryText: "jes",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.requests).toEqual([
+      expect.objectContaining({
+        requestId: "req_jesus",
+        queryText: "jesus",
+        collapsedRequestCount: 3,
+        collapsedQueryStart: "jes",
+        collapsedStartedAtIso: "2026-07-15T12:00:00.000Z",
+      }),
+    ])
+    expect(data.pagination).toEqual(
+      expect.objectContaining({
+        totalRequests: 1,
+        totalPages: 1,
+      }),
+    )
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "3" }),
+    )
+    expect(
+      data.insights.find((insight) => insight.label === "Raw Query"),
+    ).toEqual(expect.objectContaining({ value: "2 hidden" }))
   })
 })
 
