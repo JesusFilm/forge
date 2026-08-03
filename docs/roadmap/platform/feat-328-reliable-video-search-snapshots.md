@@ -1,5 +1,5 @@
 ---
-id: "feat-326"
+id: "feat-328"
 title: "Reliable video search snapshots"
 owner: "nisal"
 priority: "P0"
@@ -19,11 +19,12 @@ tags:
 
 ## Problem
 
-The scheduled Admin video database backup passes Prisma-only URL options to
-PostgreSQL native tools. PostgreSQL 18 rejects options such as
-`connection_limit` before connecting, so neither scheduled profile currently
-publishes and the embedding-bearing `video-search` snapshot is unavailable to
-local development.
+At planning time, the scheduled Admin video database backup passed Prisma-only
+URL options to PostgreSQL native tools, so neither scheduled profile published
+and the embedding-bearing `video-search` snapshot was unavailable locally.
+PR #1811 independently repaired that immediate boundary by moving Prisma pool
+configuration into adapter-backed clients. This follow-up hardens publication,
+latest-object selection, and destructive restore around the repaired path.
 
 ## Entry Points — Read These First
 
@@ -85,12 +86,11 @@ local development.
 ## Pool and embedding safety evidence
 
 - The snapshot script derives native-client URLs without mutating
-  `DATABASE_URL` or `DATABASE_URL_SYNC`; Prisma pool parameters remain
-  available to the embedding and Core Sync clients.
-- The repository's pool learnings require the main `connection_limit=10` pool
-  for embedding concurrency headroom and recommend an isolated
-  `connection_limit=5&pool_timeout=60` Core Sync pool. This work preserves both
-  contracts.
+  `DATABASE_URL`; legacy Prisma-only URL keys are removed only from the native
+  tool copy.
+- The adapter-backed main and Core Sync clients retain separate maximums of 10
+  and 5 connections, respectively. This work does not alter those code-defined
+  budgets or embedding concurrency.
 - Focused snapshot, transcript embedding workflow, and transcript embedding
   service suites pass together. Snapshot publication copies vectors and makes
   no embedding-provider call.

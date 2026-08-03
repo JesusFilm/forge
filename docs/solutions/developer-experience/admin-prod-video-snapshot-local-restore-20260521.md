@@ -90,19 +90,20 @@ pnpm --dir apps/admin exec tsx \
   --target-env=development
 ```
 
-Use a libpq-compatible URL for `TARGET_DATABASE_URL`. Prisma query parameters
-such as `connection_limit=10` and `pool_timeout=20` are valid for Prisma but
-`psql` rejects them:
+Use a libpq-compatible URL for `TARGET_DATABASE_URL`. Older Prisma client
+configuration placed options such as `connection_limit=10` and
+`pool_timeout=20` in the URL, but `psql` rejects them:
 
 ```text
 psql: error: invalid URI query parameter: "connection_limit"
 ```
 
 The restore tool removes those reviewed Prisma-only options from a derived
-native-client URL. It does not modify `DATABASE_URL` or `DATABASE_URL_SYNC`.
-Keep their pool settings intact: transcript embedding backfills deliberately
-cap concurrency at 5 against the documented main `connection_limit=10` pool,
-and Core Sync relies on its separately sized pool and longer timeout.
+native-client URL. It does not modify `DATABASE_URL`. Pool sizing no longer
+lives in URL parameters: `@prisma/adapter-pg` gives the main client a maximum
+of 10 connections and Core Sync a separate maximum of 5 with a longer
+connection timeout. Transcript embedding backfills deliberately cap
+concurrency at 5 against that main-client budget.
 The filter preserves the raw libpq URI outside those exact keys, including
 comma-separated failover hosts and percent-encoded supported option values.
 
@@ -224,7 +225,6 @@ source /absolute/path/to/forge/apps/admin/.env
 set +a
 
 DATABASE_URL='postgresql://forge@localhost:55432/forge_admin?schema=public' \
-DATABASE_URL_SYNC='postgresql://forge@localhost:55432/forge_admin?schema=public' \
 ADMIN_BASE_URL='http://localhost:4911' \
 pnpm --dir apps/admin exec next dev --hostname 0.0.0.0 --port 4911
 ```
@@ -336,7 +336,9 @@ To shut down the temporary database after testing:
 - [Bounded parallelism per target workflow pattern](../best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md)
   explains why embedding concurrency remains coupled to the main Prisma pool.
 - [Core Sync Prisma pool timeout resilience](../database-issues/admin-core-sync-video-phase-prisma-pool-timeout-resilience.md)
-  documents the separately sized `DATABASE_URL_SYNC` pool.
+  documents why Core Sync needs a separately sized pool; the current
+  implementation supplies that profile through `@prisma/adapter-pg` over the
+  shared plain `DATABASE_URL`.
 - [Admin search pool and keyword-first fanout](../performance-issues/admin-search-pool-and-keyword-first-fanout.md)
   records the production rationale for the main Admin pool settings.
 - [Mastra transcript embedding workflow](../platform/mastra-transcript-embedding-workflow-pattern.md)

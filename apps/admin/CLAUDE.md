@@ -465,13 +465,15 @@ There are two scheduled snapshot products:
   rows. Publication copies existing database values; it never calls an
   embedding provider and must not add an embedding-readiness gate.
 
-Application database URLs may contain Prisma-only `connection_limit`,
+Legacy or explicit database URLs may contain Prisma-only `connection_limit`,
 `pool_timeout`, and `schema` options that native PostgreSQL clients reject.
 The snapshot script resolves URL precedence once, creates a separate native
 client URL with only those reviewed options removed, and leaves
-`process.env.DATABASE_URL` and `DATABASE_URL_SYNC` unchanged. This boundary is
-load-bearing: transcript embedding concurrency is budgeted against the main
-`connection_limit=10` pool, while Core Sync uses its separately sized pool.
+`process.env.DATABASE_URL` unchanged. Prisma's pool budgets live in the
+`@prisma/adapter-pg` client configuration: the main client keeps a maximum of
+10 connections and Core Sync keeps a separate maximum of 5 connections.
+This boundary is load-bearing because transcript embedding concurrency and
+Core Sync isolation rely on those code-defined profiles.
 The native URL filter operates on the raw query component so libpq multi-host
 authorities and percent-encoded supported values are preserved byte-for-byte.
 Scheduled/generated exports also require configured bucket storage before any

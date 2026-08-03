@@ -55,10 +55,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   and transcript/vector tables. Snapshot publication copies existing vectors;
   it must not generate embeddings or add an embedding-readiness gate.
 - Native `pg_dump`, `psql`, and `pg_restore` commands receive a sanitized copy
-  of the selected database URL. Never mutate `DATABASE_URL` or
-  `DATABASE_URL_SYNC`, and never remove their Prisma `connection_limit` or
-  `pool_timeout` settings: embedding backfill concurrency and Core Sync pool
-  isolation rely on those application URLs.
+  of the selected database URL. Never mutate `DATABASE_URL`; Prisma's main and
+  Core Sync pool limits live in separate `@prisma/adapter-pg` profiles, not URL
+  query parameters. Keep those code-defined 10- and 5-connection budgets intact
+  because embedding backfills and Core Sync rely on that isolation.
 - Preserve libpq multi-host authorities and raw percent encoding when removing
   Prisma-only URL keys. Scheduled exports require bucket storage, refuse
   external `video_locale.social_image_asset_id` references outside the reviewed
