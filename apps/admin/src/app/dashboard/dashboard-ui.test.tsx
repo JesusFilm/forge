@@ -244,59 +244,12 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Latest Sync", value: "10m", footer: "LATEST_WATERMARK" },
       { label: "Lock State", value: "CLEAR", footer: "CORE_SYNC_LOCK" },
       { label: "Exceptions", value: "0", footer: "REQUIRES_REVIEW" },
-      {
-        label: "Latest Attempted Sync",
-        value: "Succeeded",
-        footer: "CORE_SYNC_EXECUTION",
-      },
     ],
-    healthAxes: [
-      {
-        key: "execution",
-        label: "Execution",
-        statusLabel: "Succeeded",
-        statusTone: "success",
-        detail: "Latest execution completed.",
-      },
-      {
-        key: "freshness",
-        label: "Parity freshness",
-        statusLabel: "Fresh",
-        statusTone: "success",
-        detail: "Latest check is within 36 hours.",
-      },
-      {
-        key: "parity",
-        label: "Subtitle data parity",
-        statusLabel: "Out of sync",
-        statusTone: "danger",
-        detail: "Two videos still differ.",
-      },
-    ],
-    parityEvidence: {
-      checkId: "parity-check-stable-123",
-      completedAt: "10/24/2023, 14:02",
-      completedAtIso: "2023-10-24T14:02:00.000Z",
-      latestAttemptCheckId: "parity-attempt-124",
-      latestAttemptStatus: "completed",
-      snapshot: "snapshot-123",
-      coreRootChecksum: `sha256:${"a".repeat(64)}`,
-      adminRootChecksum: `sha256:${"b".repeat(64)}`,
-      coreTotalCount: 263,
-      adminTotalCount: 258,
-      unprojectableCount: 1,
-      residualTotal: 7,
-      residualSample: [
-        { videoId: "1_jf-0-0", reason: "missing: No Admin subtitle rows" },
-        { videoId: "video-2", reason: "mapping: Language is unresolved" },
-      ],
-      residualReasonTruncatedCount: 5,
-    },
     matrix: [
       {
         entity: "videos",
         source: "core.videos",
-        statusLabel: "Succeeded",
+        statusLabel: "Healthy",
         statusTone: "success",
         lastRun: "10 changed",
       },
@@ -1433,35 +1386,9 @@ describe("dashboard UI routes", () => {
   it("renders core sync page around current sync state", async () => {
     const html = await htmlFrom(SystemStatusPage())
     expect(html).toContain(uiMessages.pages.systemStatus.title)
-    expect(html).toContain("Core Sync health dimensions")
-    expect(html).toContain("Execution")
-    expect(html).toContain("Succeeded")
-    expect(html).toContain("Parity freshness")
-    expect(html).toContain("Fresh")
-    expect(html).toContain("Subtitle data parity")
-    expect(html).toContain("Out of sync")
-    expect(html).not.toContain("Core Sync is healthy")
-    expect(html).toContain("Phase Execution State")
-    expect(html).toContain("EXECUTION_ONLY")
+    expect(html).toContain("Core Sync is healthy")
+    expect(html).toContain("Sync State")
     expect(html).toContain("Needs Attention")
-    expect(html).toContain("Subtitle Parity Evidence")
-    expect(html).toContain("parity-check-stable-123")
-    expect(html).toContain("snapshot-123")
-    expect(html).toContain('dateTime="2023-10-24T14:02:00.000Z"')
-    expect(html).toContain("Core 263 / Admin 258")
-    expect(html).toContain("Showing 2 of 7 residual videos")
-    expect(html).toContain("1_jf-0-0")
-    expect(html).toContain("5 additional")
-    expect(html).toContain('href="/dashboard/workflows"')
-    expect(html).toMatch(
-      /<section[^>]*aria-labelledby="core-sync-execution-title"/,
-    )
-    expect(html).toMatch(
-      /<section[^>]*aria-labelledby="core-sync-freshness-title"/,
-    )
-    expect(html).toMatch(
-      /<section[^>]*aria-labelledby="core-sync-parity-title"/,
-    )
   })
 
   it("renders read-only core sync state for principals without trigger permission", async () => {

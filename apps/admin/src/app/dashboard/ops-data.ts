@@ -13,10 +13,6 @@ import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
-import {
-  SUBTITLE_PARITY_DIAGNOSTIC_VERSION,
-  type SubtitleParityDiagnostic,
-} from "@/services/core-sync/types"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
   loadMastraStudioAccessByEmail,
@@ -297,45 +293,8 @@ type DashboardOpsData = {
   signals: Insight[]
 }
 
-export const SYSTEM_STATUS_PARITY_FRESHNESS_MS = 36 * 60 * 60 * 1000
-export const SYSTEM_STATUS_RESIDUAL_SAMPLE_LIMIT = 5
-
-export type SystemStatusHealthAxis = {
-  key: "execution" | "freshness" | "parity"
-  label: string
-  statusLabel: string
-  statusTone: DashboardStatusTone
-  detail: string
-}
-
-export type SystemStatusParityEvidence = {
-  checkId: string
-  completedAt: string
-  completedAtIso: string
-  latestAttemptCheckId: string
-  latestAttemptStatus: "completed" | "failed"
-  snapshot: string
-  coreRootChecksum: string
-  adminRootChecksum: string
-  coreTotalCount: number
-  adminTotalCount: number
-  unprojectableCount: number
-  residualTotal: number
-  residualSample: Array<{
-    videoId: string
-    reason: string | null
-  }>
-  residualReasonTruncatedCount: number
-}
-
-export type SystemStatusData = {
+type SystemStatusData = {
   metrics: Metric[]
-  healthAxes: [
-    SystemStatusHealthAxis,
-    SystemStatusHealthAxis,
-    SystemStatusHealthAxis,
-  ]
-  parityEvidence: SystemStatusParityEvidence | null
   matrix: Array<{
     entity: string
     source: string
@@ -537,7 +496,7 @@ type SyncWatermarkRow = {
   stats: unknown
 }
 
-export type WorkflowRunRow = {
+type WorkflowRunRow = {
   id: string
   runtimeRunId: string | null
   workflowKey: string
@@ -552,7 +511,7 @@ export type WorkflowRunRow = {
   skippedLock: boolean | null
 }
 
-export type CoreSyncLockView = {
+type CoreSyncLockView = {
   heldBy: string | null
   acquiredAt: Date | null
   updatedAt: Date
@@ -947,10 +906,10 @@ export function buildLanguageDiagnosticRow(
   }
 }
 
-function isCoreSyncLockActive(lock: CoreSyncLockView | null, now = new Date()) {
+function isCoreSyncLockActive(lock: CoreSyncLockView | null) {
   if (!lock?.heldBy) return false
   return (
-    now.getTime() - lock.updatedAt.getTime() <= DEFAULT_SYNC_LOCK_STALE_AFTER_MS
+    Date.now() - lock.updatedAt.getTime() <= DEFAULT_SYNC_LOCK_STALE_AFTER_MS
   )
 }
 
@@ -1155,27 +1114,10 @@ function localizedMediaAssetLabel(row: {
   return englishName || row.originalFilename || `Media asset ${row.id}`
 }
 
-async function getWorkflowRunRows(
-  limit = 5,
-  options: { workflowKey?: string } = {},
-) {
-  const query = buildWorkflowRunQuery(limit, options)
-
+async function getWorkflowRunRows(limit = 5) {
   return withTableFallback(
-    () => prisma.$queryRaw<WorkflowRunRow[]>(query),
-    [] as WorkflowRunRow[],
-  )
-}
-
-export function buildWorkflowRunQuery(
-  limit = 5,
-  options: { workflowKey?: string } = {},
-) {
-  const workflowFilter = options.workflowKey
-    ? Prisma.sql`WHERE wr.workflow_key = ${options.workflowKey}`
-    : Prisma.empty
-
-  return Prisma.sql`
+    () =>
+      prisma.$queryRaw<WorkflowRunRow[]>(Prisma.sql`
         SELECT
           wr.id,
           wr.runtime_run_id AS "runtimeRunId",
@@ -1191,10 +1133,11 @@ export function buildWorkflowRunQuery(
           csr.skipped_lock AS "skippedLock"
         FROM workflow_run wr
         LEFT JOIN core_sync_run csr ON csr.workflow_run_id = wr.id
-        ${workflowFilter}
         ORDER BY wr.created_at DESC
         LIMIT ${limit}
-      `
+      `),
+    [] as WorkflowRunRow[],
+  )
 }
 
 function parseSyncStats(stats: unknown) {
@@ -1208,149 +1151,6 @@ function parseSyncStats(stats: unknown) {
     softDeleted: Number(value.softDeleted ?? 0),
     errors: Number(value.errors ?? 0),
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0
-}
-
-function isIsoDate(value: unknown): value is string {
-  return isNonEmptyString(value) && Number.isFinite(Date.parse(value))
-}
-
-function isCount(value: unknown): value is number {
-  return Number.isSafeInteger(value) && Number(value) >= 0
-}
-
-function isChecksum(value: unknown): value is string {
-  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value)
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(isNonEmptyString)
-}
-
-function isValidParityAttempt(
-  value: unknown,
-): value is SubtitleParityDiagnostic["latestAttempt"] {
-  if (!isRecord(value)) return false
-  if (
-    !isNonEmptyString(value.checkId) ||
-    !isIsoDate(value.startedAt) ||
-    !isIsoDate(value.completedAt) ||
-    (value.status !== "completed" && value.status !== "failed")
-  ) {
-    return false
-  }
-
-  if (value.status === "failed") {
-    return (
-      isRecord(value.failure) &&
-      isNonEmptyString(value.failure.code) &&
-      isNonEmptyString(value.failure.message)
-    )
-  }
-
-  return value.failure === undefined
-}
-
-function isValidCompletedParityCheck(
-  value: unknown,
-): value is NonNullable<SubtitleParityDiagnostic["lastCompleted"]> {
-  if (!isRecord(value) || !isRecord(value.core) || !isRecord(value.admin)) {
-    return false
-  }
-
-  if (
-    !isNonEmptyString(value.checkId) ||
-    !isIsoDate(value.startedAt) ||
-    !isIsoDate(value.completedAt) ||
-    (value.status !== "in-sync" && value.status !== "out-of-sync") ||
-    value.manifestVersion !== SUBTITLE_PARITY_DIAGNOSTIC_VERSION ||
-    !isNonEmptyString(value.core.snapshot) ||
-    !isChecksum(value.core.rootChecksum) ||
-    !isCount(value.core.totalCount) ||
-    !isChecksum(value.admin.rootChecksum) ||
-    !isCount(value.admin.totalCount) ||
-    !isCount(value.admin.unprojectableCount) ||
-    !isCount(value.initialMismatchTotal) ||
-    !isCount(value.repairedTotal) ||
-    !isCount(value.residualTotal) ||
-    !isStringArray(value.initialMismatchVideoIds) ||
-    !isStringArray(value.repairedVideoIds) ||
-    !isStringArray(value.residualVideoIds) ||
-    !Array.isArray(value.residualReasons) ||
-    !isCount(value.residualReasonTruncatedCount)
-  ) {
-    return false
-  }
-
-  if (
-    value.initialMismatchVideoIds.length > value.initialMismatchTotal ||
-    value.repairedVideoIds.length > value.repairedTotal ||
-    value.residualVideoIds.length > value.residualTotal
-  ) {
-    return false
-  }
-
-  const residualReasonsAreValid = value.residualReasons.every(
-    (reason) =>
-      isRecord(reason) &&
-      isNonEmptyString(reason.videoId) &&
-      isNonEmptyString(reason.code) &&
-      isNonEmptyString(reason.message),
-  )
-  if (!residualReasonsAreValid) return false
-
-  if (value.status === "in-sync") {
-    return (
-      value.core.rootChecksum === value.admin.rootChecksum &&
-      value.core.totalCount === value.admin.totalCount &&
-      value.admin.unprojectableCount === 0 &&
-      value.residualTotal === 0 &&
-      value.residualVideoIds.length === 0 &&
-      value.residualReasons.length === 0 &&
-      value.residualReasonTruncatedCount === 0
-    )
-  }
-
-  return true
-}
-
-function isValidLastInParity(
-  value: unknown,
-): value is NonNullable<SubtitleParityDiagnostic["lastInParity"]> {
-  return (
-    isRecord(value) &&
-    isNonEmptyString(value.checkId) &&
-    isIsoDate(value.completedAt) &&
-    isNonEmptyString(value.snapshot) &&
-    isChecksum(value.rootChecksum) &&
-    isCount(value.totalCount)
-  )
-}
-
-export function parseSubtitleParityDiagnostic(
-  stats: unknown,
-): SubtitleParityDiagnostic | null {
-  if (!isRecord(stats) || !isRecord(stats.subtitleParity)) return null
-  const diagnostic = stats.subtitleParity
-  if (
-    diagnostic.version !== SUBTITLE_PARITY_DIAGNOSTIC_VERSION ||
-    !isValidParityAttempt(diagnostic.latestAttempt) ||
-    (diagnostic.lastCompleted !== null &&
-      !isValidCompletedParityCheck(diagnostic.lastCompleted)) ||
-    (diagnostic.lastInParity !== null &&
-      !isValidLastInParity(diagnostic.lastInParity))
-  ) {
-    return null
-  }
-
-  return diagnostic as SubtitleParityDiagnostic
 }
 
 async function getOverviewCounts() {
@@ -1640,186 +1440,16 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
   }
 }
 
-function executionAxis(
-  lockActive: boolean,
-  latestRun: WorkflowRunRow | undefined,
-): SystemStatusHealthAxis {
-  const normalizedStatus = latestRun?.status.toLowerCase()
-  if (
-    lockActive ||
-    normalizedStatus === "running" ||
-    normalizedStatus === "queued" ||
-    normalizedStatus === "pending"
-  ) {
-    return {
-      key: "execution",
-      label: "Execution",
-      statusLabel: "Running",
-      statusTone: "info",
-      detail: "A Core Sync execution is currently in progress.",
-    }
-  }
-  if (!latestRun) {
-    return {
-      key: "execution",
-      label: "Execution",
-      statusLabel: "Never run",
-      statusTone: "muted",
-      detail: "No Core Sync workflow execution is recorded in the run ledger.",
-    }
-  }
-  if (normalizedStatus === "succeeded" || normalizedStatus === "completed") {
-    return {
-      key: "execution",
-      label: "Execution",
-      statusLabel: "Succeeded",
-      statusTone: "success",
-      detail: latestRun.finishedAt
-        ? `Latest Core Sync execution finished ${formatDateTime(latestRun.finishedAt)} UTC.`
-        : "The latest Core Sync execution completed successfully.",
-    }
-  }
-  return {
-    key: "execution",
-    label: "Execution",
-    statusLabel: "Failed",
-    statusTone: "danger",
-    detail: `The latest Core Sync execution ended with status ${latestRun.status}.`,
-  }
-}
-
-function freshnessAxis(
-  diagnostic: SubtitleParityDiagnostic | null,
-  now: Date,
-): SystemStatusHealthAxis {
-  const completedAt = diagnostic?.lastCompleted?.completedAt
-  if (!completedAt) {
-    return {
-      key: "freshness",
-      label: "Parity freshness",
-      statusLabel: "Unknown",
-      statusTone: "muted",
-      detail: "No supported completed subtitle parity check is available.",
-    }
-  }
-
-  const ageMs = now.getTime() - Date.parse(completedAt)
-  if (ageMs < 0 || !Number.isFinite(ageMs)) {
-    return {
-      key: "freshness",
-      label: "Parity freshness",
-      statusLabel: "Unknown",
-      statusTone: "muted",
-      detail: "The completed parity timestamp cannot be trusted.",
-    }
-  }
-
-  if (ageMs <= SYSTEM_STATUS_PARITY_FRESHNESS_MS) {
-    return {
-      key: "freshness",
-      label: "Parity freshness",
-      statusLabel: "Fresh",
-      statusTone: "success",
-      detail: "The latest completed parity check is within the 36-hour window.",
-    }
-  }
-
-  return {
-    key: "freshness",
-    label: "Parity freshness",
-    statusLabel: "Stale",
-    statusTone: "warning",
-    detail: "The latest completed parity check is older than 36 hours.",
-  }
-}
-
-function parityAxis(
-  diagnostic: SubtitleParityDiagnostic | null,
-): SystemStatusHealthAxis {
-  const status = diagnostic?.lastCompleted?.status
-  if (status === "in-sync") {
-    return {
-      key: "parity",
-      label: "Subtitle data parity",
-      statusLabel: "In sync",
-      statusTone: "success",
-      detail: "Admin and Core subtitle checksums match exactly.",
-    }
-  }
-  if (status === "out-of-sync") {
-    return {
-      key: "parity",
-      label: "Subtitle data parity",
-      statusLabel: "Out of sync",
-      statusTone: "danger",
-      detail: "The completed check found subtitle videos that still differ.",
-    }
-  }
-  return {
-    key: "parity",
-    label: "Subtitle data parity",
-    statusLabel: "Unavailable",
-    statusTone: "muted",
-    detail: "A complete supported subtitle parity result is not available.",
-  }
-}
-
-function parityEvidence(
-  diagnostic: SubtitleParityDiagnostic | null,
-): SystemStatusParityEvidence | null {
-  const completed = diagnostic?.lastCompleted
-  if (!diagnostic || !completed) return null
-
-  const reasonsByVideoId = new Map(
-    completed.residualReasons.map((reason) => [
-      reason.videoId,
-      `${reason.code}: ${reason.message}`,
-    ]),
-  )
-
-  return {
-    checkId: completed.checkId,
-    completedAt: formatDateTime(new Date(completed.completedAt)),
-    completedAtIso: completed.completedAt,
-    latestAttemptCheckId: diagnostic.latestAttempt.checkId,
-    latestAttemptStatus: diagnostic.latestAttempt.status,
-    snapshot: completed.core.snapshot,
-    coreRootChecksum: completed.core.rootChecksum,
-    adminRootChecksum: completed.admin.rootChecksum,
-    coreTotalCount: completed.core.totalCount,
-    adminTotalCount: completed.admin.totalCount,
-    unprojectableCount: completed.admin.unprojectableCount,
-    residualTotal: completed.residualTotal,
-    residualSample: completed.residualVideoIds
-      .slice(0, SYSTEM_STATUS_RESIDUAL_SAMPLE_LIMIT)
-      .map((videoId) => ({
-        videoId,
-        reason: reasonsByVideoId.get(videoId) ?? null,
-      })),
-    residualReasonTruncatedCount: completed.residualReasonTruncatedCount,
-  }
-}
-
-export function buildSystemStatusData({
-  syncRows,
-  lock,
-  workflowRows,
-  now = new Date(),
-}: {
-  syncRows: SyncWatermarkRow[]
-  lock: CoreSyncLockView | null
-  workflowRows: WorkflowRunRow[]
-  now?: Date
-}): SystemStatusData {
-  const lockActive = isCoreSyncLockActive(lock, now)
-  const subtitleStats = syncRows.find(
-    (row) => row.phase === "video-subtitles",
-  )?.stats
-  const diagnostic = parseSubtitleParityDiagnostic(subtitleStats)
-  const execution = executionAxis(lockActive, workflowRows[0])
-  const freshness = freshnessAxis(diagnostic, now)
-  const parity = parityAxis(diagnostic)
-  const evidence = parityEvidence(diagnostic)
+export async function loadSystemStatusData(): Promise<SystemStatusData> {
+  const [syncRows, lock, workflowRows] = await Promise.all([
+    getSyncRows(),
+    withTableFallback(
+      () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
+      null,
+    ),
+    getWorkflowRunRows(3),
+  ])
+  const lockActive = isCoreSyncLockActive(lock)
 
   const matrix = syncRows.map((row) => {
     const stats = parseSyncStats(row.stats)
@@ -1827,85 +1457,56 @@ export function buildSystemStatusData({
     return {
       entity: phaseLabel(row.phase),
       source: `core.${row.phase}`,
-      statusLabel: stats.errors > 0 ? "Failed" : "Succeeded",
+      statusLabel: stats.errors > 0 ? "Review" : "Healthy",
       statusTone: statusToneForSyncErrors(stats.errors),
       lastRun: `${changed} changed`,
     }
   })
 
-  const phaseIncidents: QueueItem[] = matrix
-    .filter((row) => row.statusTone === "danger")
-    .slice(0, 4)
-    .map((row) => ({
-      title: `${row.entity} execution failed`,
-      meta: row.source,
-      detail: "The last persisted phase execution reported errors.",
-      statusLabel: "Failed",
-      statusTone: "danger",
-    }))
-  const axisIncidents: QueueItem[] = []
-  if (execution.statusLabel === "Failed") {
-    const latestWorkflowRow = workflowRows[0]
-    axisIncidents.push({
-      title: latestWorkflowRow
-        ? `${latestWorkflowRow.workflowKey} ${latestWorkflowRow.status}`
-        : "Latest Core Sync execution failed",
-      meta:
-        latestWorkflowRow?.runtimeRunId ??
-        latestWorkflowRow?.id ??
-        "run ledger",
-      detail: latestWorkflowRow?.error ?? execution.detail,
-      statusLabel: latestWorkflowRow?.status ?? "Failed",
-      statusTone: latestWorkflowRow
-        ? statusToneForWorkflowStatus(latestWorkflowRow.status)
-        : "danger",
-    })
-  }
-  if (freshness.statusLabel === "Stale") {
-    axisIncidents.push({
-      title: "Subtitle parity check is stale",
-      meta: evidence?.checkId ?? "no supported check",
-      detail: freshness.detail,
-      statusLabel: "Stale",
-      statusTone: "warning",
-    })
-  } else if (freshness.statusLabel === "Unknown") {
-    axisIncidents.push({
-      title: "Subtitle parity freshness is unknown",
-      meta: "video-subtitles",
-      detail: freshness.detail,
-      statusLabel: "Unknown",
-      statusTone: "muted",
-    })
-  }
-  if (parity.statusLabel === "Out of sync") {
-    axisIncidents.push({
-      title: "Subtitle data is out of sync",
-      meta: evidence?.checkId ?? "no supported check",
-      detail: `${evidence?.residualTotal ?? 0} residual video(s) remain after reconciliation.`,
-      statusLabel: "Out of sync",
-      statusTone: "danger",
-    })
-  } else if (parity.statusLabel === "Unavailable") {
-    axisIncidents.push({
-      title: "Subtitle data parity is unavailable",
-      meta: "video-subtitles",
-      detail: parity.detail,
-      statusLabel: "Unavailable",
-      statusTone: "muted",
-    })
-  }
+  const recentRunRows = workflowRows.map((row) => ({
+    title: `${row.workflowKey} ${row.status}`,
+    meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
+    detail:
+      row.error ??
+      row.summary ??
+      (row.finishedAt
+        ? `Finished ${formatDateTime(row.finishedAt)}`
+        : row.startedAt
+          ? `Started ${formatDateTime(row.startedAt)}`
+          : `Queued ${formatDateTime(row.createdAt)}`),
+    statusLabel: row.status,
+    statusTone: statusToneForWorkflowStatus(row.status),
+  }))
+  const runRowsNeedingAttention = recentRunRows.filter(
+    (row) => row.statusTone === "danger",
+  )
 
-  const incidentRows = [...phaseIncidents, ...axisIncidents].slice(0, 6)
-  if (incidentRows.length === 0) {
-    incidentRows.push({
-      title: "No Core Sync exceptions",
-      meta: lockActive ? `lock held by ${lock?.heldBy}` : "lock clear",
-      detail: "Execution, freshness, and parity are each reported above.",
-      statusLabel: "Clear",
-      statusTone: "success",
-    })
-  }
+  const syncIncidentRows =
+    matrix.filter((row) => row.statusTone !== "success").length > 0
+      ? matrix
+          .filter((row) => row.statusTone !== "success")
+          .slice(0, 4)
+          .map((row) => ({
+            title: `${row.entity} sync needs review`,
+            meta: row.source,
+            detail: `Persisted sync status is ${row.statusLabel.toLowerCase()}.`,
+            statusLabel: row.statusLabel,
+            statusTone: row.statusTone,
+          }))
+      : [
+          {
+            title: "No active sync incidents",
+            meta: lockActive ? `lock held by ${lock?.heldBy}` : "lock clear",
+            detail: "No synced data sets are reporting issues.",
+            statusLabel: "Healthy",
+            statusTone: "success" as const,
+          },
+        ]
+
+  const incidentRows = [...syncIncidentRows, ...runRowsNeedingAttention].slice(
+    0,
+    6,
+  )
 
   return {
     metrics: [
@@ -1927,22 +1528,24 @@ export function buildSystemStatusData({
       {
         label: "Exceptions",
         value: incidentRows
-          .filter((row) => row.statusLabel !== "Clear")
+          .filter((row) => row.statusTone !== "success")
           .length.toString(),
         footer: "REQUIRES_REVIEW",
-        accent: incidentRows.some((row) => row.statusLabel !== "Clear")
+        accent: incidentRows.some((row) => row.statusTone !== "success")
           ? "danger"
           : undefined,
       },
       {
         label: "Latest Attempted Sync",
-        value: execution.statusLabel,
-        footer: "CORE_SYNC_EXECUTION",
-        accent: execution.statusLabel === "Failed" ? "danger" : undefined,
+        value: workflowRows[0]?.status ?? "NONE",
+        footer: "WORKFLOW_ATTEMPT",
+        accent:
+          workflowRows[0]?.status === "failed" ||
+          workflowRows[0]?.status === "FAILED"
+            ? "danger"
+            : undefined,
       },
     ],
-    healthAxes: [execution, freshness, parity],
-    parityEvidence: evidence,
     matrix,
     incidents: incidentRows,
     telemetry: [
@@ -1956,34 +1559,21 @@ export function buildSystemStatusData({
             : "No process currently holds the sync lock.",
       },
       {
-        label: "Parity Check",
-        value: evidence?.checkId ?? "Unavailable",
-        detail: evidence
-          ? `Completed ${evidence.completedAt} UTC.`
-          : "No complete supported check is available.",
+        label: "Data Sets With Errors",
+        value: incidentRows
+          .filter((row) => row.statusTone !== "success")
+          .length.toString(),
+        detail: "Synced data sets reporting non-zero errors on the last run.",
       },
       {
-        label: "Latest Core Sync Run",
+        label: "Latest Attempted Sync",
         value: workflowRows[0]?.status ?? "None",
         detail: workflowRows[0]?.runtimeRunId
           ? `Runtime run ${workflowRows[0].runtimeRunId}.`
-          : "No Core Sync workflow ledger rows have been persisted yet.",
+          : "No workflow ledger rows have been persisted yet.",
       },
     ],
   }
-}
-
-export async function loadSystemStatusData(): Promise<SystemStatusData> {
-  const [syncRows, lock, workflowRows] = await Promise.all([
-    getSyncRows(),
-    withTableFallback(
-      () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
-      null,
-    ),
-    getWorkflowRunRows(3, { workflowKey: "core-sync" }),
-  ])
-
-  return buildSystemStatusData({ syncRows, lock, workflowRows })
 }
 
 export async function loadWorkflowsData(): Promise<WorkflowsData> {

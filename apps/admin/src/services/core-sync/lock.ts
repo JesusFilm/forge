@@ -3,40 +3,10 @@
 // Replaces the CMS's in-memory `syncInProgress` guard which does not
 // survive Railway horizontal scaling.
 
-import type { Prisma, PrismaClient } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
 
 const LOCK_KEY = "core-sync"
 export const DEFAULT_SYNC_LOCK_STALE_AFTER_MS = 15 * 60 * 1000
-
-export class SyncLockFenceError extends Error {
-  constructor() {
-    super("Core sync lock ownership or lease was lost")
-    this.name = "SyncLockFenceError"
-  }
-}
-
-/**
- * Locks the ownership row for the remainder of the caller's transaction and
- * verifies both holder identity and lease freshness in the database clock.
- */
-export async function assertSyncLockHeld(
-  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
-  heldBy: string,
-  staleAfterMs = DEFAULT_SYNC_LOCK_STALE_AFTER_MS,
-): Promise<void> {
-  const rows = await tx.$queryRaw<Array<{ heldBy: string }>>`
-    SELECT held_by AS "heldBy"
-    FROM sync_locks
-    WHERE key = ${LOCK_KEY}
-      AND held_by = ${heldBy}
-      AND updated_at >= NOW() - (${staleAfterMs} * INTERVAL '1 millisecond')
-    FOR UPDATE
-  `
-
-  if (rows.length !== 1 || rows[0]?.heldBy !== heldBy) {
-    throw new SyncLockFenceError()
-  }
-}
 
 export async function acquireSyncLock(
   prisma: PrismaClient,

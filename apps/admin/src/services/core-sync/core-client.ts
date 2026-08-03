@@ -33,14 +33,9 @@ export type CoreGraphQLErrorDetail = {
   extensions?: Record<string, unknown>
 }
 
-export type CoreQueryResult<T> = {
+type CoreQueryResult<T> = {
   data: T | null
   errors?: Array<CoreGraphQLErrorDetail>
-}
-
-export type CoreQueryOptions = {
-  /** Fail before transport when the operation is protected by Core interop auth. */
-  requireInteropToken?: boolean
 }
 
 export class CoreGraphQLError extends Error {
@@ -68,24 +63,13 @@ function isRetryableCoreGraphQLError(error: CoreGraphQLError): boolean {
 export async function coreQuery<T>(
   query: string,
   variables?: Record<string, unknown>,
-  options: CoreQueryOptions = {},
 ): Promise<CoreQueryResult<T>> {
   const url = env.CORE_API_URL ?? DEFAULT_URL
-  const parsedUrl = new URL(url)
-  if (env.NODE_ENV === "production" && parsedUrl.protocol !== "https:") {
-    throw new Error("CORE_API_URL must use HTTPS in production")
-  }
-
-  if (options.requireInteropToken && !env.CORE_API_TOKEN) {
-    throw new Error("CORE_API_TOKEN is required for Core interop access")
-  }
-
   const headers: Record<string, string> = {
     "content-type": "application/json",
   }
   if (env.CORE_API_TOKEN) {
     headers.authorization = `Bearer ${env.CORE_API_TOKEN}`
-    headers["interop-token"] = env.CORE_API_TOKEN
   }
 
   const retries = env.CORE_API_RETRIES ?? DEFAULT_RETRIES
@@ -94,7 +78,6 @@ export async function coreQuery<T>(
     try {
       const res = await fetch(url, {
         method: "POST",
-        redirect: "error",
         headers,
         body: JSON.stringify({ query, variables }),
         signal: AbortSignal.timeout(

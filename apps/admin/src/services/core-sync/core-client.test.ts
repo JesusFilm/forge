@@ -1,75 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { coreQuery, CoreGraphQLError } from "./core-client"
 
-const { mockEnv } = vi.hoisted(() => ({
-  mockEnv: {
-    CORE_API_URL: undefined as string | undefined,
-    CORE_API_TOKEN: undefined as string | undefined,
-    CORE_API_TIMEOUT_MS: undefined as number | undefined,
-    CORE_API_RETRIES: undefined as number | undefined,
-    NODE_ENV: "test" as string | undefined,
-  },
-}))
-
-vi.mock("@/config/env", () => ({ env: mockEnv }))
-
 describe("coreQuery", () => {
   afterEach(() => {
-    mockEnv.CORE_API_URL = undefined
-    mockEnv.CORE_API_TOKEN = undefined
-    mockEnv.CORE_API_TIMEOUT_MS = undefined
-    mockEnv.CORE_API_RETRIES = undefined
-    mockEnv.NODE_ENV = "test"
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-  })
-
-  it("sends both compatibility auth headers and rejects redirects", async () => {
-    mockEnv.CORE_API_TOKEN = "interop-secret"
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: { ok: true } }),
-    })
-    vi.stubGlobal("fetch", fetchMock)
-
-    await coreQuery("query { ok }")
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        redirect: "error",
-        headers: {
-          authorization: "Bearer interop-secret",
-          "content-type": "application/json",
-          "interop-token": "interop-secret",
-        },
-      }),
-    )
-  })
-
-  it("fails closed when an interop-protected query has no token", async () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal("fetch", fetchMock)
-
-    await expect(
-      coreQuery("query { protected }", undefined, {
-        requireInteropToken: true,
-      }),
-    ).rejects.toThrow("CORE_API_TOKEN is required")
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it("rejects a non-HTTPS Core URL in production", async () => {
-    mockEnv.CORE_API_URL = "http://core.example.test/graphql"
-    mockEnv.NODE_ENV = "production"
-    const fetchMock = vi.fn()
-    vi.stubGlobal("fetch", fetchMock)
-
-    await expect(coreQuery("query { ok }")).rejects.toThrow(
-      "CORE_API_URL must use HTTPS in production",
-    )
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("throws when Core returns GraphQL errors in a 200 response", async () => {

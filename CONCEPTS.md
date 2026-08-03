@@ -130,17 +130,6 @@ An absent overlay inherits the selected locale's canonical copy and existing
 image fallback. Managed social art remains promotional: it does not become the
 Video's thumbnail truth.
 
-### Subtitle Parity Check
-
-Admin's versioned evidence that its active Core-owned subtitle projection
-matches Core's authoritative subtitle manifest at one content snapshot.
-
-Execution, parity freshness, and data parity are separate facts: a completed
-check can find residual drift without failing the workflow, while only a fresh
-completed checksum match can establish in-parity status. Snapshot-bound detail
-authorizes repair for one Video; a checksum mismatch alone never authorizes a
-delete.
-
 ## Video source mapper
 
 ### Video Source Mapper

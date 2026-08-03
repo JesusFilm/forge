@@ -1,700 +1,412 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({
-  assertSyncLockHeld: vi.fn(),
+vi.mock("../core-client", () => ({
+  CoreGraphQLError: class CoreGraphQLError extends Error {
+    constructor(readonly errors: Array<{ message: string }>) {
+      super(errors.map((error) => error.message).join("; "))
+      this.name = "CoreGraphQLError"
+    }
+  },
   coreQuery: vi.fn(),
-  fetchManifest: vi.fn(),
 }))
 
-vi.mock("../lock", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../lock")>()),
-  assertSyncLockHeld: mocks.assertSyncLockHeld,
-}))
+import { coreQuery } from "../core-client"
+import { PAGE_SIZE, syncVideoSubtitles } from "./sync-video-subtitles"
 
-vi.mock("../core-client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../core-client")>()),
-  coreQuery: mocks.coreQuery,
-}))
+const mockedCoreQuery = vi.mocked(coreQuery)
 
-vi.mock("../video-subtitle-checksum", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../video-subtitle-checksum")>()),
-  fetchVideoSubtitleChecksumManifest: mocks.fetchManifest,
-}))
+type SubtitleRow = {
+  id: string
+  videoId: string
+  languageId: string
+  primary: boolean
+  edition: string
+  vttSrc: string | null
+  srtSrc: string | null
+  value: string
+  updatedAt: string
+  videoEdition: { id: string }
+}
 
-import { CoreGraphQLError } from "../core-client"
-import type { SubtitleParityDiagnostic } from "../types"
-import {
-  buildVideoSubtitleChecksumManifest,
-  type VideoSubtitleChecksumSourceRecord,
-  VideoSubtitleSnapshotMismatchError,
-} from "../video-subtitle-checksum"
-import { syncVideoSubtitles } from "./sync-video-subtitles"
-
-const ROOT = `sha256:${"a".repeat(64)}`
-
-function source(
-  overrides: Partial<VideoSubtitleChecksumSourceRecord> = {},
-): VideoSubtitleChecksumSourceRecord {
-  return {
-    id: "subtitle-1",
-    videoId: "video-1",
-    languageId: "21028",
-    edition: "ot",
+function coreSubtitle(overrides: Partial<SubtitleRow> = {}): SubtitleRow {
+  const defaults: SubtitleRow = {
+    id: "subtitle-core-1",
+    videoId: "video-core-1",
+    languageId: "language-core-es",
     primary: true,
-    vttSrc: "https://cdn.example/video-1_ot_21028.vtt",
-    vttVersion: 7,
-    srtSrc: null,
-    srtVersion: 2,
-    ...overrides,
+    edition: "ot",
+    vttSrc: "es.vtt",
+    srtSrc: "es.srt",
+    value: "Texto de subtitulo",
+    updatedAt: "2026-08-03T00:00:00.000Z",
+    videoEdition: { id: "edition-core-1" },
   }
+  return { ...defaults, ...overrides }
 }
 
-function adminRow(
-  value: VideoSubtitleChecksumSourceRecord,
-  overrides: Record<string, unknown> = {},
-) {
+function coreRowsPage(rows: SubtitleRow[]) {
+  return { data: { videoSubtitles: rows } }
+}
+
+function inventoryPage(ids: string[], count = ids.length) {
   return {
-    id: `admin-${value.id}`,
-    coreId: value.id,
-    videoId: `admin-${value.videoId}`,
-    primary: value.primary,
-    vttSrc: value.vttSrc,
-    vttVersion: value.vttVersion,
-    srtSrc: value.srtSrc,
-    srtVersion: value.srtVersion,
-    video: { coreId: value.videoId, deletedAt: null },
-    language: { coreId: value.languageId, deletedAt: null },
-    videoEdition: { name: value.edition, deletedAt: null },
-    ...overrides,
-  }
-}
-
-function priorDiagnostic(): SubtitleParityDiagnostic {
-  return {
-    version: 1,
-    latestAttempt: {
-      checkId: "prior-attempt",
-      startedAt: "2026-07-29T00:00:00.000Z",
-      completedAt: "2026-07-29T00:01:00.000Z",
-      status: "completed",
-    },
-    lastCompleted: {
-      checkId: "prior-completed",
-      startedAt: "2026-07-29T00:00:00.000Z",
-      completedAt: "2026-07-29T00:01:00.000Z",
-      status: "in-sync",
-      manifestVersion: 1,
-      core: { snapshot: "prior", rootChecksum: ROOT, totalCount: 1 },
-      admin: {
-        rootChecksum: ROOT,
-        totalCount: 1,
-        unprojectableCount: 0,
-      },
-      initialMismatchTotal: 0,
-      repairedTotal: 0,
-      residualTotal: 0,
-      initialMismatchVideoIds: [],
-      repairedVideoIds: [],
-      residualVideoIds: [],
-      residualReasons: [],
-      residualReasonTruncatedCount: 0,
-    },
-    lastInParity: {
-      checkId: "prior-completed",
-      completedAt: "2026-07-29T00:01:00.000Z",
-      snapshot: "prior",
-      rootChecksum: ROOT,
-      totalCount: 1,
+    data: {
+      videoSubtitlesCount: count,
+      videoSubtitles: ids.map((id) => ({ id })),
     },
   }
 }
 
-type HarnessOptions = {
-  projectionRows?: unknown[][]
-  videos?: Array<{ id: string; coreId: string }>
-  languages?: Array<{ id: string; coreId: string }>
-  activeEditions?: Array<{ id: string; coreId: string; name: string }>
-  sameVideoEditions?: Array<{ id: string; coreId: string; name: string }>
-  managerOnlySameVideoEditions?: boolean
-  existingRows?: Array<{
-    coreId: string
-    source: string
-    videoId: string | null
-  }>
-  affected?: number
-  softDeleted?: number
-  previous?: SubtitleParityDiagnostic | null
-}
-
-function harness(options: HarnessOptions = {}) {
-  const projectionFindMany = vi.fn()
-  for (const rows of options.projectionRows ?? [[]]) {
-    projectionFindMany.mockResolvedValueOnce(rows)
-  }
-
-  const activeEditions = options.activeEditions ?? [
-    { id: "admin-edition-ot", coreId: "core-edition-ot", name: "ot" },
-  ]
-  const sameVideoEditions = options.sameVideoEditions ?? activeEditions
-  const associatedAdminVideoId = options.videos?.[0]?.id ?? "admin-video-1"
-  const videoEditionFindMany = vi.fn(
-    (args: { where?: { OR?: unknown; source?: string } }) => {
-      if (!args.where?.OR) return Promise.resolve(activeEditions)
-
-      const coreOwnedAssociationQuery =
-        args.where.source === "CORE" &&
-        JSON.stringify(args.where.OR).includes('"source":"CORE"')
-      if (options.managerOnlySameVideoEditions && coreOwnedAssociationQuery) {
-        return Promise.resolve([])
-      }
-
-      return Promise.resolve(
-        sameVideoEditions.map((edition) => ({
-          ...edition,
-          subtitles: [{ videoId: associatedAdminVideoId }],
-          dubs: [],
-        })),
-      )
-    },
-  )
+function harness({
+  activeCoreIds = [],
+  existingRows = [],
+  deleteCount = 0,
+  videoEditions = [{ id: "edition-admin-1", coreId: "edition-core-1" }],
+}: {
+  activeCoreIds?: string[][]
+  existingRows?: Array<{ coreId: string | null; source: string }>
+  deleteCount?: number
+  videoEditions?: Array<{ id: string; coreId: string }>
+} = {}) {
   const tx = {
-    $queryRaw: vi.fn().mockResolvedValue(options.existingRows ?? []),
-    $executeRaw: vi.fn().mockResolvedValue(options.affected ?? 1),
     videoSubtitle: {
-      updateMany: vi
-        .fn()
-        .mockResolvedValue({ count: options.softDeleted ?? 0 }),
+      findMany: vi.fn().mockResolvedValue(existingRows),
     },
+    $executeRaw: vi.fn().mockResolvedValue(1),
   }
+  const activeFindMany = vi.fn()
+  for (const ids of activeCoreIds) {
+    activeFindMany.mockResolvedValueOnce(ids.map((coreId) => ({ coreId })))
+  }
+  activeFindMany.mockResolvedValue(
+    (activeCoreIds.at(-1) ?? []).map((coreId) => ({ coreId })),
+  )
+
   const prisma = {
-    syncState: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValue(
-          options.previous === undefined
-            ? null
-            : { stats: { subtitleParity: options.previous } },
-        ),
-    },
-    videoSubtitle: { findMany: projectionFindMany },
     video: {
       findMany: vi
         .fn()
-        .mockResolvedValue(
-          options.videos ?? [{ id: "admin-video-1", coreId: "video-1" }],
-        ),
+        .mockResolvedValue([{ id: "video-admin-1", coreId: "video-core-1" }]),
     },
     language: {
       findMany: vi
         .fn()
-        .mockResolvedValue(
-          options.languages ?? [{ id: "admin-language", coreId: "21028" }],
-        ),
+        .mockResolvedValue([
+          { id: "language-admin-es", coreId: "language-core-es" },
+        ]),
     },
-    videoEdition: { findMany: videoEditionFindMany },
-    $transaction: vi.fn(
-      async (callback: (transaction: typeof tx) => Promise<unknown>) =>
-        callback(tx),
+    videoEdition: {
+      findMany: vi.fn().mockResolvedValue(videoEditions),
+    },
+    videoSubtitle: {
+      findMany: activeFindMany,
+    },
+    $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
+      fn(tx),
     ),
+    $executeRaw: vi.fn().mockResolvedValue(deleteCount),
   }
-  return { prisma, tx, projectionFindMany, videoEditionFindMany }
+  return { prisma, tx }
 }
 
 function progress() {
   return { setTotal: vi.fn(), increment: vi.fn() }
 }
 
-function snapshotMismatch() {
-  return new CoreGraphQLError([
-    {
-      message: "snapshot changed",
-      extensions: { code: "SUBTITLE_SNAPSHOT_MISMATCH" },
-    },
-  ])
-}
-
 describe("syncVideoSubtitles", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.assertSyncLockHeld.mockResolvedValue(undefined)
   })
 
-  it("uses equal roots as a zero-detail, zero-write result even with a watermark", async () => {
-    const record = source()
-    const manifest = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest.mockResolvedValueOnce(manifest)
-    const { prisma } = harness({ projectionRows: [[adminRow(record)]] })
+  it("full-syncs subtitles from Core's flat videoSubtitles endpoint and soft-deletes by verified id inventory", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+    const { prisma, tx } = harness({
+      activeCoreIds: [["subtitle-core-1"]],
+      deleteCount: 2,
+    })
 
     const stats = await syncVideoSubtitles({
       prisma: prisma as never,
       progress: progress(),
-      since: "2020-01-01T00:00:00.000Z",
-      lockOwnerId: "run-1",
+    })
+
+    expect(stats).toMatchObject({ errors: 0, updated: 1, softDeleted: 2 })
+    expect(mockedCoreQuery.mock.calls[0]?.[0]).toContain("videoSubtitles")
+    expect(mockedCoreQuery.mock.calls[0]?.[0]).not.toContain("videos(")
+    expect(mockedCoreQuery.mock.calls[0]?.[1]).toMatchObject({
+      offset: 0,
+      limit: expect.any(Number),
+      where: undefined,
+    })
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    const [, ...values] = tx.$executeRaw.mock.calls[0] as [
+      ReadonlyArray<string>,
+      ...unknown[],
+    ]
+    expect(values[3]).toContain("edition-admin-1")
+    expect(values[4]).toContain("language-admin-es")
+    expect(values[5]).toContain("Texto de subtitulo")
+    expect(values[7]).toContain("es.vtt")
+    expect(values[8]).toContain("es.srt")
+    expect(values[9]).toContain("2026-08-03T00:00:00.000Z")
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
+    expect(prisma.videoSubtitle.findMany).toHaveBeenCalledWith({
+      where: { source: "CORE", deletedAt: null, coreId: { not: null } },
+      select: { coreId: true },
+    })
+    const deleteSql = (
+      prisma.$executeRaw.mock.calls[0]?.[0] as ReadonlyArray<string>
+    ).join(" ")
+    expect(deleteSql).toContain(`"source" = 'core'::"SourceTier"`)
+    expect(deleteSql).toContain(`"core_id" IS NOT NULL`)
+    expect(deleteSql).toContain("ANY(")
+  })
+
+  it("paginates full row sync and both verified inventory reads", async () => {
+    const fullPage = Array.from({ length: PAGE_SIZE }, (_, index) =>
+      coreSubtitle({
+        id: `subtitle-core-${index}`,
+        value: `Subtitle ${index}`,
+      }),
+    )
+    const inventoryIds = fullPage
+      .map((subtitle) => subtitle.id)
+      .concat("subtitle-core-last")
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage(fullPage) as never)
+      .mockResolvedValueOnce(
+        coreRowsPage([
+          coreSubtitle({
+            id: "subtitle-core-last",
+            value: "Final page subtitle",
+          }),
+        ]) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(
+          fullPage.map((row) => row.id),
+          PAGE_SIZE + 1,
+        ) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-last"], PAGE_SIZE + 1) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(
+          fullPage.map((row) => row.id),
+          PAGE_SIZE + 1,
+        ) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-last"], PAGE_SIZE + 1) as never,
+      )
+    const { prisma } = harness({
+      activeCoreIds: [inventoryIds],
+    })
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
     })
 
     expect(stats.errors).toBe(0)
-    expect(stats.subtitleParity?.lastCompleted?.status).toBe("in-sync")
-    expect(mocks.fetchManifest).toHaveBeenCalledTimes(1)
-    expect(prisma.$transaction).not.toHaveBeenCalled()
-    expect(mocks.coreQuery).not.toHaveBeenCalled()
+    expect(stats.updated).toBe(PAGE_SIZE + 1)
+    expect(mockedCoreQuery.mock.calls.map((call) => call[1])).toEqual([
+      { offset: 0, limit: PAGE_SIZE, where: undefined },
+      { offset: PAGE_SIZE, limit: PAGE_SIZE, where: undefined },
+      { offset: 0, limit: PAGE_SIZE },
+      { offset: PAGE_SIZE, limit: PAGE_SIZE },
+      { offset: 0, limit: PAGE_SIZE },
+      { offset: PAGE_SIZE, limit: PAGE_SIZE },
+    ])
   })
 
-  it("repairs the JESUS OT subtitle through the normal mismatch path", async () => {
-    const jesus = source({
-      id: "jesus-ot-en",
-      videoId: "1_jf-0-0",
-      languageId: "21028",
-      edition: "ot",
-      vttSrc: "https://cdn.example/1_jf-0-0_ot_21028.vtt",
-      vttVersion: 11,
-      srtVersion: 4,
-    })
-    const core = buildVideoSubtitleChecksumManifest([jesus])
-    const detail = buildVideoSubtitleChecksumManifest([jesus], ["1_jf-0-0"])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(detail)
-      .mockResolvedValueOnce(core)
+  it("keeps the incremental updatedAt fast path but escalates to full row repair when Admin is missing Core ids", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
     const { prisma, tx } = harness({
-      projectionRows: [[], [adminRow(jesus)]],
-      videos: [{ id: "admin-jesus", coreId: "1_jf-0-0" }],
-      existingRows: [
-        { coreId: jesus.id, source: "core", videoId: "admin-jesus" },
-      ],
-      affected: 1,
-      sameVideoEditions: [
-        { id: "admin-edition-ot", coreId: "core-edition-ot", name: "ot" },
-      ],
+      activeCoreIds: [[], ["subtitle-core-1"]],
     })
 
     const stats = await syncVideoSubtitles({
       prisma: prisma as never,
       progress: progress(),
-      lockOwnerId: "run-jesus",
+      since: "2026-05-07T00:00:00.000Z",
     })
 
     expect(stats).toMatchObject({ errors: 0, updated: 1 })
-    expect(stats.subtitleParity?.lastCompleted).toMatchObject({
-      status: "in-sync",
-      initialMismatchTotal: 1,
-      repairedTotal: 1,
-      residualTotal: 0,
-      repairedVideoIds: ["1_jf-0-0"],
+    expect(mockedCoreQuery.mock.calls[0]?.[1]).toMatchObject({
+      where: { updatedAt: { gte: "2026-05-07T00:00:00.000Z" } },
     })
-    expect(mocks.fetchManifest.mock.calls[1]?.[0]).toEqual({
-      detailsForVideoIds: ["1_jf-0-0"],
-      expectedSnapshot: core.snapshot,
+    expect(mockedCoreQuery.mock.calls[3]?.[1]).toMatchObject({
+      where: undefined,
     })
-    expect(mocks.assertSyncLockHeld).toHaveBeenCalledWith(tx, "run-jesus")
-    const sql = tx.$executeRaw.mock.calls[0]?.[0] as PrismaSql
-    expect(sql.values).toEqual(
-      expect.arrayContaining([
-        "jesus-ot-en",
-        "admin-jesus",
-        "admin-language",
-        11,
-        4,
-      ]),
-    )
-    expect(tx.videoSubtitle.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          videoId: "admin-jesus",
-          source: "CORE",
-        }),
-      }),
-    )
+    expect(mockedCoreQuery).toHaveBeenCalledTimes(6)
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
   })
 
-  it("soft-deletes only inside a video after a validated explicit empty detail", async () => {
-    const extra = source()
-    const core = buildVideoSubtitleChecksumManifest([])
-    const detail = buildVideoSubtitleChecksumManifest([], ["video-1"])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(detail)
-      .mockResolvedValueOnce(core)
+  it("refreshes Core inventory after full repair before authorizing deletes", async () => {
+    const repairedRows = [
+      coreSubtitle(),
+      coreSubtitle({
+        id: "subtitle-core-2",
+        value: "New subtitle from concurrent Core change",
+      }),
+    ]
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(coreRowsPage(repairedRows) as never)
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-1", "subtitle-core-2"]) as never,
+      )
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-1", "subtitle-core-2"]) as never,
+      )
+    const { prisma } = harness({
+      activeCoreIds: [[], ["subtitle-core-1", "subtitle-core-2"]],
+    })
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+      since: "2026-05-07T00:00:00.000Z",
+    })
+
+    expect(stats.errors).toBe(0)
+    expect(prisma.$executeRaw).toHaveBeenCalledOnce()
+    const [, inventoryArray] = prisma.$executeRaw.mock.calls[0] as [
+      ReadonlyArray<string>,
+      string,
+    ]
+    expect(inventoryArray).toContain("subtitle-core-1")
+    expect(inventoryArray).toContain("subtitle-core-2")
+  })
+
+  it("fails closed and skips deletes when the Core id inventory has duplicate ids", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([]) as never)
+      .mockResolvedValueOnce(
+        inventoryPage(["subtitle-core-1", "subtitle-core-1"], 2) as never,
+      )
+    const { prisma } = harness()
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(stats.errors).toBe(1)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("fails closed and skips deletes when the Core id inventory count mismatches fetched ids", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"], 2) as never)
+    const { prisma } = harness()
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(stats.errors).toBe(1)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("fails closed and skips deletes when the double-read inventory is unstable", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-2"]) as never)
+    const { prisma } = harness()
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(stats.errors).toBe(1)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("keeps successful incremental upserts but skips deletes when inventory fetch fails", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockRejectedValueOnce(new Error("inventory unavailable"))
+    const { prisma, tx } = harness()
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+      since: "2026-05-07T00:00:00.000Z",
+    })
+
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    expect(stats).toMatchObject({ updated: 1, errors: 1 })
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("does not overwrite manager-owned subtitle rows that happen to carry a Core id", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
     const { prisma, tx } = harness({
-      projectionRows: [[adminRow(extra)], []],
-      affected: 0,
-      softDeleted: 1,
+      activeCoreIds: [[]],
+      existingRows: [{ coreId: "subtitle-core-1", source: "MANAGER" }],
     })
 
     const stats = await syncVideoSubtitles({
       prisma: prisma as never,
       progress: progress(),
-      lockOwnerId: "run-delete",
     })
 
-    expect(stats.softDeleted).toBe(1)
-    expect(stats.subtitleParity?.lastCompleted?.status).toBe("in-sync")
     expect(tx.$executeRaw).not.toHaveBeenCalled()
-    const deletion = tx.videoSubtitle.updateMany.mock.calls[0]?.[0]
-    expect(deletion.where).toEqual({
-      videoId: "admin-video-1",
-      source: "CORE",
-      deletedAt: null,
-    })
+    expect(stats.errors).toBe(1)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
   })
 
-  it("leaves the whole video residual when Manager owns a requested Core ID", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest([record], ["video-1"]),
-      )
-      .mockResolvedValueOnce(core)
-    const { prisma, tx } = harness({
-      projectionRows: [[], []],
-      existingRows: [
-        {
-          coreId: record.id,
-          source: "manager",
-          videoId: "admin-video-1",
-        },
-      ],
-    })
+  it("fails closed and skips deletes when a Core subtitle cannot resolve its Admin parent", async () => {
+    mockedCoreQuery.mockResolvedValueOnce(
+      coreRowsPage([
+        coreSubtitle({ videoEdition: { id: "missing-edition-core" } }),
+      ]) as never,
+    )
+    const { prisma, tx } = harness()
 
     const stats = await syncVideoSubtitles({
       prisma: prisma as never,
       progress: progress(),
-      lockOwnerId: "run-collision",
     })
 
-    expect(stats.errors).toBe(0)
-    expect(stats.subtitleParity?.lastCompleted).toMatchObject({
-      status: "out-of-sync",
-      residualTotal: 1,
-      residualVideoIds: ["video-1"],
-    })
-    expect(stats.subtitleParity?.lastCompleted?.residualReasons[0]?.code).toBe(
-      "subtitle-id-owned-elsewhere",
-    )
     expect(tx.$executeRaw).not.toHaveBeenCalled()
-    expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
+    expect(stats.errors).toBe(1)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(mockedCoreQuery).toHaveBeenCalledOnce()
   })
 
-  it("does not use Manager associations as Core edition proof", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest([record], ["video-1"]),
-      )
-      .mockResolvedValueOnce(core)
-    mocks.coreQuery.mockResolvedValueOnce({
-      data: { videos: [{ id: "video-1", videoEditions: [] }] },
-    })
-    const { prisma } = harness({
-      projectionRows: [[], []],
-      managerOnlySameVideoEditions: true,
-      sameVideoEditions: [
-        {
-          id: "manager-edition-ot",
-          coreId: "manager-edition-ot",
-          name: "ot",
-        },
-      ],
-    })
+  it("fails closed and skips deletes when a Core page request fails", async () => {
+    mockedCoreQuery.mockRejectedValueOnce(new Error("Core is unavailable"))
+    const { prisma } = harness()
 
     const stats = await syncVideoSubtitles({
       prisma: prisma as never,
       progress: progress(),
-      lockOwnerId: "run-manager-edition",
-    })
-
-    expect(stats.errors).toBe(0)
-    expect(stats.subtitleParity?.lastCompleted).toMatchObject({
-      status: "out-of-sync",
-      residualTotal: 1,
-      residualVideoIds: ["video-1"],
-    })
-    expect(stats.subtitleParity?.lastCompleted?.residualReasons[0]?.code).toBe(
-      "unresolved-edition",
-    )
-    expect(prisma.$transaction).not.toHaveBeenCalled()
-  })
-
-  it("reports unresolved dependencies as parity residuals without failing execution", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest([record], ["video-1"]),
-      )
-      .mockResolvedValueOnce(core)
-    const { prisma } = harness({
-      projectionRows: [[], []],
-      videos: [],
-    })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-missing",
-    })
-
-    expect(stats.errors).toBe(0)
-    expect(stats.subtitleParity?.lastCompleted).toMatchObject({
-      status: "out-of-sync",
-      residualTotal: 1,
-    })
-    expect(prisma.$transaction).not.toHaveBeenCalled()
-  })
-
-  it("uses a mismatch-scoped Core relation lookup for a new edition", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest([record], ["video-1"]),
-      )
-      .mockResolvedValueOnce(core)
-    mocks.coreQuery.mockResolvedValueOnce({
-      data: {
-        videos: [
-          {
-            id: "video-1",
-            videoEditions: [{ id: "core-edition-ot", name: "ot" }],
-          },
-        ],
-      },
-    })
-    const { prisma } = harness({
-      projectionRows: [[], [adminRow(record)]],
-      sameVideoEditions: [],
-      affected: 1,
-    })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-fallback",
-    })
-
-    expect(stats.errors).toBe(0)
-    expect(stats.subtitleParity?.lastCompleted?.status).toBe("in-sync")
-    expect(mocks.coreQuery).toHaveBeenCalledWith(
-      expect.stringContaining("VideoSubtitleEditionRelations"),
-      { videoIds: ["video-1"], limit: 1 },
-      { requireInteropToken: true },
-    )
-  })
-
-  it("restarts discovery once when the Core snapshot changes", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    const detail = buildVideoSubtitleChecksumManifest([record], ["video-1"])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockRejectedValueOnce(new VideoSubtitleSnapshotMismatchError())
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(detail)
-      .mockResolvedValueOnce(core)
-    const { prisma } = harness({
-      projectionRows: [[], [], [adminRow(record)]],
-      affected: 1,
-    })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-retry",
-    })
-
-    expect(stats.errors).toBe(0)
-    expect(mocks.fetchManifest).toHaveBeenCalledTimes(5)
-    expect(stats.subtitleParity?.lastCompleted?.status).toBe("in-sync")
-  })
-
-  it("fails closed after a second snapshot mismatch and preserves prior evidence", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockRejectedValueOnce(snapshotMismatch())
-      .mockResolvedValueOnce(core)
-      .mockRejectedValueOnce(snapshotMismatch())
-    const previous = priorDiagnostic()
-    const { prisma } = harness({
-      projectionRows: [[], []],
-      previous,
-    })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-unstable",
     })
 
     expect(stats.errors).toBe(1)
-    expect(stats.subtitleParity?.latestAttempt).toMatchObject({
-      status: "failed",
-      failure: { code: "SUBTITLE_SNAPSHOT_UNSTABLE" },
-    })
-    expect(stats.subtitleParity?.lastCompleted?.checkId).toBe("prior-completed")
-    expect(prisma.$transaction).not.toHaveBeenCalled()
-  })
-
-  it.each([
-    {
-      name: "a changed manifest identity",
-      expectedCode: "MANIFEST_CHANGED_WITHOUT_SNAPSHOT_ERROR",
-      details: (records: VideoSubtitleChecksumSourceRecord[]) => ({
-        ...buildVideoSubtitleChecksumManifest(records, ["video-1"]),
-        rootChecksum: `sha256:${"b".repeat(64)}`,
-      }),
-    },
-    {
-      name: "an incomplete detail set",
-      expectedCode: "INCOMPLETE_DETAIL_SET",
-      details: (records: VideoSubtitleChecksumSourceRecord[]) => ({
-        ...buildVideoSubtitleChecksumManifest(records, ["video-1"]),
-        details: [],
-      }),
-    },
-  ])(
-    "rejects $name before opening a reconciliation transaction",
-    async ({ expectedCode, details }) => {
-      const record = source()
-      const core = buildVideoSubtitleChecksumManifest([record])
-      mocks.fetchManifest
-        .mockResolvedValueOnce(core)
-        .mockResolvedValueOnce(details([record]))
-      const { prisma, tx } = harness({ projectionRows: [[]] })
-
-      const stats = await syncVideoSubtitles({
-        prisma: prisma as never,
-        progress: progress(),
-        lockOwnerId: "run-invalid-detail",
-      })
-
-      expect(stats.errors).toBe(1)
-      expect(stats.subtitleParity?.latestAttempt).toMatchObject({
-        status: "failed",
-        failure: { code: expectedCode },
-      })
-      expect(prisma.$transaction).not.toHaveBeenCalled()
-      expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
-    },
-  )
-
-  it("rejects a duplicate subtitle ID across detail batches before writes", async () => {
-    const records = Array.from({ length: 101 }, (_, index) =>
-      source({
-        id: `subtitle-${index}`,
-        videoId: `video-${index.toString().padStart(3, "0")}`,
-      }),
-    )
-    const core = buildVideoSubtitleChecksumManifest(records)
-    const firstIds = core.buckets.slice(0, 100).map((bucket) => bucket.videoId)
-    const secondIds = core.buckets.slice(100).map((bucket) => bucket.videoId)
-    const secondDetail = buildVideoSubtitleChecksumManifest(records, secondIds)
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest(records, firstIds),
-      )
-      .mockResolvedValueOnce({
-        ...secondDetail,
-        details: secondDetail.details.map((detail) => ({
-          ...detail,
-          records: detail.records.map((record) => ({
-            ...record,
-            id: "subtitle-0",
-          })),
-        })),
-      })
-    const { prisma, tx } = harness({ projectionRows: [[]] })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-duplicate-detail",
-    })
-
-    expect(stats.errors).toBe(1)
-    expect(stats.subtitleParity?.latestAttempt).toMatchObject({
-      status: "failed",
-      failure: { code: "DUPLICATE_DETAIL_RECORD" },
-    })
-    expect(prisma.$transaction).not.toHaveBeenCalled()
-    expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
-  })
-
-  it("fails the attempt and performs no delete when the lock fence is lost", async () => {
-    const record = source()
-    const core = buildVideoSubtitleChecksumManifest([record])
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest([record], ["video-1"]),
-      )
-    mocks.assertSyncLockHeld.mockRejectedValueOnce(new Error("lock lost"))
-    const { prisma, tx } = harness({ projectionRows: [[]] })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-lock-lost",
-    })
-
-    expect(stats.errors).toBe(1)
-    expect(stats.subtitleParity?.latestAttempt.status).toBe("failed")
-    expect(tx.$executeRaw).not.toHaveBeenCalled()
-    expect(tx.videoSubtitle.updateMany).not.toHaveBeenCalled()
-  })
-
-  it("batches detail requests at 100 video IDs and persists complete ID sets", async () => {
-    const records = Array.from({ length: 101 }, (_, index) =>
-      source({
-        id: `subtitle-${index}`,
-        videoId: `video-${index.toString().padStart(3, "0")}`,
-      }),
-    )
-    const core = buildVideoSubtitleChecksumManifest(records)
-    const firstIds = core.buckets.slice(0, 100).map((bucket) => bucket.videoId)
-    const secondIds = core.buckets.slice(100).map((bucket) => bucket.videoId)
-    mocks.fetchManifest
-      .mockResolvedValueOnce(core)
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest(records, firstIds),
-      )
-      .mockResolvedValueOnce(
-        buildVideoSubtitleChecksumManifest(records, secondIds),
-      )
-      .mockResolvedValueOnce(core)
-    const { prisma } = harness({
-      projectionRows: [[], []],
-      videos: [],
-    })
-
-    const stats = await syncVideoSubtitles({
-      prisma: prisma as never,
-      progress: progress(),
-      lockOwnerId: "run-batch",
-    })
-
-    expect(
-      mocks.fetchManifest.mock.calls[1]?.[0].detailsForVideoIds,
-    ).toHaveLength(100)
-    expect(
-      mocks.fetchManifest.mock.calls[2]?.[0].detailsForVideoIds,
-    ).toHaveLength(1)
-    expect(stats.subtitleParity?.lastCompleted).toMatchObject({
-      status: "out-of-sync",
-      residualTotal: 101,
-    })
-    expect(stats.subtitleParity?.lastCompleted?.residualVideoIds).toHaveLength(
-      101,
-    )
-    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
   })
 })
-
-type PrismaSql = { values: unknown[] }
