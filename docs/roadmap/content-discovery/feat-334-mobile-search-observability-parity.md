@@ -1,5 +1,5 @@
 ---
-id: "feat-322"
+id: "feat-334"
 title: "Mobile search observability parity with web"
 owner: "urim"
 priority: "P1"
@@ -26,7 +26,7 @@ Mobile's Watch search shares admin's `watchSearch` contract with web but none of
 1. `docs/plans/2026-07-28-002-feat-mobile-search-observability-parity-plan.md` — the implementation-ready plan for this ticket (R1–R12, U1–U10, Verification Contract); the exploratory branch whose design it absorbed was deleted 2026-07-28, so the plan is the single source.
 2. `apps/mobile/src/lib/watchSearchLog.ts` — the counter id and outcome vocabulary being replaced.
 3. `apps/mobile/app/(tabs)/watch.tsx` — every emit site (search success/failure, load-more, result tap).
-4. `apps/web/src/lib/watch-search-analytics.ts` + `apps/web/src/lib/search-actions.ts` — the target contract: message, `watch_search.*` attributes, vocabularies, event posts, and the failed-path `latency_ms` substitution the runbook must carve out.
+4. `apps/web/src/lib/watch-search-analytics.ts` + `apps/web/src/lib/search-actions.ts` — the target contract: message, `watch_search.*` attributes, vocabularies, event posts, and the failed-path `latency_ms` substitution the runbook must carve out. (2026-08-04: web's search call moved client-side in #1808 and currently bypasses the server action that emits the canonical log; the event posts remain server actions. The contract shapes here are still the target.)
 5. `apps/tv/src/lib/watchSearchLog.ts` + `apps/tv/src/lib/search.ts` — the sibling RN precedent (UUID id, dotted keys, RUM click action).
 6. `docs/operations/watch-search-analytics-datadog.md` — the runbook that must cover `service:forge-mobile` when this ships.
 
