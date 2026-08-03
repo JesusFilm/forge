@@ -13,6 +13,15 @@ import {
 // Admin returns every watchSearch field nullable; the UI reads slug/title/type/id
 // unconditionally. These cover the narrowing at that seam.
 
+// The U2 selection made these required (nullable) keys on the wire type;
+// spread into fixtures that predate telemetry and don't exercise it.
+const telemetryNulls = {
+  requestId: null,
+  latencyMs: null,
+  degraded: null,
+  searchMode: null,
+}
+
 function row(overrides: Partial<WatchSearchResultItem> = {}) {
   return {
     type: "VIDEO",
@@ -170,7 +179,13 @@ describe("mapWatchSearchResult", () => {
 describe("mapWatchSearchResponse", () => {
   it("maps a page and carries admin's cursor forward", () => {
     const page = mapWatchSearchResponse(
-      { query: "jesus", hasMore: true, nextOffset: 20, results: [row()] },
+      {
+        ...telemetryNulls,
+        query: "jesus",
+        hasMore: true,
+        nextOffset: 20,
+        results: [row()],
+      },
       "jesus",
       0,
     )
@@ -182,6 +197,7 @@ describe("mapWatchSearchResponse", () => {
   it("skips unusable rows without dropping the rest of the page", () => {
     const page = mapWatchSearchResponse(
       {
+        ...telemetryNulls,
         query: null,
         hasMore: null,
         nextOffset: null,
@@ -198,6 +214,7 @@ describe("mapWatchSearchResponse", () => {
   it("falls back to requestedOffset + returned rows when nextOffset is absent", () => {
     const page = mapWatchSearchResponse(
       {
+        ...telemetryNulls,
         query: null,
         hasMore: null,
         nextOffset: null,
@@ -210,6 +227,56 @@ describe("mapWatchSearchResponse", () => {
     expect(page.nextOffset).toBe(22)
   })
 
+  // Telemetry passthrough (feat-334 U2): requestId joins client records to the
+  // server trace; latencyMs/degraded/searchMode feed the canonical search log.
+  it("carries the four telemetry scalars through when present", () => {
+    const page = mapWatchSearchResponse(
+      {
+        query: "jesus",
+        hasMore: false,
+        nextOffset: 1,
+        requestId: "req-abc",
+        latencyMs: 123.4,
+        degraded: true,
+        searchMode: "semantic",
+        results: [row()],
+      },
+      "jesus",
+      0,
+    )
+    expect(page.requestId).toBe("req-abc")
+    expect(page.latencyMs).toBe(123.4)
+    expect(page.degraded).toBe(true)
+    expect(page.searchMode).toBe("semantic")
+  })
+
+  // Older or degraded admin responses may null any of the four; absence must
+  // map to null without disturbing result rows or the cursor.
+  it.each(["requestId", "latencyMs", "degraded", "searchMode"] as const)(
+    "tolerates a null %s without altering result mapping",
+    (field) => {
+      const page = mapWatchSearchResponse(
+        {
+          query: "jesus",
+          hasMore: true,
+          nextOffset: 20,
+          requestId: "req-abc",
+          latencyMs: 5,
+          degraded: false,
+          searchMode: "agentic",
+          [field]: null,
+          results: [row()],
+        },
+        "jesus",
+        0,
+      )
+      expect(page[field]).toBeNull()
+      expect(page.results.map((r) => r.id)).toEqual(["v1"])
+      expect(page.hasMore).toBe(true)
+      expect(page.nextOffset).toBe(20)
+    },
+  )
+
   it("treats a null response as an empty, terminal page", () => {
     const page = mapWatchSearchResponse(null, "jesus", 0)
     expect(page).toEqual({
@@ -217,6 +284,10 @@ describe("mapWatchSearchResponse", () => {
       hasMore: false,
       nextOffset: 0,
       results: [],
+      requestId: null,
+      latencyMs: null,
+      degraded: null,
+      searchMode: null,
     })
   })
 })
@@ -269,7 +340,13 @@ describe("parseSearchError", () => {
 describe("mapWatchSearchResponse cursor cannot stall", () => {
   it("refuses hasMore when admin returns an empty page", () => {
     const page = mapWatchSearchResponse(
-      { query: null, hasMore: true, nextOffset: null, results: [] },
+      {
+        ...telemetryNulls,
+        query: null,
+        hasMore: true,
+        nextOffset: null,
+        results: [],
+      },
       "jesus",
       40,
     )
@@ -281,7 +358,13 @@ describe("mapWatchSearchResponse cursor cannot stall", () => {
 
   it("still honours admin's own cursor on an empty page", () => {
     const page = mapWatchSearchResponse(
-      { query: null, hasMore: true, nextOffset: 60, results: [] },
+      {
+        ...telemetryNulls,
+        query: null,
+        hasMore: true,
+        nextOffset: 60,
+        results: [],
+      },
       "jesus",
       40,
     )

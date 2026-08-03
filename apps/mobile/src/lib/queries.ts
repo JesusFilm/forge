@@ -47,6 +47,10 @@ export const WATCH_SEARCH = adminGraphql(`
       query
       hasMore
       nextOffset
+      requestId
+      latencyMs
+      degraded
+      searchMode
       results {
         type
         id
@@ -110,6 +114,12 @@ export type SearchResponse = {
   /** Offset to request for the next page; admin owns the cursor arithmetic. */
   readonly nextOffset: number
   readonly results: readonly SearchResult[]
+  /** Admin's echoed correlation id; joins client telemetry to the server trace. */
+  readonly requestId: string | null
+  /** Server-side latency as admin measured it, distinct from client wall time. */
+  readonly latencyMs: number | null
+  readonly degraded: boolean | null
+  readonly searchMode: string | null
 }
 
 // ── Video detail query (standalone, not Experience-bound) ──────────
