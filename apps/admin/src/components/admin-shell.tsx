@@ -400,8 +400,8 @@ export function AdminShell({
         </aside>
       </div>
 
-      <div className="flex min-h-screen flex-1 flex-col xl:ml-[240px]">
-        <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-6">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col xl:ml-[240px]">
+        <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-4">
             <button
               type="button"
@@ -426,7 +426,7 @@ export function AdminShell({
               />
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-4">
             <button
               type="button"
               className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
@@ -446,7 +446,7 @@ export function AdminShell({
               <HelpCircle className="h-4 w-4" strokeWidth={1.5} />
             </button>
             <div className="h-4 w-px bg-[var(--color-hairline)]" />
-            <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 sm:flex">
               <Globe className="h-4 w-4 text-[var(--color-text-muted)]" />
               <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
                 {messages.common.shell.version}
@@ -511,10 +511,10 @@ export function AdminShell({
             </div>
           </div>
         ) : null}
-        <main className="flex-1 bg-[var(--color-bg)]">
+        <main className="min-w-0 flex-1 bg-[var(--color-bg)]">
           <div
             className={cx(
-              "flex w-full flex-col",
+              "flex min-w-0 w-full flex-col",
               isFullCanvasRoute
                 ? "max-w-none p-0"
                 : "mx-auto max-w-7xl gap-6 p-6",
