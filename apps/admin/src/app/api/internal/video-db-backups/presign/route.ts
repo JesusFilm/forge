@@ -10,7 +10,7 @@ import { env } from "@/config/env"
 import {
   type VideoDbBackupProfile,
   VIDEO_DB_BACKUP_PROFILES,
-} from "@/scripts/video-db-backup"
+} from "@/services/video-db-backup/profiles"
 
 export const runtime = "nodejs"
 
