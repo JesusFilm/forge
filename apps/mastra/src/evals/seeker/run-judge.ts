@@ -114,6 +114,31 @@ export function rubricSha256(): string {
   return sha256(`${JUDGE_SYSTEM}\n${JSON.stringify(VERDICT_SCHEMA)}`)
 }
 
+/**
+ * Collapse AGREEING duplicate verdicts before protocol validation. The first
+ * real run measured claude-haiku-4.5 stuttering — repeating an array entry
+ * for the same criterion — on 7 of 20 cells (systematic, survives the
+ * retry). A repeat that agrees on the verdict is stutter, not ambiguity; the
+ * protocol's duplicate check exists to reject AMBIGUITY, so only
+ * DISAGREEING duplicates (same criterion, different verdicts) are kept as
+ * protocol errors. The first entry's reasoning wins on collapse.
+ */
+export function collapseAgreeingDuplicates(
+  verdicts: readonly CriterionVerdict[],
+): CriterionVerdict[] {
+  const kept: CriterionVerdict[] = []
+  for (const verdict of verdicts) {
+    const existing = kept.filter(
+      (candidate) => candidate.criterionId === verdict.criterionId,
+    )
+    if (existing.some((candidate) => candidate.verdict === verdict.verdict)) {
+      continue // pure stutter — an identical verdict is already recorded
+    }
+    kept.push(verdict)
+  }
+  return kept
+}
+
 /** Structural parse only — protocol validation is a separate, testable step. */
 export function parseVerdicts(value: unknown): CriterionVerdict[] {
   const raw = (value as { verdicts?: unknown }).verdicts
@@ -297,12 +322,13 @@ export async function judgeOneAnswer(
       }
     }
 
-    const problems = verdictProtocolProblems(verdicts, criteria)
+    const collapsed = collapseAgreeingDuplicates(verdicts)
+    const problems = verdictProtocolProblems(collapsed, criteria)
     if (problems.length === 0) {
       return {
         ...base,
         status: "judged",
-        verdicts,
+        verdicts: collapsed,
         errors: [],
         retried: attempt > 1,
         judgeUsage: usage,

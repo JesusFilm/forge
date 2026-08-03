@@ -75,33 +75,44 @@ export type RunIdentity = {
 /**
  * Two runs may only be compared when every field here agrees.
  *
- * `scope` exists for the ONE legitimate cross-rubric pairing: a judge run
- * being rendered against the answers file it graded. Criteria only exist at
- * judge time — rubric iteration against cached answers is the design's whole
- * cost model — so `"generation"` scope compares everything that shaped the
- * ANSWERS (prompt, questions, models, decoding, retrieval) and skips the
- * criteria hash and judge stamp. The default `"full"` scope (baselines,
- * judge-repeatability, any run-to-run diff) compares everything.
+ * `scope` exists for the TWO legitimate cross-identity pairings:
+ * - `"generation"`: a judge run being rendered against the answers file it
+ *   graded. Criteria only exist at judge time — rubric iteration against
+ *   cached answers is the design's whole cost model — so this scope compares
+ *   everything that shaped the ANSWERS (prompt, questions, models, decoding,
+ *   retrieval) and skips the criteria hash and judge stamp.
+ * - `"gate"`: the delta gate comparing a candidate run against the committed
+ *   baseline. The PROMPT is the subject under test — a gate that refuses on
+ *   any prompt change could never catch a prompt regression — so this scope
+ *   skips the prompt fields AND the section-mapping version (the drift test
+ *   forces a mapping bump alongside any prompt edit, so comparing it would
+ *   re-smuggle the prompt refusal back in). The gate REPORTS the prompt
+ *   change instead; everything else (questions, models, decoding, corpus,
+ *   criteria, judge) still refuses on mismatch.
+ * The default `"full"` scope (judge-repeatability, any run-to-run diff of
+ * the same configuration) compares everything.
  */
 export function identityMismatch(
   left: RunIdentity,
   right: RunIdentity,
-  scope: "full" | "generation" = "full",
+  scope: "full" | "generation" | "gate" = "full",
 ): string[] {
   const problems: string[] = []
-  if (left.promptSha256 !== right.promptSha256) problems.push("prompt")
-  if (left.promptSource !== right.promptSource) problems.push("prompt source")
-  if (
-    left.promptLangfuseVersion !== right.promptLangfuseVersion ||
-    left.promptLangfuseLabel !== right.promptLangfuseLabel
-  )
-    problems.push("langfuse prompt version")
-  if (left.sectionMappingVersion !== right.sectionMappingVersion)
-    problems.push("section mapping")
+  if (scope !== "gate") {
+    if (left.promptSha256 !== right.promptSha256) problems.push("prompt")
+    if (left.promptSource !== right.promptSource) problems.push("prompt source")
+    if (
+      left.promptLangfuseVersion !== right.promptLangfuseVersion ||
+      left.promptLangfuseLabel !== right.promptLangfuseLabel
+    )
+      problems.push("langfuse prompt version")
+    if (left.sectionMappingVersion !== right.sectionMappingVersion)
+      problems.push("section mapping")
+  }
   if (left.questionSetId !== right.questionSetId) problems.push("question set")
   if (left.questionIds.join(",") !== right.questionIds.join(","))
     problems.push("questions")
-  if (scope === "full" && left.criteriaSha256 !== right.criteriaSha256)
+  if (scope !== "generation" && left.criteriaSha256 !== right.criteriaSha256)
     problems.push("criteria")
   if (left.answeringModels.join(",") !== right.answeringModels.join(","))
     problems.push("answering models")
@@ -128,7 +139,7 @@ export function identityMismatch(
   // Judge stamp: compared only when both sides have one. An answers run
   // (judge: null) pairs with any judge run over it; two JUDGE runs with
   // different judges or rubrics must never be diffed against each other.
-  if (scope === "full" && left.judge != null && right.judge != null) {
+  if (scope !== "generation" && left.judge != null && right.judge != null) {
     if (left.judge.model !== right.judge.model) problems.push("judge model")
     if (left.judge.rubricSha256 !== right.judge.rubricSha256)
       problems.push("judge rubric")
@@ -142,6 +153,10 @@ export type ToolCallRecord = {
   /** The query the MODEL chose (tool-loop) or ours verbatim (injected). */
   arguments: string
   servedFrom: "fixture" | "fixture-fallback"
+  /** Tool-loop only: the model's query shares almost no vocabulary with the
+   *  question, so the question-keyed fixture served is an optimistic
+   *  measurement (fixture-rag.ts's drift heuristic). */
+  queryDrift?: boolean
 }
 
 export type AnswerRecord = {

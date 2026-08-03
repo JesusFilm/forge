@@ -1,0 +1,132 @@
+{
+  "kind": "seeker-eval-gate-report",
+  "verdict": "red",
+  "refusedOn": [],
+  "promptChanged": {
+    "baselineSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+    "currentSha256": "54880716765d3a0644b3a26e38d9bee62d0591ad238906e60316881baca9250d",
+    "baselineSource": "fallback",
+    "currentSource": "fallback"
+  },
+  "newHardFails": [],
+  "carriedKnownFails": [],
+  "toolSkipDeltas": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "tool-called",
+      "baselineCount": 0,
+      "currentCount": 0,
+      "currentCells": [],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "tool-called",
+      "baselineCount": 3,
+      "currentCount": 2,
+      "currentCells": ["q-grief-father", "q-python-pdf"],
+      "regression": false
+    }
+  ],
+  "toolSkipPooled": {
+    "baselineCount": 3,
+    "currentCount": 2,
+    "regression": false
+  },
+  "formatDeltas": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "word-count",
+      "baselineCount": 3,
+      "currentCount": 4,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-links-to-verify",
+        "q-bible-changed"
+      ],
+      "regression": true
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "word-count",
+      "baselineCount": 5,
+      "currentCount": 5,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-living-together",
+        "q-links-to-verify",
+        "q-bible-changed"
+      ],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "prose-format",
+      "baselineCount": 7,
+      "currentCount": 7,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-living-together",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed"
+      ],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "prose-format",
+      "baselineCount": 6,
+      "currentCount": 6,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed"
+      ],
+      "regression": false
+    }
+  ],
+  "groundingFlips": [
+    {
+      "questionId": "q-verse-exact-words",
+      "model": "google/gemma-4-31b-it",
+      "criterionId": "g-no-invented-citation",
+      "criterionClass": "grounding",
+      "reasoning": "The answer cites a URL 'https://sightlinemiristry.org/two-reasons-skeptics-believe-jesus-is-not-god' which contains a typo ('sightlinemiristry' instead of 'sightlineministry'), and while the source exists in the passages, the URL as written appears to be a misrepresentation of the actual source URL provided in the passages."
+    }
+  ],
+  "triageFlips": [
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "q-theotokos-on-question",
+      "criterionClass": "tone",
+      "reasoning": "The question asks what Theotokos means and whether all Christians believe it, but the answer pivots to discussing the Virgin Birth doctrine instead of directly addressing the term or the denominational differences in belief about it."
+    },
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "g-on-topic",
+      "criterionClass": "tone",
+      "reasoning": "The answer addresses the Virgin Birth concept rather than the specific term 'Theotokos' that was asked about. While related, this represents a pivot to an adjacent topic rather than addressing what was actually asked."
+    }
+  ],
+  "scoreDelta": {
+    "baseline": 0.9763513513513513,
+    "current": 0.9735849056603774,
+    "delta": -0.002766445690973951,
+    "tolerance": 0.05,
+    "beyondTolerance": false
+  },
+  "invalidCells": {
+    "baseline": 0,
+    "current": 2
+  }
+}

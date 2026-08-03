@@ -1,0 +1,272 @@
+{
+  "kind": "seeker-eval-score",
+  "weightsVersion": "seeker-weights/v1",
+  "identity": {
+    "promptSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+    "promptSource": "fallback",
+    "promptLangfuseVersion": null,
+    "promptLangfuseLabel": null,
+    "sectionMappingVersion": "seeker-sections/v1",
+    "questionSetId": "seeker-eval/v1",
+    "questionIds": [
+      "q-suffering",
+      "q-grief-father",
+      "q-trinity",
+      "q-living-together",
+      "q-python-pdf",
+      "q-islam-jesus",
+      "q-verse-exact-words",
+      "q-links-to-verify",
+      "q-bible-changed",
+      "q-theotokos"
+    ],
+    "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+    "answeringModels": ["google/gemma-4-31b-it", "google/gemma-4-26b-a4b-it"],
+    "decoding": {
+      "temperature": 0.7,
+      "maxTokens": 1600
+    },
+    "sampleId": "s1",
+    "gitSha": "934d58e4",
+    "retrieval": {
+      "mode": "tool-loop",
+      "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+      "topK": 5
+    },
+    "judge": {
+      "model": "anthropic/claude-haiku-4.5",
+      "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+    }
+  },
+  "runScore": 0.9763513513513513,
+  "runBand": "pass",
+  "cells": [
+    {
+      "questionId": "q-suffering",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 10,
+      "totalWeight": 10
+    },
+    {
+      "questionId": "q-suffering",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 0.8,
+      "band": "borderline",
+      "satisfiedWeight": 8,
+      "totalWeight": 10
+    },
+    {
+      "questionId": "q-grief-father",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 10,
+      "totalWeight": 10
+    },
+    {
+      "questionId": "q-grief-father",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 10,
+      "totalWeight": 10
+    },
+    {
+      "questionId": "q-trinity",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 13,
+      "totalWeight": 13
+    },
+    {
+      "questionId": "q-trinity",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 13,
+      "totalWeight": 13
+    },
+    {
+      "questionId": "q-living-together",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 11,
+      "totalWeight": 11
+    },
+    {
+      "questionId": "q-living-together",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 0.6363636363636364,
+      "band": "fail",
+      "satisfiedWeight": 7,
+      "totalWeight": 11
+    },
+    {
+      "questionId": "q-python-pdf",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 17,
+      "totalWeight": 17
+    },
+    {
+      "questionId": "q-python-pdf",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 17,
+      "totalWeight": 17
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 11,
+      "totalWeight": 11
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 11,
+      "totalWeight": 11
+    },
+    {
+      "questionId": "q-verse-exact-words",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 22,
+      "totalWeight": 22
+    },
+    {
+      "questionId": "q-verse-exact-words",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 22,
+      "totalWeight": 22
+    },
+    {
+      "questionId": "q-links-to-verify",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 18,
+      "totalWeight": 18
+    },
+    {
+      "questionId": "q-links-to-verify",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 18,
+      "totalWeight": 18
+    },
+    {
+      "questionId": "q-bible-changed",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 18,
+      "totalWeight": 18
+    },
+    {
+      "questionId": "q-bible-changed",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 0.9444444444444444,
+      "band": "pass",
+      "satisfiedWeight": 17,
+      "totalWeight": 18
+    },
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-31b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 18,
+      "totalWeight": 18
+    },
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "status": "judged",
+      "score": 1,
+      "band": "pass",
+      "satisfiedWeight": 18,
+      "totalWeight": 18
+    }
+  ],
+  "byModel": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "score": 1,
+      "band": "pass",
+      "judgedCells": 10,
+      "invalidCells": 0,
+      "answerErrorCells": 0
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "score": 0.9527027027027027,
+      "band": "pass",
+      "judgedCells": 10,
+      "invalidCells": 0,
+      "answerErrorCells": 0
+    }
+  ],
+  "bySection": [
+    {
+      "section": "citation-discipline",
+      "score": 1,
+      "satisfiedCount": 34,
+      "violatedCount": 0
+    },
+    {
+      "section": "empty-unavailable-handling",
+      "score": 1,
+      "satisfiedCount": 8,
+      "violatedCount": 0
+    },
+    {
+      "section": "persona",
+      "score": 0.9242424242424242,
+      "satisfiedCount": 61,
+      "violatedCount": 5
+    },
+    {
+      "section": "safety",
+      "score": 0.95,
+      "satisfiedCount": 13,
+      "violatedCount": 1
+    }
+  ],
+  "judgedCells": 20,
+  "invalidCells": 0,
+  "answerErrorCells": 0
+}

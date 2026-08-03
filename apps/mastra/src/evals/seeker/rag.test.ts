@@ -103,7 +103,7 @@ describe("citableSources", () => {
 })
 
 describe("committed fixture file (real contract)", () => {
-  it("parses and matches the decision doc's recorded fingerprint", () => {
+  it("parses and matches the recorded fingerprint", () => {
     const raw = JSON.parse(
       readFileSync(
         new URL("fixtures/rag-fixtures.json", import.meta.url),
@@ -113,12 +113,14 @@ describe("committed fixture file (real contract)", () => {
     const file = loadableFixtureFile(raw)
     expect(file).not.toBeNull()
     expect(file!.topK).toBe(5)
+    // Re-captured 2026-08-03 against the local RAG for the FULL 10-question
+    // set (the decision doc's 4909d1b97c9b… fingerprint covered only the
+    // original six). A corpus change breaks run comparability by design, so
+    // any re-capture must consciously update this pin.
     expect(file!.corpusSha256).toBe(
-      "4909d1b97c9b065ff79d8da0f71907c4259e0d1b96a2b8cabfa73578f7a4fd49",
+      "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
     )
-    // Captured for the ORIGINAL six questions; the four extension questions
-    // need a re-capture (documented in questions.ts).
-    expect(file!.fixtures).toHaveLength(6)
+    expect(file!.fixtures).toHaveLength(10)
     for (const fixture of file!.fixtures) {
       if (fixture.questionId === "q-python-pdf") {
         // The scope question genuinely retrieved ZERO passages — the real

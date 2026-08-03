@@ -1,0 +1,124 @@
+{
+  "kind": "seeker-eval-gate-report",
+  "verdict": "green",
+  "refusedOn": [],
+  "promptChanged": null,
+  "newHardFails": [],
+  "carriedKnownFails": [],
+  "toolSkipDeltas": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "tool-called",
+      "baselineCount": 0,
+      "currentCount": 2,
+      "currentCells": ["q-grief-father", "q-python-pdf"],
+      "regression": true
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "tool-called",
+      "baselineCount": 3,
+      "currentCount": 4,
+      "currentCells": [
+        "q-suffering",
+        "q-grief-father",
+        "q-living-together",
+        "q-python-pdf"
+      ],
+      "regression": true
+    }
+  ],
+  "toolSkipPooled": {
+    "baselineCount": 3,
+    "currentCount": 6,
+    "regression": false
+  },
+  "formatDeltas": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "word-count",
+      "baselineCount": 3,
+      "currentCount": 4,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "regression": true
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "word-count",
+      "baselineCount": 5,
+      "currentCount": 2,
+      "currentCells": ["q-trinity", "q-bible-changed"],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "prose-format",
+      "baselineCount": 7,
+      "currentCount": 7,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-living-together",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "prose-format",
+      "baselineCount": 6,
+      "currentCount": 5,
+      "currentCells": [
+        "q-trinity",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed"
+      ],
+      "regression": false
+    }
+  ],
+  "groundingFlips": [],
+  "triageFlips": [
+    {
+      "questionId": "q-python-pdf",
+      "model": "google/gemma-4-31b-it",
+      "criterionId": "g-on-topic",
+      "criterionClass": "tone",
+      "reasoning": "The answer does not address the question that was asked; instead of explaining why it cannot help with the Python question, it redirects entirely to Christianity topics, which is not what the asker inquired about."
+    },
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "q-theotokos-on-question",
+      "criterionClass": "tone",
+      "reasoning": "The question asks what Theotokos means and whether all Christians believe it, but the answer pivots away from directly addressing this to discuss general Christian agreement on core beliefs and suggests asking the family instead, rather than attempting to answer what was asked."
+    },
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "g-on-topic",
+      "criterionClass": "tone",
+      "reasoning": "While the answer touches on related Christian topics (virgin birth, denominational differences), it does not address the specific question about what Theotokos means or whether all Christians believe in it. The answer essentially defers the question rather than engaging with it substantively."
+    }
+  ],
+  "scoreDelta": {
+    "baseline": 0.9763513513513513,
+    "current": 0.9692307692307692,
+    "delta": -0.007120582120582086,
+    "tolerance": 0.05,
+    "beyondTolerance": false
+  },
+  "invalidCells": {
+    "baseline": 0,
+    "current": 1
+  }
+}

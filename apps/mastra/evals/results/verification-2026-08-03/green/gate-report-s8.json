@@ -1,0 +1,128 @@
+{
+  "kind": "seeker-eval-gate-report",
+  "verdict": "green",
+  "refusedOn": [],
+  "promptChanged": null,
+  "newHardFails": [],
+  "carriedKnownFails": [],
+  "toolSkipDeltas": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "tool-called",
+      "baselineCount": 0,
+      "currentCount": 0,
+      "currentCells": [],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "tool-called",
+      "baselineCount": 3,
+      "currentCount": 4,
+      "currentCells": [
+        "q-suffering",
+        "q-grief-father",
+        "q-living-together",
+        "q-python-pdf"
+      ],
+      "regression": true
+    }
+  ],
+  "toolSkipPooled": {
+    "baselineCount": 3,
+    "currentCount": 4,
+    "regression": false
+  },
+  "formatDeltas": [
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "word-count",
+      "baselineCount": 3,
+      "currentCount": 5,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-islam-jesus",
+        "q-links-to-verify",
+        "q-bible-changed"
+      ],
+      "regression": true
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "word-count",
+      "baselineCount": 5,
+      "currentCount": 3,
+      "currentCells": ["q-trinity", "q-links-to-verify", "q-bible-changed"],
+      "regression": false
+    },
+    {
+      "model": "google/gemma-4-31b-it",
+      "checkId": "prose-format",
+      "baselineCount": 7,
+      "currentCount": 8,
+      "currentCells": [
+        "q-suffering",
+        "q-trinity",
+        "q-living-together",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "regression": true
+    },
+    {
+      "model": "google/gemma-4-26b-a4b-it",
+      "checkId": "prose-format",
+      "baselineCount": 6,
+      "currentCount": 6,
+      "currentCells": [
+        "q-trinity",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "regression": false
+    }
+  ],
+  "groundingFlips": [
+    {
+      "questionId": "q-islam-jesus",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "g-no-invented-citation",
+      "criterionClass": "grounding",
+      "reasoning": "The answer cites the EveryStudent — Slovak source (https://everystudent.sk/jezis-v-islame) as explaining that 'Son of God' is understood spiritually rather than physically, but the passage provided does not contain this specific explanation. The passage discusses why Islam rejects the concept of God having a son and mentions the spiritual sense, but does not present this as a Christian explanation of how to understand 'Son of God' in the way the answer attributes to it."
+    }
+  ],
+  "triageFlips": [
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "q-theotokos-on-question",
+      "criterionClass": "tone",
+      "reasoning": "The answer pivots away from directly addressing what 'Theotokos' means and whether all Christians believe it, instead offering general information about Christian denominations and the virgin birth without connecting these to the specific term or question asked."
+    },
+    {
+      "questionId": "q-theotokos",
+      "model": "google/gemma-4-26b-a4b-it",
+      "criterionId": "g-on-topic",
+      "criterionClass": "tone",
+      "reasoning": "The answer does not directly address the two-part question: what Theotokos means and whether all Christians believe it. Instead, it provides tangential information about Christian agreement on core doctrines and denominational differences."
+    }
+  ],
+  "scoreDelta": {
+    "baseline": 0.9763513513513513,
+    "current": 0.958041958041958,
+    "delta": -0.018309393309393296,
+    "tolerance": 0.05,
+    "beyondTolerance": false
+  },
+  "invalidCells": {
+    "baseline": 0,
+    "current": 1
+  }
+}

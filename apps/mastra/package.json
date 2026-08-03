@@ -18,6 +18,8 @@
     "eval:seeker:report": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-report.ts",
     "eval:seeker:score": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-score.ts",
     "eval:seeker:capture-rag": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/capture-rag.ts",
+    "eval:seeker:loop": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-loop.ts",
+    "eval:seeker:gate": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-gate.ts",
     "seed:search-eval": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts",
     "seed:search-eval:prod": "MASTRA_NATIVE_EVAL_ENVIRONMENT=local pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts --artifact docs/search-eval-baselines/temporary/prod-seed-baseline-2026-06-02-export.json --environment-label local",
     "typecheck": "tsc --noEmit",

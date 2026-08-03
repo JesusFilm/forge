@@ -54,24 +54,107 @@ export function extractUrls(text: string): string[] {
   return cited.map((raw) => raw.replace(/[.,;:!?]+$/, ""))
 }
 
+/** Bounded Levenshtein distance with an early-exit ceiling. */
+export function editDistanceAtMost(
+  left: string,
+  right: string,
+  max: number,
+): boolean {
+  if (Math.abs(left.length - right.length) > max) return false
+  let previous = Array.from({ length: right.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= left.length; i++) {
+    const current = [i]
+    let rowMin = i
+    for (let j = 1; j <= right.length; j++) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + cost,
+      )
+      rowMin = Math.min(rowMin, current[j])
+    }
+    if (rowMin > max) return false
+    previous = current
+  }
+  return previous[right.length] <= max
+}
+
+function normalizeUrl(url: string): string {
+  return url
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/+$/, "")
+}
+
+/** A cited URL within small edit distance of a served URL is a CORRUPTED
+ *  citation of a real source (measured: gemma-31b emitting
+ *  `sightlinemiristry.org` for the served `sightlineministry.org`), not an
+ *  invented source. Real defect, different class. */
+const URL_TYPO_DISTANCE = 3
+
 function checkUrlsGrounded(
   answer: AnswerRecord,
   fixtures: RagFixtureFile | null,
-): CheckResult {
-  const base = {
+): { grounded: CheckResult; malformed: CheckResult } {
+  const groundedBase = {
     checkId: "cited-urls-grounded",
     lane: "hard-fail" as const,
     promptSections: ["citation-discipline"] as const,
   }
+  // Report-only: a near-miss of a served URL is a broken link the seeker
+  // cannot follow — surfaced every run — but it is NOT the invented-source
+  // class the hard-fail lane exists for, and it appears stochastically on an
+  // UNCHANGED system (measured in the first green reruns), so red-ing the
+  // delta gate on it would attribute a standing model habit to the change
+  // under test.
+  const malformedBase = {
+    checkId: "cited-url-malformed-variant",
+    lane: "report-only" as const,
+    promptSections: ["citation-discipline"] as const,
+  }
   if (!answer.text || !fixtures) {
-    return { ...base, status: "not-applicable", details: [] }
+    return {
+      grounded: { ...groundedBase, status: "not-applicable", details: [] },
+      malformed: { ...malformedBase, status: "not-applicable", details: [] },
+    }
   }
   const { urls } = citableSources(fixtures)
-  const offenders = extractUrls(answer.text).filter((url) => !urls.has(url))
+  const servedNormalized = [...urls].map(normalizeUrl)
+  // Hosts the fixtures actually served. A non-served deep link on a SERVED
+  // host is a RECONSTRUCTED link to a real source (measured: gemma-26b
+  // expanding the served `…/is-jesus-god.html` to
+  // `…/is-jesus-god-or-just-a-good-man.html`, matching the passage title) —
+  // a broken link, not an invented source. Foreign hosts stay hard-fail.
+  const servedHosts = new Set(
+    servedNormalized.map((served) => served.split("/")[0]),
+  )
+  const invented: string[] = []
+  const nearMisses: string[] = []
+  for (const cited of extractUrls(answer.text)) {
+    if (urls.has(cited)) continue
+    const citedNormalized = normalizeUrl(cited)
+    if (servedNormalized.includes(citedNormalized)) continue
+    const isNearMiss =
+      servedHosts.has(citedNormalized.split("/")[0]) ||
+      servedNormalized.some((served) =>
+        editDistanceAtMost(citedNormalized, served, URL_TYPO_DISTANCE),
+      )
+    if (isNearMiss) nearMisses.push(cited)
+    else invented.push(cited)
+  }
   return {
-    ...base,
-    status: offenders.length > 0 ? "violated" : "pass",
-    details: offenders,
+    grounded: {
+      ...groundedBase,
+      status: invented.length > 0 ? "violated" : "pass",
+      details: invented,
+    },
+    malformed: {
+      ...malformedBase,
+      status: nearMisses.length > 0 ? "violated" : "pass",
+      details: nearMisses,
+    },
   }
 }
 
@@ -111,9 +194,45 @@ export function extractNamedCitations(
       url: pair.url.replace(/[.,;:!?]+$/, ""),
     }))
     .filter(
-      // A link whose text is itself a URL carries no name claim.
-      (pair) => pair.name.length > 0 && !/^https?:\/\//.test(pair.name),
+      // A link whose text is itself a URL — with or without a protocol
+      // ("sightlineministry.org/daily-devo/…", measured in the green reruns)
+      // — carries no NAME claim; the URL half of the check already verifies
+      // the address itself.
+      (pair) =>
+        pair.name.length > 0 &&
+        !/^https?:\/\//.test(pair.name) &&
+        !/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(pair.name),
     )
+}
+
+/**
+ * Whether a CITED name is a recognizable form of any SERVED name or title.
+ * Models legitimately shorten ("EveryStudent.sk" for "EveryStudent — Slovak
+ * (EveryStudent.sk)") and compose ("Cru: Why Was Jesus Crucified?"), and the
+ * first green reruns measured exact-match flagging those grounded citations
+ * as invented. Three forms are accepted:
+ *   1. exact normalized equality;
+ *   2. the cited name appears INSIDE a served name/title (length ≥ 4, so a
+ *      fragment cannot match trivially);
+ *   3. a served name/title appears inside the cited name as WHOLE WORDS
+ *      ("cru" matches "Cru: What Is Justification…" but never "crucified").
+ * A wholly invented name matches none of these and stays a violation.
+ */
+export function citedNameIsServed(
+  citedName: string,
+  known: readonly string[],
+): boolean {
+  const cited = normalizeName(citedName)
+  if (cited.length === 0) return false
+  return known.some((entry) => {
+    if (entry === cited) return true
+    if (cited.length >= 4 && entry.includes(cited)) return true
+    const escaped = entry.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    return new RegExp(
+      `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
+      "u",
+    ).test(cited)
+  })
 }
 
 function checkSourceNamesGrounded(
@@ -129,11 +248,11 @@ function checkSourceNamesGrounded(
     return { ...base, status: "not-applicable", details: [] }
   }
   const { names, titles } = citableSources(fixtures)
-  const known = new Set(
-    [...names, ...titles].map((value) => normalizeName(value)),
-  )
+  const known = [...names, ...titles]
+    .map((value) => normalizeName(value))
+    .filter((value) => value.length >= 3)
   const offenders = extractNamedCitations(answer.text)
-    .filter((pair) => !known.has(normalizeName(pair.name)))
+    .filter((pair) => !citedNameIsServed(pair.name, known))
     .map((pair) => `${pair.name} (${pair.url})`)
   return {
     ...base,
@@ -418,8 +537,10 @@ export function runAnswerChecks(
   answer: AnswerRecord,
   fixtures: RagFixtureFile | null,
 ): CheckResult[] {
+  const urlResults = checkUrlsGrounded(answer, fixtures)
   return [
-    checkUrlsGrounded(answer, fixtures),
+    urlResults.grounded,
+    urlResults.malformed,
     checkSourceNamesGrounded(answer, fixtures),
     checkToolCalled(answer),
     checkWordCount(answer),

@@ -110,6 +110,55 @@ describe("identityMismatch — refuse-to-compare", () => {
       ),
     ).toContain("prompt")
   })
+
+  it("gate scope skips the prompt fields and section mapping — the prompt is the subject under test", () => {
+    const baseline = identity()
+    const candidate = identity({
+      promptSha256: "softened-prompt-sha",
+      promptSource: "langfuse",
+      promptLangfuseVersion: 4,
+      promptLangfuseLabel: "production",
+      sectionMappingVersion: "seeker-sections/v2",
+    })
+    expect(identityMismatch(candidate, baseline, "gate")).toEqual([])
+  })
+
+  it("gate scope still refuses on everything else (criteria, models, corpus, judge)", () => {
+    expect(
+      identityMismatch(
+        identity({ criteriaSha256: "other" }),
+        identity(),
+        "gate",
+      ),
+    ).toContain("criteria")
+    expect(
+      identityMismatch(
+        identity({ answeringModels: ["other/model"] }),
+        identity(),
+        "gate",
+      ),
+    ).toContain("answering models")
+    expect(
+      identityMismatch(
+        identity({
+          retrieval: { mode: "fixtures", corpusSha256: "corpus-b", topK: 5 },
+        }),
+        identity(),
+        "gate",
+      ),
+    ).toContain("corpus snapshot")
+    expect(
+      identityMismatch(
+        identity({
+          judge: { model: "anthropic/claude-haiku-4.5", rubricSha256: "r1" },
+        }),
+        identity({
+          judge: { model: "anthropic/claude-haiku-4.5", rubricSha256: "r2" },
+        }),
+        "gate",
+      ),
+    ).toContain("judge rubric")
+  })
 })
 
 describe("legacy answer-run coercion (reference-runs compatibility)", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { criteriaFor, questionById } from "./questions"
 import {
+  collapseAgreeingDuplicates,
   judgeOneAnswer,
   parseVerdicts,
   renderPassagesBlock,
@@ -103,6 +104,18 @@ describe("verdictProtocolProblems — the amended protocol", () => {
   })
 })
 
+describe("collapseAgreeingDuplicates", () => {
+  it("drops identical repeats and keeps disagreements", () => {
+    const [first] = cleanVerdicts()
+    const conflicting = { ...first, verdict: "violated" as const }
+    expect(collapseAgreeingDuplicates([first, first, first])).toEqual([first])
+    expect(collapseAgreeingDuplicates([first, conflicting])).toEqual([
+      first,
+      conflicting,
+    ])
+  })
+})
+
 describe("judgeOneAnswer — retry once, then invalid", () => {
   it("judges on the first clean attempt without retrying", async () => {
     const complete = completionReturning([cleanVerdicts()])
@@ -158,6 +171,37 @@ describe("judgeOneAnswer — retry once, then invalid", () => {
     })
     expect(truncated.status).toBe("answer-error")
     expect(complete).not.toHaveBeenCalled()
+  })
+
+  it("accepts an AGREEING duplicate as stutter — collapsed, judged on attempt 1", async () => {
+    // The first real run measured haiku stuttering (repeating an entry with
+    // the same verdict) on 7 of 20 cells; agreement is not ambiguity.
+    const stuttered = [...cleanVerdicts(), { ...cleanVerdicts()[0] }]
+    const complete = completionReturning([stuttered])
+    const result = await judgeOneAnswer(answer(), {
+      complete,
+      fixtures: null,
+    })
+    expect(result.status).toBe("judged")
+    expect(result.retried).toBe(false)
+    expect(complete).toHaveBeenCalledTimes(1)
+    // Exactly one verdict per criterion survives the collapse.
+    expect(result.verdicts).toHaveLength(CRITERIA.length)
+  })
+
+  it("keeps a DISAGREEING duplicate as a protocol error — retried, then invalid", async () => {
+    const conflicted = [
+      ...cleanVerdicts(),
+      { ...cleanVerdicts()[0], verdict: "violated" as const },
+    ]
+    const complete = completionReturning([conflicted, conflicted])
+    const result = await judgeOneAnswer(answer(), {
+      complete,
+      fixtures: null,
+    })
+    expect(result.status).toBe("invalid")
+    expect(result.retried).toBe(true)
+    expect(result.errors).toEqual([`duplicate verdicts for ${CRITERIA[0].id}`])
   })
 
   it("marks a thrown judge call invalid without a protocol retry", async () => {

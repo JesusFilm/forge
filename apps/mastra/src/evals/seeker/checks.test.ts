@@ -99,7 +99,105 @@ describe("cited-urls-grounded (hard-fail)", () => {
   })
 })
 
+describe("cited-url-malformed-variant (report-only — the typo class)", () => {
+  it("classifies a small-edit-distance variant of a served URL as malformed, NOT ungrounded", () => {
+    // The exact defect the first green reruns measured: gemma-31b citing
+    // `sightlinemiristry` for the served `sightlineministry`.
+    const typod = SERVED_URL.replace("suffering", "sufering")
+    const results = runAnswerChecks(answer(`See (Cru, ${typod}).`), fixtures)
+    expect(checkById(results, "cited-urls-grounded").status).toBe("pass")
+    const malformed = checkById(results, "cited-url-malformed-variant")
+    expect(malformed.status).toBe("violated")
+    expect(malformed.lane).toBe("report-only")
+    expect(malformed.details).toEqual([typod])
+  })
+
+  it("classifies a RECONSTRUCTED deep link on a served host as malformed, NOT ungrounded", () => {
+    // Measured in green rerun s3: gemma-26b expanded a served cru.org slug
+    // to match the passage title — a broken link to a real source.
+    const reconstructed =
+      "https://www.cru.org/us/en/train-and-grow/why-god-allows-pain-and-suffering-explained.html"
+    const results = runAnswerChecks(
+      answer(`See (Cru, ${reconstructed}).`),
+      fixtures,
+    )
+    expect(checkById(results, "cited-urls-grounded").status).toBe("pass")
+    expect(checkById(results, "cited-url-malformed-variant").status).toBe(
+      "violated",
+    )
+  })
+
+  it("keeps a wholly invented URL (foreign host) in the hard-fail lane", () => {
+    const results = runAnswerChecks(
+      answer("See (Cru, https://invented.example.com/totally-made-up)."),
+      fixtures,
+    )
+    expect(checkById(results, "cited-urls-grounded").status).toBe("violated")
+    expect(checkById(results, "cited-url-malformed-variant").status).toBe(
+      "pass",
+    )
+  })
+})
+
 describe("cited-source-names-grounded (hard-fail — the wired names half)", () => {
+  it("accepts a COMPOSITE citation of a served source ('Name: Title')", () => {
+    const results = runAnswerChecks(
+      answer(`[Cru: Why Does God Allow Suffering?](${SERVED_URL})`),
+      fixtures,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "pass",
+    )
+  })
+
+  it("accepts a SHORTENED form contained in a served name", () => {
+    const shortened: RagFixtureFile = {
+      ...fixtures,
+      fixtures: [
+        {
+          ...fixtures.fixtures[0],
+          result: {
+            status: "ok",
+            sources: [
+              {
+                ...fixtures.fixtures[0].result.sources[0],
+                sourceName: "EveryStudent — Slovak (EveryStudent.sk)",
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const results = runAnswerChecks(
+      answer(`[EveryStudent.sk](${SERVED_URL})`),
+      shortened,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "pass",
+    )
+  })
+
+  it("ignores a protocol-less URL used as link text — no name claim to check", () => {
+    const bare = SERVED_URL.replace(/^https:\/\//, "")
+    const results = runAnswerChecks(
+      answer(`[${bare}](${SERVED_URL})`),
+      fixtures,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "pass",
+    )
+  })
+
+  it("does NOT let a word-fragment match a served name ('crucified' is not 'Cru')", () => {
+    const results = runAnswerChecks(
+      answer(`[Why Jesus Was Crucified Explained](${SERVED_URL})`),
+      fixtures,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "violated",
+    )
+  })
+
   it("passes a markdown link whose text is a served source name", () => {
     const results = runAnswerChecks(
       answer(`According to [Cru](${SERVED_URL}), suffering is real.`),
