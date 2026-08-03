@@ -479,6 +479,17 @@ async function main(): Promise<void> {
   console.log(
     `${answers.length} cells, ${failed} failed, ${skipped} tool-skipped, ${drifted} query-drift, ~$${totalUsd.toFixed(4)}`,
   )
+
+  // Wholesale collapse is an infrastructure outage, not a measurement. The
+  // artifacts stay on disk for debugging, but the exit code must stop a
+  // pipeline from handing an all-error run to the judge and gate as if a run
+  // had happened.
+  if (answers.length > 0 && failed === answers.length) {
+    console.error(
+      "every cell failed — refusing to hand an all-error run downstream (exit 1)",
+    )
+    process.exitCode = 1
+  }
 }
 
 if (

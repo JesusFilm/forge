@@ -272,6 +272,20 @@ describe("tool-called (hard-fail)", () => {
         .status,
     ).toBe("not-applicable")
   })
+
+  it("is not-applicable on an infra-failed cell (ok: false) even when skippedTool is stamped", () => {
+    // run-loop stamps `skippedTool: calls.length === 0` on ok:false cells too
+    // (a 401/429/timeout before any tool round-trip), so gating on it would
+    // read an outage as a model decision — never violated, not-applicable.
+    const check = checkById(
+      runAnswerChecks(
+        answer("", { ok: false, text: null, skippedTool: true }),
+        fixtures,
+      ),
+      "tool-called",
+    )
+    expect(check.status).toBe("not-applicable")
+  })
 })
 
 describe("word-count (hard-fail, mechanical, ex-judge)", () => {

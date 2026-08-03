@@ -475,4 +475,107 @@ describe("evaluateGate", () => {
     expect(report.verdict).toBe("refused")
     expect(report.refusedOn.join(";")).toContain("current answers↔judged")
   })
+
+  it("treats an infra-failed cell (ok:false, skippedTool stamped) as NO tool decision — clean baseline stays green", () => {
+    // run-loop stamps `skippedTool: calls.length === 0` on ok:false cells
+    // (an OpenRouter 401/429/timeout before any tool round-trip). Without
+    // the checks.ts ok-guard this reds the zero-skip absorbing rule as if
+    // the model chose to skip retrieval.
+    const report = evaluateGate({
+      current: makeRunPair({
+        answer: {
+          ok: false,
+          text: null,
+          finishReason: null,
+          error: "429: rate limited",
+          toolCalls: [],
+          skippedTool: true,
+        },
+      }),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("green")
+    expect(report.toolSkipPooled).toEqual({
+      baselineCount: 0,
+      currentCount: 0,
+      regression: false,
+    })
+    expect(report.newHardFails).toEqual([])
+  })
+
+  it("carries an invented citation ONLY when the same offending URL was in the baseline cell", () => {
+    const carriedUrl = "https://invented.example.com/known-bad"
+    const report = evaluateGate({
+      current: makeRunPair({
+        answer: { text: `See ${carriedUrl} for more.` },
+      }),
+      baseline: makeRunPair({
+        answer: { text: `Consider ${carriedUrl} today.` },
+      }),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("green")
+    expect(report.newHardFails).toEqual([])
+    expect(report.carriedKnownFails).toEqual([
+      expect.objectContaining({
+        checkId: "cited-urls-grounded",
+        details: [carriedUrl],
+      }),
+    ])
+  })
+
+  it("goes RED when the same cell + check gains a DIFFERENT invented URL — a carried pin never blankets the check", () => {
+    const report = evaluateGate({
+      current: makeRunPair({
+        answer: { text: "See https://invented.example.com/brand-new-bad." },
+      }),
+      baseline: makeRunPair({
+        answer: { text: "See https://invented.example.com/known-bad." },
+      }),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("red")
+    expect(report.newHardFails).toEqual([
+      expect.objectContaining({
+        checkId: "cited-urls-grounded",
+        details: ["https://invented.example.com/brand-new-bad"],
+      }),
+    ])
+    expect(report.carriedKnownFails).toEqual([])
+  })
+
+  it("REFUSES an all-invalid judged run — a run that never graded an answer certifies nothing", () => {
+    const report = evaluateGate({
+      current: makeRunPair({
+        judgedCell: {
+          status: "invalid",
+          verdicts: undefined,
+          errors: ["judge call failed: 503"],
+        },
+      }),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn.join(";")).toContain("current coverage")
+    expect(report.invalidCells).toEqual({ baseline: 0, current: 1 })
+    expect(report.answerErrorCells).toEqual({ baseline: 0, current: 0 })
+  })
+
+  it("surfaces answerErrorCells beside invalidCells in the coverage refusal", () => {
+    const report = evaluateGate({
+      current: makeRunPair({
+        judgedCell: {
+          status: "answer-error",
+          verdicts: undefined,
+          errors: ["answering model returned no text"],
+        },
+      }),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("refused")
+    expect(report.answerErrorCells).toEqual({ baseline: 0, current: 1 })
+  })
 })

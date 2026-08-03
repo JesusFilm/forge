@@ -435,6 +435,17 @@ async function main(): Promise<void> {
   console.log(
     `${judged.length} cells: ${judged.length - invalid - answerErrors} judged, ${invalid} invalid, ${answerErrors} answer-error, ~$${totalUsd.toFixed(4)}`,
   )
+
+  // Wholesale collapse (zero graded cells) is a judge/answer outage, not a
+  // judgement. The artifact stays on disk for debugging, but the exit code
+  // must stop a pipeline from handing an empty judgements file to the gate
+  // as if grading had happened.
+  if (judged.length > 0 && judged.length - invalid - answerErrors === 0) {
+    console.error(
+      "every cell failed (0 judged) — refusing to hand an empty judgements file downstream (exit 1)",
+    )
+    process.exitCode = 1
+  }
 }
 
 if (

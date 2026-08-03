@@ -270,6 +270,14 @@ function checkSourceNamesGrounded(
  * stamp `skippedTool: false` by construction (the exchange is scripted), so
  * the check passes vacuously there; prompt-only records carry no field and
  * report not-applicable.
+ *
+ * An `ok: false` cell is ALSO not-applicable: run-loop stamps `skippedTool`
+ * from `calls.length` even when the provider failed (401/429/timeout) before
+ * any tool round-trip could happen, so a violated verdict there would read an
+ * infrastructure outage as "the model chose to skip retrieval" — false-red
+ * against a clean baseline, and a permanent disarm of the zero-skip rule if
+ * a blip lands in a promoted baseline. Mirrors the sibling checks' answer
+ * guard.
  */
 function checkToolCalled(answer: AnswerRecord): CheckResult {
   const base = {
@@ -277,7 +285,7 @@ function checkToolCalled(answer: AnswerRecord): CheckResult {
     lane: "hard-fail" as const,
     promptSections: ["tool-usage"] as const,
   }
-  if (answer.skippedTool == null) {
+  if (!answer.ok || answer.skippedTool == null) {
     return { ...base, status: "not-applicable", details: [] }
   }
   return answer.skippedTool

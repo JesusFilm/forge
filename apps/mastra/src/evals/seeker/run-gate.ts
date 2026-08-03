@@ -5,11 +5,14 @@
  *
  * WHAT REDS (deterministic-first, decision doc §3 "Delta gating"):
  *   1. A NEW per-cell ungrounded-citation violation (URL on a never-served
- *      host, or an invented source name) — a cell violated now that was not
- *      violated in the baseline. Violations present in BOTH runs are
- *      "carried known-fails": reported, never red, expiring structurally —
- *      a model-config change breaks identity, forcing a fresh baseline
- *      (the decision doc's expiry pin).
+ *      host, or an invented source name) — an offending detail present now
+ *      that was not present in the baseline cell for the same check. Matching
+ *      is by VIOLATION IDENTITY (the normalized offending URL/source-name
+ *      string), never by checkId alone — a cell that carries one accepted
+ *      citation pin still reds on a different invented source. Details
+ *      present in BOTH runs are "carried known-fails": reported, never red,
+ *      expiring structurally — a model-config change breaks identity,
+ *      forcing a fresh baseline (the decision doc's expiry pin).
  *   2. ANY tool skip when the BASELINE was skip-free (pooled across models).
  *      While the baseline itself skips, skip magnitude is report-only —
  *      see the measured-counts comment at the rule.
@@ -31,7 +34,9 @@
  * models, decoding, corpus, criteria, or judge make the comparison
  * meaningless. The PROMPT is deliberately NOT a refusal dimension in this
  * scope — it is the subject under test; a prompt change is reported in the
- * gate output instead (types.ts documents the scope).
+ * gate output instead (types.ts documents the scope). Also refused: a judged
+ * run that never graded the full questions × models grid (a judge outage
+ * plus a regression must not gate green on zero evidence).
  *
  *   pnpm --filter @forge/mastra eval:seeker:gate
  *   pnpm --filter @forge/mastra eval:seeker:gate -- --baseline-dir=apps/mastra/evals/results/seeker-baseline
@@ -142,6 +147,10 @@ export type GateReport = {
     beyondTolerance: boolean
   }
   invalidCells: { baseline: number; current: number }
+  /** Cells the judge could not grade because the ANSWER was unusable —
+   *  surfaced beside invalidCells so a collapsed run is visible in the
+   *  report, not just in the coverage refusal. */
+  answerErrorCells: { baseline: number; current: number }
 }
 
 function cellKey(questionId: string, model: string): string {
@@ -201,6 +210,7 @@ export function evaluateGate(input: {
       beyondTolerance: false,
     },
     invalidCells: { baseline: 0, current: 0 },
+    answerErrorCells: { baseline: 0, current: 0 },
   }
 
   // Each side's judged file must belong to its answers file ("generation"
@@ -238,6 +248,58 @@ export function evaluateGate(input: {
     return { ...empty, refusedOn: mismatch }
   }
 
+  // Coverage refusal: a judged run that never graded the full
+  // questionIds × answeringModels grid certifies nothing about the missing
+  // cells — invalid/answer-error cells carry zero verdict weight, so without
+  // this check a judge outage plus a prompt regression gates green on zero
+  // evidence. Refused, never green.
+  const gridKeys = new Set(
+    current.judged.identity.questionIds.flatMap((questionId) =>
+      current.judged.identity.answeringModels.map((model) =>
+        cellKey(questionId, model),
+      ),
+    ),
+  )
+  const cellStats = (run: JudgeRun) => {
+    const judgedKeys = new Set<string>()
+    let invalid = 0
+    let answerError = 0
+    for (const cell of run.judged) {
+      const key = cellKey(cell.questionId, cell.model)
+      if (cell.status === "judged" && cell.verdicts && gridKeys.has(key)) {
+        judgedKeys.add(key)
+      } else if (cell.status === "invalid") invalid += 1
+      else if (cell.status === "answer-error") answerError += 1
+    }
+    return { judgedCount: judgedKeys.size, invalid, answerError }
+  }
+  const currentStats = cellStats(current.judged)
+  const baselineStats = cellStats(baseline.judged)
+  const observedCells = {
+    invalidCells: {
+      baseline: baselineStats.invalid,
+      current: currentStats.invalid,
+    },
+    answerErrorCells: {
+      baseline: baselineStats.answerError,
+      current: currentStats.answerError,
+    },
+  }
+  const coverageProblems: string[] = []
+  for (const [label, stats] of [
+    ["current", currentStats],
+    ["baseline", baselineStats],
+  ] as const) {
+    if (stats.judgedCount < gridKeys.size) {
+      coverageProblems.push(
+        `${label} coverage: only ${stats.judgedCount}/${gridKeys.size} grid cells judged (${stats.invalid} invalid, ${stats.answerError} answer-error) — cannot gate on partial evidence`,
+      )
+    }
+  }
+  if (coverageProblems.length > 0) {
+    return { ...empty, ...observedCells, refusedOn: coverageProblems }
+  }
+
   const promptChanged =
     current.judged.identity.promptSha256 !==
     baseline.judged.identity.promptSha256
@@ -249,9 +311,13 @@ export function evaluateGate(input: {
         }
       : null
 
-  // 1. Deterministic lane. Citation checks compare per (cell, check) — a
-  // NEW ungrounded citation reds even if another disappeared. tool-called
-  // and the format checks compare per-model COUNTS (see GateCountDelta).
+  // 1. Deterministic lane. Citation checks compare per (cell, check,
+  // VIOLATION IDENTITY): a current offending detail (the normalized invented
+  // URL / source-name string) counts as carried ONLY when the SAME detail
+  // appears in the baseline cell for the same check — so a NEW ungrounded
+  // citation reds even if another disappeared, and even when the cell
+  // already carried a different accepted pin. tool-called and the format
+  // checks compare per-model COUNTS (see GateCountDelta).
   const CELL_RED_CHECKS = new Set([
     "cited-urls-grounded",
     "cited-source-names-grounded",
@@ -261,15 +327,41 @@ export function evaluateGate(input: {
   const currentFails = hardFailsByCell(current.answers, fixtures)
   const newHardFails: GateHardFail[] = []
   const carriedKnownFails: GateHardFail[] = []
+  const normalizeDetail = (detail: string): string =>
+    detail.trim().toLowerCase()
   for (const [key, fails] of currentFails) {
     const baselineCell = baselineFails.get(key) ?? []
     for (const fail of fails) {
       if (!CELL_RED_CHECKS.has(fail.checkId)) continue
-      const carried = baselineCell.some(
-        (candidate) => candidate.checkId === fail.checkId,
+      const baselineDetails = new Set(
+        baselineCell
+          .filter((candidate) => candidate.checkId === fail.checkId)
+          .flatMap((candidate) => candidate.details.map(normalizeDetail)),
       )
-      if (carried) carriedKnownFails.push(fail)
-      else newHardFails.push(fail)
+      // The citation checks always name their offenders, so an empty details
+      // array is unreachable for CELL_RED_CHECKS today; if a future check
+      // joins the set without details, fall back to checkId matching rather
+      // than silently dropping the violation.
+      if (fail.details.length === 0) {
+        const baselineHasCheck = baselineCell.some(
+          (candidate) => candidate.checkId === fail.checkId,
+        )
+        if (baselineHasCheck) carriedKnownFails.push(fail)
+        else newHardFails.push(fail)
+        continue
+      }
+      const carriedDetails = fail.details.filter((detail) =>
+        baselineDetails.has(normalizeDetail(detail)),
+      )
+      const newDetails = fail.details.filter(
+        (detail) => !baselineDetails.has(normalizeDetail(detail)),
+      )
+      if (newDetails.length > 0) {
+        newHardFails.push({ ...fail, details: newDetails })
+      }
+      if (carriedDetails.length > 0) {
+        carriedKnownFails.push({ ...fail, details: carriedDetails })
+      }
     }
   }
 
@@ -391,6 +483,10 @@ export function evaluateGate(input: {
     invalidCells: {
       baseline: baselineScore.invalidCells,
       current: currentScore.invalidCells,
+    },
+    answerErrorCells: {
+      baseline: baselineScore.answerErrorCells,
+      current: currentScore.answerErrorCells,
     },
   }
 }
