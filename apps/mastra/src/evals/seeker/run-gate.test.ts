@@ -1,8 +1,10 @@
+import { fileURLToPath } from "node:url"
+
 import { describe, expect, it } from "vitest"
 
 import { criteriaFor, questionById } from "./questions"
 import type { RagFixtureFile } from "./rag"
-import { evaluateGate } from "./run-gate"
+import { evaluateGate, loadFixtures } from "./run-gate"
 import {
   ANSWER_RUN_KIND,
   JUDGE_RUN_KIND,
@@ -156,7 +158,7 @@ describe("evaluateGate", () => {
     const report = evaluateGate({
       current: makeRunPair({}),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(report.newHardFails).toEqual([])
@@ -170,7 +172,7 @@ describe("evaluateGate", () => {
         identity: { answeringModels: ["anthropic/claude-sonnet-5"] },
       }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("refused")
     expect(report.refusedOn).toContain("answering models")
@@ -185,7 +187,7 @@ describe("evaluateGate", () => {
         },
       }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(report.promptChanged).toEqual({
@@ -230,7 +232,7 @@ describe("evaluateGate", () => {
     const report = evaluateGate({
       current: makeRunPair({ answer: { skippedTool: true, toolCalls: [] } }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("red")
     expect(report.toolSkipPooled).toEqual({
@@ -262,7 +264,7 @@ describe("evaluateGate", () => {
     const report = evaluateGate({
       current: makeRunPair(cells([QUESTION_ID, SECOND_QUESTION_ID])),
       baseline: makeRunPair(cells([QUESTION_ID])),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(report.toolSkipPooled).toEqual({
@@ -314,7 +316,7 @@ describe("evaluateGate", () => {
         }),
       ],
     })
-    const report = evaluateGate({ current, baseline, fixtures: null })
+    const report = evaluateGate({ current, baseline, fixtures: FIXTURES })
     expect(report.verdict).toBe("green")
     expect(report.toolSkipDeltas).toEqual([
       expect.objectContaining({
@@ -345,7 +347,7 @@ describe("evaluateGate", () => {
       ],
       judgedCells: [makeJudgedCell(), makeJudgedCell({ model: SECOND_MODEL })],
     })
-    const report = evaluateGate({ current, baseline, fixtures: null })
+    const report = evaluateGate({ current, baseline, fixtures: FIXTURES })
     expect(report.verdict).toBe("green")
     expect(report.toolSkipPooled).toEqual({
       baselineCount: 1,
@@ -364,7 +366,7 @@ describe("evaluateGate", () => {
     const report = evaluateGate({
       current: makeRunPair({ answer: { text: bulleted } }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(
@@ -385,7 +387,7 @@ describe("evaluateGate", () => {
         judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
       }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("red")
     expect(report.groundingFlips).toEqual([
@@ -402,7 +404,7 @@ describe("evaluateGate", () => {
         judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
       }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(report.groundingFlips).toHaveLength(1)
@@ -415,7 +417,7 @@ describe("evaluateGate", () => {
         judgedCell: { verdicts: makeVerdicts(["q-suffering-serious"]) },
       }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(report.groundingFlips).toEqual([])
@@ -437,7 +439,7 @@ describe("evaluateGate", () => {
       baseline: makeRunPair({
         judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
       }),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("green")
     expect(report.groundingFlips).toEqual([])
@@ -455,7 +457,7 @@ describe("evaluateGate", () => {
         },
       }),
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
       scoreTolerance: 0.05,
     })
     expect(report.verdict).toBe("green")
@@ -470,7 +472,7 @@ describe("evaluateGate", () => {
     const report = evaluateGate({
       current,
       baseline: makeRunPair({}),
-      fixtures: null,
+      fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("refused")
     expect(report.refusedOn.join(";")).toContain("current answers↔judged")
@@ -577,5 +579,86 @@ describe("evaluateGate", () => {
     })
     expect(report.verdict).toBe("refused")
     expect(report.answerErrorCells).toEqual({ baseline: 0, current: 1 })
+  })
+
+  it("REFUSES a fixture-world run pair when no fixtures were loaded — the citation lane must not silently vacate", () => {
+    const report = evaluateGate({
+      current: makeRunPair({}),
+      baseline: makeRunPair({}),
+      fixtures: null,
+    })
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn.join(";")).toMatch(/fixtures.*tool-loop/)
+    expect(report.fixturesCorpusSha256).toBeNull()
+  })
+
+  it("gates mode-'none' run pairs without fixtures — the only mode allowed to", () => {
+    const noRetrieval = {
+      identity: { retrieval: { mode: "none" as const } },
+      answer: { toolCalls: undefined, skippedTool: undefined },
+    }
+    const report = evaluateGate({
+      current: makeRunPair(noRetrieval),
+      baseline: makeRunPair(noRetrieval),
+      fixtures: null,
+    })
+    expect(report.verdict).toBe("green")
+    expect(report.fixturesCorpusSha256).toBeNull()
+  })
+
+  it("REFUSES when the fixture file's corpus differs from the runs' stamped corpus", () => {
+    const report = evaluateGate({
+      current: makeRunPair({}),
+      baseline: makeRunPair({}),
+      fixtures: { ...FIXTURES, corpusSha256: "corpus-recaptured" },
+    })
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn).toHaveLength(2) // both runs named
+    expect(report.refusedOn.join(";")).toContain("--allow-corpus-mismatch")
+  })
+
+  it("allows a deliberate legacy replay through allowCorpusMismatch", () => {
+    const report = evaluateGate({
+      current: makeRunPair({}),
+      baseline: makeRunPair({}),
+      fixtures: { ...FIXTURES, corpusSha256: "corpus-recaptured" },
+      allowCorpusMismatch: true,
+    })
+    expect(report.verdict).toBe("green")
+  })
+
+  it("stamps the fixture file's corpus into the gate report", () => {
+    const report = evaluateGate({
+      current: makeRunPair({}),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+    })
+    expect(report.fixturesCorpusSha256).toBe("corpus-1")
+  })
+})
+
+describe("loadFixtures — fail closed (finding #4)", () => {
+  it("throws a distinct error when the file is absent", async () => {
+    await expect(
+      loadFixtures(
+        fileURLToPath(new URL("./no-such-fixtures.json", import.meta.url)),
+      ),
+    ).rejects.toThrow(/fixtures file not found/)
+  })
+
+  it("throws a distinct error when the file is not valid JSON", async () => {
+    await expect(
+      loadFixtures(fileURLToPath(new URL("./run-gate.ts", import.meta.url))),
+    ).rejects.toThrow(/not valid JSON/)
+  })
+
+  it("throws when the file is valid JSON of the wrong kind", async () => {
+    await expect(
+      loadFixtures(
+        fileURLToPath(
+          new URL("./reference-runs/answers-injected.json", import.meta.url),
+        ),
+      ),
+    ).rejects.toThrow(/not a chat-eval RAG fixture file/)
   })
 })

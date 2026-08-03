@@ -36,7 +36,12 @@
  * scope — it is the subject under test; a prompt change is reported in the
  * gate output instead (types.ts documents the scope). Also refused: a judged
  * run that never graded the full questions × models grid (a judge outage
- * plus a regression must not gate green on zero evidence).
+ * plus a regression must not gate green on zero evidence); a fixture-world
+ * run pair with no loadable fixture file (the citation lane would silently
+ * vacate to not-applicable — fail closed, never green); and a fixture file
+ * whose corpusSha256 differs from the runs' stamped corpus (grounded-ness
+ * would be computed against a different world) unless
+ * `--allow-corpus-mismatch` is passed for a deliberate legacy replay.
  *
  *   pnpm --filter @forge/mastra eval:seeker:gate
  *   pnpm --filter @forge/mastra eval:seeker:gate -- --baseline-dir=apps/mastra/evals/results/seeker-baseline
@@ -54,6 +59,7 @@ import {
   JUDGE_RUN_KIND,
   type AnswerRun,
   type JudgeRun,
+  type RunIdentity,
 } from "./types"
 import { classFor } from "./weights"
 
@@ -151,6 +157,9 @@ export type GateReport = {
    *  surfaced beside invalidCells so a collapsed run is visible in the
    *  report, not just in the coverage refusal. */
   answerErrorCells: { baseline: number; current: number }
+  /** corpusSha256 of the fixture file the citation lane actually graded
+   *  against; null only for mode-"none" run pairs (no fixtures loaded). */
+  fixturesCorpusSha256: string | null
 }
 
 function cellKey(questionId: string, model: string): string {
@@ -184,7 +193,13 @@ function hardFailsByCell(
 export function evaluateGate(input: {
   current: { answers: AnswerRun; judged: JudgeRun }
   baseline: { answers: AnswerRun; judged: JudgeRun }
+  /** null is legal ONLY for mode-"none" run pairs; a fixture-world pair
+   *  with null fixtures REFUSES (the citation lane must not silently
+   *  vacate — review finding #4). */
   fixtures: RagFixtureFile | null
+  /** Explicit escape hatch for deliberate legacy replays whose stamped
+   *  corpus predates the current fixture capture (review finding #11). */
+  allowCorpusMismatch?: boolean
   scoreTolerance?: number
 }): GateReport {
   const tolerance = input.scoreTolerance ?? DEFAULT_SCORE_TOLERANCE
@@ -211,6 +226,7 @@ export function evaluateGate(input: {
     },
     invalidCells: { baseline: 0, current: 0 },
     answerErrorCells: { baseline: 0, current: 0 },
+    fixturesCorpusSha256: fixtures?.corpusSha256 ?? null,
   }
 
   // Each side's judged file must belong to its answers file ("generation"
@@ -246,6 +262,49 @@ export function evaluateGate(input: {
   )
   if (mismatch.length > 0) {
     return { ...empty, refusedOn: mismatch }
+  }
+
+  // Fixture-world integrity (findings #4 + #11). Both runs share a retrieval
+  // mode and corpus at this point (the cross-run check above refused any
+  // disagreement). For a fixture-world pair the citation checks are computed
+  // FROM the fixture file, so (a) a missing file must refuse — with null
+  // fixtures both grounded-citation checks return not-applicable for every
+  // cell and newHardFails is empty BY CONSTRUCTION, exactly the lane the
+  // gate exists to hold; and (b) the file's corpus stamp must match what
+  // BOTH runs generated against, or "grounded" means a different world.
+  const retrievalMode = current.judged.identity.retrieval?.mode ?? "unstamped"
+  if (retrievalMode !== "none") {
+    if (!fixtures) {
+      return {
+        ...empty,
+        refusedOn: [
+          `fixtures: retrieval mode "${retrievalMode}" requires the RAG fixture file for the grounded-citation lane, and none was loaded`,
+        ],
+      }
+    }
+    if (input.allowCorpusMismatch !== true) {
+      const stampedCorpus = (identity: RunIdentity): string | null => {
+        const retrieval = identity.retrieval
+        return retrieval != null && retrieval.mode !== "none"
+          ? retrieval.corpusSha256
+          : null
+      }
+      const corpusProblems: string[] = []
+      for (const [label, identity] of [
+        ["current", current.judged.identity],
+        ["baseline", baseline.judged.identity],
+      ] as const) {
+        const stamped = stampedCorpus(identity)
+        if (stamped !== fixtures.corpusSha256) {
+          corpusProblems.push(
+            `fixtures corpus ${fixtures.corpusSha256.slice(0, 12)}… does not match the ${label} run's stamped corpus ${stamped?.slice(0, 12) ?? "(unstamped)"}… — pass --allow-corpus-mismatch only for a deliberate legacy replay`,
+          )
+        }
+      }
+      if (corpusProblems.length > 0) {
+        return { ...empty, refusedOn: corpusProblems }
+      }
+    }
   }
 
   // Coverage refusal: a judged run that never graded the full
@@ -488,6 +547,7 @@ export function evaluateGate(input: {
       baseline: baselineScore.answerErrorCells,
       current: currentScore.answerErrorCells,
     },
+    fixturesCorpusSha256: fixtures?.corpusSha256 ?? null,
   }
 }
 
@@ -508,12 +568,41 @@ async function loadJudged(path: string): Promise<JudgeRun> {
   return run
 }
 
-async function loadFixtures(path: string): Promise<RagFixtureFile | null> {
+/**
+ * Fail-closed fixtures load (review finding #4). With null fixtures both
+ * grounded-citation checks return not-applicable for every cell, so a
+ * swallowed load failure silently vacates the exact lane the gate exists to
+ * hold. Absence and corruption throw DISTINCT messages — they have different
+ * fixes — and main() maps any throw to a nonzero exit. Exported for tests.
+ */
+export async function loadFixtures(path: string): Promise<RagFixtureFile> {
+  let raw: string
   try {
-    return loadableFixtureFile(JSON.parse(await readFile(path, "utf8")))
-  } catch {
-    return null
+    raw = await readFile(path, "utf8")
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException).code
+    if (code === "ENOENT") {
+      throw new Error(
+        `fixtures file not found at ${path} — run eval:seeker:capture-rag against a live RAG, or pass --fixtures=<path>`,
+      )
+    }
+    throw new Error(
+      `fixtures file at ${path} could not be read: ${cause instanceof Error ? cause.message : String(cause)}`,
+    )
   }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error(
+      `fixtures file at ${path} is not valid JSON — restore or re-capture it`,
+    )
+  }
+  const file = loadableFixtureFile(parsed)
+  if (!file) {
+    throw new Error(`${path} is not a chat-eval RAG fixture file (wrong kind)`)
+  }
+  return file
 }
 
 async function main(): Promise<void> {
@@ -537,6 +626,9 @@ async function main(): Promise<void> {
     process.cwd(),
     flag(argv, "out") ?? resolve(DEFAULT_RUNS_DIR, "gate-report.json"),
   )
+  // Deliberate legacy-replay escape only (finding #11) — without it a
+  // fixture file whose corpus differs from the runs' stamp REFUSES.
+  const allowCorpusMismatch = argv.includes("--allow-corpus-mismatch")
 
   const [
     currentAnswers,
@@ -558,6 +650,7 @@ async function main(): Promise<void> {
     current: { answers: currentAnswers, judged: currentJudged },
     baseline: { answers: baselineAnswers, judged: baselineJudged },
     fixtures,
+    allowCorpusMismatch,
     scoreTolerance: tolerance,
   })
 

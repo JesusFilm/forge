@@ -16,7 +16,11 @@
  *
  * The judge is shown the passages served for the question (from the fixture
  * file) — the grounding criteria are phrased against "the retrieved
- * passages", so the judge must see them to grade honestly.
+ * passages", so the judge must see them to grade honestly. A run stamped
+ * retrieval mode "fixtures"/"tool-loop" therefore REQUIRES a loadable
+ * fixture file whose corpus matches the run's stamp (fail-closed; see
+ * `loadFixtures` / `runRequiresFixtures` / `assertFixtureCorpusMatchesRun`);
+ * only a mode-"none" run may judge without one.
  *
  *   pnpm --filter @forge/mastra eval:seeker:judge
  *   pnpm --filter @forge/mastra eval:seeker:judge -- \
@@ -40,6 +44,7 @@ import {
   type CriterionVerdict,
   type JudgedAnswer,
   type JudgeRun,
+  type RunIdentity,
 } from "./types"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
@@ -350,12 +355,85 @@ export async function judgeOneAnswer(
   }
 }
 
-async function loadFixtures(path: string): Promise<RagFixtureFile | null> {
+/**
+ * Fail-closed fixtures load (review finding #12). A swallowed load failure
+ * used to grade every cell against an empty world — "No passages were
+ * served … therefore ungrounded" — turning a file-path typo into a wall of
+ * false grounding violations indistinguishable from a real regression.
+ * Absence and corruption throw DISTINCT messages — they have different
+ * fixes — and main() maps any throw to a nonzero exit. Exported for tests.
+ */
+export async function loadFixtures(path: string): Promise<RagFixtureFile> {
+  let raw: string
   try {
-    return loadableFixtureFile(JSON.parse(await readFile(path, "utf8")))
-  } catch {
-    return null
+    raw = await readFile(path, "utf8")
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException).code
+    if (code === "ENOENT") {
+      throw new Error(
+        `fixtures file not found at ${path} — run eval:seeker:capture-rag against a live RAG, or pass --fixtures=<path>`,
+      )
+    }
+    throw new Error(
+      `fixtures file at ${path} could not be read: ${cause instanceof Error ? cause.message : String(cause)}`,
+    )
   }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error(
+      `fixtures file at ${path} is not valid JSON — restore or re-capture it`,
+    )
+  }
+  const file = loadableFixtureFile(parsed)
+  if (!file) {
+    throw new Error(`${path} is not a chat-eval RAG fixture file (wrong kind)`)
+  }
+  return file
+}
+
+/**
+ * Fixture requirement keyed on the run's retrieval mode (finding #12): a
+ * "fixtures" or "tool-loop" run was GENERATED against served passages, so
+ * grading it without them falsifies every grounding verdict. Only a
+ * mode-"none" (or unstamped legacy) run may judge without fixtures — that is
+ * the one case where "No passages were served" is the truth, reached
+ * explicitly here, never via a swallowed load error.
+ */
+export function runRequiresFixtures(
+  retrieval: RunIdentity["retrieval"] | undefined,
+): boolean {
+  return retrieval?.mode === "fixtures" || retrieval?.mode === "tool-loop"
+}
+
+/**
+ * The corpus stamp on the answers run and the fixture file on disk must
+ * agree, or the judge shows the model's graders a DIFFERENT world than the
+ * answers were generated against (finding #12 — live today: the committed
+ * reference-runs are stamped 4909d1… while the current fixture capture is
+ * 8eb6a9…). `allowCorpusMismatch` is the explicit legacy-replay escape.
+ */
+export function assertFixtureCorpusMatchesRun(input: {
+  fixtures: RagFixtureFile
+  identity: RunIdentity
+  allowCorpusMismatch: boolean
+}): void {
+  const retrieval = input.identity.retrieval
+  const stamped =
+    retrieval != null && retrieval.mode !== "none"
+      ? retrieval.corpusSha256
+      : null
+  if (stamped === input.fixtures.corpusSha256) return
+  if (input.allowCorpusMismatch) {
+    console.warn(
+      `WARNING: judging against fixtures corpus ${input.fixtures.corpusSha256.slice(0, 12)}… while the run is stamped ${stamped?.slice(0, 12) ?? "(unstamped)"}… (--allow-corpus-mismatch legacy replay)`,
+    )
+    return
+  }
+  throw new Error(
+    `fixtures corpus ${input.fixtures.corpusSha256.slice(0, 12)}… does not match the run's stamped corpus ${stamped?.slice(0, 12) ?? "(unstamped)"}… — the judge would grade against a different world; pass --allow-corpus-mismatch only for a deliberate legacy replay`,
+  )
 }
 
 async function main(): Promise<void> {
@@ -370,11 +448,23 @@ async function main(): Promise<void> {
     process.cwd(),
     flag(argv, "out") ?? resolve(DEFAULT_RUNS_DIR, "judged.json"),
   )
-  const fixtures = await loadFixtures(
-    resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
-  )
 
   const run = coerceAnswerRun(JSON.parse(await readFile(inPath, "utf8")))
+
+  // Mode-aware, fail-closed fixtures resolution — see the helpers above.
+  const allowCorpusMismatch = argv.includes("--allow-corpus-mismatch")
+  const fixtures = runRequiresFixtures(run.identity.retrieval)
+    ? await loadFixtures(
+        resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
+      )
+    : null
+  if (fixtures) {
+    assertFixtureCorpusMatchesRun({
+      fixtures,
+      identity: run.identity,
+      allowCorpusMismatch,
+    })
+  }
 
   console.log(`judge : ${JUDGE_MODEL} (rubric ${rubricSha256().slice(0, 12)})`)
   console.log(`input : ${inPath} (${run.answers.length} answers)`)

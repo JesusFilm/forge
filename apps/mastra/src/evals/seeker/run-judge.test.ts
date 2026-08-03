@@ -1,17 +1,22 @@
+import { fileURLToPath } from "node:url"
+
 import { describe, expect, it, vi } from "vitest"
 
 import { criteriaFor, questionById } from "./questions"
 import {
+  assertFixtureCorpusMatchesRun,
   collapseAgreeingDuplicates,
   judgeOneAnswer,
+  loadFixtures,
   parseVerdicts,
   renderPassagesBlock,
   rubricSha256,
+  runRequiresFixtures,
   verdictProtocolProblems,
   type JudgeCompletion,
 } from "./run-judge"
 import type { RagFixtureFile } from "./rag"
-import type { AnswerRecord, CriterionVerdict } from "./types"
+import type { AnswerRecord, CriterionVerdict, RunIdentity } from "./types"
 
 const QUESTION_ID = "q-suffering"
 const CRITERIA = criteriaFor(questionById(QUESTION_ID))
@@ -286,5 +291,109 @@ describe("rubricSha256", () => {
   it("is stable for a fixed rubric", () => {
     expect(rubricSha256()).toBe(rubricSha256())
     expect(rubricSha256()).toMatch(/^[0-9a-f]{64}$/)
+  })
+})
+
+describe("fixtures policy — mode-aware, fail-closed (finding #12)", () => {
+  function makeIdentity(overrides: Partial<RunIdentity> = {}): RunIdentity {
+    return {
+      promptSha256: "prompt-sha",
+      promptSource: "fallback",
+      promptLangfuseVersion: null,
+      promptLangfuseLabel: null,
+      sectionMappingVersion: "seeker-sections/v1",
+      questionSetId: "seeker-eval/v1",
+      questionIds: [QUESTION_ID],
+      criteriaSha256: "criteria-sha",
+      answeringModels: ["google/gemma-4-31b-it"],
+      decoding: { temperature: 0.7, maxTokens: 1_600 },
+      sampleId: "s1",
+      gitSha: null,
+      retrieval: { mode: "tool-loop", corpusSha256: "corpus", topK: 5 },
+      judge: null,
+      ...overrides,
+    }
+  }
+
+  const corpusFixtures: RagFixtureFile = {
+    kind: "chat-eval-rag-fixtures",
+    capturedAt: "2026-08-01T00:00:00.000Z",
+    baseUrl: "http://localhost:8080",
+    topK: 5,
+    corpusSha256: "corpus",
+    fixtures: [],
+  }
+
+  it("requires fixtures for fixture-world runs; only mode 'none' may judge without", () => {
+    expect(
+      runRequiresFixtures({ mode: "fixtures", corpusSha256: "c", topK: 5 }),
+    ).toBe(true)
+    expect(
+      runRequiresFixtures({ mode: "tool-loop", corpusSha256: "c", topK: 5 }),
+    ).toBe(true)
+    expect(runRequiresFixtures({ mode: "none" })).toBe(false)
+    expect(runRequiresFixtures(undefined)).toBe(false)
+  })
+
+  it("refuses a fixtures file whose corpus differs from the run's stamp", () => {
+    expect(() =>
+      assertFixtureCorpusMatchesRun({
+        fixtures: { ...corpusFixtures, corpusSha256: "corpus-recaptured" },
+        identity: makeIdentity(),
+        allowCorpusMismatch: false,
+      }),
+    ).toThrow(/--allow-corpus-mismatch/)
+  })
+
+  it("lets an explicit legacy replay through", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      expect(() =>
+        assertFixtureCorpusMatchesRun({
+          fixtures: { ...corpusFixtures, corpusSha256: "corpus-recaptured" },
+          identity: makeIdentity(),
+          allowCorpusMismatch: true,
+        }),
+      ).not.toThrow()
+      expect(warn).toHaveBeenCalledTimes(1)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("passes silently on a matching corpus", () => {
+    expect(() =>
+      assertFixtureCorpusMatchesRun({
+        fixtures: corpusFixtures,
+        identity: makeIdentity(),
+        allowCorpusMismatch: false,
+      }),
+    ).not.toThrow()
+  })
+})
+
+describe("loadFixtures — fail closed (finding #12)", () => {
+  it("throws a distinct error when the file is absent", async () => {
+    await expect(
+      loadFixtures(
+        fileURLToPath(new URL("./no-such-fixtures.json", import.meta.url)),
+      ),
+    ).rejects.toThrow(/fixtures file not found/)
+  })
+
+  it("throws a distinct error when the file is not valid JSON", async () => {
+    await expect(
+      loadFixtures(fileURLToPath(new URL("./run-judge.ts", import.meta.url))),
+    ).rejects.toThrow(/not valid JSON/)
+  })
+
+  it("throws when the file is valid JSON of the wrong kind", async () => {
+    await expect(
+      loadFixtures(
+        fileURLToPath(
+          new URL("./reference-runs/answers-injected.json", import.meta.url),
+        ),
+      ),
+    ).rejects.toThrow(/not a chat-eval RAG fixture file/)
   })
 })
