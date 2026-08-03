@@ -58,6 +58,27 @@ export function corpusHash(fixtures: readonly RagFixture[]): string {
   return createHash("sha256").update(material).digest("hex")
 }
 
+/**
+ * A capture with dead cells must not become a fixture set someone runs
+ * against — that is a retrieval outage masquerading as a prompt result.
+ * Called BEFORE the fixture file is written, so a poisoned capture is
+ * refused WITHOUT leaving a file behind (finding #15). Exported for tests.
+ */
+export function assertNoUnavailableCaptures(
+  fixtures: readonly RagFixture[],
+): void {
+  const unavailable = fixtures.filter(
+    (fixture) => fixture.result.status === "unavailable",
+  )
+  if (unavailable.length > 0) {
+    throw new Error(
+      `${unavailable.length} question(s) returned "unavailable" (${unavailable
+        .map((fixture) => fixture.questionId)
+        .join(", ")}) — fix the RAG and re-capture; nothing was written`,
+    )
+  }
+}
+
 async function main(): Promise<void> {
   loadEnvFiles()
   const argv = process.argv.slice(2)
@@ -114,6 +135,11 @@ async function main(): Promise<void> {
     )
   }
 
+  // Refuse BEFORE anything touches disk (finding #15): the old order wrote
+  // the poisoned file first and threw after, leaving a fixture set that
+  // encodes a retrieval outage on disk for the next runner to pick up.
+  assertNoUnavailableCaptures(fixtures)
+
   const file: RagFixtureFile = {
     kind: "chat-eval-rag-fixtures",
     capturedAt: new Date().toISOString(),
@@ -126,19 +152,9 @@ async function main(): Promise<void> {
   await mkdir(dirname(outPath), { recursive: true })
   await writeFile(outPath, `${JSON.stringify(file, null, 2)}\n`, "utf8")
 
-  const unavailable = fixtures.filter(
-    (fixture) => fixture.result.status === "unavailable",
-  ).length
   console.log("")
   console.log(`wrote ${outPath}`)
   console.log(`corpus ${file.corpusSha256.slice(0, 16)}`)
-  if (unavailable > 0) {
-    // A capture with dead cells must not become a fixture set someone runs
-    // against — that is a retrieval outage masquerading as a prompt result.
-    throw new Error(
-      `${unavailable} question(s) returned "unavailable" — fix the RAG and re-capture`,
-    )
-  }
 }
 
 if (

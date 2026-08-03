@@ -20,7 +20,11 @@
  * (b) refuses to run if `OPENROUTER_API_PAID_KEY` is set; (c) overwrites
  * `process.env.OPENROUTER_API_KEY` with the eval key in-process so no ambient
  * dev/prod key can be billed. `pinEvalKey` is exported and unit-tested
- * (run-loop.test.ts) — the mechanism, not just the happy path.
+ * (run-loop.test.ts) — the mechanism, not just the happy path. The
+ * before-any-agent-import ordering is REAL, not aspirational: every module
+ * that transitively value-imports the agent (prompt-sections, the agent
+ * itself) loads via dynamic import() after the pin, and run-loop.test.ts
+ * pins the static import block against regressions (finding #13).
  *
  *   pnpm --filter @forge/mastra eval:seeker:loop
  *   pnpm --filter @forge/mastra eval:seeker:loop -- --models=google/gemma-4-31b-it --limit=1
@@ -34,7 +38,13 @@ import { KEY_VARIABLE, keyHelpText, loadEnvFiles } from "./env"
 import { criteriaHash, gitSha, sha256 } from "./hashes"
 import { answeringModelsByIds, costUsd, type AnsweringModel } from "./models"
 import { ANSWER_DECODING } from "./openrouter"
-import { SECTION_MAPPING_VERSION } from "./prompt-sections"
+// NO static import of ./prompt-sections here: it value-imports
+// SEEKER_SYSTEM_PROMPT_FALLBACK from the agent module, whose top level runs
+// `buildSeekerAgent()` — evaluating the whole Mastra model-router chain
+// BEFORE pinEvalKey() could run (review finding #13). It loads via dynamic
+// import() inside main(), in the post-pin batch. The source-pin test in
+// run-loop.test.ts fails if a static import of prompt-sections or the agent
+// module ever returns.
 import { QUESTIONS, QUESTION_SET_ID, type Question } from "./questions"
 import {
   loadableFixtureFile,
@@ -319,7 +329,10 @@ async function main(): Promise<void> {
   // Import the production seam ONLY after the key pin above. The instructions
   // stamp resolves through the SAME helper the agent's own resolver uses, so
   // identity records what the model actually saw (fallback locally; langfuse
-  // + version when configured).
+  // + version when configured). ./prompt-sections belongs in this post-pin
+  // batch too: it value-imports the agent module for the fallback prompt
+  // text, so a static import would evaluate `buildSeekerAgent()` before the
+  // pin (finding #13).
   const [
     {
       buildSeekerAgent,
@@ -330,12 +343,14 @@ async function main(): Promise<void> {
     fixtureRag,
     memoryModule,
     storageModule,
+    { SECTION_MAPPING_VERSION },
   ] = await Promise.all([
     import("../../mastra/agents/seeker-agent"),
     import("../../services/langfuse-prompt-client"),
     import("./fixture-rag"),
     import("@mastra/memory"),
     import("@mastra/core/storage"),
+    import("./prompt-sections"),
   ])
 
   const resolvedPrompt = await langfuse.getManagedPrompt({

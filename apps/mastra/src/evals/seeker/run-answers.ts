@@ -43,6 +43,7 @@ import { QUESTIONS, QUESTION_SET_ID } from "./questions"
 import {
   loadableFixtureFile,
   RETRIEVE_ANSWER_TOOL_SPEC,
+  type RagFixture,
   type RagFixtureFile,
 } from "./rag"
 import { ANSWER_RUN_KIND, type AnswerRecord, type AnswerRun } from "./types"
@@ -70,6 +71,25 @@ function loadFixtures(path: string): RagFixtureFile {
     throw new Error(`${path} is not a chat-eval RAG fixture file`)
   }
   return file
+}
+
+/**
+ * Injected mode shares the frozen-world invariant fixture-rag.ts's
+ * `fixtureResultToClientResult` enforces for the tool loop (finding #15): a
+ * fixture that encodes a retrieval OUTAGE must never be served as if
+ * retrieval had run — capture-rag refuses to write one, and a hand-edited
+ * file must fail the cell loudly here, not measure the unavailable path.
+ * Exported for tests.
+ */
+export function assertServableFixture(
+  fixture: RagFixture,
+  questionId: string,
+): void {
+  if (fixture.result.status === "unavailable") {
+    throw new Error(
+      `fixture for ${questionId} encodes status 'unavailable' — re-capture it; the injected exchange must serve real passages or a real empty result`,
+    )
+  }
 }
 
 async function main(): Promise<void> {
@@ -122,6 +142,7 @@ async function main(): Promise<void> {
             `no RAG fixture for ${question.id} — re-run eval:seeker:capture-rag`,
           )
         }
+        assertServableFixture(injected, question.id)
         const completion = await completeWithInjectedTool({
           model: model.id,
           system: PROMPT_UNDER_TEST,

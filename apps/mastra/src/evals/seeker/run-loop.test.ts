@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import { describe, expect, it } from "vitest"
 
 import { pinEvalKey } from "./run-loop"
@@ -44,5 +46,55 @@ describe("pinEvalKey", () => {
       CHAT_EVAL_OPENROUTER_API_KEY: "   ",
     }
     expect(() => pinEvalKey(env)).toThrow(/CHAT_EVAL_OPENROUTER_API_KEY/)
+  })
+})
+
+/**
+ * Import-order source pin (finding #13; the retrieve-answer.test.ts
+ * stripped-source technique applied to import ORDER). The pin-before-import
+ * ordering only holds if NOTHING in run-loop's static import block
+ * transitively evaluates the agent module: ./prompt-sections value-imports
+ * SEEKER_SYSTEM_PROMPT_FALLBACK from seeker-agent, whose top level runs
+ * `buildSeekerAgent()` — the whole Mastra model-router chain — before
+ * pinEvalKey() could fire. Every other static import was audited: env,
+ * hashes, models, openrouter, questions, rag, types reach only node
+ * builtins/zod (questions and fixture-rag touch agent-adjacent modules via
+ * `import type` only, which erases). A future static import that re-defeats
+ * the ordering fails here. Type-only imports of the forbidden modules would
+ * be erased at runtime, but the pin rejects them too — cheap insurance
+ * against a later flip to a value import.
+ */
+describe("spend-guard import order (source pin)", () => {
+  function strippedRunLoopSource(): string {
+    // Comments stripped first so a commented-out import can neither satisfy
+    // nor spoil the pin.
+    const source = readFileSync(
+      new URL("./run-loop.ts", import.meta.url),
+      "utf8",
+    )
+    return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+  }
+
+  it("keeps agent-reaching modules OUT of run-loop's static import block", () => {
+    const code = strippedRunLoopSource()
+    const staticImports = code.match(/^import[\s\S]*?from\s+"[^"]+"/gm) ?? []
+    // Anti-vacuous: the scan must actually be seeing the import block.
+    expect(staticImports.length).toBeGreaterThan(5)
+    for (const statement of staticImports) {
+      expect(statement).not.toMatch(/prompt-sections|mastra\/agents/)
+    }
+  })
+
+  it("loads prompt-sections and the agent module ONLY via post-pin dynamic import()", () => {
+    const code = strippedRunLoopSource()
+    // Both modules are still consumed — through import(), inside main(),
+    // after pinEvalKey(). If either disappears entirely the identity stamp
+    // is broken, so pin their dynamic presence too.
+    expect(code).toMatch(/import\("\.\/prompt-sections"\)/)
+    expect(code).toMatch(/import\("\.\.\/\.\.\/mastra\/agents\/seeker-agent"\)/)
+    // And the pin runs before the dynamic batch in program order.
+    expect(code.indexOf("pinEvalKey(process.env)")).toBeLessThan(
+      code.indexOf('import("../../mastra/agents/seeker-agent")'),
+    )
   })
 })
