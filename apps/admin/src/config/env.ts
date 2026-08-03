@@ -168,12 +168,10 @@ export const env = createEnv({
   server: {
     // Unit 2 — Prisma / Postgres
     //
-    // DATABASE_URL: main pool. Recommend `?connection_limit=10&pool_timeout=20`.
-    // DATABASE_URL_SYNC: dedicated pool for Core sync workflow. Production
-    // should start around `?connection_limit=5&pool_timeout=60`, then tune
-    // against total Postgres capacity — see src/db/client.ts.
+    // DATABASE_URL: plain Postgres connection URL. Prisma pool configuration
+    // lives in src/db/client.ts via @prisma/adapter-pg so the same URL remains
+    // compatible with libpq tools such as pg_dump, psql, and pg_restore.
     DATABASE_URL: z.string().url(),
-    DATABASE_URL_SYNC: z.string().url().optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -225,6 +223,10 @@ export const env = createEnv({
     CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
     OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
+    FIREWORKS_API_KEY: z.string().min(1).optional(),
+    FIREWORKS_EMBEDDING_MODEL: z.string().min(1).optional(),
+    FIREWORKS_EMBEDDING_BASE_URL: z.string().url().optional(),
+    QUERY_EMBEDDING_PROVIDER: z.enum(["openrouter", "fireworks"]).optional(),
     OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
@@ -574,7 +576,6 @@ export const env = createEnv({
     DD_ENV: datadogServerEnvFallback(),
     DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
     DD_VERSION: datadogVersionFallback(),
-    DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
     ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
     AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),
@@ -639,6 +640,16 @@ export const env = createEnv({
       process.env.OPENROUTER_API_PAID_KEY,
     ),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+    FIREWORKS_API_KEY: emptyToUndefined(process.env.FIREWORKS_API_KEY),
+    FIREWORKS_EMBEDDING_MODEL: emptyToUndefined(
+      process.env.FIREWORKS_EMBEDDING_MODEL,
+    ),
+    FIREWORKS_EMBEDDING_BASE_URL: emptyToUndefined(
+      process.env.FIREWORKS_EMBEDDING_BASE_URL,
+    ),
+    QUERY_EMBEDDING_PROVIDER: emptyToUndefined(
+      process.env.QUERY_EMBEDDING_PROVIDER,
+    ),
     OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
       process.env.OPENROUTER_IMAGE_TEXT_MODEL,
     ),

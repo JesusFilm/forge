@@ -1196,8 +1196,8 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   after the 20 minute confirmation window. Do not sleep inside the worker step.
 - Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
   backfill is now network-bound on Mastra plus DB-bound inside the
-  ingest callback; default `5` leaves headroom on admin's
-  `connection_limit=10` pool. Per-target progress streams via
+  ingest callback; default `5` leaves headroom on admin's main
+  PrismaPg adapter pool. Per-target progress streams via
   `transcript_index_complete` / `_skipped` / `_failed` log events and
   a single `event=start` carrying resolved concurrency and `groupCount`.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation

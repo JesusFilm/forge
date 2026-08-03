@@ -1,95 +1,22 @@
 import { mkdir, open } from "node:fs/promises"
 import { basename, dirname, resolve as resolvePath } from "node:path"
 import { performance } from "node:perf_hooks"
+import { VideoDbBackupError } from "@/services/video-db-backup/errors"
+import type { VideoDbBackupFreshnessAvailable } from "@/services/video-db-backup/freshness"
+import {
+  VIDEO_DB_BACKUP_PROFILES,
+  type VideoDbBackupProfile,
+} from "@/services/video-db-backup/profiles"
 
-export const VIDEO_DB_BACKUP_PROFILES = {
-  "video-core": [
-    "language",
-    "language_locale",
-    "continent",
-    "continent_locale",
-    "country",
-    "country_locale",
-    "country_language",
-    "keyword",
-    "video_origin",
-    "video_edition",
-    "mux_video",
-    "bible_book",
-    "video",
-    "video_locale",
-    "video_relation",
-    "video_keyword",
-    "video_dub",
-    "video_dub_download",
-    "video_subtitle",
-    "video_study_question",
-    "video_image",
-    "bible_citation",
-  ],
-  "video-search": [
-    "language",
-    "language_locale",
-    "continent",
-    "continent_locale",
-    "country",
-    "country_locale",
-    "country_language",
-    "keyword",
-    "video_origin",
-    "video_edition",
-    "mux_video",
-    "bible_book",
-    "video",
-    "video_locale",
-    "video_relation",
-    "video_keyword",
-    "video_dub",
-    "video_dub_download",
-    "video_subtitle",
-    "video_study_question",
-    "video_image",
-    "bible_citation",
-    "video_scene",
-    "video_scene_locale",
-    "video_transcript",
-    "video_transcript_chunk",
-  ],
-  "video-full": [
-    "language",
-    "language_locale",
-    "continent",
-    "continent_locale",
-    "country",
-    "country_locale",
-    "country_language",
-    "keyword",
-    "video_origin",
-    "video_edition",
-    "mux_video",
-    "bible_book",
-    "video",
-    "video_locale",
-    "video_relation",
-    "video_keyword",
-    "video_dub",
-    "video_dub_download",
-    "video_subtitle",
-    "video_study_question",
-    "video_image",
-    "bible_citation",
-    "video_scene",
-    "video_scene_locale",
-    "video_transcript",
-    "video_transcript_chunk",
-  ],
-} as const
+export { VideoDbBackupError } from "@/services/video-db-backup/errors"
+export * from "@/services/video-db-backup/freshness"
+export {
+  SCHEDULED_VIDEO_DB_BACKUP_PROFILES,
+  VIDEO_DB_BACKUP_PROFILES,
+  type VideoDbBackupJobResult,
+  type VideoDbBackupProfile,
+} from "@/services/video-db-backup/profiles"
 
-export type VideoDbBackupProfile = keyof typeof VIDEO_DB_BACKUP_PROFILES
-export const SCHEDULED_VIDEO_DB_BACKUP_PROFILES = [
-  "video-core",
-  "video-search",
-] as const satisfies readonly VideoDbBackupProfile[]
 export type TargetEnvironment = "development" | "staging" | "production"
 
 export type ParsedArgs = {
@@ -186,20 +113,6 @@ export type RestorePlan = {
   commands: CommandPlan[]
 }
 
-export type VideoDbBackupJobResult = {
-  event: "video-db.backup.complete" | "video-db.backup.dry-run-complete"
-  profile: VideoDbBackupProfile
-  tables: number
-  path: string
-  size?: number
-  exportDurationMs?: number
-  uploadDurationMs?: number
-  upload?: {
-    bucket: string
-    key: string
-  }
-}
-
 export type VideoDbBackupDownloadResult = {
   event: "video-db.backup.download.complete"
   profile: VideoDbBackupProfile
@@ -221,55 +134,6 @@ export type PresignedBackupResponse = {
   size?: number
   lastModified?: string
   freshness: VideoDbBackupFreshnessAvailable
-}
-
-export const VIDEO_DB_BACKUP_MAX_AGE_HOURS = 36
-export const VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS =
-  VIDEO_DB_BACKUP_MAX_AGE_HOURS * 60 * 60 * 1000
-
-export type VideoDbBackupObjectMetadata = {
-  key?: string
-  size?: number
-  lastModified?: Date
-}
-
-export type VideoDbBackupObjectPage = {
-  objects: readonly VideoDbBackupObjectMetadata[]
-  isTruncated?: boolean
-  nextContinuationToken?: string
-}
-
-type VideoDbBackupFreshnessBase = {
-  evaluatedAt: string
-  thresholdHours: number
-  thresholdMilliseconds: number
-}
-
-export type VideoDbBackupFreshnessAvailable = VideoDbBackupFreshnessBase & {
-  status: "fresh" | "stale"
-  key: string
-  size?: number
-  lastModified: string
-  ageMilliseconds: number
-}
-
-export type VideoDbBackupFreshness =
-  | VideoDbBackupFreshnessAvailable
-  | (VideoDbBackupFreshnessBase & {
-      status: "not-found"
-    })
-  | (VideoDbBackupFreshnessBase & {
-      status: "unavailable-metadata"
-      key: string
-      size?: number
-      reason: "missing-or-invalid-last-modified"
-    })
-
-export class VideoDbBackupError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "VideoDbBackupError"
-  }
 }
 
 export function elapsedMilliseconds(startedAt: number): number {
@@ -353,92 +217,6 @@ export function parseArgs(
     allowStale: hasFlag(normalizedArgs, "allow-stale"),
     dryRun: hasFlag(normalizedArgs, "dry-run"),
   }
-}
-
-export function classifyVideoDbBackupFreshness(
-  objects: readonly VideoDbBackupObjectMetadata[],
-  evaluatedAt = new Date(Date.now()),
-): VideoDbBackupFreshness {
-  const evaluation = {
-    evaluatedAt: evaluatedAt.toISOString(),
-    thresholdHours: VIDEO_DB_BACKUP_MAX_AGE_HOURS,
-    thresholdMilliseconds: VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS,
-  }
-  let sawDump = false
-  let unavailable: (VideoDbBackupObjectMetadata & { key: string }) | undefined
-  let latest:
-    | (VideoDbBackupObjectMetadata & { key: string; lastModified: Date })
-    | undefined
-
-  for (const object of objects) {
-    const key = object.key
-    if (typeof key !== "string" || !key.endsWith(".dump")) {
-      continue
-    }
-    sawDump = true
-    const lastModified = object.lastModified
-    if (
-      !(lastModified instanceof Date) ||
-      !Number.isFinite(lastModified.getTime())
-    ) {
-      unavailable ??= { ...object, key }
-      continue
-    }
-    if (!latest || lastModified.getTime() > latest.lastModified.getTime()) {
-      latest = { ...object, key, lastModified }
-    }
-  }
-
-  if (!sawDump) return { status: "not-found", ...evaluation }
-  if (unavailable) {
-    return {
-      status: "unavailable-metadata",
-      key: unavailable.key,
-      size: unavailable.size,
-      reason: "missing-or-invalid-last-modified",
-      ...evaluation,
-    }
-  }
-
-  if (!latest) {
-    throw new VideoDbBackupError(
-      "Video DB backup freshness classification reached an invalid state",
-    )
-  }
-
-  const ageMilliseconds = evaluatedAt.getTime() - latest.lastModified.getTime()
-  return {
-    status:
-      ageMilliseconds <= VIDEO_DB_BACKUP_MAX_AGE_MILLISECONDS
-        ? "fresh"
-        : "stale",
-    key: latest.key,
-    size: latest.size,
-    lastModified: latest.lastModified.toISOString(),
-    ageMilliseconds,
-    ...evaluation,
-  }
-}
-
-export async function discoverVideoDbBackupFreshnessFromPages(
-  loadPage: (continuationToken?: string) => Promise<VideoDbBackupObjectPage>,
-): Promise<VideoDbBackupFreshness> {
-  const objects: VideoDbBackupObjectMetadata[] = []
-  let continuationToken: string | undefined
-
-  while (true) {
-    const page = await loadPage(continuationToken)
-    objects.push(...page.objects)
-    if (!page.isTruncated) break
-    if (!page.nextContinuationToken) {
-      throw new VideoDbBackupError(
-        "Backup object listing was truncated without a continuation token",
-      )
-    }
-    continuationToken = page.nextContinuationToken
-  }
-
-  return classifyVideoDbBackupFreshness(objects)
 }
 
 function timestamp(): string {

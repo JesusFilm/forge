@@ -10,9 +10,11 @@ import { env } from "@/config/env"
 import {
   discoverVideoDbBackupFreshnessFromPages,
   type VideoDbBackupFreshness,
+} from "@/services/video-db-backup/freshness"
+import {
   type VideoDbBackupProfile,
   VIDEO_DB_BACKUP_PROFILES,
-} from "@/scripts/video-db-backup-core"
+} from "@/services/video-db-backup/profiles"
 
 export const runtime = "nodejs"
 

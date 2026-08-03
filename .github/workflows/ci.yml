@@ -261,5 +261,8 @@ jobs:
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do
             cp "$f" "$(dirname "$f")/.env"
           done
+          if [ "${{ matrix.service }}" = "@forge/admin" ]; then
+            cat apps/admin/.env.ci >> "$GITHUB_ENV"
+          fi
       - name: Build package
         run: pnpm --filter "${{ matrix.service }}" run --if-present build

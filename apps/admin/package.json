@@ -82,6 +82,7 @@
     "@pothos/core": "4.12.0",
     "@pothos/plugin-prisma": "4.14.3",
     "@pothos/plugin-scope-auth": "4.1.6",
+    "@prisma/adapter-pg": "6.19.3",
     "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tailwindcss/postcss": "4.2.2",

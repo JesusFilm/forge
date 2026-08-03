@@ -43,9 +43,9 @@ import {
 import {
   recordWatchSearchResultClick,
   recordWatchSearchResultsViewed,
-  runSearch,
 } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
+import { searchWatchDirect } from "@/lib/watch-search-client"
 import {
   __resetWatchInteractionLoaderForTests,
   __setWatchInteractionLoadersForTests,
@@ -53,6 +53,7 @@ import {
 import type {
   SearchActionResult,
   SearchActionResultSource,
+  SearchResponse,
   SearchResult,
 } from "@/lib/search"
 import {
@@ -87,7 +88,10 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/search-actions", () => ({
   recordWatchSearchResultClick: vi.fn(async () => ({ ok: true })),
   recordWatchSearchResultsViewed: vi.fn(async () => ({ ok: true })),
-  runSearch: vi.fn(),
+}))
+
+vi.mock("@/lib/watch-search-client", () => ({
+  searchWatchDirect: vi.fn(),
 }))
 
 vi.mock("@/lib/search-language-actions", () => ({
@@ -170,7 +174,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-const mockedRunSearch = vi.mocked(runSearch)
+const mockedRunSearch = vi.mocked(searchWatchDirect)
 const mockedGetSearchLanguageOptions = vi.mocked(getSearchLanguageOptions)
 
 const englishSearchLanguage = {
@@ -245,10 +249,13 @@ async function dispatchScrollAndFlush() {
   })
 }
 
+type MockSearchResponse = SearchResponse &
+  Extract<SearchActionResult, { ok: true }>
+
 function searchResult(
   source: SearchActionResultSource,
   overrides: Partial<Extract<SearchActionResult, { ok: true }>> = {},
-): SearchActionResult {
+): MockSearchResponse {
   return {
     ok: true,
     results: [],
@@ -306,7 +313,7 @@ function makeSearchResult(id: string, title: string): SearchResult {
 function makeSearchResponse(
   results: SearchResult[],
   hasMore: boolean,
-): SearchActionResult {
+): MockSearchResponse {
   return searchResult("watch-search", {
     results,
     hasMore,
@@ -646,8 +653,10 @@ describe("FloatingSearchProvider — search mode", () => {
 
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        routeLanguageSlug: null,
-        uiLocale: "es",
+        locale: "es",
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: null,
+        }),
       }),
     )
   })
@@ -676,8 +685,10 @@ describe("FloatingSearchProvider — search mode", () => {
 
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        routeLanguageSlug: "english",
-        uiLocale: "en",
+        locale: "en",
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: "english",
+        }),
       }),
     )
   })
@@ -709,8 +720,10 @@ describe("FloatingSearchProvider — search mode", () => {
 
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        routeLanguageSlug: "english",
-        uiLocale: "en",
+        locale: "en",
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: "english",
+        }),
       }),
     )
   })
@@ -745,7 +758,11 @@ describe("FloatingSearchProvider — search mode", () => {
     })
 
     expect(mockedRunSearch).toHaveBeenCalledWith(
-      expect.objectContaining({ routeLanguageSlug: null }),
+      expect.objectContaining({
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: null,
+        }),
+      }),
     )
   })
 
@@ -786,7 +803,11 @@ describe("FloatingSearchProvider — search mode", () => {
       })
 
       expect(mockedRunSearch).toHaveBeenCalledWith(
-        expect.objectContaining({ routeLanguageSlug: "french" }),
+        expect.objectContaining({
+          languageContext: expect.objectContaining({
+            routeLanguageSlug: "french",
+          }),
+        }),
       )
     },
   )
@@ -858,10 +879,10 @@ describe("FloatingSearchProvider — search mode", () => {
       1,
       expect.objectContaining({
         query: "jesus",
-        languageEnglishNames: [],
-        languageSlug: null,
-        languageSlugIsExplicit: false,
-        routeLanguageSlug: "spanish-castilian",
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: "spanish-castilian",
+          targetLanguageSlug: null,
+        }),
       }),
     )
 
@@ -877,10 +898,10 @@ describe("FloatingSearchProvider — search mode", () => {
       expect.objectContaining({
         query: "jesus",
         offset: 10,
-        languageEnglishNames: [],
-        languageSlug: null,
-        languageSlugIsExplicit: false,
-        routeLanguageSlug: "spanish-castilian",
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: "spanish-castilian",
+          targetLanguageSlug: null,
+        }),
       }),
     )
   })
@@ -929,8 +950,8 @@ describe("FloatingSearchProvider — search mode", () => {
 
   it("keeps the active loading state when a stale search resolves", async () => {
     vi.useFakeTimers()
-    let resolveFirstSearch: (value: SearchActionResult) => void = () => {}
-    const firstSearch = new Promise<SearchActionResult>((resolve) => {
+    let resolveFirstSearch: (value: MockSearchResponse) => void = () => {}
+    const firstSearch = new Promise<MockSearchResponse>((resolve) => {
       resolveFirstSearch = resolve
     })
     mockedRunSearch
@@ -2625,7 +2646,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
   it("ignores an in-flight search response after the modal closes", async () => {
     vi.useFakeTimers()
-    const delayedSearch = deferred<SearchActionResult>()
+    const delayedSearch = deferred<MockSearchResponse>()
     mockedRunSearch.mockReturnValueOnce(delayedSearch.promise)
 
     const input = await openSearchOverlay()
@@ -2667,7 +2688,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(
       document.querySelector('[aria-label="Search and browse videos"]'),
     ).toBeNull()
-    expect(runSearch).not.toHaveBeenCalled()
+    expect(mockedRunSearch).not.toHaveBeenCalled()
     expect(getSearchLanguageOptions).not.toHaveBeenCalled()
     expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
@@ -3008,7 +3029,9 @@ describe("FloatingSearchProvider — pending language confirmation", () => {
     expect(document.querySelector('[role="status"]')).toBeNull()
     expect(mockedRunSearch).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        languageSlug: "spanish-castilian",
+        languageContext: expect.objectContaining({
+          targetLanguageSlug: "spanish-castilian",
+        }),
         query: SPANISH_CONFIRMATION_QUERY,
       }),
     )
@@ -3113,7 +3136,9 @@ describe("FloatingSearchProvider — pending language confirmation", () => {
     expect(document.querySelector('[role="status"]')).toBeNull()
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        languageSlug: "english",
+        languageContext: expect.objectContaining({
+          targetLanguageSlug: "english",
+        }),
         query: SPANISH_CONFIRMATION_QUERY,
       }),
     )
@@ -3161,7 +3186,7 @@ describe("FloatingSearchProvider — search pagination", () => {
       (anchor) => anchor.getAttribute("href") === "/first-result-slug.html",
     )
     const searchRequestId =
-      mockedRunSearch.mock.calls[0]?.[0].analytics?.searchRequestId
+      mockedRunSearch.mock.calls[0]?.[0].languageContext?.clientRequestId
 
     expect(recordWatchSearchResultsViewed).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -3409,9 +3434,9 @@ describe("FloatingSearchProvider — search pagination", () => {
       expect.objectContaining({
         query: "jesus",
         offset: 10,
-        languageEnglishNames: [],
-        languageSlug: null,
-        languageSlugIsExplicit: false,
+        languageContext: expect.objectContaining({
+          targetLanguageSlug: null,
+        }),
       }),
     )
   })

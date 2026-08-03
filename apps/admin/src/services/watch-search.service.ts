@@ -2,10 +2,9 @@ import { createHash, randomUUID } from "node:crypto"
 
 import type { PrismaClient } from "@prisma/client"
 import {
+  currentEmbeddingProviderIdentity,
   EmbeddingsBatchError,
-  EXPERIENCE_EMBEDDING_DIMENSIONS,
   generateExperienceEmbedding,
-  OPENROUTER_EMBEDDING_MODEL,
 } from "./embeddings.service"
 import {
   searchByExactTitle,
@@ -39,9 +38,8 @@ const MAX_EVIDENCE_LOCALES = 3
 const MIN_METADATA_TOTAL_SCORE = 0.3
 const MIN_SEMANTIC_TOTAL_SCORE = 0.35
 const MIN_SEMANTIC_SOURCE_SCORE = 0.5
-const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 7_000
+const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 1_000
 const QUERY_EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const QUERY_EMBEDDING_PROVIDER = "openrouter"
 export const WATCH_SEARCH_STARTER_QUERIES = [
   "bible stories",
   "parables",
@@ -617,11 +615,17 @@ export class WatchSearchService {
         watchability: entry.watchability,
       })
     })
-    const imagesByVideoId = await this.imagesForResults(results)
+    const [catalogByVideoId, imagesByVideoId] = await Promise.all([
+      this.catalogFieldsForResults(results),
+      this.imagesForResults(results),
+    ])
 
     return {
       results: results.map((result) =>
-        withSearchResultImage(result, imagesByVideoId.get(result.id)),
+        withSearchResultImage(
+          withSearchResultCatalog(result, catalogByVideoId.get(result.id)),
+          imagesByVideoId.get(result.id),
+        ),
       ),
       hasMore: candidates.length > limit,
       degraded: semanticPipeline.degraded,
@@ -843,6 +847,48 @@ export class WatchSearchService {
     }
     return byVideoId
   }
+
+  private async catalogFieldsForResults(
+    results: readonly WatchSearchResult[],
+  ): Promise<Map<string, WatchSearchResultCatalog>> {
+    const videoIds = uniqueNonNull(
+      results
+        .filter((result) => result.type === "video")
+        .map((result) => result.id),
+    )
+    if (videoIds.length === 0) return new Map()
+
+    const videos = await this.prisma.video.findMany({
+      where: {
+        id: { in: videoIds },
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        label: true,
+        children: {
+          where: {
+            child: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            childId: true,
+          },
+        },
+      },
+    })
+
+    return new Map(
+      videos.map((video) => [
+        video.id,
+        {
+          label: video.label ?? null,
+          childCount: video.children.length,
+        },
+      ]),
+    )
+  }
 }
 
 type ExactTitleCandidate = ExactTitleResult
@@ -874,6 +920,11 @@ type SemanticVideoSearchResult = VideoSemanticResult & {
 type WatchSearchResultImage = {
   imageUrl: string
   imageBlurDataUrl: string | null
+}
+
+type WatchSearchResultCatalog = {
+  label: string | null
+  childCount: number
 }
 
 function laneStatus({
@@ -935,17 +986,18 @@ function normalizeEmbeddingCacheText(text: string): string {
 }
 
 function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
+  const identity = currentEmbeddingProviderIdentity()
   const cacheIdentity = JSON.stringify({
-    provider: QUERY_EMBEDDING_PROVIDER,
-    model: OPENROUTER_EMBEDDING_MODEL,
-    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    provider: identity.provider,
+    model: identity.model,
+    dimensions: identity.dimensions,
     text: normalizeEmbeddingCacheText(text),
   })
 
   return {
-    provider: QUERY_EMBEDDING_PROVIDER,
-    model: OPENROUTER_EMBEDDING_MODEL,
-    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    provider: identity.provider,
+    model: identity.model,
+    dimensions: identity.dimensions,
     queryHash: createHash("sha256").update(cacheIdentity).digest("hex"),
   }
 }
@@ -1221,6 +1273,18 @@ function withSearchResultImage(
     ...result,
     imageUrl: image.imageUrl,
     imageBlurDataUrl: image.imageBlurDataUrl,
+  }
+}
+
+function withSearchResultCatalog(
+  result: WatchSearchResult,
+  catalog: WatchSearchResultCatalog | undefined,
+): WatchSearchResult {
+  if (!catalog || result.type !== "video") return result
+  return {
+    ...result,
+    label: result.label ?? catalog.label,
+    childCount: result.childCount ?? catalog.childCount,
   }
 }
 

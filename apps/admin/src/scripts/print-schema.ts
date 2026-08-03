@@ -40,8 +40,6 @@ import {
   visit,
 } from "graphql"
 
-import { schema } from "@/graphql/schema"
-
 // Anchor the output path to this script's location, NOT process.cwd().
 // pnpm/Turbo invocation sets cwd correctly; raw `tsx apps/admin/src/scripts/
 // print-schema.ts` from the repo root would otherwise write schema.graphql
@@ -110,7 +108,16 @@ function stripPothosDirectives(sdl: string): string {
   return print(cleaned)
 }
 
-function main(): void {
+async function main(): Promise<void> {
+  process.env.CI ??= "1"
+  process.env.DATABASE_URL ??=
+    "postgresql://forge:forge@localhost:5432/forge_admin"
+  process.env.ADMIN_SESSION_SECRET ??=
+    "forge-admin-schema-print-secret-min-32-chars"
+  process.env.AUTH_ISSUER_URL ??= "http://localhost:3004"
+  process.env.AUTH_ADMIN_CLIENT_ID ??= "admin-schema-print"
+
+  const { schema } = await import("@/graphql/schema")
   const sortedSchema = lexicographicSortSchema(schema)
   const rawSdl = printSchema(sortedSchema)
   const cleanedSdl = stripPothosDirectives(rawSdl)
@@ -135,4 +142,4 @@ function main(): void {
   )
 }
 
-main()
+void main()
