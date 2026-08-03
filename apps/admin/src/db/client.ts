@@ -2,18 +2,22 @@
 //
 // Two clients are exported:
 //   - `prisma`       — the main client for GraphQL + mutations
-//                      (connection_limit=10, pool_timeout=20 via DATABASE_URL)
+//                      (max=10, connection timeout=20s via PrismaPg adapter)
 //   - `syncPrisma`   — dedicated client for Core sync background workflow
-//                      (for production, start around connection_limit=5 and
-//                      pool_timeout=60 via DATABASE_URL_SYNC) so sync cannot
-//                      starve read traffic.
+//                      (max=5, connection timeout=60s via PrismaPg adapter)
+//                      so sync cannot starve read traffic.
 //
 // Both use the Next.js HMR-safe singleton pattern: dev reloads reuse the
 // existing client from `globalThis` instead of spawning new pools.
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import { PrismaPg } from "@prisma/adapter-pg"
 import { Prisma, PrismaClient } from "@prisma/client"
+import {
+  prismaPgAdapterConfigForProfile,
+  type PrismaPoolProfile,
+} from "@/db/prisma-pool-config"
 
 export const INCLUDE_EMBEDDING_ARG = "__includeEmbedding" as const
 
@@ -74,20 +78,28 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
 )
 
 function createPrismaClient(
-  options?: Prisma.PrismaClientOptions,
+  profile: PrismaPoolProfile,
+  options?: Omit<Prisma.PrismaClientOptions, "adapter" | "datasourceUrl">,
 ): PrismaClient {
-  return new PrismaClient(options).$extends(
+  const adapterConfig = prismaPgAdapterConfigForProfile(
+    process.env.DATABASE_URL,
+    profile,
+  )
+  const adapter = new PrismaPg(adapterConfig.poolConfig, adapterConfig.options)
+
+  return new PrismaClient({ ...options, adapter }).$extends(
     embeddingGuardExtension,
   ) as unknown as PrismaClient
 }
 
 /**
  * Main Prisma client. Use for GraphQL resolvers, services, and user-facing
- * mutations. Configure `DATABASE_URL` with `?connection_limit=10&pool_timeout=20`.
+ * mutations. Pool tuning lives in the PrismaPg adapter config above so
+ * `DATABASE_URL` remains a plain Postgres URL usable by libpq tools.
  */
 export const prisma =
   globalForPrisma.prisma ??
-  createPrismaClient({
+  createPrismaClient("main", {
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "warn", "error"]
@@ -96,14 +108,12 @@ export const prisma =
 
 /**
  * Dedicated Prisma client for Core sync background workflow. Production should
- * use an isolated `DATABASE_URL_SYNC` pool sized against total Postgres
- * capacity; a conservative starting point is
- * `?connection_limit=5&pool_timeout=60`.
+ * use the same `DATABASE_URL` with its own adapter pool sized against total
+ * Postgres capacity.
  */
 export const syncPrisma =
   globalForPrisma.syncPrisma ??
-  createPrismaClient({
-    datasourceUrl: process.env.DATABASE_URL_SYNC ?? process.env.DATABASE_URL,
+  createPrismaClient("sync", {
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   })
 

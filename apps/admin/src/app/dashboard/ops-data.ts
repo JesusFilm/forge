@@ -1453,8 +1453,8 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     title: `${row.workflowKey} ${row.status}`,
     meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
     detail:
-      row.summary ??
       row.error ??
+      row.summary ??
       (row.finishedAt
         ? `Finished ${formatDateTime(row.finishedAt)}`
         : row.startedAt
