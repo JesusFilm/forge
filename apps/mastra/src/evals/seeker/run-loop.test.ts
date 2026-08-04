@@ -85,6 +85,17 @@ describe("spend-guard import order (source pin)", () => {
     }
   })
 
+  it("keeps the gating loop decoding-UNPINNED — provider defaults, like production (decision 2026-08-04 #14)", () => {
+    // A one-line re-pin (modelSettings on generate, or re-importing
+    // ANSWER_DECODING) would silently move the gate back to a distribution
+    // production never serves; the stripped source must contain neither
+    // token.
+    const code = strippedRunLoopSource()
+    expect(code).not.toMatch(/modelSettings|ANSWER_DECODING/)
+    // Anti-vacuous companion: the null stamp is really there.
+    expect(code).toMatch(/decoding:\s*null/)
+  })
+
   it("loads prompt-sections and the agent module ONLY via post-pin dynamic import()", () => {
     const code = strippedRunLoopSource()
     // Both modules are still consumed — through import(), inside main(),

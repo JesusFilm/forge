@@ -182,8 +182,13 @@ function readUsage(payload: unknown): Usage {
 }
 
 /**
- * Decoding parameters shared by every answering call, exported so run
- * identity can stamp them — a temperature change breaks run comparability.
+ * Decoding parameters for the INJECTED FAST MODE ONLY (run-answers +
+ * this client's completions), exported so run identity can stamp them — a
+ * temperature change breaks run comparability. Decision 2026-08-04 (#14):
+ * the GATING tool-loop mode (run-loop.ts) no longer pins these — it samples
+ * provider defaults exactly like production, and stamps `decoding: null` in
+ * run identity so pinned-era artifacts can never silently compare against
+ * provider-default runs.
  * 1600, raised from 900 after the 2026-07-29 prototype run truncated Sonnet
  * on q-trinity: the cap must sit well ABOVE the length we want answers to
  * hit, or the harness silently converts "too long" (a finding) into

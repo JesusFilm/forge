@@ -52,6 +52,9 @@ describe("identityMismatch — refuse-to-compare", () => {
       "decoding parameters",
       identity({ decoding: { temperature: 0, maxTokens: 1600 } }),
     ],
+    // Decision 2026-08-04 (#14): a provider-default (null) run and a
+    // pinned run are different sampling distributions — never comparable.
+    ["decoding parameters", identity({ decoding: null })],
     [
       "retrieval mode",
       identity({
@@ -66,6 +69,15 @@ describe("identityMismatch — refuse-to-compare", () => {
     ],
   ])("refuses on %s", (problem, changed) => {
     expect(identityMismatch(identity(), changed)).toContain(problem)
+  })
+
+  it("compares two provider-default (decoding: null) runs as equal", () => {
+    expect(
+      identityMismatch(
+        identity({ decoding: null }),
+        identity({ decoding: null }),
+      ),
+    ).toEqual([])
   })
 
   it("does NOT treat sampleId as a mismatch — sampling the same identity is the point", () => {

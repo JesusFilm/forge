@@ -56,9 +56,17 @@ export type RunIdentity = {
    *  comparability. */
   criteriaSha256: string
   answeringModels: string[]
-  /** Answer-generation decoding parameters — a temperature change changes
-   *  the distribution being measured. */
-  decoding: DecodingParameters
+  /**
+   * Answer-generation decoding parameters — a temperature change changes
+   * the distribution being measured. `null` = provider-default sampling,
+   * what the GATING tool-loop mode stamps since decision 2026-08-04 (#14),
+   * matching production (which pins nothing). Pinned values remain on the
+   * injected fast mode and pinned-era artifacts. Unlike weightsSha256's
+   * absent-is-compatible rule, null-vs-pinned IS a mismatch — they are
+   * different sampling distributions, and the pinned-era baseline must not
+   * silently compare against provider-default runs.
+   */
+  decoding: DecodingParameters | null
   /**
    * Which sample of an identical configuration this is (multi-sample
    * nightly). Deliberately NOT a mismatch dimension: comparing samples of
@@ -126,9 +134,17 @@ export function identityMismatch(
     problems.push("criteria")
   if (left.answeringModels.join(",") !== right.answeringModels.join(","))
     problems.push("answering models")
+  // Legacy-tolerant null handling (decision 2026-08-04 #14): tolerate the
+  // FIELD being null/absent without crashing, but a pinned run and a
+  // provider-default (null) run are DIFFERENT distributions — mismatch.
+  const leftDecoding = left.decoding ?? null
+  const rightDecoding = right.decoding ?? null
   if (
-    left.decoding.temperature !== right.decoding.temperature ||
-    left.decoding.maxTokens !== right.decoding.maxTokens
+    (leftDecoding == null) !== (rightDecoding == null) ||
+    (leftDecoding != null &&
+      rightDecoding != null &&
+      (leftDecoding.temperature !== rightDecoding.temperature ||
+        leftDecoding.maxTokens !== rightDecoding.maxTokens))
   )
     problems.push("decoding parameters")
 

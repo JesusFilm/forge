@@ -37,7 +37,6 @@ import { csv, flag, loadFixtures } from "./cli"
 import { KEY_VARIABLE, keyHelpText, loadEnvFiles } from "./env"
 import { criteriaHash, gitSha, sha256 } from "./hashes"
 import { answeringModelsByIds, costUsd, type AnsweringModel } from "./models"
-import { ANSWER_DECODING } from "./openrouter"
 // NO static import of ./prompt-sections here: it value-imports
 // SEEKER_SYSTEM_PROMPT_FALLBACK from the agent module, whose top level runs
 // `buildSeekerAgent()` — evaluating the whole Mastra model-router chain
@@ -141,7 +140,6 @@ async function runCell(input: {
       message: string,
       options: {
         memory: { thread: string; resource: string }
-        modelSettings: { temperature: number; maxOutputTokens: number }
         abortSignal: AbortSignal
       },
     ) => Promise<{
@@ -165,15 +163,15 @@ async function runCell(input: {
     model: model.id,
   }
   try {
+    // Decision 2026-08-04 (#14): NO decoding pin here — the gating run must
+    // sample exactly the distribution production serves, and nothing on the
+    // production chain sets temperature or token caps. Run identity stamps
+    // `decoding: null` (provider defaults) so pinned-era artifacts refuse to
+    // compare against these runs.
     const result = await agent.generate(question.text, {
       memory: {
         thread: `seeker-eval-${sampleId}-${question.id}-${model.label}`,
         resource: "seeker-eval",
-      },
-      // The decoding stamp in run identity records exactly these values.
-      modelSettings: {
-        temperature: ANSWER_DECODING.temperature,
-        maxOutputTokens: ANSWER_DECODING.maxTokens,
       },
       abortSignal: AbortSignal.timeout(CELL_TIMEOUT_MS),
     })
@@ -346,10 +344,11 @@ async function main(): Promise<void> {
     questionIds: questions.map((question) => question.id),
     criteriaSha256: criteriaHash(questions),
     answeringModels: models.map((model) => model.id),
-    decoding: {
-      temperature: ANSWER_DECODING.temperature,
-      maxTokens: ANSWER_DECODING.maxTokens,
-    },
+    // null = provider-default sampling (decision 2026-08-04 #14) — the same
+    // distribution production serves. Legacy-tolerant refusal: types.ts
+    // treats null-vs-pinned as a "decoding parameters" mismatch, so the
+    // pinned 0.7/1600-era artifacts can never silently compare.
+    decoding: null,
     sampleId,
     gitSha: gitSha(),
     retrieval: {
