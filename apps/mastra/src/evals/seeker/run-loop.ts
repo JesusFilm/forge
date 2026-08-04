@@ -29,11 +29,11 @@
  *   pnpm --filter @forge/mastra eval:seeker:loop
  *   pnpm --filter @forge/mastra eval:seeker:loop -- --models=google/gemma-4-31b-it --limit=1
  */
-import { readFileSync } from "node:fs"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { csv, flag, loadFixtures } from "./cli"
 import { KEY_VARIABLE, keyHelpText, loadEnvFiles } from "./env"
 import { criteriaHash, gitSha, sha256 } from "./hashes"
 import { answeringModelsByIds, costUsd, type AnsweringModel } from "./models"
@@ -44,13 +44,9 @@ import { ANSWER_DECODING } from "./openrouter"
 // BEFORE pinEvalKey() could run (review finding #13). It loads via dynamic
 // import() inside main(), in the post-pin batch. The source-pin test in
 // run-loop.test.ts fails if a static import of prompt-sections or the agent
-// module ever returns.
+// module ever returns. (./cli is safe: node builtins + ./rag + ./types only.)
 import { QUESTIONS, QUESTION_SET_ID, type Question } from "./questions"
-import {
-  loadableFixtureFile,
-  type RagFixture,
-  type RagFixtureFile,
-} from "./rag"
+import type { RagFixture } from "./rag"
 import {
   ANSWER_RUN_KIND,
   type AnswerRecord,
@@ -102,27 +98,6 @@ export function pinEvalKey(env: Record<string, string | undefined>): {
   // can no longer be what the router bills.
   env.OPENROUTER_API_KEY = key
   return { key }
-}
-
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
-
-function csv(value: string | undefined): string[] {
-  if (!value) return []
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-}
-
-function loadFixtures(path: string): RagFixtureFile {
-  const file = loadableFixtureFile(JSON.parse(readFileSync(path, "utf8")))
-  if (!file) {
-    throw new Error(`${path} is not a chat-eval RAG fixture file`)
-  }
-  return file
 }
 
 /** One cell's full transcript — the run's raw observable record. */
@@ -292,7 +267,7 @@ async function main(): Promise<void> {
   pinEvalKey(process.env)
 
   const argv = process.argv.slice(2)
-  const fixtures = loadFixtures(
+  const fixtures = await loadFixtures(
     resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
   )
   const requestedModels = csv(flag(argv, "models"))

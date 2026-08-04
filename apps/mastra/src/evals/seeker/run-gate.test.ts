@@ -1,10 +1,8 @@
-import { fileURLToPath } from "node:url"
-
 import { describe, expect, it } from "vitest"
 
 import { criteriaFor, questionById } from "./questions"
 import type { RagFixtureFile } from "./rag"
-import { evaluateGate, loadFixtures } from "./run-gate"
+import { evaluateGate } from "./run-gate"
 import {
   ANSWER_RUN_KIND,
   JUDGE_RUN_KIND,
@@ -678,28 +676,5 @@ describe("evaluateGate", () => {
   })
 })
 
-describe("loadFixtures — fail closed (finding #4)", () => {
-  it("throws a distinct error when the file is absent", async () => {
-    await expect(
-      loadFixtures(
-        fileURLToPath(new URL("./no-such-fixtures.json", import.meta.url)),
-      ),
-    ).rejects.toThrow(/fixtures file not found/)
-  })
-
-  it("throws a distinct error when the file is not valid JSON", async () => {
-    await expect(
-      loadFixtures(fileURLToPath(new URL("./run-gate.ts", import.meta.url))),
-    ).rejects.toThrow(/not valid JSON/)
-  })
-
-  it("throws when the file is valid JSON of the wrong kind", async () => {
-    await expect(
-      loadFixtures(
-        fileURLToPath(
-          new URL("./reference-runs/answers-injected.json", import.meta.url),
-        ),
-      ),
-    ).rejects.toThrow(/not a chat-eval RAG fixture file/)
-  })
-})
+// The fail-closed loadFixtures loader (finding #4) is consolidated in cli.ts
+// (decision 2026-08-04 #9) and tested in cli.test.ts.

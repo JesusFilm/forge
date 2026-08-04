@@ -18,7 +18,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { hardFailViolations, runAnswerChecks, type CheckResult } from "./checks"
-import { loadableFixtureFile, type RagFixtureFile } from "./rag"
+import { flag, loadFixtures, runRequiresFixtures } from "./cli"
 import { scoreJudgeRun } from "./score"
 import {
   coerceAnswerRun,
@@ -32,11 +32,6 @@ const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
 const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
 
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
-
 function shortModel(model: string): string {
   return model.split("/").pop()?.replace(":free", "") ?? model
 }
@@ -44,14 +39,6 @@ function shortModel(model: string): string {
 async function loadAnswers(path: string): Promise<AnswerRun | null> {
   try {
     return coerceAnswerRun(JSON.parse(await readFile(path, "utf8")))
-  } catch {
-    return null
-  }
-}
-
-async function loadFixtures(path: string): Promise<RagFixtureFile | null> {
-  try {
-    return loadableFixtureFile(JSON.parse(await readFile(path, "utf8")))
   } catch {
     return null
   }
@@ -67,13 +54,19 @@ async function main(): Promise<void> {
     process.cwd(),
     flag(argv, "answers") ?? resolve(DEFAULT_RUNS_DIR, "answers.json"),
   )
-  const fixtures = await loadFixtures(
-    resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
-  )
   const run = JSON.parse(await readFile(inPath, "utf8")) as JudgeRun
   if (run.kind !== JUDGE_RUN_KIND) {
     throw new Error(`${inPath} is not a seeker-eval judgements file`)
   }
+  // Fail-closed, mode-aware fixtures resolution (decision 2026-08-04 #9 —
+  // this was the last swallow-to-null loader): a fixture-world run's checks
+  // section must not silently vanish on a load failure; a mode-"none" run
+  // never needed the file, so it is not loaded at all.
+  const fixtures = runRequiresFixtures(run.identity.retrieval)
+    ? await loadFixtures(
+        resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
+      )
+    : null
   const answers = await loadAnswers(answersPath)
   const outPath = resolve(
     process.cwd(),

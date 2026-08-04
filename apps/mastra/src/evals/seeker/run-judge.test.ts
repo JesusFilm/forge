@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url"
-
 import { describe, expect, it, vi } from "vitest"
 
 import { criteriaFor, questionById } from "./questions"
@@ -7,11 +5,9 @@ import {
   assertFixtureCorpusMatchesRun,
   collapseAgreeingDuplicates,
   judgeOneAnswer,
-  loadFixtures,
   parseVerdicts,
   renderPassagesBlock,
   rubricSha256,
-  runRequiresFixtures,
   verdictProtocolProblems,
   type JudgeCompletion,
 } from "./run-judge"
@@ -324,16 +320,9 @@ describe("fixtures policy — mode-aware, fail-closed (finding #12)", () => {
     fixtures: [],
   }
 
-  it("requires fixtures for fixture-world runs; only mode 'none' may judge without", () => {
-    expect(
-      runRequiresFixtures({ mode: "fixtures", corpusSha256: "c", topK: 5 }),
-    ).toBe(true)
-    expect(
-      runRequiresFixtures({ mode: "tool-loop", corpusSha256: "c", topK: 5 }),
-    ).toBe(true)
-    expect(runRequiresFixtures({ mode: "none" })).toBe(false)
-    expect(runRequiresFixtures(undefined)).toBe(false)
-  })
+  // The mode-aware requirement helper (runRequiresFixtures) and the shared
+  // fail-closed loader now live in cli.ts (decision 2026-08-04 #9) and are
+  // tested in cli.test.ts; the judge-specific corpus assertion stays here.
 
   it("refuses a fixtures file whose corpus differs from the run's stamp", () => {
     expect(() =>
@@ -369,31 +358,5 @@ describe("fixtures policy — mode-aware, fail-closed (finding #12)", () => {
         allowCorpusMismatch: false,
       }),
     ).not.toThrow()
-  })
-})
-
-describe("loadFixtures — fail closed (finding #12)", () => {
-  it("throws a distinct error when the file is absent", async () => {
-    await expect(
-      loadFixtures(
-        fileURLToPath(new URL("./no-such-fixtures.json", import.meta.url)),
-      ),
-    ).rejects.toThrow(/fixtures file not found/)
-  })
-
-  it("throws a distinct error when the file is not valid JSON", async () => {
-    await expect(
-      loadFixtures(fileURLToPath(new URL("./run-judge.ts", import.meta.url))),
-    ).rejects.toThrow(/not valid JSON/)
-  })
-
-  it("throws when the file is valid JSON of the wrong kind", async () => {
-    await expect(
-      loadFixtures(
-        fileURLToPath(
-          new URL("./reference-runs/answers-injected.json", import.meta.url),
-        ),
-      ),
-    ).rejects.toThrow(/not a chat-eval RAG fixture file/)
   })
 })

@@ -21,11 +21,11 @@
  *   pnpm --filter @forge/mastra eval:seeker:answers
  *   pnpm --filter @forge/mastra eval:seeker:answers -- --limit=1 --models=google/gemma-4-31b-it
  */
-import { readFileSync } from "node:fs"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { csv, flag, loadFixtures } from "./cli"
 import { requireOpenRouterKey } from "./env"
 import { criteriaHash, gitSha } from "./hashes"
 import { answeringModelsByIds, costUsd } from "./models"
@@ -40,38 +40,12 @@ import {
   SECTION_MAPPING_VERSION,
 } from "./prompt-sections"
 import { QUESTIONS, QUESTION_SET_ID } from "./questions"
-import {
-  loadableFixtureFile,
-  RETRIEVE_ANSWER_TOOL_SPEC,
-  type RagFixture,
-  type RagFixtureFile,
-} from "./rag"
+import { RETRIEVE_ANSWER_TOOL_SPEC, type RagFixture } from "./rag"
 import { ANSWER_RUN_KIND, type AnswerRecord, type AnswerRun } from "./types"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
 const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
-
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
-
-function csv(value: string | undefined): string[] {
-  if (!value) return []
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
-}
-
-function loadFixtures(path: string): RagFixtureFile {
-  const file = loadableFixtureFile(JSON.parse(readFileSync(path, "utf8")))
-  if (!file) {
-    throw new Error(`${path} is not a chat-eval RAG fixture file`)
-  }
-  return file
-}
 
 /**
  * Injected mode shares the frozen-world invariant fixture-rag.ts's
@@ -98,7 +72,7 @@ async function main(): Promise<void> {
   requireOpenRouterKey()
 
   const argv = process.argv.slice(2)
-  const fixtures = loadFixtures(
+  const fixtures = await loadFixtures(
     resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
   )
   const models = answeringModelsByIds(csv(flag(argv, "models")))

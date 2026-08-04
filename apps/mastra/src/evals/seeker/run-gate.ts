@@ -61,7 +61,8 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { hardFailViolations, runAnswerChecks } from "./checks"
-import { loadableFixtureFile, type RagFixtureFile } from "./rag"
+import { flag, loadFixtures } from "./cli"
+import type { RagFixtureFile } from "./rag"
 import { scoreJudgeRun } from "./score"
 import {
   coerceAnswerRun,
@@ -648,11 +649,6 @@ export function evaluateGate(input: {
   }
 }
 
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
-
 async function loadAnswers(path: string): Promise<AnswerRun> {
   return coerceAnswerRun(JSON.parse(await readFile(path, "utf8")))
 }
@@ -663,43 +659,6 @@ async function loadJudged(path: string): Promise<JudgeRun> {
     throw new Error(`${path} is not a seeker-eval judgements file`)
   }
   return run
-}
-
-/**
- * Fail-closed fixtures load (review finding #4). With null fixtures both
- * grounded-citation checks return not-applicable for every cell, so a
- * swallowed load failure silently vacates the exact lane the gate exists to
- * hold. Absence and corruption throw DISTINCT messages — they have different
- * fixes — and main() maps any throw to a nonzero exit. Exported for tests.
- */
-export async function loadFixtures(path: string): Promise<RagFixtureFile> {
-  let raw: string
-  try {
-    raw = await readFile(path, "utf8")
-  } catch (cause) {
-    const code = (cause as NodeJS.ErrnoException).code
-    if (code === "ENOENT") {
-      throw new Error(
-        `fixtures file not found at ${path} — run eval:seeker:capture-rag against a live RAG, or pass --fixtures=<path>`,
-      )
-    }
-    throw new Error(
-      `fixtures file at ${path} could not be read: ${cause instanceof Error ? cause.message : String(cause)}`,
-    )
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error(
-      `fixtures file at ${path} is not valid JSON — restore or re-capture it`,
-    )
-  }
-  const file = loadableFixtureFile(parsed)
-  if (!file) {
-    throw new Error(`${path} is not a chat-eval RAG fixture file (wrong kind)`)
-  }
-  return file
 }
 
 async function main(): Promise<void> {

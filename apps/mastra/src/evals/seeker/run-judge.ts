@@ -19,8 +19,9 @@
  * passages", so the judge must see them to grade honestly. A run stamped
  * retrieval mode "fixtures"/"tool-loop" therefore REQUIRES a loadable
  * fixture file whose corpus matches the run's stamp (fail-closed; see
- * `loadFixtures` / `runRequiresFixtures` / `assertFixtureCorpusMatchesRun`);
- * only a mode-"none" run may judge without one.
+ * cli.ts's `loadFixtures`/`runRequiresFixtures` and
+ * `assertFixtureCorpusMatchesRun` below); only a mode-"none" run may judge
+ * without one.
  *
  *   pnpm --filter @forge/mastra eval:seeker:judge
  *   pnpm --filter @forge/mastra eval:seeker:judge -- \
@@ -31,12 +32,13 @@ import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { flag, loadFixtures, runRequiresFixtures } from "./cli"
 import { requireOpenRouterKey } from "./env"
 import { criteriaHash, sha256, weightsHash } from "./hashes"
 import { costUsd, JUDGE_MODEL } from "./models"
 import { completeJson, EvalLlmError, type Usage } from "./openrouter"
 import { criteriaFor, questionById, type Criterion } from "./questions"
-import { loadableFixtureFile, type RagFixtureFile } from "./rag"
+import type { RagFixtureFile } from "./rag"
 import {
   coerceAnswerRun,
   JUDGE_RUN_KIND,
@@ -51,11 +53,6 @@ const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 /** Defaults resolve from this module, so they work from any cwd. */
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
 const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
-
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
 
 /** Normalises polarity so the judge sees one plain requirement per line. */
 export function renderCriterion(criterion: Criterion): string {
@@ -353,58 +350,6 @@ export async function judgeOneAnswer(
     judgeCostUsd: costUsd(JUDGE_MODEL, usage),
     judgeLatencyMs: latencyMs,
   }
-}
-
-/**
- * Fail-closed fixtures load (review finding #12). A swallowed load failure
- * used to grade every cell against an empty world — "No passages were
- * served … therefore ungrounded" — turning a file-path typo into a wall of
- * false grounding violations indistinguishable from a real regression.
- * Absence and corruption throw DISTINCT messages — they have different
- * fixes — and main() maps any throw to a nonzero exit. Exported for tests.
- */
-export async function loadFixtures(path: string): Promise<RagFixtureFile> {
-  let raw: string
-  try {
-    raw = await readFile(path, "utf8")
-  } catch (cause) {
-    const code = (cause as NodeJS.ErrnoException).code
-    if (code === "ENOENT") {
-      throw new Error(
-        `fixtures file not found at ${path} — run eval:seeker:capture-rag against a live RAG, or pass --fixtures=<path>`,
-      )
-    }
-    throw new Error(
-      `fixtures file at ${path} could not be read: ${cause instanceof Error ? cause.message : String(cause)}`,
-    )
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error(
-      `fixtures file at ${path} is not valid JSON — restore or re-capture it`,
-    )
-  }
-  const file = loadableFixtureFile(parsed)
-  if (!file) {
-    throw new Error(`${path} is not a chat-eval RAG fixture file (wrong kind)`)
-  }
-  return file
-}
-
-/**
- * Fixture requirement keyed on the run's retrieval mode (finding #12): a
- * "fixtures" or "tool-loop" run was GENERATED against served passages, so
- * grading it without them falsifies every grounding verdict. Only a
- * mode-"none" (or unstamped legacy) run may judge without fixtures — that is
- * the one case where "No passages were served" is the truth, reached
- * explicitly here, never via a swallowed load error.
- */
-export function runRequiresFixtures(
-  retrieval: RunIdentity["retrieval"] | undefined,
-): boolean {
-  return retrieval?.mode === "fixtures" || retrieval?.mode === "tool-loop"
 }
 
 /**

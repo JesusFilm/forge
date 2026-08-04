@@ -19,6 +19,7 @@ import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { flag } from "./cli"
 import { loadEnvFiles } from "./env"
 import { QUESTIONS } from "./questions"
 import {
@@ -30,11 +31,6 @@ import {
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_OUT = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
-
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
 
 /** Fingerprint every passage, so a re-index is visible as a changed hash.
  *  KNOWN LIMITATION (accepted): the material hashes `text.length` — not the

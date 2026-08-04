@@ -14,16 +14,12 @@ import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { flag } from "./cli"
 import { scoreJudgeRun } from "./score"
 import { JUDGE_RUN_KIND, type JudgeRun } from "./types"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
-
-function flag(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length)
-}
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2)
