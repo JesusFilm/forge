@@ -9,12 +9,6 @@ import { isEditorOrAdmin } from "@/auth/principal"
 // needed), so Core's single "watch" restriction correctly maps to "hide from
 // all three." EDITOR/ADMIN callers always bypass this — the dashboard needs
 // to keep showing restricted videos so editors can review/manage them.
-export function isRestrictedFromWatch(
-  restrictViewPlatforms: readonly string[],
-): boolean {
-  return restrictViewPlatforms.includes("watch")
-}
-
 export function notRestrictedFromWatchWhere(): Prisma.VideoWhereInput {
   return { NOT: { restrictViewPlatforms: { has: "watch" } } }
 }

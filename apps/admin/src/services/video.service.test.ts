@@ -236,6 +236,33 @@ describe("VideoService", () => {
       ).resolves.not.toThrow()
     })
 
+    it("does not exclude watch-restricted videos by default (dashboard caller)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: {}, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("NOT")
+      expect(call.where).not.toHaveProperty("AND")
+    })
+
+    it("excludes watch-restricted videos when excludeWatchRestricted is set (public resolver)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { excludeWatchRestricted: true },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toEqual({
+        AND: [
+          { deletedAt: null },
+          { NOT: { restrictViewPlatforms: { has: "watch" } } },
+        ],
+      })
+    })
+
     it("filters across video identifiers and localized metadata when search is present", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 

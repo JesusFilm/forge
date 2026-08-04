@@ -1555,7 +1555,11 @@ builder.queryFields((t) => ({
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.list({
-        input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
+        input: {
+          limit: args.limit ?? 50,
+          offset: args.offset ?? 0,
+          excludeWatchRestricted: true,
+        },
         query,
       }),
   }),

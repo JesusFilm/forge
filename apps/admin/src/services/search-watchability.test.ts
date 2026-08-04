@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
 
 import {
-  isRestrictedFromWatch,
   notRestrictedFromWatchWhere,
   SearchWatchabilityService,
   watchVisibilityWhere,
@@ -16,20 +15,6 @@ const CONSUMER_BEARER: Principal = {
   role: "CONSUMER_BEARER",
   rateLimitBucketKey: "consumer-bucket-key",
 }
-
-describe("isRestrictedFromWatch", () => {
-  it("true when restrictViewPlatforms includes watch", () => {
-    expect(isRestrictedFromWatch(["arclight", "watch"])).toBe(true)
-  })
-
-  it("false when restrictViewPlatforms is empty", () => {
-    expect(isRestrictedFromWatch([])).toBe(false)
-  })
-
-  it("false when restrictViewPlatforms excludes watch", () => {
-    expect(isRestrictedFromWatch(["arclight", "journeys"])).toBe(false)
-  })
-})
 
 describe("notRestrictedFromWatchWhere", () => {
   it("returns a NOT-has-watch where fragment", () => {

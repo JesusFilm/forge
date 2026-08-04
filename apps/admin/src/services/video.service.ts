@@ -438,6 +438,11 @@ type VideoListInput = {
   offset?: number
   search?: string
   sort?: VideoListSort
+  // Set by the public `videos` GraphQL resolver only — the dashboard's
+  // `live-data.ts` caller intentionally omits it (U2: list's own auth
+  // gate is the requireSession()'d route, and editors need to keep
+  // seeing watch-restricted videos in the library).
+  excludeWatchRestricted?: boolean
 }
 
 const VIDEO_CATEGORY_LABELS = {
@@ -1304,9 +1309,12 @@ export class VideoService {
   }
 
   async list({ input: raw, query }: { input: VideoListInput; query: object }) {
+    const filters = [videoListWhere(raw)]
+    if (raw.excludeWatchRestricted) filters.push(notRestrictedFromWatchWhere())
+
     return this.prisma.video.findMany({
       ...query,
-      where: videoListWhere(raw),
+      where: filters.length === 1 ? filters[0] : { AND: filters },
       orderBy: videoListOrderBy(raw.sort),
       take: Math.min(raw.limit ?? 50, 200),
       skip: raw.offset ?? 0,
@@ -1453,6 +1461,7 @@ export class VideoService {
       : {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
         }
 
     const root = await this.prisma.video.findFirst({
