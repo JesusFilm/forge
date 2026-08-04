@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { notRestrictedFromWatchWhere } from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import {
   TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -168,6 +169,7 @@ export async function buildCatalogDocuments(
         deletedAt: null,
         noIndex: false,
         locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
       orderBy: { id: "asc" },
       select: {

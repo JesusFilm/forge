@@ -27,6 +27,10 @@ import {
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
+import {
+  notRestrictedFromWatchWhere,
+  watchVisibilityWhere,
+} from "./search-watchability"
 import { ForbiddenError } from "./errors"
 
 /**
@@ -1322,14 +1326,14 @@ export class VideoService {
   async getById({ id, query }: { id: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, ...notRestrictedFromWatchWhere() },
     })
   }
 
   async getBySlug({ slug, query }: { slug: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
-      where: { slug, deletedAt: null },
+      where: { slug, deletedAt: null, ...notRestrictedFromWatchWhere() },
     })
   }
 
@@ -1342,7 +1346,11 @@ export class VideoService {
   async getDubById({ id, query }: { id: string; query: object }) {
     return this.prisma.videoDub.findFirst({
       ...query,
-      where: { id, deletedAt: null, video: { deletedAt: null } },
+      where: {
+        id,
+        deletedAt: null,
+        video: { deletedAt: null, ...notRestrictedFromWatchWhere() },
+      },
     })
   }
 
@@ -1448,7 +1456,7 @@ export class VideoService {
         }
 
     const root = await this.prisma.video.findFirst({
-      where: { slug, deletedAt: null },
+      where: { slug, deletedAt: null, ...watchVisibilityWhere(user) },
       select: {
         id: true,
         slug: true,
@@ -2109,6 +2117,7 @@ export class VideoService {
       where: {
         coreId: { in: uniqueCoreIds },
         deletedAt: null,
+        ...notRestrictedFromWatchWhere(),
       },
     })
     const rowByCoreId = new Map(rows.map((row) => [row.coreId, row]))
@@ -2238,6 +2247,7 @@ export class VideoService {
           ON video.id = candidate."videoId"
         WHERE video.deleted_at IS NULL
           AND video.no_index = FALSE
+          AND NOT ('watch' = ANY(video.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2278,6 +2288,7 @@ export class VideoService {
         WHERE child."hasAudio" = TRUE
           AND parent.deleted_at IS NULL
           AND parent.no_index = FALSE
+          AND NOT ('watch' = ANY(parent.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2526,6 +2537,7 @@ export class VideoService {
           AND child_relation.parent_id = candidate.id
           AND child_video.deleted_at IS NULL
           AND child_video.no_index = FALSE
+          AND NOT ('watch' = ANY(child_video.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2569,6 +2581,7 @@ export class VideoService {
           AND relation.child_id = candidate.id
           AND parent.deleted_at IS NULL
           AND parent.no_index = FALSE
+          AND NOT ('watch' = ANY(parent.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
