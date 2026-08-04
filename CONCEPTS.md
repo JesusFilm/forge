@@ -289,7 +289,7 @@ health, and clicked results.
 
 The canonical submitted-search event is a structured log emitted from each
 client's canonical path — web's server-side search path; React Native clients
-(TV today, mobile per feat-322) emit it from the device via the Datadog Mobile
+(TV and mobile) emit it from the device via the Datadog Mobile
 SDK because they have no server tier — using asynchronous, non-blocking,
 best-effort fire-and-forget delivery so search responses do not wait on
 Datadog. RUM can add supplemental UI context and click signals, but RUM
@@ -305,7 +305,10 @@ text, but its authored payload must not attach name, email, full user id, auth
 token, cookie, session id, IP address, or bearer/API key material. RUM envelope
 context the Mobile SDK attaches to client-emitted events (session and view ids)
 is correlation context outside the authored payload, not an exception to this
-rule.
+rule. On client-emitted events, log severity itself participates in
+containment: the Mobile SDK copies error-level logs' full authored attributes
+into RUM error events, so query-bearing logs stay below error level to keep
+exact query text bounded to the Logs store.
 
 ### Watch Analytics Context
 
