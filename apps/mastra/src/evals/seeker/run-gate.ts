@@ -20,13 +20,18 @@
  *      instead (see WHAT REFUSES) — a skipping run is not a valid
  *      known-good.
  *   3. A judge-verdict flip (baseline satisfied → current violated) on a
- *      GROUNDING-class criterion (weights.ts) WHEN THE PROMPT CHANGED — the
- *      criteria the gate treats as load-bearing (the same set gate 2's
- *      repeatability milestone demands zero flips on). Flips on
- *      tone/doctrine criteria, and any flip on a byte-identical prompt, are
- *      REPORTED for triage, not red: under freshly sampled generation,
- *      red-on-any-flip would make the gate the flaky theater the design
- *      exists to avoid.
+ *      GROUNDING-class criterion (weights.ts) WHEN THE PROMPT CHANGED — and
+ *      only when CONFIRMED (decision 2026-08-04 #7): the SAME (question,
+ *      model, criterion) flip must appear in a SECOND independent judged
+ *      run (`--confirm-judged=<path>`) before it reds, because
+ *      byte-identical-prompt reruns measured ~1 flip of pure sampling noise
+ *      per run — red-on-one-flip breeds rerun-until-green, which passes
+ *      real regressions. With flips and NO confirm run the gate REFUSES
+ *      (nonzero exit — fail-safe for CI) and instructs the operator to
+ *      rerun loop+judge. Flips that do not reproduce are surfaced as
+ *      `unconfirmedGroundingFlips` — noise, never red, never dropped.
+ *      Flips on tone/doctrine criteria, and any flip on a byte-identical
+ *      prompt, are REPORTED for triage, not red.
  *
  * WHAT IS REPORTED, NEVER RED: score deltas beyond tolerance, carried
  * known-fails, format/length deltas, non-grounding verdict flips, invalid
@@ -49,6 +54,7 @@
  *
  *   pnpm --filter @forge/mastra eval:seeker:gate
  *   pnpm --filter @forge/mastra eval:seeker:gate -- --baseline-dir=apps/mastra/evals/results/seeker-baseline
+ *   pnpm --filter @forge/mastra eval:seeker:gate -- --confirm-judged=apps/mastra/eval-runs/seeker-confirm/judged.json
  */
 import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
@@ -143,11 +149,18 @@ export type GateReport = {
    *  + tool never called; format/length variance under sampled generation
    *  belongs in the report). */
   formatDeltas: GateCountDelta[]
-  /** Grounding-class verdict flips. RED only when the prompt CHANGED — on a
-   *  byte-identical prompt a flip is sampling noise by construction and goes
-   *  to triage instead. */
+  /** ALL grounding-class verdict flips vs the baseline. On a byte-identical
+   *  prompt these are sampling noise by construction (triage). On a CHANGED
+   *  prompt they red ONLY when confirmed — see confirmedGroundingFlips. */
   groundingFlips: GateVerdictFlip[]
   triageFlips: GateVerdictFlip[]
+  /** Decision 2026-08-04 (#7): grounding flips (prompt changed) that
+   *  REPRODUCED — same (question, model, criterion) — in the independent
+   *  confirmation run. This is the red set. */
+  confirmedGroundingFlips: GateVerdictFlip[]
+  /** Flips that did NOT reproduce in the confirmation run: sampling noise,
+   *  surfaced for triage, never red, never silently dropped. */
+  unconfirmedGroundingFlips: GateVerdictFlip[]
   scoreDelta: {
     baseline: number | null
     current: number | null
@@ -203,6 +216,10 @@ export function evaluateGate(input: {
   /** Explicit escape hatch for deliberate legacy replays whose stamped
    *  corpus predates the current fixture capture (review finding #11). */
   allowCorpusMismatch?: boolean
+  /** A second, independent judged run of the SAME candidate (decision
+   *  2026-08-04 #7). Required whenever the prompt changed AND grounding
+   *  flips exist — without it the gate refuses rather than guessing. */
+  confirmJudged?: JudgeRun | null
   scoreTolerance?: number
 }): GateReport {
   const tolerance = input.scoreTolerance ?? DEFAULT_SCORE_TOLERANCE
@@ -220,6 +237,8 @@ export function evaluateGate(input: {
     formatDeltas: [],
     groundingFlips: [],
     triageFlips: [],
+    confirmedGroundingFlips: [],
+    unconfirmedGroundingFlips: [],
     scoreDelta: {
       baseline: null,
       current: null,
@@ -517,6 +536,63 @@ export function evaluateGate(input: {
     }
   }
 
+  // 2b. Confirmation of grounding flips (decision 2026-08-04 #7). A single
+  // flip after a prompt change is indistinguishable from sampling noise
+  // (byte-identical-prompt reruns measured ~1 flip per run), so it must
+  // NEVER green silently and must NEVER final-red alone: red requires the
+  // SAME (question, model, criterion) flip in a second independent judged
+  // run; with flips and no confirm run the gate REFUSES (fail-safe for CI);
+  // unreproduced flips surface as unconfirmedGroundingFlips.
+  const flipsNeedConfirmation =
+    promptChanged != null && groundingFlips.length > 0
+  const confirmedGroundingFlips: GateVerdictFlip[] = []
+  const unconfirmedGroundingFlips: GateVerdictFlip[] = []
+  let confirmationProblems: string[] = []
+  if (flipsNeedConfirmation) {
+    const confirm = input.confirmJudged ?? null
+    if (confirm == null) {
+      confirmationProblems = [
+        `${groundingFlips.length} grounding flip(s) on a changed prompt require independent confirmation — rerun eval:seeker:loop + eval:seeker:judge into a second directory and pass --confirm-judged=<judged.json>`,
+      ]
+    } else {
+      // The confirm run must be the SAME candidate — full-scope identity
+      // (prompt included; sampleId is deliberately not a dimension) — and
+      // must itself have graded the full grid, or it cannot confirm.
+      const pairing = identityMismatch(
+        confirm.identity,
+        current.judged.identity,
+        "full",
+      )
+      const confirmStats = cellStats(confirm)
+      if (pairing.length > 0) {
+        confirmationProblems = pairing.map(
+          (problem) => `confirm run: ${problem}`,
+        )
+      } else if (confirmStats.judgedCount < gridKeys.size) {
+        confirmationProblems = [
+          `confirm run coverage: only ${confirmStats.judgedCount}/${gridKeys.size} grid cells judged (${confirmStats.invalid} invalid, ${confirmStats.answerError} answer-error) — cannot confirm flips on partial evidence`,
+        ]
+      } else {
+        const confirmVerdicts = new Map<string, Map<string, string>>()
+        for (const cell of confirm.judged) {
+          if (cell.status !== "judged" || !cell.verdicts) continue
+          confirmVerdicts.set(
+            cellKey(cell.questionId, cell.model),
+            new Map(cell.verdicts.map((v) => [v.criterionId, v.verdict])),
+          )
+        }
+        for (const flip of groundingFlips) {
+          const reproduced =
+            confirmVerdicts
+              .get(cellKey(flip.questionId, flip.model))
+              ?.get(flip.criterionId) === "violated"
+          if (reproduced) confirmedGroundingFlips.push(flip)
+          else unconfirmedGroundingFlips.push(flip)
+        }
+      }
+    }
+  }
+
   // 3. Score delta — triage-only, never red.
   const baselineScore = scoreJudgeRun(baseline.judged)
   const currentScore = scoreJudgeRun(current.judged)
@@ -532,17 +608,23 @@ export function evaluateGate(input: {
     beyondTolerance: delta != null && delta < -tolerance,
   }
 
-  const verdict: GateReport["verdict"] =
-    newHardFails.length > 0 ||
-    toolSkipPooled.regression ||
-    (promptChanged != null && groundingFlips.length > 0)
-      ? "red"
-      : "green"
+  // Verdict precedence: a deterministic red stands regardless of flip
+  // confirmation (the operator must fix it either way — the flip demand
+  // fires on the rerun); otherwise an unresolved confirmation refuses;
+  // otherwise a confirmed flip reds.
+  const deterministicRed = newHardFails.length > 0 || toolSkipPooled.regression
+  const verdict: GateReport["verdict"] = deterministicRed
+    ? "red"
+    : confirmationProblems.length > 0
+      ? "refused"
+      : confirmedGroundingFlips.length > 0
+        ? "red"
+        : "green"
 
   return {
     kind: "seeker-eval-gate-report",
     verdict,
-    refusedOn: [],
+    refusedOn: verdict === "refused" ? confirmationProblems : [],
     promptChanged,
     newHardFails,
     carriedKnownFails,
@@ -551,6 +633,8 @@ export function evaluateGate(input: {
     formatDeltas,
     groundingFlips,
     triageFlips,
+    confirmedGroundingFlips,
+    unconfirmedGroundingFlips,
     scoreDelta,
     invalidCells: {
       baseline: baselineScore.invalidCells,
@@ -659,11 +743,18 @@ async function main(): Promise<void> {
     ),
   ])
 
+  // Second independent judged run for flip confirmation (decision #7).
+  const confirmPath = flag(argv, "confirm-judged")
+  const confirmJudged = confirmPath
+    ? await loadJudged(resolve(process.cwd(), confirmPath))
+    : null
+
   const report = evaluateGate({
     current: { answers: currentAnswers, judged: currentJudged },
     baseline: { answers: baselineAnswers, judged: baselineJudged },
     fixtures,
     allowCorpusMismatch,
+    confirmJudged,
     scoreTolerance: tolerance,
   })
 
@@ -696,10 +787,22 @@ async function main(): Promise<void> {
       )
     }
   }
-  for (const flip of report.groundingFlips) {
+  for (const flip of report.confirmedGroundingFlips) {
     console.log(
-      `${report.promptChanged ? "RED    " : "triage "} : ${flip.questionId} x ${flip.model} — grounding criterion ${flip.criterionId} flipped violated${report.promptChanged ? "" : " (prompt unchanged — sampling noise, not gated)"}`,
+      `RED     : ${flip.questionId} x ${flip.model} — grounding criterion ${flip.criterionId} flipped violated in BOTH runs (confirmed)`,
     )
+  }
+  for (const flip of report.unconfirmedGroundingFlips) {
+    console.log(
+      `noise   : ${flip.questionId} x ${flip.model} — grounding criterion ${flip.criterionId} flipped in the first run only (unconfirmed — not gated)`,
+    )
+  }
+  if (report.promptChanged == null) {
+    for (const flip of report.groundingFlips) {
+      console.log(
+        `triage  : ${flip.questionId} x ${flip.model} — grounding criterion ${flip.criterionId} flipped violated (prompt unchanged — sampling noise, not gated)`,
+      )
+    }
   }
   for (const fail of report.carriedKnownFails) {
     console.log(

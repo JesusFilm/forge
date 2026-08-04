@@ -344,7 +344,50 @@ describe("evaluateGate", () => {
     )
   })
 
-  it("goes RED on a grounding-criterion flip WHEN the prompt changed", () => {
+  it("goes RED on a grounding flip (prompt changed) ONLY when the confirm run reproduces it", () => {
+    const flipped = {
+      identity: { promptSha256: "prompt-sha-2-softened" },
+      judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
+    }
+    const report = evaluateGate({
+      current: makeRunPair(flipped),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+      confirmJudged: makeRunPair(flipped).judged,
+    })
+    expect(report.verdict).toBe("red")
+    expect(report.confirmedGroundingFlips).toEqual([
+      expect.objectContaining({
+        criterionId: "g-no-invented-citation",
+        criterionClass: "grounding",
+      }),
+    ])
+    expect(report.unconfirmedGroundingFlips).toEqual([])
+  })
+
+  it("does NOT red an UNREPRODUCED flip — surfaced as unconfirmed noise, never dropped", () => {
+    const report = evaluateGate({
+      current: makeRunPair({
+        identity: { promptSha256: "prompt-sha-2-softened" },
+        judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
+      }),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+      // Confirmation run of the same candidate: criterion satisfied.
+      confirmJudged: makeRunPair({
+        identity: { promptSha256: "prompt-sha-2-softened" },
+      }).judged,
+    })
+    expect(report.verdict).toBe("green")
+    expect(report.confirmedGroundingFlips).toEqual([])
+    expect(report.unconfirmedGroundingFlips).toEqual([
+      expect.objectContaining({ criterionId: "g-no-invented-citation" }),
+    ])
+    // The raw flip stays visible too — noise is reported, not erased.
+    expect(report.groundingFlips).toHaveLength(1)
+  })
+
+  it("REFUSES (demands a confirmation run) when a prompt-change flip has no --confirm-judged input", () => {
     const report = evaluateGate({
       current: makeRunPair({
         identity: { promptSha256: "prompt-sha-2-softened" },
@@ -353,13 +396,28 @@ describe("evaluateGate", () => {
       baseline: makeRunPair({}),
       fixtures: FIXTURES,
     })
-    expect(report.verdict).toBe("red")
-    expect(report.groundingFlips).toEqual([
-      expect.objectContaining({
-        criterionId: "g-no-invented-citation",
-        criterionClass: "grounding",
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn.join(";")).toContain("--confirm-judged")
+    // Fail-safe, not silent: the flip itself is still in the report.
+    expect(report.groundingFlips).toHaveLength(1)
+  })
+
+  it("REFUSES a confirm run that is not the same candidate (identity mismatch)", () => {
+    const report = evaluateGate({
+      current: makeRunPair({
+        identity: { promptSha256: "prompt-sha-2-softened" },
+        judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
       }),
-    ])
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+      // Confirm run generated under a DIFFERENT prompt — not a confirmation.
+      confirmJudged: makeRunPair({
+        identity: { promptSha256: "prompt-sha-3-other" },
+        judgedCell: { verdicts: makeVerdicts(["g-no-invented-citation"]) },
+      }).judged,
+    })
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn.join(";")).toContain("confirm run: prompt")
   })
 
   it("routes a grounding flip on an UNCHANGED prompt to reporting — sampling noise, not a red", () => {
