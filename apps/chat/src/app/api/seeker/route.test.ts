@@ -451,6 +451,59 @@ describe("handleSeekerProxyRequest — relay + outbound request shape", () => {
     ])
   })
 
+  it("relays the feat-328 video field AND unknown siblings, structure-preserving", async () => {
+    // Structure, not bytes: the relay JSON.parses then JSON.stringifies, so
+    // byte identity would ride on upstream whitespace. `futureField` is the
+    // load-bearing half — the seam a typed pick would silently break.
+    const resultData = {
+      text: "Here is a video.",
+      sources: [],
+      grounded: true,
+      video: {
+        videoId: "1_jf-0-0",
+        title: "JESUS",
+        slug: "jesus",
+        playbackId: "abcdEFGH1234",
+        durationSeconds: 7674,
+        languageSlug: "english",
+      },
+      futureField: { nested: ["not-yet-known-to-chat", 1, null] },
+    }
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(upstream([{ event: "result", data: resultData }]))
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "result", data: resultData },
+    ])
+  })
+
+  it("relays unknown siblings on token_delta too, not just result", async () => {
+    // Same JSON round-trip, second call site. A typed pick added there would
+    // otherwise go uncaught. NOT extended to the error frame: route.ts
+    // deliberately reshapes that one to {reason}.
+    const deltaData = { text: "Hel", futureDeltaField: { k: [1, null] } }
+    const fetchImpl = vi.fn().mockResolvedValue(
+      upstream([
+        { event: "token_delta", data: deltaData },
+        { event: "result", data: { text: "Hel", sources: [], grounded: true } },
+      ]),
+    )
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "token_delta", data: deltaData },
+      { event: "result", data: { text: "Hel", sources: [], grounded: true } },
+    ])
+  })
+
   it("relays an upstream timeout error frame as timeout (not generation_failed)", async () => {
     const fetchImpl = vi
       .fn()

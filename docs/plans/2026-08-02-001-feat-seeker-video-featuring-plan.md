@@ -745,6 +745,21 @@ below the assistant turn.
   degrades that ONE turn to text, never unmounts the chat tree. Without it,
   U4's replay would make a render crash durable per thread — the feat-268
   lesson applied to this new render surface.
+
+  > **Correction (2026-08-04, U3 implementation):** chunk-load failure is
+  > session-scoped and NOT mitigatable at the import layer in this build — the
+  > rejection is cached by BOTH Turbopack's emitted browser runtime (per-chunk
+  > record, `loadingStarted` never reset, no eviction on error) AND the
+  > module-scoped React.lazy payload. The retry wrapper added during
+  > implementation received the same cached rejection on every attempt and was
+  > removed as inert; it only delayed the fallback ~900 ms. A persistent
+  > failure degrades every video turn in the session (caption links stay
+  > live); recovery is a page reload. Containment stays per-turn for render
+  > throws and playback errors only. Mechanism verified 2026-08-04 by reading
+  > the built runtime chunk (next@16.2.4, Turbopack); bundler-scoped —
+  > webpack's runtime evicts failed chunk records, where a bounded retry WOULD
+  > work; re-verify at the emitted-runtime layer on any bundler change.
+
 - `apps/chat/src/components/chat/message-list.tsx` — `<VideoCard>` sibling
   block after the message text (streaming + finalized branches).
 - Tests colocated with each; `apps/chat/CLAUDE.md` updated.

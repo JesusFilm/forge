@@ -61,22 +61,23 @@ src/
       icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational); a ResizeObserver on the composer band re-pins a bottom-pinned reader on auto-grow (never a scrolled-up one) and keeps the scroller's scroll-padding sized to the band (feat-270)
-      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice
+      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice, and the feat-328 VideoCard sibling block (streaming + finalized branches, after the markdown content — never through the markdown allowlist)
       assistant-markdown.tsx  feat-268: hardened markdown for ASSISTANT turns only — react-markdown + remark-breaks, element allowlist (p/strong/em/ul/ol/li/blockquote/code/a/br), raw HTML → inert text (no rehype-raw, skipHtml stays false), https-only links via untrusted-link, Vigil-token styling (blockquote = font-scripture), streaming cursor slot, THREE pathological-input controls that each degrade one turn to plain pre-wrap text (chat has no app-level error boundary): prefix guard (short deep-nesting crash) + length cap at the 8192-unit per-message ceiling (shape-agnostic freeze bound, catches emphasis nesting the prefix regex misses) + MarkdownRenderBoundary (any throw the guards miss)
       untrusted-link.tsx feat-268: the ONE hardened anchor for untrusted URLs (isHttpsUrl gate + target=_blank + rel="noopener noreferrer" + sr-only suffix); shared by sources-list + assistant-markdown so the surfaces cannot drift
+      video-card.tsx     feat-328: the featured video as an inline Mux player — lazy `next/dynamic(() => import("@forge/video-player/mux-video"), {ssr:false})` so hls.js stays out of the initial load, derived image.mux.com poster, title+duration caption whose link goes through untrusted-link. Mux gets ONLY the pattern-gated playbackId + this origin: disableTracking/disableCookies are passed EXPLICITLY (never inherited from the package defaults) and no metadata/viewer-id prop exists. Carries its OWN per-message VideoRenderBoundary (the MarkdownRenderBoundary pattern) — the card renders OUTSIDE the markdown boundary and chat has no app-level one, so a MuxVideo/hls.js throw degrades that ONE turn to a plain line, never the tree. Its `children` is a render callback so the two failure CLASSES converge on that one fallback: a render-phase throw (caught by getDerivedStateFromError) AND an async playback `error` event (which no React boundary can catch — MuxVideo's onError calls `fail`). Scope caveat worth keeping straight: a CHUNK-load failure is NOT per-turn and is NOT retryable at the import layer — the rejection is cached by BOTH Turbopack's emitted runtime and React.lazy's module-scoped payload, so every video turn degrades together until a page reload (see "Featured video" below for the mechanism and its bundler scope)
       sources-list.tsx   Collapsed "Sources · N" disclosure of cited passages (feat-269: deduped by URL, snippets line-clamped behind per-source disclosures) or explicit always-visible "No sources cited" state; untrusted RAG sources → https-only links via untrusted-link, text never HTML (feat-205)
       composer.tsx       Auto-growing textarea; the 44px send slot is a Vesper up-arrow when a draft is ready, a dim dot otherwise, and a stop control while pending (feat-270 — R22 blocked states keep the plain disabled send)
       empty-state.tsx    "What would you like to ask?" heading + starter questions
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
-    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins). Honest since feat-281 (Ruling 3): every error frame — gate_denied included — returns { ok: false, reason, partialText } truthfully; the session owns stub-vs-failure
+    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins). Honest since feat-281 (Ruling 3): every error frame — gate_denied included — returns { ok: false, reason, partialText } truthfully; the session owns stub-vs-failure. Also owns the two defensive wire projections: toSources and the feat-328 toVideo (see "Featured video" below)
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
     server/mastra-upstream.ts feat-282: the shared Mastra upstream transport both proxy families import — hostAllowed (the SSRF guard: https floor with loopback + *.railway.internal http carve-outs, optional host allowlist), validateBaseUrl → the ValidatedBaseUrl brand minted only from hostAllowed's success path (feat-294 — postMastraUpstream's baseUrl demands it, so skipping the guard is a compile error, not a convention; null maps to each proxy's own deny wire), MAX_CONVERSATION_ID_CHARS, postMastraUpstream (the fetch shape: URL-from-path+base, POST, bearer, JSON content-type, per-proxy accept, redirect:"error", signal), composeUpstreamAbortSignal (skips absent sources; single source passes through as-is), classifyUpstreamFailure (timeout | cancelled | network — seeker's check precedence, budget → caller-abort → error name, canonical for both proxies; each proxy keeps its own wire mapping), readJsonCapped + undefinedOnAbort (the byte-capped read + abort-race helper). Pure (no env reads), `import "server-only"`-guarded; deny ladders, budgets, byte-cap SIZES, response channels, and the gate stay per-proxy. Its test file carries the railway.internal label-boundary matrix + direct unit coverage of every transport helper
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
-    conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
+    conversations.ts     Message (+ optional sources/grounded/engine/error/video) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
     conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
     use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction (conversations = the full unprojected list since PR 2)
@@ -273,6 +274,112 @@ The three former "deferred hardening" criteria (surface failures, outbound
 timeout, single-file async seam) are now **implemented**: failures render a
 `role="alert"` notice keeping partial text; the call is timeout-bounded; the seam
 is async (`streamReply`) and the hook only awaits it.
+
+## Featured video (feat-328)
+
+The terminal SSE `result` frame may carry one video the Seeker featured on that
+turn. Plan: `docs/plans/2026-08-02-001-feat-seeker-video-featuring-plan.md`
+(unit U3); mastra owns the producer side (feat-327) behind its default-off
+`SEEKER_VIDEO_ENABLED` flag, so nothing renders until that flips.
+
+- **Terminal-frame only (plan D3).** No new SSE event, no proxy change — the
+  proxy already relays result frames verbatim, and there is deliberately NO
+  mid-stream `onVideo` callback. The wire shape is
+  `{ videoId, title, slug, playbackId, durationSeconds, languageSlug }`
+  (the last two nullable).
+- **`toVideo` in `lib/chat-stub.ts` is the trust boundary (plan D9/P7).**
+  Field-by-field allowlist; `playbackId` must match `^[A-Za-z0-9_-]{8,64}$`
+  and `slug` must match `^[a-z0-9][a-z0-9_-]{0,80}$` — **case-SENSITIVE**, so
+  odd-cased values fail closed rather than slipping past
+  `buildCanonicalWatchVideoPath`'s exact `=== "english"` comparison. That slug
+  pattern is the SOLE control over the built path (the policy interpolates
+  raw), which is why it excludes `/ ? # %` and whitespace. Any REQUIRED-field
+  failure yields `undefined` and the turn simply renders without a player.
+  **All three gates (`videoId`, `playbackId`, `slug`) are a deliberate MIRROR
+  of `apps/mastra/src/mastra/seeker-video-gates.ts` (feat-327)** — apps cannot
+  cross-import, so changing one means changing the other, and the chat comment
+  names that module (note the pointer is currently ONE-WAY: mastra's docstring
+  names its own two consumers, not this mirror). A non-conforming slug reaching
+  `toVideo` is a contract break, and the gate rejecting it is correct. The
+  mirror is NOT symmetric in the loosening direction: chat's slug gate is the
+  sole control in front of `buildCanonicalWatchVideoPath`'s raw interpolation,
+  so it may only ever be TIGHTENED — never relaxed to match a relaxed producer.
+  Verified against the merged twin on 2026-08-04: `PLAYBACK_ID_PATTERN` and
+  `SLUG_PATTERN` are byte-identical; `VIDEO_ID_PATTERN` was added here to close
+  the drift. Mastra's `FEATURABLE_AVAILABILITY_KIND` has no chat counterpart by
+  design — availability never crosses the wire.
+  **The slug gate is link-integrity-bearing as well as security-bearing.** It is
+  the sole control over the raw-interpolated path, AND the two non-conforming
+  (accented) slugs seen on the agent-tools wire have no published watch page —
+  so admitting them would ship a working player beside a dead caption link. The
+  method behind that census lives in the mastra twin's docstring.
+- **The wire `title` is bounded at the RENDER layer only, never at the
+  projection.** `toVideo` checks non-empty and stops there — a long catalog
+  title must never cost the whole row (pinned by a 10,000-char `toVideo` test).
+  The caption `line-clamp-2`s (the full text stays in the DOM for selection and
+  screen readers) and the player's `aria-label` is whitespace-collapsed and
+  truncated to 200 UTF-16 CODE UNITS — not characters — since CSS cannot reach
+  an accessible name; the cut drops a trailing lone surrogate so an emoji at
+  the boundary never lands half-encoded. Do not add a display utility beside
+  `line-clamp-2`: any of them silently unclamps it (browser-caught in
+  feat-269), which is why both this suite and `sources-list.test.tsx` carry the
+  same 13-name denylist — keep the two in step.
+- **No URL is ever trusted from the wire.** `watchUrl` is built client-side as
+  `https://www.jesusfilm.org/watch` + `buildCanonicalWatchVideoPath(slug,
+languageSlug)` from `@forge/watch-url-policy/routes`; a `watchUrl` on the
+  wire is ignored (pinned by a hostile-payload test). **`languageSlug` is
+  deliberately asymmetric with mastra's projection:** an absent or invalid one
+  falls back to the default watch language HERE, while the mastra side drops
+  the declared row — both behaviors are test-pinned, so do not "harmonize"
+  them. Only the CONTENT slug is a rejection vector on this side.
+- **Rendering** is `chat/video-card.tsx` as a sibling block below the message
+  text (the SourcesList pattern), in both the streaming and finalized
+  branches — never through the markdown element allowlist, which stays locked
+  (plan D2). `assistant-markdown.tsx` is untouched by this feature.
+- **Failure containment is per-turn for the per-turn faults only.** The card's
+  own `VideoRenderBoundary` catches a render throw, and MuxVideo's `onError`
+  routes an async playback failure (which no React boundary can catch) to the
+  SAME fallback line; the caption link stays reachable either way, and the
+  reserved 16:9 box collapses with the player rather than framing the
+  fallback. A CHUNK-load failure is NOT per-turn and is NOT retryable at the
+  import layer: it degrades every video turn in the session until a page reload
+  (caption links stay live), and there is deliberately no user-facing reload
+  affordance today — feat-334 owns that seam. See
+  `docs/solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md`
+  for the two-cache-layer mechanism, the bundler-scope caveat and the
+  verification commands; re-verify THERE on any Next/bundler change, not here.
+  Do not restate the containment claim without this carve-out.
+- **No egress or CSP change (plan E11):** the browser talks to
+  `stream.mux.com` / `image.mux.com` directly; `SEEKER_MASTRA_ALLOWED_HOSTS`
+  covers only chat-server→Mastra. No new env var exists for this feature.
+- **`[chat-video] event=projection_rejected reason=<token>` is the drift
+  diagnostic.** A silently-rejected payload would make a producer/consumer wire
+  drift invisible at the flag flip, so `toVideo` names WHICH gate refused:
+  `shape | video_id | title | playback_id | slug`.
+  **Know where it lands before you rely on it: the dogfooder's BROWSER CONSOLE,
+  and nowhere else.** `apps/chat` ships no RUM, no Sentry, and no browser log
+  forwarding, so this line never reaches Railway or any drain — grepping deploy
+  logs for the token proves nothing. Observing drift at the flag flip means a
+  human with devtools open. The operator-visible half of the pair stays
+  mastra's SERVER-side `availability_missing` line; treat this as its
+  client-side counterpart in intent, not in channel. It is plain-string for
+  format consistency with the server lines — not because Railway ingests it.
+  **This is deliberately the FIRST client-side `console` call in `apps/chat`** —
+  every other one is server-side. A precedent, not an oversight: it runs in the
+  browser because that is where the projection runs.
+  Three rules keep it safe and quiet: the reason TOKEN only — never a wire
+  value, since titles are catalog text and the frame rides a special-category
+  conversation; **silence when no video was declared**, which is most turns
+  (the producer omits the field, so only a value actually sent and then
+  refused logs); and it is scoped to the LIVE terminal frame — a replay caller
+  (feat-329 re-projects every stored turn on thread open) must suppress or
+  aggregate, or one thread open becomes a burst.
+- **Slug shape is not page LIVENESS (residual).** The gate proves a slug is
+  well-formed, not that the watch page exists. An ASCII-slugged but unpublished
+  row passes every gate here and would still ship a live player beside a dead
+  caption link. Catalog hygiene owns that, not these patterns.
+- **Not yet persisted:** replayed threads lose the video (and sources) until
+  feat-329 lands — the accepted D7 gap.
 
 ## Server-side conversation history (feat-241)
 
@@ -482,7 +589,9 @@ login page instead of silently re-authenticating via the SSO session.
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
   `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
   `chat/message-list.tsx`, `chat/assistant-markdown.tsx`,
-  `chat/untrusted-link.tsx`, `chat/sources-list.tsx`, and the
+  `chat/untrusted-link.tsx`, `chat/sources-list.tsx`, `chat/video-card.tsx`
+  (feat-328 — presentational plus a class error boundary; its `next/dynamic`
+  `ssr:false` call is legal only because it inherits a client context), and the
   `shell/sidebar-{header,new-conversation,conversation-list,account}.tsx`
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
@@ -532,13 +641,26 @@ login page instead of silently re-authenticating via the SSO session.
   Gotcha pinned there: `renderHook` needs RTL's `reactStrictMode: true` option
   — a custom `<StrictMode>` wrapper doubles initializers but NOT the effect
   cycle, silently skipping the re-arm path (see the Detection pitfall in
-  `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`). Note for the
+  `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`).
+  feat-328's `chat/video-card.test.tsx` +
+  `chat/message-list.video.test.tsx` keep the REAL `next/dynamic` boundary and
+  mock only the leaf `@forge/video-player/mux-video` — the ssr:false lazy
+  resolves asynchronously under jsdom, so those assertions use `findBy*`
+  (mocking `@mux/mux-video-react` itself is not an option: pnpm strict
+  resolution leaves it unresolvable from `apps/chat`). Note for the
   behavioral suite: the reply lands via `setTimeout`, so it runs on fake timers
   with `userEvent.setup({ advanceTimers, ... })` under
   `vi.useFakeTimers({ shouldAdvanceTime: true })` — a plain fake clock hangs
   user-event's awaited interactions. Layout/visibility behavior jsdom can't
   represent (e.g. focus-restore-on-close, which depends on `offsetParent`) stays
   **browser-verified**, not asserted in jsdom.
+- **Client-side console output carries fixed enum TOKENS only** — never message
+  text, titles, wire values, or anything conversation-derived. `rejectVideo` in
+  `lib/chat-stub.ts` is the reference shape: a module-private helper taking a
+  closed union, interpolating that parameter and nothing else. The browser
+  console is not a telemetry channel here (no RUM, no log forwarding), so a
+  line there is for a human with devtools open, never for ops. The server-side
+  counterpart is KTD7 under Authentication.
 - Runs on port **3200**.
 
 ### Comments

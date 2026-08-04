@@ -3,7 +3,7 @@ id: "feat-328"
 title: "Chat inline video rendering from the result frame"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-07"
 duration: 2
 depends_on:
@@ -11,10 +11,101 @@ depends_on:
 blocks:
   - "feat-329"
   - "feat-330"
+  - "feat-334"
 tags:
   - "ai-pipeline"
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-04 via [PR #**PR**](https://github.com/JesusFilm/forge/pull/__PR__) (`feat(chat): render the Seeker's featured video inline (ai-chat feat-328)`).
+
+**What landed.** Chat parses the optional `video` off the terminal SSE `result`
+frame and renders it as an inline Mux player — a sibling block below the
+assistant text, never through the markdown allowlist. `toVideo` is the trust
+boundary: a field-by-field allowlist whose three gate patterns (`videoId`,
+`playbackId`, `slug`) are a deliberate MIRROR of feat-327's
+`apps/mastra/src/mastra/seeker-video-gates.ts`, verified byte-identical after
+that PR merged. The mirror is asymmetric on purpose — chat's slug gate is the
+sole control in front of `buildCanonicalWatchVideoPath`'s raw interpolation, so
+it may only ever be TIGHTENED. No URL is taken from the wire; `watchUrl` is
+built client-side from the validated slugs. Mux receives only the pattern-gated
+`playbackId` and the chat origin, with `disableTracking`/`disableCookies` passed
+explicitly and no metadata or viewer-id prop, because Seeker conversations are
+special-category data.
+
+Three things landed beyond the brief, each from review: an `onError` path so
+async playback failures reach the same per-message fallback as a render throw
+(React boundaries cannot catch media `error` events); a render-callback boundary
+shape that makes that possible while keeping the component hook-free as the
+ticket required; and `[chat-video] event=projection_rejected reason=<token>`, an
+enum-only drift diagnostic that is deliberately SILENT when no video was
+declared — the producer omits the field on most turns, so logging there would
+bury the signal. One thing was removed: a retry wrapper around the dynamic
+import, deleted after the built runtime showed it received the same cached
+rejection every time. The `title` is bounded at the render layer only, never at
+the projection, so a long catalog title can never cost the whole row.
+
+**Residual risk / follow-ups.**
+
+- _Slug shape is not page liveness._ An ASCII-slugged but unpublished row passes
+  every gate and would still ship a dead caption link; catalog hygiene owns
+  that. The gate is nonetheless link-integrity-bearing as well as
+  security-bearing: a 2026-08-04 live-site sitemap census found **1,154 of 1,154
+  published content slugs conform to `SLUG_PATTERN`**, and both non-conforming
+  slugs seen on the agent-tools wire are unpublished (404 in accented and
+  ASCII-folded forms alike) — so the gate rejecting them prevents a working
+  player beside a dead caption link. Method is recorded in the mastra twin's
+  docstring.
+- _Chunk-load failure is session-scoped._ Not retryable at the import layer on a
+  Turbopack build, so one failure degrades every video turn until a page reload;
+  caption links stay live. No user-facing reload affordance today —
+  [feat-334](feat-334-chat-render-boundary-clamp-guard-consolidation.md) owns
+  that seam.
+- _The drift diagnostic is browser-only._ It lands in a dogfooder's devtools,
+  never Railway; the operator-visible half of the pair is mastra's server-side
+  `availability_missing` line.
+- _Replay will re-project._ feat-329 re-runs `toVideo` per stored turn on thread
+  open and must suppress or aggregate the diagnostic.
+- _Page weight (D4)._ `@forge/watch-url-policy`'s 2,264-slug corpus is eager
+  because the projection builds the watch URL. Two DIFFERENT measurements, kept
+  labeled: the corpus literal gzips to **10,263 B standalone**; the earlier
+  ~11.7 KB figure was a **bundle-delta attribution**, not the same quantity.
+  Accepted — building the URL inside the card does not help (the card module is
+  itself statically imported), and deferring it conflicts with plan P7/P8 and
+  feat-329's reuse of `toVideo`. A candidate future optimization only if it
+  draws a real complaint.
+
+**Proxy contract.** `src/app/api/seeker/route.ts` is unmodified. Its relay is
+structure-preserving, NOT byte-verbatim (`JSON.parse` → `JSON.stringify`), now
+asserted for both `result` and `token_delta` including unknown sibling fields.
+The `error` frame is deliberately excluded: the route reshapes it to `{reason}`
+by design.
+
+**Review coverage — stated honestly.** The cross-model peer never started, per a
+standing operator rule making that route unavailable, so the adversarial lens
+ran in-process and is same-family — not independent corroboration. What ran
+instead: two in-process review rounds over the feature and its adjudicated
+conditions, THREE independent verification passes, a report-only security
+verdict, and twelve guards falsified individually under snapshot-copy discipline
+with sha256-verified restores.
+
+**Compound docs.**
+
+- [Per-message error boundaries do not contain a failed chunk load](../../solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md)
+  (new). The CSS-clamp corollary is folded in as its §5 rather than given its
+  own entry, per the overseer's C6 ruling; its tags and `applies_when` carry the
+  clamp terms so it stays findable.
+- [Mocked-shape vs real-contract discipline](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md)
+  (amended — source-text pins: strip comments, count occurrences, prefer
+  unrepresentable).
+- [Frontend page-load performance verification](../../solutions/conventions/frontend-change-page-load-performance-verification.md)
+  (amended — measure the window where the risk lives).
+
+**Unblocked.** [feat-329](feat-329-chat-video-sources-replay-persistence.md),
+[feat-330](feat-330-seeker-video-prompt-langfuse.md),
+[feat-334](feat-334-chat-render-boundary-clamp-guard-consolidation.md).
 
 ## Problem
 
