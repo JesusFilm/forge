@@ -1998,6 +1998,7 @@ input WatchSearchInput {
   currentWatchLanguageSlug: String
   displayLanguageSlug: String
   limit: Int
+  mode: WatchSearchMode
   offset: Int
   query: String!
   queryLanguageSlug: String
@@ -2026,6 +2027,11 @@ type WatchSearchLanguageInterpretation {
   routeLanguageSlug: String
   targetLanguageSlug: String!
   targetLanguageSource: String!
+}
+
+enum WatchSearchMode {
+  DEFAULT
+  MODERN
 }
 
 type WatchSearchResponse {

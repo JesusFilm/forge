@@ -85,6 +85,7 @@ export type WatchSearchLaneName =
 
 export type WatchSearchInput = {
   query: string
+  mode?: "default" | "modern" | null
   clientRequestId?: string | null
   targetLanguageSlug?: string | null
   queryLanguageSlug?: string | null
@@ -1155,7 +1156,7 @@ async function rememberQueryEmbedding(
   `
 }
 
-async function defaultWatchSearchEmbedder(
+export async function defaultWatchSearchEmbedder(
   prisma: PrismaClient,
   text: string,
 ): Promise<WatchSearchQueryEmbeddingResult> {

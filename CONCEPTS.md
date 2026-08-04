@@ -264,6 +264,26 @@ affect whether a result can appear must run before the window; display-only
 hydration should run after the window so it cannot multiply or reorder
 candidates.
 
+### Search Serving Index
+
+A rebuildable, query-optimized projection of catalog metadata and Content
+Embeddings used by Admin search, distinct from the authoritative content store.
+
+A Search Serving Index may retain a broader semantic corpus than one caller can
+return. Each serving surface applies its own explicit visibility policy, while
+publication or availability changes update the projection without redefining
+the underlying embedding.
+
+### Public Search Visibility
+
+The eligibility of search evidence to contribute to viewer-facing Watch Search,
+distinct from whether that evidence belongs to the Search Serving Index.
+
+Public Search Visibility requires the source video to remain viewer-visible and
+the evidence language to have matching published content. Losing eligibility
+removes the evidence from public results without requiring a valid Content
+Embedding to be regenerated.
+
 ### Search Eval Caller Track
 
 A search-evaluation prompt group scoped to a caller's job rather than only to a
