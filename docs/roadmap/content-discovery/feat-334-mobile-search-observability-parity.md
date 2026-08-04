@@ -29,6 +29,7 @@ Mobile's Watch search shares admin's `watchSearch` contract with web but none of
 4. `apps/web/src/lib/watch-search-analytics.ts` + `apps/web/src/lib/search-actions.ts` — the target contract: message, `watch_search.*` attributes, vocabularies, event posts, and the failed-path `latency_ms` substitution the runbook must carve out. (2026-08-04: web's search call moved client-side in #1808 and currently bypasses the server action that emits the canonical log; the event posts remain server actions. The contract shapes here are still the target.)
 5. `apps/tv/src/lib/watchSearchLog.ts` + `apps/tv/src/lib/search.ts` — the sibling RN precedent (UUID id, dotted keys, RUM click action).
 6. `docs/operations/watch-search-analytics-datadog.md` — the runbook that must cover `service:forge-mobile` when this ships.
+7. `docs/observability/watch-search-datadog-monitors.md` — the failure-monitor spec (plan U10): monitor query, threshold rationale, calibration procedure, and the post-merge operator tail this ticket tracks.
 
 ## Grep These
 
@@ -41,7 +42,7 @@ Mobile's Watch search shares admin's `watchSearch` contract with web but none of
 
 ## What To Build
 
-The plan's Product Contract carries the full requirements. In brief: UUID request ids preferring admin's echoed `requestId`; one canonical `watch_search.*` log for success and failure with web's vocabularies (`completed|no_result|failed`, `search|load_more`), allowlisted attributes, and split `latency_ms`/`client_latency_ms`; the shared `watch_search.result_clicked` RUM action (1-based positions, no query text); anonymous fire-and-forget `RESULT_CLICKED`/`RESULTS_VIEWED` posts to admin deduped per request; runbook and prose-sweep updates; guard tests pinning the retirement and the no-bearer property; and one Datadog monitor on `watch_search.outcome:failed` for `service:forge-mobile` (threshold calibrated after alignment ships — this last piece exceeds web parity and is not in the absorbed branch docs).
+The plan's Product Contract carries the full requirements. In brief: UUID request ids preferring admin's echoed `requestId`; one canonical `watch_search.*` log for success and failure with web's vocabularies (`completed|no_result|failed`, `search|load_more`), allowlisted attributes, and split `latency_ms`/`client_latency_ms`; the shared `watch_search.result_clicked` RUM action (1-based positions, no query text); anonymous fire-and-forget `RESULT_CLICKED`/`RESULTS_VIEWED` posts to admin deduped per request; runbook and prose-sweep updates; guard tests pinning the retirement and the no-bearer property; and one Datadog monitor on `watch_search.outcome:failed` for `service:forge-mobile`, specified in `docs/observability/watch-search-datadog-monitors.md` (threshold calibrated after alignment ships — this last piece exceeds web parity and is not in the absorbed branch docs).
 
 ## Constraints
 
@@ -59,3 +60,15 @@ The plan's Product Contract carries the full requirements. In brief: UUID reques
 - Datadog: `service:forge-mobile @watch_search.event_name:watch_search` returns the search; `@action.name:watch_search.result_clicked` carries the same `search_request_id` and no query text.
 - Two fresh installs' first searches appear as two distinct rows in admin's dashboard.
 - The monitor fires on a synthetic failure spike; its threshold rationale is written down where it lives.
+
+## Remaining Work — Post-Merge Operator Tail
+
+The code and docs merge as one increment, but the failure monitor itself cannot ship from the repo (no monitor-as-code) — it remains operator work, owned by this ticket's owner and specified in `docs/observability/watch-search-datadog-monitors.md` (§3–§5):
+
+1. Create the WS1 log monitor in the Datadog UI per the spec.
+2. Let aligned logs accumulate ~1 representative week of prod traffic post-ship.
+3. Read the week's failure counts — including the benign `RATE_LIMITED`/`http_429` baseline — and set the threshold + evaluation window to clear that baseline (counts are a floor under SDK sampling).
+4. Replace `@REPLACE_WITH_ALERT_CHANNEL` with the real notification handle.
+5. Firing-test with a synthetic burst of failed mobile searches — the completion test is that burst paging the chosen channel (plan AE6).
+
+Deadline: monitor live and firing-tested within 14 days of merge. This ticket stays `status: "in-progress"` until the firing test passes, even after the PR merges; flip to `complete` only then.
