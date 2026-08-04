@@ -8,7 +8,10 @@ import {
 } from "../src/contexts/VideoPlayerContext"
 import { SeriesLanguageProvider } from "../src/contexts/SeriesLanguageContext"
 import { WatchPreferencesProvider } from "../src/contexts/WatchPreferencesProvider"
-import { WatchSessionProvider } from "../src/contexts/WatchSessionProvider"
+import {
+  WatchSessionProvider,
+  useWatchSession,
+} from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
 import {
   queueMeaningfulWatchEvent,
@@ -49,17 +52,33 @@ try {
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
   const { state, dismissVideo } = useVideoPlayerContext()
+  // Live dub attribution: the in-player language menu swaps dubs via
+  // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
+  // frozen at Play-press. When the watch session still owns this playback
+  // (same video), its activeVariant is the dub actually playing — use it.
+  const { video: sessionVideo, activeVariant: sessionVariant } =
+    useWatchSession()
+  const liveDubId =
+    state.currentIdentity != null &&
+    sessionVideo?.documentId === state.currentIdentity.videoId
+      ? (sessionVariant?.documentId ?? state.currentIdentity.videoDubId)
+      : (state.currentIdentity?.videoDubId ?? null)
 
   // Anonymous watch-event capture (feat-322): only sources opened WITH admin
   // identity record; the queue lives in AsyncStorage until sign-in can flush
-  // it. Identity is read via ref inside the stable callback so the player
+  // it. Identity is read via refs inside the stable callback so the player
   // never re-renders (and never resets its latch) on context churn.
   const identityRef = useRef(state.currentIdentity)
   identityRef.current = state.currentIdentity
+  const liveDubIdRef = useRef(liveDubId)
+  liveDubIdRef.current = liveDubId
   const handleMeaningfulPlayback = useCallback((snapshot: PlaybackSnapshot) => {
     const identity = identityRef.current
     if (identity == null) return
-    void queueMeaningfulWatchEvent(identity, snapshot)
+    void queueMeaningfulWatchEvent(
+      { videoId: identity.videoId, videoDubId: liveDubIdRef.current },
+      snapshot,
+    )
   }, [])
 
   if (!state.isVisible || state.currentUrl == null) {
@@ -73,6 +92,9 @@ function VideoPlayerOverlay() {
       subtitle={state.currentSubtitle ?? undefined}
       onDismiss={dismissVideo}
       onMeaningfulPlayback={handleMeaningfulPlayback}
+      // Dub switch = new attribution unit: re-arm the one-shot latch so the
+      // new dub can record its own meaningful event (web parity).
+      meaningfulResetKey={liveDubId}
     />
   )
 }

@@ -226,3 +226,69 @@ describe("flushWatchEventQueue", () => {
     expect(remaining.map((e) => e.videoId)).toEqual(["declined", "throws"])
   })
 })
+
+describe("review fixes", () => {
+  it("floors Int wire fields but keeps progress fractional", () => {
+    const event = buildQueuedWatchEvent(
+      IDENTITY,
+      { positionSeconds: 31.48, durationSeconds: 299.7 },
+      "viewer-1",
+      "t0",
+    )
+    expect(event.positionSeconds).toBe(31)
+    expect(event.durationSeconds).toBe(299)
+    expect(event.progress).toBeCloseTo(31.48 / 299.7)
+  })
+
+  it("drops sub-second durations that floor to zero", () => {
+    const event = buildQueuedWatchEvent(
+      IDENTITY,
+      { positionSeconds: 0.4, durationSeconds: 0.9 },
+      "viewer-1",
+      "t0",
+    )
+    expect(event.durationSeconds).toBeNull()
+    expect(event.positionSeconds).toBe(0)
+  })
+
+  it("retains an event queued while a flush is mid-submit (lock)", async () => {
+    await queueMeaningfulWatchEvent(
+      { videoId: "pre-flush", videoDubId: null },
+      SNAPSHOT,
+    )
+    let releaseSubmit!: () => void
+    const gate = new Promise<void>((resolve) => {
+      releaseSubmit = resolve
+    })
+    const flush = flushWatchEventQueue(async () => {
+      await gate
+      return true
+    })
+    // Queue a new event while the flush holds the lock mid-submit; it must
+    // wait for the lock and land AFTER the flush's final write.
+    const midFlushQueue = queueMeaningfulWatchEvent(
+      { videoId: "mid-flush", videoDubId: null },
+      SNAPSHOT,
+    )
+    releaseSubmit()
+    const result = await flush
+    await midFlushQueue
+    expect(result).toEqual({ submitted: 1, retained: 0 })
+    const remaining = await readWatchEventQueue()
+    expect(remaining.map((e) => e.videoId)).toEqual(["mid-flush"])
+  })
+
+  it("serializes concurrent flushes so nothing double-submits", async () => {
+    await queueMeaningfulWatchEvent(
+      { videoId: "once", videoDubId: null },
+      SNAPSHOT,
+    )
+    const submit = jest.fn(async () => true)
+    const [a, b] = await Promise.all([
+      flushWatchEventQueue(submit),
+      flushWatchEventQueue(submit),
+    ])
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(a.submitted + b.submitted).toBe(1)
+  })
+})

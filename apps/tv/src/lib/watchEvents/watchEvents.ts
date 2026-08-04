@@ -34,8 +34,12 @@ export type PlaybackSnapshot = {
   durationSeconds: number | null
 }
 
-/** Shape stored in AsyncStorage; matches admin's `recordWatchEvent` variables
- *  (progress is 0..1 like web's; `queuedAt` becomes `occurredAt` at flush). */
+/** Shape stored in AsyncStorage; matches admin's `recordWatchEvent` variables:
+ *  positionSeconds/durationSeconds are floored to satisfy the mutation's Int
+ *  args (GraphQL rejects fractional Int variables at coercion, before the
+ *  resolver's own bounding runs — web floors in its server action, TV must
+ *  floor at capture). Progress is 0..1 like web's; `queuedAt` becomes
+ *  `occurredAt` at flush. */
 export type QueuedWatchEvent = WatchEventIdentity & {
   positionSeconds: number | null
   durationSeconds: number | null
@@ -81,21 +85,31 @@ export function buildQueuedWatchEvent(
   requestSessionId: string,
   queuedAt: string,
 ): QueuedWatchEvent {
-  const duration =
+  const rawDuration =
     snapshot.durationSeconds != null &&
     Number.isFinite(snapshot.durationSeconds) &&
     snapshot.durationSeconds > 0
       ? snapshot.durationSeconds
       : null
-  const position = Number.isFinite(snapshot.positionSeconds)
+  const rawPosition = Number.isFinite(snapshot.positionSeconds)
     ? snapshot.positionSeconds
     : null
+  // Progress from the raw values (precision), Int fields floored (wire
+  // contract — see the type comment). A sub-second duration floors to 0 and
+  // is dropped like any other invalid duration.
+  const duration =
+    rawDuration != null && Math.floor(rawDuration) > 0
+      ? Math.floor(rawDuration)
+      : null
   return {
     videoId: identity.videoId,
     videoDubId: identity.videoDubId,
-    positionSeconds: position,
+    positionSeconds: rawPosition != null ? Math.floor(rawPosition) : null,
     durationSeconds: duration,
-    progress: duration != null && position != null ? position / duration : null,
+    progress:
+      rawDuration != null && rawPosition != null
+        ? rawPosition / rawDuration
+        : null,
     requestSessionId,
     queuedAt,
   }
@@ -146,6 +160,23 @@ export function generateViewerId(): string {
 
 // ── AsyncStorage layer (best-effort; failures never break playback) ─────────
 
+// The queue is an async read-modify-write over AsyncStorage — unlike web's
+// synchronous localStorage mirror, interleaved awaits CAN lose updates (an
+// event queued during a slow flush would be erased by the flush's stale final
+// write; two flushes would double-submit into admin's dedupe-less create).
+// All read→write sections therefore serialize through this promise-chain
+// mutex — single JS thread, so a chain is a complete lock.
+let queueLock: Promise<unknown> = Promise.resolve()
+function withQueueLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = queueLock.then(fn, fn)
+  queueLock = run.catch(() => undefined)
+  return run
+}
+
+/** Memoized fallback so one run's events still share an id when storage is
+ *  unavailable (mirrors web's volatile viewer id). */
+let volatileViewerId: string | null = null
+
 /** Stable anonymous viewer id, minted once per install. */
 export async function getViewerId(): Promise<string> {
   const storage = getStorage()
@@ -156,8 +187,9 @@ export async function getViewerId(): Promise<string> {
     await storage.setItem(VIEWER_ID_STORAGE_KEY, fresh)
     return fresh
   } catch {
-    // Storage unavailable — a per-session id still groups this run's events.
-    return generateViewerId()
+    // Storage unavailable — a per-run id still groups this run's events.
+    volatileViewerId ??= generateViewerId()
+    return volatileViewerId
   }
 }
 
@@ -193,45 +225,55 @@ export async function queueMeaningfulWatchEvent(
   identity: WatchEventIdentity,
   snapshot: PlaybackSnapshot,
 ): Promise<void> {
-  try {
-    const viewerId = await getViewerId()
-    const event = buildQueuedWatchEvent(
-      identity,
-      snapshot,
-      viewerId,
-      new Date().toISOString(),
-    )
-    await writeWatchEventQueue(appendCapped(await readWatchEventQueue(), event))
-  } catch {
-    // Best-effort only.
-  }
+  await withQueueLock(async () => {
+    try {
+      const viewerId = await getViewerId()
+      const event = buildQueuedWatchEvent(
+        identity,
+        snapshot,
+        viewerId,
+        new Date().toISOString(),
+      )
+      await writeWatchEventQueue(
+        appendCapped(await readWatchEventQueue(), event),
+      )
+    } catch {
+      // Best-effort only.
+    }
+  })
 }
 
 /**
  * Drain the queue through `submit` (one event at a time, oldest first).
  * Events whose submit rejects or resolves false are RETAINED for a later
- * flush. Intended caller: the feat-322 sign-in success path, submitting to
- * admin's `recordWatchEvent` with `occurredAt: event.queuedAt`. Not wired yet
- * — TV has no authenticated session until the device-grant work lands.
+ * flush. Safe against concurrent callers and concurrent queueing: the whole
+ * drain holds the queue lock, so an event queued mid-flush waits and survives,
+ * and a second flush sees an already-drained queue instead of double-
+ * submitting (admin's recordWatchEvent is a bare create with no dedupe).
+ * Intended caller: the feat-322 sign-in success path, submitting to admin's
+ * `recordWatchEvent` with `occurredAt: event.queuedAt`. Not wired yet — TV
+ * has no authenticated session until the device-grant work lands.
  */
 export async function flushWatchEventQueue(
   submit: (event: QueuedWatchEvent) => Promise<boolean>,
 ): Promise<{ submitted: number; retained: number }> {
-  const queue = await readWatchEventQueue()
-  if (queue.length === 0) return { submitted: 0, retained: 0 }
-  const retained: QueuedWatchEvent[] = []
-  let submitted = 0
-  for (const event of queue) {
-    try {
-      if (await submit(event)) {
-        submitted += 1
-      } else {
+  return withQueueLock(async () => {
+    const queue = await readWatchEventQueue()
+    if (queue.length === 0) return { submitted: 0, retained: 0 }
+    const retained: QueuedWatchEvent[] = []
+    let submitted = 0
+    for (const event of queue) {
+      try {
+        if (await submit(event)) {
+          submitted += 1
+        } else {
+          retained.push(event)
+        }
+      } catch {
         retained.push(event)
       }
-    } catch {
-      retained.push(event)
     }
-  }
-  await writeWatchEventQueue(retained)
-  return { submitted, retained: retained.length }
+    await writeWatchEventQueue(retained)
+    return { submitted, retained: retained.length }
+  })
 }

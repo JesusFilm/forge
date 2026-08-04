@@ -609,6 +609,11 @@ export type VideoPlayerProps = {
    *  lib/watchEvents/watchEvents.ts). The player stays identity-free; the
    *  overlay owning identity decides what to do with the snapshot. */
   onMeaningfulPlayback?: (snapshot: PlaybackSnapshot) => void
+  /** Re-arms the meaningful latch when it changes — the in-player language
+   *  menu swaps dubs via replaceAsync WITHOUT a new playVideo (streamingUrl
+   *  stays the frozen creation source), so the overlay passes the active dub
+   *  identity here; mirrors web's recordedRef reset on [videoId, videoDubId]. */
+  meaningfulResetKey?: string | null
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -619,6 +624,7 @@ export function VideoPlayer({
   subtitle,
   onDismiss,
   onMeaningfulPlayback,
+  meaningfulResetKey,
 }: VideoPlayerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1116,7 +1122,7 @@ export function VideoPlayer({
   }, [onMeaningfulPlayback])
   useEffect(() => {
     meaningfulStateRef.current = initialMeaningfulState
-  }, [streamingUrl])
+  }, [streamingUrl, meaningfulResetKey])
 
   // Track time updates.
   // Fix #4: Skip state updates while a seek is in flight — don't let stale
