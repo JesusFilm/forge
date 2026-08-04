@@ -65,11 +65,13 @@ TYPESENSE_API_KEY=forge-typesense-local-key \
   pnpm --filter @forge/admin index:typesense-watch-search
 ```
 
-The builder creates timestamped physical collections, validates every JSONL
-import response, and only then moves the stable aliases. A failed build deletes
-its incomplete collections and leaves the previous aliases intact. The final
-JSON object includes `estimatedVectorMemoryBytes`, calculated as 7 bytes times
-1,536 dimensions times the accepted transcript document count. Capture
+The builder creates timestamped catalog, per-video-language availability, and
+transcript collections, validates every JSONL import response, and only then
+moves the stable aliases. A failed build restores all previously moved aliases
+and deletes only collections whose rollback succeeded. The final JSON object
+includes catalog, availability, and transcript counts plus
+`estimatedVectorMemoryBytes`, calculated as 7 bytes times 1,536 dimensions
+times the accepted transcript document count. Capture
 Typesense's measured memory after the build as well:
 
 ```bash
@@ -79,10 +81,16 @@ curl -fsS \
 ```
 
 For the audited 2026-08-04 production corpus, expect approximately 1,175
-catalog documents and 280,107 transcript documents. Public Watch Search does
+catalog documents, 176,294 availability documents, and 280,107 transcript
+documents. Public Watch Search does
 not expose the whole transcript collection: its semantic request includes
 `publiclyVisible:=true` alongside the resolved-language filter. Confirm both
 the broad count and the public subset before treating the build as valid.
+Also record the availability count and verify that one video/language document
+merges audio and subtitle flags while retaining the selected playback ID and
+duration. Do not benchmark the optimized path until
+`watch_search_availability` points to the completed generation; the temporary
+missing-alias path intentionally performs a second legacy catalog request.
 
 ## Compare Backends
 

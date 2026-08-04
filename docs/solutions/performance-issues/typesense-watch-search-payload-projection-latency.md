@@ -83,6 +83,13 @@ pool delay, but the available trace did not distinguish those causes.
 - **Immediately adopting ID-only Typesense results plus PostgreSQL hydration.**
   A first diagnostic of that design was inconclusive. It needs a clean,
   production-shaped benchmark before it can replace the current projection.
+- **Trimming fields without changing the document boundary.** The bounded final
+  fetch still returned `audioOptionsJson` and `subtitleOptionsJson` for every
+  language on every selected video. A paired production trace completed
+  `DEFAULT` GraphQL in 156.5 ms and `MODERN` in 213.7 ms; MODERN's final
+  Typesense request occupied 92.2 ms even though the engine work was
+  single-digit milliseconds. Removing unrelated fields did not remove that
+  all-language payload.
 
 ## Solution
 
@@ -116,13 +123,39 @@ projection by the exact data needed at each phase:
 8. Add observability around request admission, event-loop delay, and database-
    pool acquisition so a future pre-retrieval stall can be attributed rather
    than inferred.
+9. Normalize watchability into a third versioned Typesense collection,
+   `watch_search_availability`, with one compact document per video and
+   language. Merge audio and subtitle availability for the same language at
+   build time. Final hydration sends the bounded catalog lookup and only the
+   target plus ordered fallback language IDs in one `/multi_search` request.
+10. Keep the all-language catalog option JSON temporarily for rollback, but do
+    not request it on the steady-state path. If the availability alias is
+    missing during a code-first migration or index rollback, retry the bounded
+    final catalog lookup using the legacy fields. Only the explicit missing-
+    alias condition activates this compatibility path.
 
 ## Why This Works
 
-The implemented change removes unused values from one hot-path database read
+The first implemented change removed unused values from one hot-path read
 without changing candidate IDs, Typesense ranking, semantic vectors, final
 hydration, or the GraphQL response. The production metadata-watchability lane
 fell from 129 / 291 ms to 97 / 208 ms p50 / p95 in the next warmed comparison.
+
+The remaining difference was a serving-document mismatch. `DEFAULT` already
+uses SQL predicates to project only the requested locale and target/fallback
+playback rows. MODERN downloaded every locale and every playback option, parsed
+them in Admin, and discarded nearly all of them. The separate availability
+collection gives Typesense the same query-specific projection boundary while
+keeping PostgreSQL authoritative and Typesense responsible for serving the
+indexed data. Unit tests pin target audio, target subtitles, ordered related-
+language fallback, public response fields, request batching, and legacy alias
+rollback. Production latency improvement remains a measurement gate after the
+new collection is rebuilt; it is not inferred from the tests.
+
+The read-only production projection contains 176,294 video/language records
+and about 57.7 MiB of complete compact JSON. It adds no vectors and indexes only
+filter fields, so the fix is a small capacity addition relative to the existing
+2.80 GiB vector-memory term and 16 GiB process limit.
 
 The more important lesson is measurement scope. The public E2E p95 fell from
 800 ms to 717 ms, but the isolated Modern p95 only fell from 361 ms to 354 ms.
@@ -152,6 +185,12 @@ safety, not the intended steady-state design.
   a rollout decision.
 - Preserve versioned Typesense collections, checked imports, aliases, rollback
   protection, and PostgreSQL as the authoritative source.
+- Model high-fanout nested data as filterable serving records. A final-page
+  bound does not bound bytes when each page document contains hundreds of
+  language options.
+- Publish and roll back catalog, availability, and transcript aliases as one
+  generation. Keep the missing-availability compatibility path until the
+  rollback window no longer includes a two-collection generation.
 - Do not claim a proposed hydration architecture is faster until a clean
   production-shaped comparison proves it.
 

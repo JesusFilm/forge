@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import type { TypesenseClient } from "./typesense-client"
 import {
+  buildAvailabilityDocuments,
   buildCatalogDocuments,
   estimateTypesenseVectorMemoryBytes,
   parseTypesenseVector,
@@ -9,6 +10,7 @@ import {
   TypesenseWatchSearchIndexError,
 } from "./typesense-watch-search-indexer"
 import {
+  TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
@@ -132,6 +134,20 @@ describe("Typesense Watch Search indexer", () => {
         ]),
       }),
     ])
+
+    expect(buildAvailabilityDocuments(documents)).toEqual([
+      {
+        id: "video-1:language-fr",
+        videoId: "video-1",
+        languageId: "language-fr",
+        languageSlug: "french",
+        languageEnglishName: "French",
+        audio: true,
+        subtitles: true,
+        playbackId: "playback-fr",
+        durationSeconds: 180,
+      },
+    ])
   })
 
   it("estimates vector RAM using the Typesense sizing formula", () => {
@@ -248,7 +264,9 @@ describe("Typesense Watch Search indexer", () => {
         collection_name:
           alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
             ? "transcripts_previous"
-            : "catalog_previous",
+            : alias === TYPESENSE_WATCH_AVAILABILITY_ALIAS
+              ? "availability_previous"
+              : "catalog_previous",
       })),
       createCollection: vi.fn(async () => ({})),
       importDocuments: vi.fn(async () => undefined),
@@ -276,6 +294,10 @@ describe("Typesense Watch Search indexer", () => {
       TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
       "transcripts_previous",
     )
-    expect(typesense.deleteCollection).toHaveBeenCalledTimes(2)
+    expect(typesense.upsertAlias).toHaveBeenCalledWith(
+      TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+      "availability_previous",
+    )
+    expect(typesense.deleteCollection).toHaveBeenCalledTimes(3)
   })
 })

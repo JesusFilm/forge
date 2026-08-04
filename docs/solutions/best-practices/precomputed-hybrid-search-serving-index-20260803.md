@@ -28,18 +28,22 @@ not isolate GraphQL POST operations.
 ## Guidance
 
 Evaluate a serving index with the complete corpus before replacing the default
-backend. Keep lexical metadata and transcript vectors in separate collections:
+backend. Separate records by both retrieval phase and fanout boundary:
 
-- One catalog document per public video contains every published locale, card
-  field, and precomputed playable audio/subtitle option.
+- One catalog document per public video contains published lexical metadata,
+  card fields, and compact availability slugs used during candidate ranking.
+- One availability document per public video and language merges playable
+  audio and subtitle state plus playback fields. Final hydration filters these
+  documents to the target and ordered fallback languages.
 - One transcript document per accepted native chunk contains the existing
   embedding, language, evidence text, video ID, start time, and an explicit
   `publiclyVisible` facet. Retain the broad semantic corpus; make every serving
   surface choose a visibility policy.
 - Query embedding remains in the request path, while lexical and vector
   retrieval run concurrently.
-- Hydrate the bounded candidate set from the catalog index rather than joining
-  availability tables during every search.
+- Hydrate the bounded candidate set from the catalog and availability indexes
+  in one multi-search rather than joining availability tables during every
+  search or transferring every language for each selected video.
 - Build timestamped physical collections, validate every bulk-import row, then
   publish stable aliases. Restore prior aliases if a partial publication fails.
 - Public Watch Search filters transcript retrieval with
@@ -113,6 +117,8 @@ ranking overlap in ways a small projection cannot.
 - Search request paths repeatedly join stable display or availability metadata.
 - A semantic index already exists, but ranking still needs lexical exactness.
 - Candidate hydration dominates latency after retrieval.
+- A bounded result count still has an unbounded payload because each result
+  embeds a high-fanout locale, dub, subtitle, or entitlement array.
 - An architecture change needs evidence without changing production traffic.
 
 ## Examples
@@ -143,10 +149,17 @@ The broad-corpus vector memory term is:
 
 That is not total process RSS. Facets, allocator overhead, working memory, and
 two simultaneous generations during an atomic rebuild require additional
-headroom. The production-readiness runbook currently budgets approximately
-8 GiB for a single-node shadow service and requires the full rebuild to replace
-that planning estimate with measured resident memory, process RSS, peak import
-memory, and disk use.
+headroom. The deployed single-node shadow service has a 16 GiB memory limit.
+The full rebuild must still replace planning estimates with measured resident
+memory, process RSS, peak import memory, and disk use.
+
+A later production trace exposed an important refinement: bounding final
+hydration to 20 catalog documents was insufficient when those documents still
+contained every audio and subtitle option. A broad result page transferred
+about 994 KB; Typesense reported roughly 6 ms of engine work while private wall
+time was about 53 ms. PostgreSQL DEFAULT was faster because its SQL already
+projected only target/fallback rows. Normalizing video/language availability
+restores that projection boundary without moving hydration back to PostgreSQL.
 
 Traffic rollback and index rollback stay independent. Omitted mode and
 `DEFAULT` continue through PostgreSQL, so disabling Modern restores the public

@@ -43,19 +43,22 @@ compared directly without changing the production path.
 
 ## What To Build
 
-1. Add a small Typesense HTTP client and versioned catalog/transcript collection
-   schemas using collection aliases for atomic full rebuilds.
+1. Add a small Typesense HTTP client and versioned catalog, per-language
+   availability, and transcript collection schemas using collection aliases
+   for reversible full rebuilds.
 2. Add an Admin indexer that exports the viewer-safe catalog projection plus
    the broad native transcript-vector corpus. Store explicit transcript
    visibility so public Watch Search can filter without discarding semantic
    evidence needed by other authorized consumers.
 3. Add a Typesense Watch Search service that performs lexical and semantic
    retrieval in parallel, hydrates results only from the precomputed catalog,
-   and returns the existing `WatchSearchResponse` contract.
+   and returns the existing `WatchSearchResponse` contract. Final hydration
+   requests only target/fallback availability records instead of transferring
+   every language option stored on each catalog document.
 4. Add an optional `mode: DEFAULT | MODERN` input to `watchSearch`; omitted or
    `DEFAULT` keeps the current backend and `MODERN` selects Typesense.
 5. Add local setup and benchmark commands that restore the latest full
-   `video-search` snapshot, run Typesense, build both indexes, and compare
+   `video-search` snapshot, run Typesense, build all three indexes, and compare
    latency/result overlap over representative multilingual queries.
 
 ## Constraints

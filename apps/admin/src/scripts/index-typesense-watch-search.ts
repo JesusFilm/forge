@@ -19,7 +19,7 @@ async function main() {
     batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
     onProgress: (progress) => {
       process.stdout.write(
-        `[typesense-watch-index] catalog=${progress.catalogDocuments} transcripts=${progress.transcriptDocuments}\n`,
+        `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} transcripts=${progress.transcriptDocuments}\n`,
       )
     },
   })
