@@ -47,6 +47,7 @@ import {
   getWatchProgressRatio,
   useWatchProgressRecorder,
 } from "@/lib/watch-progress-client"
+import { writeWatchVolumePreference } from "@/lib/watch-volume-preference"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   tryAsContentSlug,
@@ -1194,6 +1195,7 @@ export function HeroPlayer({
         // since the user is now committed. Without play() the user just
         // unmuted a still-paused video.
         player.muted = false
+        writeWatchVolumePreference({ muted: false, volume: player.volume })
         const tapResult = player.play()
         if (tapResult && typeof tapResult.then === "function") {
           tapResult.catch((err: unknown) => {
@@ -1210,6 +1212,7 @@ export function HeroPlayer({
         player.currentTime = savedProgress?.positionSeconds ?? 0
       }
       player.muted = false
+      writeWatchVolumePreference({ muted: false, volume: player.volume })
       const result = player.play()
       setChromeRevealed(true)
       setAutoplayBlocked(false)
