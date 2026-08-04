@@ -50,7 +50,8 @@ let snapshot: WatchProgressSnapshot = EMPTY_SNAPSHOT
 const bufferedIntents = new Map<string, ProgressWriteIntent>()
 const listeners = new Set<Listener>()
 
-function intentKey(intent: ProgressWriteIntent): string {
+/** Identity keying shared with the offline queue — must never drift. */
+export function progressIntentKey(intent: ProgressWriteIntent): string {
   return intent.videoId ? `id:${intent.videoId}` : `slug:${intent.videoSlug}`
 }
 
@@ -125,7 +126,7 @@ export function resetToSignedOut() {
  */
 export function bufferProgressIntent(intent: ProgressWriteIntent) {
   if (!intent.videoId && !intent.videoSlug) return
-  bufferedIntents.set(intentKey(intent), intent)
+  bufferedIntents.set(progressIntentKey(intent), intent)
 }
 
 export function peekProgressIntents(): ProgressWriteIntent[] {
@@ -144,7 +145,7 @@ export function restoreProgressIntents(
   intents: readonly ProgressWriteIntent[],
 ) {
   for (const intent of intents) {
-    const key = intentKey(intent)
+    const key = progressIntentKey(intent)
     if (!bufferedIntents.has(key)) bufferedIntents.set(key, intent)
   }
 }

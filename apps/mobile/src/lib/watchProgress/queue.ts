@@ -10,7 +10,7 @@
  * slug, which admin resolves server-side (KTD8).
  */
 
-import type { ProgressWriteIntent } from "./store"
+import { progressIntentKey, type ProgressWriteIntent } from "./store"
 
 export const WATCH_PROGRESS_QUEUE_STORAGE_KEY = "watch-progress-queue"
 export const WATCH_PROGRESS_QUEUE_VERSION = 1
@@ -23,10 +23,6 @@ export type ProgressQueue = {
   /** The account whose playback recorded these writes. */
   accountId: string
   writes: ProgressWriteIntent[]
-}
-
-function writeKey(write: ProgressWriteIntent): string {
-  return write.videoId ? `id:${write.videoId}` : `slug:${write.videoSlug}`
 }
 
 /**
@@ -45,12 +41,15 @@ export function enqueueProgressWrite(
   }
   const base =
     queue != null && queue.accountId === accountId ? queue.writes : []
-  const key = writeKey(write)
-  const existing = base.find((entry) => writeKey(entry) === key)
+  const key = progressIntentKey(write)
+  const existing = base.find((entry) => progressIntentKey(entry) === key)
   if (existing && existing.recordedAt > write.recordedAt) {
     return { accountId, writes: [...base] }
   }
-  const writes = [...base.filter((entry) => writeKey(entry) !== key), write]
+  const writes = [
+    ...base.filter((entry) => progressIntentKey(entry) !== key),
+    write,
+  ]
   // Over the ceiling, drop the OLDEST-recorded writes first.
   if (writes.length > WATCH_PROGRESS_QUEUE_MAX_WRITES) {
     writes.sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))

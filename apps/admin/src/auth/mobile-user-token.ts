@@ -59,12 +59,6 @@ let jwksCache: {
   jwks: ReturnType<typeof createRemoteJWKSet>
 } | null = null
 
-/** Test-only: clear the JWKS + derived-allowlist caches between cases. */
-export function __resetMobileUserTokenCaches() {
-  algCache = null
-  jwksCache = null
-}
-
 /**
  * The jwt plugin mints iss/aud as Auth's ORIGIN (no /api/auth path) — the
  * runtime-verified shape — unlike the oauthProvider tokens web introspects,
