@@ -6,6 +6,20 @@ import { useVideoPlayer, type VideoPlayer } from "expo-video"
 import { extractMuxPlaybackId } from "../lib/muxThumbnail"
 import { datadogLog } from "../lib/datadog"
 import {
+  createProgressRecorder,
+  type ProgressIdentity,
+  type ProgressRecorder,
+} from "../lib/watchProgress/recorder"
+import {
+  applyLocalProgress,
+  bufferProgressIntent,
+} from "../lib/watchProgress/store"
+import {
+  enqueueOfflineWrite,
+  getProgressSync,
+  getSignedInAccountId,
+} from "../lib/watchProgress/syncClient"
+import {
   createVideoQoeSession,
   shouldCountRebuffer,
   type VideoQoeReason,
@@ -24,10 +38,16 @@ const POSITION_EPSILON_S = 0.25
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
  * creation source, replaceAsync swap with Mux-ID compare + resume, AppState
  * pause/resume, unmount pause. Consumers own their VideoView + chrome.
+ *
+ * Progress recording (KTD5) lives INSIDE the adapter and no-ops unless the
+ * caller passes `options.progress` — the muted hero pager and SDUI hero use
+ * raw useVideoPlayer and never reach this hook, so they are excluded
+ * structurally.
  */
 export function useManagedVideoPlayer(
   sourceUrl: string | null,
   setup?: (player: VideoPlayer) => void,
+  options?: { progress?: ProgressIdentity | null },
 ) {
   // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
   // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
@@ -95,6 +115,31 @@ export function useManagedVideoPlayer(
     startQoeSession(creationSource)
   }
 
+  // ── Progress recorder (KTD5) ─────────────────────────────────────────
+  // One recorder per identity; an identity change (episode swap in the
+  // collection pager) flushes the departing video before re-keying. Offline
+  // (file://) playback routes writes to the account-bound queue.
+  const progressIdentity = options?.progress ?? null
+  const recorderRef = useRef<ProgressRecorder | null>(null)
+  const recorderKeyRef = useRef<string | null>(null)
+  const recorderKey = progressIdentity
+    ? `${progressIdentity.videoId ?? ""}|${progressIdentity.videoSlug ?? ""}`
+    : null
+  if (recorderKeyRef.current !== recorderKey) {
+    recorderRef.current?.flush("unmount")
+    recorderKeyRef.current = recorderKey
+    recorderRef.current = progressIdentity
+      ? createProgressRecorder(progressIdentity, sessionSourceRef.current, {
+          getAccountId: getSignedInAccountId,
+          bufferIntent: bufferProgressIntent,
+          enqueueOffline: enqueueOfflineWrite,
+          requestDrain: (drainOptions) =>
+            void getProgressSync().drainIntents(drainOptions),
+          applyLocal: applyLocalProgress,
+        })
+      : null
+  }
+
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
 
@@ -159,12 +204,16 @@ export function useManagedVideoPlayer(
   // a window where a background event could be missed.
   const isPlayingRef = useRef(isPlaying)
   useEffect(() => {
+    const wasPlaying = isPlayingRef.current
     isPlayingRef.current = isPlaying
     // R36: first play records TTFF (creation→now) into the session summary and
     // opens the rebuffer gate. onFirstPlaying is idempotent per session.
     if (isPlaying) {
       hasStartedRef.current = true
       qoeRef.current?.onFirstPlaying()
+    } else if (wasPlaying) {
+      // A real pause (not initial mount) forces a progress write (KTD5).
+      recorderRef.current?.flush("pause")
     }
   }, [isPlaying])
 
@@ -190,6 +239,7 @@ export function useManagedVideoPlayer(
       } else {
         isForegroundRef.current = false
         wasPlayingRef.current = isPlayingRef.current
+        recorderRef.current?.flush("background")
         try {
           player.pause()
         } catch {
@@ -202,6 +252,7 @@ export function useManagedVideoPlayer(
 
   useEffect(() => {
     return () => {
+      recorderRef.current?.flush("unmount")
       try {
         player.pause()
       } catch {
@@ -212,6 +263,14 @@ export function useManagedVideoPlayer(
 
   // R36: statusChange feeds the QoE session — 'error' is a sanitized error, and
   // a post-start 'loading' that is not a seek/swap is a genuine rebuffer.
+  useEffect(() => {
+    // Playback end records the completed range (KTD5/KTD6).
+    const endSub = player.addListener("playToEnd", () => {
+      recorderRef.current?.flush("end")
+    })
+    return () => endSub.remove()
+  }, [player])
+
   useEffect(() => {
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status === "error") {
@@ -241,14 +300,18 @@ export function useManagedVideoPlayer(
     const id = setInterval(() => {
       let position: number
       let status: string
+      let duration: number
       try {
         position = player.currentTime
         status = player.status
+        duration = player.duration
       } catch {
         return // Native player already released
       }
       // Same poll feeds watched_ms, so no native timeUpdate event is needed.
       qoeRef.current?.onTimeUpdate(position)
+      // The recorder samples this same 1s signal at 2s granularity (KTD5).
+      recorderRef.current?.onTick(position, duration)
 
       const now = Date.now()
       const advanced =

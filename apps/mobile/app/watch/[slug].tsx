@@ -454,6 +454,18 @@ export default function WatchVideoPage() {
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             horizontalInset={PLAYER_SIDE_PADDING}
+            progressIdentity={
+              // Offline playback may predate the record load — the slug is
+              // the on-device key admin resolves server-side (KTD8).
+              video?.documentId
+                ? {
+                    videoId: video.documentId,
+                    languageSlug: activeVariant?.languageSlug ?? null,
+                  }
+                : offlineSource
+                  ? { videoSlug: decodedSlug, languageSlug: null }
+                  : null
+            }
           />
         )}
       </View>

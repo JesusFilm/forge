@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
 import {
   DOUBLE_TAP_MS,
@@ -54,6 +55,8 @@ type VideoPlayerProps = {
    *  16:9 height is computed from the reduced width (no letterbox). Ignored in
    *  fullscreen. Default 0. */
   horizontalInset?: number
+  /** Progress-recording identity (KTD5). Absent = no recording (hero-safe). */
+  progressIdentity?: ProgressIdentity | null
 }
 
 export function VideoPlayer({
@@ -64,6 +67,7 @@ export function VideoPlayer({
   fullscreen = false,
   onToggleFullscreen,
   horizontalInset = 0,
+  progressIdentity = null,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
@@ -76,15 +80,19 @@ export function VideoPlayer({
   // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
   // pause) lives in the shared adapter (todo 016); this component owns the
   // chrome, captions, and tap handling.
-  const { player, isPlaying } = useManagedVideoPlayer(streamingUrl, (p) => {
-    // Favor a fast first frame over deep prebuffer — JFP audience skews to
-    // low-bandwidth networks. (Android-only fields are ignored on iOS.)
-    p.bufferOptions = {
-      minBufferForPlayback: 1,
-      preferredForwardBufferDuration: 8,
-      prioritizeTimeOverSizeThreshold: true,
-    }
-  })
+  const { player, isPlaying } = useManagedVideoPlayer(
+    streamingUrl,
+    (p) => {
+      // Favor a fast first frame over deep prebuffer — JFP audience skews to
+      // low-bandwidth networks. (Android-only fields are ignored on iOS.)
+      p.bufferOptions = {
+        minBufferForPlayback: 1,
+        preferredForwardBufferDuration: 8,
+        prioritizeTimeOverSizeThreshold: true,
+      }
+    },
+    { progress: progressIdentity },
+  )
 
   // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
   // instead). These three events cover every AVPlayer auto-select; a fourth
