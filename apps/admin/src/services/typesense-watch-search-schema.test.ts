@@ -12,6 +12,16 @@ describe("Typesense Watch Search schemas", () => {
     )
   })
 
+  it("stores locale codes without adding them to the lexical index", () => {
+    const schema = watchCatalogCollectionSchema("build")
+    expect(schema.fields).toContainEqual({
+      name: "localeCodes",
+      type: "string[]",
+      optional: true,
+      index: false,
+    })
+  })
+
   it("keeps transcript vectors at the existing embedding dimensions", () => {
     const schema = watchTranscriptCollectionSchema("build")
     const embedding = schema.fields.find((field) => field.name === "embedding")

@@ -264,6 +264,7 @@ export async function buildCatalogDocuments(
         coreId: video.coreId,
         slug: video.slug,
         titles: locales.map((locale) => locale.title),
+        localeCodes: locales.map((locale) => locale.locale),
         descriptions: locales.flatMap((locale) =>
           locale.description ? [locale.description] : [],
         ),

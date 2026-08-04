@@ -33,6 +33,7 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
   coreId: "core-communion",
   slug: "the-fellowship-of-the-believers",
   titles: ["La communion des croyants", "The Fellowship of the Believers"],
+  localeCodes: ["fr", "en"],
   descriptions: ["Les croyants partagent leur vie."],
   localesJson: JSON.stringify([
     {
@@ -105,6 +106,26 @@ function typesenseFixture({
   semanticError?: Error
   catalog?: TypesenseWatchCatalogDocument[]
 }) {
+  function projectDocument(
+    document: TypesenseWatchCatalogDocument,
+    request: TypesenseSearchRequest,
+  ) {
+    const includeFields = String(request.include_fields ?? "")
+      .split(",")
+      .filter(Boolean)
+    const excludeFields = new Set(
+      String(request.exclude_fields ?? "")
+        .split(",")
+        .filter(Boolean),
+    )
+    const entries = Object.entries(document).filter(([field]) =>
+      includeFields.length > 0
+        ? includeFields.includes(field)
+        : !excludeFields.has(field),
+    )
+    return Object.fromEntries(entries) as TypesenseWatchCatalogDocument
+  }
+
   return {
     multiSearch: vi.fn(async (searches: TypesenseSearchRequest[]) => {
       const search = searches[0]
@@ -150,7 +171,9 @@ function typesenseFixture({
           out_of: documents.length,
           page,
           search_time_ms: 1,
-          hits: pageDocuments.map((document) => ({ document })),
+          hits: pageDocuments.map((document) => ({
+            document: projectDocument(document, request),
+          })),
         } satisfies TypesenseSearchResult<TypesenseWatchCatalogDocument>
       })
     }),
@@ -181,6 +204,7 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.results[0]).toMatchObject({
       slug: "the-fellowship-of-the-believers",
       title: "La communion des croyants",
+      snippet: "Les croyants partagent leur vie.",
       playbackId: "playback-fr",
       availability: { kind: "target_audio", audio: true },
       evidence: { kind: "exact_title" },
@@ -212,6 +236,7 @@ describe("TypesenseWatchSearchService", () => {
       id: "a-broad-match",
       slug: "jesus-film",
       titles: ["JESUS Film"],
+      localeCodes: ["fr"],
       localesJson: JSON.stringify([
         { locale: "fr", title: "JESUS Film", description: null },
       ]),
@@ -221,6 +246,7 @@ describe("TypesenseWatchSearchService", () => {
       id: "z-whole-title-match",
       slug: "jesus",
       titles: ["JESUS"],
+      localeCodes: ["fr"],
       localesJson: JSON.stringify([
         { locale: "fr", title: "JESUS", description: null },
       ]),
@@ -253,6 +279,7 @@ describe("TypesenseWatchSearchService", () => {
       id: `jesus-${index.toString().padStart(3, "0")}`,
       slug: `jesus-${index}`,
       titles: [index === 0 ? "JESUS" : `JESUS Film ${index}`],
+      localeCodes: ["fr"],
       localesJson: JSON.stringify([
         {
           locale: "fr",
@@ -288,13 +315,71 @@ describe("TypesenseWatchSearchService", () => {
         request.include_fields == null,
     )
 
-    expect(lexicalRequest?.include_fields).toBe(
-      "id,titles,localesJson,audioLanguageSlugs,subtitleLanguageSlugs",
+    expect(lexicalRequest?.include_fields).toBeUndefined()
+    expect(lexicalRequest?.exclude_fields).toBe(
+      "coreId,slug,descriptions,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson",
     )
+    expect(
+      requests.some(
+        (request) =>
+          request.q === "*" &&
+          request.include_fields === "id,titles,localesJson",
+      ),
+    ).toBe(false)
     expect(fullHydrationRequests).toHaveLength(1)
     expect(fullHydrationRequests[0]?.per_page).toBe(20)
     expect(response.results).toHaveLength(20)
     expect(response.hasMore).toBe(true)
+  })
+
+  it("falls back to legacy locale JSON until the active index has locale codes", async () => {
+    const legacyDocument = { ...catalogDocument, localeCodes: undefined }
+    const legacyCatalog = {
+      ...legacyDocument,
+      titles: ["The Fellowship of the Believers", "La communion des croyants"],
+      localesJson: JSON.stringify([
+        {
+          locale: "en",
+          title: "The Fellowship of the Believers",
+          description: "The believers share their lives.",
+        },
+        {
+          locale: "fr",
+          title: "La communion des croyants",
+          description: "Les croyants partagent leur vie.",
+        },
+      ]),
+    } as TypesenseWatchCatalogDocument
+    const typesense = typesenseFixture({
+      lexical: [legacyCatalog],
+      catalog: [legacyCatalog],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      displayLanguageSlug: "french",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      title: "La communion des croyants",
+      snippet: "Les croyants partagent leur vie.",
+      evidence: { kind: "exact_title" },
+    })
+    expect(
+      typesense.multiSearch.mock.calls
+        .flatMap(([searches]) => searches)
+        .some(
+          (request) =>
+            request.q === "*" &&
+            request.include_fields === "id,titles,localesJson",
+        ),
+    ).toBe(true)
   })
 
   it("pages lexical candidates beyond Typesense's 250-hit page limit", async () => {
@@ -303,6 +388,7 @@ describe("TypesenseWatchSearchService", () => {
       id: `video-${index.toString().padStart(3, "0")}`,
       slug: `care-${index}`,
       titles: [`Care ${index}`],
+      localeCodes: ["fr"],
       localesJson: JSON.stringify([
         { locale: "fr", title: `Care ${index}`, description: null },
       ]),
