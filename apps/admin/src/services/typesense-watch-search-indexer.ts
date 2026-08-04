@@ -1,14 +1,17 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { TypesenseClient } from "./typesense-client"
 import {
+  TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   type TypesenseWatchAudioOption,
+  type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
   type TypesenseWatchLocale,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
+  watchAvailabilityCollectionSchema,
   watchCatalogCollectionSchema,
   watchTranscriptCollectionSchema,
 } from "./typesense-watch-search-schema"
@@ -35,10 +38,12 @@ type TranscriptIndexRow = {
 
 export type TypesenseWatchSearchIndexStats = {
   catalogDocuments: number
+  availabilityDocuments: number
   transcriptDocuments: number
   publicTranscriptDocuments: number
   estimatedVectorMemoryBytes: number
   catalogCollection: string
+  availabilityCollection: string
   transcriptCollection: string
 }
 
@@ -284,6 +289,53 @@ export async function buildCatalogDocuments(
   })
 }
 
+export function buildAvailabilityDocuments(
+  catalog: readonly TypesenseWatchCatalogDocument[],
+): TypesenseWatchAvailabilityDocument[] {
+  return catalog.flatMap((document) => {
+    const byLanguage = new Map<string, TypesenseWatchAvailabilityDocument>()
+    const audioOptions = JSON.parse(
+      document.audioOptionsJson,
+    ) as TypesenseWatchAudioOption[]
+    const subtitleOptions = JSON.parse(
+      document.subtitleOptionsJson,
+    ) as TypesenseWatchSubtitleOption[]
+
+    for (const option of audioOptions) {
+      byLanguage.set(option.languageId, {
+        id: `${document.id}:${option.languageId}`,
+        videoId: document.id,
+        languageId: option.languageId,
+        languageSlug: option.languageSlug,
+        languageEnglishName: option.languageEnglishName,
+        audio: true,
+        subtitles: false,
+        playbackId: option.playbackId,
+        durationSeconds: option.durationSeconds,
+      })
+    }
+    for (const option of subtitleOptions) {
+      const existing = byLanguage.get(option.languageId)
+      if (existing) {
+        existing.subtitles = true
+      } else {
+        byLanguage.set(option.languageId, {
+          id: `${document.id}:${option.languageId}`,
+          videoId: document.id,
+          languageId: option.languageId,
+          languageSlug: option.languageSlug,
+          languageEnglishName: null,
+          audio: false,
+          subtitles: true,
+          playbackId: null,
+          durationSeconds: null,
+        })
+      }
+    }
+    return [...byLanguage.values()]
+  })
+}
+
 async function loadTranscriptBatch(
   prisma: PrismaClient,
   afterId: string | null,
@@ -344,6 +396,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   batchSize?: number
   onProgress?: (stats: {
     catalogDocuments: number
+    availabilityDocuments: number
     transcriptDocuments: number
   }) => void
 }): Promise<TypesenseWatchSearchIndexStats> {
@@ -353,26 +406,50 @@ export async function rebuildTypesenseWatchSearchIndex({
     )
   }
   const catalogSchema = watchCatalogCollectionSchema(buildId)
+  const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
-  const [previousCatalogAlias, previousTranscriptAlias] = await Promise.all([
+  const [
+    previousCatalogAlias,
+    previousAvailabilityAlias,
+    previousTranscriptAlias,
+  ] = await Promise.all([
     typesense.getAlias(TYPESENSE_WATCH_CATALOG_ALIAS),
+    typesense.getAlias(TYPESENSE_WATCH_AVAILABILITY_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
   ])
   let catalogDocuments = 0
+  let availabilityDocuments = 0
   let transcriptDocuments = 0
   let publicTranscriptDocuments = 0
   let catalogAliasUpdated = false
+  let availabilityAliasUpdated = false
   let transcriptAliasUpdated = false
 
   await typesense.createCollection(catalogSchema)
   try {
+    await typesense.createCollection(availabilitySchema)
     await typesense.createCollection(transcriptSchema)
     const catalog = await buildCatalogDocuments(prisma)
+    const availability = buildAvailabilityDocuments(catalog)
     for (let index = 0; index < catalog.length; index += batchSize) {
       const batch = catalog.slice(index, index + batchSize)
       await typesense.importDocuments(catalogSchema.name, batch)
       catalogDocuments += batch.length
-      onProgress?.({ catalogDocuments, transcriptDocuments })
+      onProgress?.({
+        catalogDocuments,
+        availabilityDocuments,
+        transcriptDocuments,
+      })
+    }
+    for (let index = 0; index < availability.length; index += batchSize) {
+      const batch = availability.slice(index, index + batchSize)
+      await typesense.importDocuments(availabilitySchema.name, batch)
+      availabilityDocuments += batch.length
+      onProgress?.({
+        catalogDocuments,
+        availabilityDocuments,
+        transcriptDocuments,
+      })
     }
 
     let afterId: string | null = null
@@ -395,9 +472,18 @@ export async function rebuildTypesenseWatchSearchIndex({
         (document) => document.publiclyVisible,
       ).length
       afterId = rows.at(-1)?.id ?? null
-      onProgress?.({ catalogDocuments, transcriptDocuments })
+      onProgress?.({
+        catalogDocuments,
+        availabilityDocuments,
+        transcriptDocuments,
+      })
     }
 
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+      availabilitySchema.name,
+    )
+    availabilityAliasUpdated = true
     await typesense.upsertAlias(
       TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
       transcriptSchema.name,
@@ -426,18 +512,24 @@ export async function rebuildTypesenseWatchSearchIndex({
         return false
       }
     }
-    const [catalogRestored, transcriptRestored] = await Promise.all([
-      restoreAlias(
-        TYPESENSE_WATCH_CATALOG_ALIAS,
-        previousCatalogAlias?.collection_name,
-        catalogAliasUpdated,
-      ),
-      restoreAlias(
-        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
-        previousTranscriptAlias?.collection_name,
-        transcriptAliasUpdated,
-      ),
-    ])
+    const [catalogRestored, availabilityRestored, transcriptRestored] =
+      await Promise.all([
+        restoreAlias(
+          TYPESENSE_WATCH_CATALOG_ALIAS,
+          previousCatalogAlias?.collection_name,
+          catalogAliasUpdated,
+        ),
+        restoreAlias(
+          TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+          previousAvailabilityAlias?.collection_name,
+          availabilityAliasUpdated,
+        ),
+        restoreAlias(
+          TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+          previousTranscriptAlias?.collection_name,
+          transcriptAliasUpdated,
+        ),
+      ])
     await Promise.allSettled([
       ...(catalogRestored
         ? [typesense.deleteCollection(catalogSchema.name)]
@@ -445,17 +537,22 @@ export async function rebuildTypesenseWatchSearchIndex({
       ...(transcriptRestored
         ? [typesense.deleteCollection(transcriptSchema.name)]
         : []),
+      ...(availabilityRestored
+        ? [typesense.deleteCollection(availabilitySchema.name)]
+        : []),
     ])
     throw error
   }
 
   return {
     catalogDocuments,
+    availabilityDocuments,
     transcriptDocuments,
     publicTranscriptDocuments,
     estimatedVectorMemoryBytes:
       estimateTypesenseVectorMemoryBytes(transcriptDocuments),
     catalogCollection: catalogSchema.name,
+    availabilityCollection: availabilitySchema.name,
     transcriptCollection: transcriptSchema.name,
   }
 }

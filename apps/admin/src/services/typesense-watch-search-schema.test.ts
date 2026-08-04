@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+  watchAvailabilityCollectionSchema,
   watchCatalogCollectionSchema,
   watchTranscriptCollectionSchema,
 } from "./typesense-watch-search-schema"
@@ -20,6 +22,21 @@ describe("Typesense Watch Search schemas", () => {
       optional: true,
       index: false,
     })
+  })
+
+  it("stores targetable video-language availability in a separate index", () => {
+    const schema = watchAvailabilityCollectionSchema("build")
+
+    expect(schema.name).toBe(`${TYPESENSE_WATCH_AVAILABILITY_ALIAS}_build`)
+    expect(schema.fields).toEqual(
+      expect.arrayContaining([
+        { name: "videoId", type: "string", facet: true },
+        { name: "languageId", type: "string", facet: true },
+        { name: "languageSlug", type: "string", facet: true },
+        { name: "audio", type: "bool", facet: true },
+        { name: "subtitles", type: "bool", facet: true },
+      ]),
+    )
   })
 
   it("keeps transcript vectors at the existing embedding dimensions", () => {

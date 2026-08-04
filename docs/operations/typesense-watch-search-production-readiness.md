@@ -51,8 +51,8 @@ different explicit policy without rebuilding a metadata-only index.
 Do not run the production-sized corpus on a developer workstation. After the
 normal PR merge, run the broad rebuild inside the isolated
 `@forge/admin/search` shadow service. Record the physical collection names,
-catalog count, transcript count, public transcript count, estimated vector
-bytes, per-case rankings, overlap, lane timings, disk use, and Typesense
+catalog count, availability count, transcript count, public transcript count,
+estimated vector bytes, per-case rankings, overlap, lane timings, disk use, and Typesense
 `/metrics.json` before and after the build. Never persist the Railway token or
 rendered database URL in the repository, logs, or benchmark output.
 
@@ -147,6 +147,29 @@ background, but the resolver returned only after that deadline. Production load
 tests must measure this lane separately and should evaluate decoupling it from
 response completion without weakening analytics durability.
 
+### Confirmed Modern hydration regression
+
+A paired production trace on the current compact-catalog generation completed
+`DEFAULT` GraphQL in 156.5 ms and `MODERN` in 213.7 ms. MODERN's final catalog
+hydration occupied 92.2 ms on the serial critical path. No correlated error or
+retry was present. Earlier direct probes measured a 994 KB final response for
+20 broad `JESUS` results: Typesense reported about 6 ms of engine work while
+Admin observed about 53 ms of private wall time.
+
+The apparent mismatch with DEFAULT is architectural, not unexplained overhead.
+DEFAULT's SQL already projects the requested locale and only target/fallback
+playback rows. MODERN's catalog document embeds every published locale and all
+playable audio/subtitle options, so Admin downloads and parses them before
+discarding all but one. Generic queries with little playback fanout are fast;
+broad multilingual titles are slow.
+
+The corrective generation adds `watch_search_availability`, one compact record
+per video/language. Final card hydration and target/fallback availability are
+sent together in one private `/multi_search`; no ranking, vector, visibility,
+or GraphQL field changes. A missing availability alias retries the bounded
+legacy catalog projection, making application rollback independent from index
+rollback. Measure the new generation before crediting a latency improvement.
+
 ### Latency budget required for the 200 ms goal
 
 The production gate should allocate a measured budget rather than assuming
@@ -192,6 +215,10 @@ same provenance and visibility predicates as the full indexer:
 
 - If a viewer-visible catalog document exists, upsert it by video ID.
 - If it does not exist, delete that catalog ID with `ignore_not_found=true`.
+- Replace the video's availability records as one idempotent set: upsert the
+  current per-language records first, then delete indexed video/language IDs
+  absent from PostgreSQL. Audio and subtitle state for the same language is
+  merged into one record.
 - Load the complete accepted native transcript chunk set for the video. Upsert
   new or changed chunks first, including the recomputed `publiclyVisible`
   value, then delete previously indexed IDs absent from the PostgreSQL set.
@@ -200,39 +227,40 @@ same provenance and visibility predicates as the full indexer:
 - Delete transcript documents only when the authoritative chunk is hard-deleted
   or replaced. Soft deletion, `noIndex`, and publication changes update
   `publiclyVisible`; they do not silently discard the semantic corpus.
-- Record the highest source revision only after all catalog and transcript
-  operations for the video succeed. An older retry must never overwrite a
-  newer projection.
+- Record the highest source revision only after all catalog, availability, and
+  transcript operations for the video succeed. An older retry must never
+  overwrite a newer projection.
 
 ### Required event behavior
 
-| Source change                                            | Catalog action                                                       | Transcript action                                                                                        |
-| -------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Video soft deletion                                      | Delete                                                               | Recompute all chunks as `publiclyVisible=false`                                                          |
-| Video hard deletion                                      | Delete                                                               | Delete all chunks removed by the authoritative cascade                                                   |
-| `noIndex=true`                                           | Delete                                                               | Recompute all chunks as `publiclyVisible=false`                                                          |
-| Last published locale removed                            | Delete                                                               | Recompute affected chunks as `publiclyVisible=false`                                                     |
-| Locale publish/unpublish/title/description               | Rebuild localized catalog document, or delete if no locale remains   | Recompute visibility for chunks in the changed locale                                                    |
-| Dub create/update/delete/publication/HLS/playback change | Rebuild audio/watchability fields                                    | No vector change unless transcript source also changes                                                   |
-| Subtitle create/update/delete/language/source change     | Rebuild subtitle/watchability fields                                 | Embedding workflow emits a later transcript/vector event; stale chunks are removed when that event lands |
-| Transcript re-chunk or vector replacement                | No catalog change unless language availability changed               | Upsert accepted provider/model/dimension chunks and delete stale IDs                                     |
-| Image, label, slug, or child relation change             | Rebuild catalog document                                             | None                                                                                                     |
-| Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change | No vector rewrite; Admin continues to resolve fallback policy at query time                              |
+| Source change                                            | Catalog action                                                       | Availability action                                     | Transcript action                                                                                        |
+| -------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Video soft deletion                                      | Delete                                                               | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
+| Video hard deletion                                      | Delete                                                               | Delete all video records                                | Delete all chunks removed by the authoritative cascade                                                   |
+| `noIndex=true`                                           | Delete                                                               | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
+| Last published locale removed                            | Delete                                                               | Delete all video records                                | Recompute affected chunks as `publiclyVisible=false`                                                     |
+| Locale publish/unpublish/title/description               | Rebuild localized catalog document, or delete if no locale remains   | Rebuild or delete with catalog eligibility              | Recompute visibility for chunks in the changed locale                                                    |
+| Dub create/update/delete/publication/HLS/playback change | Rebuild ranking availability slugs                                   | Replace affected video/language playback record         | No vector change unless transcript source also changes                                                   |
+| Subtitle create/update/delete/language/source change     | Rebuild ranking availability slugs                                   | Replace affected video/language subtitle record         | Embedding workflow emits a later transcript/vector event; stale chunks are removed when that event lands |
+| Transcript re-chunk or vector replacement                | No catalog change unless language availability changed               | No change unless availability changed                   | Upsert accepted provider/model/dimension chunks and delete stale IDs                                     |
+| Image, label, slug, or child relation change             | Rebuild catalog document                                             | None                                                    | None                                                                                                     |
+| Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change | Rebuild records for slug/name changes; no fallback copy | No vector rewrite; Admin continues to resolve fallback policy at query time                              |
 
 ### Reconciliation and generation publication
 
 Incremental synchronization is not the only correctness mechanism:
 
-- Run a full count/checksum reconciliation at least daily. Alert on catalog or
-  transcript cardinality drift and enqueue affected video IDs.
-- Build fresh versioned catalog and transcript collections at least weekly and
+- Run a full count/checksum reconciliation at least daily. Alert on catalog,
+  availability, or transcript cardinality drift and enqueue affected video IDs.
+- Build fresh versioned catalog, availability, and transcript collections at
+  least weekly and
   after schema/model migrations.
 - Validate import results, expected counts, viewer-safety samples, embedding
   dimensions, fixed relevance queries, and a read smoke test before publishing.
-- Publish both physical collection names through one Admin-owned active
-  generation record. A single PostgreSQL transaction changes the pair after
-  both collections are ready. This avoids the brief mixed generation possible
-  when two Typesense aliases are moved sequentially. Aliases remain useful for
+- Publish all three physical collection names through one Admin-owned active
+  generation record. A single PostgreSQL transaction changes the set after all
+  collections are ready. This avoids the brief mixed generation possible when
+  Typesense aliases are moved sequentially. Aliases remain useful for
   operator inspection and manual recovery.
 - Retain the previous healthy generation for at least seven days and do not
   delete it until the new generation has passed production canary checks.
@@ -248,8 +276,8 @@ remains the source of truth; Typesense is a disposable serving projection.
 Admin receives a search-only key, while only the index worker receives the
 write/admin key. The browser receives neither host nor key.
 
-The first shadow deployment is one Typesense 30.2 container with an 8 GiB
-memory budget, at least 2 vCPU, and a dedicated persistent volume mounted at
+The current shadow deployment is one Typesense 30.2 container with a 16 GiB
+memory budget, 2 vCPU, and a dedicated persistent volume mounted at
 `/data`. Start with 50 GiB only if disk alerts and old-generation cleanup are
 active; 100 GiB is the safer initial allocation while broad two-generation disk
 use is being measured. Configure `/health` as the Railway health check.
@@ -282,21 +310,29 @@ For the audited broad corpus:
 
 The index builder now reports this estimate with every completed build.
 
+The 2026-08-04 read-only projection contains 176,294 compact availability
+documents across 1,070 videos. Their complete source JSON is approximately
+57.7 MiB, and the collection adds no vectors. Only video/language identifiers,
+the language slug, and two booleans are indexed; playback and display values
+are stored-only. Even a conservative 3× keyword-index multiplier is small
+beside the 2.80 GiB vector term and does not change the 16 GiB capacity verdict.
+
 | State                                       | Vector RAM | Planning process RAM |
 | ------------------------------------------- | ---------: | -------------------: |
 | One broad generation                        |   2.80 GiB |        about 3.1 GiB |
 | Two broad generations during atomic rebuild |   5.61 GiB |        about 5.7 GiB |
 | Two generations plus 30% operating headroom |          — |        about 7.4 GiB |
 
-The 8 GiB budget is therefore a minimum for safe versioned rebuilds, not an
-estimate that the active index alone consumes 8 GiB. Searchable strings,
+The former 8 GiB estimate is therefore a minimum for safe versioned rebuilds,
+not an estimate that the active index alone consumes 8 GiB. The deployed
+16 GiB limit provides additional rebuild and query headroom. Searchable strings,
 facets, allocator fragmentation, imports, query working memory, and the
 Typesense process add to the vector formula. Transcript text, start time,
 images, locale JSON, and option JSON are unindexed and primarily consume disk.
 
 Two 17,462-vector local generations previously used 393.2 MiB of Typesense
 resident memory, 523.8 MiB process RSS, and 1.82 GiB on disk. Provision the
-shadow service with the conservative 8 GiB memory budget and 100 GiB volume,
+shadow service with the deployed 16 GiB memory budget and 100 GiB volume,
 then replace the planning figures above with its measured resident memory,
 RSS, disk, and peak import memory before enabling any traffic. Configure
 warning at 70% and critical at 80%; scale the service before either threshold
@@ -328,7 +364,7 @@ Monitor and page on:
   and Admin-to-Typesense network time.
 - Outbox oldest age, rows pending, retry count, dead letters, batch duration,
   per-line import failures, last successful full reconciliation, and catalog/
-  transcript count drift.
+  availability/transcript count drift.
 - Admin language, embedding, retrieval, watchability, GraphQL, public network,
   Prisma connection acquisition, and SQL execution as separate telemetry.
 
@@ -346,7 +382,11 @@ Monitor and page on:
 4. Roll back traffic by disabling the Modern flag or removing the Typesense
    connection variables from Admin; omitted/`DEFAULT` requests already use
    PostgreSQL. Roll back index state by selecting the previous active
-   generation. These are independent, no-schema-change controls.
+   generation. These are independent, no-schema-change controls. During the
+   availability migration, application code retries legacy bounded catalog
+   hydration only when that alias is missing. Roll back catalog, availability,
+   and transcript aliases together; do not operate a mixed generation as the
+   steady state.
 5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
    exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
    the service or volume is a separate destructive action and is never part of
