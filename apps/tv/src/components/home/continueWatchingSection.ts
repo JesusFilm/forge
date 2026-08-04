@@ -36,6 +36,10 @@ function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
     parentCoreId: null,
     parentSlug: null,
     missingData: [],
+    progressFraction:
+      entry.progress != null && entry.progress > 0
+        ? Math.min(1, entry.progress)
+        : null,
   }
 }
 

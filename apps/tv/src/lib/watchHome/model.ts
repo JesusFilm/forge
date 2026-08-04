@@ -97,6 +97,9 @@ export type WatchHomeCard = {
   parentCoreId: string | null
   parentSlug: string | null
   missingData: WatchHomeMissingData[]
+  /** 0..1 watched fraction — renders the Continue Watching progress bar on
+   *  the thumbnail. Curated (non-shelf) cards leave it unset. */
+  progressFraction?: number | null
 }
 
 export type WatchHomeSection = {

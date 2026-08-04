@@ -42,3 +42,20 @@ describe("buildContinueWatchingSection", () => {
     expect(card.metaLabel).toBeNull()
   })
 })
+
+describe("progress bar data", () => {
+  it("clamps progressFraction to 0..1 and omits non-positive values", () => {
+    expect(
+      buildContinueWatchingSection([entry({ progress: 0.4 })])!.cards[0]!
+        .progressFraction,
+    ).toBeCloseTo(0.4)
+    expect(
+      buildContinueWatchingSection([entry({ progress: 1.7 })])!.cards[0]!
+        .progressFraction,
+    ).toBe(1)
+    expect(
+      buildContinueWatchingSection([entry({ progress: null })])!.cards[0]!
+        .progressFraction,
+    ).toBeNull()
+  })
+})
