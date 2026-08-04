@@ -55,6 +55,23 @@ export function createProgressSync(deps: ProgressSyncDeps) {
   let lastGood: readonly WatchProgressEntry[] | null = null
   let cadence = { lastSentAt: null as number | null }
 
+  async function hydrateFromServerInternal(): Promise<void> {
+    const accountId = deps.getAccountId()
+    if (accountId == null) return
+    let outcome: { ok: true; entries: WatchProgressEntry[] } | { ok: false }
+    try {
+      outcome = { ok: true, entries: await deps.fetchEntries() }
+    } catch {
+      outcome = { ok: false }
+    }
+    const resolved = resolveProgressEntries(outcome, lastGood)
+    lastGood = resolved.nextLastGood
+    // The account may have signed out while the fetch was in flight.
+    if (deps.getAccountId() !== accountId) return
+    hydrateProgress({ accountId, entries: [...resolved.entries] })
+    if (outcome.ok) await persistSnapshot(accountId, resolved.entries)
+  }
+
   async function persistSnapshot(
     accountId: string,
     entries: readonly WatchProgressEntry[],
@@ -88,22 +105,7 @@ export function createProgressSync(deps: ProgressSyncDeps) {
      * blip never blanks bars; an empty success renders empty but keeps the
      * last-good cache (R11/AE5).
      */
-    async hydrateFromServer(): Promise<void> {
-      const accountId = deps.getAccountId()
-      if (accountId == null) return
-      let outcome: { ok: true; entries: WatchProgressEntry[] } | { ok: false }
-      try {
-        outcome = { ok: true, entries: await deps.fetchEntries() }
-      } catch {
-        outcome = { ok: false }
-      }
-      const resolved = resolveProgressEntries(outcome, lastGood)
-      lastGood = resolved.nextLastGood
-      // The account may have signed out while the fetch was in flight.
-      if (deps.getAccountId() !== accountId) return
-      hydrateProgress({ accountId, entries: [...resolved.entries] })
-      if (outcome.ok) await persistSnapshot(accountId, resolved.entries)
-    },
+    hydrateFromServer: hydrateFromServerInternal,
 
     /**
      * Flush the offline queue: send when its account matches the signed-in
@@ -155,7 +157,7 @@ export function createProgressSync(deps: ProgressSyncDeps) {
       try {
         await deps.sendClear(videoId)
       } catch {
-        await this.hydrateFromServer()
+        await hydrateFromServerInternal()
       }
     },
 

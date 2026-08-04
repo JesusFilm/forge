@@ -122,15 +122,17 @@ export function useManagedVideoPlayer(
   // (file://) playback routes writes to the account-bound queue.
   const progressIdentity = options?.progress ?? null
   const recorderRef = useRef<ProgressRecorder | null>(null)
-  const recorderKeyRef = useRef<string | null>(null)
   const recorderKey = progressIdentity
     ? `${progressIdentity.videoId ?? ""}|${progressIdentity.videoSlug ?? ""}`
     : null
-  if (recorderKeyRef.current !== recorderKey) {
-    recorderRef.current?.flush("unmount")
-    recorderKeyRef.current = recorderKey
-    recorderRef.current = progressIdentity
-      ? createProgressRecorder(progressIdentity, sessionSourceRef.current, {
+  const identityRef = useRef(progressIdentity)
+  identityRef.current = progressIdentity
+  // Effect, not render: flush() buffers an intent and dispatches a network
+  // drain, so the departing video's write must not fire mid-render.
+  useEffect(() => {
+    const identity = identityRef.current
+    recorderRef.current = identity
+      ? createProgressRecorder(identity, sessionSourceRef.current, {
           getAccountId: getSignedInAccountId,
           bufferIntent: bufferProgressIntent,
           enqueueOffline: enqueueOfflineWrite,
@@ -140,7 +142,12 @@ export function useManagedVideoPlayer(
           onSignedOutStop: noteSignedOutPlaybackStop,
         })
       : null
-  }
+    return () => {
+      // Re-key (episode swap) or unmount: record the departing position.
+      recorderRef.current?.flush("unmount")
+      recorderRef.current = null
+    }
+  }, [recorderKey])
 
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
@@ -254,7 +261,6 @@ export function useManagedVideoPlayer(
 
   useEffect(() => {
     return () => {
-      recorderRef.current?.flush("unmount")
       try {
         player.pause()
       } catch {
