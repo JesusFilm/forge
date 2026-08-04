@@ -3,7 +3,7 @@ id: "feat-327"
 title: "Seeker video tools + declared-video result projection (SEEKER_VIDEO_ENABLED)"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-04"
 duration: 3
 depends_on:
@@ -16,6 +16,22 @@ tags:
   - "ai-pipeline"
   - "search"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-04 via [PR #1820](https://github.com/JesusFilm/forge/pull/1820) (`feat(mastra): seeker video tools + declared-video projection (ai-chat feat-327)`).
+
+**What landed.** The two flag-gated tools (`searchVideos`, `featureVideo`) on the single `seekerAgent` plus the declared-video projection onto the `/forge-seeker` terminal frame, all behind default-off `SEEKER_VIDEO_ENABLED`. Beyond the brief: production sampling during the smoke found 1.5% of featurable rows carrying slugs outside the D9 pattern, so the shape gates were lifted into one shared module (`seeker-video-gates.ts`) and applied at the TOOL boundary as well as the route projection — a live-site census (1,154 published slugs, all conformant; both offending rows 404 and absent from the sitemap) affirmed D9's pattern unchanged and showed those rows are unpublished, so dropping them prevents pairing a working player with a dead caption link. The agent-tools buffered read gained a byte cap, and `ADMIN_AGENT_TOOLS_ALLOWED_HOSTS` became required-when-URL-set in production via a new boot guard (a tightening that also covers the experience-authoring agents, which share the pair). One flag-off behavior is deliberately NOT byte-identical: function-valued `tools` removes the agent's tools from Mastra's global registry, so they are no longer reachable on `/api/tools/:toolId/execute` — documented and pinned rather than reverted, because it takes credentialed tools off a code-unauthenticated surface. Compound was executed in-PR rather than deferred.
+
+**Compound docs.** Two worked instances (23 + 24) appended to [`docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md), plus prevention-checklist item 9 and a refinement to item 7.
+
+**Residual risk / follow-ups.**
+
+- **Re-ask limitation:** asking for an earlier video again yields reply text without a video (the declaration union is turn-scoped, so the id resolves to nothing). Decided by jian wei to wait for [feat-330](feat-330-seeker-video-prompt-langfuse.md)'s re-ask rule rather than extend the interim block.
+- **Slug SHAPE is not page LIVENESS:** an ASCII-slugged unpublished row passes every gate and would still ship a dead caption link. Catalog-hygiene question raised with the Core-sync owner; no gate in this arc can answer it.
+- **Boot-guard precondition:** the healthcheck that converts a boot throw into a refused promotion is operator-verified at rollout runbook step 2, not code-guaranteed — `railway.toml` applies only when the service's Config-as-code Path points at it.
+
+**Unblocked.** [feat-328](feat-328-chat-inline-video-rendering.md), [feat-329](feat-329-chat-video-sources-replay-persistence.md), [feat-330](feat-330-seeker-video-prompt-langfuse.md).
 
 ## Problem
 
