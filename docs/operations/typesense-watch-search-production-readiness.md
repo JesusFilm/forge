@@ -281,8 +281,12 @@ Incremental synchronization is not the only correctness mechanism:
   transcript collection name in the same manifest. A single PostgreSQL
   transaction changes only the members rebuilt by that operation after they
   are ready. Aliases remain useful for operator inspection and manual recovery.
-- Retain the previous healthy generation for at least seven days and do not
-  delete it until the new generation has passed production canary checks.
+- On the capacity-constrained single-node experiment, retire prior physical
+  collections immediately after the new aliases publish successfully. Keep
+  only the active catalog, availability, and transcript collections; retaining
+  a second 280,107-vector generation exhausts the 16 GiB memory limit. Use the
+  unchanged `DEFAULT` PostgreSQL backend as the immediate rollback while a
+  deliberate Typesense rebuild restores any retired generation if needed.
 
 ## Topology and Capacity
 

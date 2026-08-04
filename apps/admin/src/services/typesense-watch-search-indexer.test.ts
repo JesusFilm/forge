@@ -217,6 +217,7 @@ describe("Typesense Watch Search indexer", () => {
       $queryRaw: queryRaw,
     } as unknown as PrismaClient
     const typesense = {
+      listCollections: vi.fn(async () => []),
       getAlias: vi.fn(async () => undefined),
       createCollection: vi.fn(async () => ({})),
       importDocuments: vi.fn(async () => undefined),
@@ -259,11 +260,19 @@ describe("Typesense Watch Search indexer", () => {
       $queryRaw: vi.fn(async () => []),
     } as unknown as PrismaClient
     const typesense = {
+      listCollections: vi.fn(async () => [
+        { name: "watch_search_catalog_previous", fields: [] },
+        { name: "watch_search_availability_previous", fields: [] },
+        { name: "watch_search_transcripts_active", fields: [] },
+        { name: "watch_search_transcripts_old", fields: [] },
+        { name: "watch_search_transcripts_partial", fields: [] },
+        { name: "unrelated_collection", fields: [] },
+      ]),
       getAlias: vi.fn(async (alias: string) => ({
         name: alias,
         collection_name:
           alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
-            ? "transcripts_active"
+            ? "watch_search_transcripts_active"
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
@@ -285,6 +294,7 @@ describe("Typesense Watch Search indexer", () => {
         },
       ]),
       upsertAlias: vi.fn(async () => ({})),
+      deleteCollection: vi.fn(async () => undefined),
     } as unknown as TypesenseClient
 
     const stats = await rebuildTypesenseWatchSearchIndex({
@@ -304,9 +314,12 @@ describe("Typesense Watch Search indexer", () => {
       expect.any(String),
     )
     expect(typesense.multiSearch).toHaveBeenCalledWith([
-      expect.objectContaining({ collection: "transcripts_active", q: "*" }),
       expect.objectContaining({
-        collection: "transcripts_active",
+        collection: "watch_search_transcripts_active",
+        q: "*",
+      }),
+      expect.objectContaining({
+        collection: "watch_search_transcripts_active",
         q: "*",
         filter_by: "publiclyVisible:=true",
       }),
@@ -314,9 +327,22 @@ describe("Typesense Watch Search indexer", () => {
     expect(stats).toMatchObject({
       transcriptDocuments: 280_107,
       publicTranscriptDocuments: 17_462,
-      transcriptCollection: "transcripts_active",
+      transcriptCollection: "watch_search_transcripts_active",
       transcriptReused: true,
+      retiredCollections: [
+        "watch_search_catalog_previous",
+        "watch_search_availability_previous",
+        "watch_search_transcripts_old",
+        "watch_search_transcripts_partial",
+      ],
+      retirementFailures: [],
     })
+    expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
+      "watch_search_transcripts_active",
+    )
+    expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
+      "unrelated_collection",
+    )
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
   })
 
@@ -326,6 +352,11 @@ describe("Typesense Watch Search indexer", () => {
       $queryRaw: vi.fn(async () => []),
     } as unknown as PrismaClient
     const typesense = {
+      listCollections: vi.fn(async () => [
+        { name: "watch_search_catalog_previous", fields: [] },
+        { name: "watch_search_availability_previous", fields: [] },
+        { name: "watch_search_transcripts_previous", fields: [] },
+      ]),
       getAlias: vi.fn(async (alias: string) => ({
         name: alias,
         collection_name: `${alias}_previous`,
@@ -333,6 +364,7 @@ describe("Typesense Watch Search indexer", () => {
       createCollection: vi.fn(async () => ({})),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async () => ({})),
+      deleteCollection: vi.fn(async () => undefined),
     } as unknown as TypesenseClient
 
     const stats = await rebuildTypesenseWatchSearchIndex({
@@ -352,6 +384,11 @@ describe("Typesense Watch Search indexer", () => {
       expect.stringContaining("watch_search_transcripts"),
     )
     expect(stats.transcriptReused).toBe(false)
+    expect(stats.retiredCollections).toEqual([
+      "watch_search_catalog_previous",
+      "watch_search_availability_previous",
+      "watch_search_transcripts_previous",
+    ])
   })
 
   it("rolls back metadata aliases without touching a reused transcript alias", async () => {
@@ -360,6 +397,7 @@ describe("Typesense Watch Search indexer", () => {
       $queryRaw: vi.fn(async () => []),
     } as unknown as PrismaClient
     const typesense = {
+      listCollections: vi.fn(async () => []),
       getAlias: vi.fn(async (alias: string) => ({
         name: alias,
         collection_name:
@@ -421,6 +459,7 @@ describe("Typesense Watch Search indexer", () => {
       $queryRaw: vi.fn(async () => []),
     } as unknown as PrismaClient
     const typesense = {
+      listCollections: vi.fn(async () => []),
       getAlias: vi.fn(async (alias: string) => ({
         name: alias,
         collection_name:

@@ -47,6 +47,38 @@ describe("TypesenseClient", () => {
     await expect(client.getAlias("missing")).resolves.toBeUndefined()
   })
 
+  it("lists physical collections for release cleanup", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse([
+        {
+          name: "watch_search_transcripts_active",
+          fields: [],
+          num_documents: 280_107,
+        },
+      ]),
+    )
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(client.listCollections()).resolves.toEqual([
+      expect.objectContaining({
+        name: "watch_search_transcripts_active",
+        num_documents: 280_107,
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8108/collections",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-typesense-api-key": "test-key",
+        }),
+      }),
+    )
+  })
+
   it("checks every row in an HTTP-200 import response", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

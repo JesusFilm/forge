@@ -90,7 +90,13 @@ Every collection that is built is imported with checked JSONL responses before
 its stable alias moves. A failed routine refresh restores the catalog and
 availability aliases and never moves or deletes the reused transcript
 collection. A failed explicit transcript rebuild also restores the transcript
-alias. The final JSON object reports `transcriptReused`, the selected physical
+alias. After a successful publication, the indexer deletes older and orphaned
+Watch Search physical collections that existed before the run, retaining only
+the active catalog, availability, and transcript collections. This bounds RAM
+instead of keeping duplicate vector generations; rollback remains the unchanged
+`DEFAULT` PostgreSQL backend or a manual transcript rebuild, not an inactive
+Typesense generation. The final JSON object reports `transcriptReused`,
+`retiredCollections`, any `retirementFailures`, the selected physical
 transcript collection, catalog, availability, and transcript counts plus
 `estimatedVectorMemoryBytes`, calculated as 7 bytes times 1,536 dimensions
 times the accepted transcript document count. Capture

@@ -46,9 +46,21 @@ export type TypesenseWatchSearchIndexStats = {
   availabilityCollection: string
   transcriptCollection: string
   transcriptReused: boolean
+  retiredCollections: string[]
+  retirementFailures: Array<{ collection: string; error: string }>
 }
 
 export type TypesenseWatchSearchTranscriptStrategy = "reuse" | "rebuild"
+
+const MANAGED_COLLECTION_PREFIXES = [
+  `${TYPESENSE_WATCH_CATALOG_ALIAS}_`,
+  `${TYPESENSE_WATCH_AVAILABILITY_ALIAS}_`,
+  `${TYPESENSE_WATCH_TRANSCRIPT_ALIAS}_`,
+] as const
+
+function isManagedWatchCollection(name: string): boolean {
+  return MANAGED_COLLECTION_PREFIXES.some((prefix) => name.startsWith(prefix))
+}
 
 export class TypesenseWatchSearchIndexError extends Error {
   constructor(message: string) {
@@ -415,14 +427,19 @@ export async function rebuildTypesenseWatchSearchIndex({
   const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
   const [
+    existingCollections,
     previousCatalogAlias,
     previousAvailabilityAlias,
     previousTranscriptAlias,
   ] = await Promise.all([
+    typesense.listCollections(),
     typesense.getAlias(TYPESENSE_WATCH_CATALOG_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_AVAILABILITY_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
   ])
+  const existingManagedCollections = existingCollections
+    .map((collection) => collection.name)
+    .filter(isManagedWatchCollection)
   const transcriptReused =
     transcriptStrategy === "reuse" && previousTranscriptAlias != null
   const transcriptCollection = transcriptReused
@@ -586,6 +603,37 @@ export async function rebuildTypesenseWatchSearchIndex({
     throw error
   }
 
+  const activeCollections = new Set([
+    catalogSchema.name,
+    availabilitySchema.name,
+    transcriptCollection,
+  ])
+  const collectionsToRetire = existingManagedCollections.filter(
+    (collection) => !activeCollections.has(collection),
+  )
+  const retirementResults = await Promise.allSettled(
+    collectionsToRetire.map((collection) =>
+      typesense.deleteCollection(collection),
+    ),
+  )
+  const retiredCollections: string[] = []
+  const retirementFailures: Array<{ collection: string; error: string }> = []
+  retirementResults.forEach((result, index) => {
+    const collection = collectionsToRetire[index]
+    if (collection == null) return
+    if (result.status === "fulfilled") {
+      retiredCollections.push(collection)
+    } else {
+      retirementFailures.push({
+        collection,
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      })
+    }
+  })
+
   return {
     catalogDocuments,
     availabilityDocuments,
@@ -597,5 +645,7 @@ export async function rebuildTypesenseWatchSearchIndex({
     availabilityCollection: availabilitySchema.name,
     transcriptCollection,
     transcriptReused,
+    retiredCollections,
+    retirementFailures,
   }
 }
