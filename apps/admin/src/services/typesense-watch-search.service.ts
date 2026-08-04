@@ -43,6 +43,8 @@ const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
 const MIN_SEMANTIC_SIMILARITY = 0.5
 const CATALOG_PREVIEW_FIELDS =
   "id,titles,localesJson,audioLanguageSlugs,subtitleLanguageSlugs"
+const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
+  "id,audioLanguageSlugs,subtitleLanguageSlugs"
 
 type TypesenseSearchClient = Pick<TypesenseClient, "multiSearch">
 
@@ -69,6 +71,11 @@ type TypesenseWatchCatalogPreviewDocument = Pick<
   | "localesJson"
   | "audioLanguageSlugs"
   | "subtitleLanguageSlugs"
+>
+
+type TypesenseWatchCatalogWatchabilityPreviewDocument = Pick<
+  TypesenseWatchCatalogDocument,
+  "id" | "audioLanguageSlugs" | "subtitleLanguageSlugs"
 >
 
 type IndexedWatchability = {
@@ -189,7 +196,7 @@ function displayLocale(
 }
 
 function previewWatchabilityKind(
-  document: TypesenseWatchCatalogPreviewDocument,
+  document: TypesenseWatchCatalogWatchabilityPreviewDocument,
   target: TargetLanguageContext,
 ): IndexedWatchability["kind"] {
   if (document.audioLanguageSlugs.includes(target.slug)) return "target_audio"
@@ -576,16 +583,17 @@ export class TypesenseWatchSearchService {
       evidenceLocales,
     })
     const watchabilityStartedAt = performance.now()
-    const previewById = new Map(
-      lexicalHits.map((hit) => [hit.document.id, hit.document] as const),
-    )
+    const previewById = new Map<
+      string,
+      TypesenseWatchCatalogWatchabilityPreviewDocument
+    >(lexicalHits.map((hit) => [hit.document.id, hit.document] as const))
     const missingPreviewIds = candidates
       .map((entry) => entry.videoId)
       .filter((videoId) => !previewById.has(videoId))
     const missingPreviews =
-      await this.catalogDocuments<TypesenseWatchCatalogPreviewDocument>(
+      await this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
         missingPreviewIds,
-        CATALOG_PREVIEW_FIELDS,
+        CATALOG_WATCHABILITY_PREVIEW_FIELDS,
       )
     for (const [videoId, document] of missingPreviews) {
       previewById.set(videoId, document)
