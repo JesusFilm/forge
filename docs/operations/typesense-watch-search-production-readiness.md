@@ -301,9 +301,10 @@ write/admin key. The browser receives neither host nor key.
 
 The current shadow deployment is one Typesense 30.2 container with a 16 GiB
 memory budget, 2 vCPU, and a dedicated persistent volume mounted at
-`/data`. Start with 50 GiB only if disk alerts and old-generation cleanup are
-active; 100 GiB is the safer initial allocation while broad two-generation disk
-use is being measured. Configure `/health` as the Railway health check.
+`/data`. The current 50 GiB volume is sufficient only while old-generation
+cleanup and disk alerts remain active; use a larger temporary or separate build
+target for any deliberate broad vector rebuild. Configure `/health` as the
+Railway health check.
 
 Do not attach the volume to `@forge/admin`. That service currently has two
 replicas, while Railway services with volumes cannot use replicas and volume
@@ -340,29 +341,30 @@ the language slug, and two booleans are indexed; playback and display values
 are stored-only. Even a conservative 3× keyword-index multiplier is small
 beside the 2.80 GiB vector term and does not change the 16 GiB capacity verdict.
 
-| State                                       | Vector RAM | Planning process RAM |
-| ------------------------------------------- | ---------: | -------------------: |
-| One broad generation                        |   2.80 GiB |        about 3.1 GiB |
-| Two broad generations during atomic rebuild |   5.61 GiB |        about 5.7 GiB |
-| Two generations plus 30% operating headroom |          — |        about 7.4 GiB |
+| State                                               | Formula-only vector RAM | Measured process result |
+| --------------------------------------------------- | ----------------------: | ----------------------: |
+| One broad generation                                |                2.80 GiB |   Measure after cleanup |
+| Two broad generations                               |                5.61 GiB |   Near the 16 GiB limit |
+| Two generations plus an aborted 13,250-vector build |                5.74 GiB |       16,378.9 MiB peak |
 
-The former 8 GiB estimate is therefore a minimum for safe versioned rebuilds,
-not an estimate that the active index alone consumes 8 GiB. The deployed
-16 GiB limit provides additional rebuild and query headroom. Searchable strings,
-facets, allocator fragmentation, imports, query working memory, and the
-Typesense process add to the vector formula. Transcript text, start time,
-images, locale JSON, and option JSON are unindexed and primarily consume disk.
-Routine application releases keep one vector generation, so they do not incur
-the temporary second-generation vector RAM shown in the table. That peak is
-reserved for an explicit transcript rebuild.
+The 7-byte formula is only the HNSW/vector component. It does not include
+searchable strings, facets, allocator fragmentation, imports, query working
+memory, or the Typesense process. Production reached 16,378.9 MiB on the
+16,384 MiB node while duplicate generations were resident, so 16 GiB is not a
+safe two-generation rebuild budget. Routine releases must keep one active
+vector generation. Before an explicit transcript rebuild, either raise the
+memory limit for the entire overlap window or build on a separate node, verify
+the replacement, publish it, and retire the old generation immediately.
+Transcript text, start time, images, locale JSON, and option JSON are unindexed
+and primarily consume disk.
 
 Two 17,462-vector local generations previously used 393.2 MiB of Typesense
-resident memory, 523.8 MiB process RSS, and 1.82 GiB on disk. Provision the
-shadow service with the deployed 16 GiB memory budget and 100 GiB volume,
-then replace the planning figures above with its measured resident memory,
-RSS, disk, and peak import memory before enabling any traffic. Configure
-warning at 70% and critical at 80%; scale the service before either threshold
-becomes sustained and never plan to operate at the vendor's 85% ceiling.
+resident memory, 523.8 MiB process RSS, and 1.82 GiB on disk; that small local
+sample did not predict the production process overhead. Record the steady-state
+resident memory and disk again after stale production collections are deleted.
+Configure warning at 70% and critical at 80%; scale the service before either
+threshold becomes sustained and never plan to operate at the vendor's 85%
+ceiling.
 
 ### Backup and recovery requirements
 
@@ -407,13 +409,11 @@ Monitor and page on:
    pressure, error-rate increase, or the 200 ms p95 gate failing.
 4. Roll back traffic by disabling the Modern flag or removing the Typesense
    connection variables from Admin; omitted/`DEFAULT` requests already use
-   PostgreSQL. Roll back index state by selecting the previous active
-   generation. These are independent, no-schema-change controls. During the
-   availability migration, application code retries legacy bounded catalog
-   hydration only when that alias is missing. A routine metadata rollback moves
-   catalog and availability back together and leaves the reused transcript
-   alias untouched. An explicit transcript rebuild may also roll its transcript
-   alias back to the preceding healthy collection.
+   PostgreSQL. The 16 GiB experiment does not retain an inactive broad vector
+   generation, so index recovery uses the latest external snapshot or a manual
+   rebuild from canonical PostgreSQL data. During the availability migration,
+   application code retries legacy bounded catalog hydration only when that
+   alias is missing.
 5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
    exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
    the service or volume is a separate destructive action and is never part of
