@@ -13,9 +13,12 @@
  *      present in BOTH runs are "carried known-fails": reported, never red,
  *      expiring structurally — a model-config change breaks identity,
  *      forcing a fresh baseline (the decision doc's expiry pin).
- *   2. ANY tool skip when the BASELINE was skip-free (pooled across models).
- *      While the baseline itself skips, skip magnitude is report-only —
- *      see the measured-counts comment at the rule.
+ *   2. ANY tool skip in the CURRENT run (pooled across models). Decision
+ *      2026-08-04 (#5): unconditional — the production skip defect is the
+ *      reason this eval exists, so a skip is a deterministic hard-fail
+ *      regardless of prompt change. A BASELINE containing any skip REFUSES
+ *      instead (see WHAT REFUSES) — a skipping run is not a valid
+ *      known-good.
  *   3. A judge-verdict flip (baseline satisfied → current violated) on a
  *      GROUNDING-class criterion (weights.ts) WHEN THE PROMPT CHANGED — the
  *      criteria the gate treats as load-bearing (the same set gate 2's
@@ -26,9 +29,8 @@
  *      exists to avoid.
  *
  * WHAT IS REPORTED, NEVER RED: score deltas beyond tolerance, carried
- * known-fails, skip-count changes on a skipping baseline, format/length
- * deltas, non-grounding verdict flips, invalid judge cells, malformed-URL
- * variants, query drift.
+ * known-fails, format/length deltas, non-grounding verdict flips, invalid
+ * judge cells, malformed-URL variants, query drift.
  *
  * WHAT REFUSES: any `identityMismatch(..., "gate")` — different questions,
  * models, decoding, corpus, criteria, or judge make the comparison
@@ -36,7 +38,9 @@
  * scope — it is the subject under test; a prompt change is reported in the
  * gate output instead (types.ts documents the scope). Also refused: a judged
  * run that never graded the full questions × models grid (a judge outage
- * plus a regression must not gate green on zero evidence); a fixture-world
+ * plus a regression must not gate green on zero evidence); a BASELINE
+ * containing any tool skip (decision 2026-08-04 #5 — re-capture a clean
+ * baseline; a skipping run is not a valid known-good); a fixture-world
  * run pair with no loadable fixture file (the citation lane would silently
  * vacate to not-applicable — fail closed, never green); and a fixture file
  * whose corpusSha256 differs from the runs' stamped corpus (grounded-ness
@@ -125,11 +129,10 @@ export type GateReport = {
    *  three consecutive runs, then 2); the red condition is the pooled rule
    *  below. */
   toolSkipDeltas: GateCountDelta[]
-  /** Pooled tool-skip totals across all models. `regression` (→ red) fires
-   *  ONLY when a CLEAN baseline gains any skip; while the baseline itself
-   *  skips, magnitude is report-only (see the rule's comment in
-   *  evaluateGate — measured counts 3, 2, 3, 3, 4, 6 on the unchanged
-   *  system falsified every count threshold). */
+  /** Pooled tool-skip totals across all models. Decision 2026-08-04 (#5):
+   *  `regression` (→ red) fires on ANY current-run skip; a baseline with a
+   *  nonzero count never reaches a green/red report — it REFUSES upstream
+   *  (a skipping run is not a valid known-good). */
   toolSkipPooled: {
     baselineCount: number
     currentCount: number
@@ -452,20 +455,30 @@ export function evaluateGate(input: {
     (sum, delta) => sum + delta.currentCount,
     0,
   )
-  // Measured across nine 20-cell runs of the UNCHANGED system, the pooled
-  // skip count was 3, 2, 3, 3, 4, 6, 5, 5, 4 — a +1 grace was falsified by
-  // the sixth run, and no count threshold separates signal from
-  // single-sample binomial noise while the baseline itself skips. So: a SKIPPING baseline
-  // is the known-fail pin (decision doc §7 step 6) — its magnitude is
-  // REPORT-ONLY until the §6 production model fix lands; a CLEAN baseline
-  // (zero skips — what that fix buys) reds on ANY skip, because zero is an
-  // absorbing state and leaving it is always signal. The skip counts stay
-  // first-class in every gate report; the multi-sample nightly is the
-  // instrument that resolves magnitude drift on a skipping baseline.
+  // Decision 2026-08-04 (#5), superseding the earlier known-fail pin: the
+  // measured pooled skip counts on the UNCHANGED system (3, 2, 3, 3, 4, 6,
+  // 5, 5, 4 across nine 20-cell runs) falsified every magnitude threshold —
+  // no count separates signal from single-sample binomial noise while a
+  // baseline itself skips. The only sound policy is zero on BOTH sides:
+  // ANY current-run skip is red (the production defect class this eval
+  // exists for), and a baseline with any skip is REFUSED below — it cannot
+  // serve as a known-good, so the fix is the §6 production skip fix plus
+  // ONE clean re-capture/rebaseline, not a tolerance.
   const toolSkipPooled = {
     baselineCount: toolSkipPooledBaseline,
     currentCount: toolSkipPooledCurrent,
-    regression: toolSkipPooledBaseline === 0 && toolSkipPooledCurrent > 0,
+    regression: toolSkipPooledCurrent > 0,
+  }
+  if (toolSkipPooledBaseline > 0) {
+    return {
+      ...empty,
+      ...observedCells,
+      refusedOn: [
+        `baseline contains ${toolSkipPooledBaseline} tool skip(s) — re-capture a clean baseline; a skipping run is not a valid known-good`,
+      ],
+      toolSkipDeltas,
+      toolSkipPooled,
+    }
   }
   const formatDeltas = COUNT_CHECKS.slice(1).flatMap((checkId) =>
     countDelta(checkId),
@@ -673,11 +686,7 @@ async function main(): Promise<void> {
   }
   if (report.toolSkipPooled.regression) {
     console.log(
-      `RED     : pooled tool-called skips rose ${report.toolSkipPooled.baselineCount} → ${report.toolSkipPooled.currentCount}`,
-    )
-  } else if (report.toolSkipPooled.currentCount > 0) {
-    console.log(
-      `carried : ${report.toolSkipPooled.currentCount} pooled tool skip(s) (baseline had ${report.toolSkipPooled.baselineCount})`,
+      `RED     : ${report.toolSkipPooled.currentCount} tool skip(s) in the current run — any skip is a hard fail (decision 2026-08-04)`,
     )
   }
   for (const delta of report.toolSkipDeltas) {

@@ -228,7 +228,7 @@ describe("evaluateGate", () => {
     expect(report.newHardFails).toEqual([])
   })
 
-  it("goes RED on ANY skip when the baseline was CLEAN — zero is an absorbing state", () => {
+  it("goes RED on ANY current-run tool skip — decision 2026-08-04, unconditional", () => {
     const report = evaluateGate({
       current: makeRunPair({ answer: { skippedTool: true, toolCalls: [] } }),
       baseline: makeRunPair({}),
@@ -242,7 +242,7 @@ describe("evaluateGate", () => {
     })
   })
 
-  it("never reds on skip MAGNITUDE while the baseline itself skips — the known-fail pin (measured counts 3,2,3,3,4,6)", () => {
+  it("REFUSES a baseline containing any tool skip — a skipping run is not a valid known-good", () => {
     const identity = { questionIds: [QUESTION_ID, SECOND_QUESTION_ID] }
     const cells = (skips: readonly string[]) => ({
       identity,
@@ -262,26 +262,27 @@ describe("evaluateGate", () => {
       ),
     })
     const report = evaluateGate({
-      current: makeRunPair(cells([QUESTION_ID, SECOND_QUESTION_ID])),
+      current: makeRunPair(cells([])),
       baseline: makeRunPair(cells([QUESTION_ID])),
       fixtures: FIXTURES,
     })
-    expect(report.verdict).toBe("green")
+    expect(report.verdict).toBe("refused")
+    expect(report.refusedOn.join(";")).toMatch(
+      /baseline contains 1 tool skip.*re-capture a clean baseline/,
+    )
     expect(report.toolSkipPooled).toEqual({
       baselineCount: 1,
-      currentCount: 2,
+      currentCount: 0,
       regression: false,
     })
   })
 
-  it("carries an EQUAL tool-skip count even when the skipped QUESTION moved (the roulette case)", () => {
-    const identity = {
-      questionIds: [QUESTION_ID, SECOND_QUESTION_ID],
-    }
-    const baseline = makeRunPair({
+  it("names the skipping cell when a current-run skip reds", () => {
+    const identity = { questionIds: [QUESTION_ID, SECOND_QUESTION_ID] }
+    const cleanCells = {
       identity,
       answers: [
-        makeAnswer({ skippedTool: true, toolCalls: [] }),
+        makeAnswer(),
         makeAnswer({
           questionId: SECOND_QUESTION_ID,
           category: "pastoral-grief",
@@ -295,9 +296,9 @@ describe("evaluateGate", () => {
           verdicts: makeVerdicts([], SECOND_QUESTION_ID),
         }),
       ],
-    })
+    }
     const current = makeRunPair({
-      identity,
+      ...cleanCells,
       answers: [
         makeAnswer(),
         makeAnswer({
@@ -307,58 +308,21 @@ describe("evaluateGate", () => {
           toolCalls: [],
         }),
       ],
-      judgedCells: [
-        makeJudgedCell(),
-        makeJudgedCell({
-          questionId: SECOND_QUESTION_ID,
-          category: "pastoral-grief",
-          verdicts: makeVerdicts([], SECOND_QUESTION_ID),
-        }),
-      ],
     })
-    const report = evaluateGate({ current, baseline, fixtures: FIXTURES })
-    expect(report.verdict).toBe("green")
+    const report = evaluateGate({
+      current,
+      baseline: makeRunPair(cleanCells),
+      fixtures: FIXTURES,
+    })
+    expect(report.verdict).toBe("red")
     expect(report.toolSkipDeltas).toEqual([
       expect.objectContaining({
-        baselineCount: 1,
+        baselineCount: 0,
         currentCount: 1,
         currentCells: [SECOND_QUESTION_ID],
-        regression: false,
+        regression: true,
       }),
     ])
-  })
-
-  it("carries tool skips that MOVED between models when the pooled total held (measured stability)", () => {
-    const SECOND_MODEL = "google/gemma-4-26b-a4b-it"
-    const identity = { answeringModels: [MODEL, SECOND_MODEL] }
-    const baseline = makeRunPair({
-      identity,
-      answers: [
-        makeAnswer({ skippedTool: true, toolCalls: [] }),
-        makeAnswer({ model: SECOND_MODEL }),
-      ],
-      judgedCells: [makeJudgedCell(), makeJudgedCell({ model: SECOND_MODEL })],
-    })
-    const current = makeRunPair({
-      identity,
-      answers: [
-        makeAnswer(),
-        makeAnswer({ model: SECOND_MODEL, skippedTool: true, toolCalls: [] }),
-      ],
-      judgedCells: [makeJudgedCell(), makeJudgedCell({ model: SECOND_MODEL })],
-    })
-    const report = evaluateGate({ current, baseline, fixtures: FIXTURES })
-    expect(report.verdict).toBe("green")
-    expect(report.toolSkipPooled).toEqual({
-      baselineCount: 1,
-      currentCount: 1,
-      regression: false,
-    })
-    // The per-model breakdown still shows the movement, for the report.
-    expect(
-      report.toolSkipDeltas.find((delta) => delta.model === SECOND_MODEL)
-        ?.regression,
-    ).toBe(true)
   })
 
   it("reports word-count/prose-format count changes without gating on them", () => {
