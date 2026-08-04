@@ -219,6 +219,13 @@ export function createSecureStorageAdapter(
   }
 }
 
+export type SignedInUserPayload = {
+  id: string
+  email?: string | null
+  name?: string | null
+  createdAt?: string | Date | null
+}
+
 type BetterAuthExpoClient = {
   getSession: () => Promise<{
     data: {
@@ -226,6 +233,22 @@ type BetterAuthExpoClient = {
     } | null
   }>
   signOut: () => Promise<unknown>
+  signIn: {
+    /** Native sheets: verify the provider identity token server-side. */
+    social: (options: {
+      provider: "apple" | "google"
+      idToken: { token: string }
+    }) => Promise<{
+      data: { user: SignedInUserPayload } | null
+      error?: { message?: string } | null
+    }>
+    /** Hosted-page fallback: the jfp self-RP flow (browser sheet + expo
+     *  cookie handoff land the session in SecureStore). */
+    oauth2: (options: { providerId: string; callbackURL: string }) => Promise<{
+      data: unknown
+      error?: { message?: string } | null
+    }>
+  }
   $fetch: (
     path: string,
     options?: object,
@@ -241,6 +264,8 @@ export function getAuthClient(): BetterAuthExpoClient {
     // of module-init (the root-layout require pattern).
     const { createAuthClient } =
       require("better-auth/client") as typeof import("better-auth/client")
+    const { genericOAuthClient } =
+      require("better-auth/client/plugins") as typeof import("better-auth/client/plugins")
     const { expoClient } =
       require("@better-auth/expo/client") as typeof import("@better-auth/expo/client")
     const SecureStore =
@@ -255,6 +280,8 @@ export function getAuthClient(): BetterAuthExpoClient {
             keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
           }),
         }),
+        // signIn.oauth2 for the hosted-page fallback (jfp self-RP).
+        genericOAuthClient(),
       ],
     }) as unknown as BetterAuthExpoClient
   }
