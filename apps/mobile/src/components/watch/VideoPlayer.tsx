@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import { reportDatadogAction } from "../../lib/datadog"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
 import {
@@ -57,6 +58,10 @@ type VideoPlayerProps = {
   horizontalInset?: number
   /** Progress-recording identity (KTD5). Absent = no recording (hero-safe). */
   progressIdentity?: ProgressIdentity | null
+  /** Resume-eligible position (KTD6). When set, the pre-start overlay
+   *  offers Resume / Start over; resuming seeks then plays on user tap —
+   *  never autoplay. */
+  resumeAtSeconds?: number | null
 }
 
 export function VideoPlayer({
@@ -68,6 +73,7 @@ export function VideoPlayer({
   onToggleFullscreen,
   horizontalInset = 0,
   progressIdentity = null,
+  resumeAtSeconds = null,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
@@ -257,6 +263,47 @@ export function VideoPlayer({
         />
       )}
 
+      {!hasStarted && resumeAtSeconds != null && (
+        <View style={playerStyles.resumeRow} pointerEvents="box-none">
+          <Pressable
+            onPress={() => {
+              player.currentTime = resumeAtSeconds
+              player.play()
+              // The adoption metric's second RUM action (Success Criteria).
+              reportDatadogAction("resume_selected", {})
+            }}
+            style={({ pressed }) => [
+              playerStyles.resumeButton,
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Resume from ${formatResumeTime(resumeAtSeconds)}`}
+            {...{ "dd-action-name": "player-resume" }}
+          >
+            <Ionicons name="play" size={16} color="#000" />
+            <Text style={playerStyles.resumeLabel}>
+              Resume {formatResumeTime(resumeAtSeconds)}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              player.currentTime = 0
+              player.play()
+              reportDatadogAction("start_over_selected", {})
+            }}
+            style={({ pressed }) => [
+              playerStyles.startOverButton,
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Start from the beginning"
+            {...{ "dd-action-name": "player-start-over" }}
+          >
+            <Text style={playerStyles.startOverLabel}>Start over</Text>
+          </Pressable>
+        </View>
+      )}
+
       {/* Full-bleed tap target behind the chrome (controls layer is box-none,
           subtitle overlay is pointerEvents none, so empty-area taps fall here).
           Tap toggles controls; double tap on a side seeks ±10s. */}
@@ -379,5 +426,54 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     marginTop: 2,
+  },
+})
+
+/** m:ss / h:mm:ss for the resume chip. */
+function formatResumeTime(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m)
+  const ss = String(s).padStart(2, "0")
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+}
+
+const playerStyles = StyleSheet.create({
+  resumeRow: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  resumeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: "#ffffff",
+  },
+  resumeLabel: {
+    color: "#000000",
+    fontFamily: "System",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  startOverButton: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  startOverLabel: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontSize: 14,
+    fontWeight: "600",
   },
 })

@@ -19,6 +19,7 @@ import {
   serializeProgressSnapshot,
 } from "./snapshot"
 import {
+  clearProgressEntry,
   drainProgressIntents,
   hydrateProgress,
   peekProgressIntents,
@@ -41,6 +42,8 @@ export type ProgressSyncDeps = {
   fetchEntries: () => Promise<WatchProgressEntry[]>
   /** Server batch upsert. Throws on failure. */
   sendUpserts: (entries: ProgressWriteIntent[]) => Promise<void>
+  /** Server per-video clear (R16). Throws on failure. */
+  sendClear: (videoId: string) => Promise<void>
   storage: AsyncStorageLike
   now?: () => number
 }
@@ -139,6 +142,21 @@ export function createProgressSync(deps: ProgressSyncDeps) {
         .getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
         .catch(() => null)
       return parseStoredProgressQueue(raw)
+    },
+
+    /**
+     * Per-video clear (R16): optimistic — the bar disappears immediately;
+     * a failed mutation re-hydrates so the entry reappears rather than
+     * vanishing permanently (R11's fail-open posture).
+     */
+    async clearEntry(videoId: string): Promise<void> {
+      if (deps.getAccountId() == null) return
+      clearProgressEntry(videoId)
+      try {
+        await deps.sendClear(videoId)
+      } catch {
+        await this.hydrateFromServer()
+      }
     },
 
     /**

@@ -3,6 +3,7 @@ import {
   isBarVisible,
   isCompleted,
   isResumeEligible,
+  progressBarState,
   progressRatio,
   resumePositionSeconds,
 } from "../thresholds"
@@ -98,5 +99,41 @@ describe("resumePositionSeconds", () => {
   it("never returns a negative seek", () => {
     expect(resumePositionSeconds(-3, 100)).toBe(0)
     expect(resumePositionSeconds(2, 0.5)).toBe(0)
+  })
+})
+
+describe("progressBarState (the bar surfaces' selector)", () => {
+  it("renders no bar below 1 percent and for absent entries", () => {
+    expect(
+      progressBarState({ positionSeconds: 0.5, durationSeconds: 100 }).visible,
+    ).toBe(false)
+    expect(progressBarState(null).visible).toBe(false)
+    expect(progressBarState(undefined).visible).toBe(false)
+  })
+
+  it("snaps completed entries to a full bar with no resume", () => {
+    const state = progressBarState({
+      positionSeconds: 95,
+      durationSeconds: 100,
+    })
+    expect(state).toEqual({
+      visible: true,
+      fillRatio: 1,
+      completed: true,
+      resumeEligible: false,
+    })
+  })
+
+  it("renders proportional fill with resume in between", () => {
+    const state = progressBarState({
+      positionSeconds: 42,
+      durationSeconds: 100,
+    })
+    expect(state).toEqual({
+      visible: true,
+      fillRatio: 0.42,
+      completed: false,
+      resumeEligible: true,
+    })
   })
 })

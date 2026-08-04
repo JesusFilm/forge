@@ -50,3 +50,36 @@ export function resumePositionSeconds(
   const latestAllowed = Math.max(0, durationSeconds - RESUME_END_GUARD_SECONDS)
   return Math.min(Math.max(0, positionSeconds), latestAllowed)
 }
+
+export type ProgressBarState = {
+  visible: boolean
+  /** Completed snaps to full (KTD6). */
+  fillRatio: number
+  completed: boolean
+  /** Resume offered only between visible and completed. */
+  resumeEligible: boolean
+}
+
+/** The one selector every bar surface renders from. */
+export function progressBarState(
+  entry:
+    | { positionSeconds: number; durationSeconds: number }
+    | null
+    | undefined,
+): ProgressBarState {
+  if (entry == null) {
+    return {
+      visible: false,
+      fillRatio: 0,
+      completed: false,
+      resumeEligible: false,
+    }
+  }
+  const ratio = progressRatio(entry.positionSeconds, entry.durationSeconds)
+  return {
+    visible: isBarVisible(ratio),
+    fillRatio: barFillRatio(ratio),
+    completed: isCompleted(ratio),
+    resumeEligible: isResumeEligible(ratio),
+  }
+}

@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { getApolloClient } from "../apolloClient"
 import { getAuthSession } from "../authSession"
 import {
+  CLEAR_MY_WATCH_PROGRESS,
   GET_MY_WATCH_PROGRESS,
   UPSERT_MY_WATCH_PROGRESS,
 } from "../watchProgressQueries"
@@ -95,6 +96,12 @@ export function getProgressSync(): ProgressSync {
         await getApolloClient().mutate({
           mutation: UPSERT_MY_WATCH_PROGRESS,
           variables: { entries: toUpsertEntries(intents) },
+        })
+      },
+      sendClear: async (videoId) => {
+        await getApolloClient().mutate({
+          mutation: CLEAR_MY_WATCH_PROGRESS,
+          variables: { videoId },
         })
       },
       storage: AsyncStorage,
