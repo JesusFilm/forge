@@ -113,32 +113,33 @@ export function buildResultsViewedVariables(
   } satisfies RecordWatchSearchEventVariables
 }
 
-/** Fire-and-forget: resolves void on every path and never rejects. */
-export async function recordResultClicked(
-  input: RecordResultClickedInput,
+// The thunk keeps the BUILDER inside the try too: the whole body must swallow
+// every throw, incl. sync ones (fire-and-forget sync-throw law) — shed/failed
+// events are the designed outcome (KTD6), and a tap handler must never see one.
+async function sendEvent(
+  build: () => RecordWatchSearchEventVariables | null,
 ): Promise<void> {
   try {
-    const variables = buildResultClickedVariables(input)
+    const variables = build()
     if (!variables) return
     await mutateEvent(variables)
   } catch {
-    // Swallow everything, incl. a SYNC getter throw (fire-and-forget
-    // sync-throw law): shed/failed events are the designed outcome (KTD6).
+    // Swallowed by design; see above.
   }
 }
 
 /** Fire-and-forget: resolves void on every path and never rejects. */
-export async function recordResultsViewed(
+export function recordResultClicked(
+  input: RecordResultClickedInput,
+): Promise<void> {
+  return sendEvent(() => buildResultClickedVariables(input))
+}
+
+/** Fire-and-forget: resolves void on every path and never rejects. */
+export function recordResultsViewed(
   input: RecordResultsViewedInput,
 ): Promise<void> {
-  try {
-    const variables = buildResultsViewedVariables(input)
-    if (!variables) return
-    await mutateEvent(variables)
-  } catch {
-    // Swallow everything, incl. a SYNC getter throw (fire-and-forget
-    // sync-throw law): shed/failed events are the designed outcome (KTD6).
-  }
+  return sendEvent(() => buildResultsViewedVariables(input))
 }
 
 function mutateEvent(variables: RecordWatchSearchEventVariables) {

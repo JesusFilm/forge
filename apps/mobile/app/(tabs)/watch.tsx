@@ -29,6 +29,7 @@ import {
   recordResultsViewed,
 } from "../../src/lib/watchSearchEvents"
 import {
+  MAX_QUERY_LENGTH,
   buildWatchSearchInput,
   mapWatchSearchResponse,
   parseSearchError,
@@ -56,7 +57,6 @@ import {
   TEXT_SECONDARY,
 } from "../../src/lib/color"
 
-const MAX_QUERY_LENGTH = 200
 const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500

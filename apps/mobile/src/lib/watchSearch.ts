@@ -18,6 +18,10 @@ import type {
  */
 export const SEARCH_LANGUAGE_SLUG = "english"
 
+// Web's query cap (search-actions.ts truncatedQuery). One constant for the
+// screen's input truncation AND the log builder's cap, so they can't drift.
+export const MAX_QUERY_LENGTH = 200
+
 export type WatchSearchInputArgs = {
   query: string
   offset: number

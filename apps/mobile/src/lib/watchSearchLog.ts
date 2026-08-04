@@ -1,6 +1,6 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
-import { uuidV4Fallback } from "./viewer-id"
-import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
+import { randomUUIDCompat } from "./viewer-id"
+import { MAX_QUERY_LENGTH, SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 
 // Pure, React-free helpers for the watch_search Log (search screen), so
 // request-id generation, outcome selection, and error-code classification are
@@ -8,10 +8,7 @@ import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 
 /** Fresh correlation id for one search — unique across installs, not per-process. */
 export function generateSearchRequestId(): string {
-  const runtimeCrypto = (
-    globalThis as { crypto?: { randomUUID?: () => string } }
-  ).crypto
-  return runtimeCrypto?.randomUUID?.() ?? uuidV4Fallback()
+  return randomUUIDCompat()
 }
 
 // Admin returns these in a 200 body; Apollo v4 throws CombinedGraphQLErrors
@@ -62,11 +59,6 @@ export function resolveWatchSearchOutcome({
 /** The one message web (watch-search-analytics.ts) and TV (search.ts) emit. */
 export const WATCH_SEARCH_LOG_MESSAGE = "watch_search analytics"
 
-export type WatchSearchRequestType = "search" | "load_more"
-
-// Web's MAX_QUERY_LENGTH; the raw query is the sole raw-text field (R43).
-const MAX_QUERY_LENGTH = 200
-
 /** `priorVisibleCount` exists only on load_more, so a search can't carry it. */
 export type WatchSearchLogAttributesInput = {
   outcome: WatchSearchOutcome
@@ -102,6 +94,7 @@ export function buildWatchSearchLogAttributes(
     "watch_search.outcome": outcome.outcome,
     "watch_search.request_type": input.requestType,
     "watch_search.search_request_id": input.searchRequestId,
+    // The raw query is the sole raw-text field in the bag (R43 posture).
     "watch_search.query": input.query.slice(0, MAX_QUERY_LENGTH),
     "watch_search.result_count": outcome.result_count,
     "watch_search.visible_result_count": visibleResultCount,
