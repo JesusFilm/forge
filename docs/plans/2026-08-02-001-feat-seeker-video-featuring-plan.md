@@ -357,6 +357,78 @@ target_audio=<n> availability_missing=<n>` — so a contract regression
   timeout, 5xx, parse) collapses to `{ videos: [] }` exactly as the existing
   tool does.
 
+> **Correction (2026-08-04, U2 implementation) — P4's per-turn cap premise:**
+> P4 above justifies the per-turn counter with "per-invocation tools
+> resolution makes a per-turn counter cheap". That premise is measured WRONG
+> for the pinned `@mastra/core` 1.55.0: the function-valued `tools` resolver
+> fires **twice per turn** — a fixed count, independent of step count, both at
+> stream setup rather than per step. The cap is nonetheless correct, because it
+> is keyed on the per-turn executing tool INSTANCE, which is stable for the
+> whole turn: a real three-call turn hits the HTTP client exactly twice, the
+> third result is empty, a second turn on the SAME long-lived agent gets a
+> fresh budget, and two concurrent turns on one agent stay independent. Those
+> real-agent tests in `seeker-search-videos.test.ts` are the standing guard —
+> a future `@mastra/*` bump that resolved per STEP would fail CI rather than
+> silently unenforce the cap. Do not restate the original premise as fact.
+
+> **Correction (2026-08-04, U2 implementation) — D9's slug pattern, affirmed
+> with evidence, and a new P4 shape gate:** D9's slug pattern
+> (`^[a-z0-9][a-z0-9_-]{0,80}$`) is AFFIRMED UNCHANGED. A live public
+> watch-site census (all 10 sitemap parts, 31,402 URLs, 1,154 distinct content
+> slugs) found every published slug conformant — zero non-ASCII slugs exist on
+> the site. Two non-conforming slugs DO reach admin's agent-tools wire
+> (`la-búsqueda-the-search`, `tümlükden-nura`; 2 of 132 sampled featurable
+> videos, 1.5%), but both are unpublished catalog rows: they 404 in accented
+> AND ASCII-folded URL shapes and appear in no sitemap. Widening the pattern to
+> admit them would therefore have shipped a working player beside a DEAD
+> caption link. The same sample found 0/132 `videoId` and 0/132 `playbackId`
+> failures, so no other gate has this exposure.
+>
+> Consequence for P4: the seeker search tool now applies the D9 shape gates at
+> the TOOL boundary too, so the model is never shown a candidate the route
+> could not attach. Previously such a row could be shown, re-ranked, and
+> declared, and the turn would attach nothing (`reason=projection_failed`)
+> while the reply text still offered a video. The patterns are shared from one
+> module (`apps/mastra/src/mastra/seeker-video-gates.ts`); the route still
+> re-validates the declared row over an `unknown` payload, so D9's
+> belt-and-braces is intact — sharing the constants is not skipping the check.
+>
+> Operator-facing consequences of that shape gate, so the runbook below and
+> P4's filter-observability bullet stay usable without being rewritten:
+>
+> - The observability line gained a FIFTH field. It now reads
+>   `[seeker-search] event=video_candidates_filtered returned=<n> playable=<n>
+target_audio=<n> availability_missing=<n> shape_dropped=<n>`. The first
+>   four keep their exact pre-existing meanings. Read step 3's diagnostic
+>   ladder with a third branch: `availability_missing` non-zero means the admin
+>   contract; `shape_dropped` non-zero means conformant-by-semantics rows were
+>   dropped for SHAPE (catalog slugs outside the D9 pattern), which is a
+>   catalog-data signal, not a retrieval one; both zero on an empty result
+>   means genuine retrieval. Note `target_audio` counts rows that passed
+>   SEMANTICS — the count the model actually saw is
+>   `target_audio - shape_dropped`.
+> - Step 2 now has an ORDERING requirement. `ADMIN_AGENT_TOOLS_ALLOWED_HOSTS`
+>   became required-when-`ADMIN_AGENT_TOOLS_URL`-is-set in production
+>   (`assertAdminAgentToolsBaseUrlAllowedForProduction`, feat-327). Set the
+>   URL, key, and allowlist in ONE Railway variable edit: a two-edit sequence
+>   leaves a deploy with the URL set and no allowlist, which fails its boot
+>   assert. Symmetrically for step 5's rollback — the note that "the
+>   agent-tools env pair can stay" still holds, but do not clear ONLY the
+>   allowlist while leaving the URL set; clear the group or neither. Same
+>   teardown-order hazard the Langfuse group carries.
+> - Precondition before this ships (operator, not code): confirm the mastra
+>   Railway service has a healthcheck path configured — `railway.toml` declares
+>   one but Railway reads that file only when the service's Config-as-code Path
+>   points at it — and confirm production either has `ADMIN_AGENT_TOOLS_URL`
+>   unset or already paired with a matching allowlist. The plan states the pair
+>   was never provisioned in production, which if still true makes both checks
+>   a formality.
+>
+> Residual, named honestly: slug SHAPE is not page LIVENESS. An ASCII-slugged
+> unpublished row passes every gate and would still ship a dead caption link.
+> That is a catalog-hygiene question, raised with the Core-sync owner
+> separately; no gate in this arc can answer it.
+
 ### P5. Availability modeled tolerantly at the mastra client (plan-decided)
 
 The mastra Zod schemas (`admin-agent-tools-client` + the tool output) model
@@ -950,6 +1022,16 @@ flip is an operator action with a strict order:
    `event=video_feature_invalid_declaration reason=id_not_in_results` also
    fires on legitimate "show me that one again" turns (turn-scoped union) —
    frequency, not existence, is the signal.
+   > **Correction (2026-08-04, U2 implementation):** that ladder now has a
+   > THIRD branch. The line gained a fifth field, `shape_dropped=<n>`:
+   > non-zero means rows passed semantics but were dropped for SHAPE (catalog
+   > slugs outside the D9 pattern) — a catalog-data signal, NOT retrieval. So
+   > read it as: `availability_missing` non-zero → admin contract;
+   > `shape_dropped` non-zero → catalog shape; both zero on an empty result →
+   > genuine retrieval (then the embedding-stall caveat above applies). Also
+   > note `target_audio` counts rows that passed semantics — the count the
+   > model actually saw is `target_audio - shape_dropped`. Full context in the
+   > P4/D9 correction note in Key Technical Decisions above.
 4. **Provisioning gotchas (learned 2026-07-29):** the receiver trims
    allowlist entries but NOT the presented key, and neither side strips
    quotes — mint clean values; Doppler does NOT sync to Railway for admin —
