@@ -203,3 +203,54 @@ CI wiring (path-filtered GitHub Actions job on `apps/mastra/src/mastra/agents/se
 **Decisions flagged rather than assumed:** (a) the production model fix is now an active recommendation (section 6), not a neutral flag — the maintainer's remaining call is only whether it may land this week ahead of the eval work, which flips PR C's baseline policy as written in step 6; (b) the repo-wide dashed judge slug (`anthropic/claude-haiku-4-5` in `SEARCH_EVAL_JUDGE_MODEL` and `EVAL_QUERY_GENERATION_MODEL` defaults) is a separate bug worth its own small ticket; (c) the crisis question enters the corpus only when the crisis guardrail ships.
 
 Next action: read PR A's step list above, then confirm or veto the two questions and the parallel model-fix PR — everything else can start immediately.
+
+## Addendum — 2026-08-04: four gate-policy decisions (post-review)
+
+Recorded after the eval-suite code review (ce-code-review 20260804-104418)
+resolved its four decision-gate items. These are the governing semantics
+where they conflict with §3/§7 above; the history above is left unchanged.
+
+1. **Tool skips (#5): any skip = red; a skipping baseline = refused.** The
+   pooled rule ("red only when a clean baseline gains a skip") is replaced:
+   ANY tool skip in the current gating run is an unconditional deterministic
+   red, and a baseline containing any skip REFUSES (exit 2) with
+   "re-capture a clean baseline; a skipping run is not a valid known-good".
+   The measured pooled counts on the unchanged system (3, 2, 3, 3, 4, 6, 5,
+   5, 4) falsified every magnitude threshold, so the policy is zero on both
+   sides. §7 step 6's per-question known-fail pin option is retired.
+   Infra-failed cells (`ok: false`) are never skips (review finding #1).
+
+2. **Grounding flips (#7): confirmation rerun.** A grounding-class verdict
+   flip on a changed prompt is red ONLY when the same (question, model,
+   criterion) flip reproduces in a second independent judged run passed via
+   `--confirm-judged=<judged.json>`. Flips with no confirm run REFUSE
+   (nonzero exit — fail-safe for CI) with a rerun instruction; flips that do
+   not reproduce surface as `unconfirmedGroundingFlips` — noise, never red,
+   never dropped. Rationale: byte-identical-prompt reruns measured ~1 flip
+   of pure sampling noise per run, so red-on-one-flip breeds
+   rerun-until-green.
+
+3. **CLI helpers (#9): consolidated.** `flag()`, `csv()`, and the ONE
+   fail-closed `loadFixtures` (absent / corrupt / wrong-kind distinguished,
+   always throws) live in `cli.ts`, imported by all seven entrypoints; the
+   per-file copies — including run-report's last swallow-to-null variant —
+   are deleted. The mode-"none" proceed-without-fixtures lane lives at the
+   pure APIs (`evaluateGate`'s nullable input; `runRequiresFixtures`), never
+   in the loader.
+
+4. **Decoding (#14): the gating loop is unpinned.** `run-loop.ts` no longer
+   sets temperature/max-tokens — gating runs sample provider defaults
+   exactly like production, and stamp `decoding: null` in run identity.
+   Null-vs-pinned is a refusal dimension (different sampling
+   distributions). The injected fast mode keeps its `ANSWER_DECODING` pin
+   (developer loop only; §5's ANSWER_DECODING note now applies to that mode
+   alone).
+
+**Consequence — the committed baseline is invalid by policy.** The baseline
+at `apps/mastra/evals/results/seeker-baseline` carries 3 tool skips (refused
+under decision 1) and was generated at the pinned 0.7/1600 decoding
+(incomparable under decision 4). Decision 1's clean-baseline requirement and
+decision 4's provider-default requirement land on the SAME single future
+paid run: first land the §6 production skip fix, then ONE
+re-capture/rebaseline at provider defaults replaces the committed baseline.
+Until then every gate run against it refuses — by design, not by accident.
