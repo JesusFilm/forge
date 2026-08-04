@@ -4,6 +4,7 @@ import {
   TypesenseClient,
   TypesenseRequestError,
   type TypesenseSearchHit,
+  type TypesenseSearchRequest,
 } from "./typesense-client"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
 import {
@@ -30,10 +31,14 @@ import {
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
 const MAX_QUERY_LENGTH = 200
-const MAX_LEXICAL_CANDIDATES = 250
+const TYPESENSE_MAX_PER_PAGE = 250
+const TYPESENSE_MAX_MULTI_SEARCHES = 50
+const MAX_LEXICAL_CANDIDATES =
+  TYPESENSE_MAX_PER_PAGE * TYPESENSE_MAX_MULTI_SEARCHES
 const MAX_SEMANTIC_CANDIDATES = 40
 const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
+const WATCHABILITY_RERANK_CANDIDATE_LIMIT = 100
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
 const MIN_SEMANTIC_SIMILARITY = 0.5
 
@@ -48,6 +53,7 @@ type TypesenseWatchSearchDeps = {
 type Candidate = {
   videoId: string
   kind: "exact" | "metadata" | "semantic"
+  wholeTitleMatch: boolean
   sourceScore: number
   evidenceLanguageSlug: string | null
   snippet: string | null
@@ -132,6 +138,24 @@ function parseJsonArray<T>(value: string): T[] {
 
 function normalizedTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLocaleLowerCase()
+}
+
+function lexicalSearchRequests(
+  query: string,
+  candidateLimit: number,
+): TypesenseSearchRequest[] {
+  const perPage = Math.min(candidateLimit, TYPESENSE_MAX_PER_PAGE)
+  const pageCount = Math.ceil(candidateLimit / perPage)
+  return Array.from({ length: pageCount }, (_value, index) => ({
+    collection: TYPESENSE_WATCH_CATALOG_ALIAS,
+    q: query,
+    query_by: "titles,descriptions",
+    query_by_weights: "4,1",
+    page: index + 1,
+    per_page: perPage,
+    prefix: true,
+    num_typos: "2,1",
+  }))
 }
 
 function displayLocale(
@@ -257,7 +281,9 @@ function candidateScore(
   const sourceRelevance = candidate.sourceScore * 0.55
   const evidenceBoost =
     candidate.kind === "exact"
-      ? 0.45
+      ? candidate.wholeTitleMatch
+        ? 0.45
+        : 0.2
       : candidate.kind === "metadata"
         ? 0.14
         : 0.08
@@ -272,27 +298,45 @@ function candidateScore(
   const relevance = sourceRelevance + evidenceBoost
   const round = (value: number) => Math.round(value * 1000) / 1000
   return {
-    total: round(Math.min(1, relevance + availability)),
-    sourceRelevance: round(sourceRelevance),
-    evidenceBoost: round(evidenceBoost),
-    relevance: round(relevance),
-    availability: round(availability),
-    match: round(evidenceBoost),
-    sourceScore: round(candidate.sourceScore),
+    rankingRelevance: relevance,
+    scoreBreakdown: {
+      total: round(Math.min(1, relevance + availability)),
+      sourceRelevance: round(sourceRelevance),
+      evidenceBoost: round(evidenceBoost),
+      relevance: round(relevance),
+      availability: round(availability),
+      match: round(evidenceBoost),
+      sourceScore: round(candidate.sourceScore),
+    },
   }
 }
 
-function laneStatus(
-  lane: WatchSearchLaneStatus["lane"],
-  status: WatchSearchLaneStatus["status"],
-  startedAt: number,
-  resultCount: number,
-  reason: string | null = null,
-): WatchSearchLaneStatus {
+function watchabilityRank(watchability: IndexedWatchability): number {
+  if (watchability.kind === "target_audio") return 0
+  if (watchability.kind === "target_subtitle") return 1
+  if (watchability.kind === "related_language") return 2
+  return 3
+}
+
+function laneStatus({
+  lane,
+  status,
+  timelineStartedAt,
+  startedAt,
+  resultCount,
+  reason = null,
+}: {
+  lane: WatchSearchLaneStatus["lane"]
+  status: WatchSearchLaneStatus["status"]
+  timelineStartedAt: number
+  startedAt: number
+  resultCount: number
+  reason?: string | null
+}): WatchSearchLaneStatus {
   return {
     lane,
     status,
-    startedOffsetMs: 0,
+    startedOffsetMs: Math.max(0, startedAt - timelineStartedAt),
     elapsedMs: performance.now() - startedAt,
     resultCount,
     reason,
@@ -366,68 +410,79 @@ export class TypesenseWatchSearchService {
       languageInterpretation.targetLanguageSlug,
     ])
     const candidateLimit = Math.min(
-      Math.max(offset + limit + 1, limit * 2),
+      Math.max(
+        offset + limit + 1,
+        limit * 2,
+        WATCHABILITY_RERANK_CANDIDATE_LIMIT,
+      ),
       MAX_LEXICAL_CANDIDATES,
     )
     const laneStatuses: WatchSearchLaneStatus[] = []
 
     const lexicalStartedAt = performance.now()
     const lexicalPromise = this.typesense
-      .multiSearch<TypesenseWatchCatalogDocument>([
-        {
-          collection: TYPESENSE_WATCH_CATALOG_ALIAS,
-          q: titleQuery,
-          query_by: "titles,descriptions",
-          query_by_weights: "4,1",
-          per_page: candidateLimit,
-          prefix: true,
-          num_typos: "2,1",
-        },
-      ])
-      .then(([result]) => {
+      .multiSearch<TypesenseWatchCatalogDocument>(
+        lexicalSearchRequests(titleQuery, candidateLimit),
+      )
+      .then((results) => {
+        const hits = results
+          .flatMap((result) => result.hits)
+          .slice(0, candidateLimit)
         laneStatuses.push(
-          laneStatus(
-            "metadata_retrieval",
-            "fulfilled",
-            lexicalStartedAt,
-            result?.hits.length ?? 0,
-          ),
+          laneStatus({
+            lane: "metadata_retrieval",
+            status: "fulfilled",
+            timelineStartedAt: startedAt,
+            startedAt: lexicalStartedAt,
+            resultCount: hits.length,
+          }),
         )
-        return result?.hits ?? []
+        return hits
       })
 
     const semanticStartedAt = performance.now()
-    let semanticEmbeddingCompleted = false
+    let semanticRetrievalStartedAt: number | null = null
     const semanticPromise = this.semanticHits(query, evidenceLocales, () => {
-      semanticEmbeddingCompleted = true
+      semanticRetrievalStartedAt = performance.now()
+      laneStatuses.push(
+        laneStatus({
+          lane: "semantic_embedding",
+          status: "fulfilled",
+          timelineStartedAt: startedAt,
+          startedAt: semanticStartedAt,
+          resultCount: 1,
+        }),
+      )
     })
       .then((hits) => {
-        if (semanticEmbeddingCompleted) {
+        if (semanticRetrievalStartedAt != null) {
           laneStatuses.push(
-            laneStatus("semantic_embedding", "fulfilled", semanticStartedAt, 1),
-            laneStatus(
-              "semantic_retrieval",
-              "fulfilled",
-              semanticStartedAt,
-              hits.length,
-            ),
+            laneStatus({
+              lane: "semantic_retrieval",
+              status: "fulfilled",
+              timelineStartedAt: startedAt,
+              startedAt: semanticRetrievalStartedAt,
+              resultCount: hits.length,
+            }),
           )
         } else {
           laneStatuses.push(
-            laneStatus(
-              "semantic_embedding",
-              "skipped",
-              semanticStartedAt,
-              0,
-              "no_evidence_language",
-            ),
-            laneStatus(
-              "semantic_retrieval",
-              "skipped",
-              semanticStartedAt,
-              0,
-              "no_evidence_language",
-            ),
+            laneStatus({
+              lane: "semantic_embedding",
+              status: "skipped",
+              timelineStartedAt: startedAt,
+              startedAt: semanticStartedAt,
+              resultCount: 0,
+              reason: "no_evidence_language",
+            }),
+            laneStatus({
+              lane: "semantic_retrieval",
+              status: "skipped",
+              timelineStartedAt: startedAt,
+              startedAt: semanticStartedAt,
+              resultCount: 0,
+              reason: "no_evidence_language",
+            }),
           )
         }
         return hits
@@ -438,22 +493,37 @@ export class TypesenseWatchSearchService {
         )
         const reason =
           error instanceof Error ? error.message : "semantic_failure"
-        laneStatuses.push(
-          laneStatus(
-            "semantic_embedding",
-            semanticEmbeddingCompleted ? "fulfilled" : "degraded",
-            semanticStartedAt,
-            semanticEmbeddingCompleted ? 1 : 0,
-            semanticEmbeddingCompleted ? null : reason,
-          ),
-          laneStatus(
-            "semantic_retrieval",
-            semanticEmbeddingCompleted ? "degraded" : "skipped",
-            semanticStartedAt,
-            0,
-            semanticEmbeddingCompleted ? reason : "missing_query_embedding",
-          ),
-        )
+        if (semanticRetrievalStartedAt != null) {
+          laneStatuses.push(
+            laneStatus({
+              lane: "semantic_retrieval",
+              status: "degraded",
+              timelineStartedAt: startedAt,
+              startedAt: semanticRetrievalStartedAt,
+              resultCount: 0,
+              reason,
+            }),
+          )
+        } else {
+          laneStatuses.push(
+            laneStatus({
+              lane: "semantic_embedding",
+              status: "degraded",
+              timelineStartedAt: startedAt,
+              startedAt: semanticStartedAt,
+              resultCount: 0,
+              reason,
+            }),
+            laneStatus({
+              lane: "semantic_retrieval",
+              status: "skipped",
+              timelineStartedAt: startedAt,
+              startedAt: performance.now(),
+              resultCount: 0,
+              reason: "missing_query_embedding",
+            }),
+          )
+        }
         return []
       })
 
@@ -473,12 +543,13 @@ export class TypesenseWatchSearchService {
       candidates.map((entry) => entry.videoId),
     )
     laneStatuses.push(
-      laneStatus(
-        "metadata_watchability",
-        "fulfilled",
-        catalogStartedAt,
-        catalogById.size,
-      ),
+      laneStatus({
+        lane: "metadata_watchability",
+        status: "fulfilled",
+        timelineStartedAt: startedAt,
+        startedAt: catalogStartedAt,
+        resultCount: catalogById.size,
+      }),
     )
 
     const ranked = candidates
@@ -487,7 +558,10 @@ export class TypesenseWatchSearchService {
         if (!document) return []
         const watchability = resolveWatchability(document, target)
         const locale = displayLocale(document, preferredLocale)
-        const scoreBreakdown = candidateScore(candidate, watchability)
+        const { rankingRelevance, scoreBreakdown } = candidateScore(
+          candidate,
+          watchability,
+        )
         const result: WatchSearchResult = {
           type: "video",
           id: document.id,
@@ -535,11 +609,22 @@ export class TypesenseWatchSearchService {
           },
           fallback: fallbackForWatchability(watchability),
         }
-        return [{ result, candidate }]
+        return [{ result, candidate, rankingRelevance, watchability }]
       })
       .sort((left, right) => {
-        const score = right.result.score - left.result.score
-        if (score !== 0) return score
+        const wholeTitleDelta =
+          Number(right.candidate.wholeTitleMatch) -
+          Number(left.candidate.wholeTitleMatch)
+        if (wholeTitleDelta !== 0) return wholeTitleDelta
+
+        const relevanceDelta = right.rankingRelevance - left.rankingRelevance
+        if (relevanceDelta !== 0) return relevanceDelta
+
+        const watchabilityDelta =
+          watchabilityRank(left.watchability) -
+          watchabilityRank(right.watchability)
+        if (watchabilityDelta !== 0) return watchabilityDelta
+
         return left.result.id.localeCompare(right.result.id)
       })
     const page = ranked
@@ -583,7 +668,7 @@ export class TypesenseWatchSearchService {
           collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
           q: "*",
           vector_query: `embedding:([${embedding.join(",")}], k:${MAX_SEMANTIC_CANDIDATES})`,
-          filter_by: `language:=[${filterValues}]`,
+          filter_by: `language:=[${filterValues}] && publiclyVisible:=true`,
           per_page: MAX_SEMANTIC_CANDIDATES,
           exclude_fields: "embedding",
         },
@@ -605,6 +690,7 @@ export class TypesenseWatchSearchService {
     evidenceLocales: Array<{ slug: string; locale: string }>
   }): Candidate[] {
     const candidates = new Map<string, Candidate>()
+    const normalizedQuery = normalizedTitle(query)
     const exactTitleTokens = tokenizeForExactTitle(query).map(normalizedTitle)
     lexicalHits.forEach((hit, index) => {
       const locale = displayLocale(hit.document, preferredLocale)
@@ -615,6 +701,7 @@ export class TypesenseWatchSearchService {
       candidates.set(hit.document.id, {
         videoId: hit.document.id,
         kind: exact ? "exact" : "metadata",
+        wholeTitleMatch: exact && title === normalizedQuery,
         sourceScore: exact
           ? 1
           : Math.max(0.3, 1 - index / Math.max(lexicalHits.length, 1) / 2),
@@ -632,6 +719,7 @@ export class TypesenseWatchSearchService {
       candidates.set(hit.document.videoId, {
         videoId: hit.document.videoId,
         kind: "semantic",
+        wholeTitleMatch: false,
         sourceScore: Math.max(0, Math.min(1, similarity)),
         evidenceLanguageSlug:
           evidenceLocales.find(({ locale }) => locale === hit.document.language)

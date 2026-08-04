@@ -3,7 +3,7 @@ id: "feat-334"
 title: "Watch Search Typesense parallel backend"
 owner: "codex"
 priority: "P0"
-status: "complete"
+status: "in-progress"
 start_date: "2026-08-03"
 duration: 2
 depends_on:
@@ -45,9 +45,10 @@ compared directly without changing the production path.
 
 1. Add a small Typesense HTTP client and versioned catalog/transcript collection
    schemas using collection aliases for atomic full rebuilds.
-2. Add an Admin indexer that exports the complete viewer-safe local video search
-   snapshot, including localized metadata, playable audio/subtitle availability,
-   card material, and existing transcript chunk vectors.
+2. Add an Admin indexer that exports the viewer-safe catalog projection plus
+   the broad native transcript-vector corpus. Store explicit transcript
+   visibility so public Watch Search can filter without discarding semantic
+   evidence needed by other authorized consumers.
 3. Add a Typesense Watch Search service that performs lexical and semantic
    retrieval in parallel, hydrates results only from the precomputed catalog,
    and returns the existing `WatchSearchResponse` contract.
@@ -63,8 +64,11 @@ compared directly without changing the production path.
   to metadata-only search.
 - Never expose raw vectors through GraphQL or benchmark output.
 - Apply the same public publication, deletion, and `noIndex` gates as current
-  Watch Search.
-- Do not deploy or provision production infrastructure in this feature.
+  Watch Search through catalog eligibility and the transcript
+  `publiclyVisible` filter.
+- Do not provision production infrastructure from this code branch. After the
+  normal PR merge, the shadow Typesense Railway service is named exactly
+  `@forge/admin/search` and receives no user traffic until rollout gates pass.
 - Keep Typesense optional so Admin starts normally when it is not configured.
 - Regenerate Admin schema and `packages/admin-graphql` outputs for the new field.
 
@@ -81,3 +85,17 @@ compared directly without changing the production path.
   warm.
 - Admin unit tests, typecheck, schema generation, and GraphQL client generation
   pass.
+
+## Production Readiness Follow-up
+
+The operation-specific APM analysis, `JESUS` ranking correction, synchronization
+design, capacity estimate, HA topology, backup, monitoring, rollout, and
+rollback requirements are recorded in
+`docs/operations/typesense-watch-search-production-readiness.md`.
+
+The 2026-08-04 production audit found 280,107 accepted native vectors and 1,175
+viewer-visible catalog documents. The broad-corpus rebuild and benchmark on the
+isolated `@forge/admin/search` shadow service remain rollout gates. `DEFAULT`
+must remain unchanged until that run, production-shaped load evidence,
+synchronization evidence, and the documented sub-200 ms full-round-trip gate
+all pass.

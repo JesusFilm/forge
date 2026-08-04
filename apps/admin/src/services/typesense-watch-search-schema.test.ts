@@ -13,12 +13,16 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("keeps transcript vectors at the existing embedding dimensions", () => {
-    const embedding = watchTranscriptCollectionSchema("build").fields.find(
-      (field) => field.name === "embedding",
-    )
+    const schema = watchTranscriptCollectionSchema("build")
+    const embedding = schema.fields.find((field) => field.name === "embedding")
     expect(embedding).toMatchObject({
       type: "float[]",
       num_dim: TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+    })
+    expect(schema.fields).toContainEqual({
+      name: "publiclyVisible",
+      type: "bool",
+      facet: true,
     })
   })
 })

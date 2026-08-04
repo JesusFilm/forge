@@ -46,6 +46,7 @@ export type TypesenseWatchTranscriptDocument = {
   id: string
   videoId: string
   language: string
+  publiclyVisible: boolean
   text: string
   startSeconds: number | null
   embedding: number[]
@@ -79,6 +80,7 @@ export function watchTranscriptCollectionSchema(
     fields: [
       { name: "videoId", type: "string", facet: true },
       { name: "language", type: "string", facet: true },
+      { name: "publiclyVisible", type: "bool", facet: true },
       { name: "text", type: "string", index: false },
       { name: "startSeconds", type: "float", optional: true, index: false },
       {

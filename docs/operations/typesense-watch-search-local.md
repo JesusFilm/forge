@@ -1,8 +1,15 @@
 # Typesense Watch Search Local Comparison
 
 This experiment runs the current PostgreSQL Watch Search and the parallel
-Typesense backend against the same production-like `video-search` snapshot. It
-does not switch Web traffic or provision production infrastructure.
+Typesense backend against the same production-like data. It does not switch Web
+traffic or provision production infrastructure. The catalog remains
+viewer-safe; the transcript index retains the broad native embedding corpus and
+marks every chunk with `publiclyVisible`.
+
+This guide is optional for small developer experiments. Do not run the
+production-sized 280,107-vector corpus on a developer workstation; perform that
+capacity and relevance run on the isolated `@forge/admin/search` shadow service
+after the normal PR merge.
 
 ## Prerequisites
 
@@ -60,7 +67,22 @@ TYPESENSE_API_KEY=forge-typesense-local-key \
 
 The builder creates timestamped physical collections, validates every JSONL
 import response, and only then moves the stable aliases. A failed build deletes
-its incomplete collections and leaves the previous aliases intact.
+its incomplete collections and leaves the previous aliases intact. The final
+JSON object includes `estimatedVectorMemoryBytes`, calculated as 7 bytes times
+1,536 dimensions times the accepted transcript document count. Capture
+Typesense's measured memory after the build as well:
+
+```bash
+curl -fsS \
+  -H 'X-TYPESENSE-API-KEY: forge-typesense-local-key' \
+  http://127.0.0.1:8108/metrics.json
+```
+
+For the audited 2026-08-04 production corpus, expect approximately 1,175
+catalog documents and 280,107 transcript documents. Public Watch Search does
+not expose the whole transcript collection: its semantic request includes
+`publiclyVisible:=true` alongside the resolved-language filter. Confirm both
+the broad count and the public subset before treating the build as valid.
 
 ## Compare Backends
 
@@ -77,9 +99,8 @@ WATCH_SEARCH_BENCHMARK_RUNS=5 \
 
 The benchmark warms both engines once per case, alternates execution order, and
 reports wall-clock p50/p95, result count, degradation, top-five results, and
-top-ten Jaccard overlap. Its fixed cases cover French `communion`, an exact
-English title, generic semantic discovery, Spanish forgiveness, and French
-grief.
+top-ten Jaccard overlap. Its fixed cases cover French `communion`, English exact
+title and generic-care queries, Spanish forgiveness, and French grief.
 
 To select the local backend through GraphQL, keep the existing query and add the
 optional mode:
@@ -113,9 +134,9 @@ wrong backend.
 
 ## Recorded Baseline
 
-The 2026-08-03 full snapshot contained 1,107 viewer-visible catalog documents
-and 17,118 accepted transcript vectors. Across five warmed runs of each of five
-multilingual cases, the local wall-clock measurements were:
+The 2026-08-03 first-pass snapshot contained 1,107 viewer-visible catalog
+documents and 17,118 public transcript vectors. Across five warmed runs of each
+of five multilingual cases, the local wall-clock measurements were:
 
 | Backend    |    p50 |    p95 |
 | ---------- | -----: | -----: |
@@ -125,11 +146,17 @@ multilingual cases, the local wall-clock measurements were:
 French `communion` returned `La communion des croyants` first with target audio;
 its Typesense p95 was 168 ms and top-ten overlap with PostgreSQL was 0.80. These
 numbers compare local serving architecture, not production network placement.
+They predate the exact whole-title ranking correction and the broad
+280,107-vector transcript collection. Replace them with the full-corpus shadow
+service result before enabling `MODERN` traffic.
 
 For context, a read-only Datadog RUM sample of the latest 100 Forge Web requests
 to Admin GraphQL in the preceding 24 hours showed a 1.30 s p50 and 24.82 s p95.
 RUM resource events do not include GraphQL POST operation names or bodies, so
 that endpoint-wide sample cannot be narrowed to `watchSearch` or a query term.
+The operation-specific APM, synchronization, capacity, topology, and rollback
+investigation is recorded in
+`docs/operations/typesense-watch-search-production-readiness.md`.
 
 ## Stop Typesense
 

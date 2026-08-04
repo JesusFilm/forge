@@ -14,6 +14,7 @@ import {
 } from "./typesense-watch-search-schema"
 
 const DEFAULT_BATCH_SIZE = 100
+const TYPESENSE_VECTOR_BYTES_PER_DIMENSION = 7
 
 type SubtitleIndexRow = {
   id: string
@@ -26,6 +27,7 @@ type TranscriptIndexRow = {
   id: string
   videoId: string
   language: string
+  publiclyVisible: boolean
   text: string
   startSeconds: number | null
   embeddingText: string
@@ -34,6 +36,8 @@ type TranscriptIndexRow = {
 export type TypesenseWatchSearchIndexStats = {
   catalogDocuments: number
   transcriptDocuments: number
+  publicTranscriptDocuments: number
+  estimatedVectorMemoryBytes: number
   catalogCollection: string
   transcriptCollection: string
 }
@@ -43,6 +47,23 @@ export class TypesenseWatchSearchIndexError extends Error {
     super(message)
     this.name = "TypesenseWatchSearchIndexError"
   }
+}
+
+export function estimateTypesenseVectorMemoryBytes(
+  records: number,
+  dimensions = TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+): number {
+  if (!Number.isInteger(records) || records < 0) {
+    throw new TypesenseWatchSearchIndexError(
+      "Typesense vector record count must be a non-negative integer",
+    )
+  }
+  if (!Number.isInteger(dimensions) || dimensions <= 0) {
+    throw new TypesenseWatchSearchIndexError(
+      "Typesense vector dimensions must be a positive integer",
+    )
+  }
+  return records * dimensions * TYPESENSE_VECTOR_BYTES_PER_DIMENSION
 }
 
 function englishName(value: unknown): string | null {
@@ -278,7 +299,18 @@ async function loadTranscriptBatch(
         vtc.text
       ) AS text,
       vtc.start_seconds AS "startSeconds",
-      vtc.embedding::text AS "embeddingText"
+      vtc.embedding::text AS "embeddingText",
+      (
+        v.deleted_at IS NULL
+        AND v.no_index = false
+        AND EXISTS (
+          SELECT 1 FROM video_locale vl
+          WHERE vl.video_id = v.id
+            AND vl.locale = vtc.language
+            AND vl.status = 'published'
+            AND vl.deleted_at IS NULL
+        )
+      ) AS "publiclyVisible"
     FROM video_transcript_chunk vtc
     JOIN video_transcript vt
       ON vt.id = vtc.transcript_id
@@ -289,19 +321,10 @@ async function loadTranscriptBatch(
      AND vt.embedding_transform_version IS NULL
     JOIN video v
       ON v.id = vt.video_id
-     AND v.deleted_at IS NULL
-     AND v.no_index = false
     WHERE vtc.embedding IS NOT NULL
       AND vtc.model = 'embeddings'
       AND vtc.dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
       AND (${afterId}::text IS NULL OR vtc.id > ${afterId})
-      AND EXISTS (
-        SELECT 1 FROM video_locale vl
-        WHERE vl.video_id = v.id
-          AND vl.locale = vtc.language
-          AND vl.status = 'published'
-          AND vl.deleted_at IS NULL
-      )
     ORDER BY vtc.id ASC
     LIMIT ${limit}
   `)
@@ -336,6 +359,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   ])
   let catalogDocuments = 0
   let transcriptDocuments = 0
+  let publicTranscriptDocuments = 0
   let catalogAliasUpdated = false
   let transcriptAliasUpdated = false
 
@@ -358,6 +382,7 @@ export async function rebuildTypesenseWatchSearchIndex({
         id: row.id,
         videoId: row.videoId,
         language: row.language,
+        publiclyVisible: row.publiclyVisible,
         text: row.text,
         startSeconds:
           row.startSeconds == null ? null : Number(row.startSeconds),
@@ -365,6 +390,9 @@ export async function rebuildTypesenseWatchSearchIndex({
       }))
       await typesense.importDocuments(transcriptSchema.name, documents)
       transcriptDocuments += documents.length
+      publicTranscriptDocuments += documents.filter(
+        (document) => document.publiclyVisible,
+      ).length
       afterId = rows.at(-1)?.id ?? null
       onProgress?.({ catalogDocuments, transcriptDocuments })
     }
@@ -423,6 +451,9 @@ export async function rebuildTypesenseWatchSearchIndex({
   return {
     catalogDocuments,
     transcriptDocuments,
+    publicTranscriptDocuments,
+    estimatedVectorMemoryBytes:
+      estimateTypesenseVectorMemoryBytes(transcriptDocuments),
     catalogCollection: catalogSchema.name,
     transcriptCollection: transcriptSchema.name,
   }
