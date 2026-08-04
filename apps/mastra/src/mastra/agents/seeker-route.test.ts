@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import { Agent } from "@mastra/core/agent"
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
 import { describe, expect, it, vi } from "vitest"
@@ -7,6 +9,8 @@ import type { Memory } from "@mastra/memory"
 import { buildAiChatMemory } from "../ai-chat-memory"
 import type { AiChatOwnershipMemory } from "../ai-chat-thread-ownership"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
+import { FEATURE_VIDEO_TOOL_NAME } from "../tools/feature-video"
+import { SEEKER_SEARCH_VIDEOS_TOOL_NAME } from "../tools/seeker-search-videos"
 
 import {
   handleSeekerRouteRequest,
@@ -1122,5 +1126,581 @@ describe("lane-key bearer (feat-250)", () => {
       baseInput(mastra, { getServiceKeys: () => ["lane-key"] }),
     )
     expect(res.status).toBe(401)
+  })
+})
+
+// ===========================================================================
+// feat-327 — declared-video resolution + wire projection (plan D4/D9/P3)
+// ===========================================================================
+
+/**
+ * The model DECLARES; it never authors. Everything below exercises the route's
+ * side of that contract over UNTRUSTED tool payloads: only an id present in
+ * this turn's own searchVideos results, whose row survives every pattern gate,
+ * reaches the wire — and every failure attaches nothing rather than producing
+ * an error frame.
+ */
+
+type VideoRow = {
+  videoId: string
+  title: string
+  snippet: string
+  slug: string
+  playbackId: string
+  durationSeconds: number | null
+  languageSlug: string | null
+  availability: { kind: string }
+}
+
+function videoRow(over: Partial<VideoRow> & { videoId: string }): VideoRow {
+  return {
+    title: `Title ${over.videoId}`,
+    snippet: `Snippet ${over.videoId}`,
+    slug: `slug-${over.videoId}`,
+    playbackId: `playback${over.videoId}xyz`,
+    durationSeconds: 372,
+    languageSlug: "english",
+    availability: { kind: "target_audio" },
+    ...over,
+  }
+}
+
+function searchVideosChunk(videos: unknown[]): ToolResultChunk {
+  // Built from the tool module's own constant, so a rename cannot leave the
+  // fixtures and the route agreeing on a stale literal.
+  return {
+    payload: { toolName: SEEKER_SEARCH_VIDEOS_TOOL_NAME, result: { videos } },
+  }
+}
+
+function featureVideoChunk(result: unknown): ToolResultChunk {
+  return { payload: { toolName: FEATURE_VIDEO_TOOL_NAME, result } }
+}
+
+async function resultFrame(
+  toolResults: ToolResultChunk[],
+): Promise<Record<string, unknown>> {
+  const { mastra } = makeMastra({ chunks: ["reply"], toolResults })
+  const res = await handleSeekerRouteRequest(baseInput(mastra))
+  const body = await readSse(res)
+  expect(body).not.toContain("event: error")
+  return JSON.parse(body.match(/event: result\ndata: (.+)\n\n/)![1]) as Record<
+    string,
+    unknown
+  >
+}
+
+describe("handleSeekerRouteRequest — declared video (feat-327)", () => {
+  it("attaches the declared video with EXACTLY the six wire fields", async () => {
+    const result = await resultFrame([
+      searchVideosChunk([videoRow({ videoId: "v1" })]),
+      featureVideoChunk({ videoId: "v1" }),
+    ])
+
+    // toStrictEqual, not toMatchObject: an extra field on this payload is a
+    // leak, not a bonus. `snippet` and `availability` are deliberately absent —
+    // they exist on the tool row for the model and the re-assert, and stop
+    // there. No URL field exists on the wire at all (plan D9): chat builds the
+    // watch URL client-side from the validated slugs.
+    expect(result.video).toStrictEqual({
+      videoId: "v1",
+      title: "Title v1",
+      slug: "slug-v1",
+      playbackId: "playbackv1xyz",
+      durationSeconds: 372,
+      languageSlug: "english",
+    })
+    // The video rides ALONGSIDE the existing terminal-frame contract.
+    expect(result.text).toBe("reply")
+    expect(result.producedBy).toBe("seekerAgent")
+  })
+
+  it("omits `video` entirely — never null — when nothing was declared", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const result = await resultFrame([
+        searchVideosChunk([videoRow({ videoId: "v1" })]),
+      ])
+      // `in` rather than a null check: the wire field must be ABSENT so the
+      // chat client's optional-field parse never sees an explicit null.
+      expect("video" in result).toBe(false)
+      // Searching without featuring is the normal case, not a fault: no
+      // declaration-failure line. (The E7 retrieveAnswer-skip signal DOES fire
+      // here — this turn searched and never grounded — and has its own tests.)
+      for (const call of warn.mock.calls) {
+        expect(String(call[0])).not.toContain(
+          "video_feature_invalid_declaration",
+        )
+      }
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("carries no `video` on a turn with no video tool results at all (the flag-off shape)", async () => {
+    // With SEEKER_VIDEO_ENABLED off the tools are unregistered, so this is
+    // exactly what every turn looks like: the projection is inert by
+    // construction, with no second flag read on the route to drift from the
+    // agent's.
+    const result = await resultFrame([
+      retrieveAnswerChunk("ok", [
+        {
+          text: "passage",
+          sourceName: "John",
+          title: null,
+          url: "https://example.org/john",
+          score: 0.9,
+        },
+      ]),
+    ])
+    expect("video" in result).toBe(false)
+    expect(result.grounded).toBe(true)
+  })
+
+  it("uses the LAST featureVideo declaration when several are present", async () => {
+    const result = await resultFrame([
+      searchVideosChunk([
+        videoRow({ videoId: "v1" }),
+        videoRow({ videoId: "v2" }),
+      ]),
+      featureVideoChunk({ videoId: "v1" }),
+      featureVideoChunk({ videoId: "v2" }),
+    ])
+    expect(result.video).toMatchObject({ videoId: "v2" })
+  })
+
+  it("resolves a declaration against an EARLIER search call's results (union semantics)", async () => {
+    // The model may search twice and then declare a candidate it saw first;
+    // resolving against only the latest call would drop that legitimate pick.
+    const result = await resultFrame([
+      searchVideosChunk([videoRow({ videoId: "early" })]),
+      searchVideosChunk([videoRow({ videoId: "late" })]),
+      featureVideoChunk({ videoId: "early" }),
+    ])
+    expect(result.video).toMatchObject({ videoId: "early" })
+  })
+
+  it("lets a LATER search call win on a videoId collision", async () => {
+    const result = await resultFrame([
+      searchVideosChunk([videoRow({ videoId: "v1", title: "Stale title" })]),
+      searchVideosChunk([videoRow({ videoId: "v1", title: "Fresh title" })]),
+      featureVideoChunk({ videoId: "v1" }),
+    ])
+    expect(result.video).toMatchObject({ title: "Fresh title" })
+  })
+})
+
+describe("handleSeekerRouteRequest — declaration failure ladder (feat-327, plan P3)", () => {
+  async function expectNoVideo(
+    toolResults: ToolResultChunk[],
+    expectedLog: string | null,
+  ): Promise<void> {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const result = await resultFrame(toolResults)
+      expect("video" in result).toBe(false)
+      if (expectedLog === null) {
+        expect(warn).not.toHaveBeenCalled()
+      } else {
+        expect(warn).toHaveBeenCalledWith(expectedLog)
+      }
+    } finally {
+      warn.mockRestore()
+    }
+  }
+
+  it("declared id absent from every search result → reason=id_not_in_results", async () => {
+    await expectNoVideo(
+      [
+        searchVideosChunk([videoRow({ videoId: "v1" })]),
+        featureVideoChunk({ videoId: "hallucinated" }),
+      ],
+      "[seeker-route] event=video_feature_invalid_declaration reason=id_not_in_results",
+    )
+  })
+
+  it("malformed declaration payload → reason=malformed", async () => {
+    for (const bad of [{}, { videoId: "" }, { videoId: 7 }, null, "v1"]) {
+      await expectNoVideo(
+        [
+          searchVideosChunk([videoRow({ videoId: "v1" })]),
+          featureVideoChunk(bad),
+        ],
+        "[seeker-route] event=video_feature_invalid_declaration reason=malformed",
+      )
+    }
+  })
+
+  it("declared row was SEEN but fails a projection gate → reason=projection_failed", async () => {
+    // The discriminating case for keeping two maps. Collapsing "seen" into
+    // "projected" would report this as id_not_in_results and send an operator
+    // hunting a hallucination that never happened — the row was real, the
+    // contract broke.
+    await expectNoVideo(
+      [
+        searchVideosChunk([videoRow({ videoId: "v1", playbackId: "short" })]),
+        featureVideoChunk({ videoId: "v1" }),
+      ],
+      "[seeker-route] event=video_feature_invalid_declaration reason=projection_failed",
+    )
+  })
+
+  it("never emits an error frame for any rung of the ladder", async () => {
+    // `resultFrame` asserts the absence of an error frame on every call above;
+    // this states it as its own claim on the worst input the route can get.
+    const { mastra } = makeMastra({
+      chunks: ["reply"],
+      toolResults: [
+        searchVideosChunk("not-an-array" as unknown as unknown[]),
+        featureVideoChunk({ videoId: 7 }),
+      ],
+    })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const res = await handleSeekerRouteRequest(baseInput(mastra))
+      const body = await readSse(res)
+      expect(body).not.toContain("event: error")
+      expect(body).toContain("event: result")
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("attaches no video when toolResults rejects after a good drain", async () => {
+    const { mastra } = makeMastra({
+      chunks: ["full answer"],
+      toolResultsReject: true,
+    })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const res = await handleSeekerRouteRequest(baseInput(mastra))
+      const body = await readSse(res)
+      expect(body).not.toContain("event: error")
+      const result = JSON.parse(body.match(/event: result\ndata: (.+)\n\n/)![1])
+      expect("video" in result).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("logs enum values only — never a title, never free text", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await resultFrame([
+        searchVideosChunk([
+          videoRow({ videoId: "v1", title: "TITLE-SENTINEL" }),
+        ]),
+        featureVideoChunk({ videoId: "hallucinated" }),
+      ])
+      for (const call of warn.mock.calls) {
+        expect(String(call[0])).not.toContain("TITLE-SENTINEL")
+      }
+      // Anti-vacuous: a line really was emitted for the sweep to inspect.
+      expect(warn).toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+})
+
+describe("handleSeekerRouteRequest — projectVideo gates on the declared row (feat-327, plan D9)", () => {
+  async function expectRejected(over: Partial<VideoRow>): Promise<void> {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const result = await resultFrame([
+        searchVideosChunk([videoRow({ videoId: "v1", ...over })]),
+        featureVideoChunk({ videoId: "v1" }),
+      ])
+      expect("video" in result).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  }
+
+  it("rejects a playbackId failing the pattern (too short, too long, bad chars)", async () => {
+    await expectRejected({ playbackId: "short" })
+    await expectRejected({ playbackId: "a".repeat(65) })
+    await expectRejected({ playbackId: "has/slash/xyz" })
+    await expectRejected({ playbackId: "has space xyz" })
+  })
+
+  it("rejects a slug failing the D9 pattern — a MATCH, not a presence check", async () => {
+    // Security-load-bearing: `buildCanonicalWatchVideoPath` interpolates the
+    // slug raw, so this pattern is the sole control over what path the caption
+    // link points at on jesusfilm.org. A presence-only check would pass every
+    // one of these.
+    await expectRejected({ slug: "../../etc/passwd" })
+    await expectRejected({ slug: "slug?x=1" })
+    await expectRejected({ slug: "slug#frag" })
+    await expectRejected({ slug: "slug%2e%2e" })
+    await expectRejected({ slug: "slug with space" })
+    await expectRejected({ slug: "-leading-hyphen" })
+    await expectRejected({ slug: "" })
+    await expectRejected({ slug: "a".repeat(82) })
+  })
+
+  it("rejects an ODD-CASED slug (case-SENSITIVE lowercase-only, plan D9)", async () => {
+    // Deliberate and easy to "fix" wrongly: every real catalog slug is
+    // lowercase and the URL builder compares `languageSlug === "english"`
+    // exactly, so an odd-cased value must fail CLOSED here rather than slip
+    // past the default-language branch downstream.
+    await expectRejected({ slug: "Jesus-Calms-The-Storm" })
+    await expectRejected({ languageSlug: "English" })
+  })
+
+  it("rejects a PRESENT-but-malformed languageSlug rather than degrading it to null", async () => {
+    // Absent is legitimate (chat falls back to the default language). A
+    // malformed value is a contract violation — degrading it to null would
+    // silently relabel a French dub as English.
+    await expectRejected({ languageSlug: "fr/../en" })
+  })
+
+  it("re-asserts target_audio on the declared row (D9 belt-and-braces)", async () => {
+    // The tool boundary already filtered these, so this only fires if a tool
+    // payload is not what the route was promised — which is exactly the
+    // assumption D9 refuses to make.
+    await expectRejected({ availability: { kind: "related_language" } })
+    await expectRejected({ availability: { kind: "target_subtitle" } })
+    await expectRejected({ availability: { kind: "some_future_kind" } })
+    await expectRejected({
+      availability: undefined as unknown as { kind: string },
+    })
+  })
+
+  it("rejects a row missing videoId or title", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const result = await resultFrame([
+        searchVideosChunk([{ ...videoRow({ videoId: "v1" }), title: "" }]),
+        featureVideoChunk({ videoId: "v1" }),
+      ])
+      expect("video" in result).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("accepts an absent languageSlug as null, and a non-numeric duration as null", async () => {
+    const result = await resultFrame([
+      searchVideosChunk([
+        {
+          ...videoRow({ videoId: "v1" }),
+          languageSlug: null,
+          durationSeconds: null,
+        },
+      ]),
+      featureVideoChunk({ videoId: "v1" }),
+    ])
+    expect(result.video).toStrictEqual({
+      videoId: "v1",
+      title: "Title v1",
+      slug: "slug-v1",
+      playbackId: "playbackv1xyz",
+      durationSeconds: null,
+      languageSlug: null,
+    })
+  })
+
+  it("accepts the boundary-legal playbackId and slug shapes (anti-vacuous companion)", async () => {
+    // Without this, a projectVideo that rejected EVERYTHING would satisfy every
+    // rejection test above.
+    const result = await resultFrame([
+      searchVideosChunk([
+        videoRow({
+          videoId: "v1",
+          playbackId: "abcd1234", // exactly the 8-char minimum
+          slug: "0", // single leading alphanumeric
+          languageSlug: "brazilian-portuguese_1",
+        }),
+      ]),
+      featureVideoChunk({ videoId: "v1" }),
+    ])
+    expect(result.video).toMatchObject({
+      playbackId: "abcd1234",
+      slug: "0",
+      languageSlug: "brazilian-portuguese_1",
+    })
+  })
+})
+
+describe("handleSeekerRouteRequest — feat-327 review-hardening gates", () => {
+  /**
+   * Rejects a row, DECLARING THAT ROW'S OWN videoId.
+   *
+   * Declaring a different id would make every case pass through
+   * `id_not_in_results` no matter what the gates do — vacuous. (Caught by
+   * falsification: with the videoId gate reduced to a presence check, an
+   * earlier version of this helper still went green.)
+   */
+  async function expectRejected(over: Partial<VideoRow>): Promise<void> {
+    const declaredId = over.videoId ?? "v1"
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const result = await resultFrame([
+        searchVideosChunk([videoRow({ videoId: "v1", ...over })]),
+        featureVideoChunk({ videoId: declaredId }),
+      ])
+      expect("video" in result).toBe(false)
+    } finally {
+      warn.mockRestore()
+    }
+  }
+
+  it("gates videoId by pattern, not merely by presence", async () => {
+    // videoId is the one string the model supplies and the only wire field
+    // that previously had no shape constraint — the single unvalidated hole in
+    // a field-by-field allowlist. Admin ids are cuid-shaped, so none of these
+    // rejects anything legitimate.
+    //
+    // Two traps this fixture has to dodge, BOTH found by falsification:
+    //   1. declare the row's OWN id, or every case exits via id_not_in_results;
+    //   2. pin slug/playbackId to known-good literals, because videoRow()
+    //      DERIVES them from the videoId — "slug-has space" would fail the slug
+    //      gate first and the test would pass without the videoId gate existing.
+    // With both dodged, the videoId pattern is the only thing that can reject.
+    const valid = { playbackId: "abcd1234", slug: "ok-slug" }
+    await expectRejected({ videoId: "has space", ...valid })
+    await expectRejected({ videoId: "has/slash", ...valid })
+    await expectRejected({ videoId: "a".repeat(65), ...valid })
+  })
+
+  it("accepts a boundary-legal videoId (anti-vacuous companion)", async () => {
+    // Explicit playbackId/slug: videoRow() derives both FROM the videoId, and a
+    // 64-char id would push the derived playbackId past its own 64-char gate —
+    // failing for the wrong reason and making this companion vacuous.
+    const maxId = "a".repeat(64)
+    const result = await resultFrame([
+      searchVideosChunk([
+        videoRow({ videoId: maxId, playbackId: "abcd1234", slug: "ok-slug" }),
+      ]),
+      featureVideoChunk({ videoId: maxId }),
+    ])
+    expect(result.video).toMatchObject({ videoId: maxId })
+  })
+
+  it("nulls a non-finite or negative durationSeconds instead of passing it through", async () => {
+    // NaN and Infinity both serialize to JSON `null` anyway — but only AFTER
+    // travelling as a number through the projection's type, so the wire lies
+    // about a field the renderer formats. Normalize at the gate instead.
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+      const result = await resultFrame([
+        searchVideosChunk([videoRow({ videoId: "v1", durationSeconds: bad })]),
+        featureVideoChunk({ videoId: "v1" }),
+      ])
+      expect(result.video).toMatchObject({ durationSeconds: null })
+    }
+  })
+
+  it("accepts the MAXIMUM-legal playbackId and slug lengths (upper-bound companion)", async () => {
+    // The rejection suite covers 65-char playbackId and 82-char slug; without
+    // this, a pattern accidentally tightened to {8,63}/{0,79} would pass every
+    // existing test.
+    const result = await resultFrame([
+      searchVideosChunk([
+        videoRow({
+          videoId: "v1",
+          playbackId: "a".repeat(64),
+          slug: `a${"b".repeat(80)}`,
+        }),
+      ]),
+      featureVideoChunk({ videoId: "v1" }),
+    ])
+    expect(result.video).toMatchObject({
+      playbackId: "a".repeat(64),
+      slug: `a${"b".repeat(80)}`,
+    })
+  })
+
+  it("keeps an EARLIER valid projection when a later call's row for the same id fails a gate", async () => {
+    // Pins the documented union semantics precisely: a later gate failure must
+    // not downgrade a turn that already had a valid candidate for that id.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const result = await resultFrame([
+        searchVideosChunk([videoRow({ videoId: "v1", title: "Valid" })]),
+        searchVideosChunk([videoRow({ videoId: "v1", playbackId: "short" })]),
+        featureVideoChunk({ videoId: "v1" }),
+      ])
+      expect(result.video).toMatchObject({ title: "Valid" })
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("emits the E7 signal when a video turn never called retrieveAnswer", async () => {
+    // The rollout runbook REQUIRES measuring the retrieveAnswer-skip frequency
+    // on video turns before the dogfood roster is exposed. `grounded` on the
+    // wire cannot substitute: it is also false when retrieval RAN and returned
+    // empty. Enum-only, no payload.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await resultFrame([
+        searchVideosChunk([videoRow({ videoId: "v1" })]),
+        featureVideoChunk({ videoId: "v1" }),
+      ])
+      expect(warn).toHaveBeenCalledWith(
+        "[seeker-route] event=video_turn_missing_retrieval",
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("stays silent on a video turn that DID call retrieveAnswer (anti-vacuous)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await resultFrame([
+        retrieveAnswerChunk("ok", [
+          {
+            text: "passage",
+            sourceName: "John",
+            title: null,
+            url: "https://example.org/john",
+            score: 0.9,
+          },
+        ]),
+        searchVideosChunk([videoRow({ videoId: "v1" })]),
+        featureVideoChunk({ videoId: "v1" }),
+      ])
+      expect(warn).not.toHaveBeenCalledWith(
+        "[seeker-route] event=video_turn_missing_retrieval",
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("stays silent on a turn with no video tool activity at all", async () => {
+    // Costs nothing while the flag is off: an ordinary retrieval-only turn (or
+    // a tool-less turn) must never emit the E7 line.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await resultFrame([retrieveAnswerChunk("empty", [])])
+      expect(warn).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("resolves tool names from the tool modules' own constants, not local literals", () => {
+    // A rename in either tool module must not silently stop every declaration
+    // resolving. Pin that the route IMPORTS the names rather than re-declaring
+    // them, and that the test fixtures above use the same constants.
+    const source = readFileSync(
+      new URL("./seeker-route.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(
+      /import \{ FEATURE_VIDEO_TOOL_NAME \} from "\.\.\/tools\/feature-video"/,
+    )
+    expect(code).toMatch(
+      /import \{ SEEKER_SEARCH_VIDEOS_TOOL_NAME \} from "\.\.\/tools\/seeker-search-videos"/,
+    )
+    // The literals must NOT be re-declared beside the import.
+    expect(code).not.toMatch(/const\s+\w*SEARCH_VIDEOS_TOOL_NAME\s*=/)
+    expect(code).not.toMatch(/const\s+FEATURE_VIDEO_TOOL_NAME\s*=/)
   })
 })

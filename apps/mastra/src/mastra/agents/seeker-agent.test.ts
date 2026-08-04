@@ -64,6 +64,7 @@ import {
   SEEKER_GATEWAY_FETCH_TIMEOUT_MS,
   SEEKER_SYSTEM_PROMPT_FALLBACK,
   SEEKER_SYSTEM_PROMPT_NAME,
+  SEEKER_VIDEO_INSTRUCTIONS_BLOCK,
   seekerAgent,
 } from "./seeker-agent"
 
@@ -464,6 +465,44 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
   })
 
+  it("call-site source pin: the tools registration wires the bare gate, with no injected seam (feat-327)", () => {
+    // Companion to the artifact assertions above, in the feat-283 idiom: an
+    // injectable seam at a production call site is a one-line revert surface.
+    // Pin that `tools:` is registered ONCE and wired to the bare
+    // `buildSeekerTools` reference — an inline `{ retrieveAnswer, searchVideos,
+    // featureVideo }` literal, or a `buildSeekerTools({ enabled: true })`-style
+    // seam, both fail here. Comments are stripped first so a commented-out
+    // registration plus a live inline literal cannot satisfy it.
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(/tools:\s*buildSeekerTools,/)
+    expect(code.match(/\btools:/g)).toHaveLength(1)
+  })
+
+  it("call-site source pin: buildSeekerTools mints the search tool with NO injected options (feat-327)", () => {
+    // `createSeekerSearchVideosTool(options)` accepts a `config` / `fetchImpl`
+    // seam for tests. At the production call site that seam is a one-line
+    // revert surface for the CREDENTIALED egress: a
+    // `createSeekerSearchVideosTool({ config: … })` there would retarget where
+    // the ADMIN_AGENT_TOOLS_API_KEY bearer is sent, with the whole suite green
+    // (every other test injects its own client). Pin the bare call, the same
+    // way `tools:` and `instructions:` are pinned above.
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(/searchVideos:\s*createSeekerSearchVideosTool\(\)/)
+    expect(code.match(/createSeekerSearchVideosTool\(/g)).toHaveLength(1)
+  })
+
   it("call-site source pin: exactly one instructions registration, wiring the bare resolver, outside comments", () => {
     // feat-283 corollary: an injectable seam at a production call site is a
     // one-line revert surface. Pin that the registration passes NO overrides —
@@ -482,6 +521,41 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
       .replace(/^\s*\/\/.*$/gm, "")
     expect(code).toMatch(/instructions:\s*createSeekerInstructionsResolver\(\)/)
     expect(code.match(/\binstructions:/g)).toHaveLength(1)
+  })
+
+  // -------------------------------------------------------------------------
+  // feat-327 — SEEKER_VIDEO_ENABLED, flag OFF (the default)
+  // -------------------------------------------------------------------------
+  //
+  // Both halves are asserted on the AGENT ARTIFACT — the thing `/api/agents/*`
+  // actually serves — never on `isSeekerVideoEnabled()`'s or
+  // `buildSeekerTools()`'s return value. A helper-level assertion would stay
+  // green through a one-line revert that registers the video tools
+  // unconditionally at the agent; these go red.
+  //
+  // They also read the REAL env seam: this file's `vi.mock` of `../../config/env`
+  // overrides only `env`, `isAiGatewaySeekerEnabled`, and `getLangfuseConfig`,
+  // so `isSeekerVideoEnabled` is the genuine module export reading the real
+  // parsed environment (SEEKER_VIDEO_ENABLED unset in CI and in this worktree).
+  // Falsification recorded in the PR: running this file with
+  // `SEEKER_VIDEO_ENABLED=true` in the environment turns BOTH tests red.
+
+  it("flag off: the agent's resolved tool set is EXACTLY { retrieveAnswer }", async () => {
+    const tools = await seekerAgent.listTools()
+    // toStrictEqual on the full key list, not `toContain` — an extra tool must
+    // fail, which is the whole point of the gate.
+    expect(Object.keys(tools).sort()).toStrictEqual(["retrieveAnswer"])
+  })
+
+  it("flag off: resolved instructions are byte-identical to the managed text, with no appended block", async () => {
+    // Byte-identity overlaps the default-path test above by design — that one
+    // pins the Langfuse WIRING, this one pins that feat-327 added nothing. The
+    // second assertion is what only this test can catch: an append that lands
+    // regardless of the flag.
+    const instructions = await seekerAgent.getInstructions()
+    expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(instructions).not.toContain("VIDEO FEATURING")
+    expect(instructions).not.toContain(SEEKER_VIDEO_INSTRUCTIONS_BLOCK)
   })
 
   it("pins the retrieveAnswer status literals and messages the Langfuse-managed prompt mirrors", () => {
