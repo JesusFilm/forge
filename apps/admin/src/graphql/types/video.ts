@@ -559,6 +559,10 @@ builder.prismaObject("Video", {
     }),
     locked: t.exposeBoolean("locked"),
     noIndex: t.exposeBoolean("noIndex"),
+    restrictViewPlatforms: t.exposeStringList("restrictViewPlatforms", {
+      description:
+        'Core Platform slugs (e.g. "watch", "arclight") this video is restricted from viewing on. Synced read-only from Core; does not itself gate any public field — see search-watchability.ts and the public video resolvers for enforcement.',
+    }),
     aiMetadata: t.exposeBoolean("aiMetadata"),
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),

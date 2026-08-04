@@ -1186,6 +1186,11 @@ model Video {
   publishedAt       DateTime?    @map("published_at")
   locked            Boolean      @default(false)
   noIndex           Boolean      @default(false) @map("no_index")
+  /// Core Platform slugs (e.g. "watch", "arclight", "journeys") this video
+  /// is restricted from viewing on. Synced read-only from Core; Forge's
+  /// public watch surfaces (search, browse, detail, home, recommendations)
+  /// must exclude videos restricted for "watch" — see search-watchability.ts.
+  restrictViewPlatforms String[]  @default([]) @map("restrict_view_platforms")
   /// True when AI-generated metadata has been applied to this video.
   aiMetadata        Boolean      @default(false) @map("ai_metadata")
   primaryLanguageId String?      @map("primary_language_id")
