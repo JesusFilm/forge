@@ -1,4 +1,5 @@
 import createNextIntlPlugin from "next-intl/plugin"
+import { fileURLToPath } from "node:url"
 import { WATCH_BASE_PATH } from "./watch-base-path.mjs"
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
@@ -73,6 +74,8 @@ export const nextConfig = {
   compress: true,
   // typedRoutes moved to top-level in Next 16 (stable).
   typedRoutes: true,
+  cacheHandler: fileURLToPath(new URL("./cache-handler.mjs", import.meta.url)),
+  cacheMaxMemorySize: 0,
   // Datadog RUM source-map uploads need production browser maps available
   // after `next build`; uploads stay opt-in via `pnpm datadog:sourcemaps`.
   productionBrowserSourceMaps: true,
