@@ -33,9 +33,9 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 6,
-      environments: 23,
-      oauthClients: 27,
+      apps: 7,
+      environments: 25,
+      oauthClients: 29,
       scopes: 21,
     })
 

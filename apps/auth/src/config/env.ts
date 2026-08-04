@@ -20,6 +20,10 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     APPLE_CLIENT_ID: z.string().min(1).optional(),
     APPLE_CLIENT_SECRET: z.string().min(1).optional(),
+    APPLE_APP_BUNDLE_ID: z.string().min(1).optional(),
+    APPLE_NATIVE_CLIENT_SECRET: z.string().min(1).optional(),
+    ADMIN_WATCH_PROGRESS_BASE_URL: z.string().url().optional(),
+    ADMIN_WATCH_PROGRESS_API_KEY: z.string().min(1).optional(),
     OKTA_CLIENT_ID: z.string().min(1).optional(),
     OKTA_CLIENT_SECRET: z.string().min(1).optional(),
     OKTA_ISSUER: z.string().url().optional(),
@@ -49,6 +53,16 @@ export const env = createEnv({
     GOOGLE_CLIENT_SECRET: emptyToUndefined(process.env.GOOGLE_CLIENT_SECRET),
     APPLE_CLIENT_ID: emptyToUndefined(process.env.APPLE_CLIENT_ID),
     APPLE_CLIENT_SECRET: emptyToUndefined(process.env.APPLE_CLIENT_SECRET),
+    APPLE_APP_BUNDLE_ID: emptyToUndefined(process.env.APPLE_APP_BUNDLE_ID),
+    APPLE_NATIVE_CLIENT_SECRET: emptyToUndefined(
+      process.env.APPLE_NATIVE_CLIENT_SECRET,
+    ),
+    ADMIN_WATCH_PROGRESS_BASE_URL: emptyToUndefined(
+      process.env.ADMIN_WATCH_PROGRESS_BASE_URL,
+    ),
+    ADMIN_WATCH_PROGRESS_API_KEY: emptyToUndefined(
+      process.env.ADMIN_WATCH_PROGRESS_API_KEY,
+    ),
     OKTA_CLIENT_ID: emptyToUndefined(process.env.OKTA_CLIENT_ID),
     OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
     OKTA_ISSUER: emptyToUndefined(process.env.OKTA_ISSUER),
@@ -84,6 +98,10 @@ function parseOriginList(value: string | undefined): string[] {
     .map((origin) => new URL(origin).origin)
 }
 
+// The mobile app's deep-link scheme (apps/mobile app.json). Trusted so the
+// Better Auth Expo plugin can hand session cookies back on scheme redirects.
+export const MOBILE_APP_SCHEME_ORIGIN = "forgemobile://"
+
 export function getAuthTrustedOrigins(): string[] {
   const productionWebOrigins = [
     "https://jesusfilm.org",
@@ -107,11 +125,36 @@ export function getAuthTrustedOrigins(): string[] {
   return Array.from(
     new Set([
       getAuthBaseUrl(),
+      MOBILE_APP_SCHEME_ORIGIN,
       ...productionWebOrigins,
       ...localWebOrigins,
       ...parseOriginList(env.AUTH_WEB_TRUSTED_ORIGINS),
     ]),
   )
+}
+
+export function getAppleNativeClientConfig(): {
+  bundleId: string
+  clientSecret: string
+} | null {
+  if (!env.APPLE_APP_BUNDLE_ID || !env.APPLE_NATIVE_CLIENT_SECRET) return null
+  return {
+    bundleId: env.APPLE_APP_BUNDLE_ID,
+    clientSecret: env.APPLE_NATIVE_CLIENT_SECRET,
+  }
+}
+
+export function getAdminWatchProgressErasureConfig(): {
+  baseUrl: string
+  apiKey: string
+} | null {
+  if (!env.ADMIN_WATCH_PROGRESS_BASE_URL || !env.ADMIN_WATCH_PROGRESS_API_KEY) {
+    return null
+  }
+  return {
+    baseUrl: env.ADMIN_WATCH_PROGRESS_BASE_URL,
+    apiKey: env.ADMIN_WATCH_PROGRESS_API_KEY,
+  }
 }
 
 export function getAuthValidAudiences(): string[] {

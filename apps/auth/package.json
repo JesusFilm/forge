@@ -20,10 +20,11 @@
     "mint:agent-handle": "tsx src/scripts/mint-agent-login-handle.ts"
   },
   "dependencies": {
+    "@better-auth/expo": "1.6.2",
     "@better-auth/oauth-provider": "1.6.2",
     "@better-auth/prisma-adapter": "1.6.2",
-    "@prisma/client": "^6",
     "@forge/watch-url-policy": "workspace:*",
+    "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",
     "better-auth": "1.6.2",
     "firebase-admin": "13.8.0",

@@ -75,6 +75,7 @@ describe("app registry policy", () => {
       "mastra-studio",
       "chat",
       "admin-mcp",
+      "mobile",
     ])
 
     for (const seed of seeds) {
