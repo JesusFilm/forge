@@ -49,12 +49,27 @@ filters `publiclyVisible:=true`; a future authorized AI surface can apply a
 different explicit policy without rebuilding a metadata-only index.
 
 Do not run the production-sized corpus on a developer workstation. After the
-normal PR merge, run the broad rebuild inside the isolated
-`@forge/admin/search` shadow service. Record the physical collection names,
-catalog count, availability count, transcript count, public transcript count,
-estimated vector bytes, per-case rankings, overlap, lane timings, disk use, and Typesense
-`/metrics.json` before and after the build. Never persist the Railway token or
-rendered database URL in the repository, logs, or benchmark output.
+normal PR merge, run the initial broad rebuild inside the isolated
+`@forge/admin/search` shadow service. The no-argument index command detects the
+missing transcript alias and bootstraps it. Later routine releases reuse that
+physical transcript collection and rebuild only catalog and availability.
+Record the physical collection names, catalog count, availability count,
+transcript count, public transcript count, estimated vector bytes, per-case
+rankings, overlap, lane timings, disk use, and Typesense `/metrics.json` before
+and after the build. Never persist the Railway token or rendered database URL
+in the repository, logs, or benchmark output.
+
+An operator explicitly starts a new vector generation when transcript data,
+visibility, model dimensions, or schema changes require it:
+
+```bash
+pnpm --filter @forge/admin index:typesense-watch-search -- \
+  --rebuild-transcripts
+```
+
+The completed stats must say `transcriptReused: false` for that operation and
+`transcriptReused: true` for an ordinary release refresh. Unknown or misspelled
+arguments fail before any index work begins.
 
 ## `JESUS` Ranking Review
 
@@ -252,16 +267,20 @@ Incremental synchronization is not the only correctness mechanism:
 
 - Run a full count/checksum reconciliation at least daily. Alert on catalog,
   availability, or transcript cardinality drift and enqueue affected video IDs.
-- Build fresh versioned catalog, availability, and transcript collections at
-  least weekly and
-  after schema/model migrations.
+- Build fresh versioned catalog and availability collections during routine
+  release refreshes. Reuse the active transcript collection so an unrelated
+  application PR does not duplicate and re-import 280,107 vectors.
+- Start a transcript rebuild explicitly after transcript schema/model changes,
+  a deliberate corpus-wide vector replacement, or reconciliation evidence that
+  cannot be repaired safely with per-video synchronization. Do not couple this
+  expensive operation to every application deployment.
 - Validate import results, expected counts, viewer-safety samples, embedding
   dimensions, fixed relevance queries, and a read smoke test before publishing.
-- Publish all three physical collection names through one Admin-owned active
-  generation record. A single PostgreSQL transaction changes the set after all
-  collections are ready. This avoids the brief mixed generation possible when
-  Typesense aliases are moved sequentially. Aliases remain useful for
-  operator inspection and manual recovery.
+- Publish the catalog and availability physical collection names through one
+  Admin-owned metadata generation record. Keep the independently reusable
+  transcript collection name in the same manifest. A single PostgreSQL
+  transaction changes only the members rebuilt by that operation after they
+  are ready. Aliases remain useful for operator inspection and manual recovery.
 - Retain the previous healthy generation for at least seven days and do not
   delete it until the new generation has passed production canary checks.
 
@@ -329,6 +348,9 @@ not an estimate that the active index alone consumes 8 GiB. The deployed
 facets, allocator fragmentation, imports, query working memory, and the
 Typesense process add to the vector formula. Transcript text, start time,
 images, locale JSON, and option JSON are unindexed and primarily consume disk.
+Routine application releases keep one vector generation, so they do not incur
+the temporary second-generation vector RAM shown in the table. That peak is
+reserved for an explicit transcript rebuild.
 
 Two 17,462-vector local generations previously used 393.2 MiB of Typesense
 resident memory, 523.8 MiB process RSS, and 1.82 GiB on disk. Provision the
@@ -384,9 +406,10 @@ Monitor and page on:
    PostgreSQL. Roll back index state by selecting the previous active
    generation. These are independent, no-schema-change controls. During the
    availability migration, application code retries legacy bounded catalog
-   hydration only when that alias is missing. Roll back catalog, availability,
-   and transcript aliases together; do not operate a mixed generation as the
-   steady state.
+   hydration only when that alias is missing. A routine metadata rollback moves
+   catalog and availability back together and leaves the reused transcript
+   alias untouched. An explicit transcript rebuild may also roll its transcript
+   alias back to the preceding healthy collection.
 5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
    exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
    the service or volume is a separate destructive action and is never part of

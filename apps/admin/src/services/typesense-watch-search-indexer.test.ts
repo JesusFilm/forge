@@ -253,6 +253,168 @@ describe("Typesense Watch Search indexer", () => {
     )
   })
 
+  it("reuses the active transcript collection for routine metadata rebuilds", async () => {
+    const prisma = {
+      video: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+    const typesense = {
+      getAlias: vi.fn(async (alias: string) => ({
+        name: alias,
+        collection_name:
+          alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
+            ? "transcripts_active"
+            : `${alias}_previous`,
+      })),
+      createCollection: vi.fn(async () => ({})),
+      importDocuments: vi.fn(async () => undefined),
+      multiSearch: vi.fn(async () => [
+        {
+          found: 280_107,
+          out_of: 280_107,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+        {
+          found: 17_462,
+          out_of: 280_107,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+      ]),
+      upsertAlias: vi.fn(async () => ({})),
+    } as unknown as TypesenseClient
+
+    const stats = await rebuildTypesenseWatchSearchIndex({
+      prisma,
+      typesense,
+      buildId: "metadata-only-test",
+    })
+
+    expect(typesense.createCollection).toHaveBeenCalledTimes(2)
+    expect(typesense.createCollection).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining("watch_search_transcripts"),
+      }),
+    )
+    expect(typesense.upsertAlias).not.toHaveBeenCalledWith(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      expect.any(String),
+    )
+    expect(typesense.multiSearch).toHaveBeenCalledWith([
+      expect.objectContaining({ collection: "transcripts_active", q: "*" }),
+      expect.objectContaining({
+        collection: "transcripts_active",
+        q: "*",
+        filter_by: "publiclyVisible:=true",
+      }),
+    ])
+    expect(stats).toMatchObject({
+      transcriptDocuments: 280_107,
+      publicTranscriptDocuments: 17_462,
+      transcriptCollection: "transcripts_active",
+      transcriptReused: true,
+    })
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+  })
+
+  it("rebuilds transcripts when explicitly requested", async () => {
+    const prisma = {
+      video: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+    const typesense = {
+      getAlias: vi.fn(async (alias: string) => ({
+        name: alias,
+        collection_name: `${alias}_previous`,
+      })),
+      createCollection: vi.fn(async () => ({})),
+      importDocuments: vi.fn(async () => undefined),
+      upsertAlias: vi.fn(async () => ({})),
+    } as unknown as TypesenseClient
+
+    const stats = await rebuildTypesenseWatchSearchIndex({
+      prisma,
+      typesense,
+      buildId: "manual-full-test",
+      transcriptStrategy: "rebuild",
+    })
+
+    expect(typesense.createCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining("watch_search_transcripts"),
+      }),
+    )
+    expect(typesense.upsertAlias).toHaveBeenCalledWith(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      expect.stringContaining("watch_search_transcripts"),
+    )
+    expect(stats.transcriptReused).toBe(false)
+  })
+
+  it("rolls back metadata aliases without touching a reused transcript alias", async () => {
+    const prisma = {
+      video: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+    const typesense = {
+      getAlias: vi.fn(async (alias: string) => ({
+        name: alias,
+        collection_name:
+          alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
+            ? "transcripts_active"
+            : `${alias}_previous`,
+      })),
+      createCollection: vi.fn(async () => ({})),
+      importDocuments: vi.fn(async () => undefined),
+      multiSearch: vi.fn(async () => [
+        {
+          found: 280_107,
+          out_of: 280_107,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+        {
+          found: 17_462,
+          out_of: 280_107,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+      ]),
+      upsertAlias: vi.fn(async (alias: string, collection: string) => {
+        if (
+          alias === TYPESENSE_WATCH_CATALOG_ALIAS &&
+          collection !== `${TYPESENSE_WATCH_CATALOG_ALIAS}_previous`
+        ) {
+          throw new Error("catalog alias failed")
+        }
+      }),
+      deleteAlias: vi.fn(async () => undefined),
+      deleteCollection: vi.fn(async () => undefined),
+    } as unknown as TypesenseClient
+
+    await expect(
+      rebuildTypesenseWatchSearchIndex({
+        prisma,
+        typesense,
+        buildId: "metadata-rollback-test",
+      }),
+    ).rejects.toThrow("catalog alias failed")
+
+    expect(typesense.upsertAlias).not.toHaveBeenCalledWith(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      expect.any(String),
+    )
+    expect(typesense.deleteCollection).toHaveBeenCalledTimes(2)
+    expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
+      "transcripts_active",
+    )
+  })
+
   it("restores the first alias when publishing the second alias fails", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
@@ -287,6 +449,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "rollback-test",
+        transcriptStrategy: "rebuild",
       }),
     ).rejects.toThrow("catalog alias failed")
 

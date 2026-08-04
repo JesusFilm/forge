@@ -133,6 +133,11 @@ projection by the exact data needed at each phase:
     missing during a code-first migration or index rollback, retry the bounded
     final catalog lookup using the legacy fields. Only the explicit missing-
     alias condition activates this compatibility path.
+11. Treat metadata and transcript vectors as separate release units. Routine
+    releases rebuild the small catalog and availability projections while
+    retaining the active transcript collection. A first deployment bootstraps
+    vectors automatically; later vector/schema migrations require the explicit
+    `--rebuild-transcripts` operation.
 
 ## Why This Works
 
@@ -188,9 +193,11 @@ safety, not the intended steady-state design.
 - Model high-fanout nested data as filterable serving records. A final-page
   bound does not bound bytes when each page document contains hundreds of
   language options.
-- Publish and roll back catalog, availability, and transcript aliases as one
-  generation. Keep the missing-availability compatibility path until the
-  rollback window no longer includes a two-collection generation.
+- Publish and roll back catalog plus availability as one metadata generation.
+  Leave a reused transcript alias untouched; move and roll it back only during
+  an explicit transcript rebuild. Keep the missing-availability compatibility
+  path until the rollback window no longer includes a two-collection
+  generation.
 - Do not claim a proposed hydration architecture is faster until a clean
   production-shaped comparison proves it.
 
