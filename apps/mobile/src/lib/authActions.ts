@@ -8,6 +8,10 @@
  * the R15 new-account flag), a quiet cancel, or a retryable error.
  */
 
+import {
+  outcomeFromDeleteResult,
+  type DeleteAccountOutcome,
+} from "./accountDeletion"
 import { classifySignInFailure, isNewlyCreatedAccount } from "./authFlows"
 import {
   getAuthClient,
@@ -160,4 +164,24 @@ export async function signInWithHostedPage(): Promise<SignInOutcome> {
  *  lifecycle (store/snapshot/queue reset) reacts to the session change. */
 export async function signOut(): Promise<void> {
   await getAuthSession().signOut()
+}
+
+/**
+ * Delete the account (U7): no verification email exists platform-wide, so
+ * a stale session asks for SSO re-auth first (the fresh-session check);
+ * success clears local state via the normal signed-out transition.
+ */
+export async function deleteAccount(): Promise<DeleteAccountOutcome> {
+  let outcome: DeleteAccountOutcome
+  try {
+    outcome = outcomeFromDeleteResult(await getAuthClient().deleteUser())
+  } catch {
+    return { status: "error" }
+  }
+  if (outcome.status === "deleted") {
+    // The account is gone; signOut's remote leg fails harmlessly and the
+    // local clear + progress lifecycle run off the signed-out transition.
+    await getAuthSession().signOut()
+  }
+  return outcome
 }

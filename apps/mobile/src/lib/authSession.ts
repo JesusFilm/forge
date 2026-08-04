@@ -233,6 +233,10 @@ type BetterAuthExpoClient = {
     } | null
   }>
   signOut: () => Promise<unknown>
+  deleteUser: () => Promise<{
+    data?: unknown
+    error?: { code?: string | null; message?: string | null } | null
+  }>
   signIn: {
     /** Native sheets: verify the provider identity token server-side. */
     social: (options: {

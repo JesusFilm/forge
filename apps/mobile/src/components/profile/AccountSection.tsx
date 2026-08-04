@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
+import { DeleteAccountFlow } from "./DeleteAccountFlow"
 import { signOut } from "../../lib/authActions"
 import { getAuthSession } from "../../lib/authSession"
 import {
@@ -106,6 +107,7 @@ export function AccountSection() {
             {signingOut ? "Signing out…" : "Sign out"}
           </Text>
         </Pressable>
+        <DeleteAccountFlow />
       </View>
     </View>
   )
