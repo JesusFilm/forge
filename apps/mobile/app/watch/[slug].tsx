@@ -42,6 +42,7 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
 import { getProgressSync } from "../../src/lib/watchProgress/syncClient"
 import {
@@ -579,6 +580,8 @@ export default function WatchVideoPage() {
               subtitleLabel={subtitleActionLabel}
               subtitleActive={subtitleActive}
             />
+
+            <SignInPrompt />
 
             {progressState.visible && (
               <Pressable

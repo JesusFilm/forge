@@ -37,6 +37,9 @@ export type RecorderDeps = {
   requestDrain: (options: { forced: boolean }) => void
   /** Local echo so bars update immediately (id-keyed entries only). */
   applyLocal: (accountId: string, entry: WatchProgressEntry) => void
+  /** Signed-out mid-video stop — arms the contextual sign-in prompt
+   *  (KTD13). Never receives an account or writes any position (R10). */
+  onSignedOutStop?: (positionSeconds: number) => void
   now?: () => number
 }
 
@@ -113,6 +116,9 @@ export function createProgressRecorder(
         trigger === "end" ? lastObserved.duration : lastObserved.position
       if (record(position, lastObserved.duration)) {
         deps.requestDrain({ forced: true })
+      } else if (deps.getAccountId() == null && trigger !== "end") {
+        // Mid-video stop while signed out: the prompt's moment (R17).
+        deps.onSignedOutStop?.(lastObserved.position)
       }
     },
   }

@@ -14,6 +14,7 @@ import {
   applyLocalProgress,
   bufferProgressIntent,
 } from "../lib/watchProgress/store"
+import { noteSignedOutPlaybackStop } from "../lib/watchProgress/signInPrompt"
 import {
   enqueueOfflineWrite,
   getProgressSync,
@@ -136,6 +137,7 @@ export function useManagedVideoPlayer(
           requestDrain: (drainOptions) =>
             void getProgressSync().drainIntents(drainOptions),
           applyLocal: applyLocalProgress,
+          onSignedOutStop: noteSignedOutPlaybackStop,
         })
       : null
   }
