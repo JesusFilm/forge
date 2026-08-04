@@ -792,6 +792,7 @@ enum MediaImageEnrichmentStatus {
 type Mutation {
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  clearMyWatchProgress(videoId: ID!): Boolean
   """Create a new Experience with an initial locale. Caller becomes owner."""
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
@@ -903,6 +904,7 @@ type Mutation {
   updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
+  upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
 }
 
 """
@@ -1001,6 +1003,7 @@ type Query {
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
+  myWatchProgress: [WatchProgressEntry!]
   """
   Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
@@ -1776,6 +1779,24 @@ type WatchLanguageInventoryLanguage {
   bcp47: String
   name: JSON
   slug: String!
+}
+
+type WatchProgressEntry {
+  completed: Boolean
+  durationSeconds: Int
+  languageSlug: String
+  positionSeconds: Int
+  updatedAt: String
+  videoId: String
+}
+
+input WatchProgressUpsertInput {
+  durationSeconds: Float!
+  languageSlug: String
+  positionSeconds: Float!
+  updatedAt: String!
+  videoId: ID
+  videoSlug: String
 }
 
 """

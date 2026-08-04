@@ -20,6 +20,7 @@ vi.mock("@/db/client", () => ({
 
 import {
   deleteWatchProgressForUser,
+  deleteWatchProgressForVideo,
   listWatchProgress,
   upsertWatchProgress,
 } from "./watch-progress.service"
@@ -146,6 +147,121 @@ describe("watch-progress service", () => {
     })
     expect(prismaMock.watchProgress.deleteMany).toHaveBeenCalledWith({
       where: { userId: "user-1" },
+    })
+  })
+})
+
+describe("watch-progress service — mobile extensions", () => {
+  it("resolves slug-keyed entries to the right video and drops unknown slugs", async () => {
+    // Slug resolution lookup (slug -> id), then the id-validity lookup.
+    prismaMock.video.findMany
+      .mockResolvedValueOnce([{ id: "video-1", slug: "birth-of-jesus" }])
+      .mockResolvedValueOnce([{ id: "video-1" }])
+    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
+    prismaMock.watchProgress.upsert.mockImplementation(
+      async (args: { create: { videoId: string; lastWatchedAt: Date } }) => ({
+        languageSlug: null,
+        positionSeconds: 30,
+        durationSeconds: 100,
+        completed: false,
+        ...args.create,
+      }),
+    )
+
+    const result = await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          videoSlug: "birth-of-jesus",
+          positionSeconds: 30,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+        {
+          videoSlug: "renamed-away-slug",
+          positionSeconds: 10,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+      ],
+    })
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.videoId).toBe("video-1")
+    expect(prismaMock.watchProgress.upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the newest entry when an id-keyed and slug-keyed entry hit the same video", async () => {
+    prismaMock.video.findMany
+      .mockResolvedValueOnce([{ id: "video-1", slug: "birth-of-jesus" }])
+      .mockResolvedValueOnce([{ id: "video-1" }])
+    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
+    prismaMock.watchProgress.upsert.mockImplementation(
+      async (args: {
+        create: {
+          videoId: string
+          positionSeconds: number
+          lastWatchedAt: Date
+        }
+      }) => ({
+        languageSlug: null,
+        durationSeconds: 100,
+        completed: false,
+        ...args.create,
+      }),
+    )
+
+    const result = await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          videoId: "video-1",
+          positionSeconds: 20,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+        {
+          videoSlug: "birth-of-jesus",
+          positionSeconds: 44,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:01:00.000Z",
+        },
+      ],
+    })
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.positionSeconds).toBe(44)
+    expect(prismaMock.watchProgress.upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it("drops entries carrying neither a video id nor a slug", async () => {
+    prismaMock.video.findMany.mockResolvedValue([])
+    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
+
+    const result = await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          positionSeconds: 30,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+      ],
+    })
+
+    expect(result).toEqual([])
+    expect(prismaMock.watchProgress.upsert).not.toHaveBeenCalled()
+  })
+
+  it("clears exactly one video's progress row", async () => {
+    prismaMock.watchProgress.deleteMany.mockResolvedValueOnce({ count: 1 })
+
+    await expect(
+      deleteWatchProgressForVideo({ userId: "user-1", videoId: "video-1" }),
+    ).resolves.toEqual({ deletedCount: 1 })
+
+    expect(prismaMock.watchProgress.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", videoId: "video-1" },
     })
   })
 })

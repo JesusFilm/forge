@@ -4,7 +4,14 @@ const COMPLETE_THRESHOLD = 0.9
 const MAX_HISTORY_LIMIT = 200
 
 export type WatchProgressInput = {
-  videoId: string
+  videoId?: string | null
+  /**
+   * Alternative key for offline (downloaded) playback: the downloads
+   * manifest stores only slugs, so queued entries arrive slug-keyed and
+   * resolve to the video id server-side. Unknown slugs are dropped, never
+   * misresolved. At least one of videoId / videoSlug must be present.
+   */
+  videoSlug?: string | null
   languageSlug?: string | null
   positionSeconds: number
   durationSeconds: number
@@ -20,7 +27,7 @@ export type WatchProgressView = {
   updatedAt: string
 }
 
-function normalizeEntry(entry: WatchProgressInput) {
+function normalizeEntry(entry: WatchProgressInput & { videoId: string }) {
   const durationSeconds = Math.max(1, Math.floor(entry.durationSeconds))
   const positionSeconds = Math.floor(
     Math.min(Math.max(0, entry.positionSeconds), durationSeconds),
@@ -37,6 +44,39 @@ function normalizeEntry(entry: WatchProgressInput) {
     completed: positionSeconds / durationSeconds >= COMPLETE_THRESHOLD,
     lastWatchedAt,
   }
+}
+
+/**
+ * Resolve slug-keyed entries to id-keyed ones. Entries with a videoId keep
+ * it (the slug is ignored); slug-only entries resolve against non-deleted
+ * videos; unknown slugs and key-less entries are dropped.
+ */
+async function resolveEntryVideoIds(
+  entries: WatchProgressInput[],
+): Promise<Array<WatchProgressInput & { videoId: string }>> {
+  const slugsToResolve = Array.from(
+    new Set(
+      entries
+        .filter((entry) => !entry.videoId && entry.videoSlug)
+        .map((entry) => entry.videoSlug as string),
+    ),
+  )
+  const videoIdBySlug = new Map<string, string>()
+  if (slugsToResolve.length > 0) {
+    const videos = await prisma.video.findMany({
+      where: { slug: { in: slugsToResolve }, deletedAt: null },
+      select: { id: true, slug: true },
+    })
+    for (const video of videos) videoIdBySlug.set(video.slug, video.id)
+  }
+  const resolved: Array<WatchProgressInput & { videoId: string }> = []
+  for (const entry of entries) {
+    const videoId =
+      entry.videoId ??
+      (entry.videoSlug ? videoIdBySlug.get(entry.videoSlug) : undefined)
+    if (videoId) resolved.push({ ...entry, videoId })
+  }
+  return resolved
 }
 
 function newestByVideoId<T extends { videoId: string; lastWatchedAt: Date }>(
@@ -93,7 +133,8 @@ export async function upsertWatchProgress({
   userId: string
   entries: WatchProgressInput[]
 }): Promise<WatchProgressView[]> {
-  const normalized = newestByVideoId(entries.map(normalizeEntry))
+  const idKeyedEntries = await resolveEntryVideoIds(entries)
+  const normalized = newestByVideoId(idKeyedEntries.map(normalizeEntry))
   const uniqueVideoIds = Array.from(
     new Set(normalized.map((entry) => entry.videoId)),
   )
@@ -160,6 +201,20 @@ export async function upsertWatchProgress({
 export async function deleteWatchProgressForUser(userId: string) {
   const result = await prisma.watchProgress.deleteMany({
     where: { userId },
+  })
+  return { deletedCount: result.count }
+}
+
+/** Per-video clear (R16) — removes one row, leaves the rest untouched. */
+export async function deleteWatchProgressForVideo({
+  userId,
+  videoId,
+}: {
+  userId: string
+  videoId: string
+}) {
+  const result = await prisma.watchProgress.deleteMany({
+    where: { userId, videoId },
   })
   return { deletedCount: result.count }
 }

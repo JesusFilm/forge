@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { isValidWatchProgressBearer } from "@/auth/watch-progress-bearer"
+import { prisma } from "@/db/client"
+import { deleteWatchEventsForUser } from "@/services/watch-events.service"
 import {
   deleteWatchProgressForUser,
   listWatchProgress,
@@ -89,6 +91,12 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   const parsed = deleteSchema.safeParse(body)
   if (!parsed.success) return badRequest("userId is required")
 
+  // Account-deletion erasure covers both watch stores in one call:
+  // the progress record and the watch-event analytics log (R5).
   const result = await deleteWatchProgressForUser(parsed.data.userId)
-  return NextResponse.json(result)
+  const events = await deleteWatchEventsForUser(prisma, parsed.data.userId)
+  return NextResponse.json({
+    ...result,
+    deletedWatchEventCount: events.deletedCount,
+  })
 }

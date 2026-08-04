@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 
-import { WatchEventService } from "@/services/watch-events.service"
+import {
+  WatchEventService,
+  deleteWatchEventsForUser,
+} from "@/services/watch-events.service"
 import { ForbiddenError, NotFoundError } from "@/services/errors"
 import type { Principal } from "@/auth/principal"
 
@@ -115,5 +118,22 @@ describe("WatchEventService", () => {
         },
       }),
     ).rejects.toBeInstanceOf(NotFoundError)
+  })
+})
+
+describe("deleteWatchEventsForUser", () => {
+  it("erases every watch event for the subject and reports the count", async () => {
+    const deleteMany = vi.fn(async () => ({ count: 7 }))
+    const prisma = {
+      watchEvent: { deleteMany },
+    } as unknown as PrismaClient
+
+    await expect(
+      deleteWatchEventsForUser(prisma, "auth-user-123"),
+    ).resolves.toEqual({ deletedCount: 7 })
+
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { authSubject: "auth-user-123" },
+    })
   })
 })
