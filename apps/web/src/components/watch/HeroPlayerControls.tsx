@@ -14,6 +14,10 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import {
+  readWatchVolumePreference,
+  writeWatchVolumePreference,
+} from "@/lib/watch-volume-preference"
 import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-production-overlays"
 import {
   WATCH_PLAYER_CHROME_REVEAL_EVENT,
@@ -125,6 +129,7 @@ export function HeroPlayerControls({
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
+  const appliedVolumePreferencePlayerRef = useRef<MuxPlayerRef | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [bufferedPct, setBufferedPct] = useState(0)
@@ -160,6 +165,8 @@ export function HeroPlayerControls({
   const chromeVisibilityRef = useRef<ChromeVisibility>("dim")
   const pointerRevealLockedRef = useRef(true)
   const pointerRevealLockTimerRef = useRef<number | null>(null)
+  const volumePreferenceRestoreCountRef = useRef(0)
+  const applyingVolumePreferenceRef = useRef(false)
   useEffect(() => {
     chromeVisibilityRef.current = chromeVisibility
   }, [chromeVisibility])
@@ -377,14 +384,59 @@ export function HeroPlayerControls({
     [revealDimmedControls, scheduleHide, schedulePointerIdle, wrapperRef],
   )
 
+  const persistPlayerVolumePreference = useCallback((p: MuxPlayerRef) => {
+    writeWatchVolumePreference({
+      muted: !!p.muted,
+      volume: p.volume,
+    })
+  }, [])
+
+  const applyStoredVolumePreference = useCallback(() => {
+    const p = playerRef.current
+    const preference = readWatchVolumePreference()
+    if (!p || !preference) return false
+
+    applyingVolumePreferenceRef.current = true
+    try {
+      if (p.volume !== preference.volume) {
+        p.volume = preference.volume
+      }
+      if (p.muted !== preference.muted) {
+        p.muted = preference.muted
+      }
+    } finally {
+      queueMicrotask(() => {
+        applyingVolumePreferenceRef.current = false
+      })
+    }
+    setVolume(preference.volume)
+    setMuted(preference.muted)
+    return true
+  }, [playerRef])
+
+  useEffect(() => {
+    const p = playerRef.current
+    if (!p) return
+    if (appliedVolumePreferencePlayerRef.current === p) return
+
+    appliedVolumePreferencePlayerRef.current = p
+    volumePreferenceRestoreCountRef.current = 0
+    if (applyStoredVolumePreference()) {
+      volumePreferenceRestoreCountRef.current = 1
+    }
+  }, [applyStoredVolumePreference, player, playerRef])
+
   useEffect(() => {
     if (!player || typeof player.addEventListener !== "function") return
 
-    const sync = () => {
+    const sync = (persist = false) => {
       setPlaying(!player.paused)
       setMuted(!!player.muted)
       const v = player.volume
       setVolume(Number.isFinite(v) ? v : 1)
+      if (persist && !applyingVolumePreferenceRef.current) {
+        persistPlayerVolumePreference(player)
+      }
       const nextCurrentTime = player.currentTime
       setCurrentTime(nextCurrentTime)
       const pending = pendingSeekTimeRef.current
@@ -412,20 +464,32 @@ export function HeroPlayerControls({
     }
 
     sync()
+    const syncMedia = () => sync()
+    const syncLoadedMetadata = () => {
+      if (volumePreferenceRestoreCountRef.current < 2) {
+        if (applyStoredVolumePreference()) {
+          volumePreferenceRestoreCountRef.current += 1
+        }
+      }
+      sync()
+    }
+    const syncVolume = () => sync(true)
     const events = [
       "timeupdate",
       "durationchange",
-      "loadedmetadata",
       "play",
       "pause",
-      "volumechange",
       "progress",
     ] as const
-    events.forEach((e) => player.addEventListener(e, sync))
+    events.forEach((e) => player.addEventListener(e, syncMedia))
+    player.addEventListener("loadedmetadata", syncLoadedMetadata)
+    player.addEventListener("volumechange", syncVolume)
     return () => {
-      events.forEach((e) => player.removeEventListener(e, sync))
+      events.forEach((e) => player.removeEventListener(e, syncMedia))
+      player.removeEventListener("loadedmetadata", syncLoadedMetadata)
+      player.removeEventListener("volumechange", syncVolume)
     }
-  }, [player])
+  }, [applyStoredVolumePreference, persistPlayerVolumePreference, player])
 
   useEffect(() => {
     setStoryboard(null)
@@ -552,7 +616,8 @@ export function HeroPlayerControls({
       p.volume = 0.5
     }
     p.muted = !p.muted
-  }, [playerRef])
+    persistPlayerVolumePreference(p)
+  }, [persistPlayerVolumePreference, playerRef])
 
   const setPlayerVolume = useCallback(
     (vol: number) => {
@@ -573,8 +638,9 @@ export function HeroPlayerControls({
       } else if (clamped > 0 && p.muted) {
         p.muted = false
       }
+      persistPlayerVolumePreference(p)
     },
-    [playerRef],
+    [persistPlayerVolumePreference, playerRef],
   )
 
   const computeVolumeFromClientX = useCallback((clientX: number): number => {

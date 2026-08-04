@@ -28,6 +28,7 @@ let container: HTMLDivElement
 let root: Root
 
 function makePlayer(overrides: Partial<MuxPlayerRef> = {}): MuxPlayerRef {
+  const listeners = new Map<string, Set<EventListener>>()
   return {
     muted: false,
     currentTime: 0,
@@ -37,8 +38,18 @@ function makePlayer(overrides: Partial<MuxPlayerRef> = {}): MuxPlayerRef {
     buffered: null,
     play: vi.fn(() => Promise.resolve()),
     pause: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
+    addEventListener: vi.fn((type: string, listener: EventListener) => {
+      const set = listeners.get(type) ?? new Set<EventListener>()
+      set.add(listener)
+      listeners.set(type, set)
+    }),
+    removeEventListener: vi.fn((type: string, listener: EventListener) => {
+      listeners.get(type)?.delete(listener)
+    }),
+    dispatchEvent: vi.fn((event: Event) => {
+      listeners.get(event.type)?.forEach((listener) => listener(event))
+      return true
+    }),
     ...overrides,
   } as unknown as MuxPlayerRef
 }
@@ -54,6 +65,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  window.localStorage.clear()
   // Reset jsdom fullscreen state between tests.
   Object.defineProperty(document, "fullscreenElement", {
     configurable: true,
@@ -63,6 +75,36 @@ afterEach(() => {
   })
   document.body.innerHTML = ""
 })
+
+function renderControlsFixture(player: MuxPlayerRef = makePlayer()) {
+  const wrapperEl = document.createElement("div")
+  const overlayAnchor = document.createElement("div")
+  document.body.appendChild(wrapperEl)
+  document.body.appendChild(overlayAnchor)
+  const wrapperRef = createRef<HTMLDivElement>()
+  Object.defineProperty(wrapperRef, "current", {
+    writable: true,
+    value: wrapperEl,
+  })
+  const playerRef = createRef<MuxPlayerRef | null>()
+  Object.defineProperty(playerRef, "current", {
+    writable: true,
+    value: player,
+  })
+
+  act(() => {
+    root.render(
+      <HeroPlayerControls
+        player={playerRef.current}
+        playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+        wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+        overlayAnchor={overlayAnchor}
+      />,
+    )
+  })
+
+  return { overlayAnchor, player, playerRef, wrapperEl }
+}
 
 function setFullscreenElement(el: Element | null) {
   Object.defineProperty(document, "fullscreenElement", {
@@ -304,6 +346,155 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
       button.click()
     })
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("HeroPlayerControls — volume preference", () => {
+  const storageKey = "forge.watch.volumePreference"
+
+  it("applies stored volume and mute state on mount", () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ muted: true, volume: 0.25 }),
+    )
+    const player = makePlayer({ muted: false, volume: 1 })
+
+    const { overlayAnchor } = renderControlsFixture(player)
+
+    expect(player.muted).toBe(true)
+    expect(player.volume).toBe(0.25)
+    expect(
+      overlayAnchor
+        .querySelector('[data-testid="hero-chrome-volume-slider"]')
+        ?.getAttribute("aria-valuenow"),
+    ).toBe("0")
+  })
+
+  it("ignores corrupt stored volume preference", () => {
+    window.localStorage.setItem(storageKey, "{")
+    const player = makePlayer({ muted: false, volume: 0.8 })
+
+    renderControlsFixture(player)
+
+    expect(player.muted).toBe(false)
+    expect(player.volume).toBe(0.8)
+  })
+
+  it("persists mute button changes for the next controls instance", async () => {
+    const firstPlayer = makePlayer({ muted: false, volume: 0.7 })
+    const { overlayAnchor } = renderControlsFixture(firstPlayer)
+    const muteButton = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-mute"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      muteButton.click()
+    })
+
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? "")).toEqual({
+      muted: true,
+      volume: 0.7,
+    })
+
+    act(() => {
+      root.render(<></>)
+    })
+    const nextPlayer = makePlayer({ muted: false, volume: 1 })
+    renderControlsFixture(nextPlayer)
+
+    expect(nextPlayer.muted).toBe(true)
+    expect(nextPlayer.volume).toBe(0.7)
+  })
+
+  it("persists keyboard volume changes", async () => {
+    const player = makePlayer({ muted: false, volume: 0.5 })
+    const { overlayAnchor } = renderControlsFixture(player)
+    const slider = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-volume-slider"]',
+    ) as HTMLDivElement
+
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowUp",
+          bubbles: true,
+        }),
+      )
+    })
+
+    expect(player.volume).toBeCloseTo(0.55, 5)
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? "")).toEqual({
+      muted: false,
+      volume: 0.55,
+    })
+  })
+
+  it("reapplies stored volume after loadedmetadata resets the same media element", async () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ muted: false, volume: 0.25 }),
+    )
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, "setItem")
+    const player = makePlayer({ muted: true, volume: 1 })
+
+    renderControlsFixture(player)
+    expect(player.muted).toBe(false)
+    expect(player.volume).toBe(0.25)
+
+    player.muted = true
+    player.volume = 1
+
+    await act(async () => {
+      player.dispatchEvent(new Event("loadedmetadata"))
+      player.dispatchEvent(new Event("loadedmetadata"))
+      player.dispatchEvent(new Event("loadedmetadata"))
+    })
+
+    expect(player.muted).toBe(false)
+    expect(player.volume).toBe(0.25)
+    expect(setItemSpy).not.toHaveBeenCalled()
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? "")).toEqual({
+      muted: false,
+      volume: 0.25,
+    })
+  })
+
+  it("preserves stored volume when the browser ignores programmatic volume restore", async () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ muted: false, volume: 0.25 }),
+    )
+    const player = makePlayer({ muted: true })
+    let volumeValue = 1
+    const dispatchVolumeChange = () => {
+      player.dispatchEvent(new Event("volumechange"))
+    }
+    Object.defineProperty(player, "volume", {
+      configurable: true,
+      get: () => volumeValue,
+      set: vi.fn(() => {
+        volumeValue = 1
+        dispatchVolumeChange()
+      }),
+    })
+    let mutedValue = true
+    Object.defineProperty(player, "muted", {
+      configurable: true,
+      get: () => mutedValue,
+      set: vi.fn((next: boolean) => {
+        mutedValue = next
+        dispatchVolumeChange()
+      }),
+    })
+
+    renderControlsFixture(player)
+
+    expect(player.muted).toBe(false)
+    expect(player.volume).toBe(1)
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? "")).toEqual({
+      muted: false,
+      volume: 0.25,
+    })
   })
 })
 
