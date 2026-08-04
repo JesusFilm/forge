@@ -19,6 +19,8 @@ type VideoPlayerState = {
    *  sites without admin identity (trailers, experience cards) omit it and
    *  no event is recorded — mirrors web recording on watch pages only. */
   currentIdentity: WatchEventIdentity | null
+  /** Continue Watching resume point for this playback, or null. */
+  currentStartAtSeconds: number | null
   isVisible: boolean
 }
 
@@ -28,6 +30,7 @@ type VideoPlayerContextValue = {
     title?: string,
     subtitle?: string,
     identity?: WatchEventIdentity,
+    startAtSeconds?: number,
   ) => void
   dismissVideo: () => void
   state: VideoPlayerState
@@ -47,6 +50,7 @@ const INITIAL_STATE: VideoPlayerState = {
   currentTitle: null,
   currentSubtitle: null,
   currentIdentity: null,
+  currentStartAtSeconds: null,
   isVisible: false,
 }
 
@@ -62,12 +66,15 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
       title?: string,
       subtitle?: string,
       identity?: WatchEventIdentity,
+      startAtSeconds?: number,
     ) => {
       setState({
         currentUrl: streamingUrl,
         currentTitle: title ?? null,
         currentSubtitle: subtitle ?? null,
         currentIdentity: identity ?? null,
+        currentStartAtSeconds:
+          startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
         isVisible: true,
       })
     },

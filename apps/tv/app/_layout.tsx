@@ -17,6 +17,7 @@ import {
   queueMeaningfulWatchEvent,
   type PlaybackSnapshot,
 } from "../src/lib/watchEvents/watchEvents"
+import { saveResumeSnapshot } from "../src/lib/watchEvents/continueWatching"
 
 /** Background color from Crimson Gallery design system */
 const BG_COLOR = "#161311"
@@ -81,6 +82,28 @@ function VideoPlayerOverlay() {
     )
   }, [])
 
+  // Continue Watching shelf: display fields come from the session's video
+  // record — only available (and only meaningful) while the session owns this
+  // playback, the same ownership rule liveDubId uses above.
+  const sessionVideoRef = useRef(sessionVideo)
+  sessionVideoRef.current = sessionVideo
+  const handlePlaybackPosition = useCallback((snapshot: PlaybackSnapshot) => {
+    const identity = identityRef.current
+    const video = sessionVideoRef.current
+    if (identity == null || video == null) return
+    if (video.documentId !== identity.videoId || video.slug == null) return
+    void saveResumeSnapshot(
+      {
+        videoId: identity.videoId,
+        slug: video.slug,
+        title: video.title,
+        imageUrl: video.posterUrl,
+        updatedAt: new Date().toISOString(),
+      },
+      snapshot,
+    )
+  }, [])
+
   if (!state.isVisible || state.currentUrl == null) {
     return null
   }
@@ -95,6 +118,8 @@ function VideoPlayerOverlay() {
       // Dub switch = new attribution unit: re-arm the one-shot latch so the
       // new dub can record its own meaningful event (web parity).
       meaningfulResetKey={liveDubId}
+      startAtSeconds={state.currentStartAtSeconds}
+      onPlaybackPosition={handlePlaybackPosition}
     />
   )
 }

@@ -614,7 +614,18 @@ export type VideoPlayerProps = {
    *  stays the frozen creation source), so the overlay passes the active dub
    *  identity here; mirrors web's recordedRef reset on [videoId, videoDubId]. */
   meaningfulResetKey?: string | null
+  /** Continue Watching resume point. tvOS silently drops a seek issued before
+   *  the item is seekable (see reelPlayerGate.ts precedent), so the seek is
+   *  issued at readyToPlay and backstopped at the timeUpdate choke until the
+   *  playhead lands. */
+  startAtSeconds?: number | null
+  /** Periodic playback position for the Continue Watching shelf: every ~10s
+   *  during playback, on natural completion, and on unmount (Back). */
+  onPlaybackPosition?: (snapshot: PlaybackSnapshot) => void
 }
+
+/** Emission cadence for onPlaybackPosition during playback. */
+const PLAYBACK_POSITION_INTERVAL_MS = 10_000
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -625,6 +636,8 @@ export function VideoPlayer({
   onDismiss,
   onMeaningfulPlayback,
   meaningfulResetKey,
+  startAtSeconds,
+  onPlaybackPosition,
 }: VideoPlayerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1041,6 +1054,22 @@ export function VideoPlayer({
       // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
       const summary = qoeRef.current?.finalize("ended")
       if (summary != null) datadogLog.info("video_playback.summary", summary)
+      // Continue Watching: report completion (position = duration) so the
+      // shelf drops the finished video; also stop the unmount emission from
+      // re-reporting a stale mid-video position afterwards.
+      const endedDuration =
+        typeof player.duration === "number" &&
+        Number.isFinite(player.duration) &&
+        player.duration > 0
+          ? player.duration
+          : (lastPositionRef.current?.durationSeconds ?? null)
+      if (endedDuration != null) {
+        onPlaybackPositionRef.current?.({
+          positionSeconds: endedDuration,
+          durationSeconds: endedDuration,
+        })
+        lastPositionRef.current = null
+      }
       if (!isMountedRef.current) return
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
@@ -1124,6 +1153,26 @@ export function VideoPlayer({
     meaningfulStateRef.current = initialMeaningfulState
   }, [streamingUrl, meaningfulResetKey])
 
+  // Continue Watching (feat-322): pending resume seek + position reporting.
+  const pendingStartAtRef = useRef<number | null>(
+    startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
+  )
+  const onPlaybackPositionRef = useRef(onPlaybackPosition)
+  useEffect(() => {
+    onPlaybackPositionRef.current = onPlaybackPosition
+  }, [onPlaybackPosition])
+  const lastPositionRef = useRef<PlaybackSnapshot | null>(null)
+  const lastPositionEmitAtRef = useRef(0)
+  // Final position on exit (Back button = unmount). Cleanup-only emission from
+  // refs; under dev StrictMode's mount cycle the early cleanup emits a ~0s
+  // snapshot, which the shelf's noise floor discards — harmless.
+  useEffect(() => {
+    return () => {
+      const last = lastPositionRef.current
+      if (last != null) onPlaybackPositionRef.current?.(last)
+    }
+  }, [])
+
   // Track time updates.
   // Fix #4: Skip state updates while a seek is in flight — don't let stale
   // pre-seek timeUpdate events overwrite the optimistic position.
@@ -1148,16 +1197,43 @@ export function VideoPlayer({
             : null,
         )
         meaningfulStateRef.current = nextMeaningful
+        const safeDuration =
+          typeof nativeDuration === "number" &&
+          Number.isFinite(nativeDuration) &&
+          nativeDuration > 0
+            ? nativeDuration
+            : null
         if (record) {
           onMeaningfulPlaybackRef.current?.({
             positionSeconds: payload.currentTime,
-            durationSeconds:
-              typeof nativeDuration === "number" &&
-              Number.isFinite(nativeDuration) &&
-              nativeDuration > 0
-                ? nativeDuration
-                : null,
+            durationSeconds: safeDuration,
           })
+        }
+
+        // Continue Watching: resume-seek backstop + throttled position report.
+        const pendingStart = pendingStartAtRef.current
+        if (pendingStart != null) {
+          if (payload.currentTime >= pendingStart - 2) {
+            pendingStartAtRef.current = null
+          } else {
+            // Self-healing re-seek at the 1Hz choke (readyToPlay's seek can be
+            // silently swallowed — reelPlayerGate precedent).
+            seekTargetRef.current = pendingStart
+            player.currentTime = pendingStart
+          }
+        } else {
+          lastPositionRef.current = {
+            positionSeconds: payload.currentTime,
+            durationSeconds: safeDuration,
+          }
+          const now = Date.now()
+          if (
+            now - lastPositionEmitAtRef.current >=
+            PLAYBACK_POSITION_INTERVAL_MS
+          ) {
+            lastPositionEmitAtRef.current = now
+            onPlaybackPositionRef.current?.(lastPositionRef.current)
+          }
         }
       }
       // QoE: track the playhead for the summary's watched_ms (approximate; the
@@ -1223,6 +1299,14 @@ export function VideoPlayer({
       // playingChange listener's comment for why this ordering matters.
       statusRef.current = next
       setStatus(next)
+
+      // Continue Watching: readyToPlay is the first guaranteed-seekable point
+      // (a seek issued earlier is silently dropped) — issue the resume seek
+      // here; the timeUpdate choke backstops until the playhead lands.
+      if (next === "readyToPlay" && pendingStartAtRef.current != null) {
+        seekTargetRef.current = pendingStartAtRef.current
+        player.currentTime = pendingStartAtRef.current
+      }
 
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
