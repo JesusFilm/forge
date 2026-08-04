@@ -79,6 +79,12 @@ The receiver maps each semantic model to both paths and Data Cache tags:
 - `watch-route-manifest` clears the receiving process's in-memory manifest cache, invalidates the route-manifest tag, and revalidates the watch layouts.
 - `watch-seo-manifest` clears the receiving process's in-memory SEO manifest cache, invalidates the SEO manifest tag, and revalidates the sitemap index plus child sitemap routes.
 
+`next.config.mjs` installs `cache-handler.mjs` as Next's `cacheHandler` with
+`cacheMaxMemorySize = 0` so self-hosted ISR/Data Cache entries can live in
+Redis across deploys and web instances. Production should set `REDIS_URL`;
+local, CI, build, and no-Redis runs fall back to the handler's process-local
+memory map. Use `NEXT_CACHE_REDIS_PREFIX` when sharing a Redis instance.
+
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
 
 The SEO sitemap manifest cache in `src/lib/watch-seo-manifest.ts` follows the
