@@ -4,6 +4,7 @@ import { type Message, type ReplyFailureReason } from "@/lib/conversations"
 
 import { AssistantMarkdown } from "./assistant-markdown"
 import { SourcesList } from "./sources-list"
+import { VideoCard } from "./video-card"
 
 type MessageListProps = {
   messages: Message[]
@@ -128,6 +129,10 @@ const AssistantTurn = memo(function AssistantTurn({
         className="max-w-[560px] text-lg leading-relaxed text-linen"
       >
         <AssistantMarkdown content={message.content} streaming />
+        {/* Defensive: no live path sets video before the finalize (plan D3),
+            so this branch is unreachable today — it exists so a future
+            mid-stream or replay writer cannot silently drop the block. */}
+        {message.video ? <VideoCard video={message.video} /> : null}
         <span className="sr-only">Replying</span>
       </li>
     )
@@ -140,6 +145,8 @@ const AssistantTurn = memo(function AssistantTurn({
       className="max-w-[560px] text-lg leading-relaxed text-linen"
     >
       <AssistantMarkdown content={message.content} />
+      {/* Sibling block, never through the markdown allowlist (plan D2). */}
+      {message.video ? <VideoCard video={message.video} /> : null}
       {message.error ? (
         <div className="mt-2 flex flex-col gap-1">
           <p role="alert" className="text-sm text-vesper">
