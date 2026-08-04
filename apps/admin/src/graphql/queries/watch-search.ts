@@ -11,11 +11,19 @@ import type {
   WatchSearchResult,
 } from "@/services/watch-search.service"
 import { recordWatchSearchTraceSafely } from "@/services/search-trace.service"
+import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
 
 const WatchSearchResultTypeEnum = builder.enumType("WatchSearchResultType", {
   values: {
     VIDEO: { value: "video" },
     EXPERIENCE: { value: "experience" },
+  } as const,
+})
+
+const WatchSearchModeEnum = builder.enumType("WatchSearchMode", {
+  values: {
+    DEFAULT: { value: "default" },
+    MODERN: { value: "modern" },
   } as const,
 })
 
@@ -78,6 +86,7 @@ const WatchSearchLaneStatusRef = builder
 const WatchSearchInput = builder.inputType("WatchSearchInput", {
   fields: (t) => ({
     query: t.string({ required: true }),
+    mode: t.field({ type: WatchSearchModeEnum, required: false }),
     clientRequestId: t.string({ required: false }),
     targetLanguageSlug: t.string({ required: false }),
     queryLanguageSlug: t.string({ required: false }),
@@ -268,7 +277,12 @@ builder.queryFields((t) => ({
     resolve: async (_root, args, ctx) => {
       const input = args.input as WatchSearchServiceInput
       const startedAt = new Date()
-      const response = await ctx.services.watchSearch.search(input)
+      const service =
+        input.mode === "modern"
+          ? ctx.services.typesenseWatchSearch
+          : ctx.services.watchSearch
+      if (!service) throw new TypesenseWatchSearchUnavailableError()
+      const response = await service.search(input)
       await recordWatchSearchTraceSafely(
         {
           input,

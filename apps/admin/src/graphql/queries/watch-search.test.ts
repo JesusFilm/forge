@@ -11,6 +11,7 @@ const { recordWatchSearchTraceSafelyMock } = vi.hoisted(() => ({
 }))
 
 const searchMock = vi.fn()
+const typesenseSearchMock = vi.fn()
 
 vi.mock("@/services/search-trace.service", () => ({
   recordWatchSearchTraceSafely: recordWatchSearchTraceSafelyMock,
@@ -19,6 +20,7 @@ vi.mock("@/services/search-trace.service", () => ({
 type ResolverArgs = {
   input: {
     query: string
+    mode?: "default" | "modern" | null
     targetLanguageSlug?: string | null
     displayLanguageSlug?: string | null
     routeLanguageSlug?: string | null
@@ -29,7 +31,10 @@ type ResolverArgs = {
 }
 type ResolverCtx = {
   prisma: unknown
-  services: { watchSearch: { search: typeof searchMock } }
+  services: {
+    watchSearch: { search: typeof searchMock }
+    typesenseWatchSearch: { search: typeof typesenseSearchMock } | null
+  }
 }
 type FieldWithResolve = {
   resolve: (
@@ -46,13 +51,21 @@ function getResolver(): FieldWithResolve["resolve"] {
   return field.resolve
 }
 
-async function invoke(args: ResolverArgs) {
+async function invoke(
+  args: ResolverArgs,
+  typesenseWatchSearch: ResolverCtx["services"]["typesenseWatchSearch"] = {
+    search: typesenseSearchMock,
+  },
+) {
   return getResolver()(
     null,
     args,
     {
       prisma: { searchTrace: {}, searchTraceAggregate: {} },
-      services: { watchSearch: { search: searchMock } },
+      services: {
+        watchSearch: { search: searchMock },
+        typesenseWatchSearch,
+      },
     },
     {},
   )
@@ -88,6 +101,75 @@ beforeEach(() => {
       acceptLanguage: null,
       acceptLanguageSlug: null,
     },
+  })
+  typesenseSearchMock.mockResolvedValue({
+    query: "jesus",
+    results: [],
+    hasMore: false,
+    nextOffset: 20,
+    searchMode: "watch-search-typesense",
+    requestId: "search-request-typesense-1",
+    degraded: false,
+    latencyMs: 1,
+    laneStatuses: [],
+    languageInterpretation: {
+      queryLanguageSlug: null,
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "spanish-castilian",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    },
+  })
+})
+
+describe("watchSearch mode routing", () => {
+  it("uses the modern service when mode is MODERN", async () => {
+    const input = {
+      query: "communion",
+      mode: "modern" as const,
+      targetLanguageSlug: "french",
+      displayLanguageSlug: "french",
+    }
+
+    const result = await invoke({ input })
+
+    expect(typesenseSearchMock).toHaveBeenCalledWith(input)
+    expect(searchMock).not.toHaveBeenCalled()
+    expect(result).toMatchObject({ searchMode: "watch-search-typesense" })
+  })
+
+  it("uses the default service when mode is omitted", async () => {
+    const input = { query: "communion", targetLanguageSlug: "french" }
+
+    await invoke({ input })
+
+    expect(searchMock).toHaveBeenCalledWith(input)
+    expect(typesenseSearchMock).not.toHaveBeenCalled()
+  })
+
+  it("records the modern response through the existing trace sink", async () => {
+    const input = {
+      query: "communion",
+      mode: "modern" as const,
+      targetLanguageSlug: "french",
+    }
+
+    const result = await invoke({ input })
+
+    expect(recordWatchSearchTraceSafelyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ input, response: result }),
+      expect.anything(),
+    )
+  })
+
+  it("fails explicitly when MODERN is requested without Typesense configuration", async () => {
+    await expect(
+      invoke({ input: { query: "communion", mode: "modern" } }, null),
+    ).rejects.toThrow("Typesense Watch Search is not configured")
   })
 })
 

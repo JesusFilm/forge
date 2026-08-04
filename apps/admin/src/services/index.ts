@@ -19,6 +19,7 @@ import { VideoSearchSocialService } from "@/services/video-search-social.service
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSearchEventService } from "@/services/watch-search-events.service"
 import { WatchSearchService } from "@/services/watch-search.service"
+import { createTypesenseWatchSearchService } from "@/services/typesense-watch-search.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
 
 export type Services = ReturnType<typeof createServices>
@@ -38,6 +39,7 @@ export function createServices(prisma: PrismaClient) {
     watchEvent: new WatchEventService(prisma),
     watchSearchEvent: new WatchSearchEventService(prisma),
     watchSearch: new WatchSearchService(prisma),
+    typesenseWatchSearch: createTypesenseWatchSearchService(prisma),
     watchSetting: new WatchSettingService(prisma),
   }
 }
