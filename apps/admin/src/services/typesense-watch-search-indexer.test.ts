@@ -110,6 +110,7 @@ describe("Typesense Watch Search indexer", () => {
       expect.objectContaining({
         id: "video-1",
         titles: ["La communion"],
+        localeCodes: ["fr"],
         imageUrl: "https://example.com/preferred.jpg",
         childCount: 1,
         audioOptionsJson: JSON.stringify([

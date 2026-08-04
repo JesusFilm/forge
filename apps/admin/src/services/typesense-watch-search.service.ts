@@ -12,10 +12,15 @@ import {
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   type TypesenseWatchAudioOption,
   type TypesenseWatchCatalogDocument,
-  type TypesenseWatchLocale,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
+import {
+  displayLocale,
+  displayPreviewLocale,
+  hasAlignedLocaleCodes,
+  type TypesenseWatchCatalogPreviewDocument,
+} from "./typesense-watch-search-locales"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
 import {
   defaultWatchSearchEmbedder,
@@ -41,8 +46,9 @@ const MAX_EVIDENCE_LOCALES = 3
 const WATCHABILITY_RERANK_CANDIDATE_LIMIT = 100
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
 const MIN_SEMANTIC_SIMILARITY = 0.5
-const CATALOG_PREVIEW_FIELDS =
-  "id,titles,localesJson,audioLanguageSlugs,subtitleLanguageSlugs"
+const CATALOG_PREVIEW_EXCLUDED_FIELDS =
+  "coreId,slug,descriptions,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson"
+const LEGACY_CATALOG_LOCALE_FIELDS = "id,titles,localesJson"
 const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
   "id,audioLanguageSlugs,subtitleLanguageSlugs"
 
@@ -64,13 +70,9 @@ type Candidate = {
   startSeconds: number | null
 }
 
-type TypesenseWatchCatalogPreviewDocument = Pick<
+type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
   TypesenseWatchCatalogDocument,
-  | "id"
-  | "titles"
-  | "localesJson"
-  | "audioLanguageSlugs"
-  | "subtitleLanguageSlugs"
+  "id" | "titles" | "localesJson"
 >
 
 type TypesenseWatchCatalogWatchabilityPreviewDocument = Pick<
@@ -174,25 +176,8 @@ function lexicalSearchRequests(
     per_page: perPage,
     prefix: true,
     num_typos: "2,1",
-    include_fields: CATALOG_PREVIEW_FIELDS,
+    exclude_fields: CATALOG_PREVIEW_EXCLUDED_FIELDS,
   }))
-}
-
-function displayLocale(
-  document: Pick<TypesenseWatchCatalogDocument, "localesJson" | "titles">,
-  preferredLocale: string,
-): TypesenseWatchLocale {
-  const locales = parseJsonArray<TypesenseWatchLocale>(document.localesJson)
-  return (
-    locales.find((locale) => locale.locale === preferredLocale) ??
-    locales.find((locale) => locale.locale === preferredLocale.slice(0, 2)) ??
-    locales.find((locale) => locale.locale === "en") ??
-    locales[0] ?? {
-      locale: preferredLocale,
-      title: document.titles[0] ?? "",
-      description: null,
-    }
-  )
 }
 
 function previewWatchabilityKind(
@@ -468,20 +453,21 @@ export class TypesenseWatchSearchService {
       .multiSearch<TypesenseWatchCatalogPreviewDocument>(
         lexicalSearchRequests(titleQuery, candidateLimit),
       )
-      .then((results) => {
+      .then(async (results) => {
         const hits = results
           .flatMap((result) => result.hits)
           .slice(0, candidateLimit)
+        const previewHits = await this.withLegacyLocaleProjection(hits)
         laneStatuses.push(
           laneStatus({
             lane: "metadata_retrieval",
             status: "fulfilled",
             timelineStartedAt: startedAt,
             startedAt: lexicalStartedAt,
-            resultCount: hits.length,
+            resultCount: previewHits.length,
           }),
         )
-        return hits
+        return previewHits
       })
 
     const semanticStartedAt = performance.now()
@@ -755,7 +741,7 @@ export class TypesenseWatchSearchService {
     const normalizedQuery = normalizedTitle(query)
     const exactTitleTokens = tokenizeForExactTitle(query).map(normalizedTitle)
     lexicalHits.forEach((hit, index) => {
-      const locale = displayLocale(hit.document, preferredLocale)
+      const locale = displayPreviewLocale(hit.document, preferredLocale)
       const title = normalizedTitle(locale.title)
       const exact =
         exactTitleTokens.length > 0 &&
@@ -825,6 +811,33 @@ export class TypesenseWatchSearchService {
         result.hits.map((hit) => [hit.document.id, hit.document] as const),
       ),
     )
+  }
+
+  private async withLegacyLocaleProjection(
+    hits: TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
+  ): Promise<TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[]> {
+    const legacyIds = hits
+      .filter((hit) => !hasAlignedLocaleCodes(hit.document))
+      .map((hit) => hit.document.id)
+    if (legacyIds.length === 0) return hits
+
+    const legacyById =
+      await this.catalogDocuments<TypesenseWatchLegacyCatalogLocaleDocument>(
+        legacyIds,
+        LEGACY_CATALOG_LOCALE_FIELDS,
+      )
+    return hits.map((hit) => {
+      const legacy = legacyById.get(hit.document.id)
+      return legacy
+        ? {
+            ...hit,
+            document: {
+              ...hit.document,
+              localesJson: legacy.localesJson,
+            },
+          }
+        : hit
+    })
   }
 
   private async targetLanguageContext(

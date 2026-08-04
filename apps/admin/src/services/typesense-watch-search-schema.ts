@@ -30,6 +30,7 @@ export type TypesenseWatchCatalogDocument = {
   coreId: string | null
   slug: string
   titles: string[]
+  localeCodes?: string[]
   descriptions: string[]
   localesJson: string
   label: string | null
@@ -64,6 +65,7 @@ export function watchCatalogCollectionSchema(
     fields: [
       { name: "slug", type: "string" },
       { name: "titles", type: "string[]" },
+      { name: "localeCodes", type: "string[]", optional: true, index: false },
       { name: "descriptions", type: "string[]", optional: true },
       { name: "audioLanguageSlugs", type: "string[]", facet: true },
       { name: "subtitleLanguageSlugs", type: "string[]", facet: true },
