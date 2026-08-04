@@ -61,19 +61,27 @@ export const initialMeaningfulState: MeaningfulState = { recorded: false }
  * One timeUpdate tick. Returns the next latch state and whether THIS tick
  * crossed the meaningful threshold (30s watched OR 25% progress — whichever
  * comes first, same as web).
+ *
+ * `baselineSeconds` is where THIS viewing session started (a Continue
+ * Watching resume point). Thresholds measure watching SINCE the baseline —
+ * without it, a resumed playback's position is past the threshold by
+ * construction and a 1-second resume-and-back-out would record as
+ * meaningful.
  */
 export function evaluateMeaningfulPlayback(
   state: MeaningfulState,
   currentTimeSeconds: number,
   durationSeconds: number | null,
+  baselineSeconds = 0,
 ): { state: MeaningfulState; record: boolean } {
   if (state.recorded) return { state, record: false }
+  const watched = Math.max(0, currentTimeSeconds - baselineSeconds)
   const progress =
     durationSeconds != null && durationSeconds > 0
-      ? currentTimeSeconds / durationSeconds
+      ? watched / durationSeconds
       : 0
   const meaningful =
-    currentTimeSeconds >= MEANINGFUL_SECONDS || progress >= MEANINGFUL_PROGRESS
+    watched >= MEANINGFUL_SECONDS || progress >= MEANINGFUL_PROGRESS
   if (!meaningful) return { state, record: false }
   return { state: { recorded: true }, record: true }
 }

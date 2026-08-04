@@ -16,6 +16,7 @@ import { VideoPlayer } from "../src/components/VideoPlayer"
 import {
   queueMeaningfulWatchEvent,
   type PlaybackSnapshot,
+  type WatchEventIdentity,
 } from "../src/lib/watchEvents/watchEvents"
 import { saveResumeSnapshot } from "../src/lib/watchEvents/continueWatching"
 
@@ -65,39 +66,62 @@ function VideoPlayerOverlay() {
       ? (sessionVariant?.documentId ?? state.currentIdentity.videoDubId)
       : (state.currentIdentity?.videoDubId ?? null)
 
-  // Anonymous watch-event capture (feat-322): only sources opened WITH admin
-  // identity record; the queue lives in AsyncStorage until sign-in can flush
-  // it. Identity is read via refs inside the stable callback so the player
-  // never re-renders (and never resets its latch) on context churn.
-  const identityRef = useRef(state.currentIdentity)
-  identityRef.current = state.currentIdentity
-  const liveDubIdRef = useRef(liveDubId)
-  liveDubIdRef.current = liveDubId
+  // Anonymous watch-event capture (feat-322). The callbacks read a SNAPSHOT
+  // captured while playback is active and NEVER cleared on dismiss:
+  // dismissVideo resets context state (identity -> null) BEFORE the player's
+  // unmount emission fires, so an "identityRef" read at exit time is always
+  // null and the Back-exit save silently drops (review P1). The snapshot is
+  // only REPLACED by the next identity-carrying playback.
+  const activePlaybackRef = useRef<{
+    identity: WatchEventIdentity
+    videoDubId: string | null
+    video: ReturnType<typeof useWatchSession>["video"]
+  } | null>(null)
+  if (state.isVisible && state.currentIdentity != null) {
+    activePlaybackRef.current = {
+      identity: state.currentIdentity,
+      videoDubId: liveDubId,
+      video:
+        sessionVideo?.documentId === state.currentIdentity.videoId
+          ? sessionVideo
+          : activePlaybackRef.current?.video?.documentId ===
+              state.currentIdentity.videoId
+            ? activePlaybackRef.current.video
+            : null,
+    }
+  } else if (state.isVisible && state.currentIdentity == null) {
+    // An identity-less playback (trailer, experience card) must not save
+    // against the PREVIOUS video's snapshot.
+    activePlaybackRef.current = null
+  }
+
   const handleMeaningfulPlayback = useCallback((snapshot: PlaybackSnapshot) => {
-    const identity = identityRef.current
-    if (identity == null) return
+    const active = activePlaybackRef.current
+    if (active == null) return
     void queueMeaningfulWatchEvent(
-      { videoId: identity.videoId, videoDubId: liveDubIdRef.current },
+      { videoId: active.identity.videoId, videoDubId: active.videoDubId },
       snapshot,
     )
   }, [])
 
   // Continue Watching shelf: display fields come from the session's video
-  // record — only available (and only meaningful) while the session owns this
-  // playback, the same ownership rule liveDubId uses above.
-  const sessionVideoRef = useRef(sessionVideo)
-  sessionVideoRef.current = sessionVideo
+  // record — captured in the snapshot under the same ownership rule as the
+  // live dub attribution above.
   const handlePlaybackPosition = useCallback((snapshot: PlaybackSnapshot) => {
-    const identity = identityRef.current
-    const video = sessionVideoRef.current
-    if (identity == null || video == null) return
-    if (video.documentId !== identity.videoId || video.slug == null) return
+    const active = activePlaybackRef.current
+    if (active?.video == null) return
+    if (
+      active.video.documentId !== active.identity.videoId ||
+      active.video.slug == null
+    ) {
+      return
+    }
     void saveResumeSnapshot(
       {
-        videoId: identity.videoId,
-        slug: video.slug,
-        title: video.title,
-        imageUrl: video.posterUrl,
+        videoId: active.identity.videoId,
+        slug: active.video.slug,
+        title: active.video.title,
+        imageUrl: active.video.posterUrl,
         updatedAt: new Date().toISOString(),
       },
       snapshot,

@@ -20,8 +20,7 @@
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
-      },
-      "appleTeamId": "DQ48D9BF2V"
+      }
     },
     "android": {
       "package": "org.jesusfilm.forgetv"

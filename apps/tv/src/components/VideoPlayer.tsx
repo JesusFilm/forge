@@ -1157,6 +1157,12 @@ export function VideoPlayer({
   const pendingStartAtRef = useRef<number | null>(
     startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
   )
+  // Where THIS viewing session started — the meaningful evaluator measures
+  // watching since here, so a resumed playback (position past the threshold
+  // by construction) doesn't instantly record (review P2).
+  const meaningfulBaselineRef = useRef(
+    startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : 0,
+  )
   const onPlaybackPositionRef = useRef(onPlaybackPosition)
   useEffect(() => {
     onPlaybackPositionRef.current = onPlaybackPosition
@@ -1182,35 +1188,18 @@ export function VideoPlayer({
       // as playingChange/statusChange).
       if (!isMountedRef.current) return
       // Meaningful-playback check rides the same 1Hz tick; the latch keeps it
-      // one-shot and the seek guard below is irrelevant to it (a stale
-      // pre-seek time can only DELAY the threshold, never fake-cross it
-      // backwards, and the payload is still a real watched position).
+      // one-shot. While a resume seek is PENDING neither the evaluator nor
+      // position reporting runs — pre-seek ticks are not real watching and
+      // would clobber the shelf with near-zero positions (review P2).
       {
         const nativeDuration = player.duration
-        const { state: nextMeaningful, record } = evaluateMeaningfulPlayback(
-          meaningfulStateRef.current,
-          payload.currentTime,
-          typeof nativeDuration === "number" &&
-            Number.isFinite(nativeDuration) &&
-            nativeDuration > 0
-            ? nativeDuration
-            : null,
-        )
-        meaningfulStateRef.current = nextMeaningful
         const safeDuration =
           typeof nativeDuration === "number" &&
           Number.isFinite(nativeDuration) &&
           nativeDuration > 0
             ? nativeDuration
             : null
-        if (record) {
-          onMeaningfulPlaybackRef.current?.({
-            positionSeconds: payload.currentTime,
-            durationSeconds: safeDuration,
-          })
-        }
 
-        // Continue Watching: resume-seek backstop + throttled position report.
         const pendingStart = pendingStartAtRef.current
         if (pendingStart != null) {
           if (payload.currentTime >= pendingStart - 2) {
@@ -1222,6 +1211,22 @@ export function VideoPlayer({
             player.currentTime = pendingStart
           }
         } else {
+          const { state: nextMeaningful, record } = evaluateMeaningfulPlayback(
+            meaningfulStateRef.current,
+            payload.currentTime,
+            safeDuration,
+            // Thresholds measure watching since this session's start (the
+            // resume point) — see evaluateMeaningfulPlayback's doc.
+            meaningfulBaselineRef.current,
+          )
+          meaningfulStateRef.current = nextMeaningful
+          if (record) {
+            onMeaningfulPlaybackRef.current?.({
+              positionSeconds: payload.currentTime,
+              durationSeconds: safeDuration,
+            })
+          }
+
           lastPositionRef.current = {
             positionSeconds: payload.currentTime,
             durationSeconds: safeDuration,
@@ -1303,9 +1308,30 @@ export function VideoPlayer({
       // Continue Watching: readyToPlay is the first guaranteed-seekable point
       // (a seek issued earlier is silently dropped) — issue the resume seek
       // here; the timeUpdate choke backstops until the playhead lands.
+      // Clamp against THIS item's duration first (Fix #8 precedent: landing at
+      // the endpoint fires playToEnd, which would dismiss the player AND
+      // delete the shelf entry). The saved position is per-video but the
+      // session may load a different dub with a shorter duration.
       if (next === "readyToPlay" && pendingStartAtRef.current != null) {
-        seekTargetRef.current = pendingStartAtRef.current
-        player.currentTime = pendingStartAtRef.current
+        const readyDuration = player.duration
+        let target = pendingStartAtRef.current
+        if (
+          typeof readyDuration === "number" &&
+          Number.isFinite(readyDuration) &&
+          readyDuration > 0
+        ) {
+          target = Math.min(target, Math.max(0, readyDuration - 5))
+        }
+        if (target <= 0) {
+          // Nothing sensible to resume to — play from the start.
+          pendingStartAtRef.current = null
+          meaningfulBaselineRef.current = 0
+        } else {
+          pendingStartAtRef.current = target
+          meaningfulBaselineRef.current = target
+          seekTargetRef.current = target
+          player.currentTime = target
+        }
       }
 
       // Terminal error — force chrome visible permanently, focus the
@@ -1416,6 +1442,9 @@ export function VideoPlayer({
   }
 
   const seekBackward = () => {
+    // A user seek takes over from any pending Continue Watching resume —
+    // otherwise the 1Hz backstop would stomp the user's chosen position.
+    pendingStartAtRef.current = null
     const newTime = Math.max(0, player.currentTime - 10)
     seekTargetRef.current = newTime
     player.currentTime = newTime
@@ -1424,6 +1453,8 @@ export function VideoPlayer({
 
   const seekForward = () => {
     if (duration <= 0) return
+    // A user seek takes over from any pending resume (see seekBackward).
+    pendingStartAtRef.current = null
     // Fix #8: Clamp to `duration - 0.5` instead of `duration` so landing
     // on the exact endpoint doesn't fire `playToEnd` and involuntarily
     // dismiss the player while the user is still watching.

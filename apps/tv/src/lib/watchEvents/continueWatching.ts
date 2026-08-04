@@ -135,14 +135,20 @@ function withShelfLock<T>(fn: () => Promise<T>): Promise<T> {
   return run
 }
 
+/** Reads go through the same lock as writes: the overlay-close resume reload
+ *  and the Home shelf load must see a just-queued exit save, not the state
+ *  from before it (review P2 — unlocked reads deterministically raced the
+ *  final unmount write). */
 export async function loadContinueWatching(): Promise<ContinueWatchingEntry[]> {
-  try {
-    return parseContinueWatching(
-      await getStorage().getItem(CONTINUE_WATCHING_STORAGE_KEY),
-    )
-  } catch {
-    return []
-  }
+  return withShelfLock(async () => {
+    try {
+      return parseContinueWatching(
+        await getStorage().getItem(CONTINUE_WATCHING_STORAGE_KEY),
+      )
+    } catch {
+      return []
+    }
+  })
 }
 
 /** Record a playback snapshot for a video. Fire-and-forget; never throws. */

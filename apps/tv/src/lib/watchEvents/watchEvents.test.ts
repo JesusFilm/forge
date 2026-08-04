@@ -292,3 +292,34 @@ describe("review fixes", () => {
     expect(a.submitted + b.submitted).toBe(1)
   })
 })
+
+describe("meaningful baseline (Continue Watching resume)", () => {
+  it("does not instantly record when resumed past the threshold", () => {
+    const { record } = evaluateMeaningfulPlayback(
+      initialMeaningfulState,
+      301,
+      3600,
+      300,
+    )
+    expect(record).toBe(false)
+  })
+
+  it("records only after 30s of watching since the baseline", () => {
+    expect(
+      evaluateMeaningfulPlayback(initialMeaningfulState, 329, 3600, 300).record,
+    ).toBe(false)
+    expect(
+      evaluateMeaningfulPlayback(initialMeaningfulState, 330, 3600, 300).record,
+    ).toBe(true)
+  })
+
+  it("measures the progress rule from the baseline on short videos", () => {
+    // 60s video resumed at 40s: 25% of 60 = 15s since baseline -> at 55s.
+    expect(
+      evaluateMeaningfulPlayback(initialMeaningfulState, 54, 60, 40).record,
+    ).toBe(false)
+    expect(
+      evaluateMeaningfulPlayback(initialMeaningfulState, 55, 60, 40).record,
+    ).toBe(true)
+  })
+})

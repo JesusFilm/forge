@@ -162,3 +162,16 @@ describe("storage round-trip", () => {
     expect(await getStorage().getItem(CONTINUE_WATCHING_STORAGE_KEY)).toBeNull()
   })
 })
+
+describe("locked reads", () => {
+  it("load enqueued behind an un-awaited save sees the saved entry", async () => {
+    const save = saveResumeSnapshot(CARD, {
+      positionSeconds: 62,
+      durationSeconds: 600,
+    })
+    const entries = await loadContinueWatching()
+    expect(entries).toHaveLength(1)
+    expect(entries[0]!.positionSeconds).toBe(62)
+    await save
+  })
+})
