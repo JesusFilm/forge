@@ -1171,36 +1171,36 @@ model BibleBook {
 /// description / snippet / imageAlt live in `VideoLocale`. Sync source is
 /// authoritative: `source = 'manager'` rows are never overwritten by Core.
 model Video {
-  id                String       @id @default(cuid())
-  coreId            String       @unique @map("core_id")
-  source            SourceTier   @default(CORE)
-  slug              String       @unique
-  label             VideoLabel?
+  id                    String       @id @default(cuid())
+  coreId                String       @unique @map("core_id")
+  source                SourceTier   @default(CORE)
+  slug                  String       @unique
+  label                 VideoLabel?
   /// `@map("video_source")` is required: the column was created snake-
   /// case in `0001_init` while the field is camelCase. Without the
   /// mapping, `tx.video.upsert(...)` in `services/core-sync/phases/
   /// sync-videos.ts` fails with `column "videoSource" does not exist`
   /// and the entire videos phase aborts. Do not strip this in a
   /// schema-style sweep.
-  videoSource       VideoSource? @map("video_source")
-  publishedAt       DateTime?    @map("published_at")
-  locked            Boolean      @default(false)
-  noIndex           Boolean      @default(false) @map("no_index")
+  videoSource           VideoSource? @map("video_source")
+  publishedAt           DateTime?    @map("published_at")
+  locked                Boolean      @default(false)
+  noIndex               Boolean      @default(false) @map("no_index")
   /// Core Platform slugs (e.g. "watch", "arclight", "journeys") this video
   /// is restricted from viewing on. Synced read-only from Core; Forge's
   /// public watch surfaces (search, browse, detail, home, recommendations)
   /// must exclude videos restricted for "watch" — see search-watchability.ts.
-  restrictViewPlatforms String[]  @default([]) @map("restrict_view_platforms")
+  restrictViewPlatforms String[]     @default([]) @map("restrict_view_platforms")
   /// True when AI-generated metadata has been applied to this video.
-  aiMetadata        Boolean      @default(false) @map("ai_metadata")
-  primaryLanguageId String?      @map("primary_language_id")
-  primaryLanguage   Language?    @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
-  originId          String?      @map("origin_id")
-  origin            VideoOrigin? @relation(fields: [originId], references: [id], onDelete: SetNull)
-  syncedAt          DateTime?    @map("synced_at")
-  deletedAt         DateTime?    @map("deleted_at")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+  aiMetadata            Boolean      @default(false) @map("ai_metadata")
+  primaryLanguageId     String?      @map("primary_language_id")
+  primaryLanguage       Language?    @relation("VideoPrimaryLanguage", fields: [primaryLanguageId], references: [id], onDelete: SetNull)
+  originId              String?      @map("origin_id")
+  origin                VideoOrigin? @relation(fields: [originId], references: [id], onDelete: SetNull)
+  syncedAt              DateTime?    @map("synced_at")
+  deletedAt             DateTime?    @map("deleted_at")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
 
   locales        VideoLocale[]
   dubs           VideoDub[]

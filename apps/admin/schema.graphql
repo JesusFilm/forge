@@ -1241,6 +1241,10 @@ type Video {
   preferredPlayableDub(languageSlug: String): VideoDub
   primaryLanguage: Language
   publishedAt: String
+  """
+  Core Platform slugs (e.g. "watch", "arclight") this video is restricted from viewing on. Synced read-only from Core; does not itself gate any public field — see search-watchability.ts and the public video resolvers for enforcement.
+  """
+  restrictViewPlatforms: [String!]
   slug: String
   studyQuestions(languageSlug: String, locale: String): [VideoStudyQuestion!]
   videoSource: VideoSourceHost
