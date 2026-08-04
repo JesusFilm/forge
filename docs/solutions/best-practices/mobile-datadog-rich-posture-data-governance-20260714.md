@@ -22,7 +22,11 @@ diagnostic value:
 > `watch_search` / `watch_search_failed` messages and the bare `term` field
 > are no longer emitted. Same store, same posture, same retention — but a
 > data-deletion request for search terms must key on `watch_search.query`
-> in the `watch_search analytics` logs, not on `term`.
+> in the `watch_search analytics` logs, not on `term`. The `warn` level on
+> failure rows is load-bearing for this containment: `error`-level logs
+> would forward the attribute bag (including the raw query) into RUM error
+> events, outside this assessment's Logs-store boundary. A guard test pins
+> the level.
 
 **Parity with web (context for sign-off).** This is not a mobile-specific
 expansion: the web app logs the raw query to Datadog Logs **by default**

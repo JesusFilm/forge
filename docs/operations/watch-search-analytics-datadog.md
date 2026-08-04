@@ -94,6 +94,12 @@ Web logs failures at `error`; mobile logs them at `warn` because benign
 rate-limit rejections share mobile's failure path. Never filter on log
 status — filter on `@watch_search.outcome:failed`.
 
+Mobile's `warn` is also load-bearing for the raw-term posture, not just a
+filtering convenience: the RN SDK forwards `error`-level logs' full attribute
+bags — including `@watch_search.query` — into RUM error events, outside the
+R43-governed Logs store. A guard test pins the level; do not "align" mobile's
+failure level to web's `error` in a future parity pass.
+
 ## Datadog MCP Path
 
 When Datadog MCP log tools are available, use `analyze_datadog_logs` against

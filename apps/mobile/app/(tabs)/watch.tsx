@@ -103,29 +103,37 @@ export default function DiscoverScreen() {
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
-      // The click joins its search via the shared search_request_id; the RUM
-      // context's result_slug joins the detail route's content journey.
-      const position = resultsRef.current.indexOf(result) + 1
-      const requestId = searchRequestIdRef.current
-      // Web-verbatim dedup (KTD3): one requestId:resultId:position triple fires
-      // BOTH the RUM action and the admin event (SearchOverlay's shared gate).
-      const clickKey = `${requestId}:${result.id}:${position}`
-      if (!reportedClicksRef.current.has(clickKey)) {
-        reportedClicksRef.current.add(clickKey)
-        reportDatadogAction(
-          WATCH_SEARCH_RESULT_CLICKED_ACTION,
-          buildWatchSearchResultClickContext(result, {
+      // Telemetry must never break the tap: the RUM context builder runs as
+      // an argument, outside reportDatadogAction's own never-throw wrapper,
+      // so guard the whole block (mirrors sendEvent's builder-inside-try).
+      try {
+        // The click joins its search via the shared search_request_id; the RUM
+        // context's result_slug joins the detail route's content journey.
+        const position = resultsRef.current.indexOf(result) + 1
+        const requestId = searchRequestIdRef.current
+        // Web-verbatim dedup (KTD3): one requestId:resultId:position triple
+        // fires BOTH the RUM action and the admin event (SearchOverlay's
+        // shared gate).
+        const clickKey = `${requestId}:${result.id}:${position}`
+        if (!reportedClicksRef.current.has(clickKey)) {
+          reportedClicksRef.current.add(clickKey)
+          reportDatadogAction(
+            WATCH_SEARCH_RESULT_CLICKED_ACTION,
+            buildWatchSearchResultClickContext(result, {
+              position,
+              searchRequestId: requestId,
+            }),
+          )
+          void recordResultClicked({
+            requestId,
+            resultId: result.id,
+            resultType: result.type,
             position,
-            searchRequestId: requestId,
-          }),
-        )
-        void recordResultClicked({
-          requestId,
-          resultId: result.id,
-          resultType: result.type,
-          position,
-          visibleResultIds: resultsRef.current.map((r) => r.id),
-        })
+            visibleResultIds: resultsRef.current.map((r) => r.id),
+          })
+        }
+      } catch {
+        // Navigation below must run regardless.
       }
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
@@ -314,10 +322,10 @@ export default function DiscoverScreen() {
       // finally can no longer fire, so release both flags here or "Load more"
       // stays stuck on "Loading..." for the rest of the session.
       releaseLoadingMore()
-      // Fresh ledgers per search only bound growth: every key embeds the
-      // request id, so nothing could re-report anyway (KTD3).
+      // Viewed map cleared per search only bounds growth (keys embed the
+      // request id, KTD3). The click ledger is NOT cleared — clearing it
+      // would reopen the duplicate-click window while a search is in flight.
       reportedViewedRef.current.clear()
-      reportedClicksRef.current.clear()
       // Retire the pager before any await — the footer stays mounted and
       // hit-testable through animateOut's fade, and a tap there would page the
       // old term onto whatever replaces it.
@@ -360,9 +368,10 @@ export default function DiscoverScreen() {
         SKELETON_DELAY_MS,
       )
 
-      // One correlation id per search, joined by result_clicked (R33/R35).
+      // One correlation id per search (R33/R35). The ref adopts it only on
+      // success, so clicks always attribute to the search whose results are
+      // on screen — a failed search leaves the previous id in place.
       const searchRequestId = generateSearchRequestId()
-      searchRequestIdRef.current = searchRequestId
       const startedAt = Date.now()
 
       try {
@@ -440,8 +449,9 @@ export default function DiscoverScreen() {
         scaleAnim.setValue(1)
         setErrorSource("search")
         setError(parseSearchError(e))
-        // warn, not error: benign rate-limits share this path — they reject as
-        // a 200-body GraphQL code, not a 429 (R34); outcome discriminates.
+        // warn, not error — two constraints: benign rate-limits share this
+        // path (R34), and error-level logs copy every attribute incl.
+        // watch_search.query into RUM errors, outside the R43 Logs posture.
         datadogLog.warn(
           WATCH_SEARCH_LOG_MESSAGE,
           buildWatchSearchLogAttributes({
@@ -576,8 +586,8 @@ export default function DiscoverScreen() {
       if (requestIdRef.current !== thisRequest) return
       setErrorSource("page")
       setError(parseSearchError(e))
-      // warn, not error: benign rate-limits share this path (R34); no
-      // impressions on failure (F2).
+      // warn, not error: R34 benign rate-limits + the R43 level constraint
+      // (see the search catch); no impressions on failure (F2).
       datadogLog.warn(
         WATCH_SEARCH_LOG_MESSAGE,
         buildWatchSearchLogAttributes({

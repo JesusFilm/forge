@@ -22,15 +22,22 @@ const RETIRED_EMITS = [
   /datadogLog\.(info|warn)\(\s*["']watch_search["']/,
 ]
 
+// LEVEL pin, content-wide because the call spans lines: the failure emits MUST
+// stay at warn — the native SDK forwards error/critical logs' FULL attribute
+// bag (incl. watch_search.query) into RUM errors, outside the R43 Logs posture.
+const RETIRED_CONTENT_EMITS = [/datadogLog\.error\(\s*WATCH_SEARCH_LOG_MESSAGE/]
+
 // Pure detector over [{ relative, content }] so positive/negative controls can
 // prove each pattern branch, not just that today's tree is clean.
 function findRetiredTelemetryEmits(entries) {
   return entries
-    .filter((entry) =>
-      entry.content.split("\n").some((line) => {
-        if (/^\s*(\/\/|\*|\/\*)/.test(line)) return false
-        return RETIRED_EMITS.some((pattern) => pattern.test(line))
-      }),
+    .filter(
+      (entry) =>
+        entry.content.split("\n").some((line) => {
+          if (/^\s*(\/\/|\*|\/\*)/.test(line)) return false
+          return RETIRED_EMITS.some((pattern) => pattern.test(line))
+        }) ||
+        RETIRED_CONTENT_EMITS.some((pattern) => pattern.test(entry.content)),
     )
     .map((entry) => entry.relative)
 }
@@ -90,6 +97,12 @@ describe("watch search telemetry retirement stays retired", () => {
         relative: "src/lib/telemetry/Comment.ts",
         content: '// the retired datadogLog.info("watch_search", ...) emit',
       },
+      {
+        // The level pin: error + the shared message flags even across lines.
+        relative: "src/lib/telemetry/ErrorLevel.ts",
+        content:
+          "datadogLog.error(\n  WATCH_SEARCH_LOG_MESSAGE,\n  buildWatchSearchLogAttributes(input),\n)",
+      },
     ])
     expect(offenders).toEqual([
       "app/(tabs)/watch.tsx",
@@ -97,6 +110,7 @@ describe("watch search telemetry retirement stays retired", () => {
       "src/lib/telemetry/OldAction.ts",
       "src/lib/telemetry/BareInfo.ts",
       "src/lib/telemetry/BareWarnSingleQuote.ts",
+      "src/lib/telemetry/ErrorLevel.ts",
     ])
   })
 
@@ -129,6 +143,17 @@ describe("watch search telemetry retirement stays retired", () => {
           // Bare wire enum value carries no retired `search.` prefix.
           relative: "src/lib/watchSearchEvents.ts",
           content: '  eventType: "result_clicked",',
+        },
+        {
+          // The CURRENT failure emit: warn + the shared message stays legal.
+          relative: "app/(tabs)/watch.tsx",
+          content:
+            "datadogLog.warn(\n  WATCH_SEARCH_LOG_MESSAGE,\n  buildWatchSearchLogAttributes(input),\n)",
+        },
+        {
+          // error level with a non-search message is ordinary house telemetry.
+          relative: "src/hooks/useManagedVideoPlayer.ts",
+          content: 'datadogLog.error("video.swap_failed", { content_id: id })',
         },
       ]),
     ).toEqual([])
