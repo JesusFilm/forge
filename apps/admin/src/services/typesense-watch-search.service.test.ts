@@ -308,11 +308,12 @@ describe("TypesenseWatchSearchService", () => {
         request.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
         request.q !== "*",
     )
-    const fullHydrationRequests = requests.filter(
+    const resultHydrationRequests = requests.filter(
       (request) =>
         request.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
         request.q === "*" &&
-        request.include_fields == null,
+        request.include_fields ===
+          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson",
     )
 
     expect(lexicalRequest?.include_fields).toBeUndefined()
@@ -326,8 +327,8 @@ describe("TypesenseWatchSearchService", () => {
           request.include_fields === "id,titles,localesJson",
       ),
     ).toBe(false)
-    expect(fullHydrationRequests).toHaveLength(1)
-    expect(fullHydrationRequests[0]?.per_page).toBe(20)
+    expect(resultHydrationRequests).toHaveLength(1)
+    expect(resultHydrationRequests[0]?.per_page).toBe(20)
     expect(response.results).toHaveLength(20)
     expect(response.hasMore).toBe(true)
   })

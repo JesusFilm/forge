@@ -51,6 +51,8 @@ const CATALOG_PREVIEW_EXCLUDED_FIELDS =
 const LEGACY_CATALOG_LOCALE_FIELDS = "id,titles,localesJson"
 const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
   "id,audioLanguageSlugs,subtitleLanguageSlugs"
+const CATALOG_RESULT_FIELDS =
+  "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson"
 
 type TypesenseSearchClient = Pick<TypesenseClient, "multiSearch">
 
@@ -78,6 +80,20 @@ type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
 type TypesenseWatchCatalogWatchabilityPreviewDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "audioLanguageSlugs" | "subtitleLanguageSlugs"
+>
+
+type TypesenseWatchCatalogResultDocument = Pick<
+  TypesenseWatchCatalogDocument,
+  | "id"
+  | "slug"
+  | "titles"
+  | "localesJson"
+  | "label"
+  | "childCount"
+  | "imageUrl"
+  | "imageBlurDataUrl"
+  | "audioOptionsJson"
+  | "subtitleOptionsJson"
 >
 
 type IndexedWatchability = {
@@ -207,7 +223,7 @@ function englishName(value: unknown): string | null {
 }
 
 function resolveWatchability(
-  document: TypesenseWatchCatalogDocument,
+  document: TypesenseWatchCatalogResultDocument,
   target: TargetLanguageContext,
 ): IndexedWatchability {
   const audioOptions = parseJsonArray<TypesenseWatchAudioOption>(
@@ -610,9 +626,11 @@ export class TypesenseWatchSearchService {
         return left.candidate.videoId.localeCompare(right.candidate.videoId)
       })
     const pageCandidates = rankedCandidates.slice(offset, offset + limit)
-    const catalogById = await this.catalogDocuments(
-      pageCandidates.map((entry) => entry.candidate.videoId),
-    )
+    const catalogById =
+      await this.catalogDocuments<TypesenseWatchCatalogResultDocument>(
+        pageCandidates.map((entry) => entry.candidate.videoId),
+        CATALOG_RESULT_FIELDS,
+      )
     laneStatuses.push(
       laneStatus({
         lane: "metadata_watchability",
