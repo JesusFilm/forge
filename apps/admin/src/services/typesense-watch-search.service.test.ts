@@ -66,9 +66,9 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
 }
 
 function prismaFixture({
-  fallbackLanguageIds = [],
+  fallbackLanguages = [],
 }: {
-  fallbackLanguageIds?: string[]
+  fallbackLanguages?: Array<{ id: string; slug: string }>
 } = {}): PrismaClient {
   return {
     language: {
@@ -81,8 +81,9 @@ function prismaFixture({
     },
     languageFallback: {
       findMany: vi.fn(async () =>
-        fallbackLanguageIds.map((fallbackLanguageId) => ({
-          fallbackLanguageId,
+        fallbackLanguages.map((fallbackLanguage) => ({
+          fallbackLanguageId: fallbackLanguage.id,
+          fallbackLanguage: { slug: fallbackLanguage.slug },
         })),
       ),
     },
@@ -131,13 +132,18 @@ function typesenseFixture({
         ]
       }
       const isHydration = search.q === "*"
-      const documents = isHydration ? catalog : lexical
-      let hydrationOffset = 0
-      return searches.map((request, index) => {
+      return searches.map((request) => {
+        const requestedIds = isHydration
+          ? [...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g)].map(
+              (match) => match[1],
+            )
+          : []
+        const documents = isHydration
+          ? catalog.filter((document) => requestedIds.includes(document.id))
+          : lexical
         const perPage = Number(request.per_page ?? documents.length)
-        const page = Number(request.page ?? index + 1)
-        const start = isHydration ? hydrationOffset : (page - 1) * perPage
-        if (isHydration) hydrationOffset += perPage
+        const page = Number(request.page ?? 1)
+        const start = isHydration ? 0 : (page - 1) * perPage
         const pageDocuments = documents.slice(start, start + perPage)
         return {
           found: documents.length,
@@ -239,6 +245,56 @@ describe("TypesenseWatchSearchService", () => {
       wholeTitleMatch.id,
       broadMatch.id,
     ])
+  })
+
+  it("bounds the full-document hydration payload for broad lexical queries", async () => {
+    const catalog = Array.from({ length: 100 }, (_value, index) => ({
+      ...catalogDocument,
+      id: `jesus-${index.toString().padStart(3, "0")}`,
+      slug: `jesus-${index}`,
+      titles: [index === 0 ? "JESUS" : `JESUS Film ${index}`],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: index === 0 ? "JESUS" : `JESUS Film ${index}`,
+          description: null,
+        },
+      ]),
+    }))
+    const typesense = typesenseFixture({ lexical: catalog, catalog })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "french",
+    })
+
+    const requests = typesense.multiSearch.mock.calls.flatMap(
+      ([searches]) => searches,
+    )
+    const lexicalRequest = requests.find(
+      (request) =>
+        request.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+        request.q !== "*",
+    )
+    const fullHydrationRequests = requests.filter(
+      (request) =>
+        request.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+        request.q === "*" &&
+        request.include_fields == null,
+    )
+
+    expect(lexicalRequest?.include_fields).toBe(
+      "id,titles,localesJson,audioLanguageSlugs,subtitleLanguageSlugs",
+    )
+    expect(fullHydrationRequests).toHaveLength(1)
+    expect(fullHydrationRequests[0]?.per_page).toBe(20)
+    expect(response.results).toHaveLength(20)
+    expect(response.hasMore).toBe(true)
   })
 
   it("pages lexical candidates beyond Typesense's 250-hit page limit", async () => {
@@ -365,7 +421,9 @@ describe("TypesenseWatchSearchService", () => {
       ]),
     }
     const service = new TypesenseWatchSearchService(
-      prismaFixture({ fallbackLanguageIds: ["language-en"] }),
+      prismaFixture({
+        fallbackLanguages: [{ id: "language-en", slug: "english" }],
+      }),
       typesenseFixture({
         lexical: [relatedDocument],
         catalog: [relatedDocument],
