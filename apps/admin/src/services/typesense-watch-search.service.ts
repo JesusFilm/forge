@@ -41,6 +41,8 @@ const MAX_EVIDENCE_LOCALES = 3
 const WATCHABILITY_RERANK_CANDIDATE_LIMIT = 100
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
 const MIN_SEMANTIC_SIMILARITY = 0.5
+const CATALOG_PREVIEW_FIELDS =
+  "id,titles,localesJson,audioLanguageSlugs,subtitleLanguageSlugs"
 
 type TypesenseSearchClient = Pick<TypesenseClient, "multiSearch">
 
@@ -60,6 +62,15 @@ type Candidate = {
   startSeconds: number | null
 }
 
+type TypesenseWatchCatalogPreviewDocument = Pick<
+  TypesenseWatchCatalogDocument,
+  | "id"
+  | "titles"
+  | "localesJson"
+  | "audioLanguageSlugs"
+  | "subtitleLanguageSlugs"
+>
+
 type IndexedWatchability = {
   kind: "target_audio" | "target_subtitle" | "related_language" | "unavailable"
   languageSlug: string | null
@@ -76,6 +87,7 @@ type TargetLanguageContext = {
   slug: string
   englishName: string | null
   fallbackLanguageIds: string[]
+  fallbackLanguageSlugs: string[]
 }
 
 export class TypesenseWatchSearchUnavailableError extends Error {
@@ -155,11 +167,12 @@ function lexicalSearchRequests(
     per_page: perPage,
     prefix: true,
     num_typos: "2,1",
+    include_fields: CATALOG_PREVIEW_FIELDS,
   }))
 }
 
 function displayLocale(
-  document: TypesenseWatchCatalogDocument,
+  document: Pick<TypesenseWatchCatalogDocument, "localesJson" | "titles">,
   preferredLocale: string,
 ): TypesenseWatchLocale {
   const locales = parseJsonArray<TypesenseWatchLocale>(document.localesJson)
@@ -173,6 +186,24 @@ function displayLocale(
       description: null,
     }
   )
+}
+
+function previewWatchabilityKind(
+  document: TypesenseWatchCatalogPreviewDocument,
+  target: TargetLanguageContext,
+): IndexedWatchability["kind"] {
+  if (document.audioLanguageSlugs.includes(target.slug)) return "target_audio"
+  if (document.subtitleLanguageSlugs.includes(target.slug)) {
+    return "target_subtitle"
+  }
+  if (
+    target.fallbackLanguageSlugs.some((slug) =>
+      document.audioLanguageSlugs.includes(slug),
+    )
+  ) {
+    return "related_language"
+  }
+  return "unavailable"
 }
 
 function englishName(value: unknown): string | null {
@@ -274,10 +305,7 @@ function fallbackForWatchability(watchability: IndexedWatchability) {
   return { kind: "none" as const, message: null }
 }
 
-function candidateScore(
-  candidate: Candidate,
-  watchability: IndexedWatchability,
-) {
+function candidateRelevance(candidate: Candidate): number {
   const sourceRelevance = candidate.sourceScore * 0.55
   const evidenceBoost =
     candidate.kind === "exact"
@@ -287,6 +315,16 @@ function candidateScore(
       : candidate.kind === "metadata"
         ? 0.14
         : 0.08
+  return sourceRelevance + evidenceBoost
+}
+
+function candidateScore(
+  candidate: Candidate,
+  watchability: IndexedWatchability,
+) {
+  const sourceRelevance = candidate.sourceScore * 0.55
+  const relevance = candidateRelevance(candidate)
+  const evidenceBoost = relevance - sourceRelevance
   const availability =
     watchability.kind === "target_audio"
       ? 0.25
@@ -295,7 +333,6 @@ function candidateScore(
         : watchability.kind === "related_language"
           ? 0.08
           : 0
-  const relevance = sourceRelevance + evidenceBoost
   const round = (value: number) => Math.round(value * 1000) / 1000
   return {
     rankingRelevance: relevance,
@@ -311,10 +348,10 @@ function candidateScore(
   }
 }
 
-function watchabilityRank(watchability: IndexedWatchability): number {
-  if (watchability.kind === "target_audio") return 0
-  if (watchability.kind === "target_subtitle") return 1
-  if (watchability.kind === "related_language") return 2
+function watchabilityRank(kind: IndexedWatchability["kind"]): number {
+  if (kind === "target_audio") return 0
+  if (kind === "target_subtitle") return 1
+  if (kind === "related_language") return 2
   return 3
 }
 
@@ -421,7 +458,7 @@ export class TypesenseWatchSearchService {
 
     const lexicalStartedAt = performance.now()
     const lexicalPromise = this.typesense
-      .multiSearch<TypesenseWatchCatalogDocument>(
+      .multiSearch<TypesenseWatchCatalogPreviewDocument>(
         lexicalSearchRequests(titleQuery, candidateLimit),
       )
       .then((results) => {
@@ -538,78 +575,29 @@ export class TypesenseWatchSearchService {
       semanticHits,
       evidenceLocales,
     })
-    const catalogStartedAt = performance.now()
-    const catalogById = await this.catalogDocuments(
-      candidates.map((entry) => entry.videoId),
+    const watchabilityStartedAt = performance.now()
+    const previewById = new Map(
+      lexicalHits.map((hit) => [hit.document.id, hit.document] as const),
     )
-    laneStatuses.push(
-      laneStatus({
-        lane: "metadata_watchability",
-        status: "fulfilled",
-        timelineStartedAt: startedAt,
-        startedAt: catalogStartedAt,
-        resultCount: catalogById.size,
-      }),
-    )
+    const missingPreviewIds = candidates
+      .map((entry) => entry.videoId)
+      .filter((videoId) => !previewById.has(videoId))
+    const missingPreviews =
+      await this.catalogDocuments<TypesenseWatchCatalogPreviewDocument>(
+        missingPreviewIds,
+        CATALOG_PREVIEW_FIELDS,
+      )
+    for (const [videoId, document] of missingPreviews) {
+      previewById.set(videoId, document)
+    }
 
-    const ranked = candidates
+    const rankedCandidates = candidates
       .flatMap((candidate) => {
-        const document = catalogById.get(candidate.videoId)
-        if (!document) return []
-        const watchability = resolveWatchability(document, target)
-        const locale = displayLocale(document, preferredLocale)
-        const { rankingRelevance, scoreBreakdown } = candidateScore(
-          candidate,
-          watchability,
-        )
-        const result: WatchSearchResult = {
-          type: "video",
-          id: document.id,
-          slug: document.slug,
-          title: locale.title,
-          description: locale.description,
-          snippet: candidate.snippet ?? locale.description,
-          imageUrl: document.imageUrl,
-          imageBlurDataUrl: document.imageBlurDataUrl,
-          muxThumbnailBlurDataUrl: null,
-          playbackId: watchability.playbackId,
-          startSeconds: candidate.startSeconds,
-          score: scoreBreakdown.total,
-          scoreBreakdown,
-          label: document.label,
-          durationSeconds: watchability.durationSeconds,
-          childCount: document.childCount,
-          languageSlug: watchability.languageSlug,
-          languageEnglishName: watchability.languageEnglishName,
-          availability: {
-            kind: watchability.kind,
-            languageSlug: watchability.languageSlug,
-            languageEnglishName: watchability.languageEnglishName,
-            audio: watchability.audio,
-            subtitles: watchability.subtitles,
-          },
-          evidence: {
-            kind:
-              candidate.kind === "exact"
-                ? "exact_title"
-                : candidate.kind === "semantic"
-                  ? "transcript_semantic"
-                  : "metadata",
-            languageSlug: candidate.evidenceLanguageSlug,
-            label:
-              candidate.kind === "exact"
-                ? "Title match"
-                : candidate.kind === "semantic"
-                  ? "Transcript match"
-                  : "Metadata match",
-          },
-          action: {
-            kind: "watch",
-            hrefLanguageSlug: watchability.hrefLanguageSlug,
-          },
-          fallback: fallbackForWatchability(watchability),
-        }
-        return [{ result, candidate, rankingRelevance, watchability }]
+        const preview = previewById.get(candidate.videoId)
+        if (!preview) return []
+        const watchabilityKind = previewWatchabilityKind(preview, target)
+        const rankingRelevance = candidateRelevance(candidate)
+        return [{ candidate, rankingRelevance, watchabilityKind }]
       })
       .sort((left, right) => {
         const wholeTitleDelta =
@@ -621,20 +609,86 @@ export class TypesenseWatchSearchService {
         if (relevanceDelta !== 0) return relevanceDelta
 
         const watchabilityDelta =
-          watchabilityRank(left.watchability) -
-          watchabilityRank(right.watchability)
+          watchabilityRank(left.watchabilityKind) -
+          watchabilityRank(right.watchabilityKind)
         if (watchabilityDelta !== 0) return watchabilityDelta
 
-        return left.result.id.localeCompare(right.result.id)
+        return left.candidate.videoId.localeCompare(right.candidate.videoId)
       })
-    const page = ranked
-      .slice(offset, offset + limit)
-      .map((entry) => entry.result)
+    const pageCandidates = rankedCandidates.slice(offset, offset + limit)
+    const catalogById = await this.catalogDocuments(
+      pageCandidates.map((entry) => entry.candidate.videoId),
+    )
+    laneStatuses.push(
+      laneStatus({
+        lane: "metadata_watchability",
+        status: "fulfilled",
+        timelineStartedAt: startedAt,
+        startedAt: watchabilityStartedAt,
+        resultCount: catalogById.size,
+      }),
+    )
+
+    const page = pageCandidates.flatMap(({ candidate }) => {
+      const document = catalogById.get(candidate.videoId)
+      if (!document) return []
+      const watchability = resolveWatchability(document, target)
+      const locale = displayLocale(document, preferredLocale)
+      const { scoreBreakdown } = candidateScore(candidate, watchability)
+      const result: WatchSearchResult = {
+        type: "video",
+        id: document.id,
+        slug: document.slug,
+        title: locale.title,
+        description: locale.description,
+        snippet: candidate.snippet ?? locale.description,
+        imageUrl: document.imageUrl,
+        imageBlurDataUrl: document.imageBlurDataUrl,
+        muxThumbnailBlurDataUrl: null,
+        playbackId: watchability.playbackId,
+        startSeconds: candidate.startSeconds,
+        score: scoreBreakdown.total,
+        scoreBreakdown,
+        label: document.label,
+        durationSeconds: watchability.durationSeconds,
+        childCount: document.childCount,
+        languageSlug: watchability.languageSlug,
+        languageEnglishName: watchability.languageEnglishName,
+        availability: {
+          kind: watchability.kind,
+          languageSlug: watchability.languageSlug,
+          languageEnglishName: watchability.languageEnglishName,
+          audio: watchability.audio,
+          subtitles: watchability.subtitles,
+        },
+        evidence: {
+          kind:
+            candidate.kind === "exact"
+              ? "exact_title"
+              : candidate.kind === "semantic"
+                ? "transcript_semantic"
+                : "metadata",
+          languageSlug: candidate.evidenceLanguageSlug,
+          label:
+            candidate.kind === "exact"
+              ? "Title match"
+              : candidate.kind === "semantic"
+                ? "Transcript match"
+                : "Metadata match",
+        },
+        action: {
+          kind: "watch",
+          hrefLanguageSlug: watchability.hrefLanguageSlug,
+        },
+        fallback: fallbackForWatchability(watchability),
+      }
+      return [result]
+    })
 
     return {
       query,
       results: page,
-      hasMore: ranked.length > offset + limit,
+      hasMore: rankedCandidates.length > offset + limit,
       nextOffset: offset + limit,
       searchMode: "watch-search-typesense",
       requestId: normalizeRequestId(input.clientRequestId),
@@ -685,7 +739,7 @@ export class TypesenseWatchSearchService {
   }: {
     query: string
     preferredLocale: string
-    lexicalHits: TypesenseSearchHit<TypesenseWatchCatalogDocument>[]
+    lexicalHits: TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[]
     semanticHits: TypesenseSearchHit<TypesenseWatchTranscriptDocument>[]
     evidenceLocales: Array<{ slug: string; locale: string }>
   }): Candidate[] {
@@ -734,9 +788,12 @@ export class TypesenseWatchSearchService {
     return [...candidates.values()]
   }
 
-  private async catalogDocuments(
+  private async catalogDocuments<
+    TDocument extends { id: string } = TypesenseWatchCatalogDocument,
+  >(
     videoIds: readonly string[],
-  ): Promise<Map<string, TypesenseWatchCatalogDocument>> {
+    includeFields?: string,
+  ): Promise<Map<string, TDocument>> {
     const ids = [...new Set(videoIds)]
     if (ids.length === 0) return new Map()
     const searches = []
@@ -751,10 +808,10 @@ export class TypesenseWatchSearchService {
         q: "*",
         filter_by: `id:=[${batch.map((id) => `\`${id}\``).join(",")}]`,
         per_page: batch.length,
+        include_fields: includeFields,
       })
     }
-    const results =
-      await this.typesense.multiSearch<TypesenseWatchCatalogDocument>(searches)
+    const results = await this.typesense.multiSearch<TDocument>(searches)
     return new Map(
       results.flatMap((result) =>
         result.hits.map((hit) => [hit.document.id, hit.document] as const),
@@ -775,19 +832,26 @@ export class TypesenseWatchSearchService {
         slug: targetLanguageSlug,
         englishName: null,
         fallbackLanguageIds: [],
+        fallbackLanguageSlugs: [],
       }
     }
     const fallbacks = await this.prisma.languageFallback.findMany({
       where: { sourceLanguageId: language.id, deletedAt: null },
       orderBy: [{ priority: "asc" }, { fallbackLanguageId: "asc" }],
       take: 12,
-      select: { fallbackLanguageId: true },
+      select: {
+        fallbackLanguageId: true,
+        fallbackLanguage: { select: { slug: true } },
+      },
     })
     return {
       id: language.id,
       slug: language.slug,
       englishName: englishName(language.name),
       fallbackLanguageIds: fallbacks.map((row) => row.fallbackLanguageId),
+      fallbackLanguageSlugs: fallbacks.flatMap((row) =>
+        row.fallbackLanguage.slug ? [row.fallbackLanguage.slug] : [],
+      ),
     }
   }
 
