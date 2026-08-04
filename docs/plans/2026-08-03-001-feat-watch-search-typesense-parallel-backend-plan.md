@@ -34,10 +34,12 @@ UI selection are outside this experiment.
 
 ## Architecture Decisions
 
-1. Use two aliased collections. `watch_search_catalog` stores one compact
-   document per video with localized metadata and precomputed availability;
-   `watch_search_transcripts` stores one document per embedded transcript chunk.
-   This avoids repeating card and availability payloads for every chunk.
+1. Use three aliased collections. `watch_search_catalog` stores one compact
+   document per video with localized metadata and ranking availability slugs;
+   `watch_search_availability` stores one filterable document per video and
+   language with playback fields; `watch_search_transcripts` stores one
+   document per embedded transcript chunk. This avoids repeating card fields
+   for every chunk and avoids returning every language during final hydration.
 2. Full rebuilds create timestamped collections and swap stable aliases only
    after every import row succeeds. This follows Typesense's documented
    zero-downtime schema-change and reindex pattern.
@@ -70,7 +72,7 @@ UI selection are outside this experiment.
 
 ### U2. Full Viewer-Safe Index Builder
 
-- **Goal:** Build both collections from the restored Admin snapshot without
+- **Goal:** Build all three collections from the restored Admin snapshot without
   loading all transcript vectors into memory.
 - **Files:** Create `apps/admin/src/services/typesense-watch-search-indexer.ts`,
   `apps/admin/src/services/typesense-watch-search-indexer.test.ts`, and
@@ -96,7 +98,8 @@ UI selection are outside this experiment.
   `apps/admin/src/graphql/queries/watch-search.ts`, and GraphQL resolver tests.
 - **Approach:** Reuse language signal resolution and current query embedding;
   search catalog and transcript aliases concurrently; exact matches outrank
-  metadata and semantic candidates; derive watchability from indexed options;
+  metadata and semantic candidates; derive watchability from target/fallback-
+  filtered availability records fetched beside bounded card hydration;
   degrade cleanly when semantic embedding/retrieval fails; expose a parallel
   optional `MODERN` input mode on the existing query field.
 - **Test scenarios:** French `communion`; exact outranks semantic; semantic-only

@@ -626,6 +626,9 @@ export function createConversationSession(
             sources: result.sources,
             grounded: result.grounded,
             engine: result.engine,
+            // feat-328: terminal-frame only (plan D3) — absent on a turn that
+            // featured nothing, and on every stub turn.
+            video: result.video,
           }))
           if (result.engine === "seeker") {
             // KTD10: the persisted predicate keys on a SUCCESSFUL Seeker turn
@@ -643,6 +646,7 @@ export function createConversationSession(
             sources: [],
             grounded: false,
             engine: "stub",
+            video: undefined,
           }))
         } else if (wasStopped) {
           // User stop (feat-270): finalize with partial text kept — a plain

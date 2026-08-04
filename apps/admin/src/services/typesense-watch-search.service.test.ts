@@ -5,9 +5,12 @@ import type {
   TypesenseSearchResult,
   TypesenseSearchRequest,
 } from "./typesense-client"
+import { TypesenseRequestError } from "./typesense-client"
 import {
+  TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+  type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
 } from "./typesense-watch-search-schema"
 import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
@@ -66,6 +69,53 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
   subtitleOptionsJson: "[]",
 }
 
+function availabilityDocumentsForCatalog(
+  catalog: TypesenseWatchCatalogDocument[],
+): TypesenseWatchAvailabilityDocument[] {
+  return catalog.flatMap((document) => {
+    const byLanguage = new Map<string, TypesenseWatchAvailabilityDocument>()
+    const audio = JSON.parse(document.audioOptionsJson) as Array<{
+      languageId: string
+      languageSlug: string
+      languageEnglishName: string | null
+      playbackId: string | null
+      durationSeconds: number | null
+    }>
+    const subtitles = JSON.parse(document.subtitleOptionsJson) as Array<{
+      languageId: string
+      languageSlug: string
+    }>
+    for (const option of audio) {
+      byLanguage.set(option.languageId, {
+        id: `${document.id}:${option.languageId}`,
+        videoId: document.id,
+        ...option,
+        audio: true,
+        subtitles: false,
+      })
+    }
+    for (const option of subtitles) {
+      const existing = byLanguage.get(option.languageId)
+      if (existing) {
+        existing.subtitles = true
+      } else {
+        byLanguage.set(option.languageId, {
+          id: `${document.id}:${option.languageId}`,
+          videoId: document.id,
+          languageId: option.languageId,
+          languageSlug: option.languageSlug,
+          languageEnglishName: null,
+          audio: false,
+          subtitles: true,
+          playbackId: null,
+          durationSeconds: null,
+        })
+      }
+    }
+    return [...byLanguage.values()]
+  })
+}
+
 function prismaFixture({
   fallbackLanguages = [],
 }: {
@@ -96,6 +146,8 @@ function typesenseFixture({
   semantic = [],
   semanticError,
   catalog = lexical.length > 0 ? lexical : [catalogDocument],
+  availability = availabilityDocumentsForCatalog(catalog),
+  availabilityError,
 }: {
   lexical?: TypesenseWatchCatalogDocument[]
   semantic?: Array<{
@@ -105,11 +157,13 @@ function typesenseFixture({
   }>
   semanticError?: Error
   catalog?: TypesenseWatchCatalogDocument[]
+  availability?: TypesenseWatchAvailabilityDocument[]
+  availabilityError?: Error
 }) {
-  function projectDocument(
-    document: TypesenseWatchCatalogDocument,
+  function projectDocument<TDocument extends object>(
+    document: TDocument,
     request: TypesenseSearchRequest,
-  ) {
+  ): TDocument {
     const includeFields = String(request.include_fields ?? "")
       .split(",")
       .filter(Boolean)
@@ -123,7 +177,7 @@ function typesenseFixture({
         ? includeFields.includes(field)
         : !excludeFields.has(field),
     )
-    return Object.fromEntries(entries) as TypesenseWatchCatalogDocument
+    return Object.fromEntries(entries) as TDocument
   }
 
   return {
@@ -152,8 +206,28 @@ function typesenseFixture({
           },
         ]
       }
-      const isHydration = search.q === "*"
       return searches.map((request) => {
+        if (request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS) {
+          if (availabilityError) throw availabilityError
+          const requestedValues = [
+            ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
+          ].map((match) => match[1])
+          const documents = availability.filter(
+            (document) =>
+              requestedValues.includes(document.videoId) &&
+              requestedValues.includes(document.languageId),
+          )
+          return {
+            found: documents.length,
+            out_of: documents.length,
+            page: 1,
+            search_time_ms: 1,
+            hits: documents.map((document) => ({
+              document: projectDocument(document, request),
+            })),
+          } satisfies TypesenseSearchResult<TypesenseWatchAvailabilityDocument>
+        }
+        const isHydration = request.q === "*"
         const requestedIds = isHydration
           ? [...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g)].map(
               (match) => match[1],
@@ -311,9 +385,13 @@ describe("TypesenseWatchSearchService", () => {
     const resultHydrationRequests = requests.filter(
       (request) =>
         request.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+        request.collection !== TYPESENSE_WATCH_AVAILABILITY_ALIAS &&
         request.q === "*" &&
         request.include_fields ===
-          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson",
+          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl",
+    )
+    const availabilityRequest = requests.find(
+      (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
     )
 
     expect(lexicalRequest?.include_fields).toBeUndefined()
@@ -329,8 +407,76 @@ describe("TypesenseWatchSearchService", () => {
     ).toBe(false)
     expect(resultHydrationRequests).toHaveLength(1)
     expect(resultHydrationRequests[0]?.per_page).toBe(20)
+    expect(availabilityRequest).toMatchObject({
+      q: "*",
+      include_fields:
+        "id,videoId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds",
+    })
+    expect(availabilityRequest?.filter_by).toContain(
+      "languageId:=[`language-fr`]",
+    )
+    expect(
+      typesense.multiSearch.mock.calls.some(
+        ([searches]) =>
+          searches.includes(resultHydrationRequests[0]) &&
+          availabilityRequest != null &&
+          searches.includes(availabilityRequest),
+      ),
+    ).toBe(true)
+    expect(
+      requests.some((request) =>
+        String(request.include_fields).includes("audioOptionsJson"),
+      ),
+    ).toBe(false)
     expect(response.results).toHaveLength(20)
     expect(response.hasMore).toBe(true)
+  })
+
+  it("falls back to legacy catalog watchability while the availability alias is absent", async () => {
+    const logger = { warn: vi.fn() }
+    const typesense = typesenseFixture({
+      lexical: [catalogDocument],
+      availabilityError: new TypesenseRequestError(
+        "availability alias missing",
+        404,
+      ),
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding), logger },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: "playback-fr",
+      availability: { kind: "target_audio" },
+    })
+    expect(
+      typesense.multiSearch.mock.calls
+        .flatMap(([searches]) => searches)
+        .some(
+          (request) =>
+            request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+        ),
+    ).toBe(true)
+    expect(
+      typesense.multiSearch.mock.calls
+        .flatMap(([searches]) => searches)
+        .some(
+          (request) =>
+            request.q === "*" &&
+            request.include_fields ===
+              "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson",
+        ),
+    ).toBe(true)
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[typesense-watch-search] event=availability_alias_fallback",
+    )
   })
 
   it("falls back to legacy locale JSON until the active index has locale codes", async () => {
@@ -543,6 +689,54 @@ describe("TypesenseWatchSearchService", () => {
       },
       fallback: { kind: "related_language" },
       action: { hrefLanguageSlug: "english" },
+    })
+  })
+
+  it("preserves configured fallback priority instead of availability document order", async () => {
+    const relatedDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioOptionsJson: JSON.stringify([
+        {
+          id: "dub-en",
+          languageId: "language-en",
+          languageSlug: "english",
+          languageEnglishName: "English",
+          playbackId: "playback-en",
+          durationSeconds: 175,
+        },
+        {
+          id: "dub-es",
+          languageId: "language-es",
+          languageSlug: "spanish-castilian",
+          languageEnglishName: "Spanish, Castilian",
+          playbackId: "playback-es",
+          durationSeconds: 176,
+        },
+      ]),
+    }
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        fallbackLanguages: [
+          { id: "language-es", slug: "spanish-castilian" },
+          { id: "language-en", slug: "english" },
+        ],
+      }),
+      typesenseFixture({
+        lexical: [relatedDocument],
+        catalog: [relatedDocument],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: "playback-es",
+      availability: { languageSlug: "spanish-castilian" },
     })
   })
 

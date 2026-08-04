@@ -1,6 +1,7 @@
 import type { TypesenseCollectionSchema } from "./typesense-client"
 
 export const TYPESENSE_WATCH_CATALOG_ALIAS = "watch_search_catalog"
+export const TYPESENSE_WATCH_AVAILABILITY_ALIAS = "watch_search_availability"
 export const TYPESENSE_WATCH_TRANSCRIPT_ALIAS = "watch_search_transcripts"
 export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
 
@@ -43,6 +44,18 @@ export type TypesenseWatchCatalogDocument = {
   subtitleOptionsJson: string
 }
 
+export type TypesenseWatchAvailabilityDocument = {
+  id: string
+  videoId: string
+  languageId: string
+  languageSlug: string
+  languageEnglishName: string | null
+  audio: boolean
+  subtitles: boolean
+  playbackId: string | null
+  durationSeconds: number | null
+}
+
 export type TypesenseWatchTranscriptDocument = {
   id: string
   videoId: string
@@ -70,6 +83,21 @@ export function watchCatalogCollectionSchema(
       { name: "audioLanguageSlugs", type: "string[]", facet: true },
       { name: "subtitleLanguageSlugs", type: "string[]", facet: true },
       { name: "childCount", type: "int32" },
+    ],
+  }
+}
+
+export function watchAvailabilityCollectionSchema(
+  buildId: string,
+): TypesenseCollectionSchema {
+  return {
+    name: physicalName(TYPESENSE_WATCH_AVAILABILITY_ALIAS, buildId),
+    fields: [
+      { name: "videoId", type: "string", facet: true },
+      { name: "languageId", type: "string", facet: true },
+      { name: "languageSlug", type: "string", facet: true },
+      { name: "audio", type: "bool", facet: true },
+      { name: "subtitles", type: "bool", facet: true },
     ],
   }
 }

@@ -394,6 +394,12 @@ importers:
 
   apps/chat:
     dependencies:
+      '@forge/video-player':
+        specifier: workspace:*
+        version: link:../../packages/video-player
+      '@forge/watch-url-policy':
+        specifier: workspace:*
+        version: link:../../packages/watch-url-policy
       jose:
         specifier: ^6.1.3
         version: 6.2.1

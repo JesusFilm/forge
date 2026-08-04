@@ -173,6 +173,10 @@ twenty-sixth instance, add it here — that's the META home.
 
 ## Prevention checklist (when adding a typed-discriminator branch — or, item 6, when relocating code or its tests — or, item 7, when a design rests on an empirical framework/platform behavior claim — or, item 8, when a fixture is deliberately synthetic — or, item 9, when a fixture helper derives one gated field from another)
 
+(Item 10, when no behavioral test can hold an invariant at all: see
+"Source-text pins" below — strip comments, count occurrences, and prefer
+making the invariant unrepresentable.)
+
 1. **Identify each branch's "ONLY this branch matches" condition.**
    For Tier 1 (typed-name), that's a fixture where the message
    doesn't match the regex backstop. For Tier 2 (legacy `Code`),
@@ -311,6 +315,50 @@ token via `partner-keys create` and have the partner rotate onto it).
    Add a regression-guard test that the deleted path is no longer
    reachable (e.g., `parseArgvToConfig(["import-from-env"])` throws
    "unknown subcommand"). PR #976 is the canonical example.
+
+## Source-text pins: strip comments, count occurrences, and prefer unrepresentable
+
+Some invariants have no behavioral test — a reset site that is
+vacuous-by-construction today, a build-shape decision like "this import stays
+lazy." The fallback is a source-text pin: read the module's own source in a
+test and assert the load-bearing token is present. Three rules, in order:
+
+1. **Prefer making the invariant unrepresentable.** A typed helper that both
+   reset sites must call beats any pin, because the compiler enforces it. Reach
+   for a pin only when no such shape exists.
+2. **Strip comments before matching.** A bare `expect(source).toContain("x:")`
+   stays GREEN when someone comments the line out — the single likeliest way it
+   actually disappears (a merge-conflict resolution, a "temporarily disable").
+   Strip block comments, whole-line `//`, AND trailing `//`; guard the `://` in
+   any URL literal so the strip does not eat real code.
+3. **Pin the VALUE and an occurrence COUNT, not just the key.** `toContain("ssr")`
+   passes on `ssr: true`. A count catches the second call site someone adds
+   beside the pinned one, and — paired with a call-site count in the source —
+   catches a new branch added with no test entry.
+
+A partial form already existed — both as code
+(`apps/mastra/src/mastra/agents/seeker-agent.test.ts`) and as prose, in the
+feat-272 refinement clause of the feat-283 worked instance above. It was not
+WRONG, it was unfindable: buried at the end of an unrelated instance, where
+nobody looking for "how do I pin a source token" would land. feat-328
+re-derived it from scratch and got rule 2 wrong on the first attempt — a bare
+substring pin shipped, and review caught that commenting out the guarded line
+kept it green. **Prose that is technically present but structurally
+undiscoverable gets re-derived, and re-derived badly.** That is why this is a
+standalone rule now rather than a fourth clause on someone else's instance.
+
+Note the exemplar is only partial even as code: it strips block and whole-line
+`//` but NOT trailing `//`, which is exactly the fourth defeat feat-328 missed.
+`apps/chat/src/components/chat/video-card.test.tsx`'s widened strip
+(`.replace(/(^|[^:])\/\/.*$/gm, "$1")`, guarding the `://` in a URL literal) is
+the current reference implementation of rule 2.
+
+Falsify a source pin the way it will actually be defeated, not the way that is
+easiest to type. For a lazy-import pin, that means all of: a static import of
+the exact specifier, a barrel import, a prettier-wrapped multi-line import, and
+the option faked in a trailing comment. feat-328's pin caught the first three
+and missed the fourth until the comment strip was widened — and the reviewer's
+own proposed fix did not close it either.
 
 ## Refresh trigger
 
