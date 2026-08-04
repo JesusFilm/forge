@@ -9,6 +9,7 @@ import { ErrorLink } from "@apollo/client/link/error"
 import { getMainDefinition } from "@apollo/client/utilities"
 import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
+import { WATCH_SEARCH_EVENT_OPERATION_NAME } from "./queries"
 import { getViewerId } from "./viewer-id"
 import {
   DATADOG_GRAPH_QL_OPERATION_NAME_HEADER,
@@ -149,6 +150,9 @@ export function reportGraphqlOperationError(
   error: unknown,
   operationName: string | undefined,
 ): void {
+  // Anonymous event mutations accept per-IP rate shedding (KTD6); a shed
+  // event filing a RUM error would turn designed shedding into noise.
+  if (operationName === WATCH_SEARCH_EVENT_OPERATION_NAME) return
   if (!isDatadogProvisioned()) return
   const operation = operationName ?? "anonymous"
   if (CombinedGraphQLErrors.is(error)) {

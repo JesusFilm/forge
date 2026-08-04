@@ -324,4 +324,26 @@ describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)",
       { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
     )
   })
+
+  // KTD6 exemption: anonymous event mutations accept per-IP rate shedding, so a
+  // shed RecordWatchSearchEvent must not file a RUM error. One test per error
+  // shape — a shed arrives as GraphQL-in-200 RATE_LIMITED, a drop as a network
+  // error — and the "still reports" cases above are the anti-vacuous contrast.
+  it("skips the exempted event op on the GraphQL-in-200 branch (rate shed)", () => {
+    const err = new CombinedGraphQLErrors({
+      errors: [
+        { message: "rate limited", extensions: { code: "RATE_LIMITED" } },
+      ],
+    })
+    reportGraphqlOperationError(err, "RecordWatchSearchEvent")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  it("skips the exempted event op on the network-error branch", () => {
+    reportGraphqlOperationError(
+      new Error("socket hang up"),
+      "RecordWatchSearchEvent",
+    )
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
 })
