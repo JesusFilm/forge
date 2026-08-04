@@ -364,6 +364,17 @@ describe("TypesenseWatchSearchService", () => {
     expect(semanticRequest?.filter_by).toBe(
       "language:=[`fr`] && publiclyVisible:=true",
     )
+    const semanticCatalogPreview = typesense.multiSearch.mock.calls
+      .flatMap(([searches]) => searches)
+      .find(
+        (search) =>
+          search.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+          search.q === "*" &&
+          search.include_fields != null,
+      )
+    expect(semanticCatalogPreview?.include_fields).toBe(
+      "id,audioLanguageSlugs,subtitleLanguageSlugs",
+    )
   })
 
   it("uses indexed target subtitles when target audio is unavailable", async () => {
