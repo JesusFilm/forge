@@ -56,7 +56,7 @@ BACKUP_DOWNLOAD_API_KEY=... \
 `BACKUP_DOWNLOAD_API_KEYS`; do not persist it in the repository. Operators with
 direct bucket variables can use the same command with `RAILWAY_S3_*` variables.
 
-## Build The Full Index
+## Build Or Refresh The Index
 
 ```bash
 DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
@@ -65,11 +65,39 @@ TYPESENSE_API_KEY=forge-typesense-local-key \
   pnpm --filter @forge/admin index:typesense-watch-search
 ```
 
-The builder creates timestamped catalog, per-video-language availability, and
-transcript collections, validates every JSONL import response, and only then
-moves the stable aliases. A failed build restores all previously moved aliases
-and deletes only collections whose rollback succeeded. The final JSON object
-includes catalog, availability, and transcript counts plus
+The first run has no transcript alias, so this command bootstraps timestamped
+catalog, per-video-language availability, and transcript collections. On later
+runs it rebuilds only catalog and availability and reuses the physical
+transcript collection already selected by `watch_search_transcripts`. This
+keeps routine application releases from re-importing the unchanged embedding
+corpus.
+
+Force a new transcript generation only when transcript vectors, visibility,
+model dimensions, or the transcript schema need to change:
+
+```bash
+DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
+TYPESENSE_HOST=http://127.0.0.1:8108 \
+TYPESENSE_API_KEY=forge-typesense-local-key \
+  pnpm --filter @forge/admin index:typesense-watch-search -- \
+  --rebuild-transcripts
+```
+
+The CLI rejects unknown or misspelled arguments instead of silently falling
+back to transcript reuse.
+
+Every collection that is built is imported with checked JSONL responses before
+its stable alias moves. A failed routine refresh restores the catalog and
+availability aliases and never moves or deletes the reused transcript
+collection. A failed explicit transcript rebuild also restores the transcript
+alias. After a successful publication, the indexer deletes older and orphaned
+Watch Search physical collections that existed before the run, retaining only
+the active catalog, availability, and transcript collections. This bounds RAM
+instead of keeping duplicate vector generations; rollback remains the unchanged
+`DEFAULT` PostgreSQL backend or a manual transcript rebuild, not an inactive
+Typesense generation. The final JSON object reports `transcriptReused`,
+`retiredCollections`, any `retirementFailures`, the selected physical
+transcript collection, catalog, availability, and transcript counts plus
 `estimatedVectorMemoryBytes`, calculated as 7 bytes times 1,536 dimensions
 times the accepted transcript document count. Capture
 Typesense's measured memory after the build as well:

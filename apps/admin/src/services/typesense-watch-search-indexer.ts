@@ -45,6 +45,21 @@ export type TypesenseWatchSearchIndexStats = {
   catalogCollection: string
   availabilityCollection: string
   transcriptCollection: string
+  transcriptReused: boolean
+  retiredCollections: string[]
+  retirementFailures: Array<{ collection: string; error: string }>
+}
+
+export type TypesenseWatchSearchTranscriptStrategy = "reuse" | "rebuild"
+
+const MANAGED_COLLECTION_PREFIXES = [
+  `${TYPESENSE_WATCH_CATALOG_ALIAS}_`,
+  `${TYPESENSE_WATCH_AVAILABILITY_ALIAS}_`,
+  `${TYPESENSE_WATCH_TRANSCRIPT_ALIAS}_`,
+] as const
+
+function isManagedWatchCollection(name: string): boolean {
+  return MANAGED_COLLECTION_PREFIXES.some((prefix) => name.startsWith(prefix))
 }
 
 export class TypesenseWatchSearchIndexError extends Error {
@@ -388,16 +403,19 @@ export async function rebuildTypesenseWatchSearchIndex({
   typesense,
   buildId = new Date().toISOString(),
   batchSize = DEFAULT_BATCH_SIZE,
+  transcriptStrategy = "reuse",
   onProgress,
 }: {
   prisma: PrismaClient
   typesense: TypesenseClient
   buildId?: string
   batchSize?: number
+  transcriptStrategy?: TypesenseWatchSearchTranscriptStrategy
   onProgress?: (stats: {
     catalogDocuments: number
     availabilityDocuments: number
     transcriptDocuments: number
+    transcriptReused: boolean
   }) => void
 }): Promise<TypesenseWatchSearchIndexStats> {
   if (!Number.isInteger(batchSize) || batchSize <= 0) {
@@ -409,14 +427,24 @@ export async function rebuildTypesenseWatchSearchIndex({
   const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
   const [
+    existingCollections,
     previousCatalogAlias,
     previousAvailabilityAlias,
     previousTranscriptAlias,
   ] = await Promise.all([
+    typesense.listCollections(),
     typesense.getAlias(TYPESENSE_WATCH_CATALOG_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_AVAILABILITY_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
   ])
+  const existingManagedCollections = existingCollections
+    .map((collection) => collection.name)
+    .filter(isManagedWatchCollection)
+  const transcriptReused =
+    transcriptStrategy === "reuse" && previousTranscriptAlias != null
+  const transcriptCollection = transcriptReused
+    ? previousTranscriptAlias.collection_name
+    : transcriptSchema.name
   let catalogDocuments = 0
   let availabilityDocuments = 0
   let transcriptDocuments = 0
@@ -425,10 +453,32 @@ export async function rebuildTypesenseWatchSearchIndex({
   let availabilityAliasUpdated = false
   let transcriptAliasUpdated = false
 
+  if (transcriptReused) {
+    const [allTranscripts, publicTranscripts] = await typesense.multiSearch([
+      {
+        collection: transcriptCollection,
+        q: "*",
+        per_page: 1,
+        exclude_fields: "embedding,text",
+      },
+      {
+        collection: transcriptCollection,
+        q: "*",
+        filter_by: "publiclyVisible:=true",
+        per_page: 1,
+        exclude_fields: "embedding,text",
+      },
+    ])
+    transcriptDocuments = allTranscripts?.found ?? 0
+    publicTranscriptDocuments = publicTranscripts?.found ?? 0
+  }
+
   await typesense.createCollection(catalogSchema)
   try {
     await typesense.createCollection(availabilitySchema)
-    await typesense.createCollection(transcriptSchema)
+    if (!transcriptReused) {
+      await typesense.createCollection(transcriptSchema)
+    }
     const catalog = await buildCatalogDocuments(prisma)
     const availability = buildAvailabilityDocuments(catalog)
     for (let index = 0; index < catalog.length; index += batchSize) {
@@ -439,6 +489,7 @@ export async function rebuildTypesenseWatchSearchIndex({
         catalogDocuments,
         availabilityDocuments,
         transcriptDocuments,
+        transcriptReused,
       })
     }
     for (let index = 0; index < availability.length; index += batchSize) {
@@ -449,34 +500,40 @@ export async function rebuildTypesenseWatchSearchIndex({
         catalogDocuments,
         availabilityDocuments,
         transcriptDocuments,
+        transcriptReused,
       })
     }
 
-    let afterId: string | null = null
-    for (;;) {
-      const rows = await loadTranscriptBatch(prisma, afterId, batchSize)
-      if (rows.length === 0) break
-      const documents: TypesenseWatchTranscriptDocument[] = rows.map((row) => ({
-        id: row.id,
-        videoId: row.videoId,
-        language: row.language,
-        publiclyVisible: row.publiclyVisible,
-        text: row.text,
-        startSeconds:
-          row.startSeconds == null ? null : Number(row.startSeconds),
-        embedding: parseTypesenseVector(row.embeddingText),
-      }))
-      await typesense.importDocuments(transcriptSchema.name, documents)
-      transcriptDocuments += documents.length
-      publicTranscriptDocuments += documents.filter(
-        (document) => document.publiclyVisible,
-      ).length
-      afterId = rows.at(-1)?.id ?? null
-      onProgress?.({
-        catalogDocuments,
-        availabilityDocuments,
-        transcriptDocuments,
-      })
+    if (!transcriptReused) {
+      let afterId: string | null = null
+      for (;;) {
+        const rows = await loadTranscriptBatch(prisma, afterId, batchSize)
+        if (rows.length === 0) break
+        const documents: TypesenseWatchTranscriptDocument[] = rows.map(
+          (row) => ({
+            id: row.id,
+            videoId: row.videoId,
+            language: row.language,
+            publiclyVisible: row.publiclyVisible,
+            text: row.text,
+            startSeconds:
+              row.startSeconds == null ? null : Number(row.startSeconds),
+            embedding: parseTypesenseVector(row.embeddingText),
+          }),
+        )
+        await typesense.importDocuments(transcriptSchema.name, documents)
+        transcriptDocuments += documents.length
+        publicTranscriptDocuments += documents.filter(
+          (document) => document.publiclyVisible,
+        ).length
+        afterId = rows.at(-1)?.id ?? null
+        onProgress?.({
+          catalogDocuments,
+          availabilityDocuments,
+          transcriptDocuments,
+          transcriptReused,
+        })
+      }
     }
 
     await typesense.upsertAlias(
@@ -484,11 +541,13 @@ export async function rebuildTypesenseWatchSearchIndex({
       availabilitySchema.name,
     )
     availabilityAliasUpdated = true
-    await typesense.upsertAlias(
-      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
-      transcriptSchema.name,
-    )
-    transcriptAliasUpdated = true
+    if (!transcriptReused) {
+      await typesense.upsertAlias(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        transcriptSchema.name,
+      )
+      transcriptAliasUpdated = true
+    }
     await typesense.upsertAlias(
       TYPESENSE_WATCH_CATALOG_ALIAS,
       catalogSchema.name,
@@ -534,7 +593,7 @@ export async function rebuildTypesenseWatchSearchIndex({
       ...(catalogRestored
         ? [typesense.deleteCollection(catalogSchema.name)]
         : []),
-      ...(transcriptRestored
+      ...(!transcriptReused && transcriptRestored
         ? [typesense.deleteCollection(transcriptSchema.name)]
         : []),
       ...(availabilityRestored
@@ -543,6 +602,37 @@ export async function rebuildTypesenseWatchSearchIndex({
     ])
     throw error
   }
+
+  const activeCollections = new Set([
+    catalogSchema.name,
+    availabilitySchema.name,
+    transcriptCollection,
+  ])
+  const collectionsToRetire = existingManagedCollections.filter(
+    (collection) => !activeCollections.has(collection),
+  )
+  const retirementResults = await Promise.allSettled(
+    collectionsToRetire.map((collection) =>
+      typesense.deleteCollection(collection),
+    ),
+  )
+  const retiredCollections: string[] = []
+  const retirementFailures: Array<{ collection: string; error: string }> = []
+  retirementResults.forEach((result, index) => {
+    const collection = collectionsToRetire[index]
+    if (collection == null) return
+    if (result.status === "fulfilled") {
+      retiredCollections.push(collection)
+    } else {
+      retirementFailures.push({
+        collection,
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      })
+    }
+  })
 
   return {
     catalogDocuments,
@@ -553,6 +643,9 @@ export async function rebuildTypesenseWatchSearchIndex({
       estimateTypesenseVectorMemoryBytes(transcriptDocuments),
     catalogCollection: catalogSchema.name,
     availabilityCollection: availabilitySchema.name,
-    transcriptCollection: transcriptSchema.name,
+    transcriptCollection,
+    transcriptReused,
+    retiredCollections,
+    retirementFailures,
   }
 }

@@ -22,6 +22,10 @@ export type TypesenseCollectionSchema = {
   enable_nested_fields?: boolean
 }
 
+export type TypesenseCollection = TypesenseCollectionSchema & {
+  num_documents?: number
+}
+
 export type TypesenseSearchRequest = Record<
   string,
   string | number | boolean | string[] | undefined
@@ -147,6 +151,10 @@ export class TypesenseClient {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(schema),
     })
+  }
+
+  listCollections(): Promise<TypesenseCollection[]> {
+    return this.request("/collections")
   }
 
   deleteCollection(name: string): Promise<void> {
