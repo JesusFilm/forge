@@ -31,3 +31,24 @@ export function authHeadersForOperation(
   if (viewerId) headers["x-viewer-id"] = viewerId
   return headers
 }
+
+/**
+ * The ONLY operations the signed-in user JWT may ride (KTD10) — same law as
+ * the fleet search bearer: an op-scoped credential never leaks onto public
+ * queries. Enforced by the guard test in `__tests__/authHeaders.test.ts`.
+ */
+export const PROGRESS_OPERATION_NAMES = [
+  "MyWatchProgress",
+  "UpsertMyWatchProgress",
+  "ClearMyWatchProgress",
+] as const
+
+const PROGRESS_OPERATIONS: ReadonlySet<string> = new Set(
+  PROGRESS_OPERATION_NAMES,
+)
+
+export function isProgressOperation(
+  operationName: string | undefined,
+): boolean {
+  return operationName != null && PROGRESS_OPERATIONS.has(operationName)
+}

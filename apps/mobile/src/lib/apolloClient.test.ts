@@ -49,6 +49,7 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { env } from "../env"
 import {
   createRequestChain,
+  createUserJwtLink,
   fetchWithTimeout,
   reportGraphqlOperationError,
 } from "./apolloClient"
@@ -323,5 +324,94 @@ describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)",
       expect.any(String),
       { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
     )
+  })
+})
+
+// KTD10 guard: the user JWT rides ONLY progress operations. The async link
+// must leave public operations untouched (and synchronous) even with a live
+// session able to mint a token.
+describe("createUserJwtLink (operation-scoped user JWT)", () => {
+  function headersThroughJwtLink(
+    query: DocumentNode,
+    getJwt: () => Promise<string | null>,
+  ): Promise<Record<string, string> | undefined> {
+    return new Promise((resolve) => {
+      let captured: Record<string, string> | undefined
+      const terminal = new ApolloLink((operation) => {
+        captured = operation.getContext().headers as Record<string, string>
+        return new Observable<ApolloLink.Result>((subscriber) =>
+          subscriber.complete(),
+        )
+      })
+      const client = new ApolloClient({
+        cache: new InMemoryCache(),
+        link: ApolloLink.empty(),
+      })
+      ApolloLink.execute(
+        createUserJwtLink(getJwt).concat(terminal),
+        { query },
+        { client },
+      ).subscribe({
+        complete: () => resolve(captured),
+        error: () => resolve(captured),
+      })
+    })
+  }
+
+  it("public operations with a live session get NO user header — the guard that matters most", async () => {
+    const getJwt = jest.fn(async () => "user-jwt")
+    const headers = await headersThroughJwtLink(
+      gql`
+        query WatchSearch {
+          __typename
+        }
+      `,
+      getJwt,
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+    // The link must not even consult the session for public traffic.
+    expect(getJwt).not.toHaveBeenCalled()
+  })
+
+  it("progress operations carry the freshly minted JWT", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        query MyWatchProgress {
+          __typename
+        }
+      `,
+      async () => "user-jwt",
+    )
+
+    expect(headers?.Authorization).toBe("Bearer user-jwt")
+  })
+
+  it("forwards without the header when the mint fails (fail-open)", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        mutation UpsertMyWatchProgress {
+          __typename
+        }
+      `,
+      async () => {
+        throw new Error("mint failed")
+      },
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+  })
+
+  it("forwards without the header when signed out", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        mutation ClearMyWatchProgress {
+          __typename
+        }
+      `,
+      async () => null,
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
   })
 })

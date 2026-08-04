@@ -2,11 +2,18 @@ import { print } from "graphql"
 import type { DocumentNode, OperationDefinitionNode } from "graphql"
 
 import {
+  PROGRESS_OPERATION_NAMES,
   SEARCH_OPERATION_NAME,
   authHeadersForOperation,
   buildAuthHeaders,
+  isProgressOperation,
 } from "../authHeaders"
 import { WATCH_SEARCH } from "../queries"
+import {
+  CLEAR_MY_WATCH_PROGRESS,
+  GET_MY_WATCH_PROGRESS,
+  UPSERT_MY_WATCH_PROGRESS,
+} from "../watchProgressQueries"
 
 // The consumer bearer must be attached whenever a token is configured, and the
 // anonymous shape returned when it isn't, so the app still boots unprovisioned.
@@ -88,5 +95,51 @@ describe("SEARCH_OPERATION_NAME ↔ WATCH_SEARCH", () => {
     const sdl = print(WATCH_SEARCH as unknown as DocumentNode)
     expect(sdl).toContain("watchSearch(input: $input)")
     expect(sdl).not.toMatch(/\bsearch\(q:/)
+  })
+})
+
+// KTD10: the signed-in user JWT rides ONLY the three progress operations —
+// the same operation-scoping law as the fleet search bearer. Pin the gate's
+// name set to the operations actually sent so a rename cannot silently
+// widen or strand the token.
+describe("isProgressOperation gate", () => {
+  it("admits exactly the three progress operations", () => {
+    expect(isProgressOperation("MyWatchProgress")).toBe(true)
+    expect(isProgressOperation("UpsertMyWatchProgress")).toBe(true)
+    expect(isProgressOperation("ClearMyWatchProgress")).toBe(true)
+  })
+
+  it("rejects public operations — the user JWT never rides them", () => {
+    for (const name of [
+      "WatchSearch",
+      "GetVideoBySlug",
+      "GetWatchSetting",
+      "GetExperienceBySlug",
+      "GetWatchHomeVideos",
+      undefined,
+    ]) {
+      expect(isProgressOperation(name)).toBe(false)
+    }
+  })
+
+  it("matches the operation names actually sent", () => {
+    const docs = [
+      GET_MY_WATCH_PROGRESS,
+      UPSERT_MY_WATCH_PROGRESS,
+      CLEAR_MY_WATCH_PROGRESS,
+    ]
+    const sentNames = docs.map((doc) => {
+      const operation = (doc as unknown as DocumentNode).definitions.find(
+        (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
+      )
+      return operation?.name?.value
+    })
+    expect(sentNames.sort()).toEqual([...PROGRESS_OPERATION_NAMES].sort())
+  })
+
+  it("never selects dubs in the progress fragments (standing guard)", () => {
+    for (const doc of [GET_MY_WATCH_PROGRESS, UPSERT_MY_WATCH_PROGRESS]) {
+      expect(print(doc as unknown as DocumentNode)).not.toMatch(/\bdubs\b/)
+    }
   })
 })
