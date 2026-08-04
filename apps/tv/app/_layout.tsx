@@ -1,4 +1,4 @@
-import { Component, useRef } from "react"
+import { Component, useCallback, useRef } from "react"
 import { ScrollView, Text, View } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
@@ -10,6 +10,10 @@ import { SeriesLanguageProvider } from "../src/contexts/SeriesLanguageContext"
 import { WatchPreferencesProvider } from "../src/contexts/WatchPreferencesProvider"
 import { WatchSessionProvider } from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
+import {
+  queueMeaningfulWatchEvent,
+  type PlaybackSnapshot,
+} from "../src/lib/watchEvents/watchEvents"
 
 /** Background color from Crimson Gallery design system */
 const BG_COLOR = "#161311"
@@ -46,6 +50,18 @@ try {
 function VideoPlayerOverlay() {
   const { state, dismissVideo } = useVideoPlayerContext()
 
+  // Anonymous watch-event capture (feat-322): only sources opened WITH admin
+  // identity record; the queue lives in AsyncStorage until sign-in can flush
+  // it. Identity is read via ref inside the stable callback so the player
+  // never re-renders (and never resets its latch) on context churn.
+  const identityRef = useRef(state.currentIdentity)
+  identityRef.current = state.currentIdentity
+  const handleMeaningfulPlayback = useCallback((snapshot: PlaybackSnapshot) => {
+    const identity = identityRef.current
+    if (identity == null) return
+    void queueMeaningfulWatchEvent(identity, snapshot)
+  }, [])
+
   if (!state.isVisible || state.currentUrl == null) {
     return null
   }
@@ -56,6 +72,7 @@ function VideoPlayerOverlay() {
       title={state.currentTitle ?? undefined}
       subtitle={state.currentSubtitle ?? undefined}
       onDismiss={dismissVideo}
+      onMeaningfulPlayback={handleMeaningfulPlayback}
     />
   )
 }

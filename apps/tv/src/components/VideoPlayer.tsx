@@ -25,6 +25,11 @@ import { scale } from "../lib/scale"
 import { datadogLog, reportDatadogError } from "../lib/datadog"
 import { extractMuxPlaybackId } from "../lib/muxUrl"
 import {
+  evaluateMeaningfulPlayback,
+  initialMeaningfulState,
+  type PlaybackSnapshot,
+} from "../lib/watchEvents/watchEvents"
+import {
   createVideoQoeSession,
   sanitizeVideoErrorMessage,
   shouldCountRebuffer,
@@ -599,6 +604,11 @@ export type VideoPlayerProps = {
   title?: string
   subtitle?: string
   onDismiss: () => void
+  /** Fired at most once per source when playback crosses the meaningful
+   *  threshold (30s watched or 25% progress — thresholds live in
+   *  lib/watchEvents/watchEvents.ts). The player stays identity-free; the
+   *  overlay owning identity decides what to do with the snapshot. */
+  onMeaningfulPlayback?: (snapshot: PlaybackSnapshot) => void
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -608,6 +618,7 @@ export function VideoPlayer({
   title,
   subtitle,
   onDismiss,
+  onMeaningfulPlayback,
 }: VideoPlayerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1096,6 +1107,17 @@ export function VideoPlayer({
     return () => clearTimeout(fallback)
   }, [])
 
+  // Meaningful-playback latch (anonymous watch events, feat-322). Ref-held so
+  // the timeUpdate effect below keeps its [player] dep; reset per source.
+  const meaningfulStateRef = useRef(initialMeaningfulState)
+  const onMeaningfulPlaybackRef = useRef(onMeaningfulPlayback)
+  useEffect(() => {
+    onMeaningfulPlaybackRef.current = onMeaningfulPlayback
+  }, [onMeaningfulPlayback])
+  useEffect(() => {
+    meaningfulStateRef.current = initialMeaningfulState
+  }, [streamingUrl])
+
   // Track time updates.
   // Fix #4: Skip state updates while a seek is in flight — don't let stale
   // pre-seek timeUpdate events overwrite the optimistic position.
@@ -1104,6 +1126,34 @@ export function VideoPlayer({
       // P2.3: ignore late-arriving native events after unmount (same guard
       // as playingChange/statusChange).
       if (!isMountedRef.current) return
+      // Meaningful-playback check rides the same 1Hz tick; the latch keeps it
+      // one-shot and the seek guard below is irrelevant to it (a stale
+      // pre-seek time can only DELAY the threshold, never fake-cross it
+      // backwards, and the payload is still a real watched position).
+      {
+        const nativeDuration = player.duration
+        const { state: nextMeaningful, record } = evaluateMeaningfulPlayback(
+          meaningfulStateRef.current,
+          payload.currentTime,
+          typeof nativeDuration === "number" &&
+            Number.isFinite(nativeDuration) &&
+            nativeDuration > 0
+            ? nativeDuration
+            : null,
+        )
+        meaningfulStateRef.current = nextMeaningful
+        if (record) {
+          onMeaningfulPlaybackRef.current?.({
+            positionSeconds: payload.currentTime,
+            durationSeconds:
+              typeof nativeDuration === "number" &&
+              Number.isFinite(nativeDuration) &&
+              nativeDuration > 0
+                ? nativeDuration
+                : null,
+          })
+        }
+      }
       // QoE: track the playhead for the summary's watched_ms (approximate; the
       // module keeps only the last value). Pure side-effect, no control flow.
       qoeRef.current?.onTimeUpdate(payload.currentTime)

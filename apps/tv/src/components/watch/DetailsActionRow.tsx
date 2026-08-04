@@ -65,7 +65,19 @@ export function DetailsActionRow({
   const handlePlay = () => {
     const hls = activeVariant?.hls
     if (!hls || !validateStreamingUrl(hls)) return
-    playVideo(hls, title ?? undefined, undefined)
+    // Identity rides along for anonymous watch-event capture (feat-322):
+    // admin Video documentId + the selected dub's documentId.
+    playVideo(
+      hls,
+      title ?? undefined,
+      undefined,
+      video?.documentId
+        ? {
+            videoId: video.documentId,
+            videoDubId: activeVariant?.documentId ?? null,
+          }
+        : undefined,
+    )
   }
 
   // Share continuation URL → QR fallback: the public watch URL, validated
