@@ -19,7 +19,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-04 via [PR #**PR**](https://github.com/JesusFilm/forge/pull/__PR__) (`feat(chat): render the Seeker's featured video inline (ai-chat feat-328)`).
+**Shipped:** 2026-08-04 via [PR #1832](https://github.com/JesusFilm/forge/pull/1832) (`feat(chat): render the Seeker's featured video inline (ai-chat feat-328)`).
 
 **What landed.** Chat parses the optional `video` off the terminal SSE `result`
 frame and renders it as an inline Mux player — a sibling block below the
