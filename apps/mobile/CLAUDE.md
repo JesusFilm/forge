@@ -104,3 +104,33 @@ change made after boot needs a Metro restart to take effect.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
+
+## Auth + watch progress (feat: mobile login & continue watching)
+
+- **Session**: `src/lib/authSession.ts` owns the Better Auth Expo client
+  (lazy getter, never module-scope) and a subscribable snapshot readable
+  WITHOUT React — the Apollo link and recorder read it directly. Credentials
+  live in SecureStore with this-device-only accessibility; Android backup is
+  opted out via `app.json` `allowBackup: false`. The short-lived user JWT is
+  memory-only with single-flight refresh-on-expiry.
+- **Operation-scoped user JWT (same law as the fleet search bearer)**: the
+  signed-in JWT rides ONLY the three progress operations
+  (`PROGRESS_OPERATION_NAMES` in `src/lib/authHeaders.ts`); the async
+  `createUserJwtLink` sits ahead of the sync header links and forwards every
+  other operation untouched. Guard tests pin the gate to the operations
+  actually sent — never widen it.
+- **Progress store**: `src/lib/watchProgress/` — account-tagged in-memory
+  store + versioned AsyncStorage snapshot + account-bound offline queue
+  (slug-keyed for downloaded playback; admin resolves slugs server-side).
+  Recording rides `useManagedVideoPlayer`'s existing 1s poll via
+  `options.progress` (heroes never reach the adapter, so they're excluded
+  structurally); writes batch at most once per 30s (admin's rate limiter
+  allows 30 mutations/min — never write per-tick), forced on
+  pause/background/unmount/end. Progress is signed-in ONLY (R10): sign-out
+  empties store, snapshot, and queue via `attachProgressLifecycle`.
+- **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
+  ≥90% snaps full) on every card surface EXCEPT the Library downloads row
+  (deferred — the row stores only a slug). Fold progress into
+  `accessibilityLabel` via `progressAccessibilityText`.
+- **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
+  only — never email or display name.
