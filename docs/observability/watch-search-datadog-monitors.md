@@ -1,10 +1,10 @@
-# Watch-search failure — Datadog monitor spec (feat-334)
+# Watch-search failure — Datadog monitor spec (feat-335)
 
 Implementation spec for the Datadog monitor that pages an operator on an
 elevated mobile Watch-search failure rate. **Self-contained** — everything you
 need to build the monitor is here; you do not need the originating chat.
 
-- **Owner:** Urim · **Feature:** feat-334 (mobile search observability parity), unit U10
+- **Owner:** Urim · **Feature:** feat-335 (mobile search observability parity), unit U10
 - **Source of the signal:** `apps/mobile/src/lib/watchSearchLog.ts` (attribute
   builder + error-code classifier), emitted from
   `apps/mobile/app/(tabs)/watch.tsx` through the Datadog RN SDK
@@ -20,18 +20,18 @@ need to build the monitor is here; you do not need the originating chat.
 Mobile Watch-search failures arrive as GraphQL error codes in a **200-body**
 response. RUM error tracking never sees them — no HTTP error, no crash, no RUM
 error event — so a full mobile search outage would today be visible only to
-users. The feat-334 alignment gave every failed search one canonical structured
+users. The feat-335 alignment gave every failed search one canonical structured
 log row (`@watch_search.outcome:failed`); this monitor is the alarm on that
 row's rate.
 
 **This monitor deliberately exceeds web parity.** Even web has no search-quality
-monitor; this is net-new methodology (session-settled decision in the feat-334
+monitor; this is net-new methodology (session-settled decision in the feat-335
 plan), not a parity item. Scope is **one monitor on the `failed` outcome** —
 not a dashboard suite.
 
 ## 1. Precondition — aligned logs arriving (verify FIRST)
 
-Verified 2026-08-04 (feat-334 U8 simulator verification, against local admin in
+Verified 2026-08-04 (feat-335 U8 simulator verification, against local admin in
 `env:development`): mobile emits the shared message `watch_search analytics`
 under `service:forge-mobile`; failed rows log at **warn** carrying
 `@watch_search.error_code`; every row carries the
@@ -114,7 +114,7 @@ A single Datadog **Log Alert** monitor.
   and offline-retry lag, meaningfully more than the 60s the fleet-ceiling
   monitors budget for server syslog.
 - **Tags:** `service:forge-mobile`, `env:prod`, `team:forge`,
-  `feature:feat-334`, `area:watch-search`.
+  `feature:feat-335`, `area:watch-search`.
 - **`enable_logs_sample: false` — one deliberate departure from the
   fleet-ceiling template** (which attaches a sample log line to every alert).
   The log carries `@watch_search.query`, raw user search terms; an attached
@@ -125,8 +125,8 @@ A single Datadog **Log Alert** monitor.
 
 ## 4. Calibration → alert (the post-merge operator tail)
 
-Owned by the feat-334 plan owner (Goal Capsule tail ownership). **Deadline:
-monitor live and firing-tested within 14 days of merge.** The feat-334 roadmap
+Owned by the feat-335 plan owner (Goal Capsule tail ownership). **Deadline:
+monitor live and firing-tested within 14 days of merge.** The feat-335 roadmap
 ticket stays `in-progress` until this completes.
 
 1. **Accumulate.** Let the aligned logs gather ~1 representative week of prod
@@ -155,7 +155,7 @@ ticket stays `in-progress` until this completes.
 5. **Firing-test.** Drive a synthetic burst of failed mobile searches (e.g.
    sustained rapid searches from one device until rate-limit rejections flow)
    and confirm the monitor fires **and the page lands in the chosen channel** —
-   that page is the completion test (feat-334 Goal Capsule). If the calibrated
+   that page is the completion test (feat-335 Goal Capsule). If the calibrated
    threshold is too high to reach synthetically, temporarily lower it, observe
    the page, then restore — the test proves the wiring (query → monitor →
    channel), not the number.
@@ -169,7 +169,7 @@ Definition of done:
       recorded in the monitor description.
 - [ ] Notification channel set; no placeholder left.
 - [ ] Synthetic-burst firing test paged the chosen channel.
-- [ ] `docs/roadmap/content-discovery/feat-334-mobile-search-observability-parity.md`
+- [ ] `docs/roadmap/content-discovery/feat-335-mobile-search-observability-parity.md`
       flipped to `complete`.
 
 ## 5. How to create it — manual, in the Datadog UI

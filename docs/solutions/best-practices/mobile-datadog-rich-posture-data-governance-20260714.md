@@ -15,7 +15,7 @@ diagnostic value:
 - Raw **search terms** (`watch_search` / `watch_search_failed`, `term` field)
 - Content **titles and ids/slugs** (`content_id`, resolution + QoE events)
 
-> **2026-08-04 update (mobile search observability parity, feat-334):** the
+> **2026-08-04 update (mobile search observability parity, feat-335):** the
 > mobile search log shapes named in the first bullet are retired. The raw
 > search term now ships in the shared cross-client message
 > `watch_search analytics` under the `watch_search.query` attribute; the

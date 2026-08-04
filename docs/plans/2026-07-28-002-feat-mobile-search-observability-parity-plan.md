@@ -142,7 +142,7 @@ The canonical-log contract is one log per **settled** request: a search supersed
 
 This plan owns mobile search observability parity plus its failure monitor. The surrounding picture is current understanding, not a committed roadmap:
 
-- Extends: `docs/roadmap/content-discovery/feat-197-watch-search-query-outcome-logging.md` — web's completed analytics ticket, whose methodology this ports. Tracked as `docs/roadmap/content-discovery/feat-334-mobile-search-observability-parity.md` (renumbered from feat-322 on 2026-08-04 after concurrent tickets on `main` claimed that id).
+- Extends: `docs/roadmap/content-discovery/feat-197-watch-search-query-outcome-logging.md` — web's completed analytics ticket, whose methodology this ports. Tracked as `docs/roadmap/content-discovery/feat-335-mobile-search-observability-parity.md` (renumbered twice after concurrent tickets on `main` claimed each id: feat-322 → feat-334 on 2026-08-04, feat-334 → feat-335 on 2026-08-05).
 - Enables: accurate fleet-ceiling calibration (the corrected per-platform search-rate recipe) and any future cross-client search dashboard.
 - Can proceed independently of: the feat-240/241 fleet abuse-ceiling arc and the `SEARCH_AUTH_REQUIRED` rollout.
 - Hand-offs (owned by other surfaces' owners, recorded here so they aren't lost): admin-side caller-platform identity in search traces; a TV touch-up (shared-contract `event_name` attribute + first-party admin events, which TV also lacks); web adopting a separate client-latency field on its failed path; and — found 2026-08-04 — web's canonical search-analytics emission itself: #1808 moved web's live search direct-to-client, leaving `runSearch` (the emitting server action) with no callers, so web's canonical log is currently dark and its owners must re-wire it (possibly mirroring this plan's client-emitted approach).
@@ -363,6 +363,6 @@ The suite must be green as a whole (`pnpm --filter @forge/mobile test`), not onl
 - All units complete in dependency order; full mobile test suite, typecheck, and lint green.
 - Simulator evidence captured (AE1–AE4): distinct dashboard rows per install, shared-message logs with both latency fields, RUM action + admin event rows joined by one request id.
 - The runbook answers mobile search questions with a documented query (AE5); the prose sweep leaves no forward-looking reference to retired names.
-- The monitor spec exists with query, calibration procedure, and placeholder channel; the post-merge operator tail (create in Datadog UI → calibrate a week → set threshold + channel, firing-test within 14 days of merge, AE6) is written in the spec and tracked on the feat-334 roadmap ticket.
+- The monitor spec exists with query, calibration procedure, and placeholder channel; the post-merge operator tail (create in Datadog UI → calibrate a week → set threshold + channel, firing-test within 14 days of merge, AE6) is written in the spec and tracked on the feat-335 roadmap ticket.
 - No dead or experimental code from abandoned approaches remains in the diff; the guard tests have each been observed failing once.
-- Roadmap ticket `feat-334` reflects reality (in-progress until the operator tail completes).
+- Roadmap ticket `feat-335` reflects reality (in-progress until the operator tail completes).

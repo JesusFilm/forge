@@ -12,7 +12,7 @@ const path = require("path")
 // builder — every request routes through buildWatchSearchInput.
 const ALLOWED = new Set(["src/lib/watchSearch.ts"])
 
-// The event-mutation files (feat-334 U5) carry `routeLanguageSlug` as the
+// The event-mutation files (feat-335 U5) carry `routeLanguageSlug` as the
 // recordWatchSearchEvent wire VARIABLE pinned to null — not a search input
 // key. Only that key is tolerated there; every other key still flags.
 const TOLERATED_KEYS = new Map([

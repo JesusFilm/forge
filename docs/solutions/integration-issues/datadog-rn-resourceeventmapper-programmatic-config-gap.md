@@ -137,7 +137,7 @@ datadogLog.info("watch_search", {
 })
 ```
 
-> **Superseded 2026-08-04 (mobile search observability parity, feat-334):**
+> **Superseded 2026-08-04 (mobile search observability parity, feat-335):**
 > the two snippets above show retired shapes. The monotonic counter id was
 > replaced by a UUID (admin's echoed request id adopted on success), and the
 > log now uses the shared cross-client message `watch_search analytics` with

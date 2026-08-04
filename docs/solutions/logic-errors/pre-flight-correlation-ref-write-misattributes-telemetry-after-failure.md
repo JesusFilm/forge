@@ -31,7 +31,7 @@ tags:
 freshly minted id **before** the search request was issued (pre-flight), and
 once on success with admin's adopted echo. The pre-flight write was harmless
 for years — the only consumer was a log line, and a dangling id in a log is
-noise. feat-334 (PR JesusFilm/forge#1823) added consumers whose semantics are
+noise. feat-335 (PR JesusFilm/forge#1823) added consumers whose semantics are
 join-integrity: an unsampled first-party `RESULT_CLICKED` event store and a
 RUM click action, both keyed off that ref. The moment those consumers landed,
 the pre-flight write's _timing_ became a correctness contract nobody had ever
@@ -102,4 +102,4 @@ explicitly.
 ## Related
 
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — sibling review-discipline family from the same PR
-- `docs/roadmap/content-discovery/feat-334-mobile-search-observability-parity.md` — the feature this shipped with (PR JesusFilm/forge#1823, open as of 2026-08-04; this doc travels with it)
+- `docs/roadmap/content-discovery/feat-335-mobile-search-observability-parity.md` — the feature this shipped with (PR JesusFilm/forge#1823, open as of 2026-08-04; this doc travels with it)

@@ -1,5 +1,5 @@
 /**
- * First-party admin search events (feat-334): pure variable builders plus
+ * First-party admin search events (feat-335): pure variable builders plus
  * fire-and-forget senders for RESULT_CLICKED / RESULTS_VIEWED as client MOBILE.
  * Sanitization ports web's search-actions.ts; anonymous by design (KTD6).
  */

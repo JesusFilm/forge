@@ -134,7 +134,7 @@ export function mapWatchSearchResponse(
     // shift the cursor back and re-fetch duplicates.
     nextOffset: response?.nextOffset ?? requestedOffset + returned.length,
     results,
-    // Telemetry passthrough (feat-334): nullable end to end, absence never throws.
+    // Telemetry passthrough (feat-335): nullable end to end, absence never throws.
     requestId: response?.requestId ?? null,
     latencyMs: response?.latencyMs ?? null,
     degraded: response?.degraded ?? null,

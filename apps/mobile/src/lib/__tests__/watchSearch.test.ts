@@ -227,7 +227,7 @@ describe("mapWatchSearchResponse", () => {
     expect(page.nextOffset).toBe(22)
   })
 
-  // Telemetry passthrough (feat-334 U2): requestId joins client records to the
+  // Telemetry passthrough (feat-335 U2): requestId joins client records to the
   // server trace; latencyMs/degraded/searchMode feed the canonical search log.
   it("carries the four telemetry scalars through when present", () => {
     const page = mapWatchSearchResponse(

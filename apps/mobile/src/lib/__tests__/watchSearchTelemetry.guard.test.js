@@ -5,7 +5,7 @@
 const fs = require("fs")
 const path = require("path")
 
-// Guard: feat-334 retired mobile's pre-parity search telemetry — the
+// Guard: feat-335 retired mobile's pre-parity search telemetry — the
 // "watch_search_failed" log, the bare datadogLog "watch_search" emit, and the
 // "search.result_clicked" action name. None may return to src/ or app/.
 

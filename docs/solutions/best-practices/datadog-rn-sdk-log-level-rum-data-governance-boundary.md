@@ -33,7 +33,7 @@ control. Pin it like one.
 
 ## Context
 
-feat-334 brought `apps/mobile`'s watch-search telemetry to parity with web's.
+feat-335 brought `apps/mobile`'s watch-search telemetry to parity with web's.
 Mobile deliberately logs the raw viewer search term — that is a signed-off
 posture, not an oversight. The governance assessment at
 `docs/solutions/best-practices/mobile-datadog-rich-posture-data-governance-20260714.md`
@@ -42,7 +42,7 @@ that free text to one place: the Datadog **Logs** store, on the org's default
 15-day index, with a named deletion path.
 
 The security review on PR JesusFilm/forge#1823 asked a question the assessment
-never had to answer, because before feat-334 the shapes were different: _what
+never had to answer, because before feat-335 the shapes were different: _what
 actually holds the raw query inside the Logs store?_ The answer turned out to be
 a single word at two call sites. Both failure emits in
 `apps/mobile/app/(tabs)/watch.tsx` call `datadogLog.warn(...)`. Had they called
@@ -152,7 +152,7 @@ an event in the RUM product.
 _(The pod is not tracked in the repo — `apps/mobile/ios` is an `expo prebuild`
 artifact — so these citations are against DatadogLogs `3.11.0`, the version whose
 `Podfile.lock` CocoaPods checksum (`ef987082…`, not a git commit) matches the
-locally cached pod source read during the feat-334 review.)_
+locally cached pod source read during the feat-335 review.)_
 
 For mobile's search telemetry that bag contains the raw viewer query. It is the
 only raw-text field in it, deliberately so —
@@ -293,5 +293,5 @@ catch all `error` logs fails the negative one.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — the one-line-revert-surface META family this instance joins
 - `docs/solutions/architecture-patterns/canonical-server-search-analytics-supplemental-rum-pattern.md` — the Logs-canonical / RUM-supplemental boundary whose mobile leg this level guards
 - `docs/solutions/security-issues/pre-verification-log-field-namespace-pollution-20260518.md` — structural sibling: a log FIELD NAME as a trust contract, vs the log LEVEL here
-- `docs/solutions/integration-issues/datadog-rn-resourceeventmapper-programmatic-config-gap.md` — same SDK corpus and feat-334 lineage
-- PR JesusFilm/forge#1823 (feat-334) — the shipping PR carrying the fix (open as of 2026-08-04; this doc travels with it)
+- `docs/solutions/integration-issues/datadog-rn-resourceeventmapper-programmatic-config-gap.md` — same SDK corpus and feat-335 lineage
+- PR JesusFilm/forge#1823 (feat-335) — the shipping PR carrying the fix (open as of 2026-08-04; this doc travels with it)
