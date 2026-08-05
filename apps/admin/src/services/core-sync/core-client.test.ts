@@ -8,6 +8,25 @@ describe("coreQuery", () => {
     vi.unstubAllGlobals()
   })
 
+  it("sends x-graphql-client-name: watch so Core can filter watch-restricted videos", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { videos: [] } }),
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    await coreQuery("query { videos { id } }")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-graphql-client-name": "watch",
+        }),
+      }),
+    )
+  })
+
   it("throws when Core returns GraphQL errors in a 200 response", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
