@@ -700,10 +700,13 @@ proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.
   branch (`listThreads` is never called — the write-path gate's
   `thread_limit` is unrepresentable on this wire; the send route keeps
   `authorizeAiChatThreadAccess` unchanged). Wire projection is
-  `{ id, role, text, createdAt }`, user/assistant text parts only, capped at
+  `{ id, role, text, createdAt }` plus the OPTIONAL feat-329 attachments
+  below, user/assistant text parts only, capped at
   8,192 UTF-16 units per message (≤3 UTF-8 bytes each — the chat proxy's
-  8 MiB thread byte-cap covers the worst case) — tool internals and provider
-  metadata are unrepresentable. Resolver store errors propagate to a generic
+  8 MiB thread byte-cap covers the worst case). Provider metadata stays
+  unrepresentable. **Superseded (feat-329):** the blanket "tool internals are
+  unrepresentable" contract this line used to state no longer holds — see
+  "Replay attachments" below. Resolver store errors propagate to a generic
   `store_failed` (fail closed — never `thread_not_found`). Transcript order
   relies on `recall`'s chronological return order — a pinned dist fact,
   CI-guarded by the real-memory smoke's user-before-assistant assertion;
@@ -719,6 +722,56 @@ proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.
   override for non-`user:` resources via `aiChatMemoryConfigFor`
   (`src/mastra/ai-chat-memory.ts`, feat-285). Fire-and-forget after the turn;
   `""` stays the untitled sentinel and generation retries on the next turn.
+- **Replay attachments (feat-329, plan U4 — closes the accepted D7 gap):**
+  each replayed assistant message may carry optional `sources` and `video`,
+  re-derived from the turn's STORED `tool-invocation` parts. This is the one
+  place tool internals reach a wire, and only through the same field-by-field
+  allowlists the live path uses — `agents/seeker-turn-projection.ts` holds the
+  shared `projectSource`/`projectVideo` + `resolveTurnAttachments` (plan P8),
+  and each route supplies its own thin adapter (send path: `toolResults`
+  chunks; replay: stored parts). The shared module is PURE: it RETURNS the
+  declaration-rejection reason instead of logging it, because replay
+  re-resolves every stored turn on every thread open — only the live path
+  emits `[seeker-route] event=video_feature_invalid_declaration`.
+  - **Turn association:** the store may split one turn's tool parts onto a
+    tool-only assistant message (no text), which the chat client drops. So the
+    projection pools each turn's chunks (a turn = the run of assistant rows
+    since the last NON-assistant row — the boundary closes on "not assistant",
+    never on "user": the store's role space also holds system/signal/tool plus
+    rows whose role is corrupt or unreadable, and each of those silently merged
+    two turns) and attaches to that run's LAST text-bearing message; a turn with
+    no text-bearing message drops its attachments.
+  - **Replay-only bounds:** ≤5 sources per message; 512-UTF-16-unit snippets
+    and 128-unit display strings (`sourceName`, source `title`, video `title`)
+    truncated deterministically; a source whose `url` exceeds 192 units is
+    DROPPED rather than cut (a truncated URL still parses as https and renders
+    a live-looking link to a 404), with drops filtered BEFORE the ≤5 slice. The
+    send path's per-passage bounds would blow the consumer's 8 MiB cap and turn
+    long non-Latin threads into `unavailable` replays.
+    `AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES` derives the budget (8,153,600 B
+    against the 8,388,608 B consumer cap) from the named constants, and a
+    second test SERIALIZES a maximal thread and measures real bytes — the
+    derivation alone can only catch a raised bound, never an uncounted field.
+    Never raise the cap; the accepted cost is a truncated-vs-live divergence.
+  - **No `grounded` on this wire** — R21 keeps engine/grounded badges off
+    replayed turns, and the sources disclosure needs only the list.
+  - **`SEEKER_VIDEO_ENABLED` does NOT retract stored videos.** The replay route
+    reads no flag of its own, and unlike the send path it cannot be inert by
+    construction — the send path simply has no chunks to resolve with the tools
+    unregistered, while replay's chunks persist in the store. Flipping the flag
+    off stops new declarations; already-stored videos keep rendering on reopen.
+    Full retraction is `SEEKER_ROUTE_ENABLED=false` (darkens the whole lane) or
+    purging the threads. **Ruled 2026-08-05 — settled, do not re-litigate:** the
+    documented-partial semantics are ACCEPTED and the replay-side gate is
+    deliberately NOT built. The dated amendment at the plan's rollback step 5
+    carries the full rationale and the revisit triggers (audience widening, or
+    an incident class needing visual retraction).
+  - The stored-part shape (`{ type: "tool-invocation", toolInvocation: {
+toolName, result } }`) is a pinned dist fact — **re-verify on `@mastra/*`
+    bumps**; the real-memory round trip in `ai-chat-history-route.test.ts`
+    is the CI guard. Its scope limit is labelled in place: that store puts the
+    whole turn on ONE message, so the SPLIT case is covered only by the mocked
+    separate-tool-message fixture.
 - Logging is enum-only plain-string `[ai-chat-history] event=… reason=…` —
   never thread ids, titles, transcript text, or exception text (KTD13).
 

@@ -61,9 +61,13 @@ function toReason(value: unknown): ReplyFailureReason {
     : "generation_failed"
 }
 
-// Defensive projection of the (untrusted) wire sources into typed shape. The
-// render layer additionally enforces the https-only link + text-only guards.
-function toSources(value: unknown): SeekerSource[] {
+/**
+ * Defensive projection of the (untrusted) wire sources into typed shape. The
+ * render layer additionally enforces the https-only link + text-only guards.
+ * Exported since feat-329 so the REPLAY wire is re-validated by exactly this
+ * function — the replay payload is never trusted more than the live one.
+ */
+export function toSources(value: unknown): SeekerSource[] {
   if (!Array.isArray(value)) return []
   const out: SeekerSource[] = []
   for (const raw of value) {
@@ -109,14 +113,18 @@ function isSlug(value: unknown): value is string {
 // The closed reason vocabulary for the rejection log. Tokens ONLY — a wire
 // value must never reach a log line (titles are catalog text, and the frame
 // rides a special-category conversation).
-type VideoRejectReason = "shape" | "video_id" | "title" | "playback_id" | "slug"
+export type VideoRejectReason =
+  | "shape"
+  | "video_id"
+  | "title"
+  | "playback_id"
+  | "slug"
 
 // A silent projection makes a producer/consumer wire drift invisible at the
 // flag flip. Enum-only; lands in the DOGFOODER'S BROWSER CONSOLE, never
 // Railway — chat ships no browser log collector. See apps/chat/CLAUDE.md.
-function rejectVideo(reason: VideoRejectReason): undefined {
+function warnRejectedVideo(reason: VideoRejectReason): void {
   console.warn(`[chat-video] event=projection_rejected reason=${reason}`)
-  return undefined
 }
 
 /**
@@ -127,8 +135,20 @@ function rejectVideo(reason: VideoRejectReason): undefined {
  * any other URL) on the wire is ignored, never rendered (plan D9/P7). An
  * absent or invalid `languageSlug` falls back to the default watch language;
  * only the CONTENT slug is a rejection vector.
+ *
+ * `onRejected` overrides where a refusal is reported. The default is the live
+ * terminal frame's one-line browser warning; the REPLAY caller (feat-329)
+ * passes a collector instead, because it re-projects every stored turn on
+ * every thread open and would otherwise turn one thread open into a burst.
  */
-export function toVideo(value: unknown): VideoAttachment | undefined {
+export function toVideo(
+  value: unknown,
+  onRejected: (reason: VideoRejectReason) => void = warnRejectedVideo,
+): VideoAttachment | undefined {
+  const rejectVideo = (reason: VideoRejectReason): undefined => {
+    onRejected(reason)
+    return undefined
+  }
   // Nothing declared is the NORMAL case — the producer omits the field, and
   // that is most turns. Never log it: the diagnostic exists for a value that
   // was actually sent and then failed a gate.

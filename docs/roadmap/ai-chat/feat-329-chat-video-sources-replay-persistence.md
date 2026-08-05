@@ -3,7 +3,7 @@ id: "feat-329"
 title: "Replay persistence: featured video + sources survive thread reload"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-10"
 duration: 2
 depends_on:
@@ -14,6 +14,20 @@ tags:
   - "ai-pipeline"
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-05 via [PR #NNNN](https://github.com/JesusFilm/forge/pull/NNNN) (`feat(chat): replay persistence for featured videos and cited sources (ai-chat feat-329)`).
+
+**What landed.** Featured videos and cited sources now survive a thread reload, re-derived at replay time from the tool parts Mastra already persists — the plan's named fallback (a compact record written at send time) was not needed, because the pre-work gate confirmed stored assistant parts carry the tool name and result. The send path's projection and declaration ladder were extracted into a shared pure module (`agents/seeker-turn-projection.ts`) that both the live and replay routes consume through their own thin adapters, so the two cannot drift; the module returns its rejection reason instead of logging, because replay re-resolves every stored turn on every thread open and must stay silent. Two decisions diverge from the brief. The replay wire deliberately carries no `grounded` field — R21 forbids the badge and the sources disclosure needs only the list — and the replay-only byte bounds grew past the brief's `<=5 sources / 512-unit snippets`: review found the derivation counted only `snippet` while `sourceName`, `title`, `url`, and the video `title` crossed the wire uncapped, so every variable-length field is now bounded (display strings truncate, an over-long URL drops its whole source) and the budget is proven by a test that serializes a maximal thread and measures real bytes. This closes the accepted D7 rollout gap for the feat-326 → feat-330 arc.
+
+**Compound docs.** `docs/solutions/architecture-patterns/turn-association-when-re-deriving-from-a-message-store.md`; `docs/solutions/architecture-patterns/kill-switch-completeness-follows-data-lifetime.md`; a measurement corollary added to `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md`.
+
+**Residual risk / follow-ups.**
+
+- **`SEEKER_VIDEO_ENABLED=false` does not retract already-stored replay videos** (decided, not an oversight). The send path is inert with the flag off only because its tools go unregistered; replay's chunks persist in the store and the replay route reads no flag. Levers in escalation order: the flag stops new declarations, `SEEKER_ROUTE_ENABLED=false` darkens the whole ai-chat lane, purging the threads removes the rows. Revisit on audience widening (the feat-236 era) or an incident class needing visual retraction. Cited sources were never gated by this flag on any path. Dated amendment at the plan's rollback step 5.
+- **One operator check closes both remaining verification residuals at once:** reopen a pre-existing video-featuring thread after merge. That exercises the post-fix video render half (browser-verified pre-fix only — the admin agent-tools upstream was timing out during the post-fix re-run; the sole video-affecting change since is 128-unit title truncation, unit-tested) AND the `PostgresStore`-preserves-tool-parts half, which the real-memory smoke's second scope limit explicitly does not cover (it pins the in-memory backend).
+- A pre-existing flake unrelated to this work can trip under whole-suite load: `apps/mastra/src/mastra/ai-chat-lane-admission.test.ts` "discriminates pool vs lane" takes ~4.0s against a 5s timeout and passes in isolation.
 
 ## Problem
 

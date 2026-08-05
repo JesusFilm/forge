@@ -14,7 +14,7 @@ import {
   SEEKER_SEARCH_VIDEOS_TOOL_NAME,
   type SeekerSearchVideosOutput,
 } from "./seeker-search-videos"
-import { projectVideo } from "../agents/seeker-route"
+import { projectVideo } from "../agents/seeker-turn-projection"
 
 /**
  * Seeker `searchVideos` tool (feat-327, plan P4).
