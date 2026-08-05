@@ -283,7 +283,7 @@ function hybridSearchRequest(
     q: query,
     query_by: "titles,descriptions",
     query_by_weights: "4,1",
-    vector_query: `embedding:([${embedding.join(",")}], k:${vectorCandidateLimit}, alpha:0.3)`,
+    vector_query: `embedding:([${embedding.join(",")}], k:${vectorCandidateLimit}, alpha:0.3, distance_threshold:${1 - MIN_SEMANTIC_SIMILARITY})`,
     filter_by: `publiclyVisible:=true && (documentKind:=video || language:=[${filterValues}])`,
     group_by: "canonicalVideoId",
     group_limit: HYBRID_GROUP_LIMIT,
@@ -294,7 +294,7 @@ function hybridSearchRequest(
     split_join_tokens: "always",
     text_match_type: "max_weight",
     prioritize_exact_match: true,
-    drop_tokens_threshold: 0,
+    drop_tokens_threshold: 1,
     rerank_hybrid_matches: false,
     sort_by: "_text_match:desc",
     include_fields:
