@@ -9,13 +9,6 @@ import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
 export const CONTINUE_WATCHING_SECTION_ID = "continue-watching"
 
 function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
-  const minutesLeft =
-    entry.durationSeconds != null
-      ? Math.max(
-          1,
-          Math.round((entry.durationSeconds - entry.positionSeconds) / 60),
-        )
-      : null
   return {
     id: `cw-${entry.videoId}`,
     sourceId: entry.videoId,
@@ -26,7 +19,9 @@ function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
     label: "Continue Watching",
     // null routes the card to /watch (never /series — resume is per video).
     rawLabel: null,
-    metaLabel: minutesLeft != null ? `${minutesLeft} min left` : null,
+    // No chip: the progress bar already conveys how far along the video is,
+    // and a "N min left" badge over the same card is redundant noise.
+    metaLabel: null,
     imageUrl: entry.imageUrl,
     landscapeImageUrl: entry.imageUrl,
     imageAlt: entry.title ?? "Continue watching",

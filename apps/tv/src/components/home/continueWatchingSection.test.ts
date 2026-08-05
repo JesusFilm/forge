@@ -30,16 +30,17 @@ describe("buildContinueWatchingSection", () => {
     expect(card.slug).toBe("stunned")
     expect(card.rawLabel).toBeNull() // routes to /watch, never /series
     expect(card.landscapeImageUrl).toBe("https://img.example/stunned.jpg")
-    expect(card.metaLabel).toBe("4 min left") // (300-45)/60 = 4.25 rounded
+    // The progress bar carries remaining-time meaning; no chip on shelf cards.
+    expect(card.metaLabel).toBeNull()
   })
 
-  it("falls back to slug when title missing and omits minutes without duration", () => {
+  it("falls back to slug when the title is missing", () => {
     const section = buildContinueWatchingSection([
       entry({ title: null, durationSeconds: null }),
     ])!
     const card = section.cards[0]!
     expect(card.title).toBe("stunned")
-    expect(card.metaLabel).toBeNull()
+    expect(card.durationSeconds).toBeNull()
   })
 })
 
