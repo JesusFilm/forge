@@ -190,7 +190,11 @@ export const HomeCard = memo(function HomeCard({
                 <View style={styles.thumbEdge} pointerEvents="none" />
               )}
 
-              {card.metaLabel != null ? (
+              {/* Focus-gated chips (Continue Watching's "N min left") appear
+                  only on the focused card; every other rail's chip is
+                  always-on. */}
+              {card.metaLabel != null &&
+              (!card.metaLabelOnFocusOnly || focused) ? (
                 <View style={styles.chip} pointerEvents="none">
                   <Text style={styles.chipText} numberOfLines={1}>
                     {card.metaLabel}

@@ -30,8 +30,26 @@ describe("buildContinueWatchingSection", () => {
     expect(card.slug).toBe("stunned")
     expect(card.rawLabel).toBeNull() // routes to /watch, never /series
     expect(card.landscapeImageUrl).toBe("https://img.example/stunned.jpg")
-    // The progress bar carries remaining-time meaning; no chip on shelf cards.
-    expect(card.metaLabel).toBeNull()
+  })
+
+  it("carries a focus-gated time-left chip", () => {
+    const card = buildContinueWatchingSection([
+      entry({ positionSeconds: 45, durationSeconds: 300 }),
+    ])!.cards[0]!
+    expect(card.metaLabel).toBe("4 min left") // (300-45)/60 = 4.25 rounded
+    expect(card.metaLabelOnFocusOnly).toBe(true)
+  })
+
+  it("floors the chip at one minute and omits it without a duration", () => {
+    expect(
+      buildContinueWatchingSection([
+        entry({ positionSeconds: 299, durationSeconds: 300 }),
+      ])!.cards[0]!.metaLabel,
+    ).toBe("1 min left")
+    expect(
+      buildContinueWatchingSection([entry({ durationSeconds: null })])!
+        .cards[0]!.metaLabel,
+    ).toBeNull()
   })
 
   it("falls back to slug when the title is missing", () => {

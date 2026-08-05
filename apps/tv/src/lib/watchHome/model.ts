@@ -100,6 +100,10 @@ export type WatchHomeCard = {
   /** 0..1 watched fraction — renders the Continue Watching progress bar on
    *  the thumbnail. Curated (non-shelf) cards leave it unset. */
   progressFraction?: number | null
+  /** When true the `metaLabel` chip shows only while the card holds focus.
+   *  Continue Watching uses it for "N min left" so the resting shelf stays
+   *  clean; curated rails leave it unset and their chip is always visible. */
+  metaLabelOnFocusOnly?: boolean
 }
 
 export type WatchHomeSection = {
