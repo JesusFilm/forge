@@ -294,6 +294,7 @@ function hybridSearchRequest(
     split_join_tokens: "always",
     text_match_type: "max_weight",
     prioritize_exact_match: true,
+    prioritize_token_position: true,
     drop_tokens_threshold: 1,
     rerank_hybrid_matches: false,
     sort_by: "_text_match:desc",
