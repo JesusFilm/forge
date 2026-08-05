@@ -202,11 +202,12 @@ without sending embeddings. The production entrypoint holds a PostgreSQL
 advisory lock for the whole publish-and-retire operation so concurrent releases
 cannot race aliases or cleanup. The request uses rank
 fusion with `alpha: 0.3`, a minimum `k` of 80 capped at 1,000 for deep offsets,
-default HNSW search effort, token dropping disabled, hybrid reranking disabled,
-and canonical grouping. Offset pagination remains one vector search rather than
-repeating the 1,536-value vector over many page requests. These settings
-prioritize a bounded, single retrieval operation; production latency and eval
-gates must be measured before changing them.
+default HNSW search effort, controlled token dropping
+(`drop_tokens_threshold: 1`), hybrid reranking disabled, and canonical
+grouping. Offset pagination remains one vector search rather than repeating the
+1,536-value vector over many page requests. These settings prioritize a
+bounded, single retrieval operation; production latency and eval gates must be
+measured before changing them.
 
 If query embedding misses its deadline, Admin performs one lexical catalog
 query and marks the semantic lanes degraded. If the native fields are absent
@@ -215,6 +216,64 @@ back to the previous dual Typesense requests. This provides a deploy-order
 safety net without creating document embeddings or paying for a second query
 embedding.
 
+## Production Relevance Tuning
+
+Tune one native Typesense control at a time and evaluate the exact deployed
+revision against a frozen baseline. The request contract is pinned in
+`apps/admin/src/services/typesense-watch-search.service.ts:266-302` and its
+colocated test. It remains one grouped hybrid request with the existing query
+embedding; these query-time changes do not rebuild the index or create corpus
+embeddings.
+
+The fixed 100-query production suite on 2026-08-05 produced:
+
+| Experiment                                          | PR                                                    | Same top result | Empty lists | Top-ten Jaccard | Decision                          |
+| --------------------------------------------------- | ----------------------------------------------------- | --------------: | ----------: | --------------: | --------------------------------- |
+| Initial native hybrid                               | predecessor                                           |             42% |          29 |           0.339 | Diagnose                          |
+| Remove the 0.5 vector-distance threshold            | [#1842](https://github.com/JesusFilm/forge/pull/1842) |             42% |          30 |           0.312 | Reject                            |
+| Restore threshold; enable controlled token dropping | [#1843](https://github.com/JesusFilm/forge/pull/1843) |             44% |           6 |           0.392 | Retain                            |
+| Enable hybrid reranking                             | [#1844](https://github.com/JesusFilm/forge/pull/1844) |             44% |           6 |           0.392 | Reject: no relevance gain, slower |
+| Reduce vector `alpha` from 0.3 to 0.1               | [#1845](https://github.com/JesusFilm/forge/pull/1845) |             44% |           6 |          0.3917 | Reject: no top-one gain           |
+| Restore `alpha: 0.3`                                | [#1846](https://github.com/JesusFilm/forge/pull/1846) |       Not rerun |   Not rerun |       Not rerun | Restore measured-best config      |
+
+Controlled token dropping was the only tested parameter that materially
+recovered recall: empty result sets fell from 29 to 6 and product-title empties
+fell to zero without adding another Typesense request. Removing the distance
+threshold admitted weaker neighbors without recovering recall. Hybrid
+reranking left every deterministic relevance metric unchanged while increasing
+latency, and lower vector alpha changed none of the 100 top results relative to
+the retained candidate.
+
+Parity metrics are necessary but not sufficient. Same-top-result and Jaccard
+measure resemblance to the established backend, not absolute intent quality.
+The Mastra comparison therefore judges each result list in both orders
+(`apps/mastra/src/services/offline-search-eval/runner.ts:597-617`) and reports
+order-sensitive verdicts as disagreements
+(`apps/mastra/src/services/offline-search-eval/report.ts:42-64`). For the #1845
+candidate, that judge returned 24 Modern wins, 30 losses, 8 ties, and 38
+disagreements with no judge or search failures. The main slices were:
+
+| Query slice   | Wins | Losses | Ties | Disagreements |
+| ------------- | ---: | -----: | ---: | ------------: |
+| Product title |    2 |     10 |    0 |            10 |
+| Scene-like    |    2 |      8 |    1 |             4 |
+| Multilingual  |   11 |      2 |    6 |             6 |
+
+This did not establish baseline-or-better public relevance. Keep omitted mode
+and `DEFAULT` on PostgreSQL until one candidate clears every registered gate:
+at least 61% same-top parity, at least 0.472 mean top-ten Jaccard, no more than
+6 empty lists, server p95 at most 250 ms, full-round-trip p95 at most 550 ms,
+zero degraded/fallback responses, exactly 100 accepted requests and analytics
+IDs, and no material title, scene, or multilingual regression in judge plus
+focused human review.
+
+The next experiments should measure how many distinct canonical videos survive
+native retrieval before hydration, especially for product-title and scene-like
+losses. Do not assume that increasing `k` or HNSW `ef` fixes the problem: the
+earlier PostgreSQL HNSW prototype showed how repeated chunks from one long video
+can consume an approximate-neighbor window before per-video collapse. Record
+distinct-video counts and result-list truncation before widening either knob.
+
 ## Related
 
 - [Typesense Watch Search local comparison](../../operations/typesense-watch-search-local.md)
@@ -222,4 +281,6 @@ embedding.
 - [Admin Watch Search production rollout checklist](admin-watch-search-production-rollout-20260720.md)
 - [Canonical language and exact-title ranking](../logic-errors/canonical-language-boundaries-and-lexicographic-search-ranking.md)
 - [Result-preserving search latency optimization](../performance-issues/admin-search-result-preserving-latency-optimization.md)
+- [Admin semantic HNSW prototype parity gate](../performance-issues/admin-semantic-hnsw-prototype-parity-gate.md)
+- [Mastra offline search eval orchestration](../architecture-patterns/mastra-offline-search-eval-orchestration-boundary-pattern.md)
 - [Universal multilingual Watch Search roadmap](../../roadmap/platform/feat-254-watch-universal-multilingual-search.md)
