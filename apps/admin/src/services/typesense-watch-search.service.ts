@@ -292,7 +292,7 @@ function hybridSearchRequest(
     prefix: "true,false",
     num_typos: "2,1",
     split_join_tokens: "always",
-    text_match_type: "max_weight",
+    text_match_type: "max_score",
     prioritize_exact_match: true,
     drop_tokens_threshold: 1,
     rerank_hybrid_matches: false,
