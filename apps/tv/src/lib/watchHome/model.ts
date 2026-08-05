@@ -100,10 +100,6 @@ export type WatchHomeCard = {
   /** 0..1 watched fraction — renders the Continue Watching progress bar on
    *  the thumbnail. Curated (non-shelf) cards leave it unset. */
   progressFraction?: number | null
-  /** Seconds into the video where the focused-card hover preview should start.
-   *  Continue Watching anchors it at the resume point so the preview shows
-   *  where the viewer left off; curated cards leave it unset (Mux default). */
-  previewStartSeconds?: number | null
 }
 
 export type WatchHomeSection = {

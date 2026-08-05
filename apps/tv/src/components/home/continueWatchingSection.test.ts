@@ -69,38 +69,9 @@ describe("card chrome", () => {
   })
 })
 
-describe("hover preview anchoring", () => {
-  it("anchors the preview at the resume point", () => {
-    const card = buildContinueWatchingSection([
-      entry({ positionSeconds: 45, durationSeconds: 300 }),
-    ])!.cards[0]!
-    expect(card.previewStartSeconds).toBe(45)
-    expect(card.muxPlaybackId).toBeNull() // entry carried no playbackId
-  })
-
-  it("passes the playback id through so the card can preview", () => {
-    const card = buildContinueWatchingSection([
-      entry({ playbackId: "abc123XYZ" }),
-    ])!.cards[0]!
-    expect(card.muxPlaybackId).toBe("abc123XYZ")
-  })
-
-  it("pulls the window back so it fits before the end", () => {
-    const card = buildContinueWatchingSection([
-      entry({ positionSeconds: 59, durationSeconds: 60 }),
-    ])!.cards[0]!
-    expect(card.previewStartSeconds).toBe(56) // 60 - 4s window
-  })
-
-  it("omits the anchor when duration is unknown or too short", () => {
-    expect(
-      buildContinueWatchingSection([entry({ durationSeconds: null })])!
-        .cards[0]!.previewStartSeconds,
-    ).toBeNull()
-    expect(
-      buildContinueWatchingSection([
-        entry({ positionSeconds: 2, durationSeconds: 3 }),
-      ])!.cards[0]!.previewStartSeconds,
-    ).toBeNull()
+describe("static thumbnail", () => {
+  it("carries no playback id, so a focused card never animates a preview", () => {
+    const card = buildContinueWatchingSection([entry()])!.cards[0]!
+    expect(card.muxPlaybackId).toBeNull()
   })
 })

@@ -49,10 +49,6 @@ export const HOME_CARD_THUMB_HEIGHT = HOME_CARD_DIMS.landscape.thumbHeight
 // tvOS keeps the full JS treatment.
 const IS_ANDROID = Platform.OS === "android"
 
-/** Seconds of preview a resume-anchored card renders — mirrors the span the
- *  Continue Watching builder reserves before the video's end. */
-const PREVIEW_WINDOW_SECONDS = 4
-
 type HomeCardProps = {
   card: WatchHomeCard
   /** Re-emits the `card` PROP plus this card's native node, so the screen can
@@ -119,24 +115,10 @@ export const HomeCard = memo(function HomeCard({
   // A feature film WITH chapter clips (JESUS, 61) previews; only COLLECTION/SERIES
   // are excluded. Portrait rails opt out — the preview renders from the LANDSCAPE
   // video and would crop over the poster.
-  // Continue Watching anchors the preview at the resume point ("here's where
-  // you left off"); every other rail keeps the warm cache-shared default
-  // window. Width/fps stay default so the URL still hits Mux's warm cache.
-  const previewOpts = useMemo(
-    () =>
-      card.previewStartSeconds != null
-        ? {
-            start: card.previewStartSeconds,
-            end: card.previewStartSeconds + PREVIEW_WINDOW_SECONDS,
-          }
-        : undefined,
-    [card.previewStartSeconds],
-  )
   const previewUrl = useHoverPreview({
     focused,
     enabled: !isPortrait && !isSeriesShaped,
     playbackId: card.muxPlaybackId,
-    previewOpts,
   })
 
   // Memoized: progress is a stable ref, so the interpolations are built once

@@ -27,7 +27,9 @@ function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
     imageUrl: entry.imageUrl,
     landscapeImageUrl: entry.imageUrl,
     imageAlt: entry.title ?? "Continue watching",
-    muxPlaybackId: entry.playbackId ?? null,
+    // Null on purpose: the shelf card stays a STATIC thumbnail. A focused card
+    // does not animate a hover preview the way curated rails do.
+    muxPlaybackId: null,
     durationSeconds: entry.durationSeconds,
     childCount: 0,
     parentCoreId: null,
@@ -37,27 +39,7 @@ function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
       entry.progress != null && entry.progress > 0
         ? Math.min(1, entry.progress)
         : null,
-    previewStartSeconds: resolvePreviewStart(entry),
   }
-}
-
-/** Preview window length Mux renders for a shelf card (matches the app default
- *  span so the animation feels identical to every other rail). */
-const PREVIEW_WINDOW_SECONDS = 4
-
-/**
- * Where the focused-card preview should start: the resume point, pulled back
- * far enough that the window fits before the end. Null (Mux default) when the
- * duration is unknown or too short to host a window at the resume point.
- */
-function resolvePreviewStart(entry: ContinueWatchingEntry): number | null {
-  const { positionSeconds, durationSeconds } = entry
-  if (!Number.isFinite(positionSeconds) || positionSeconds <= 0) return null
-  if (durationSeconds == null || durationSeconds <= PREVIEW_WINDOW_SECONDS) {
-    return null
-  }
-  const latestStart = durationSeconds - PREVIEW_WINDOW_SECONDS
-  return Math.max(0, Math.min(Math.floor(positionSeconds), latestStart))
 }
 
 /** The synthetic section, or null when the shelf is empty (renders nothing). */
