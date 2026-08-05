@@ -51,7 +51,7 @@ const MAX_HYBRID_VECTOR_CANDIDATES = 1_000
 const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
-const MIN_SEMANTIC_SIMILARITY = 0.5
+const MIN_SEMANTIC_SIMILARITY = 0.4
 const CATALOG_PREVIEW_EXCLUDED_FIELDS =
   "coreId,slug,descriptions,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson"
 const LEGACY_CATALOG_LOCALE_FIELDS = "id,titles,localesJson"
