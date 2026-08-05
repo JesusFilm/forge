@@ -6,17 +6,25 @@
 // Screen scaffold (title/section/row + focus-restore) mirrors SettingsScreen.
 
 import { useFocusEffect } from "expo-router"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
 import {
+  DEFAULT_USER_CODE_FORMAT,
+  USER_CODE_SPECS,
   createPendingSession,
   DEMO_PROFILE,
   type DeviceAuthPhase,
+  type UserCodeFormat,
 } from "../../lib/auth/deviceAuthFlow"
+import {
+  loadUserCodeFormat,
+  nextUserCodeFormat,
+  saveUserCodeFormat,
+} from "../../lib/auth/userCodeFormatPreference"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
@@ -28,12 +36,45 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"]
 const ICON_SIZE = Math.round(scale(26))
 
 export function ProfileScreen() {
+  // Both RFC 8628 code formats ship behind a switch so the choice can be made
+  // from real screens (see the flow designs). The stored preference is read
+  // once on mount; until it lands the screen shows the default format.
+  const [codeFormat, setCodeFormat] = useState<UserCodeFormat>(
+    DEFAULT_USER_CODE_FORMAT,
+  )
+
   // Entering the screen signed-out starts a sign-in session immediately —
   // the QR is the screen's whole point, so there is no separate "start" press.
   const [phase, setPhase] = useState<DeviceAuthPhase>(() => ({
     kind: "pending",
     session: createPendingSession({ nowMs: Date.now(), random: Math.random }),
   }))
+
+  // Apply the persisted format on mount, re-minting the code so the screen and
+  // the preference can't disagree. Skipped when it already matches, so the
+  // code doesn't churn on every visit.
+  useEffect(() => {
+    let cancelled = false
+    void loadUserCodeFormat().then((stored) => {
+      if (cancelled || stored === DEFAULT_USER_CODE_FORMAT) return
+      setCodeFormat(stored)
+      setPhase((current) =>
+        current.kind === "pending"
+          ? {
+              kind: "pending",
+              session: createPendingSession({
+                nowMs: Date.now(),
+                random: Math.random,
+                format: stored,
+              }),
+            }
+          : current,
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // tvos#852: a stack pop drops focus to the top-left default. Remember the
   // focused row and re-focus it on re-entry (mirrors SettingsScreen's wiring).
@@ -63,9 +104,29 @@ export function ProfileScreen() {
   const handleNewCode = useCallback(() => {
     setPhase({
       kind: "pending",
-      session: createPendingSession({ nowMs: Date.now(), random: Math.random }),
+      session: createPendingSession({
+        nowMs: Date.now(),
+        random: Math.random,
+        format: codeFormat,
+      }),
     })
-  }, [])
+  }, [codeFormat])
+
+  // Flip letters <-> numbers, mint a fresh code in the new shape, and persist
+  // the choice. Best-effort storage: a write failure still switches the screen.
+  const handleToggleCodeFormat = useCallback(() => {
+    const next = nextUserCodeFormat(codeFormat)
+    setCodeFormat(next)
+    setPhase({
+      kind: "pending",
+      session: createPendingSession({
+        nowMs: Date.now(),
+        random: Math.random,
+        format: next,
+      }),
+    })
+    void saveUserCodeFormat(next)
+  }, [codeFormat])
 
   // Stub for the phone-side approval; replaced by real /device/token polling
   // once the server grant exists (feat-322).
@@ -157,6 +218,18 @@ export function ProfileScreen() {
               icon="checkmark-circle-outline"
               label="Approve on this device (demo)"
               onPress={handleDemoApprove}
+              onFocusNode={captureFocusedNode}
+            />
+            {/* Pre-ship evaluation switch: both RFC 8628 formats are built so
+                the choice is made from real screens. Removed with the losing
+                format once the call is made — the format must be identical on
+                every platform, forever. */}
+            <ProfileRow
+              testID="profile-code-format-row"
+              icon="swap-horizontal-outline"
+              label={`Code style: ${USER_CODE_SPECS[codeFormat].label}`}
+              value={USER_CODE_SPECS[nextUserCodeFormat(codeFormat)].sample}
+              onPress={handleToggleCodeFormat}
               onFocusNode={captureFocusedNode}
             />
           </View>

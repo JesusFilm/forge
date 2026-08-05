@@ -13,14 +13,58 @@ export const DEVICE_VERIFICATION_URL = "https://auth.jesusfilm.org/device"
 /** Mirrors apps/auth's 600s authorization-code TTL. */
 export const SESSION_TTL_MS = 10 * 60_000
 
-/** RFC 8628 §6.1-style user-code charset: consonants minus lookalikes
- *  (no 0/O, 1/I, or vowels — avoids accidental words on the living-room TV). */
-const USER_CODE_CHARSET = "BCDFGHJKLMNPQRSTVWXZ"
-const USER_CODE_LENGTH = 8
+/**
+ * The two user-code formats RFC 8628 §6.1 sanctions, both implemented so the
+ * choice can be made from real screens instead of a spec argument.
+ *
+ * - `letters` — consonants minus lookalikes (no 0/O, 1/I, no vowels, so the
+ *   code can never spell a word in a living room). 8 chars over a 20-char
+ *   alphabet clears the RFC's brute-force bar. What most of the industry ships.
+ * - `numbers` — §6.1: "Pure numeric codes are also a good choice for
+ *   usability... for clients targeting locales where A-Z character keyboards
+ *   are not used" (its own example is `019-450-730`). Netflix's choice, and
+ *   the better fit for a majority-non-Latin-script audience: the number pad is
+ *   one tap away on every keyboard, with no input-mode switch.
+ *   TEN digits, not nine — 10^9 against a 5-attempt cap misses the RFC's
+ *   2^-32 target; 10^10 clears it.
+ */
+export const USER_CODE_FORMATS = ["letters", "numbers"] as const
+export type UserCodeFormat = (typeof USER_CODE_FORMATS)[number]
+
+export const DEFAULT_USER_CODE_FORMAT: UserCodeFormat = "letters"
+
+type CodeSpec = {
+  charset: string
+  length: number
+  /** Where hyphens land when the code is displayed. */
+  groups: number[]
+  /** Shown next to the format switch. */
+  label: string
+  sample: string
+}
+
+export const USER_CODE_SPECS: Record<UserCodeFormat, CodeSpec> = {
+  letters: {
+    charset: "BCDFGHJKLMNPQRSTVWXZ",
+    length: 8,
+    groups: [4, 4],
+    label: "Letters",
+    sample: "BXKD-QWNM",
+  },
+  numbers: {
+    charset: "0123456789",
+    length: 10,
+    groups: [3, 3, 4],
+    label: "Numbers",
+    sample: "019-450-7302",
+  },
+}
 
 export type DeviceAuthSession = {
   /** Grouped for reading aloud across the room, e.g. "BXKD-QWNM". */
   userCode: string
+  /** Which format minted this code — kept so the UI can label it. */
+  format: UserCodeFormat
   /** Where the phone lands after scanning; carries the code pre-filled. */
   verificationUrl: string
   expiresAtMs: number
@@ -42,11 +86,25 @@ export const DEMO_PROFILE: TvUserProfile = {
   email: "demo.viewer@example.org",
 }
 
-/** "BXKDQWNM" → "BXKD-QWNM". Idempotent on already-hyphenated input. */
-export function formatUserCode(raw: string): string {
+/**
+ * Groups a bare code for display: `BXKDQWNM` → `BXKD-QWNM`,
+ * `0194507302` → `019-450-7302`. Idempotent on already-hyphenated input, and
+ * any remainder past the declared groups is appended rather than dropped.
+ */
+export function formatUserCode(
+  raw: string,
+  format: UserCodeFormat = DEFAULT_USER_CODE_FORMAT,
+): string {
   const bare = raw.replace(/-/g, "")
-  if (bare.length <= 4) return bare
-  return `${bare.slice(0, 4)}-${bare.slice(4)}`
+  const parts: string[] = []
+  let cursor = 0
+  for (const size of USER_CODE_SPECS[format].groups) {
+    if (cursor >= bare.length) break
+    parts.push(bare.slice(cursor, cursor + size))
+    cursor += size
+  }
+  if (cursor < bare.length) parts.push(bare.slice(cursor))
+  return parts.join("-")
 }
 
 /** The QR target: verification URL with the code pre-filled so the phone user
@@ -70,18 +128,23 @@ export function isSessionExpired(
 export function createPendingSession(input: {
   nowMs: number
   random: () => number
+  /** Which code format to mint. Defaults to the shipped choice. */
+  format?: UserCodeFormat
 }): DeviceAuthSession {
+  const format = input.format ?? DEFAULT_USER_CODE_FORMAT
+  const spec = USER_CODE_SPECS[format]
   let code = ""
-  for (let i = 0; i < USER_CODE_LENGTH; i++) {
+  for (let i = 0; i < spec.length; i++) {
     const index = Math.min(
-      USER_CODE_CHARSET.length - 1,
-      Math.floor(input.random() * USER_CODE_CHARSET.length),
+      spec.charset.length - 1,
+      Math.floor(input.random() * spec.charset.length),
     )
-    code += USER_CODE_CHARSET[index]
+    code += spec.charset[index]
   }
-  const userCode = formatUserCode(code)
+  const userCode = formatUserCode(code, format)
   return {
     userCode,
+    format,
     verificationUrl: verificationUrlWithCode(DEVICE_VERIFICATION_URL, userCode),
     expiresAtMs: input.nowMs + SESSION_TTL_MS,
   }
