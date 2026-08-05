@@ -27,7 +27,6 @@ import {
   type SearchLanguageCountrySuggestion,
   type SearchLanguageOption,
 } from "@/lib/search-language"
-import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
 import { parseWatchPath } from "@/lib/routes"
 import { searchWatchDirect } from "@/lib/watch-search-client"
 import {
@@ -73,7 +72,6 @@ type ActiveSearchSignature = {
   searchLanguageEnglishName: string | null
   searchLanguageSlug: string | null
   searchRequestId: string
-  detectedQueryLanguage: string | null
 }
 
 export type FloatingSearchControllerProps = {
@@ -423,11 +421,6 @@ export function FloatingSearchController({
           activeLanguageSlug ??
           selectedSearchLanguageOptionRef.current?.publicSlug ??
           null
-        const detectedQueryLanguage = detectWatchQueryLanguage({
-          currentLanguageSlug: searchLanguageSlug ?? routeLanguageSlug,
-          languageOptions: currentLanguageOptions,
-          query: cappedQuery,
-        })
         const acceptLanguage = readBrowserAcceptLanguage()
         const selectedLanguageEnglishNames =
           normalizeSearchLanguageEnglishNames(activeLanguageEnglishNames)
@@ -486,7 +479,6 @@ export function FloatingSearchController({
           searchLanguageEnglishName,
           searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
           searchRequestId: responseSearchRequestId,
-          detectedQueryLanguage,
         }
         setSearchResultAnalytics({
           resultSource: WATCH_SEARCH_RESULT_SOURCE,
@@ -804,24 +796,6 @@ function readBrowserAcceptLanguage(): string | null {
   const languages = navigator.languages?.filter(Boolean)
   if (languages?.length) return languages.join(",")
   return navigator.language || null
-}
-
-function detectWatchQueryLanguage({
-  currentLanguageSlug,
-  languageOptions,
-  query,
-}: {
-  currentLanguageSlug: string | null
-  languageOptions: readonly SearchLanguageOption[]
-  query: string
-}): string | null {
-  return (
-    detectQueryLanguageSuggestion({
-      currentLanguageSlug,
-      languageOptions,
-      query,
-    })?.option.publicSlug ?? null
-  )
 }
 
 function withSearchLanguageOptionsFallback(

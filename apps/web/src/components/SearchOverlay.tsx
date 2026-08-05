@@ -53,7 +53,6 @@ import {
 } from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
-import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
 import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
@@ -76,16 +75,6 @@ const CATEGORY_TITLE_KEYS: Record<
 }
 
 const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
-
-function languageSuggestionKey(
-  query: string,
-  selectedLanguageSlug: string | null,
-  suggestedLanguageSlug: string,
-): string {
-  return [query.trim(), selectedLanguageSlug ?? "", suggestedLanguageSlug].join(
-    "\u0000",
-  )
-}
 
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
@@ -118,7 +107,6 @@ export function SearchOverlay() {
     languageOptionsError,
     selectedSearchLanguageOption,
     searchResultAnalytics,
-    defaultSearchLanguageOption,
     headerLanguageSwitcherVisible,
     headerLanguageCode,
     headerPinned,
@@ -144,8 +132,6 @@ export function SearchOverlay() {
     useState(false)
   const [languageMetadataFallbackReady, setLanguageMetadataFallbackReady] =
     useState(false)
-  const [dismissedLanguageSuggestionKey, setDismissedLanguageSuggestionKey] =
-    useState<string | null>(null)
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
     overlayRef.current = node
@@ -239,41 +225,6 @@ export function SearchOverlay() {
     }
   }, [languageOptionsLoaded, open])
 
-  const currentSearchLanguageSlug =
-    selectedSearchLanguageOption?.publicSlug ??
-    defaultSearchLanguageOption?.publicSlug ??
-    null
-  const maybeDetectQueryLanguageSuggestion = useCallback(
-    (value: string) => {
-      const suggestion = detectQueryLanguageSuggestion({
-        query: value,
-        currentLanguageSlug: currentSearchLanguageSlug,
-        languageOptions,
-      })
-      if (
-        suggestion &&
-        languageSuggestionKey(
-          value,
-          currentSearchLanguageSlug,
-          suggestion.option.publicSlug,
-        ) === dismissedLanguageSuggestionKey
-      ) {
-        return null
-      }
-      return suggestion
-    },
-    [
-      currentSearchLanguageSlug,
-      dismissedLanguageSuggestionKey,
-      languageOptions,
-    ],
-  )
-  const queryLanguageSuggestion = useMemo(
-    () => maybeDetectQueryLanguageSuggestion(query),
-    [maybeDetectQueryLanguageSuggestion, query],
-  )
-  const suggestedLanguageName =
-    queryLanguageSuggestion?.option.englishName.split(",")[0] ?? null
   const visibleResultIds = useMemo(
     () => displayResults.map((row) => row.id),
     [displayResults],
@@ -307,30 +258,10 @@ export function SearchOverlay() {
     pendingSearchAfterLanguageLoadRef.current = null
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (pendingQuery.trim().length === 0) return
-    if (maybeDetectQueryLanguageSuggestion(pendingQuery)) {
-      return
-    }
     debounceRef.current = setTimeout(() => {
       void search(pendingQuery)
     }, 300)
-  }, [
-    languageOptionsReadyForSearch,
-    maybeDetectQueryLanguageSuggestion,
-    query,
-    search,
-  ])
-
-  const handleQueryLanguageSuggestionConfirm = useCallback(() => {
-    const suggestion = queryLanguageSuggestion
-    if (!suggestion?.option.publicSlug) return
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    pendingSearchAfterLanguageLoadRef.current = null
-    selectSearchLanguage(suggestion.option, suggestion.option.regionNames[0])
-    void search(query, {
-      languageEnglishNames: [suggestion.option.englishName],
-      languageSlug: suggestion.option.publicSlug,
-    })
-  }, [query, queryLanguageSuggestion, search, selectSearchLanguage])
+  }, [languageOptionsReadyForSearch, query, search])
 
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -342,17 +273,11 @@ export function SearchOverlay() {
         return
       }
       pendingSearchAfterLanguageLoadRef.current = null
-      if (maybeDetectQueryLanguageSuggestion(newValue)) return
       debounceRef.current = setTimeout(() => {
         void search(newValue)
       }, 300)
     },
-    [
-      languageOptionsReadyForSearch,
-      maybeDetectQueryLanguageSuggestion,
-      setQuery,
-      search,
-    ],
+    [languageOptionsReadyForSearch, setQuery, search],
   )
 
   const handleInputKeyDown = useCallback(
@@ -365,19 +290,9 @@ export function SearchOverlay() {
         return
       }
       pendingSearchAfterLanguageLoadRef.current = null
-      if (queryLanguageSuggestion) {
-        handleQueryLanguageSuggestionConfirm()
-        return
-      }
       void search(query)
     },
-    [
-      handleQueryLanguageSuggestionConfirm,
-      languageOptionsReadyForSearch,
-      query,
-      queryLanguageSuggestion,
-      search,
-    ],
+    [languageOptionsReadyForSearch, query, search],
   )
 
   const handleCategoryClick = useCallback(
@@ -395,15 +310,6 @@ export function SearchOverlay() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       pendingSearchAfterLanguageLoadRef.current = null
       setLanguageAutocompleteOpen(false)
-      if (queryLanguageSuggestion) {
-        setDismissedLanguageSuggestionKey(
-          languageSuggestionKey(
-            query,
-            language.publicSlug,
-            queryLanguageSuggestion.option.publicSlug,
-          ),
-        )
-      }
       selectSearchLanguage(language, regionName)
       if (query.trim().length > 0) {
         void search(query, {
@@ -412,7 +318,7 @@ export function SearchOverlay() {
         })
       }
     },
-    [query, queryLanguageSuggestion, search, selectSearchLanguage],
+    [query, search, selectSearchLanguage],
   )
 
   const handleResetSearchLanguage = useCallback(() => {
@@ -433,17 +339,14 @@ export function SearchOverlay() {
     inputRef.current?.focus()
   }, [search])
 
-  const languageConfirmationPending = queryLanguageSuggestion != null
   const showCategoryGrid = query.trim().length === 0 && !loading && !searched
   const searchLanguageControlVisible =
     languageOptionsLoading ||
     languageOptions.length > 0 ||
     languageOptionsError != null
-  const searchOverlayScrollTopClass = queryLanguageSuggestion
-    ? "top-72 md:top-60"
-    : searchLanguageControlVisible
-      ? "top-60 md:top-48"
-      : "top-44 md:top-32"
+  const searchOverlayScrollTopClass = searchLanguageControlVisible
+    ? "top-60 md:top-48"
+    : "top-44 md:top-32"
   const semanticLanguageOverrideActive =
     selectedSearchLanguageOption?.publicSlug != null
   const semanticLanguageTriggerClassName = [
@@ -561,27 +464,6 @@ export function SearchOverlay() {
               )}
             </div>
           )}
-          {queryLanguageSuggestion && suggestedLanguageName && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md"
-            >
-              <span className="font-medium">
-                {t("queryLanguageDetected", {
-                  language: suggestedLanguageName,
-                })}
-              </span>
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={handleQueryLanguageSuggestionConfirm}
-                className="inline-flex h-8 cursor-pointer items-center rounded-full bg-brand-red px-3 text-xs font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
-              >
-                {t("searchInLanguage", { language: suggestedLanguageName })}
-              </button>
-            </div>
-          )}
         </div>
         <div
           aria-hidden="true"
@@ -664,7 +546,7 @@ export function SearchOverlay() {
             </div>
           )}
 
-          {!languageConfirmationPending && loading && showSkeleton && (
+          {loading && showSkeleton && (
             <div
               className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               aria-hidden="true"
@@ -681,48 +563,38 @@ export function SearchOverlay() {
             </div>
           )}
 
-          {!languageConfirmationPending && loading && !showSkeleton && (
+          {loading && !showSkeleton && (
             <p className="sr-only">{t("searching")}</p>
           )}
 
-          {!languageConfirmationPending &&
-            !loading &&
-            searched &&
-            displayResults.length === 0 &&
-            error && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <h2 className="text-lg font-semibold text-stone-200">
-                  {error}
-                </h2>
-                <p className="mt-2 text-sm text-stone-500">
-                  {t("connectionHint")}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void search(query)}
-                  className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
-                >
-                  {t("retrySearch")}
-                </button>
-              </div>
-            )}
+          {!loading && searched && displayResults.length === 0 && error && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <h2 className="text-lg font-semibold text-stone-200">{error}</h2>
+              <p className="mt-2 text-sm text-stone-500">
+                {t("connectionHint")}
+              </p>
+              <button
+                type="button"
+                onClick={() => void search(query)}
+                className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+              >
+                {t("retrySearch")}
+              </button>
+            </div>
+          )}
 
-          {!languageConfirmationPending &&
-            !loading &&
-            searched &&
-            displayResults.length === 0 &&
-            !error && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <h2 className="text-lg font-semibold text-stone-200">
-                  {t("noResults", { query: query.trim() })}
-                </h2>
-                <p className="mt-2 text-sm text-stone-500">
-                  {t("tryDifferentKeywordsOrLanguage")}
-                </p>
-              </div>
-            )}
+          {!loading && searched && displayResults.length === 0 && !error && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <h2 className="text-lg font-semibold text-stone-200">
+                {t("noResults", { query: query.trim() })}
+              </h2>
+              <p className="mt-2 text-sm text-stone-500">
+                {t("tryDifferentKeywordsOrLanguage")}
+              </p>
+            </div>
+          )}
 
-          {!languageConfirmationPending && displayResults.length > 0 && (
+          {displayResults.length > 0 && (
             <>
               <div
                 key={resultsKey}
