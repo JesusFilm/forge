@@ -11,6 +11,7 @@
 // watchPreferences pattern) and is best-effort only.
 
 import { getStorage } from "../safeStorage"
+import { uuidV4Fallback } from "../viewer-id"
 
 // Thresholds and cap mirror apps/web/src/components/watch/WatchEventRecorder.tsx.
 export const MEANINGFUL_SECONDS = 30
@@ -153,17 +154,28 @@ export function parseQueue(raw: string | null): QueuedWatchEvent[] {
   }
 }
 
-/** RFC 4122 v4 shape. Hermes has no crypto.randomUUID; Math.random is fine for
- *  an anonymous device id (no security property rides on it). */
+/**
+ * RFC 4122 v4, reusing the app's existing generator (`lib/viewer-id.ts`) rather
+ * than minting a second one — Hermes has no `crypto.randomUUID`, so that module
+ * already owns the fallback and its tests.
+ *
+ * The two ids stay distinct by LIFETIME, deliberately: `viewer-id.ts` is
+ * per-launch and in-memory (search rate-limit bucketing), while this one is
+ * persisted across launches so watch history can survive a relaunch. Its own
+ * header names cross-launch persistence as "a login-era follow-up" — this is
+ * that follow-up.
+ *
+ * Security note: this id is an anonymous grouping key, never a bearer. When the
+ * sign-in merge lands (plan U4.6) the server must authenticate the account and
+ * ignore any entry whose claimed user differs from the session — the id must
+ * never be sufficient on its own to claim history, because it is not minted
+ * from a CSPRNG (no cheap one exists here without a native module).
+ */
 export function generateViewerId(): string {
   const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } })
     .crypto
   if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID()
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = Math.floor(Math.random() * 16)
-    const v = c === "x" ? r : (r % 4) + 8
-    return v.toString(16)
-  })
+  return uuidV4Fallback()
 }
 
 // ── AsyncStorage layer (best-effort; failures never break playback) ─────────
