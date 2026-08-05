@@ -483,6 +483,7 @@ describe("TypesenseWatchSearchService", () => {
       rerank_hybrid_matches: false,
     })
     expect(hybridRequest?.vector_query).toContain("k:80, alpha:0.3")
+    expect(hybridRequest?.vector_query).not.toContain("distance_threshold")
     expect(hybridRequest?.filter_by).toBe(
       "publiclyVisible:=true && (documentKind:=video || language:=[`fr`])",
     )

@@ -283,7 +283,7 @@ function hybridSearchRequest(
     q: query,
     query_by: "titles,descriptions",
     query_by_weights: "4,1",
-    vector_query: `embedding:([${embedding.join(",")}], k:${vectorCandidateLimit}, alpha:0.3, distance_threshold:${1 - MIN_SEMANTIC_SIMILARITY})`,
+    vector_query: `embedding:([${embedding.join(",")}], k:${vectorCandidateLimit}, alpha:0.3)`,
     filter_by: `publiclyVisible:=true && (documentKind:=video || language:=[${filterValues}])`,
     group_by: "canonicalVideoId",
     group_limit: HYBRID_GROUP_LIMIT,
