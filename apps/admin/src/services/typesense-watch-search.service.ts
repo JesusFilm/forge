@@ -295,7 +295,7 @@ function hybridSearchRequest(
     text_match_type: "max_weight",
     prioritize_exact_match: true,
     drop_tokens_threshold: 1,
-    rerank_hybrid_matches: false,
+    rerank_hybrid_matches: true,
     sort_by: "_text_match:desc",
     include_fields:
       "id,documentKind,videoId,canonicalVideoId,language,titles,text,startSeconds",
