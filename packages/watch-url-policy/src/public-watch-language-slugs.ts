@@ -98,6 +98,7 @@ arabic-hassaniya
 arabic-hijazi
 arabic-iraqi-baghdadi
 arabic-juba
+arabic-khuzestani
 arabic-libyan
 arabic-modern-standard
 arabic-modern-standard-egyptian
@@ -295,6 +296,7 @@ bisu
 blaan-koronadal
 blaan-sarangani
 blackfoot
+blang
 blin
 blowo
 bobe
@@ -313,6 +315,7 @@ bororo
 bosnian
 bouyei
 bouyei-anshun
+bouyei-qianxi
 bozo-jenaama
 bozo-tigemaxo
 brahui
@@ -1133,6 +1136,7 @@ lambya
 lamnso
 lampung-api
 lampung-nyo
+langilan-manobo
 lango-south-sudan
 lango-uganda
 lao
@@ -1173,6 +1177,7 @@ lingala
 lingao
 lio
 lipo-eastern
+lipovan
 lis-ma-ron
 lisu
 lithuanian
@@ -1957,6 +1962,7 @@ takia
 takuu-nakumanu
 takwane
 tal
+talaandig-manobo
 talaud
 tali-2
 talysh
@@ -2025,6 +2031,8 @@ tigak
 tigre
 tigrinya-eritrea
 tigrinya-ethiopia
+tigwahanon-manobo
+tinonanon-manobo
 tira
 tiriki
 tiruray
@@ -2105,6 +2113,7 @@ ukaan
 ukrainian
 ukrainian-sign-language
 ukue
+umajamnon-manobo
 umbundu
 uneme-north
 uneme-south
@@ -2142,6 +2151,7 @@ vidunda
 vietnamese
 vietnamese-northern
 vili
+visualvernacular
 vitu
 vunjo-chagga
 vwanji
@@ -2215,6 +2225,7 @@ yanesha
 yanomami-ninam
 yanomamo
 yao
+yao-baiku-naogelao
 yao-iu-mien
 yao-tanzania
 yapese
@@ -2254,6 +2265,7 @@ zarma
 zayse
 zhuang-dejing
 zhuang-guibian
+zhuang-minz
 zhuang-nong
 zhuang-northern-hongshuihe
 zhuang-northern-yongbei
