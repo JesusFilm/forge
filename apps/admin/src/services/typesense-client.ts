@@ -43,13 +43,24 @@ export type TypesenseSearchHit<T> = {
   vector_distance?: number
 }
 
-export type TypesenseSearchResult<T> = {
+export type TypesenseSearchGroup<T> = {
+  group_key: string[]
+  found: number
+  hits: TypesenseSearchHit<T>[]
+}
+
+type TypesenseSearchResultBase = {
   found: number
   out_of: number
   page: number
   search_time_ms: number
-  hits: TypesenseSearchHit<T>[]
 }
+
+export type TypesenseSearchResult<T> = TypesenseSearchResultBase &
+  (
+    | { hits: TypesenseSearchHit<T>[]; grouped_hits?: never }
+    | { hits?: never; grouped_hits: TypesenseSearchGroup<T>[] }
+  )
 
 export type TypesenseAlias = {
   name: string
@@ -188,10 +199,11 @@ export class TypesenseClient {
   async importDocuments<T extends object>(
     collection: string,
     documents: readonly T[],
+    action: "create" | "upsert" = "create",
   ): Promise<void> {
     if (documents.length === 0) return
     const responseText = await this.request<string>(
-      `/collections/${encodeURIComponent(collection)}/documents/import?action=create`,
+      `/collections/${encodeURIComponent(collection)}/documents/import?action=${action}`,
       {
         method: "POST",
         headers: { "content-type": "text/plain" },
@@ -218,6 +230,33 @@ export class TypesenseClient {
         document: entry.document,
       }))
     if (failures.length > 0) throw new TypesenseImportError(failures)
+  }
+
+  async deleteDocumentsByFilter(
+    collection: string,
+    filterBy: string,
+  ): Promise<number> {
+    const result = await this.request<{ num_deleted?: number }>(
+      `/collections/${encodeURIComponent(collection)}/documents?filter_by=${encodeURIComponent(filterBy)}`,
+      { method: "DELETE" },
+    )
+    return result.num_deleted ?? 0
+  }
+
+  async updateDocumentsByFilter<T extends object>(
+    collection: string,
+    filterBy: string,
+    document: T,
+  ): Promise<number> {
+    const result = await this.request<{ num_updated?: number }>(
+      `/collections/${encodeURIComponent(collection)}/documents?filter_by=${encodeURIComponent(filterBy)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(document),
+      },
+    )
+    return result.num_updated ?? 0
   }
 
   async multiSearch<T>(

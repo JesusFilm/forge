@@ -58,12 +58,17 @@ export type TypesenseWatchAvailabilityDocument = {
 
 export type TypesenseWatchTranscriptDocument = {
   id: string
+  documentKind: "video" | "transcript"
   videoId: string
+  canonicalVideoId: string
   language: string
   publiclyVisible: boolean
+  titles?: string[]
+  descriptions?: string[]
+  catalogGeneration?: string
   text: string
   startSeconds: number | null
-  embedding: number[]
+  embedding?: number[]
 }
 
 function physicalName(alias: string, buildId: string): string {
@@ -108,15 +113,26 @@ export function watchTranscriptCollectionSchema(
   return {
     name: physicalName(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, buildId),
     fields: [
+      { name: "documentKind", type: "string", facet: true },
       { name: "videoId", type: "string", facet: true },
+      { name: "canonicalVideoId", type: "string", facet: true },
       { name: "language", type: "string", facet: true },
       { name: "publiclyVisible", type: "bool", facet: true },
+      { name: "titles", type: "string[]", optional: true },
+      { name: "descriptions", type: "string[]", optional: true },
+      {
+        name: "catalogGeneration",
+        type: "string",
+        facet: true,
+        optional: true,
+      },
       { name: "text", type: "string", index: false },
       { name: "startSeconds", type: "float", optional: true, index: false },
       {
         name: "embedding",
         type: "float[]",
         num_dim: TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+        optional: true,
       },
     ],
   }

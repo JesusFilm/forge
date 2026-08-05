@@ -50,11 +50,13 @@ compared directly without changing the production path.
    the broad native transcript-vector corpus. Store explicit transcript
    visibility so public Watch Search can filter without discarding semantic
    evidence needed by other authorized consumers.
-3. Add a Typesense Watch Search service that performs lexical and semantic
-   retrieval in parallel, hydrates results only from the precomputed catalog,
-   and returns the existing `WatchSearchResponse` contract. Final hydration
-   requests only target/fallback availability records instead of transferring
-   every language option stored on each catalog document.
+3. Add a Typesense Watch Search service that performs one native hybrid,
+   canonically grouped candidate query, hydrates results only from the
+   precomputed catalog, and returns the existing `WatchSearchResponse`
+   contract. Final hydration requests only target/fallback availability
+   records instead of transferring every language option stored on each
+   catalog document. Lexical-only degradation remains available when query
+   embedding misses its deadline.
 4. Add an optional `mode: DEFAULT | MODERN` input to `watchSearch`; omitted or
    `DEFAULT` keeps the current backend and `MODERN` selects Typesense.
 5. Add local setup and benchmark commands that restore the latest full

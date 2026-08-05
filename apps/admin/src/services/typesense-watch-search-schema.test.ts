@@ -52,4 +52,26 @@ describe("Typesense Watch Search schemas", () => {
       facet: true,
     })
   })
+
+  it("upgrades transcripts into one native hybrid collection", () => {
+    const schema = watchTranscriptCollectionSchema("build")
+
+    expect(schema.fields).toEqual(
+      expect.arrayContaining([
+        { name: "documentKind", type: "string", facet: true },
+        { name: "videoId", type: "string", facet: true },
+        { name: "canonicalVideoId", type: "string", facet: true },
+        { name: "language", type: "string", facet: true },
+        { name: "publiclyVisible", type: "bool", facet: true },
+        { name: "titles", type: "string[]", optional: true },
+        { name: "descriptions", type: "string[]", optional: true },
+        {
+          name: "embedding",
+          type: "float[]",
+          num_dim: TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+          optional: true,
+        },
+      ]),
+    )
+  })
 })
