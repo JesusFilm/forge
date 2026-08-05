@@ -479,7 +479,6 @@ describe("TypesenseWatchSearchService", () => {
       query_by: "titles,descriptions",
       query_by_weights: "4,1",
       group_limit: 3,
-      prioritize_token_position: true,
       drop_tokens_threshold: 1,
       rerank_hybrid_matches: false,
     })
