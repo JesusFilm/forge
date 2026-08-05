@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client"
 import {
   TypesenseClient,
   TypesenseRequestError,
+  type TypesenseSearchGroup,
   type TypesenseSearchHit,
   type TypesenseSearchRequest,
 } from "./typesense-client"
@@ -43,9 +44,12 @@ const TYPESENSE_MAX_MULTI_SEARCHES = 50
 const MAX_LEXICAL_CANDIDATES =
   TYPESENSE_MAX_PER_PAGE * TYPESENSE_MAX_MULTI_SEARCHES
 const MAX_SEMANTIC_CANDIDATES = 40
+const MIN_FALLBACK_CANDIDATES = 100
+const HYBRID_VECTOR_CANDIDATES = 80
+const HYBRID_GROUP_LIMIT = 3
+const MAX_HYBRID_VECTOR_CANDIDATES = 1_000
 const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
-const WATCHABILITY_RERANK_CANDIDATE_LIMIT = 100
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
 const MIN_SEMANTIC_SIMILARITY = 0.5
 const CATALOG_PREVIEW_EXCLUDED_FIELDS =
@@ -75,6 +79,19 @@ type Candidate = {
   evidenceLanguageSlug: string | null
   snippet: string | null
   startSeconds: number | null
+}
+
+type CandidateRetrieval = {
+  candidates: Candidate[]
+  nativeCandidateGroups: Candidate[][] | null
+  lexicalHits: TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[]
+  nativeRanking: boolean
+}
+
+type RankedCandidate = {
+  candidate: Candidate
+  rankingRelevance: number
+  watchabilityKind: IndexedWatchability["kind"]
 }
 
 type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
@@ -145,6 +162,14 @@ function isMissingAvailabilityAlias(error: unknown): boolean {
   )
 }
 
+function isLegacyHybridSchemaError(error: unknown): boolean {
+  return (
+    error instanceof TypesenseRequestError &&
+    (error.status === 400 || error.status === 404) &&
+    /documentKind|canonicalVideoId|titles|descriptions/.test(error.message)
+  )
+}
+
 function normalizeLimit(value: number | null | undefined): number {
   if (value == null || !Number.isFinite(value)) return DEFAULT_LIMIT
   return Math.min(Math.max(Math.trunc(value), 1), MAX_LIMIT)
@@ -200,12 +225,31 @@ function normalizedTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLocaleLowerCase()
 }
 
+function createTitleMatchClassifier(query: string) {
+  const normalizedQuery = normalizedTitle(query)
+  const exactTitleTokens = tokenizeForExactTitle(query)
+  return (titles: readonly string[]) => {
+    const normalizedTitles = titles.map(normalizedTitle)
+    const exact =
+      exactTitleTokens.length > 0 &&
+      normalizedTitles.some((title) =>
+        exactTitleTokens.every((token) => title.includes(token)),
+      )
+    return {
+      exact,
+      wholeTitleMatch:
+        exact && normalizedTitles.some((title) => title === normalizedQuery),
+    }
+  }
+}
+
 function lexicalSearchRequests(
   query: string,
   candidateLimit: number,
+  maxRequests = TYPESENSE_MAX_MULTI_SEARCHES,
 ): TypesenseSearchRequest[] {
   const perPage = Math.min(candidateLimit, TYPESENSE_MAX_PER_PAGE)
-  const pageCount = Math.ceil(candidateLimit / perPage)
+  const pageCount = Math.min(Math.ceil(candidateLimit / perPage), maxRequests)
   return Array.from({ length: pageCount }, (_value, index) => ({
     collection: TYPESENSE_WATCH_CATALOG_ALIAS,
     q: query,
@@ -217,6 +261,45 @@ function lexicalSearchRequests(
     num_typos: "2,1",
     exclude_fields: CATALOG_PREVIEW_EXCLUDED_FIELDS,
   }))
+}
+
+function hybridSearchRequest(
+  query: string,
+  embedding: readonly number[],
+  evidenceLocales: Array<{ slug: string; locale: string }>,
+  offset: number,
+  limit: number,
+): TypesenseSearchRequest {
+  const resultLimit = limit + 1
+  const vectorCandidateLimit = Math.max(
+    HYBRID_VECTOR_CANDIDATES,
+    Math.min(offset + resultLimit, MAX_HYBRID_VECTOR_CANDIDATES),
+  )
+  const filterValues = evidenceLocales
+    .map(({ locale }) => `\`${locale}\``)
+    .join(",")
+  return {
+    collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+    q: query,
+    query_by: "titles,descriptions",
+    query_by_weights: "4,1",
+    vector_query: `embedding:([${embedding.join(",")}], k:${vectorCandidateLimit}, alpha:0.3, distance_threshold:${1 - MIN_SEMANTIC_SIMILARITY})`,
+    filter_by: `publiclyVisible:=true && (documentKind:=video || language:=[${filterValues}])`,
+    group_by: "canonicalVideoId",
+    group_limit: HYBRID_GROUP_LIMIT,
+    offset,
+    limit: resultLimit,
+    prefix: "true,false",
+    num_typos: "2,1",
+    split_join_tokens: "always",
+    text_match_type: "max_weight",
+    prioritize_exact_match: true,
+    drop_tokens_threshold: 0,
+    rerank_hybrid_matches: false,
+    sort_by: "_text_match:desc",
+    include_fields:
+      "id,documentKind,videoId,canonicalVideoId,language,titles,text,startSeconds",
+  }
 }
 
 function previewWatchabilityKind(
@@ -538,181 +621,108 @@ export class TypesenseWatchSearchService {
       languageInterpretation.targetLanguageSlug,
     ])
     const candidateLimit = Math.min(
-      Math.max(
-        offset + limit + 1,
-        limit * 2,
-        WATCHABILITY_RERANK_CANDIDATE_LIMIT,
-      ),
+      Math.max(offset + limit + 1, MIN_FALLBACK_CANDIDATES),
       MAX_LEXICAL_CANDIDATES,
     )
     const laneStatuses: WatchSearchLaneStatus[] = []
-
-    const lexicalStartedAt = performance.now()
-    const lexicalPromise = this.typesense
-      .multiSearch<TypesenseWatchCatalogPreviewDocument>(
-        lexicalSearchRequests(titleQuery, candidateLimit),
-      )
-      .then(async (results) => {
-        const hits = results
-          .flatMap((result) => result.hits)
-          .slice(0, candidateLimit)
-        const previewHits = await this.withLegacyLocaleProjection(hits)
-        laneStatuses.push(
-          laneStatus({
-            lane: "metadata_retrieval",
-            status: "fulfilled",
-            timelineStartedAt: startedAt,
-            startedAt: lexicalStartedAt,
-            resultCount: previewHits.length,
-          }),
-        )
-        return previewHits
+    const { candidates, nativeCandidateGroups, lexicalHits, nativeRanking } =
+      await this.retrieveCandidates({
+        query,
+        titleQuery,
+        preferredLocale,
+        evidenceLocales,
+        candidateLimit,
+        offset,
+        limit,
+        timelineStartedAt: startedAt,
+        laneStatuses,
       })
-
-    const semanticStartedAt = performance.now()
-    let semanticRetrievalStartedAt: number | null = null
-    const semanticPromise = this.semanticHits(query, evidenceLocales, () => {
-      semanticRetrievalStartedAt = performance.now()
-      laneStatuses.push(
-        laneStatus({
-          lane: "semantic_embedding",
-          status: "fulfilled",
-          timelineStartedAt: startedAt,
-          startedAt: semanticStartedAt,
-          resultCount: 1,
-        }),
-      )
-    })
-      .then((hits) => {
-        if (semanticRetrievalStartedAt != null) {
-          laneStatuses.push(
-            laneStatus({
-              lane: "semantic_retrieval",
-              status: "fulfilled",
-              timelineStartedAt: startedAt,
-              startedAt: semanticRetrievalStartedAt,
-              resultCount: hits.length,
-            }),
-          )
-        } else {
-          laneStatuses.push(
-            laneStatus({
-              lane: "semantic_embedding",
-              status: "skipped",
-              timelineStartedAt: startedAt,
-              startedAt: semanticStartedAt,
-              resultCount: 0,
-              reason: "no_evidence_language",
-            }),
-            laneStatus({
-              lane: "semantic_retrieval",
-              status: "skipped",
-              timelineStartedAt: startedAt,
-              startedAt: semanticStartedAt,
-              resultCount: 0,
-              reason: "no_evidence_language",
-            }),
-          )
-        }
-        return hits
-      })
-      .catch((error) => {
-        this.logger.warn(
-          `[typesense-watch-search] event=semantic_degraded error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
-        )
-        const reason =
-          error instanceof Error ? error.message : "semantic_failure"
-        if (semanticRetrievalStartedAt != null) {
-          laneStatuses.push(
-            laneStatus({
-              lane: "semantic_retrieval",
-              status: "degraded",
-              timelineStartedAt: startedAt,
-              startedAt: semanticRetrievalStartedAt,
-              resultCount: 0,
-              reason,
-            }),
-          )
-        } else {
-          laneStatuses.push(
-            laneStatus({
-              lane: "semantic_embedding",
-              status: "degraded",
-              timelineStartedAt: startedAt,
-              startedAt: semanticStartedAt,
-              resultCount: 0,
-              reason,
-            }),
-            laneStatus({
-              lane: "semantic_retrieval",
-              status: "skipped",
-              timelineStartedAt: startedAt,
-              startedAt: performance.now(),
-              resultCount: 0,
-              reason: "missing_query_embedding",
-            }),
-          )
-        }
-        return []
-      })
-
-    const [lexicalHits, semanticHits] = await Promise.all([
-      lexicalPromise,
-      semanticPromise,
-    ])
-    const candidates = this.buildCandidates({
-      query: titleQuery,
-      preferredLocale,
-      lexicalHits,
-      semanticHits,
-      evidenceLocales,
-    })
     const watchabilityStartedAt = performance.now()
-    const previewById = new Map<
-      string,
-      TypesenseWatchCatalogWatchabilityPreviewDocument
-    >(lexicalHits.map((hit) => [hit.document.id, hit.document] as const))
-    const missingPreviewIds = candidates
-      .map((entry) => entry.videoId)
-      .filter((videoId) => !previewById.has(videoId))
-    const missingPreviews =
-      await this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
-        missingPreviewIds,
-        CATALOG_WATCHABILITY_PREVIEW_FIELDS,
+    let rankedCandidates: RankedCandidate[]
+    let hydratedById: Map<string, HydratedResultDocument>
+    if (nativeRanking) {
+      const candidateGroups = nativeCandidateGroups ?? []
+      hydratedById = await this.hydrateResultDocuments(
+        candidateGroups.flatMap((group) =>
+          group.map((candidate) => candidate.videoId),
+        ),
+        target,
       )
-    for (const [videoId, document] of missingPreviews) {
-      previewById.set(videoId, document)
+      rankedCandidates = candidateGroups.flatMap((group) => {
+        const watchableMembers = group.flatMap((candidate) => {
+          const hydrated = hydratedById.get(candidate.videoId)
+          return hydrated
+            ? [
+                {
+                  candidate,
+                  rankingRelevance: candidateRelevance(candidate),
+                  watchabilityKind: hydrated.watchability.kind,
+                },
+              ]
+            : []
+        })
+        watchableMembers.sort((left, right) => {
+          const watchabilityDelta =
+            watchabilityRank(left.watchabilityKind) -
+            watchabilityRank(right.watchabilityKind)
+          if (watchabilityDelta !== 0) return watchabilityDelta
+          return right.rankingRelevance - left.rankingRelevance
+        })
+        return watchableMembers.slice(0, 1)
+      })
+    } else {
+      const previewById = new Map<
+        string,
+        TypesenseWatchCatalogWatchabilityPreviewDocument
+      >(lexicalHits.map((hit) => [hit.document.id, hit.document] as const))
+      const missingPreviewIds = candidates
+        .map((candidate) => candidate.videoId)
+        .filter((videoId) => !previewById.has(videoId))
+      const missingPreviews =
+        await this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
+          missingPreviewIds,
+          CATALOG_WATCHABILITY_PREVIEW_FIELDS,
+        )
+      for (const [videoId, document] of missingPreviews) {
+        previewById.set(videoId, document)
+      }
+      rankedCandidates = candidates
+        .flatMap((candidate) => {
+          const preview = previewById.get(candidate.videoId)
+          if (!preview) return []
+          return [
+            {
+              candidate,
+              rankingRelevance: candidateRelevance(candidate),
+              watchabilityKind: previewWatchabilityKind(preview, target),
+            },
+          ]
+        })
+        .sort((left, right) => {
+          const wholeTitleDelta =
+            Number(right.candidate.wholeTitleMatch) -
+            Number(left.candidate.wholeTitleMatch)
+          if (wholeTitleDelta !== 0) return wholeTitleDelta
+
+          const relevanceDelta = right.rankingRelevance - left.rankingRelevance
+          if (relevanceDelta !== 0) return relevanceDelta
+
+          const watchabilityDelta =
+            watchabilityRank(left.watchabilityKind) -
+            watchabilityRank(right.watchabilityKind)
+          if (watchabilityDelta !== 0) return watchabilityDelta
+
+          return left.candidate.videoId.localeCompare(right.candidate.videoId)
+        })
+      const fallbackPage = rankedCandidates.slice(offset, offset + limit)
+      hydratedById = await this.hydrateResultDocuments(
+        fallbackPage.map((entry) => entry.candidate.videoId),
+        target,
+      )
     }
-
-    const rankedCandidates = candidates
-      .flatMap((candidate) => {
-        const preview = previewById.get(candidate.videoId)
-        if (!preview) return []
-        const watchabilityKind = previewWatchabilityKind(preview, target)
-        const rankingRelevance = candidateRelevance(candidate)
-        return [{ candidate, rankingRelevance, watchabilityKind }]
-      })
-      .sort((left, right) => {
-        const wholeTitleDelta =
-          Number(right.candidate.wholeTitleMatch) -
-          Number(left.candidate.wholeTitleMatch)
-        if (wholeTitleDelta !== 0) return wholeTitleDelta
-
-        const relevanceDelta = right.rankingRelevance - left.rankingRelevance
-        if (relevanceDelta !== 0) return relevanceDelta
-
-        const watchabilityDelta =
-          watchabilityRank(left.watchabilityKind) -
-          watchabilityRank(right.watchabilityKind)
-        if (watchabilityDelta !== 0) return watchabilityDelta
-
-        return left.candidate.videoId.localeCompare(right.candidate.videoId)
-      })
-    const pageCandidates = rankedCandidates.slice(offset, offset + limit)
-    const hydratedById = await this.hydrateResultDocuments(
-      pageCandidates.map((entry) => entry.candidate.videoId),
-      target,
-    )
+    const pageCandidates = nativeRanking
+      ? rankedCandidates.slice(0, limit)
+      : rankedCandidates.slice(offset, offset + limit)
     laneStatuses.push(
       laneStatus({
         lane: "metadata_watchability",
@@ -782,7 +792,9 @@ export class TypesenseWatchSearchService {
     return {
       query,
       results: page,
-      hasMore: rankedCandidates.length > offset + limit,
+      hasMore: nativeRanking
+        ? rankedCandidates.length > limit
+        : rankedCandidates.length > offset + limit,
       nextOffset: offset + limit,
       searchMode: "watch-search-typesense",
       requestId: normalizeRequestId(input.clientRequestId),
@@ -793,25 +805,193 @@ export class TypesenseWatchSearchService {
     }
   }
 
-  private async semanticHits(
-    query: string,
-    evidenceLocales: Array<{ slug: string; locale: string }>,
-    onEmbedded: () => void,
-  ): Promise<TypesenseSearchHit<TypesenseWatchTranscriptDocument>[]> {
-    if (evidenceLocales.length === 0) return []
-    const embedded = await withTimeout(
-      this.embedder(query),
-      this.embeddingTimeoutMs,
-    )
-    const embedding = Array.isArray(embedded)
-      ? embedded
-      : [...embedded.embedding]
-    onEmbedded()
-    const filterValues = evidenceLocales
-      .map(({ locale }) => `\`${locale}\``)
-      .join(",")
-    const [result] =
-      await this.typesense.multiSearch<TypesenseWatchTranscriptDocument>([
+  private async retrieveCandidates({
+    query,
+    titleQuery,
+    preferredLocale,
+    evidenceLocales,
+    candidateLimit,
+    offset,
+    limit,
+    timelineStartedAt,
+    laneStatuses,
+  }: {
+    query: string
+    titleQuery: string
+    preferredLocale: string
+    evidenceLocales: Array<{ slug: string; locale: string }>
+    candidateLimit: number
+    offset: number
+    limit: number
+    timelineStartedAt: number
+    laneStatuses: WatchSearchLaneStatus[]
+  }): Promise<CandidateRetrieval> {
+    const lexicalFallback = async (): Promise<CandidateRetrieval> => {
+      const lexicalStartedAt = performance.now()
+      const results =
+        await this.typesense.multiSearch<TypesenseWatchCatalogPreviewDocument>(
+          lexicalSearchRequests(titleQuery, candidateLimit),
+        )
+      const rawHits = results
+        .flatMap((result) => result.hits ?? [])
+        .slice(0, candidateLimit)
+      const lexicalHits = await this.withLegacyLocaleProjection(rawHits)
+      laneStatuses.push(
+        laneStatus({
+          lane: "metadata_retrieval",
+          status: "fulfilled",
+          timelineStartedAt,
+          startedAt: lexicalStartedAt,
+          resultCount: lexicalHits.length,
+        }),
+      )
+      return {
+        candidates: this.buildCandidates({
+          query: titleQuery,
+          preferredLocale,
+          lexicalHits,
+          semanticHits: [],
+          evidenceLocales,
+        }),
+        nativeCandidateGroups: null,
+        lexicalHits,
+        nativeRanking: false,
+      }
+    }
+
+    const embeddingStartedAt = performance.now()
+    if (evidenceLocales.length === 0) {
+      laneStatuses.push(
+        laneStatus({
+          lane: "semantic_embedding",
+          status: "skipped",
+          timelineStartedAt,
+          startedAt: embeddingStartedAt,
+          resultCount: 0,
+          reason: "no_evidence_language",
+        }),
+        laneStatus({
+          lane: "semantic_retrieval",
+          status: "skipped",
+          timelineStartedAt,
+          startedAt: embeddingStartedAt,
+          resultCount: 0,
+          reason: "no_evidence_language",
+        }),
+      )
+      return lexicalFallback()
+    }
+
+    let embedding: number[]
+    try {
+      const embedded = await withTimeout(
+        this.embedder(query),
+        this.embeddingTimeoutMs,
+      )
+      embedding = Array.isArray(embedded) ? embedded : [...embedded.embedding]
+      laneStatuses.push(
+        laneStatus({
+          lane: "semantic_embedding",
+          status: "fulfilled",
+          timelineStartedAt,
+          startedAt: embeddingStartedAt,
+          resultCount: 1,
+        }),
+      )
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "semantic_failure"
+      this.logger.warn(
+        `[typesense-watch-search] event=semantic_degraded error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+      )
+      laneStatuses.push(
+        laneStatus({
+          lane: "semantic_embedding",
+          status: "degraded",
+          timelineStartedAt,
+          startedAt: embeddingStartedAt,
+          resultCount: 0,
+          reason,
+        }),
+        laneStatus({
+          lane: "semantic_retrieval",
+          status: "skipped",
+          timelineStartedAt,
+          startedAt: performance.now(),
+          resultCount: 0,
+          reason: "missing_query_embedding",
+        }),
+      )
+      return lexicalFallback()
+    }
+
+    const hybridStartedAt = performance.now()
+    try {
+      const results =
+        await this.typesense.multiSearch<TypesenseWatchTranscriptDocument>([
+          hybridSearchRequest(
+            titleQuery,
+            embedding,
+            evidenceLocales,
+            offset,
+            limit,
+          ),
+        ])
+      const hybridGroups = results.flatMap(
+        (result) => result.grouped_hits ?? [],
+      )
+      const candidateGroups = this.buildHybridCandidateGroups({
+        query: titleQuery,
+        groups: hybridGroups,
+        evidenceLocales,
+      })
+      const metadataGroupCount = candidateGroups.filter((group) =>
+        group.some((candidate) => candidate.kind !== "semantic"),
+      ).length
+      const semanticGroupCount = candidateGroups.filter((group) =>
+        group.some((candidate) => candidate.kind === "semantic"),
+      ).length
+      laneStatuses.push(
+        laneStatus({
+          lane: "metadata_retrieval",
+          status: "fulfilled",
+          timelineStartedAt,
+          startedAt: hybridStartedAt,
+          resultCount: metadataGroupCount,
+        }),
+        laneStatus({
+          lane: "semantic_retrieval",
+          status: "fulfilled",
+          timelineStartedAt,
+          startedAt: hybridStartedAt,
+          resultCount: semanticGroupCount,
+        }),
+      )
+      return {
+        candidates: candidateGroups.flat(),
+        nativeCandidateGroups: candidateGroups,
+        lexicalHits: [],
+        nativeRanking: true,
+      }
+    } catch (error) {
+      if (!isLegacyHybridSchemaError(error)) throw error
+      const reason =
+        error instanceof Error ? error.message : "hybrid_retrieval_failure"
+      this.logger.warn(
+        `[typesense-watch-search] event=native_hybrid_fallback error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+      )
+      const fallbackStartedAt = performance.now()
+      const lexicalRequests = lexicalSearchRequests(
+        titleQuery,
+        candidateLimit,
+        TYPESENSE_MAX_MULTI_SEARCHES - 1,
+      )
+      const filterValues = evidenceLocales
+        .map(({ locale }) => `\`${locale}\``)
+        .join(",")
+      const results = await this.typesense.multiSearch<
+        TypesenseWatchCatalogPreviewDocument | TypesenseWatchTranscriptDocument
+      >([
+        ...lexicalRequests,
         {
           collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
           q: "*",
@@ -821,7 +1001,89 @@ export class TypesenseWatchSearchService {
           exclude_fields: "embedding",
         },
       ])
-    return result?.hits ?? []
+      const lexicalHits = await this.withLegacyLocaleProjection(
+        results
+          .slice(0, lexicalRequests.length)
+          .flatMap((result) => result.hits ?? [])
+          .slice(
+            0,
+            candidateLimit,
+          ) as TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
+      )
+      const semanticHits = (results.at(-1)?.hits ??
+        []) as TypesenseSearchHit<TypesenseWatchTranscriptDocument>[]
+      laneStatuses.push(
+        laneStatus({
+          lane: "metadata_retrieval",
+          status: "fulfilled",
+          timelineStartedAt,
+          startedAt: fallbackStartedAt,
+          resultCount: lexicalHits.length,
+        }),
+        laneStatus({
+          lane: "semantic_retrieval",
+          status: "degraded",
+          timelineStartedAt,
+          startedAt: hybridStartedAt,
+          resultCount: semanticHits.length,
+          reason: `native_hybrid_fallback:${reason}`,
+        }),
+      )
+      return {
+        candidates: this.buildCandidates({
+          query: titleQuery,
+          preferredLocale,
+          lexicalHits,
+          semanticHits,
+          evidenceLocales,
+        }),
+        nativeCandidateGroups: null,
+        lexicalHits,
+        nativeRanking: false,
+      }
+    }
+  }
+
+  private buildHybridCandidateGroups({
+    query,
+    groups,
+    evidenceLocales,
+  }: {
+    query: string
+    groups: TypesenseSearchGroup<TypesenseWatchTranscriptDocument>[]
+    evidenceLocales: Array<{ slug: string; locale: string }>
+  }): Candidate[][] {
+    const classifyTitleMatch = createTitleMatchClassifier(query)
+    return groups.map((group, groupIndex) => {
+      return group.hits.map((hit) => {
+        const { exact, wholeTitleMatch } = classifyTitleMatch(
+          hit.document.titles ?? [],
+        )
+        const semantic =
+          hit.document.documentKind === "transcript" &&
+          hit.vector_distance != null &&
+          !exact
+        const similarity = 1 - (hit.vector_distance ?? 1)
+        return {
+          videoId: hit.document.videoId,
+          kind: exact ? "exact" : semantic ? "semantic" : "metadata",
+          wholeTitleMatch,
+          sourceScore: semantic
+            ? Math.max(0, Math.min(1, similarity))
+            : Math.max(0.3, 1 - groupIndex / Math.max(groups.length, 1) / 2),
+          evidenceLanguageSlug: semantic
+            ? (evidenceLocales.find(
+                ({ locale }) => locale === hit.document.language,
+              )?.slug ?? null)
+            : null,
+          snippet: semantic ? hit.document.text : null,
+          startSeconds:
+            semantic && hit.document.startSeconds != null
+              ? Math.max(0, Math.floor(hit.document.startSeconds))
+              : null,
+        }
+      })
+    })
   }
 
   private buildCandidates({
@@ -838,18 +1100,14 @@ export class TypesenseWatchSearchService {
     evidenceLocales: Array<{ slug: string; locale: string }>
   }): Candidate[] {
     const candidates = new Map<string, Candidate>()
-    const normalizedQuery = normalizedTitle(query)
-    const exactTitleTokens = tokenizeForExactTitle(query).map(normalizedTitle)
+    const classifyTitleMatch = createTitleMatchClassifier(query)
     lexicalHits.forEach((hit, index) => {
       const locale = displayPreviewLocale(hit.document, preferredLocale)
-      const title = normalizedTitle(locale.title)
-      const exact =
-        exactTitleTokens.length > 0 &&
-        exactTitleTokens.every((token) => title.includes(token))
+      const { exact, wholeTitleMatch } = classifyTitleMatch([locale.title])
       candidates.set(hit.document.id, {
         videoId: hit.document.id,
         kind: exact ? "exact" : "metadata",
-        wholeTitleMatch: exact && title === normalizedQuery,
+        wholeTitleMatch,
         sourceScore: exact
           ? 1
           : Math.max(0.3, 1 - index / Math.max(lexicalHits.length, 1) / 2),
@@ -929,7 +1187,9 @@ export class TypesenseWatchSearchService {
         string,
         TypesenseWatchAvailabilityDocument[]
       >()
-      for (const hit of availabilityResults.flatMap((result) => result.hits)) {
+      for (const hit of availabilityResults.flatMap(
+        (result) => result.hits ?? [],
+      )) {
         const document = hit.document as TypesenseWatchAvailabilityDocument
         const entries = availabilityByVideoId.get(document.videoId) ?? []
         entries.push(document)
@@ -998,7 +1258,9 @@ export class TypesenseWatchSearchService {
     const results = await this.typesense.multiSearch<TDocument>(searches)
     return new Map(
       results.flatMap((result) =>
-        result.hits.map((hit) => [hit.document.id, hit.document] as const),
+        (result.hits ?? []).map(
+          (hit) => [hit.document.id, hit.document] as const,
+        ),
       ),
     )
   }

@@ -44,15 +44,18 @@ That first transcript projection was too narrow for the intended serving
 architecture. A read-only production audit on 2026-08-04 found 280,107 accepted
 native 1,536-dimension transcript vectors and 1,175 viewer-visible catalog
 documents. The transcript collection now retains the broad corpus and stores a
-faceted `publiclyVisible` boolean on every vector. Public Watch Search always
-filters `publiclyVisible:=true`; a future authorized AI surface can apply a
-different explicit policy without rebuilding a metadata-only index.
+faceted `publiclyVisible` boolean on every vector. Its upgraded schema also
+stores vectorless video documents and canonical identity for native hybrid
+grouping. Public Watch Search always filters `publiclyVisible:=true`; a future
+authorized AI surface can apply a different explicit policy without rebuilding
+a metadata-only index.
 
 Do not run the production-sized corpus on a developer workstation. After the
 normal PR merge, run the initial broad rebuild inside the isolated
 `@forge/admin/search` shadow service. The no-argument index command detects the
 missing transcript alias and bootstraps it. Later routine releases reuse that
-physical transcript collection and rebuild only catalog and availability.
+physical transcript collection, rebuild catalog and availability, and refresh
+only its lightweight video documents.
 Record the physical collection names, catalog count, availability count,
 transcript count, public transcript count, estimated vector bytes, per-case
 rankings, overlap, lane timings, disk use, and Typesense `/metrics.json` before
@@ -83,24 +86,23 @@ implementation:
 - Modern only requested about 41 lexical candidates for the default page,
   while PostgreSQL's watchability reranker evaluates at least 100.
 
-Modern now requests at least 100 lexical candidates, marks whole-title matches,
-applies the same 0.45 whole-title versus 0.20 broader-title evidence distinction,
-and sorts by whole-title match, uncapped ranking relevance, watchability, then
-stable ID. A regression test proves that `JESUS` ranks ahead of `JESUS Film`.
-The full snapshot benchmark must still establish top-ten parity; the unit test
-only proves the identified tie is fixed.
+Modern now asks Typesense to rank exact, typo-tolerant, and semantic evidence in
+one native hybrid request. The query weights titles over descriptions, enables
+exact-match priority, uses `alpha: 0.3` with a minimum vector `k` of 80 (rising
+only for deep offsets and capped at 1,000), keeps the default HNSW search
+effort, disables the extra hybrid rerank pass, and disables token dropping.
+`group_by=canonicalVideoId` and `group_limit=1` remove repeated chunks and
+language/aspect variants before Admin receives candidates.
+Admin preserves this Typesense order instead of recreating DEFAULT's ranking
+formula. A regression fixture proves a whole-title `JESUS` hit remains first;
+the full snapshot eval must establish actual top-ten relevance.
 
-Modern also pages lexical retrieval in 250-hit Typesense pages before global
-reranking. This fixes the previous empty-page behavior at offset 250 and covers
-up to 12,500 candidates within Typesense's default 50-search multi-search limit,
-well above the current 1,107-video catalog. Alert before catalog growth or UI
-pagination approaches that explicit serving window.
-
-Semantic retrieval has not been removed. Modern still generates the query
-embedding and searches the Typesense transcript vector collection. If embedding
-generation misses its deadline, only that request degrades to lexical results.
-Modern now measures embedding and Typesense semantic retrieval as separate
-lanes instead of charging retrieval with embedding time.
+Semantic retrieval has not been removed. Modern still generates one query
+embedding and supplies it to Typesense alongside the keyword query. If
+embedding generation misses its deadline, only that request degrades to a
+catalog lexical query. If the active transcript alias still has the legacy
+schema, Admin reuses the same embedding for the prior dual Typesense retrieval.
+Embedding and Typesense retrieval remain separate analytics lanes.
 
 ## Production Latency Investigation
 
@@ -248,18 +250,18 @@ same provenance and visibility predicates as the full indexer:
 
 ### Required event behavior
 
-| Source change                                            | Catalog action                                                       | Availability action                                     | Transcript action                                                                                        |
-| -------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Video soft deletion                                      | Delete                                                               | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
-| Video hard deletion                                      | Delete                                                               | Delete all video records                                | Delete all chunks removed by the authoritative cascade                                                   |
-| `noIndex=true`                                           | Delete                                                               | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
-| Last published locale removed                            | Delete                                                               | Delete all video records                                | Recompute affected chunks as `publiclyVisible=false`                                                     |
-| Locale publish/unpublish/title/description               | Rebuild localized catalog document, or delete if no locale remains   | Rebuild or delete with catalog eligibility              | Recompute visibility for chunks in the changed locale                                                    |
-| Dub create/update/delete/publication/HLS/playback change | Rebuild ranking availability slugs                                   | Replace affected video/language playback record         | No vector change unless transcript source also changes                                                   |
-| Subtitle create/update/delete/language/source change     | Rebuild ranking availability slugs                                   | Replace affected video/language subtitle record         | Embedding workflow emits a later transcript/vector event; stale chunks are removed when that event lands |
-| Transcript re-chunk or vector replacement                | No catalog change unless language availability changed               | No change unless availability changed                   | Upsert accepted provider/model/dimension chunks and delete stale IDs                                     |
-| Image, label, slug, or child relation change             | Rebuild catalog document                                             | None                                                    | None                                                                                                     |
-| Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change | Rebuild records for slug/name changes; no fallback copy | No vector rewrite; Admin continues to resolve fallback policy at query time                              |
+| Source change                                            | Catalog action                                                       | Availability action                                     | Transcript action                                                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Video soft deletion                                      | Delete                                                               | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                                       |
+| Video hard deletion                                      | Delete                                                               | Delete all video records                                | Delete all chunks removed by the authoritative cascade                                                                |
+| `noIndex=true`                                           | Delete                                                               | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                                       |
+| Last published locale removed                            | Delete                                                               | Delete all video records                                | Recompute affected chunks as `publiclyVisible=false`                                                                  |
+| Locale publish/unpublish/title/description               | Rebuild localized catalog document, or delete if no locale remains   | Rebuild or delete with catalog eligibility              | Recompute visibility for chunks in the changed locale and partially update copied titles without resending embeddings |
+| Dub create/update/delete/publication/HLS/playback change | Rebuild ranking availability slugs                                   | Replace affected video/language playback record         | No vector change unless transcript source also changes                                                                |
+| Subtitle create/update/delete/language/source change     | Rebuild ranking availability slugs                                   | Replace affected video/language subtitle record         | Embedding workflow emits a later transcript/vector event; stale chunks are removed when that event lands              |
+| Transcript re-chunk or vector replacement                | No catalog change unless language availability changed               | No change unless availability changed                   | Upsert accepted provider/model/dimension chunks and delete stale IDs                                                  |
+| Image, label, slug, or child relation change             | Rebuild catalog document                                             | None                                                    | None                                                                                                                  |
+| Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change | Rebuild records for slug/name changes; no fallback copy | No vector rewrite; Admin continues to resolve fallback policy at query time                                           |
 
 ### Reconciliation and generation publication
 
@@ -269,7 +271,13 @@ Incremental synchronization is not the only correctness mechanism:
   availability, or transcript cardinality drift and enqueue affected video IDs.
 - Build fresh versioned catalog and availability collections during routine
   release refreshes. Reuse the active transcript collection so an unrelated
-  application PR does not duplicate and re-import 280,107 vectors.
+  application PR does not duplicate and re-import 280,107 vectors. Upsert the
+  current vectorless video documents, PATCH changed copied transcript titles,
+  then delete stale anchor generations; title patches contain no embedding and
+  are restored if publication fails.
+- Serialize the production entrypoint with its dedicated-session PostgreSQL
+  advisory lock. Hold it through build, publication, and retirement; fail fast
+  when another release owns it.
 - Start a transcript rebuild explicitly after transcript schema/model changes,
   a deliberate corpus-wide vector replacement, or reconciliation evidence that
   cannot be repaired safely with per-video synchronization. Do not couple this
@@ -358,6 +366,13 @@ the replacement, publish it, and retire the old generation immediately.
 Transcript text, start time, images, locale JSON, and option JSON are unindexed
 and primarily consume disk.
 
+The native hybrid refinement indexes compact title arrays on transcript
+documents and adds roughly one vectorless video document per catalog record.
+That keyword term is additional to the 2.80 GiB vector estimate. It is expected
+to be small relative to HNSW, but the rollout must record steady-state RSS and
+search p95 again; the formula alone is not evidence that the new grouping and
+postings fit the 16 GiB node.
+
 Two 17,462-vector local generations previously used 393.2 MiB of Typesense
 resident memory, 523.8 MiB process RSS, and 1.82 GiB on disk; that small local
 sample did not predict the production process overhead. Record the steady-state
@@ -413,7 +428,10 @@ Monitor and page on:
    generation, so index recovery uses the latest external snapshot or a manual
    rebuild from canonical PostgreSQL data. During the availability migration,
    application code retries legacy bounded catalog hydration only when that
-   alias is missing.
+   alias is missing. The upgraded transcript documents remain compatible with
+   the previous vector-only query because vectorless video documents use a
+   sentinel language and have no embedding, so an application rollback does
+   not require a corpus rebuild.
 5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
    exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
    the service or volume is a separate destructive action and is never part of

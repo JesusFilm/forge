@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-04
+last_updated: 2026-08-05
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -39,8 +39,18 @@ backend. Separate records by both retrieval phase and fanout boundary:
   embedding, language, evidence text, video ID, start time, and an explicit
   `publiclyVisible` facet. Retain the broad semantic corpus; make every serving
   surface choose a visibility policy.
-- Query embedding remains in the request path, while lexical and vector
-  retrieval run concurrently.
+- Put small vectorless video documents in the same serving collection and copy
+  only compact titles onto transcript documents. This lets Typesense apply its
+  native keyword/vector rank fusion at the document level without duplicating
+  card or availability payloads across transcript chunks.
+- Query embedding remains in the request path. Once available, send one native
+  hybrid candidate request with the external vector, lexical fields, a bounded
+  vector `k`, and canonical grouping. Do not add sequential strict, typo, and
+  broad queries unless measured relevance requires them.
+- Group by a faceted canonical video identity with a small bounded group
+  (`group_limit: 3` here). This suppresses repeated transcript chunks while
+  retaining enough physical editions for hydration to select the best playable
+  locale match. Emit only one result per canonical video after hydration.
 - Hydrate the bounded candidate set from the catalog and availability indexes
   in one multi-search rather than joining availability tables during every
   search or transferring every language for each selected video.
@@ -82,6 +92,15 @@ retrieval must state its policy in the Typesense request:
 
 ```text
 language:=[...] && publiclyVisible:=true
+```
+
+The native hybrid form admits vectorless metadata documents while keeping
+transcript language boundaries explicit:
+
+```text
+publiclyVisible:=true && (documentKind:=video || language:=[...])
+group_by=canonicalVideoId
+group_limit=3
 ```
 
 This lets publication and `noIndex` changes update a small projection without
@@ -166,6 +185,35 @@ Traffic rollback and index rollback stay independent. Omitted mode and
 path without changing schema or deleting Typesense data. A bad index generation
 can separately move its aliases or active-generation pointer back to the last
 healthy collections.
+
+## Native Hybrid Refinement
+
+The first implementation queried the catalog and transcript collections in
+parallel and merged up to 40 chunks in Admin. That deduplicated too late: many
+chunks from one video could consume the semantic candidate budget. It also
+made Admin approximate ranking that Typesense already supports.
+
+The refined serving contract upgrades `watch_search_transcripts` into a
+backward-compatible superset. Vector documents retain the exact embeddings
+read from PostgreSQL; the indexer never calls an embedding provider. A manual
+schema rebuild is required once. Routine releases then reuse the vector/HNSW
+collection, refresh vectorless video documents, and PATCH changed copied titles
+without sending embeddings. The production entrypoint holds a PostgreSQL
+advisory lock for the whole publish-and-retire operation so concurrent releases
+cannot race aliases or cleanup. The request uses rank
+fusion with `alpha: 0.3`, a minimum `k` of 80 capped at 1,000 for deep offsets,
+default HNSW search effort, token dropping disabled, hybrid reranking disabled,
+and canonical grouping. Offset pagination remains one vector search rather than
+repeating the 1,536-value vector over many page requests. These settings
+prioritize a bounded, single retrieval operation; production latency and eval
+gates must be measured before changing them.
+
+If query embedding misses its deadline, Admin performs one lexical catalog
+query and marks the semantic lanes degraded. If the native fields are absent
+during migration, Admin reuses the already-created query embedding and falls
+back to the previous dual Typesense requests. This provides a deploy-order
+safety net without creating document embeddings or paying for a second query
+embedding.
 
 ## Related
 

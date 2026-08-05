@@ -54,6 +54,24 @@ UI selection are outside this experiment.
    resolver boundary. Existing callers remain on the default backend without a
    client change, while comparison callers opt into `MODERN` explicitly.
 
+### 2026-08-05 Native Hybrid Refinement
+
+The original parallel-query design remains the migration fallback, but it is
+no longer the primary `MODERN` candidate path. The transcript alias is upgraded
+to a backward-compatible hybrid collection containing stored-vector transcript
+documents and vectorless metadata documents. Admin creates one query embedding
+and sends one Typesense request with native rank fusion and
+`group_by=canonicalVideoId`. Typesense therefore owns keyword/vector fusion and
+candidate deduplication; Admin continues to own language interpretation,
+watchability hydration, degradation, analytics, and the GraphQL contract.
+
+The upgrade reuses the existing PostgreSQL embeddings and never creates corpus
+embeddings. It requires one explicit transcript-schema rebuild. Routine
+application releases reuse that physical vector collection and refresh only
+the small metadata documents. An embedding timeout uses catalog lexical search;
+a legacy active schema uses the old dual Typesense request with the same query
+embedding. Full production eval and latency evidence remain rollout gates.
+
 ## Implementation Units
 
 ### U1. Typesense Client And Versioned Schemas

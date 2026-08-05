@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url"
+import { Client } from "pg"
 import { prisma } from "@/db/client"
 import { TypesenseClient } from "@/services/typesense-client"
 import {
@@ -7,6 +8,100 @@ import {
 } from "@/services/typesense-watch-search-indexer"
 
 const REBUILD_TRANSCRIPTS_FLAG = "--rebuild-transcripts"
+const TYPESENSE_WATCH_SEARCH_INDEX_LOCK_ID = 1_179_605_063
+
+export type TypesenseWatchSearchIndexLockClient = {
+  connect(): Promise<void>
+  query(
+    text: string,
+    values: readonly unknown[],
+  ): Promise<{ rows: Array<{ acquired?: boolean; released?: boolean }> }>
+  end(): Promise<void>
+}
+
+type TypesenseWatchSearchIndexLockClientFactory = (
+  databaseUrl: string,
+) => TypesenseWatchSearchIndexLockClient
+
+function defaultLockClientFactory(
+  databaseUrl: string,
+): TypesenseWatchSearchIndexLockClient {
+  const client = new Client({ connectionString: databaseUrl })
+  return {
+    connect: async () => {
+      await client.connect()
+    },
+    query: async (text, values) => client.query(text, [...values]),
+    end: () => client.end(),
+  }
+}
+
+export async function withTypesenseWatchSearchIndexLock<T>(
+  run: () => Promise<T>,
+  {
+    databaseUrl = process.env.DATABASE_URL,
+    clientFactory = defaultLockClientFactory,
+  }: {
+    databaseUrl?: string
+    clientFactory?: TypesenseWatchSearchIndexLockClientFactory
+  } = {},
+): Promise<T> {
+  if (!databaseUrl) throw new Error("DATABASE_URL is required")
+  const client = clientFactory(databaseUrl)
+  await client.connect()
+  let acquired = false
+  let runSucceeded = false
+  let runResult: T | undefined
+  let runError: unknown
+  const cleanupErrors: unknown[] = []
+  try {
+    const result = await client.query(
+      "SELECT pg_try_advisory_lock($1) AS acquired",
+      [TYPESENSE_WATCH_SEARCH_INDEX_LOCK_ID],
+    )
+    if (result.rows[0]?.acquired !== true) {
+      throw new Error(
+        "Another Typesense Watch Search index release is already running",
+      )
+    }
+    acquired = true
+    runResult = await run()
+    runSucceeded = true
+  } catch (error) {
+    runError = error
+  } finally {
+    if (acquired) {
+      try {
+        const result = await client.query(
+          "SELECT pg_advisory_unlock($1) AS released",
+          [TYPESENSE_WATCH_SEARCH_INDEX_LOCK_ID],
+        )
+        if (result.rows[0]?.released !== true) {
+          cleanupErrors.push(
+            new Error(
+              "PostgreSQL did not release the Typesense Watch Search index lock",
+            ),
+          )
+        }
+      } catch (error) {
+        cleanupErrors.push(error)
+      }
+    }
+    try {
+      await client.end()
+    } catch (error) {
+      cleanupErrors.push(error)
+    }
+  }
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(
+      runSucceeded ? cleanupErrors : [runError, ...cleanupErrors],
+      "Typesense Watch Search index lock cleanup failed",
+    )
+  }
+  if (!runSucceeded) throw runError
+  return runResult as T
+}
 
 export function parseTypesenseWatchSearchIndexArgs(argv: readonly string[]): {
   transcriptStrategy: TypesenseWatchSearchTranscriptStrategy
@@ -32,17 +127,19 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
     apiKey,
     timeoutMs: 120_000,
   })
-  const stats = await rebuildTypesenseWatchSearchIndex({
-    prisma,
-    typesense,
-    batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
-    transcriptStrategy,
-    onProgress: (progress) => {
-      process.stdout.write(
-        `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} transcripts=${progress.transcriptDocuments} transcriptReused=${progress.transcriptReused}\n`,
-      )
-    },
-  })
+  const stats = await withTypesenseWatchSearchIndexLock(() =>
+    rebuildTypesenseWatchSearchIndex({
+      prisma,
+      typesense,
+      batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
+      transcriptStrategy,
+      onProgress: (progress) => {
+        process.stdout.write(
+          `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} transcripts=${progress.transcriptDocuments} transcriptReused=${progress.transcriptReused}\n`,
+        )
+      },
+    }),
+  )
   process.stdout.write(`${JSON.stringify(stats)}\n`)
 }
 

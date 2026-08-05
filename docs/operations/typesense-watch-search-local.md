@@ -66,11 +66,24 @@ TYPESENSE_API_KEY=forge-typesense-local-key \
 ```
 
 The first run has no transcript alias, so this command bootstraps timestamped
-catalog, per-video-language availability, and transcript collections. On later
-runs it rebuilds only catalog and availability and reuses the physical
-transcript collection already selected by `watch_search_transcripts`. This
-keeps routine application releases from re-importing the unchanged embedding
-corpus.
+catalog, per-video-language availability, and transcript collections. The
+transcript collection is also the native hybrid candidate index: it contains
+the stored transcript vectors plus small vectorless video documents used for
+title and description matching. Both document kinds carry a canonical video
+identity so Typesense can group multilingual and aspect-ratio variants before
+returning candidates.
+
+On later runs the command rebuilds catalog and availability, reuses the
+physical transcript collection selected by `watch_search_transcripts`, and
+upserts only the lightweight video documents. It also PATCHes copied transcript
+titles when the catalog title projection changed, including clearing removed
+titles; these partial updates never include `embedding`. Stale video documents
+are deleted after the upserts finish. Existing transcript vectors are not read,
+regenerated, or imported during this routine path.
+
+The command holds a dedicated-session PostgreSQL advisory lock from before the
+build starts through alias publication and old-collection retirement. A
+concurrent release fails fast instead of racing aliases or cleanup.
 
 Force a new transcript generation only when transcript vectors, visibility,
 model dimensions, or the transcript schema need to change:
@@ -86,16 +99,29 @@ TYPESENSE_API_KEY=forge-typesense-local-key \
 The CLI rejects unknown or misspelled arguments instead of silently falling
 back to transcript reuse.
 
+The native hybrid schema is a one-time transcript-schema upgrade. If the final
+JSON reports `hybridReady: false`, the active alias still points at the legacy
+vector-only schema. Admin will fall back to the previous catalog-plus-vector
+retrieval for compatibility, but the native grouped path remains degraded.
+Run one deliberate `--rebuild-transcripts` on the isolated search service to
+import the embeddings already stored in PostgreSQL and activate the new
+schema. Do not add this flag to routine application deploys.
+
 Every collection that is built is imported with checked JSONL responses before
 its stable alias moves. A failed routine refresh restores the catalog and
-availability aliases and never moves or deletes the reused transcript
-collection. A failed explicit transcript rebuild also restores the transcript
+availability aliases and restores the previous vectorless video documents in
+the reused transcript collection. It also restores any copied transcript title
+projections patched by the failed run. It never moves or deletes that collection.
+A failed explicit transcript rebuild also restores the transcript
 alias. After a successful publication, the indexer deletes older and orphaned
 Watch Search physical collections that existed before the run, retaining only
 the active catalog, availability, and transcript collections. This bounds RAM
 instead of keeping duplicate vector generations; rollback remains the unchanged
 `DEFAULT` PostgreSQL backend or a manual transcript rebuild, not an inactive
-Typesense generation. The final JSON object reports `transcriptReused`,
+Typesense generation. The enriched transcript schema remains compatible with
+the previous vector-only Admin query, so application rollback does not require
+an index rebuild. The final JSON object reports `transcriptReused`,
+`hybridReady`, the number of vectorless `videoDocuments`,
 `retiredCollections`, any `retirementFailures`, the selected physical
 transcript collection, catalog, availability, and transcript counts plus
 `estimatedVectorMemoryBytes`, calculated as 7 bytes times 1,536 dimensions
@@ -111,9 +137,12 @@ curl -fsS \
 For the audited 2026-08-04 production corpus, expect approximately 1,175
 catalog documents, 176,294 availability documents, and 280,107 transcript
 documents. Public Watch Search does
-not expose the whole transcript collection: its semantic request includes
-`publiclyVisible:=true` alongside the resolved-language filter. Confirm both
-the broad count and the public subset before treating the build as valid.
+not expose the whole transcript collection: its hybrid request includes
+`publiclyVisible:=true`, limits transcript documents to resolved evidence
+languages, and groups by `canonicalVideoId` with `group_limit: 3`. The bounded
+group keeps enough physical editions to select a playable locale match during
+hydration; the API still emits only one result per canonical video. Confirm
+both the broad count and the public subset before treating the build as valid.
 Also record the availability count and verify that one video/language document
 merges audio and subtitle flags while retaining the selected playback ID and
 duration. Do not benchmark the optimized path until
