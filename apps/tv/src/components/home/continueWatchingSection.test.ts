@@ -60,3 +60,11 @@ describe("progress bar data", () => {
     ).toBeNull()
   })
 })
+
+describe("card chrome", () => {
+  it("leaves the kind line empty so HomeCard omits it", () => {
+    const section = buildContinueWatchingSection([entry()])!
+    expect(section.cards[0]!.label).toBe("")
+    expect(section.title).toBe("Continue Watching")
+  })
+})

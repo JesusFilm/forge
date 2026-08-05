@@ -227,9 +227,14 @@ export const HomeCard = memo(function HomeCard({
           >
             {card.title}
           </Text>
-          <Text style={styles.kind} numberOfLines={1}>
-            {card.label}
-          </Text>
+          {/* Kind line is optional: the Continue Watching shelf leaves it
+              empty because the rail header already says it, and repeating it
+              under every card is noise. */}
+          {card.label !== "" ? (
+            <Text style={styles.kind} numberOfLines={1}>
+              {card.label}
+            </Text>
+          ) : null}
         </View>
       </Animated.View>
     </Pressable>

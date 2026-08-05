@@ -16,7 +16,9 @@ function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
     slug: entry.slug,
     title: entry.title ?? entry.slug,
     description: null,
-    label: "Continue Watching",
+    // Empty: HomeCard omits the kind line entirely, since the rail header
+    // above already reads "Continue Watching".
+    label: "",
     // null routes the card to /watch (never /series — resume is per video).
     rawLabel: null,
     // No chip: the progress bar already conveys how far along the video is,
