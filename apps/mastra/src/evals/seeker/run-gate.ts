@@ -102,9 +102,9 @@ export type GateVerdictFlip = {
 }
 
 /** Per-model violation-count comparison for checks whose violations move
- *  between cells run to run on an UNCHANGED system (measured: gemma-26b
- *  skips retrieval on ~3 of 10 questions EVERY run, but which questions
- *  varies — a per-cell delta reds that roulette forever). */
+ *  between cells run to run on an UNCHANGED system (measured: one answering
+ *  model skipped retrieval on ~3 of 10 questions EVERY run, but which
+ *  questions varied — a per-cell delta reds that roulette forever). */
 export type GateCountDelta = {
   model: string
   checkId: string
@@ -132,9 +132,9 @@ export type GateReport = {
   newHardFails: GateHardFail[]
   carriedKnownFails: GateHardFail[]
   /** tool-called, per model — informational breakdown. Per-model attribution
-   *  at one sample per cell is noise (measured: gemma-31b went 0 skips in
-   *  three consecutive runs, then 2); the red condition is the pooled rule
-   *  below. */
+   *  at one sample per cell is noise (measured: an answering model went 0
+   *  skips in three consecutive runs, then 2); the red condition is the
+   *  pooled rule below. */
   toolSkipDeltas: GateCountDelta[]
   /** Pooled tool-skip totals across all models. Decision 2026-08-04 (#5):
    *  `regression` (→ red) fires on ANY current-run skip; a baseline with a

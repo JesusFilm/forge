@@ -85,7 +85,7 @@ Both approaches, independently, specify:
 - **File between steps.** Answers (or transcripts) are the expensive paid artifact; the judge re-runs against the cached file for cents (~$0.02–0.25, 1–3 minutes), so rubric iteration is nearly free.
 - **Delta gating against a committed baseline** under `apps/mastra/evals/results/`, with hard-fails reserved for deterministic breaks (ungrounded citation, tool never called, safety violations) and judge-score drops routed to nightly triage — the industry-consensus recipe for keeping paid, slightly-noisy gates from becoming flaky theater.
 - **Tiered cadence**: free deterministic tests on every PR; the paid run only on PRs that touch the agent, tool, or eval (path filter); a fuller multi-sample sweep nightly.
-- **Spend hygiene**: only the dedicated `CHAT_EVAL_OPENROUTER_API_KEY` (fetched by `scripts/fetch-chat-eval-key.sh`); production keys refused; paid Gemma model variants, never the `:free` ones (which returned rate-limit errors on 6 of 6 attempts). One warning: this guarantee is not free under Approach 2. The prototype enforces it inside its own copied HTTP client, but Mastra's model router reads `OPENROUTER_API_KEY` straight from the process environment — so the loop runner must re-establish the invariant explicitly, or it will bill whatever key happens to be in `.env.local`. PR C step 2 does exactly that.
+- **Spend hygiene**: only the dedicated `CHAT_EVAL_OPENROUTER_API_KEY` (fetched by `scripts/fetch-chat-eval-key.sh`); production keys refused; paid model variants, never `:free` ones (which returned rate-limit errors on 6 of 6 attempts). One warning: this guarantee is not free under Approach 2. The prototype enforces it inside its own copied HTTP client, but Mastra's model router reads `OPENROUTER_API_KEY` straight from the process environment — so the loop runner must re-establish the invariant explicitly, or it will bill whatever key happens to be in `.env.local`. PR C step 2 does exactly that.
 - **Langfuse readiness**: fetch Langfuse-hosted prompt sections by label through `getManagedPrompt()`, stamp each managed prompt's version into run identity, and make the eval the gate on Langfuse label promotion — label moves bypass pull-request review, so the eval is the only review those changes get.
 
 ## 4. Scores against the five bar criteria
@@ -185,7 +185,7 @@ All paths relative to repo root `/Users/jacobusbrink/Jaxs/projects/forge`. Three
 
 1. `fixture-rag.ts`: wraps `rag-fixtures.json` as a search function keyed on the question; records the model's actual query verbatim in the transcript; flags queries with near-zero keyword overlap with the question (the query-drift heuristic).
 2. **Key hygiene in `run-loop.ts`, before the agent is constructed.** The prototype's dedicated-key guarantee (commit `0cf4c8be`) lives inside its own copied HTTP client and does NOT carry over here: Mastra's model router reads `OPENROUTER_API_KEY` straight from the process environment (documented in `apps/mastra/CLAUDE.md`), and `apps/mastra/.env.local` commonly holds the dev/prod key right next to the eval key. So: (a) require `CHAT_EVAL_OPENROUTER_API_KEY` and exit before any model call if absent; (b) refuse to run if `OPENROUTER_API_PAID_KEY` is set; (c) overwrite `process.env.OPENROUTER_API_KEY` with the eval key in-process before Mastra's provider initializes — or pass explicit provider-bound model instances in the `models` override so the key never comes from ambient env. Add a unit test that pins the key source, mirroring the prototype's fails-before-spending behavior.
-3. `run-loop.ts` proper: drives `buildSeekerAgent({ ragSearch, models: paid Gemma variants plus claude-sonnet-5 headroom, memory: in-memory })` per question; writes `transcripts.json` per cell with the resolved prompt (hash + section-mapping version), every tool call with arguments and served passages, final text, finish reason (the code the model API returns saying why it stopped — hit its length limit, called a tool, or reached a natural stop), usage, cost, latency, sample id. Script: `eval:seeker:loop`.
+3. `run-loop.ts` proper: drives `buildSeekerAgent({ ragSearch, models: claude-sonnet-5, memory: in-memory })` per question; writes `transcripts.json` per cell with the resolved prompt (hash + section-mapping version), every tool call with arguments and served passages, final text, finish reason (the code the model API returns saying why it stopped — hit its length limit, called a tool, or reached a natural stop), usage, cost, latency, sample id. Script: `eval:seeker:loop`.
 4. `run-report.ts` additions: trajectory columns (tool called? query drift? passages used?), per-section rollup (via `prompt-sections.ts` tags), validity.
 5. `run-gate.ts` (`eval:seeker:gate`): delta comparison against the committed baseline in `apps/mastra/evals/results/`; hard-fail only on deterministic breaks (ungrounded citation by URL or source name, tool never called on a factual question, safety criterion); judge-score regressions beyond tolerance are reported for triage, not hard-failed. `identityMismatch()` refuses cross-identity comparisons.
 6. First full run: 10 questions, 2 paid models, 1 sample (~$0.20–0.50, ~10 minutes). Commit the baseline. **Baseline policy for gemma-26b's tool-skipping, decided by whether the parallel production model PR (section 6) landed first:** if it did, the baseline records zero tool-skip known-fails and the hard-fail check applies uniformly to every model; if it did not, pin gemma-26b's tool-skips per-question as known-fails **with an expiry condition** — the pins are removed the moment the production model config changes — so the exemption cannot silently outlive the defect it excuses.
@@ -254,3 +254,29 @@ decision 4's provider-default requirement land on the SAME single future
 paid run: first land the §6 production skip fix, then ONE
 re-capture/rebaseline at provider defaults replaces the committed baseline.
 Until then every gate run against it refuses — by design, not by accident.
+
+---
+
+## Addendum — 2026-08-06: Sonnet-only answering set; valid baseline minted
+
+- **Answering-model registry** (`models.ts`): `anthropic/claude-sonnet-5`
+  only — the eval measures the flagship model the chat surface is
+  standardizing on. The judge stays `anthropic/claude-haiku-4.5`; the
+  answering-vs-judge separation is unchanged. `eval:seeker:loop` and
+  `eval:seeker:answers` both default to the full registry (one seam;
+  `run-loop.ts` no longer carries its own default list), and `--models`
+  remains the ad-hoc override.
+- **The committed baseline is valid again.** One provider-default capture
+  (loop → judge → score, 2026-08-06, ~$0.29) replaced
+  `apps/mastra/evals/results/seeker-baseline`: 10/10 cells, zero tool
+  skips, zero infra failures, runScore 1.000 (pass). Both refusal grounds
+  the addendum above recorded against the old baseline (baseline tool
+  skips, pinned decoding) are cleared; minting required no production
+  precondition.
+- **Measured single-sample noise on the new model** (gate smoke,
+  2026-08-06): an independent second sample against this baseline exited
+  RED on one NEW ungrounded source name (`q-trinity`, a re-titled source),
+  with zero tool skips and score delta −0.0135 (inside tolerance). At one
+  sample per cell the deterministic citation hard-fail lane will
+  occasionally red on an unchanged system; the multi-sample cadence
+  (Question 3 above) is where that sensitivity gets addressed.

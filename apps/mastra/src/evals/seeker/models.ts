@@ -20,37 +20,11 @@ export type AnsweringModel = {
   note: string
 }
 
-/**
- * WHY NOT THE `:free` SLUGS PRODUCTION USES
- * -----------------------------------------
- * The 2026-07-29 prototype run got HTTP 429 on 6 of 6
- * `google/gemma-4-31b-it:free` calls, with
- * `limit_source: upstream_provider_shared_pool`. That is not a key problem —
- * the same key completed every Sonnet and Haiku call in the same run.
- * OpenRouter routes `:free` variants through a shared upstream pool whose
- * rate limit is global, so NO key makes them reliable.
- *
- * The paid variants are the SAME model weights on dedicated routing, at
- * roughly $0.0005 for a whole eval run. So the eval uses them and still
- * measures the model production actually runs. (The production `:free`
- * routing fix is its own PR — decision doc §6 — and had NOT landed when this
- * port was written.)
- */
 export const ANSWERING_MODELS: readonly AnsweringModel[] = [
-  {
-    id: "google/gemma-4-31b-it",
-    label: "gemma-31b",
-    note: "Same weights as production's primary (seeker-agent.ts), paid routing.",
-  },
-  {
-    id: "google/gemma-4-26b-a4b-it",
-    label: "gemma-26b",
-    note: "Same weights as production's failover (seeker-agent.ts), paid routing.",
-  },
   {
     id: "anthropic/claude-sonnet-5",
     label: "sonnet-5",
-    note: "Paid reference — the headroom check for stakeholder demos.",
+    note: "The flagship answering model the eval measures.",
   },
 ]
 
@@ -65,10 +39,6 @@ export const JUDGE_MODEL = "anthropic/claude-haiku-4.5"
 
 /** USD per token, from OpenRouter's catalog on 2026-07-29. */
 const PRICING: Record<string, { input: number; output: number }> = {
-  "google/gemma-4-31b-it": { input: 0.00000014, output: 0.0000004 },
-  "google/gemma-4-26b-a4b-it": { input: 0.00000015, output: 0.00000045 },
-  "google/gemma-4-31b-it:free": { input: 0, output: 0 },
-  "google/gemma-4-26b-a4b-it:free": { input: 0, output: 0 },
   "anthropic/claude-sonnet-5": { input: 0.000002, output: 0.00001 },
   "anthropic/claude-haiku-4.5": { input: 0.000001, output: 0.000005 },
 }

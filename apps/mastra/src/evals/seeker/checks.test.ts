@@ -46,7 +46,7 @@ function answer(text: string, extra: Partial<AnswerRecord> = {}): AnswerRecord {
   return {
     questionId: "q-suffering",
     category: "intellectual-doubt",
-    model: "google/gemma-4-31b-it",
+    model: "anthropic/claude-sonnet-5",
     ok: true,
     text,
     finishReason: "stop",
@@ -101,8 +101,8 @@ describe("cited-urls-grounded (hard-fail)", () => {
 
 describe("cited-url-malformed-variant (report-only — the typo class)", () => {
   it("classifies a small-edit-distance variant of a served URL as malformed, NOT ungrounded", () => {
-    // The exact defect the first green reruns measured: gemma-31b citing
-    // `sightlinemiristry` for the served `sightlineministry`.
+    // The exact defect the first green reruns measured: an answering model
+    // citing `sightlinemiristry` for the served `sightlineministry`.
     const typod = SERVED_URL.replace("suffering", "sufering")
     const results = runAnswerChecks(answer(`See (Cru, ${typod}).`), fixtures)
     expect(checkById(results, "cited-urls-grounded").status).toBe("pass")
@@ -113,8 +113,9 @@ describe("cited-url-malformed-variant (report-only — the typo class)", () => {
   })
 
   it("classifies a RECONSTRUCTED deep link on a served host as malformed, NOT ungrounded", () => {
-    // Measured in green rerun s3: gemma-26b expanded a served cru.org slug
-    // to match the passage title — a broken link to a real source.
+    // Measured in green rerun s3: an answering model expanded a served
+    // cru.org slug to match the passage title — a broken link to a real
+    // source.
     const reconstructed =
       "https://www.cru.org/us/en/train-and-grow/why-god-allows-pain-and-suffering-explained.html"
     const results = runAnswerChecks(

@@ -29,7 +29,7 @@ function answer(extra: Partial<AnswerRecord> = {}): AnswerRecord {
   return {
     questionId: QUESTION_ID,
     category: "intellectual-doubt",
-    model: "google/gemma-4-31b-it",
+    model: "anthropic/claude-sonnet-5",
     ok: true,
     text: "A thoughtful, grounded answer.",
     finishReason: "stop",
@@ -301,7 +301,7 @@ describe("fixtures policy — mode-aware, fail-closed (finding #12)", () => {
       questionSetId: "seeker-eval/v1",
       questionIds: [QUESTION_ID],
       criteriaSha256: "criteria-sha",
-      answeringModels: ["google/gemma-4-31b-it"],
+      answeringModels: ["anthropic/claude-sonnet-5"],
       decoding: { temperature: 0.7, maxTokens: 1_600 },
       sampleId: "s1",
       gitSha: null,

@@ -200,7 +200,7 @@ pnpm --filter @forge/mastra test && pnpm --filter @forge/mastra typecheck
 
 # 3. (2 min) Read the committed baseline's score:
 cat apps/mastra/evals/results/seeker-baseline/score.json | head -40
-#    Expect: runScore ≈ 0.976, gemma-26b carrying 3 tool-skips in answers.json.
+#    Expect: runScore = 1.000, zero tool-skips in answers.json.
 
 # 4. (5 min, ~$0.15, needs apps/mastra/.env.local with the eval key) Re-prove
 #    the gate yourself: soften the "Never cite…" line in

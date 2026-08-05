@@ -19,7 +19,7 @@
  * copy is retired with it).
  *
  *   pnpm --filter @forge/mastra eval:seeker:answers
- *   pnpm --filter @forge/mastra eval:seeker:answers -- --limit=1 --models=google/gemma-4-31b-it
+ *   pnpm --filter @forge/mastra eval:seeker:answers -- --limit=1
  */
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"

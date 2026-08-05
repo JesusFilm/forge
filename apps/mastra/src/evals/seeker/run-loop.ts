@@ -27,7 +27,7 @@
  * pins the static import block against regressions (finding #13).
  *
  *   pnpm --filter @forge/mastra eval:seeker:loop
- *   pnpm --filter @forge/mastra eval:seeker:loop -- --models=google/gemma-4-31b-it --limit=1
+ *   pnpm --filter @forge/mastra eval:seeker:loop -- --limit=1
  */
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
@@ -62,13 +62,6 @@ const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
 /** Wall-clock ceiling per cell — the same 90s budget `/forge-seeker` runs
  *  under (`TIME_BUDGET_MS.chatTurn`), so a hung provider cannot wedge a run. */
 const CELL_TIMEOUT_MS = 90_000
-
-/** The two PAID production-equivalent Gemma variants (models.ts) — the
- *  default gating pair. Sonnet headroom is opt-in via `--models`. */
-const DEFAULT_LOOP_MODELS = [
-  "google/gemma-4-31b-it",
-  "google/gemma-4-26b-a4b-it",
-]
 
 /**
  * The key-hygiene mechanism, factored for direct unit testing. Operates on an
@@ -268,10 +261,7 @@ async function main(): Promise<void> {
   const fixtures = await loadFixtures(
     resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
   )
-  const requestedModels = csv(flag(argv, "models"))
-  const models = answeringModelsByIds(
-    requestedModels.length > 0 ? requestedModels : DEFAULT_LOOP_MODELS,
-  )
+  const models = answeringModelsByIds(csv(flag(argv, "models")))
   const limitRaw = flag(argv, "limit")
   const limit = limitRaw ? Number(limitRaw) : QUESTIONS.length
   if (!Number.isFinite(limit) || limit < 1) {

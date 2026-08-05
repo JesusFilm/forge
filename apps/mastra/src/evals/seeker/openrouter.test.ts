@@ -158,7 +158,7 @@ describe("completeWithInjectedTool", () => {
       },
     )
     const completion = await completeWithInjectedTool({
-      model: "google/gemma-4-31b-it",
+      model: "anthropic/claude-sonnet-5",
       system: "system prompt",
       user: "the question",
       toolSpec: { function: { name: "retrieveAnswer" } },

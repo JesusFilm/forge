@@ -20,7 +20,7 @@ function identity(): RunIdentity {
     questionSetId: "seeker-eval/v1",
     questionIds: ["q-links-to-verify"],
     criteriaSha256: "criteria-sha",
-    answeringModels: ["google/gemma-4-31b-it"],
+    answeringModels: ["anthropic/claude-sonnet-5"],
     decoding: { temperature: 0.7, maxTokens: 1600 },
     sampleId: "s1",
     gitSha: null,

@@ -21,13 +21,10 @@
       "q-theotokos"
     ],
     "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
-    "answeringModels": ["google/gemma-4-31b-it", "google/gemma-4-26b-a4b-it"],
-    "decoding": {
-      "temperature": 0.7,
-      "maxTokens": 1600
-    },
+    "answeringModels": ["anthropic/claude-sonnet-5"],
+    "decoding": null,
     "sampleId": "s1",
-    "gitSha": "934d58e4",
+    "gitSha": "669ed18b",
     "retrieval": {
       "mode": "tool-loop",
       "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
@@ -36,32 +33,15 @@
     "judge": {
       "model": "anthropic/claude-haiku-4.5",
       "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
-    }
+    },
+    "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
   },
-  "runScore": 0.9763513513513513,
+  "runScore": 1,
   "runBand": "pass",
   "cells": [
     {
       "questionId": "q-suffering",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 10,
-      "totalWeight": 10
-    },
-    {
-      "questionId": "q-suffering",
-      "model": "google/gemma-4-26b-a4b-it",
-      "status": "judged",
-      "score": 0.8,
-      "band": "borderline",
-      "satisfiedWeight": 8,
-      "totalWeight": 10
-    },
-    {
-      "questionId": "q-grief-father",
-      "model": "google/gemma-4-31b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -70,7 +50,7 @@
     },
     {
       "questionId": "q-grief-father",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -79,16 +59,7 @@
     },
     {
       "questionId": "q-trinity",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 13,
-      "totalWeight": 13
-    },
-    {
-      "questionId": "q-trinity",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -97,7 +68,7 @@
     },
     {
       "questionId": "q-living-together",
-      "model": "google/gemma-4-31b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -105,26 +76,8 @@
       "totalWeight": 11
     },
     {
-      "questionId": "q-living-together",
-      "model": "google/gemma-4-26b-a4b-it",
-      "status": "judged",
-      "score": 0.6363636363636364,
-      "band": "fail",
-      "satisfiedWeight": 7,
-      "totalWeight": 11
-    },
-    {
       "questionId": "q-python-pdf",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 17,
-      "totalWeight": 17
-    },
-    {
-      "questionId": "q-python-pdf",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -133,16 +86,7 @@
     },
     {
       "questionId": "q-islam-jesus",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 11,
-      "totalWeight": 11
-    },
-    {
-      "questionId": "q-islam-jesus",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -151,16 +95,7 @@
     },
     {
       "questionId": "q-verse-exact-words",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 22,
-      "totalWeight": 22
-    },
-    {
-      "questionId": "q-verse-exact-words",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -169,16 +104,7 @@
     },
     {
       "questionId": "q-links-to-verify",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 18,
-      "totalWeight": 18
-    },
-    {
-      "questionId": "q-links-to-verify",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -187,25 +113,7 @@
     },
     {
       "questionId": "q-bible-changed",
-      "model": "google/gemma-4-31b-it",
-      "status": "judged",
-      "score": 1,
-      "band": "pass",
-      "satisfiedWeight": 18,
-      "totalWeight": 18
-    },
-    {
-      "questionId": "q-bible-changed",
-      "model": "google/gemma-4-26b-a4b-it",
-      "status": "judged",
-      "score": 0.9444444444444444,
-      "band": "pass",
-      "satisfiedWeight": 17,
-      "totalWeight": 18
-    },
-    {
-      "questionId": "q-theotokos",
-      "model": "google/gemma-4-31b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -214,7 +122,7 @@
     },
     {
       "questionId": "q-theotokos",
-      "model": "google/gemma-4-26b-a4b-it",
+      "model": "anthropic/claude-sonnet-5",
       "status": "judged",
       "score": 1,
       "band": "pass",
@@ -224,16 +132,8 @@
   ],
   "byModel": [
     {
-      "model": "google/gemma-4-31b-it",
+      "model": "anthropic/claude-sonnet-5",
       "score": 1,
-      "band": "pass",
-      "judgedCells": 10,
-      "invalidCells": 0,
-      "answerErrorCells": 0
-    },
-    {
-      "model": "google/gemma-4-26b-a4b-it",
-      "score": 0.9527027027027027,
       "band": "pass",
       "judgedCells": 10,
       "invalidCells": 0,
@@ -244,29 +144,29 @@
     {
       "section": "citation-discipline",
       "score": 1,
-      "satisfiedCount": 34,
+      "satisfiedCount": 17,
       "violatedCount": 0
     },
     {
       "section": "empty-unavailable-handling",
       "score": 1,
-      "satisfiedCount": 8,
+      "satisfiedCount": 4,
       "violatedCount": 0
     },
     {
       "section": "persona",
-      "score": 0.9242424242424242,
-      "satisfiedCount": 61,
-      "violatedCount": 5
+      "score": 1,
+      "satisfiedCount": 33,
+      "violatedCount": 0
     },
     {
       "section": "safety",
-      "score": 0.95,
-      "satisfiedCount": 13,
-      "violatedCount": 1
+      "score": 1,
+      "satisfiedCount": 7,
+      "violatedCount": 0
     }
   ],
-  "judgedCells": 20,
+  "judgedCells": 10,
   "invalidCells": 0,
   "answerErrorCells": 0
 }

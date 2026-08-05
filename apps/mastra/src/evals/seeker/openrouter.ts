@@ -211,8 +211,8 @@ export const ANSWER_DECODING = { temperature: 0.7, maxTokens: 1_600 } as const
  *
  * `tool_choice: "none"` on the final turn forces a text answer. The cost:
  * this mode cannot observe whether a model WOULD have called the tool. That
- * is a real property — gemma-26b skips it — and it belongs to the loop
- * runner (the gate), not this non-gating fast mode.
+ * is a real property — models measurably skip it — and it belongs to the
+ * loop runner (the gate), not this non-gating fast mode.
  */
 export async function completeWithInjectedTool(input: {
   model: string

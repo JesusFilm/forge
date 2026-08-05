@@ -89,7 +89,7 @@ function normalizeUrl(url: string): string {
 }
 
 /** A cited URL within small edit distance of a served URL is a CORRUPTED
- *  citation of a real source (measured: gemma-31b emitting
+ *  citation of a real source (measured: an answering model emitting
  *  `sightlinemiristry.org` for the served `sightlineministry.org`), not an
  *  invented source. Real defect, different class. */
 const URL_TYPO_DISTANCE = 3
@@ -123,8 +123,8 @@ function checkUrlsGrounded(
   const { urls } = citableSources(fixtures)
   const servedNormalized = [...urls].map(normalizeUrl)
   // Hosts the fixtures actually served. A non-served deep link on a SERVED
-  // host is a RECONSTRUCTED link to a real source (measured: gemma-26b
-  // expanding the served `…/is-jesus-god.html` to
+  // host is a RECONSTRUCTED link to a real source (measured: an answering
+  // model expanding the served `…/is-jesus-god.html` to
   // `…/is-jesus-god-or-just-a-good-man.html`, matching the passage title) —
   // a broken link, not an invented source. Foreign hosts stay hard-fail.
   const servedHosts = new Set(

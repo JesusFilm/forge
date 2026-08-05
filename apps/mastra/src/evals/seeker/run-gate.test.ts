@@ -14,7 +14,7 @@ import {
   type RunIdentity,
 } from "./types"
 
-const MODEL = "google/gemma-4-31b-it"
+const MODEL = "anthropic/claude-sonnet-5"
 const QUESTION_ID = "q-suffering"
 const SECOND_QUESTION_ID = "q-grief-father"
 
@@ -167,7 +167,7 @@ describe("evaluateGate", () => {
   it("REFUSES cross-identity comparison (different models)", () => {
     const report = evaluateGate({
       current: makeRunPair({
-        identity: { answeringModels: ["anthropic/claude-sonnet-5"] },
+        identity: { answeringModels: ["other/model"] },
       }),
       baseline: makeRunPair({}),
       fixtures: FIXTURES,
@@ -488,7 +488,7 @@ describe("evaluateGate", () => {
 
   it("REFUSES when a judged file does not belong to its answers file", () => {
     const current = makeRunPair({})
-    current.judged.identity.answeringModels = ["anthropic/claude-sonnet-5"]
+    current.judged.identity.answeringModels = ["other/model"]
     const report = evaluateGate({
       current,
       baseline: makeRunPair({}),
