@@ -18,6 +18,10 @@ import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
 import { datadogLog } from "../../src/lib/datadog"
+import {
+  consumeDeepLinkEntry,
+  whenDeepLinkOriginsReady,
+} from "../../src/lib/deepLinkOrigin"
 import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
@@ -311,14 +315,46 @@ export default function WatchVideoPage() {
 
   const hasVideo = video != null
 
-  // Cold external arrival (forgemobile://) carries no seed — in-app navigation
-  // always seeds. Fire once so it's distinct from in-app pushes (R32).
-  const deepLinkEmittedRef = useRef(false)
+  // Slug-keyed, NOT a boolean: expo-router reuses this route object for a
+  // same-name NAVIGATE, which is what a warm deep link dispatches, so a boolean
+  // would swallow the second slug's event.
+  const deepLinkEmittedRef = useRef<Set<string>>(new Set())
+
+  // External arrivals only. "No seed" over-counts (Library opens rows unseeded)
+  // and stack shape under-counts (the tabs anchor makes canGoBack() always
+  // true), so this awaits the registry that records the opening URL.
   useEffect(() => {
-    if (deepLinkEmittedRef.current || !decodedSlug || seedParam != null) return
-    deepLinkEmittedRef.current = true
-    datadogLog.info("content.deep_link_open", { content_id: decodedSlug })
-  }, [decodedSlug, seedParam])
+    if (!decodedSlug || deepLinkEmittedRef.current.has(decodedSlug)) return
+    let cancelled = false
+    void whenDeepLinkOriginsReady().then(() => {
+      if (cancelled || deepLinkEmittedRef.current.has(decodedSlug)) return
+      const entry = consumeDeepLinkEntry(decodedSlug)
+      if (entry == null) return
+      deepLinkEmittedRef.current.add(decodedSlug)
+      datadogLog.info("content.deep_link_open", {
+        content_id: decodedSlug,
+        entry,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [decodedSlug])
+
+  // A half-rendered page ("Couldn't load full details") used to reach Datadog
+  // only as an abort-shaped network warn, indistinguishable from a healthy one.
+  // Deduped per slug so Retry loops can't flood.
+  const detailFailureEmittedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (hasVideo || error == null || !decodedSlug) return
+    if (detailFailureEmittedRef.current.has(decodedSlug)) return
+    detailFailureEmittedRef.current.add(decodedSlug)
+    datadogLog.warn("content.detail_load_failed", {
+      content_id: decodedSlug,
+      // Seeded => partial page with a Retry; unseeded => the "Video Not Found" screen.
+      surface: seed != null || offlineSource != null ? "partial" : "empty",
+    })
+  }, [hasVideo, error, decodedSlug, seed, offlineSource])
 
   // Detail-route resolution outcome (R34), deduped per slug+outcome so a
   // re-render or a skeleton→hydrated transition each emit at most once. Series

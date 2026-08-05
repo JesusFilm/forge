@@ -114,10 +114,14 @@ export function useWatchHome(): WatchHomeState {
   const lastGoodHydrationVideosRef = useRef<
     readonly WatchHomeVideoInput[] | null
   >(null)
-  // Home-ready fires once per source so the network paint's real admin TTFB
-  // stays distinct from the ~50ms snapshot paint (R21).
+  // Home-ready fires once per (source, outcome) so the network paint's real
+  // admin TTFB stays distinct from the ~50ms snapshot paint (R21).
   const homeReadySnapshotEmittedRef = useRef(false)
+  // Success and failure latch separately: one shared ref meant a session that
+  // failed then recovered never emitted the success paint, losing the real TTFB
+  // for exactly the slow loads R21 exists to measure.
   const homeReadyNetworkEmittedRef = useRef(false)
+  const homeReadyNetworkFailedEmittedRef = useRef(false)
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
     const thisRequest = ++requestIdRef.current
@@ -159,10 +163,16 @@ export function useWatchHome(): WatchHomeState {
         // R14/R22: record the failed required-videos load so slow/retried loads
         // stay in the home-ready distribution, not only fast successes.
         datadogLog.warn("watch_home.videos_failed", {})
-        datadogLog.info("home_feed_ready", {
-          source: "network",
-          outcome: "failed",
-        })
+        // Once per (source, outcome), NOT once per source: an ungated retry loop
+        // skewed every rate/TTFB percentile, but sharing the success latch would
+        // silently drop the recovery paint. Retry volume stays countable above.
+        if (!homeReadyNetworkFailedEmittedRef.current) {
+          homeReadyNetworkFailedEmittedRef.current = true
+          datadogLog.info("home_feed_ready", {
+            source: "network",
+            outcome: "failed",
+          })
+        }
         setError(RETRYABLE_ERROR_MESSAGE)
         return
       }
@@ -282,10 +292,14 @@ export function useWatchHome(): WatchHomeState {
         hydrationVideosJson === snapshotHydrationJsonRef.current
       if (!snapshotStillCurrent) setModel(nextModel)
       if (!homeReadyNetworkEmittedRef.current) {
-        // R21: the network paint carries the real admin TTFB, kept distinct
-        // from the snapshot paint so an instant snapshot can't mask a slow fetch.
+        // R21: the network paint carries the real admin TTFB. `outcome` is
+        // explicit so failed/(failed+success) can be computed — an absent
+        // attribute would make every success row unmatchable.
         homeReadyNetworkEmittedRef.current = true
-        datadogLog.info("home_feed_ready", { source: "network" })
+        datadogLog.info("home_feed_ready", {
+          source: "network",
+          outcome: "success",
+        })
       }
       if (!usedExperience) {
         logWatchHomeFallback({ reason: fallbackReason })
