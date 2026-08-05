@@ -172,18 +172,33 @@ export default function WatchVideoScreen() {
   }, [setVideo])
 
   // Continue Watching → straight into playback (feat-322). The shelf card
-  // routes here with autoplay=1; once the session resolves a playable variant
-  // we open the player at the position READ FROM STORAGE — never a position
-  // implied by the card's hover preview, which is a decorative image and
-  // writes nothing. One-shot per screen instance: the latch keeps a Back out
-  // of the player from bouncing the viewer straight back into it.
+  // routes here with autoplay=1, and this screen becomes a PASS-THROUGH: it
+  // paints only the background (never the details page — the viewer asked to
+  // resume, not to browse), opens the player at the position READ FROM
+  // STORAGE, and pops back to Home when the player closes so Back doesn't
+  // strand them on a page they never chose to visit.
+  //
+  // "off" is also the fallback: if the session settles with nothing playable,
+  // the phase flips and the normal details page renders instead of a
+  // permanently black screen.
+  const [autoplayPhase, setAutoplayPhase] = useState<
+    "pending" | "playing" | "off"
+  >(autoplayParam === "1" ? "pending" : "off")
   const autoplayConsumedRef = useRef(false)
+
   useEffect(() => {
-    if (autoplayParam !== "1" || autoplayConsumedRef.current) return
-    if (playerState.isVisible) return
+    if (autoplayPhase !== "pending" || autoplayConsumedRef.current) return
     const hls = activeVariant?.hls
     const videoId = video?.documentId
-    if (!hls || !videoId || !validateStreamingUrl(hls)) return
+    if (!hls || !videoId || !validateStreamingUrl(hls)) {
+      // Nothing to resume into. Once the query has SETTLED (errored, or
+      // resolved a video whose variants aren't playable), stop waiting and
+      // fall back to the normal details page rather than holding a black
+      // screen. Still-loading keeps waiting — the session receives the
+      // variant a beat after the query resolves.
+      if (!loading && (error != null || video != null)) setAutoplayPhase("off")
+      return
+    }
 
     let cancelled = false
     void (async () => {
@@ -192,6 +207,7 @@ export default function WatchVideoScreen() {
       // player themselves, while storage was being read.
       if (cancelled || autoplayConsumedRef.current) return
       autoplayConsumedRef.current = true
+      setAutoplayPhase("playing")
       playVideo(
         hls,
         video?.title ?? undefined,
@@ -203,7 +219,19 @@ export default function WatchVideoScreen() {
     return () => {
       cancelled = true
     }
-  }, [autoplayParam, activeVariant, video, playVideo, playerState.isVisible])
+  }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
+
+  // Player closed on an autoplay pass-through → pop straight back to Home.
+  const playerWasVisibleRef = useRef(false)
+  useEffect(() => {
+    if (playerState.isVisible) {
+      playerWasVisibleRef.current = true
+      return
+    }
+    if (!playerWasVisibleRef.current) return
+    playerWasVisibleRef.current = false
+    if (autoplayPhase === "playing" && router.canGoBack()) router.back()
+  }, [playerState.isVisible, autoplayPhase, router])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")
   // Stable identity: this lands in the panels' renderRow useCallback deps —
@@ -321,6 +349,14 @@ export default function WatchVideoScreen() {
   // background until the replace lands — mounting the VideoBackdrop here would
   // grab a scarce tvOS decode slot it immediately drops.
   if (redirectDecision === "redirect") {
+    return <View style={styles.screen} />
+  }
+
+  // Autoplay pass-through (Continue Watching): background only — while the
+  // session resolves, while the player is up, and through the pop back to
+  // Home. Same rationale as the redirect frame above: no VideoBackdrop, so
+  // this never grabs the decode slot the fullscreen player needs.
+  if (autoplayPhase !== "off" && !showErrorState) {
     return <View style={styles.screen} />
   }
 
