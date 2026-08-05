@@ -105,8 +105,10 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   ingest — no error, no warning, and the log itself still looks healthy. Prefix
   with a feature namespace (`watch_search.*`) or pick a free name
   (`feed_source`, `http_status`, `error_message`). ES6 shorthand (`{ message }`)
-  collides just the same and is the form review misses. Eight live collisions
-  today, and the emit-side tests all pass: see
+  collides just the same and is the form review misses. Eight such collisions
+  shipped before anyone queried the facets, with every emit-side test passing;
+  `src/lib/__tests__/datadogReservedAttributes.guard.test.js` now blocks a
+  ninth. Background: see
   `docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md`.
 
 ## Common Pitfalls

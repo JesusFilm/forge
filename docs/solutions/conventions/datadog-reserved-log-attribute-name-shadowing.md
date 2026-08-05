@@ -117,12 +117,12 @@ second, independent reason to follow it.
 For a non-namespaced attribute, pick a name the platform does not own: `feed_source`, not
 `source`; `http_status`, not `status`.
 
-**Add a guard so the rule is enforced, not remembered.** The repo has a source-scanning
-`.guard.test.js` convention — `apps/mobile/src/lib/__tests__/watchSearchTelemetry.guard.test.js`
-walks the app's `apps/mobile/src/` and `apps/mobile/app/` trees, asserts `files.length > 50` so a broken root resolution cannot pass
-vacuously, and pairs the tree scan with positive and negative control fixtures so deleting any one
-pattern fails a test. A reserved-key guard belongs in exactly that shape:
-scan every `datadogLog.*` / `DdLogs.*` call site, fail on any context key in the reserved set.
+**A guard enforces the rule; memory does not.** `apps/mobile` now has one at
+`apps/mobile/src/lib/__tests__/datadogReservedAttributes.guard.test.js`, following the repo's
+source-scanning `.guard.test.js` convention: it walks the app's `apps/mobile/src` and
+`apps/mobile/app` trees, asserts `files.length > 50` so a broken root resolution cannot pass
+vacuously, and pairs the tree scan with positive and negative controls so deleting any one reserved
+name fails a test. Shape details are under Examples below.
 
 **Match ES6 shorthand too.** The first audit of this very doc missed two collisions because they
 were written `{ surface, content_id, message }` rather than `message: err.message`. A scan keyed on
@@ -168,7 +168,8 @@ Sibling-app status, checked in the current tree rather than assumed:
   silent-loss class, caught by a different layer. A custom `source` would survive that builder and
   reach the intake. Web's live attribute keys are all `watch_search.*`, so nothing collides now.
 
-**`apps/mobile` — eight live collisions**, all present at the time of writing:
+**`apps/mobile` — eight collisions**, all found and fixed in PR #1840. The table is the audit as
+it stood, since the shapes are what generalize:
 
 | Site                                                    | Log                           | Reserved key                           |
 | ------------------------------------------------------- | ----------------------------- | -------------------------------------- |
@@ -181,22 +182,31 @@ Sibling-app status, checked in the current tree rather than assumed:
 | `apps/mobile/src/components/home/HomeHeroPager.tsx:203` | `video.playback_error`        | `message` (shorthand)                  |
 | `apps/mobile/src/components/home/HomeHeroPager.tsx:215` | `video.playback_error`        | `message` (shorthand)                  |
 
-The two `useManagedVideoPlayer` sites are the same defect with a different blast radius: the
+The two `useManagedVideoPlayer` sites were the same defect with a different blast radius: the
 attribute distinguishes offline (`file://`) from network (`https`) playback, so QoE and stall rates
-cannot currently be split by playback source. The `offlineFileSystem` site loses the HTTP status
-code that is the entire diagnostic value of that warning.
+could not be split by playback source. The `offlineFileSystem` site lost the HTTP status code that
+is the entire diagnostic value of that warning.
 
-The two `HomeHeroPager` sites are the worst of the eight, and they were missed by this doc's own
-first audit — twice over. They are ES6 shorthand (`{ …, message }`), which a naive
-`message\s*:` scan does not match. And `message` is not merely reserved in the abstract: the
-wrapper's own first positional argument already populates it (`DdLogs.warn("video.playback_error",
-ctx)`). So the context key is shadowed by a value the same call is setting from something else, and
-every hero playback error reaches Datadog with its error text stripped — the one field that log
-exists to carry. Rename to `error_message`.
+The two `HomeHeroPager` sites were the worst of the eight, and this doc's own first audit missed
+them — twice over. They were ES6 shorthand (`{ …, message }`), which a naive `message\s*:` scan
+does not match. And `message` is not merely reserved in the abstract: the wrapper's own first
+positional argument already populates it (`DdLogs.warn("video.playback_error", ctx)`). So the
+context key was shadowed by a value the same call was setting from something else, and every hero
+playback error reached Datadog with its error text stripped — the one field that log exists to
+carry.
 
-**None of this is fixed.** PR #1840 ("fix(mobile): correct Datadog telemetry accuracy", open at the
-time of writing) split the `home_feed_ready` success and failure latches and added
-`outcome: "success"`, but did **not** rename `source`. The rename is recommended, not done.
+**The renames that landed:** `source` → `feed_source` (home feed) and `playback_source` (video),
+`status` → `http_status`, `message` → `error_message`. The local variable behind the shorthand was
+renamed too, so the collision cannot reappear by re-adding a shorthand key.
+
+**The guard is the durable half.** `apps/mobile/src/lib/__tests__/datadogReservedAttributes.guard.test.js`
+scans the app's source trees for a reserved name at a top-level key of any `datadogLog.*` / `DdLogs.*`
+context object. It parses rather than greps, because two things a regex gets wrong are exactly the
+two that matter: **depth** (a reserved name nested under a namespaced parent is not a top-level
+attribute and is not dropped) and **key-vs-value position** (`{ http_status: r.status }` must not
+flag on the value's `.status`). Both were caught by its own negative controls during development —
+the first draft flagged both. Falsified once: restoring `{ source: "snapshot" }` turns the tree
+scan red naming that exact site.
 
 ## When to Apply
 
@@ -246,7 +256,7 @@ In Datadog:
 Attribute dump of one row: `custom.outcome: "success"`. There is no `custom.source`. Tags include
 `source:react-native`, set by the SDK.
 
-**Recommended fix — rename to a non-reserved key:**
+**Fixed — renamed to a non-reserved key:**
 
 ```ts
 datadogLog.info("home_feed_ready", { feed_source: "snapshot" })
@@ -260,8 +270,8 @@ datadogLog.info("home_feed_ready", {
 })
 ```
 
-Then `@feed_source` groups into `snapshot` / `network` and the R21 distinction becomes answerable
-for the first time.
+`@feed_source` now groups into `snapshot` / `network`, making the R21 distinction answerable for
+the first time.
 
 **Already correct — namespaced keys (`apps/mobile/src/lib/watchSearchLog.ts`):**
 
@@ -278,7 +288,7 @@ for the first time.
 A namespace prefix makes collision structurally impossible. Prefer this for any attribute set
 larger than one or two keys.
 
-**The other live collisions and their fixes:**
+**The other collisions, as found, and what each became:**
 
 ```ts
 // apps/mobile/src/hooks/useManagedVideoPlayer.ts:76 and :267 — offline vs network playback
@@ -298,24 +308,24 @@ datadogLog.warn("video.playback_error", {
 //              ^^^ the wrapper already sets `message` from here   ^^^^^^^ dropped -> error_message
 ```
 
-**Guard shape to add** — model it on `apps/mobile/src/lib/__tests__/watchSearchTelemetry.guard.test.js`:
+**The guard** lives at `apps/mobile/src/lib/__tests__/datadogReservedAttributes.guard.test.js`,
+modelled on `watchSearchTelemetry.guard.test.js`. Port it to `apps/tv` when that app grows its
+first collision risk — the wrapper there is byte-identical, so the same detector applies unchanged.
 
 ```js
-const RESERVED_LOG_ATTRIBUTES = [
-  "source",
-  "host",
-  "service",
-  "status",
-  "message",
-  "trace_id",
-]
-// Scan every .ts/.tsx under apps/mobile/src and apps/mobile/app for a reserved
-// key in a datadogLog.* / DdLogs.* context object -- BOTH `message:` and the
-// bare `message` shorthand, which is how two live collisions were missed.
-// Assert files.length > 50 so a broken root resolution cannot pass vacuously,
-// and pair the scan with positive and negative controls so deleting any one
-// pattern fails a test.
+// Scan every .ts/.tsx under the app's src and app trees. For each
+// datadogLog.* / DdLogs.* call, extract the balanced context object,
+// collect its TOP-LEVEL keys,
+// then fail on any key in the reserved list. Assert files.length > 50 so a
+// broken root resolution cannot pass vacuously, and pair the scan with
+// positive controls (one per reserved name, plus shorthand and multi-line)
+// and negative controls (namespaced, nested, spread, value-position).
 ```
+
+Parse, do not grep. A regex over lines gets two things wrong, and they are the two that decide
+whether the guard is usable: a reserved name **nested** under a namespaced parent is not a
+top-level attribute and must not flag, and a reserved name in **value** position
+(`{ http_status: r.status }`) must not flag either. A guard that cries wolf on both gets deleted.
 
 ## Related
 

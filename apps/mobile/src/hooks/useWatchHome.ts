@@ -169,7 +169,7 @@ export function useWatchHome(): WatchHomeState {
         if (!homeReadyNetworkFailedEmittedRef.current) {
           homeReadyNetworkFailedEmittedRef.current = true
           datadogLog.info("home_feed_ready", {
-            source: "network",
+            feed_source: "network",
             outcome: "failed",
           })
         }
@@ -297,7 +297,7 @@ export function useWatchHome(): WatchHomeState {
         // attribute would make every success row unmatchable.
         homeReadyNetworkEmittedRef.current = true
         datadogLog.info("home_feed_ready", {
-          source: "network",
+          feed_source: "network",
           outcome: "success",
         })
       }
@@ -371,7 +371,7 @@ export function useWatchHome(): WatchHomeState {
         setModel(snapshotModel)
         if (!homeReadySnapshotEmittedRef.current) {
           homeReadySnapshotEmittedRef.current = true
-          datadogLog.info("home_feed_ready", { source: "snapshot" })
+          datadogLog.info("home_feed_ready", { feed_source: "snapshot" })
         }
         // A painted model ends the spinner phase; the still-running initial
         // fetch is a background revalidation, not a loading state.
