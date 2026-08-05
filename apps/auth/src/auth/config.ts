@@ -49,6 +49,35 @@ const betterAuthSecret =
   env.BETTER_AUTH_SECRET ??
   (isNextBuild ? "build-time-placeholder-not-used-at-runtime" : undefined)
 
+/**
+ * Apple has two independent credential pairs, and either alone is enough to
+ * register the provider: the web Service ID (browser flow) and the app bundle
+ * id (native sheet). clientId and clientSecret must stay MATCHED — Apple
+ * requires the secret JWT's `sub` to equal the client_id presented at its
+ * token endpoint — so they are resolved as a pair, never mixed.
+ */
+const appleWebCredentials =
+  env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET
+    ? { clientId: env.APPLE_CLIENT_ID, clientSecret: env.APPLE_CLIENT_SECRET }
+    : null
+const appleNativeCredentials =
+  env.APPLE_APP_BUNDLE_ID && env.APPLE_NATIVE_CLIENT_SECRET
+    ? {
+        clientId: env.APPLE_APP_BUNDLE_ID,
+        clientSecret: env.APPLE_NATIVE_CLIENT_SECRET,
+      }
+    : null
+// The web Service ID drives the browser authorization URL when present; a
+// native-only deploy falls back to the bundle id, and the hosted login page
+// correctly keeps Apple disabled there (it gates on APPLE_CLIENT_ID).
+const appleCredentials = appleWebCredentials ?? appleNativeCredentials
+// Verify identity tokens minted for EITHER id, independent of which pair
+// drives the browser flow.
+const appleAudience = [
+  ...(env.APPLE_CLIENT_ID ? [env.APPLE_CLIENT_ID] : []),
+  ...(env.APPLE_APP_BUNDLE_ID ? [env.APPLE_APP_BUNDLE_ID] : []),
+]
+
 const socialProviders = {
   ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
     ? {
@@ -69,17 +98,11 @@ const socialProviders = {
         },
       }
     : {}),
-  ...(env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET
+  ...(appleCredentials
     ? {
         apple: {
-          clientId: env.APPLE_CLIENT_ID,
-          clientSecret: env.APPLE_CLIENT_SECRET,
-          // Native-sheet identity tokens carry the app bundle id as audience;
-          // web's Service ID stays first for the browser flow.
-          audience: [
-            env.APPLE_CLIENT_ID,
-            ...(env.APPLE_APP_BUNDLE_ID ? [env.APPLE_APP_BUNDLE_ID] : []),
-          ],
+          ...appleCredentials,
+          audience: appleAudience,
           // Never let a repeat sign-in that omits email blank a stored one.
           mapProfileToUser: (profile: { email?: string | null }) =>
             profile.email ? { email: profile.email } : {},

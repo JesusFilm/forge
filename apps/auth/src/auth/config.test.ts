@@ -58,6 +58,8 @@ type CapturedAuthOptions = {
   socialProviders: Record<string, unknown> & {
     google: GoogleOptions
     apple?: {
+      clientId: string
+      clientSecret: string
       audience: string[]
       mapProfileToUser: (profile: {
         email?: string | null
@@ -341,5 +343,77 @@ describe("mobile login configuration", () => {
         session: {},
       }),
     ).toEqual({ sub: "user-2" })
+  })
+})
+
+// Production has no web Service ID (APPLE_CLIENT_ID unset in Doppler forge-auth
+// as of 2026-08-05), so gating Apple on the web pair alone left the provider
+// unregistered and native sign-in failing with PROVIDER_NOT_FOUND.
+describe("Apple credential pairing", () => {
+  it("registers Apple from the NATIVE pair alone — no web Service ID", async () => {
+    configureProviderEnvironment({
+      APPLE_CLIENT_ID: undefined,
+      APPLE_CLIENT_SECRET: undefined,
+      APPLE_APP_BUNDLE_ID: "org.jesusfilm.forgewatch",
+      APPLE_NATIVE_CLIENT_SECRET: "apple-native-secret",
+    })
+
+    const options = await captureAuthOptions()
+
+    expect(options.socialProviders.apple).toMatchObject({
+      clientId: "org.jesusfilm.forgewatch",
+      clientSecret: "apple-native-secret",
+      audience: ["org.jesusfilm.forgewatch"],
+    })
+  })
+
+  it("keeps clientId and clientSecret a MATCHED pair — never web id with native secret", async () => {
+    // Apple requires the secret JWT's `sub` to equal the presented client_id;
+    // a mixed pair is rejected at its token endpoint.
+    configureProviderEnvironment({
+      APPLE_APP_BUNDLE_ID: "org.jesusfilm.forgewatch",
+      APPLE_NATIVE_CLIENT_SECRET: "apple-native-secret",
+    })
+
+    const options = await captureAuthOptions()
+
+    expect(options.socialProviders.apple).toMatchObject({
+      clientId: "apple-client-id",
+      clientSecret: "apple-client-secret",
+    })
+    // Both ids still verify identity tokens.
+    expect(options.socialProviders.apple?.audience).toEqual([
+      "apple-client-id",
+      "org.jesusfilm.forgewatch",
+    ])
+  })
+
+  it("verifies native tokens even when the native secret is absent", async () => {
+    // The bundle id can be trusted as an audience before the code-exchange
+    // credential exists; the exchange endpoint degrades on its own.
+    configureProviderEnvironment({
+      APPLE_APP_BUNDLE_ID: "org.jesusfilm.forgewatch",
+      APPLE_NATIVE_CLIENT_SECRET: undefined,
+    })
+
+    const options = await captureAuthOptions()
+
+    expect(options.socialProviders.apple?.clientId).toBe("apple-client-id")
+    expect(options.socialProviders.apple?.audience).toContain(
+      "org.jesusfilm.forgewatch",
+    )
+  })
+
+  it("leaves Apple unregistered when neither pair is complete", async () => {
+    configureProviderEnvironment({
+      APPLE_CLIENT_ID: undefined,
+      APPLE_CLIENT_SECRET: undefined,
+      APPLE_APP_BUNDLE_ID: "org.jesusfilm.forgewatch",
+      APPLE_NATIVE_CLIENT_SECRET: undefined,
+    })
+
+    const options = await captureAuthOptions()
+
+    expect(options.socialProviders).not.toHaveProperty("apple")
   })
 })
