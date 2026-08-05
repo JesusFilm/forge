@@ -1,12 +1,15 @@
 import { Agent } from "@mastra/core/agent"
+import { createTool } from "@mastra/core/tools"
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import type { Memory } from "@mastra/memory"
 
 import { assertAiChatServiceKeysDisjoint } from "../config/env"
 
 import { buildAiChatMemory } from "./ai-chat-memory"
+import { featureVideoTool } from "./tools/feature-video"
 import {
   AI_CHAT_HISTORY_DEFAULT_PER_PAGE,
   AI_CHAT_HISTORY_MAX_PER_PAGE,
@@ -652,6 +655,99 @@ function buildSmokeMemory(): Memory {
   return buildAiChatMemory({ getBackend: () => "memory" })
 }
 
+/** Drives a real multi-step tool turn: retrieveAnswer → searchVideos →
+ * featureVideo → text. The step index comes from how many tool messages the
+ * prompt already carries, so it is per-TURN by construction. */
+function videoTurnModel(): MockLanguageModelV3 {
+  const call = (toolCallId: string, toolName: string, input: unknown) => [
+    { type: "stream-start", warnings: [] },
+    {
+      type: "tool-call",
+      toolCallId,
+      toolName,
+      input: JSON.stringify(input),
+    },
+    {
+      type: "finish",
+      finishReason: { unified: "tool-calls" as const, raw: "tool_calls" },
+      usage: MOCK_USAGE,
+    },
+  ]
+  return new MockLanguageModelV3({
+    doStream: async ({ prompt }) => {
+      const step = (prompt as unknown as Array<{ role?: string }>).filter(
+        (m) => m?.role === "tool",
+      ).length
+      const chunks =
+        step === 0
+          ? call("c-retrieve", "retrieveAnswer", { query: "storm" })
+          : step === 1
+            ? call("c-search", "searchVideos", { q: "storm" })
+            : step === 2
+              ? call("c-feature", "featureVideo", { videoId: "vid-smoke-1" })
+              : [
+                  { type: "stream-start", warnings: [] },
+                  { type: "text-start", id: "0" },
+                  {
+                    type: "text-delta",
+                    id: "0",
+                    delta: "VIDEO_SMOKE_REPLY here it is",
+                  },
+                  { type: "text-end", id: "0" },
+                  {
+                    type: "finish",
+                    finishReason: { unified: "stop" as const, raw: "stop" },
+                    usage: MOCK_USAGE,
+                  },
+                ]
+      return {
+        stream: simulateReadableStream<SmokeStreamPart>({
+          initialDelayInMs: null,
+          chunkDelayInMs: null,
+          chunks: chunks as SmokeStreamPart[],
+        }),
+      }
+    },
+  })
+}
+
+const smokeRetrieveAnswerTool = createTool({
+  id: "retrieveAnswer",
+  description: "smoke stand-in for the RAG tool",
+  inputSchema: z.object({ query: z.string() }),
+  execute: async () => ({
+    status: "ok",
+    sources: [
+      {
+        sourceName: "Smoke Source",
+        title: "Smoke Title",
+        url: "https://example.org/smoke",
+        score: 0.9,
+        text: "smoke snippet",
+      },
+    ],
+  }),
+})
+
+const smokeSearchVideosTool = createTool({
+  id: "searchVideos",
+  description: "smoke stand-in for the catalog search tool",
+  inputSchema: z.object({ q: z.string() }),
+  execute: async () => ({
+    videos: [
+      {
+        videoId: "vid-smoke-1",
+        title: "Jesus calms the storm",
+        slug: "jesus-calms-the-storm",
+        playbackId: "abcdefgh12345678",
+        durationSeconds: 120,
+        languageSlug: "english",
+        availability: { kind: "target_audio" },
+      },
+    ],
+  }),
+})
+
 function buildSmokeAgent(model: MockLanguageModelV3, memory: Memory): Agent {
   return new Agent({
     id: "history-smoke",
@@ -768,4 +864,105 @@ describe("history routes — real-memory smoke", () => {
     ).threads.map((t) => t.id)
     expect(otherIds).toEqual(["foreign-owner-thread"])
   })
+
+  /**
+   * feat-329's load-bearing production contract: that a REAL Memory store
+   * persists tool name AND result in a shape replay can re-derive from.
+   *
+   * The mocked fixtures in `ai-chat-history-replay-attachments.test.ts` prove
+   * the branch shape; only this proves the shape is real. **Re-verify on every
+   * `@mastra/*` bump** — a change to how parts are stored silently empties
+   * every replayed attachment, and no mocked test can see it. Observed shape
+   * (2026-08-04, @mastra/core 1.55.0 / @mastra/memory 1.24.0):
+   * `{ type: "tool-invocation", toolInvocation: { state, toolCallId, args,
+   * toolName, result } }`. Falsified 2026-08-04 by pointing the adapter at
+   * `"tool-result"` — this test went red, so it is not vacuous.
+   *
+   * TWO SCOPE LIMITS, stated so nobody reads more into this than it proves:
+   *
+   * 1. This store put the whole turn — tool parts AND reply text — on ONE
+   *    assistant message, so the carrier assertions below CANNOT discriminate
+   *    "attach to the turn's last text-bearing message" from "attach to this
+   *    message". Falsifying the last-text-bearing rule leaves this test GREEN.
+   *    The separate-tool-message fixture in the mocked suite is the only
+   *    coverage of the split case; if a future `@mastra/*` version starts
+   *    splitting turns, strengthen this test rather than assuming it covered it.
+   * 2. The backend here is the `memory` `InMemoryStore`, NOT the `postgres`
+   *    backend production runs. It pins the part shape `@mastra/core` PRODUCES,
+   *    which is where the risk sits; it does not prove a `PostgresStore`
+   *    save+recall round trip preserves it. feat-241 proved the text half on
+   *    real Postgres; the tool-part half rests on the two stores sharing one
+   *    serialization path. Reopening one pre-existing video thread after the
+   *    flag flip is the cheap operator check that closes it.
+   */
+  it("round-trips a video-featuring turn through a REAL Memory store", async () => {
+    const memory = buildSmokeMemory()
+    const agent = new Agent({
+      id: "history-video-smoke",
+      name: "History Video Smoke",
+      instructions: "You are a test stand-in for the ai-chat agent.",
+      model: videoTurnModel(),
+      memory,
+      tools: () => ({
+        retrieveAnswer: smokeRetrieveAnswerTool,
+        searchVideos: smokeSearchVideosTool,
+        featureVideo: featureVideoTool,
+      }),
+    })
+
+    const output = await agent.stream("show me a storm video", {
+      maxSteps: 8,
+      memory: { thread: "video-smoke-thread", resource: "user:smoke-sub" },
+    })
+    const reader = output.textStream.getReader()
+    while (!(await reader.read()).done) {
+      // drain
+    }
+    await output.toolResults
+
+    const history = memory as unknown as AiChatHistoryMemory
+    const replayed = await vi.waitFor(async () => {
+      const outcome = await handleAiChatHistoryReplayRequest(
+        replayInput(history, {
+          readJson: async () => ({
+            resourceId: "user:smoke-sub",
+            threadId: "video-smoke-thread",
+          }),
+        }),
+      )
+      expect(outcome.status).toBe(200)
+      const body = outcome.body as { messages: AiChatHistoryWireMessage[] }
+      expect(body.messages.some((m) => m.role === "assistant")).toBe(true)
+      const assistant = body.messages.filter((m) => m.role === "assistant")
+      expect(assistant.at(-1)?.video).toBeDefined()
+      return body.messages
+    })
+
+    // TURN ASSOCIATION against the real store: the attachments and the reply
+    // text end up on the SAME rendered message, however the store split them.
+    const carrier = replayed.find((m) => m.video !== undefined)
+    expect(carrier).toBeDefined()
+    expect(carrier!.role).toBe("assistant")
+    expect(carrier!.text).toContain("VIDEO_SMOKE_REPLY")
+
+    // The stored row survives the D9 re-projection unchanged.
+    expect(carrier!.video).toStrictEqual({
+      videoId: "vid-smoke-1",
+      title: "Jesus calms the storm",
+      slug: "jesus-calms-the-storm",
+      playbackId: "abcdefgh12345678",
+      durationSeconds: 120,
+      languageSlug: "english",
+    })
+    // Sources ride the SAME message (plan D8 — video and sources together).
+    expect(carrier!.sources).toStrictEqual([
+      {
+        sourceName: "Smoke Source",
+        title: "Smoke Title",
+        url: "https://example.org/smoke",
+        score: 0.9,
+        snippet: "smoke snippet",
+      },
+    ])
+  }, 30_000)
 })

@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 4, 2026)
+## Status (August 5, 2026)
 
 - **Total tickets:** 49
-- ✅ **Complete:** 40
+- ✅ **Complete:** 41
 - 🟡 **In progress:** 1
-- 🔵 **Not started:** 8
+- 🔵 **Not started:** 7
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -69,6 +69,6 @@ from the main DS Year 1 roadmap.
 | [feat-326](feat-326-admin-agent-tools-availability-kind.md)            | Admin agent-tools search-videos: expose availability.kind                    | jian wei | P1       | 2026-08-03 | 1    | ✅ complete    | [#1813](https://github.com/JesusFilm/forge/pull/1813)                                                        |
 | [feat-327](feat-327-seeker-video-tools-result-projection.md)           | Seeker video tools + declared-video result projection (SEEKER_VIDEO_ENABLED) | jian wei | P1       | 2026-08-04 | 3    | ✅ complete    | [#1820](https://github.com/JesusFilm/forge/pull/1820)                                                        |
 | [feat-328](feat-328-chat-inline-video-rendering.md)                    | Chat inline video rendering from the result frame                            | jian wei | P1       | 2026-08-07 | 2    | ✅ complete    | [#1832](https://github.com/JesusFilm/forge/pull/1832)                                                        |
-| [feat-329](feat-329-chat-video-sources-replay-persistence.md)          | Replay persistence: featured video + sources survive thread reload           | jian wei | P1       | 2026-08-10 | 2    | 🔵 not-started | —                                                                                                            |
+| [feat-329](feat-329-chat-video-sources-replay-persistence.md)          | Replay persistence: featured video + sources survive thread reload           | jian wei | P1       | 2026-08-10 | 2    | ✅ complete    | [#1836](https://github.com/JesusFilm/forge/pull/1836)                                                        |
 | [feat-330](feat-330-seeker-video-prompt-langfuse.md)                   | Durable video-featuring guidance in the Langfuse seeker prompt               | jian wei | P1       | 2026-08-10 | 1    | 🔵 not-started | —                                                                                                            |
 | [feat-334](feat-334-chat-render-boundary-clamp-guard-consolidation.md) | Chat render-boundary + clamp-guard consolidation                             | jian wei | P2       | 2026-08-14 | 1    | 🔵 not-started | —                                                                                                            |

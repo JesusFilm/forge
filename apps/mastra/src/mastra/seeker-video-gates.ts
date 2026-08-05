@@ -6,8 +6,10 @@
  *   - `mastra/tools/seeker-search-videos.ts` — drops non-conforming rows at the
  *     TOOL boundary so the model is never shown a candidate it could declare
  *     but the route could never attach.
- *   - `mastra/agents/seeker-route.ts` — re-applies them in `projectVideo` on
- *     the DECLARED row, over an `unknown` payload (D9 belt-and-braces).
+ *   - `mastra/agents/seeker-turn-projection.ts` — re-applies them in
+ *     `projectVideo` on the DECLARED row, over an `unknown` payload (D9
+ *     belt-and-braces). Since feat-329 that module serves BOTH the live send
+ *     path and the replay path, so a stored row is re-gated on every replay.
  *
  * Sharing the CONSTANTS is not the same as skipping the second check. D9's
  * belt-and-braces is about re-validating the untrusted DATA at the wire
@@ -16,9 +18,9 @@
  * (exactly the gap this module was created to close).
  *
  * Direction of dependency is deliberate: both consumers import from HERE, and
- * neither imports from the other. `seeker-route.ts` already imports tool-NAME
- * constants from the two tool modules, so a tool importing back from the route
- * would close a cycle.
+ * neither imports from the other. `seeker-turn-projection.ts` already imports
+ * tool-NAME constants from the two tool modules, so a tool importing back from
+ * that module would close a cycle.
  *
  * WHY THESE PATTERNS (do not loosen without re-reading this):
  *

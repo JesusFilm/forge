@@ -16,7 +16,9 @@
  *
  * `video` (feat-327) is the OPTIONAL declared-video attachment: present only
  * when this turn's model both searched and declared a pick that survives the
- * projection gates, OMITTED (never null) otherwise. See resolveDeclaredVideo.
+ * projection gates, OMITTED (never null) otherwise. The projections and the
+ * declaration ladder live in `./seeker-turn-projection.ts` (feat-329, plan
+ * P8), shared with the replay path so the two cannot drift.
  *
  * Defense-in-depth gates, checked in order: the shared lane admission
  * preamble (`refuseUnlessLaneAdmitted`, feat-283 — enable flag (KTD7) → 404,
@@ -50,19 +52,16 @@ import {
   type AiChatOwnershipMemory,
 } from "../ai-chat-thread-ownership"
 import { aiChatMemoryConfigFor, getAiChatMemory } from "../ai-chat-memory"
-// Tool NAMES are imported, not re-declared: the route matches tool-result
-// chunks on these exact strings, so a rename in either tool module would
-// otherwise break every declaration silently, with no test or log line to
-// catch it. Importing the constants (not the tools) keeps the handler free of
-// agent imports — the isolation guard's actual concern.
-import { FEATURE_VIDEO_TOOL_NAME } from "../tools/feature-video"
-import { SEEKER_SEARCH_VIDEOS_TOOL_NAME } from "../tools/seeker-search-videos"
+// The projections + declaration ladder live in the shared module (feat-329,
+// plan P8) so the REPLAY path resolves attachments identically. This route
+// owns only the adapter down to `SeekerToolChunk` and the operator logging.
 import {
-  FEATURABLE_AVAILABILITY_KIND,
-  PLAYBACK_ID_PATTERN,
-  SLUG_PATTERN,
-  VIDEO_ID_PATTERN,
-} from "../seeker-video-gates"
+  resolveTurnAttachments,
+  type SeekerToolChunk,
+  type SeekerTurnAttachments,
+  type SeekerWireSource,
+  type SeekerWireVideo,
+} from "./seeker-turn-projection"
 
 // Narrow structural surface of the seeker agent's streaming API (avoids
 // fighting the generic Agent.stream signature; the runtime contract is
@@ -130,30 +129,6 @@ const SEEKER_AGENT_ID = "seekerAgent"
  * `resourceId` optional to callers while satisfying the runtime memory guard.
  */
 export const SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"
-const RETRIEVE_ANSWER_TOOL_NAME = "retrieveAnswer"
-
-/** A single source as projected onto the wire (KTD4 allowlist). */
-type SeekerWireSource = {
-  sourceName: string
-  title: string | null
-  url: string
-  score: number
-  snippet: string
-}
-
-/**
- * The declared video as projected onto the wire (feat-327, plan D9). Exactly
- * these six fields — `toStrictEqual`-pinned. No URL field exists on the wire at
- * all: chat builds the watch URL client-side from the validated slugs.
- */
-type SeekerWireVideo = {
-  videoId: string
-  title: string
-  slug: string
-  playbackId: string
-  durationSeconds: number | null
-  languageSlug: string | null
-}
 
 function sseFrame(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -192,249 +167,46 @@ function isSeekerBody(
 }
 
 /**
- * Project a single retrieveAnswer source onto the wire field-by-field (KTD4).
- * Never spreads — a future field added to the tool's source shape cannot
- * silently widen the wire. `snippet` is the tool's already-capped `text`.
- * Returns null when the candidate is not a well-shaped source object.
+ * Send-path adapter (plan P8): normalize this turn's `toolResults` chunks —
+ * `{ payload: { toolName, result } }` — into the shared module's
+ * `{ toolName, result }`. Chunks with no string tool name are dropped; the
+ * replay route supplies its own adapter over its own stored shape.
  */
-function projectSource(candidate: unknown): SeekerWireSource | null {
-  if (typeof candidate !== "object" || candidate === null) return null
-  const s = candidate as {
-    text?: unknown
-    sourceName?: unknown
-    title?: unknown
-    url?: unknown
-    score?: unknown
-  }
-  if (typeof s.sourceName !== "string") return null
-  if (typeof s.url !== "string") return null
-  if (typeof s.score !== "number") return null
-  return {
-    sourceName: s.sourceName,
-    title: typeof s.title === "string" ? s.title : null,
-    url: s.url,
-    score: s.score,
-    snippet: typeof s.text === "string" ? s.text : "",
-  }
-}
-
-/**
- * Extract `{ sources, grounded }` from the resolved tool results. Reads the
- * LAST `retrieveAnswer` chunk, projects its `result.sources` through the
- * allowlist, and sets `grounded` only when that result's `status === "ok"`.
- * Pure + total: any shape mismatch degrades to `{ sources: [], grounded:false }`.
- */
-function extractSources(chunks: SeekerToolResultChunk[]): {
-  sources: SeekerWireSource[]
-  grounded: boolean
-} {
-  let last: { result?: unknown } | undefined
-  for (const chunk of chunks) {
-    if (chunk?.payload?.toolName === RETRIEVE_ANSWER_TOOL_NAME) {
-      last = chunk.payload
-    }
-  }
-  if (!last) return { sources: [], grounded: false }
-  const result = last.result as { status?: unknown; sources?: unknown }
-  const rawSources = Array.isArray(result?.sources) ? result.sources : []
-  const sources = rawSources
-    .map(projectSource)
-    .filter((s): s is SeekerWireSource => s !== null)
-  return { sources, grounded: result?.status === "ok" }
-}
-
-/**
- * Project one `searchVideos` candidate row onto the wire field-by-field
- * (plan D9). Never spreads, so a future field on the tool's output cannot
- * silently widen the wire, and re-asserts every condition the tool boundary
- * already enforced (belt-and-braces: the route treats tool payloads as
- * untrusted).
- *
- * Returns null — meaning "not featurable" — when the row is not a well-shaped
- * object, when any required string is missing, when `playbackId` or either slug
- * fails its pattern gate, or when `availability.kind` is not `target_audio`
- * (which also fail-closes an unknown/absent kind).
- *
- * D9 SHAPE GATES, shared with the tool boundary (`../seeker-video-gates` —
- * read it for why each pattern is what it is, and for the 2026-08-04
- * production evidence affirming the slug pattern). The tool now drops
- * non-conforming rows too, so in practice these re-checks fire only when a
- * tool payload is not what the route was promised — which is exactly the
- * assumption D9 refuses to make. Sharing the CONSTANTS is not skipping the
- * CHECK: this function re-validates the declared row over an `unknown`
- * payload regardless of what any upstream filter claims to have done.
- *
- * `languageSlug` is nullable: absent is legitimate (chat falls back to the
- * default-language watch URL). But a PRESENT value that fails the slug pattern
- * rejects the whole row rather than degrading to null — a malformed slug is a
- * contract violation, not a missing field.
- */
-export function projectVideo(candidate: unknown): SeekerWireVideo | null {
-  if (typeof candidate !== "object" || candidate === null) return null
-  const v = candidate as {
-    videoId?: unknown
-    title?: unknown
-    slug?: unknown
-    playbackId?: unknown
-    durationSeconds?: unknown
-    languageSlug?: unknown
-    availability?: unknown
-  }
-  if (typeof v.videoId !== "string" || !VIDEO_ID_PATTERN.test(v.videoId)) {
-    return null
-  }
-  if (typeof v.title !== "string" || v.title.length === 0) return null
-  if (typeof v.slug !== "string" || !SLUG_PATTERN.test(v.slug)) return null
-  if (
-    typeof v.playbackId !== "string" ||
-    !PLAYBACK_ID_PATTERN.test(v.playbackId)
-  ) {
-    return null
-  }
-
-  const availability = v.availability as { kind?: unknown } | null | undefined
-  if (availability?.kind !== FEATURABLE_AVAILABILITY_KIND) return null
-
-  let languageSlug: string | null = null
-  if (v.languageSlug != null) {
-    if (
-      typeof v.languageSlug !== "string" ||
-      !SLUG_PATTERN.test(v.languageSlug)
-    ) {
-      return null
-    }
-    languageSlug = v.languageSlug
-  }
-
-  return {
-    videoId: v.videoId,
-    title: v.title,
-    slug: v.slug,
-    playbackId: v.playbackId,
-    // Finite and non-negative, not merely `typeof === "number"`: NaN and
-    // Infinity both serialize to JSON `null` on the wire — a silent lie about a
-    // field the renderer formats — and a negative duration is not a duration.
-    durationSeconds:
-      typeof v.durationSeconds === "number" &&
-      Number.isFinite(v.durationSeconds) &&
-      v.durationSeconds >= 0
-        ? v.durationSeconds
-        : null,
-    languageSlug,
-  }
-}
-
-/**
- * Resolve this turn's featured video from the tool results (feat-327, plan
- * D4/P3).
- *
- * The model DECLARES; it never authors. Resolution is:
- *   1. union every `searchVideos` result row from the turn, keyed by videoId —
- *      both the raw ids the model was shown and their projected,
- *      pattern-gated, target_audio-only counterparts. On a videoId collision a
- *      later call's row replaces an earlier one ONLY when it also projects
- *      successfully; a later row that fails a gate leaves the earlier valid
- *      projection standing rather than downgrading the turn to no video;
- *   2. take the LAST `featureVideo` declaration;
- *   3. attach iff the declared id resolves in the PROJECTED union.
- *
- * Keeping both maps is what makes the failure ladder honest: an id the model
- * never saw (`id_not_in_results`) is a different operator signal from an id it
- * saw whose row failed the gates (`projection_failed`).
- *
- * FAILURE LADDER — every rung attaches nothing and NEVER produces an error
- * frame (plan D4). Logging is enum-only; video ids are catalog data and
- * acceptable, titles and query text are not.
- *   - no declaration            → undefined, no log (the normal case)
- *   - malformed declaration     → reason=malformed
- *   - declared id unseen        → reason=id_not_in_results
- *   - declared row fails gates  → reason=projection_failed
- *
- * Note for operators: `id_not_in_results` also fires on legitimate "show me
- * that one again" turns, because the union is turn-scoped by design —
- * frequency, not existence, is the signal.
- *
- * Pure + total: any shape mismatch degrades to `undefined`.
- */
-function resolveDeclaredVideo(
-  chunks: SeekerToolResultChunk[],
-): SeekerWireVideo | undefined {
-  const seenIds = new Set<string>()
-  const projected = new Map<string, SeekerWireVideo>()
-  let declaration: { result?: unknown } | undefined
-
+function toTurnChunks(chunks: SeekerToolResultChunk[]): SeekerToolChunk[] {
+  const normalized: SeekerToolChunk[] = []
   for (const chunk of chunks) {
     const toolName = chunk?.payload?.toolName
-    if (toolName === SEEKER_SEARCH_VIDEOS_TOOL_NAME) {
-      const result = chunk.payload?.result as { videos?: unknown }
-      const rows = Array.isArray(result?.videos) ? result.videos : []
-      for (const row of rows) {
-        const id = (row as { videoId?: unknown } | null)?.videoId
-        if (typeof id === "string" && id.length > 0) seenIds.add(id)
-        const video = projectVideo(row)
-        // A later call's row replaces an earlier one only when it ALSO
-        // projects — a later gate failure never downgrades a turn that already
-        // had a valid candidate for that id.
-        if (video) projected.set(video.videoId, video)
-      }
-    } else if (toolName === FEATURE_VIDEO_TOOL_NAME) {
-      declaration = chunk.payload
+    if (typeof toolName === "string") {
+      normalized.push({ toolName, result: chunk.payload?.result })
     }
   }
+  return normalized
+}
 
-  if (!declaration) return undefined
-
-  const declared = (declaration.result as { videoId?: unknown } | null)?.videoId
-  if (typeof declared !== "string" || declared.length === 0) {
+/**
+ * Emit this turn's operator lines from the resolved attachments (feat-327).
+ *
+ * The declaration ladder and the E7 signal are RESOLVED in the shared module
+ * and LOGGED here, because only the live path should speak: replay re-resolves
+ * every stored turn on every thread open, and those rejections were already
+ * logged when the turn ran.
+ *
+ * `video_turn_missing_retrieval` is the E7 signal — a turn that used a video
+ * tool but never called `retrieveAnswer`, answering a faith question with no
+ * grounding and no citations. The plan REQUIRES measuring that skip frequency
+ * on the shipped shape; `grounded` on the wire cannot substitute, since it is
+ * also false when retrieval ran and returned empty.
+ *
+ * Enum-only: video ids are catalog data and acceptable, titles and query text
+ * are not.
+ */
+function logTurnAttachments(attachments: SeekerTurnAttachments): void {
+  if (attachments.videoRejection) {
     console.warn(
-      "[seeker-route] event=video_feature_invalid_declaration reason=malformed",
+      `[seeker-route] event=video_feature_invalid_declaration reason=${attachments.videoRejection}`,
     )
-    return undefined
   }
-
-  const video = projected.get(declared)
-  if (video) return video
-
-  const reason = seenIds.has(declared)
-    ? "projection_failed"
-    : "id_not_in_results"
-  console.warn(
-    `[seeker-route] event=video_feature_invalid_declaration reason=${reason}`,
-  )
-  return undefined
-}
-
-/**
- * Emit the E7 signal: a turn that used a video tool but never called
- * `retrieveAnswer` (feat-327, plan risk E7).
- *
- * Adding a second tool to this agent is known to disturb single-tool
- * discipline — video turns intermittently skip retrieval and answer faith
- * questions with no grounding and no citations. The plan REQUIRES measuring
- * that skip frequency on the shipped shape before the dogfood roster is
- * exposed, and the durable prompt fix is feat-330. Without a signal, that
- * measurement is eyeballing transcripts; with it, an operator can count the
- * line. `grounded` on the wire cannot substitute — it is also false when
- * retrieval ran and returned empty.
- *
- * Enum-only, zero payload. Silent on turns with no video tool activity, so it
- * costs nothing while the flag is off.
- */
-function logUngroundedVideoTurn(chunks: SeekerToolResultChunk[]): void {
-  let usedVideoTool = false
-  let retrieved = false
-  for (const chunk of chunks) {
-    const toolName = chunk?.payload?.toolName
-    if (
-      toolName === SEEKER_SEARCH_VIDEOS_TOOL_NAME ||
-      toolName === FEATURE_VIDEO_TOOL_NAME
-    ) {
-      usedVideoTool = true
-    } else if (toolName === RETRIEVE_ANSWER_TOOL_NAME) {
-      retrieved = true
-    }
-  }
-  if (usedVideoTool && !retrieved) {
+  if (attachments.ungroundedVideoTurn) {
     console.warn("[seeker-route] event=video_turn_missing_retrieval")
   }
 }
@@ -572,14 +344,16 @@ export async function handleSeekerRouteRequest({
         let video: SeekerWireVideo | undefined
         try {
           const chunks = await output.toolResults
-          const extracted = extractSources(chunks)
-          sources = extracted.sources
-          grounded = extracted.grounded
-          // feat-327. Naturally inert with SEEKER_VIDEO_ENABLED off: the tools
-          // are not registered, so no searchVideos/featureVideo chunks exist —
-          // no second flag read that could drift from the agent's.
-          video = resolveDeclaredVideo(chunks)
-          logUngroundedVideoTurn(chunks)
+          // feat-329: projections + ladder come from the shared module so the
+          // replay path resolves identically; this route owns only the adapter
+          // and the operator logging. Naturally inert with SEEKER_VIDEO_ENABLED
+          // off — the tools are not registered, so no searchVideos/featureVideo
+          // chunks exist and no second flag read can drift from the agent's.
+          const attachments = resolveTurnAttachments(toTurnChunks(chunks))
+          sources = attachments.sources
+          grounded = attachments.grounded
+          video = attachments.video
+          logTurnAttachments(attachments)
         } catch {
           console.warn(
             "[seeker-route] event=tool_results_extraction_failed reason=extraction_failed",

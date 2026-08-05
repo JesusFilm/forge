@@ -855,6 +855,19 @@ sources (D8) — closing the accepted D7 gap.
   to persist a compact `{ videoId, playbackId, slug, languageSlug }` record
   on message metadata at send time (a U2-adjacent amendment) rather than
   re-deriving at replay.
+  > **Gate result (2026-08-04, PR #1836, U4 implementation) — recorded here as this
+  > bullet requires.** PASSED; the re-derivation path was built and the named
+  > fallback was not needed. Observed stored part shape, against
+  > `@mastra/core` 1.55.0 / `@mastra/memory` 1.24.0:
+  > `{ type: "tool-invocation", toolInvocation: { state: "result", toolCallId,
+args, toolName, result } }`, interleaved with `step-start` markers and a
+  > trailing `text` part. Two findings the gate was not looking for: a tool
+  > whose `execute` THROWS persists its error message as a plain **string**
+  > `result` (a production shape the projection must tolerate), and the store
+  > put the whole turn — tool parts AND reply text — on ONE assistant message.
+  > That second finding is why the split-turn case below is covered only by a
+  > mocked fixture, and why the real-memory smoke carries an in-place label
+  > saying it cannot discriminate the last-text-bearing rule.
 - **Turn association:** stored tool parts can land on their own tool-only
   assistant message (chat's replay client already drops empty-text messages
   for exactly this case). The replay projection groups stored messages into
@@ -911,6 +924,27 @@ sources (D8) — closing the accepted D7 gap.
   (~6.6 MB < 8 MiB) is asserted as a computation over the named constants —
   the test proves the projection ENFORCES the bound, not that a payload
   happens to fit.
+  > **Correction (2026-08-05, PR #1836, U4 implementation) — the prescribed assertion is
+  > tautological.** "Asserted as a computation over the named constants" cannot
+  > do the job this scenario wants. Recomputing the expression that DEFINES the
+  > constant only catches a bound somebody RAISED; it is silent about a field
+  > nobody counted — which is exactly what happened. The bounds above cover a
+  > source's `snippet`, but `sourceName`, `title`, `url`, and the video's
+  > `title` also cross the wire and nothing upstream bounds them (the RAG tool
+  > truncates only a passage's `text`; admin truncates neither a video title nor
+  > a source label). The landed test therefore **serializes a maximal thread and
+  > measures its real byte length**, and the projection bounds every one of
+  > those fields. Falsification: removing the cap on ONE display string
+  > (`sourceName`) makes the measuring test report 12,062,894 B against the
+  > 8,388,608 B cap while the computed assertion stays green. Two consequences
+  > worth carrying: the derivation must also count the JSON envelope, and URLs
+  > are bounded by DROPPING the source rather than truncating (a cut URL still
+  > parses as https and renders a live-looking link to a 404). The stakes are
+  > higher than "truncated": over-cap → 502 → replay `failed` → R22 blocks every
+  > send into that conversation, so the thread becomes permanently unreadable
+  > AND unusable. The landed derivation is 8,153,600 B against the 8,388,608 B
+  > consumer cap; the ~6.6 MB figure above counted only `snippet`. Captured in
+  > `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md`.
 
 **Verification:** both suites + typecheck green; real-Postgres replay smoke;
 browser: reload a dogfood thread and see the player and sources return.
@@ -1052,15 +1086,46 @@ flip is an operator action with a strict order:
    quotes — mint clean values; Doppler does NOT sync to Railway for admin —
    the Railway Variables tab is authoritative.
 5. Rollback: `SEEKER_VIDEO_ENABLED=false` (redeploy). Before U5 lands this
-   restores byte-identical pre-arc behavior; AFTER U5 the managed prompt
-   still carries the (tool-conditional) video guidance — the agent says it
-   can't search rather than reverting wholesale. The agent-tools env pair can
-   stay — but note that leaves the experience-agent tools live (step 2's
-   warning); retiring the pair is a separate decision.
+   restores byte-identical pre-arc behavior **for new turns**; AFTER U5 the
+   managed prompt still carries the (tool-conditional) video guidance — the
+   agent says it can't search rather than reverting wholesale. The agent-tools
+   env pair can stay — but note that leaves the experience-agent tools live
+   (step 2's warning); retiring the pair is a separate decision.
+   > **Amendment (2026-08-04, PR #1836, U4/feat-329):** the flag bounds what the seeker
+   > can DECLARE, not what was already stored. Since U4 re-derives attachments
+   > from stored tool parts at replay time, flipping it to `false` stops new
+   > videos but leaves ALREADY-STORED ones rendering when a thread is reopened
+   > — the replay route reads no flag of its own, and unlike the send path it
+   > cannot be inert by construction (the send path has no chunks to resolve
+   > with the tools unregistered; replay's chunks persist in the store). Full
+   > retraction of historical videos is `SEEKER_ROUTE_ENABLED=false`, which
+   > darkens the whole ai-chat lane (sends AND history) — or purging the
+   > affected threads. If a rollback trigger ever requires that historical
+   > videos stop rendering (bad catalog data, a dead-link class, a takedown),
+   > gate replay's `video` on the flag too; that seam does not exist today.
+   > **Ruled 2026-08-05 (PR #1836): the documented-partial semantics are ACCEPTED and the
+   > seam is deliberately not built** — revisit on audience widening (the
+   > feat-236 era) or an incident class requiring visual retraction of
+   > already-featured videos. Cited sources were never gated by this flag on
+   > any path.
 6. **Key hygiene:** once step 3 verifies, REMOVE every pre-existing entry
    from admin's `ADMIN_AGENT_TOOLS_API_KEYS` and redeploy, so exactly ONE
    caller credential — the newly minted production key — remains. Re-mint
    fresh local credentials later if needed for local smokes.
+   > **Amendment (2026-08-04, PR #1836, owner-approved — rides the U4/feat-329 PR):**
+   > this step's END STATE is not "exactly one entry" but exactly TWO KNOWN
+   > entries, held permanently: (1) the production key, held ONLY by the
+   > Railway mastra service, and (2) the operator's local dev key, kept so
+   > local smokes (including this arc's) stay runnable without re-minting each
+   > time. Remove everything else. The two keys NEVER cross the Railway/local
+   > tier boundary in either direction — the production key never goes on a
+   > laptop, the local key never goes into Railway — so a leaked local key is
+   > revoked by deleting one CSV entry, with no production rotation. This is
+   > the same two-key-pair posture the repo already runs for Langfuse (one
+   > Railway pair, one local-dev pair in the `forge-mastra` project); the
+   > earlier "exactly ONE caller credential" wording predates that reasoning
+   > and is superseded here. Auditing stays trivial: any entry that is neither
+   > of the two known keys is unexplained and should be removed.
 
 The operator also owns: the U5 Langfuse UI edit (both labels, exact text from
 the PR), and the flag flip itself. Audience stays the existing

@@ -529,10 +529,15 @@ describe("toVideo — projection_rejected diagnostic (feat-328)", () => {
     const source = readFileSync(
       resolve(process.cwd(), "src/lib/chat-stub.ts"),
       "utf8",
-    ).replace(/\/\*[\s\S]*?\*\//g, "")
-    // Every rejectVideo( call site is represented above (the definition line
-    // is the +1), so a new gate with no branch entry turns this red.
-    expect(source.match(/rejectVideo\(/g)).toHaveLength(emitted.size + 1)
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      // Drop the DEFINITION so only true call sites are counted — feat-329
+      // made it a local arrow const (the reject sink is injectable now), and
+      // this tolerates either spelling rather than baking one into an offset.
+      .replace(/(?:function\s+rejectVideo\s*\(|const\s+rejectVideo\s*=)/g, "")
+    // Every remaining rejectVideo( call site is represented above, so a new
+    // gate with no branch entry turns this red.
+    expect(source.match(/rejectVideo\(/g)).toHaveLength(emitted.size)
   })
 
   it("stays SILENT when no video was declared (the common turn)", () => {
