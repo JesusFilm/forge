@@ -95,6 +95,20 @@ the full env (and the fallback on a fresh solo clone with no other checkout) is
 BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
 change made after boot needs a Metro restart to take effect.
 
+## Observability (Datadog)
+
+Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
+`src/lib/datadog.ts` (`datadogLog`, `reportDatadogError`).
+
+- **Never name a custom log attribute `source`, `host`, `service`, `status`,
+  `message`, or `trace_id`.** Datadog reserves them and drops the attribute on
+  ingest — no error, no warning, and the log itself still looks healthy. Prefix
+  with a feature namespace (`watch_search.*`) or pick a free name
+  (`feed_source`, `http_status`, `error_message`). ES6 shorthand (`{ message }`)
+  collides just the same and is the form review misses. Eight live collisions
+  today, and the emit-side tests all pass: see
+  `docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md`.
+
 ## Common Pitfalls
 
 - Android VideoView z-order: renders on top of all RN Views. Place video BEHIND scroll content.
