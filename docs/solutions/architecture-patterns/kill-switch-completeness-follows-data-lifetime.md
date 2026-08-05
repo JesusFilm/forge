@@ -66,7 +66,7 @@ Ask three questions when adding a read path over flagged output:
    retraction; a cost or quality rollback does not. That distinction decides
    whether the read path needs its own gate.
 
-## The decision this repo made (2026-08-05)
+## The decision this repo made (2026-08-05, PR #1836)
 
 Ruled and settled, so it can be cited rather than re-litigated:
 

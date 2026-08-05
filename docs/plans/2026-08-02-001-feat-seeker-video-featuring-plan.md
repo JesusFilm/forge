@@ -855,7 +855,7 @@ sources (D8) — closing the accepted D7 gap.
   to persist a compact `{ videoId, playbackId, slug, languageSlug }` record
   on message metadata at send time (a U2-adjacent amendment) rather than
   re-deriving at replay.
-  > **Gate result (2026-08-04, U4 implementation) — recorded here as this
+  > **Gate result (2026-08-04, PR #1836, U4 implementation) — recorded here as this
   > bullet requires.** PASSED; the re-derivation path was built and the named
   > fallback was not needed. Observed stored part shape, against
   > `@mastra/core` 1.55.0 / `@mastra/memory` 1.24.0:
@@ -924,7 +924,7 @@ args, toolName, result } }`, interleaved with `step-start` markers and a
   (~6.6 MB < 8 MiB) is asserted as a computation over the named constants —
   the test proves the projection ENFORCES the bound, not that a payload
   happens to fit.
-  > **Correction (2026-08-05, U4 implementation) — the prescribed assertion is
+  > **Correction (2026-08-05, PR #1836, U4 implementation) — the prescribed assertion is
   > tautological.** "Asserted as a computation over the named constants" cannot
   > do the job this scenario wants. Recomputing the expression that DEFINES the
   > constant only catches a bound somebody RAISED; it is silent about a field
@@ -1091,7 +1091,7 @@ flip is an operator action with a strict order:
    agent says it can't search rather than reverting wholesale. The agent-tools
    env pair can stay — but note that leaves the experience-agent tools live
    (step 2's warning); retiring the pair is a separate decision.
-   > **Amendment (2026-08-04, U4/feat-329):** the flag bounds what the seeker
+   > **Amendment (2026-08-04, PR #1836, U4/feat-329):** the flag bounds what the seeker
    > can DECLARE, not what was already stored. Since U4 re-derives attachments
    > from stored tool parts at replay time, flipping it to `false` stops new
    > videos but leaves ALREADY-STORED ones rendering when a thread is reopened
@@ -1103,7 +1103,7 @@ flip is an operator action with a strict order:
    > affected threads. If a rollback trigger ever requires that historical
    > videos stop rendering (bad catalog data, a dead-link class, a takedown),
    > gate replay's `video` on the flag too; that seam does not exist today.
-   > **Ruled 2026-08-05: the documented-partial semantics are ACCEPTED and the
+   > **Ruled 2026-08-05 (PR #1836): the documented-partial semantics are ACCEPTED and the
    > seam is deliberately not built** — revisit on audience widening (the
    > feat-236 era) or an incident class requiring visual retraction of
    > already-featured videos. Cited sources were never gated by this flag on
@@ -1112,7 +1112,7 @@ flip is an operator action with a strict order:
    from admin's `ADMIN_AGENT_TOOLS_API_KEYS` and redeploy, so exactly ONE
    caller credential — the newly minted production key — remains. Re-mint
    fresh local credentials later if needed for local smokes.
-   > **Amendment (2026-08-04, owner-approved — rides the U4/feat-329 PR):**
+   > **Amendment (2026-08-04, PR #1836, owner-approved — rides the U4/feat-329 PR):**
    > this step's END STATE is not "exactly one entry" but exactly TWO KNOWN
    > entries, held permanently: (1) the production key, held ONLY by the
    > Railway mastra service, and (2) the operator's local dev key, kept so

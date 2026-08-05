@@ -761,7 +761,7 @@ proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.
     unregistered, while replay's chunks persist in the store. Flipping the flag
     off stops new declarations; already-stored videos keep rendering on reopen.
     Full retraction is `SEEKER_ROUTE_ENABLED=false` (darkens the whole lane) or
-    purging the threads. **Ruled 2026-08-05 — settled, do not re-litigate:** the
+    purging the threads. **Ruled 2026-08-05 (PR #1836) — settled, do not re-litigate:** the
     documented-partial semantics are ACCEPTED and the replay-side gate is
     deliberately NOT built. The dated amendment at the plan's rollback step 5
     carries the full rationale and the revisit triggers (audience widening, or

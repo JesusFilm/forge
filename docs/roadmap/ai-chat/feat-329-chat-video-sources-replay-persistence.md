@@ -17,7 +17,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-05 via [PR #NNNN](https://github.com/JesusFilm/forge/pull/NNNN) (`feat(chat): replay persistence for featured videos and cited sources (ai-chat feat-329)`).
+**Shipped:** 2026-08-05 via [PR #1836](https://github.com/JesusFilm/forge/pull/1836) (`feat(chat): replay persistence for featured videos and cited sources (ai-chat feat-329)`).
 
 **What landed.** Featured videos and cited sources now survive a thread reload, re-derived at replay time from the tool parts Mastra already persists — the plan's named fallback (a compact record written at send time) was not needed, because the pre-work gate confirmed stored assistant parts carry the tool name and result. The send path's projection and declaration ladder were extracted into a shared pure module (`agents/seeker-turn-projection.ts`) that both the live and replay routes consume through their own thin adapters, so the two cannot drift; the module returns its rejection reason instead of logging, because replay re-resolves every stored turn on every thread open and must stay silent. Two decisions diverge from the brief. The replay wire deliberately carries no `grounded` field — R21 forbids the badge and the sources disclosure needs only the list — and the replay-only byte bounds grew past the brief's `<=5 sources / 512-unit snippets`: review found the derivation counted only `snippet` while `sourceName`, `title`, `url`, and the video `title` crossed the wire uncapped, so every variable-length field is now bounded (display strings truncate, an over-long URL drops its whole source) and the budget is proven by a test that serializes a maximal thread and measures real bytes. This closes the accepted D7 rollout gap for the feat-326 → feat-330 arc.
 
