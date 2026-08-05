@@ -421,6 +421,11 @@ a confirmation. Must also revoke all refresh tokens for the user.
 `expo-secure-store` is a **new native module** → `EXPO_TV=1 npx expo prebuild --clean` + fresh
 dev-client build; if it fails on tvOS, apply the version-pinned `pnpm patch` playbook (then
 `pod install` **must** re-run — the virtual-store path gains `patch_hash=` — plus a DerivedData clear).
+**Bundle `expo-crypto` into this same prebuild** and switch both UUID mints (`lib/viewer-id.ts`
+fallback, `watchEvents.generateViewerId`) to `Crypto.randomUUID()` — Hermes has no CSPRNG, the
+`Math.random` fallback is CodeQL alert #87 (dismissed 2026-08-06 as a non-security grouping key with
+the U4.6 server-side authentication constraint as the compensating control), and one prebuild should
+pay for both native modules.
 New TV env var in **three** places in `apps/tv/src/env.ts` (module-scope `_inlined`, `client`,
 `runtimeEnvStrict`); omitting `_inlined` white-screens **only in EAS builds**. Keep
 `skipValidation: !!CI && !process.env.EAS_BUILD` intact.
