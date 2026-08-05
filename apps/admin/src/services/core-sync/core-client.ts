@@ -67,9 +67,6 @@ export async function coreQuery<T>(
   const url = env.CORE_API_URL ?? DEFAULT_URL
   const headers: Record<string, string> = {
     "content-type": "application/json",
-    // Lets Core's videos resolver exclude watch-restricted videos server-side.
-    // Only covers future syncs — see JesusFilm/forge#1830 for the read-time
-    // enforcement that also covers videos already synced before restriction.
     "x-graphql-client-name": "watch",
   }
   if (env.CORE_API_TOKEN) {
