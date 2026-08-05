@@ -145,8 +145,7 @@ function findReservedAttributes(entries) {
   const hits = []
   for (const entry of entries) {
     CALL.lastIndex = 0
-    let match
-    while ((match = CALL.exec(entry.content)) != null) {
+    while (CALL.exec(entry.content) != null) {
       const args = balanced(entry.content, CALL.lastIndex - 1)
       if (args == null) continue
       const objStart = args.indexOf("{")
