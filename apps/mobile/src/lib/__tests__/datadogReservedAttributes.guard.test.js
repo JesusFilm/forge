@@ -140,7 +140,48 @@ function topLevelKeys(objBody) {
   return keys
 }
 
+// Index of the first `{` that is real syntax, skipping strings, template
+// literals, and comments. A raw indexOf finds the brace inside `` `e${x}` ``
+// or `"a{b"` and parses the wrong object — a silent false negative.
+function objectStart(args) {
+  let i = 0
+  while (i < args.length) {
+    const c = args[i]
+    if (c === "\\") {
+      i += 2
+      continue
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c
+      i++
+      while (i < args.length && args[i] !== quote) {
+        if (args[i] === "\\") i++
+        i++
+      }
+      i++
+      continue
+    }
+    if (c === "/" && args[i + 1] === "/") {
+      while (i < args.length && args[i] !== "\n") i++
+      continue
+    }
+    if (c === "/" && args[i + 1] === "*") {
+      i = args.indexOf("*/", i + 2)
+      if (i < 0) return -1
+      i += 2
+      continue
+    }
+    if (c === "{") return i
+    i++
+  }
+  return -1
+}
+
 // Pure detector over [{ relative, content }] so controls can prove each branch.
+//
+// KNOWN LIMIT: only object LITERALS at the call site are checked. A context
+// built elsewhere (`const ctx = { source: 1 }; datadogLog.info("e", ctx)`)
+// passes unflagged — static scanning cannot follow it.
 function findReservedAttributes(entries) {
   const hits = []
   for (const entry of entries) {
@@ -148,7 +189,7 @@ function findReservedAttributes(entries) {
     while (CALL.exec(entry.content) != null) {
       const args = balanced(entry.content, CALL.lastIndex - 1)
       if (args == null) continue
-      const objStart = args.indexOf("{")
+      const objStart = objectStart(args)
       if (objStart < 0) continue
       const body = balanced(args, objStart)
       if (body == null) continue
@@ -209,6 +250,36 @@ describe("no Datadog log attribute shadows a reserved field", () => {
         },
       ]),
     ).toEqual(["a.tsx: message", "b.tsx: message"])
+  })
+
+  it("positive control: a brace inside the first argument does not hide the object", () => {
+    // Regression: a raw args.indexOf("{") locks onto the brace in `${x}` or
+    // "a{b" and parses the wrong region, silently flagging nothing.
+    expect(
+      findReservedAttributes([
+        {
+          relative: "tpl.ts",
+          content: "datadogLog.info(`evt${x}`, { source: 1 })",
+        },
+        {
+          relative: "str.ts",
+          content: `datadogLog.info("a{b", { source: 1 })`,
+        },
+      ]),
+    ).toEqual(["str.ts: source", "tpl.ts: source"])
+  })
+
+  it("documents the known limit: a non-literal context is not followed", () => {
+    // Not a bug to fix here — static scanning cannot follow the binding. This
+    // pins the limit so nobody mistakes a green guard for full coverage.
+    expect(
+      findReservedAttributes([
+        {
+          relative: "indirect.ts",
+          content: `const ctx = { source: 1 }\ndatadogLog.info("e", ctx)`,
+        },
+      ]),
+    ).toEqual([])
   })
 
   it("positive control: flagged across a multi-line call", () => {
