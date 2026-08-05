@@ -36,7 +36,10 @@ import {
   type HomeBrowseState,
 } from "../src/components/home/homeScrollState"
 import { HomeTopBar } from "../src/components/home/HomeTopBar"
-import { buildContinueWatchingSection } from "../src/components/home/continueWatchingSection"
+import {
+  CONTINUE_WATCHING_SECTION_ID,
+  buildContinueWatchingSection,
+} from "../src/components/home/continueWatchingSection"
 import { isProfileSurfaceEnabled } from "../src/lib/auth/profileFlag"
 import {
   loadContinueWatching,
@@ -359,6 +362,18 @@ export default function HomeScreen() {
     [router],
   )
 
+  // Continue Watching cards go STRAIGHT into playback at the saved position
+  // (feat-322) — a viewer resuming should not have to press Play again. Same
+  // route as a normal card so the session (dub menu, subtitles, Up Next) is
+  // fully wired; the watch screen consumes the flag once it has a variant.
+  const handleResumeCardPress = useCallback(
+    (card: WatchHomeCard) => {
+      const path = resolveHomeCardPath(card, { autoplay: true })
+      if (path != null) router.push(path)
+    },
+    [router],
+  )
+
   const handleSearchPress = useCallback(() => {
     router.push("/search")
   }, [router])
@@ -546,7 +561,11 @@ export default function HomeScreen() {
               variant={resolveHomeRailVariant(section)}
               onCardFocus={handleCardFocus}
               onRowFocus={handleRowFocus}
-              onCardPress={handleCardPress}
+              onCardPress={
+                section.id === CONTINUE_WATCHING_SECTION_ID
+                  ? handleResumeCardPress
+                  : handleCardPress
+              }
               // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
               // is on the LEFT — wire every card's D-pad-up to the CTA node
               // rather than letting geometry dead-end under the artwork.

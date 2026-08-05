@@ -122,6 +122,7 @@ function VideoPlayerOverlay() {
         slug: active.video.slug,
         title: active.video.title,
         imageUrl: active.video.posterUrl,
+        playbackId: active.video.muxPlaybackId,
         updatedAt: new Date().toISOString(),
       },
       snapshot,

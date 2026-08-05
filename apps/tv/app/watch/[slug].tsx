@@ -22,6 +22,8 @@ import { normalizeVideo } from "../../src/lib/normalizeVideo"
 import { resolveWatchRedirect } from "../../src/lib/watchRedirect"
 import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
+import { validateStreamingUrl } from "../../src/lib/validateUrl"
+import { getResumePosition } from "../../src/lib/watchEvents/continueWatching"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
@@ -80,15 +82,24 @@ const GLIDE_ENABLED = Platform.OS === "ios"
 type ActivePanel = "none" | "language" | "subtitle"
 
 export default function WatchVideoScreen() {
-  const { slug, seed: seedParam } = useLocalSearchParams<{
+  const {
+    slug,
+    seed: seedParam,
+    autoplay: autoplayParam,
+  } = useLocalSearchParams<{
     slug: string
     seed?: string
+    autoplay?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
   const { video, setVideo, activeVariant } = useWatchSession()
-  const { state: playerState, decoderClaimed } = useVideoPlayerContext()
+  const {
+    state: playerState,
+    decoderClaimed,
+    playVideo,
+  } = useVideoPlayerContext()
 
   const { data, error, loading, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { locale: "en", slug: decodedSlug },
@@ -159,6 +170,40 @@ export default function WatchVideoScreen() {
   useEffect(() => {
     return () => setVideo(null)
   }, [setVideo])
+
+  // Continue Watching → straight into playback (feat-322). The shelf card
+  // routes here with autoplay=1; once the session resolves a playable variant
+  // we open the player at the position READ FROM STORAGE — never a position
+  // implied by the card's hover preview, which is a decorative image and
+  // writes nothing. One-shot per screen instance: the latch keeps a Back out
+  // of the player from bouncing the viewer straight back into it.
+  const autoplayConsumedRef = useRef(false)
+  useEffect(() => {
+    if (autoplayParam !== "1" || autoplayConsumedRef.current) return
+    if (playerState.isVisible) return
+    const hls = activeVariant?.hls
+    const videoId = video?.documentId
+    if (!hls || !videoId || !validateStreamingUrl(hls)) return
+
+    let cancelled = false
+    void (async () => {
+      const position = await getResumePosition(videoId)
+      // Re-check after the await: the viewer may have left, or opened the
+      // player themselves, while storage was being read.
+      if (cancelled || autoplayConsumedRef.current) return
+      autoplayConsumedRef.current = true
+      playVideo(
+        hls,
+        video?.title ?? undefined,
+        undefined,
+        { videoId, videoDubId: activeVariant?.documentId ?? null },
+        position ?? undefined,
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [autoplayParam, activeVariant, video, playVideo, playerState.isVisible])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")
   // Stable identity: this lands in the panels' renderRow useCallback deps —

@@ -26,6 +26,9 @@ export type ContinueWatchingEntry = {
   title: string | null
   /** 16:9 cinematic for the rail card. */
   imageUrl: string | null
+  /** Mux playback id, so the shelf card can animate a hover preview anchored
+   *  at the resume point. Null when the video has no Mux asset. */
+  playbackId?: string | null
   positionSeconds: number
   durationSeconds: number | null
   /** 0..1 when duration known. */
