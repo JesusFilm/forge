@@ -476,8 +476,10 @@ describe("TypesenseWatchSearchService", () => {
     )
 
     expect(hybridRequest).toMatchObject({
-      query_by: "titles,descriptions",
-      query_by_weights: "4,1",
+      query_by: "titles",
+      query_by_weights: "4",
+      prefix: true,
+      num_typos: 2,
       group_limit: 3,
       drop_tokens_threshold: 1,
       rerank_hybrid_matches: false,
