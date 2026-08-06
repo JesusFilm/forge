@@ -82,6 +82,7 @@ export type WatchSearchLaneDetail =
 export type WatchSearchLaneName =
   | "exact_title"
   | "exact_watchability"
+  | "language_resolution"
   | "semantic_embedding"
   | "semantic_retrieval"
   | "metadata_retrieval"
@@ -91,6 +92,7 @@ export type WatchSearchLaneName =
 export type WatchSearchInput = {
   query: string
   mode?: "default" | "modern" | null
+  shadowMode?: "default" | "modern" | null
   clientRequestId?: string | null
   targetLanguageSlug?: string | null
   queryLanguageSlug?: string | null

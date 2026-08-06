@@ -814,12 +814,6 @@ export function SearchOverlay() {
           closePortalContainer,
         )}
 
-      <div
-        aria-hidden="true"
-        data-testid="search-overlay-bottom-backdrop"
-        className="pointer-events-none absolute inset-x-0 bottom-[-14rem] z-0 h-[max(28rem,calc(env(safe-area-inset-bottom,0px)+24rem))] bg-black/85 backdrop-blur-[14px]"
-      />
-
       {/* Body: category grid when empty, results grid when queried. Its top
           edge clears the floating search controls so cards cannot scroll under
           the language chip or detected-language prompt. */}

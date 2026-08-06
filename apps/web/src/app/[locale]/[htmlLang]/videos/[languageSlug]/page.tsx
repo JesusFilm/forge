@@ -10,7 +10,6 @@ import {
 } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
-import { resolveLanguageHomeSections } from "@/lib/watch-language-home-sections"
 import {
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
   loadClientMessages,
@@ -84,17 +83,10 @@ export default async function LanguageVideosPage({ params }: PageProps) {
     resolveWatchLanguageInventory(locale, languageSlug),
     loadClientMessages(locale, LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES),
   ])
-  const homeSections = await resolveLanguageHomeSections(
-    locale,
-    inventory.languageSlug,
-  )
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <LanguageInventoryPage
-        inventory={inventory}
-        homeSections={homeSections}
-      />
+      <LanguageInventoryPage inventory={inventory} />
     </NextIntlClientProvider>
   )
 }

@@ -4,18 +4,25 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { resolveWatchSearchInputForRequest } from "@/graphql/queries/watch-search"
 import { schema } from "@/graphql/schema"
 
-const { recordWatchSearchTraceSafelyMock } = vi.hoisted(() => ({
-  recordWatchSearchTraceSafelyMock: vi.fn(),
-}))
+const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
+  vi.hoisted(() => ({
+    enqueueWatchSearchShadowMock: vi.fn(),
+    enqueueWatchSearchTraceMock: vi.fn(),
+  }))
 
 const searchMock = vi.fn()
 const typesenseSearchMock = vi.fn()
 const suggestMock = vi.fn()
 
 vi.mock("@/services/search-trace.service", () => ({
-  recordWatchSearchTraceSafely: recordWatchSearchTraceSafelyMock,
+  enqueueWatchSearchTrace: enqueueWatchSearchTraceMock,
+}))
+
+vi.mock("@/services/watch-search-shadow.service", () => ({
+  enqueueWatchSearchShadow: enqueueWatchSearchShadowMock,
 }))
 
 type ResolverArgs = {
@@ -23,6 +30,7 @@ type ResolverArgs = {
     query: string
     languageSlug?: string
     mode?: "default" | "modern" | null
+    shadowMode?: "default" | "modern" | null
     targetLanguageSlug?: string | null
     displayLanguageSlug?: string | null
     routeLanguageSlug?: string | null
@@ -32,6 +40,12 @@ type ResolverArgs = {
   }
 }
 type ResolverCtx = {
+  user: {
+    id: string | null
+    role: "CONSUMER_BEARER" | "PUBLIC"
+    fleet?: boolean
+  } | null
+  request: Request
   prisma: unknown
   services: {
     watchSearch: { search: typeof searchMock }
@@ -59,11 +73,19 @@ async function invoke(
   typesenseWatchSearch: ResolverCtx["services"]["typesenseWatchSearch"] = {
     search: typesenseSearchMock,
   },
+  user: ResolverCtx["user"] = {
+    id: null,
+    role: "CONSUMER_BEARER",
+    fleet: false,
+  },
+  request = new Request("https://admin.jesusfilm.org/api/graphql"),
 ) {
   return getResolver()(
     null,
     args,
     {
+      user,
+      request,
       prisma: { searchTrace: {}, searchTraceAggregate: {} },
       services: {
         watchSearch: { search: searchMock },
@@ -85,6 +107,8 @@ async function invokeSuggestions(
     null,
     { input },
     {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql"),
       prisma: {},
       services: {
         watchSearch: { search: searchMock },
@@ -98,13 +122,8 @@ async function invokeSuggestions(
 
 beforeEach(() => {
   vi.clearAllMocks()
-  recordWatchSearchTraceSafelyMock.mockResolvedValue({
-    ok: true,
-    timedOut: false,
-    aggregateStored: true,
-    rawStored: true,
-    rawCaptureDisabled: false,
-  })
+  enqueueWatchSearchShadowMock.mockReturnValue(true)
+  enqueueWatchSearchTraceMock.mockReturnValue(true)
   searchMock.mockResolvedValue({
     query: "jesus",
     results: [],
@@ -164,7 +183,7 @@ describe("watchSearchSuggestions resolver", () => {
     expect(suggestMock).toHaveBeenCalledWith(input)
     expect(searchMock).not.toHaveBeenCalled()
     expect(typesenseSearchMock).not.toHaveBeenCalled()
-    expect(recordWatchSearchTraceSafelyMock).not.toHaveBeenCalled()
+    expect(enqueueWatchSearchTraceMock).not.toHaveBeenCalled()
   })
 
   it("fails empty when the optional suggestion service is unavailable", async () => {
@@ -208,10 +227,148 @@ describe("watchSearch mode routing", () => {
 
     const result = await invoke({ input })
 
-    expect(recordWatchSearchTraceSafelyMock).toHaveBeenCalledWith(
+    expect(enqueueWatchSearchTraceMock).toHaveBeenCalledWith(
       expect.objectContaining({ input, response: result }),
       expect.anything(),
     )
+  })
+
+  it("queues DEFAULT as a background shadow for trusted Web MODERN requests", async () => {
+    const input = {
+      query: "communion",
+      mode: "modern" as const,
+      shadowMode: "default" as const,
+      targetLanguageSlug: "french",
+    }
+
+    const result = await invoke({ input })
+
+    expect(enqueueWatchSearchShadowMock).toHaveBeenCalledWith({
+      input,
+      primaryResponse: result,
+      prisma: expect.anything(),
+      service: expect.objectContaining({ search: searchMock }),
+    })
+  })
+
+  it("does not queue shadow work when the primary mode is DEFAULT", async () => {
+    await invoke({
+      input: {
+        query: "communion",
+        mode: "default",
+        shadowMode: "default",
+      },
+    })
+
+    expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
+  })
+
+  it("ignores shadow requests from anonymous callers", async () => {
+    await invoke(
+      {
+        input: {
+          query: "communion",
+          mode: "modern",
+          shadowMode: "default",
+        },
+      },
+      { search: typesenseSearchMock },
+      null,
+    )
+
+    expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
+  })
+
+  it("routes the anonymous canonical Web client to MODERN with DEFAULT shadow", async () => {
+    const input = { query: "communion" }
+    const effectiveInput = {
+      ...input,
+      mode: "modern" as const,
+      shadowMode: "default" as const,
+    }
+
+    const result = await invoke(
+      { input },
+      { search: typesenseSearchMock },
+      null,
+      new Request("https://admin.jesusfilm.org/api/graphql", {
+        headers: { origin: "https://www.jesusfilm.org" },
+      }),
+    )
+
+    expect(typesenseSearchMock).toHaveBeenCalledWith(effectiveInput)
+    expect(searchMock).not.toHaveBeenCalled()
+    expect(enqueueWatchSearchShadowMock).toHaveBeenCalledWith({
+      input: effectiveInput,
+      primaryResponse: result,
+      prisma: expect.anything(),
+      service: expect.objectContaining({ search: searchMock }),
+    })
+  })
+
+  it("applies the Admin DEFAULT rollback to a stale MODERN browser request", () => {
+    const requestContext = {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql", {
+        headers: { origin: "https://www.jesusfilm.org" },
+      }),
+    }
+    const staleClientInput = {
+      query: "communion",
+      mode: "modern" as const,
+      shadowMode: "default" as const,
+    }
+
+    expect(
+      resolveWatchSearchInputForRequest(staleClientInput, requestContext, {
+        primaryMode: "DEFAULT",
+        defaultShadowEnabled: false,
+      }),
+    ).toEqual({
+      query: "communion",
+      mode: "default",
+      shadowMode: undefined,
+    })
+  })
+
+  it("can stop shadow work without changing the MODERN primary", () => {
+    const requestContext = {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql", {
+        headers: { origin: "https://www.jesusfilm.org" },
+      }),
+    }
+
+    expect(
+      resolveWatchSearchInputForRequest(
+        { query: "communion" },
+        requestContext,
+        {
+          primaryMode: "MODERN",
+          defaultShadowEnabled: false,
+        },
+      ),
+    ).toEqual({
+      query: "communion",
+      mode: "modern",
+      shadowMode: undefined,
+    })
+  })
+
+  it("ignores shadow requests from fleet consumer bearers", async () => {
+    await invoke(
+      {
+        input: {
+          query: "communion",
+          mode: "modern",
+          shadowMode: "default",
+        },
+      },
+      { search: typesenseSearchMock },
+      { id: null, role: "CONSUMER_BEARER", fleet: true },
+    )
+
+    expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
   })
 
   it("fails explicitly when MODERN is requested without Typesense configuration", async () => {
@@ -259,7 +416,7 @@ describe("watchSearch resolver", () => {
 
     const result = await invoke({ input })
 
-    expect(recordWatchSearchTraceSafelyMock).toHaveBeenCalledWith(
+    expect(enqueueWatchSearchTraceMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input,
         response: result,
@@ -273,10 +430,8 @@ describe("watchSearch resolver", () => {
     )
   })
 
-  it("keeps the search response unchanged when trace recording fails", async () => {
-    recordWatchSearchTraceSafelyMock.mockRejectedValueOnce(
-      new Error("trace unavailable"),
-    )
+  it("keeps the search response unchanged when the trace queue is full", async () => {
+    enqueueWatchSearchTraceMock.mockReturnValueOnce(false)
 
     const result = await invoke({ input: { query: "jesus" } })
 

@@ -41,7 +41,7 @@ not restore live result search or introduce popularity/history serving.
 ```bash
 rg -n "watchSearchSuggestions|TypesenseWatchSearchSuggestions" apps/admin apps/web packages/admin-graphql
 rg -n "suggestionRequestKey|fetchWatchSearchSuggestions|aria-autocomplete" apps/web/src
-rg -n "watch_search_lexical|localesJson|localeCodes" apps/admin/src/services
+rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/services
 ```
 
 ## What To Build

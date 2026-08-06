@@ -9,6 +9,7 @@ export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
 
 export type TypesenseWatchLocale = {
   locale: string
+  languageSlug?: string | null
   title: string
   description: string | null
 }
@@ -116,8 +117,9 @@ export function watchAvailabilityCollectionSchema(
 
 export function watchLexicalCollectionSchema(
   buildId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
 ): TypesenseCollectionSchema {
-  const localizedFields = TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) =>
+  const localizedFields = [...new Set(tokenizerLocales)].flatMap((locale) =>
     ["title", "metadata"].map((lane) => ({
       name: `${lane}_${locale}`,
       type: "string[]",
@@ -130,8 +132,8 @@ export function watchLexicalCollectionSchema(
     fields: [
       { name: "videoId", type: "string", facet: true },
       { name: "canonicalVideoId", type: "string", facet: true },
+      { name: "languageIdentity", type: "string", facet: true },
       { name: "localeCodes", type: "string[]", facet: true },
-      { name: "localesJson", type: "string", index: false },
       ...localizedFields,
       { name: "title_fallback", type: "string[]", optional: true },
       { name: "metadata_fallback", type: "string[]", optional: true },

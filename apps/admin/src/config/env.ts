@@ -67,6 +67,17 @@ export const watchCanonicalOriginEnvSchema = httpOriginEnvSchema(
   "WATCH_CANONICAL_ORIGIN",
 )
 
+export const watchSearchPrimaryModeEnvSchema = z
+  .enum(["DEFAULT", "MODERN"])
+  .optional()
+  .default("MODERN")
+
+export const watchSearchDefaultShadowEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("true")
+  .transform((value) => value === "true")
+
 /**
  * Shared schema fragment for env vars representing a positive-int
  * concurrency cap (e.g. `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so
@@ -210,6 +221,13 @@ export const env = createEnv({
     WATCH_CANONICAL_ORIGIN: watchCanonicalOriginEnvSchema
       .optional()
       .default(DEFAULT_WATCH_CANONICAL_ORIGIN),
+    // Canonical browser Watch requests omit GraphQL mode selection. Admin
+    // applies these controls per request so cached or already-hydrated pages
+    // cannot bypass a DEFAULT rollback. Other omitted-mode callers retain the
+    // public GraphQL DEFAULT contract.
+    WATCH_SEARCH_PRIMARY_MODE: watchSearchPrimaryModeEnvSchema,
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      watchSearchDefaultShadowEnabledEnvSchema,
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
@@ -626,6 +644,11 @@ export const env = createEnv({
     WATCH_CANONICAL_ORIGIN:
       emptyToUndefined(process.env.WATCH_CANONICAL_ORIGIN) ??
       DEFAULT_WATCH_CANONICAL_ORIGIN,
+    WATCH_SEARCH_PRIMARY_MODE:
+      emptyToUndefined(process.env.WATCH_SEARCH_PRIMARY_MODE) ?? "MODERN",
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      emptyToUndefined(process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED) ??
+      "true",
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),

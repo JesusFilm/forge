@@ -1,5 +1,11 @@
 "use client"
 
+import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
+import {
+  adminWatchSearchOperation,
+  adminWatchSearchQuery,
+} from "@forge/admin-graphql/operations"
+
 import { env } from "@/env"
 import {
   publicSlugForLocale,
@@ -17,107 +23,13 @@ import { normalizeWatchSearchQuery } from "./watch-search-query"
 
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
 
-const watchSearchQuery = `
-  query WatchSearch($input: WatchSearchInput!) {
-    watchSearch(input: $input) {
-      requestId
-      query
-      degraded
-      laneStatuses {
-        lane
-        status
-        elapsedMs
-        resultCount
-        reason
-      }
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        snippet
-        playbackId
-        startSeconds
-        score
-        label
-        durationSeconds
-        childCount
-        languageSlug
-        languageEnglishName
-        availability {
-          kind
-          languageEnglishName
-        }
-        evidence {
-          label
-          languageSlug
-        }
-        action {
-          hrefLanguageSlug
-        }
-      }
-      hasMore
-      searchMode
-      latencyMs
-      nextOffset
-    }
-  }
-`
-
-type WatchSearchResultType = "VIDEO" | "EXPERIENCE"
-
-type WatchSearchGraphqlResult = {
-  watchSearch?: {
-    requestId?: string | null
-    query?: string | null
-    degraded?: boolean | null
-    laneStatuses?: Array<{
-      lane?: string | null
-      status?: string | null
-      elapsedMs?: number | null
-      resultCount?: number | null
-      reason?: string | null
-    }> | null
-    results?: WatchSearchGraphqlItem[] | null
-    hasMore?: boolean | null
-    searchMode?: string | null
-    latencyMs?: number | null
-    nextOffset?: number | null
-  } | null
-}
-
-type WatchSearchGraphqlItem = {
-  type?: WatchSearchResultType | null
-  id?: string | null
-  slug?: string | null
-  title?: string | null
-  imageUrl?: string | null
-  imageBlurDataUrl?: string | null
-  muxThumbnailBlurDataUrl?: string | null
-  snippet?: string | null
-  playbackId?: string | null
-  startSeconds?: number | null
-  score?: number | null
-  label?: string | null
-  durationSeconds?: number | null
-  childCount?: number | null
-  languageSlug?: string | null
-  languageEnglishName?: string | null
-  availability?: {
-    kind?: string | null
-    languageEnglishName?: string | null
-  } | null
-  evidence?: {
-    label?: string | null
-    languageSlug?: string | null
-  } | null
-  action?: {
-    hrefLanguageSlug?: string | null
-  } | null
-}
+type WatchSearchGraphqlResult = AdminResultOf<typeof adminWatchSearchOperation>
+type WatchSearchGraphqlItem = NonNullable<
+  NonNullable<WatchSearchGraphqlResult["watchSearch"]>["results"]
+>[number]
+type WatchSearchResultType = NonNullable<
+  AdminVariablesOf<typeof adminWatchSearchOperation>["input"]["resultTypes"]
+>[number]
 
 type GraphqlResponse<TData> = {
   data?: TData
@@ -145,30 +57,31 @@ export async function searchWatchDirect({
 }: DirectWatchSearchInput): Promise<SearchResponse> {
   const truncatedQuery = normalizeWatchSearchQuery(query)
   const resultTypes = toWatchSearchResultType(type)
+  const variables: AdminVariablesOf<typeof adminWatchSearchOperation> = {
+    input: {
+      query: truncatedQuery,
+      clientRequestId: languageContext.clientRequestId,
+      targetLanguageSlug: languageContext.targetLanguageSlug,
+      queryLanguageSlug: languageContext.queryLanguageSlug,
+      queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
+      displayLanguageSlug:
+        languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
+      routeLanguageSlug: languageContext.routeLanguageSlug,
+      currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
+      acceptLanguage: languageContext.acceptLanguage,
+      limit,
+      offset,
+      resultTypes,
+    },
+  }
   const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      query: watchSearchQuery,
-      variables: {
-        input: {
-          query: truncatedQuery,
-          clientRequestId: languageContext.clientRequestId,
-          targetLanguageSlug: languageContext.targetLanguageSlug,
-          queryLanguageSlug: languageContext.queryLanguageSlug,
-          queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
-          displayLanguageSlug:
-            languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
-          routeLanguageSlug: languageContext.routeLanguageSlug,
-          currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
-          acceptLanguage: languageContext.acceptLanguage,
-          limit,
-          offset,
-          resultTypes,
-        },
-      },
+      query: adminWatchSearchQuery,
+      variables,
     }),
     signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
   })

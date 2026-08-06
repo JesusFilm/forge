@@ -378,7 +378,7 @@ describe("loadWatchSearchAnalyticsData", () => {
         requestId: "req_en",
         queryText: "Jesus",
         locale: "en",
-        searchMode: "watch-search",
+        searchMode: "watch-search-typesense",
         resultCount: 0,
         outcome: "SUCCESS",
         metadata: {
@@ -389,6 +389,24 @@ describe("loadWatchSearchAnalyticsData", () => {
           results: [],
         },
         createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+      {
+        id: "trace_en_shadow",
+        requestId: "req_en",
+        queryText: "Jesus",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 7,
+        outcome: "SUCCESS",
+        metadata: {
+          traceRole: "shadow",
+          language: {
+            targetLanguageSlug: "en",
+            targetLanguageSource: "route_locale",
+          },
+          results: [{ id: "shadow_only_video", type: "video" }],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.100Z"),
       },
     ])
     watchSearchEventFindMany.mockResolvedValueOnce([])
@@ -415,8 +433,17 @@ describe("loadWatchSearchAnalyticsData", () => {
     )
     expect(data.selectedRequest).toEqual(
       expect.objectContaining({
+        searchMode: "watch-search-typesense",
         targetLanguageSlug: "en",
         targetLanguageLabel: "English",
+      }),
+    )
+    expect(data.requests).toHaveLength(1)
+    expect(videoFindMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: expect.arrayContaining(["shadow_only_video"]) },
+        }),
       }),
     )
   })
@@ -600,11 +627,13 @@ describe("loadWatchSearchAnalyticsData", () => {
     expect(searchTraceFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          searchMode: "watch-search",
+          searchMode: {
+            in: ["watch-search", "watch-search-typesense"],
+          },
           routeSource: "GRAPHQL",
           createdAt: { gte: new Date("2026-07-08T12:30:00.000Z") },
         }),
-        take: 500,
+        take: 1000,
       }),
     )
     expect(watchSearchEventFindMany).toHaveBeenCalledWith(

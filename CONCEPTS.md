@@ -256,6 +256,22 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+Public compatibility and product serving policy are distinct. A generic caller
+may retain a stable omitted-mode default while Admin applies a surface-specific
+mode at a request-time orchestration boundary. Operational rollback belongs at
+that dynamic boundary rather than in cached client state.
+
+### Shadow Search
+
+A best-effort execution of a non-serving Search Pipeline Mode for the same
+submitted query, used to retain comparison evidence while another mode owns the
+viewer response.
+
+Shadow Search is bounded background work: saturation, failure, or a slow shadow
+must not change the primary result list or extend viewer-visible latency. Its
+results belong to evaluation and operational comparison rather than click or
+impression attribution.
+
 ### Search Candidate Window
 
 A bounded per-retriever set of eligible search candidates that is handed to
@@ -352,6 +368,17 @@ containment: the Mobile SDK copies error-level logs' full authored attributes
 into RUM error events, so query-bearing logs stay below error level to keep
 exact query text bounded to the Logs store.
 
+### Search Trace
+
+An Admin-owned first-party record of one search request's resolved language,
+retrieval-lane outcomes, result summary, latency, and anonymous request identity,
+used for operational analysis and evaluation correlation.
+
+Search Trace persistence is best-effort observability, not part of search
+success. Accepted writes run after the response under bounded backpressure, so
+a slow analytics store cannot multiply database work or delay the public search
+contract; rejected or failed writes remain visible through health signals.
+
 ### Watch Analytics Context
 
 An optional anonymous context object future Watch event collection can provide
@@ -364,6 +391,22 @@ Watch Analytics Context is trusted provider context, not a free-form browser
 payload. Until a Watch event provider owns that context, canonical server
 analytics should omit it and rely on server-derived dimensions plus the
 anonymous search request id.
+
+### Video Playback QoE
+
+The per-playback-session quality measurements a native client accumulates and
+reports once the session ends: time to first frame, rebuffer count, error
+count, and watched duration. It describes how well a single viewing went, and
+is deliberately narrower than it sounds — several things a naive reading would
+count are excluded by definition.
+
+Time to first frame is measured from the player's own mount, never from the
+surrounding screen's appearance, so navigation latency is not folded into it. A
+rebuffer is a stall that interrupts playback already in progress: the initial
+load, a viewer-initiated seek, and a Dub or source swap are all excluded, since
+none of them represents a viewer waiting on a stream that was already running.
+A session identifies its content by playback id rather than title, because the
+payload is constrained to non-sensitive, low-cardinality values.
 
 ### Search Language
 

@@ -98,7 +98,9 @@ export async function downloadToFile(url: string, dest: string): Promise<void> {
     // (a variant-less Cloudflare 400 "malformed URL") would masquerade as a poster.
     // Allow-list real 2xx (missing/NaN status fails closed); reject + delete else.
     if (!(result.status >= 200 && result.status < 300)) {
-      datadogLog.warn("sidecar.download_bad_status", { status: result.status })
+      datadogLog.warn("sidecar.download_bad_status", {
+        http_status: result.status,
+      })
       await deleteAsync(dest, { idempotent: true }).catch(() => {})
       throw new Error(`downloadToFile status ${result.status}`)
     }

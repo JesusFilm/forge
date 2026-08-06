@@ -15,17 +15,33 @@ const LaneStatusSchema = z.object({
   detail: z.string().nullable(),
 })
 
+const GraphqlLaneStatusSchema = LaneStatusSchema.omit({
+  startedOffsetMs: true,
+})
+
 const PROBE_CASES = [
-  { query: "JESUS", languageSlug: "english" },
-  { query: "Who is Jesus?", languageSlug: "english" },
-  { query: "finding hope when life feels heavy", languageSlug: "english" },
-  { query: "forgiveness after failure", languageSlug: "english" },
-  { query: "耶稣是谁？", languageSlug: "mandarin-china" },
-  { query: "พระเยซูคือใคร", languageSlug: "thai" },
-  { query: "من هو يسوع؟", languageSlug: "arabic-modern-standard" },
-  { query: "Кто такой Иисус?", languageSlug: "russian" },
-  { query: "walking wih jesus", languageSlug: "english" },
-  { query: "woman at the well", languageSlug: "english" },
+  { query: "JESUS", locale: "en", languageSlug: "english" },
+  { query: "Who is Jesus?", locale: "en", languageSlug: "english" },
+  {
+    query: "finding hope when life feels heavy",
+    locale: "en",
+    languageSlug: "english",
+  },
+  {
+    query: "forgiveness after failure",
+    locale: "en",
+    languageSlug: "english",
+  },
+  { query: "耶稣是谁？", locale: "zh-Hans", languageSlug: "mandarin-china" },
+  { query: "พระเยซูคือใคร", locale: "th", languageSlug: "thai" },
+  {
+    query: "من هو يسوع؟",
+    locale: "ar",
+    languageSlug: "arabic-modern-standard",
+  },
+  { query: "Кто такой Иисус?", locale: "ru", languageSlug: "russian" },
+  { query: "walking wih jesus", locale: "en", languageSlug: "english" },
+  { query: "woman at the well", locale: "en", languageSlug: "english" },
 ] as const
 
 const InternalResponseSchema = z.object({
@@ -41,10 +57,14 @@ const GraphqlResponseSchema = z.object({
       requestId: z.string(),
       degraded: z.boolean(),
       latencyMs: z.number().nonnegative(),
-      laneStatuses: z.array(LaneStatusSchema),
+      laneStatuses: z.array(GraphqlLaneStatusSchema),
     }),
   }),
 })
+
+type ProductionProbeLaneStatus = z.infer<typeof GraphqlLaneStatusSchema> & {
+  startedOffsetMs?: number
+}
 
 export type ProductionProbeSample = {
   clientRequestId: string
@@ -52,7 +72,7 @@ export type ProductionProbeSample = {
   serverMs: number
   degraded: boolean
   surfaceFirstSeen: boolean
-  laneStatuses: z.infer<typeof LaneStatusSchema>[]
+  laneStatuses: ProductionProbeLaneStatus[]
 }
 
 function percentile(values: readonly number[], quantile: number): number {
@@ -91,7 +111,7 @@ export function summarizeProductionProbe(
   samples: readonly ProductionProbeSample[],
 ) {
   const cacheDetails = new Map<string, number>()
-  const laneSamples = new Map<string, Array<z.infer<typeof LaneStatusSchema>>>()
+  const laneSamples = new Map<string, ProductionProbeLaneStatus[]>()
   for (const sample of samples) {
     for (const lane of sample.laneStatuses) {
       const entries = laneSamples.get(lane.lane) ?? []
@@ -158,7 +178,6 @@ export function buildGraphqlRequest({
     laneStatuses {
       lane
       status
-      startedOffsetMs
       elapsedMs
       resultCount
       reason
@@ -179,6 +198,32 @@ export function buildGraphqlRequest({
         resultTypes: ["VIDEO"],
       },
     },
+  }
+}
+
+export function parseGraphqlProbeResponse(payload: unknown) {
+  return GraphqlResponseSchema.parse(payload).data.watchSearch
+}
+
+export function buildInternalRequest({
+  query,
+  locale,
+  languageSlug,
+  clientRequestId,
+}: {
+  query: string
+  locale: string
+  languageSlug: string
+  clientRequestId: string
+}) {
+  return {
+    query,
+    locale,
+    languageSlug,
+    clientRequestId,
+    mode: "modern",
+    contentType: "video",
+    limit: 10,
   }
 }
 
@@ -231,13 +276,7 @@ async function runServerProbe({
     const response = await postJson({
       url,
       bearer,
-      body: {
-        ...probeCase,
-        clientRequestId,
-        mode: "modern",
-        contentType: "video",
-        limit: 10,
-      },
+      body: buildInternalRequest({ ...probeCase, clientRequestId }),
     })
     const parsed = InternalResponseSchema.parse(response.payload)
     samples.push({
@@ -272,14 +311,14 @@ async function runGraphqlProbe({
       bearer,
       body: buildGraphqlRequest({ ...probeCase, clientRequestId }),
     })
-    const parsed = GraphqlResponseSchema.parse(response.payload)
+    const parsed = parseGraphqlProbeResponse(response.payload)
     samples.push({
       clientRequestId,
       roundTripMs: response.elapsedMs,
-      serverMs: parsed.data.watchSearch.latencyMs,
-      degraded: parsed.data.watchSearch.degraded,
+      serverMs: parsed.latencyMs,
+      degraded: parsed.degraded,
       surfaceFirstSeen: index < PROBE_CASES.length,
-      laneStatuses: parsed.data.watchSearch.laneStatuses,
+      laneStatuses: parsed.laneStatuses,
     })
   }
   return samples

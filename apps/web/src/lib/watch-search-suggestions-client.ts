@@ -1,19 +1,22 @@
 "use client"
 
+import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
+import {
+  adminWatchSearchSuggestionsOperation,
+  adminWatchSearchSuggestionsQuery,
+} from "@forge/admin-graphql/operations"
+
 import { env } from "@/env"
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
 const MAX_SUGGESTIONS = 5
 const DEFAULT_TIMEOUT_MS = 3_500
 
-const watchSearchSuggestionsQuery = `
-  query WatchSearchSuggestions($input: WatchSearchSuggestionsInput!) {
-    watchSearchSuggestions(input: $input)
-  }
-`
-
+type WatchSearchSuggestionsResult = AdminResultOf<
+  typeof adminWatchSearchSuggestionsOperation
+>
 type WatchSearchSuggestionsGraphqlResponse = {
-  data?: { watchSearchSuggestions?: unknown }
+  data?: WatchSearchSuggestionsResult
   errors?: Array<{ message?: string | null }>
 }
 
@@ -57,6 +60,14 @@ export async function fetchWatchSearchSuggestions({
   if (signal?.aborted) controller.abort()
   else signal?.addEventListener("abort", abortFromCaller, { once: true })
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const variables: AdminVariablesOf<
+    typeof adminWatchSearchSuggestionsOperation
+  > = {
+    input: {
+      query: normalizeWatchSearchQuery(query),
+      languageSlug,
+    },
+  }
 
   try {
     const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
@@ -64,13 +75,8 @@ export async function fetchWatchSearchSuggestions({
       credentials: "omit",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        query: watchSearchSuggestionsQuery,
-        variables: {
-          input: {
-            query: normalizeWatchSearchQuery(query),
-            languageSlug,
-          },
-        },
+        query: adminWatchSearchSuggestionsQuery,
+        variables,
       }),
       signal: controller.signal,
     })

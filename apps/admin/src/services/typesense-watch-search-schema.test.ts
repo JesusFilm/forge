@@ -54,15 +54,15 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("defines locale-aware lexical fields and faceted canonical identity", () => {
-    const schema = watchLexicalCollectionSchema("build")
+    const schema = watchLexicalCollectionSchema("build", ["mi", "th", "zh"])
 
     expect(schema.name).toBe(`${TYPESENSE_WATCH_LEXICAL_ALIAS}_build`)
     expect(schema.fields).toEqual(
       expect.arrayContaining([
         { name: "videoId", type: "string", facet: true },
         { name: "canonicalVideoId", type: "string", facet: true },
+        { name: "languageIdentity", type: "string", facet: true },
         { name: "localeCodes", type: "string[]", facet: true },
-        { name: "localesJson", type: "string", index: false },
         {
           name: "title_zh",
           type: "string[]",
@@ -73,6 +73,12 @@ describe("Typesense Watch Search schemas", () => {
           name: "metadata_th",
           type: "string[]",
           locale: "th",
+          optional: true,
+        },
+        {
+          name: "title_mi",
+          type: "string[]",
+          locale: "mi",
           optional: true,
         },
         { name: "title_fallback", type: "string[]", optional: true },
