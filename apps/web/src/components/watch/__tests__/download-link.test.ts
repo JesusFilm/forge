@@ -205,13 +205,23 @@ describe("resolveDownloadSequence", () => {
     })
   })
 
-  it("leaves videos without a multi-item parent sequence unnumbered", () => {
+  it("leaves videos without an ordered parent position unnumbered", () => {
+    expect(resolveDownloadSequence(null, "standalone")).toBeNull()
     expect(
       resolveDownloadSequence(
-        { children: [{ documentId: "only", order: 1 }] },
+        { children: [{ documentId: "only", order: null }] },
         "only",
       ),
     ).toBeNull()
+  })
+
+  it("retains a canonical position when it is the only visible relation", () => {
+    expect(
+      resolveDownloadSequence(
+        { children: [{ documentId: "third", order: 3 }] },
+        "third",
+      ),
+    ).toEqual({ position: 3, total: 3 })
   })
 
   it("preserves canonical gaps and leaves null-order children unnumbered", () => {

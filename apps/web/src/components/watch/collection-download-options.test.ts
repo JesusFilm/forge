@@ -80,7 +80,7 @@ describe("collection download options", () => {
     expect(result.commonTiers).toEqual(["highest", "low"])
   })
 
-  it("builds compatible opaque proxy queue items without numbering a single item", () => {
+  it("builds compatible opaque proxy queue items with canonical relation order", () => {
     const options = buildCollectionDownloadOptions(episodes.slice(0, 1), [
       {
         documentId: "dub-1",
@@ -98,7 +98,7 @@ describe("collection download options", () => {
       languageSlug: "english",
     })
 
-    expect(item.filename).toBe("One_English_eng_720p.mp4")
+    expect(item.filename).toBe("01_One_English_eng_720p.mp4")
     expect(item.url).toContain("/watch/api/download?")
     expect(item.url).toContain("downloadId=download-1")
     expect(item.url).not.toContain("stream.mux.com")

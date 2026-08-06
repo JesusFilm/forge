@@ -134,7 +134,7 @@ export function resolveDownloadSequence(
   parent: DownloadSequenceParent | null | undefined,
   videoDocumentId: string,
 ): DownloadSequence | null {
-  if (!parent || parent.children.length < 2) return null
+  if (!parent) return null
   const child = parent.children.find(
     (child) => child.documentId === videoDocumentId,
   )
