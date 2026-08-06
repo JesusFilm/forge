@@ -74,12 +74,19 @@ export function buildAuthorizationCode(input: {
     identifier: authorizationCodeIdentifier(code),
     // Field order and names follow `redirectWithAuthorizationCode`; the library
     // reads `type`, `query`, `userId`, `sessionId`, `referenceId`, `authTime`.
+    //
+    // `authTime` is MILLISECONDS. The library's own producer writes
+    // `new Date(session.createdAt).getTime()` and its consumer,
+    // `normalizeTimestampValue`, does `new Date(value)` — which reads a number
+    // as ms. Seconds here would put `auth_time` in January 1970, and the value
+    // is copied onto the refresh token, so every later refresh would carry it
+    // too. Unit is stated because the shape alone does not reveal it.
     value: JSON.stringify({
       type: "authorization_code",
       query: input.query,
       userId: input.userId,
       sessionId: input.sessionId,
-      authTime: input.authTime ?? Math.floor(now.getTime() / 1000),
+      authTime: input.authTime ?? now.getTime(),
     }),
     expiresAt: new Date(now.getTime() + input.codeExpiresInMs),
   }

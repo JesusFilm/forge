@@ -115,6 +115,22 @@ describe("buildAuthorizationCode", () => {
     expect(parsed.query.code_challenge_method).toBe("S256")
   })
 
+  it("writes authTime in milliseconds, the unit the library reads", () => {
+    // Seconds here put auth_time in January 1970, and the value is copied onto
+    // the refresh token, so every subsequent refresh carries it too. The
+    // library's own producer writes `new Date(...).getTime()` and its consumer
+    // parses a number as ms.
+    const parsed = JSON.parse(buildAuthorizationCode(input).value) as {
+      authTime: number
+    }
+
+    expect(parsed.authTime).toBe(now.getTime())
+    // The discriminating assertion: a seconds value round-trips to 1970.
+    expect(new Date(parsed.authTime).getUTCFullYear()).toBe(
+      now.getUTCFullYear(),
+    )
+  })
+
   it("expires the code on the configured budget", () => {
     const minted = buildAuthorizationCode(input)
     expect(minted.expiresAt.getTime() - now.getTime()).toBe(60_000)
