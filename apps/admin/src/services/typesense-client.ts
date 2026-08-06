@@ -10,6 +10,7 @@ export type TypesenseCollectionField = {
   type: string
   facet?: boolean
   index?: boolean
+  locale?: string
   optional?: boolean
   sort?: boolean
   num_dim?: number

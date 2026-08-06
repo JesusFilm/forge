@@ -4,7 +4,6 @@ import type { TypesenseClient } from "./typesense-client"
 import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
-  buildTypesenseWatchVideoDocuments,
   canonicalTypesenseVideoId,
   estimateTypesenseVectorMemoryBytes,
   parseTypesenseVector,
@@ -15,6 +14,7 @@ import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+  TYPESENSE_WATCH_LEXICAL_ALIAS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
 } from "./typesense-watch-search-schema"
 
@@ -172,48 +172,10 @@ describe("Typesense Watch Search indexer", () => {
     )
   })
 
-  it("builds vectorless video anchors with a stable canonical identity", () => {
+  it("builds a stable canonical identity for physical variants", () => {
     expect(
       canonicalTypesenseVideoId("video-square", "4_Win4GoodNewsJesusAD1x1"),
     ).toBe("core:4_win4goodnewsjesus")
-
-    const [document] = buildTypesenseWatchVideoDocuments(
-      [
-        {
-          id: "video-square",
-          coreId: "4_Win4GoodNewsJesusAD1x1",
-          slug: "jesus-square",
-          titles: ["JESUS"],
-          localeCodes: ["en"],
-          descriptions: ["The life of Jesus"],
-          localesJson: "[]",
-          label: null,
-          childCount: 0,
-          imageUrl: null,
-          imageBlurDataUrl: null,
-          audioLanguageSlugs: ["english"],
-          subtitleLanguageSlugs: [],
-          audioOptionsJson: "[]",
-          subtitleOptionsJson: "[]",
-        },
-      ],
-      "build-1",
-    )
-
-    expect(document).toEqual({
-      id: "video:video-square",
-      documentKind: "video",
-      videoId: "video-square",
-      canonicalVideoId: "core:4_win4goodnewsjesus",
-      language: "__catalog__",
-      publiclyVisible: true,
-      titles: ["JESUS"],
-      descriptions: ["The life of Jesus"],
-      catalogGeneration: "build-1",
-      text: "",
-      startSeconds: null,
-    })
-    expect(document?.embedding).toBeUndefined()
   })
 
   it("parses a complete pgvector value", () => {
@@ -328,14 +290,6 @@ describe("Typesense Watch Search indexer", () => {
     expect(transcriptImports).toEqual([
       [
         expect.objectContaining({
-          id: "video:video-public",
-          documentKind: "video",
-          canonicalVideoId: "core:public-core",
-          titles: ["Vidéo publique"],
-        }),
-      ],
-      [
-        expect.objectContaining({
           id: "chunk-private",
           documentKind: "transcript",
           canonicalVideoId: "core:private-core",
@@ -345,13 +299,16 @@ describe("Typesense Watch Search indexer", () => {
           id: "chunk-public",
           documentKind: "transcript",
           canonicalVideoId: "core:public-core",
-          titles: ["Vidéo publique"],
           publiclyVisible: true,
           embedding: expect.any(Array),
         }),
       ],
     ])
-    expect(transcriptImports[0]?.[0]).not.toHaveProperty("embedding")
+    expect(transcriptImports[0]?.[0]).not.toHaveProperty("titles")
+    expect(typesense.importDocuments).toHaveBeenCalledWith(
+      "watch_search_lexical_broad-corpus-test",
+      [expect.objectContaining({ title_fr: ["Vidéo publique"] })],
+    )
   })
 
   it("reuses the active transcript collection for routine metadata rebuilds", async () => {
@@ -363,6 +320,7 @@ describe("Typesense Watch Search indexer", () => {
       listCollections: vi.fn(async () => [
         { name: "watch_search_catalog_previous", fields: [] },
         { name: "watch_search_availability_previous", fields: [] },
+        { name: "watch_search_lexical_previous", fields: [] },
         { name: "watch_search_transcripts_active", fields: [] },
         { name: "watch_search_transcripts_old", fields: [] },
         { name: "watch_search_transcripts_partial", fields: [] },
@@ -403,7 +361,7 @@ describe("Typesense Watch Search indexer", () => {
       buildId: "metadata-only-test",
     })
 
-    expect(typesense.createCollection).toHaveBeenCalledTimes(2)
+    expect(typesense.createCollection).toHaveBeenCalledTimes(3)
     expect(typesense.createCollection).not.toHaveBeenCalledWith(
       expect.objectContaining({
         name: expect.stringContaining("watch_search_transcripts"),
@@ -432,6 +390,7 @@ describe("Typesense Watch Search indexer", () => {
       retiredCollections: [
         "watch_search_catalog_previous",
         "watch_search_availability_previous",
+        "watch_search_lexical_previous",
         "watch_search_transcripts_old",
         "watch_search_transcripts_partial",
       ],
@@ -446,7 +405,7 @@ describe("Typesense Watch Search indexer", () => {
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
   })
 
-  it("refreshes only video anchors when the reused transcript collection supports hybrid search", async () => {
+  it("publishes the lexical projection without mutating reused transcripts", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => [viewerSafeVideo("Current")]) },
       $queryRaw: vi.fn(async () => []),
@@ -517,57 +476,44 @@ describe("Typesense Watch Search indexer", () => {
         filter_by: "documentKind:=transcript && publiclyVisible:=true",
       }),
     ])
-    expect(typesense.deleteDocumentsByFilter).toHaveBeenCalledWith(
-      "watch_search_transcripts_active",
-      "documentKind:=video && catalogGeneration:!=`watch_search_catalog_metadata-hybrid-test`",
-    )
     expect(typesense.importDocuments).toHaveBeenCalledWith(
-      "watch_search_transcripts_active",
+      "watch_search_lexical_metadata-hybrid-test",
       [
         expect.objectContaining({
-          id: "video:video-1",
-          documentKind: "video",
-          titles: ["Current"],
+          id: "video-1",
+          videoId: "video-1",
+          canonicalVideoId: "core:core-1",
+          title_en: ["Current"],
+          metadata_en: ["Current description"],
         }),
       ],
-      "upsert",
     )
-    const anchor = vi.mocked(typesense.importDocuments).mock.calls[0]?.[1]?.[0]
-    expect(anchor).not.toHaveProperty("embedding")
+    expect(typesense.importDocuments).not.toHaveBeenCalledWith(
+      "watch_search_transcripts_active",
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(typesense.deleteDocumentsByFilter).not.toHaveBeenCalled()
+    expect(typesense.updateDocumentsByFilter).not.toHaveBeenCalled()
+    expect(typesense.upsertAlias).toHaveBeenCalledWith(
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
+      "watch_search_lexical_metadata-hybrid-test",
+    )
     expect(stats).toMatchObject({
       transcriptReused: true,
       hybridReady: true,
       transcriptDocuments: 280_107,
       publicTranscriptDocuments: 17_462,
-      videoDocuments: 1,
+      videoDocuments: 0,
+      lexicalDocuments: 1,
+      lexicalCollection: "watch_search_lexical_metadata-hybrid-test",
+      lexicalSearchableBytes: expect.any(Number),
+      estimatedKeywordMemoryLowBytes: expect.any(Number),
+      estimatedKeywordMemoryHighBytes: expect.any(Number),
     })
   })
 
-  it("patches renamed transcript titles without resending embeddings", async () => {
-    const previousVideoDocument = {
-      ...buildTypesenseWatchVideoDocuments(
-        [
-          {
-            id: "video-1",
-            coreId: "core-1",
-            slug: "video-1",
-            titles: ["Old"],
-            localeCodes: ["en"],
-            descriptions: [],
-            localesJson: "[]",
-            label: null,
-            childCount: 0,
-            imageUrl: null,
-            imageBlurDataUrl: null,
-            audioLanguageSlugs: [],
-            subtitleLanguageSlugs: [],
-            audioOptionsJson: "[]",
-            subtitleOptionsJson: "[]",
-          },
-        ],
-        "old-generation",
-      )[0]!,
-    }
+  it("moves renamed titles through the lexical alias without transcript patches", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => [viewerSafeVideo("New")]) },
       $queryRaw: vi.fn(async () => []),
@@ -590,22 +536,10 @@ describe("Typesense Watch Search indexer", () => {
             ? "watch_search_transcripts_active"
             : `${alias}_previous`,
       })),
-      multiSearch: vi.fn(async (searches: Array<{ filter_by?: string }>) =>
-        searches[0]?.filter_by === "documentKind:=video"
-          ? [
-              {
-                found: 1,
-                out_of: 1,
-                page: 1,
-                search_time_ms: 1,
-                hits: [{ document: previousVideoDocument }],
-              },
-            ]
-          : [
-              { found: 1, out_of: 2, page: 1, search_time_ms: 1, hits: [] },
-              { found: 1, out_of: 2, page: 1, search_time_ms: 1, hits: [] },
-            ],
-      ),
+      multiSearch: vi.fn(async () => [
+        { found: 1, out_of: 2, page: 1, search_time_ms: 1, hits: [] },
+        { found: 1, out_of: 2, page: 1, search_time_ms: 1, hits: [] },
+      ]),
       createCollection: vi.fn(async () => ({})),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 0),
@@ -620,14 +554,12 @@ describe("Typesense Watch Search indexer", () => {
       buildId: "title-rename",
     })
 
-    expect(typesense.updateDocumentsByFilter).toHaveBeenCalledWith(
-      "watch_search_transcripts_active",
-      "documentKind:=transcript && videoId:=`video-1`",
-      { titles: ["New"] },
+    expect(typesense.importDocuments).toHaveBeenCalledWith(
+      "watch_search_lexical_title-rename",
+      [expect.objectContaining({ title_en: ["New"] })],
     )
-    expect(
-      vi.mocked(typesense.updateDocumentsByFilter).mock.calls[0]?.[2],
-    ).not.toHaveProperty("embedding")
+    expect(typesense.updateDocumentsByFilter).not.toHaveBeenCalled()
+    expect(typesense.deleteDocumentsByFilter).not.toHaveBeenCalled()
   })
 
   it("rebuilds transcripts when explicitly requested", async () => {
@@ -675,23 +607,11 @@ describe("Typesense Watch Search indexer", () => {
     ])
   })
 
-  it("restores reused video anchors when later alias publication fails", async () => {
+  it("rolls back the new lexical alias without touching reused transcripts", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
       $queryRaw: vi.fn(async () => []),
     } as unknown as PrismaClient
-    const previousVideoDocument = {
-      id: "video:previous",
-      documentKind: "video" as const,
-      videoId: "previous",
-      canonicalVideoId: "video:previous",
-      language: "__catalog__",
-      publiclyVisible: true,
-      titles: ["Previous"],
-      catalogGeneration: "watch_search_catalog_previous",
-      text: "",
-      startSeconds: null,
-    }
     const typesense = {
       listCollections: vi.fn(async () => [
         {
@@ -710,34 +630,22 @@ describe("Typesense Watch Search indexer", () => {
             ? "watch_search_transcripts_active"
             : `${alias}_previous`,
       })),
-      multiSearch: vi.fn(async (searches: Array<{ filter_by?: string }>) =>
-        searches[0]?.filter_by === "documentKind:=video"
-          ? [
-              {
-                found: 1,
-                out_of: 1,
-                page: 1,
-                search_time_ms: 1,
-                hits: [{ document: previousVideoDocument }],
-              },
-            ]
-          : [
-              {
-                found: 280_107,
-                out_of: 280_108,
-                page: 1,
-                search_time_ms: 1,
-                hits: [],
-              },
-              {
-                found: 17_462,
-                out_of: 280_108,
-                page: 1,
-                search_time_ms: 1,
-                hits: [],
-              },
-            ],
-      ),
+      multiSearch: vi.fn(async () => [
+        {
+          found: 280_107,
+          out_of: 280_108,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+        {
+          found: 17_462,
+          out_of: 280_108,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+      ]),
       createCollection: vi.fn(async () => ({})),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 1),
@@ -762,31 +670,17 @@ describe("Typesense Watch Search indexer", () => {
       }),
     ).rejects.toThrow("catalog alias failed")
 
-    expect(typesense.importDocuments).toHaveBeenCalledWith(
-      "watch_search_transcripts_active",
-      [previousVideoDocument],
-      "upsert",
+    expect(typesense.upsertAlias).toHaveBeenCalledWith(
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
+      `${TYPESENSE_WATCH_LEXICAL_ALIAS}_previous`,
     )
-    expect(typesense.deleteDocumentsByFilter).toHaveBeenCalledWith(
+    expect(typesense.importDocuments).not.toHaveBeenCalledWith(
       "watch_search_transcripts_active",
-      "documentKind:=video && catalogGeneration:=`watch_search_catalog_failed-hybrid-refresh`",
+      expect.anything(),
+      expect.anything(),
     )
-    expect(typesense.updateDocumentsByFilter).toHaveBeenNthCalledWith(
-      1,
-      "watch_search_transcripts_active",
-      "documentKind:=transcript && videoId:=`previous`",
-      { titles: [] },
-    )
-    expect(typesense.updateDocumentsByFilter).toHaveBeenNthCalledWith(
-      2,
-      "watch_search_transcripts_active",
-      "documentKind:=transcript && videoId:=`previous`",
-      { titles: ["Previous"] },
-    )
-    for (const [, , update] of vi.mocked(typesense.updateDocumentsByFilter).mock
-      .calls) {
-      expect(update).not.toHaveProperty("embedding")
-    }
+    expect(typesense.deleteDocumentsByFilter).not.toHaveBeenCalled()
+    expect(typesense.updateDocumentsByFilter).not.toHaveBeenCalled()
   })
 
   it("rolls back metadata aliases without touching a reused transcript alias", async () => {
@@ -845,7 +739,7 @@ describe("Typesense Watch Search indexer", () => {
       TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
       expect.any(String),
     )
-    expect(typesense.deleteCollection).toHaveBeenCalledTimes(2)
+    expect(typesense.deleteCollection).toHaveBeenCalledTimes(3)
     expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
       "transcripts_active",
     )
@@ -865,7 +759,9 @@ describe("Typesense Watch Search indexer", () => {
             ? "transcripts_previous"
             : alias === TYPESENSE_WATCH_AVAILABILITY_ALIAS
               ? "availability_previous"
-              : "catalog_previous",
+              : alias === TYPESENSE_WATCH_LEXICAL_ALIAS
+                ? "lexical_previous"
+                : "catalog_previous",
       })),
       createCollection: vi.fn(async () => ({})),
       importDocuments: vi.fn(async () => undefined),
@@ -898,6 +794,10 @@ describe("Typesense Watch Search indexer", () => {
       TYPESENSE_WATCH_AVAILABILITY_ALIAS,
       "availability_previous",
     )
-    expect(typesense.deleteCollection).toHaveBeenCalledTimes(3)
+    expect(typesense.upsertAlias).toHaveBeenCalledWith(
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
+      "lexical_previous",
+    )
+    expect(typesense.deleteCollection).toHaveBeenCalledTimes(4)
   })
 })
