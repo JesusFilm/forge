@@ -8,7 +8,8 @@ start_date: "2026-07-29"
 duration: 12
 depends_on:
   - "feat-121"
-blocks: []
+blocks:
+  - "feat-336"
 tags:
   - "platform"
   - "auth"
