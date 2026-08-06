@@ -24,7 +24,58 @@ Apple TV ships no web browser (no WebKit on tvOS), so browser-redirect PKCE is i
 
 The TV-side UI scaffolding shipped with this ticket (flag-gated, stubbed grant). The server-side grant is the open architectural decision below.
 
-## The architectural decision (settle FIRST, with the feat-121 owner)
+## The architectural decision — RESOLVED 2026-08-06
+
+**Route A, with a corrected mechanism.** The server half is built; see
+`docs/plans/2026-08-05-001-feat-tv-device-grant-sign-in-plan.md` for the plan it
+came from. What shipped differs from Route A as written below in one important
+way, so read this before touching the grant.
+
+Route A proposed enabling `deviceAuthorization()` and adding a step that
+translates its session into OAuth tokens. Reading the 1.6.2 dist ruled that out:
+`@better-auth/oauth-provider` exports no token-minting function, so a translation
+step would have to _re-implement_ issuance — the same `client_id`/scope drift
+that caused a real IdP account-takeover. And the bundled plugin would have to be
+overridden completely anyway (plaintext codes, non-atomic
+`findOne -> branch -> delete`, session tokens, no scope check, no rate limits).
+
+What shipped instead: **an own plugin whose approved poll mints a real OAuth
+authorization code, then lets the provider's own `/oauth2/token` issue the
+tokens.** Nothing is re-derived at exchange time, so the drift hazard is absent
+by construction rather than mitigated. Tokens are ordinary `jfp_at_`/`jfp_rt_`
+pairs with the usual claims. The bundled plugin is deliberately NOT registered.
+The TV supplies PKCE, which RFC 8628 does not require — a stolen device code
+alone cannot be redeemed.
+
+### Blocking precondition for the TV client build
+
+**Introspection in `@better-auth/oauth-provider@1.6.2` is caller-scoped**:
+`validateJwtAccessToken` and `validateOpaqueAccessToken` both end with
+`if (clientId && <token>.clientId !== clientId) return { active: false }`, so a
+client can only introspect its own tokens, and only with a client secret. Access
+tokens are opaque (`jfp_at_…`), so a relying app cannot verify locally either.
+
+Admin holds a single `AUTH_WEB_USER_INTROSPECTION_CLIENT_ID`, so **it cannot
+currently authorize both `jfp_web_*` and `jfp_tv_*` tokens.** Verified against a
+real database, not by reading alone. Every admin-side test mocks `fetch`, so no
+existing test establishes the real contract in either direction — this may also
+affect web today.
+
+Resolve before shipping a TV build, in preference order:
+
+1. Admin keeps a client-id → secret map and retries introspection with the TV
+   credential when the web credential returns `active: false`. Contained to
+   admin, one extra round trip at most.
+2. Auth grows a trusted-introspector path in its own `/api/oauth/introspect`
+   route that skips caller scoping for a designated internal client. More
+   capable, wider blast radius.
+
+The regression guard for this is
+`apps/auth/src/services/device-grant.integration.test.ts` — if a library upgrade
+relaxes the scoping, the cross-client case goes red and the workaround can be
+dropped.
+
+## Original framing (superseded by the section above)
 
 `better-auth@1.6.2` ships an RFC 8628 `device-authorization` plugin (`node_modules/better-auth/dist/plugins/device-authorization/`) with correct `authorization_pending`/`slow_down` polling semantics — BUT it does not compose with `@better-auth/oauth-provider` (the plugin that mints the introspectable tokens admin trusts):
 

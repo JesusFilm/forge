@@ -452,6 +452,29 @@ describe("user code attempt cap", () => {
       findPendingByUserCode(prisma as never, { userCode: "0194507302", now }),
     ).resolves.toMatchObject({ clientId: "jfp_tv_production" })
   })
+
+  it("refuses an expired code even with attempts to spare", async () => {
+    // Separate from the attempt-cap case on purpose: with only that test,
+    // deleting the expiry guard left the whole suite green, so the approval
+    // page would have offered an expired code as approvable.
+    const prisma = createPrismaMock({
+      deviceCode: {
+        findUnique: vi.fn(async () => ({
+          id: "dc_1",
+          clientId: "jfp_tv_production",
+          scopes: ["openid"],
+          status: "PENDING" as const,
+          userId: null,
+          expiresAt: new Date(now.getTime() - 1),
+          attemptCount: 0,
+        })),
+      },
+    })
+
+    await expect(
+      findPendingByUserCode(prisma as never, { userCode: "0194507302", now }),
+    ).rejects.toMatchObject({ code: "expired_token" })
+  })
 })
 
 describe("purgeExpiredDeviceCodes", () => {
