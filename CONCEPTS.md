@@ -376,6 +376,22 @@ payload. Until a Watch event provider owns that context, canonical server
 analytics should omit it and rely on server-derived dimensions plus the
 anonymous search request id.
 
+### Video Playback QoE
+
+The per-playback-session quality measurements a native client accumulates and
+reports once the session ends: time to first frame, rebuffer count, error
+count, and watched duration. It describes how well a single viewing went, and
+is deliberately narrower than it sounds — several things a naive reading would
+count are excluded by definition.
+
+Time to first frame is measured from the player's own mount, never from the
+surrounding screen's appearance, so navigation latency is not folded into it. A
+rebuffer is a stall that interrupts playback already in progress: the initial
+load, a viewer-initiated seek, and a Dub or source swap are all excluded, since
+none of them represents a viewer waiting on a stream that was already running.
+A session identifies its content by playback id rather than title, because the
+payload is constrained to non-sensitive, low-cardinality values.
+
 ### Search Language
 
 The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.

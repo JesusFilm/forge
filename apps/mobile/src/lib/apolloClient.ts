@@ -47,6 +47,23 @@ function operationNameFromInit(init?: RequestInit): string {
   }
 }
 
+/**
+ * Typed marker for aborts THIS client initiated (15s budget, unmount/supersede).
+ * The signal — not name or message — is the only trustworthy discriminator, so
+ * the abort is classified where the signal is in scope.
+ */
+export class ClientAbortError extends Error {
+  readonly isClientAbort = true
+  constructor(cause?: unknown) {
+    // User-facing copy: the watch/series error screens render `error.message`
+    // verbatim, so an internal string would reach the screen. Classification
+    // reads isClientAbort/name, never this text.
+    super("The request timed out. Please try again.")
+    this.name = "ClientAbortError"
+    this.cause = cause
+  }
+}
+
 // Exported for the timeout-marker test.
 export const fetchWithTimeout = (
   input: RequestInfo | URL,
@@ -72,9 +89,15 @@ export const fetchWithTimeout = (
     })
   }
 
-  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
-    clearTimeout(id),
-  )
+  return fetch(input, { ...init, signal: controller.signal })
+    .catch((error: unknown) => {
+      // RN rejects a cancelled request as a name-less Error("Aborted") (400 such
+      // prod RUM events), so the downstream name check cannot see it. Convert
+      // here, where the signal proves the abort was ours.
+      if (controller.signal.aborted) throw new ClientAbortError(error)
+      throw error
+    })
+    .finally(() => clearTimeout(id))
 }
 
 // Spread-merge so header links compose: each rides over what prior links set.
@@ -128,15 +151,25 @@ export function createRequestChain(): ApolloLink {
   return isDatadogProvisioned() ? authLink.concat(datadogLink) : authLink
 }
 
-// Every real RN abort carries name "AbortError" — whatwg-fetch sets it on both
-// its DOMException and fallback-Error paths. Never match on message text: a
-// server GraphQL error's message could collide (e.g. exactly "Aborted").
-function isClientAbortError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error != null &&
-    (error as { name?: unknown }).name === "AbortError"
-  )
+const MAX_CAUSE_DEPTH = 3
+
+// Typed marker FIRST: RN rejects a cancelled request as a name-less
+// Error("Aborted"), so name alone missed 400 prod aborts. Never match on message
+// text — a server error could legitimately say "Aborted".
+function isClientAbortError(error: unknown, depth = 0): boolean {
+  if (typeof error !== "object" || error == null) return false
+  const candidate = error as {
+    name?: unknown
+    isClientAbort?: unknown
+    cause?: unknown
+  }
+  if (candidate.isClientAbort === true) return true
+  if (candidate.name === "AbortError") return true
+  // Apollo may wrap the abort. Depth-bounded: an unbounded walk lets a cause
+  // CYCLE throw RangeError out of reportGraphqlOperationError, which has no
+  // safeDatadogCall wrapper and would escape into the Apollo error link.
+  if (depth >= MAX_CAUSE_DEPTH || candidate.cause == null) return false
+  return isClientAbortError(candidate.cause, depth + 1)
 }
 
 /**
