@@ -190,7 +190,7 @@ export function identityMismatch(
 /**
  * The corpus a run was generated against, from its retrieval stamp; null for
  * mode-"none" and unstamped legacy runs. Shared by the judge's corpus assert
- * (run-judge.ts) and the gate's fixture-integrity refusal (run-gate.ts) so
+ * (run-judge.ts) and the gate's fixture-integrity refusal (gate.ts) so
  * the two can never diverge on what "stamped" means.
  */
 export function stampedCorpusSha(identity: RunIdentity): string | null {

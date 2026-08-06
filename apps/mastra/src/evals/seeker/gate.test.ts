@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { criteriaFor, questionById } from "./questions"
 import type { RagFixtureFile } from "./rag"
-import { evaluateGate } from "./run-gate"
+import { evaluateGate } from "./gate"
 import {
   ANSWER_RUN_KIND,
   JUDGE_RUN_KIND,

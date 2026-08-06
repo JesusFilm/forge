@@ -44,7 +44,7 @@ integration + runs (this phase).
 | `src/mastra/agents/seeker-agent.ts`                      | + `buildSeekerAgent({ ragSearch?, models?, memory?, instructions? })`; singleton = zero-arg build, byte-identical default                                                   | 2                 |
 | `fixture-rag.ts`                                         | Question-keyed frozen search function; records the model's verbatim query; flags query drift                                                                                | 3                 |
 | `run-loop.ts`                                            | THE GATING RUNNER: drives `buildSeekerAgent` per cell over frozen fixtures; key hygiene before the agent exists; writes `answers.json` + full `transcripts.json`            | 3                 |
-| `run-gate.ts`                                            | Delta gate vs the committed baseline (below)                                                                                                                                | 3                 |
+| `gate.ts`, `run-gate.ts`                                 | Delta gate vs the committed baseline (below) — policy (`evaluateGate`) in `gate.ts`, thin CLI runner in `run-gate.ts`                                                       | 3                 |
 | `apps/mastra/evals/results/seeker-baseline/`             | The committed baseline (answers, judged, score, transcripts)                                                                                                                | 3                 |
 | `apps/mastra/package.json`                               | Scripts: `eval:seeker:answers\|judge\|report\|score\|capture-rag\|loop\|gate`                                                                                               | 1+3               |
 
@@ -181,7 +181,7 @@ Commit 3 adds falsification-grade tests of its own: the key-pin mechanism
 (`run-loop.test.ts` — including the anti-vacuous ambient-key-overwritten
 case), the fixture round-trip through the REAL tool executor
 (`fixture-rag.test.ts`), and gate mechanics incl. the roulette and
-typo-variant cases (`run-gate.test.ts`). The judge's stutter-collapse was
+typo-variant cases (`gate.test.ts`). The judge's stutter-collapse was
 falsified live: before the collapse, 7 of 20 first-run cells were invalid;
 after, 0 (and the disagreeing-duplicate path still invalidates, by test).
 
