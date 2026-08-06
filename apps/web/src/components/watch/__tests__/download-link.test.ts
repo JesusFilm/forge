@@ -1,11 +1,53 @@
 import { describe, expect, it } from "vitest"
 
-import { buildDownloadFilename } from "@/components/watch/download-link"
+import {
+  buildDownloadFilename,
+  resolveDownloadSequence,
+} from "@/components/watch/download-link"
 
 describe("buildDownloadFilename", () => {
   it("uses title, audio language, ISO code, and rendition height", () => {
     expect(
       buildDownloadFilename({
+        videoTitle: "Jesus Film",
+        languageName: "English",
+        languageCode: "eng",
+        renditionHeight: 360,
+        tier: "low",
+      }),
+    ).toBe("Jesus-Film_English_eng_360p.mp4")
+  })
+
+  it("prefixes ordered videos with a zero-padded sequence position", () => {
+    expect(
+      buildDownloadFilename({
+        sequence: { position: 1, total: 61 },
+        videoTitle: "Birth of Jesus",
+        languageName: "English",
+        languageCode: "eng",
+        renditionHeight: 240,
+        tier: "low",
+      }),
+    ).toBe("01_Birth-of-Jesus_English_eng_240p.mp4")
+  })
+
+  it("expands the sequence width for collections longer than 99 videos", () => {
+    expect(
+      buildDownloadFilename({
+        sequence: { position: 2, total: 120 },
+        videoTitle: "Episode Two",
+        languageName: "English",
+        languageCode: "eng",
+        renditionHeight: 720,
+        tier: "high",
+      }),
+    ).toBe("002_Episode-Two_English_eng_720p.mp4")
+  })
+
+  it("ignores invalid sequence positions", () => {
+    expect(
+      buildDownloadFilename({
+        sequence: { position: 0, total: 61 },
         videoTitle: "Jesus Film",
         languageName: "English",
         languageCode: "eng",
@@ -125,5 +167,42 @@ describe("buildDownloadFilename", () => {
     expect(buildDownloadFilename({ tier: null })).toBe(
       "Video_Language_unknown_unknown.mp4",
     )
+  })
+})
+
+describe("resolveDownloadSequence", () => {
+  const parents = [
+    {
+      slug: "jesus",
+      children: [
+        { documentId: "birth" },
+        { documentId: "childhood" },
+        { documentId: "baptism" },
+      ],
+    },
+    {
+      slug: "christmas",
+      children: [{ documentId: "annunciation" }, { documentId: "birth" }],
+    },
+  ]
+
+  it("uses the requested collection context", () => {
+    expect(resolveDownloadSequence(parents[1], "birth")).toEqual({
+      position: 2,
+      total: 2,
+    })
+  })
+
+  it("uses the canonical first parent for a standalone segment route", () => {
+    expect(resolveDownloadSequence(parents[0], "birth")).toEqual({
+      position: 1,
+      total: 3,
+    })
+  })
+
+  it("leaves videos without a multi-item parent sequence unnumbered", () => {
+    expect(
+      resolveDownloadSequence({ children: [{ documentId: "only" }] }, "only"),
+    ).toBeNull()
   })
 })

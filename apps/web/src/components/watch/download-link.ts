@@ -37,9 +37,19 @@ export type BuildDownloadFilenameParams = {
   languageName?: string | null
   languageSlug?: string | null
   renditionHeight?: number | null
+  sequence?: DownloadSequence | null
   tier?: DownloadTier | null
   videoSlug?: string | null
   videoTitle?: string | null
+}
+
+export type DownloadSequence = {
+  position: number
+  total: number
+}
+
+export type DownloadSequenceParent = {
+  children: readonly { documentId: string }[]
 }
 
 const DOWNLOAD_FILENAME_EXTENSION = ".mp4"
@@ -102,16 +112,46 @@ function renditionSegment(
   return codeSegment(tier, "unknown")
 }
 
+function sequenceSegment(
+  position: number | null | undefined,
+  total: number | null | undefined,
+): string | null {
+  if (!Number.isInteger(position) || position == null || position <= 0) {
+    return null
+  }
+  const totalWidth =
+    Number.isInteger(total) && total != null && total > 0
+      ? String(total).length
+      : 0
+  const width = Math.max(2, String(position).length, totalWidth)
+  return String(position).padStart(width, "0")
+}
+
+export function resolveDownloadSequence(
+  parent: DownloadSequenceParent | null | undefined,
+  videoDocumentId: string,
+): DownloadSequence | null {
+  if (!parent || parent.children.length < 2) return null
+  const index = parent.children.findIndex(
+    (child) => child.documentId === videoDocumentId,
+  )
+  if (index < 0) return null
+  return { position: index + 1, total: parent.children.length }
+}
+
 export function buildDownloadFilename({
   languageCode,
   languageName,
   languageSlug,
   renditionHeight,
+  sequence,
   tier,
   videoSlug,
   videoTitle,
 }: BuildDownloadFilenameParams): string {
+  const sequencePrefix = sequenceSegment(sequence?.position, sequence?.total)
   const segments = [
+    ...(sequencePrefix ? [sequencePrefix] : []),
     textSegmentFrom([videoTitle, videoSlug], "Video", {
       requireAsciiLetter: true,
     }),

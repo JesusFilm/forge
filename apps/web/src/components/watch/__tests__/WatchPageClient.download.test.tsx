@@ -200,12 +200,14 @@ afterEach(() => {
 })
 
 function renderWatchPage({
+  downloadSequence,
   image,
   languageSlug = "english",
   playbackId = "playback-1",
   subtitles = [],
   videoSlug = "jesus-is-brought-to-pilate",
 }: {
+  downloadSequence?: { position: number; total: number } | null
   image?: { mobileCinematicHigh?: string | null }
   languageSlug?: string
   playbackId?: string | null
@@ -246,6 +248,7 @@ function renderWatchPage({
   act(() => {
     root.render(
       <WatchPageClient
+        downloadSequence={downloadSequence}
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
@@ -335,6 +338,19 @@ describe("WatchPageClient download boundary", () => {
       "https://www.facebook.com/sharer/sharer.php",
     )
     expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
+  })
+
+  it("prefixes the default download filename with its ordered position", () => {
+    renderWatchPage({ downloadSequence: { position: 7, total: 61 } })
+
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      `filename=${encodeURIComponent(
+        "07_Jesus-Is-Brought-to-Pilate_English_eng_360p.mp4",
+      )}`,
+    )
   })
 
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {

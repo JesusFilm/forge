@@ -1694,7 +1694,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const carouselChildren = [
       {
-        documentId: "video-1",
+        documentId: "v1",
         slug: "storyclubs",
         title: "StoryClubs",
         label: "episode",
@@ -1746,6 +1746,10 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     await render2Seg("storyclubs", "english")
 
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      downloadSequence?: { position: number; total: number } | null
+    }
+    expect(props.downloadSequence).toEqual({ position: 1, total: 2 })
     expect(jsonLdByType("BreadcrumbList")).toBeNull()
     expect(jsonLdByType("ItemList")).toMatchObject({
       itemListElement: [
@@ -2332,6 +2336,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     )
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       collectionSlug?: string
+      downloadSequence?: { position: number; total: number } | null
       mergedBlocks?: Array<{
         kind?: string
         video?: { documentId?: string; slug?: string }
@@ -2372,6 +2377,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       slug: "jesus-is-crucified",
     })
     expect(props.collectionSlug).toBe("anticipate-the-resurrection")
+    expect(props.downloadSequence).toEqual({ position: 20, total: 29 })
     expect(jsonLdByType("BreadcrumbList")).toBeNull()
     expect(jsonLdByType("VideoObject")).toMatchObject({
       url: "https://www.jesusfilm.org/watch/jesus-is-crucified.html",

@@ -1,6 +1,7 @@
 import {
   buildDownloadFilename,
   buildDownloadProxyUrl,
+  type DownloadSequence,
 } from "@/components/watch/download-link"
 import {
   bucketDownloads,
@@ -18,6 +19,7 @@ export type CollectionDownloadEpisode = {
 
 export type CollectionDownloadCandidate = {
   documentId: string
+  sequence: DownloadSequence | null
   slug: string
   title: string
   thumbnailUrl: string | null
@@ -72,7 +74,7 @@ export function buildCollectionDownloadOptions(
   const candidates: CollectionDownloadCandidate[] = []
   const skipped: CollectionDownloadEpisode[] = []
 
-  for (const episode of episodes) {
+  for (const [index, episode] of episodes.entries()) {
     const dub = dubByVideoId.get(episode.documentId)
     if (!dub || !episode.slug) {
       skipped.push(episode)
@@ -85,6 +87,10 @@ export function buildCollectionDownloadOptions(
     }
     candidates.push({
       documentId: episode.documentId,
+      sequence:
+        episodes.length >= 2
+          ? { position: index + 1, total: episodes.length }
+          : null,
       slug: episode.slug,
       title: episode.title ?? episode.slug,
       thumbnailUrl: episode.thumbnailUrl ?? null,
@@ -119,7 +125,7 @@ export function buildCollectionDownloadQueue(input: {
   languageSlug: string
 }): CollectionDownloadQueueItem[] {
   const usedFilenames = new Set<string>()
-  return input.candidates.flatMap((candidate, index) => {
+  return input.candidates.flatMap((candidate, candidateIndex) => {
     const download = candidate.tiers[input.tier]
     if (!download) return []
     const filename = uniqueCollectionDownloadFilename(
@@ -128,11 +134,12 @@ export function buildCollectionDownloadQueue(input: {
         languageName: input.languageName,
         languageSlug: input.languageSlug,
         renditionHeight: download.height,
+        sequence: candidate.sequence,
         tier: input.tier,
         videoSlug: candidate.slug,
         videoTitle: candidate.title,
       }),
-      index + 1,
+      candidate.sequence?.position ?? candidateIndex + 1,
       usedFilenames,
     )
     return [

@@ -79,7 +79,7 @@ describe("collection download options", () => {
     expect(result.commonTiers).toEqual(["highest", "low"])
   })
 
-  it("builds compatible opaque proxy queue items", () => {
+  it("builds compatible opaque proxy queue items without numbering a single item", () => {
     const options = buildCollectionDownloadOptions(episodes.slice(0, 1), [
       {
         documentId: "dub-1",
@@ -107,8 +107,8 @@ describe("collection download options", () => {
     const queue = buildQueueForTitles(["Same title", "Same-title"])
 
     expect(queue.map(({ filename }) => filename)).toEqual([
-      "Same-title_English_eng_720p.mp4",
-      "Same-title_English_eng_720p_2.mp4",
+      "01_Same-title_English_eng_720p.mp4",
+      "02_Same-title_English_eng_720p.mp4",
     ])
     for (const item of queue) {
       expect(
@@ -123,11 +123,43 @@ describe("collection download options", () => {
 
     expect(new Set(filenames).size).toBe(2)
     expect(filenames.every((filename) => filename.length <= 200)).toBe(true)
-    expect(filenames[1]).toMatch(/_2\.mp4$/)
+    expect(filenames[1]).toMatch(/^02_/)
     expect(
       new URL(queue[1].url, "https://watch.example").searchParams.get(
         "filename",
       ),
     ).toBe(filenames[1])
+  })
+
+  it("preserves canonical positions when an earlier episode is skipped", () => {
+    const options = buildCollectionDownloadOptions(episodes, [
+      {
+        documentId: "dub-1",
+        videoId: "v1",
+        downloads: [
+          { documentId: "download-1", height: 720, quality: "high", size: 100 },
+        ],
+      },
+      {
+        documentId: "dub-3",
+        videoId: "v3",
+        downloads: [
+          { documentId: "download-3", height: 720, quality: "high", size: 100 },
+        ],
+      },
+    ])
+
+    const queue = buildCollectionDownloadQueue({
+      candidates: options.candidates,
+      tier: "highest",
+      languageCode: "eng",
+      languageName: "English",
+      languageSlug: "english",
+    })
+
+    expect(queue.map(({ filename }) => filename)).toEqual([
+      "01_One_English_eng_720p.mp4",
+      "03_Three_English_eng_720p.mp4",
+    ])
   })
 })
