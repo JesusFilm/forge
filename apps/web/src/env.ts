@@ -55,10 +55,10 @@ function emptyToUndefined(value: string | undefined): string | undefined {
   return value === "" ? undefined : value
 }
 
-function productionDefault(
-  productionValue: string,
-  localValue: string,
-): string {
+function productionDefault<T extends string>(
+  productionValue: T,
+  localValue: T,
+): T {
   return process.env.NODE_ENV === "production" ? productionValue : localValue
 }
 
@@ -234,6 +234,14 @@ export const env = createEnv({
     DD_SERVICE: z.string().min(1).optional(),
     DD_VERSION: z.string().min(1).optional(),
     WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT: booleanEnv(true),
+    // Public Watch search rollout controls. MODERN is the Typesense primary;
+    // operators can restore DEFAULT without a code revert. DEFAULT shadowing
+    // is requested only while MODERN is primary and runs after the response in
+    // Admin, so disabling it does not change result selection.
+    WATCH_SEARCH_PRIMARY_MODE: z
+      .enum(["DEFAULT", "MODERN"])
+      .default(productionDefault("MODERN", "DEFAULT")),
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED: booleanEnv(true),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -341,6 +349,9 @@ export const env = createEnv({
     DD_VERSION: datadogServerVersionFallback(),
     WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT:
       process.env.WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT,
+    WATCH_SEARCH_PRIMARY_MODE: process.env.WATCH_SEARCH_PRIMARY_MODE,
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:

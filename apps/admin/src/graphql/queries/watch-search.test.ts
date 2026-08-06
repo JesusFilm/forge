@@ -6,9 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { schema } from "@/graphql/schema"
 
-const { enqueueWatchSearchTraceMock } = vi.hoisted(() => ({
-  enqueueWatchSearchTraceMock: vi.fn(),
-}))
+const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
+  vi.hoisted(() => ({
+    enqueueWatchSearchShadowMock: vi.fn(),
+    enqueueWatchSearchTraceMock: vi.fn(),
+  }))
 
 const searchMock = vi.fn()
 const typesenseSearchMock = vi.fn()
@@ -17,10 +19,15 @@ vi.mock("@/services/search-trace.service", () => ({
   enqueueWatchSearchTrace: enqueueWatchSearchTraceMock,
 }))
 
+vi.mock("@/services/watch-search-shadow.service", () => ({
+  enqueueWatchSearchShadow: enqueueWatchSearchShadowMock,
+}))
+
 type ResolverArgs = {
   input: {
     query: string
     mode?: "default" | "modern" | null
+    shadowMode?: "default" | "modern" | null
     targetLanguageSlug?: string | null
     displayLanguageSlug?: string | null
     routeLanguageSlug?: string | null
@@ -30,6 +37,11 @@ type ResolverArgs = {
   }
 }
 type ResolverCtx = {
+  user: {
+    id: string | null
+    role: "CONSUMER_BEARER" | "PUBLIC"
+    fleet?: boolean
+  } | null
   prisma: unknown
   services: {
     watchSearch: { search: typeof searchMock }
@@ -56,11 +68,17 @@ async function invoke(
   typesenseWatchSearch: ResolverCtx["services"]["typesenseWatchSearch"] = {
     search: typesenseSearchMock,
   },
+  user: ResolverCtx["user"] = {
+    id: null,
+    role: "CONSUMER_BEARER",
+    fleet: false,
+  },
 ) {
   return getResolver()(
     null,
     args,
     {
+      user,
       prisma: { searchTrace: {}, searchTraceAggregate: {} },
       services: {
         watchSearch: { search: searchMock },
@@ -73,6 +91,7 @@ async function invoke(
 
 beforeEach(() => {
   vi.clearAllMocks()
+  enqueueWatchSearchShadowMock.mockReturnValue(true)
   enqueueWatchSearchTraceMock.mockReturnValue(true)
   searchMock.mockResolvedValue({
     query: "jesus",
@@ -158,6 +177,68 @@ describe("watchSearch mode routing", () => {
       expect.objectContaining({ input, response: result }),
       expect.anything(),
     )
+  })
+
+  it("queues DEFAULT as a background shadow for trusted Web MODERN requests", async () => {
+    const input = {
+      query: "communion",
+      mode: "modern" as const,
+      shadowMode: "default" as const,
+      targetLanguageSlug: "french",
+    }
+
+    const result = await invoke({ input })
+
+    expect(enqueueWatchSearchShadowMock).toHaveBeenCalledWith({
+      input,
+      primaryResponse: result,
+      prisma: expect.anything(),
+      service: expect.objectContaining({ search: searchMock }),
+    })
+  })
+
+  it("does not queue shadow work when the primary mode is DEFAULT", async () => {
+    await invoke({
+      input: {
+        query: "communion",
+        mode: "default",
+        shadowMode: "default",
+      },
+    })
+
+    expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
+  })
+
+  it("ignores shadow requests from anonymous callers", async () => {
+    await invoke(
+      {
+        input: {
+          query: "communion",
+          mode: "modern",
+          shadowMode: "default",
+        },
+      },
+      { search: typesenseSearchMock },
+      null,
+    )
+
+    expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
+  })
+
+  it("ignores shadow requests from fleet consumer bearers", async () => {
+    await invoke(
+      {
+        input: {
+          query: "communion",
+          mode: "modern",
+          shadowMode: "default",
+        },
+      },
+      { search: typesenseSearchMock },
+      { id: null, role: "CONSUMER_BEARER", fleet: true },
+    )
+
+    expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
   })
 
   it("fails explicitly when MODERN is requested without Typesense configuration", async () => {

@@ -256,6 +256,17 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+### Shadow Search
+
+A best-effort execution of a non-serving Search Pipeline Mode for the same
+submitted query, used to retain comparison evidence while another mode owns the
+viewer response.
+
+Shadow Search is bounded background work: saturation, failure, or a slow shadow
+must not change the primary result list or extend viewer-visible latency. Its
+results belong to evaluation and operational comparison rather than click or
+impression attribution.
+
 ### Search Candidate Window
 
 A bounded per-retriever set of eligible search candidates that is handed to

@@ -1,8 +1,9 @@
 # Typesense Watch Search Production Readiness
 
 This report evaluates the parallel `MODERN` Watch Search backend and defines a
-reversible shadow deployment. It does not change the `DEFAULT` PostgreSQL
-backend or authorize frontend traffic before the rollout gates pass.
+reversible frontend promotion. The GraphQL compatibility default remains the
+PostgreSQL `DEFAULT` backend; production Web explicitly selects `MODERN` and
+requests a bounded `DEFAULT` shadow after the rollout evidence below passes.
 Admin remains the public search gateway and owns language interpretation,
 query embeddings, visibility, watchability, analytics, degradation, and the
 GraphQL contract. Typesense is a private serving index for lexical and semantic
@@ -10,29 +11,32 @@ retrieval.
 
 ## Decision
 
-Provisioning a private, single-node shadow service is safe after the normal PR
-is reviewed, merged, and deployed. Name that Railway service exactly
-`@forge/admin/search`. Do not send user traffic to it yet. Frontend rollout is
-**not ready** until all of these gates pass:
+The private, single-node `@forge/admin/search` service has now passed the scoped
+capacity and production-latency gates for a guarded frontend promotion. The
+promotion still ships through the normal reviewed PR-to-main path; it is not a
+direct production mutation from a workstation. The evidence is:
 
-1. Refresh catalog, availability, and localized lexical projections on the
-   isolated `@forge/admin/search` service while reusing and recounting the
-   active 280,107-vector transcript collection. Rebuild transcripts only when
-   the active schema is incompatible.
-2. Pass the relevance suite, including broad exact-title queries such as
-   `JESUS`, with no viewer-visibility regressions.
-3. Demonstrate Typesense retrieval p95 below 50 ms and Admin MODERN server p95
-   at or below 250 ms under production-shaped read traffic and a routine
-   metadata refresh.
-4. Demonstrate hybrid Watch Search full-round-trip p95 at or below 550 ms. A
-   later rollout may tighten this toward 200 ms after the public Web-to-Admin
-   hop is separately corrected.
-5. Operate synchronization, reconciliation, backup restore, and rollback in
-   the shadow service before any user traffic is enabled.
+1. The active transcript generation contains 280,107 existing vectors. Routine
+   catalog, availability, and lexical releases reuse it; they do not call an
+   embedding provider or rebuild HNSW.
+2. The single active generation settles at approximately 4.69 GiB RSS and
+   peaked at approximately 5.34 GiB on the 16 GiB service after stale
+   generations were retired.
+3. The production 100-request GraphQL probe measured MODERN server p50 87.48 ms
+   and p95 193.69 ms, with full-round-trip p50 341.50 ms and p95 526.43 ms.
+   A separate 100-request internal probe measured server p50 90.30 ms and p95
+   208.17 ms. All 200 requests were trace-correlated and none degraded.
+4. The 83-case directional judge found more useful-or-excellent MODERN lists
+   (49 versus 44) and fewer unacceptable lists (14 versus 15) than DEFAULT.
+   The reviewed qrel set is still empty, so this supports guarded promotion and
+   shadow observation, not declaration of a new absolute relevance baseline.
 
-`MODERN` must remain explicit opt-in. Omitted mode and `DEFAULT` continue to use
+Production Web must select `MODERN` explicitly rather than changing the public
+GraphQL compatibility default. Omitted mode and `DEFAULT` continue to use
 PostgreSQL. Do not expose Typesense directly to Web or ship a write/admin key to
-a browser.
+a browser. Local and test Web processes retain `DEFAULT`. Production-mode
+builds, including deployed previews, select MODERN unless their environment
+explicitly sets `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`.
 
 ## Comparison And Corpus Status
 
@@ -377,12 +381,13 @@ replicas, while Railway services with volumes cannot use replicas and volume
 deployments cannot run old and new containers simultaneously. Colocation would
 remove Admin redundancy and introduce Admin downtime during Typesense deploys.
 
-A single shadow node is acceptable because it serves no user traffic and
-`DEFAULT` remains available. Before Typesense becomes the default user path,
-either prove that immediate PostgreSQL fallback satisfies the availability
-objective or move to Typesense Cloud HA / three independently persisted
-Typesense nodes. Each HA node stores the complete index; RAM is replicated, not
-split across nodes.
+The guarded promotion accepts one Typesense node because PostgreSQL `DEFAULT`
+remains an independent, one-setting traffic rollback. This is not automatic
+failover: a Typesense outage can fail MODERN requests until the Web setting is
+rolled back and the deployment completes. If that recovery interval does not
+satisfy the availability objective, move to Typesense Cloud HA or three
+independently persisted Typesense nodes before increasing the objective. Each
+HA node stores the complete index; RAM is replicated, not split across nodes.
 
 ### RAM estimate
 
@@ -474,32 +479,35 @@ Monitor and page on:
 
 ## Rollout and Rollback
 
-1. Merge through the normal PR process, then provision the private
-   `@forge/admin/search` shadow service. Keep `DEFAULT` unchanged and do not
-   route user traffic during initial indexing and soak monitoring.
-2. Replay a privacy-safe sample of real query shapes and the fixed multilingual
-   suite against both backends. Review top results, availability, evidence,
-   overlap, zero-result rate, and click/play outcomes.
-3. Once all gates pass, canary Modern behind Admin at 1%, 5%, then 25%. Stop on
-   visibility mismatch, relevance regression, synchronization lag, memory
-   pressure, error-rate increase, or the 550 ms full-round-trip p95 gate
-   failing.
-4. Roll back traffic by disabling the Modern flag or removing the Typesense
-   connection variables from Admin; omitted/`DEFAULT` requests already use
-   PostgreSQL. The 16 GiB experiment does not retain an inactive broad vector
-   generation, so index recovery uses the latest external snapshot or a manual
-   rebuild from canonical PostgreSQL data. During the availability migration,
-   application code retries legacy bounded catalog hydration only when that
-   alias is missing. The transcript documents remain compatible with the
-   previous vector-only query, so an application rollback does not require a
-   corpus rebuild.
-5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
-   exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
-   the service or volume is a separate destructive action and is never part of
-   the immediate rollback.
-6. Never deploy from a workstation. Ship application/config changes through
-   the normal pull-request merge and main deployment process after review and
-   CI; provision Railway only after that merge is live.
+1. Merge the application changes through the normal PR process. Production Web
+   then explicitly sends `mode: MODERN`; local/test Web keeps `DEFAULT`. The
+   GraphQL omitted-mode behavior does not change.
+2. While MODERN is primary, Web also sends `shadowMode: DEFAULT`. Admin honors
+   that field only for its non-fleet Web consumer bearer, returns the MODERN
+   response, and schedules DEFAULT through `after()` with concurrency 1 and a
+   capacity of 64 per Admin process. Saturation and failures are logged but
+   cannot change or delay the primary response.
+3. Primary and shadow traces share the primary request ID and carry explicit
+   `primary`/`shadow` roles. Product request/click analytics, long-lived
+   aggregates, and eval sampling exclude shadows so user counts and query
+   intent are not doubled; raw Admin traces retain both executions for
+   comparison.
+4. Immediate traffic rollback is a Web configuration change:
+   `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`. This stops requesting shadows as well
+   and does not move Typesense aliases, delete indexes, or require an Admin
+   change. To retain MODERN while stopping only comparison load, set
+   `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false`.
+5. Stop promotion on visibility mismatch, relevance regression,
+   synchronization lag, sustained memory pressure, elevated search errors, or
+   the 550 ms full-round-trip p95 gate failing. A failed Typesense service does
+   not corrupt DEFAULT, but there is no automatic request fallback in this
+   release; operators must apply the rollback setting.
+6. The 16 GiB service does not retain an inactive broad vector generation.
+   Index recovery uses the latest external snapshot or a deliberate rebuild
+   from canonical PostgreSQL data. Deleting a service, collection, or volume is
+   a separate destructive action and is never part of traffic rollback.
+7. Never deploy from a workstation. Application and configuration changes ship
+   only through review, CI, merge to main, and the normal deployment process.
 
 ## Vendor References
 

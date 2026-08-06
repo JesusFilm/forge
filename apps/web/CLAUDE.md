@@ -29,6 +29,15 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
 - `src/lib/{search,recommendations,demo-search,enrichment,experience-metadata}.ts` — all read from admin.
 
+Production Watch search explicitly sends `mode: MODERN` from `src/lib/search.ts`
+and requests `DEFAULT` as post-response shadow work. This does not change the
+Admin GraphQL omitted-mode contract. `WATCH_SEARCH_PRIMARY_MODE=DEFAULT` is the
+traffic rollback; `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false` stops only shadow
+load. Both are server-only settings. Local and test processes default to
+DEFAULT, so developer Web does not require Typesense. Any production-mode build,
+including a deployed preview, defaults to MODERN unless its environment sets
+`WATCH_SEARCH_PRIMARY_MODE=DEFAULT`.
+
 Required env vars (both flipped from `.optional()` in U13):
 
 - `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Production Web should use
