@@ -11,6 +11,9 @@ import { exchangeAppleAuthorizationCode } from "@/services/apple-native.service"
  * credential lands on the account row. The app posts the sheet's one-time
  * authorizationCode here right after sign-in; the server-side exchange stores
  * the refresh token that account deletion later revokes (Apple's guidance).
+ *
+ * The sheet's fullName does NOT ride here — Better Auth's own
+ * `idToken.user.name` channel carries it, applied at user creation.
  */
 export function mobileAppleCredentialPlugin() {
   return {

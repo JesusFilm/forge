@@ -7,6 +7,11 @@ const authConfigCapture = vi.hoisted(() => ({
   genericOAuth: vi.fn((_options: unknown) => ({})),
   jwt: vi.fn((_options: unknown) => ({})),
   env: {} as Record<string, string | undefined>,
+  findAccountUnique: vi.fn(
+    async (
+      _args: unknown,
+    ): Promise<{ user: { email: string | null } } | null> => null,
+  ),
 }))
 
 vi.mock("better-auth", () => ({
@@ -51,7 +56,7 @@ vi.mock("@/config/env", () => ({
 }))
 
 vi.mock("@/db/client", () => ({
-  prisma: {},
+  prisma: { account: { findUnique: authConfigCapture.findAccountUnique } },
 }))
 
 type CapturedAuthOptions = {
@@ -62,8 +67,9 @@ type CapturedAuthOptions = {
       clientSecret: string
       audience: string[]
       mapProfileToUser: (profile: {
-        email?: string | null
-      }) => Record<string, unknown>
+        sub?: string
+        email?: string
+      }) => Promise<Record<string, unknown>>
     }
   }
   account: {
@@ -146,6 +152,10 @@ async function captureOAuthProviderOptions() {
 describe("auth provider configuration", () => {
   beforeEach(() => {
     configureProviderEnvironment()
+    // Clears call history AND any queued mockResolvedValueOnce, so a test
+    // that never stubs the lookup cannot inherit the previous one's value.
+    authConfigCapture.findAccountUnique.mockReset()
+    authConfigCapture.findAccountUnique.mockResolvedValue(null)
   })
 
   it("always requests Google account selection when Google is enabled", async () => {
@@ -207,6 +217,10 @@ describe("auth provider configuration", () => {
 describe("mobile login configuration", () => {
   beforeEach(() => {
     configureProviderEnvironment()
+    // Clears call history AND any queued mockResolvedValueOnce, so a test
+    // that never stubs the lookup cannot inherit the previous one's value.
+    authConfigCapture.findAccountUnique.mockReset()
+    authConfigCapture.findAccountUnique.mockResolvedValue(null)
   })
 
   it("accepts native Apple identity tokens for both the web Service ID and the app bundle id", async () => {
@@ -228,15 +242,56 @@ describe("mobile login configuration", () => {
     expect(options.socialProviders.apple?.audience).toEqual(["apple-client-id"])
   })
 
-  it("never maps an absent Apple email over a stored one", async () => {
+  it("passes through the Apple email without a lookup when the token has one", async () => {
     const options = await captureAuthOptions()
     const mapProfileToUser = options.socialProviders.apple?.mapProfileToUser
 
-    expect(mapProfileToUser?.({ email: "person@example.com" })).toEqual({
-      email: "person@example.com",
+    await expect(
+      mapProfileToUser?.({ sub: "apple-sub", email: "person@example.com" }),
+    ).resolves.toEqual({ email: "person@example.com" })
+    expect(authConfigCapture.findAccountUnique).not.toHaveBeenCalled()
+  })
+
+  it("restores the stored email when Apple omits it — the returning-user lockout", async () => {
+    // Apple sends `email` only on a first authorization. Better Auth reads it
+    // straight off the token and 401s when absent, so without this a returning
+    // user could never sign in again (worst right after account deletion).
+    authConfigCapture.findAccountUnique.mockResolvedValueOnce({
+      user: { email: "stored@example.com" },
     })
-    expect(mapProfileToUser?.({})).toEqual({})
-    expect(mapProfileToUser?.({ email: null })).toEqual({})
+    const options = await captureAuthOptions()
+
+    await expect(
+      options.socialProviders.apple?.mapProfileToUser({ sub: "apple-sub" }),
+    ).resolves.toEqual({ email: "stored@example.com" })
+    expect(authConfigCapture.findAccountUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          providerId_accountId: {
+            providerId: "apple",
+            accountId: "apple-sub",
+          },
+        },
+      }),
+    )
+  })
+
+  it("returns no email rather than a wrong one when nothing is stored", async () => {
+    authConfigCapture.findAccountUnique.mockResolvedValueOnce(null)
+    const options = await captureAuthOptions()
+
+    await expect(
+      options.socialProviders.apple?.mapProfileToUser({ sub: "unknown-sub" }),
+    ).resolves.toEqual({})
+  })
+
+  it("never looks up an account without a subject", async () => {
+    const options = await captureAuthOptions()
+
+    await expect(
+      options.socialProviders.apple?.mapProfileToUser({}),
+    ).resolves.toEqual({})
+    expect(authConfigCapture.findAccountUnique).not.toHaveBeenCalled()
   })
 
   it("links consumer providers only on provider-verified emails (R1)", async () => {

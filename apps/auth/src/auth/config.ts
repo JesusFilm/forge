@@ -78,6 +78,38 @@ const appleAudience = [
   ...(env.APPLE_APP_BUNDLE_ID ? [env.APPLE_APP_BUNDLE_ID] : []),
 ]
 
+/**
+ * Apple sends `email` in the identity token only on a user's FIRST
+ * authorization; every later one carries just `sub`. Better Auth reads the
+ * email straight off that token and rejects the whole sign-in when it is
+ * absent ("User email not found", 401) — before it ever looks up the linked
+ * account — so a returning user would be permanently locked out, which bites
+ * hardest right after an account deletion.
+ *
+ * mapProfileToUser is the only hook that runs after Apple's provider sets
+ * `email: profile.email`, so it is where the stored address is restored. The
+ * identity token's signature is verified before this runs, making `sub`
+ * trustworthy as the lookup key. Returning `{}` leaves Better Auth's own
+ * value untouched — it must never blank a stored email.
+ */
+async function appleProfileToUser(profile: { sub?: string; email?: string }) {
+  if (profile.email) return { email: profile.email }
+  if (!profile.sub) return {}
+
+  const account = await prisma.account.findUnique({
+    where: {
+      providerId_accountId: { providerId: "apple", accountId: profile.sub },
+    },
+    select: { user: { select: { email: true } } },
+  })
+  if (!account?.user.email) return {}
+
+  console.warn(
+    "[auth] event=apple_email_restored_from_account reason=token_omitted_email",
+  )
+  return { email: account.user.email }
+}
+
 const socialProviders = {
   ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
     ? {
@@ -103,9 +135,7 @@ const socialProviders = {
         apple: {
           ...appleCredentials,
           audience: appleAudience,
-          // Never let a repeat sign-in that omits email blank a stored one.
-          mapProfileToUser: (profile: { email?: string | null }) =>
-            profile.email ? { email: profile.email } : {},
+          mapProfileToUser: appleProfileToUser,
         },
       }
     : {}),
