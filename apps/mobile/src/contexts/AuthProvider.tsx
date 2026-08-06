@@ -5,6 +5,10 @@ import type { ReactNode } from "react"
 
 import { getAuthSession, rumUserFromSession } from "../lib/authSession"
 import { setDatadogRumUser } from "../lib/datadog"
+import {
+  clearNewAccountNotice,
+  getNewAccountNotice,
+} from "../lib/newAccountNotice"
 import { attachProgressLifecycle } from "../lib/watchProgress/lifecycle"
 import { resetToSignedOut } from "../lib/watchProgress/store"
 import {
@@ -30,6 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDatadogRumUser(rumUserFromSession(store.getSnapshot()))
     }
     const unsubscribeRum = store.subscribe(syncRumUser)
+    // The R15 notice belongs to one signed-in account; any transition away
+    // from it (sign-out, switch, deletion) retires it.
+    const unsubscribeNotice = store.subscribe(() => {
+      const snapshot = store.getSnapshot()
+      const noticeFor = getNewAccountNotice()
+      if (noticeFor == null) return
+      if (snapshot.status !== "signedIn" || snapshot.user.id !== noticeFor) {
+        clearNewAccountNotice()
+      }
+    })
     const sync = getProgressSync()
     const detachProgress = attachProgressLifecycle({
       getAccountId: getSignedInAccountId,
@@ -50,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return () => {
       unsubscribeRum()
+      unsubscribeNotice()
       detachProgress()
       appState.remove()
     }

@@ -8,6 +8,11 @@ import { DeleteAccountFlow } from "./DeleteAccountFlow"
 import { signOut } from "../../lib/authActions"
 import { getAuthSession } from "../../lib/authSession"
 import {
+  clearNewAccountNotice,
+  getNewAccountNotice,
+  subscribeToNewAccountNotice,
+} from "../../lib/newAccountNotice"
+import {
   ACCENT,
   SURFACE_COLOR,
   TEXT_PRIMARY,
@@ -18,6 +23,10 @@ import {
   HORIZONTAL_PADDING,
   feedback,
 } from "../../styles/shared"
+
+function useNewAccountNotice() {
+  return useSyncExternalStore(subscribeToNewAccountNotice, getNewAccountNotice)
+}
 
 function useAuthSnapshot() {
   return useSyncExternalStore(
@@ -36,6 +45,7 @@ export function AccountSection() {
   const typography = useTypography()
   const router = useRouter()
   const snapshot = useAuthSnapshot()
+  const newAccountNotice = useNewAccountNotice()
   const [signingOut, setSigningOut] = useState(false)
 
   if (snapshot.status !== "signedIn") {
@@ -71,6 +81,28 @@ export function AccountSection() {
 
   return (
     <View style={styles.container}>
+      {newAccountNotice === snapshot.user.id ? (
+        // R15. Non-blocking on purpose: an interstitial on every first
+        // sign-in was rejected as noise, but an unexplained empty
+        // continue-watching row reads as lost history.
+        <View style={styles.noticeCard}>
+          <Ionicons name="information-circle" size={18} color={ACCENT} />
+          <Text style={styles.noticeText}>
+            This is a new account, so there is no watch history yet. If you
+            expected to see yours, you may have signed in with a different email
+            than you use on the web.
+          </Text>
+          <Pressable
+            onPress={clearNewAccountNotice}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss new account notice"
+            style={({ pressed }) => [pressed && feedback.pressed]}
+          >
+            <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
+          </Pressable>
+        </View>
+      ) : null}
       <View style={styles.accountCard}>
         <View style={styles.identityRow}>
           <Ionicons name="person-circle" size={36} color={ACCENT} />
@@ -114,6 +146,23 @@ export function AccountSection() {
 }
 
 const styles = StyleSheet.create({
+  noticeCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: SURFACE_COLOR,
+    borderRadius: CARD_BORDER_RADIUS,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  noticeText: {
+    flex: 1,
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    fontSize: 13,
+    lineHeight: 18,
+  },
   container: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 24,

@@ -4,8 +4,10 @@
  * require pattern) so this module imports cleanly under jest; every
  * DECISION lives in authFlows.ts / authSession.ts, both pure-tested.
  *
- * Each flow resolves to a typed outcome the sheet renders: success (with
- * the R15 new-account flag), a quiet cancel, or a retryable error.
+ * Each flow resolves to a typed outcome the sheet renders: success, a quiet
+ * cancel, or a retryable error. R15's new-account signal is NOT an outcome
+ * variant — a blocking interstitial was rejected — it raises the Profile
+ * notice in newAccountNotice.ts instead.
  */
 
 import {
@@ -20,6 +22,7 @@ import {
 } from "./authSession"
 import { env } from "../env"
 import { reportDatadogAction } from "./datadog"
+import { noteAccountCreated, wasAccountJustCreated } from "./newAccountNotice"
 
 export type SignInOutcome =
   | { status: "success" }
@@ -47,6 +50,12 @@ async function completeSignIn(
     email: user.email ?? undefined,
     name: user.name ?? undefined,
   })
+  // R15: an empty continue-watching row is expected on an account this
+  // sign-in just created, so say so on Profile rather than let it read as
+  // lost history.
+  if (wasAccountJustCreated(user.createdAt, Date.now())) {
+    noteAccountCreated(user.id)
+  }
   // The adoption metric's first RUM action (Success Criteria).
   reportDatadogAction("sign_in_completed", {})
   return { status: "success" }
