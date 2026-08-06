@@ -92,6 +92,7 @@ export type WatchSearchLaneName =
 export type WatchSearchInput = {
   query: string
   mode?: "default" | "modern" | null
+  shadowMode?: "default" | "modern" | null
   clientRequestId?: string | null
   targetLanguageSlug?: string | null
   queryLanguageSlug?: string | null

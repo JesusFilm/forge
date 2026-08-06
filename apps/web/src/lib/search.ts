@@ -1,6 +1,7 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
+import { env } from "@/env"
 import {
   publicSlugForLocale,
   type SearchLanguageResolution,
@@ -118,6 +119,22 @@ export type SearchActionResult =
     })
 
 const MAX_QUERY_LENGTH = 200
+
+export type WatchSearchPrimaryMode = "DEFAULT" | "MODERN"
+
+export function resolveWatchSearchRouting(
+  mode: WatchSearchPrimaryMode,
+  defaultShadowEnabled: boolean,
+): {
+  mode: WatchSearchPrimaryMode
+  shadowMode: "DEFAULT" | undefined
+} {
+  return {
+    mode,
+    shadowMode:
+      mode === "MODERN" && defaultShadowEnabled ? "DEFAULT" : undefined,
+  }
+}
 
 const watchSearchOperation = adminGraphql(`
   query WatchSearch($input: WatchSearchInput!) {
@@ -265,11 +282,16 @@ export async function searchVideos(
   languageContext: SearchVideosLanguageContext = {},
 ): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
+  const routing = resolveWatchSearchRouting(
+    env.WATCH_SEARCH_PRIMARY_MODE,
+    env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+  )
   const result = await semanticSearchAdminClient.query({
     query: watchSearchOperation,
     variables: {
       input: {
         query: truncatedQuery,
+        ...routing,
         clientRequestId: languageContext.clientRequestId,
         targetLanguageSlug: languageContext.targetLanguageSlug,
         queryLanguageSlug: languageContext.queryLanguageSlug,

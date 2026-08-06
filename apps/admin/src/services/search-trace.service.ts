@@ -62,6 +62,8 @@ export type RecordSearchTraceInput = {
   now?: Date
   timeoutMs?: number
   retentionHealthy?: boolean
+  storeAggregate?: boolean
+  sampleEligible?: boolean
 }
 
 export type SearchTraceWriteResult = {
@@ -120,6 +122,8 @@ export type RecordWatchSearchTraceInput = {
   response: WatchSearchResponse
   startedAt: Date
   completedAt: Date
+  traceRole?: "primary" | "shadow"
+  shadowOfRequestId?: string | null
   now?: Date
   timeoutMs?: number
   retentionHealthy?: boolean
@@ -319,11 +323,15 @@ function safeResultMetadata(row: WatchSearchResult): Prisma.InputJsonObject {
 function watchSearchTraceMetadata(
   input: WatchSearchInput,
   response: WatchSearchResponse,
+  traceRole: "primary" | "shadow",
+  shadowOfRequestId: string | null,
 ): Prisma.InputJsonObject {
   const language = response.languageInterpretation
   return {
-    version: "watch-search-analytics/v2",
+    version: "watch-search-analytics/v3",
     requestId: response.requestId,
+    traceRole,
+    shadowOfRequestId,
     queryLength: response.query.length,
     limit: input.limit ?? null,
     offset: input.offset ?? null,
@@ -470,20 +478,23 @@ export async function writeSearchTrace(
     queryLabelSource: privacy.labelSource,
     queryLabelVersion: privacy.labelVersion,
   }
-  const aggregatePromise = prisma.searchTraceAggregate.upsert({
-    where: {
-      searchTraceAggregateBucketDims: aggregateDimensions,
-    },
-    create: {
-      ...aggregateDimensions,
-      queryCount: 1,
-      resultCountSum: input.resultCount,
-    },
-    update: {
-      queryCount: { increment: 1 },
-      resultCountSum: { increment: input.resultCount },
-    },
-  })
+  const aggregatePromise =
+    input.storeAggregate === false
+      ? Promise.resolve(null)
+      : prisma.searchTraceAggregate.upsert({
+          where: {
+            searchTraceAggregateBucketDims: aggregateDimensions,
+          },
+          create: {
+            ...aggregateDimensions,
+            queryCount: 1,
+            resultCountSum: input.resultCount,
+          },
+          update: {
+            queryCount: { increment: 1 },
+            resultCountSum: { increment: input.resultCount },
+          },
+        })
 
   const rawEnabled = await shouldStoreRawTrace(prisma, input)
   const rawPromise = rawEnabled
@@ -505,7 +516,7 @@ export async function writeSearchTrace(
           queryLabelSource: privacy.labelSource,
           queryLabelVersion: privacy.labelVersion,
           queryLabeledAt: privacy.labeledAt,
-          sampleEligible: privacy.sampleEligible,
+          sampleEligible: input.sampleEligible ?? privacy.sampleEligible,
           metadata: input.metadata ?? undefined,
           startedAt: input.startedAt,
           completedAt,
@@ -530,7 +541,7 @@ export async function writeSearchTrace(
   }
 
   return {
-    aggregateStored: true,
+    aggregateStored: input.storeAggregate !== false,
     rawStored: rawEnabled,
     rawCaptureDisabled: !rawEnabled,
   }
@@ -603,22 +614,30 @@ function watchSearchTraceInput(
   input: RecordWatchSearchTraceInput,
 ): RecordSearchTraceInput {
   const response = input.response
+  const traceRole = input.traceRole ?? "primary"
   return {
     requestId: response.requestId,
     query: response.query,
     locale: response.languageInterpretation.targetLanguageSlug,
     routeSource: "graphql",
-    requestedMode: "watch-search",
+    requestedMode: input.input.mode ?? "default",
     searchMode: response.searchMode,
     resultCount: response.results.length,
     outcome: response.degraded ? "degraded" : "success",
     traceClass: watchTraceClass(response),
     startedAt: input.startedAt,
     completedAt: input.completedAt,
-    metadata: watchSearchTraceMetadata(input.input, response),
+    metadata: watchSearchTraceMetadata(
+      input.input,
+      response,
+      traceRole,
+      normalizeRequestId(input.shadowOfRequestId),
+    ),
     now: input.now,
     timeoutMs: input.timeoutMs,
     retentionHealthy: input.retentionHealthy,
+    storeAggregate: traceRole !== "shadow",
+    sampleEligible: traceRole === "shadow" ? false : undefined,
   }
 }
 
@@ -627,6 +646,22 @@ export async function recordWatchSearchTraceSafely(
   prisma: PrismaClient = defaultPrisma,
 ): Promise<SearchTraceSafeRecordResult> {
   return recordSearchTraceSafely(watchSearchTraceInput(input), prisma)
+}
+
+/**
+ * Queue workers already provide bounded concurrency and must hold their slot
+ * until persistence settles. Unlike the request-oriented safe recorder, this
+ * variant does not release the worker after the short trace timeout while the
+ * database write is still running.
+ */
+export async function recordWatchSearchTraceToCompletionSafely(
+  input: RecordWatchSearchTraceInput,
+  prisma: PrismaClient = defaultPrisma,
+): Promise<SearchTraceSafeRecordResult> {
+  return recordSearchTraceToCompletionSafely(
+    watchSearchTraceInput(input),
+    prisma,
+  )
 }
 
 type QueuedWatchSearchTrace = {

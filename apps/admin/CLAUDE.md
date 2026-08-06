@@ -622,6 +622,17 @@ Experience-editor video library server-action searches use
 `experience-editor-media-collection-picker` and keep picker context in bounded
 metadata.
 
+GraphQL Watch Search additionally supports a trusted Web-only comparison seam:
+production Web can serve `MODERN` while requesting `DEFAULT` as shadow work.
+The resolver returns the primary result before Next.js `after()` starts the
+shadow, and a per-process queue caps it at one concurrent execution and 64
+reserved jobs. Primary and shadow traces share the primary request ID and carry
+`traceRole` plus `shadowOfRequestId`; product analytics filters shadow traces,
+skips their long-lived aggregate update, and marks them ineligible for eval
+sampling so user intent and request counts are not doubled. Anonymous and fleet
+callers cannot trigger this extra work. Shadow failure, trace failure, or
+saturation must remain invisible to the public response.
+
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
 parsing, requires a bearer from `SEARCH_TRACE_SAMPLING_API_KEYS`, and defaults
