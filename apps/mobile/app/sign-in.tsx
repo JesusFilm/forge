@@ -15,7 +15,6 @@ import { EmailAuthForm } from "../src/components/auth/EmailAuthForm"
 import { useTypography } from "../src/hooks/useTypography"
 import {
   signInWithApple,
-  signInWithGoogle,
   signInWithHostedPage,
   type SignInOutcome,
 } from "../src/lib/authActions"
@@ -33,11 +32,17 @@ type SheetState =
   | { phase: "error" }
 
 /**
- * Sign-in formSheet (U6): native Apple (iOS), Google, and email/password
- * sheets. Facebook has no native sheet, so the hosted auth page stays
- * reachable below the fold (R2). Success dismisses immediately so the
- * signed-in Profile is the confirmation. A cancel returns quietly; a failure
- * AFTER the provider sheet succeeded surfaces a dismissible error with retry.
+ * Sign-in formSheet (U6): native Apple (iOS) and email/password sheets.
+ *
+ * Native Google is DISABLED pending provisioning — the google-signin config
+ * plugin is not registered in app.json and no OAuth client ids exist, so the
+ * button would fail when tapped. `signInWithGoogle` is kept intact in
+ * authActions; restoring is this button plus that config. Google itself stays
+ * reachable meanwhile through the hosted page, which offers it (R2).
+ *
+ * Success dismisses immediately so the signed-in Profile is the confirmation.
+ * A cancel returns quietly; a failure AFTER the provider sheet succeeded
+ * surfaces a dismissible error with retry.
  */
 export default function SignInSheet() {
   const typography = useTypography()
@@ -101,23 +106,6 @@ export default function SignInSheet() {
             }}
           />
         ) : null}
-
-        <Pressable
-          onPress={() => {
-            if (!busy) runFlow("google", signInWithGoogle)
-          }}
-          disabled={busy}
-          style={({ pressed }) => [
-            styles.providerButton,
-            pressed && feedback.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Continue with Google"
-          {...{ "dd-action-name": "sign-in-google" }}
-        >
-          <Ionicons name="logo-google" size={20} color={TEXT_PRIMARY} />
-          <Text style={styles.providerLabel}>Continue with Google</Text>
-        </Pressable>
 
         {showEmail ? (
           <EmailAuthForm onSignedIn={() => router.back()} />
