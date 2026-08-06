@@ -1,9 +1,9 @@
 ---
-id: "feat-326"
+id: "feat-336"
 title: "August-December 2026 Strategic Roadmap"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-08-01"
 duration: 1
 depends_on: []
@@ -43,8 +43,8 @@ stakeholder view stale even though the task tracker continues to move.
 
 ## What To Build
 
-1. Replace the expired April-August migration narrative with an August-December
-   2026 plan.
+1. Add an August-December 2026 plan without removing the original April-August
+   delivery timeline.
 2. Organize the plan around evidence-backed outcomes:
    - Watch reliability and operability
    - optional accounts, playback continuity, and manual partner handoff
@@ -56,12 +56,16 @@ stakeholder view stale even though the task tracker continues to move.
 3. Keep every phase concrete enough to expose its deliverable, safety boundary,
    and exit criteria.
 4. Update the route framing and legend to match the new tracks.
-5. Preserve `/contributions` as the operational, file-backed task view.
+5. Preserve the original planned, actual, agent, mobile, and TV bars as a
+   clearly labeled delivery-history section.
+6. Preserve `/contributions` as the operational, file-backed task view.
 
 ## Constraints
 
 - Keep the strategic roadmap as explicit editorial content; do not infer it
   from task status.
+- Historical roadmap content is append-only: future planning may relabel it as
+  history, but must not replace or silently remove it.
 - Do not change the filesystem-backed task data model.
 - Do not publish private meeting excerpts, names, or sensitive Slack context;
   only publish synthesized priorities authorized by the user.
@@ -76,5 +80,6 @@ stakeholder view stale even though the task tracker continues to move.
 - `pnpm --filter roadmap generate:readme`
 - `git diff --check`
 - Browser smoke on `http://127.0.0.1:3100/roadmap` confirms the timeline spans
-  August through December, all bars have detail cards, and `/contributions`
-  remains linked.
+  August through December, the original April-August timeline and its planned
+  and actual bars remain visible, all new bars have detail cards, and
+  `/contributions` remains linked.
