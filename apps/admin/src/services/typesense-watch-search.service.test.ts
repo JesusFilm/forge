@@ -182,12 +182,21 @@ function typesenseFixture({
         )
         const lexicalDocuments = buildTypesenseWatchLexicalDocuments(lexical)
         return searches.map((request) => {
+          const requestedFilterValues = [
+            ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
+          ].map((match) => match[1])
           const entries =
             request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS
-              ? lexicalDocuments.map((document) => ({
-                  vectorDistance: undefined,
-                  document,
-                }))
+              ? lexicalDocuments
+                  .filter(
+                    (document) =>
+                      requestedFilterValues.length === 0 ||
+                      requestedFilterValues.includes(document.languageIdentity),
+                  )
+                  .map((document) => ({
+                    vectorDistance: undefined,
+                    document,
+                  }))
               : semanticEntries
           const groups = new Map<string, Array<(typeof entries)[number]>>()
           for (const entry of entries) {
@@ -317,6 +326,22 @@ describe("TypesenseWatchSearchService", () => {
       titleFields: "title_th,title_fallback",
       metadataFields: "metadata_th,metadata_fallback",
     },
+    {
+      name: "Filipino",
+      query: "Hesus",
+      slug: "filipino",
+      bcp47: "fil",
+      titleFields: "title_fallback",
+      metadataFields: "metadata_fallback",
+    },
+    {
+      name: "Maori",
+      query: "Ihu",
+      slug: "maori",
+      bcp47: "mi",
+      titleFields: "title_mi,title_fallback",
+      metadataFields: "metadata_mi,metadata_fallback",
+    },
   ])(
     "uses locale-aware $name title and metadata fields",
     async ({ query, slug, bcp47, titleFields, metadataFields }) => {
@@ -344,8 +369,16 @@ describe("TypesenseWatchSearchService", () => {
 
       expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ query_by: titleFields }),
-          expect.objectContaining({ query_by: metadataFields }),
+          expect.objectContaining({
+            query_by: titleFields,
+            filter_by: expect.stringContaining(`\`slug:${slug}\``),
+          }),
+          expect.objectContaining({
+            query_by: metadataFields,
+            filter_by: expect.stringContaining(
+              `\`locale:${bcp47.toLowerCase()}\``,
+            ),
+          }),
         ]),
       )
     },
@@ -374,6 +407,7 @@ describe("TypesenseWatchSearchService", () => {
     })
     await vi.waitFor(() => expect(embedder).toHaveBeenCalledTimes(1))
     expect(typesense.multiSearch).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 10))
 
     resolveLanguage({
       queryLanguageSlug: "french",
@@ -388,9 +422,39 @@ describe("TypesenseWatchSearchService", () => {
       acceptLanguage: null,
       acceptLanguageSlug: null,
     })
-    await responsePromise
+    const response = await responsePromise
 
     expect(typesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(3)
+    const languageLane = response.laneStatuses.find(
+      (lane) => lane.lane === "language_resolution",
+    )
+    const embeddingLane = response.laneStatuses.find(
+      (lane) => lane.lane === "semantic_embedding",
+    )
+    expect(languageLane?.status).toBe("fulfilled")
+    expect(embeddingLane?.elapsedMs).toBeLessThan(languageLane?.elapsedMs ?? 0)
+  })
+
+  it("reuses language context across requests sharing the Prisma client", async () => {
+    const prisma = prismaFixture()
+    const typesense = typesenseFixture({ lexical: [catalogDocument] })
+    const first = new TypesenseWatchSearchService(
+      prisma,
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+    const second = new TypesenseWatchSearchService(
+      prisma,
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    await first.search({ query: "communion", targetLanguageSlug: "french" })
+    await second.search({ query: "JESUS", targetLanguageSlug: "french" })
+
+    expect(prisma.language.findFirst).toHaveBeenCalledTimes(1)
+    expect(prisma.language.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.languageFallback.findMany).toHaveBeenCalledTimes(1)
   })
 
   it("returns the French communion title and target audio", async () => {
@@ -578,6 +642,7 @@ describe("TypesenseWatchSearchService", () => {
 
     expect(titleRequest).toMatchObject({
       query_by: "title_fr,title_fallback",
+      filter_by: "languageIdentity:=[`slug:french`,`locale:fr`]",
       group_limit: 3,
       prioritize_exact_match: true,
       drop_tokens_threshold: 1,
@@ -586,6 +651,7 @@ describe("TypesenseWatchSearchService", () => {
       query_by: "metadata_fr,metadata_fallback",
       group_limit: 3,
     })
+    expect(titleRequest).not.toHaveProperty("validate_field_names")
     expect(semanticRequest?.q).toBe("*")
     expect(semanticRequest?.vector_query).toContain(
       "k:80, distance_threshold:0.5",

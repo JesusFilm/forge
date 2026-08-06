@@ -52,6 +52,18 @@ describe("resolveSearchLanguageSignals", () => {
     })
   })
 
+  it("reuses canonical identity rows for repeated language signals", async () => {
+    const input = {
+      targetLanguageSlug: "french",
+      routeLanguageSlug: "english",
+    }
+
+    await resolveSearchLanguageSignals({ prisma, input })
+    await resolveSearchLanguageSignals({ prisma, input })
+
+    expect(prisma.language.findMany).toHaveBeenCalledTimes(1)
+  })
+
   it.each(["en", "en-US", "EN-us"])(
     "canonicalizes %s to English without changing its source",
     async (targetLanguageSlug) => {

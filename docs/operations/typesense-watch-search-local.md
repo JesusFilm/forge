@@ -68,10 +68,14 @@ TYPESENSE_API_KEY=forge-typesense-local-key \
 The first run has no transcript alias, so this command bootstraps four
 timestamped projections: display catalog, per-video-language availability,
 localized lexical metadata, and transcript vectors. The lexical collection has
-one document per public physical video. It stores title and metadata in
-locale-specific searchable fields (`title_zh`, `metadata_th`, and so on), plus
-a bounded generic fallback for unsupported tokenizers. Display-only card data
-remains in the unindexed catalog projection.
+one document per public physical-video language identity. Forge's unique
+`Language.slug` keys and filters the document; BCP-47 remains a tokenization and
+negotiation label because multiple languages may share it. Every valid
+two-letter base language present in the catalog gets locale-specific searchable
+fields (`title_zh`, `metadata_th`, `title_mi`, and so on). Three-letter,
+private, and other long-tail tags use generic searchable fields. A normalized
+locale identity is used only for legacy rows without a language slug.
+Display-only card data remains in the unindexed catalog projection.
 
 On later runs the command rebuilds catalog, availability, and lexical metadata
 while reusing the physical collection selected by `watch_search_transcripts`.
@@ -135,8 +139,13 @@ curl -fsS \
 ```
 
 For the audited 2026-08-04 production corpus, expect approximately 1,175
-catalog documents, 1,175 lexical documents, 176,294 availability documents,
-and 280,107 transcript documents. Public Watch Search does
+catalog documents, 176,294 availability documents, and 280,107 transcript
+documents. The localized lexical count is intentionally higher than the catalog
+count and normally equals the number of distinct accepted published
+video/language identities. Multiple rows with the same stable language identity
+are merged without dropping their searchable text. Capture the count from the
+completed metadata refresh rather than assuming one lexical document per video.
+Public Watch Search does
 not expose the whole transcript collection: its hybrid request includes
 `publiclyVisible:=true`, limits transcript documents to resolved evidence
 languages, and groups by `canonicalVideoId` with `group_limit: 3`. The bounded

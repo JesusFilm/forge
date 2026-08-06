@@ -2854,11 +2854,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
       ),
     ).toBeNull()
-    expect(bottomBackdrop).not.toBeNull()
-    expect(bottomBackdrop?.className).toContain("absolute")
-    expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")
-    expect(bottomBackdrop?.className).toContain("bg-black/85")
-    expect(bottomBackdrop?.className).toContain("backdrop-blur-[14px]")
+    expect(bottomBackdrop).toBeNull()
     expect(scrollBody?.className).toContain("z-1")
     expect(scrollBody?.className).toContain("top-44")
     expect(scrollBody?.className).toContain("md:top-32")

@@ -15,6 +15,7 @@ import {
   type WatchHomeSourceConfig,
 } from "./config"
 import { pickCardImage } from "../cardImage"
+import { labelText } from "../videoLabel"
 import {
   isEligibleWatchHomeVideoSlide,
   type WatchHomeCarouselPool,
@@ -109,21 +110,6 @@ export type WatchHomeModel = {
   sections: WatchHomeSection[]
   carousel: WatchHomeCarouselSequenceData
   missingData: WatchHomeMissingData[]
-}
-
-export const LABEL_TEXT: Record<string, string> = {
-  BEHIND_THE_SCENES: "Behind the scenes",
-  COLLECTION: "Collection",
-  EPISODE: "Episode",
-  FEATURE_FILM: "Feature film",
-  SEGMENT: "Segment",
-  SERIES: "Series",
-  SHORT_FILM: "Short film",
-  TRAILER: "Trailer",
-}
-
-function labelText(label: string | null | undefined): string {
-  return label ? (LABEL_TEXT[label] ?? "Video") : "Video"
 }
 
 export function muxThumbnail(playbackId: string | null): string | null {

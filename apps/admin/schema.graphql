@@ -2005,6 +2005,10 @@ input WatchSearchInput {
   queryNamedLanguageSlug: String
   resultTypes: [WatchSearchResultType!]
   routeLanguageSlug: String
+  """
+  Best-effort comparison mode for trusted Web traffic. Shadow work never changes the serving response.
+  """
+  shadowMode: WatchSearchMode
   targetLanguageSlug: String
 }
 

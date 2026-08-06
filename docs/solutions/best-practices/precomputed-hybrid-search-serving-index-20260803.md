@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -307,6 +307,62 @@ losses. Do not assume that increasing `k` or HNSW `ef` fixes the problem: the
 earlier PostgreSQL HNSW prototype showed how repeated chunks from one long video
 can consume an approximate-neighbor window before per-video collapse. Record
 distinct-video counts and result-list truncation before widening either knob.
+
+## Production Proof And Guarded Promotion
+
+The production build imported all 280,107 accepted transcript vectors without
+calling an embedding provider. Typesense reused the embeddings already stored
+in PostgreSQL and built the HNSW serving projection from those values. After the
+temporary previous transcript generation was removed, the single-node
+`@forge/admin/search` service settled at approximately 4.69 GiB RSS and had
+peaked at approximately 5.34 GiB against its 16 GiB limit. Capacity estimates
+must therefore distinguish steady-state RSS from the temporary two-generation
+rebuild peak.
+
+The production probe added in [#1864](https://github.com/JesusFilm/forge/pull/1864)
+then completed 100 accepted internal MODERN requests and 100 accepted GraphQL
+MODERN requests. All 200 requests carried analytics correlation IDs and none
+reported degradation:
+
+| Path           | Server p50 | Server p95 | Full round-trip p50 | Full round-trip p95 |
+| -------------- | ---------: | ---------: | ------------------: | ------------------: |
+| Admin internal |   90.30 ms |  208.17 ms |           355.73 ms |           881.88 ms |
+| Public GraphQL |   87.48 ms |  193.69 ms |           341.50 ms |           526.43 ms |
+
+This is evidence that the server-side MODERN target is achievable; it is not
+evidence that Auckland network latency has disappeared. Report the Admin timer
+and caller round trip separately, and do not let the slower network series
+invalidate a server optimization or let the faster server series conceal a
+poor user round trip.
+
+An 83-case development judge pass also demonstrated why promotion evidence
+cannot be reduced to agreement with DEFAULT. MODERN produced useful-or-excellent
+lists for 49 cases (59.0%) versus 44 (53.0%) for DEFAULT, and unacceptable lists
+for 14 cases (16.9%) versus 15 (18.1%). MODERN also reduced no-result responses,
+but its language-correctness rate was lower. The reviewed qrel set was still
+empty, so NDCG, MRR, and the formal absolute release gate remained unavailable.
+Treat these development judgments as directional evidence for a guarded public
+rollout, not as a substitute for reviewed qrels.
+
+Promotion should keep three controls independent:
+
+- Web chooses the primary Search Pipeline Mode explicitly; it must not depend
+  on the GraphQL field's omitted-mode compatibility default.
+- DEFAULT can run as bounded, best-effort shadow work after the MODERN response
+  is ready. Shadow failure or queue saturation must never change the public
+  response or add to its latency.
+- Operators can restore DEFAULT as primary through configuration without
+  deleting Typesense data or moving collection aliases. Traffic rollback and
+  index rollback remain separate operations.
+
+The concrete Web controls are `WATCH_SEARCH_PRIMARY_MODE` (production defaults
+to `MODERN`, non-production to `DEFAULT`) and
+`WATCH_SEARCH_DEFAULT_SHADOW_ENABLED`. Admin accepts the shadow request only
+from its non-fleet Web consumer bearer, starts it through Next.js `after()`, and
+bounds it to one concurrent execution and 64 reserved jobs per process. Primary
+and shadow Search Traces share a request ID but use explicit roles; product
+analytics, long-lived aggregate counters, and eval sampling exclude shadow
+traces so comparisons do not double-count users or query intent.
 
 ## Related
 

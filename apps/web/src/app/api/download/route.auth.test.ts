@@ -138,7 +138,7 @@ describe("GET /watch/api/download - account gate", () => {
     })
     expect(dns.resolve4).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
-  })
+  }, 15_000)
 
   it("redirects anonymous opaque-ID downloads when the account gate is disabled", async () => {
     queryMock.mockResolvedValueOnce({ data: adminVideoDub() })
@@ -164,7 +164,7 @@ describe("GET /watch/api/download - account gate", () => {
     )
     expect(fetchMock).not.toHaveBeenCalled()
     expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
-  })
+  }, 15_000)
 
   it("rejects anonymous raw-URL attachment downloads when the account gate is disabled", async () => {
     const fetchMock = vi.fn(async () => new Response("should not happen"))

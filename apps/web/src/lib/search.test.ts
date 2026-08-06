@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { searchVideos } from "./search"
+import { resolveWatchSearchRouting, searchVideos } from "./search"
 
 const { adminQuery, semanticSearchAdminQuery } = vi.hoisted(() => ({
   adminQuery: vi.fn(),
@@ -13,6 +13,13 @@ vi.mock("@/lib/admin-client", () => ({
   },
   semanticSearchAdminClient: {
     query: semanticSearchAdminQuery,
+  },
+}))
+
+vi.mock("@/env", () => ({
+  env: {
+    WATCH_SEARCH_PRIMARY_MODE: "MODERN",
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED: true,
   },
 }))
 
@@ -55,6 +62,8 @@ describe("searchVideos", () => {
         variables: {
           input: {
             query: "jesus",
+            mode: "MODERN",
+            shadowMode: "DEFAULT",
             clientRequestId: undefined,
             targetLanguageSlug: undefined,
             queryLanguageSlug: undefined,
@@ -90,6 +99,20 @@ describe("searchVideos", () => {
       nextOffset: 0,
     })
     expect(data.latencyMs).toBe(12)
+  })
+
+  it("keeps DEFAULT as a no-shadow rollback mode", () => {
+    expect(resolveWatchSearchRouting("DEFAULT", true)).toEqual({
+      mode: "DEFAULT",
+      shadowMode: undefined,
+    })
+  })
+
+  it("can disable DEFAULT shadowing without changing the MODERN primary", () => {
+    expect(resolveWatchSearchRouting("MODERN", false)).toEqual({
+      mode: "MODERN",
+      shadowMode: undefined,
+    })
   })
 
   it("canonicalizes a localized UI language without synthesizing route context", async () => {

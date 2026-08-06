@@ -24,7 +24,14 @@ function viewerSafeVideo(title: string) {
     coreId: "core-1",
     slug: "video-1",
     label: null,
-    locales: [{ locale: "en", title, description: `${title} description` }],
+    locales: [
+      {
+        locale: "en",
+        languageSlug: "english",
+        title,
+        description: `${title} description`,
+      },
+    ],
     dubs: [],
     images: [],
     children: [],
@@ -42,6 +49,7 @@ describe("Typesense Watch Search indexer", () => {
         locales: [
           {
             locale: "fr",
+            languageSlug: "french",
             title: "La communion",
             description: "Description française",
           },
@@ -147,6 +155,14 @@ describe("Typesense Watch Search indexer", () => {
         id: "video-1",
         titles: ["La communion"],
         localeCodes: ["fr"],
+        localesJson: JSON.stringify([
+          {
+            locale: "fr",
+            languageSlug: "french",
+            title: "La communion",
+            description: "Description française",
+          },
+        ]),
         imageUrl: "https://example.com/preferred.jpg",
         childCount: 1,
         audioOptionsJson: JSON.stringify([
@@ -615,9 +631,10 @@ describe("Typesense Watch Search indexer", () => {
       "watch_search_lexical_metadata-hybrid-test",
       [
         expect.objectContaining({
-          id: "video-1",
+          id: "video-1:slug:english",
           videoId: "video-1",
           canonicalVideoId: "core:core-1",
+          languageIdentity: "slug:english",
           title_en: ["Current"],
           metadata_en: ["Current description"],
         }),

@@ -10,8 +10,9 @@ import type {
   WatchSearchResponse,
   WatchSearchResult,
 } from "@/services/watch-search.service"
-import { recordWatchSearchTraceSafely } from "@/services/search-trace.service"
+import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
+import { enqueueWatchSearchShadow } from "@/services/watch-search-shadow.service"
 
 const WatchSearchResultTypeEnum = builder.enumType("WatchSearchResultType", {
   values: {
@@ -87,6 +88,12 @@ const WatchSearchInput = builder.inputType("WatchSearchInput", {
   fields: (t) => ({
     query: t.string({ required: true }),
     mode: t.field({ type: WatchSearchModeEnum, required: false }),
+    shadowMode: t.field({
+      type: WatchSearchModeEnum,
+      required: false,
+      description:
+        "Best-effort comparison mode for trusted Web traffic. Shadow work never changes the serving response.",
+    }),
     clientRequestId: t.string({ required: false }),
     targetLanguageSlug: t.string({ required: false }),
     queryLanguageSlug: t.string({ required: false }),
@@ -283,15 +290,29 @@ builder.queryFields((t) => ({
           : ctx.services.watchSearch
       if (!service) throw new TypesenseWatchSearchUnavailableError()
       const response = await service.search(input)
-      await recordWatchSearchTraceSafely(
+      enqueueWatchSearchTrace(
         {
           input,
           response,
           startedAt,
           completedAt: new Date(),
+          traceRole: "primary",
         },
         ctx.prisma,
-      ).catch(() => {})
+      )
+      if (
+        input.mode === "modern" &&
+        input.shadowMode === "default" &&
+        ctx.user?.role === "CONSUMER_BEARER" &&
+        ctx.user.fleet !== true
+      ) {
+        enqueueWatchSearchShadow({
+          input,
+          primaryResponse: response,
+          prisma: ctx.prisma,
+          service: ctx.services.watchSearch,
+        })
+      }
       return response
     },
   }),

@@ -1,8 +1,9 @@
 # Typesense Watch Search Production Readiness
 
 This report evaluates the parallel `MODERN` Watch Search backend and defines a
-reversible shadow deployment. It does not change the `DEFAULT` PostgreSQL
-backend or authorize frontend traffic before the rollout gates pass.
+reversible frontend promotion. The GraphQL compatibility default remains the
+PostgreSQL `DEFAULT` backend; production Web explicitly selects `MODERN` and
+requests a bounded `DEFAULT` shadow after the rollout evidence below passes.
 Admin remains the public search gateway and owns language interpretation,
 query embeddings, visibility, watchability, analytics, degradation, and the
 GraphQL contract. Typesense is a private serving index for lexical and semantic
@@ -10,29 +11,32 @@ retrieval.
 
 ## Decision
 
-Provisioning a private, single-node shadow service is safe after the normal PR
-is reviewed, merged, and deployed. Name that Railway service exactly
-`@forge/admin/search`. Do not send user traffic to it yet. Frontend rollout is
-**not ready** until all of these gates pass:
+The private, single-node `@forge/admin/search` service has now passed the scoped
+capacity and production-latency gates for a guarded frontend promotion. The
+promotion still ships through the normal reviewed PR-to-main path; it is not a
+direct production mutation from a workstation. The evidence is:
 
-1. Refresh catalog, availability, and localized lexical projections on the
-   isolated `@forge/admin/search` service while reusing and recounting the
-   active 280,107-vector transcript collection. Rebuild transcripts only when
-   the active schema is incompatible.
-2. Pass the relevance suite, including broad exact-title queries such as
-   `JESUS`, with no viewer-visibility regressions.
-3. Demonstrate Typesense retrieval p95 below 50 ms and Admin MODERN server p95
-   at or below 250 ms under production-shaped read traffic and a routine
-   metadata refresh.
-4. Demonstrate hybrid Watch Search full-round-trip p95 at or below 550 ms. A
-   later rollout may tighten this toward 200 ms after the public Web-to-Admin
-   hop is separately corrected.
-5. Operate synchronization, reconciliation, backup restore, and rollback in
-   the shadow service before any user traffic is enabled.
+1. The active transcript generation contains 280,107 existing vectors. Routine
+   catalog, availability, and lexical releases reuse it; they do not call an
+   embedding provider or rebuild HNSW.
+2. The single active generation settles at approximately 4.69 GiB RSS and
+   peaked at approximately 5.34 GiB on the 16 GiB service after stale
+   generations were retired.
+3. The production 100-request GraphQL probe measured MODERN server p50 87.48 ms
+   and p95 193.69 ms, with full-round-trip p50 341.50 ms and p95 526.43 ms.
+   A separate 100-request internal probe measured server p50 90.30 ms and p95
+   208.17 ms. All 200 requests were trace-correlated and none degraded.
+4. The 83-case directional judge found more useful-or-excellent MODERN lists
+   (49 versus 44) and fewer unacceptable lists (14 versus 15) than DEFAULT.
+   The reviewed qrel set is still empty, so this supports guarded promotion and
+   shadow observation, not declaration of a new absolute relevance baseline.
 
-`MODERN` must remain explicit opt-in. Omitted mode and `DEFAULT` continue to use
+Production Web must select `MODERN` explicitly rather than changing the public
+GraphQL compatibility default. Omitted mode and `DEFAULT` continue to use
 PostgreSQL. Do not expose Typesense directly to Web or ship a write/admin key to
-a browser.
+a browser. Local and test Web processes retain `DEFAULT`. Production-mode
+builds, including deployed previews, select MODERN unless their environment
+explicitly sets `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`.
 
 ## Comparison And Corpus Status
 
@@ -109,9 +113,11 @@ subtitle, and fallback hydration.
 Semantic retrieval has not been removed. Modern still generates one query
 embedding and supplies it to the transcript-vector lane. If embedding
 generation misses its deadline, the same multi-search contains only title and
-metadata lanes. If the lexical alias is absent during code-first deployment,
-Admin reuses the same embedding for the bounded compatibility path. Embedding
-and Typesense retrieval remain separate analytics lanes.
+metadata lanes. Lexical requests retain Typesense's default field validation,
+so an absent alias or pre-language-identity schema fails closed during a
+code-first deployment. Admin then reuses the same embedding for the bounded
+compatibility path. Embedding and Typesense retrieval remain separate analytics
+lanes.
 
 ## Production Latency Investigation
 
@@ -134,19 +140,19 @@ treated as one exact distribution:
 
 The structured lane population has 5,022 parseable lane records:
 
-| Stage                       |                                      p50 |                             p95 | Interpretation                                                                                                                                             |
-| --------------------------- | ---------------------------------------: | ------------------------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Query embedding             |                                   478 ms |                        4,965 ms | Main degraded-path cost; the old timeout budget was about 5 s.                                                                                             |
-| Language resolution         |                           1–4 ms healthy |     3,379 ms sampled slow trace | Normally small; a simple language query becomes slow during database congestion.                                                                           |
-| Metadata retrieval          |                                    43 ms |                          179 ms | PostgreSQL keyword/trigram retrieval in the logged `DEFAULT` population.                                                                                   |
-| Semantic retrieval          |                                    70 ms |                          252 ms | PostgreSQL pgvector retrieval after an embedding exists.                                                                                                   |
-| Exact-title retrieval       |                                    10 ms |                           81 ms | Exact lexical lane.                                                                                                                                        |
-| Metadata watchability       |                                    30 ms |                          125 ms | Candidate visibility/playability hydration.                                                                                                                |
-| Exact watchability          |                                     0 ms |                           93 ms | Zero represents skipped lanes without exact candidates.                                                                                                    |
-| Semantic watchability       |                                    19 ms |                           65 ms | Semantic candidate visibility/playability hydration.                                                                                                       |
-| Analytics trace persistence |                    usually below its cap |                capped at 250 ms | The resolver awaits the safe trace sink after search; this time is excluded from `response.latencyMs` but included in GraphQL and full-round-trip latency. |
-| Public Web-to-Admin hop     | about 1,014 ms in a recent healthy trace | not available as a distribution | Time before the Admin request began; includes public routing/proxy/network or queueing that current spans cannot split further.                            |
-| Admin-to-Typesense network  |                        local only so far |    production evidence required | Must use private same-region networking and be measured under load.                                                                                        |
+| Stage                       |                                      p50 |                                p95 | Interpretation                                                                                                                                                                                                                                                                     |
+| --------------------------- | ---------------------------------------: | ---------------------------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Query embedding             |                                   478 ms |                           4,965 ms | Main degraded-path cost; the old timeout budget was about 5 s.                                                                                                                                                                                                                     |
+| Language resolution         |                           1–4 ms healthy |        3,379 ms sampled slow trace | Normally small; a simple language query becomes slow during database congestion.                                                                                                                                                                                                   |
+| Metadata retrieval          |                                    43 ms |                             179 ms | PostgreSQL keyword/trigram retrieval in the logged `DEFAULT` population.                                                                                                                                                                                                           |
+| Semantic retrieval          |                                    70 ms |                             252 ms | PostgreSQL pgvector retrieval after an embedding exists.                                                                                                                                                                                                                           |
+| Exact-title retrieval       |                                    10 ms |                              81 ms | Exact lexical lane.                                                                                                                                                                                                                                                                |
+| Metadata watchability       |                                    30 ms |                             125 ms | Candidate visibility/playability hydration.                                                                                                                                                                                                                                        |
+| Exact watchability          |                                     0 ms |                              93 ms | Zero represents skipped lanes without exact candidates.                                                                                                                                                                                                                            |
+| Semantic watchability       |                                    19 ms |                              65 ms | Semantic candidate visibility/playability hydration.                                                                                                                                                                                                                               |
+| Analytics trace persistence |                     off the request path | bounded queue, one write at a time | The resolver enqueues the normal Watch Search trace after search and registers accepted work with Next.js `after()`. Slow writes no longer delay GraphQL or multiply database-pool pressure; the queue rejects excess work after 256 pending records and emits `trace_queue_full`. |
+| Public Web-to-Admin hop     | about 1,014 ms in a recent healthy trace |    not available as a distribution | Time before the Admin request began; includes public routing/proxy/network or queueing that current spans cannot split further.                                                                                                                                                    |
+| Admin-to-Typesense network  |                        local only so far |       production evidence required | Must use private same-region networking and be measured under load.                                                                                                                                                                                                                |
 
 Two traces explain the large tail:
 
@@ -166,12 +172,23 @@ tens of milliseconds from this trace, but cannot make the full request sub-200
 ms while either the 252 ms embedding or the public hop remains.
 
 The local benchmark invokes each search service directly. It therefore excludes
-the Web-to-Admin hop, GraphQL serialization, and the resolver's awaited search
-trace write. Production APM includes those costs. A sampled slow trace reached
-the trace sink's 250 ms deadline; the database write continued in the
-background, but the resolver returned only after that deadline. Production load
-tests must measure this lane separately and should evaluate decoupling it from
-response completion without weakening analytics durability.
+the Web-to-Admin hop and GraphQL serialization. Historical production APM also
+included an awaited trace write: a sampled slow trace reached the sink's 250 ms
+deadline while the database write continued after the resolver returned. Watch
+Search now submits the same analytics payload to a bounded, single-writer queue,
+so trace persistence is not part of response latency and timed-out writes cannot
+silently fan out against the database pool. Each accepted write is retained by
+Next.js `after()` after the response flushes, with a guarded fallback for CLI
+and test contexts that do not have a request lifecycle. Production load tests
+must monitor queue-full warnings and compare accepted request IDs with persisted
+traces.
+
+Language identity, target/fallback, and evidence-locale reads use bounded
+per-Prisma-client caches with a five-minute TTL and in-flight coalescing. A
+language or fallback edit can therefore take up to five minutes to reach every
+warm Admin replica; a restart clears the cache immediately. The target/evidence
+caches hold at most 4,096 entries each and the identity-signal cache holds at
+most 2,048 entries, so arbitrary query text cannot grow them without bound.
 
 ### Confirmed Modern hydration regression
 
@@ -279,7 +296,10 @@ For each video, the worker reads the current PostgreSQL projection using the
 same provenance and visibility predicates as the full indexer:
 
 - If a viewer-visible catalog document exists, upsert its display document and
-  localized lexical document by video ID.
+  replace its complete set of localized lexical documents keyed by
+  `videoId:language-identity`. Use the unique Forge language slug as identity;
+  use normalized locale only for legacy rows without a slug. BCP-47 controls
+  tokenization and negotiation, not language identity.
 - If it does not exist, delete that catalog ID with `ignore_not_found=true`.
 - Replace the video's availability records as one idempotent set: upsert the
   current per-language records first, then delete indexed video/language IDs
@@ -299,18 +319,18 @@ same provenance and visibility predicates as the full indexer:
 
 ### Required event behavior
 
-| Source change                                            | Catalog action                                                                   | Availability action                                     | Transcript action                                                                                        |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Video soft deletion                                      | Delete                                                                           | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
-| Video hard deletion                                      | Delete                                                                           | Delete all video records                                | Delete all chunks removed by the authoritative cascade                                                   |
-| `noIndex=true`                                           | Delete                                                                           | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
-| Last published locale removed                            | Delete                                                                           | Delete all video records                                | Recompute affected chunks as `publiclyVisible=false`                                                     |
-| Locale publish/unpublish/title/description               | Rebuild display plus localized lexical documents, or delete if no locale remains | Rebuild or delete with catalog eligibility              | Recompute visibility for chunks in the changed locale; do not copy titles or resend embeddings           |
-| Dub create/update/delete/publication/HLS/playback change | Rebuild ranking availability slugs                                               | Replace affected video/language playback record         | No vector change unless transcript source also changes                                                   |
-| Subtitle create/update/delete/language/source change     | Rebuild ranking availability slugs                                               | Replace affected video/language subtitle record         | Embedding workflow emits a later transcript/vector event; stale chunks are removed when that event lands |
-| Transcript re-chunk or vector replacement                | No catalog change unless language availability changed                           | No change unless availability changed                   | Upsert accepted provider/model/dimension chunks and delete stale IDs                                     |
-| Image, label, slug, or child relation change             | Rebuild catalog document                                                         | None                                                    | None                                                                                                     |
-| Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change             | Rebuild records for slug/name changes; no fallback copy | No vector rewrite; Admin continues to resolve fallback policy at query time                              |
+| Source change                                            | Catalog action                                                                                                                         | Availability action                                     | Transcript action                                                                                        |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Video soft deletion                                      | Delete                                                                                                                                 | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
+| Video hard deletion                                      | Delete                                                                                                                                 | Delete all video records                                | Delete all chunks removed by the authoritative cascade                                                   |
+| `noIndex=true`                                           | Delete                                                                                                                                 | Delete all video records                                | Recompute all chunks as `publiclyVisible=false`                                                          |
+| Last published locale removed                            | Delete                                                                                                                                 | Delete all video records                                | Recompute affected chunks as `publiclyVisible=false`                                                     |
+| Locale publish/unpublish/title/description               | Replace display plus the video's complete localized lexical-document set, deleting removed locale IDs; delete all if no locale remains | Rebuild or delete with catalog eligibility              | Recompute visibility for chunks in the changed locale; do not copy titles or resend embeddings           |
+| Dub create/update/delete/publication/HLS/playback change | Rebuild ranking availability slugs                                                                                                     | Replace affected video/language playback record         | No vector change unless transcript source also changes                                                   |
+| Subtitle create/update/delete/language/source change     | Rebuild ranking availability slugs                                                                                                     | Replace affected video/language subtitle record         | Embedding workflow emits a later transcript/vector event; stale chunks are removed when that event lands |
+| Transcript re-chunk or vector replacement                | No catalog change unless language availability changed                                                                                 | No change unless availability changed                   | Upsert accepted provider/model/dimension chunks and delete stale IDs                                     |
+| Image, label, slug, or child relation change             | Rebuild catalog document                                                                                                               | None                                                    | None                                                                                                     |
+| Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change                                                                   | Rebuild records for slug/name changes; no fallback copy | No vector rewrite; Admin continues to resolve fallback policy at query time                              |
 
 ### Reconciliation and generation publication
 
@@ -366,12 +386,13 @@ replicas, while Railway services with volumes cannot use replicas and volume
 deployments cannot run old and new containers simultaneously. Colocation would
 remove Admin redundancy and introduce Admin downtime during Typesense deploys.
 
-A single shadow node is acceptable because it serves no user traffic and
-`DEFAULT` remains available. Before Typesense becomes the default user path,
-either prove that immediate PostgreSQL fallback satisfies the availability
-objective or move to Typesense Cloud HA / three independently persisted
-Typesense nodes. Each HA node stores the complete index; RAM is replicated, not
-split across nodes.
+The guarded promotion accepts one Typesense node because PostgreSQL `DEFAULT`
+remains an independent, one-setting traffic rollback. This is not automatic
+failover: a Typesense outage can fail MODERN requests until the Web setting is
+rolled back and the deployment completes. If that recovery interval does not
+satisfy the availability objective, move to Typesense Cloud HA or three
+independently persisted Typesense nodes before increasing the objective. Each
+HA node stores the complete index; RAM is replicated, not split across nodes.
 
 ### RAM estimate
 
@@ -414,11 +435,14 @@ Transcript text, start time, images, locale JSON, and option JSON are unindexed
 and primarily consume disk.
 
 The localized lexical collection indexes one small title/metadata document per
-public video. Its measured searchable values must be multiplied by the
-documented 2x-3x keyword factor and added to the 2.80 GiB vector estimate. It is
-expected to be small relative to HNSW, but the rollout must record steady-state
-RSS and search p95 again; the formula alone is not evidence that the new
-tokenizers, facets, and postings fit the 16 GiB node.
+public video localization. Splitting a video's translations into separate
+documents does not duplicate title/description bytes, but it adds document IDs,
+canonical IDs, locale facets, and postings. The measured searchable values must
+be multiplied by the documented 2x-3x keyword factor and added to the 2.80 GiB
+vector estimate. It is expected to be small relative to HNSW, but the rollout
+must record the actual lexical document count, steady-state RSS, peak metadata
+refresh RSS, and search p95; the text formula alone is not evidence that the
+additional documents and locale fields fit the 16 GiB node.
 
 Two 17,462-vector local generations previously used 393.2 MiB of Typesense
 resident memory, 523.8 MiB process RSS, and 1.82 GiB on disk; that small local
@@ -460,32 +484,35 @@ Monitor and page on:
 
 ## Rollout and Rollback
 
-1. Merge through the normal PR process, then provision the private
-   `@forge/admin/search` shadow service. Keep `DEFAULT` unchanged and do not
-   route user traffic during initial indexing and soak monitoring.
-2. Replay a privacy-safe sample of real query shapes and the fixed multilingual
-   suite against both backends. Review top results, availability, evidence,
-   overlap, zero-result rate, and click/play outcomes.
-3. Once all gates pass, canary Modern behind Admin at 1%, 5%, then 25%. Stop on
-   visibility mismatch, relevance regression, synchronization lag, memory
-   pressure, error-rate increase, or the 550 ms full-round-trip p95 gate
-   failing.
-4. Roll back traffic by disabling the Modern flag or removing the Typesense
-   connection variables from Admin; omitted/`DEFAULT` requests already use
-   PostgreSQL. The 16 GiB experiment does not retain an inactive broad vector
-   generation, so index recovery uses the latest external snapshot or a manual
-   rebuild from canonical PostgreSQL data. During the availability migration,
-   application code retries legacy bounded catalog hydration only when that
-   alias is missing. The transcript documents remain compatible with the
-   previous vector-only query, so an application rollback does not require a
-   corpus rebuild.
-5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
-   exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
-   the service or volume is a separate destructive action and is never part of
-   the immediate rollback.
-6. Never deploy from a workstation. Ship application/config changes through
-   the normal pull-request merge and main deployment process after review and
-   CI; provision Railway only after that merge is live.
+1. Merge the application changes through the normal PR process. Production Web
+   then explicitly sends `mode: MODERN`; local/test Web keeps `DEFAULT`. The
+   GraphQL omitted-mode behavior does not change.
+2. While MODERN is primary, Web also sends `shadowMode: DEFAULT`. Admin honors
+   that field only for its non-fleet Web consumer bearer, returns the MODERN
+   response, and schedules DEFAULT through `after()` with concurrency 1 and a
+   capacity of 64 per Admin process. Saturation and failures are logged but
+   cannot change or delay the primary response.
+3. Primary and shadow traces share the primary request ID and carry explicit
+   `primary`/`shadow` roles. Product request/click analytics, long-lived
+   aggregates, and eval sampling exclude shadows so user counts and query
+   intent are not doubled; raw Admin traces retain both executions for
+   comparison.
+4. Immediate traffic rollback is a Web configuration change:
+   `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`. This stops requesting shadows as well
+   and does not move Typesense aliases, delete indexes, or require an Admin
+   change. To retain MODERN while stopping only comparison load, set
+   `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false`.
+5. Stop promotion on visibility mismatch, relevance regression,
+   synchronization lag, sustained memory pressure, elevated search errors, or
+   the 550 ms full-round-trip p95 gate failing. A failed Typesense service does
+   not corrupt DEFAULT, but there is no automatic request fallback in this
+   release; operators must apply the rollback setting.
+6. The 16 GiB service does not retain an inactive broad vector generation.
+   Index recovery uses the latest external snapshot or a deliberate rebuild
+   from canonical PostgreSQL data. Deleting a service, collection, or volume is
+   a separate destructive action and is never part of traffic rollback.
+7. Never deploy from a workstation. Application and configuration changes ship
+   only through review, CI, merge to main, and the normal deployment process.
 
 ## Vendor References
 

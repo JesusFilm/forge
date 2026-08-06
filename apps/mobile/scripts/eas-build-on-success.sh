@@ -23,25 +23,84 @@ redact() { sed "s|$DATADOG_API_KEY|[REDACTED]|g"; }
 
 # No metro debug_id, so RUM matches a JS error to its source map by
 # service+version+bundle_name+platform -- release-version MUST equal the SDK's
-# `version` tag (the short SHA the pre-install hook stamps), or the map uploads
-# but never symbolicates. Default-first before slicing: a bare ${VAR:0:7} on an
-# unset var exits non-zero under `set -u` and fails the whole build.
-dd_version="${EAS_BUILD_GIT_COMMIT_HASH:-}"
-dd_version="${dd_version:0:7}"
+# `version` tag, or the map uploads but never symbolicates.
+
+# Only the SHIPPED bundle is a witness of what the app reports. A re-export is a
+# second bundling pass that re-reads .env.local, so it can inline a value the
+# archived app never carried -- the mismatch that left prod unsymbolicated.
+dd_fallback_version="$(node -e \
+  "process.stdout.write(String(require('./app.json').expo.version||''))" \
+  2>/dev/null || true)"
+
+# Recovers the literal the bundler inlined for EXPO_PUBLIC_DATADOG_VERSION.
+# $1 = bundle path. Empty output means "not inlined" -> caller uses the fallback.
+version_from_bundle() {
+  node -e '
+    const fs = require("fs");
+    try {
+      const src = fs.readFileSync(process.argv[1], "utf8");
+      const m = src.match(/EXPO_PUBLIC_DATADOG_VERSION["'"'"']?\s*[:=]\s*["'"'"']([^"'"'"']+)["'"'"']/);
+      process.stdout.write(m ? m[1] : "");
+    } catch { process.stdout.write(""); }
+  ' "$1" 2>/dev/null || true
+}
+
+# Locates the bundle the archive actually embedded. $1=ios|android. Prints
+# nothing when the build layout hides it -- the caller then degrades loudly.
+shipped_bundle_path() {
+  case "$1" in
+  ios) find ios/build -name main.jsbundle -type f 2>/dev/null | head -n 1 ;;
+  android)
+    find android/app/build -name index.android.bundle -type f 2>/dev/null |
+      head -n 1
+    ;;
+  esac
+}
 
 # Uploads the RN/Hermes JS source map for one platform. $1=ios|android,
 # $2=bundle basename. Best-effort; every failure is non-fatal.
 upload_rn_sourcemap() {
   platform="$1"
   bundle_name="$2"
-  if [ -z "$dd_version" ]; then
-    echo "[datadog] no git SHA - skipping $platform RN source map"
-    return 0
-  fi
   sm="$(mktemp -d)"
   if npx expo export:embed --platform "$platform" --dev false \
     --bundle-output "$sm/$bundle_name" \
     --sourcemap-output "$sm/$bundle_name.map" 2>&1 | redact; then
+    # Prefer the archived bundle: it is what users actually run. The re-export is
+    # only a fallback witness, and any disagreement between them is the silent
+    # failure this whole block exists to make loud.
+    reexport_version="$(version_from_bundle "$sm/$bundle_name")"
+    shipped="$(shipped_bundle_path "$platform")"
+    shipped_version=""
+    [ -n "$shipped" ] && shipped_version="$(version_from_bundle "$shipped")"
+
+    if [ -n "$shipped_version" ]; then
+      dd_version="$shipped_version"
+      version_source="shipped-bundle"
+      if [ -n "$reexport_version" ] && [ "$reexport_version" != "$shipped_version" ]; then
+        echo "[datadog] WARNING: $platform re-export inlined '$reexport_version'" \
+          "but the shipped bundle carries '$shipped_version'; uploading under the" \
+          "shipped value. The source map is built from the re-export, so line" \
+          "numbers may be offset - investigate before trusting these stacks."
+      fi
+    elif [ -n "$reexport_version" ]; then
+      dd_version="$reexport_version"
+      version_source="re-export(UNVERIFIED)"
+      echo "[datadog] WARNING: could not read the shipped $platform bundle;" \
+        "falling back to the re-export's value, which the archived app may not carry."
+    else
+      dd_version="$dd_fallback_version"
+      version_source="app.json(NOT INLINED)"
+      echo "[datadog] WARNING: EXPO_PUBLIC_DATADOG_VERSION was not inlined into" \
+        "either $platform bundle; every build will share '$dd_version'."
+    fi
+
+    if [ -z "$dd_version" ]; then
+      echo "[datadog] no resolvable version - skipping $platform RN source map"
+      rm -rf "$sm"
+      return 0
+    fi
+    echo "[datadog] $platform symbol upload version=$dd_version source=$version_source"
     if pnpm dlx @datadog/datadog-ci@5.8.0 react-native upload \
       --platform "$platform" --service forge-mobile \
       --bundle "$sm/$bundle_name" --sourcemap "$sm/$bundle_name.map" \
