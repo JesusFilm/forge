@@ -114,3 +114,42 @@ describe("Auth callback login and signup routes", () => {
     expect(loginPageClientMock).not.toHaveBeenCalled()
   })
 })
+
+describe("device approval reaches signup, not a dead end", () => {
+  it("renders signup for a device continuation instead of bouncing away", async () => {
+    // The login page's own "Sign up" link carries the user code here. Before
+    // this, /signup bounced to the marketing site because it only admitted
+    // OAuth authorize requests — so a viewer with no account had nowhere to go,
+    // which breaks R2 ("new accounts in the same visit"). Caught in a browser,
+    // not by a test, which is why this one exists.
+    const SignupPage = (await import("@/app/signup/page")).default
+
+    const element = (await SignupPage({
+      searchParams: Promise.resolve({ user_code: "0194507302" }),
+    })) as { props: Record<string, unknown> }
+
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(element.props.flow).toBe("signup")
+    expect(element.props.oauthQuery).toContain("user_code=0194507302")
+    // No client_id on this lane, and none may be read from the query: it is
+    // whatever a link handed the viewer.
+    expect(element.props.requestingAppName).toBeNull()
+  })
+
+  it("still bounces a bare signup visit to the marketing site", async () => {
+    // Anti-vacuous companion: the exemption must be scoped to the device lane.
+    const SignupPage = (await import("@/app/signup/page")).default
+
+    await expect(
+      SignupPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow("redirect:https://www.jesusfilm.org")
+  })
+
+  it("ignores a user code that normalizes to nothing", async () => {
+    const SignupPage = (await import("@/app/signup/page")).default
+
+    await expect(
+      SignupPage({ searchParams: Promise.resolve({ user_code: "!!!" }) }),
+    ).rejects.toThrow("redirect:https://www.jesusfilm.org")
+  })
+})
