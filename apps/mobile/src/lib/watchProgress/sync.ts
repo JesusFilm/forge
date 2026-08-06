@@ -20,10 +20,12 @@ import {
   serializeProgressSnapshot,
 } from "./snapshot"
 import {
+  bufferProgressIntent,
   clearProgressEntry,
   drainProgressIntents,
   hydrateProgress,
   peekProgressIntents,
+  progressIntentKey,
   type ProgressWriteIntent,
   type WatchProgressEntry,
 } from "./store"
@@ -103,47 +105,96 @@ export function createProgressSync(deps: ProgressSyncDeps) {
     }
   }
 
+  /**
+   * The queue is a single storage cell that both persist and flush
+   * read-modify-write, from callers that are not otherwise ordered (a
+   * foreground flush and a pause-triggered drain overlap routinely). Every
+   * queue operation runs through this chain so one cannot clobber the other.
+   */
+  let queueChain: Promise<unknown> = Promise.resolve()
+  function onQueue<T>(operation: () => Promise<T>): Promise<T> {
+    const run = queueChain.then(operation, operation)
+    queueChain = run.catch(() => undefined)
+    return run
+  }
+
+  async function readQueue(): Promise<ProgressQueue | null> {
+    const raw = await deps.storage
+      .getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
+      .catch(() => null)
+    return parseStoredProgressQueue(raw)
+  }
+
   /** Fold a failed batch into the account-bound queue for a later retry. */
-  async function persistFailedWrites(
+  function persistFailedWrites(
     accountId: string,
     intents: readonly ProgressWriteIntent[],
   ): Promise<void> {
-    if (intents.length === 0) return
-    const raw = await deps.storage
-      .getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
-      .catch(() => null)
-    let queue: ProgressQueue = { accountId, writes: [] }
-    const stored = parseStoredProgressQueue(raw)
-    if (stored != null) queue = stored
-    for (const intent of intents) {
-      queue = enqueueProgressWrite(queue, accountId, intent)
-    }
-    const blob = serializeProgressQueue(queue)
-    if (blob != null) {
+    if (intents.length === 0) return Promise.resolve()
+    return onQueue(async () => {
+      // Re-check inside the chain: sign-out may have wiped the queue while
+      // this was waiting, and re-creating it would resurrect one account's
+      // history on a shared device (R10).
+      if (deps.getAccountId() !== accountId) return
+      let queue: ProgressQueue = (await readQueue()) ?? {
+        accountId,
+        writes: [],
+      }
+      for (const intent of intents) {
+        queue = enqueueProgressWrite(queue, accountId, intent)
+      }
+      const blob = serializeProgressQueue(queue)
+      if (blob == null) return
       await deps.storage
         .setItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY, blob)
-        .catch(() => {})
-    }
+        .catch(() => {
+          // Storage is wedged and the buffer is already drained, so re-buffer
+          // rather than lose the batch outright; newer samples still win.
+          for (const intent of intents) bufferProgressIntent(intent)
+        })
+    })
   }
 
-  async function flushQueueInternal(): Promise<void> {
-    const raw = await deps.storage
-      .getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
-      .catch(() => null)
-    const queue = parseStoredProgressQueue(raw)
-    const decision = planQueueFlush(queue, deps.getAccountId())
-    if (decision.action === "none") return
-    if (decision.action === "discard") {
-      await deps.storage.removeItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
-      return
-    }
-    try {
+  function flushQueueInternal(): Promise<void> {
+    return onQueue(async () => {
+      const queue = await readQueue()
+      const decision = planQueueFlush(queue, deps.getAccountId())
+      if (decision.action === "none") return
+      if (decision.action === "discard") {
+        await deps.storage
+          .removeItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
+          .catch(() => {})
+        return
+      }
       const { acceptedCount } = await deps.sendUpserts(decision.writes)
       reportDroppedWrites(decision.writes.length, acceptedCount)
-      await deps.storage.removeItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
-    } catch {
-      // Retained for the next flush attempt.
-    }
+      // Remove only what was sent. Blowing the whole key away would discard
+      // anything a concurrent failure persisted while this send was in
+      // flight — the chain serializes callers, but a re-read is still what
+      // makes the removal precise.
+      const sent = new Set(decision.writes.map(progressIntentKey))
+      const current = await readQueue()
+      const remaining = (current?.writes ?? []).filter(
+        (write) => !sent.has(progressIntentKey(write)),
+      )
+      if (current == null || remaining.length === 0) {
+        await deps.storage
+          .removeItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
+          .catch(() => {})
+        return
+      }
+      const blob = serializeProgressQueue({
+        accountId: current.accountId,
+        writes: remaining,
+      })
+      if (blob != null) {
+        await deps.storage
+          .setItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY, blob)
+          .catch(() => {})
+      }
+    }).catch(() => {
+      // Send failed: the queue is retained for the next attempt.
+    })
   }
 
   return {
@@ -178,21 +229,6 @@ export function createProgressSync(deps: ProgressSyncDeps) {
      */
     flushQueue: flushQueueInternal,
 
-    /** Persist a queue built by the recorder's offline path. */
-    async saveQueue(queue: ProgressQueue): Promise<void> {
-      const blob = serializeProgressQueue(queue)
-      if (blob != null) {
-        await deps.storage.setItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY, blob)
-      }
-    },
-
-    async loadQueue(): Promise<ProgressQueue | null> {
-      const raw = await deps.storage
-        .getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
-        .catch(() => null)
-      return parseStoredProgressQueue(raw)
-    },
-
     /**
      * Per-video clear (R16): optimistic — the bar disappears immediately;
      * a failed mutation re-hydrates so the entry reappears rather than
@@ -210,8 +246,8 @@ export function createProgressSync(deps: ProgressSyncDeps) {
 
     /**
      * Drain buffered recorder intents on the batch cadence (KTD5): at most
-     * one send per 30-second window, immediate on a forced trigger. Failed
-     * sends restore the intents (newer buffered ones win).
+     * one send per 30-second window, immediate on a forced trigger. A failed
+     * send persists to the account-bound queue rather than memory.
      */
     async drainIntents({ forced }: { forced: boolean }): Promise<void> {
       const accountId = deps.getAccountId()
@@ -225,21 +261,23 @@ export function createProgressSync(deps: ProgressSyncDeps) {
       if (!plan.send) return
       cadence = plan.nextState
       const intents = drainProgressIntents()
+      // Backlog FIRST. Queued writes are older than the fresh batch, so
+      // sending them second would make the server's staleness guard reject
+      // them — correctly, but that both loses ordering when a skewed clock
+      // clamps two writes to the same instant and fires a false
+      // writes_not_applied on every recovery. Oldest-first keeps arrival
+      // order and recency agreeing. It never throws (R7 retention is its own
+      // concern), so it cannot mask a failure of the send below.
+      await flushQueueInternal()
       try {
         const { acceptedCount } = await deps.sendUpserts(intents)
         reportDroppedWrites(intents.length, acceptedCount)
-        // A successful send means connectivity is back, so drain any backlog
-        // a previous failure persisted (R7's "flush when connectivity
-        // returns" — without this it waits for the next sign-in).
-        await flushQueueInternal()
       } catch {
-        // Persist the failed batch instead of re-buffering it in memory: the
-        // queue survives an app kill and carries the recording account, so a
-        // later sign-in as someone else discards it rather than writing it
-        // under the wrong identity (R7/R10).
-        if (deps.getAccountId() === accountId) {
-          await persistFailedWrites(accountId, intents)
-        }
+        // Persist rather than re-buffer in memory: the queue survives an app
+        // kill and carries the recording account, so a later sign-in as
+        // someone else discards it instead of writing under the wrong
+        // identity (R7/R10). persistFailedWrites re-checks the account.
+        await persistFailedWrites(accountId, intents)
       }
     },
   }

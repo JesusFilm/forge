@@ -277,50 +277,6 @@ export function VideoPlayer({
         accessibilityLabel="Toggle player controls"
       />
 
-      {/* Declared AFTER the full-bleed tap target: as plain siblings the later
-          one wins hit-testing, so declaring these first left them tappable-
-          looking but inert. Belongs with the chrome, not the poster. */}
-      {!hasStarted && resumeAtSeconds != null && (
-        <View style={playerStyles.resumeRow} pointerEvents="box-none">
-          <Pressable
-            onPress={() => {
-              player.currentTime = resumeAtSeconds
-              player.play()
-              // The adoption metric's second RUM action (Success Criteria).
-              reportDatadogAction("resume_selected", {})
-            }}
-            style={({ pressed }) => [
-              playerStyles.resumeButton,
-              pressed && { opacity: 0.8 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Resume from ${formatResumeTime(resumeAtSeconds)}`}
-            {...{ "dd-action-name": "player-resume" }}
-          >
-            <Ionicons name="play" size={16} color="#000" />
-            <Text style={playerStyles.resumeLabel}>
-              Resume {formatResumeTime(resumeAtSeconds)}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              player.currentTime = 0
-              player.play()
-              reportDatadogAction("start_over_selected", {})
-            }}
-            style={({ pressed }) => [
-              playerStyles.startOverButton,
-              pressed && { opacity: 0.8 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Start from the beginning"
-            {...{ "dd-action-name": "player-start-over" }}
-          >
-            <Text style={playerStyles.startOverLabel}>Start over</Text>
-          </Pressable>
-        </View>
-      )}
-
       {seekFlash != null && (
         <View
           pointerEvents="none"
@@ -389,6 +345,50 @@ export function VideoPlayer({
             seekSignal={seekSignal}
           />
         </Animated.View>
+      )}
+
+      {/* LAST sibling deliberately. Plain siblings hit-test in reverse
+          declaration order, and the chrome mounts visible from frame one with
+          its bottomBar (a pointerEvents:auto View) overlapping these chips. */}
+      {!hasStarted && resumeAtSeconds != null && (
+        <View style={playerStyles.resumeRow} pointerEvents="box-none">
+          <Pressable
+            onPress={() => {
+              player.currentTime = resumeAtSeconds
+              player.play()
+              // The adoption metric's second RUM action (Success Criteria).
+              reportDatadogAction("resume_selected", {})
+            }}
+            style={({ pressed }) => [
+              playerStyles.resumeButton,
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Resume from ${formatResumeTime(resumeAtSeconds)}`}
+            {...{ "dd-action-name": "player-resume" }}
+          >
+            <Ionicons name="play" size={16} color="#000" />
+            <Text style={playerStyles.resumeLabel}>
+              Resume {formatResumeTime(resumeAtSeconds)}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              player.currentTime = 0
+              player.play()
+              reportDatadogAction("start_over_selected", {})
+            }}
+            style={({ pressed }) => [
+              playerStyles.startOverButton,
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Start from the beginning"
+            {...{ "dd-action-name": "player-start-over" }}
+          >
+            <Text style={playerStyles.startOverLabel}>Start over</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   )

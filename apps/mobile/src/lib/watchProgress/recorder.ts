@@ -6,8 +6,9 @@
  * unmount/end) is what turns those requests into actual mutations.
  *
  * No-ops without an identity (the hero surfaces never pass one) and drops
- * signed-out ticks at this boundary (R10). Offline playback routes writes
- * to the account-bound queue instead of the network buffer (R7).
+ * signed-out ticks at this boundary (R10). Every write takes the same path;
+ * the account-bound queue is reached only when a send FAILS (R7), so a
+ * downloaded video watched online syncs like any other.
  */
 
 import type { ProgressWriteIntent, WatchProgressEntry } from "./store"
@@ -22,8 +23,6 @@ export type ProgressIdentity = {
   videoSlug?: string
   languageSlug?: string | null
 }
-
-export type RecorderSourceKind = "network" | "offline"
 
 export type FlushTrigger = "pause" | "background" | "unmount" | "end"
 

@@ -13,7 +13,6 @@ import {
   GET_MY_WATCH_PROGRESS,
   UPSERT_MY_WATCH_PROGRESS,
 } from "../watchProgressQueries"
-import { enqueueProgressWrite } from "./queue"
 import { createProgressSync, type ProgressSync } from "./sync"
 import type { ProgressWriteIntent, WatchProgressEntry } from "./store"
 
@@ -56,27 +55,6 @@ export function toUpsertEntries(intents: readonly ProgressWriteIntent[]) {
 }
 
 let sync: ProgressSync | null = null
-
-// Serializes offline-queue read-modify-writes so concurrent recorder ticks
-// can't interleave AsyncStorage round-trips and drop each other's entries.
-let queueChain: Promise<void> = Promise.resolve()
-
-/** Fire-and-forget offline enqueue for the recorder's offline path (R7). */
-export function enqueueOfflineWrite(
-  accountId: string,
-  write: ProgressWriteIntent,
-): void {
-  queueChain = queueChain
-    .then(async () => {
-      const current = await getProgressSync().loadQueue()
-      await getProgressSync().saveQueue(
-        enqueueProgressWrite(current, accountId, write),
-      )
-    })
-    .catch(() => {
-      // A failed persist loses one offline sample; the next tick re-records.
-    })
-}
 
 export function getProgressSync(): ProgressSync {
   if (!sync) {

@@ -98,7 +98,10 @@ export const HomeCard = memo(function HomeCard({
     prefetchHeroStream(card.slug)
   }
 
-  const progressEntry = useWatchProgressEntry(card.id)
+  // card.videoId, not card.id: the render key carries an index suffix and
+  // never matches a store entry, which would silently drop progress from the
+  // accessibility label while the visible bar rendered correctly.
+  const progressEntry = useWatchProgressEntry(card.videoId)
 
   const handlePress = () => {
     if (!card.slug) return

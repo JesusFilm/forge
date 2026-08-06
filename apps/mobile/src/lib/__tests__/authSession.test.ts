@@ -142,6 +142,90 @@ describe("JWT fetch and refresh (KTD9/KTD10)", () => {
   })
 })
 
+describe("JWT is bound to the subject that minted it (R10)", () => {
+  it("re-mints after a refresh reveals a different account", async () => {
+    // A shared device switching accounts. The old token is still unexpired,
+    // so a freshness check alone happily reuses it — and admin would then
+    // attribute the new account's positions to the old one.
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce({ id: "user-2" })
+    const fetchToken = jest
+      .fn<Promise<string | null>, []>()
+      .mockResolvedValueOnce(fakeJwt(2_000_000_000))
+      .mockResolvedValueOnce(fakeJwt(2_000_000_001))
+    const { store } = buildStore({ fetchSession, fetchToken })
+
+    await store.refresh()
+    const first = await store.getFreshJwt()
+    await store.refresh()
+    const second = await store.getFreshJwt()
+
+    expect(first).not.toBeNull()
+    expect(second).not.toBe(first)
+    expect(fetchToken).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps the token when only the profile changed", async () => {
+    const fetchSession = jest
+      .fn<Promise<{ id: string; name?: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1", name: "Old" })
+      .mockResolvedValueOnce({ id: "user-1", name: "New" })
+    const { store, deps } = buildStore({ fetchSession })
+
+    await store.refresh()
+    await store.getFreshJwt()
+    await store.refresh()
+    await store.getFreshJwt()
+
+    expect(deps.fetchToken).toHaveBeenCalledTimes(1)
+    expect(store.getSnapshot()).toMatchObject({ user: { name: "New" } })
+  })
+
+  it("discards a mint that lands after the account changed", async () => {
+    // The window the epoch closes: the mint was issued for user-1 but
+    // resolves after user-2 is current. Failing open beats a wrong subject.
+    let release: (token: string) => void = () => {}
+    const fetchToken = jest.fn(
+      () =>
+        new Promise<string | null>((resolve) => {
+          release = resolve
+        }),
+    )
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce({ id: "user-2" })
+    const { store } = buildStore({ fetchSession, fetchToken })
+
+    await store.refresh()
+    const pending = store.getFreshJwt()
+    await store.refresh()
+    release(fakeJwt(2_000_000_000))
+
+    await expect(pending).resolves.toBeNull()
+  })
+
+  it("discards a mint that lands after sign-out", async () => {
+    let release: (token: string) => void = () => {}
+    const fetchToken = jest.fn(
+      () =>
+        new Promise<string | null>((resolve) => {
+          release = resolve
+        }),
+    )
+    const { store } = buildStore({ fetchToken })
+
+    await store.refresh()
+    const pending = store.getFreshJwt()
+    await store.signOut()
+    release(fakeJwt(2_000_000_000))
+
+    await expect(pending).resolves.toBeNull()
+  })
+})
+
 describe("signOut (R4)", () => {
   it("revokes remotely then clears local state", async () => {
     const { store, deps } = buildStore()

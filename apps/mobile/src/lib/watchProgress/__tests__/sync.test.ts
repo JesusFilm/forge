@@ -239,6 +239,86 @@ describe("drainIntents (KTD5 cadence)", () => {
     expect(peekProgressIntents()).toEqual([])
   })
 
+  it("sends the queued backlog BEFORE the fresh batch", async () => {
+    // Oldest-first. Sending the backlog second makes the server's staleness
+    // guard reject it — correctly, but that loses the write whenever a
+    // skewed clock clamps both to the same instant, and fires a false
+    // writes_not_applied on every recovery.
+    const { sync, deps, storage } = buildSync()
+    await storage.setItem(
+      WATCH_PROGRESS_QUEUE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        accountId: "user-1",
+        writes: [{ ...intent, videoId: "video-old" }],
+      }),
+    )
+    bufferProgressIntent({ ...intent, videoId: "video-fresh" })
+
+    await sync.drainIntents({ forced: true })
+
+    const order = (deps.sendUpserts as jest.Mock).mock.calls.map(
+      (call) => (call[0] as Array<{ videoId?: string }>)[0]?.videoId,
+    )
+    expect(order).toEqual(["video-old", "video-fresh"])
+  })
+
+  it("a concurrent failure's writes survive an in-flight flush", async () => {
+    // The queue is one storage cell that persist and flush both
+    // read-modify-write. Clearing the whole key on a successful send would
+    // discard anything persisted while that send was in the air.
+    const { sync, storage } = buildSync({
+      sendUpserts: jest.fn(async (entries) => {
+        if (entries.some((write) => write.videoId === "video-queued")) {
+          // While the backlog send is in flight, a fresh batch fails and
+          // persists. Serialization must not let that write be lost.
+          bufferProgressIntent({ ...intent, videoId: "video-late" })
+        }
+        return { acceptedCount: entries.length }
+      }),
+    })
+    await storage.setItem(
+      WATCH_PROGRESS_QUEUE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        accountId: "user-1",
+        writes: [
+          { ...intent, videoId: "video-queued" },
+          { ...intent, videoId: "video-untouched" },
+        ],
+      }),
+    )
+
+    await sync.flushQueue()
+
+    // Both were sent, so the key is gone — not because it was blanket-cleared.
+    expect(await storage.getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)).toBeNull()
+  })
+
+  it("re-buffers rather than losing the batch when storage rejects", async () => {
+    // persistFailedWrites is the ONLY retention path now, so a wedged
+    // AsyncStorage would otherwise drop the batch silently.
+    const storage = memoryStorage()
+    storage.setItem = jest.fn(
+      async (_key: string, _value: string): Promise<void> => {
+        throw new Error("SQLITE_FULL")
+      },
+    )
+    bufferProgressIntent(intent)
+    const { sync } = buildSync({
+      storage,
+      sendUpserts: jest.fn(async () => {
+        throw new Error("offline")
+      }),
+    })
+
+    await sync.drainIntents({ forced: true })
+
+    expect(peekProgressIntents()).toEqual([
+      expect.objectContaining({ videoId: "video-1" }),
+    ])
+  })
+
   it("persists a failed batch to the durable queue, not just memory", async () => {
     // The in-memory buffer dies with the process. A downloaded film watched
     // on a flaky connection must survive an app kill, which is exactly what

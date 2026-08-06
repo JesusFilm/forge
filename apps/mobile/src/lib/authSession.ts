@@ -81,12 +81,23 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
   // (KTD9); SecureStore holds only the session credential.
   let jwt: string | null = null
   let jwtFetch: Promise<string | null> | null = null
+  /** Bumped whenever the signed-in subject changes. A JWT minted under a
+   *  previous subject must never be adopted or handed out — it would write
+   *  one account's progress as another (R10). */
+  let identityEpoch = 0
   const listeners = new Set<() => void>()
 
   function commit(next: AuthSessionSnapshot) {
     if (next === snapshot) return
     snapshot = next
     for (const listener of listeners) listener()
+  }
+
+  /** Drop the cached token AND orphan any in-flight mint. */
+  function invalidateJwt() {
+    jwt = null
+    jwtFetch = null
+    identityEpoch += 1
   }
 
   return {
@@ -110,14 +121,20 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
       try {
         const user = await deps.fetchSession()
         if (user == null) {
-          jwt = null
+          invalidateJwt()
           commit(SIGNED_OUT)
         } else if (
           snapshot.status !== "signedIn" ||
-          snapshot.user.id !== user.id ||
+          snapshot.user.id !== user.id
+        ) {
+          // A different subject — the cached token belongs to the old one.
+          invalidateJwt()
+          commit({ status: "signedIn", user })
+        } else if (
           snapshot.user.email !== user.email ||
           snapshot.user.name !== user.name
         ) {
+          // Same subject, edited profile: the token is still valid.
           commit({ status: "signedIn", user })
         }
       } catch {
@@ -127,7 +144,7 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
 
     /** Commit a completed sign-in immediately (U6 calls after the flow). */
     applySignedIn(user: AuthUser) {
-      jwt = null
+      invalidateJwt()
       commit({ status: "signedIn", user })
     },
 
@@ -139,11 +156,13 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
      */
     async getFreshJwt(): Promise<string | null> {
       if (snapshot.status !== "signedIn") return null
+      const epoch = identityEpoch
       if (jwt && isJwtFresh(jwt, now())) return jwt
       if (!jwtFetch) {
         const flight = deps
           .fetchToken()
           .then((token) => {
+            if (identityEpoch !== epoch) return null
             jwt = token
             return token
           })
@@ -158,7 +177,10 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
           },
         )
       }
-      return jwtFetch
+      // Re-check after the await, not just inside the mint: the account can
+      // change while a caller waits on a flight that started under the old one.
+      const token = await jwtFetch
+      return identityEpoch === epoch ? token : null
     },
 
     /**
@@ -172,7 +194,7 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
       } catch {
         // Local clear proceeds regardless.
       }
-      jwt = null
+      invalidateJwt()
       commit(SIGNED_OUT)
     },
   }

@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto"
 import { prisma } from "@/db/client"
+import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 const COMPLETE_THRESHOLD = 0.9
 const MAX_HISTORY_LIMIT = 200
@@ -83,16 +85,6 @@ async function resolveEntryVideoIds(
   return resolved
 }
 
-/** Prisma's unique-constraint violation — the concurrent-create race. */
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "P2002"
-  )
-}
-
 function newestByVideoId<T extends { videoId: string; lastWatchedAt: Date }>(
   entries: T[],
 ): T[] {
@@ -162,47 +154,116 @@ export async function upsertWatchProgress({
   )
   if (validEntriesForVideos.length === 0) return []
 
-  // The staleness guard lives in the WRITE, not in a preceding read: a
-  // read-then-write pair lets a second device commit between the two, so the
-  // last arrival won by timing rather than by recency and could rewind
-  // progress. Each entry is independently atomic; there is no cross-entry
-  // invariant, so no batch transaction (which would also make the
-  // unique-violation path below poison the whole statement in Postgres).
-  const accepted: WatchProgressView[] = []
-  for (const entry of validEntriesForVideos) {
-    const data = {
-      languageSlug: entry.languageSlug,
-      positionSeconds: entry.positionSeconds,
-      durationSeconds: entry.durationSeconds,
-      completed: entry.completed,
-      lastWatchedAt: entry.lastWatchedAt,
-    }
-    const updated = await prisma.watchProgress.updateMany({
-      where: {
-        userId,
-        videoId: entry.videoId,
-        lastWatchedAt: { lte: entry.lastWatchedAt },
-      },
-      data,
-    })
-    if (updated.count > 0) {
-      accepted.push(toView({ videoId: entry.videoId, ...data }))
-      continue
-    }
-    // Nothing updated: either no row exists yet, or a newer one already does.
-    try {
-      const created = await prisma.watchProgress.create({
-        data: { userId, videoId: entry.videoId, ...data },
-      })
-      accepted.push(toView(created))
-    } catch (error) {
-      // A concurrent writer created the row first; its value is newer than
-      // ours by definition, so dropping this entry is the correct outcome.
-      if (!isUniqueViolation(error)) throw error
-    }
-  }
+  return writeNewestWins(userId, validEntriesForVideos)
+}
 
-  return accepted
+type NormalizedEntry = ReturnType<typeof normalizeEntry>
+
+/**
+ * One statement for the whole batch. The staleness guard lives in the WRITE
+ * (`WHERE … <= EXCLUDED`), not in a preceding read: a read-then-write pair
+ * lets a second device commit between the two, so the last arrival would win
+ * by timing rather than by recency and could rewind progress.
+ *
+ * RETURNING yields exactly the rows the guard admitted, so a losing entry is
+ * reported as dropped rather than as written. The previous per-entry
+ * update-then-create pair could not express this — on a concurrent-create
+ * race it assumed the other writer was newer and discarded our entry even
+ * when ours was the newer one.
+ */
+async function writeNewestWins(
+  userId: string,
+  entries: readonly NormalizedEntry[],
+): Promise<WatchProgressView[]> {
+  const ids = entries.map(() => randomUUID())
+  const videoIds = entries.map((entry) => entry.videoId)
+  const languageSlugs = entries.map((entry) => entry.languageSlug)
+  const positions = entries.map((entry) => String(entry.positionSeconds))
+  const durations = entries.map((entry) => String(entry.durationSeconds))
+  const completions = entries.map((entry) => String(entry.completed))
+  const watchedAts = entries.map((entry) => entry.lastWatchedAt.toISOString())
+
+  // PG18 silently NULL-pads unequal-length unnest args instead of erroring.
+  assertParallelArrayLengthsMatch(
+    entries.length,
+    [
+      { name: "ids", length: ids.length },
+      { name: "videoIds", length: videoIds.length },
+      { name: "languageSlugs", length: languageSlugs.length },
+      { name: "positions", length: positions.length },
+      { name: "durations", length: durations.length },
+      { name: "completions", length: completions.length },
+      { name: "watchedAts", length: watchedAts.length },
+    ],
+    (message) => new Error(message),
+  )
+
+  // `newestByVideoId` above is load-bearing here, not just an optimisation:
+  // Postgres aborts the whole statement if one ON CONFLICT target is hit
+  // twice ("cannot affect row a second time").
+  const rows = await prisma.$queryRaw<
+    Array<{
+      video_id: string
+      language_slug: string | null
+      position_seconds: number
+      duration_seconds: number
+      completed: boolean
+      last_watched_at: Date
+    }>
+  >`
+    INSERT INTO "watch_progress" (
+      "id", "user_id", "video_id", "language_slug",
+      "position_seconds", "duration_seconds", "completed",
+      "last_watched_at", "updated_at"
+    )
+    SELECT
+      u.id,
+      ${userId},
+      u.video_id,
+      u.language_slug,
+      u.position_seconds::int,
+      u.duration_seconds::int,
+      u.completed::boolean,
+      -- The column is TIMESTAMP(3) (no zone) holding UTC wall-clock, which
+      -- is what Prisma writes. Parsing as timestamptz first makes the
+      -- conversion independent of the session TimeZone.
+      (u.last_watched_at::timestamptz AT TIME ZONE 'UTC'),
+      NOW()
+    FROM unnest(
+      ${toPgArray(ids)}::text[],
+      ${toPgArray(videoIds)}::text[],
+      ${toPgArray(languageSlugs)}::text[],
+      ${toPgArray(positions)}::text[],
+      ${toPgArray(durations)}::text[],
+      ${toPgArray(completions)}::text[],
+      ${toPgArray(watchedAts)}::text[]
+    ) AS u(
+      id, video_id, language_slug,
+      position_seconds, duration_seconds, completed, last_watched_at
+    )
+    ON CONFLICT ("user_id", "video_id") DO UPDATE SET
+      "language_slug"    = EXCLUDED."language_slug",
+      "position_seconds" = EXCLUDED."position_seconds",
+      "duration_seconds" = EXCLUDED."duration_seconds",
+      "completed"        = EXCLUDED."completed",
+      "last_watched_at"  = EXCLUDED."last_watched_at",
+      "updated_at"       = NOW()
+    WHERE "watch_progress"."last_watched_at" <= EXCLUDED."last_watched_at"
+    RETURNING
+      "video_id", "language_slug", "position_seconds",
+      "duration_seconds", "completed", "last_watched_at"
+  `
+
+  return rows.map((row) =>
+    toView({
+      videoId: row.video_id,
+      languageSlug: row.language_slug,
+      positionSeconds: row.position_seconds,
+      durationSeconds: row.duration_seconds,
+      completed: row.completed,
+      lastWatchedAt: row.last_watched_at,
+    }),
+  )
 }
 
 export async function deleteWatchProgressForUser(userId: string) {
