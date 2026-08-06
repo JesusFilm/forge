@@ -130,7 +130,7 @@ export const FloatingSearchFieldInput = forwardRef<
         type="submit"
         aria-label={t("searchRegion")}
         disabled={!hasValue}
-        className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-950 text-white transition-[background-color,color,transform] hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
+        className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-950 text-white transition-[background-color,color,transform] hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-transparent disabled:text-stone-400 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
       >
         <Search
           aria-hidden

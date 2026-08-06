@@ -89,6 +89,7 @@ export function SearchOverlay() {
     open,
     closing,
     query,
+    submittedQuery,
     displayResults,
     exiting,
     resultsKey,
@@ -508,7 +509,7 @@ export function SearchOverlay() {
               </p>
               <button
                 type="button"
-                onClick={() => void search(query)}
+                onClick={() => void search(submittedQuery ?? query)}
                 className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
               >
                 {t("retrySearch")}
@@ -519,7 +520,7 @@ export function SearchOverlay() {
           {!loading && searched && displayResults.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">
-                {t("noResults", { query: query.trim() })}
+                {t("noResults", { query: submittedQuery ?? query.trim() })}
               </h2>
               <p className="mt-2 text-sm text-stone-500">
                 {t("tryDifferentKeywordsOrLanguage")}

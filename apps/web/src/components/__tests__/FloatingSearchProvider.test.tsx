@@ -385,7 +385,8 @@ async function submitSearch(input: HTMLInputElement, query: string) {
     setInputValue(input, query)
   })
   const form = input.form
-  if (!form) throw new Error("Expected search input to belong to a form")
+  expect(form).not.toBeNull()
+  if (!form) return
   await act(async () => {
     form.requestSubmit()
     await Promise.resolve()
@@ -2417,6 +2418,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(input.type).toBe("search")
     expect(input.getAttribute("enterkeyhint")).toBe("search")
     expect(submitButton?.disabled).toBe(true)
+    expect(submitButton?.className).toContain("disabled:bg-transparent")
+    expect(submitButton?.className).not.toContain("disabled:bg-stone-200")
 
     act(() => {
       setInputValue(input, "jesus")
@@ -2439,6 +2442,26 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).toHaveBeenCalledTimes(1)
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({ query: "jesus" }),
+    )
+  })
+
+  it("keeps no-results copy tied to the last submitted query", async () => {
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", { query: "jesus" }),
+    )
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain('No results for "jesus"')
+
+    act(() => {
+      setInputValue(input, "an unsubmitted draft")
+    })
+
+    expect(document.body.textContent).toContain('No results for "jesus"')
+    expect(document.body.textContent).not.toContain(
+      'No results for "an unsubmitted draft"',
     )
   })
 

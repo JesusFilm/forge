@@ -125,6 +125,7 @@ export function FloatingSearchController({
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState(false)
+  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null)
   const [resultSource, setResultSource] =
     useState<SearchActionResultSource | null>(null)
   const [languageOptions, setLanguageOptions] = useState<
@@ -365,6 +366,7 @@ export function FloatingSearchController({
       setLoadingMore(false)
 
       if (!trimmed) {
+        setSubmittedQuery(null)
         if (displayResultsRef.current.length > 0) {
           setExiting(true)
           await new Promise<void>((resolve) => setTimeout(resolve, 200))
@@ -383,6 +385,9 @@ export function FloatingSearchController({
         clearLoadingForRequest(thisRequest)
         return
       }
+
+      const cappedQuery = trimmed.slice(0, 200)
+      setSubmittedQuery(cappedQuery)
 
       if (displayResultsRef.current.length > 0) {
         setExiting(true)
@@ -421,7 +426,6 @@ export function FloatingSearchController({
           options?.languageSlugIsExplicit ??
           (options?.languageSlug !== undefined ||
             searchLanguageSelectionUserSetRef.current)
-        const cappedQuery = trimmed.slice(0, 200)
         const searchRequestId = createSearchRequestId()
         const searchLanguageSlug =
           activeLanguageSlug ??
@@ -704,6 +708,7 @@ export function FloatingSearchController({
       open,
       closing,
       query,
+      submittedQuery,
       results,
       displayResults,
       exiting,
@@ -743,6 +748,7 @@ export function FloatingSearchController({
       open,
       closing,
       query,
+      submittedQuery,
       results,
       displayResults,
       exiting,

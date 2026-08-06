@@ -19,6 +19,7 @@ export type FloatingSearchContextValue = {
   open: boolean
   closing: boolean
   query: string
+  submittedQuery: string | null
   results: SearchResult[]
   displayResults: SearchResult[]
   exiting: boolean
