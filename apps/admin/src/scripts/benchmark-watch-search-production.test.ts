@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildGraphqlRequest,
   buildInternalRequest,
+  parseGraphqlProbeResponse,
   summarizeProductionProbe,
 } from "./benchmark-watch-search-production"
 
@@ -27,6 +28,39 @@ describe("production Watch Search latency probe", () => {
       }),
     )
     expect(request.query).toContain("laneStatuses")
+    expect(request.query).not.toContain("startedOffsetMs")
+  })
+
+  it("parses the public GraphQL lane status contract", () => {
+    expect(
+      parseGraphqlProbeResponse({
+        data: {
+          watchSearch: {
+            requestId: "request-1",
+            degraded: false,
+            latencyMs: 42,
+            laneStatuses: [
+              {
+                lane: "semantic_embedding",
+                status: "fulfilled",
+                elapsedMs: 8,
+                resultCount: 10,
+                reason: null,
+                detail: "cache_l1_hit",
+              },
+            ],
+          },
+        },
+      }),
+    ).toMatchObject({
+      requestId: "request-1",
+      laneStatuses: [
+        {
+          lane: "semantic_embedding",
+          elapsedMs: 8,
+        },
+      ],
+    })
   })
 
   it("includes the required BCP-47 locale in internal probe requests", () => {

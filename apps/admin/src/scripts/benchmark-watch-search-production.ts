@@ -15,6 +15,10 @@ const LaneStatusSchema = z.object({
   detail: z.string().nullable(),
 })
 
+const GraphqlLaneStatusSchema = LaneStatusSchema.omit({
+  startedOffsetMs: true,
+})
+
 const PROBE_CASES = [
   { query: "JESUS", locale: "en", languageSlug: "english" },
   { query: "Who is Jesus?", locale: "en", languageSlug: "english" },
@@ -53,10 +57,14 @@ const GraphqlResponseSchema = z.object({
       requestId: z.string(),
       degraded: z.boolean(),
       latencyMs: z.number().nonnegative(),
-      laneStatuses: z.array(LaneStatusSchema),
+      laneStatuses: z.array(GraphqlLaneStatusSchema),
     }),
   }),
 })
+
+type ProductionProbeLaneStatus = z.infer<typeof GraphqlLaneStatusSchema> & {
+  startedOffsetMs?: number
+}
 
 export type ProductionProbeSample = {
   clientRequestId: string
@@ -64,7 +72,7 @@ export type ProductionProbeSample = {
   serverMs: number
   degraded: boolean
   surfaceFirstSeen: boolean
-  laneStatuses: z.infer<typeof LaneStatusSchema>[]
+  laneStatuses: ProductionProbeLaneStatus[]
 }
 
 function percentile(values: readonly number[], quantile: number): number {
@@ -103,7 +111,7 @@ export function summarizeProductionProbe(
   samples: readonly ProductionProbeSample[],
 ) {
   const cacheDetails = new Map<string, number>()
-  const laneSamples = new Map<string, Array<z.infer<typeof LaneStatusSchema>>>()
+  const laneSamples = new Map<string, ProductionProbeLaneStatus[]>()
   for (const sample of samples) {
     for (const lane of sample.laneStatuses) {
       const entries = laneSamples.get(lane.lane) ?? []
@@ -170,7 +178,6 @@ export function buildGraphqlRequest({
     laneStatuses {
       lane
       status
-      startedOffsetMs
       elapsedMs
       resultCount
       reason
@@ -192,6 +199,10 @@ export function buildGraphqlRequest({
       },
     },
   }
+}
+
+export function parseGraphqlProbeResponse(payload: unknown) {
+  return GraphqlResponseSchema.parse(payload).data.watchSearch
 }
 
 export function buildInternalRequest({
@@ -300,14 +311,14 @@ async function runGraphqlProbe({
       bearer,
       body: buildGraphqlRequest({ ...probeCase, clientRequestId }),
     })
-    const parsed = GraphqlResponseSchema.parse(response.payload)
+    const parsed = parseGraphqlProbeResponse(response.payload)
     samples.push({
       clientRequestId,
       roundTripMs: response.elapsedMs,
-      serverMs: parsed.data.watchSearch.latencyMs,
-      degraded: parsed.data.watchSearch.degraded,
+      serverMs: parsed.latencyMs,
+      degraded: parsed.degraded,
       surfaceFirstSeen: index < PROBE_CASES.length,
-      laneStatuses: parsed.data.watchSearch.laneStatuses,
+      laneStatuses: parsed.laneStatuses,
     })
   }
   return samples
