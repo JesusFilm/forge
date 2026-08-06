@@ -57,9 +57,11 @@ compared directly without changing the production path.
    existing `WatchSearchResponse` contract. Lexical-only degradation remains
    available when query embedding misses its deadline.
 4. Add an optional `mode: DEFAULT | MODERN` input to `watchSearch`; omitted or
-   `DEFAULT` keeps the current backend and `MODERN` selects Typesense. Production
-   Web explicitly selects MODERN and may request a bounded DEFAULT shadow;
-   omitted-mode compatibility remains unchanged for every other caller.
+   `DEFAULT` keeps the current backend and `MODERN` selects Typesense. The
+   production browser omits routing fields, while Admin recognizes the
+   canonical Web origin and applies MODERN plus a bounded DEFAULT shadow per
+   request. Omitted-mode compatibility remains unchanged for every other
+   caller.
 5. Add local setup and benchmark commands that restore the latest full
    `video-search` snapshot, run Typesense, build all three indexes, and compare
    latency/result overlap over representative multilingual queries.
@@ -106,7 +108,7 @@ generation during routine metadata releases. After stale generations were
 retired, Typesense settled at approximately 4.69 GiB RSS on its 16 GiB service.
 A correlated 100-request GraphQL MODERN probe measured 87.48 ms server p50,
 193.69 ms server p95, and 526.43 ms full-round-trip p95 with zero degradation.
-The guarded promotion keeps the GraphQL `DEFAULT` behavior intact, makes Web's
-MODERN selection explicit, records DEFAULT as bounded post-response shadow
-work, and retains `WATCH_SEARCH_PRIMARY_MODE=DEFAULT` as the independent
-traffic rollback.
+The guarded promotion keeps the GraphQL `DEFAULT` behavior intact, makes
+Admin's canonical-browser MODERN selection explicit per request, records
+DEFAULT as bounded post-response shadow work, and retains the Admin service's
+`WATCH_SEARCH_PRIMARY_MODE=DEFAULT` as the independent traffic rollback.

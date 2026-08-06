@@ -256,6 +256,11 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+Public compatibility and product serving policy are distinct. A generic caller
+may retain a stable omitted-mode default while Admin applies a surface-specific
+mode at a request-time orchestration boundary. Operational rollback belongs at
+that dynamic boundary rather than in cached client state.
+
 ### Shadow Search
 
 A best-effort execution of a non-serving Search Pipeline Mode for the same
