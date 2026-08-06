@@ -301,14 +301,20 @@ export function deviceGrantPlugin(options: DeviceGrantPluginOptions = {}) {
             codeExpiresInMs: AUTHORIZATION_CODE_EXPIRES_IN_MS,
           })
 
-          await ctx.context.internalAdapter.createVerificationValue({
-            identifier: authorizationCode.identifier,
-            value: authorizationCode.value,
-            expiresAt: authorizationCode.expiresAt,
-          })
-
+          // Both the code write and the exchange sit inside one try. The device
+          // code is already consumed by this point, so anything that escapes
+          // here would be a bare 500 with no `error` field — which a conforming
+          // RFC 8628 client cannot classify, against a code it can never redeem
+          // again. Every failure past the claim has to come back as a
+          // recognisable OAuth error.
           let tokens: TokenEnvelope
           try {
+            await ctx.context.internalAdapter.createVerificationValue({
+              identifier: authorizationCode.identifier,
+              value: authorizationCode.value,
+              expiresAt: authorizationCode.expiresAt,
+            })
+
             tokens = await exchangeAuthorizationCode({
               code: authorizationCode.code,
               clientId: claimed.clientId,
@@ -319,11 +325,13 @@ export function deviceGrantPlugin(options: DeviceGrantPluginOptions = {}) {
             // The caught error is deliberately not logged: its message can carry
             // fragments of the submitted code or verifier.
             //
-            // A failure here is almost always the PKCE verifier not matching the
-            // challenge the device registered — i.e. a device code redeemed by
-            // something other than the device that requested it. Everything else
-            // that can fail (client, scope, session, user) was validated above,
-            // so this gets its own outcome rather than a generic 500.
+            // The usual cause is a PKCE verifier that does not match the
+            // challenge the device registered — a code redeemed by something
+            // other than the device that requested it. It can also be the
+            // approving browser session having ended between approval and this
+            // poll, or the database being unavailable for the code write. All
+            // three are terminal for this code; the client's move is to request
+            // a new one.
             logDeviceEvent("token_exchange_failed", {
               clientId: claimed.clientId,
               claimedUserId: claimed.userId,

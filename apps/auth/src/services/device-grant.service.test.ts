@@ -70,10 +70,14 @@ describe("device code generation", () => {
     expect(code).not.toMatch(/[01IO]/)
   })
 
-  it("clears RFC 8628's guessing bar against the attempt cap", () => {
-    // 5 attempts against 10^10 keeps a single code's guess probability at the
-    // order RFC 8628 5.1 asks for. Nine digits would not.
-    expect(MAX_USER_CODE_ATTEMPTS / 10 ** 10).toBeLessThan(1e-9)
+  it("keeps the code space large enough for the rate limit to bound guessing", () => {
+    // Guessing is bounded by entropy against the per-IP limit on /device/status
+    // (20/min), NOT by the per-code attempt cap — a wrong guess matches no row,
+    // so there is nothing to count against. Even with a thousand codes live at
+    // once, one guess has ~1e-7 odds of naming a real one.
+    const codeSpace = 10 ** 10
+    const generouslyManyLiveCodes = 1000
+    expect(generouslyManyLiveCodes / codeSpace).toBeLessThan(1e-6)
   })
 
   it("stores codes hashed, never in plaintext", async () => {
@@ -396,9 +400,11 @@ describe("denyDeviceCode", () => {
 })
 
 describe("user code attempt cap", () => {
-  it("locks the code itself, not merely the caller's address", async () => {
-    // The counter lives on the row, so switching IP does not reset it. This is
-    // the control that makes a short code safe.
+  it("spends a code once its failed operations run out", async () => {
+    // The counter lives on the row, so switching address does not reset it.
+    // Note what this does NOT cover: a wrong guess matches no row, so it never
+    // increments anything. This bounds retries against a code the caller
+    // already holds, not guessing.
     const prisma = createPrismaMock({
       deviceCode: {
         findUnique: vi.fn(async () => ({

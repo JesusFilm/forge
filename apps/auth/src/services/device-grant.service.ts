@@ -37,15 +37,24 @@ type AuthPrisma = PrismaClient
 export const DEVICE_USER_CODE_FORMAT: "numbers" | "letters" = "numbers"
 
 /**
- * Ten digits, not nine. Against the 5-attempt per-code cap, 10^9 misses
- * RFC 8628 §5.1's 2^-32 guessing bar; 10^10 clears it.
+ * Ten digits, not nine. RFC 8628 §5.1 wants a code space large enough that
+ * guessing stays impractical against whatever rate limit fronts it; the extra
+ * digit buys a full order of magnitude for one more character on screen.
  */
 const USER_CODE_SPECS = {
   numbers: { charset: "0123456789", length: 10 },
   letters: { charset: "BCDFGHJKLMNPQRSTVWXZ", length: 8 },
 } as const
 
-/** RFC 8628 §5.2 brute-force bound, per code rather than per IP. */
+/**
+ * How many failed operations a code tolerates before it is spent.
+ *
+ * This bounds repeated attempts against a code the caller ALREADY holds — a
+ * shared screenshot, a stale tab retrying. It is deliberately not the
+ * brute-force control: a guessed-wrong code matches no row, so nothing can be
+ * counted against it. See `findPendingByUserCode` for what actually bounds
+ * guessing.
+ */
 export const MAX_USER_CODE_ATTEMPTS = 5
 
 const DEVICE_CODE_BYTES = 32
@@ -167,10 +176,18 @@ export type DeviceCodeLookup = {
 /**
  * Look up a pending code by its user-facing value, for the approval page.
  *
- * Every miss burns an attempt against the row it was aimed at, so a guessing
- * client cannot grind a short code even from many IPs. The counter is bumped on
- * the row itself, which is why the cap is a property of the code and not of the
- * caller.
+ * On what actually bounds guessing, since it is easy to assume otherwise: a
+ * wrong guess hashes to a value with no row, so there is nothing to count
+ * against and `attemptCount` does NOT move. The per-code cap therefore limits
+ * repeated operations on a code somebody already holds — it is not the
+ * brute-force control and must not be described as one.
+ *
+ * Guessing is bounded by code entropy against the per-IP limit on this endpoint
+ * (`device/status` in the route's DEVICE_RATE_LIMITS). Codes are 10 digits and
+ * live 15 minutes, so with even a thousand codes outstanding a single guess has
+ * a ~1e-7 chance of naming a live one; at 20 lookups per minute per address an
+ * attacker needs years of sustained traffic from thousands of addresses. Widen
+ * that per-IP limit and this argument weakens proportionally.
  */
 export async function findPendingByUserCode(
   prisma: AuthPrisma,
