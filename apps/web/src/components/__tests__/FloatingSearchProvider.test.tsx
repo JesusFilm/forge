@@ -25,6 +25,12 @@ import {
 import { SearchOverlayInstantShell } from "@/components/SearchOverlayInstantShell"
 import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceRegistration"
 import {
+  WATCH_MODAL_CLOSE_DELAY_MS,
+  WatchModalActivityProvider,
+  usePauseForWatchModal,
+  type WatchPausableMedia,
+} from "@/components/watch/WatchModalActivityProvider"
+import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
@@ -408,6 +414,28 @@ function deferred<T>() {
   return { promise, reject, resolve }
 }
 
+function makeWatchMedia({ paused = false } = {}) {
+  const media: WatchPausableMedia & {
+    pause: ReturnType<typeof vi.fn>
+    play: ReturnType<typeof vi.fn>
+  } = {
+    paused,
+    pause: vi.fn(() => {
+      media.paused = true
+    }),
+    play: vi.fn(() => {
+      media.paused = false
+      return Promise.resolve()
+    }),
+  }
+  return media
+}
+
+function SearchPlaybackMediaOwner({ media }: { media: WatchPausableMedia }) {
+  usePauseForWatchModal(media, "watch-home-preview")
+  return null
+}
+
 function PlaybackStatePublisher({
   detail,
 }: {
@@ -493,6 +521,88 @@ function SearchControllerTestShell({
     </FloatingSearchController>
   )
 }
+
+describe("FloatingSearchProvider — search modal playback", () => {
+  it("keeps registered Watch playback paused across cold search loading and close", async () => {
+    vi.useFakeTimers()
+    type LanguageOptionsResponse = Awaited<
+      ReturnType<typeof getSearchLanguageOptions>
+    >
+    const delayedLanguageOptions = deferred<LanguageOptionsResponse>()
+    mockedGetSearchLanguageOptions.mockReturnValueOnce(
+      delayedLanguageOptions.promise,
+    )
+    const media = makeWatchMedia()
+
+    act(() => {
+      root.render(
+        <WatchModalActivityProvider>
+          <FloatingSearchProvider>
+            <SearchPlaybackMediaOwner media={media} />
+          </FloatingSearchProvider>
+        </WatchModalActivityProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    act(() => {
+      searchButton.click()
+    })
+
+    expect(media.pause).toHaveBeenCalledOnce()
+    expect(media.paused).toBe(true)
+    expect(
+      document.querySelector('[data-testid="search-overlay-instant-shell"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('[data-testid="search-overlay-top-bar"]'),
+    ).toBeNull()
+
+    await act(async () => {
+      delayedLanguageOptions.resolve({
+        ok: true,
+        options: [],
+        countrySuggestion: null,
+        recommendedLanguage: null,
+        countryCode: null,
+        countryName: null,
+      })
+      await delayedLanguageOptions.promise
+      await Promise.resolve()
+    })
+    await flushSearchControllerMount()
+
+    expect(
+      document.querySelector('[data-testid="search-overlay-instant-shell"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="search-overlay-top-bar"]'),
+    ).not.toBeNull()
+    expect(media.pause).toHaveBeenCalledOnce()
+    expect(media.paused).toBe(true)
+    expect(media.play).not.toHaveBeenCalled()
+
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+    act(() => {
+      close.click()
+      vi.advanceTimersByTime(WATCH_MODAL_CLOSE_DELAY_MS - 1)
+    })
+    expect(media.play).not.toHaveBeenCalled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(1)
+      await Promise.resolve()
+    })
+    expect(media.play).toHaveBeenCalledOnce()
+  })
+})
 
 describe("FloatingSearchProvider — header backdrop", () => {
   it("catches the initial watch preview state published by a child on mount", () => {
