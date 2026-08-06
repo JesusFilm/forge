@@ -75,9 +75,12 @@ function isAnonymousInlineSubtitleRequest(
 ```
 
 After server-side resolution, require the exact
-`https://api-media-core.jesusfilm.org` origin and a `.vtt` pathname. Keep the
-route's generic URL allowlist and fail-closed public-DNS pre-flight as layered
-defenses. Fetch the resolved Core URL with a 10-second timeout and
+`https://api-media-core.jesusfilm.org` origin, a queryless `.vtt` pathname, and
+canonicalize every decoded path segment through `encodeURIComponent` after
+rejecting dot, slash, and backslash segments. This is a real path-traversal
+boundary and the URI-encoding sanitizer that CodeQL's request-forgery model
+recognizes. Keep the route's generic URL allowlist and fail-closed public-DNS
+pre-flight as layered defenses. Fetch the rebuilt Core URL with a 10-second timeout and
 `redirect: "manual"`, then stream it through a hard 2 MiB limit. Do not trust
 `Content-Length` alone: a missing or dishonest header must not allow an
 unbounded buffer. Require a `WEBVTT` signature before returning the body as
@@ -121,8 +124,8 @@ Core response.
   without a WebVTT signature.
 - Never pass a public query-string URL into the server-side VTT `fetch`, even
   behind allowlist and DNS checks. Resolve opaque content identity to the URL
-  server-side, then preserve all origin, DNS, redirect, size, and signature
-  defenses.
+  server-side, rebuild its queryless path from encoded safe segments, then
+  preserve all origin, DNS, redirect, size, and signature defenses.
 
 ## Related Issues
 

@@ -334,6 +334,53 @@ describe("GET /watch/api/download - inline subtitles", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("rejects resolved subtitle URLs with query strings", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target:
+        "https://api-media-core.jesusfilm.org/subtitles/example.vtt?redirect=1",
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("canonicalizes each resolved Core VTT path segment before fetching", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target:
+        "https://api-media-core.jesusfilm.org/subtitles/russian%20captions/example.vtt",
+    })
+    const fetchMock = vi.fn(
+      async () => new Response("WEBVTT\n\n00:00.000 --> 00:01.000\nHello"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/russian%20captions/example.vtt",
+      expect.objectContaining({ redirect: "manual" }),
+    )
+  })
+
   it("rejects oversized VTT subtitle responses", async () => {
     vi.stubGlobal(
       "fetch",

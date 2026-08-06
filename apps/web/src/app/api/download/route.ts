@@ -37,9 +37,7 @@ const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
 const MAX_INLINE_SUBTITLE_BYTES = 2 * 1024 * 1024
 const INLINE_SUBTITLE_TIMEOUT_MS = 10_000
-const INLINE_SUBTITLE_ORIGINS = new Set([
-  "https://api-media-core.jesusfilm.org",
-])
+const INLINE_SUBTITLE_ORIGIN = "https://api-media-core.jesusfilm.org"
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g
@@ -59,15 +57,32 @@ function isAnonymousInlineSubtitleRequest(
   )
 }
 
-function isAllowedInlineSubtitleTarget(target: string): boolean {
+function buildInlineSubtitleFetchUrl(target: string): string | null {
   try {
     const parsed = new URL(target)
-    return (
-      INLINE_SUBTITLE_ORIGINS.has(parsed.origin) &&
-      parsed.pathname.toLowerCase().endsWith(".vtt")
-    )
+    if (parsed.origin !== INLINE_SUBTITLE_ORIGIN || parsed.search) return null
+
+    const encodedSegments = parsed.pathname.split("/").map((rawSegment) => {
+      const segment = decodeURIComponent(rawSegment)
+      if (
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("/") ||
+        segment.includes("\\")
+      ) {
+        throw new Error("invalid subtitle path segment")
+      }
+      return encodeURIComponent(segment)
+    })
+    const encodedPath = encodedSegments.join("/")
+    if (!encodedPath.toLowerCase().endsWith(".vtt")) return null
+
+    // `encodeURIComponent` is both the path-traversal boundary and the
+    // sanitizer recognized by CodeQL's js/request-forgery model. The origin
+    // stays a compile-time constant; public request values never choose it.
+    return `${INLINE_SUBTITLE_ORIGIN}${encodedPath}`
   } catch {
-    return false
+    return null
   }
 }
 
@@ -501,10 +516,9 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (anonymousInlineSubtitleRequest) {
-    if (!isAllowedInlineSubtitleTarget(safeUrl)) {
-      return jsonError("Forbidden", 403)
-    }
-    return proxyInlineSubtitle(safeUrl)
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(inlineSubtitleUrl)
   }
 
   return redirectToTarget(
