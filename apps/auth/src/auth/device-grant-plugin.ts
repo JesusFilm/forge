@@ -5,6 +5,7 @@ import { z } from "zod"
 import { logDeviceEvent } from "@/auth/device-log"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
+import { canActorApproveDevice } from "@/services/device-actor-policy.service"
 import {
   DEVICE_GRANT_TYPE,
   isDeviceGrantEnabled,
@@ -408,6 +409,50 @@ export function deviceGrantPlugin(options: DeviceGrantPluginOptions = {}) {
               "UNAUTHORIZED",
               "unauthorized",
               "Sign in to approve this device.",
+            )
+          }
+
+          // The pending row is read before the write so the actor policy can be
+          // applied against the client the code was issued for. A miss here is
+          // reported the same way a bad code is, so this lookup cannot be used
+          // to distinguish "wrong code" from "not allowed".
+          let pending
+          try {
+            pending = await findPendingByUserCode(prisma, {
+              userCode: ctx.body.user_code,
+            })
+          } catch (error) {
+            if (error instanceof DeviceGrantError) {
+              await recordUserCodeAttempt(prisma, {
+                userCode: ctx.body.user_code,
+              })
+              logDeviceEvent("approve_rejected", {
+                outcome: error.code,
+                userId: session.user.id,
+              })
+              throw toApiError(error)
+            }
+            throw error
+          }
+
+          // /oauth2/authorize refuses to let an AGENT actor authorize a
+          // production client; the device grant is the same decision on a
+          // different surface and must refuse it too.
+          if (
+            !(await canActorApproveDevice(prisma, {
+              userId: session.user.id,
+              clientId: pending.clientId,
+            }))
+          ) {
+            logDeviceEvent("approve_rejected", {
+              outcome: "actor_not_permitted",
+              userId: session.user.id,
+              clientId: pending.clientId,
+            })
+            throw oauthError(
+              "FORBIDDEN",
+              "access_denied",
+              "This account may not approve a device for that application.",
             )
           }
 

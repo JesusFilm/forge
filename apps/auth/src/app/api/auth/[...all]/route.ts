@@ -473,7 +473,9 @@ async function rateLimitDeviceRoute(
   request: Request,
   path: string,
 ): Promise<Response | undefined> {
-  const config = DEVICE_RATE_LIMITS[path]
+  const config = Object.hasOwn(DEVICE_RATE_LIMITS, path)
+    ? DEVICE_RATE_LIMITS[path]
+    : undefined
   if (!config) return undefined
 
   const limit = await rateLimitAuthRoute({
@@ -520,7 +522,9 @@ function withNoStore(response: Response): Response {
 }
 
 function isDeviceGrantPath(path: string): boolean {
-  return path in DEVICE_RATE_LIMITS
+  // Object.hasOwn, not `in`: `in` matches inherited keys, so a request to
+  // /api/auth/toString would be treated as a device route.
+  return Object.hasOwn(DEVICE_RATE_LIMITS, path)
 }
 
 async function enforceAgentOAuthAuthorizePolicy(

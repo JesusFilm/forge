@@ -16,9 +16,16 @@ const MAX_VALUE_LENGTH = 64
 
 export function sanitizeLogValue(value: unknown): string {
   if (value == null) return "none"
-  return String(value)
-    .replace(/[\r\n\t]/g, " ")
-    .slice(0, MAX_VALUE_LENGTH)
+  return (
+    String(value)
+      // Newlines would forge a whole log line; spaces and `=` would forge extra
+      // key=value pairs INSIDE a line, which is the same lie in a smaller
+      // package — a parser faceting on `userId=` would happily read one an
+      // attacker planted in a client id. Collapse every field separator, not
+      // just the line separators.
+      .replace(/[\r\n\t =]/g, "_")
+      .slice(0, MAX_VALUE_LENGTH)
+  )
 }
 
 /**

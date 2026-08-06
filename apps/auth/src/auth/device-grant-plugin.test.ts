@@ -9,7 +9,13 @@ const pollDeviceCode = vi.fn()
 const findPendingByUserCode = vi.fn()
 const recordUserCodeAttempt = vi.fn(async (..._args: unknown[]) => undefined)
 
+const canActorApproveDevice = vi.fn(async (..._args: unknown[]) => true)
+
 vi.mock("@/db/client", () => ({ prisma: {} }))
+
+vi.mock("@/services/device-actor-policy.service", () => ({
+  canActorApproveDevice: (...args: unknown[]) => canActorApproveDevice(...args),
+}))
 
 vi.mock("@/services/device-client.service", async () => {
   const actual = await vi.importActual<
@@ -78,6 +84,16 @@ beforeEach(() => {
   vi.unstubAllEnvs()
   resolveDeviceClient.mockResolvedValue(TV_CLIENT)
   getSessionFromCtx.mockResolvedValue(null)
+  canActorApproveDevice.mockResolvedValue(true)
+  findPendingByUserCode.mockResolvedValue({
+    id: "dc_1",
+    clientId: "jfp_tv_production",
+    scopes: TV_CLIENT.scopes,
+    status: "PENDING",
+    userId: null,
+    expiresAt: new Date(Date.now() + 60_000),
+    attemptCount: 0,
+  })
 })
 
 /**
@@ -282,5 +298,45 @@ describe("token exchange failures never leak the cause", () => {
     expect(logged.join("\n")).toContain("event=token_exchange_failed")
     expect(logged.join("\n")).not.toContain("SECRET")
     void plugin
+  })
+})
+
+describe("actor policy on the approve endpoint", () => {
+  it("refuses an approver the policy rejects, before touching the code", async () => {
+    // /oauth2/authorize refuses an AGENT actor on a production client. The
+    // device grant is the same decision on another surface; without this it
+    // was a way around that gate.
+    const plugin = await loadPlugin()
+    getSessionFromCtx.mockResolvedValueOnce({
+      user: { id: "agent_1" },
+      session: { id: "sess_1" },
+    })
+    canActorApproveDevice.mockResolvedValueOnce(false)
+
+    await expect(
+      plugin.endpoints.deviceGrantApprove(
+        ctx({ body: { user_code: "0194507302" } }) as never,
+      ),
+    ).rejects.toMatchObject({ body: { error: "access_denied" } })
+
+    expect(approveDeviceCode).not.toHaveBeenCalled()
+  })
+
+  it("checks the policy against the client the code was issued for", async () => {
+    const plugin = await loadPlugin()
+    getSessionFromCtx.mockResolvedValueOnce({
+      user: { id: "user_1" },
+      session: { id: "sess_1" },
+    })
+
+    await plugin.endpoints.deviceGrantApprove(
+      ctx({ body: { user_code: "0194507302" } }) as never,
+    )
+
+    expect(canActorApproveDevice).toHaveBeenCalledWith(expect.anything(), {
+      userId: "user_1",
+      clientId: "jfp_tv_production",
+    })
+    expect(approveDeviceCode).toHaveBeenCalled()
   })
 })
