@@ -1,7 +1,9 @@
 import type { TypesenseCollectionSchema } from "./typesense-client"
+import { TYPESENSE_WATCH_TOKENIZER_LOCALES } from "./typesense-watch-search-lexical"
 
 export const TYPESENSE_WATCH_CATALOG_ALIAS = "watch_search_catalog"
 export const TYPESENSE_WATCH_AVAILABILITY_ALIAS = "watch_search_availability"
+export const TYPESENSE_WATCH_LEXICAL_ALIAS = "watch_search_lexical"
 export const TYPESENSE_WATCH_TRANSCRIPT_ALIAS = "watch_search_transcripts"
 export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
 
@@ -81,10 +83,15 @@ export function watchCatalogCollectionSchema(
   return {
     name: physicalName(TYPESENSE_WATCH_CATALOG_ALIAS, buildId),
     fields: [
-      { name: "slug", type: "string" },
-      { name: "titles", type: "string[]" },
+      { name: "slug", type: "string", index: false },
+      { name: "titles", type: "string[]", index: false },
       { name: "localeCodes", type: "string[]", optional: true, index: false },
-      { name: "descriptions", type: "string[]", optional: true },
+      {
+        name: "descriptions",
+        type: "string[]",
+        optional: true,
+        index: false,
+      },
       { name: "audioLanguageSlugs", type: "string[]", facet: true },
       { name: "subtitleLanguageSlugs", type: "string[]", facet: true },
       { name: "childCount", type: "int32" },
@@ -103,6 +110,30 @@ export function watchAvailabilityCollectionSchema(
       { name: "languageSlug", type: "string", facet: true },
       { name: "audio", type: "bool", facet: true },
       { name: "subtitles", type: "bool", facet: true },
+    ],
+  }
+}
+
+export function watchLexicalCollectionSchema(
+  buildId: string,
+): TypesenseCollectionSchema {
+  const localizedFields = TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) =>
+    ["title", "metadata"].map((lane) => ({
+      name: `${lane}_${locale}`,
+      type: "string[]",
+      locale,
+      optional: true,
+    })),
+  )
+  return {
+    name: physicalName(TYPESENSE_WATCH_LEXICAL_ALIAS, buildId),
+    fields: [
+      { name: "videoId", type: "string", facet: true },
+      { name: "canonicalVideoId", type: "string", facet: true },
+      { name: "localeCodes", type: "string[]", facet: true },
+      ...localizedFields,
+      { name: "title_fallback", type: "string[]", optional: true },
+      { name: "metadata_fallback", type: "string[]", optional: true },
     ],
   }
 }

@@ -1,9 +1,15 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { TypesenseClient } from "./typesense-client"
+import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
+import {
+  buildTypesenseWatchLexicalDocuments,
+  estimateTypesenseKeywordMemory,
+} from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+  TYPESENSE_WATCH_LEXICAL_ALIAS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
@@ -13,13 +19,12 @@ import {
   type TypesenseWatchTranscriptDocument,
   watchAvailabilityCollectionSchema,
   watchCatalogCollectionSchema,
+  watchLexicalCollectionSchema,
   watchTranscriptCollectionSchema,
 } from "./typesense-watch-search-schema"
 
 const DEFAULT_BATCH_SIZE = 100
 const TYPESENSE_VECTOR_BYTES_PER_DIMENSION = 7
-const TYPESENSE_DOCUMENT_PAGE_SIZE = 250
-const TYPESENSE_MAX_MULTI_SEARCHES = 50
 
 type SubtitleIndexRow = {
   id: string
@@ -42,12 +47,17 @@ type TranscriptIndexRow = {
 export type TypesenseWatchSearchIndexStats = {
   catalogDocuments: number
   availabilityDocuments: number
+  lexicalDocuments: number
+  lexicalSearchableBytes: number
+  estimatedKeywordMemoryLowBytes: number
+  estimatedKeywordMemoryHighBytes: number
   videoDocuments: number
   transcriptDocuments: number
   publicTranscriptDocuments: number
   estimatedVectorMemoryBytes: number
   catalogCollection: string
   availabilityCollection: string
+  lexicalCollection: string
   transcriptCollection: string
   transcriptReused: boolean
   hybridReady: boolean
@@ -60,6 +70,7 @@ export type TypesenseWatchSearchTranscriptStrategy = "reuse" | "rebuild"
 const MANAGED_COLLECTION_PREFIXES = [
   `${TYPESENSE_WATCH_CATALOG_ALIAS}_`,
   `${TYPESENSE_WATCH_AVAILABILITY_ALIAS}_`,
+  `${TYPESENSE_WATCH_LEXICAL_ALIAS}_`,
   `${TYPESENSE_WATCH_TRANSCRIPT_ALIAS}_`,
 ] as const
 
@@ -144,37 +155,7 @@ export function parseTypesenseVector(value: string): number[] {
   return embedding
 }
 
-export function canonicalTypesenseVideoId(
-  videoId: string,
-  coreId: string | null,
-): string {
-  const normalizedCoreId = coreId?.trim().toLocaleLowerCase()
-  if (!normalizedCoreId) return `video:${videoId}`
-  const canonicalCoreId = normalizedCoreId.replace(
-    /(?:[-_.]?ad)?[-_.]?(?:1x1|9x16|16x9)$/i,
-    "",
-  )
-  return `core:${canonicalCoreId || normalizedCoreId}`
-}
-
-export function buildTypesenseWatchVideoDocuments(
-  catalog: readonly TypesenseWatchCatalogDocument[],
-  catalogGeneration: string,
-): TypesenseWatchTranscriptDocument[] {
-  return catalog.map((document) => ({
-    id: `video:${document.id}`,
-    documentKind: "video",
-    videoId: document.id,
-    canonicalVideoId: canonicalTypesenseVideoId(document.id, document.coreId),
-    language: "__catalog__",
-    publiclyVisible: true,
-    titles: document.titles,
-    descriptions: document.descriptions,
-    catalogGeneration,
-    text: "",
-    startSeconds: null,
-  }))
-}
+export { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 
 function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
   const result = new Map<string, TypesenseWatchSubtitleOption[]>()
@@ -448,98 +429,6 @@ async function loadTranscriptBatch(
   `)
 }
 
-async function loadVideoSearchDocuments(
-  typesense: TypesenseClient,
-  collection: string,
-): Promise<TypesenseWatchTranscriptDocument[]> {
-  const request = (page: number) => ({
-    collection,
-    q: "*",
-    filter_by: "documentKind:=video",
-    page,
-    per_page: TYPESENSE_DOCUMENT_PAGE_SIZE,
-    include_fields:
-      "id,documentKind,videoId,canonicalVideoId,language,publiclyVisible,titles,descriptions,catalogGeneration,text,startSeconds",
-  })
-  const [firstPage] =
-    await typesense.multiSearch<TypesenseWatchTranscriptDocument>([request(1)])
-  const documents = (firstPage?.hits ?? []).map((hit) => hit.document)
-  const pageCount = Math.ceil(
-    (firstPage?.found ?? 0) / TYPESENSE_DOCUMENT_PAGE_SIZE,
-  )
-  for (
-    let firstPageNumber = 2;
-    firstPageNumber <= pageCount;
-    firstPageNumber += TYPESENSE_MAX_MULTI_SEARCHES
-  ) {
-    const lastPageNumber = Math.min(
-      pageCount,
-      firstPageNumber + TYPESENSE_MAX_MULTI_SEARCHES - 1,
-    )
-    const pages = await typesense.multiSearch<TypesenseWatchTranscriptDocument>(
-      Array.from(
-        { length: lastPageNumber - firstPageNumber + 1 },
-        (_value, index) => request(firstPageNumber + index),
-      ),
-    )
-    documents.push(
-      ...pages.flatMap((page) => (page.hits ?? []).map((hit) => hit.document)),
-    )
-  }
-  return documents
-}
-
-type TranscriptTitleMutation = {
-  videoId: string
-  previousTitles: string[]
-  currentTitles: string[]
-}
-
-function sameTitles(
-  left: readonly string[] | undefined,
-  right: readonly string[] | undefined,
-): boolean {
-  const leftTitles = left ?? []
-  const rightTitles = right ?? []
-  return (
-    leftTitles.length === rightTitles.length &&
-    leftTitles.every((title, index) => title === rightTitles[index])
-  )
-}
-
-function transcriptTitleMutations(
-  previousDocuments: readonly TypesenseWatchTranscriptDocument[],
-  currentDocuments: readonly TypesenseWatchTranscriptDocument[],
-): TranscriptTitleMutation[] {
-  const previousByVideoId = new Map(
-    previousDocuments.map((document) => [document.videoId, document] as const),
-  )
-  const currentByVideoId = new Map(
-    currentDocuments.map((document) => [document.videoId, document] as const),
-  )
-  const videoIds = new Set([
-    ...previousByVideoId.keys(),
-    ...currentByVideoId.keys(),
-  ])
-  const mutations: TranscriptTitleMutation[] = []
-  for (const videoId of videoIds) {
-    const previousTitles = previousByVideoId.get(videoId)?.titles ?? []
-    const currentTitles = currentByVideoId.get(videoId)?.titles ?? []
-    if (!sameTitles(previousTitles, currentTitles)) {
-      mutations.push({ videoId, previousTitles, currentTitles })
-    }
-  }
-  return mutations
-}
-
-function quoteTypesenseFilterValue(value: string): string {
-  return `\`${value.replaceAll("\\", "\\\\").replaceAll("`", "\\`")}\``
-}
-
-function transcriptVideoFilter(videoId: string): string {
-  return `documentKind:=transcript && videoId:=${quoteTypesenseFilterValue(videoId)}`
-}
-
 export async function rebuildTypesenseWatchSearchIndex({
   prisma,
   typesense,
@@ -556,6 +445,8 @@ export async function rebuildTypesenseWatchSearchIndex({
   onProgress?: (stats: {
     catalogDocuments: number
     availabilityDocuments: number
+    lexicalDocuments: number
+    lexicalSearchableBytes: number
     transcriptDocuments: number
     transcriptReused: boolean
   }) => void
@@ -567,16 +458,19 @@ export async function rebuildTypesenseWatchSearchIndex({
   }
   const catalogSchema = watchCatalogCollectionSchema(buildId)
   const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
+  const lexicalSchema = watchLexicalCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
   const [
     existingCollections,
     previousCatalogAlias,
     previousAvailabilityAlias,
+    previousLexicalAlias,
     previousTranscriptAlias,
   ] = await Promise.all([
     typesense.listCollections(),
     typesense.getAlias(TYPESENSE_WATCH_CATALOG_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_AVAILABILITY_ALIAS),
+    typesense.getAlias(TYPESENSE_WATCH_LEXICAL_ALIAS),
     typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
   ])
   const existingManagedCollections = existingCollections
@@ -596,18 +490,17 @@ export async function rebuildTypesenseWatchSearchIndex({
     : true
   let catalogDocuments = 0
   let availabilityDocuments = 0
-  let videoDocuments = 0
+  let lexicalDocuments = 0
+  let lexicalSearchableBytes = 0
+  let estimatedKeywordMemoryLowBytes = 0
+  let estimatedKeywordMemoryHighBytes = 0
+  const videoDocuments = 0
   let transcriptDocuments = 0
   let publicTranscriptDocuments = 0
   let catalogAliasUpdated = false
   let availabilityAliasUpdated = false
+  let lexicalAliasUpdated = false
   let transcriptAliasUpdated = false
-  let videoDocumentsMutated = false
-  const appliedTranscriptTitleMutations: TranscriptTitleMutation[] = []
-  const previousVideoDocuments =
-    transcriptReused && hybridReady
-      ? await loadVideoSearchDocuments(typesense, transcriptCollection)
-      : []
 
   if (transcriptReused) {
     const [allTranscripts, publicTranscripts] = await typesense.multiSearch([
@@ -635,11 +528,17 @@ export async function rebuildTypesenseWatchSearchIndex({
   await typesense.createCollection(catalogSchema)
   try {
     await typesense.createCollection(availabilitySchema)
+    await typesense.createCollection(lexicalSchema)
     if (!transcriptReused) {
       await typesense.createCollection(transcriptSchema)
     }
     const catalog = await buildCatalogDocuments(prisma)
     const availability = buildAvailabilityDocuments(catalog)
+    const lexical = buildTypesenseWatchLexicalDocuments(catalog)
+    const keywordMemory = estimateTypesenseKeywordMemory(lexical)
+    lexicalSearchableBytes = keywordMemory.searchableBytes
+    estimatedKeywordMemoryLowBytes = keywordMemory.estimatedRamLowBytes
+    estimatedKeywordMemoryHighBytes = keywordMemory.estimatedRamHighBytes
     for (let index = 0; index < catalog.length; index += batchSize) {
       const batch = catalog.slice(index, index + batchSize)
       await typesense.importDocuments(catalogSchema.name, batch)
@@ -647,6 +546,8 @@ export async function rebuildTypesenseWatchSearchIndex({
       onProgress?.({
         catalogDocuments,
         availabilityDocuments,
+        lexicalDocuments,
+        lexicalSearchableBytes,
         transcriptDocuments,
         transcriptReused,
       })
@@ -658,56 +559,27 @@ export async function rebuildTypesenseWatchSearchIndex({
       onProgress?.({
         catalogDocuments,
         availabilityDocuments,
+        lexicalDocuments,
+        lexicalSearchableBytes,
+        transcriptDocuments,
+        transcriptReused,
+      })
+    }
+    for (let index = 0; index < lexical.length; index += batchSize) {
+      const batch = lexical.slice(index, index + batchSize)
+      await typesense.importDocuments(lexicalSchema.name, batch)
+      lexicalDocuments += batch.length
+      onProgress?.({
+        catalogDocuments,
+        availabilityDocuments,
+        lexicalDocuments,
+        lexicalSearchableBytes,
         transcriptDocuments,
         transcriptReused,
       })
     }
 
-    if (hybridReady) {
-      const videoSearchDocuments = buildTypesenseWatchVideoDocuments(
-        catalog,
-        catalogSchema.name,
-      )
-      for (
-        let index = 0;
-        index < videoSearchDocuments.length;
-        index += batchSize
-      ) {
-        const batch = videoSearchDocuments.slice(index, index + batchSize)
-        videoDocumentsMutated = transcriptReused
-        await typesense.importDocuments(
-          transcriptCollection,
-          batch,
-          transcriptReused ? "upsert" : "create",
-        )
-        videoDocuments += batch.length
-      }
-      if (transcriptReused) {
-        videoDocumentsMutated = true
-        await typesense.deleteDocumentsByFilter(
-          transcriptCollection,
-          `documentKind:=video && catalogGeneration:!=\`${catalogSchema.name}\``,
-        )
-        for (const mutation of transcriptTitleMutations(
-          previousVideoDocuments,
-          videoSearchDocuments,
-        )) {
-          // Record intent before the request so rollback also covers a request
-          // that partly succeeded before the client observed a failure.
-          appliedTranscriptTitleMutations.push(mutation)
-          await typesense.updateDocumentsByFilter(
-            transcriptCollection,
-            transcriptVideoFilter(mutation.videoId),
-            { titles: mutation.currentTitles },
-          )
-        }
-      }
-    }
-
     if (!transcriptReused) {
-      const catalogByVideoId = new Map(
-        catalog.map((document) => [document.id, document] as const),
-      )
       let afterId: string | null = null
       for (;;) {
         const rows = await loadTranscriptBatch(prisma, afterId, batchSize)
@@ -723,7 +595,6 @@ export async function rebuildTypesenseWatchSearchIndex({
             ),
             language: row.language,
             publiclyVisible: row.publiclyVisible,
-            titles: catalogByVideoId.get(row.videoId)?.titles,
             text: row.text,
             startSeconds:
               row.startSeconds == null ? null : Number(row.startSeconds),
@@ -739,6 +610,8 @@ export async function rebuildTypesenseWatchSearchIndex({
         onProgress?.({
           catalogDocuments,
           availabilityDocuments,
+          lexicalDocuments,
+          lexicalSearchableBytes,
           transcriptDocuments,
           transcriptReused,
         })
@@ -750,6 +623,11 @@ export async function rebuildTypesenseWatchSearchIndex({
       availabilitySchema.name,
     )
     availabilityAliasUpdated = true
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
+      lexicalSchema.name,
+    )
+    lexicalAliasUpdated = true
     if (!transcriptReused) {
       await typesense.upsertAlias(
         TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
@@ -763,45 +641,6 @@ export async function rebuildTypesenseWatchSearchIndex({
     )
     catalogAliasUpdated = true
   } catch (error) {
-    const reusedTranscriptRestoreErrors: unknown[] = []
-    for (
-      let index = appliedTranscriptTitleMutations.length - 1;
-      index >= 0;
-      index -= 1
-    ) {
-      const mutation = appliedTranscriptTitleMutations[index]
-      if (!mutation) continue
-      try {
-        await typesense.updateDocumentsByFilter(
-          transcriptCollection,
-          transcriptVideoFilter(mutation.videoId),
-          { titles: mutation.previousTitles },
-        )
-      } catch (restoreError) {
-        reusedTranscriptRestoreErrors.push(restoreError)
-      }
-    }
-    if (videoDocumentsMutated) {
-      try {
-        for (
-          let index = 0;
-          index < previousVideoDocuments.length;
-          index += batchSize
-        ) {
-          await typesense.importDocuments(
-            transcriptCollection,
-            previousVideoDocuments.slice(index, index + batchSize),
-            "upsert",
-          )
-        }
-        await typesense.deleteDocumentsByFilter(
-          transcriptCollection,
-          `documentKind:=video && catalogGeneration:=\`${catalogSchema.name}\``,
-        )
-      } catch (restoreError) {
-        reusedTranscriptRestoreErrors.push(restoreError)
-      }
-    }
     const restoreAlias = async (
       alias: string,
       previousCollection: string | undefined,
@@ -819,24 +658,33 @@ export async function rebuildTypesenseWatchSearchIndex({
         return false
       }
     }
-    const [catalogRestored, availabilityRestored, transcriptRestored] =
-      await Promise.all([
-        restoreAlias(
-          TYPESENSE_WATCH_CATALOG_ALIAS,
-          previousCatalogAlias?.collection_name,
-          catalogAliasUpdated,
-        ),
-        restoreAlias(
-          TYPESENSE_WATCH_AVAILABILITY_ALIAS,
-          previousAvailabilityAlias?.collection_name,
-          availabilityAliasUpdated,
-        ),
-        restoreAlias(
-          TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
-          previousTranscriptAlias?.collection_name,
-          transcriptAliasUpdated,
-        ),
-      ])
+    const [
+      catalogRestored,
+      availabilityRestored,
+      lexicalRestored,
+      transcriptRestored,
+    ] = await Promise.all([
+      restoreAlias(
+        TYPESENSE_WATCH_CATALOG_ALIAS,
+        previousCatalogAlias?.collection_name,
+        catalogAliasUpdated,
+      ),
+      restoreAlias(
+        TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+        previousAvailabilityAlias?.collection_name,
+        availabilityAliasUpdated,
+      ),
+      restoreAlias(
+        TYPESENSE_WATCH_LEXICAL_ALIAS,
+        previousLexicalAlias?.collection_name,
+        lexicalAliasUpdated,
+      ),
+      restoreAlias(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        previousTranscriptAlias?.collection_name,
+        transcriptAliasUpdated,
+      ),
+    ])
     await Promise.allSettled([
       ...(catalogRestored
         ? [typesense.deleteCollection(catalogSchema.name)]
@@ -847,19 +695,17 @@ export async function rebuildTypesenseWatchSearchIndex({
       ...(availabilityRestored
         ? [typesense.deleteCollection(availabilitySchema.name)]
         : []),
+      ...(lexicalRestored
+        ? [typesense.deleteCollection(lexicalSchema.name)]
+        : []),
     ])
-    if (reusedTranscriptRestoreErrors.length > 0) {
-      throw new AggregateError(
-        [error, ...reusedTranscriptRestoreErrors],
-        "Typesense index publication and reused-transcript rollback both failed",
-      )
-    }
     throw error
   }
 
   const activeCollections = new Set([
     catalogSchema.name,
     availabilitySchema.name,
+    lexicalSchema.name,
     transcriptCollection,
   ])
   const collectionsToRetire = existingManagedCollections.filter(
@@ -891,6 +737,10 @@ export async function rebuildTypesenseWatchSearchIndex({
   return {
     catalogDocuments,
     availabilityDocuments,
+    lexicalDocuments,
+    lexicalSearchableBytes,
+    estimatedKeywordMemoryLowBytes,
+    estimatedKeywordMemoryHighBytes,
     videoDocuments,
     transcriptDocuments,
     publicTranscriptDocuments,
@@ -898,6 +748,7 @@ export async function rebuildTypesenseWatchSearchIndex({
       estimateTypesenseVectorMemoryBytes(transcriptDocuments),
     catalogCollection: catalogSchema.name,
     availabilityCollection: availabilitySchema.name,
+    lexicalCollection: lexicalSchema.name,
     transcriptCollection,
     transcriptReused,
     hybridReady,

@@ -135,7 +135,7 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
       transcriptStrategy,
       onProgress: (progress) => {
         process.stdout.write(
-          `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} transcripts=${progress.transcriptDocuments} transcriptReused=${progress.transcriptReused}\n`,
+          `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} lexical=${progress.lexicalDocuments} lexicalBytes=${progress.lexicalSearchableBytes} transcripts=${progress.transcriptDocuments} transcriptReused=${progress.transcriptReused}\n`,
         )
       },
     }),

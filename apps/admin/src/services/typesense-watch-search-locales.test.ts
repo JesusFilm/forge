@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   displayPreviewLocale,
+  watchLexicalQueryFields,
   type TypesenseWatchCatalogPreviewDocument,
 } from "./typesense-watch-search-locales"
 
@@ -65,5 +66,17 @@ describe("displayPreviewLocale", () => {
         "fr",
       ),
     ).toMatchObject({ locale: "fr", title: "Francais" })
+  })
+})
+
+describe("watchLexicalQueryFields", () => {
+  it.each([
+    ["en", "title", ["title_en", "title_fallback"]],
+    ["zh-Hans", "title", ["title_zh", "title_fallback"]],
+    ["th-TH", "metadata", ["metadata_th", "metadata_fallback"]],
+    ["fil", "title", ["title_fallback"]],
+    ["unknown", "metadata", ["metadata_fallback"]],
+  ] as const)("bounds %s %s retrieval fields", (locale, lane, expected) => {
+    expect(watchLexicalQueryFields(locale, lane)).toEqual(expected)
   })
 })

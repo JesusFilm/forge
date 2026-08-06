@@ -299,6 +299,28 @@ devotionals, experiences, or related-content sections and defaults to Hybrid
 Search. `semantic-diagnostic` isolates semantic retrieval quality and only runs
 with Semantic-Only Search.
 
+### Absolute Search Gate
+
+The release qualification for a Search Serving Index candidate based on
+whether its results satisfy public-search intent, independent of resemblance to
+the established Search Pipeline Mode.
+
+An Absolute Search Gate binds a frozen query set and reviewed canonical
+relevance judgments to one Search Candidate Identity. Deterministic relevance,
+language, duplication, degradation, latency, and capacity evidence must agree
+with pointwise judgment and named operator review before the candidate can
+become a baseline.
+
+### Search Candidate Identity
+
+The immutable identity of one search release candidate: the Admin application
+revision plus the physical catalog, availability, lexical, and transcript
+Search Serving Index generations evaluated with it.
+
+Release evidence fails closed when this identity is absent or when responses
+show more than one application revision, so a deploy or index publication
+cannot silently mix candidates inside one Absolute Search Gate.
+
 ### Watch Search Analytics
 
 Datadog product observability for viewer-facing Watch search. Watch

@@ -43,20 +43,19 @@ compared directly without changing the production path.
 
 ## What To Build
 
-1. Add a small Typesense HTTP client and versioned catalog, per-language
-   availability, and transcript collection schemas using collection aliases
-   for reversible full rebuilds.
+1. Add a small Typesense HTTP client and versioned catalog, localized lexical,
+   per-language availability, and transcript collection schemas using aliases
+   for reversible publication.
 2. Add an Admin indexer that exports the viewer-safe catalog projection plus
    the broad native transcript-vector corpus. Store explicit transcript
    visibility so public Watch Search can filter without discarding semantic
    evidence needed by other authorized consumers.
-3. Add a Typesense Watch Search service that performs one native hybrid,
-   canonically grouped candidate query, hydrates results only from the
-   precomputed catalog, and returns the existing `WatchSearchResponse`
-   contract. Final hydration requests only target/fallback availability
-   records instead of transferring every language option stored on each
-   catalog document. Lexical-only degradation remains available when query
-   embedding misses its deadline.
+3. Add a Typesense Watch Search service that sends localized title, localized
+   metadata, and canonically grouped semantic-vector searches in one
+   multi-search request, fuses them 70% lexical / 30% semantic in Admin,
+   hydrates only the bounded catalog/availability projection, and returns the
+   existing `WatchSearchResponse` contract. Lexical-only degradation remains
+   available when query embedding misses its deadline.
 4. Add an optional `mode: DEFAULT | MODERN` input to `watchSearch`; omitted or
    `DEFAULT` keeps the current backend and `MODERN` selects Typesense.
 5. Add local setup and benchmark commands that restore the latest full
@@ -79,7 +78,9 @@ compared directly without changing the production path.
 
 ## Verification
 
-- Restore and index the latest `video-search` snapshot locally without Docker.
+- Keep production-sized indexing off developer machines; use small unit
+  fixtures locally and the isolated `@forge/admin/search` service for the full
+  corpus.
 - `communion` in French returns `La communion des croyants` from Typesense.
 - Generic semantic queries return transcript-backed results with semantic
   evidence even when metadata does not contain the query terms.
@@ -99,8 +100,9 @@ rollback requirements are recorded in
 `docs/operations/typesense-watch-search-production-readiness.md`.
 
 The 2026-08-04 production audit found 280,107 accepted native vectors and 1,175
-viewer-visible catalog documents. The broad-corpus rebuild and benchmark on the
-isolated `@forge/admin/search` shadow service remain rollout gates. `DEFAULT`
+viewer-visible catalog documents. The transcript-reusing multilingual lexical
+refresh and benchmark on the isolated `@forge/admin/search` shadow service
+remain rollout gates. `DEFAULT`
 must remain unchanged until that run, production-shaped load evidence,
 synchronization evidence, and the documented sub-200 ms full-round-trip gate
 all pass.

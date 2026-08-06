@@ -21,7 +21,7 @@ import {
 } from "./artifacts"
 import {
   createOfflineSearchEvalJudge,
-  type OfflineSearchEvalJudge,
+  type OfflineSearchEvalPairwiseJudge,
 } from "./judge"
 import { collapseSwapVerdicts, finalizeReport, hashQuery } from "./report"
 import {
@@ -108,7 +108,7 @@ type RunnerOptions = {
   timeoutMs?: number
   fetchImpl?: typeof fetch
   artifactStore?: SearchEvalArtifactStore
-  judge?: OfflineSearchEvalJudge
+  judge?: OfflineSearchEvalPairwiseJudge
   now?: () => Date
   runId?: string
   searchClient?: typeof callAdminEvalSearch
@@ -504,7 +504,7 @@ async function exploratoryGeneratedOutcomes(
 }
 
 async function calibrateJudge(
-  judge: OfflineSearchEvalJudge,
+  judge: OfflineSearchEvalPairwiseJudge,
   baselineCases: readonly BaselineCase[],
   callerTrack: SearchEvalCallerTrack,
 ): Promise<{
@@ -545,7 +545,7 @@ async function compareBaselineCases({
 }: {
   baselineCases: readonly BaselineCase[]
   input: PreparedOfflineSearchEvalInput
-  judge: OfflineSearchEvalJudge
+  judge: OfflineSearchEvalPairwiseJudge
   options: RunnerOptions
   timing: SearchTiming
 }): Promise<
