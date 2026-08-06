@@ -46,6 +46,7 @@ import {
 } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import { searchWatchDirect } from "@/lib/watch-search-client"
+import { fetchWatchSearchSuggestions } from "@/lib/watch-search-suggestions-client"
 import {
   __resetWatchInteractionLoaderForTests,
   __setWatchInteractionLoadersForTests,
@@ -92,6 +93,10 @@ vi.mock("@/lib/search-actions", () => ({
 
 vi.mock("@/lib/watch-search-client", () => ({
   searchWatchDirect: vi.fn(),
+}))
+
+vi.mock("@/lib/watch-search-suggestions-client", () => ({
+  fetchWatchSearchSuggestions: vi.fn(),
 }))
 
 vi.mock("@/lib/search-language-actions", () => ({
@@ -148,10 +153,14 @@ vi.mock("@/components/watch/GlobalLanguagePickerModal", () => ({
 
 let container: HTMLDivElement
 let root: Root
+const mockedRunSearch = vi.mocked(searchWatchDirect)
+const mockedFetchSuggestions = vi.mocked(fetchWatchSearchSuggestions)
+const mockedGetSearchLanguageOptions = vi.mocked(getSearchLanguageOptions)
 
 beforeEach(() => {
   setRequestLocale("en")
   vi.clearAllMocks()
+  mockedFetchSuggestions.mockResolvedValue([])
   __resetWatchInteractionLoaderForTests()
   resetSearchLanguageOptionsCacheForTest()
   navigationMocks.pathname = "/"
@@ -173,9 +182,6 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
-
-const mockedRunSearch = vi.mocked(searchWatchDirect)
-const mockedGetSearchLanguageOptions = vi.mocked(getSearchLanguageOptions)
 
 const englishSearchLanguage = {
   englishName: "English",
@@ -2457,6 +2463,247 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({ query: "jesus" }),
     )
+  })
+
+  it("debounces title suggestions after two meaningful characters in the selected language", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus", "Jesus Wept"])
+
+    const input = await openSearchOverlay()
+
+    act(() => {
+      setInputValue(input, "j")
+      vi.advanceTimersByTime(180)
+    })
+    expect(mockedFetchSuggestions).not.toHaveBeenCalled()
+
+    act(() => {
+      setInputValue(input, "je")
+      vi.advanceTimersByTime(179)
+    })
+    expect(mockedFetchSuggestions).not.toHaveBeenCalled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(1)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(mockedFetchSuggestions).toHaveBeenCalledWith({
+      query: "je",
+      languageSlug: "english",
+      signal: expect.any(AbortSignal),
+    })
+    expect(input.getAttribute("role")).toBe("combobox")
+    expect(input.getAttribute("aria-autocomplete")).toBe("list")
+    expect(input.getAttribute("aria-expanded")).toBe("true")
+    expect(input.getAttribute("aria-controls")).toBeTruthy()
+    expect(input.getAttribute("aria-busy")).toBe("false")
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(
+      Array.from(document.querySelectorAll('[role="option"]')).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["Jesus", "Jesus Wept"])
+  })
+
+  it("fills the draft from a keyboard suggestion without searching until explicit submit", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus Wept"])
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    const input = await openSearchOverlay()
+    act(() => {
+      setInputValue(input, "je")
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+    })
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(input.value).toBe("Jesus Wept")
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      input.form?.requestSubmit()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus Wept" }),
+    )
+  })
+
+  it("aborts superseded suggestion requests and ignores stale responses", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const first = deferred<string[]>()
+    const second = deferred<string[]>()
+    mockedFetchSuggestions
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+
+    const input = await openSearchOverlay()
+    act(() => {
+      setInputValue(input, "je")
+      vi.advanceTimersByTime(180)
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    const firstSignal = mockedFetchSuggestions.mock.calls[0]?.[0].signal
+
+    act(() => {
+      setInputValue(input, "jes")
+      vi.advanceTimersByTime(180)
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(firstSignal?.aborted).toBe(true)
+
+    await act(async () => {
+      second.resolve(["Jesus"])
+      await second.promise
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain("Jesus")
+
+    await act(async () => {
+      first.resolve(["Jerusalem"])
+      await first.promise
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).not.toContain("Jerusalem")
+    expect(document.body.textContent).toContain("Jesus")
+  })
+
+  it("defers suggestions during composition and lets Escape dismiss suggestions before the modal", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [japaneseSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: japaneseSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedFetchSuggestions.mockResolvedValueOnce(["日本語"])
+
+    const input = await openSearchOverlay()
+    act(() => {
+      input.dispatchEvent(
+        new CompositionEvent("compositionstart", { bubbles: true }),
+      )
+      setInputValue(input, "日本")
+      vi.advanceTimersByTime(180)
+    })
+    expect(mockedFetchSuggestions).not.toHaveBeenCalled()
+
+    const composingEnter = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+      isComposing: true,
+    })
+    act(() => {
+      input.dispatchEvent(composingEnter)
+    })
+    expect(composingEnter.defaultPrevented).toBe(true)
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+
+    act(() => {
+      input.dispatchEvent(
+        new CompositionEvent("compositionend", { bubbles: true }),
+      )
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "日本", languageSlug: "japanese" }),
+    )
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    })
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    })
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]')
+        ?.className,
+    ).toContain("animate-overlay-fade-out")
+  })
+
+  it("selects a pointer suggestion without moving focus or submitting search", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus"])
+
+    const input = await openSearchOverlay()
+    act(() => {
+      setInputValue(input, "je")
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const option = document.querySelector('[role="option"]')
+    const pointerDown = new MouseEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+    })
+    act(() => {
+      option?.dispatchEvent(pointerDown)
+    })
+
+    expect(pointerDown.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(input)
+    expect(input.value).toBe("Jesus")
+    expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
   it("keeps no-results copy tied to the last submitted query", async () => {

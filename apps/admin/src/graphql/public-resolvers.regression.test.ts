@@ -29,6 +29,7 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "experienceBySlug",
   "searchExperiences",
   "watchSearch",
+  "watchSearchSuggestions",
   "recordWatchSearchEvent",
   "sceneRecommendations",
   // consumer-migration U2 (2026-05-11) — see

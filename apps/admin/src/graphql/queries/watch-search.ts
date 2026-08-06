@@ -12,6 +12,7 @@ import type {
 } from "@/services/watch-search.service"
 import { recordWatchSearchTraceSafely } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
+import type { WatchSearchSuggestionInput } from "@/services/typesense-watch-search-suggestions"
 
 const WatchSearchResultTypeEnum = builder.enumType("WatchSearchResultType", {
   values: {
@@ -103,6 +104,16 @@ const WatchSearchInput = builder.inputType("WatchSearchInput", {
     }),
   }),
 })
+
+const WatchSearchSuggestionsInput = builder.inputType(
+  "WatchSearchSuggestionsInput",
+  {
+    fields: (t) => ({
+      query: t.string({ required: true }),
+      languageSlug: t.string({ required: true }),
+    }),
+  },
+)
 
 const WatchSearchLanguageInterpretationRef = builder
   .objectRef<WatchSearchLanguageInterpretation>(
@@ -266,6 +277,20 @@ const WatchSearchResponseRef = builder
   })
 
 builder.queryFields((t) => ({
+  watchSearchSuggestions: t.field({
+    type: ["String"],
+    authScopes: { public: true },
+    description:
+      "Return bounded language-aware Watch title completions without running full search.",
+    args: {
+      input: t.arg({ type: WatchSearchSuggestionsInput, required: true }),
+    },
+    resolve: (_root, args, ctx) => {
+      const service = ctx.services.typesenseWatchSearchSuggestions
+      if (!service) return []
+      return service.suggest(args.input as WatchSearchSuggestionInput)
+    },
+  }),
   watchSearch: t.field({
     type: WatchSearchResponseRef,
     authScopes: { public: true },

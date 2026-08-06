@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import {
-  TypesenseClient,
   TypesenseRequestError,
+  type TypesenseClient,
   type TypesenseSearchGroup,
   type TypesenseSearchHit,
   type TypesenseSearchRequest,
 } from "./typesense-client"
+import { createConfiguredTypesenseClient } from "./typesense-client-config"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -1563,13 +1564,8 @@ export class TypesenseWatchSearchService {
 export function createTypesenseWatchSearchService(
   prisma: PrismaClient,
 ): TypesenseWatchSearchService | null {
-  const host = process.env.TYPESENSE_HOST
-  const apiKey = process.env.TYPESENSE_API_KEY
-  if (!host || !apiKey) return null
-  return new TypesenseWatchSearchService(
-    prisma,
-    new TypesenseClient({ host, apiKey, timeoutMs: 2_000 }),
-  )
+  const client = createConfiguredTypesenseClient()
+  return client ? new TypesenseWatchSearchService(prisma, client) : null
 }
 
 export function isTypesenseUnavailable(error: unknown): boolean {

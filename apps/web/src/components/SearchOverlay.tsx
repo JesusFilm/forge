@@ -3,11 +3,16 @@
 import {
   useCallback,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
+import { createPortal } from "react-dom"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { X } from "lucide-react"
@@ -55,6 +60,31 @@ import type { SearchLanguageOption } from "@/lib/search-language"
 import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
+import { fetchWatchSearchSuggestions } from "@/lib/watch-search-suggestions-client"
+
+const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
+const SEARCH_SUGGESTIONS_MAX_HEIGHT = 220
+const SEARCH_SUGGESTIONS_MIN_ROW_HEIGHT = 44
+const SEARCH_SUGGESTIONS_VIEWPORT_GAP = 8
+const SEARCH_SUGGESTIONS_VIEWPORT_PADDING = 16
+const MEANINGFUL_SEARCH_CHARACTER = /[\p{L}\p{N}]/u
+
+type SuggestionListPosition = Pick<
+  CSSProperties,
+  "left" | "top" | "width" | "maxHeight"
+> & {
+  placement: "above" | "below"
+}
+
+function hasEnoughMeaningfulSearchCharacters(value: string): boolean {
+  let count = 0
+  for (const character of value) {
+    if (MEANINGFUL_SEARCH_CHARACTER.test(character) && ++count >= 2) {
+      return true
+    }
+  }
+  return false
+}
 
 const CATEGORY_TITLE_KEYS: Record<
   CategorySearchTerm,
@@ -103,6 +133,7 @@ export function SearchOverlay() {
     languageOptionsLoading,
     languageOptionsError,
     selectedSearchLanguageOption,
+    defaultSearchLanguageOption,
     searchResultAnalytics,
     headerLanguageSwitcherVisible,
     headerLanguageCode,
@@ -119,12 +150,29 @@ export function SearchOverlay() {
   const [closePortalContainer, setClosePortalContainer] =
     useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fieldShellRef = useRef<HTMLDivElement>(null)
+  const suggestionListRef = useRef<HTMLUListElement>(null)
+  const suggestionListId = `${useId()}-search-suggestions`
   const recordedResultClickKeysRef = useRef<Set<string>>(new Set())
   const recordedResultsViewedKeysRef = useRef<Map<string, Set<string>>>(
     new Map(),
   )
   const [languageAutocompleteOpen, setLanguageAutocompleteOpen] =
     useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<
+    number | null
+  >(null)
+  const [isComposing, setIsComposing] = useState(false)
+  const [suppressedSuggestionValue, setSuppressedSuggestionValue] = useState<
+    string | null
+  >(null)
+  const [suggestionListPosition, setSuggestionListPosition] =
+    useState<SuggestionListPosition | null>(null)
+  const clearSuggestionRows = useCallback(() => {
+    setSuggestions((current) => (current.length === 0 ? current : []))
+  }, [])
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
     overlayRef.current = node
@@ -132,6 +180,158 @@ export function SearchOverlay() {
   }, [])
 
   useFloatingSearchInputAutofocus(open, inputRef)
+
+  const suggestionLanguageSlug =
+    selectedSearchLanguageOption?.publicSlug ??
+    defaultSearchLanguageOption?.publicSlug ??
+    null
+
+  useEffect(() => {
+    const trimmedQuery = query.trim()
+    const eligible =
+      open &&
+      !isComposing &&
+      suggestionLanguageSlug != null &&
+      hasEnoughMeaningfulSearchCharacters(trimmedQuery) &&
+      trimmedQuery !== submittedQuery?.trim() &&
+      query !== suppressedSuggestionValue
+
+    if (!eligible || suggestionLanguageSlug == null) return
+
+    const controller = new AbortController()
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      if (cancelled) return
+      setSuggestionsLoading(true)
+      void fetchWatchSearchSuggestions({
+        query: trimmedQuery,
+        languageSlug: suggestionLanguageSlug,
+        signal: controller.signal,
+      })
+        .then((nextSuggestions) => {
+          if (cancelled) return
+          setSuggestions((current) =>
+            current.length === 0 && nextSuggestions.length === 0
+              ? current
+              : nextSuggestions,
+          )
+        })
+        .catch(() => {
+          if (cancelled) return
+          clearSuggestionRows()
+        })
+        .finally(() => {
+          if (cancelled) return
+          setSuggestionsLoading(false)
+        })
+    }, SEARCH_SUGGESTIONS_DEBOUNCE_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [
+    clearSuggestionRows,
+    isComposing,
+    open,
+    query,
+    submittedQuery,
+    suggestionLanguageSlug,
+    suppressedSuggestionValue,
+  ])
+
+  useLayoutEffect(() => {
+    if (!open || suggestions.length === 0) return
+
+    const updatePosition = () => {
+      const fieldShell = fieldShellRef.current
+      if (!fieldShell) return
+      const rect = fieldShell.getBoundingClientRect()
+      const visualViewport = window.visualViewport
+      const viewportLeft = visualViewport?.offsetLeft ?? 0
+      const viewportTop = visualViewport?.offsetTop ?? 0
+      const viewportWidth = visualViewport?.width ?? window.innerWidth
+      const viewportHeight = visualViewport?.height ?? window.innerHeight
+      const viewportRight = viewportLeft + viewportWidth
+      const viewportBottom = viewportTop + viewportHeight
+      const spaceBelow =
+        viewportBottom - rect.bottom - SEARCH_SUGGESTIONS_VIEWPORT_GAP
+      const spaceAbove =
+        rect.top - viewportTop - SEARCH_SUGGESTIONS_VIEWPORT_GAP
+      const placement =
+        spaceBelow >= SEARCH_SUGGESTIONS_MAX_HEIGHT || spaceBelow >= spaceAbove
+          ? "below"
+          : "above"
+      const availableHeight = placement === "below" ? spaceBelow : spaceAbove
+      const maxHeight = Math.max(
+        SEARCH_SUGGESTIONS_MIN_ROW_HEIGHT,
+        Math.min(SEARCH_SUGGESTIONS_MAX_HEIGHT, availableHeight),
+      )
+      const width = Math.max(
+        0,
+        Math.min(
+          rect.width,
+          viewportWidth - SEARCH_SUGGESTIONS_VIEWPORT_PADDING * 2,
+        ),
+      )
+      const left = Math.min(
+        Math.max(rect.left, viewportLeft + SEARCH_SUGGESTIONS_VIEWPORT_PADDING),
+        viewportRight - width - SEARCH_SUGGESTIONS_VIEWPORT_PADDING,
+      )
+      const top =
+        placement === "below"
+          ? rect.bottom + SEARCH_SUGGESTIONS_VIEWPORT_GAP
+          : rect.top - SEARCH_SUGGESTIONS_VIEWPORT_GAP - maxHeight
+
+      setSuggestionListPosition((current) => {
+        if (
+          current?.left === left &&
+          current.top === top &&
+          current.width === width &&
+          current.maxHeight === maxHeight &&
+          current.placement === placement
+        ) {
+          return current
+        }
+        return { left, top, width, maxHeight, placement }
+      })
+    }
+
+    updatePosition()
+    let animationFrame: number | null = null
+    const schedulePositionUpdate = () => {
+      if (animationFrame != null) return
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null
+        updatePosition()
+      })
+    }
+    const visualViewport = window.visualViewport
+    window.addEventListener("resize", schedulePositionUpdate, { passive: true })
+    visualViewport?.addEventListener("resize", schedulePositionUpdate, {
+      passive: true,
+    })
+    visualViewport?.addEventListener("scroll", schedulePositionUpdate, {
+      passive: true,
+    })
+    return () => {
+      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
+      window.removeEventListener("resize", schedulePositionUpdate)
+      visualViewport?.removeEventListener("resize", schedulePositionUpdate)
+      visualViewport?.removeEventListener("scroll", schedulePositionUpdate)
+    }
+  }, [open, suggestions.length])
+
+  useEffect(() => {
+    if (activeSuggestionIndex == null) return
+    const activeOption = suggestionListRef.current?.querySelector<HTMLElement>(
+      `[data-suggestion-index="${activeSuggestionIndex}"]`,
+    )
+    if (typeof activeOption?.scrollIntoView === "function") {
+      activeOption.scrollIntoView({ block: "nearest" })
+    }
+  }, [activeSuggestionIndex])
 
   // Escape closes the modal through the provider-owned reset boundary.
   useEffect(() => {
@@ -225,28 +425,119 @@ export function SearchOverlay() {
 
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
+      setSuppressedSuggestionValue(null)
+      setActiveSuggestionIndex(null)
+      clearSuggestionRows()
+      setSuggestionsLoading(false)
       setQuery(e.target.value)
     },
-    [setQuery],
+    [clearSuggestionRows, setQuery],
+  )
+
+  const dismissSuggestions = useCallback(() => {
+    setSuppressedSuggestionValue(query)
+    clearSuggestionRows()
+    setSuggestionsLoading(false)
+    setActiveSuggestionIndex(null)
+  }, [clearSuggestionRows, query])
+
+  const selectSuggestion = useCallback(
+    (suggestion: string) => {
+      setQuery(suggestion)
+      setSuppressedSuggestionValue(suggestion)
+      clearSuggestionRows()
+      setSuggestionsLoading(false)
+      setActiveSuggestionIndex(null)
+      inputRef.current?.focus({ preventScroll: true })
+    },
+    [clearSuggestionRows, setQuery],
+  )
+
+  const handleInputKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      const composing = isComposing || event.nativeEvent.isComposing
+      if (event.key === "Enter" && composing) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
+      if (event.key === "ArrowDown" && suggestions.length > 0) {
+        event.preventDefault()
+        setActiveSuggestionIndex((current) =>
+          current == null ? 0 : (current + 1) % suggestions.length,
+        )
+        return
+      }
+
+      if (event.key === "ArrowUp" && suggestions.length > 0) {
+        event.preventDefault()
+        setActiveSuggestionIndex((current) =>
+          current == null
+            ? suggestions.length - 1
+            : (current - 1 + suggestions.length) % suggestions.length,
+        )
+        return
+      }
+
+      if (
+        event.key === "Enter" &&
+        activeSuggestionIndex != null &&
+        suggestions[activeSuggestionIndex]
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        selectSuggestion(suggestions[activeSuggestionIndex])
+        return
+      }
+
+      if (
+        event.key === "Escape" &&
+        (suggestions.length > 0 || suggestionsLoading)
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        dismissSuggestions()
+        return
+      }
+
+      if (
+        event.key === "Tab" &&
+        (suggestions.length > 0 || suggestionsLoading)
+      ) {
+        dismissSuggestions()
+      }
+    },
+    [
+      activeSuggestionIndex,
+      dismissSuggestions,
+      isComposing,
+      selectSuggestion,
+      suggestions,
+      suggestionsLoading,
+    ],
   )
 
   const handleSearchSubmit = useCallback(
     (submittedQuery: string) => {
+      dismissSuggestions()
       void search(submittedQuery)
     },
-    [search],
+    [dismissSuggestions, search],
   )
 
   const handleCategoryClick = useCallback(
     (searchTerm: string) => {
+      dismissSuggestions()
       void search(searchTerm)
     },
-    [search],
+    [dismissSuggestions, search],
   )
 
   const handleSemanticLanguageClick = useCallback(
     (language: SearchLanguageOption, regionName?: string) => {
       if (!language.publicSlug) return
+      dismissSuggestions()
       setLanguageAutocompleteOpen(false)
       selectSearchLanguage(language, regionName)
       if (query.trim().length > 0) {
@@ -256,22 +547,24 @@ export function SearchOverlay() {
         })
       }
     },
-    [query, search, selectSearchLanguage],
+    [dismissSuggestions, query, search, selectSearchLanguage],
   )
 
   const handleResetSearchLanguage = useCallback(() => {
+    dismissSuggestions()
     setLanguageAutocompleteOpen(false)
     resetSearchLanguageToDefault()
-  }, [resetSearchLanguageToDefault])
+  }, [dismissSuggestions, resetSearchLanguageToDefault])
 
   const closeAfterResultNavigation = useCallback(() => {
     window.setTimeout(() => setOpen(false), 0)
   }, [setOpen])
 
   const handleClearInput = useCallback(() => {
+    dismissSuggestions()
     void search("")
     inputRef.current?.focus()
-  }, [search])
+  }, [dismissSuggestions, search])
 
   const showCategoryGrid = query.trim().length === 0 && !loading && !searched
   const searchLanguageControlVisible =
@@ -354,6 +647,7 @@ export function SearchOverlay() {
           className={`${logoSlotClass} ${FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS}`}
         />
         <div
+          ref={fieldShellRef}
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
           className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
@@ -366,8 +660,28 @@ export function SearchOverlay() {
             onChange={handleInputChange}
             onSubmit={handleSearchSubmit}
             onClear={handleClearInput}
+            onKeyDown={handleInputKeyDown}
+            onBlur={dismissSuggestions}
+            onCompositionStart={() => {
+              setIsComposing(true)
+              clearSuggestionRows()
+              setSuggestionsLoading(false)
+              setActiveSuggestionIndex(null)
+            }}
+            onCompositionEnd={() => setIsComposing(false)}
             placeholder={t("placeholder")}
             aria-label={t("inputLabel")}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={suggestions.length > 0}
+            aria-controls={suggestionListId}
+            aria-busy={suggestionsLoading}
+            aria-activedescendant={
+              activeSuggestionIndex == null
+                ? undefined
+                : `${suggestionListId}-option-${activeSuggestionIndex}`
+            }
+            dir="auto"
             iconTestId="search-overlay-input-icon"
             autoFocus
             wrapperClassName="w-full"
@@ -418,6 +732,51 @@ export function SearchOverlay() {
           />
         </div>
       </div>
+
+      {closePortalContainer &&
+        suggestionListPosition &&
+        suggestions.length > 0 &&
+        createPortal(
+          <ul
+            ref={suggestionListRef}
+            id={suggestionListId}
+            role="listbox"
+            aria-label={t("searchSuggestions")}
+            data-placement={suggestionListPosition.placement}
+            className="fixed z-[1000] m-0 overflow-y-auto rounded-2xl border border-stone-200/80 bg-white p-1.5 text-stone-950 shadow-2xl"
+            style={{
+              left: suggestionListPosition.left,
+              top: suggestionListPosition.top,
+              width: suggestionListPosition.width,
+              maxHeight: suggestionListPosition.maxHeight,
+            }}
+          >
+            {suggestions.map((suggestion, index) => {
+              const active = activeSuggestionIndex === index
+              return (
+                <li
+                  key={`${suggestion}-${index}`}
+                  id={`${suggestionListId}-option-${index}`}
+                  role="option"
+                  aria-selected={active}
+                  data-suggestion-index={index}
+                  dir="auto"
+                  onMouseEnter={() => setActiveSuggestionIndex(index)}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    selectSuggestion(suggestion)
+                  }}
+                  className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 py-2.5 text-base leading-6 outline-none transition-colors ${
+                    active ? "bg-stone-100" : "hover:bg-stone-50"
+                  }`}
+                >
+                  <bdi>{suggestion}</bdi>
+                </li>
+              )
+            })}
+          </ul>,
+          closePortalContainer,
+        )}
 
       <div
         aria-hidden="true"

@@ -1058,6 +1058,10 @@ type Query {
   """
   watchSearch(input: WatchSearchInput!): WatchSearchResponse
   """
+  Return bounded language-aware Watch title completions without running full search.
+  """
+  watchSearchSuggestions(input: WatchSearchSuggestionsInput!): [String!]
+  """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
   watchSetting(locale: String!): WatchSetting
@@ -2074,6 +2078,11 @@ type WatchSearchResult {
 enum WatchSearchResultType {
   EXPERIENCE
   VIDEO
+}
+
+input WatchSearchSuggestionsInput {
+  languageSlug: String!
+  query: String!
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""

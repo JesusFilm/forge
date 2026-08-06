@@ -12,6 +12,7 @@ const { recordWatchSearchTraceSafelyMock } = vi.hoisted(() => ({
 
 const searchMock = vi.fn()
 const typesenseSearchMock = vi.fn()
+const suggestMock = vi.fn()
 
 vi.mock("@/services/search-trace.service", () => ({
   recordWatchSearchTraceSafely: recordWatchSearchTraceSafelyMock,
@@ -20,6 +21,7 @@ vi.mock("@/services/search-trace.service", () => ({
 type ResolverArgs = {
   input: {
     query: string
+    languageSlug?: string
     mode?: "default" | "modern" | null
     targetLanguageSlug?: string | null
     displayLanguageSlug?: string | null
@@ -34,6 +36,7 @@ type ResolverCtx = {
   services: {
     watchSearch: { search: typeof searchMock }
     typesenseWatchSearch: { search: typeof typesenseSearchMock } | null
+    typesenseWatchSearchSuggestions: { suggest: typeof suggestMock } | null
   }
 }
 type FieldWithResolve = {
@@ -45,9 +48,9 @@ type FieldWithResolve = {
   ) => unknown
 }
 
-function getResolver(): FieldWithResolve["resolve"] {
+function getResolver(name = "watchSearch"): FieldWithResolve["resolve"] {
   const fields = schema.getQueryType()!.getFields()
-  const field = fields.watchSearch as unknown as FieldWithResolve
+  const field = fields[name] as unknown as FieldWithResolve
   return field.resolve
 }
 
@@ -65,6 +68,28 @@ async function invoke(
       services: {
         watchSearch: { search: searchMock },
         typesenseWatchSearch,
+        typesenseWatchSearchSuggestions: { suggest: suggestMock },
+      },
+    },
+    {},
+  )
+}
+
+async function invokeSuggestions(
+  input: { query: string; languageSlug: string },
+  service: ResolverCtx["services"]["typesenseWatchSearchSuggestions"] = {
+    suggest: suggestMock,
+  },
+) {
+  return getResolver("watchSearchSuggestions")(
+    null,
+    { input },
+    {
+      prisma: {},
+      services: {
+        watchSearch: { search: searchMock },
+        typesenseWatchSearch: { search: typesenseSearchMock },
+        typesenseWatchSearchSuggestions: service,
       },
     },
     {},
@@ -123,6 +148,29 @@ beforeEach(() => {
       acceptLanguage: null,
       acceptLanguageSlug: null,
     },
+  })
+  suggestMock.mockResolvedValue(["Jesus", "Jesus Wept"])
+})
+
+describe("watchSearchSuggestions resolver", () => {
+  it("delegates exact public input and returns raw titles without tracing", async () => {
+    const input = { query: "je", languageSlug: "english" }
+
+    await expect(invokeSuggestions(input)).resolves.toEqual([
+      "Jesus",
+      "Jesus Wept",
+    ])
+
+    expect(suggestMock).toHaveBeenCalledWith(input)
+    expect(searchMock).not.toHaveBeenCalled()
+    expect(typesenseSearchMock).not.toHaveBeenCalled()
+    expect(recordWatchSearchTraceSafelyMock).not.toHaveBeenCalled()
+  })
+
+  it("fails empty when the optional suggestion service is unavailable", async () => {
+    await expect(
+      invokeSuggestions({ query: "je", languageSlug: "english" }, null),
+    ).resolves.toEqual([])
   })
 })
 
