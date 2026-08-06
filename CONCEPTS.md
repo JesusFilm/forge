@@ -424,6 +424,18 @@ Only the target-audio and related-language states can carry a playable Dub; the 
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
 
+### Watch Title Suggestion
+
+A transient, language-scoped completion of a typed Watch title that helps edit
+the search draft without becoming a submitted search. Selecting one fills the
+draft only; Enter, the mobile Search action, or the visible submit control must
+still commit the full search.
+
+Watch Title Suggestions are optional serving responses rather than Watch Search
+Analytics: partial prefixes and suggestion selections do not create submitted
+search traces or popularity data, and suggestion failure never blocks the
+primary search action.
+
 ### Keyword-First Search
 
 A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
