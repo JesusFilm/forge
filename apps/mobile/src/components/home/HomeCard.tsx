@@ -178,7 +178,7 @@ export const HomeCard = memo(function HomeCard({
           {card.title}
         </Text>
       </View>
-      <WatchProgressBar videoId={card.id} />
+      <WatchProgressBar videoId={card.videoId} />
     </Pressable>
   )
 })

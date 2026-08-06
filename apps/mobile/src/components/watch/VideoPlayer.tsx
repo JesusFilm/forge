@@ -263,6 +263,23 @@ export function VideoPlayer({
         />
       )}
 
+      {/* Full-bleed tap target behind the chrome (controls layer is box-none,
+          subtitle overlay is pointerEvents none, so empty-area taps fall here).
+          Tap toggles controls; double tap on a side seeks ±10s. */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onLayout={(e: LayoutChangeEvent) => {
+          tapWidthRef.current = e.nativeEvent.layout.width
+        }}
+        onPressIn={handleTapPressIn}
+        onPress={handleTapPress}
+        accessibilityRole="button"
+        accessibilityLabel="Toggle player controls"
+      />
+
+      {/* Declared AFTER the full-bleed tap target: as plain siblings the later
+          one wins hit-testing, so declaring these first left them tappable-
+          looking but inert. Belongs with the chrome, not the poster. */}
       {!hasStarted && resumeAtSeconds != null && (
         <View style={playerStyles.resumeRow} pointerEvents="box-none">
           <Pressable
@@ -303,20 +320,6 @@ export function VideoPlayer({
           </Pressable>
         </View>
       )}
-
-      {/* Full-bleed tap target behind the chrome (controls layer is box-none,
-          subtitle overlay is pointerEvents none, so empty-area taps fall here).
-          Tap toggles controls; double tap on a side seeks ±10s. */}
-      <Pressable
-        style={StyleSheet.absoluteFill}
-        onLayout={(e: LayoutChangeEvent) => {
-          tapWidthRef.current = e.nativeEvent.layout.width
-        }}
-        onPressIn={handleTapPressIn}
-        onPress={handleTapPress}
-        accessibilityRole="button"
-        accessibilityLabel="Toggle player controls"
-      />
 
       {seekFlash != null && (
         <View
