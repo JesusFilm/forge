@@ -33,6 +33,7 @@ function card(
   title: string,
   href: WatchLanguageInventoryCard["href"],
   parentSlug: string | null = null,
+  availability: WatchLanguageInventoryCard["availability"] = "AUDIO",
 ): WatchLanguageInventoryCard {
   return {
     id,
@@ -43,7 +44,7 @@ function card(
     imageUrl: null,
     imageAlt: title,
     label: "SHORT_FILM",
-    availability: "AUDIO",
+    availability,
     href,
     watchLanguageSlug: "english",
     parentSlug,
@@ -71,7 +72,7 @@ describe("LanguageInventoryPage video thumbnails", () => {
     container.remove()
   })
 
-  it("shows shared frames only on routable full and compact cards", () => {
+  it("shows shared frames only on routable catalog cards", () => {
     const inventory: WatchLanguageInventoryModel = {
       languageSlug: "english",
       languageName: "English",
@@ -80,13 +81,10 @@ describe("LanguageInventoryPage video thumbnails", () => {
       counts: {
         audioCollections: 0,
         audioVideos: 2,
-        subtitleOnlyVideos: 0,
+        subtitleOnlyVideos: 2,
         total: 4,
       },
-      promoted: [
-        card("promoted-linked", "Promoted Linked", "/linked.html" as Route),
-        card("promoted-static", "Promoted Static", null),
-      ],
+      promoted: [],
       audioCollections: [],
       audioVideos: [
         card(
@@ -97,7 +95,16 @@ describe("LanguageInventoryPage video thumbnails", () => {
         ),
         card("compact-static", "Compact Static", null, "series"),
       ],
-      subtitleOnlyVideos: [],
+      subtitleOnlyVideos: [
+        card(
+          "subtitle-linked",
+          "Subtitle Linked",
+          "/linked.html" as Route,
+          null,
+          "SUBTITLE_ONLY",
+        ),
+        card("subtitle-static", "Subtitle Static", null, null, "SUBTITLE_ONLY"),
+      ],
     }
 
     act(() => {
@@ -105,10 +112,10 @@ describe("LanguageInventoryPage video thumbnails", () => {
     })
 
     const linkedFull = container.querySelector<HTMLElement>(
-      '[aria-label="Promoted Linked"]',
+      '[aria-label="Subtitle Linked"]',
     )
     const staticFull = container.querySelector<HTMLElement>(
-      '[aria-label="Promoted Static"]',
+      '[aria-label="Subtitle Static"]',
     )
     expect(linkedFull?.className).toContain("group")
     expect(linkedFull?.className).toContain("focus-visible:outline-none")

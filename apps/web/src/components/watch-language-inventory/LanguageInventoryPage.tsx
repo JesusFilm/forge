@@ -3,17 +3,7 @@ import type { Route } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { useFormatter, useTranslations } from "next-intl"
-import {
-  ArrowUpRight,
-  BookOpen,
-  Captions,
-  Clock,
-  Headphones,
-  Library,
-  Play,
-  Sparkles,
-  Trophy,
-} from "lucide-react"
+import { ArrowUpRight, Captions, Headphones, Library, Play } from "lucide-react"
 
 import {
   Carousel,
@@ -26,8 +16,6 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
-import { WatchHomeSection } from "@/components/home/WatchHomeSection"
-import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
@@ -40,44 +28,7 @@ type IconComponent = ComponentType<{ className?: string }>
 
 type LanguageInventoryPageProps = {
   inventory: WatchLanguageInventoryModel
-  homeSections?: WatchHomeSectionModel[]
 }
-
-const VIDEO_BIBLE_COLLECTION_SLUGS = new Set([
-  "lumo",
-  "lumo-the-gospel-of-matthew",
-  "lumo-the-gospel-of-mark",
-  "lumo-the-gospel-of-luke",
-  "lumo-the-gospel-of-john",
-  "jesus",
-  "jesus-film",
-  "the-jesus-film",
-  "magdalena",
-  "book-of-acts-bible-study",
-  "acts-bible-study",
-  "hechos-de-los-apostoles",
-])
-const VIDEO_BIBLE_COLLECTION_PATTERN =
-  /\b(lumo|magdalena|acts|hechos)\b|\bjesus[-\s]+film\b/i
-const BIBLE_PROJECT_COLLECTION_SLUGS = new Set([
-  "bp-spiritual-beings",
-  "shema-listen",
-  "sermon-on-the-mount-bp",
-  "how-to-read-bible",
-  "advent-series",
-])
-const BIBLE_PROJECT_COLLECTION_PATTERN = /\b(bibleproject|bible project)\b/i
-const SPORTS_COLLECTION_SLUGS = new Set([
-  "sports",
-  "soccer_event_collection",
-  "brazil-2014",
-  "dealing-with-winning",
-  "dealing-with-loss",
-  "dealing-with-injury",
-  "is-it-worth-it",
-])
-const SPORTS_COLLECTION_PATTERN =
-  /\b(sport|sports|deporte|deportes|soccer|football|f[uú]tbol|world cup|copa mundial|athlete|athletes|atleta|atletas|olympic|ol[ií]mpic|winning|victoria|injury|lesiones)\b/i
 
 function formatRuntime(seconds: number | null): string | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
@@ -178,19 +129,12 @@ function SectionMetricAnchor({
   href: string
   icon: IconComponent
   label: string
-  tone: "blue" | "violet" | "indigo" | "magenta" | "amber" | "teal"
+  tone: "amber" | "teal"
   value: number
 }) {
   const t = useTranslations("LanguageInventory")
   const format = useFormatter()
   const toneClass = {
-    blue: "border-sky-300/25 bg-[linear-gradient(135deg,#0f3f9d,#0f8ee8_58%,#155e75)]",
-    violet:
-      "border-violet-300/25 bg-[linear-gradient(135deg,#2e1065,#6d28d9_56%,#1d4ed8)]",
-    indigo:
-      "border-indigo-300/25 bg-[linear-gradient(135deg,#1e1b4b,#4338ca_52%,#0f766e)]",
-    magenta:
-      "border-fuchsia-300/25 bg-[linear-gradient(135deg,#701a75,#9d174d_55%,#431407)]",
     amber:
       "border-amber-200/30 bg-[linear-gradient(135deg,#713f12,#b45309_55%,#365314)]",
     teal: "border-teal-200/25 bg-[linear-gradient(135deg,#134e4a,#0f766e_52%,#164e63)]",
@@ -251,41 +195,12 @@ function InventoryCardFrame({
   )
 }
 
-function isVideoBibleCollection(item: WatchLanguageInventoryCard): boolean {
-  if (VIDEO_BIBLE_COLLECTION_SLUGS.has(item.slug)) return true
-
-  const normalizedTitle = item.title.trim().toLocaleLowerCase("en")
-  if (normalizedTitle === "jesus" || normalizedTitle === "jesús") return true
-
-  return [item.slug, item.title]
-    .filter((value): value is string => Boolean(value))
-    .some((value) => VIDEO_BIBLE_COLLECTION_PATTERN.test(value))
-}
-
-function isBibleProjectCollection(item: WatchLanguageInventoryCard): boolean {
-  if (BIBLE_PROJECT_COLLECTION_SLUGS.has(item.slug)) return true
-
-  return [item.title, item.description, item.label]
-    .filter((value): value is string => Boolean(value))
-    .some((value) => BIBLE_PROJECT_COLLECTION_PATTERN.test(value))
-}
-
-function isSportsCollection(item: WatchLanguageInventoryCard): boolean {
-  if (SPORTS_COLLECTION_SLUGS.has(item.slug)) return true
-
-  return [item.title, item.description, item.label]
-    .filter((value): value is string => Boolean(value))
-    .some((value) => SPORTS_COLLECTION_PATTERN.test(value))
-}
-
 function InventoryCard({
   item,
   index,
-  promoted = false,
 }: {
   item: WatchLanguageInventoryCard
   index: number
-  promoted?: boolean
 }) {
   const t = useTranslations("LanguageInventory")
   const videoLabels = useTranslations("VideoLabels")
@@ -301,7 +216,6 @@ function InventoryCard({
     "relative block h-full overflow-hidden rounded-lg bg-stone-900 text-left text-inherit shadow-xl shadow-black/35 ring-1 ring-white/10 transition duration-300",
     isInteractive && "group hover:-translate-y-1",
     isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
-    promoted ? "min-w-[78vw] sm:min-w-[340px] lg:min-w-[380px]" : "",
   )
 
   return (
@@ -316,11 +230,7 @@ function InventoryCard({
             src={item.imageUrl}
             alt={item.imageAlt}
             fill
-            sizes={
-              promoted
-                ? "(max-width: 640px) 78vw, 380px"
-                : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-            }
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
             className="object-cover object-left-top transition duration-500 group-hover:scale-105"
           />
         ) : (
@@ -348,12 +258,6 @@ function InventoryCard({
       <div className="space-y-2 p-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-amber-200/90">
           <span>{videoLabels(videoLabelMessageKey(item.label))}</span>
-          {promoted ? (
-            <>
-              <span aria-hidden="true">/</span>
-              <span>{t("newLabel")}</span>
-            </>
-          ) : null}
         </div>
         <h3 className="line-clamp-2 text-lg leading-tight font-bold text-white">
           {item.title}
@@ -717,48 +621,13 @@ function InventorySection({
   )
 }
 
-function LanguageHomeSections({
-  sections,
-}: {
-  sections: WatchHomeSectionModel[]
-}) {
-  if (sections.length === 0) return null
-
-  return (
-    <div
-      className="border-b border-white/10 bg-black"
-      data-testid="language-inventory-home-sections"
-    >
-      {sections.map((section) => (
-        <WatchHomeSection key={section.id} section={section} />
-      ))}
-    </div>
-  )
-}
-
 export function LanguageInventoryPage({
   inventory,
-  homeSections = [],
 }: LanguageInventoryPageProps) {
   const t = useTranslations("LanguageInventory")
   const watchHome = useTranslations("WatchHome")
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
-  const videoBibleCollections = inventory.audioCollections.filter(
-    (item) =>
-      item.watchLanguageSlug === inventory.languageSlug &&
-      isVideoBibleCollection(item),
-  )
-  const bibleProjectCollections = inventory.audioCollections.filter(
-    (item) =>
-      item.watchLanguageSlug === inventory.languageSlug &&
-      isBibleProjectCollection(item),
-  )
-  const sportsCollections = inventory.audioCollections.filter(
-    (item) =>
-      item.watchLanguageSlug === inventory.languageSlug &&
-      isSportsCollection(item),
-  )
   const groupedAudioVideos = groupVideosByParent(
     inventory.audioVideos,
     inventory.audioCollections,
@@ -827,42 +696,6 @@ export function LanguageInventoryPage({
             <CarouselContent className="-ml-5">
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
-                  href="#new"
-                  icon={Sparkles}
-                  label={t("new")}
-                  tone="blue"
-                  value={inventory.promoted.length}
-                />
-              </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
-                <SectionMetricAnchor
-                  href="#bible-gospels"
-                  icon={BookOpen}
-                  label={t("videoBible")}
-                  tone="violet"
-                  value={videoBibleCollections.length}
-                />
-              </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
-                <SectionMetricAnchor
-                  href="#bible-project"
-                  icon={BookOpen}
-                  label={t("bibleProject")}
-                  tone="indigo"
-                  value={bibleProjectCollections.length}
-                />
-              </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
-                <SectionMetricAnchor
-                  href="#sports"
-                  icon={Trophy}
-                  label={t("sports")}
-                  tone="magenta"
-                  value={sportsCollections.length}
-                />
-              </CarouselItem>
-              <CarouselItem className="basis-auto pl-5">
-                <SectionMetricAnchor
                   href="#audio-collections"
                   icon={Library}
                   label={t("collections")}
@@ -885,92 +718,6 @@ export function LanguageInventoryPage({
           </Carousel>
         </div>
       </nav>
-
-      <LanguageHomeSections sections={homeSections} />
-
-      <section
-        id="new"
-        className="scroll-mt-80 py-12 xl:scroll-mt-44"
-        data-testid="language-inventory-promoted"
-      >
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-300/10 px-3 py-1 text-sm font-semibold text-teal-100">
-                <Sparkles className="h-4 w-4" aria-hidden />
-                {t("newlyAdded")}
-              </div>
-              <h2 className="text-3xl font-bold text-white md:text-4xl">
-                {t("newVideosTitle", { language: languageDisplayName })}
-              </h2>
-            </div>
-            <div className="hidden items-center gap-2 text-sm font-semibold text-stone-400 sm:flex">
-              <Clock className="h-4 w-4" aria-hidden />
-              {t("newestFirst")}
-            </div>
-          </div>
-
-          {inventory.promoted.length > 0 ? (
-            <div className="-mx-5 flex gap-5 overflow-x-auto px-5 pb-4 sm:-mx-8 sm:px-8">
-              {inventory.promoted.map((item, index) => (
-                <InventoryCard
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  promoted
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-white/10 bg-white/[0.04] px-5 py-8 text-stone-300">
-              {t("noPublishedVideos")}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <InventorySection
-        id="bible-gospels"
-        eyebrow={t("bibleAndGospelFilms")}
-        title={t("videoBibleCollectionsTitle", {
-          language: languageDisplayName,
-        })}
-        description={t("videoBibleDescription", {
-          language: languageDisplayName,
-        })}
-        icon={BookOpen}
-        items={videoBibleCollections}
-        testId="language-inventory-bible-gospels"
-        empty={t("noVideoBibleCollections")}
-      />
-
-      <InventorySection
-        id="bible-project"
-        eyebrow={t("bibleProject")}
-        title={t("bibleProjectCollectionsTitle", {
-          language: languageDisplayName,
-        })}
-        description={t("bibleProjectDescription", {
-          language: languageDisplayName,
-        })}
-        icon={BookOpen}
-        items={bibleProjectCollections}
-        testId="language-inventory-bible-project"
-        empty={t("noBibleProjectCollections")}
-      />
-
-      <InventorySection
-        id="sports"
-        eyebrow={t("sportsStories")}
-        title={t("sportsTitle", { language: languageDisplayName })}
-        description={t("sportsDescription", {
-          language: languageDisplayName,
-        })}
-        icon={Trophy}
-        items={sportsCollections}
-        testId="language-inventory-sports"
-        empty={t("noSportsCollections")}
-      />
 
       <GroupedVideoListSection
         id="audio-collections"
