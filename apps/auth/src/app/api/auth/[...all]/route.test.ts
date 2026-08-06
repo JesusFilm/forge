@@ -1100,3 +1100,78 @@ describe("device sign-in continuation", () => {
     expect(url).not.toContain("evil.example")
   })
 })
+
+describe("device responses are never cached", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+  })
+
+  /**
+   * The plugin passes Cache-Control to ctx.json, but better-call@1.3.5 drops
+   * per-response headers (it shadows its own `headers` binding while copying
+   * them). Measured: /device/token returned only content-type while its body
+   * carried an access token. RFC 6749 §5.1 makes no-store a MUST there, so the
+   * guarantee is enforced here instead of depending on the dependency.
+   */
+  it("sets no-store on the token response, which carries bearer tokens", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ access_token: "jfp_at_x", refresh_token: "jfp_rt_y" }),
+    )
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/device/token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      { params: Promise.resolve({ all: ["device", "token"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(response.headers.get("pragma")).toBe("no-cache")
+    // The body must survive being rewrapped.
+    await expect(response.json()).resolves.toMatchObject({
+      access_token: "jfp_at_x",
+    })
+  })
+
+  it("sets no-store on the issuance response, which carries a live user code", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ user_code: "0194507302" }))
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      { params: Promise.resolve({ all: ["device", "code"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("sets no-store on the status lookup", async () => {
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/device/status?user_code=1"),
+      { params: Promise.resolve({ all: ["device", "status"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("leaves non-device responses alone", async () => {
+    // Anti-vacuous companion: proves this is scoped to the device lane rather
+    // than a blanket rewrite of every auth response.
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/ok"),
+      { params: Promise.resolve({ all: ["ok"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBeNull()
+  })
+})

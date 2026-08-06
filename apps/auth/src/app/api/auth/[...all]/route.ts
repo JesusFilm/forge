@@ -494,6 +494,35 @@ async function rateLimitDeviceRoute(
   )
 }
 
+/**
+ * Force `no-store` onto every device response.
+ *
+ * The plugin passes these headers to `ctx.json`, but they never reach the wire:
+ * better-call@1.3.5's `toResponse` shadows its own `headers` binding inside the
+ * branch that copies per-response headers, so it copies the map onto itself and
+ * discards it. Measured, not inferred — `/device/token` returned only
+ * `content-type` while its body carried an access token and a refresh token.
+ *
+ * RFC 6749 §5.1 makes `no-store` a MUST on token responses, and `/device/code`
+ * and `/device/status` both carry a live user code. Setting it here means the
+ * guarantee does not depend on a dependency's header handling.
+ */
+function withNoStore(response: Response): Response {
+  const headers = new Headers(response.headers)
+  headers.set("Cache-Control", "no-store")
+  headers.set("Pragma", "no-cache")
+
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
+function isDeviceGrantPath(path: string): boolean {
+  return path in DEVICE_RATE_LIMITS
+}
+
 async function enforceAgentOAuthAuthorizePolicy(
   request: Request,
 ): Promise<Response | undefined> {
@@ -805,6 +834,8 @@ export async function GET(
   }
 
   const response = await authRouteHandlers.GET(request)
+  if (isDeviceGrantPath(all.join("/"))) return withNoStore(response)
+
   const providerId = all[1]
   if (
     all[0] === "callback" &&
@@ -838,6 +869,9 @@ export async function POST(
   }
   if (path === "sign-up/email") {
     return handleEmailSignUp(request)
+  }
+  if (isDeviceGrantPath(path)) {
+    return withNoStore(await authRouteHandlers.POST(request))
   }
   return authRouteHandlers.POST(request)
 }
