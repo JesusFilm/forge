@@ -264,6 +264,26 @@ affect whether a result can appear must run before the window; display-only
 hydration should run after the window so it cannot multiply or reorder
 candidates.
 
+### Search Serving Index
+
+A rebuildable, query-optimized projection of catalog metadata and Content
+Embeddings used by Admin search, distinct from the authoritative content store.
+
+A Search Serving Index may retain a broader semantic corpus than one caller can
+return. Each serving surface applies its own explicit visibility policy, while
+publication or availability changes update the projection without redefining
+the underlying embedding.
+
+### Public Search Visibility
+
+The eligibility of search evidence to contribute to viewer-facing Watch Search,
+distinct from whether that evidence belongs to the Search Serving Index.
+
+Public Search Visibility requires the source video to remain viewer-visible and
+the evidence language to have matching published content. Losing eligibility
+removes the evidence from public results without requiring a valid Content
+Embedding to be regenerated.
+
 ### Search Eval Caller Track
 
 A search-evaluation prompt group scoped to a caller's job rather than only to a
@@ -279,23 +299,58 @@ devotionals, experiences, or related-content sections and defaults to Hybrid
 Search. `semantic-diagnostic` isolates semantic retrieval quality and only runs
 with Semantic-Only Search.
 
+### Absolute Search Gate
+
+The release qualification for a Search Serving Index candidate based on
+whether its results satisfy public-search intent, independent of resemblance to
+the established Search Pipeline Mode.
+
+An Absolute Search Gate binds a frozen query set and reviewed canonical
+relevance judgments to one Search Candidate Identity. Deterministic relevance,
+language, duplication, degradation, latency, and capacity evidence must agree
+with pointwise judgment and named operator review before the candidate can
+become a baseline.
+
+### Search Candidate Identity
+
+The immutable identity of one search release candidate: the Admin application
+revision plus the physical catalog, availability, lexical, and transcript
+Search Serving Index generations evaluated with it.
+
+Release evidence fails closed when this identity is absent or when responses
+show more than one application revision, so a deploy or index publication
+cannot silently mix candidates inside one Absolute Search Gate.
+
 ### Watch Search Analytics
 
-Server-side Datadog product observability for viewer-facing Watch search. Watch
+Datadog product observability for viewer-facing Watch search. Watch
 Search Analytics records anonymous submitted search requests, outcomes,
 no-result cases, load-more behavior, and result clicks so the team can
 understand common queries, failures, language mismatch signals, search-mode
 health, and clicked results.
 
-The canonical submitted-search event is emitted from the server-side search
-path using asynchronous, non-blocking, best-effort fire-and-forget delivery so
-search responses do not wait on Datadog. Browser RUM can add supplemental UI
-context and click signals, but RUM sampling is not the source of truth for
-submitted-search counts.
+The canonical submitted-search event is a structured log emitted from each
+client's canonical path — web's server-side search path; React Native clients
+(TV and mobile) emit it from the device via the Datadog Mobile
+SDK because they have no server tier — using asynchronous, non-blocking,
+best-effort fire-and-forget delivery so search responses do not wait on
+Datadog. RUM can add supplemental UI context and click signals, but RUM
+sampling is not the source of truth for submitted-search counts.
+
+Result clicks and impressions are additionally recorded first-party in admin's
+watch-search event store (client-tagged `WEB`/`MOBILE`/`TV`), which — unlike
+RUM — is unsampled and joins to Search Traces by the anonymous search request
+id.
 
 Watch Search Analytics is separate from Search Eval. It may include exact query
-text, but it must not attach name, email, full user id, auth token, cookie,
-session id, IP address, or bearer/API key material.
+text, but its authored payload must not attach name, email, full user id, auth
+token, cookie, session id, IP address, or bearer/API key material. RUM envelope
+context the Mobile SDK attaches to client-emitted events (session and view ids)
+is correlation context outside the authored payload, not an exception to this
+rule. On client-emitted events, log severity itself participates in
+containment: the Mobile SDK copies error-level logs' full authored attributes
+into RUM error events, so query-bearing logs stay below error level to keep
+exact query text bounded to the Logs store.
 
 ### Watch Analytics Context
 
@@ -319,6 +374,8 @@ Search Language identity should travel as the public language slug selected or c
 ### Search Watchability
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+
+Only the target-audio and related-language states can carry a playable Dub; the target-subtitle and no-option states name what exists (subtitles in the target language, or nothing) without one.
 
 ### Query Language Suggestion
 
@@ -402,6 +459,12 @@ For large corpora, an Embedding Backfill's completion state should be judged
 from stored embedding provenance and healthy vector rows, not from the lifetime
 of the trigger request that started it. Resume flows should preserve already
 healthy embeddings and continue from missing, legacy, or incomplete rows.
+
+### Video Database Snapshot
+
+A reviewed, profile-scoped, data-only export of production Admin video data for restoring production-like content into non-production environments. Its default form carries catalog and reference data, while its opt-in search form adds current transcript search state plus retained historical scene-search state.
+
+A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
 
 ## Known-caller auth
 
@@ -667,6 +730,12 @@ The layered per-request decision in the chat app that resolves seeker-vs-stub: t
 ### Conversation History
 
 The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
+
+### Featured Video
+
+The single library video the Seeker may attach to one reply — a recommendation rendered as an inline player beside the answer, distinct from the cited passages that ground the answer's text.
+
+The model **declares** a pick and never authors its payload: it may only name a video the same turn's own search returned, and every displayed field is re-projected from that search result through shape gates rather than taken from the model. A missing, malformed, or unmatched declaration attaches nothing and is never an error the reader sees. Because replies persist, a featured video is also re-derived when a conversation is replayed, so a replayed reply shows the video the turn featured, though a long title may appear shortened.
 
 ### JesusFilm RAG
 

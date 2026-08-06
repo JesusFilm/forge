@@ -36,6 +36,15 @@ import {
   type HomeBrowseState,
 } from "../src/components/home/homeScrollState"
 import { HomeTopBar } from "../src/components/home/HomeTopBar"
+import {
+  CONTINUE_WATCHING_SECTION_ID,
+  buildContinueWatchingSection,
+} from "../src/components/home/continueWatchingSection"
+import { isProfileSurfaceEnabled } from "../src/lib/auth/profileFlag"
+import {
+  loadContinueWatching,
+  type ContinueWatchingEntry,
+} from "../src/lib/watchEvents/continueWatching"
 import { MissionSection } from "../src/components/home/MissionSection"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import {
@@ -84,6 +93,32 @@ let autoStartConsumed = false
 export default function HomeScreen() {
   const router = useRouter()
   const { model, loading, error, refetch } = useWatchHome()
+
+  // Continue Watching shelf (feat-322): reloaded on every screen focus so
+  // returning from playback shows the fresh resume position immediately.
+  const [continueEntries, setContinueEntries] = useState<
+    ContinueWatchingEntry[]
+  >([])
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false
+      void loadContinueWatching().then((entries) => {
+        if (!cancelled) setContinueEntries(entries)
+      })
+      return () => {
+        cancelled = true
+      }
+    }, []),
+  )
+  // Client-owned section spliced ABOVE the curated sections (Netflix places
+  // Continue Watching among the top rows); empty shelf renders nothing.
+  const renderSections = useMemo(() => {
+    if (model == null) return null
+    const continueSection = buildContinueWatchingSection(continueEntries)
+    return continueSection
+      ? [continueSection, ...model.sections]
+      : model.sections
+  }, [model, continueEntries])
 
   // tvos#852: a stack pop doesn't restore the previously focused view (falls to
   // the top-left default). Remember the focused node (every focusable reports it)
@@ -292,7 +327,7 @@ export default function HomeScreen() {
 
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
-  const rowCount = (model?.sections.length ?? 0) + 1
+  const rowCount = (renderSections?.length ?? 0) + 1
   sectionCountRef.current = rowCount - 1
   const rowLayoutHandlers = useMemo(
     () =>
@@ -308,7 +343,7 @@ export default function HomeScreen() {
   // TRIM, never wipe. `sections` is a fresh array on every setModel, and onLayout
   // only fires when geometry actually changes — so wiping left unchanged rows
   // permanently unmeasured and focus scrolled nowhere (the "after a long idle" bug).
-  const sections = model?.sections
+  const sections = renderSections
   useEffect(() => {
     trimRowMeasurements(rowYsRef.current, rowCount)
     pendingScrollRowRef.current = null
@@ -327,12 +362,28 @@ export default function HomeScreen() {
     [router],
   )
 
+  // Continue Watching cards go STRAIGHT into playback at the saved position
+  // (feat-322) — a viewer resuming should not have to press Play again. Same
+  // route as a normal card so the session (dub menu, subtitles, Up Next) is
+  // fully wired; the watch screen consumes the flag once it has a variant.
+  const handleResumeCardPress = useCallback(
+    (card: WatchHomeCard) => {
+      const path = resolveHomeCardPath(card, { autoplay: true })
+      if (path != null) router.push(path)
+    },
+    [router],
+  )
+
   const handleSearchPress = useCallback(() => {
     router.push("/search")
   }, [router])
 
   const handleSettingsPress = useCallback(() => {
     router.push("/settings")
+  }, [router])
+
+  const handleProfilePress = useCallback(() => {
+    router.push("/profile")
   }, [router])
 
   // True when the focused element is a rail BELOW the topmost. Gates the topmost
@@ -392,6 +443,9 @@ export default function HomeScreen() {
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
       onSettingsPress={handleSettingsPress}
+      onProfilePress={
+        isProfileSurfaceEnabled() ? handleProfilePress : undefined
+      }
       onChromeFocus={handleChromeFocus}
       onSearchTabNode={setSearchTabNode}
       onFocusNode={captureFocusedNode}
@@ -497,7 +551,7 @@ export default function HomeScreen() {
           </TVFocusGuideView>
         </View>
 
-        {model.sections.map((section, sectionIndex) => (
+        {(renderSections ?? []).map((section, sectionIndex) => (
           <View key={section.id} onLayout={rowLayoutHandlers[sectionIndex + 1]}>
             <HomeRail
               rowIndex={sectionIndex + 1}
@@ -507,7 +561,11 @@ export default function HomeScreen() {
               variant={resolveHomeRailVariant(section)}
               onCardFocus={handleCardFocus}
               onRowFocus={handleRowFocus}
-              onCardPress={handleCardPress}
+              onCardPress={
+                section.id === CONTINUE_WATCHING_SECTION_ID
+                  ? handleResumeCardPress
+                  : handleCardPress
+              }
               // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
               // is on the LEFT — wire every card's D-pad-up to the CTA node
               // rather than letting geometry dead-end under the artwork.

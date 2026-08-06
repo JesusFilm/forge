@@ -7,6 +7,9 @@ const { userCount, userFindMany, managerMembershipFindMany } = vi.hoisted(
     managerMembershipFindMany: vi.fn(),
   }),
 )
+const { syncLockFindUnique } = vi.hoisted(() => ({
+  syncLockFindUnique: vi.fn(),
+}))
 const {
   searchTraceFindMany,
   watchSearchEventFindMany,
@@ -29,6 +32,11 @@ const { queryRaw, mockEnv } = vi.hoisted(() => ({
       CORS_ALLOWED_ORIGINS: "",
       OPENROUTER_API_PAID_KEY: undefined as string | undefined,
       OPENROUTER_API_KEY: undefined as string | undefined,
+      FIREWORKS_API_KEY: undefined as string | undefined,
+      QUERY_EMBEDDING_PROVIDER: undefined as
+        | "openrouter"
+        | "fireworks"
+        | undefined,
       OPENAI_API_KEY: undefined as string | undefined,
       MASTRA_GATEWAY_BASE_URL: undefined as string | undefined,
       MASTRA_GATEWAY_ADMIN_API_KEY: undefined as string | undefined,
@@ -46,6 +54,9 @@ vi.mock("@/db/client", () => ({
     managerMembership: {
       findMany: (...args: unknown[]) => managerMembershipFindMany(...args),
     },
+    syncLock: {
+      findUnique: (...args: unknown[]) => syncLockFindUnique(...args),
+    },
     searchTrace: {
       findMany: (...args: unknown[]) => searchTraceFindMany(...args),
     },
@@ -62,12 +73,16 @@ vi.mock("@/db/client", () => ({
 }))
 
 vi.mock("@/config/env", () => mockEnv)
+vi.mock("@/services/core-sync/watermark", () => ({
+  getAllWatermarks: vi.fn(async () => []),
+}))
 
 import {
   buildUserTableRow,
   buildLanguageDiagnosticRow,
   loadEmbeddingsData,
   loadSettingsData,
+  loadSystemStatusData,
   loadWatchSearchAnalyticsData,
   loadUsersData,
   runSemanticSearch,
@@ -84,6 +99,8 @@ const ADMIN_PRINCIPAL = {
 function resetMockEnv() {
   mockEnv.env.OPENROUTER_API_PAID_KEY = undefined
   mockEnv.env.OPENROUTER_API_KEY = undefined
+  mockEnv.env.FIREWORKS_API_KEY = undefined
+  mockEnv.env.QUERY_EMBEDDING_PROVIDER = undefined
   mockEnv.env.OPENAI_API_KEY = undefined
   mockEnv.env.MASTRA_GATEWAY_BASE_URL = undefined
   mockEnv.env.MASTRA_GATEWAY_ADMIN_API_KEY = undefined
@@ -109,6 +126,8 @@ function mockEmbeddingCounts({
 
 beforeEach(() => {
   queryRaw.mockReset()
+  syncLockFindUnique.mockReset()
+  syncLockFindUnique.mockResolvedValue(null)
   searchTraceFindMany.mockReset()
   watchSearchEventFindMany.mockReset()
   videoFindMany.mockReset()
@@ -254,6 +273,45 @@ describe("embedding provider readiness", () => {
     ).toEqual(expect.objectContaining({ value: "OpenRouter" }))
   })
 
+  it("reports Fireworks as ready when selected for query embeddings", async () => {
+    mockEnv.env.FIREWORKS_API_KEY = "fireworks-key"
+    mockEnv.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    mockEmbeddingCounts({ total: 2, embedded: 2, published: 1 })
+    queryRaw.mockResolvedValueOnce([])
+
+    const embeddings = await loadEmbeddingsData()
+    const settings = await loadSettingsData()
+
+    expect(embeddings.providerReady).toBe(true)
+    expect(
+      embeddings.insights.find((insight) => insight.label === "Provider"),
+    ).toEqual(expect.objectContaining({ value: "Fireworks" }))
+    expect(
+      settings.insights.find(
+        (insight) => insight.label === "Embedding Backend",
+      ),
+    ).toEqual(expect.objectContaining({ value: "Fireworks" }))
+  })
+
+  it("requires FIREWORKS_API_KEY when Fireworks is explicitly selected", async () => {
+    mockEnv.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    mockEnv.env.OPENROUTER_API_KEY = "openrouter-key"
+    mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
+
+    const data = await runSemanticSearch({
+      queryText: "hope",
+      locale: "en",
+      user: ADMIN_PRINCIPAL,
+    })
+
+    expect(data.metrics.find((metric) => metric.label === "Provider")).toEqual(
+      expect.objectContaining({ value: "Missing" }),
+    )
+    expect(data.unavailableReason).toBe(
+      "Semantic search requires FIREWORKS_API_KEY when QUERY_EMBEDDING_PROVIDER=fireworks.",
+    )
+  })
+
   it("keeps semantic search unavailable when only OPENAI_API_KEY is set", async () => {
     mockEnv.env.OPENAI_API_KEY = "legacy-openai-key"
     mockEmbeddingCounts({ total: 2, embedded: 1, published: 1 })
@@ -268,7 +326,46 @@ describe("embedding provider readiness", () => {
       expect.objectContaining({ value: "Missing" }),
     )
     expect(data.unavailableReason).toBe(
-      "Semantic search requires OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY.",
+      "Semantic search requires OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or FIREWORKS_API_KEY.",
+    )
+  })
+})
+
+describe("system status workflow incidents", () => {
+  it("shows stored workflow errors before start summaries for failed backup runs", async () => {
+    queryRaw.mockResolvedValueOnce([
+      {
+        id: "backup-run-1",
+        runtimeRunId: "runtime-run-1",
+        workflowKey: "video-db-backup",
+        trigger: "SCHEDULED",
+        status: "FAILED",
+        summary: "Video DB video-search backup workflow started by scheduler.",
+        error:
+          'pg_dump: error: invalid URI query parameter: "connection_limit"',
+        createdAt: new Date("2026-08-03T09:00:00.000Z"),
+        startedAt: new Date("2026-08-03T09:00:01.000Z"),
+        finishedAt: new Date("2026-08-03T09:00:02.000Z"),
+        durationMs: 1000,
+        skippedLock: null,
+      },
+    ])
+
+    const data = await loadSystemStatusData()
+
+    expect(data.incidents).toContainEqual(
+      expect.objectContaining({
+        title: "video-db-backup FAILED",
+        detail:
+          'pg_dump: error: invalid URI query parameter: "connection_limit"',
+        statusLabel: "FAILED",
+        statusTone: "danger",
+      }),
+    )
+    expect(data.incidents).not.toContainEqual(
+      expect.objectContaining({
+        detail: "Video DB video-search backup workflow started by scheduler.",
+      }),
     )
   })
 })
@@ -507,7 +604,7 @@ describe("loadWatchSearchAnalyticsData", () => {
           routeSource: "GRAPHQL",
           createdAt: { gte: new Date("2026-07-08T12:30:00.000Z") },
         }),
-        take: 100,
+        take: 500,
       }),
     )
     expect(watchSearchEventFindMany).toHaveBeenCalledWith(
@@ -743,6 +840,135 @@ describe("loadWatchSearchAnalyticsData", () => {
     expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
       expect.objectContaining({ value: "0" }),
     )
+  })
+
+  it("paginates Watch search requests after grouping traces", async () => {
+    searchTraceFindMany.mockResolvedValueOnce(
+      Array.from({ length: 30 }, (_, index) => ({
+        id: `trace_${index + 1}`,
+        requestId: `req_${String(index + 1).padStart(2, "0")}`,
+        queryText: `query ${index + 1}`,
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "en",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date(
+          `2026-07-15T12:${String(index).padStart(2, "0")}:00.000Z`,
+        ),
+      })),
+    )
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      page: 2,
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.pagination).toEqual({
+      currentPage: 2,
+      pageSize: 25,
+      totalPages: 2,
+      totalRequests: 30,
+      startIndex: 25,
+      endIndex: 30,
+    })
+    expect(data.requests).toHaveLength(5)
+    expect(data.requests[0]?.requestId).toBe("req_26")
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "30" }),
+    )
+  })
+
+  it("collapses one-letter Watch search typing bursts before pagination", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_jesus",
+        requestId: "req_jesus",
+        queryText: "jesus",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 2,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:06.000Z"),
+      },
+      {
+        id: "trace_jesu",
+        requestId: "req_jesu",
+        queryText: "jesu",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 1,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:03.000Z"),
+      },
+      {
+        id: "trace_jes",
+        requestId: "req_jes",
+        queryText: "jes",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.requests).toEqual([
+      expect.objectContaining({
+        requestId: "req_jesus",
+        queryText: "jesus",
+        collapsedRequestCount: 3,
+        collapsedQueryStart: "jes",
+        collapsedStartedAtIso: "2026-07-15T12:00:00.000Z",
+      }),
+    ])
+    expect(data.pagination).toEqual(
+      expect.objectContaining({
+        totalRequests: 1,
+        totalPages: 1,
+      }),
+    )
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "3" }),
+    )
+    expect(
+      data.insights.find((insight) => insight.label === "Raw Query"),
+    ).toEqual(expect.objectContaining({ value: "2 hidden" }))
   })
 })
 

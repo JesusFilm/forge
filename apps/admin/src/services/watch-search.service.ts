@@ -2,10 +2,9 @@ import { createHash, randomUUID } from "node:crypto"
 
 import type { PrismaClient } from "@prisma/client"
 import {
+  currentEmbeddingProviderIdentity,
   EmbeddingsBatchError,
-  EXPERIENCE_EMBEDDING_DIMENSIONS,
   generateExperienceEmbedding,
-  OPENROUTER_EMBEDDING_MODEL,
 } from "./embeddings.service"
 import {
   searchByExactTitle,
@@ -29,6 +28,7 @@ import {
   type SearchWatchability,
 } from "./search-watchability"
 import { elapsedMs, nowMs } from "./hybrid-search-timing"
+import { watchSearchQueryEmbeddingProcessCache } from "./watch-search-query-embedding-cache"
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
@@ -39,9 +39,8 @@ const MAX_EVIDENCE_LOCALES = 3
 const MIN_METADATA_TOTAL_SCORE = 0.3
 const MIN_SEMANTIC_TOTAL_SCORE = 0.35
 const MIN_SEMANTIC_SOURCE_SCORE = 0.5
-const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 7_000
+const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 1_000
 const QUERY_EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const QUERY_EMBEDDING_PROVIDER = "openrouter"
 export const WATCH_SEARCH_STARTER_QUERIES = [
   "bible stories",
   "parables",
@@ -71,6 +70,10 @@ export type WatchSearchFallbackKind =
 export type WatchSearchLaneStatusKind = "fulfilled" | "degraded" | "skipped"
 export type WatchSearchLaneDetail =
   | "cache_hit"
+  | "cache_l1_hit"
+  | "cache_l2_hit"
+  | "cache_l2_error"
+  | "cache_coalesced"
   | "cache_miss"
   | "cache_expired"
   | "cache_invalid"
@@ -87,6 +90,7 @@ export type WatchSearchLaneName =
 
 export type WatchSearchInput = {
   query: string
+  mode?: "default" | "modern" | null
   clientRequestId?: string | null
   targetLanguageSlug?: string | null
   queryLanguageSlug?: string | null
@@ -617,11 +621,17 @@ export class WatchSearchService {
         watchability: entry.watchability,
       })
     })
-    const imagesByVideoId = await this.imagesForResults(results)
+    const [catalogByVideoId, imagesByVideoId] = await Promise.all([
+      this.catalogFieldsForResults(results),
+      this.imagesForResults(results),
+    ])
 
     return {
       results: results.map((result) =>
-        withSearchResultImage(result, imagesByVideoId.get(result.id)),
+        withSearchResultImage(
+          withSearchResultCatalog(result, catalogByVideoId.get(result.id)),
+          imagesByVideoId.get(result.id),
+        ),
       ),
       hasMore: candidates.length > limit,
       degraded: semanticPipeline.degraded,
@@ -843,6 +853,48 @@ export class WatchSearchService {
     }
     return byVideoId
   }
+
+  private async catalogFieldsForResults(
+    results: readonly WatchSearchResult[],
+  ): Promise<Map<string, WatchSearchResultCatalog>> {
+    const videoIds = uniqueNonNull(
+      results
+        .filter((result) => result.type === "video")
+        .map((result) => result.id),
+    )
+    if (videoIds.length === 0) return new Map()
+
+    const videos = await this.prisma.video.findMany({
+      where: {
+        id: { in: videoIds },
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        label: true,
+        children: {
+          where: {
+            child: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            childId: true,
+          },
+        },
+      },
+    })
+
+    return new Map(
+      videos.map((video) => [
+        video.id,
+        {
+          label: video.label ?? null,
+          childCount: video.children.length,
+        },
+      ]),
+    )
+  }
 }
 
 type ExactTitleCandidate = ExactTitleResult
@@ -874,6 +926,11 @@ type SemanticVideoSearchResult = VideoSemanticResult & {
 type WatchSearchResultImage = {
   imageUrl: string
   imageBlurDataUrl: string | null
+}
+
+type WatchSearchResultCatalog = {
+  label: string | null
+  childCount: number
 }
 
 function laneStatus({
@@ -916,7 +973,7 @@ type CachedQueryEmbedding = {
 type QueryEmbeddingCacheLookup =
   | {
       embedding: number[]
-      detail: "cache_hit" | "cache_expired"
+      detail: "cache_l2_hit" | "cache_expired"
     }
   | {
       embedding: null
@@ -935,17 +992,18 @@ function normalizeEmbeddingCacheText(text: string): string {
 }
 
 function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
+  const identity = currentEmbeddingProviderIdentity()
   const cacheIdentity = JSON.stringify({
-    provider: QUERY_EMBEDDING_PROVIDER,
-    model: OPENROUTER_EMBEDDING_MODEL,
-    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    provider: identity.provider,
+    model: identity.model,
+    dimensions: identity.dimensions,
     text: normalizeEmbeddingCacheText(text),
   })
 
   return {
-    provider: QUERY_EMBEDDING_PROVIDER,
-    model: OPENROUTER_EMBEDDING_MODEL,
-    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    provider: identity.provider,
+    model: identity.model,
+    dimensions: identity.dimensions,
     queryHash: createHash("sha256").update(cacheIdentity).digest("hex"),
   }
 }
@@ -992,9 +1050,13 @@ function normalizeQueryEmbeddingResult(
   }
 }
 
-function parseCachedEmbedding(value: unknown): number[] | null {
+function parseCachedEmbedding(
+  value: unknown,
+  expectedDimensions: number,
+): number[] | null {
   if (!Array.isArray(value)) return null
   if (
+    value.length !== expectedDimensions ||
     !value.every((entry) => typeof entry === "number" && Number.isFinite(entry))
   ) {
     return null
@@ -1020,13 +1082,14 @@ async function readCachedQueryEmbedding(
   key: QueryEmbeddingCacheKey,
 ): Promise<QueryEmbeddingCacheLookup> {
   const rows = await prisma.$queryRaw<CachedQueryEmbedding[]>`
-    SELECT embedding, expires_at AS "expiresAt"
-    FROM query_embedding_cache
+    UPDATE query_embedding_cache
+    SET last_used_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
     WHERE provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
-    LIMIT 1
+    RETURNING embedding, expires_at AS "expiresAt"
   `
   const cached = rows[0]
   if (cached == null) return { embedding: null, detail: "cache_miss" }
@@ -1040,7 +1103,7 @@ async function readCachedQueryEmbedding(
     return { embedding: null, detail: "cache_invalid" }
   }
 
-  const embedding = parseCachedEmbedding(cached.embedding)
+  const embedding = parseCachedEmbedding(cached.embedding, key.dimensions)
   if (embedding == null) {
     await deleteCachedQueryEmbedding(prisma, key)
     return { embedding: null, detail: "cache_invalid" }
@@ -1051,16 +1114,7 @@ async function readCachedQueryEmbedding(
     return { embedding: null, detail: "cache_expired" }
   }
 
-  await prisma.$executeRaw`
-    UPDATE query_embedding_cache
-    SET last_used_at = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE provider = ${key.provider}
-      AND model = ${key.model}
-      AND dimensions = ${key.dimensions}
-      AND query_hash = ${key.queryHash}
-  `
-  return { embedding, detail: "cache_hit" }
+  return { embedding, detail: "cache_l2_hit" }
 }
 
 async function rememberQueryEmbedding(
@@ -1103,19 +1157,61 @@ async function rememberQueryEmbedding(
   `
 }
 
-async function defaultWatchSearchEmbedder(
+export async function defaultWatchSearchEmbedder(
   prisma: PrismaClient,
   text: string,
 ): Promise<WatchSearchQueryEmbeddingResult> {
   const key = queryEmbeddingCacheKey(text)
-  const cached = await readCachedQueryEmbedding(prisma, key)
-  if (cached.embedding != null) {
-    return { embedding: cached.embedding, detail: cached.detail }
+  const processCached = watchSearchQueryEmbeddingProcessCache.get(key)
+  if (processCached != null) {
+    return { embedding: processCached, detail: "cache_l1_hit" }
   }
 
-  const result = await generateExperienceEmbedding(text)
-  await rememberQueryEmbedding(prisma, key, result.embedding)
-  return { embedding: cloneEmbedding(result.embedding), detail: cached.detail }
+  const flight = watchSearchQueryEmbeddingProcessCache.coalesce(
+    key,
+    async (): Promise<{
+      embedding: number[]
+      detail: WatchSearchLaneDetail
+    }> => {
+      let cached: QueryEmbeddingCacheLookup
+      let durableCacheFailed = false
+      try {
+        cached = await readCachedQueryEmbedding(prisma, key)
+      } catch {
+        durableCacheFailed = true
+        cached = { embedding: null, detail: "cache_miss" }
+      }
+      if (cached.embedding != null) {
+        watchSearchQueryEmbeddingProcessCache.set(key, cached.embedding)
+        return { embedding: cached.embedding, detail: cached.detail }
+      }
+
+      const result = await generateExperienceEmbedding(text)
+      const embedding = parseCachedEmbedding(result.embedding, key.dimensions)
+      if (embedding == null) {
+        throw new Error(
+          `Query embedding must contain ${key.dimensions} finite dimensions`,
+        )
+      }
+
+      watchSearchQueryEmbeddingProcessCache.set(key, embedding)
+      try {
+        await rememberQueryEmbedding(prisma, key, embedding)
+      } catch {
+        // PostgreSQL is the cross-process cache, not a semantic-search dependency.
+        durableCacheFailed = true
+      }
+      return {
+        embedding,
+        detail: durableCacheFailed ? "cache_l2_error" : cached.detail,
+      }
+    },
+  )
+  const result = await flight.promise
+  return {
+    embedding: cloneEmbedding(result.embedding),
+    detail: flight.coalesced ? "cache_coalesced" : result.detail,
+  }
 }
 
 export async function prewarmWatchSearchQueryEmbeddings({
@@ -1221,6 +1317,18 @@ function withSearchResultImage(
     ...result,
     imageUrl: image.imageUrl,
     imageBlurDataUrl: image.imageBlurDataUrl,
+  }
+}
+
+function withSearchResultCatalog(
+  result: WatchSearchResult,
+  catalog: WatchSearchResultCatalog | undefined,
+): WatchSearchResult {
+  if (!catalog || result.type !== "video") return result
+  return {
+    ...result,
+    label: result.label ?? catalog.label,
+    childCount: result.childCount ?? catalog.childCount,
   }
 }
 

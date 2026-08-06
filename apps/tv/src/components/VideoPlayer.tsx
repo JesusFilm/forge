@@ -25,6 +25,11 @@ import { scale } from "../lib/scale"
 import { datadogLog, reportDatadogError } from "../lib/datadog"
 import { extractMuxPlaybackId } from "../lib/muxUrl"
 import {
+  evaluateMeaningfulPlayback,
+  initialMeaningfulState,
+  type PlaybackSnapshot,
+} from "../lib/watchEvents/watchEvents"
+import {
   createVideoQoeSession,
   sanitizeVideoErrorMessage,
   shouldCountRebuffer,
@@ -599,7 +604,28 @@ export type VideoPlayerProps = {
   title?: string
   subtitle?: string
   onDismiss: () => void
+  /** Fired at most once per source when playback crosses the meaningful
+   *  threshold (30s watched or 25% progress — thresholds live in
+   *  lib/watchEvents/watchEvents.ts). The player stays identity-free; the
+   *  overlay owning identity decides what to do with the snapshot. */
+  onMeaningfulPlayback?: (snapshot: PlaybackSnapshot) => void
+  /** Re-arms the meaningful latch when it changes — the in-player language
+   *  menu swaps dubs via replaceAsync WITHOUT a new playVideo (streamingUrl
+   *  stays the frozen creation source), so the overlay passes the active dub
+   *  identity here; mirrors web's recordedRef reset on [videoId, videoDubId]. */
+  meaningfulResetKey?: string | null
+  /** Continue Watching resume point. tvOS silently drops a seek issued before
+   *  the item is seekable (see reelPlayerGate.ts precedent), so the seek is
+   *  issued at readyToPlay and backstopped at the timeUpdate choke until the
+   *  playhead lands. */
+  startAtSeconds?: number | null
+  /** Periodic playback position for the Continue Watching shelf: every ~10s
+   *  during playback, on natural completion, and on unmount (Back). */
+  onPlaybackPosition?: (snapshot: PlaybackSnapshot) => void
 }
+
+/** Emission cadence for onPlaybackPosition during playback. */
+const PLAYBACK_POSITION_INTERVAL_MS = 10_000
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -608,6 +634,10 @@ export function VideoPlayer({
   title,
   subtitle,
   onDismiss,
+  onMeaningfulPlayback,
+  meaningfulResetKey,
+  startAtSeconds,
+  onPlaybackPosition,
 }: VideoPlayerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1024,6 +1054,22 @@ export function VideoPlayer({
       // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
       const summary = qoeRef.current?.finalize("ended")
       if (summary != null) datadogLog.info("video_playback.summary", summary)
+      // Continue Watching: report completion (position = duration) so the
+      // shelf drops the finished video; also stop the unmount emission from
+      // re-reporting a stale mid-video position afterwards.
+      const endedDuration =
+        typeof player.duration === "number" &&
+        Number.isFinite(player.duration) &&
+        player.duration > 0
+          ? player.duration
+          : (lastPositionRef.current?.durationSeconds ?? null)
+      if (endedDuration != null) {
+        onPlaybackPositionRef.current?.({
+          positionSeconds: endedDuration,
+          durationSeconds: endedDuration,
+        })
+        lastPositionRef.current = null
+      }
       if (!isMountedRef.current) return
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
@@ -1096,6 +1142,43 @@ export function VideoPlayer({
     return () => clearTimeout(fallback)
   }, [])
 
+  // Meaningful-playback latch (anonymous watch events, feat-322). Ref-held so
+  // the timeUpdate effect below keeps its [player] dep; reset per source.
+  const meaningfulStateRef = useRef(initialMeaningfulState)
+  const onMeaningfulPlaybackRef = useRef(onMeaningfulPlayback)
+  useEffect(() => {
+    onMeaningfulPlaybackRef.current = onMeaningfulPlayback
+  }, [onMeaningfulPlayback])
+  useEffect(() => {
+    meaningfulStateRef.current = initialMeaningfulState
+  }, [streamingUrl, meaningfulResetKey])
+
+  // Continue Watching (feat-322): pending resume seek + position reporting.
+  const pendingStartAtRef = useRef<number | null>(
+    startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
+  )
+  // Where THIS viewing session started — the meaningful evaluator measures
+  // watching since here, so a resumed playback (position past the threshold
+  // by construction) doesn't instantly record (review P2).
+  const meaningfulBaselineRef = useRef(
+    startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : 0,
+  )
+  const onPlaybackPositionRef = useRef(onPlaybackPosition)
+  useEffect(() => {
+    onPlaybackPositionRef.current = onPlaybackPosition
+  }, [onPlaybackPosition])
+  const lastPositionRef = useRef<PlaybackSnapshot | null>(null)
+  const lastPositionEmitAtRef = useRef(0)
+  // Final position on exit (Back button = unmount). Cleanup-only emission from
+  // refs; under dev StrictMode's mount cycle the early cleanup emits a ~0s
+  // snapshot, which the shelf's noise floor discards — harmless.
+  useEffect(() => {
+    return () => {
+      const last = lastPositionRef.current
+      if (last != null) onPlaybackPositionRef.current?.(last)
+    }
+  }, [])
+
   // Track time updates.
   // Fix #4: Skip state updates while a seek is in flight — don't let stale
   // pre-seek timeUpdate events overwrite the optimistic position.
@@ -1104,6 +1187,60 @@ export function VideoPlayer({
       // P2.3: ignore late-arriving native events after unmount (same guard
       // as playingChange/statusChange).
       if (!isMountedRef.current) return
+      // Meaningful-playback check rides the same 1Hz tick; the latch keeps it
+      // one-shot. While a resume seek is PENDING neither the evaluator nor
+      // position reporting runs — pre-seek ticks are not real watching and
+      // would clobber the shelf with near-zero positions (review P2).
+      {
+        const nativeDuration = player.duration
+        const safeDuration =
+          typeof nativeDuration === "number" &&
+          Number.isFinite(nativeDuration) &&
+          nativeDuration > 0
+            ? nativeDuration
+            : null
+
+        const pendingStart = pendingStartAtRef.current
+        if (pendingStart != null) {
+          if (payload.currentTime >= pendingStart - 2) {
+            pendingStartAtRef.current = null
+          } else {
+            // Self-healing re-seek at the 1Hz choke (readyToPlay's seek can be
+            // silently swallowed — reelPlayerGate precedent).
+            seekTargetRef.current = pendingStart
+            player.currentTime = pendingStart
+          }
+        } else {
+          const { state: nextMeaningful, record } = evaluateMeaningfulPlayback(
+            meaningfulStateRef.current,
+            payload.currentTime,
+            safeDuration,
+            // Thresholds measure watching since this session's start (the
+            // resume point) — see evaluateMeaningfulPlayback's doc.
+            meaningfulBaselineRef.current,
+          )
+          meaningfulStateRef.current = nextMeaningful
+          if (record) {
+            onMeaningfulPlaybackRef.current?.({
+              positionSeconds: payload.currentTime,
+              durationSeconds: safeDuration,
+            })
+          }
+
+          lastPositionRef.current = {
+            positionSeconds: payload.currentTime,
+            durationSeconds: safeDuration,
+          }
+          const now = Date.now()
+          if (
+            now - lastPositionEmitAtRef.current >=
+            PLAYBACK_POSITION_INTERVAL_MS
+          ) {
+            lastPositionEmitAtRef.current = now
+            onPlaybackPositionRef.current?.(lastPositionRef.current)
+          }
+        }
+      }
       // QoE: track the playhead for the summary's watched_ms (approximate; the
       // module keeps only the last value). Pure side-effect, no control flow.
       qoeRef.current?.onTimeUpdate(payload.currentTime)
@@ -1167,6 +1304,35 @@ export function VideoPlayer({
       // playingChange listener's comment for why this ordering matters.
       statusRef.current = next
       setStatus(next)
+
+      // Continue Watching: readyToPlay is the first guaranteed-seekable point
+      // (a seek issued earlier is silently dropped) — issue the resume seek
+      // here; the timeUpdate choke backstops until the playhead lands.
+      // Clamp against THIS item's duration first (Fix #8 precedent: landing at
+      // the endpoint fires playToEnd, which would dismiss the player AND
+      // delete the shelf entry). The saved position is per-video but the
+      // session may load a different dub with a shorter duration.
+      if (next === "readyToPlay" && pendingStartAtRef.current != null) {
+        const readyDuration = player.duration
+        let target = pendingStartAtRef.current
+        if (
+          typeof readyDuration === "number" &&
+          Number.isFinite(readyDuration) &&
+          readyDuration > 0
+        ) {
+          target = Math.min(target, Math.max(0, readyDuration - 5))
+        }
+        if (target <= 0) {
+          // Nothing sensible to resume to — play from the start.
+          pendingStartAtRef.current = null
+          meaningfulBaselineRef.current = 0
+        } else {
+          pendingStartAtRef.current = target
+          meaningfulBaselineRef.current = target
+          seekTargetRef.current = target
+          player.currentTime = target
+        }
+      }
 
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
@@ -1276,6 +1442,9 @@ export function VideoPlayer({
   }
 
   const seekBackward = () => {
+    // A user seek takes over from any pending Continue Watching resume —
+    // otherwise the 1Hz backstop would stomp the user's chosen position.
+    pendingStartAtRef.current = null
     const newTime = Math.max(0, player.currentTime - 10)
     seekTargetRef.current = newTime
     player.currentTime = newTime
@@ -1284,6 +1453,8 @@ export function VideoPlayer({
 
   const seekForward = () => {
     if (duration <= 0) return
+    // A user seek takes over from any pending resume (see seekBackward).
+    pendingStartAtRef.current = null
     // Fix #8: Clamp to `duration - 0.5` instead of `duration` so landing
     // on the exact endpoint doesn't fire `playToEnd` and involuntarily
     // dismiss the player while the user is still watching.

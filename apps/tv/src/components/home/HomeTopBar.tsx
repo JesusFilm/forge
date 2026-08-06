@@ -33,6 +33,9 @@ type HomeTopBarProps = {
   hidden: boolean
   onSearchPress: () => void
   onSettingsPress: () => void
+  /** Renders the Profile tab when provided — the flag decision (feat-322,
+   *  isProfileSurfaceEnabled) stays with the caller, keeping this bar pure. */
+  onProfilePress?: () => void
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
@@ -50,6 +53,7 @@ export const HomeTopBar = memo(function HomeTopBar({
   hidden,
   onSearchPress,
   onSettingsPress,
+  onProfilePress,
   onChromeFocus,
   onSearchTabNode,
   onFocusNode,
@@ -127,6 +131,18 @@ export const HomeTopBar = memo(function HomeTopBar({
         />
         {/* TODO: Collections / Saved tabs (in the design) once those
             surfaces exist in the app. */}
+        {onProfilePress != null ? (
+          <TopBarTab
+            testID="home-topbar-profile-tab"
+            iconName="person-outline"
+            accessibilityLabel="Profile"
+            accessibilityHint="Opens your profile"
+            onPress={onProfilePress}
+            onChromeFocus={onChromeFocus}
+            focusable={!hidden}
+            onFocusNode={onFocusNode}
+          />
+        ) : null}
         <TopBarTab
           testID="home-topbar-settings-tab"
           iconName="settings-outline"
@@ -158,7 +174,7 @@ type TopBarTabProps = {
   /** Stable id for D-pad sim automation (mirrors HomeCard's testID pattern). */
   testID: string
   /** Icon-only tab (60×60) when set; label tab otherwise. */
-  iconName?: "search" | "settings-outline"
+  iconName?: "search" | "settings-outline" | "person-outline"
   label?: string
   /** The design's "sel" state — translucent white fill, white ink at rest. */
   selected?: boolean

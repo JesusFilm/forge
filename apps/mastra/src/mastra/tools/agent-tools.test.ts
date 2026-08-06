@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { executeSearchVideos } from "./search-videos"
+import { _searchVideosResponseSchema } from "../../services/admin-agent-tools-client"
+
+import { executeSearchVideos, searchVideosOutputSchema } from "./search-videos"
 import { executeLookupBibleVerse } from "./lookup-bible-verse"
 import { executeFetchVideoImage } from "./fetch-video-image"
 
@@ -134,5 +136,36 @@ describe("executeFetchVideoImage", () => {
       { fetchImage },
     )
     expect(result).toEqual({ imageUrl: null, variant: null })
+  })
+})
+
+describe("searchVideos schema parity (feat-327)", () => {
+  it("keeps the tool output row and the client wire row structurally identical", () => {
+    // `executeSearchVideos` is a straight pass-through of the client's parsed
+    // rows, so the two schemas must widen together. Duplicated declarations
+    // (one wire-parse contract, one agent-facing contract) are the existing
+    // structure; this guard is what makes the duplication safe — widening one
+    // side alone silently drops the new field from the agent's view.
+    const clientRow = _searchVideosResponseSchema.shape.videos.element.shape
+    const toolRow = searchVideosOutputSchema.shape.videos.element.shape
+    expect(Object.keys(toolRow).sort()).toEqual(Object.keys(clientRow).sort())
+  })
+
+  it("carries the feat-326/#1789 fields on both sides (anti-vacuous)", () => {
+    // Guards the parity assertion above from passing on two identically
+    // UN-widened schemas.
+    for (const shape of [
+      _searchVideosResponseSchema.shape.videos.element.shape,
+      searchVideosOutputSchema.shape.videos.element.shape,
+    ]) {
+      expect(Object.keys(shape)).toEqual(
+        expect.arrayContaining([
+          "playbackId",
+          "durationSeconds",
+          "languageSlug",
+          "availability",
+        ]),
+      )
+    }
   })
 })

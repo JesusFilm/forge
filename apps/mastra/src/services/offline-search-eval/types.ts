@@ -140,6 +140,8 @@ export type SearchEvalResult = {
   label: string | null
   durationSeconds: number | null
   childCount: number | null
+  canonicalVideoId?: string
+  languageSlug?: string | null
 }
 
 export type SeedPromptCase = {

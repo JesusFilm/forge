@@ -1,4 +1,4 @@
-import { Component, useRef } from "react"
+import { Component, useCallback, useRef } from "react"
 import { ScrollView, Text, View } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
@@ -8,8 +8,17 @@ import {
 } from "../src/contexts/VideoPlayerContext"
 import { SeriesLanguageProvider } from "../src/contexts/SeriesLanguageContext"
 import { WatchPreferencesProvider } from "../src/contexts/WatchPreferencesProvider"
-import { WatchSessionProvider } from "../src/contexts/WatchSessionProvider"
+import {
+  WatchSessionProvider,
+  useWatchSession,
+} from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
+import {
+  queueMeaningfulWatchEvent,
+  type PlaybackSnapshot,
+  type WatchEventIdentity,
+} from "../src/lib/watchEvents/watchEvents"
+import { saveResumeSnapshot } from "../src/lib/watchEvents/continueWatching"
 
 /** Background color from Crimson Gallery design system */
 const BG_COLOR = "#161311"
@@ -45,6 +54,79 @@ try {
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
   const { state, dismissVideo } = useVideoPlayerContext()
+  // Live dub attribution: the in-player language menu swaps dubs via
+  // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
+  // frozen at Play-press. When the watch session still owns this playback
+  // (same video), its activeVariant is the dub actually playing — use it.
+  const { video: sessionVideo, activeVariant: sessionVariant } =
+    useWatchSession()
+  const liveDubId =
+    state.currentIdentity != null &&
+    sessionVideo?.documentId === state.currentIdentity.videoId
+      ? (sessionVariant?.documentId ?? state.currentIdentity.videoDubId)
+      : (state.currentIdentity?.videoDubId ?? null)
+
+  // Anonymous watch-event capture (feat-322). The callbacks read a SNAPSHOT
+  // captured while playback is active and NEVER cleared on dismiss:
+  // dismissVideo resets context state (identity -> null) BEFORE the player's
+  // unmount emission fires, so an "identityRef" read at exit time is always
+  // null and the Back-exit save silently drops (review P1). The snapshot is
+  // only REPLACED by the next identity-carrying playback.
+  const activePlaybackRef = useRef<{
+    identity: WatchEventIdentity
+    videoDubId: string | null
+    video: ReturnType<typeof useWatchSession>["video"]
+  } | null>(null)
+  if (state.isVisible && state.currentIdentity != null) {
+    activePlaybackRef.current = {
+      identity: state.currentIdentity,
+      videoDubId: liveDubId,
+      video:
+        sessionVideo?.documentId === state.currentIdentity.videoId
+          ? sessionVideo
+          : activePlaybackRef.current?.video?.documentId ===
+              state.currentIdentity.videoId
+            ? activePlaybackRef.current.video
+            : null,
+    }
+  } else if (state.isVisible && state.currentIdentity == null) {
+    // An identity-less playback (trailer, experience card) must not save
+    // against the PREVIOUS video's snapshot.
+    activePlaybackRef.current = null
+  }
+
+  const handleMeaningfulPlayback = useCallback((snapshot: PlaybackSnapshot) => {
+    const active = activePlaybackRef.current
+    if (active == null) return
+    void queueMeaningfulWatchEvent(
+      { videoId: active.identity.videoId, videoDubId: active.videoDubId },
+      snapshot,
+    )
+  }, [])
+
+  // Continue Watching shelf: display fields come from the session's video
+  // record — captured in the snapshot under the same ownership rule as the
+  // live dub attribution above.
+  const handlePlaybackPosition = useCallback((snapshot: PlaybackSnapshot) => {
+    const active = activePlaybackRef.current
+    if (active?.video == null) return
+    if (
+      active.video.documentId !== active.identity.videoId ||
+      active.video.slug == null
+    ) {
+      return
+    }
+    void saveResumeSnapshot(
+      {
+        videoId: active.identity.videoId,
+        slug: active.video.slug,
+        title: active.video.title,
+        imageUrl: active.video.posterUrl,
+        updatedAt: new Date().toISOString(),
+      },
+      snapshot,
+    )
+  }, [])
 
   if (!state.isVisible || state.currentUrl == null) {
     return null
@@ -56,6 +138,12 @@ function VideoPlayerOverlay() {
       title={state.currentTitle ?? undefined}
       subtitle={state.currentSubtitle ?? undefined}
       onDismiss={dismissVideo}
+      onMeaningfulPlayback={handleMeaningfulPlayback}
+      // Dub switch = new attribution unit: re-arm the one-shot latch so the
+      // new dub can record its own meaningful event (web parity).
+      meaningfulResetKey={liveDubId}
+      startAtSeconds={state.currentStartAtSeconds}
+      onPlaybackPosition={handlePlaybackPosition}
     />
   )
 }

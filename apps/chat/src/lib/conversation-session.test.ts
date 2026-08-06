@@ -47,6 +47,14 @@ const OK_SEEKER: StreamReplyResult = {
   engine: "seeker",
 }
 
+const VIDEO = {
+  videoId: "vid_1",
+  title: "Jesus Calms the Storm",
+  playbackId: "abcdEFGH1234",
+  durationSeconds: 754,
+  watchUrl: "https://www.jesusfilm.org/watch/jesus.html",
+}
+
 const ROW = {
   id: "thread-1",
   title: "Server thread",
@@ -731,6 +739,73 @@ describe("activate → deactivate → activate (the StrictMode contract)", () =>
   })
 })
 
+describe("featured video on the finalized turn (feat-328)", () => {
+  function lastTurn(session: ReturnType<typeof makeSession>["session"]) {
+    const messages = session.getSnapshot().activeConversation.messages
+    return messages[messages.length - 1]!
+  }
+
+  it("lands the terminal result's video on the finalized assistant message", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce({ ...OK_SEEKER, video: VIDEO })
+    session.send("show me a video about the storm")
+    await flush()
+    expect(lastTurn(session).video).toEqual(VIDEO)
+  })
+
+  it("leaves video absent when the terminal result carries none", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce(OK_SEEKER)
+    session.send("a plain question")
+    await flush()
+    expect(lastTurn(session).video).toBeUndefined()
+  })
+
+  it("never attaches a video on a failed terminal", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce({
+      ok: false,
+      reason: "timeout",
+      partialText: "part",
+    })
+    session.send("q")
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.error).toBe("timeout")
+    expect(turn.video).toBeUndefined()
+  })
+
+  it("never attaches a video on the gate_denied stub-downgrade rebuild", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce({
+      ok: false,
+      reason: "gate_denied",
+      partialText: "",
+    })
+    session.send("q")
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.engine).toBe("stub")
+    expect(turn.video).toBeUndefined()
+  })
+
+  it("carries a video only onto the conversation the send targeted", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    const first = session.getSnapshot().activeConversation.id
+    const pending = deferred<StreamReplyResult>()
+    streamReply.mockReturnValueOnce(pending.promise)
+    session.send("q in the first conversation")
+    session.newConversation()
+    pending.resolve({ ...OK_SEEKER, video: VIDEO })
+    await flush()
+    const snapshot = session.getSnapshot()
+    expect(snapshot.activeConversation.id).not.toBe(first)
+    expect(snapshot.activeConversation.messages).toEqual([])
+    const target = snapshot.conversations.find((c) => c.id === first)!
+    expect(target.messages[target.messages.length - 1]!.video).toEqual(VIDEO)
+  })
+})
+
 describe("module contract", () => {
   it("stays React-free: no react import may enter the session module", async () => {
     const { readFile } = await import("node:fs/promises")
@@ -740,5 +815,33 @@ describe("module contract", () => {
       "utf8",
     )
     expect(source).not.toMatch(/from\s+["']react["']|require\(["']react["']\)/)
+  })
+
+  it("resets every additive assistant field at the gate_denied rebuild site", async () => {
+    // The behavioral reset test above is vacuous by construction today (no
+    // live path writes `video` before the finalize), so pin the SITE: dropping
+    // `video: undefined` from the rebuild literal must fail something.
+    const { readFile } = await import("node:fs/promises")
+    const { resolve } = await import("node:path")
+    const source = await readFile(
+      resolve(process.cwd(), "src/lib/conversation-session.ts"),
+      "utf8",
+    )
+    const rebuild = source.slice(
+      source.indexOf("content: buildStubReply(trimmed)"),
+    )
+    const literalEnd = rebuild.indexOf("}))")
+    expect(literalEnd).toBeGreaterThan(0)
+    // Strip comments before matching, mirroring the mastra source-pin
+    // precedent: a bare substring check stays green when the reset line is
+    // commented out, which is exactly the bypass this pin exists to catch.
+    const literal = rebuild
+      .slice(0, literalEnd)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    for (const field of ["sources:", "grounded:", "engine:", "video:"]) {
+      expect(literal).toContain(field)
+    }
+    expect(literal.match(/\bvideo:/g)).toHaveLength(1)
   })
 })

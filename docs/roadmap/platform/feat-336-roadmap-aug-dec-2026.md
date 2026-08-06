@@ -3,7 +3,7 @@ id: "feat-336"
 title: "August-December 2026 Strategic Roadmap"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-01"
 duration: 1
 depends_on: []

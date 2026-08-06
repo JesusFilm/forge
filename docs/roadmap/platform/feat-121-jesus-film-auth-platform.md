@@ -13,6 +13,7 @@ blocks:
   - "feat-125"
   - "feat-133"
   - "feat-177"
+  - "feat-322"
 tags:
   - "platform"
   - "auth"

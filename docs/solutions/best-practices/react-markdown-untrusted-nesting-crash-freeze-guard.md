@@ -133,6 +133,14 @@ Per the mocked-shape-vs-real-contract discipline, the layers are isolated: the l
 
 In every case the user sees their reply — degraded to the pre-feat-268 plain-text presentation for that ONE turn — while the rest of the conversation, the sidebar, and the app keep working.
 
+> **Scope bound (2026-08-04, feat-328).** The per-message boundary described
+> here contains a RENDER throw. It does not contain a failed CHUNK load: for a
+> lazily-imported surface the rejection is cached by both the bundler runtime
+> and React.lazy's module-scoped payload, so one failure degrades every instance
+> for the session. See
+> `docs/solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md`
+> before restating the containment claim for a lazily-loaded component.
+
 ## Related
 
 - `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md` — the SIZE-axis sibling (byte-cap buffered reads; shared server process). This doc is the shape/depth axis.

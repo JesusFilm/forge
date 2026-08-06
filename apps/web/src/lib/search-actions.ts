@@ -14,6 +14,7 @@ import {
   type SearchResult,
 } from "./search"
 import {
+  findQueryNamedLanguageOption,
   findSearchLanguageOptionByEnglishName,
   normalizeSearchLanguageEnglishNames,
   publicSlugForLocale,
@@ -298,51 +299,6 @@ async function loadLanguageOptionsIfNeeded(
 
   const result = await getSearchLanguageOptions()
   return result.ok ? result.options : languageOptions
-}
-
-function findQueryNamedLanguageOption(
-  query: string,
-  languageOptions: readonly SearchLanguageOption[],
-): SearchLanguageOption | null {
-  const normalizedQuery = normalizeQueryLanguageText(query)
-  if (!normalizedQuery) return null
-  const queryHaystack = ` ${normalizedQuery} `
-
-  const candidates = languageOptions
-    .filter((option) => option.publicSlug)
-    .flatMap((option) =>
-      queryLanguageAliases(option).map((alias) => ({
-        alias,
-        option,
-      })),
-    )
-    .filter(({ alias }) => alias.length > 0)
-    .sort((a, b) => b.alias.length - a.alias.length)
-
-  return (
-    candidates.find(({ alias }) => queryHaystack.includes(` ${alias} `))
-      ?.option ?? null
-  )
-}
-
-function queryLanguageAliases(option: SearchLanguageOption): string[] {
-  const aliases = new Set<string>()
-  aliases.add(normalizeQueryLanguageText(option.englishName))
-  aliases.add(
-    normalizeQueryLanguageText(option.englishName.split(",")[0] ?? ""),
-  )
-  aliases.add(normalizeQueryLanguageText(option.publicSlug?.replace(/-/g, " ")))
-  return [...aliases]
-}
-
-function normalizeQueryLanguageText(value: string | null | undefined): string {
-  return ` ${value ?? ""} `
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
 }
 
 function scheduleAnalyticsForResponse({

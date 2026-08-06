@@ -135,7 +135,7 @@ export type AdminSearchEvalCandidatePayload = {
   generatedAt?: string | null
 }
 
-const SearchResultSchema = z
+export const SearchResultSchema = z
   .object({
     type: z.enum(["video", "experience"]),
     id: z.string(),
@@ -149,6 +149,8 @@ const SearchResultSchema = z
     label: z.string().nullable().optional(),
     durationSeconds: z.number().int().nullable().optional(),
     childCount: z.number().int().nullable().optional(),
+    canonicalVideoId: z.string().optional(),
+    languageSlug: z.string().nullable().optional(),
   })
   .strict()
   .transform((result) => ({
@@ -163,7 +165,27 @@ export const AdminSearchResponseSchema = z
     results: z.array(SearchResultSchema),
     hasMore: z.boolean(),
     query: z.string(),
-    searchMode: z.enum(["hybrid", "keyword-only"]),
+    searchMode: z.string().min(1).max(64),
+    requestId: z.string().optional(),
+    degraded: z.boolean().optional(),
+    latencyMs: z.number().nonnegative().optional(),
+    revision: z.string().nullable().optional(),
+    laneStatuses: z
+      .array(
+        z
+          .object({
+            lane: z.string().min(1).max(64),
+            status: z.enum(["fulfilled", "degraded", "skipped"]),
+            startedOffsetMs: z.number().nonnegative(),
+            elapsedMs: z.number().nonnegative(),
+            resultCount: z.number().int().nonnegative(),
+            reason: z.string().nullable(),
+            detail: z.string().nullable(),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
   })
   .strict()
 

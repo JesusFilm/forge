@@ -45,6 +45,7 @@ import {
 import {
   canQueueBatchDownload,
   nextBatchAction,
+  shouldReleaseBatchScope,
 } from "../lib/batchDownloadQueue"
 import { normalizeDubMedia } from "../lib/normalizeVideo"
 import {
@@ -540,12 +541,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           if (action.kind === "empty") {
             // Batch fully drained: release the occupancy scope so a later
             // manual download of a once-batched slug can't hold the slot.
-            const stillActive = Object.values(recordsRef.current).some(
-              (r) =>
-                batchSlugsRef.current.has(r.videoSlug) &&
-                (r.state === "downloading" || r.state === "paused"),
-            )
-            if (!stillActive) {
+            if (
+              shouldReleaseBatchScope(recordsRef.current, batchSlugsRef.current)
+            ) {
               batchSlugsRef.current = new Set()
               datadogLog.info("batch.pump", {
                 disposition: "occupancy-released",
