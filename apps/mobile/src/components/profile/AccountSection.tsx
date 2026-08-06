@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
@@ -106,7 +107,11 @@ export function AccountSection() {
       <View style={styles.accountCard}>
         <View style={styles.identityRow}>
           <Ionicons name="person-circle" size={36} color={ACCENT} />
-          <View style={styles.identityText}>
+          {/* Session Replay masks INPUTS, not rendered text, so without this
+              the account email is captured verbatim into recordings — the one
+              thing rumUserFromSession deliberately never sends. Wraps both
+              lines: displayName falls back to the email when there is no name. */}
+          <SessionReplayView.MaskAll style={styles.identityText}>
             <Text
               style={[styles.identityName, typography.titleSmall]}
               numberOfLines={1}
@@ -118,7 +123,7 @@ export function AccountSection() {
                 {snapshot.user.email}
               </Text>
             ) : null}
-          </View>
+          </SessionReplayView.MaskAll>
         </View>
         <Pressable
           onPress={() => {
