@@ -266,8 +266,13 @@ async function writeNewestWins(
   )
 }
 
-export async function deleteWatchProgressForUser(userId: string) {
-  const result = await prisma.watchProgress.deleteMany({
+/** `client` lets a caller run this inside a transaction with a sibling
+ *  erasure, so an account deletion never half-completes. */
+export async function deleteWatchProgressForUser(
+  userId: string,
+  client: Pick<typeof prisma, "watchProgress"> = prisma,
+) {
+  const result = await client.watchProgress.deleteMany({
     where: { userId },
   })
   return { deletedCount: result.count }

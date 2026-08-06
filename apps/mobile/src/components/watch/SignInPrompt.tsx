@@ -14,9 +14,11 @@ import {
 import {
   SIGN_IN_PROMPT_COPY,
   SIGN_IN_PROMPT_DISMISSED_AT_STORAGE_KEY,
+  isSignInPromptArmed,
   markSignInPromptShown,
   serializePromptDismissal,
   shouldShowSignInPrompt,
+  subscribeToSignInPrompt,
 } from "../../lib/watchProgress/signInPrompt"
 import { feedback } from "../../styles/shared"
 
@@ -31,6 +33,12 @@ export function SignInPrompt() {
   const session = useSyncExternalStore(
     (onStoreChange) => getAuthSession().subscribe(onStoreChange),
     () => getAuthSession().getSnapshot(),
+  )
+  // The arming stop happens in the player's subtree, so this subscription is
+  // what lets the prompt appear on the CURRENT screen rather than a later one.
+  const armed = useSyncExternalStore(
+    subscribeToSignInPrompt,
+    isSignInPromptArmed,
   )
   const [visible, setVisible] = useState(false)
 
@@ -55,7 +63,7 @@ export function SignInPrompt() {
     return () => {
       cancelled = true
     }
-  }, [session, visible])
+  }, [session, visible, armed])
 
   // Signing in mid-display hides it.
   if (!visible || session.status === "signedIn") return null

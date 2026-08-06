@@ -483,3 +483,89 @@ describe("clearEntry (R16 optimistic clear)", () => {
     expect(deps.sendClear).not.toHaveBeenCalled()
   })
 })
+
+describe("account boundary", () => {
+  it("never reuses one account's last-good for another account", async () => {
+    // The fail-open path is the leak: sign in as B, let B's first server read
+    // fail, and an untagged cache paints A's history under B's id (R10).
+    let accountId = "user-1"
+    const fetchEntries = jest
+      .fn<Promise<WatchProgressEntry[]>, []>()
+      .mockResolvedValueOnce([entry("video-a")])
+      .mockRejectedValueOnce(new Error("offline"))
+    const { sync } = buildSync({
+      getAccountId: () => accountId,
+      fetchEntries,
+    })
+
+    await sync.hydrateFromServer()
+    expect(getProgressSnapshot().entries.size).toBe(1)
+
+    accountId = "user-2"
+    await sync.hydrateFromServer()
+
+    expect(getProgressSnapshot().accountId).toBe("user-2")
+    expect(getProgressSnapshot().entries.size).toBe(0)
+  })
+
+  it("still reuses last-good for the SAME account on a blip", async () => {
+    // The anti-vacuous companion: the fix must not disable fail-open.
+    const fetchEntries = jest
+      .fn<Promise<WatchProgressEntry[]>, []>()
+      .mockResolvedValueOnce([entry("video-a")])
+      .mockRejectedValueOnce(new Error("blip"))
+    const { sync } = buildSync({ fetchEntries })
+
+    await sync.hydrateFromServer()
+    await sync.hydrateFromServer()
+
+    expect(getProgressSnapshot().entries.size).toBe(1)
+  })
+
+  it("keeps hydrating when the snapshot write rejects", async () => {
+    // Unguarded, this rejects hydrateFromServer inside a fire-and-forget
+    // chain and the flush that follows it never runs.
+    const storage = memoryStorage()
+    storage.setItem = jest.fn(
+      async (_key: string, _value: string): Promise<void> => {
+        throw new Error("SQLITE_FULL")
+      },
+    )
+    const { sync } = buildSync({ storage })
+
+    await expect(sync.hydrateFromServer()).resolves.toBeUndefined()
+    expect(getProgressSnapshot().entries.size).toBe(1)
+  })
+})
+
+describe("queue serialization (onQueue)", () => {
+  it("makes a second queue operation wait for the first to finish", async () => {
+    // The mutex exists for a real race: the foreground flush and the
+    // poll-driven drain are both fire-and-forget. Every other test awaits
+    // each call in turn, so none of them would notice its removal — this one
+    // starts two operations that genuinely overlap.
+    const storage = memoryStorage()
+    let reads = 0
+    let releaseFirstRead: () => void = () => {}
+    const firstRead = new Promise<void>((resolve) => {
+      releaseFirstRead = resolve
+    })
+    storage.getItem = jest.fn(async (key: string) => {
+      reads += 1
+      if (reads === 1) await firstRead
+      return storage.backing.get(key) ?? null
+    })
+    const { sync } = buildSync({ storage })
+
+    const first = sync.flushQueue()
+    const second = sync.flushQueue()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // The first operation still holds the lock, so the second has not read.
+    expect(reads).toBe(1)
+
+    releaseFirstRead()
+    await Promise.all([first, second])
+    expect(reads).toBe(2)
+  })
+})

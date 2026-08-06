@@ -75,8 +75,21 @@ function reportDroppedWrites(sent: number, accepted: number) {
 
 export function createProgressSync(deps: ProgressSyncDeps) {
   const now = deps.now ?? (() => Date.now())
-  let lastGood: readonly WatchProgressEntry[] | null = null
+  /**
+   * Tagged with its account: this is the fail-open fallback, so an untagged
+   * cache would feed the PREVIOUS account's history into the next account's
+   * hydrate whenever their first server read fails (R10).
+   */
+  let lastGood: {
+    accountId: string
+    entries: readonly WatchProgressEntry[]
+  } | null = null
   let cadence = { lastSentAt: null as number | null }
+
+  /** Only this account's own last-good may be reused. */
+  function carryFor(accountId: string): readonly WatchProgressEntry[] | null {
+    return lastGood?.accountId === accountId ? lastGood.entries : null
+  }
 
   async function hydrateFromServerInternal(): Promise<void> {
     const accountId = deps.getAccountId()
@@ -87,8 +100,8 @@ export function createProgressSync(deps: ProgressSyncDeps) {
     } catch {
       outcome = { ok: false }
     }
-    const resolved = resolveProgressEntries(outcome, lastGood)
-    lastGood = resolved.nextLastGood
+    const resolved = resolveProgressEntries(outcome, carryFor(accountId))
+    lastGood = { accountId, entries: resolved.nextLastGood ?? [] }
     // The account may have signed out while the fetch was in flight.
     if (deps.getAccountId() !== accountId) return
     hydrateProgress({ accountId, entries: [...resolved.entries] })
@@ -100,9 +113,13 @@ export function createProgressSync(deps: ProgressSyncDeps) {
     entries: readonly WatchProgressEntry[],
   ) {
     const blob = serializeProgressSnapshot(accountId, entries, new Date(now()))
-    if (blob != null) {
-      await deps.storage.setItem(WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY, blob)
-    }
+    if (blob == null) return
+    // The snapshot is a re-derivable paint cache, but this runs inside a
+    // fire-and-forget chain — an unguarded reject also skips the flush that
+    // follows it, stranding queued writes.
+    await deps.storage
+      .setItem(WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY, blob)
+      .catch(() => {})
   }
 
   /**
@@ -211,7 +228,7 @@ export function createProgressSync(deps: ProgressSyncDeps) {
         .catch(() => null)
       const parsed = parseStoredProgressSnapshot(raw, new Date(now()))
       if (parsed == null || parsed.accountId !== accountId) return
-      lastGood = parsed.entries
+      lastGood = { accountId, entries: parsed.entries }
       hydrateProgress({ accountId, entries: parsed.entries })
     },
 

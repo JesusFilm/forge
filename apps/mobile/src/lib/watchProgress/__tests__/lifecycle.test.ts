@@ -122,3 +122,35 @@ describe("attachProgressLifecycle", () => {
     expect(calls).toEqual([])
   })
 })
+
+describe("transition serialization", () => {
+  it("finishes a sign-out's cleanup before a different sign-in starts", async () => {
+    // The race: handleTransition set knownAccountId=null on sign-out, so the
+    // following sign-in saw previous===null and took the un-chained branch —
+    // account A's storage removals then ran against account B's writes.
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    let releaseRemoval: () => void = () => {}
+    const pendingRemoval = new Promise<void>((resolve) => {
+      releaseRemoval = resolve
+    })
+    deps.removeStorageItem = jest.fn(async (key: string) => {
+      await pendingRemoval
+      calls.push(`remove:${key}`)
+    })
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    setAccount("user-2")
+    releaseRemoval()
+    await flushMicrotasks()
+    await flushMicrotasks()
+
+    const lastRemoval = calls.lastIndexOf(
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    )
+    expect(lastRemoval).toBeGreaterThan(-1)
+    expect(calls.indexOf("snapshot")).toBeGreaterThan(lastRemoval)
+  })
+})

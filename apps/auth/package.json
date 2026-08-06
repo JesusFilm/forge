@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:first-party-apps": "tsx src/scripts/seed-first-party-apps.ts",
-    "mint:agent-handle": "tsx src/scripts/mint-agent-login-handle.ts"
+    "mint:agent-handle": "tsx src/scripts/mint-agent-login-handle.ts",
+    "mint:apple-client-secret": "node scripts/mint-apple-client-secret.mjs"
   },
   "dependencies": {
     "@better-auth/expo": "1.6.2",

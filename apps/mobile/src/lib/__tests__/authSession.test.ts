@@ -5,6 +5,7 @@ import {
   decodeJwtExpiryMs,
   isJwtFresh,
   rumUserFromSession,
+  userFromSessionResult,
   type AuthSessionDeps,
 } from "../authSession"
 
@@ -324,5 +325,53 @@ describe("secure storage adapter (R14)", () => {
 
     expect(adapter.getItem("any")).toBeNull()
     expect(() => adapter.setItem("any", "value")).not.toThrow()
+  })
+})
+
+describe("userFromSessionResult (outage is not a sign-out)", () => {
+  it("returns the user on a normal response", () => {
+    expect(userFromSessionResult({ data: { user: { id: "user-1" } } })).toEqual(
+      { id: "user-1", email: undefined, name: undefined },
+    )
+  })
+
+  it("returns null for a real signed-out response", () => {
+    expect(userFromSessionResult({ data: null })).toBeNull()
+  })
+
+  it("THROWS on an error envelope rather than reporting signed out", () => {
+    // better-fetch resolves {data:null,error} on a 5xx without throwing.
+    // Reading that as a sign-out wipes the store, snapshot, and the unsent
+    // offline queue on a transient auth outage.
+    expect(() =>
+      userFromSessionResult({ data: null, error: { status: 503 } }),
+    ).toThrow(/session_fetch_failed/)
+  })
+
+  it("throws even when an error arrives alongside data", () => {
+    expect(() =>
+      userFromSessionResult({
+        data: { user: { id: "user-1" } },
+        error: { status: 500 },
+      }),
+    ).toThrow(/session_fetch_failed/)
+  })
+})
+
+describe("refresh() keeps the session through an outage", () => {
+  it("does not sign out when the session read throws", async () => {
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockRejectedValueOnce(new Error("session_fetch_failed:503"))
+    const { store } = buildStore({ fetchSession })
+
+    await store.refresh()
+    await store.refresh()
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: "signedIn",
+      user: { id: "user-1" },
+    })
   })
 })

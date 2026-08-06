@@ -216,3 +216,41 @@ describe("resolveMobileUserPrincipalFromToken", () => {
     expect(fetchMock.mock.calls.length).toBe(fetchesAfterFirst)
   })
 })
+
+describe("JWKS algorithm fetching", () => {
+  it("shares one JWKS fetch between concurrent first-time verifications", async () => {
+    // This runs for every JWS-shaped bearer, so an unguarded cache miss
+    // fans out one outbound fetch per concurrent request.
+    let releaseJwks: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      releaseJwks = resolve
+    })
+    const fetchMock = vi.fn(async (url?: unknown) => {
+      void url
+      await gate
+      return Response.json({ keys: [publicJwk] })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const { resolveMobileUserPrincipalFromToken } =
+      await importMobileUserToken()
+    const token = await mintJwt()
+
+    const pending = Promise.all([
+      resolveMobileUserPrincipalFromToken(`Bearer ${token}`),
+      resolveMobileUserPrincipalFromToken(`Bearer ${token}`),
+      resolveMobileUserPrincipalFromToken(`Bearer ${token}`),
+    ])
+    releaseJwks()
+    const results = await pending
+
+    // createRemoteJWKSet fetches the keyset too; the assertion is that the
+    // ALG derivation did not add one fetch per concurrent caller.
+    const algFetches = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/api/auth/jwks"),
+    )
+    expect(algFetches.length).toBeLessThan(3)
+    expect(
+      results.every((principal) => principal?.id === "auth-user-123"),
+    ).toBe(true)
+  })
+})

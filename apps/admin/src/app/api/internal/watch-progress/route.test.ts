@@ -9,7 +9,11 @@ vi.mock("@/auth/watch-progress-bearer", () => ({
 }))
 
 vi.mock("@/db/client", () => ({
-  prisma: {},
+  prisma: {
+    $transaction: vi.fn(
+      async (fn: (tx: unknown) => Promise<unknown>) => await fn({}),
+    ),
+  },
 }))
 
 vi.mock("@/services/watch-progress.service", () => ({
@@ -30,7 +34,7 @@ describe("DELETE /api/internal/watch-progress", () => {
     deleteWatchEventsForUser.mockResolvedValue({ deletedCount: 5 })
   })
 
-  it("erases progress AND watch events for the user in one call (R5)", async () => {
+  it("erases progress and, for an account deletion, the watch-event log too (R5)", async () => {
     const { DELETE } = await import("./route")
 
     const response = await DELETE(
@@ -40,7 +44,10 @@ describe("DELETE /api/internal/watch-progress", () => {
           authorization: "Bearer valid-erasure-key",
           "content-type": "application/json",
         },
-        body: JSON.stringify({ userId: "auth-user-123" }),
+        body: JSON.stringify({
+          userId: "auth-user-123",
+          reason: "account-deleted",
+        }),
       }),
     )
 
@@ -49,7 +56,10 @@ describe("DELETE /api/internal/watch-progress", () => {
       deletedCount: 3,
       deletedWatchEventCount: 5,
     })
-    expect(deleteWatchProgressForUser).toHaveBeenCalledWith("auth-user-123")
+    expect(deleteWatchProgressForUser).toHaveBeenCalledWith(
+      "auth-user-123",
+      expect.anything(),
+    )
     expect(deleteWatchEventsForUser).toHaveBeenCalledWith(
       expect.anything(),
       "auth-user-123",
@@ -100,7 +110,10 @@ describe("DELETE /api/internal/watch-progress", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(deleteWatchProgressForUser).toHaveBeenCalledWith("auth-user-123")
+    expect(deleteWatchProgressForUser).toHaveBeenCalledWith(
+      "auth-user-123",
+      expect.anything(),
+    )
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("reason=unspecified"),
     )
@@ -139,5 +152,56 @@ describe("DELETE /api/internal/watch-progress", () => {
     expect(response.status).toBe(401)
     expect(deleteWatchProgressForUser).not.toHaveBeenCalled()
     expect(deleteWatchEventsForUser).not.toHaveBeenCalled()
+  })
+
+  it("leaves the watch-event log alone for a clear-history caller", async () => {
+    // apps/web calls this same route with no reason when a user clears their
+    // own history; wiping their analytics log too is not what they asked for.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const { DELETE } = await import("./route")
+
+    const response = await DELETE(
+      new Request("http://localhost/api/internal/watch-progress", {
+        method: "DELETE",
+        headers: {
+          authorization: "Bearer valid-erasure-key",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ userId: "auth-user-123" }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(deleteWatchProgressForUser).toHaveBeenCalled()
+    expect(deleteWatchEventsForUser).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      deletedWatchEventCount: 0,
+    })
+    warn.mockRestore()
+  })
+
+  it("runs both erasures in one transaction", async () => {
+    // A partial erasure leaves apps/auth aborting the deletion while telling
+    // the user nothing changed, with progress rows already gone.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const { prisma } = await import("@/db/client")
+    const { DELETE } = await import("./route")
+
+    await DELETE(
+      new Request("http://localhost/api/internal/watch-progress", {
+        method: "DELETE",
+        headers: {
+          authorization: "Bearer valid-erasure-key",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: "auth-user-123",
+          reason: "account-deleted",
+        }),
+      }),
+    )
+
+    expect(prisma.$transaction).toHaveBeenCalled()
+    warn.mockRestore()
   })
 })

@@ -29,6 +29,31 @@ export const SIGN_IN_PROMPT_COPY =
 let armed = false
 let shownThisSession = false
 
+/**
+ * The arming stop fires from the player's subtree, but the prompt renders as
+ * its sibling — without a subscription nothing re-evaluates the flag, so the
+ * prompt only ever appeared on a LATER mount of the watch screen (R17).
+ */
+const listeners = new Set<() => void>()
+
+export function subscribeToSignInPrompt(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+/** Snapshot for useSyncExternalStore — identity-stable per armed state. */
+export function isSignInPromptArmed(): boolean {
+  return armed
+}
+
+function setArmed(next: boolean) {
+  if (armed === next) return
+  armed = next
+  for (const listener of listeners) listener()
+}
+
 /** Test-only reset. */
 export function __resetSignInPromptSession() {
   armed = false
@@ -43,7 +68,7 @@ export function noteSignedOutPlaybackStop(positionSeconds: number) {
   if (shownThisSession) return
   if (!Number.isFinite(positionSeconds)) return
   if (positionSeconds < PROMPT_MIN_WATCHED_SECONDS) return
-  armed = true
+  setArmed(true)
 }
 
 /** Pure cooldown decision — dismissedAtRaw is the persisted flag's value. */
@@ -71,7 +96,7 @@ export function shouldShowSignInPrompt({
   nowMs: number
 }): boolean {
   if (signedIn) {
-    armed = false
+    setArmed(false)
     return false
   }
   if (!armed || shownThisSession) return false
@@ -81,7 +106,7 @@ export function shouldShowSignInPrompt({
 /** The prompt rendered — burn the session's one shot. */
 export function markSignInPromptShown() {
   shownThisSession = true
-  armed = false
+  setArmed(false)
 }
 
 /** Serialize the dismissal timestamp for the device-local cooldown flag. */

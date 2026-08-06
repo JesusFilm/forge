@@ -99,10 +99,19 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   const parsed = deleteSchema.safeParse(body)
   if (!parsed.success) return badRequest("userId is required")
 
-  // Account-deletion erasure covers both watch stores in one call:
-  // the progress record and the watch-event analytics log (R5).
-  const result = await deleteWatchProgressForUser(parsed.data.userId)
-  const events = await deleteWatchEventsForUser(prisma, parsed.data.userId)
+  // The analytics log is erased ONLY for an account deletion. apps/web calls
+  // this same route for a user-initiated clear-history, which must remove the
+  // resume positions without destroying that user's whole watch-event log.
+  const erasesEvents = parsed.data.reason === "account-deleted"
+
+  // One transaction: a partial erasure would leave apps/auth aborting the
+  // deletion — and telling the user nothing changed — with rows already gone.
+  const [result, events] = await prisma.$transaction(async (tx) => [
+    await deleteWatchProgressForUser(parsed.data.userId, tx),
+    erasesEvents
+      ? await deleteWatchEventsForUser(tx, parsed.data.userId)
+      : { deletedCount: 0 },
+  ])
   console.warn(
     `[watch-progress] event=erasure reason=${parsed.data.reason ?? "unspecified"} progress=${result.deletedCount} events=${events.deletedCount}`,
   )

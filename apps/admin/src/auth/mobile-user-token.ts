@@ -132,6 +132,13 @@ async function fetchAlgorithms(): Promise<string[]> {
   return [...algorithms]
 }
 
+/**
+ * Single-flight: this runs for every JWS-shaped bearer, so without it every
+ * request arriving in the same expired-cache window fires its own outbound
+ * JWKS fetch instead of sharing one.
+ */
+let algFlight: { issuer: string; promise: Promise<string[]> } | null = null
+
 async function getAlgorithms(issuer: string, force = false): Promise<string[]> {
   const now = Date.now()
   const cached = algCache?.issuer === issuer ? algCache : null
@@ -141,9 +148,21 @@ async function getAlgorithms(issuer: string, force = false): Promise<string[]> {
       return cached.algorithms
     }
   }
-  const algorithms = await fetchAlgorithms()
-  algCache = { issuer, algorithms, fetchedAt: now }
-  return algorithms
+  if (algFlight?.issuer === issuer) return algFlight.promise
+
+  const flight = fetchAlgorithms().then((algorithms) => {
+    algCache = { issuer, algorithms, fetchedAt: Date.now() }
+    return algorithms
+  })
+  algFlight = { issuer, promise: flight }
+  // Released on BOTH settlement paths; `.finally` would re-throw the
+  // rejection into an unhandled one. Identity-checked so a later flight
+  // started after an invalidation is never cleared by an earlier one.
+  const release = () => {
+    if (algFlight?.promise === flight) algFlight = null
+  }
+  void flight.then(release, release)
+  return flight
 }
 
 class MobileJwtError extends Error {

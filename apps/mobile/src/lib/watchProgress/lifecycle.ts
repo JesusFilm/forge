@@ -43,21 +43,26 @@ export function attachProgressLifecycle(deps: ProgressLifecycleDeps) {
       .catch(() => {})
   }
 
+  /**
+   * Every transition runs through one chain. Deciding per-branch from
+   * `knownAccountId` could not see a sign-out still in flight, so a sign-out
+   * followed quickly by a DIFFERENT sign-in ran the old account's storage
+   * removals concurrently with the new account's writes to the same keys.
+   */
+  let chain: Promise<unknown> = Promise.resolve()
+
   function handleTransition() {
     const accountId = deps.getAccountId()
     if (accountId === knownAccountId) return
     const previous = knownAccountId
     knownAccountId = accountId
-    if (accountId != null) {
+    const step = async () => {
       // An account SWITCH clears the old account's local artifacts first.
-      if (previous != null) {
-        void onSignedOut().then(onSignedIn)
-      } else {
-        void onSignedIn()
-      }
-    } else {
-      void onSignedOut()
+      if (previous != null) await onSignedOut()
+      if (accountId != null) await onSignedIn()
+      else if (previous == null) await onSignedOut()
     }
+    chain = chain.then(step, step).catch(() => undefined)
   }
 
   const unsubscribe = deps.subscribe(handleTransition)

@@ -8,6 +8,8 @@ import {
   noteSignedOutPlaybackStop,
   serializePromptDismissal,
   shouldShowSignInPrompt,
+  isSignInPromptArmed,
+  subscribeToSignInPrompt,
 } from "../signInPrompt"
 
 const NOW = Date.parse("2026-08-04T00:00:00.000Z")
@@ -104,5 +106,54 @@ describe("sign-in prompt trigger (R17/KTD13)", () => {
     expect(SIGN_IN_PROMPT_COPY).not.toMatch(
       /left off|so far|this video|current position|just watched|resume/i,
     )
+  })
+})
+
+describe("arming is observable (R17 renders on the current screen)", () => {
+  it("notifies subscribers when a signed-out stop arms the prompt", () => {
+    // Without this the flag flips in the player's subtree and nothing
+    // re-evaluates it, so the prompt only appeared on a LATER mount.
+    const listener = jest.fn()
+    const unsubscribe = subscribeToSignInPrompt(listener)
+
+    expect(isSignInPromptArmed()).toBe(false)
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+
+    expect(isSignInPromptArmed()).toBe(true)
+    expect(listener).toHaveBeenCalledTimes(1)
+    unsubscribe()
+  })
+
+  it("does not notify for a stop below the threshold", () => {
+    const listener = jest.fn()
+    const unsubscribe = subscribeToSignInPrompt(listener)
+
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS - 1)
+
+    expect(isSignInPromptArmed()).toBe(false)
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
+  })
+
+  it("notifies again when the prompt is shown and disarms", () => {
+    const listener = jest.fn()
+    const unsubscribe = subscribeToSignInPrompt(listener)
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+    listener.mockClear()
+
+    markSignInPromptShown()
+
+    expect(isSignInPromptArmed()).toBe(false)
+    expect(listener).toHaveBeenCalledTimes(1)
+    unsubscribe()
+  })
+
+  it("stops notifying after unsubscribe", () => {
+    const listener = jest.fn()
+    subscribeToSignInPrompt(listener)()
+
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+
+    expect(listener).not.toHaveBeenCalled()
   })
 })

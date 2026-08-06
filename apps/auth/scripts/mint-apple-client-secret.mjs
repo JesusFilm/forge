@@ -17,14 +17,14 @@
  * on stdout is one too (diagnostics go to stderr so a pipe stays clean).
  */
 
-const crypto = require("node:crypto")
-const fs = require("node:fs")
+import crypto from "node:crypto"
+import fs from "node:fs"
 
 const [, , p8Path, teamId, keyId, clientId] = process.argv
 
 if (!p8Path || !teamId || !keyId || !clientId) {
   console.error(
-    "usage: node mint-apple-client-secret.js <p8-path> <team-id> <key-id> <client-id>",
+    "usage: node mint-apple-client-secret.mjs <p8-path> <team-id> <key-id> <client-id>",
   )
   process.exit(1)
 }

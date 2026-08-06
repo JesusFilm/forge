@@ -249,12 +249,17 @@ export type SignedInUserPayload = {
 }
 
 type BetterAuthExpoClient = {
-  getSession: () => Promise<{
+  /** better-fetch returns a {data,error} envelope and does NOT throw on a
+   *  non-2xx, so `error` is the only way to tell an outage from a sign-out. */
+  getSession: (options?: { fetchOptions?: { timeout?: number } }) => Promise<{
     data: {
       user: { id: string; email?: string | null; name?: string | null }
     } | null
+    error?: { status?: number | null; message?: string | null } | null
   }>
-  signOut: () => Promise<unknown>
+  signOut: (options?: {
+    fetchOptions?: { timeout?: number }
+  }) => Promise<unknown>
   deleteUser: () => Promise<{
     data?: unknown
     error?: { code?: string | null; message?: string | null } | null
@@ -331,31 +336,69 @@ export function getAuthClient(): BetterAuthExpoClient {
 }
 /* eslint-enable @typescript-eslint/no-require-imports */
 
+/**
+ * Read a session response. An error envelope is an OUTAGE, not a sign-out —
+ * better-fetch returns `{data:null,error}` on a 5xx without throwing, and
+ * treating that as signed-out wipes the store, snapshot, and unsent queue.
+ * Throwing routes it to refresh()'s degrade path instead.
+ */
+export function userFromSessionResult(result: {
+  data?: {
+    user?: {
+      id: string
+      email?: string | null
+      name?: string | null
+    } | null
+  } | null
+  error?: { status?: number | null; message?: string | null } | null
+}): AuthUser | null {
+  if (result.error) {
+    throw new Error(`session_fetch_failed:${result.error.status ?? "unknown"}`)
+  }
+  const user = result.data?.user
+  if (!user) return null
+  return {
+    id: user.id,
+    email: user.email ?? undefined,
+    name: user.name ?? undefined,
+  }
+}
+
 let store: AuthSessionStore | null = null
+
+/**
+ * The auth client arms an abort only when a timeout is passed, and the JWT
+ * link holds the whole progress operation until the mint settles — so a hung
+ * connection would otherwise stall every read and write with no ceiling.
+ * Shorter than Apollo's 15s budget, which only starts once the JWT resolves.
+ *
+ * better-fetch's own `timeout` (setTimeout + AbortController) rather than
+ * `AbortSignal.timeout`, which Hermes does not reliably provide.
+ */
+const AUTH_FETCH_TIMEOUT_MS = 5000
+
+function authFetchOptions() {
+  return { fetchOptions: { timeout: AUTH_FETCH_TIMEOUT_MS } }
+}
 
 /** The app-wide session store, wired to the real Better Auth client. */
 export function getAuthSession(): AuthSessionStore {
   if (!store) {
     store = createAuthSessionStore({
-      fetchSession: async () => {
-        const result = await getAuthClient().getSession()
-        const user = result.data?.user
-        if (!user) return null
-        return {
-          id: user.id,
-          email: user.email ?? undefined,
-          name: user.name ?? undefined,
-        }
-      },
+      fetchSession: async () =>
+        userFromSessionResult(
+          await getAuthClient().getSession(authFetchOptions()),
+        ),
       fetchToken: async () => {
         const result = await getAuthClient().$fetch("/token", {
           method: "GET",
+          ...authFetchOptions(),
         })
         const token = (result.data as { token?: unknown } | undefined)?.token
         return typeof token === "string" && token.length > 0 ? token : null
       },
       signOutRemote: async () => {
-        await getAuthClient().signOut()
+        await getAuthClient().signOut(authFetchOptions())
       },
     })
   }
