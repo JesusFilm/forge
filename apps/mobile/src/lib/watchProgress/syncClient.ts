@@ -93,10 +93,13 @@ export function getProgressSync(): ProgressSync {
           .filter((entry): entry is WatchProgressEntry => entry != null)
       },
       sendUpserts: async (intents) => {
-        await getApolloClient().mutate({
+        const result = await getApolloClient().mutate({
           mutation: UPSERT_MY_WATCH_PROGRESS,
           variables: { entries: toUpsertEntries(intents) },
         })
+        return {
+          acceptedCount: result.data?.upsertMyWatchProgress?.length ?? 0,
+        }
       },
       sendClear: async (videoId) => {
         await getApolloClient().mutate({

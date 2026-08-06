@@ -54,7 +54,7 @@ function buildSync(overrides: Partial<ProgressSyncDeps> = {}) {
   const deps: ProgressSyncDeps = {
     getAccountId: () => "user-1",
     fetchEntries: jest.fn(async () => [entry("video-1")]),
-    sendUpserts: jest.fn(async () => {}),
+    sendUpserts: jest.fn(async () => ({ acceptedCount: 1 })),
     sendClear: jest.fn(async () => {}),
     storage,
     now: () => NOW,
@@ -239,6 +239,74 @@ describe("drainIntents (KTD5 cadence)", () => {
     expect(peekProgressIntents()).toEqual([])
   })
 
+  it("persists a failed batch to the durable queue, not just memory", async () => {
+    // The in-memory buffer dies with the process. A downloaded film watched
+    // on a flaky connection must survive an app kill, which is exactly what
+    // R7's queue is for — the queue is the FAILURE path, not a source-kind
+    // path, so this also covers watching a download while fully online.
+    bufferProgressIntent(intent)
+    const { sync, storage } = buildSync({
+      sendUpserts: jest.fn(async () => {
+        throw new Error("offline")
+      }),
+    })
+
+    await sync.drainIntents({ forced: true })
+
+    const raw = await storage.getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)
+    expect(raw).not.toBeNull()
+    expect(JSON.parse(raw as string)).toMatchObject({
+      accountId: "user-1",
+      writes: [expect.objectContaining({ videoId: "video-1" })],
+    })
+  })
+
+  it("drains the queued backlog once a send succeeds again", async () => {
+    // R7's "flush when connectivity returns": without this the backlog waits
+    // for the next sign-in, so a user who never signs out never syncs.
+    const { sync, deps, storage } = buildSync()
+    await storage.setItem(
+      WATCH_PROGRESS_QUEUE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        accountId: "user-1",
+        writes: [{ ...intent, videoId: "video-backlog" }],
+      }),
+    )
+    bufferProgressIntent(intent)
+
+    await sync.drainIntents({ forced: true })
+
+    const sent = (deps.sendUpserts as jest.Mock).mock.calls.flatMap(
+      (call) => call[0] as Array<{ videoId?: string }>,
+    )
+    expect(sent.map((write) => write.videoId)).toEqual(
+      expect.arrayContaining(["video-1", "video-backlog"]),
+    )
+    expect(await storage.getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)).toBeNull()
+  })
+
+  it("does NOT restore failed intents when the account changed mid-send", async () => {
+    // The leak: the buffer is shared and untagged, so intents restored after
+    // a sign-out/switch flush under the NEXT account's identity. Admin cannot
+    // catch it — it derives the user from the JWT, which is genuinely theirs.
+    let accountId: string | null = "user-1"
+    bufferProgressIntent(intent)
+    const { sync, storage } = buildSync({
+      getAccountId: () => accountId,
+      sendUpserts: jest.fn(async () => {
+        accountId = "user-2"
+        throw new Error("network")
+      }),
+    })
+
+    await sync.drainIntents({ forced: true })
+
+    expect(peekProgressIntents()).toEqual([])
+    // And nothing was persisted under the new account either.
+    expect(await storage.getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)).toBeNull()
+  })
+
   it("throttles unforced sends to one per window", async () => {
     let currentTime = NOW
     const { sync, deps } = buildSync({ now: () => currentTime })
@@ -269,9 +337,12 @@ describe("drainIntents (KTD5 cadence)", () => {
     expect(deps.sendUpserts).toHaveBeenCalledTimes(2)
   })
 
-  it("restores intents on a failed send", async () => {
+  it("a failed send keeps the write, in the queue rather than the buffer", async () => {
+    // Contract change: failures used to re-buffer in memory, which was lost
+    // on app kill and untagged by account. They now persist to the durable,
+    // account-bound queue instead — same guarantee, stronger medium.
     bufferProgressIntent(intent)
-    const { sync } = buildSync({
+    const { sync, storage } = buildSync({
       sendUpserts: jest.fn(async () => {
         throw new Error("send failed")
       }),
@@ -279,7 +350,10 @@ describe("drainIntents (KTD5 cadence)", () => {
 
     await sync.drainIntents({ forced: true })
 
-    expect(peekProgressIntents()).toHaveLength(1)
+    expect(peekProgressIntents()).toHaveLength(0)
+    expect(await storage.getItem(WATCH_PROGRESS_QUEUE_STORAGE_KEY)).toContain(
+      "video-1",
+    )
   })
 
   it("never sends signed out (R10)", async () => {

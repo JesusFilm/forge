@@ -31,8 +31,6 @@ export type RecorderDeps = {
   getAccountId: () => string | null
   /** Network path: buffer for the 30s batch sender. */
   bufferIntent: (intent: ProgressWriteIntent) => void
-  /** Offline path: persist into the account-bound queue. */
-  enqueueOffline: (accountId: string, write: ProgressWriteIntent) => void
   /** Ask the sync layer to drain (it applies the cadence gate). */
   requestDrain: (options: { forced: boolean }) => void
   /** Local echo so bars update immediately (id-keyed entries only). */
@@ -47,7 +45,6 @@ export type ProgressRecorder = ReturnType<typeof createProgressRecorder>
 
 export function createProgressRecorder(
   identity: ProgressIdentity | null,
-  sourceKind: RecorderSourceKind,
   deps: RecorderDeps,
 ) {
   const now = deps.now ?? (() => Date.now())
@@ -72,11 +69,11 @@ export function createProgressRecorder(
       recordedAt,
     }
     if (!intent.videoId && !intent.videoSlug) return false
-    if (sourceKind === "offline") {
-      deps.enqueueOffline(accountId, intent)
-    } else {
-      deps.bufferIntent(intent)
-    }
+    // Every write takes the same path. Routing on the SOURCE (a file:// URL)
+    // conflated "playing a downloaded file" with "the device is offline", so
+    // a downloaded film watched on wifi queued forever and never synced. The
+    // queue is the FAILURE path instead — see the sync layer.
+    deps.bufferIntent(intent)
     if (identity.videoId) {
       deps.applyLocal(accountId, {
         videoId: identity.videoId,

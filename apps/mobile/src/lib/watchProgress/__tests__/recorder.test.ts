@@ -6,7 +6,6 @@ import {
   applyLocalProgress,
   hydrateProgress,
   getProgressEntry,
-  restoreProgressIntents,
   drainProgressIntents,
 } from "../store"
 import { createProgressSync } from "../sync"
@@ -15,18 +14,16 @@ const START = Date.parse("2026-08-04T00:00:00.000Z")
 
 function buildDeps(overrides: Partial<RecorderDeps> = {}) {
   const buffered: unknown[] = []
-  const queued: unknown[] = []
   const drains: Array<{ forced: boolean }> = []
   const deps: RecorderDeps = {
     getAccountId: () => "user-1",
     bufferIntent: (intent) => buffered.push(intent),
-    enqueueOffline: (accountId, write) => queued.push({ accountId, write }),
     requestDrain: (options) => drains.push(options),
     applyLocal: () => {},
     now: () => START,
     ...overrides,
   }
-  return { deps, buffered, queued, drains }
+  return { deps, buffered, drains }
 }
 
 describe("createProgressRecorder", () => {
@@ -35,7 +32,6 @@ describe("createProgressRecorder", () => {
     const { deps, buffered } = buildDeps({ now: () => time })
     const recorder = createProgressRecorder(
       { videoId: "video-1", languageSlug: "english" },
-      "network",
       deps,
     )
 
@@ -49,20 +45,15 @@ describe("createProgressRecorder", () => {
   })
 
   it("signed-out ticks produce zero intents (R10)", () => {
-    const { deps, buffered, queued, drains } = buildDeps({
+    const { deps, buffered, drains } = buildDeps({
       getAccountId: () => null,
     })
-    const recorder = createProgressRecorder(
-      { videoId: "video-1" },
-      "network",
-      deps,
-    )
+    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
 
     recorder.onTick(10, 100)
     recorder.flush("pause")
 
     expect(buffered).toEqual([])
-    expect(queued).toEqual([])
     // The drain request itself is harmless but must carry no intents; the
     // recorder still emits it only for real samples — none here.
     expect(drains.filter((d) => !d.forced)).toEqual([])
@@ -70,7 +61,7 @@ describe("createProgressRecorder", () => {
 
   it("a tick with no identity is a structural no-op (hero surfaces)", () => {
     const { deps, buffered, drains } = buildDeps()
-    const recorder = createProgressRecorder(null, "network", deps)
+    const recorder = createProgressRecorder(null, deps)
 
     recorder.onTick(10, 100)
     recorder.flush("unmount")
@@ -82,11 +73,7 @@ describe("createProgressRecorder", () => {
   it("pause/background/unmount force an immediate drain with the latest position", () => {
     for (const trigger of ["pause", "background", "unmount"] as const) {
       const { deps, buffered, drains } = buildDeps()
-      const recorder = createProgressRecorder(
-        { videoId: "video-1" },
-        "network",
-        deps,
-      )
+      const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
 
       recorder.onTick(41, 100)
       recorder.flush(trigger)
@@ -100,11 +87,7 @@ describe("createProgressRecorder", () => {
 
   it("playback end records the completed range", () => {
     const { deps, buffered } = buildDeps()
-    const recorder = createProgressRecorder(
-      { videoId: "video-1" },
-      "network",
-      deps,
-    )
+    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
 
     recorder.onTick(97, 100)
     recorder.flush("end")
@@ -115,26 +98,25 @@ describe("createProgressRecorder", () => {
     })
   })
 
-  it("offline ticks land in the queue keyed by slug with the recording timestamp", () => {
-    const { deps, queued, buffered } = buildDeps()
+  it("a slug-only identity records a slug-keyed intent with its timestamp", () => {
+    // Downloaded playback has no admin video id on device (KTD8), so the
+    // slug is the key admin resolves server-side. It takes the same path as
+    // every other write; the queue is now reached only on send failure.
+    const { deps, buffered } = buildDeps()
     const recorder = createProgressRecorder(
       { videoSlug: "birth-of-jesus" },
-      "offline",
       deps,
     )
 
     recorder.onTick(30, 100)
 
-    expect(buffered).toEqual([])
-    expect(queued).toEqual([
-      {
-        accountId: "user-1",
-        write: expect.objectContaining({
-          videoSlug: "birth-of-jesus",
-          positionSeconds: 30,
-          recordedAt: new Date(START).toISOString(),
-        }),
-      },
+    expect(buffered).toEqual([
+      expect.objectContaining({
+        videoSlug: "birth-of-jesus",
+        videoId: undefined,
+        positionSeconds: 30,
+        recordedAt: new Date(START).toISOString(),
+      }),
     ])
   })
 
@@ -143,7 +125,6 @@ describe("createProgressRecorder", () => {
     const { deps } = buildDeps({ applyLocal })
     const recorder = createProgressRecorder(
       { videoId: "video-1", languageSlug: "english" },
-      "network",
       deps,
     )
 
@@ -167,7 +148,7 @@ describe("recorder + store + sync integration (the rate-limit property)", () => 
 
   it("two minutes of playback produces at most four sends, not sixty", async () => {
     let time = START
-    const sendUpserts = jest.fn(async () => {})
+    const sendUpserts = jest.fn(async () => ({ acceptedCount: 1 }))
     const sync = createProgressSync({
       getAccountId: () => "user-1",
       fetchEntries: async () => [],
@@ -182,16 +163,18 @@ describe("recorder + store + sync integration (the rate-limit property)", () => 
     })
     hydrateProgress({ accountId: "user-1", entries: [] })
     const pendingDrains: Array<Promise<void>> = []
-    const recorder = createProgressRecorder({ videoId: "video-1" }, "network", {
-      getAccountId: () => "user-1",
-      bufferIntent: bufferProgressIntent,
-      enqueueOffline: () => {},
-      requestDrain: (options) => {
-        pendingDrains.push(sync.drainIntents(options))
+    const recorder = createProgressRecorder(
+      { videoId: "video-1" },
+      {
+        getAccountId: () => "user-1",
+        bufferIntent: bufferProgressIntent,
+        requestDrain: (options) => {
+          pendingDrains.push(sync.drainIntents(options))
+        },
+        applyLocal: applyLocalProgress,
+        now: () => time,
       },
-      applyLocal: applyLocalProgress,
-      now: () => time,
-    })
+    )
 
     for (let second = 0; second < 120; second += 1) {
       time = START + second * 1_000
@@ -209,8 +192,6 @@ describe("recorder + store + sync integration (the rate-limit property)", () => 
       expect(call[0]).toHaveLength(1)
     }
     expect(getProgressEntry("video-1")).toBeDefined()
-    // Nothing left over that a later restore could resurrect.
-    restoreProgressIntents([])
     expect(peekProgressIntents().length).toBeLessThanOrEqual(1)
     drainProgressIntents()
   })

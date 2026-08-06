@@ -139,13 +139,3 @@ export function drainProgressIntents(): ProgressWriteIntent[] {
   bufferedIntents.clear()
   return intents
 }
-
-/** Re-buffer intents after a failed send (newer buffered intents win). */
-export function restoreProgressIntents(
-  intents: readonly ProgressWriteIntent[],
-) {
-  for (const intent of intents) {
-    const key = progressIntentKey(intent)
-    if (!bufferedIntents.has(key)) bufferedIntents.set(key, intent)
-  }
-}

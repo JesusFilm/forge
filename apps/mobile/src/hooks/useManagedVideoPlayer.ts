@@ -16,7 +16,6 @@ import {
 } from "../lib/watchProgress/store"
 import { noteSignedOutPlaybackStop } from "../lib/watchProgress/signInPrompt"
 import {
-  enqueueOfflineWrite,
   getProgressSync,
   getSignedInAccountId,
 } from "../lib/watchProgress/syncClient"
@@ -122,8 +121,13 @@ export function useManagedVideoPlayer(
   // (file://) playback routes writes to the account-bound queue.
   const progressIdentity = options?.progress ?? null
   const recorderRef = useRef<ProgressRecorder | null>(null)
+  // languageSlug is part of the key: an audio-language switch mid-playback
+  // must re-key so the departing position flushes under the language it was
+  // actually watched in, rather than being stamped with the new one.
   const recorderKey = progressIdentity
-    ? `${progressIdentity.videoId ?? ""}|${progressIdentity.videoSlug ?? ""}`
+    ? `${progressIdentity.videoId ?? ""}|${progressIdentity.videoSlug ?? ""}|${
+        progressIdentity.languageSlug ?? ""
+      }`
     : null
   const identityRef = useRef(progressIdentity)
   identityRef.current = progressIdentity
@@ -132,10 +136,9 @@ export function useManagedVideoPlayer(
   useEffect(() => {
     const identity = identityRef.current
     recorderRef.current = identity
-      ? createProgressRecorder(identity, sessionSourceRef.current, {
+      ? createProgressRecorder(identity, {
           getAccountId: getSignedInAccountId,
           bufferIntent: bufferProgressIntent,
-          enqueueOffline: enqueueOfflineWrite,
           requestDrain: (drainOptions) =>
             void getProgressSync().drainIntents(drainOptions),
           applyLocal: applyLocalProgress,

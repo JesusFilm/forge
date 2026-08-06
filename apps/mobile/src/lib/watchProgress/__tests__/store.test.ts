@@ -8,7 +8,6 @@ import {
   hydrateProgress,
   peekProgressIntents,
   resetToSignedOut,
-  restoreProgressIntents,
   subscribeToProgress,
   type WatchProgressEntry,
 } from "../store"
@@ -121,16 +120,16 @@ describe("buffered write intents (KTD5)", () => {
     expect(peekProgressIntents()).toHaveLength(2)
   })
 
-  it("drains to empty and restores failed sends without clobbering newer intents", () => {
+  it("drains to empty, and a later intent starts a fresh batch", () => {
+    // Failed sends no longer come back here — they persist to the durable
+    // account-bound queue — so the buffer only ever holds unsent samples.
     bufferProgressIntent(intent({ positionSeconds: 10 }))
-    const inFlight = drainProgressIntents()
+    expect(drainProgressIntents()).toHaveLength(1)
     expect(peekProgressIntents()).toEqual([])
 
-    // A newer intent lands while the send is in flight, then the send fails.
     bufferProgressIntent(
       intent({ positionSeconds: 30, recordedAt: "2026-08-04T00:00:05.000Z" }),
     )
-    restoreProgressIntents(inFlight)
 
     const drained = drainProgressIntents()
     expect(drained).toHaveLength(1)
