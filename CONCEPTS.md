@@ -352,6 +352,17 @@ containment: the Mobile SDK copies error-level logs' full authored attributes
 into RUM error events, so query-bearing logs stay below error level to keep
 exact query text bounded to the Logs store.
 
+### Search Trace
+
+An Admin-owned first-party record of one search request's resolved language,
+retrieval-lane outcomes, result summary, latency, and anonymous request identity,
+used for operational analysis and evaluation correlation.
+
+Search Trace persistence is best-effort observability, not part of search
+success. Accepted writes run after the response under bounded backpressure, so
+a slow analytics store cannot multiply database work or delay the public search
+contract; rejected or failed writes remain visible through health signals.
+
 ### Watch Analytics Context
 
 An optional anonymous context object future Watch event collection can provide
