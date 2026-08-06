@@ -8,8 +8,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { isWatchDownloadAccountGateEnabledMock } = vi.hoisted(() => ({
+const {
+  isWatchDownloadAccountGateEnabledMock,
+  resolveWatchSubtitleTargetMock,
+} = vi.hoisted(() => ({
   isWatchDownloadAccountGateEnabledMock: vi.fn(async () => true),
+  resolveWatchSubtitleTargetMock: vi.fn(),
 }))
 
 vi.mock("node:dns", () => ({
@@ -37,6 +41,10 @@ vi.mock("@/lib/feature-flags", () => ({
   },
 }))
 
+vi.mock("@/lib/subtitle-target", () => ({
+  resolveWatchSubtitleTarget: resolveWatchSubtitleTargetMock,
+}))
+
 import { promises as dns } from "node:dns"
 
 import { GET, HEAD } from "./route"
@@ -56,6 +64,7 @@ function makeRequest(
 
 afterEach(() => {
   isWatchDownloadAccountGateEnabledMock.mockResolvedValue(true)
+  resolveWatchSubtitleTargetMock.mockReset()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -248,6 +257,10 @@ describe("GET /watch/api/download - redirect path", () => {
 describe("GET /watch/api/download - inline subtitles", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
+    resolveWatchSubtitleTargetMock.mockResolvedValue({
+      ok: true,
+      target: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+    })
   })
 
   it("serves allowlisted VTT subtitles same-origin for browser tracks", async () => {
@@ -261,8 +274,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -275,9 +289,13 @@ describe("GET /watch/api/download - inline subtitles", () => {
       "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
       expect.objectContaining({ redirect: "manual" }),
     )
+    expect(resolveWatchSubtitleTargetMock).toHaveBeenCalledWith({
+      subtitleId: "subtitle-1",
+      variantId: "variant-1",
+    })
   })
 
-  it("does not proxy wildcard allowlist subdomains as inline subtitles", async () => {
+  it("does not proxy legacy raw URLs as inline subtitles", async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)
 
@@ -292,6 +310,27 @@ describe("GET /watch/api/download - inline subtitles", () => {
     expect(res.headers.get("location")).toBe(
       "https://subtitles.jesusfilm.org/example.vtt",
     )
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(resolveWatchSubtitleTargetMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects resolved subtitle URLs outside the exact Core VTT origin", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target: "https://subtitles.jesusfilm.org/example.vtt",
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(403)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -308,8 +347,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -336,8 +376,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -352,8 +393,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 

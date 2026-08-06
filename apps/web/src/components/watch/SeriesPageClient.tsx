@@ -19,7 +19,7 @@ import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
-import { buildMediaProxyUrl } from "@/components/watch/download-link"
+import { buildSubtitleProxyUrl } from "@/components/watch/download-link"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
@@ -177,9 +177,13 @@ export function SeriesPageClient({
           ) ?? null),
     [selectedSubtitleSlug, subtitles],
   )
-  const subtitleVttSrc = selectedSubtitle?.vttSrc
-    ? buildMediaProxyUrl(selectedSubtitle.vttSrc)
-    : null
+  const subtitleVttSrc =
+    selectedSubtitle?.vttSrc && selectedVariant
+      ? buildSubtitleProxyUrl({
+          subtitleId: selectedSubtitle.documentId,
+          variantId: selectedVariant.documentId,
+        })
+      : null
   const subtitleLanguageCode = selectedSubtitle
     ? languageCodeFor(selectedSubtitle.language)
     : null

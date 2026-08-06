@@ -393,7 +393,7 @@ describe("SeriesPageClient — shared content surface", () => {
         hasSubtitleOptions: true,
         subtitleLanguageCode: "RU",
         subtitleVttSrc:
-          "/watch/api/download?url=https%3A%2F%2Fcdn.example%2Frussian.vtt&disposition=inline",
+          "/watch/api/download?subtitleId=subtitle-russian&variantId=variant-1&disposition=inline",
       }),
     )
     const modal = container.querySelector(

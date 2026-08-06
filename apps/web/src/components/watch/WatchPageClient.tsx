@@ -47,9 +47,9 @@ import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
-  buildMediaProxyUrl,
   buildDownloadFilename,
   buildDownloadProxyUrl,
+  buildSubtitleProxyUrl,
 } from "@/components/watch/download-link"
 import { selectDefaultDownloadTier } from "@/components/watch/download-options"
 import { env } from "@/env"
@@ -431,9 +431,12 @@ export function WatchPageClient({
 
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined
-    const rawVttSrc = selectedSubtitle?.vttSrc ?? null
-    return rawVttSrc ? buildMediaProxyUrl(rawVttSrc) : null
-  }, [selectedSubtitle, subtitles.length])
+    if (!selectedSubtitle?.vttSrc) return null
+    return buildSubtitleProxyUrl({
+      subtitleId: selectedSubtitle.documentId,
+      variantId: variant.documentId,
+    })
+  }, [selectedSubtitle, subtitles.length, variant.documentId])
 
   const subtitleLanguageCode = selectedSubtitle
     ? languageCodeFor(selectedSubtitle.language)

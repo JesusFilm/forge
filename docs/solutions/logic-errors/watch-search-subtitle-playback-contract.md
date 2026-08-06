@@ -120,9 +120,13 @@ VTT into `SeriesHero`, and expose the same enable/disable state in
 
 ### Serve VTT same-origin without creating an open proxy
 
-The subtitle request uses the existing same-origin download endpoint, but only
-the exact `https://api-media-core.jesusfilm.org` origin and a `.vtt` pathname
-may enter the anonymous body path. The endpoint:
+The subtitle request uses the existing same-origin download endpoint. The
+browser sends only the subtitle and playable Dub IDs; Web resolves the VTT URL
+from Admin and verifies that the published Dub, edition, subtitle, and optional
+subtitle owner still form the same playback tuple. This avoids a
+user-controlled URL-to-`fetch` dataflow. Only the exact
+`https://api-media-core.jesusfilm.org` origin and a `.vtt` pathname may then
+enter the anonymous body path. The endpoint:
 
 - fails closed on missing or private DNS answers;
 - uses a 10-second timeout and refuses redirects;

@@ -15,6 +15,7 @@ resolution_type: code_fix
 severity: high
 related_components:
   - "apps/web/src/app/api/download/route.ts"
+  - "apps/web/src/lib/subtitle-target.ts"
   - "apps/web/src/components/watch/WatchPageClient.tsx"
 tags:
   - "watch-page"
@@ -55,8 +56,11 @@ subtitle.
 ## Solution
 
 Classify the one public in-page consumer before applying the download account
-gate. The exception is intentionally narrow: `disposition=inline`, the exact
-`https://api-media-core.jesusfilm.org` origin, and a `.vtt` pathname.
+gate. The browser sends only the Admin subtitle and playable Dub identifiers;
+it never sends the upstream URL used by `fetch`. Resolve that URL server-side
+from `videoDub(id) { videoEdition { subtitles } }`, and require that the Dub is
+published, the subtitle belongs to that exact edition, and any subtitle owner
+matches the Dub's Video.
 
 ```ts
 function isAnonymousInlineSubtitleRequest(
@@ -64,26 +68,20 @@ function isAnonymousInlineSubtitleRequest(
 ): boolean {
   if (searchParams.get("disposition") !== "inline") return false
 
-  const target = searchParams.get("url")
-  if (!target || !isAllowedDownloadOrigin(target)) return false
-
-  try {
-    const parsed = new URL(target)
-    return (
-      parsed.origin === "https://api-media-core.jesusfilm.org" &&
-      parsed.pathname.toLowerCase().endsWith(".vtt")
-    )
-  } catch {
-    return false
-  }
+  return Boolean(
+    searchParams.get("subtitleId") && searchParams.get("variantId"),
+  )
 }
 ```
 
-Keep the route's URL validation and fail-closed public-DNS pre-flight. Fetch the
-exact Core URL with a 10-second timeout and `redirect: "manual"`, then stream it
-through a hard 2 MiB limit. Do not trust `Content-Length` alone: a missing or
-dishonest header must not allow an unbounded buffer. Require a `WEBVTT`
-signature before returning the body as same-origin `text/vtt` with `nosniff`.
+After server-side resolution, require the exact
+`https://api-media-core.jesusfilm.org` origin and a `.vtt` pathname. Keep the
+route's generic URL allowlist and fail-closed public-DNS pre-flight as layered
+defenses. Fetch the resolved Core URL with a 10-second timeout and
+`redirect: "manual"`, then stream it through a hard 2 MiB limit. Do not trust
+`Content-Length` alone: a missing or dishonest header must not allow an
+unbounded buffer. Require a `WEBVTT` signature before returning the body as
+same-origin `text/vtt` with `nosniff`.
 
 ```ts
 const prefix = new TextDecoder()
@@ -103,10 +101,12 @@ The route had two distinct responsibilities sharing one handler: protected file
 downloads and same-origin delivery for a public browser text track. Applying the
 download permission policy before classifying the request made the public media
 consumer unreachable. Classifying the VTT path first restores that consumer,
-while the exact origin, path, fail-closed DNS check, redirect refusal, byte cap,
-signature, and response headers keep the exception from widening into an
-anonymous download proxy. A same-origin endpoint that merely redirects is not
-enough: the browser still applies CORS to the final Core response.
+while opaque identifiers remove the public URL-to-fetch dataflow. Server-side
+edition/owner resolution, the exact origin and path, fail-closed DNS check,
+redirect refusal, byte cap, signature, and response headers keep the exception
+from widening into an anonymous download proxy. A same-origin endpoint that
+merely redirects is not enough: the browser still applies CORS to the final
+Core response.
 
 ## Prevention
 
@@ -119,8 +119,10 @@ enough: the browser still applies CORS to the final Core response.
   denied shapes: inline video, VTT attachment, wildcard subdomains, DNS
   failure, redirects, declared and streamed overflow, and a 200 response
   without a WebVTT signature.
-- Preserve all existing SSRF defenses when changing auth order around a
-  user-provided media URL.
+- Never pass a public query-string URL into the server-side VTT `fetch`, even
+  behind allowlist and DNS checks. Resolve opaque content identity to the URL
+  server-side, then preserve all origin, DNS, redirect, size, and signature
+  defenses.
 
 ## Related Issues
 

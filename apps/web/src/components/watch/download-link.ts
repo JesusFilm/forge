@@ -27,8 +27,20 @@ export function buildDownloadProxyUrl({
   return `${DOWNLOAD_PROXY_PATH}?${params.toString()}`
 }
 
-export function buildMediaProxyUrl(url: string): string {
-  const params = new URLSearchParams({ url, disposition: "inline" })
+export type SubtitleProxyParams = {
+  subtitleId: string
+  variantId: string
+}
+
+export function buildSubtitleProxyUrl({
+  subtitleId,
+  variantId,
+}: SubtitleProxyParams): string {
+  const params = new URLSearchParams({
+    subtitleId,
+    variantId,
+    disposition: "inline",
+  })
   return `${DOWNLOAD_PROXY_PATH}?${params.toString()}`
 }
 

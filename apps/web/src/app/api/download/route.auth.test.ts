@@ -60,6 +60,16 @@ function adminVideoDub() {
       ],
       published: true,
       slug: "jesus/english",
+      videoEdition: {
+        subtitles: [
+          {
+            documentId: "subtitle-1",
+            vttSrc:
+              "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+            video: { documentId: "video-1" },
+          },
+        ],
+      },
     },
   }
 }
@@ -187,6 +197,7 @@ describe("GET /watch/api/download - account gate", () => {
   })
 
   it("serves allowlisted inline VTT subtitles without an auth cookie", async () => {
+    queryMock.mockResolvedValueOnce({ data: adminVideoDub() })
     const fetchMock = vi.fn(
       async () => new Response("WEBVTT\n\n00:00.000 --> 00:01.000\nHello"),
     )
@@ -196,7 +207,8 @@ describe("GET /watch/api/download - account gate", () => {
     const response = await GET(
       makeRequest({
         disposition: "inline",
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 

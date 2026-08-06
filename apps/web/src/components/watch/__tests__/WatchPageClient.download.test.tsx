@@ -979,7 +979,7 @@ describe("WatchPageClient download boundary", () => {
       '[data-testid="watch-section-renderer"]',
     )
     expect(renderer?.getAttribute("data-subtitle-vtt-src")).toBe(
-      "/watch/api/download?url=https%3A%2F%2Fcdn.test%2Fspanish.vtt&disposition=inline",
+      "/watch/api/download?subtitleId=sub-es&variantId=5fc705b9-1b3b-4a58-abef-755b98457de6&disposition=inline",
     )
   })
 

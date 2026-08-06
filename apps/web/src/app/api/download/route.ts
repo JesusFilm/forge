@@ -18,6 +18,7 @@ import { NextResponse } from "next/server"
 
 import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
 import { resolveWatchDownloadTarget } from "@/lib/download-target"
+import { resolveWatchSubtitleTarget } from "@/lib/subtitle-target"
 import {
   isWatchDownloadAccountGateEnabled,
   watchDownloadAccountGateFlagContext,
@@ -53,10 +54,12 @@ function isAnonymousInlineSubtitleRequest(
   searchParams: URLSearchParams,
 ): boolean {
   if (searchParams.get("disposition") !== "inline") return false
+  return Boolean(
+    searchParams.get("subtitleId") && searchParams.get("variantId"),
+  )
+}
 
-  const target = searchParams.get("url")
-  if (!target || !isAllowedDownloadOrigin(target)) return false
-
+function isAllowedInlineSubtitleTarget(target: string): boolean {
   try {
     const parsed = new URL(target)
     return (
@@ -443,42 +446,64 @@ export async function GET(request: Request): Promise<Response> {
   )
   if (!authGate.ok) return authGate.response
 
-  const allowLegacyTarget =
-    anonymousInlineSubtitleRequest || authGate.accountGateEnabled
+  let target: string
+  let downloadEvent:
+    | { videoId: string; videoDubId: string; languageId: string | null }
+    | undefined
 
-  const resolvedTarget = await resolveRequestedTarget(searchParams, {
-    allowLegacyTarget,
-  })
-  if (!resolvedTarget.ok) {
-    return resolvedTarget.errorResponse
+  if (anonymousInlineSubtitleRequest) {
+    const subtitleTarget = await resolveWatchSubtitleTarget({
+      subtitleId: searchParams.get("subtitleId"),
+      variantId: searchParams.get("variantId"),
+    })
+    if (!subtitleTarget.ok) {
+      if (subtitleTarget.reason === "missing-params") {
+        return jsonError("Subtitle identifiers required", 400)
+      }
+      if (subtitleTarget.reason === "unavailable") {
+        return jsonError("Subtitle lookup unavailable", 503)
+      }
+      return jsonError("Subtitle unavailable", 404)
+    }
+    target = subtitleTarget.target
+  } else {
+    const downloadTarget = await resolveRequestedTarget(searchParams, {
+      allowLegacyTarget: authGate.accountGateEnabled,
+    })
+    if (!downloadTarget.ok) return downloadTarget.errorResponse
+    target = downloadTarget.target
+    downloadEvent = downloadTarget.event
   }
 
-  const validation = await validateTarget(resolvedTarget.target)
+  const validation = await validateTarget(target)
   if (!validation.ok) {
     return validation.errorResponse
   }
   const { safeUrl } = validation
 
-  if (authGate.session?.accessToken && resolvedTarget.event) {
+  if (authGate.session?.accessToken && downloadEvent) {
     const result = await recordWatchEventWithAccessToken(
       authGate.session.accessToken,
       {
         eventType: "download",
-        videoId: resolvedTarget.event.videoId,
-        videoDubId: resolvedTarget.event.videoDubId,
-        languageId: resolvedTarget.event.languageId,
+        videoId: downloadEvent.videoId,
+        videoDubId: downloadEvent.videoDubId,
+        languageId: downloadEvent.languageId,
       },
     )
     if (!result.ok) {
       console.warn("[api/download] failed to record download watch event", {
-        videoId: resolvedTarget.event.videoId,
-        videoDubId: resolvedTarget.event.videoDubId,
+        videoId: downloadEvent.videoId,
+        videoDubId: downloadEvent.videoDubId,
         reason: result.reason,
       })
     }
   }
 
   if (anonymousInlineSubtitleRequest) {
+    if (!isAllowedInlineSubtitleTarget(safeUrl)) {
+      return jsonError("Forbidden", 403)
+    }
     return proxyInlineSubtitle(safeUrl)
   }
 
