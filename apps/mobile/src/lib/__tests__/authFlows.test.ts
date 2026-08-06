@@ -1,7 +1,6 @@
 import {
-  NEW_ACCOUNT_WINDOW_MS,
   classifySignInFailure,
-  isNewlyCreatedAccount,
+  appleNameForIdToken,
   isProviderCancel,
 } from "../authFlows"
 
@@ -43,33 +42,32 @@ describe("isProviderCancel", () => {
   })
 })
 
-describe("isNewlyCreatedAccount (R15)", () => {
-  const NOW = Date.parse("2026-08-04T00:01:00.000Z")
-
-  it("detects an account created within the sign-in window", () => {
+describe("appleNameForIdToken", () => {
+  it("maps the sheet's parts to Better Auth's idToken.user.name shape", () => {
     expect(
-      isNewlyCreatedAccount(
-        { createdAt: new Date(NOW - 5_000).toISOString() },
-        NOW,
-      ),
-    ).toBe(true)
+      appleNameForIdToken({ givenName: "Urim", familyName: "Chae" }),
+    ).toEqual({ firstName: "Urim", lastName: "Chae" })
   })
 
-  it("does not flag an existing account", () => {
+  it("tolerates a partial name", () => {
     expect(
-      isNewlyCreatedAccount(
-        { createdAt: new Date(NOW - NEW_ACCOUNT_WINDOW_MS - 1).toISOString() },
-        NOW,
-      ),
-    ).toBe(false)
+      appleNameForIdToken({ givenName: "Urim", familyName: null }),
+    ).toEqual({ firstName: "Urim", lastName: undefined })
+    expect(
+      appleNameForIdToken({ givenName: null, familyName: "Chae" }),
+    ).toEqual({ firstName: undefined, lastName: "Chae" })
   })
 
-  it("accepts Date instances and degrades malformed values to false", () => {
+  it("returns undefined when Apple sends no name — the repeat-sign-in case", () => {
+    // Apple omits fullName on every authorization after the first, so this
+    // is the common path. It must be undefined rather than an empty object:
+    // Better Auth branches on `token.user?.name` being present at all, so
+    // `{}` would overwrite the stored name with "".
+    expect(appleNameForIdToken(null)).toBeUndefined()
+    expect(appleNameForIdToken(undefined)).toBeUndefined()
+    expect(appleNameForIdToken({})).toBeUndefined()
     expect(
-      isNewlyCreatedAccount({ createdAt: new Date(NOW - 1_000) }, NOW),
-    ).toBe(true)
-    expect(isNewlyCreatedAccount({ createdAt: "not-a-date" }, NOW)).toBe(false)
-    expect(isNewlyCreatedAccount({}, NOW)).toBe(false)
-    expect(isNewlyCreatedAccount(null, NOW)).toBe(false)
+      appleNameForIdToken({ givenName: "  ", familyName: "  " }),
+    ).toBeUndefined()
   })
 })

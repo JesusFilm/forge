@@ -12,7 +12,7 @@ import {
   outcomeFromDeleteResult,
   type DeleteAccountOutcome,
 } from "./accountDeletion"
-import { classifySignInFailure, isNewlyCreatedAccount } from "./authFlows"
+import { appleNameForIdToken, classifySignInFailure } from "./authFlows"
 import {
   getAuthClient,
   getAuthSession,
@@ -22,7 +22,7 @@ import { env } from "../env"
 import { reportDatadogAction } from "./datadog"
 
 export type SignInOutcome =
-  | { status: "success"; newAccount: boolean }
+  | { status: "success" }
   | { status: "cancelled" }
   | { status: "error" }
 
@@ -49,10 +49,7 @@ async function completeSignIn(
   })
   // The adoption metric's first RUM action (Success Criteria).
   reportDatadogAction("sign_in_completed", {})
-  return {
-    status: "success",
-    newAccount: isNewlyCreatedAccount(user, Date.now()),
-  }
+  return { status: "success" }
 }
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -62,6 +59,7 @@ export async function signInWithApple(): Promise<SignInOutcome> {
     require("expo-apple-authentication") as typeof import("expo-apple-authentication")
   let identityToken: string | null | undefined
   let authorizationCode: string | null | undefined
+  let name: { firstName?: string; lastName?: string } | undefined
   try {
     const credential = await AppleAuthentication.signInAsync({
       requestedScopes: [
@@ -71,6 +69,7 @@ export async function signInWithApple(): Promise<SignInOutcome> {
     })
     identityToken = credential.identityToken
     authorizationCode = credential.authorizationCode
+    name = appleNameForIdToken(credential.fullName)
   } catch (error) {
     return classifySignInFailure("provider-sheet", error) === "cancelled"
       ? { status: "cancelled" }
@@ -81,7 +80,7 @@ export async function signInWithApple(): Promise<SignInOutcome> {
   const outcome = await completeSignIn(() =>
     getAuthClient().signIn.social({
       provider: "apple",
-      idToken: { token: identityToken },
+      idToken: { token: identityToken, ...(name ? { user: { name } } : {}) },
     }),
   )
 
@@ -157,7 +156,7 @@ export async function signInWithHostedPage(): Promise<SignInOutcome> {
     return { status: "cancelled" }
   }
   reportDatadogAction("sign_in_completed", {})
-  return { status: "success", newAccount: false }
+  return { status: "success" }
 }
 
 /** Sign out: revoke at auth then clear local session (R4). The progress

@@ -1,10 +1,9 @@
 /**
- * Pure sign-in flow decisions (KTD11): failure classification and the R15
- * new-account detection. The two failure classes matter because the UX
- * differs (U6): a user-initiated cancel returns quietly with no UI, while a
- * failure AFTER the provider sheet succeeded surfaces a dismissible error
- * with retry — the user just completed Face ID or an account picker and
- * otherwise cannot know whether they are signed in.
+ * Pure sign-in flow decisions (KTD11). The two failure classes matter
+ * because the UX differs (U6): a user-initiated cancel returns quietly with
+ * no UI, while a failure AFTER the provider sheet succeeded surfaces a
+ * dismissible error with retry — the user just completed Face ID or an
+ * account picker and otherwise cannot know whether they are signed in.
  */
 
 /** How far a sign-in progressed when it failed. */
@@ -43,21 +42,19 @@ export function classifySignInFailure(
 }
 
 /**
- * R15: a provider sign-in whose email matched no existing account creates a
- * new one (e.g. Apple's Hide My Email relay). Surface that rather than
- * silently showing empty progress. Better Auth returns the user row, so a
- * just-created account is one whose createdAt is within the sign-in window.
+ * Apple returns fullName ONLY on a user's first authorization and never in
+ * the identityToken, so dropping it here loses the name permanently. Better
+ * Auth's `idToken.user.name` channel takes it in this exact shape and applies
+ * it when the user row is created — omitted entirely when Apple sends nothing,
+ * because an empty object would still read as "a name was supplied".
  */
-export const NEW_ACCOUNT_WINDOW_MS = 60_000
-
-export function isNewlyCreatedAccount(
-  user: { createdAt?: string | Date | null } | null | undefined,
-  nowMs: number,
-): boolean {
-  const createdAt = user?.createdAt
-  if (createdAt == null) return false
-  const createdMs =
-    createdAt instanceof Date ? createdAt.getTime() : Date.parse(createdAt)
-  if (!Number.isFinite(createdMs)) return false
-  return nowMs - createdMs < NEW_ACCOUNT_WINDOW_MS
+export function appleNameForIdToken(
+  fullName:
+    | { givenName?: string | null; familyName?: string | null }
+    | null
+    | undefined,
+): { firstName?: string; lastName?: string } | undefined {
+  const firstName = fullName?.givenName?.trim() || undefined
+  const lastName = fullName?.familyName?.trim() || undefined
+  return firstName || lastName ? { firstName, lastName } : undefined
 }

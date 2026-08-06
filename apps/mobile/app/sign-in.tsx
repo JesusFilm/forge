@@ -30,15 +30,13 @@ type SheetState =
   | { phase: "idle" }
   | { phase: "busy"; method: string }
   | { phase: "error" }
-  | { phase: "newAccount" }
 
 /**
  * Sign-in formSheet (U6): native Apple (iOS) and Google sheets, with every
- * other provider reachable through the hosted auth page (F2). A cancel
- * returns quietly; a failure AFTER the provider sheet succeeded surfaces a
- * dismissible error with retry. A fresh account (e.g. a Private Relay
- * email) surfaces the R15 notice with the hosted-page path to sign into an
- * existing account instead.
+ * other provider reachable through the hosted auth page (F2). Success
+ * dismisses immediately so the signed-in Profile is the confirmation. A
+ * cancel returns quietly; a failure AFTER the provider sheet succeeded
+ * surfaces a dismissible error with retry.
  */
 export default function SignInSheet() {
   const typography = useTypography()
@@ -49,11 +47,7 @@ export default function SignInSheet() {
     setState({ phase: "busy", method })
     void flow().then((outcome) => {
       if (outcome.status === "success") {
-        if (outcome.newAccount) {
-          setState({ phase: "newAccount" })
-        } else {
-          router.back()
-        }
+        router.back()
       } else if (outcome.status === "cancelled") {
         setState({ phase: "idle" })
       } else {
@@ -70,41 +64,6 @@ export default function SignInSheet() {
       <Text style={styles.subtitle}>
         Use the same Jesus Film account across web and mobile.
       </Text>
-
-      {state.phase === "newAccount" ? (
-        <View style={styles.noticeCard}>
-          <Ionicons name="information-circle" size={22} color={ACCENT} />
-          <View style={styles.noticeText}>
-            <Text style={[styles.noticeTitle, typography.titleSmall]}>
-              New account created
-            </Text>
-            <Text style={styles.noticeBody}>
-              No existing account matched this email, so a new one was created.
-              If you meant to use an existing account, sign in with email or
-              another option.
-            </Text>
-            <Pressable
-              onPress={() => runFlow("hosted", signInWithHostedPage)}
-              style={({ pressed }) => [pressed && feedback.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Sign in with a different account"
-              {...{ "dd-action-name": "sign-in-switch-account" }}
-            >
-              <Text style={styles.noticeLink}>
-                Sign in with a different account
-              </Text>
-            </Pressable>
-          </View>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Done"
-          >
-            <Text style={styles.noticeLink}>Done</Text>
-          </Pressable>
-        </View>
-      ) : null}
 
       {state.phase === "error" ? (
         <View style={styles.errorCard}>
@@ -124,66 +83,64 @@ export default function SignInSheet() {
         </View>
       ) : null}
 
-      {state.phase !== "newAccount" ? (
-        <View style={styles.buttons}>
-          {Platform.OS === "ios" ? (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={
-                AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-              }
-              buttonStyle={
-                AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-              }
-              cornerRadius={CARD_BORDER_RADIUS}
-              style={styles.appleButton}
-              onPress={() => {
-                if (!busy) runFlow("apple", signInWithApple)
-              }}
-            />
-          ) : null}
-
-          <Pressable
+      <View style={styles.buttons}>
+        {Platform.OS === "ios" ? (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={
+              AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+            }
+            buttonStyle={
+              AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+            }
+            cornerRadius={CARD_BORDER_RADIUS}
+            style={styles.appleButton}
             onPress={() => {
-              if (!busy) runFlow("google", signInWithGoogle)
+              if (!busy) runFlow("apple", signInWithApple)
             }}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.providerButton,
-              pressed && feedback.pressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with Google"
-            {...{ "dd-action-name": "sign-in-google" }}
-          >
-            <Ionicons name="logo-google" size={20} color={TEXT_PRIMARY} />
-            <Text style={styles.providerLabel}>Continue with Google</Text>
-          </Pressable>
+          />
+        ) : null}
 
-          <Pressable
-            onPress={() => {
-              if (!busy) runFlow("hosted", signInWithHostedPage)
-            }}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.providerButton,
-              pressed && feedback.pressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with email or other options"
-            {...{ "dd-action-name": "sign-in-hosted" }}
-          >
-            <Ionicons name="mail-outline" size={20} color={TEXT_PRIMARY} />
-            <Text style={styles.providerLabel}>Email or other options</Text>
-          </Pressable>
+        <Pressable
+          onPress={() => {
+            if (!busy) runFlow("google", signInWithGoogle)
+          }}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.providerButton,
+            pressed && feedback.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Google"
+          {...{ "dd-action-name": "sign-in-google" }}
+        >
+          <Ionicons name="logo-google" size={20} color={TEXT_PRIMARY} />
+          <Text style={styles.providerLabel}>Continue with Google</Text>
+        </Pressable>
 
-          {busy ? (
-            <View style={styles.busyRow}>
-              <ActivityIndicator color={ACCENT} />
-              <Text style={styles.busyText}>Signing in…</Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+        <Pressable
+          onPress={() => {
+            if (!busy) runFlow("hosted", signInWithHostedPage)
+          }}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.providerButton,
+            pressed && feedback.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with email or other options"
+          {...{ "dd-action-name": "sign-in-hosted" }}
+        >
+          <Ionicons name="mail-outline" size={20} color={TEXT_PRIMARY} />
+          <Text style={styles.providerLabel}>Email or other options</Text>
+        </Pressable>
+
+        {busy ? (
+          <View style={styles.busyRow}>
+            <ActivityIndicator color={ACCENT} />
+            <Text style={styles.busyText}>Signing in…</Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   )
 }
@@ -237,34 +194,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontFamily: "System",
     fontSize: 14,
-  },
-  noticeCard: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: SURFACE_COLOR,
-    borderRadius: CARD_BORDER_RADIUS,
-    padding: 14,
-  },
-  noticeText: {
-    flex: 1,
-    gap: 6,
-  },
-  noticeTitle: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-  },
-  noticeBody: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  noticeLink: {
-    color: ACCENT,
-    fontFamily: "System",
-    fontSize: 14,
-    fontWeight: "600",
-    paddingVertical: 6,
   },
   errorCard: {
     flexDirection: "row",
