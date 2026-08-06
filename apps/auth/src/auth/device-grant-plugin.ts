@@ -90,13 +90,14 @@ function oauthError(
   return new APIError(status, { error, error_description: description })
 }
 
+/**
+ * Every device-grant failure is a 400, including `access_denied`. RFC 8628 §3.5
+ * puts the outcome in the `error` field rather than the status code, and a
+ * polling client that switched on status would misread a denial as a transport
+ * problem.
+ */
 function toApiError(error: DeviceGrantError): APIError {
-  const status =
-    error.code === "access_denied" ||
-    error.code === "device_code_already_processed"
-      ? "BAD_REQUEST"
-      : "BAD_REQUEST"
-  return oauthError(status, error.code, error.description)
+  return oauthError("BAD_REQUEST", error.code, error.description)
 }
 
 /**
@@ -235,6 +236,13 @@ export function deviceGrantPlugin(options: DeviceGrantPluginOptions = {}) {
             )
           }
 
+          // Claiming happens here, BEFORE the exchange below, and that ordering
+          // is deliberate. It means a failed exchange burns the device code: the
+          // viewer has to request a fresh one and approve again. The alternative
+          // — claim after a successful exchange — would let two concurrent polls
+          // both reach the provider and mint two token pairs for one approval,
+          // which is the worse failure. A client seeing `invalid_grant` should
+          // treat it as terminal and start a new code rather than retry.
           let claimed
           try {
             claimed = await pollDeviceCode(prisma, {
