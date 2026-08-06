@@ -3,9 +3,10 @@ id: "feat-337"
 title: "Add language-aware Watch search suggestions"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-06"
 duration: 1
+completed_date: "2026-08-06"
 depends_on:
   - "feat-334"
   - "feat-336"

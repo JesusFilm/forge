@@ -1,7 +1,7 @@
 ---
 title: "feat: Add language-aware Watch search suggestions"
 type: feat
-status: active
+status: completed
 date: 2026-08-06
 deepened: 2026-08-06
 ---
