@@ -5,6 +5,7 @@ import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
 
 import { agentLoginPlugin } from "@/auth/agent-login-plugin"
+import { deviceGrantPlugin } from "@/auth/device-grant-plugin"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import {
   assertProductionAuthSecrets,
@@ -113,6 +114,7 @@ export const auth = betterAuth({
   plugins: [
     jwt(),
     agentLoginPlugin(),
+    deviceGrantPlugin(),
     oauthProvider({
       loginPage: "/login",
       consentPage: "/oauth/consent",

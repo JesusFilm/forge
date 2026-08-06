@@ -8,6 +8,7 @@ import {
 import { signInWithFirebasePassword } from "@/auth/firebase-rest"
 import { isLoginProviderId, type LoginProviderId } from "@/auth/login-methods"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
+import { normalizeUserCode } from "@/lib/device-user-code"
 import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
@@ -257,6 +258,42 @@ function buildOAuthContinuationURL(oauthQuery: string | undefined) {
   return url.toString()
 }
 
+/**
+ * A device sign-in continues to the approval page, not to `/oauth2/authorize`:
+ * the TV already holds its own grant, and the browser's only remaining job is
+ * to approve it.
+ *
+ * The URL is rebuilt from the user code alone rather than forwarding the query,
+ * so nothing else a caller put in `oauth_query` can ride along. Returns
+ * undefined when there is no usable code, which keeps the ordinary OAuth
+ * continuation as the fallback.
+ */
+function buildDeviceContinuationURL(oauthQuery: string | undefined) {
+  if (!oauthQuery) return undefined
+
+  const params = new URLSearchParams(oauthQuery)
+
+  // A device continuation is recognised by a user code AND the absence of an
+  // OAuth authorize request. Without the second condition, appending
+  // `user_code=` to an ordinary `/login?client_id=…` link would divert that
+  // sign-in to the approval page instead of completing its own authorize hop.
+  if (params.has("client_id") || params.has("redirect_uri")) return undefined
+
+  const userCode = normalizeUserCode(params.get("user_code") ?? "")
+  if (!userCode) return undefined
+
+  const url = new URL("/device", getAuthBaseUrl())
+  url.searchParams.set("user_code", userCode)
+  return url.toString()
+}
+
+function buildContinuationURL(oauthQuery: string | undefined) {
+  return (
+    buildDeviceContinuationURL(oauthQuery) ??
+    buildOAuthContinuationURL(oauthQuery)
+  )
+}
+
 function buildOAuthLoginURL(oauthQuery: string | undefined) {
   if (!oauthQuery) return undefined
 
@@ -306,7 +343,7 @@ async function handleSocialSignIn(request: Request): Promise<Response> {
     callbackURL: webCallbackURL,
     oauthQuery,
   } = await parseSocialSignInRequest(request)
-  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
+  const callbackURL = webCallbackURL ?? buildContinuationURL(oauthQuery)
   const errorCallbackURL = webCallbackURL
     ? undefined
     : buildOAuthLoginURL(oauthQuery)
@@ -410,6 +447,53 @@ async function handleLoginMethod(request: Request): Promise<Response> {
   return Response.json({ method: "password" })
 }
 
+/**
+ * RFC 8628 §5.2 names the device endpoints as a brute-force surface, and the
+ * catch-all below hands plugin endpoints straight to better-auth with no limiter
+ * of its own. These branches are the only throttle in front of them.
+ *
+ * This is the per-IP half. It is deliberately paired with a per-code attempt cap
+ * in the device grant service: a per-IP bucket alone does not stop a short user
+ * code being ground down from many addresses, and a per-code cap alone does not
+ * stop an attacker minting unlimited fresh codes.
+ */
+const DEVICE_RATE_LIMITS: Record<string, { limit: number; windowMs: number }> =
+  {
+    // Issuance is the expensive side (a row per call), so it is the tighter bucket.
+    "device/code": { limit: 12, windowMs: WINDOW_MS },
+    // Polling is legitimately frequent: a 15-minute code at a 5s interval is ~180
+    // polls. The ceiling sits above that so a well-behaved TV is never throttled.
+    "device/token": { limit: 240, windowMs: WINDOW_MS },
+    "device/approve": { limit: 10, windowMs: WINDOW_MS },
+    "device/deny": { limit: 10, windowMs: WINDOW_MS },
+    "device/status": { limit: 20, windowMs: WINDOW_MS },
+  }
+
+async function rateLimitDeviceRoute(
+  request: Request,
+  path: string,
+): Promise<Response | undefined> {
+  const config = DEVICE_RATE_LIMITS[path]
+  if (!config) return undefined
+
+  const limit = await rateLimitAuthRoute({
+    request,
+    route: path,
+    limit: config.limit,
+    windowMs: config.windowMs,
+  })
+  if (limit.allowed) return undefined
+
+  console.log(`[device] event=rate_limited route=${path}`)
+  return Response.json(
+    {
+      error: "slow_down",
+      error_description: "Too many requests. Try again shortly.",
+    },
+    { status: 429, headers: { "Cache-Control": "no-store" } },
+  )
+}
+
 async function enforceAgentOAuthAuthorizePolicy(
   request: Request,
 ): Promise<Response | undefined> {
@@ -507,7 +591,7 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
+  const callbackURL = webCallbackURL ?? buildContinuationURL(oauthQuery)
   const response = await authRouteHandlers.POST(
     toJsonRequest(request, {
       ...(callbackURL ? { callbackURL } : {}),
@@ -576,7 +660,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
       oauthQuery,
     })
   }
-  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
+  const callbackURL = webCallbackURL ?? buildContinuationURL(oauthQuery)
 
   const jsonBody = {
     ...(callbackURL ? { callbackURL } : {}),
@@ -707,6 +791,9 @@ export async function GET(
   context: RouteContext,
 ): Promise<Response> {
   const { all = [] } = await context.params
+  const deviceLimited = await rateLimitDeviceRoute(request, all.join("/"))
+  if (deviceLimited) return deviceLimited
+
   if (all.join("/") === "oauth2/authorize") {
     const url = new URL(request.url)
     await ensureDynamicPreviewRedirectUriRegistered({
@@ -736,6 +823,9 @@ export async function POST(
 ): Promise<Response> {
   const { all = [] } = await context.params
   const path = all.join("/")
+
+  const deviceLimited = await rateLimitDeviceRoute(request, path)
+  if (deviceLimited) return deviceLimited
 
   if (path === "sign-in/email") {
     return handleEmailSignIn(request)
