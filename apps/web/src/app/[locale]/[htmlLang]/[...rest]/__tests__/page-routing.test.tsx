@@ -1695,6 +1695,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const carouselChildren = [
       {
         documentId: "v1",
+        order: 1,
         slug: "storyclubs",
         title: "StoryClubs",
         label: "episode",
@@ -1713,6 +1714,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       },
       {
         documentId: "video-2",
+        order: 2,
         slug: "another-story",
         title: "Another Story",
         label: "episode",
@@ -2289,6 +2291,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     }
     const anticipateChildren = pilatePageChapterSlugs.map((slug, index) => ({
       documentId: `pilate-chapter-${index + 1}`,
+      order: index + 1,
       slug,
       title: `Pilate chapter ${index + 1}`,
       label: "clip",

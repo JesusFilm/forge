@@ -1,6 +1,7 @@
 import {
   buildDownloadFilename,
   buildDownloadProxyUrl,
+  resolveDownloadSequence,
   type DownloadSequence,
 } from "@/components/watch/download-link"
 import {
@@ -12,6 +13,7 @@ import type { WatchCollectionDownloadDub } from "@/lib/watch-collection-download
 
 export type CollectionDownloadEpisode = {
   documentId: string
+  order?: number | null
   slug: string | null
   title: string | null
   thumbnailUrl?: string | null
@@ -73,8 +75,9 @@ export function buildCollectionDownloadOptions(
   const dubByVideoId = new Map(dubs.map((dub) => [dub.videoId, dub]))
   const candidates: CollectionDownloadCandidate[] = []
   const skipped: CollectionDownloadEpisode[] = []
+  const sequenceParent = { children: episodes }
 
-  for (const [index, episode] of episodes.entries()) {
+  for (const episode of episodes) {
     const dub = dubByVideoId.get(episode.documentId)
     if (!dub || !episode.slug) {
       skipped.push(episode)
@@ -87,10 +90,7 @@ export function buildCollectionDownloadOptions(
     }
     candidates.push({
       documentId: episode.documentId,
-      sequence:
-        episodes.length >= 2
-          ? { position: index + 1, total: episodes.length }
-          : null,
+      sequence: resolveDownloadSequence(sequenceParent, episode.documentId),
       slug: episode.slug,
       title: episode.title ?? episode.slug,
       thumbnailUrl: episode.thumbnailUrl ?? null,

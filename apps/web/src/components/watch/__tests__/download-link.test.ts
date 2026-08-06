@@ -151,6 +151,7 @@ describe("buildDownloadFilename", () => {
 
   it("bounds generated filenames while preserving the mp4 extension", () => {
     const filename = buildDownloadFilename({
+      sequence: { position: 7, total: 61 },
       videoTitle: "Jesus Film ".repeat(40),
       languageName: "English",
       languageCode: "eng",
@@ -159,7 +160,8 @@ describe("buildDownloadFilename", () => {
     })
 
     expect(filename.length).toBeLessThanOrEqual(200)
-    expect(filename).toMatch(/\.mp4$/)
+    expect(filename).toMatch(/^07_/)
+    expect(filename).toMatch(/_English_eng_360p\.mp4$/)
     expect(filename).toMatch(/^[A-Za-z0-9_.-]+$/)
   })
 
@@ -175,14 +177,17 @@ describe("resolveDownloadSequence", () => {
     {
       slug: "jesus",
       children: [
-        { documentId: "birth" },
-        { documentId: "childhood" },
-        { documentId: "baptism" },
+        { documentId: "birth", order: 1 },
+        { documentId: "childhood", order: 2 },
+        { documentId: "baptism", order: 3 },
       ],
     },
     {
       slug: "christmas",
-      children: [{ documentId: "annunciation" }, { documentId: "birth" }],
+      children: [
+        { documentId: "annunciation", order: 1 },
+        { documentId: "birth", order: 2 },
+      ],
     },
   ]
 
@@ -202,7 +207,26 @@ describe("resolveDownloadSequence", () => {
 
   it("leaves videos without a multi-item parent sequence unnumbered", () => {
     expect(
-      resolveDownloadSequence({ children: [{ documentId: "only" }] }, "only"),
+      resolveDownloadSequence(
+        { children: [{ documentId: "only", order: 1 }] },
+        "only",
+      ),
     ).toBeNull()
+  })
+
+  it("preserves canonical gaps and leaves null-order children unnumbered", () => {
+    const parent = {
+      children: [
+        { documentId: "first", order: 1 },
+        { documentId: "third", order: 3 },
+        { documentId: "extra", order: null },
+      ],
+    }
+
+    expect(resolveDownloadSequence(parent, "third")).toEqual({
+      position: 3,
+      total: 3,
+    })
+    expect(resolveDownloadSequence(parent, "extra")).toBeNull()
   })
 })

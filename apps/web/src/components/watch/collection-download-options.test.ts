@@ -6,15 +6,16 @@ import {
 } from "./collection-download-options"
 
 const episodes = [
-  { documentId: "v1", slug: "one", title: "One" },
-  { documentId: "v2", slug: "two", title: "Two" },
-  { documentId: "v3", slug: "three", title: "Three" },
+  { documentId: "v1", order: 1, slug: "one", title: "One" },
+  { documentId: "v2", order: 2, slug: "two", title: "Two" },
+  { documentId: "v3", order: 3, slug: "three", title: "Three" },
 ]
 
 function buildQueueForTitles(titles: string[]) {
   const options = buildCollectionDownloadOptions(
     titles.map((title, index) => ({
       documentId: `v${index + 1}`,
+      order: index + 1,
       slug: `episode-${index + 1}`,
       title,
     })),
@@ -160,6 +161,43 @@ describe("collection download options", () => {
     expect(queue.map(({ filename }) => filename)).toEqual([
       "01_One_English_eng_720p.mp4",
       "03_Three_English_eng_720p.mp4",
+    ])
+  })
+
+  it("preserves relation-order gaps and leaves null-order episodes unnumbered", () => {
+    const relationOrderedEpisodes = [
+      { documentId: "v1", order: 1, slug: "one", title: "One" },
+      { documentId: "v2", order: 3, slug: "two", title: "Two" },
+      { documentId: "v3", order: null, slug: "three", title: "Three" },
+    ]
+    const options = buildCollectionDownloadOptions(
+      relationOrderedEpisodes,
+      relationOrderedEpisodes.map((episode) => ({
+        documentId: `dub-${episode.documentId}`,
+        videoId: episode.documentId,
+        downloads: [
+          {
+            documentId: `download-${episode.documentId}`,
+            height: 720,
+            quality: "high",
+            size: 100,
+          },
+        ],
+      })),
+    )
+
+    const queue = buildCollectionDownloadQueue({
+      candidates: options.candidates,
+      tier: "highest",
+      languageCode: "eng",
+      languageName: "English",
+      languageSlug: "english",
+    })
+
+    expect(queue.map(({ filename }) => filename)).toEqual([
+      "01_One_English_eng_720p.mp4",
+      "03_Two_English_eng_720p.mp4",
+      "Three_English_eng_720p.mp4",
     ])
   })
 })

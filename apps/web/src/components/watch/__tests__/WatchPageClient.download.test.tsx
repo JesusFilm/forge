@@ -359,7 +359,7 @@ describe("WatchPageClient download boundary", () => {
       accountGateEnabled: false,
       authenticated: true,
     })
-    renderWatchPage()
+    renderWatchPage({ downloadSequence: { position: 7, total: 61 } })
 
     await act(async () => {
       document
@@ -379,8 +379,10 @@ describe("WatchPageClient download boundary", () => {
       variantId: string
       videoSlug: string
       accountGateEnabled: boolean
+      downloadSequence: { position: number; total: number } | null
     }
     expect(latestProps.accountGateEnabled).toBe(false)
+    expect(latestProps.downloadSequence).toEqual({ position: 7, total: 61 })
     expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
     expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.languageCode).toBe("eng")
