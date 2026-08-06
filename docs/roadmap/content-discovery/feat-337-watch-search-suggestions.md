@@ -1,7 +1,7 @@
 ---
 id: "feat-337"
 title: "Add language-aware Watch search suggestions"
-owner: "codex"
+owner: "urim"
 priority: "P1"
 status: "in-progress"
 start_date: "2026-08-06"
@@ -34,6 +34,14 @@ not restore live result search or introduce popularity/history serving.
 4. `apps/web/src/components/SearchOverlay.tsx`
 5. `apps/web/src/components/FloatingSearchField.tsx`
 6. `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`
+
+## Grep These
+
+```bash
+rg -n "watchSearchSuggestions|TypesenseWatchSearchSuggestions" apps/admin apps/web packages/admin-graphql
+rg -n "suggestionRequestKey|fetchWatchSearchSuggestions|aria-autocomplete" apps/web/src
+rg -n "watch_search_lexical|localesJson|localeCodes" apps/admin/src/services
+```
 
 ## What To Build
 

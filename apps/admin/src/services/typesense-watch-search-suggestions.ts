@@ -11,14 +11,18 @@ import {
 } from "./typesense-client-config"
 import { watchLexicalQueryFields } from "./typesense-watch-search-locales"
 import { TYPESENSE_WATCH_LEXICAL_ALIAS } from "./typesense-watch-search-schema"
+import type { TypesenseWatchLocale } from "./typesense-watch-search-schema"
 import type { TypesenseWatchLexicalDocument } from "./typesense-watch-search-lexical"
 
 export const MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS = 200
+export const MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS = 200
 export const MAX_WATCH_SEARCH_SUGGESTIONS = 5
 
 const TITLE_WORD_SEPARATOR = /[\s,.;:!?()[\]{}"'/\\|_-]+/u
 const LANGUAGE_LOCALE_CACHE_TTL_MS = 5 * 60 * 1_000
 const MAX_CACHED_LANGUAGE_LOCALES = 256
+const TYPESENSE_SUGGESTION_CANDIDATE_LIMIT = 25
+const SAFE_BCP47_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 
 export type WatchSearchSuggestionInput = {
   query: string
@@ -57,7 +61,11 @@ async function resolveLanguageLocale(
     where: { deletedAt: null, slug: languageSlug },
     select: { bcp47: true },
   })
-  const locale = language?.bcp47?.trim() || null
+  const candidateLocale = language?.bcp47?.normalize("NFC").trim() || null
+  const locale =
+    candidateLocale && SAFE_BCP47_PATTERN.test(candidateLocale)
+      ? candidateLocale
+      : null
 
   if (cache.size >= MAX_CACHED_LANGUAGE_LOCALES) {
     const oldestKey = cache.keys().next().value
@@ -74,6 +82,14 @@ function normalizedPrefix(query: string): string {
   return Array.from(query.normalize("NFC").trim())
     .slice(0, MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS)
     .join("")
+}
+
+function normalizedLanguageSlug(languageSlug: string): string | null {
+  const normalized = languageSlug.normalize("NFC").trim()
+  return Array.from(normalized).length <=
+    MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS
+    ? normalized
+    : null
 }
 
 function hasEnoughMeaningfulCharacters(value: string): boolean {
@@ -103,35 +119,44 @@ function matchTier(title: string, prefix: string): number | null {
   return null
 }
 
-function titleValues(
+function exactLocaleTitles(
   document: TypesenseWatchLexicalDocument,
-  field: string,
+  locale: string,
 ): string[] {
-  const value = document[field]
-  if (Array.isArray(value))
-    return value.filter((item) => item.trim().length > 0)
-  return typeof value === "string" && value.trim() ? [value] : []
+  try {
+    const value: unknown = JSON.parse(document.localesJson)
+    if (!Array.isArray(value)) return []
+    const normalizedLocale = locale.toLocaleLowerCase()
+    return (value as TypesenseWatchLocale[]).flatMap((item) =>
+      typeof item?.locale === "string" &&
+      item.locale.normalize("NFC").trim().toLocaleLowerCase() ===
+        normalizedLocale &&
+      typeof item.title === "string" &&
+      item.title.trim()
+        ? [item.title]
+        : [],
+    )
+  } catch {
+    return []
+  }
 }
 
 function matchingTitle(
   document: TypesenseWatchLexicalDocument,
-  fields: readonly string[],
+  locale: string,
   prefix: string,
 ): string | null {
-  const candidates = fields.flatMap((field, fieldIndex) =>
-    titleValues(document, field).map((title, valueIndex) => ({
+  const candidates = exactLocaleTitles(document, locale).map(
+    (title, valueIndex) => ({
       title,
-      fieldIndex,
       valueIndex,
       tier: matchTier(title, prefix),
-    })),
+    }),
   )
   candidates.sort(
     (a, b) =>
       (a.tier ?? Number.MAX_SAFE_INTEGER) -
-        (b.tier ?? Number.MAX_SAFE_INTEGER) ||
-      a.fieldIndex - b.fieldIndex ||
-      a.valueIndex - b.valueIndex,
+        (b.tier ?? Number.MAX_SAFE_INTEGER) || a.valueIndex - b.valueIndex,
   )
   return candidates.find((candidate) => candidate.tier != null)?.title ?? null
 }
@@ -139,6 +164,7 @@ function matchingTitle(
 function suggestionRequest(
   query: string,
   fields: readonly string[],
+  locale: string,
 ): TypesenseSearchRequest {
   return {
     collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
@@ -148,7 +174,7 @@ function suggestionRequest(
       .map((_field, index) => (index === 0 ? 4 : 1))
       .join(","),
     page: 1,
-    per_page: MAX_WATCH_SEARCH_SUGGESTIONS,
+    per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
     group_by: "canonicalVideoId",
     group_limit: 1,
     prefix: true,
@@ -156,13 +182,14 @@ function suggestionRequest(
     text_match_type: "max_weight",
     prioritize_exact_match: true,
     drop_tokens_threshold: 0,
-    include_fields: ["canonicalVideoId", ...fields].join(","),
+    filter_by: `localeCodes:=[\`${locale}\`]`,
+    include_fields: ["canonicalVideoId", "localesJson", ...fields].join(","),
   }
 }
 
 function groupedHits(
   groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
-  fields: readonly string[],
+  locale: string,
   prefix: string,
 ): string[] {
   const seenTitles = new Set<string>()
@@ -170,7 +197,7 @@ function groupedHits(
   for (const group of groups) {
     const document = group.hits[0]?.document
     if (!document) continue
-    const title = matchingTitle(document, fields, prefix)
+    const title = matchingTitle(document, locale, prefix)
     if (!title) continue
     const key = comparableTitle(title)
     if (seenTitles.has(key)) continue
@@ -191,7 +218,7 @@ export class TypesenseWatchSearchSuggestionsService {
   async suggest(input: WatchSearchSuggestionInput): Promise<string[]> {
     const query = normalizedPrefix(input.query)
     if (!hasEnoughMeaningfulCharacters(query)) return []
-    const languageSlug = input.languageSlug.trim()
+    const languageSlug = normalizedLanguageSlug(input.languageSlug)
     if (!languageSlug) return []
 
     try {
@@ -201,12 +228,12 @@ export class TypesenseWatchSearchSuggestionsService {
       const fields = watchLexicalQueryFields(locale, "title")
       const [result] =
         await this.typesense.multiSearch<TypesenseWatchLexicalDocument>([
-          suggestionRequest(query, fields),
+          suggestionRequest(query, fields, locale),
         ])
       if (!result || !("grouped_hits" in result) || !result.grouped_hits) {
         return []
       }
-      return groupedHits(result.grouped_hits, fields, comparableTitle(query))
+      return groupedHits(result.grouped_hits, locale, comparableTitle(query))
     } catch {
       this.logger.warn("[watch-search-suggestions] event=typesense_unavailable")
       return []

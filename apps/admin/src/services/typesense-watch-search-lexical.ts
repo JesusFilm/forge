@@ -44,6 +44,7 @@ export type TypesenseWatchLexicalDocument = {
   videoId: string
   canonicalVideoId: string
   localeCodes: string[]
+  localesJson: string
 } & Record<string, string | string[]>
 
 export type TypesenseKeywordMemoryEstimate = {
@@ -97,6 +98,7 @@ export function buildTypesenseWatchLexicalDocuments(
         catalogDocument.coreId,
       ),
       localeCodes: locales.map((locale) => locale.locale),
+      localesJson: catalogDocument.localesJson,
     }
 
     for (const locale of locales) {

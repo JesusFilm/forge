@@ -62,6 +62,7 @@ describe("Typesense Watch Search schemas", () => {
         { name: "videoId", type: "string", facet: true },
         { name: "canonicalVideoId", type: "string", facet: true },
         { name: "localeCodes", type: "string[]", facet: true },
+        { name: "localesJson", type: "string", index: false },
         {
           name: "title_zh",
           type: "string[]",

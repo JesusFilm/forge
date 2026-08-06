@@ -1,8 +1,8 @@
 "use client"
 
 import { env } from "@/env"
+import { normalizeWatchSearchQuery } from "./watch-search-query"
 
-const MAX_QUERY_CODE_POINTS = 200
 const MAX_SUGGESTIONS = 5
 const DEFAULT_TIMEOUT_MS = 3_500
 
@@ -22,12 +22,6 @@ export type FetchWatchSearchSuggestionsInput = {
   languageSlug: string
   signal?: AbortSignal
   timeoutMs?: number
-}
-
-function cappedQuery(value: string): string {
-  return Array.from(value.normalize("NFC").trim())
-    .slice(0, MAX_QUERY_CODE_POINTS)
-    .join("")
 }
 
 function parseSuggestionTitles(value: unknown): string[] {
@@ -73,7 +67,7 @@ export async function fetchWatchSearchSuggestions({
         query: watchSearchSuggestionsQuery,
         variables: {
           input: {
-            query: cappedQuery(query),
+            query: normalizeWatchSearchQuery(query),
             languageSlug,
           },
         },

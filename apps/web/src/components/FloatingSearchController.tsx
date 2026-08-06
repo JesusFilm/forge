@@ -29,6 +29,7 @@ import {
 } from "@/lib/search-language"
 import { parseWatchPath } from "@/lib/routes"
 import { searchWatchDirect } from "@/lib/watch-search-client"
+import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
 import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
@@ -386,7 +387,7 @@ export function FloatingSearchController({
         return
       }
 
-      const cappedQuery = trimmed.slice(0, 200)
+      const cappedQuery = normalizeWatchSearchQuery(trimmed)
       setSubmittedQuery(cappedQuery)
 
       if (displayResultsRef.current.length > 0) {

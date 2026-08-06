@@ -2465,6 +2465,29 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
   })
 
+  it("coalesces repeated submits for the same active query", async () => {
+    const pendingSearch = deferred<MockSearchResponse>()
+    mockedRunSearch.mockReturnValueOnce(pendingSearch.promise)
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jesus"))
+
+    await act(async () => {
+      input.form?.requestSubmit()
+      input.form?.requestSubmit()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pendingSearch.resolve(searchResult("watch-search"))
+      await pendingSearch.promise
+      await Promise.resolve()
+    })
+  })
+
   it("debounces title suggestions after two meaningful characters in the selected language", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
@@ -2577,17 +2600,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
     act(() => {
       setInputValue(input, "jes")
-      vi.advanceTimersByTime(180)
     })
-    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
     expect(firstSignal?.aborted).toBe(true)
-
-    await act(async () => {
-      second.resolve(["Jesus"])
-      await second.promise
-      await Promise.resolve()
-    })
-    expect(document.body.textContent).toContain("Jesus")
 
     await act(async () => {
       first.resolve(["Jerusalem"])
@@ -2595,7 +2609,73 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       await Promise.resolve()
     })
     expect(document.body.textContent).not.toContain("Jerusalem")
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      second.resolve(["Jesus"])
+      await second.promise
+      await Promise.resolve()
+    })
     expect(document.body.textContent).toContain("Jesus")
+  })
+
+  it("does not reopen suggestions after submitting a draft longer than the request cap", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+    mockedFetchSuggestions.mockResolvedValueOnce(["Late suggestion"])
+    const longQuery = `${"j".repeat(200)}extra`
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, longQuery)
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "j".repeat(200) }),
+    )
+    expect(mockedFetchSuggestions).not.toHaveBeenCalled()
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+  })
+
+  it("keeps resolved suggestions hidden when close is immediately reversed", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus"])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "je"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      close.click()
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    expect(input.value).toBe("")
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+    expect(input.getAttribute("aria-expanded")).toBe("false")
   })
 
   it("defers suggestions during composition and lets Escape dismiss suggestions before the modal", async () => {

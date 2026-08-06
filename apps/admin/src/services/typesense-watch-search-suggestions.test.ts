@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS,
   MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS,
   TypesenseWatchSearchSuggestionsService,
 } from "./typesense-watch-search-suggestions"
@@ -55,6 +56,13 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
               {
                 document: {
                   canonicalVideoId: "canonical-1",
+                  localesJson: JSON.stringify([
+                    {
+                      locale: "en",
+                      title: overlongQuery.slice(0, 200),
+                      description: null,
+                    },
+                  ]),
                   title_en: ["Unrelated", overlongQuery.slice(0, 200)],
                   title_fallback: ["Fallback"],
                 },
@@ -79,8 +87,9 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         collection: "watch_search_lexical",
         q: overlongQuery.slice(0, 200),
         query_by: "title_en,title_fallback",
-        include_fields: "canonicalVideoId,title_en,title_fallback",
-        per_page: 5,
+        filter_by: "localeCodes:=[`en`]",
+        include_fields: "canonicalVideoId,localesJson,title_en,title_fallback",
+        per_page: 25,
         group_by: "canonicalVideoId",
         group_limit: 1,
         prefix: true,
@@ -108,6 +117,13 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
               {
                 document: {
                   canonicalVideoId: "canonical-1",
+                  localesJson: JSON.stringify([
+                    {
+                      locale: "sw",
+                      title: "Jesus Film",
+                      description: null,
+                    },
+                  ]),
                   title_fallback: ["Jesus Film"],
                 },
               },
@@ -127,7 +143,8 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     expect(multiSearchMock).toHaveBeenCalledWith([
       expect.objectContaining({
         query_by: "title_fallback",
-        include_fields: "canonicalVideoId,title_fallback",
+        filter_by: "localeCodes:=[`sw`]",
+        include_fields: "canonicalVideoId,localesJson,title_fallback",
         num_typos: "0",
       }),
     ])
@@ -177,6 +194,9 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
               {
                 document: {
                   canonicalVideoId: `canonical-${index}`,
+                  localesJson: JSON.stringify([
+                    { locale: "en", title, description: null },
+                  ]),
                   title_en: [title],
                   title_fallback: [],
                 },
@@ -196,6 +216,66 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       "Jesus Film",
       "Jesus Messiah",
     ])
+  })
+
+  it("keeps exact locale variants separate when they share a tokenizer field", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "ko-kmr" })
+    multiSearchMock.mockResolvedValue([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  canonicalVideoId: "canonical-1",
+                  localesJson: JSON.stringify([
+                    { locale: "ko", title: "Jesus Korean", description: null },
+                    {
+                      locale: "ko-kmr",
+                      title: "Jesus Kurmanji",
+                      description: null,
+                    },
+                  ]),
+                  title_ko: ["Jesus Korean", "Jesus Kurmanji"],
+                  title_fallback: [],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    await expect(
+      createService().suggest({ query: "je", languageSlug: "kurmanji" }),
+    ).resolves.toEqual(["Jesus Kurmanji"])
+
+    expect(multiSearchMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        query_by: "title_ko,title_fallback",
+        filter_by: "localeCodes:=[`ko-kmr`]",
+        include_fields: "canonicalVideoId,localesJson,title_ko,title_fallback",
+      }),
+    ])
+  })
+
+  it("rejects an oversized public language slug before cache or Prisma work", async () => {
+    const oversizedSlug = "s".repeat(
+      MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS + 1,
+    )
+
+    await expect(
+      createService().suggest({ query: "je", languageSlug: oversizedSlug }),
+    ).resolves.toEqual([])
+
+    expect(findFirstMock).not.toHaveBeenCalled()
+    expect(multiSearchMock).not.toHaveBeenCalled()
   })
 
   it("fails empty when language or Typesense is unavailable", async () => {

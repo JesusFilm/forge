@@ -50,6 +50,7 @@ describe("Typesense Watch lexical projection", () => {
         "fil",
         "x-private",
       ],
+      localesJson: catalogDocument().localesJson,
       title_en: ["JESUS"],
       metadata_en: ["The life of Jesus"],
       title_zh: ["耶稣传"],

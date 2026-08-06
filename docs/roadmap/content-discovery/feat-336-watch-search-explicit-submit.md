@@ -1,7 +1,7 @@
 ---
 id: "feat-336"
 title: "Require explicit Watch search submission"
-owner: "codex"
+owner: "urim"
 priority: "P1"
 status: "complete"
 start_date: "2026-08-05"

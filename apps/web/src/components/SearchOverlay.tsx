@@ -60,6 +60,7 @@ import type { SearchLanguageOption } from "@/lib/search-language"
 import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
+import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
 import { fetchWatchSearchSuggestions } from "@/lib/watch-search-suggestions-client"
 
 const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
@@ -74,6 +75,11 @@ type SuggestionListPosition = Pick<
   "left" | "top" | "width" | "maxHeight"
 > & {
   placement: "above" | "below"
+}
+
+type SuggestionResult = {
+  requestKey: string
+  titles: string[]
 }
 
 function hasEnoughMeaningfulSearchCharacters(value: string): boolean {
@@ -159,7 +165,8 @@ export function SearchOverlay() {
   )
   const [languageAutocompleteOpen, setLanguageAutocompleteOpen] =
     useState(false)
-  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionResult, setSuggestionResult] =
+    useState<SuggestionResult | null>(null)
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<
     number | null
@@ -170,9 +177,17 @@ export function SearchOverlay() {
   >(null)
   const [suggestionListPosition, setSuggestionListPosition] =
     useState<SuggestionListPosition | null>(null)
+  const suggestionGenerationRef = useRef(0)
+  const activeSubmissionKeyRef = useRef<string | null>(null)
   const clearSuggestionRows = useCallback(() => {
-    setSuggestions((current) => (current.length === 0 ? current : []))
+    setSuggestionResult((current) => (current == null ? current : null))
   }, [])
+  const invalidateSuggestionRequest = useCallback(() => {
+    suggestionGenerationRef.current += 1
+    clearSuggestionRows()
+    setSuggestionsLoading(false)
+    setActiveSuggestionIndex(null)
+  }, [clearSuggestionRows])
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
     overlayRef.current = node
@@ -185,43 +200,63 @@ export function SearchOverlay() {
     selectedSearchLanguageOption?.publicSlug ??
     defaultSearchLanguageOption?.publicSlug ??
     null
+  const normalizedSuggestionQuery = normalizeWatchSearchQuery(query)
+  const normalizedSubmittedQuery =
+    submittedQuery == null ? null : normalizeWatchSearchQuery(submittedQuery)
+  const suggestionRequestKey =
+    open &&
+    !closing &&
+    !isComposing &&
+    suggestionLanguageSlug != null &&
+    hasEnoughMeaningfulSearchCharacters(normalizedSuggestionQuery) &&
+    normalizedSuggestionQuery !== normalizedSubmittedQuery &&
+    query !== suppressedSuggestionValue
+      ? `${suggestionLanguageSlug}\0${normalizedSuggestionQuery}`
+      : null
+  const suggestions = useMemo(
+    () =>
+      suggestionResult?.requestKey === suggestionRequestKey
+        ? suggestionResult.titles
+        : [],
+    [suggestionRequestKey, suggestionResult],
+  )
+  const visibleSuggestionsLoading =
+    suggestionRequestKey != null && suggestionsLoading
+
+  useLayoutEffect(() => {
+    suggestionGenerationRef.current += 1
+  }, [suggestionRequestKey])
 
   useEffect(() => {
-    const trimmedQuery = query.trim()
-    const eligible =
-      open &&
-      !isComposing &&
-      suggestionLanguageSlug != null &&
-      hasEnoughMeaningfulSearchCharacters(trimmedQuery) &&
-      trimmedQuery !== submittedQuery?.trim() &&
-      query !== suppressedSuggestionValue
-
-    if (!eligible || suggestionLanguageSlug == null) return
+    if (suggestionRequestKey == null || suggestionLanguageSlug == null) return
 
     const controller = new AbortController()
     let cancelled = false
+    const generation = suggestionGenerationRef.current
     const timer = window.setTimeout(() => {
-      if (cancelled) return
+      if (cancelled || generation !== suggestionGenerationRef.current) return
       setSuggestionsLoading(true)
       void fetchWatchSearchSuggestions({
-        query: trimmedQuery,
+        query: normalizedSuggestionQuery,
         languageSlug: suggestionLanguageSlug,
         signal: controller.signal,
       })
         .then((nextSuggestions) => {
-          if (cancelled) return
-          setSuggestions((current) =>
-            current.length === 0 && nextSuggestions.length === 0
-              ? current
-              : nextSuggestions,
-          )
+          if (cancelled || generation !== suggestionGenerationRef.current)
+            return
+          setSuggestionResult({
+            requestKey: suggestionRequestKey,
+            titles: nextSuggestions,
+          })
         })
         .catch(() => {
-          if (cancelled) return
+          if (cancelled || generation !== suggestionGenerationRef.current)
+            return
           clearSuggestionRows()
         })
         .finally(() => {
-          if (cancelled) return
+          if (cancelled || generation !== suggestionGenerationRef.current)
+            return
           setSuggestionsLoading(false)
         })
     }, SEARCH_SUGGESTIONS_DEBOUNCE_MS)
@@ -233,12 +268,9 @@ export function SearchOverlay() {
     }
   }, [
     clearSuggestionRows,
-    isComposing,
-    open,
-    query,
-    submittedQuery,
+    normalizedSuggestionQuery,
     suggestionLanguageSlug,
-    suppressedSuggestionValue,
+    suggestionRequestKey,
   ])
 
   useLayoutEffect(() => {
@@ -337,11 +369,14 @@ export function SearchOverlay() {
   useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false)
+      if (e.key === "Escape") {
+        invalidateSuggestionRequest()
+        setOpen(false)
+      }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, setOpen])
+  }, [invalidateSuggestionRequest, open, setOpen])
 
   // Body scroll lock — prevents the page behind from scrolling while modal open.
   useEffect(() => {
@@ -426,31 +461,25 @@ export function SearchOverlay() {
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       setSuppressedSuggestionValue(null)
-      setActiveSuggestionIndex(null)
-      clearSuggestionRows()
-      setSuggestionsLoading(false)
+      invalidateSuggestionRequest()
       setQuery(e.target.value)
     },
-    [clearSuggestionRows, setQuery],
+    [invalidateSuggestionRequest, setQuery],
   )
 
   const dismissSuggestions = useCallback(() => {
     setSuppressedSuggestionValue(query)
-    clearSuggestionRows()
-    setSuggestionsLoading(false)
-    setActiveSuggestionIndex(null)
-  }, [clearSuggestionRows, query])
+    invalidateSuggestionRequest()
+  }, [invalidateSuggestionRequest, query])
 
   const selectSuggestion = useCallback(
     (suggestion: string) => {
       setQuery(suggestion)
       setSuppressedSuggestionValue(suggestion)
-      clearSuggestionRows()
-      setSuggestionsLoading(false)
-      setActiveSuggestionIndex(null)
+      invalidateSuggestionRequest()
       inputRef.current?.focus({ preventScroll: true })
     },
-    [clearSuggestionRows, setQuery],
+    [invalidateSuggestionRequest, setQuery],
   )
 
   const handleInputKeyDown = useCallback(
@@ -493,7 +522,7 @@ export function SearchOverlay() {
 
       if (
         event.key === "Escape" &&
-        (suggestions.length > 0 || suggestionsLoading)
+        (suggestions.length > 0 || visibleSuggestionsLoading)
       ) {
         event.preventDefault()
         event.stopPropagation()
@@ -503,7 +532,7 @@ export function SearchOverlay() {
 
       if (
         event.key === "Tab" &&
-        (suggestions.length > 0 || suggestionsLoading)
+        (suggestions.length > 0 || visibleSuggestionsLoading)
       ) {
         dismissSuggestions()
       }
@@ -514,16 +543,25 @@ export function SearchOverlay() {
       isComposing,
       selectSuggestion,
       suggestions,
-      suggestionsLoading,
+      visibleSuggestionsLoading,
     ],
   )
 
   const handleSearchSubmit = useCallback(
     (submittedQuery: string) => {
+      const normalizedQuery = normalizeWatchSearchQuery(submittedQuery)
+      if (!normalizedQuery) return
+      const submissionKey = `${suggestionLanguageSlug ?? ""}\0${normalizedQuery}`
+      if (activeSubmissionKeyRef.current === submissionKey) return
+      activeSubmissionKeyRef.current = submissionKey
       dismissSuggestions()
-      void search(submittedQuery)
+      void search(submittedQuery).finally(() => {
+        if (activeSubmissionKeyRef.current === submissionKey) {
+          activeSubmissionKeyRef.current = null
+        }
+      })
     },
-    [dismissSuggestions, search],
+    [dismissSuggestions, search, suggestionLanguageSlug],
   )
 
   const handleCategoryClick = useCallback(
@@ -664,9 +702,7 @@ export function SearchOverlay() {
             onBlur={dismissSuggestions}
             onCompositionStart={() => {
               setIsComposing(true)
-              clearSuggestionRows()
-              setSuggestionsLoading(false)
-              setActiveSuggestionIndex(null)
+              invalidateSuggestionRequest()
             }}
             onCompositionEnd={() => setIsComposing(false)}
             placeholder={t("placeholder")}
@@ -675,7 +711,7 @@ export function SearchOverlay() {
             aria-autocomplete="list"
             aria-expanded={suggestions.length > 0}
             aria-controls={suggestionListId}
-            aria-busy={suggestionsLoading}
+            aria-busy={visibleSuggestionsLoading}
             aria-activedescendant={
               activeSuggestionIndex == null
                 ? undefined

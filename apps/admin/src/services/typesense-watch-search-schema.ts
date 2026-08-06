@@ -131,6 +131,7 @@ export function watchLexicalCollectionSchema(
       { name: "videoId", type: "string", facet: true },
       { name: "canonicalVideoId", type: "string", facet: true },
       { name: "localeCodes", type: "string[]", facet: true },
+      { name: "localesJson", type: "string", index: false },
       ...localizedFields,
       { name: "title_fallback", type: "string[]", optional: true },
       { name: "metadata_fallback", type: "string[]", optional: true },

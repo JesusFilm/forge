@@ -13,8 +13,8 @@ import type {
   SearchResult,
   SearchVideosLanguageContext,
 } from "./search"
+import { normalizeWatchSearchQuery } from "./watch-search-query"
 
-const MAX_QUERY_LENGTH = 200
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
 
 const watchSearchQuery = `
@@ -143,7 +143,7 @@ export async function searchWatchDirect({
   languageContext = {},
   resolvedLanguage,
 }: DirectWatchSearchInput): Promise<SearchResponse> {
-  const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
+  const truncatedQuery = normalizeWatchSearchQuery(query)
   const resultTypes = toWatchSearchResultType(type)
   const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
     method: "POST",

@@ -14,7 +14,7 @@ vi.mock("@/config/env", () => ({
   env: { NODE_ENV: "test" } as { NODE_ENV?: string },
 }))
 
-const { identifyForRateLimit, rateLimitConfigByField } =
+const { identifyForRateLimit, rateLimitConfigByField, rateLimitPluginOptions } =
   await import("@/graphql/plugins/rate-limit")
 
 function makeRequest(headers: Record<string, string> = {}): Request {
@@ -450,7 +450,11 @@ describe("identifyForRateLimit", () => {
 })
 
 describe("rateLimitConfigByField", () => {
-  it("gives the watch route snapshot query a higher budget without broadening the generic query rule", () => {
+  it("shares rate-limit reads within one aliased GraphQL operation", () => {
+    expect(rateLimitPluginOptions.enableBatchRequestCache).toBe(true)
+  })
+
+  it("gives high-frequency public Watch queries dedicated budgets without broadening the generic rule", () => {
     expect(rateLimitConfigByField).toContainEqual({
       type: "Query",
       field: "watchVideoRouteSnapshotBySlug",
@@ -459,7 +463,13 @@ describe("rateLimitConfigByField", () => {
     })
     expect(rateLimitConfigByField).toContainEqual({
       type: "Query",
-      field: "!(watchVideoRouteSnapshotBySlug)",
+      field: "watchSearchSuggestions",
+      max: 180,
+      window: "1m",
+    })
+    expect(rateLimitConfigByField).toContainEqual({
+      type: "Query",
+      field: "!(watchVideoRouteSnapshotBySlug|watchSearchSuggestions)",
       max: 60,
       window: "1m",
     })
