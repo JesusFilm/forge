@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildGraphqlRequest,
+  buildInternalRequest,
   summarizeProductionProbe,
 } from "./benchmark-watch-search-production"
 
@@ -26,6 +27,23 @@ describe("production Watch Search latency probe", () => {
       }),
     )
     expect(request.query).toContain("laneStatuses")
+  })
+
+  it("includes the required BCP-47 locale in internal probe requests", () => {
+    expect(
+      buildInternalRequest({
+        query: "พระเยซูคือใคร",
+        locale: "th",
+        languageSlug: "thai",
+        clientRequestId: "probe-server-0001",
+      }),
+    ).toMatchObject({
+      query: "พระเยซูคือใคร",
+      locale: "th",
+      languageSlug: "thai",
+      clientRequestId: "probe-server-0001",
+      mode: "modern",
+    })
   })
 
   it("separates server and full round-trip percentiles", () => {

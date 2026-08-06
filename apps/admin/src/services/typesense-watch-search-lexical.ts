@@ -32,17 +32,11 @@ export const TYPESENSE_WATCH_TOKENIZER_LOCALES = [
   "pl",
 ] as const
 
-export type TypesenseWatchTokenizerLocale =
-  (typeof TYPESENSE_WATCH_TOKENIZER_LOCALES)[number]
-
-const TYPESENSE_WATCH_TOKENIZER_LOCALE_SET = new Set<string>(
-  TYPESENSE_WATCH_TOKENIZER_LOCALES,
-)
-
 export type TypesenseWatchLexicalDocument = {
   id: string
   videoId: string
   canonicalVideoId: string
+  languageIdentity: string
   localeCodes: string[]
 } & Record<string, string | string[]>
 
@@ -52,13 +46,28 @@ export type TypesenseKeywordMemoryEstimate = {
   estimatedRamHighBytes: number
 }
 
-export function typesenseWatchTokenizerLocale(
-  locale: string,
-): TypesenseWatchTokenizerLocale | null {
+export function typesenseWatchTokenizerLocale(locale: string): string | null {
   const base = locale.trim().toLocaleLowerCase().split("-")[0]
-  return base && TYPESENSE_WATCH_TOKENIZER_LOCALE_SET.has(base)
-    ? (base as TypesenseWatchTokenizerLocale)
-    : null
+  return base && /^[a-z]{2}$/.test(base) ? base : null
+}
+
+export function typesenseWatchLocaleCodes(locale: string): string[] {
+  const normalized = locale.trim().toLocaleLowerCase().replace(/_/g, "-")
+  return /^(?:[a-z]{2,8}|[ix])(?:-[a-z0-9]{1,8})*$/.test(normalized)
+    ? [normalized]
+    : []
+}
+
+export function typesenseWatchLanguageIdentity({
+  languageSlug,
+  locale,
+}: Pick<TypesenseWatchLocale, "languageSlug" | "locale">): string | null {
+  const normalizedSlug = languageSlug?.trim().toLocaleLowerCase()
+  if (normalizedSlug && /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(normalizedSlug)) {
+    return `slug:${normalizedSlug}`
+  }
+  const [normalizedLocale] = typesenseWatchLocaleCodes(locale)
+  return normalizedLocale ? `locale:${normalizedLocale}` : null
 }
 
 function appendUnique(
@@ -87,25 +96,40 @@ function parseLocales(document: TypesenseWatchCatalogDocument) {
 export function buildTypesenseWatchLexicalDocuments(
   catalog: readonly TypesenseWatchCatalogDocument[],
 ): TypesenseWatchLexicalDocument[] {
-  return catalog.map((catalogDocument) => {
-    const locales = parseLocales(catalogDocument)
-    const document: TypesenseWatchLexicalDocument = {
-      id: catalogDocument.id,
-      videoId: catalogDocument.id,
-      canonicalVideoId: canonicalTypesenseVideoId(
-        catalogDocument.id,
-        catalogDocument.coreId,
-      ),
-      localeCodes: locales.map((locale) => locale.locale),
-    }
-
-    for (const locale of locales) {
+  return catalog.flatMap((catalogDocument) => {
+    const documents = new Map<string, TypesenseWatchLexicalDocument>()
+    for (const locale of parseLocales(catalogDocument)) {
+      const localeCodes = typesenseWatchLocaleCodes(locale.locale)
+      const languageIdentity = typesenseWatchLanguageIdentity(locale)
+      if (!languageIdentity) {
+        throw new Error(
+          `Catalog locale has no safe language identity for video ${catalogDocument.id}`,
+        )
+      }
+      const document =
+        documents.get(languageIdentity) ??
+        ({
+          id: `${catalogDocument.id}:${languageIdentity}`,
+          videoId: catalogDocument.id,
+          canonicalVideoId: canonicalTypesenseVideoId(
+            catalogDocument.id,
+            catalogDocument.coreId,
+          ),
+          languageIdentity,
+          localeCodes: [],
+        } satisfies TypesenseWatchLexicalDocument)
+      for (const localeCode of localeCodes) {
+        if (!document.localeCodes.includes(localeCode)) {
+          document.localeCodes.push(localeCode)
+        }
+      }
       const tokenizerLocale = typesenseWatchTokenizerLocale(locale.locale)
       const suffix = tokenizerLocale ?? "fallback"
       appendUnique(document, `title_${suffix}`, locale.title)
       appendUnique(document, `metadata_${suffix}`, locale.description)
+      documents.set(languageIdentity, document)
     }
-    return document
+    return [...documents.values()]
   })
 }
 
@@ -129,4 +153,17 @@ export function estimateTypesenseKeywordMemory(
     estimatedRamLowBytes: searchableBytes * 2,
     estimatedRamHighBytes: searchableBytes * 3,
   }
+}
+
+export function typesenseWatchTokenizerLocales(
+  documents: readonly TypesenseWatchLexicalDocument[],
+): string[] {
+  const locales = new Set<string>(TYPESENSE_WATCH_TOKENIZER_LOCALES)
+  for (const document of documents) {
+    for (const field of Object.keys(document)) {
+      const match = /^(?:title|metadata)_([a-z]{2})$/.exec(field)
+      if (match?.[1]) locales.add(match[1])
+    }
+  }
+  return [...locales].sort()
 }

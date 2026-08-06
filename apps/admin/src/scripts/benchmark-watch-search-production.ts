@@ -16,16 +16,28 @@ const LaneStatusSchema = z.object({
 })
 
 const PROBE_CASES = [
-  { query: "JESUS", languageSlug: "english" },
-  { query: "Who is Jesus?", languageSlug: "english" },
-  { query: "finding hope when life feels heavy", languageSlug: "english" },
-  { query: "forgiveness after failure", languageSlug: "english" },
-  { query: "耶稣是谁？", languageSlug: "mandarin-china" },
-  { query: "พระเยซูคือใคร", languageSlug: "thai" },
-  { query: "من هو يسوع؟", languageSlug: "arabic-modern-standard" },
-  { query: "Кто такой Иисус?", languageSlug: "russian" },
-  { query: "walking wih jesus", languageSlug: "english" },
-  { query: "woman at the well", languageSlug: "english" },
+  { query: "JESUS", locale: "en", languageSlug: "english" },
+  { query: "Who is Jesus?", locale: "en", languageSlug: "english" },
+  {
+    query: "finding hope when life feels heavy",
+    locale: "en",
+    languageSlug: "english",
+  },
+  {
+    query: "forgiveness after failure",
+    locale: "en",
+    languageSlug: "english",
+  },
+  { query: "耶稣是谁？", locale: "zh-Hans", languageSlug: "mandarin-china" },
+  { query: "พระเยซูคือใคร", locale: "th", languageSlug: "thai" },
+  {
+    query: "من هو يسوع؟",
+    locale: "ar",
+    languageSlug: "arabic-modern-standard",
+  },
+  { query: "Кто такой Иисус?", locale: "ru", languageSlug: "russian" },
+  { query: "walking wih jesus", locale: "en", languageSlug: "english" },
+  { query: "woman at the well", locale: "en", languageSlug: "english" },
 ] as const
 
 const InternalResponseSchema = z.object({
@@ -182,6 +194,28 @@ export function buildGraphqlRequest({
   }
 }
 
+export function buildInternalRequest({
+  query,
+  locale,
+  languageSlug,
+  clientRequestId,
+}: {
+  query: string
+  locale: string
+  languageSlug: string
+  clientRequestId: string
+}) {
+  return {
+    query,
+    locale,
+    languageSlug,
+    clientRequestId,
+    mode: "modern",
+    contentType: "video",
+    limit: 10,
+  }
+}
+
 async function postJson({
   url,
   bearer,
@@ -231,13 +265,7 @@ async function runServerProbe({
     const response = await postJson({
       url,
       bearer,
-      body: {
-        ...probeCase,
-        clientRequestId,
-        mode: "modern",
-        contentType: "video",
-        limit: 10,
-      },
+      body: buildInternalRequest({ ...probeCase, clientRequestId }),
     })
     const parsed = InternalResponseSchema.parse(response.payload)
     samples.push({

@@ -4,7 +4,7 @@ const rateLimitAuthRoute = vi.fn()
 const isValidSearchTraceSamplingBearer = vi.fn()
 const defaultSearch = vi.fn()
 const modernSearch = vi.fn()
-const recordWatchSearchTraceSafely = vi.fn()
+const enqueueWatchSearchTrace = vi.fn()
 const createTypesenseWatchSearchService = vi.fn()
 const prisma = {
   video: { findMany: vi.fn() },
@@ -24,7 +24,7 @@ vi.mock("@/services/typesense-watch-search.service", () => ({
   TypesenseWatchSearchUnavailableError: class TypesenseWatchSearchUnavailableError extends Error {},
 }))
 vi.mock("@/services/search-trace.service", () => ({
-  recordWatchSearchTraceSafely,
+  enqueueWatchSearchTrace,
 }))
 
 const { POST } = await import("./route")
@@ -82,7 +82,7 @@ describe("POST /api/internal/search-eval/search", () => {
     prisma.video.findMany.mockResolvedValue([
       { id: "video-1", coreId: "4_Jesus_16x9" },
     ])
-    recordWatchSearchTraceSafely.mockResolvedValue(undefined)
+    enqueueWatchSearchTrace.mockReturnValue(true)
   })
 
   it("runs MODERN through Admin and emits eval evidence plus normal analytics", async () => {
@@ -127,7 +127,7 @@ describe("POST /api/internal/search-eval/search", () => {
       }),
     )
     expect(defaultSearch).not.toHaveBeenCalled()
-    expect(recordWatchSearchTraceSafely).toHaveBeenCalledOnce()
+    expect(enqueueWatchSearchTrace).toHaveBeenCalledOnce()
   })
 
   it("keeps DEFAULT available for diagnostics", async () => {

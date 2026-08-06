@@ -5,6 +5,7 @@ import {
   type Prisma,
   type PrismaClient,
 } from "@prisma/client"
+import { after } from "next/server"
 import { env } from "@/config/env"
 import { prisma as defaultPrisma } from "@/db/client"
 import {
@@ -27,6 +28,7 @@ import {
   purgeExpiredSearchTraces,
   readSearchTraceRetentionHealth,
 } from "@/services/search-trace-retention.service"
+import { BoundedSearchTraceWriteQueue } from "@/services/search-trace-write-queue"
 import type {
   WatchSearchInput,
   WatchSearchLaneStatus,
@@ -146,6 +148,8 @@ export type RecordAdminVideoLibrarySearchTraceInput = {
 }
 
 const TRACE_RECORD_TIMEOUT_MS = 250
+const WATCH_TRACE_QUEUE_CONCURRENCY = 1
+const WATCH_TRACE_QUEUE_CAPACITY = 256
 const DEFAULT_SAMPLE_LIMIT = 50
 const MAX_SAMPLE_LIMIT = 100
 const MAX_SAMPLE_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -560,21 +564,7 @@ export async function recordSearchTraceSafely(
   let timeout: ReturnType<typeof setTimeout> | undefined
   let timedOut = false
 
-  const writePromise = writeSearchTrace(input, prisma)
-    .then((result) => {
-      if (timeout) clearTimeout(timeout)
-      recordSearchTraceWriteSuccess()
-      return { ok: true as const, timedOut: false as const, ...result }
-    })
-    .catch((error) => {
-      if (timeout) clearTimeout(timeout)
-      recordSearchTraceWriteFailure()
-      console.warn(
-        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)} message=${safeTraceErrorMessage(error)}`,
-      )
-      return { ok: false as const, timedOut: false as const }
-    })
-
+  const writePromise = recordSearchTraceToCompletionSafely(input, prisma)
   const timeoutPromise = new Promise<SearchTraceSafeRecordResult>((resolve) => {
     timeout = setTimeout(() => {
       timedOut = true
@@ -591,31 +581,91 @@ export async function recordSearchTraceSafely(
   return result
 }
 
+async function recordSearchTraceToCompletionSafely(
+  input: RecordSearchTraceInput,
+  prisma: PrismaClient,
+): Promise<SearchTraceSafeRecordResult> {
+  return writeSearchTrace(input, prisma)
+    .then((result) => {
+      recordSearchTraceWriteSuccess()
+      return { ok: true as const, timedOut: false as const, ...result }
+    })
+    .catch((error) => {
+      recordSearchTraceWriteFailure()
+      console.warn(
+        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)} message=${safeTraceErrorMessage(error)}`,
+      )
+      return { ok: false as const, timedOut: false as const }
+    })
+}
+
+function watchSearchTraceInput(
+  input: RecordWatchSearchTraceInput,
+): RecordSearchTraceInput {
+  const response = input.response
+  return {
+    requestId: response.requestId,
+    query: response.query,
+    locale: response.languageInterpretation.targetLanguageSlug,
+    routeSource: "graphql",
+    requestedMode: "watch-search",
+    searchMode: response.searchMode,
+    resultCount: response.results.length,
+    outcome: response.degraded ? "degraded" : "success",
+    traceClass: watchTraceClass(response),
+    startedAt: input.startedAt,
+    completedAt: input.completedAt,
+    metadata: watchSearchTraceMetadata(input.input, response),
+    now: input.now,
+    timeoutMs: input.timeoutMs,
+    retentionHealthy: input.retentionHealthy,
+  }
+}
+
 export async function recordWatchSearchTraceSafely(
   input: RecordWatchSearchTraceInput,
   prisma: PrismaClient = defaultPrisma,
 ): Promise<SearchTraceSafeRecordResult> {
-  const response = input.response
-  return recordSearchTraceSafely(
-    {
-      requestId: response.requestId,
-      query: response.query,
-      locale: response.languageInterpretation.targetLanguageSlug,
-      routeSource: "graphql",
-      requestedMode: "watch-search",
-      searchMode: response.searchMode,
-      resultCount: response.results.length,
-      outcome: response.degraded ? "degraded" : "success",
-      traceClass: watchTraceClass(response),
-      startedAt: input.startedAt,
-      completedAt: input.completedAt,
-      metadata: watchSearchTraceMetadata(input.input, response),
-      now: input.now,
-      timeoutMs: input.timeoutMs,
-      retentionHealthy: input.retentionHealthy,
-    },
+  return recordSearchTraceSafely(watchSearchTraceInput(input), prisma)
+}
+
+type QueuedWatchSearchTrace = {
+  input: RecordWatchSearchTraceInput
+  prisma: PrismaClient
+}
+
+const watchSearchTraceWriteQueue = new BoundedSearchTraceWriteQueue({
+  concurrency: WATCH_TRACE_QUEUE_CONCURRENCY,
+  maxPending: WATCH_TRACE_QUEUE_CAPACITY,
+  worker: async ({ input, prisma }: QueuedWatchSearchTrace) => {
+    await recordSearchTraceToCompletionSafely(
+      watchSearchTraceInput(input),
+      prisma,
+    )
+  },
+})
+
+export function enqueueWatchSearchTrace(
+  input: RecordWatchSearchTraceInput,
+  prisma: PrismaClient = defaultPrisma,
+): boolean {
+  const completion = watchSearchTraceWriteQueue.enqueueWithCompletion({
+    input,
     prisma,
-  )
+  })
+  if (!completion) {
+    recordSearchTraceWriteFailure()
+    console.warn(
+      `[search] event=trace_queue_full route=graphql outcome=${input.response.degraded ? "degraded" : "success"} capacity=${WATCH_TRACE_QUEUE_CAPACITY}`,
+    )
+    return false
+  }
+  try {
+    after(() => completion)
+  } catch {
+    void completion
+  }
+  return true
 }
 
 export async function recordAdminVideoLibrarySearchTraceSafely(

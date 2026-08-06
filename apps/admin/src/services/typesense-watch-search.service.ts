@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import {
+  cachedBoundedTtlValue,
+  type BoundedTtlCache,
+} from "./bounded-ttl-promise-cache"
+import {
   TypesenseClient,
   TypesenseRequestError,
   type TypesenseSearchGroup,
@@ -19,7 +23,10 @@ import {
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
-import type { TypesenseWatchLexicalDocument } from "./typesense-watch-search-lexical"
+import {
+  typesenseWatchLanguageIdentity,
+  type TypesenseWatchLexicalDocument,
+} from "./typesense-watch-search-lexical"
 import {
   displayLocale,
   displayPreviewLocale,
@@ -58,6 +65,8 @@ const SEMANTIC_LANE_WEIGHT = 0.3
 const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
+const LANGUAGE_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1_000
+const LANGUAGE_CONTEXT_CACHE_MAX_ENTRIES = 4_096
 const MIN_SEMANTIC_SIMILARITY = 0.5
 const CATALOG_PREVIEW_EXCLUDED_FIELDS =
   "coreId,slug,descriptions,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson"
@@ -97,8 +106,8 @@ type CandidateRetrieval = {
 }
 
 type EmbeddingOutcome =
-  | { status: "fulfilled"; embedding: number[] }
-  | { status: "rejected"; error: unknown }
+  | { status: "fulfilled"; embedding: number[]; elapsedMs: number }
+  | { status: "rejected"; error: unknown; elapsedMs: number }
 
 type RankedCandidate = {
   candidate: Candidate
@@ -159,6 +168,15 @@ type TargetLanguageContext = {
   fallbackLanguageSlugs: string[]
 }
 
+const targetLanguageContextCaches = new WeakMap<
+  object,
+  BoundedTtlCache<TargetLanguageContext>
+>()
+const evidenceLocaleCaches = new WeakMap<
+  object,
+  BoundedTtlCache<Array<{ slug: string; locale: string }>>
+>()
+
 export class TypesenseWatchSearchUnavailableError extends Error {
   constructor(message = "Typesense Watch Search is not configured") {
     super(message)
@@ -179,7 +197,7 @@ function isMissingLexicalProjection(error: unknown): boolean {
     error instanceof TypesenseRequestError &&
     (error.status === 400 || error.status === 404) &&
     new RegExp(
-      `${TYPESENSE_WATCH_LEXICAL_ALIAS}|title_[a-z]|metadata_[a-z]|canonicalVideoId`,
+      `${TYPESENSE_WATCH_LEXICAL_ALIAS}|title_[a-z]|metadata_[a-z]|canonicalVideoId|languageIdentity`,
     ).test(error.message)
   )
 }
@@ -280,6 +298,7 @@ function lexicalSearchRequests(
 function lexicalLaneRequest(
   query: string,
   fields: readonly string[],
+  languageIdentities: readonly string[],
   candidateLimit: number,
   offset: number,
 ): TypesenseSearchRequest {
@@ -295,6 +314,7 @@ function lexicalLaneRequest(
     per_page: perPage,
     group_by: "canonicalVideoId",
     group_limit: HYBRID_GROUP_LIMIT,
+    filter_by: `languageIdentity:=[${languageIdentities.map((identity) => `\`${identity}\``).join(",")}]`,
     prefix: true,
     num_typos: fields.map((_field, index) => (index === 0 ? 2 : 1)).join(","),
     split_join_tokens: "always",
@@ -305,6 +325,7 @@ function lexicalLaneRequest(
       "id",
       "videoId",
       "canonicalVideoId",
+      "languageIdentity",
       "localeCodes",
       ...fields,
     ].join(","),
@@ -570,6 +591,7 @@ function laneStatus({
   startedAt,
   resultCount,
   reason = null,
+  elapsedMs,
 }: {
   lane: WatchSearchLaneStatus["lane"]
   status: WatchSearchLaneStatus["status"]
@@ -577,12 +599,13 @@ function laneStatus({
   startedAt: number
   resultCount: number
   reason?: string | null
+  elapsedMs?: number
 }): WatchSearchLaneStatus {
   return {
     lane,
     status,
     startedOffsetMs: Math.max(0, startedAt - timelineStartedAt),
-    elapsedMs: performance.now() - startedAt,
+    elapsedMs: elapsedMs ?? performance.now() - startedAt,
     resultCount,
     reason,
     detail: null,
@@ -636,6 +659,7 @@ export class TypesenseWatchSearchService {
 
     const limit = normalizeLimit(input.limit)
     const offset = normalizeOffset(input.offset)
+    const laneStatuses: WatchSearchLaneStatus[] = []
     const embeddingStartedAt = performance.now()
     const embeddingPromise: Promise<EmbeddingOutcome> = withTimeout(
       Promise.resolve().then(() => this.embedder(query)),
@@ -644,9 +668,15 @@ export class TypesenseWatchSearchService {
       (embedded) => ({
         status: "fulfilled",
         embedding: Array.isArray(embedded) ? embedded : [...embedded.embedding],
+        elapsedMs: performance.now() - embeddingStartedAt,
       }),
-      (error: unknown) => ({ status: "rejected", error }),
+      (error: unknown) => ({
+        status: "rejected",
+        error,
+        elapsedMs: performance.now() - embeddingStartedAt,
+      }),
     )
+    const languageStartedAt = performance.now()
     const languageInterpretation = await resolveSearchLanguageSignals({
       prisma: this.prisma,
       input,
@@ -655,6 +685,15 @@ export class TypesenseWatchSearchService {
       this.targetLanguageContext(languageInterpretation.targetLanguageSlug),
       this.evidenceLocales(languageInterpretation),
     ])
+    laneStatuses.push(
+      laneStatus({
+        lane: "language_resolution",
+        status: "fulfilled",
+        timelineStartedAt: startedAt,
+        startedAt: languageStartedAt,
+        resultCount: evidenceLocales.length,
+      }),
+    )
     const preferredLocale =
       localeForLanguageSlug(languageInterpretation.displayLanguageSlug) ??
       languageInterpretation.displayLanguageBcp47 ??
@@ -665,6 +704,12 @@ export class TypesenseWatchSearchService {
       evidenceLocales.find(
         ({ slug }) => slug === languageInterpretation.queryLanguageSlug,
       )?.locale ?? preferredLocale
+    const lexicalLanguageSlug =
+      languageInterpretation.queryLanguageSlug ??
+      languageInterpretation.queryNamedLanguageSlug ??
+      languageInterpretation.displayLanguageSlug ??
+      languageInterpretation.targetLanguageSlug ??
+      languageInterpretation.routeLanguageSlug
     const titleQuery = queryWithoutLanguageHints(query, [
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
@@ -673,7 +718,6 @@ export class TypesenseWatchSearchService {
       Math.max(offset + limit + 1, MIN_FALLBACK_CANDIDATES),
       MAX_LEXICAL_CANDIDATES,
     )
-    const laneStatuses: WatchSearchLaneStatus[] = []
     const {
       candidates,
       nativeCandidateGroups,
@@ -684,6 +728,7 @@ export class TypesenseWatchSearchService {
       titleQuery,
       preferredLocale,
       queryLocale,
+      lexicalLanguageSlug,
       evidenceLocales,
       candidateLimit,
       offset,
@@ -867,6 +912,7 @@ export class TypesenseWatchSearchService {
     titleQuery,
     preferredLocale,
     queryLocale,
+    lexicalLanguageSlug,
     evidenceLocales,
     candidateLimit,
     offset,
@@ -878,6 +924,7 @@ export class TypesenseWatchSearchService {
     titleQuery: string
     preferredLocale: string
     queryLocale: string
+    lexicalLanguageSlug: string | null
     evidenceLocales: Array<{ slug: string; locale: string }>
     candidateLimit: number
     offset: number
@@ -895,17 +942,16 @@ export class TypesenseWatchSearchService {
           startedAt: embeddingStartedAt,
           resultCount: 0,
           reason: "no_evidence_language",
+          elapsedMs: 0,
         }),
       )
     }
 
     const embeddingOutcome =
       evidenceLocales.length > 0 ? await embeddingPromise : null
-    const embedding =
-      embeddingOutcome?.status === "fulfilled"
-        ? embeddingOutcome.embedding
-        : null
-    if (embedding) {
+    let embedding: number[] | null = null
+    if (embeddingOutcome?.status === "fulfilled") {
+      embedding = embeddingOutcome.embedding
       laneStatuses.push(
         laneStatus({
           lane: "semantic_embedding",
@@ -913,6 +959,7 @@ export class TypesenseWatchSearchService {
           timelineStartedAt,
           startedAt: embeddingStartedAt,
           resultCount: 1,
+          elapsedMs: embeddingOutcome.elapsedMs,
         }),
       )
     } else if (embeddingOutcome?.status === "rejected") {
@@ -929,6 +976,7 @@ export class TypesenseWatchSearchService {
           startedAt: embeddingStartedAt,
           resultCount: 0,
           reason,
+          elapsedMs: embeddingOutcome.elapsedMs,
         }),
       )
     }
@@ -936,9 +984,34 @@ export class TypesenseWatchSearchService {
     const retrievalStartedAt = performance.now()
     const titleFields = watchLexicalQueryFields(queryLocale, "title")
     const metadataFields = watchLexicalQueryFields(queryLocale, "metadata")
+    const lexicalLanguageIdentities = [
+      typesenseWatchLanguageIdentity({
+        languageSlug: lexicalLanguageSlug,
+        locale: queryLocale,
+      }),
+      typesenseWatchLanguageIdentity({
+        languageSlug: null,
+        locale: queryLocale,
+      }),
+    ].filter(
+      (identity, index, all): identity is string =>
+        Boolean(identity) && all.indexOf(identity) === index,
+    )
     const searches = [
-      lexicalLaneRequest(titleQuery, titleFields, candidateLimit, offset),
-      lexicalLaneRequest(titleQuery, metadataFields, candidateLimit, offset),
+      lexicalLaneRequest(
+        titleQuery,
+        titleFields,
+        lexicalLanguageIdentities,
+        candidateLimit,
+        offset,
+      ),
+      lexicalLaneRequest(
+        titleQuery,
+        metadataFields,
+        lexicalLanguageIdentities,
+        candidateLimit,
+        offset,
+      ),
       ...(embedding && evidenceLocales.length > 0
         ? [
             semanticLaneRequest(
@@ -1475,37 +1548,46 @@ export class TypesenseWatchSearchService {
   private async targetLanguageContext(
     targetLanguageSlug: string,
   ): Promise<TargetLanguageContext> {
-    const language = await this.prisma.language.findFirst({
-      where: { slug: targetLanguageSlug, deletedAt: null },
-      select: { id: true, slug: true, name: true },
-    })
-    if (!language?.slug) {
-      return {
-        id: null,
-        slug: targetLanguageSlug,
-        englishName: null,
-        fallbackLanguageIds: [],
-        fallbackLanguageSlugs: [],
-      }
-    }
-    const fallbacks = await this.prisma.languageFallback.findMany({
-      where: { sourceLanguageId: language.id, deletedAt: null },
-      orderBy: [{ priority: "asc" }, { fallbackLanguageId: "asc" }],
-      take: 12,
-      select: {
-        fallbackLanguageId: true,
-        fallbackLanguage: { select: { slug: true } },
+    return cachedBoundedTtlValue({
+      cacheByOwner: targetLanguageContextCaches,
+      owner: this.prisma,
+      key: targetLanguageSlug,
+      ttlMs: LANGUAGE_CONTEXT_CACHE_TTL_MS,
+      maxEntries: LANGUAGE_CONTEXT_CACHE_MAX_ENTRIES,
+      loader: async () => {
+        const language = await this.prisma.language.findFirst({
+          where: { slug: targetLanguageSlug, deletedAt: null },
+          select: { id: true, slug: true, name: true },
+        })
+        if (!language?.slug) {
+          return {
+            id: null,
+            slug: targetLanguageSlug,
+            englishName: null,
+            fallbackLanguageIds: [],
+            fallbackLanguageSlugs: [],
+          }
+        }
+        const fallbacks = await this.prisma.languageFallback.findMany({
+          where: { sourceLanguageId: language.id, deletedAt: null },
+          orderBy: [{ priority: "asc" }, { fallbackLanguageId: "asc" }],
+          take: 12,
+          select: {
+            fallbackLanguageId: true,
+            fallbackLanguage: { select: { slug: true } },
+          },
+        })
+        return {
+          id: language.id,
+          slug: language.slug,
+          englishName: englishName(language.name),
+          fallbackLanguageIds: fallbacks.map((row) => row.fallbackLanguageId),
+          fallbackLanguageSlugs: fallbacks.flatMap((row) =>
+            row.fallbackLanguage.slug ? [row.fallbackLanguage.slug] : [],
+          ),
+        }
       },
     })
-    return {
-      id: language.id,
-      slug: language.slug,
-      englishName: englishName(language.name),
-      fallbackLanguageIds: fallbacks.map((row) => row.fallbackLanguageId),
-      fallbackLanguageSlugs: fallbacks.flatMap((row) =>
-        row.fallbackLanguage.slug ? [row.fallbackLanguage.slug] : [],
-      ),
-    }
   }
 
   private async evidenceLocales(
@@ -1521,18 +1603,27 @@ export class TypesenseWatchSearchService {
       .filter((value): value is string => Boolean(value))
       .filter((value, index, all) => all.indexOf(value) === index)
       .slice(0, MAX_EVIDENCE_LOCALES)
-    const rows = await this.prisma.language.findMany({
-      where: { slug: { in: slugs }, deletedAt: null },
-      select: { slug: true, bcp47: true },
-    })
-    const bcp47BySlug = new Map(
-      rows.flatMap((row) =>
-        row.slug && row.bcp47 ? [[row.slug, row.bcp47] as const] : [],
-      ),
-    )
-    return slugs.flatMap((slug) => {
-      const locale = localeForLanguageSlug(slug) ?? bcp47BySlug.get(slug)
-      return locale ? [{ slug, locale }] : []
+    return cachedBoundedTtlValue({
+      cacheByOwner: evidenceLocaleCaches,
+      owner: this.prisma,
+      key: slugs.join("\u0000"),
+      ttlMs: LANGUAGE_CONTEXT_CACHE_TTL_MS,
+      maxEntries: LANGUAGE_CONTEXT_CACHE_MAX_ENTRIES,
+      loader: async () => {
+        const rows = await this.prisma.language.findMany({
+          where: { slug: { in: slugs }, deletedAt: null },
+          select: { slug: true, bcp47: true },
+        })
+        const bcp47BySlug = new Map(
+          rows.flatMap((row) =>
+            row.slug && row.bcp47 ? [[row.slug, row.bcp47] as const] : [],
+          ),
+        )
+        return slugs.flatMap((slug) => {
+          const locale = localeForLanguageSlug(slug) ?? bcp47BySlug.get(slug)
+          return locale ? [{ slug, locale }] : []
+        })
+      },
     })
   }
 
