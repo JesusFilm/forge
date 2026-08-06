@@ -45,10 +45,22 @@ describe("Typesense Watch Search schemas", () => {
     expect(schema.fields).toEqual(
       expect.arrayContaining([
         { name: "videoId", type: "string", facet: true },
+        {
+          name: "videoEditionId",
+          type: "string",
+          facet: true,
+          optional: true,
+        },
         { name: "languageId", type: "string", facet: true },
         { name: "languageSlug", type: "string", facet: true },
         { name: "audio", type: "bool", facet: true },
         { name: "subtitles", type: "bool", facet: true },
+        {
+          name: "hrefLanguageSlug",
+          type: "string",
+          optional: true,
+          index: false,
+        },
       ]),
     )
   })
@@ -101,6 +113,12 @@ describe("Typesense Watch Search schemas", () => {
       expect.arrayContaining([
         { name: "documentKind", type: "string", facet: true },
         { name: "videoId", type: "string", facet: true },
+        {
+          name: "videoEditionId",
+          type: "string",
+          optional: true,
+          index: false,
+        },
         { name: "canonicalVideoId", type: "string", facet: true },
         { name: "language", type: "string", facet: true },
         { name: "publiclyVisible", type: "bool", facet: true },

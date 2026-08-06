@@ -13,6 +13,9 @@ type SeriesHeroProps = {
   onLanguageClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
+  subtitleVttSrc?: string | null
   // Optional hero-overlay content. When provided, replaces the default
   // label/title overlay in both trailer and static modes. The series
   // page uses this to render the episode-count label, title, and share
@@ -37,6 +40,9 @@ export function SeriesHero({
   onLanguageClick,
   languageSlug,
   playableLanguageCount,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode = null,
+  subtitleVttSrc = null,
   overlay,
 }: SeriesHeroProps) {
   if (hasPlayableTrailer(selectedVariant)) {
@@ -50,6 +56,9 @@ export function SeriesHero({
         onLanguageClick={onLanguageClick}
         languageSlug={languageSlug}
         playableLanguageCount={playableLanguageCount}
+        hasSubtitleOptions={hasSubtitleOptions}
+        subtitleLanguageCode={subtitleLanguageCode}
+        subtitleVttSrc={subtitleVttSrc}
         overlay={overlay}
       />
     )

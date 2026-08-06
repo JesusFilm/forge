@@ -45,11 +45,17 @@ export const defaultHrefBuilder = (result: SearchResult): Route => {
   const resultLanguage = result.languageSlug
     ? tryAsLocaleSlug(result.languageSlug)
     : null
+  const subtitleLanguage = result.subtitleLanguageSlug
+    ? tryAsLocaleSlug(result.subtitleLanguageSlug)
+    : null
   // On a malformed slug, fall back to the modal-capable watch home rather than
   // emitting a broken deep link or resurrecting the deprecated /search page.
-  return slug
-    ? watchVideoPath(slug, resultLanguage ?? ENGLISH_LOCALE)
-    : searchPath()
+  if (!slug) return searchPath()
+  if (result.availabilityKind === "target_subtitle") {
+    if (!resultLanguage || !subtitleLanguage) return searchPath()
+    return watchVideoPath(slug, resultLanguage, { subtitleLanguage })
+  }
+  return watchVideoPath(slug, resultLanguage ?? ENGLISH_LOCALE)
 }
 
 // Full tailwind class strings so JIT can extract them at build time.

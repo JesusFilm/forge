@@ -5,7 +5,10 @@
 // click through this same-origin endpoint lets Web keep opaque download IDs,
 // auth gating, and event recording without exposing raw CDN URLs in rendered
 // markup. Successful attachment downloads redirect to the CDN so Web does not
-// carry media streams.
+// carry media streams. The narrow anonymous inline-VTT path is the exception:
+// browsers enforce CORS on `<track>` redirects, while the trusted Core media
+// origin does not emit an allow-origin header. Web therefore buffers only
+// small allowlisted VTT files and returns them same-origin.
 
 import { promises as dns } from "node:dns"
 import { isIP } from "node:net"
@@ -31,6 +34,11 @@ const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
 const DOWNLOAD_AUTH_REQUIRED = "auth-required"
 const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
+const MAX_INLINE_SUBTITLE_BYTES = 2 * 1024 * 1024
+const INLINE_SUBTITLE_TIMEOUT_MS = 10_000
+const INLINE_SUBTITLE_ORIGINS = new Set([
+  "https://api-media-core.jesusfilm.org",
+])
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g
@@ -50,7 +58,11 @@ function isAnonymousInlineSubtitleRequest(
   if (!target || !isAllowedDownloadOrigin(target)) return false
 
   try {
-    return new URL(target).pathname.toLowerCase().endsWith(".vtt")
+    const parsed = new URL(target)
+    return (
+      INLINE_SUBTITLE_ORIGINS.has(parsed.origin) &&
+      parsed.pathname.toLowerCase().endsWith(".vtt")
+    )
   } catch {
     return false
   }
@@ -153,9 +165,7 @@ async function resolvesToPublicIp(hostname: string): Promise<boolean> {
     if (r.status === "fulfilled") ips.push(...r.value)
   }
   if (ips.length === 0) {
-    // No DNS answer at all: allow the browser/CDN request to surface the
-    // failure rather than guessing here.
-    return true
+    return false
   }
   return ips.every((ip) => !(isPrivateIPv4(ip) || isPrivateIPv6(ip)))
 }
@@ -279,6 +289,99 @@ function redirectToTarget(safeUrl: string): NextResponse {
   })
 }
 
+type BoundedBodyResult =
+  | { ok: true; body: ArrayBuffer }
+  | { ok: false; reason: "too-large" | "unavailable" }
+
+async function readBoundedBody(
+  response: Response,
+  maxBytes: number,
+): Promise<BoundedBodyResult> {
+  if (!response.body) return { ok: false, reason: "unavailable" }
+
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) {
+        await reader.cancel()
+        return { ok: false, reason: "too-large" }
+      }
+      chunks.push(value)
+    }
+  } catch {
+    return { ok: false, reason: "unavailable" }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const buffer = new ArrayBuffer(totalBytes)
+  const body = new Uint8Array(buffer)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return { ok: true, body: buffer }
+}
+
+function hasWebVttSignature(body: ArrayBuffer): boolean {
+  const prefix = new TextDecoder()
+    .decode(body.slice(0, Math.min(body.byteLength, 64)))
+    .replace(/^\uFEFF/, "")
+  return /^WEBVTT(?:[\t \r\n]|$)/.test(prefix)
+}
+
+async function proxyInlineSubtitle(safeUrl: string): Promise<Response> {
+  let upstream: Response
+  try {
+    upstream = await fetch(safeUrl, {
+      headers: { Accept: "text/vtt,text/plain;q=0.9" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(INLINE_SUBTITLE_TIMEOUT_MS),
+    })
+  } catch {
+    return jsonError("Subtitle unavailable", 502)
+  }
+
+  if (!upstream.ok || upstream.status >= 300) {
+    return jsonError("Subtitle unavailable", 502)
+  }
+
+  const declaredLength = Number(upstream.headers.get("content-length"))
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_INLINE_SUBTITLE_BYTES
+  ) {
+    return jsonError("Subtitle too large", 413)
+  }
+
+  const bodyResult = await readBoundedBody(upstream, MAX_INLINE_SUBTITLE_BYTES)
+  if (!bodyResult.ok && bodyResult.reason === "too-large") {
+    return jsonError("Subtitle too large", 413)
+  }
+  if (!bodyResult.ok) {
+    return jsonError("Subtitle unavailable", 502)
+  }
+  if (!hasWebVttSignature(bodyResult.body)) {
+    return jsonError("Subtitle unavailable", 502)
+  }
+
+  return new Response(bodyResult.body, {
+    status: 200,
+    headers: {
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      "Content-Type": "text/vtt; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+    },
+  })
+}
+
 function sanitizeDownloadFilename(raw: string | null): string {
   const stripped = (raw ?? DEFAULT_DOWNLOAD_FILENAME)
     .replace(CONTROL_CHARS_RE, "")
@@ -373,6 +476,10 @@ export async function GET(request: Request): Promise<Response> {
         reason: result.reason,
       })
     }
+  }
+
+  if (anonymousInlineSubtitleRequest) {
+    return proxyInlineSubtitle(safeUrl)
   }
 
   return redirectToTarget(

@@ -203,12 +203,14 @@ function renderWatchPage({
   image,
   languageSlug = "english",
   playbackId = "playback-1",
+  subtitleLanguageSlug = null,
   subtitles = [],
   videoSlug = "jesus-is-brought-to-pilate",
 }: {
   image?: { mobileCinematicHigh?: string | null }
   languageSlug?: string
   playbackId?: string | null
+  subtitleLanguageSlug?: string | null
   subtitles?: unknown[]
   videoSlug?: string
 } = {}) {
@@ -249,6 +251,7 @@ function renderWatchPage({
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
+        subtitleLanguageSlug={subtitleLanguageSlug}
       />,
     )
   })
@@ -798,6 +801,156 @@ describe("WatchPageClient download boundary", () => {
     )
     expect(renderer?.getAttribute("data-has-subtitle-options")).toBe("true")
     expect(renderer?.getAttribute("data-subtitle-language-code")).toBe("ES")
+  })
+
+  it("consumes a valid one-shot subtitle intent ahead of the stored preference", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=russian&t=12",
+    )
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+
+    renderWatchPage({
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      videoSlug: "perfect-2",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+        {
+          documentId: "sub-ru",
+          language: {
+            slug: "russian",
+            name: "Russian",
+            nativeName: "Русский",
+            bcp47: "ru",
+          },
+          vttSrc: "https://cdn.test/russian.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-testid="watch-section-renderer"]')
+          ?.getAttribute("data-subtitle-language-code"),
+      ).toBe("RU")
+    })
+    expect(window.location.search).toBe("?t=12")
+    expect(decodeURIComponent(document.cookie)).toContain(
+      "forge_watch_subs=v2:russian",
+    )
+  })
+
+  it("cleans an invalid subtitle intent without overwriting a stored preference", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=Russian!&t=12",
+    )
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+
+    renderWatchPage({
+      languageSlug: "english",
+      videoSlug: "perfect-2",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await vi.waitFor(() => {
+      expect(window.location.search).toBe("?t=12")
+    })
+    expect(
+      document
+        .querySelector('[data-testid="watch-section-renderer"]')
+        ?.getAttribute("data-subtitle-language-code"),
+    ).toBe("ES")
+    expect(decodeURIComponent(document.cookie)).toContain(
+      "forge_watch_subs=v2:spanish",
+    )
+  })
+
+  it("consumes subtitle intent added by same-path query-only navigation", async () => {
+    window.history.replaceState({}, "", "/watch/perfect-2.html?t=12")
+    const subtitles = [
+      {
+        documentId: "sub-ru",
+        language: {
+          slug: "russian",
+          name: "Russian",
+          nativeName: "Русский",
+          bcp47: "ru",
+        },
+        vttSrc: "https://cdn.test/russian.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ]
+
+    renderWatchPage({
+      languageSlug: "english",
+      videoSlug: "perfect-2",
+      subtitles,
+    })
+
+    window.history.pushState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=russian&t=12",
+    )
+    renderWatchPage({
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      videoSlug: "perfect-2",
+      subtitles,
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-testid="watch-section-renderer"]')
+          ?.getAttribute("data-subtitle-language-code"),
+      ).toBe("RU")
+    })
+    expect(window.location.search).toBe("?t=12")
+
+    renderWatchPage({
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      videoSlug: "perfect-2",
+      subtitles,
+    })
+    expect(window.location.search).toBe("?t=12")
   })
 
   it("passes selected subtitle VTTs through the same-origin media proxy", () => {

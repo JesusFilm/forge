@@ -12,10 +12,9 @@
  * directly — it goes through the service-layer entrypoint so the
  * existing service-layer ABAC rules govern.
  *
- * Result shape: trimmed to fields the agent will use in block
- * construction (id, title, description, videoId, locale). The full
- * SearchResponse contains scoring debug + per-result metadata we
- * don't need to feed into the agent's context.
+ * Result shape: trimmed to the fields agents need for block construction and
+ * playback-aware decisions. The full SearchResponse contains scoring debug
+ * and per-result metadata we do not feed into the agent's context.
  */
 
 import { createTool } from "@mastra/core/tools"
@@ -50,6 +49,13 @@ const outputSchema = z.object({
       snippet: z.string(),
       slug: z.string(),
       imageUrl: z.string().nullable(),
+      playbackId: z.string(),
+      durationSeconds: z.number().nullable(),
+      languageSlug: z.string().nullable(),
+      availability: z.object({
+        kind: z.string(),
+        languageSlug: z.string().nullable(),
+      }),
     }),
   ),
 })
@@ -74,18 +80,30 @@ export const searchVideosTool = createTool({
       resultTypes: ["video"],
     })
 
-    const videos = response.results
-      // playbackId === null means no playable dub resolved for the locale
-      // (the R4 retrievers keep such rows); agents write these videoIds into
-      // blocks verbatim, so unplayable results must never reach them.
-      .filter((result) => result.type === "video" && result.playbackId !== null)
-      .map((result) => ({
-        videoId: result.id,
-        title: result.title,
-        snippet: result.snippet ?? "",
-        slug: result.slug,
-        imageUrl: result.imageUrl,
-      }))
+    // flatMap keeps the non-null playback check and projection in one branch,
+    // so the returned agent contract cannot accidentally claim playability
+    // without the playback id that proves it.
+    const videos = response.results.flatMap((result) =>
+      result.type === "video" && result.playbackId !== null
+        ? [
+            {
+              videoId: result.id,
+              title: result.title,
+              snippet: result.snippet ?? "",
+              slug: result.slug,
+              imageUrl: result.imageUrl,
+              playbackId: result.playbackId,
+              durationSeconds: result.durationSeconds,
+              languageSlug:
+                result.action?.hrefLanguageSlug ?? result.languageSlug,
+              availability: {
+                kind: result.availability.kind,
+                languageSlug: result.availability.languageSlug,
+              },
+            },
+          ]
+        : [],
+    )
 
     return { videos }
   },

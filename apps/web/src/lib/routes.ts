@@ -67,10 +67,26 @@ export type BuildOptions = {
   t?: number
   autoplay?: boolean
   reason?: "locale-resolved"
+  subtitleLanguage?: LocaleSlug
 }
 
 const ONE_SHOT_TIMESTAMP_PARAM = "t"
 const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
+export const SUBTITLE_INTENT_PARAM = "subtitles"
+export const WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX = "__subtitle-"
+
+export function watchSubtitleIntentSegment(lang: LocaleSlug): string {
+  return `${WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX}${lang}`
+}
+
+export function parseWatchSubtitleIntentSegment(
+  segment: string,
+): LocaleSlug | null {
+  if (!segment.startsWith(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX)) return null
+  return tryAsLocaleSlug(
+    segment.slice(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX.length),
+  )
+}
 
 /**
  * Per-builder template-literal Route shapes. typedRoutes validates `<Link href>`
@@ -98,6 +114,9 @@ function appendQueryString(path: string, opts?: BuildOptions): string {
   if (opts.t != null) params.set(ONE_SHOT_TIMESTAMP_PARAM, String(opts.t))
   if (opts.autoplay) params.set(ONE_SHOT_AUTOPLAY_PARAM, "1")
   if (opts.reason != null) params.set(LOCALE_RESOLVED_PARAM, "1")
+  if (opts.subtitleLanguage != null) {
+    params.set(SUBTITLE_INTENT_PARAM, opts.subtitleLanguage)
+  }
   const qs = params.toString()
   return qs ? `${path}?${qs}` : path
 }

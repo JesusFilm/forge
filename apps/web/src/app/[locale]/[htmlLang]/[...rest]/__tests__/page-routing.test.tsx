@@ -143,6 +143,7 @@ import SlugRestPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/[...rest]/page"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import { asLocaleSlug, watchSubtitleIntentSegment } from "@/lib/routes"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 
 let container: HTMLDivElement
@@ -470,20 +471,37 @@ async function render1Seg(segment: string) {
   })
 }
 
-async function render2Seg(slug: string, locale: string) {
+async function render2Seg(
+  slug: string,
+  locale: string,
+  subtitleLanguageSlug?: string,
+) {
   const identity = internalLocaleParams(locale)
+  const rest = [slug, locale]
+  if (subtitleLanguageSlug) {
+    rest.push(watchSubtitleIntentSegment(asLocaleSlug(subtitleLanguageSlug)))
+  }
   const element = await SlugRestPage({
-    params: Promise.resolve({ ...identity, rest: [slug, locale] }),
+    params: Promise.resolve({ ...identity, rest }),
   })
   act(() => {
     root.render(element)
   })
 }
 
-async function render3Seg(slug: string, episode: string, locale: string) {
+async function render3Seg(
+  slug: string,
+  episode: string,
+  locale: string,
+  subtitleLanguageSlug?: string,
+) {
   const identity = internalLocaleParams(locale)
+  const rest = [slug, episode, locale]
+  if (subtitleLanguageSlug) {
+    rest.push(watchSubtitleIntentSegment(asLocaleSlug(subtitleLanguageSlug)))
+  }
   const element = await SlugRestPage({
-    params: Promise.resolve({ ...identity, rest: [slug, episode, locale] }),
+    params: Promise.resolve({ ...identity, rest }),
   })
   act(() => {
     root.render(element)
@@ -1922,6 +1940,54 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 })
 
 describe("Catch-all routing — video precedence (2-seg)", () => {
+  it("passes a validated subtitle intent into route resolution", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+
+    await render2Seg("perfect-2", "english", "russian")
+
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
+      "perfect-2",
+      "english",
+      "russian",
+    )
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ subtitleLanguageSlug: "russian" }),
+    )
+  })
+
+  it("passes a validated subtitle intent to a collection trailer", async () => {
+    mockRouteSeries(makeWatchVideoResult("collection"))
+
+    await render2Seg("perfect-2", "english", "russian")
+
+    expect(seriesPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ subtitleLanguageSlug: "russian" }),
+    )
+  })
+
+  it("rejects malformed internal subtitle markers before route resolution", async () => {
+    const identity = internalLocaleParams("english")
+
+    await expect(
+      SlugRestPage({
+        params: Promise.resolve({
+          ...identity,
+          rest: ["perfect-2", "english", "__subtitle-Russian!"],
+        }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves valid subtitle intent through audio-locale redirects", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+
+    await expect(
+      render2Seg("perfect-2", "spanish-castilian", "russian"),
+    ).rejects.toThrow("NEXT_REDIRECT:/perfect-2.html?_lr=1&subtitles=russian")
+  })
+
   it("renders video and skips Experience when both exist for the slug", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
@@ -2539,6 +2605,27 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       ),
     ).rejects.toThrow(
       /NEXT_REDIRECT:\/lumo-the-gospel-of-john\.html\/wedding-in-cana\/english\.html\?_lr=1/,
+    )
+  })
+
+  it("passes and preserves subtitle intent for contextual episode redirects", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    await expect(
+      render3Seg(
+        "lumo-the-gospel-of-john",
+        "wedding-in-cana",
+        "spanish-castilian",
+        "russian",
+      ),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/lumo-the-gospel-of-john.html/wedding-in-cana/english.html?_lr=1&subtitles=russian",
+    )
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "lumo-the-gospel-of-john",
+      "wedding-in-cana",
+      "spanish-castilian",
+      "russian",
     )
   })
 

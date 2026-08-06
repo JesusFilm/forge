@@ -218,6 +218,9 @@ export const watchVideoDubDetailFragment = adminGraphql(`
         srtSrc
         primary
         aiGenerated
+        video {
+          documentId: id
+        }
         language {
           coreId
           slug
@@ -249,12 +252,14 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
     query GetWatchVideoRouteSnapshotBySlug(
       $locale: String!
       $languageSlug: String
+      $subtitleLanguageSlug: String
       $videoSlug: String!
     ) {
       watchVideoRouteSnapshotBySlug(
         slug: $videoSlug
         locale: $locale
         languageSlug: $languageSlug
+        subtitleLanguageSlug: $subtitleLanguageSlug
       ) {
         documentId
         slug

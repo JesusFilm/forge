@@ -12,6 +12,10 @@ import {
   asContentSlug,
   asLocaleSlug,
   languageVideosIndexPath,
+  SUBTITLE_INTENT_PARAM,
+  tryAsLocaleSlug,
+  WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX,
+  watchSubtitleIntentSegment,
   watchVideoExplicitLanguagePath,
   watchVideoPath,
 } from "@/lib/routes"
@@ -51,6 +55,8 @@ const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
 export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
+export const WATCH_SUBTITLE_INTENT_REWRITE_HEADER =
+  "x-forge-watch-subtitle-intent-rewrite"
 
 type InternalPrefixDecision =
   | { kind: "none" }
@@ -173,6 +179,13 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   const identity = resolveWatchLocaleIdentity(htmlLang)
   if (identity.htmlLang !== htmlLang) return { kind: "none" }
   if (identity.locale !== locale || resolveUiLocale(htmlLang) !== locale) {
+    return { kind: "not-found" }
+  }
+  if (
+    rest.some((segment) =>
+      segment.startsWith(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX),
+    )
+  ) {
     return { kind: "not-found" }
   }
 
@@ -335,12 +348,20 @@ function rewriteToInternal(
   ) {
     url.protocol = "http:"
   }
-  url.pathname = internalRewritePathname(decision)
+  const subtitleLanguageSlug = subtitleIntentForRewrite(request, decision)
+  url.pathname = internalRewritePathname(decision, subtitleLanguageSlug)
   const requestHeaders = new Headers(request.headers)
   // This is an admission claim, not a trusted boolean. If the rewritten URL
   // re-enters the proxy, it is reclassified and compared with this public
   // path before the internal prefix may pass.
   requestHeaders.set(WATCH_INTERNAL_REWRITE_HEADER, decision.pathname)
+  requestHeaders.delete(WATCH_SUBTITLE_INTENT_REWRITE_HEADER)
+  if (subtitleLanguageSlug) {
+    requestHeaders.set(
+      WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+      subtitleLanguageSlug,
+    )
+  }
   return applyWatchSecurityHeaders(
     NextResponse.rewrite(url, {
       request: { headers: requestHeaders },
@@ -350,10 +371,43 @@ function rewriteToInternal(
 
 function internalRewritePathname(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug> = null,
 ): string {
   const pathname = decision.internalPathname ?? decision.pathname
   const suffix = pathname === "/" ? "" : pathname
-  return `/${decision.locale}/${decision.htmlLang}${suffix}`
+  const subtitleSuffix = subtitleLanguageSlug
+    ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
+    : ""
+  return `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+}
+
+function subtitleIntentForRewrite(
+  request: ProxyRequest,
+  decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+): ReturnType<typeof tryAsLocaleSlug> {
+  const finalRoute = classifyRewrite(
+    decision.internalPathname ?? decision.pathname,
+  )
+  if (
+    finalRoute.kind !== "rewrite" ||
+    (finalRoute.manifestRoute?.kind !== "video" &&
+      finalRoute.manifestRoute?.kind !== "episode")
+  ) {
+    return null
+  }
+
+  const values = request.nextUrl
+    .clone()
+    .searchParams.getAll(SUBTITLE_INTENT_PARAM)
+  if (values.length !== 1) return null
+  const subtitleLanguageSlug = tryAsLocaleSlug(values[0] ?? "")
+  if (
+    !subtitleLanguageSlug ||
+    !isPublicWatchLanguageSlug(subtitleLanguageSlug)
+  ) {
+    return null
+  }
+  return subtitleLanguageSlug
 }
 
 function buildNotFound(request: ProxyRequest): NextResponse {
@@ -460,6 +514,7 @@ async function classifyManifestAdmission(
 }
 
 async function isAdmittedInternalRewrite(
+  request: ProxyRequest,
   pathname: string,
   claimedPublicPathname: string,
 ): Promise<boolean> {
@@ -484,11 +539,21 @@ async function isAdmittedInternalRewrite(
   const admission = await classifyManifestAdmission(rewrite)
   if (admission.kind !== "admit") return false
 
+  const admittedRewrite = {
+    ...rewrite,
+    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+  }
+  const subtitleLanguageSlug = subtitleIntentForRewrite(
+    request,
+    admittedRewrite,
+  )
+  const claimedSubtitleLanguageSlug = request.headers.get(
+    WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+  )
+  if (claimedSubtitleLanguageSlug !== subtitleLanguageSlug) return false
+
   return (
-    internalRewritePathname({
-      ...rewrite,
-      internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-    }) === pathname
+    internalRewritePathname(admittedRewrite, subtitleLanguageSlug) === pathname
   )
 }
 
@@ -502,7 +567,11 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   )
   const prefix = internalPrefixDecision(pathname)
   if (claimedPublicPathname != null) {
-    return (await isAdmittedInternalRewrite(pathname, claimedPublicPathname))
+    return (await isAdmittedInternalRewrite(
+      request,
+      pathname,
+      claimedPublicPathname,
+    ))
       ? applyWatchSecurityHeaders(NextResponse.next())
       : buildNotFound(request)
   }

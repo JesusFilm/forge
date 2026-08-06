@@ -388,6 +388,8 @@ const PLAYABLE_DUB_WHERE = {
   video: { deletedAt: null },
 } satisfies Prisma.VideoDubWhereInput
 
+const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
+
 const VIDEO_LABEL_SEARCH_TOKENS = {
   COLLECTION: ["collection"],
   EPISODE: ["episode"],
@@ -1193,54 +1195,31 @@ export class VideoService {
 
   private async findPreferredPlayableVariantRow(
     videoId: string,
+    languageSlug: string | null,
+    subtitleLanguageSlug: string | null,
   ): Promise<WatchRouteSnapshotPreferredVariantRow | null> {
     const rows = await this.prisma.$queryRaw<
       WatchRouteSnapshotPreferredVariantRow[]
     >`
+      WITH requested AS (
+        SELECT
+          ${languageSlug}::text AS audio_language_slug,
+          ${subtitleLanguageSlug}::text AS subtitle_language_slug
+      )
       SELECT
-        COALESCE(primary_dub.id, fallback_dub.id) AS "id",
-        COALESCE(primary_dub.slug, fallback_dub.slug) AS "slug",
-        COALESCE(primary_dub.published, fallback_dub.published) AS "published",
-        COALESCE(primary_dub.hls, fallback_dub.hls) AS "hls",
-        COALESCE(primary_dub.duration, fallback_dub.duration) AS "duration",
-        COALESCE(primary_dub.language_core_id, fallback_dub.language_core_id) AS "languageCoreId",
-        COALESCE(primary_dub.language_bcp47, fallback_dub.language_bcp47) AS "languageBcp47",
-        COALESCE(primary_dub.language_slug, fallback_dub.language_slug) AS "languageSlug",
-        COALESCE(primary_dub.language_name, fallback_dub.language_name) AS "languageName",
-        COALESCE(primary_dub.mux_video_id, fallback_dub.mux_video_id) AS "muxVideoId",
-        COALESCE(primary_dub.playback_id, fallback_dub.playback_id) AS "playbackId"
+        preferred_dub.id,
+        preferred_dub.slug,
+        preferred_dub.published,
+        preferred_dub.hls,
+        preferred_dub.duration,
+        preferred_dub.language_core_id AS "languageCoreId",
+        preferred_dub.language_bcp47 AS "languageBcp47",
+        preferred_dub.language_slug AS "languageSlug",
+        preferred_dub.language_name AS "languageName",
+        preferred_dub.mux_video_id AS "muxVideoId",
+        preferred_dub.playback_id AS "playbackId"
       FROM "video" v
-      LEFT JOIN LATERAL (
-        SELECT
-          vd.id,
-          vd.slug,
-          vd.published,
-          vd.hls,
-          vd.duration,
-          mv.id AS mux_video_id,
-          mv.playback_id,
-          l.core_id AS language_core_id,
-          l.bcp47 AS language_bcp47,
-          l.slug AS language_slug,
-          l.name AS language_name
-        FROM "video_dub" vd
-        LEFT JOIN "mux_video" mv
-          ON mv.id = vd.mux_video_id
-         AND mv.deleted_at IS NULL
-         AND mv.playback_id IS NOT NULL
-        LEFT JOIN "language" l
-          ON l.id = vd.language_id
-         AND l.deleted_at IS NULL
-        WHERE vd.video_id = v.id
-          AND v.primary_language_id IS NOT NULL
-          AND vd.language_id = v.primary_language_id
-          AND vd.deleted_at IS NULL
-          AND vd.published = true
-          AND vd.hls IS NOT NULL
-          AND vd.hls <> ''
-        ORDER BY vd.duration DESC, vd.id ASC
-        LIMIT 1
-      ) primary_dub ON true
+      CROSS JOIN requested
       LEFT JOIN LATERAL (
         SELECT
           vd.id,
@@ -1267,9 +1246,45 @@ export class VideoService {
           AND vd.published = true
           AND vd.hls IS NOT NULL
           AND vd.hls <> ''
-        ORDER BY vd.duration DESC, vd.id ASC
+        ORDER BY
+          CASE
+            WHEN requested.audio_language_slug IS NOT NULL
+              AND (
+                l.slug = requested.audio_language_slug
+                OR l.bcp47 = requested.audio_language_slug
+              ) THEN 0
+            WHEN v.primary_language_id IS NOT NULL
+              AND vd.language_id = v.primary_language_id THEN 1
+            ELSE 2
+          END ASC,
+          CASE
+            WHEN requested.audio_language_slug IS NOT NULL
+              AND (
+                l.slug = requested.audio_language_slug
+                OR l.bcp47 = requested.audio_language_slug
+              )
+              AND requested.subtitle_language_slug IS NOT NULL
+              AND EXISTS (
+                SELECT 1
+                FROM "video_subtitle" vs
+                JOIN "video_edition" ve
+                  ON ve.id = vs.video_edition_id
+                 AND ve.deleted_at IS NULL
+                JOIN "language" subtitle_language
+                  ON subtitle_language.id = vs.language_id
+                 AND subtitle_language.deleted_at IS NULL
+                WHERE vs.video_edition_id = vd.video_edition_id
+                  AND (vs.video_id IS NULL OR vs.video_id = vd.video_id)
+                  AND vs.deleted_at IS NULL
+                  AND subtitle_language.slug = requested.subtitle_language_slug
+                  AND NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
+              ) THEN 0
+            ELSE 1
+          END ASC,
+          vd.duration DESC NULLS LAST,
+          vd.id ASC
         LIMIT 1
-      ) fallback_dub ON primary_dub.id IS NULL
+      ) preferred_dub ON true
       WHERE v.id = ${videoId}
         AND v.deleted_at IS NULL
       LIMIT 1
@@ -1429,16 +1444,23 @@ export class VideoService {
     slug,
     locale,
     languageSlug,
+    subtitleLanguageSlug,
     user,
   }: {
     slug: string
     locale: string
     languageSlug?: string | null
+    subtitleLanguageSlug?: string | null
     user: Principal | null
   }): Promise<WatchRouteSnapshot | null> {
     const normalizedLanguageSlug =
       typeof languageSlug === "string" && languageSlug.length > 0
         ? languageSlug
+        : null
+    const normalizedSubtitleLanguageSlug =
+      typeof subtitleLanguageSlug === "string" &&
+      PUBLIC_LANGUAGE_SLUG_PATTERN.test(subtitleLanguageSlug)
+        ? subtitleLanguageSlug
         : null
     const visibleVideo: Prisma.VideoWhereInput = isEditorOrAdmin(user)
       ? { deletedAt: null }
@@ -1551,8 +1573,7 @@ export class VideoService {
       fallbackMuxRows,
       durationRows,
       playableDubLanguageCount,
-      preferredExact,
-      preferredFallback,
+      preferredVariant,
     ] = await Promise.all([
       this.prisma.videoImage.findMany({
         where: { videoId: { in: allVideoIds }, deletedAt: null },
@@ -1626,46 +1647,11 @@ export class VideoService {
       this.findPreferredPlayableMuxRows(relatedVideoIds),
       this.findPreferredPlayableDurationRows([root.id, ...rootChildIds]),
       this.countPlayableDubLanguagesForSnapshot(root.id),
-      normalizedLanguageSlug == null
-        ? null
-        : this.prisma.videoDub.findFirst({
-            where: {
-              ...PLAYABLE_DUB_WHERE,
-              videoId: root.id,
-              language: {
-                deletedAt: null,
-                OR: [
-                  { slug: normalizedLanguageSlug },
-                  { bcp47: normalizedLanguageSlug },
-                ],
-              },
-            },
-            orderBy: [{ duration: "desc" }, { id: "asc" }],
-            select: {
-              id: true,
-              slug: true,
-              published: true,
-              hls: true,
-              duration: true,
-              muxVideoId: true,
-              muxVideo: {
-                select: {
-                  id: true,
-                  playbackId: true,
-                  deletedAt: true,
-                },
-              },
-              language: {
-                select: {
-                  coreId: true,
-                  bcp47: true,
-                  slug: true,
-                  name: true,
-                },
-              },
-            },
-          }),
-      this.findPreferredPlayableVariantRow(root.id),
+      this.findPreferredPlayableVariantRow(
+        root.id,
+        normalizedLanguageSlug,
+        normalizedSubtitleLanguageSlug,
+      ),
     ])
 
     const exactMuxByVideoId = firstByVideoId(
@@ -1776,45 +1762,27 @@ export class VideoService {
       parentChildrenByParentId.set(relation.parentId, children)
     }
 
-    const preferredVariant = preferredExact ?? preferredFallback
     const preferredVariantLanguage =
-      preferredVariant == null
+      preferredVariant == null ||
+      (preferredVariant.languageCoreId == null &&
+        preferredVariant.languageBcp47 == null &&
+        preferredVariant.languageSlug == null &&
+        preferredVariant.languageName == null)
         ? null
-        : "language" in preferredVariant
-          ? preferredVariant.language
-            ? {
-                coreId: preferredVariant.language.coreId,
-                bcp47: preferredVariant.language.bcp47,
-                slug: preferredVariant.language.slug,
-                name: preferredVariant.language.name,
-              }
-            : null
-          : preferredVariant.languageCoreId == null &&
-              preferredVariant.languageBcp47 == null &&
-              preferredVariant.languageSlug == null &&
-              preferredVariant.languageName == null
-            ? null
-            : {
-                coreId: preferredVariant.languageCoreId,
-                bcp47: preferredVariant.languageBcp47,
-                slug: preferredVariant.languageSlug,
-                name: preferredVariant.languageName,
-              }
+        : {
+            coreId: preferredVariant.languageCoreId,
+            bcp47: preferredVariant.languageBcp47,
+            slug: preferredVariant.languageSlug,
+            name: preferredVariant.languageName,
+          }
 
     const preferredVariantMux =
       preferredVariant == null
         ? null
-        : "playbackId" in preferredVariant
-          ? {
-              muxVideoId: preferredVariant.muxVideoId,
-              playbackId: preferredVariant.playbackId,
-            }
-          : preferredVariant.muxVideo?.deletedAt == null
-            ? {
-                muxVideoId: preferredVariant.muxVideoId,
-                playbackId: preferredVariant.muxVideo?.playbackId ?? null,
-              }
-            : null
+        : {
+            muxVideoId: preferredVariant.muxVideoId,
+            playbackId: preferredVariant.playbackId,
+          }
 
     const preferredVariantHeroBlurDataUrl =
       preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId

@@ -166,6 +166,9 @@ describe("searchVideos schema parity (feat-327)", () => {
           "availability",
         ]),
       )
+      expect(Object.keys(shape.availability.unwrap().shape)).toEqual(
+        expect.arrayContaining(["kind", "languageSlug"]),
+      )
     }
   })
 })

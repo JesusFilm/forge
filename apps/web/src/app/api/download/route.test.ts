@@ -2,8 +2,8 @@
  * @vitest-environment node
  *
  * Route handler tests for the same-origin download resolver.
- * Downloads validate the target and redirect to the CDN so Web does not proxy
- * media or subtitle bytes.
+ * Downloads validate the target and redirect media to the CDN. Inline VTT
+ * subtitles are the bounded same-origin exception required by browser tracks.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -109,6 +109,17 @@ describe("GET /watch/api/download - DNS pre-flight", () => {
       "https://stream.mux.com/abc.mp4?download=abc.mp4",
     )
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when the hostname has no DNS answers", async () => {
+    vi.mocked(dns.resolve4).mockRejectedValueOnce(new Error("ENODATA"))
+    vi.mocked(dns.resolve6).mockRejectedValueOnce(new Error("ENODATA"))
+
+    const res = await GET(
+      makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
+    )
+
+    expect(res.status).toBe(403)
   })
 })
 
@@ -239,8 +250,13 @@ describe("GET /watch/api/download - inline subtitles", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
   })
 
-  it("redirects allowlisted VTT subtitles inline without fetching upstream", async () => {
-    const fetchMock = vi.fn(async () => new Response("should not happen"))
+  it("serves allowlisted VTT subtitles same-origin for browser tracks", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("WEBVTT\n\n00:00.000 --> 00:01.000\nHello", {
+          headers: { "content-length": "42", "content-type": "text/vtt" },
+        }),
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     const res = await GET(
@@ -250,13 +266,98 @@ describe("GET /watch/api/download - inline subtitles", () => {
       }),
     )
 
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(res.headers.get("content-type")).toContain("text/vtt")
+    expect(res.headers.get("cache-control")).toContain("max-age=3600")
+    expect(await res.text()).toContain("WEBVTT")
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      expect.objectContaining({ redirect: "manual" }),
+    )
+  })
+
+  it("does not proxy wildcard allowlist subdomains as inline subtitles", async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        url: "https://subtitles.jesusfilm.org/example.vtt",
+        disposition: "inline",
+      }),
+    )
+
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(
-      "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      "https://subtitles.jesusfilm.org/example.vtt",
     )
-    expect(res.headers.get("cache-control")).toContain("no-store")
-    expect(await res.text()).toBe("")
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects oversized VTT subtitle responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("WEBVTT", {
+            headers: { "content-length": String(2 * 1024 * 1024 + 1) },
+          }),
+      ),
+    )
+
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        disposition: "inline",
+      }),
+    )
+
+    expect(res.status).toBe(413)
+  })
+
+  it("stops chunked VTT responses that exceed the body limit", async () => {
+    const chunk = new Uint8Array(1024 * 1024 + 1)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(chunk)
+                controller.enqueue(chunk)
+                controller.close()
+              },
+            }),
+          ),
+      ),
+    )
+
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        disposition: "inline",
+      }),
+    )
+
+    expect(res.status).toBe(413)
+  })
+
+  it("rejects successful upstream responses without a WebVTT signature", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>upstream error</html>")),
+    )
+
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        disposition: "inline",
+      }),
+    )
+
+    expect(res.status).toBe(502)
   })
 })
 

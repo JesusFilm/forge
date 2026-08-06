@@ -482,6 +482,9 @@ export class WatchSearchService {
             : await this.watchability.hydrate({
                 candidates: semanticCandidates.map((candidate) => ({
                   videoId: candidate.resultId,
+                  ...(candidate.videoEditionId
+                    ? { editionId: candidate.videoEditionId }
+                    : {}),
                 })),
                 targetLanguageSlug: languageInterpretation.targetLanguageSlug,
               })

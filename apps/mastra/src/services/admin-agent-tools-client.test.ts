@@ -223,7 +223,7 @@ describe("searchVideosViaAdmin — widened row schema (feat-327, plan P5)", () =
           playbackId: "abc123DEF456",
           durationSeconds: 372,
           languageSlug: "english",
-          availability: { kind: "target_audio" },
+          availability: { kind: "target_audio", languageSlug: "english" },
         },
       ],
     }
@@ -267,7 +267,7 @@ describe("searchVideosViaAdmin — widened row schema (feat-327, plan P5)", () =
           playbackId: "playback9abc",
           durationSeconds: null,
           languageSlug: null,
-          availability: { kind: "some_future_kind" },
+          availability: { kind: "some_future_kind", languageSlug: null },
         },
       ],
     }

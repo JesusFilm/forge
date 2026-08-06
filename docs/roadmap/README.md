@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 3, 2026)
+## Status (August 5, 2026)
 
-- **Total tickets:** 479
-- **Complete:** 366
+- **Total tickets:** 480
+- **Complete:** 367
 - **In progress:** 35
 - **Not started:** 29
 - **Blocked:** 49
@@ -99,6 +99,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-311](content-discovery/feat-311-admin-fireworks-query-embeddings.md)                                     | Admin Fireworks query embedding provider                                                        | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-326](content-discovery/feat-326-admin-search-results-pagination.md)                                      | Admin search results pagination                                                                 | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-312](content-discovery/feat-312-admin-query-embedding-fast-fail.md)                                      | Admin query embedding one-second fast fail                                                      | codex      | P1       | 2026-08-03 | 1    | 2026-08-03 | complete    |
+| [feat-336](content-discovery/feat-336-watch-search-subtitle-audio-routing.md)                                  | Watch search subtitle-only audio routing                                                        | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |

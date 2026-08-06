@@ -18,11 +18,11 @@ tags:
 
 **Shipped:** 2026-08-03 via [PR #1813](https://github.com/JesusFilm/forge/pull/1813) (`feat(admin): expose availability.kind on agent-tools search-videos (ai-chat feat-326)`).
 
-**What landed.** The nested `availability: { kind }` projection exactly per the brief — report-only, no server-side kind filtering, in-process twin untouched. The notable discovery: the brief's own fallback example overstated `target_subtitle` — `watchabilityFromSubtitle` hardcodes `playbackId: null`, so a playable `target_subtitle` row is structurally unreachable through the playability filter today (see the dated correction notes in this ticket and the arc plan, incl. E10). The REQUIRED playable `target_subtitle` fixture ships as a deliberately synthetic, self-labeled contract pin with a dated verified-by-hand stamp; the playable `related_language` fixture covers the production-reachable fallback shape. A platform-lane feat-326 was created independently on main the same weekend — cross-lane duplicate IDs are accepted lane convention; this is the ai-chat feat-326.
+**What landed.** The nested `availability: { kind }` projection exactly per the brief — report-only, no server-side kind filtering, in-process twin untouched. At ship time `watchabilityFromSubtitle` returned no playback, so the playable `target_subtitle` fixture was initially a deliberately synthetic contract pin. **Superseded 2026-08-05 by feat-336:** subtitle watchability now attaches a same-edition playable Dub, making that fixture production-reachable while preserving `target_subtitle` availability. A platform-lane feat-326 was created independently on main the same weekend — cross-lane duplicate IDs are accepted lane convention; this is the ai-chat feat-326.
 
 **Compound docs.** [mocked-shape-vs-real-contract-discipline-20260506.md](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — twenty-second worked instance ("deliberately synthetic contract-pinning fixture unlabeled as synthetic") + prevention checklist item 8.
 
-**Residual risk / follow-ups.** The reachable-kind invariant is unpinned: a future watchability change letting subtitle rows carry a dub's playbackId would silently make `target_subtitle` reachable with no test going red (`watchabilityFromSubtitle` is unexported; a real-DB smoke was out of scope). feat-327 should treat "only `target_audio`/`related_language` arrive from this route" as an observation, not a contract.
+**Residual risk / follow-ups.** **Resolved 2026-08-05 by feat-336:** the watchability change is now explicit and tested; playable `target_subtitle` rows can reach this route. Consumers that require target audio must continue filtering on `availability.kind`.
 
 **Unblocked.** [feat-327](feat-327-seeker-video-tools-result-projection.md).
 
@@ -49,6 +49,12 @@ drops availability entirely.
 > and pins the no-kind-filter contract for kinds a future upstream change
 > could make playable; the suite's playable `related_language` fixture covers
 > the production-reachable fallback shape.
+
+> **Superseding correction (2026-08-05, feat-336):**
+> `watchabilityFromSubtitle` now attaches a playable Dub from the same Video
+> Edition and emits that Dub's audio language as the watch action. A playable
+> `target_subtitle` row is therefore production-reachable; its availability
+> language remains the requested subtitle language.
 
 This is the arc's PR 1 — tiny, additive, admin-only. Template: PR
 [#1789](https://github.com/JesusFilm/forge/pull/1789) (commit `546a4361`),

@@ -121,6 +121,12 @@ findings, which this plan's decisions cite:
   > through the playability filter today. The E10 blind-spot TEST requirement
   > stands unchanged (client-level fixtures need no production reachability).
 
+  > **Superseding correction (2026-08-05, feat-336):** target-subtitle
+  > watchability now attaches a playable same-edition Dub, so playable
+  > `target_subtitle` rows can reach agent-tools. The endpoint reports the
+  > requested subtitle availability kind while projecting the action's audio
+  > language slug for playback.
+
 - **E11 — Browser→Mux playback needs no chat egress change.** The browser
   talks to `stream.mux.com` / `image.mux.com` directly; chat's production
   egress pin (`SEEKER_MASTRA_ALLOWED_HOSTS`) covers only chat-server→Mastra.
@@ -578,6 +584,11 @@ or GraphQL surface is involved.
 > Practical consequence for U2/feat-327: its `target_audio`-only filter will
 > in practice only ever see `target_audio` / `related_language` from this
 > route unless upstream watchability semantics change.
+
+> **Superseding correction (2026-08-05, feat-336):** upstream watchability now
+> emits playable `target_subtitle` rows by pairing the requested subtitle with
+> a same-edition Dub. The fixture is production-reachable; U2/feat-327's
+> `target_audio` filter remains the required policy boundary.
 
 **Verification:** admin unit suite green; typecheck green. No env, migration,
 or codegen surface is touched.

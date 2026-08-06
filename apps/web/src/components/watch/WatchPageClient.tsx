@@ -66,6 +66,7 @@ import { languageCodeFor } from "@/lib/language-code"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
+  SUBTITLE_INTENT_PARAM,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
@@ -176,6 +177,7 @@ type WatchPageClientProps = {
    * links round-trip cleanly.
    */
   languageSlug?: string
+  subtitleLanguageSlug?: string | null
   collectionSlug?: string | null
   /**
    * Validated ISO locale ("en" | "es" | ...) from the URL `[locale]` segment.
@@ -259,6 +261,7 @@ export function WatchPageClient({
   variant,
   video,
   languageSlug,
+  subtitleLanguageSlug = null,
   collectionSlug = null,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
@@ -396,6 +399,30 @@ export function WatchPageClient({
     setSubtitleSlug(slugToUse)
     setSubtitleEnabled(pref.enabled && slugToUse != null)
   }, [currentLanguageSlug, subtitleInit, subtitles])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const currentRawIntent = url.searchParams.get(SUBTITLE_INTENT_PARAM)
+    if (currentRawIntent == null) return
+
+    const intent = tryAsLocaleSlug(currentRawIntent)
+    if (subtitleLanguageSlug == null && intent != null) return
+    if (subtitleLanguageSlug != null && intent !== subtitleLanguageSlug) return
+    const availableIntent =
+      intent != null &&
+      subtitles.some((subtitle) => subtitle.language.slug === intent)
+        ? intent
+        : null
+
+    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+
+    if (!availableIntent) return
+    setSubtitleSlug(availableIntent)
+    setSubtitleEnabled(true)
+    writeSubtitlePreference(true, availableIntent)
+  }, [subtitleLanguageSlug, subtitles])
 
   const selectedSubtitle = useMemo(() => {
     if (!subtitleEnabled || !subtitleSlug) return null

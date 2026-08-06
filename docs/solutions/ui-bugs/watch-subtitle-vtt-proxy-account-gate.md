@@ -1,6 +1,7 @@
 ---
 title: "Watch subtitle VTT proxy must remain public when downloads require accounts"
 date: "2026-07-13"
+last_updated: "2026-08-05"
 category: docs/solutions/ui-bugs
 module: apps/web
 problem_type: ui_bug
@@ -54,8 +55,8 @@ subtitle.
 ## Solution
 
 Classify the one public in-page consumer before applying the download account
-gate. The exception is intentionally narrow: `disposition=inline`, an
-allowlisted HTTPS origin, and a `.vtt` pathname.
+gate. The exception is intentionally narrow: `disposition=inline`, the exact
+`https://api-media-core.jesusfilm.org` origin, and a `.vtt` pathname.
 
 ```ts
 function isAnonymousInlineSubtitleRequest(
@@ -67,27 +68,29 @@ function isAnonymousInlineSubtitleRequest(
   if (!target || !isAllowedDownloadOrigin(target)) return false
 
   try {
-    return new URL(target).pathname.toLowerCase().endsWith(".vtt")
+    const parsed = new URL(target)
+    return (
+      parsed.origin === "https://api-media-core.jesusfilm.org" &&
+      parsed.pathname.toLowerCase().endsWith(".vtt")
+    )
   } catch {
     return false
   }
 }
 ```
 
-Keep the route's existing URL validation, DNS pre-flight, manual redirect
-handling, bounded headers, and timeout. After the upstream responds, require its
-normalized media type to be `text/vtt`; a `.vtt` pathname must not become a way
-to proxy video or another media type without an account.
+Keep the route's URL validation and fail-closed public-DNS pre-flight. Fetch the
+exact Core URL with a 10-second timeout and `redirect: "manual"`, then stream it
+through a hard 2 MiB limit. Do not trust `Content-Length` alone: a missing or
+dishonest header must not allow an unbounded buffer. Require a `WEBVTT`
+signature before returning the body as same-origin `text/vtt` with `nosniff`.
 
 ```ts
-const upstreamMediaType = upstream.headers
-  .get("content-type")
-  ?.split(";", 1)[0]
-  ?.trim()
-  .toLowerCase()
-
-if (anonymousInlineSubtitleRequest && upstreamMediaType !== "text/vtt") {
-  return jsonError("Upstream subtitle response was not VTT", 502)
+const prefix = new TextDecoder()
+  .decode(body.slice(0, Math.min(body.byteLength, 64)))
+  .replace(/^\uFEFF/, "")
+if (!/^WEBVTT(?:[\t \r\n]|$)/.test(prefix)) {
+  return jsonError("Subtitle unavailable", 502)
 }
 ```
 
@@ -100,8 +103,10 @@ The route had two distinct responsibilities sharing one handler: protected file
 downloads and same-origin delivery for a public browser text track. Applying the
 download permission policy before classifying the request made the public media
 consumer unreachable. Classifying the VTT path first restores that consumer,
-while the path, origin, response media type, and existing SSRF checks keep the
-exception from widening into an anonymous download proxy.
+while the exact origin, path, fail-closed DNS check, redirect refusal, byte cap,
+signature, and response headers keep the exception from widening into an
+anonymous download proxy. A same-origin endpoint that merely redirects is not
+enough: the browser still applies CORS to the final Core response.
 
 ## Prevention
 
@@ -111,8 +116,9 @@ exception from widening into an anonymous download proxy.
   the exact track request status; a rendered selector or injected track alone is
   not proof that cues loaded.
 - Add regression cases for the allowed anonymous VTT request and for nearby
-  denied shapes: inline video, VTT attachment, and a `.vtt` URL whose upstream
-  response is not `text/vtt`.
+  denied shapes: inline video, VTT attachment, wildcard subdomains, DNS
+  failure, redirects, declared and streamed overflow, and a 200 response
+  without a WebVTT signature.
 - Preserve all existing SSRF defenses when changing auth order around a
   user-provided media URL.
 

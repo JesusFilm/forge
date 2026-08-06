@@ -186,8 +186,10 @@ describe("GET /watch/api/download - account gate", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("redirects allowlisted inline VTT subtitles without an auth cookie", async () => {
-    const fetchMock = vi.fn(async () => new Response("should not happen"))
+  it("serves allowlisted inline VTT subtitles without an auth cookie", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response("WEBVTT\n\n00:00.000 --> 00:01.000\nHello"),
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     const { GET } = await importRoute()
@@ -198,12 +200,11 @@ describe("GET /watch/api/download - account gate", () => {
       }),
     )
 
-    expect(response.status).toBe(302)
-    expect(response.headers.get("location")).toBe(
-      "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
-    )
-    expect(await response.text()).toBe("")
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(response.headers.get("content-type")).toContain("text/vtt")
+    expect(await response.text()).toContain("WEBVTT")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it("keeps anonymous non-VTT inline requests behind the account gate", async () => {
