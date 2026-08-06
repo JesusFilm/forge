@@ -59,7 +59,7 @@ describe("DevicePage", () => {
 
     await expect(
       renderDevicePage({ user_code: "019-450-7302" }),
-    ).rejects.toThrow("redirect:/login?user_code=0194507302&prompt=login")
+    ).rejects.toThrow("redirect:/login?user_code=0194507302")
     expect(deviceClientMock).not.toHaveBeenCalled()
   })
 

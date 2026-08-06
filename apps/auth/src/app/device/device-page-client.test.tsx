@@ -87,7 +87,7 @@ describe("device approval UI", () => {
 
     expect(html).toContain("Approving as mum@example.com")
     expect(html).toContain("Not you?")
-    expect(html).toContain("/login?user_code=0194507302&amp;prompt=login")
+    expect(html).toContain("/login?user_code=0194507302")
   })
 
   it("renders no third-party login affordance (App Store guideline 4.8)", () => {

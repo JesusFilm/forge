@@ -19,23 +19,28 @@ describe("buildDeviceLoginRedirect", () => {
     expect(params.get("user_code")).toBe("0194507302")
   })
 
-  it("always asks for a fresh authentication on a shared phone", () => {
+  it("carries nothing but the code, because nothing else is honoured", () => {
+    // This deliberately does NOT send prompt=login. /login never reads `prompt`
+    // — only buildOAuthContinuationURL does, and the device lane never reaches
+    // it — so sending it would assert a control that does not exist. Signing in
+    // replaces the session, which is what the switch-account link needs.
     const params = new URL(
       buildDeviceLoginRedirect("0194507302"),
       "https://auth.example.org",
     ).searchParams
 
-    expect(params.get("prompt")).toBe("login")
+    expect(params.get("user_code")).toBe("0194507302")
+    expect(params.has("prompt")).toBe(false)
+    expect([...params.keys()]).toEqual(["user_code"])
   })
 
-  it("still forces re-authentication when no code was supplied", () => {
+  it("sends no parameters at all when no code was supplied", () => {
     const params = new URL(
       buildDeviceLoginRedirect(undefined),
       "https://auth.example.org",
     ).searchParams
 
-    expect(params.get("prompt")).toBe("login")
-    expect(params.has("user_code")).toBe(false)
+    expect([...params.keys()]).toEqual([])
   })
 
   it("omits an unusable code rather than forwarding junk", () => {

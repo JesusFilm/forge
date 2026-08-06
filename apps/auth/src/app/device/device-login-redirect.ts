@@ -12,9 +12,16 @@ export const DEVICE_USER_CODE_PARAM = "user_code"
  * does — as a plain `/login` search param that `toOAuthQuery` carries through
  * the sign-in POST.
  *
- * `prompt=login` is the U2.4 control, not decoration: the phone rides a rolling
- * SSO session, so a shared family phone would otherwise approve a TV as
- * whoever signed in last.
+ * This hop deliberately carries NO `prompt=login`. It would be decorative here:
+ * `/login` does not read `prompt` (only `buildOAuthContinuationURL` does, and
+ * the device lane never reaches it), and this redirect fires only when there is
+ * no session — where the viewer authenticates anyway.
+ *
+ * The shared-phone hazard (U2.4) is the opposite case: a phone that IS signed
+ * in, on a rolling SSO session, approving a TV as whoever used it last. Nothing
+ * on this path can address that, because this path is not taken. The controls
+ * that do are on the approval screen itself — it names the account being used
+ * and offers switching — and they are tested there.
  */
 export function buildDeviceLoginRedirect(
   rawUserCode: string | undefined,
@@ -22,7 +29,6 @@ export function buildDeviceLoginRedirect(
   const params = new URLSearchParams()
   const userCode = normalizeUserCode(rawUserCode ?? "")
   if (userCode) params.set("user_code", userCode)
-  params.set("prompt", "login")
 
   return `/login?${params.toString()}`
 }
