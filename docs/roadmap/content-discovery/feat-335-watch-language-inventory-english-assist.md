@@ -29,8 +29,7 @@ English navigation help without replacing that localized interface.
 1. `apps/web/src/components/watch-language-inventory/LanguageInventoryPage.tsx`
 2. `apps/web/src/components/watch-language-inventory/LanguageCollectionSwitcher.tsx`
 3. `apps/web/src/components/watch/LanguageCombobox.tsx`
-4. `apps/web/src/components/ui/dialog.tsx`
-5. `docs/plans/2026-08-05-001-feat-watch-inventory-english-assist-plan.md`
+4. `docs/plans/2026-08-05-001-feat-watch-inventory-english-assist-plan.md`
 
 ## Grep These
 
@@ -42,36 +41,32 @@ English navigation help without replacing that localized interface.
 
 ## What To Build
 
-1. Add one event-delegated English tooltip controller for inventory-owned
-   interactive elements, including native HTML `title` fallbacks.
-2. Add a compact `EN` English-help trigger and accessible dialog that explains
-   the page's universal icons, actions, sections, and availability states.
-3. Annotate the language selector, section shortcuts, carousel controls,
+1. Add concise native English HTML `title` attributes to inventory-owned
+   interactive elements and important labels.
+2. Annotate the language selector, section shortcuts, carousel controls,
    linked videos, linked collections, and collection actions without changing
    localized text, accessible names, routes, or first-tap behavior.
-4. Add focused component coverage and representative desktop, keyboard, touch,
-   non-Latin, and RTL browser proof.
+3. Do not add a custom tooltip, dialog, guide trigger, overlay, event controller,
+   or per-item client component.
+4. Add focused component coverage and representative desktop browser proof.
 
 ## Constraints
 
 - Keep existing visible interface text, content titles, routes, and primary
-  accessible names localized; only the on-demand assistance is English.
+  accessible names localized; English appears only in native `title` text.
 - Do not add Admin, GraphQL, or content-title translation work.
 - Do not change the existing multilingual language-picker modal.
-- Keep the dense inventory server-rendered with a constant number of hydrated
-  assistance roots as item count grows.
+- Keep the dense inventory server-rendered with zero hydrated assistance roots.
 - Do not turn noninteractive labels into keyboard focus stops.
 - Preserve first-tap navigation on videos, collections, and section shortcuts.
 
 ## Verification
 
-- Focused inventory, switcher, tooltip-controller, and guide tests pass.
+- Focused inventory and switcher tests pass.
 - `pnpm --filter @forge/web typecheck`
-- Browser verification covers hover, keyboard focus, Escape, guide focus
-  return, first-tap navigation, 320 CSS pixels, 200% zoom, RTL, and non-Latin
-  content with screenshot proof.
-- The page adds no data request, no horizontal overflow, and no per-card client
-  tooltip root.
+- Browser verification confirms native titles are present and the former `EN`
+  guide and custom tooltip overlays are absent.
+- The page adds no data request, custom event listener, dialog, or tooltip root.
 
 ## Plan
 
@@ -80,15 +75,12 @@ Implementation plan:
 
 ## Completion
 
-- Added one delegated hover/focus tooltip controller with exact native-title
-  fallback restoration and one tap-accessible English guide.
+- Added native English HTML `title` attributes to inventory-owned controls and
+  important labels, with no custom popup or guide.
 - Preserved localized labels, accessible names, routes, callbacks, and first-tap
   navigation across inventory cards, sections, status labels, and the language
   collection switcher.
-- Covered the behavior with 13 focused component tests, web type checking,
-  lint, a successful production build, and browser proof across desktop,
-  keyboard, mobile, zoomed, non-Latin, and RTL layouts.
-- Verified no assistance fetch/XHR, no horizontal overflow, and a constant two
-  assistance roots for sparse and dense inventory fixtures.
-- Captured the durable implementation pattern in
-  `docs/solutions/design-patterns/watch-localized-inventory-delegated-english-assistance.md`.
+- Covered the title-only behavior with focused component tests, web type
+  checking, lint, a production build, and local browser verification.
+- Verified there are no assistance fetch/XHR calls, hydrated assistance roots,
+  custom overlays, or persistent English UI controls.

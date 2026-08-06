@@ -34,8 +34,6 @@ import {
   type WatchLanguageInventoryCard,
   type WatchLanguageInventoryModel,
 } from "@/lib/watch-language-inventory"
-import { EnglishAssistGuide } from "./EnglishAssistGuide"
-import { EnglishAssistTooltipController } from "./EnglishAssistTooltipController"
 import { LanguageCollectionSwitcher } from "./LanguageCollectionSwitcher"
 import {
   englishAssistAttributes,
@@ -350,7 +348,7 @@ function InventoryCard({
         <div
           className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-bold text-white backdrop-blur"
           {...englishAssistAttributes(
-            item.availability === "AUDIO" ? "stateAudio" : "stateSubtitles",
+            item.availability === "AUDIO" ? "stateAudio" : "stateSubtitlesOnly",
           )}
         >
           {item.availability === "AUDIO" ? (
@@ -819,7 +817,6 @@ export function LanguageInventoryPage({
       className="min-h-screen bg-stone-950 text-stone-100"
       data-testid="language-inventory-page"
     >
-      <EnglishAssistTooltipController />
       <section className="relative isolate overflow-hidden border-b border-white/10 bg-stone-950">
         {heroImage ? (
           <Image
@@ -852,9 +849,6 @@ export function LanguageInventoryPage({
             languages={inventory.switcherLanguages}
             totalItems={inventory.counts.total}
           />
-        </div>
-        <div className="relative mx-auto -mt-4 flex max-w-7xl justify-end px-5 pb-5 sm:px-8">
-          <EnglishAssistGuide />
         </div>
       </section>
 

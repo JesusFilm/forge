@@ -104,7 +104,7 @@ describe("LanguageCollectionSwitcher", () => {
     const trigger = document.querySelector<HTMLButtonElement>(
       '[data-testid="language-combobox-mock"]',
     )
-    expect(trigger?.getAttribute("data-english-assist")).toBe("chooseLanguage")
+    expect(trigger?.hasAttribute("data-english-assist")).toBe(false)
     expect(trigger?.title).toBe("Choose a language collection")
     expect(
       document.querySelector('[title="Language collection"]'),

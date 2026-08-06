@@ -128,18 +128,11 @@ prevents callers from moving or hiding the affordance.
 - Keep Watch search's persistent-header close as an explicit exception; it
   already owns the header's top-right slot and must not gain a second overlay
   icon.
-- Compact centered informational dialogs are also an explicit exception. They
-  may keep one popup-relative close control when it remains inside
-  `DialogContent`, stays visible within the popup at narrow/zoomed viewports,
-  and browser checks prove Escape, click dismissal, and focus return. The
-  viewport-fixed control remains the standard for full-screen and
-  action-oriented Watch modal surfaces.
 
 ## Related Issues
 
 - [Watch search overlay stacked control breakpoints](watch-search-overlay-stacked-control-breakpoints-20260708.md)
 - [Watch mobile language modal overflow](watch-mobile-language-modal-overflow-20260619.md)
 - [Watch language player chrome layout](../design-patterns/watch-language-player-chrome-layout-20260609.md)
-- [Localized Watch inventory delegated English assistance](../design-patterns/watch-localized-inventory-delegated-english-assistance.md)
 - [Base UI dialog state attribute detection](../best-practices/base-ui-dialog-state-attribute-detection-20260520.md)
 - [Watch search modal mobile header rows](watch-search-modal-mobile-header-rows.md)
