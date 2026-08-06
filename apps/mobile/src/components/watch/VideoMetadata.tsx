@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native"
 
 import { TEXT_SECONDARY } from "../../lib/color"
+import { displayLabel } from "../../lib/videoLabel"
 import { text } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 
@@ -19,7 +20,7 @@ export function VideoMetadata({ label, title, subtitle }: VideoMetadataProps) {
     <View style={styles.container}>
       {label != null && (
         <Text style={[styles.label, typography.caption]}>
-          {label.toUpperCase()}
+          {displayLabel(label).toUpperCase()}
         </Text>
       )}
       <Text
