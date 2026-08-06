@@ -1,4 +1,5 @@
 import { builder } from "@/graphql/builder"
+import { env } from "@/config/env"
 import type {
   WatchSearchAction,
   WatchSearchAvailability,
@@ -10,8 +11,57 @@ import type {
   WatchSearchResponse,
   WatchSearchResult,
 } from "@/services/watch-search.service"
-import { recordWatchSearchTraceSafely } from "@/services/search-trace.service"
+import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
+import { enqueueWatchSearchShadow } from "@/services/watch-search-shadow.service"
+
+type WatchSearchRequestContext = {
+  request: Request
+  user: { role: string; fleet?: boolean } | null
+}
+
+type WatchSearchWebRoutingPolicy = {
+  primaryMode: "DEFAULT" | "MODERN"
+  defaultShadowEnabled: boolean
+}
+
+function isCanonicalWebBrowserRequest(ctx: WatchSearchRequestContext): boolean {
+  return (
+    ctx.user == null &&
+    ctx.request.headers.get("origin") === env.WEB_CANONICAL_ORIGIN
+  )
+}
+
+export function resolveWatchSearchInputForRequest(
+  input: WatchSearchServiceInput,
+  ctx: WatchSearchRequestContext,
+  policy: WatchSearchWebRoutingPolicy = {
+    primaryMode: env.WATCH_SEARCH_PRIMARY_MODE,
+    defaultShadowEnabled: env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+  },
+): WatchSearchServiceInput {
+  if (!isCanonicalWebBrowserRequest(ctx)) return input
+
+  const mode = policy.primaryMode === "MODERN" ? "modern" : "default"
+  return {
+    ...input,
+    mode,
+    shadowMode:
+      mode === "modern" && policy.defaultShadowEnabled ? "default" : undefined,
+  }
+}
+
+function isWebShadowRequest(ctx: WatchSearchRequestContext): boolean {
+  if (ctx.user?.role === "CONSUMER_BEARER" && ctx.user.fleet !== true) {
+    return true
+  }
+
+  // Public Watch searches run directly from the browser to avoid another Web
+  // server hop. Origin is only a soft surface discriminator, not an auth
+  // boundary; the shadow queue's concurrency and capacity limits contain the
+  // extra work even when a non-browser caller spoofs this header.
+  return isCanonicalWebBrowserRequest(ctx)
+}
 
 const WatchSearchResultTypeEnum = builder.enumType("WatchSearchResultType", {
   values: {
@@ -87,6 +137,12 @@ const WatchSearchInput = builder.inputType("WatchSearchInput", {
   fields: (t) => ({
     query: t.string({ required: true }),
     mode: t.field({ type: WatchSearchModeEnum, required: false }),
+    shadowMode: t.field({
+      type: WatchSearchModeEnum,
+      required: false,
+      description:
+        "Best-effort comparison mode for trusted Web traffic. Shadow work never changes the serving response.",
+    }),
     clientRequestId: t.string({ required: false }),
     targetLanguageSlug: t.string({ required: false }),
     queryLanguageSlug: t.string({ required: false }),
@@ -275,7 +331,8 @@ builder.queryFields((t) => ({
       input: t.arg({ type: WatchSearchInput, required: true }),
     },
     resolve: async (_root, args, ctx) => {
-      const input = args.input as WatchSearchServiceInput
+      const requestedInput = args.input as WatchSearchServiceInput
+      const input = resolveWatchSearchInputForRequest(requestedInput, ctx)
       const startedAt = new Date()
       const service =
         input.mode === "modern"
@@ -283,15 +340,28 @@ builder.queryFields((t) => ({
           : ctx.services.watchSearch
       if (!service) throw new TypesenseWatchSearchUnavailableError()
       const response = await service.search(input)
-      await recordWatchSearchTraceSafely(
+      enqueueWatchSearchTrace(
         {
           input,
           response,
           startedAt,
           completedAt: new Date(),
+          traceRole: "primary",
         },
         ctx.prisma,
-      ).catch(() => {})
+      )
+      if (
+        input.mode === "modern" &&
+        input.shadowMode === "default" &&
+        isWebShadowRequest(ctx)
+      ) {
+        enqueueWatchSearchShadow({
+          input,
+          primaryResponse: response,
+          prisma: ctx.prisma,
+          service: ctx.services.watchSearch,
+        })
+      }
       return response
     },
   }),

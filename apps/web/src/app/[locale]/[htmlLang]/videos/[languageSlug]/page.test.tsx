@@ -18,7 +18,6 @@ vi.mock("next/navigation", () => ({
 import LanguageVideosPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/videos/[languageSlug]/page"
-import { resolveWatchHome } from "@/lib/watch-home"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
 
 vi.mock("@/lib/watch-language-inventory", async (importOriginal) => {
@@ -30,18 +29,9 @@ vi.mock("@/lib/watch-language-inventory", async (importOriginal) => {
   }
 })
 
-vi.mock("@/lib/watch-home", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/watch-home")>()
-  return {
-    ...actual,
-    resolveWatchHome: vi.fn(),
-  }
-})
-
 const resolveWatchLanguageInventoryMock = vi.mocked(
   resolveWatchLanguageInventory,
 )
-const resolveWatchHomeMock = vi.mocked(resolveWatchHome)
 
 function RussianPluralProbe() {
   const t = useTranslations("LanguageInventory")
@@ -56,52 +46,6 @@ function RussianPluralProbe() {
 describe("/{language}.html/videos route", () => {
   beforeEach(() => {
     resolveWatchLanguageInventoryMock.mockReset()
-    resolveWatchHomeMock.mockReset()
-    resolveWatchHomeMock.mockResolvedValue({
-      data: {
-        heroSlides: [],
-        carousel: {
-          pools: [],
-          muxInserts: [],
-        },
-        sections: [
-          {
-            id: "home-video-gospels",
-            eyebrow: "Video Bible Collection",
-            title: "Discover the full story",
-            description: "Explore the collection in this language.",
-            layout: "rail",
-            orientation: "horizontal",
-            showSequenceNumbers: false,
-            cards: [
-              {
-                id: "home-card-1",
-                sourceId: "1_jf-0-0",
-                coreId: "1_jf-0-0",
-                title: "JESUS",
-                description: "The JESUS film in Spanish.",
-                label: "Feature film",
-                metaLabel: "2:03",
-                href: "/jesus.html/spanish-latin-american.html",
-                imageUrl: "https://imagedelivery.net/test/jesus/public",
-                blurDataUrl: null,
-                dominantColor: null,
-                imageAlt: "JESUS still",
-                hls: "https://stream.example/jesus.m3u8",
-                playbackId: "mux-jesus",
-                durationSeconds: 7380,
-                childCount: 0,
-                parentCoreId: null,
-                parentSlug: null,
-                missingData: [],
-              },
-            ],
-          },
-        ],
-        missingData: [],
-      },
-      error: null,
-    })
     resolveWatchLanguageInventoryMock.mockResolvedValue({
       languageSlug: "spanish-latin-american",
       languageName: "Spanish, Latin American",
@@ -120,7 +64,28 @@ describe("/{language}.html/videos route", () => {
         audioVideos: 3,
         subtitleOnlyVideos: 0,
       },
-      promoted: [],
+      promoted: [
+        {
+          id: "promoted-1",
+          coreId: "core-promoted-1",
+          slug: "promoted-video",
+          title: "Promoted video",
+          description: null,
+          imageUrl: "https://imagedelivery.net/test/promoted-hero/public",
+          imageAlt: "Promoted video still",
+          label: "short film",
+          availability: "AUDIO",
+          href: "/promoted-video.html/spanish-latin-american.html" as never,
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 300,
+          childCount: 0,
+          publishedAt: "2026-06-02T00:00:00.000Z",
+          createdAt: "2026-05-02T00:00:00.000Z",
+          updatedAt: "2026-06-02T00:00:00.000Z",
+        },
+      ],
       audioCollections: [
         {
           id: "collection-1",
@@ -260,7 +225,7 @@ describe("/{language}.html/videos route", () => {
     expect(html).not.toContain("на языке русский")
   })
 
-  it("renders home sections on public language inventory pages", async () => {
+  it("starts the content catalog at the fully dubbed grouped inventory", async () => {
     const page = await LanguageVideosPage({
       params: Promise.resolve({
         locale: "es",
@@ -269,17 +234,35 @@ describe("/{language}.html/videos route", () => {
       }),
     })
     const html = renderToString(page)
+    document.body.innerHTML = html
+
+    const navigation = document.querySelector(
+      '[data-testid="language-inventory-section-carousel"]',
+    )
+    const dubbedCatalog = document.querySelector(
+      '[data-testid="language-inventory-audio-collections"]',
+    )
+    const subtitleCatalog = document.querySelector(
+      '[data-testid="language-inventory-subtitle-only"]',
+    )
 
     expect(html).toContain("Spanish, Latin American")
-    expect(html).toContain('data-testid="language-inventory-home-sections"')
-    expect(html).toContain('data-testid="watch-home-section"')
-    expect(html).toContain("Discover the full story")
-    expect(html).toContain("/jesus.html/spanish-latin-american.html")
+    expect(html).toContain("promoted-hero")
+    expect(html).toContain('data-testid="language-inventory-audio-collections"')
+    expect(html).not.toContain('data-testid="language-inventory-home-sections"')
+    expect(html).not.toContain('data-testid="language-inventory-promoted"')
+    expect(html).not.toContain('data-testid="language-inventory-bible-gospels"')
+    expect(html).not.toContain('data-testid="language-inventory-bible-project"')
+    expect(html).not.toContain('data-testid="language-inventory-sports"')
+    expect(html).not.toContain('href="#new"')
+    expect(html).not.toContain('href="#bible-gospels"')
+    expect(html).not.toContain('href="#bible-project"')
+    expect(html).not.toContain('href="#sports"')
+    expect(html).toContain('href="#audio-collections"')
+    expect(html).toContain('href="#subtitles-only"')
+    expect(navigation?.nextElementSibling).toBe(dubbedCatalog)
+    expect(dubbedCatalog?.nextElementSibling).toBe(subtitleCatalog)
     expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
-      "es",
-      "spanish-latin-american",
-    )
-    expect(resolveWatchHomeMock).toHaveBeenCalledWith(
       "es",
       "spanish-latin-american",
     )
@@ -331,11 +314,8 @@ describe("/{language}.html/videos route", () => {
     const html = renderToString(page)
 
     expect(html).toContain("Бесплатные христианские видео")
-    expect(html).toContain("Откройте всю историю")
-    expect(html).toContain("Полнометражный фильм")
-    expect(html).toContain(">Смотреть<")
+    expect(html).toContain("Доступны субтитры")
     expect(html).not.toContain("Free Christian videos")
-    expect(html).not.toContain("Discover the full story")
     expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
       "ru",
       "russian",

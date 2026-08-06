@@ -12,6 +12,8 @@ import {
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
+  watchSearchDefaultShadowEnabledEnvSchema,
+  watchSearchPrimaryModeEnvSchema,
   webCanonicalOriginEnvSchema,
   workflowStartupTransientAttemptsEnvSchema,
   workflowStartupTransientDelayMsEnvSchema,
@@ -25,6 +27,22 @@ describe("env", () => {
 
   it("defaults visitor-facing web links to the canonical www watch origin", () => {
     expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
+  })
+
+  describe("Watch search Web routing", () => {
+    it("defaults canonical browser traffic to MODERN with DEFAULT shadow enabled", () => {
+      expect(watchSearchPrimaryModeEnvSchema.parse(undefined)).toBe("MODERN")
+      expect(watchSearchDefaultShadowEnabledEnvSchema.parse(undefined)).toBe(
+        true,
+      )
+    })
+
+    it("accepts the independent DEFAULT rollback and shadow kill switch", () => {
+      expect(watchSearchPrimaryModeEnvSchema.parse("DEFAULT")).toBe("DEFAULT")
+      expect(watchSearchDefaultShadowEnabledEnvSchema.parse("false")).toBe(
+        false,
+      )
+    })
   })
 
   describe("fleetSearchGlobalCeilingPerMinEnvSchema", () => {

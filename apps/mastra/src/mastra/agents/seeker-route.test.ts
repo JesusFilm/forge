@@ -1684,23 +1684,28 @@ describe("handleSeekerRouteRequest — feat-327 review-hardening gates", () => {
 
   it("resolves tool names from the tool modules' own constants, not local literals", () => {
     // A rename in either tool module must not silently stop every declaration
-    // resolving. Pin that the route IMPORTS the names rather than re-declaring
-    // them, and that the test fixtures above use the same constants.
-    const source = readFileSync(
-      new URL("./seeker-route.ts", import.meta.url),
-      "utf8",
-    )
-    const code = source
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "")
-    expect(code).toMatch(
+    // resolving. Pin that the code matching chunks IMPORTS the names rather
+    // than re-declaring them, and that the fixtures above use the same
+    // constants. feat-329 moved that matching into the shared projection
+    // module — the SOLE home for the gate now, with no re-export left behind —
+    // so the import pin follows it there, and BOTH files are checked for a
+    // re-declared literal since either could grow one back.
+    const readCode = (specifier: string): string =>
+      readFileSync(new URL(specifier, import.meta.url), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "")
+
+    const projection = readCode("./seeker-turn-projection.ts")
+    expect(projection).toMatch(
       /import \{ FEATURE_VIDEO_TOOL_NAME \} from "\.\.\/tools\/feature-video"/,
     )
-    expect(code).toMatch(
+    expect(projection).toMatch(
       /import \{ SEEKER_SEARCH_VIDEOS_TOOL_NAME \} from "\.\.\/tools\/seeker-search-videos"/,
     )
-    // The literals must NOT be re-declared beside the import.
-    expect(code).not.toMatch(/const\s+\w*SEARCH_VIDEOS_TOOL_NAME\s*=/)
-    expect(code).not.toMatch(/const\s+FEATURE_VIDEO_TOOL_NAME\s*=/)
+    // The literals must NOT be re-declared, on either side of the extraction.
+    for (const code of [projection, readCode("./seeker-route.ts")]) {
+      expect(code).not.toMatch(/const\s+\w*SEARCH_VIDEOS_TOOL_NAME\s*=/)
+      expect(code).not.toMatch(/const\s+FEATURE_VIDEO_TOOL_NAME\s*=/)
+    }
   })
 })

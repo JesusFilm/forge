@@ -238,9 +238,14 @@ Currently `enforce=false`, ceiling `6000`/key/min. Sequence:
 
 1. **Measure real per-key peak.** 6000/min/key is a guess; find the true peak so the
    ceiling is a meaningful bound. Two sources:
-   - **Client RUM (direct):** count `watch_search` per minute on `service:forge-tv`
-     and `service:forge-mobile` RUM — that's the real fleet search rate per platform
-     (≈ per key). Take the busiest 1-min bucket over a representative week.
+   - **Client Logs (direct):** count the shared canonical search Log — message
+     `watch_search analytics` — per minute in Datadog **Logs** (not RUM) on
+     `service:forge-tv` and `service:forge-mobile`. That's the real fleet search
+     rate per platform (≈ per key); the shared message is the cross-client
+     denominator (runbook: `docs/operations/watch-search-analytics-datadog.md`).
+     Take the busiest 1-min bucket over a representative week. These logs are
+     client-emitted and SDK-sampled, so counts are a floor — size the ceiling
+     with headroom above them.
    - **Server tripwire (indirect):** `.near`/`.exceeded` events. If they **never**
      fire at 6000, real peak is < 4800/min/key. To find the real peak faster, you may
      temporarily **lower** `FLEET_SEARCH_GLOBAL_CEILING_PER_MIN` (keep `enforce=false`)

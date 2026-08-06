@@ -88,7 +88,14 @@ describe("LanguageInventoryPage video thumbnails", () => {
     setRequestLocale("en")
   })
 
-  it("preserves localized labels and routes while assisting routable cards and sections", () => {
+  it("preserves localized labels and routes while adding native English titles", () => {
+    const collection = card(
+      "series",
+      "Коллекция фильмов",
+      "/collection.html" as Route,
+      null,
+      { childCount: 2 },
+    )
     const inventory: WatchLanguageInventoryModel = {
       languageSlug: "russian",
       languageName: "Russian",
@@ -97,21 +104,11 @@ describe("LanguageInventoryPage video thumbnails", () => {
       counts: {
         audioCollections: 1,
         audioVideos: 2,
-        subtitleOnlyVideos: 1,
-        total: 6,
+        subtitleOnlyVideos: 2,
+        total: 5,
       },
-      promoted: [
-        card("promoted-linked", "Видео с озвучкой", "/linked.html" as Route),
-        card(
-          "promoted-collection",
-          "Коллекция фильмов",
-          "/collection.html" as Route,
-          null,
-          { childCount: 3 },
-        ),
-        card("promoted-static", "Статичное видео", null),
-      ],
-      audioCollections: [],
+      promoted: [],
+      audioCollections: [collection],
       audioVideos: [
         card(
           "compact-linked",
@@ -125,10 +122,13 @@ describe("LanguageInventoryPage video thumbnails", () => {
         card(
           "subtitle-linked",
           "Видео только с субтитрами",
-          "/subtitle.html" as Route,
+          "/linked.html" as Route,
           null,
           { availability: "SUBTITLE_ONLY" },
         ),
+        card("subtitle-static", "Статичное видео", null, null, {
+          availability: "SUBTITLE_ONLY",
+        }),
       ],
     }
 
@@ -137,10 +137,7 @@ describe("LanguageInventoryPage video thumbnails", () => {
     })
 
     const linkedFull = container.querySelector<HTMLElement>(
-      '[aria-label="Видео с озвучкой"]',
-    )
-    const linkedCollection = container.querySelector<HTMLAnchorElement>(
-      '[aria-label="Коллекция фильмов"]',
+      '[aria-label="Видео только с субтитрами"]',
     )
     const staticFull = container.querySelector<HTMLElement>(
       '[aria-label="Статичное видео"]',
@@ -154,14 +151,15 @@ describe("LanguageInventoryPage video thumbnails", () => {
     ).not.toBeNull()
     expect(linkedFull?.hasAttribute("data-english-assist")).toBe(false)
     expect(linkedFull?.title).toBe("Open video")
-    expect(linkedFull?.getAttribute("aria-label")).toBe("Видео с озвучкой")
-    expect(linkedFull?.getAttribute("href")).toBe("/linked.html")
-    expect(linkedCollection?.hasAttribute("data-english-assist")).toBe(false)
-    expect(linkedCollection?.title).toBe("Open collection")
-    expect(linkedCollection?.getAttribute("aria-label")).toBe(
-      "Коллекция фильмов",
+    expect(linkedFull?.getAttribute("aria-label")).toBe(
+      "Видео только с субтитрами",
     )
-    expect(linkedCollection?.getAttribute("href")).toBe("/collection.html")
+    expect(linkedFull?.getAttribute("href")).toBe("/linked.html")
+    expect(
+      linkedFull?.querySelector<HTMLElement>(
+        '[title="Subtitles are available without dubbed audio"]',
+      )?.title,
+    ).toBe("Subtitles are available without dubbed audio")
     expect(staticFull?.className).not.toContain("group")
     expect(staticFull?.className).not.toContain("focus-visible:outline-none")
     expect(
@@ -190,74 +188,40 @@ describe("LanguageInventoryPage video thumbnails", () => {
     expect(staticCompact?.className).not.toContain("group")
     expect(staticCompact?.querySelector("svg")).toBeNull()
 
-    const subtitleSection = container.querySelector<HTMLElement>(
-      '[data-testid="language-inventory-subtitle-only"]',
+    const collectionLink = container.querySelector<HTMLAnchorElement>(
+      '[href="/collection.html"]',
     )
-    const subtitleLink = subtitleSection?.querySelector<HTMLAnchorElement>(
-      '[aria-label="Видео только с субтитрами"]',
-    )
-    expect(subtitleLink?.hasAttribute("data-english-assist")).toBe(false)
-    expect(subtitleLink?.title).toBe("Open video")
-    expect(subtitleLink?.getAttribute("aria-label")).toBe(
-      "Видео только с субтитрами",
-    )
-    expect(subtitleLink?.getAttribute("href")).toBe("/subtitle.html")
-    expect(
-      subtitleLink?.querySelector<HTMLElement>(
-        '[title="Subtitles are available without dubbed audio"]',
-      )?.title,
-    ).toBe("Subtitles are available without dubbed audio")
-    expect(
-      subtitleSection?.querySelector<HTMLElement>(
-        '[title="Videos with subtitles and no dubbed audio"]',
-      )?.title,
-    ).toBe("Videos with subtitles and no dubbed audio")
+    expect(collectionLink?.title).toBe("Open collection")
 
     const sectionLinks =
       container.querySelectorAll<HTMLAnchorElement>("nav a[title]")
-    expect(sectionLinks).toHaveLength(6)
-    expect(sectionLinks[0]?.hasAttribute("data-english-assist")).toBe(false)
-    expect(sectionLinks[0]?.title).toBe("Go to new releases")
-    expect(sectionLinks[0]?.getAttribute("aria-label")).toBe("Новинки: 3")
-    expect(sectionLinks[0]?.getAttribute("href")).toBe("#new")
-    expect(sectionLinks[5]?.hasAttribute("data-english-assist")).toBe(false)
-    expect(sectionLinks[5]?.title).toBe("Go to subtitles-only videos")
-    expect(sectionLinks[5]?.getAttribute("aria-label")).toBe(
-      "Только субтитры: 1",
-    )
-    expect(sectionLinks[5]?.getAttribute("href")).toBe("#subtitles-only")
+    expect(sectionLinks).toHaveLength(2)
+    expect(sectionLinks[0]?.title).toBe("Go to collections")
+    expect(sectionLinks[0]?.getAttribute("href")).toBe("#audio-collections")
+    expect(sectionLinks[1]?.title).toBe("Go to subtitles-only videos")
+    expect(sectionLinks[1]?.getAttribute("href")).toBe("#subtitles-only")
 
     const carouselButtons =
       container.querySelectorAll<HTMLButtonElement>("nav button[title]")
     expect(carouselButtons).toHaveLength(2)
-    expect(carouselButtons[0]?.getAttribute("aria-label")).toBe(
-      "Предыдущее видео в предпросмотре",
-    )
     expect(carouselButtons[0]?.title).toBe("Show the previous section")
-    expect(carouselButtons[1]?.getAttribute("aria-label")).toBe(
-      "Следующее видео в предпросмотре",
-    )
     expect(carouselButtons[1]?.title).toBe("Show the next section")
 
+    expect(
+      container.querySelector('[title="Collections with dubbed videos"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[title="Videos with subtitles and no dubbed audio"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelectorAll('[title="Items in this section"]'),
+    ).toHaveLength(2)
     expect(
       container.querySelector('[data-testid="english-assist-guide-trigger"]'),
     ).toBeNull()
     expect(container.querySelector('[role="tooltip"]')).toBeNull()
     expect(container.querySelector("[data-english-assist]")).toBeNull()
-
-    expect(
-      container.querySelector('[title="Dubbed audio is available"]'),
-    ).not.toBeNull()
-    expect(
-      container.querySelector('[title="Recently added in this language"]'),
-    ).not.toBeNull()
-    expect(
-      container.querySelector(
-        '[title="Videos are ordered from newest to oldest"]',
-      ),
-    ).not.toBeNull()
-    expect(
-      container.querySelector('[title="Video Bible collections"]'),
-    ).not.toBeNull()
   })
 })

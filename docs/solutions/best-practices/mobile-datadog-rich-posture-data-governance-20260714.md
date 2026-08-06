@@ -15,6 +15,19 @@ diagnostic value:
 - Raw **search terms** (`watch_search` / `watch_search_failed`, `term` field)
 - Content **titles and ids/slugs** (`content_id`, resolution + QoE events)
 
+> **2026-08-04 update (mobile search observability parity, feat-335):** the
+> mobile search log shapes named in the first bullet are retired. The raw
+> search term now ships in the shared cross-client message
+> `watch_search analytics` under the `watch_search.query` attribute; the
+> `watch_search` / `watch_search_failed` messages and the bare `term` field
+> are no longer emitted. Same store, same posture, same retention — but a
+> data-deletion request for search terms must key on `watch_search.query`
+> in the `watch_search analytics` logs, not on `term`. The `warn` level on
+> failure rows is load-bearing for this containment: `error`-level logs
+> would forward the attribute bag (including the raw query) into RUM error
+> events, outside this assessment's Logs-store boundary. A guard test pins
+> the level.
+
 **Parity with web (context for sign-off).** This is not a mobile-specific
 expansion: the web app logs the raw query to Datadog Logs **by default**
 (`watch_search.query`; flag `WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT` defaults
@@ -34,11 +47,11 @@ replay, so playback frames never leak.
 
 ## Retention / deletion window (committed policy)
 
-| Data                               | Store                                            | Retention                                   | Deletion                                                   |
-| ---------------------------------- | ------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
-| `watch_search` term-bearing Logs   | Datadog **default Logs index** (shared with web) | **15 days** (org default), then auto-purged | Retention expiry; ad-hoc via Datadog data-deletion request |
-| RUM events (term/title attributes) | Datadog RUM                                      | **30 days** (RUM default), then auto-purged | Retention expiry                                           |
-| Session Replay                     | Datadog RUM Replay                               | **30 days**; inputs masked at capture       | Retention expiry                                           |
+| Data                                                                                                                   | Store                                            | Retention                                   | Deletion                                                   |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
+| `watch_search` term-bearing Logs (since 2026-08-04: message `watch_search analytics`, term under `watch_search.query`) | Datadog **default Logs index** (shared with web) | **15 days** (org default), then auto-purged | Retention expiry; ad-hoc via Datadog data-deletion request |
+| RUM events (term/title attributes)                                                                                     | Datadog RUM                                      | **30 days** (RUM default), then auto-purged | Retention expiry                                           |
+| Session Replay                                                                                                         | Datadog RUM Replay                               | **30 days**; inputs masked at capture       | Retention expiry                                           |
 
 These are **already in effect as the org defaults** — verified 2026-07-15: the
 default Logs index is 15 days and RUM/Replay is 30 days, **identical to forge-web**

@@ -165,7 +165,10 @@ const AssistantTurn = memo(function AssistantTurn({
             ) : null}
             {message.engine ? <EngineMarker engine={message.engine} /> : null}
           </div>
-          {message.engine === "seeker" ? (
+          {/* Seeker turns always get the disclosure (incl. its explicit "No
+              sources cited" state); a REPLAYED turn (feat-329) has no engine
+              tag by design (R21) but must still show the sources it carries. */}
+          {message.engine === "seeker" || (message.sources?.length ?? 0) > 0 ? (
             <SourcesList sources={message.sources ?? []} />
           ) : null}
         </div>

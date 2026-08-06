@@ -1,7 +1,7 @@
 ---
 title: "Byte-cap buffered HTTP response reads to guard against OOM in a shared Node process"
 date: "2026-06-29"
-last_updated: "2026-07-14"
+last_updated: "2026-08-05"
 category: "best-practices"
 problem_type: "best_practice"
 module: "apps/mastra"
@@ -120,6 +120,31 @@ The seven rules that make this correct:
    **Sizing corollary — when the contract is denominated in characters (feat-241, 2026-07-14).** A JS text cap (`String.slice(0, N)`, `.length`) counts **UTF-16 code units**, and one unit inflates to up to **3 UTF-8 bytes** on the wire (CJK/Devanagari and most non-Latin BMP scripts; astral characters are 2 units → 4 bytes = 2 B/unit, never worse). "Contract-derived" must therefore run the explicit chain **`char cap × 3 B/unit × item count + envelope`** — the intuitive ~1 byte/char undersizes ~3× for exactly the non-Latin scripts, and because over-cap rides the graceful `unavailable` path (rule 3), the result is a _deterministic, retry-proof false outage_ for CJK/Devanagari users while Latin users see a working feature: a quiet i18n regression, not a crash. Worked instance: mastra's `AI_CHAT_HISTORY_TEXT_CAP_CHARS = 8_192` (`apps/mastra/src/mastra/ai-chat-history-route.ts:64`, unit stated at the declaration) feeds chat's `HISTORY_THREAD_MAX_RESPONSE_BYTES` (`apps/chat/src/app/api/history/history-proxy.ts:58`) — initially sized 4 MiB from 1 B/char thinking (a confident-looking derivation comment, wrong by exactly the unit factor), corrected in feat-241's pre-push Tier-2 review to 8 MiB via 8,192 × 3 B ≈ 24 kB/message × 200 messages ≈ 4.8 MB + JSON envelope.
 
    Three rules ride the corollary: **state every text cap's unit at its declaration and write the derivation chain into the byte cap's comment** (both halves, per the client-mirror-server-dedupe comment discipline, so the contract survives either side being refactored alone); **assume 1 B/char only for ASCII-by-construction content** (ids, enum literals — never user text in an i18n product); and **give the byte-capped read at least one near-cap fixture in a 3-byte script** (`"あ".repeat(CAP)`) — an ASCII `"x".repeat(CAP)` fixture sits at ⅓ of the worst-case payload and is structurally blind to undersizing. The unit boundary also applies beyond HTTP reads (char-capped text into byte-limited storage, log-line budgets, queue payload caps; cross-language pairs count differently — Python `len(str)` counts code points, Go `len(string)` counts bytes, Postgres `varchar(n)` counts characters). And don't "fix" undersizing by lowering the char cap: the char cap is the product contract, the byte cap is the guard sized around it — truncating non-Latin messages to ⅓ the effective length of English ones would itself be the i18n regression.
+
+   **Measurement corollary — a budget must be MEASURED, not COMPUTED (feat-329, 2026-08-05).** The sizing corollary above tells you how to derive a budget; this one tells you how to _test_ it. A worst-case budget asserted as a **computation over the same named constants that define it** is tautological with respect to anything it forgot. It can only ever catch a bound somebody **raised**; it can never catch a **field nobody counted**. The assertion that closes that gap **serializes a maximal payload and measures its real byte length**.
+
+   Worked instance: feat-329 added optional per-message `sources`/`video` to the same replay wire the sizing corollary sizes. Its first derivation counted only each source's `snippet` — while `sourceName`, `title`, `url`, and the video's `title` crossed the wire **uncapped**, because nothing upstream bounds them (the RAG tool truncates only a passage's `text`; admin truncates neither a video title nor a source label). The computed assertion was green throughout. Review found it (five independent reviewers, pre-merge) — itself the signal for how invisible this shape is to ordinary review. The consequence is not a degraded render: over-cap → the capped read returns `undefined` → the proxy answers 502 → replay lands in `failed` → the client's R22 rule then **blocks every send into that conversation**. The thread becomes permanently unreadable _and_ unusable — the graceful-failure path (rule 3) is graceful for one request, not for a thread you can never open again.
+
+   The fix is both halves: bound every variable-length field the projection emits **and** replace the tautological assertion with a measuring one.
+
+   ```ts
+   // Tautological: recomputes the expression that defines the constant.
+   expect(WORST_CASE).toBe(
+     LIMIT * (TEXT_CAP * 3 + MAX_SOURCES * SNIPPET_CAP * 3 + VIDEO),
+   )
+
+   // Measuring: an uncounted field fails HERE instead of shipping.
+   const bytes = Buffer.byteLength(JSON.stringify({ messages }), "utf8")
+   expect(bytes).toBeLessThan(CONSUMER_CAP)
+   ```
+
+   Falsification that evidences it (`apps/mastra/src/mastra/ai-chat-history-replay-attachments.test.ts`): removing the cap on **one display string** (`sourceName`) makes the measuring test report **12,062,894 B against the 8,388,608 B cap**, while the computed-derivation test stays green. Count the **JSON envelope** too (key names, quotes, commas, braces — per message and per array item); the measured assertion is what makes forgetting it fail loudly.
+
+   **Caveat that rides with it — a measuring assertion is only as strong as its fixture is maximal.** It goes red only when the uncounted field's contribution exceeds the slack between the measured payload and the budget. Measured on feat-329's own fixture: un-capping `sourceName` or a source `title` (5 per message) blows the cap at 12,062,894 B, but un-capping the **video** `title` (1 per message) lands at 7,416,494 B and stays **green** — that field is held by a direct per-field cap assertion instead. So drive every capped field from a maximal source, and pair the measurement with a per-field cap test; neither alone is complete.
+
+   **Truncate what is read, drop what is followed.** When enforcing the per-field bounds, the failure modes are not symmetric. Truncating a _display_ string (a label, a title, a snippet) degrades gracefully — the reader sees a shortened label. Truncating a **URL** does not: the cut value still parses as `https:` and renders a live-looking link to a 404, which is the dead-caption-link failure the same arc had already refused elsewhere (`apps/mastra/src/mastra/seeker-video-gates.ts` carries the production census behind that decision). So bound URLs by **dropping the whole record**, not by slicing, and filter the drops _before_ any "first N items" slice so a droppable item never costs a good one its slot. feat-329 lands at 128 UTF-16 units for display strings and a 192-unit **drop** bound for URLs; the five real citation URLs observed in a live browser run maxed at 61 characters, so the bound is far from real traffic.
+
+   **Honest residual, worth stating wherever this budget is documented:** 3 B/unit is the **UTF-8** worst case, not the **JSON** one. `JSON.stringify` expands control characters and lone surrogates to 6 B/unit (`\u00XX` escapes), so a pathological all-control-character transcript still exceeds a budget derived at 3 B/unit. That predates feat-329 (it is a property of the feat-241 text cap that dominates the sum) and is documented at the constant rather than fixed — but do not let a measured-and-green budget read as a proof it cannot be exceeded.
 
 6. **Make the knob `.optional()` with a runtime fallback — never required-at-boot.** The cap is opt-in scaffolding; it must not brick a Railway deploy in an unprovisioned env. Per the repo's optional-env-var discipline (`docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`):
 

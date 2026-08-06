@@ -72,6 +72,7 @@ import {
   handleOfflineSearchEvalRouteRequest,
   offlineSearchEvalWorkflow,
 } from "./workflows/offline-search-eval"
+import { absoluteSearchEvalWorkflow } from "./workflows/absolute-search-eval"
 import {
   handleSearchEvalCandidateReviewRouteRequest,
   searchEvalCandidateReviewWorkflow,
@@ -268,6 +269,7 @@ export const mastra = new Mastra({
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
     offlineSearchEvalWorkflow,
+    absoluteSearchEvalWorkflow,
     searchEvalCandidateReviewWorkflow,
     searchEvalNativeSuiteWorkflow,
     searchEvalOrchestratorWorkflow,

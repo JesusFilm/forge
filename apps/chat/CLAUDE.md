@@ -61,7 +61,7 @@ src/
       icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational); a ResizeObserver on the composer band re-pins a bottom-pinned reader on auto-grow (never a scrolled-up one) and keeps the scroller's scroll-padding sized to the band (feat-270)
-      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice, and the feat-328 VideoCard sibling block (streaming + finalized branches, after the markdown content — never through the markdown allowlist)
+      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice, and the feat-328 VideoCard sibling block (streaming + finalized branches, after the markdown content — never through the markdown allowlist). feat-329: the sources disclosure renders when a turn is a seeker turn OR carries sources, so a replayed turn (no engine tag, by R21) still shows them; the grounded badge stays gated on the engine tag alone
       assistant-markdown.tsx  feat-268: hardened markdown for ASSISTANT turns only — react-markdown + remark-breaks, element allowlist (p/strong/em/ul/ol/li/blockquote/code/a/br), raw HTML → inert text (no rehype-raw, skipHtml stays false), https-only links via untrusted-link, Vigil-token styling (blockquote = font-scripture), streaming cursor slot, THREE pathological-input controls that each degrade one turn to plain pre-wrap text (chat has no app-level error boundary): prefix guard (short deep-nesting crash) + length cap at the 8192-unit per-message ceiling (shape-agnostic freeze bound, catches emphasis nesting the prefix regex misses) + MarkdownRenderBoundary (any throw the guards miss)
       untrusted-link.tsx feat-268: the ONE hardened anchor for untrusted URLs (isHttpsUrl gate + target=_blank + rel="noopener noreferrer" + sr-only suffix); shared by sources-list + assistant-markdown so the surfaces cannot drift
       video-card.tsx     feat-328: the featured video as an inline Mux player — lazy `next/dynamic(() => import("@forge/video-player/mux-video"), {ssr:false})` so hls.js stays out of the initial load, derived image.mux.com poster, title+duration caption whose link goes through untrusted-link. Mux gets ONLY the pattern-gated playbackId + this origin: disableTracking/disableCookies are passed EXPLICITLY (never inherited from the package defaults) and no metadata/viewer-id prop exists. Carries its OWN per-message VideoRenderBoundary (the MarkdownRenderBoundary pattern) — the card renders OUTSIDE the markdown boundary and chat has no app-level one, so a MuxVideo/hls.js throw degrades that ONE turn to a plain line, never the tree. Its `children` is a render callback so the two failure CLASSES converge on that one fallback: a render-phase throw (caught by getDerivedStateFromError) AND an async playback `error` event (which no React boundary can catch — MuxVideo's onError calls `fail`). Scope caveat worth keeping straight: a CHUNK-load failure is NOT per-turn and is NOT retryable at the import layer — the rejection is cached by BOTH Turbopack's emitted runtime and React.lazy's module-scoped payload, so every video turn degrades together until a page reload (see "Featured video" below for the mechanism and its bundler scope)
@@ -78,7 +78,7 @@ src/
     server/mastra-upstream.ts feat-282: the shared Mastra upstream transport both proxy families import — hostAllowed (the SSRF guard: https floor with loopback + *.railway.internal http carve-outs, optional host allowlist), validateBaseUrl → the ValidatedBaseUrl brand minted only from hostAllowed's success path (feat-294 — postMastraUpstream's baseUrl demands it, so skipping the guard is a compile error, not a convention; null maps to each proxy's own deny wire), MAX_CONVERSATION_ID_CHARS, postMastraUpstream (the fetch shape: URL-from-path+base, POST, bearer, JSON content-type, per-proxy accept, redirect:"error", signal), composeUpstreamAbortSignal (skips absent sources; single source passes through as-is), classifyUpstreamFailure (timeout | cancelled | network — seeker's check precedence, budget → caller-abort → error name, canonical for both proxies; each proxy keeps its own wire mapping), readJsonCapped + undefinedOnAbort (the byte-capped read + abort-race helper). Pure (no env reads), `import "server-only"`-guarded; deny ladders, budgets, byte-cap SIZES, response channels, and the gate stay per-proxy. Its test file carries the railway.internal label-boundary matrix + direct unit coverage of every transport helper
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error/video) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
-    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
+    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set. feat-329: re-validates the replay wire's optional per-message sources/video through toSources/toVideo (malformed → absent, never a failed replay) and aggregates the [chat-video] rejection diagnostic into ONE line per thread open
     conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
     use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction (conversations = the full unprojected list since PR 2)
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
@@ -371,15 +371,26 @@ languageSlug)` from `@forge/watch-url-policy/routes`; a `watchUrl` on the
   value, since titles are catalog text and the frame rides a special-category
   conversation; **silence when no video was declared**, which is most turns
   (the producer omits the field, so only a value actually sent and then
-  refused logs); and it is scoped to the LIVE terminal frame — a replay caller
-  (feat-329 re-projects every stored turn on thread open) must suppress or
-  aggregate, or one thread open becomes a burst.
+  refused logs); and it is scoped to the LIVE terminal frame. feat-329 settled
+  the replay half of that last rule by AGGREGATING: `fetchHistoryThread`
+  passes its own sink into `toVideo` and emits at most one
+  `[chat-video] event=replay_projection_rejected <reason>=<count> …` line per
+  thread open (counts only, reasons sorted), instead of one warning per stored
+  turn. Same channel, same no-wire-values rule; keep any future replay-shaped
+  caller on the aggregate.
 - **Slug shape is not page LIVENESS (residual).** The gate proves a slug is
   well-formed, not that the watch page exists. An ASCII-slugged but unpublished
   row passes every gate here and would still ship a live player beside a dead
   caption link. Catalog hygiene owns that, not these patterns.
-- **Not yet persisted:** replayed threads lose the video (and sources) until
-  feat-329 lands — the accepted D7 gap.
+- **Persisted since feat-329** (this bullet previously recorded the accepted
+  D7 gap: replayed threads losing the video and sources). Reopening a thread
+  now replays both — mastra re-derives them from the stored tool parts and the
+  replay wire carries optional per-message `sources`/`video`. `toVideo` and
+  `toSources` are reused unchanged in behavior on that path (`toVideo` gained only an optional rejection sink), so the replay payload is never
+  trusted more than the live one; `toVideo`'s second parameter is the
+  rejection SINK, which the replay caller overrides to aggregate (below).
+  Badge stripping is unchanged — a replayed turn shows its player and sources
+  and no engine/grounded badge.
 
 ## Server-side conversation history (feat-241)
 
@@ -424,9 +435,17 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
 not_available`; failed retries only via the explicit action); sends into a
   server-origin conversation are BLOCKED unless its replay is `loaded` (R22 —
   the composer keeps the draft, only the send action is disabled). Replayed
-  turns carry no engine/grounded/source badges (R21) but get the SAME
+  turns carry no engine/grounded BADGES (R21) but get the SAME
   feat-268 markdown treatment as live turns — badge stripping, not text
-  divergence.
+  divergence. Since feat-329 they also carry their ATTACHMENTS: the replay
+  wire's optional `sources`/`video` flow through `mergeReplayMessages` onto
+  the message, so the SourcesList and the inline player return on reload.
+  feat-329 **supersedes R21's payload clause** (and AE17 with it): retrieval
+  payloads now DO reach the browser, as an allowlisted per-message
+  `sources`/`video`. R21's BADGE clause stands unchanged — `message-list`
+  renders the sources disclosure when a turn is a seeker turn OR carries
+  sources, while the grounded badge stays gated on the engine tag alone. Dated
+  supersession notes sit at R21 and AE17 in the feat-241 plan.
 - **Denied sends fail visibly on persisted conversations (KTD10):** a
   conversation counts as server-persisted once hydrated from history, after
   a send's SUCCESS finalize with engine `"seeker"`, after a failed Seeker
@@ -655,9 +674,12 @@ login page instead of silently re-authenticating via the SSO session.
   represent (e.g. focus-restore-on-close, which depends on `offsetParent`) stays
   **browser-verified**, not asserted in jsdom.
 - **Client-side console output carries fixed enum TOKENS only** — never message
-  text, titles, wire values, or anything conversation-derived. `rejectVideo` in
-  `lib/chat-stub.ts` is the reference shape: a module-private helper taking a
-  closed union, interpolating that parameter and nothing else. The browser
+  text, titles, wire values, or anything conversation-derived. The reference
+  shape is `lib/chat-stub.ts`'s `warnRejectedVideo` (feat-329 renamed it from
+  `rejectVideo`, which is now the function-scoped closure `toVideo` calls): a
+  module-private helper taking a closed union and interpolating that parameter
+  and nothing else. `toVideo`'s second parameter is the rejection SINK, which
+  replay overrides to aggregate — a sink may only ever narrow what is emitted. The browser
   console is not a telemetry channel here (no RUM, no log forwarding), so a
   line there is for a human with devtools open, never for ops. The server-side
   counterpart is KTD7 under Authentication.

@@ -13,7 +13,7 @@
 - Loading states: always add `loading.tsx` for async routes.
 - Error boundaries: `error.tsx` at each route segment.
 - Data fetching: RSC async components calling resolvers in `src/lib/content.ts` / `recommendations.ts` / `demo-search.ts`, which use `adminGraphql()` from `@forge/admin-graphql` + the default Apollo client at `src/lib/admin-client.ts`. `src/lib/search.ts` uses the semantic-search Admin client from the same module so production semantic search gets a longer bounded timeout without widening every Admin GraphQL call.
-- Client components that need data go through a `"use server"` action (e.g. `src/lib/search-actions.ts`) — admin's bearer is server-only and must never reach the browser bundle.
+- Client components that need authenticated data go through a `"use server"` action (e.g. `src/lib/search-actions.ts`) — admin's bearer is server-only and must never reach the browser bundle. The public floating Watch search is the documented exception: it calls anonymous Admin GraphQL directly and receives no bearer or Typesense credential.
 - Metadata: export `metadata` or `generateMetadata` from every page.
 - Watch video and episode metadata must not emit page-head hreflang alternates.
   Canonical, Open Graph, Twitter, robots, and JSON-LD stay in page metadata;
@@ -28,6 +28,22 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 - `src/lib/fragments/watch-experience.ts` — re-exports `adminWatchExperienceFragment` from `@forge/admin-graphql/fragments` (the root composition over admin's 17 block fragments).
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
 - `src/lib/{search,recommendations,demo-search,enrichment,experience-metadata}.ts` — all read from admin.
+
+Production floating Watch search calls Admin directly from the browser through
+`src/lib/watch-search-client.ts` to avoid a Web server hop. The client omits mode
+selection. Admin recognizes the canonical anonymous Web origin and applies its
+server-side `WATCH_SEARCH_PRIMARY_MODE` and
+`WATCH_SEARCH_DEFAULT_SHADOW_ENABLED` policy on every request. This keeps the
+public GraphQL omitted-mode `DEFAULT` contract for other callers and lets an
+Admin restart apply a rollback to cached or already-open Watch pages.
+
+The same-named Web settings still govern the legacy server-side
+`src/lib/search.ts` path; they are not the emergency control for the production
+floating surface. Set the Admin service's `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`
+to restore production Watch traffic, and set Admin's
+`WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false` to stop only shadow load. Local Web
+origins remain on the omitted-mode `DEFAULT` contract and do not require
+Typesense.
 
 Required env vars (both flipped from `.optional()` in U13):
 
@@ -45,7 +61,7 @@ Required env vars (both flipped from `.optional()` in U13):
 - Don't import server-only code in client components.
 - `'use client'` is a boundary — everything imported below it is also client.
 - The admin bearer (`WEB_ADMIN_API_KEYS`) is in the server-only env block. Never reference it from a client component or `NEXT_PUBLIC_*` var.
-- For browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. The browser hits the action; the action hits admin with the bearer.
+- For authenticated browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. Anonymous direct calls need an explicit package-local contract such as the floating Watch search exception above.
 - ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. The 1 hour route TTL is the fallback for a missed webhook or process-local invalidation miss; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 - **Static locale root layout**: cacheable watch surfaces live under the internal route tree `src/app/[locale]/[htmlLang]/**`. `src/proxy.ts` rewrites public `/watch` URLs into that tree, so the root layout gets static params for both the next-intl message catalog key (`[locale]`) and `<html lang>` (`[htmlLang]`) without calling `headers()` or `cookies()`. Keep request-time dynamic APIs out of this tree unless the route is intentionally dynamic.

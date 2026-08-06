@@ -34,10 +34,12 @@ UI selection are outside this experiment.
 
 ## Architecture Decisions
 
-1. Use two aliased collections. `watch_search_catalog` stores one compact
-   document per video with localized metadata and precomputed availability;
-   `watch_search_transcripts` stores one document per embedded transcript chunk.
-   This avoids repeating card and availability payloads for every chunk.
+1. Use three aliased collections. `watch_search_catalog` stores one compact
+   document per video with localized metadata and ranking availability slugs;
+   `watch_search_availability` stores one filterable document per video and
+   language with playback fields; `watch_search_transcripts` stores one
+   document per embedded transcript chunk. This avoids repeating card fields
+   for every chunk and avoids returning every language during final hydration.
 2. Full rebuilds create timestamped collections and swap stable aliases only
    after every import row succeeds. This follows Typesense's documented
    zero-downtime schema-change and reindex pattern.
@@ -51,6 +53,24 @@ UI selection are outside this experiment.
 5. Preserve the existing GraphQL output type and route the optional mode at the
    resolver boundary. Existing callers remain on the default backend without a
    client change, while comparison callers opt into `MODERN` explicitly.
+
+### 2026-08-05 Native Hybrid Refinement
+
+The original parallel-query design remains the migration fallback, but it is
+no longer the primary `MODERN` candidate path. The transcript alias is upgraded
+to a backward-compatible hybrid collection containing stored-vector transcript
+documents and vectorless metadata documents. Admin creates one query embedding
+and sends one Typesense request with native rank fusion and
+`group_by=canonicalVideoId`. Typesense therefore owns keyword/vector fusion and
+candidate deduplication; Admin continues to own language interpretation,
+watchability hydration, degradation, analytics, and the GraphQL contract.
+
+The upgrade reuses the existing PostgreSQL embeddings and never creates corpus
+embeddings. It requires one explicit transcript-schema rebuild. Routine
+application releases reuse that physical vector collection and refresh only
+the small metadata documents. An embedding timeout uses catalog lexical search;
+a legacy active schema uses the old dual Typesense request with the same query
+embedding. Full production eval and latency evidence remain rollout gates.
 
 ## Implementation Units
 
@@ -70,7 +90,7 @@ UI selection are outside this experiment.
 
 ### U2. Full Viewer-Safe Index Builder
 
-- **Goal:** Build both collections from the restored Admin snapshot without
+- **Goal:** Build all three collections from the restored Admin snapshot without
   loading all transcript vectors into memory.
 - **Files:** Create `apps/admin/src/services/typesense-watch-search-indexer.ts`,
   `apps/admin/src/services/typesense-watch-search-indexer.test.ts`, and
@@ -96,7 +116,8 @@ UI selection are outside this experiment.
   `apps/admin/src/graphql/queries/watch-search.ts`, and GraphQL resolver tests.
 - **Approach:** Reuse language signal resolution and current query embedding;
   search catalog and transcript aliases concurrently; exact matches outrank
-  metadata and semantic candidates; derive watchability from indexed options;
+  metadata and semantic candidates; derive watchability from target/fallback-
+  filtered availability records fetched beside bounded card hydration;
   degrade cleanly when semantic embedding/retrieval fails; expose a parallel
   optional `MODERN` input mode on the existing query field.
 - **Test scenarios:** French `communion`; exact outranks semantic; semantic-only

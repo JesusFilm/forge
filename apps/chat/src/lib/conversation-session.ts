@@ -162,8 +162,12 @@ export function mergeServerThreads(
  * message id, never replacing: transcript turns the client does not know yet
  * are prepended (they predate the session); existing message objects are kept
  * untouched so an in-flight streamed turn keeps receiving its patches.
- * Replayed turns carry NO engine/grounded/sources metadata (KTD5 — bare text,
- * never a false "Ungrounded" badge). Pure — exported for direct unit coverage.
+ * Replayed turns carry NO engine/grounded metadata (KTD5 — bare text, never a
+ * false "Ungrounded" badge). Since feat-329 they DO carry the attachments the
+ * turn had when it ran: `sources` and `video` are set when the replay wire
+ * supplied them, so the SourcesList and the player return on reload while the
+ * badges stay stripped (R21 — badge stripping, not attachment stripping).
+ * Pure — exported for direct unit coverage.
  */
 export function mergeReplayMessages(
   fetched: HistoryMessage[],
@@ -172,7 +176,13 @@ export function mergeReplayMessages(
   const existingIds = new Set(existing.map((m) => m.id))
   const transcript: Message[] = fetched
     .filter((m) => !existingIds.has(m.id))
-    .map((m) => ({ id: m.id, role: m.role, content: m.text }))
+    .map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.text,
+      ...(m.sources ? { sources: m.sources } : {}),
+      ...(m.video ? { video: m.video } : {}),
+    }))
   return [...transcript, ...existing]
 }
 
