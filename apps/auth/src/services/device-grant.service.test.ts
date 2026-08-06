@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   DEVICE_USER_CODE_FORMAT,
@@ -13,6 +13,7 @@ import {
   pollDeviceCode,
   purgeExpiredDeviceCodes,
   recordUserCodeAttempt,
+  resetDeviceCodePurgeState,
 } from "./device-grant.service"
 
 const now = new Date("2026-08-06T12:00:00.000Z")
@@ -463,6 +464,74 @@ describe("purgeExpiredDeviceCodes", () => {
     ).resolves.toBe(3)
     expect(deleteMany).toHaveBeenCalledWith({
       where: { expiresAt: { lt: now } },
+    })
+  })
+})
+
+describe("expired code cleanup on issuance", () => {
+  beforeEach(() => {
+    resetDeviceCodePurgeState()
+  })
+
+  async function issue(prisma: Record<string, unknown>, at: Date) {
+    return issueDeviceCode(prisma as never, {
+      clientId: "jfp_tv_production",
+      scopes: ["openid"],
+      codeChallenge: "c".repeat(43),
+      codeChallengeMethod: "S256",
+      expiresInMs: 900_000,
+      pollingIntervalMs: 5000,
+      now: at,
+    })
+  }
+
+  it("purges on issuance, so nothing has to be scheduled", async () => {
+    // Without this the table grows for the life of the service: every issuance
+    // writes a row and nothing else ever deletes one.
+    const deleteMany = vi.fn(async (_args: unknown) => ({ count: 4 }))
+    const prisma = createPrismaMock({ deviceCode: { deleteMany } })
+
+    await issue(prisma, now)
+
+    expect(deleteMany).toHaveBeenCalledTimes(1)
+    const where = (
+      deleteMany.mock.calls[0][0] as { where: { expiresAt: { lt: Date } } }
+    ).where
+    // A grace period behind `now`, so a code that expired seconds ago is still
+    // present to explain itself to a late poll.
+    expect(where.expiresAt.lt.getTime()).toBeLessThan(now.getTime())
+  })
+
+  it("does not purge again inside the interval", async () => {
+    const deleteMany = vi.fn(async (_args: unknown) => ({ count: 0 }))
+    const prisma = createPrismaMock({ deviceCode: { deleteMany } })
+
+    await issue(prisma, now)
+    await issue(prisma, new Date(now.getTime() + 60_000))
+    await issue(prisma, new Date(now.getTime() + 120_000))
+
+    expect(deleteMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("purges again once the interval has elapsed", async () => {
+    const deleteMany = vi.fn(async (_args: unknown) => ({ count: 0 }))
+    const prisma = createPrismaMock({ deviceCode: { deleteMany } })
+
+    await issue(prisma, now)
+    await issue(prisma, new Date(now.getTime() + 11 * 60 * 1000))
+
+    expect(deleteMany).toHaveBeenCalledTimes(2)
+  })
+
+  it("still issues a code when cleanup fails", async () => {
+    // A viewer must never be turned away because a housekeeping query failed.
+    const deleteMany = vi.fn(async (_args: unknown) => {
+      throw new Error("deadlock detected")
+    })
+    const prisma = createPrismaMock({ deviceCode: { deleteMany } })
+
+    await expect(issue(prisma, now)).resolves.toMatchObject({
+      userCode: expect.stringMatching(/^[0-9]{10}$/),
     })
   })
 })

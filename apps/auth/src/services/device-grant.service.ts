@@ -114,6 +114,8 @@ export async function issueDeviceCode(
   const expiresAt = new Date(now.getTime() + input.expiresInMs)
   const deviceCode = generateDeviceCode()
 
+  await purgeExpiredDeviceCodesIfDue(prisma, now)
+
   // The user code is short by design, so collisions are possible while codes
   // are live. Retry on the unique-constraint violation rather than pre-checking
   // — a read-then-write would be the same TOCTOU the claim path avoids.
@@ -396,6 +398,46 @@ export async function purgeExpiredDeviceCodes(
     where: { expiresAt: { lt: cutoff } },
   })
   return deleted.count
+}
+
+/**
+ * Cleanup rides on issuance rather than a scheduled job.
+ *
+ * Every issuance writes a row and nothing else ever deletes one, so without this
+ * the table grows for the life of the service. Issuance is the natural place to
+ * pay for it: it is the operation that creates the garbage, it is already a
+ * write, and a service issuing no codes accumulates none.
+ *
+ * The interval guard is per-process, so with several replicas each one purges on
+ * its own schedule. That is harmless — the delete is idempotent and bounded by
+ * the `expires_at` index — and it avoids needing a lock or a scheduler for what
+ * is only housekeeping.
+ *
+ * Failures are swallowed deliberately: a viewer trying to sign in must never be
+ * turned away because a cleanup query had a bad day.
+ */
+const PURGE_INTERVAL_MS = 10 * 60 * 1000
+const PURGE_GRACE_MS = 60 * 60 * 1000
+let lastPurgeAtMs = 0
+
+export function resetDeviceCodePurgeState(): void {
+  lastPurgeAtMs = 0
+}
+
+async function purgeExpiredDeviceCodesIfDue(
+  prisma: AuthPrisma,
+  now: Date,
+): Promise<void> {
+  if (now.getTime() - lastPurgeAtMs < PURGE_INTERVAL_MS) return
+  // Claim the window before awaiting, so concurrent issuances do not all decide
+  // they are due and pile identical deletes onto the same rows.
+  lastPurgeAtMs = now.getTime()
+
+  try {
+    await purgeExpiredDeviceCodes(prisma, { now, olderThanMs: PURGE_GRACE_MS })
+  } catch {
+    // Housekeeping only; never fail an issuance because of it.
+  }
 }
 
 /**
