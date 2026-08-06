@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { cloneElement, isValidElement, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Languages } from "lucide-react"
@@ -12,6 +12,7 @@ import {
 import { languageInventoryPath, tryAsLocaleSlug } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { WatchLanguageInventorySwitcherLanguage } from "@/lib/watch-language-inventory"
+import { englishAssistAttributes } from "./english-assist"
 
 type LanguageCollectionSwitcherProps = {
   className?: string
@@ -87,11 +88,17 @@ export function LanguageCollectionSwitcher({
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-amber-100">
             <Languages className="h-4 w-4" aria-hidden />
           </span>
-          <span className="min-w-0 text-xs font-bold tracking-[0.18em] text-stone-300 uppercase">
+          <span
+            className="min-w-0 text-xs font-bold tracking-[0.18em] text-stone-300 uppercase"
+            {...englishAssistAttributes("labelLanguageCollection")}
+          >
             {t("languageCollection")}
           </span>
         </div>
-        <span className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-xs font-bold text-stone-300">
+        <span
+          className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-xs font-bold text-stone-300"
+          {...englishAssistAttributes("labelItemCount")}
+        >
           {t("itemCount", { count: totalItems })}
         </span>
       </div>
@@ -101,6 +108,11 @@ export function LanguageCollectionSwitcher({
         value={currentSlug}
         onChange={handleLanguageChange}
         placeholder={t("languageCollection")}
+        triggerWrapper={(trigger) =>
+          isValidElement<Record<string, unknown>>(trigger)
+            ? cloneElement(trigger, englishAssistAttributes("chooseLanguage"))
+            : trigger
+        }
       />
     </div>
   )
