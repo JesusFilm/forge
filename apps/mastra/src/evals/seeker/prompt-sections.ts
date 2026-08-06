@@ -2,12 +2,14 @@
  * Seeker eval — the eval-owned line→section mapping over the seeker's system
  * prompt (decision doc §7, "Prompt sections in week one").
  *
- * No named sections exist in production: the prompt is a flat array of lines
- * joined into one block (`SEEKER_SYSTEM_PROMPT_FALLBACK` in
- * `src/mastra/agents/seeker-agent.ts`, Langfuse-managed since feat-272 with
- * the code constant as the byte-identical fallback). This file tags each line
- * with an informal section name so criteria and report rollups can point at
- * the part of the prompt that owns a behaviour.
+ * No independently managed sections exist in production. Langfuse serves the
+ * entire `seeker-system` prompt as one value, with
+ * `SEEKER_SYSTEM_PROMPT_FALLBACK` as its byte-identical code fallback. This
+ * file tags the FALLBACK'S lines with informal section names solely so
+ * criteria and report rollups can point at the behaviour they probe. It is
+ * analysis metadata, never a composition registry or Langfuse fetch boundary.
+ * A managed version that changes line structure is reviewed as one
+ * whole-prompt change; the tags remain heuristic attribution.
  *
  * The mapping is guarded by a DRIFT TEST (`prompt-sections.test.ts`): it
  * hashes the joined prompt and fails — with a pointer to THIS file — whenever

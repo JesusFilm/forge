@@ -133,4 +133,14 @@ describe("spend-guard import order (source pin)", () => {
       code.indexOf('import("../../mastra/agents/seeker-agent")'),
     )
   })
+
+  it("pins every cell to the one whole prompt stamped into run identity", () => {
+    const code = strippedRunLoopSource()
+    // A TTL expiry or label move must not let later cells generate under a
+    // different prompt from the one recorded in identity and transcripts.
+    expect(
+      code.match(/const resolvedPrompt = await langfuse\.getManagedPrompt/g),
+    ).toHaveLength(1)
+    expect(code).toMatch(/instructions:\s*resolvedPrompt\.text/)
+  })
 })

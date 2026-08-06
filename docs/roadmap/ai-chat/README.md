@@ -11,10 +11,10 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 29, 2026)
+## Status (August 7, 2026)
 
-- **Total tickets:** 43
-- ✅ **Complete:** 37
+- **Total tickets:** 44
+- ✅ **Complete:** 38
 - 🟡 **In progress:** 1
 - 🔵 **Not started:** 5
 - 🔴 **Blocked:** 0
@@ -66,3 +66,4 @@ from the main DS Year 1 roadmap.
 | [feat-305](feat-305-chat-healthcheck.md)                           | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1762](https://github.com/JesusFilm/forge/pull/1762)                                                        |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                 | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | ✅ complete    | [#1765](https://github.com/JesusFilm/forge/pull/1765), [#1768](https://github.com/JesusFilm/forge/pull/1768) |
 | [feat-321](feat-321-langfuse-tracing.md)                           | Langfuse tracing for the Seeker agent (stub — decision capture)              | jian wei | P2       | 2026-09-01 | 3    | 🟡 in-progress | —                                                                                                            |
+| [feat-326](feat-326-seeker-eval-whole-prompt-alignment-audit.md)   | Seeker eval whole-prompt alignment audit                                     | jaco     | P1       | 2026-08-07 | 1    | ✅ complete    | [#1856](https://github.com/JesusFilm/forge/pull/1856)                                                        |

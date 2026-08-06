@@ -203,8 +203,10 @@ cat apps/mastra/evals/results/seeker-baseline/score.json | head -40
 #    Expect: runScore = 1.000, zero tool-skips in answers.json.
 
 # 4. (5 min, ~$0.15, needs apps/mastra/.env.local with the eval key) Re-prove
-#    the gate yourself: soften the "Never cite…" line in
-#    src/mastra/agents/seeker-agent.ts (SEEKER_SYSTEM_PROMPT_FALLBACK), then:
+#    the gate against a LOCAL FALLBACK probe: ensure LANGFUSE_* is unset, then
+#    soften the "Never cite…" line in src/mastra/agents/seeker-prompt.ts
+#    (SEEKER_SYSTEM_PROMPT_FALLBACK). Production/candidate label testing instead
+#    changes the ONE whole seeker-system prompt in Langfuse; never split it.
 pnpm --filter @forge/mastra eval:seeker:loop -- --out=eval-runs/probe/answers.json --transcripts=eval-runs/probe/transcripts.json
 pnpm --filter @forge/mastra eval:seeker:judge -- --in=eval-runs/probe/answers.json --out=eval-runs/probe/judged.json
 pnpm --filter @forge/mastra eval:seeker:gate -- --current-dir=eval-runs/probe

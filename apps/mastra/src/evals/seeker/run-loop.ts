@@ -294,9 +294,11 @@ async function main(): Promise<void> {
 
   // Import the production seam ONLY after the key pin above — the agent
   // module's top level evaluates the whole Mastra model-router chain
-  // (finding #13). The instructions stamp resolves through the SAME helper
-  // the agent's own resolver uses, so identity records what the model
-  // actually saw (fallback locally; langfuse + version when configured).
+  // (finding #13). Resolve instructions ONCE through the SAME helper the
+  // agent's own resolver uses, then inject that exact whole prompt into every
+  // cell. This is load-bearing: a run can cross the helper's TTL (or a label
+  // can move) between cells, so resolving independently per fresh agent could
+  // make identity stamp one prompt while later cells generate under another.
   // The prompt constants and section mapping are static imports: they come
   // from the dependency-free `seeker-prompt` leaf, never the agent chain.
   const [
@@ -385,6 +387,7 @@ async function main(): Promise<void> {
         memory: new memoryModule.Memory({
           storage: new storageModule.InMemoryStore(),
         }),
+        instructions: resolvedPrompt.text,
       })
       const { record, transcript } = await runCell({
         agent,
