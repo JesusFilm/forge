@@ -2,6 +2,19 @@ import type {
   TypesenseWatchCatalogDocument,
   TypesenseWatchLocale,
 } from "./typesense-watch-search-schema"
+import { typesenseWatchTokenizerLocale } from "./typesense-watch-search-lexical"
+
+export type TypesenseWatchLexicalLane = "title" | "metadata"
+
+export function watchLexicalQueryFields(
+  locale: string,
+  lane: TypesenseWatchLexicalLane,
+): string[] {
+  const tokenizerLocale = typesenseWatchTokenizerLocale(locale)
+  return tokenizerLocale
+    ? [`${lane}_${tokenizerLocale}`, `${lane}_fallback`]
+    : [`${lane}_fallback`]
+}
 
 export type TypesenseWatchCatalogPreviewDocument = Pick<
   TypesenseWatchCatalogDocument,

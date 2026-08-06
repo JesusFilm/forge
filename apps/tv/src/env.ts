@@ -12,6 +12,7 @@ const _inlined = {
   ddSite: process.env.EXPO_PUBLIC_DATADOG_SITE,
   ddEnv: process.env.EXPO_PUBLIC_DATADOG_ENV,
   ddVersion: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+  profileEnabled: process.env.EXPO_PUBLIC_TV_PROFILE_ENABLED,
 }
 void _inlined
 
@@ -29,6 +30,9 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_SITE: z.string().optional(),
       EXPO_PUBLIC_DATADOG_ENV: z.string().optional(),
       EXPO_PUBLIC_DATADOG_VERSION: z.string().optional(),
+      // Profile/sign-in surface (feat-322) — "1" shows it in release builds;
+      // dev builds always show it. Optional so unprovisioned builds boot.
+      EXPO_PUBLIC_TV_PROFILE_ENABLED: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_GRAPHQL_URL: process.env.EXPO_PUBLIC_GRAPHQL_URL,
@@ -41,6 +45,8 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_SITE: process.env.EXPO_PUBLIC_DATADOG_SITE,
       EXPO_PUBLIC_DATADOG_ENV: process.env.EXPO_PUBLIC_DATADOG_ENV,
       EXPO_PUBLIC_DATADOG_VERSION: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+      EXPO_PUBLIC_TV_PROFILE_ENABLED:
+        process.env.EXPO_PUBLIC_TV_PROFILE_ENABLED,
     },
     isServer: false,
     emptyStringAsUndefined: true,

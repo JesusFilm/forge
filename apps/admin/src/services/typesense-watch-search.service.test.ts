@@ -6,9 +6,12 @@ import type {
   TypesenseSearchRequest,
 } from "./typesense-client"
 import { TypesenseRequestError } from "./typesense-client"
+import { resolveSearchLanguageSignals } from "./search-language-resolution"
+import { buildTypesenseWatchLexicalDocuments } from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
+  TYPESENSE_WATCH_LEXICAL_ALIAS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
@@ -188,69 +191,67 @@ function typesenseFixture({
 
   return {
     multiSearch: vi.fn(async (searches: TypesenseSearchRequest[]) => {
-      if (searches.some((search) => search.group_by != null)) {
+      if (
+        searches.some(
+          (search) => search.collection === TYPESENSE_WATCH_LEXICAL_ALIAS,
+        )
+      ) {
         if (hybridError) throw hybridError
-        const inferredHybrid = [
-          ...lexical.map((document) => ({
-            vectorDistance: undefined,
-            document: {
-              id: `video:${document.id}`,
-              documentKind: "video" as const,
-              videoId: document.id,
-              canonicalVideoId: `core:${document.coreId ?? document.id}`,
-              language: "__catalog__",
-              publiclyVisible: true,
-              titles: document.titles,
-              descriptions: document.descriptions,
-              text: "",
-              startSeconds: null,
-            },
-          })),
-          ...semantic.map((entry, index) => ({
-            vectorDistance: entry.vectorDistance,
-            document: {
-              id: `chunk-${index}`,
-              documentKind: "transcript" as const,
-              videoId: entry.videoId,
-              canonicalVideoId: `core:${
-                catalog.find((document) => document.id === entry.videoId)
-                  ?.coreId ?? entry.videoId
-              }`,
-              language: "fr",
-              publiclyVisible: true,
-              titles: catalog.find((document) => document.id === entry.videoId)
-                ?.titles,
-              text: entry.text,
-              startSeconds: 42,
-            },
-          })),
-        ]
-        const query = String(searches[0]?.q ?? "").toLocaleLowerCase()
-        const entries = [...(hybrid ?? inferredHybrid)].sort((left, right) => {
-          const leftExact = left.document.titles?.some(
-            (title) => title.toLocaleLowerCase() === query,
-          )
-          const rightExact = right.document.titles?.some(
-            (title) => title.toLocaleLowerCase() === query,
-          )
-          return Number(rightExact) - Number(leftExact)
-        })
-        const groups = new Map<string, Array<(typeof entries)[number]>>()
-        for (const entry of entries) {
-          const group = groups.get(entry.document.canonicalVideoId) ?? []
-          group.push(entry)
-          groups.set(entry.document.canonicalVideoId, group)
-        }
+        const inferredSemantic = semantic.map((entry, index) => ({
+          vectorDistance: entry.vectorDistance,
+          document: {
+            id: `chunk-${index}`,
+            documentKind: "transcript" as const,
+            videoId: entry.videoId,
+            canonicalVideoId: `core:${
+              catalog.find((document) => document.id === entry.videoId)
+                ?.coreId ?? entry.videoId
+            }`,
+            language: "fr",
+            publiclyVisible: true,
+            text: entry.text,
+            startSeconds: 42,
+          },
+        }))
+        const semanticEntries = (hybrid ?? inferredSemantic).filter(
+          (entry) =>
+            entry.document.documentKind === "transcript" &&
+            String(entry.document.language) === "fr",
+        )
+        const lexicalDocuments = buildTypesenseWatchLexicalDocuments(lexical)
         return searches.map((request) => {
+          const requestedFilterValues = [
+            ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
+          ].map((match) => match[1])
+          const entries =
+            request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS
+              ? lexicalDocuments
+                  .filter(
+                    (document) =>
+                      requestedFilterValues.length === 0 ||
+                      requestedFilterValues.includes(document.languageIdentity),
+                  )
+                  .map((document) => ({
+                    vectorDistance: undefined,
+                    document,
+                  }))
+              : semanticEntries
+          const groups = new Map<string, Array<(typeof entries)[number]>>()
+          for (const entry of entries) {
+            const group = groups.get(entry.document.canonicalVideoId) ?? []
+            group.push(entry)
+            groups.set(entry.document.canonicalVideoId, group)
+          }
           const groupedDocuments = [...groups.entries()]
-          const offset = Number(request.offset ?? 0)
-          const limit = Number(request.limit ?? groupedDocuments.length)
+          const perPage = Number(request.per_page ?? groupedDocuments.length)
+          const page = Number(request.page ?? 1)
+          const start = (page - 1) * perPage
           const groupLimit = Number(request.group_limit ?? 1)
-          const pageGroups = groupedDocuments.slice(offset, offset + limit)
+          const pageGroups = groupedDocuments.slice(start, start + perPage)
           return {
             found: groupedDocuments.length,
             out_of: groupedDocuments.length,
-            page: 1,
+            page,
             search_time_ms: 2,
             grouped_hits: pageGroups.map(([canonicalVideoId, group]) => ({
               group_key: [canonicalVideoId],
@@ -337,6 +338,154 @@ describe("TypesenseWatchSearchService", () => {
 
   beforeEach(() => vi.clearAllMocks())
 
+  it.each([
+    {
+      name: "Chinese",
+      query: "耶稣",
+      slug: "mandarin-china",
+      bcp47: "zh-Hans",
+      titleFields: "title_zh,title_fallback",
+      metadataFields: "metadata_zh,metadata_fallback",
+    },
+    {
+      name: "Thai",
+      query: "พระเยซู",
+      slug: "thai",
+      bcp47: "th",
+      titleFields: "title_th,title_fallback",
+      metadataFields: "metadata_th,metadata_fallback",
+    },
+    {
+      name: "Filipino",
+      query: "Hesus",
+      slug: "filipino",
+      bcp47: "fil",
+      titleFields: "title_fallback",
+      metadataFields: "metadata_fallback",
+    },
+    {
+      name: "Maori",
+      query: "Ihu",
+      slug: "maori",
+      bcp47: "mi",
+      titleFields: "title_mi,title_fallback",
+      metadataFields: "metadata_mi,metadata_fallback",
+    },
+  ])(
+    "uses locale-aware $name title and metadata fields",
+    async ({ query, slug, bcp47, titleFields, metadataFields }) => {
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+        queryLanguageSlug: slug,
+        queryNamedLanguageSlug: null,
+        targetLanguageSlug: slug,
+        targetLanguageSource: "explicit_target",
+        displayLanguageSlug: slug,
+        displayLanguageBcp47: bcp47,
+        routeLanguageSlug: slug,
+        routeLanguageBcp47: bcp47,
+        currentWatchLanguageSlug: null,
+        acceptLanguage: null,
+        acceptLanguageSlug: null,
+      })
+      const typesense = typesenseFixture({ lexical: [catalogDocument] })
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding) },
+      )
+
+      await service.search({ query, targetLanguageSlug: slug })
+
+      expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            query_by: titleFields,
+            filter_by: expect.stringContaining(`\`slug:${slug}\``),
+          }),
+          expect.objectContaining({
+            query_by: metadataFields,
+            filter_by: expect.stringContaining(
+              `\`locale:${bcp47.toLowerCase()}\``,
+            ),
+          }),
+        ]),
+      )
+    },
+  )
+
+  it("starts query embedding while language resolution is still pending", async () => {
+    type LanguageSignals = Awaited<
+      ReturnType<typeof resolveSearchLanguageSignals>
+    >
+    let resolveLanguage!: (value: LanguageSignals) => void
+    const languagePromise = new Promise<LanguageSignals>((resolve) => {
+      resolveLanguage = resolve
+    })
+    vi.mocked(resolveSearchLanguageSignals).mockReturnValueOnce(languagePromise)
+    const embedder = vi.fn(async () => embedding)
+    const typesense = typesenseFixture({ lexical: [catalogDocument] })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder },
+    )
+
+    const responsePromise = service.search({
+      query: "communion",
+      targetLanguageSlug: "french",
+    })
+    await vi.waitFor(() => expect(embedder).toHaveBeenCalledTimes(1))
+    expect(typesense.multiSearch).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    resolveLanguage({
+      queryLanguageSlug: "french",
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "french",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "french",
+      displayLanguageBcp47: "fr",
+      routeLanguageSlug: "french",
+      routeLanguageBcp47: "fr",
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const response = await responsePromise
+
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(3)
+    const languageLane = response.laneStatuses.find(
+      (lane) => lane.lane === "language_resolution",
+    )
+    const embeddingLane = response.laneStatuses.find(
+      (lane) => lane.lane === "semantic_embedding",
+    )
+    expect(languageLane?.status).toBe("fulfilled")
+    expect(embeddingLane?.elapsedMs).toBeLessThan(languageLane?.elapsedMs ?? 0)
+  })
+
+  it("reuses language context across requests sharing the Prisma client", async () => {
+    const prisma = prismaFixture()
+    const typesense = typesenseFixture({ lexical: [catalogDocument] })
+    const first = new TypesenseWatchSearchService(
+      prisma,
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+    const second = new TypesenseWatchSearchService(
+      prisma,
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    await first.search({ query: "communion", targetLanguageSlug: "french" })
+    await second.search({ query: "JESUS", targetLanguageSlug: "french" })
+
+    expect(prisma.language.findFirst).toHaveBeenCalledTimes(1)
+    expect(prisma.language.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.languageFallback.findMany).toHaveBeenCalledTimes(1)
+  })
+
   it("returns the French communion title and target audio", async () => {
     const service = new TypesenseWatchSearchService(
       prismaFixture(),
@@ -380,6 +529,41 @@ describe("TypesenseWatchSearchService", () => {
     })
 
     expect(response.results[0]?.evidence.kind).toBe("exact_title")
+  })
+
+  it("adds semantic evidence to a lexical candidate instead of discarding it", async () => {
+    const lexicalOnly = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: [catalogDocument],
+        semantic: [],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+    const hybrid = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: [catalogDocument],
+        semantic: [
+          {
+            videoId: catalogDocument.id,
+            text: "The believers shared their lives.",
+            vectorDistance: 0.1,
+          },
+        ],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const [lexicalResponse, hybridResponse] = await Promise.all([
+      lexicalOnly.search({ query: "communion", targetLanguageSlug: "french" }),
+      hybrid.search({ query: "communion", targetLanguageSlug: "french" }),
+    ])
+
+    expect(hybridResponse.results[0]?.id).toBe(catalogDocument.id)
+    expect(hybridResponse.results[0]?.score).toBeGreaterThan(
+      lexicalResponse.results[0]?.score ?? 0,
+    )
   })
 
   it("ranks a whole-title match ahead of broader exact-title matches", async () => {
@@ -458,7 +642,17 @@ describe("TypesenseWatchSearchService", () => {
     const requests = typesense.multiSearch.mock.calls.flatMap(
       ([searches]) => searches,
     )
-    const hybridRequest = requests.find(
+    const titleRequest = requests.find(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        String(request.query_by).startsWith("title_"),
+    )
+    const metadataRequest = requests.find(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        String(request.query_by).startsWith("metadata_"),
+    )
+    const semanticRequest = requests.find(
       (request) =>
         request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
         request.group_by === "canonicalVideoId",
@@ -475,16 +669,25 @@ describe("TypesenseWatchSearchService", () => {
       (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
     )
 
-    expect(hybridRequest).toMatchObject({
-      query_by: "titles,descriptions",
-      query_by_weights: "4,1",
+    expect(titleRequest).toMatchObject({
+      query_by: "title_fr,title_fallback",
+      filter_by: "languageIdentity:=[`slug:french`,`locale:fr`]",
       group_limit: 3,
-      drop_tokens_threshold: 0,
-      rerank_hybrid_matches: false,
+      prioritize_exact_match: true,
+      drop_tokens_threshold: 1,
     })
-    expect(hybridRequest?.vector_query).toContain("k:80, alpha:0.3")
-    expect(hybridRequest?.filter_by).toBe(
-      "publiclyVisible:=true && (documentKind:=video || language:=[`fr`])",
+    expect(metadataRequest).toMatchObject({
+      query_by: "metadata_fr,metadata_fallback",
+      group_limit: 3,
+    })
+    expect(titleRequest).not.toHaveProperty("validate_field_names")
+    expect(semanticRequest?.q).toBe("*")
+    expect(semanticRequest?.vector_query).toContain(
+      "k:80, distance_threshold:0.5",
+    )
+    expect(semanticRequest?.vector_query).not.toContain("alpha:")
+    expect(semanticRequest?.filter_by).toBe(
+      "documentKind:=transcript && publiclyVisible:=true && language:=[`fr`]",
     )
     expect(
       requests.some(
@@ -645,13 +848,15 @@ describe("TypesenseWatchSearchService", () => {
 
     expect(response.results.map((result) => result.id)).toEqual(["video-250"])
     expect(response.hasMore).toBe(true)
-    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual([
-      expect.objectContaining({
-        collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
-        offset: 250,
-        limit: 2,
-      }),
-    ])
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+          page: 2,
+          per_page: 250,
+        }),
+      ]),
+    )
   })
 
   it("returns transcript evidence when metadata has no matching terms", async () => {
@@ -686,7 +891,7 @@ describe("TypesenseWatchSearchService", () => {
       .flatMap(([searches]) => searches)
       .find((search) => search.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS)
     expect(semanticRequest?.filter_by).toBe(
-      "publiclyVisible:=true && (documentKind:=video || language:=[`fr`])",
+      "documentKind:=transcript && publiclyVisible:=true && language:=[`fr`]",
     )
     expect(semanticRequest?.group_by).toBe("canonicalVideoId")
     const semanticCatalogHydration = typesense.multiSearch.mock.calls
@@ -768,15 +973,26 @@ describe("TypesenseWatchSearchService", () => {
       },
     })
     expect(embedder).toHaveBeenCalledTimes(1)
-    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual([
-      expect.objectContaining({
-        collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
-        group_by: "canonicalVideoId",
-        group_limit: 3,
-        filter_by:
-          "publiclyVisible:=true && (documentKind:=video || language:=[`fr`])",
-      }),
-    ])
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+          query_by: "title_fr,title_fallback",
+        }),
+        expect.objectContaining({
+          collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+          query_by: "metadata_fr,metadata_fallback",
+        }),
+        expect.objectContaining({
+          collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+          q: "*",
+          group_by: "canonicalVideoId",
+          group_limit: 3,
+          filter_by:
+            "documentKind:=transcript && publiclyVisible:=true && language:=[`fr`]",
+        }),
+      ]),
+    )
   })
 
   it("chooses the best watchable sibling within a canonical group", async () => {
@@ -797,7 +1013,7 @@ describe("TypesenseWatchSearchService", () => {
       slug: "playable-edition",
     }
     const typesense = typesenseFixture({
-      lexical: [],
+      lexical: [catalogDocument],
       catalog: [unavailable, playable],
       hybrid: [
         {
@@ -917,22 +1133,9 @@ describe("TypesenseWatchSearchService", () => {
 
   it("reports distinct native metadata and semantic group contributions", async () => {
     const typesense = typesenseFixture({
-      lexical: [],
+      lexical: [catalogDocument],
       catalog: [catalogDocument],
       hybrid: [
-        {
-          document: {
-            id: "video-anchor",
-            documentKind: "video",
-            videoId: catalogDocument.id,
-            canonicalVideoId: "core:communion",
-            language: "__catalog__",
-            publiclyVisible: true,
-            titles: ["Unrelated metadata"],
-            text: "",
-            startSeconds: null,
-          },
-        },
         {
           vectorDistance: 0.2,
           document: {
@@ -1138,7 +1341,16 @@ describe("TypesenseWatchSearchService", () => {
     expect(embedder).toHaveBeenCalledTimes(1)
     expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual([
       expect.objectContaining({
+        collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
         q: "communion",
+        query_by: "title_fr,title_fallback",
+        per_page: 100,
+        page: 1,
+      }),
+      expect.objectContaining({
+        collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+        q: "communion",
+        query_by: "metadata_fr,metadata_fallback",
         per_page: 100,
         page: 1,
       }),
@@ -1179,7 +1391,7 @@ describe("TypesenseWatchSearchService", () => {
     expect(retrievalLane).toEqual(
       expect.objectContaining({
         status: "degraded",
-        reason: "native_hybrid_fallback:Field canonicalVideoId not found",
+        reason: "lexical_projection_fallback:Field canonicalVideoId not found",
       }),
     )
     expect(retrievalLane?.startedOffsetMs).toBeGreaterThanOrEqual(

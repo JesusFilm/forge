@@ -7,17 +7,31 @@ import {
 } from "react"
 import type { ReactNode } from "react"
 
+import type { WatchEventIdentity } from "../lib/watchEvents/watchEvents"
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type VideoPlayerState = {
   currentUrl: string | null
   currentTitle: string | null
   currentSubtitle: string | null
+  /** What is playing, for anonymous watch-event capture (feat-322). Call
+   *  sites without admin identity (trailers, experience cards) omit it and
+   *  no event is recorded — mirrors web recording on watch pages only. */
+  currentIdentity: WatchEventIdentity | null
+  /** Continue Watching resume point for this playback, or null. */
+  currentStartAtSeconds: number | null
   isVisible: boolean
 }
 
 type VideoPlayerContextValue = {
-  playVideo: (streamingUrl: string, title?: string, subtitle?: string) => void
+  playVideo: (
+    streamingUrl: string,
+    title?: string,
+    subtitle?: string,
+    identity?: WatchEventIdentity,
+    startAtSeconds?: number,
+  ) => void
   dismissVideo: () => void
   state: VideoPlayerState
   /** Showcase Mode holds the app's only decode slot while it runs (KTD-1). Kept out
@@ -35,6 +49,8 @@ const INITIAL_STATE: VideoPlayerState = {
   currentUrl: null,
   currentTitle: null,
   currentSubtitle: null,
+  currentIdentity: null,
+  currentStartAtSeconds: null,
   isVisible: false,
 }
 
@@ -45,11 +61,20 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const [decoderClaimed, setDecoderClaimed] = useState(false)
 
   const playVideo = useCallback(
-    (streamingUrl: string, title?: string, subtitle?: string) => {
+    (
+      streamingUrl: string,
+      title?: string,
+      subtitle?: string,
+      identity?: WatchEventIdentity,
+      startAtSeconds?: number,
+    ) => {
       setState({
         currentUrl: streamingUrl,
         currentTitle: title ?? null,
         currentSubtitle: subtitle ?? null,
+        currentIdentity: identity ?? null,
+        currentStartAtSeconds:
+          startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
         isVisible: true,
       })
     },

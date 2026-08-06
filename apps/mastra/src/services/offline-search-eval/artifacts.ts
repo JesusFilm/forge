@@ -13,7 +13,7 @@ import {
 } from "./types"
 
 const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
-const MAX_BASELINE_CASES = 100
+const MAX_BASELINE_CASES = 150
 const MAX_RESULT_COUNT = 50
 const MAX_SAFE_TEXT = 1024
 const MAX_TAGS = 20
@@ -35,6 +35,8 @@ const SearchEvalResultSchema = z
     label: z.string().nullable(),
     durationSeconds: z.number().nullable(),
     childCount: z.number().nullable(),
+    canonicalVideoId: z.string().max(128).optional(),
+    languageSlug: z.string().max(128).nullable().optional(),
   })
   .strict()
 
