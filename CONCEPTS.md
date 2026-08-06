@@ -70,6 +70,11 @@ while a Dub's Core ID is Core's identifier for that specific language variant.
 
 A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their Episodes, films and their Chapters, and "Up Next" siblings are all formed — so a parent/child link alone does not say whether the parent is a container.
 
+A parent/child link may carry a canonical playback position. The position
+belongs to the relationship, not to the child Video, and remains the ordering
+authority when a viewer can see only a filtered subset. A link without a
+position is unsequenced.
+
 ### Dub
 
 One audio-language variant of a Video — the unit the watch screen's language picker selects (a popular title can have thousands of Dubs). A Dub carries its own playable stream and its own set of downloadable renditions, and points at the Video Edition whose subtitle tracks apply to it.
