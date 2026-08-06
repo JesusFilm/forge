@@ -6,15 +6,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { schema } from "@/graphql/schema"
 
-const { recordWatchSearchTraceSafelyMock } = vi.hoisted(() => ({
-  recordWatchSearchTraceSafelyMock: vi.fn(),
+const { enqueueWatchSearchTraceMock } = vi.hoisted(() => ({
+  enqueueWatchSearchTraceMock: vi.fn(),
 }))
 
 const searchMock = vi.fn()
 const typesenseSearchMock = vi.fn()
 
 vi.mock("@/services/search-trace.service", () => ({
-  recordWatchSearchTraceSafely: recordWatchSearchTraceSafelyMock,
+  enqueueWatchSearchTrace: enqueueWatchSearchTraceMock,
 }))
 
 type ResolverArgs = {
@@ -73,13 +73,7 @@ async function invoke(
 
 beforeEach(() => {
   vi.clearAllMocks()
-  recordWatchSearchTraceSafelyMock.mockResolvedValue({
-    ok: true,
-    timedOut: false,
-    aggregateStored: true,
-    rawStored: true,
-    rawCaptureDisabled: false,
-  })
+  enqueueWatchSearchTraceMock.mockReturnValue(true)
   searchMock.mockResolvedValue({
     query: "jesus",
     results: [],
@@ -160,7 +154,7 @@ describe("watchSearch mode routing", () => {
 
     const result = await invoke({ input })
 
-    expect(recordWatchSearchTraceSafelyMock).toHaveBeenCalledWith(
+    expect(enqueueWatchSearchTraceMock).toHaveBeenCalledWith(
       expect.objectContaining({ input, response: result }),
       expect.anything(),
     )
@@ -211,7 +205,7 @@ describe("watchSearch resolver", () => {
 
     const result = await invoke({ input })
 
-    expect(recordWatchSearchTraceSafelyMock).toHaveBeenCalledWith(
+    expect(enqueueWatchSearchTraceMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input,
         response: result,
@@ -225,10 +219,8 @@ describe("watchSearch resolver", () => {
     )
   })
 
-  it("keeps the search response unchanged when trace recording fails", async () => {
-    recordWatchSearchTraceSafelyMock.mockRejectedValueOnce(
-      new Error("trace unavailable"),
-    )
+  it("keeps the search response unchanged when the trace queue is full", async () => {
+    enqueueWatchSearchTraceMock.mockReturnValueOnce(false)
 
     const result = await invoke({ input: { query: "jesus" } })
 

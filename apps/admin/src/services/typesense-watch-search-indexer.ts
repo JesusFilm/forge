@@ -4,6 +4,7 @@ import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
   buildTypesenseWatchLexicalDocuments,
   estimateTypesenseKeywordMemory,
+  typesenseWatchTokenizerLocales,
 } from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -232,7 +233,12 @@ export async function buildCatalogDocuments(
             title: { not: null },
           },
           orderBy: { id: "asc" },
-          select: { locale: true, title: true, description: true },
+          select: {
+            locale: true,
+            languageSlug: true,
+            title: true,
+            description: true,
+          },
         },
         dubs: {
           where: {
@@ -281,6 +287,7 @@ export async function buildCatalogDocuments(
         ? [
             {
               locale: locale.locale,
+              languageSlug: locale.languageSlug,
               title: locale.title,
               description: locale.description,
             },
@@ -458,7 +465,6 @@ export async function rebuildTypesenseWatchSearchIndex({
   }
   const catalogSchema = watchCatalogCollectionSchema(buildId)
   const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
-  const lexicalSchema = watchLexicalCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
   const [
     existingCollections,
@@ -488,12 +494,20 @@ export async function rebuildTypesenseWatchSearchIndex({
         ),
       )
     : true
+  const catalog = await buildCatalogDocuments(prisma)
+  const availability = buildAvailabilityDocuments(catalog)
+  const lexical = buildTypesenseWatchLexicalDocuments(catalog)
+  const lexicalSchema = watchLexicalCollectionSchema(
+    buildId,
+    typesenseWatchTokenizerLocales(lexical),
+  )
+  const keywordMemory = estimateTypesenseKeywordMemory(lexical)
   let catalogDocuments = 0
   let availabilityDocuments = 0
   let lexicalDocuments = 0
-  let lexicalSearchableBytes = 0
-  let estimatedKeywordMemoryLowBytes = 0
-  let estimatedKeywordMemoryHighBytes = 0
+  const lexicalSearchableBytes = keywordMemory.searchableBytes
+  const estimatedKeywordMemoryLowBytes = keywordMemory.estimatedRamLowBytes
+  const estimatedKeywordMemoryHighBytes = keywordMemory.estimatedRamHighBytes
   const videoDocuments = 0
   let transcriptDocuments = 0
   let publicTranscriptDocuments = 0
@@ -532,13 +546,6 @@ export async function rebuildTypesenseWatchSearchIndex({
     if (!transcriptReused) {
       await typesense.createCollection(transcriptSchema)
     }
-    const catalog = await buildCatalogDocuments(prisma)
-    const availability = buildAvailabilityDocuments(catalog)
-    const lexical = buildTypesenseWatchLexicalDocuments(catalog)
-    const keywordMemory = estimateTypesenseKeywordMemory(lexical)
-    lexicalSearchableBytes = keywordMemory.searchableBytes
-    estimatedKeywordMemoryLowBytes = keywordMemory.estimatedRamLowBytes
-    estimatedKeywordMemoryHighBytes = keywordMemory.estimatedRamHighBytes
     for (let index = 0; index < catalog.length; index += batchSize) {
       const batch = catalog.slice(index, index + batchSize)
       await typesense.importDocuments(catalogSchema.name, batch)

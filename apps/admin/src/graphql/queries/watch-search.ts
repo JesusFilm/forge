@@ -10,7 +10,7 @@ import type {
   WatchSearchResponse,
   WatchSearchResult,
 } from "@/services/watch-search.service"
-import { recordWatchSearchTraceSafely } from "@/services/search-trace.service"
+import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
 
 const WatchSearchResultTypeEnum = builder.enumType("WatchSearchResultType", {
@@ -283,7 +283,7 @@ builder.queryFields((t) => ({
           : ctx.services.watchSearch
       if (!service) throw new TypesenseWatchSearchUnavailableError()
       const response = await service.search(input)
-      await recordWatchSearchTraceSafely(
+      enqueueWatchSearchTrace(
         {
           input,
           response,
@@ -291,7 +291,7 @@ builder.queryFields((t) => ({
           completedAt: new Date(),
         },
         ctx.prisma,
-      ).catch(() => {})
+      )
       return response
     },
   }),

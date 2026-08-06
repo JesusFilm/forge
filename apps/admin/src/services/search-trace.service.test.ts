@@ -6,9 +6,11 @@ const envMock = vi.hoisted(() => ({
     NODE_ENV: "test" as "test" | "development" | "production" | undefined,
   },
 }))
+const afterMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/config/env", () => envMock)
 vi.mock("@/db/client", () => ({ prisma: {} }))
+vi.mock("next/server", () => ({ after: afterMock }))
 vi.mock("@/services/search-trace-retention.service", () => ({
   purgeExpiredSearchTraces: vi.fn(async () => ({
     purgedCount: 0,
@@ -36,6 +38,7 @@ import {
 } from "@/services/search-trace-retention.service"
 import {
   classifyLatencyBucket,
+  enqueueWatchSearchTrace,
   recordAdminVideoLibrarySearchTraceSafely,
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -91,6 +94,49 @@ describe("search trace service", () => {
     expect(classifyLatencyBucket(100)).toBe("lt_250ms")
     expect(classifyLatencyBucket(249)).toBe("lt_250ms")
     expect(classifyLatencyBucket(2500)).toBe("gte_2500ms")
+  })
+
+  it("registers queued Watch traces with the response lifecycle", async () => {
+    const prisma = buildPrisma()
+
+    expect(
+      enqueueWatchSearchTrace(
+        {
+          input: { query: "Jesus", targetLanguageSlug: "english" },
+          response: {
+            query: "Jesus",
+            requestId: "watch_req_after_123",
+            searchMode: "watch-search-typesense",
+            degraded: false,
+            latencyMs: 80,
+            hasMore: false,
+            nextOffset: 20,
+            languageInterpretation: {
+              queryLanguageSlug: "english",
+              queryNamedLanguageSlug: null,
+              targetLanguageSlug: "english",
+              targetLanguageSource: "explicit_target",
+              displayLanguageSlug: "english",
+              routeLanguageSlug: null,
+              currentWatchLanguageSlug: null,
+              acceptLanguage: null,
+              acceptLanguageSlug: null,
+            },
+            laneStatuses: [],
+            results: [],
+          },
+          startedAt: new Date("2026-05-01T00:00:00.000Z"),
+          completedAt: new Date("2026-05-01T00:00:00.080Z"),
+          now: new Date("2026-05-01T00:00:00.080Z"),
+        },
+        prisma as unknown as Parameters<typeof enqueueWatchSearchTrace>[1],
+      ),
+    ).toBe(true)
+
+    const lifecycleCallback = afterMock.mock.calls[0]?.[0]
+    expect(lifecycleCallback).toBeTypeOf("function")
+    await lifecycleCallback?.()
+    expect(prisma.searchTrace.create).toHaveBeenCalledOnce()
   })
 
   it("stores a raw trace with 29-day expiry and a query-free aggregate", async () => {
