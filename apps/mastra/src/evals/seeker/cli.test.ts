@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { describe, expect, it } from "vitest"
@@ -37,13 +40,12 @@ describe("loadFixtures — the ONE fail-closed loader (decision 2026-08-04 #9)",
   })
 
   it("throws when the file is valid JSON of the wrong kind", async () => {
-    await expect(
-      loadFixtures(
-        fileURLToPath(
-          new URL("./reference-runs/answers-injected.json", import.meta.url),
-        ),
-      ),
-    ).rejects.toThrow(/not a chat-eval RAG fixture file/)
+    const dir = await mkdtemp(join(tmpdir(), "seeker-cli-test-"))
+    const wrongKind = join(dir, "wrong-kind.json")
+    await writeFile(wrongKind, JSON.stringify({ kind: "something-else" }))
+    await expect(loadFixtures(wrongKind)).rejects.toThrow(
+      /not a chat-eval RAG fixture file/,
+    )
   })
 
   it("loads the committed fixture file", async () => {

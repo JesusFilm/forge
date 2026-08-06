@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs"
-
 import { describe, expect, it } from "vitest"
 
 import {
@@ -230,39 +228,6 @@ describe("legacy answer-run coercion (reference-runs compatibility)", () => {
       /not a seeker-eval answers file/,
     )
     expect(() => coerceAnswerRun(null)).toThrow(/not an answers file/)
-  })
-
-  it("parses the COMMITTED reference answers file the repeatability gate replays", () => {
-    // Real-fixture contract test (mocked-shape-vs-real-contract discipline):
-    // the judge-repeatability milestone replays this exact committed file, so
-    // its parseability through the legacy path is load-bearing.
-    const raw = JSON.parse(
-      readFileSync(
-        new URL("reference-runs/answers-injected.json", import.meta.url),
-        "utf8",
-      ),
-    ) as unknown
-    const run = coerceAnswerRun(raw)
-    expect(run.answers).toHaveLength(18)
-    expect(run.identity.retrieval).toEqual({
-      mode: "fixtures",
-      corpusSha256:
-        "4909d1b97c9b065ff79d8da0f71907c4259e0d1b96a2b8cabfa73578f7a4fd49",
-      topK: 5,
-    })
-    // Every legacy question id must still exist in the current set — the
-    // judge grades them with the CURRENT criteria.
-    const currentIds = new Set([
-      "q-suffering",
-      "q-grief-father",
-      "q-trinity",
-      "q-living-together",
-      "q-python-pdf",
-      "q-islam-jesus",
-    ])
-    for (const id of run.identity.questionIds) {
-      expect(currentIds.has(id)).toBe(true)
-    }
   })
 })
 

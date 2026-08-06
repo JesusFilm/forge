@@ -25,8 +25,8 @@
  *
  *   pnpm --filter @forge/mastra eval:seeker:judge
  *   pnpm --filter @forge/mastra eval:seeker:judge -- \
- *     --in=apps/mastra/src/evals/seeker/reference-runs/answers-injected.json \
- *     --out=/tmp/judged-reference.json
+ *     --in=apps/mastra/eval-runs/seeker/answers.json \
+ *     --out=/tmp/judged.json
  */
 import { readFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
