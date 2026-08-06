@@ -8,6 +8,8 @@ import { TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 
 const DANGER = "#ef4444"
+/** Placeholder until the team names a deletion-support address. */
+const SUPPORT_EMAIL = "help@jesusfilm.org"
 
 type FlowState =
   | { phase: "idle" }
@@ -130,9 +132,12 @@ export function DeleteAccountFlow() {
         <>
           <View style={styles.noticeRow}>
             <Ionicons name="warning" size={18} color="#fbbf24" />
+            {/* Strict deletion aborts on any failed side effect, so this
+                really does mean nothing changed — and a retry may not clear
+                it, which is why support is named here. */}
             <Text style={styles.panelBody}>
               Deleting your account failed — nothing was changed. Please try
-              again.
+              again. If it keeps failing, contact {SUPPORT_EMAIL}.
             </Text>
           </View>
           <View style={styles.actionRow}>

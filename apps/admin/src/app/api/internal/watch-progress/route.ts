@@ -27,6 +27,14 @@ const upsertSchema = z.object({
 
 const deleteSchema = z.object({
   userId: z.string().min(1),
+  /**
+   * Which caller erased, since apps/auth (account deletion) and apps/web (a
+   * user clearing their own history) hit this route with otherwise identical
+   * bodies. Optional so web's existing call keeps working; anything that must
+   * treat a deletion differently — a tombstone, say — keys on this, never on
+   * "DELETE was called".
+   */
+  reason: z.enum(["account-deleted", "history-cleared"]).optional(),
 })
 
 function unauthorized() {
@@ -95,6 +103,9 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   // the progress record and the watch-event analytics log (R5).
   const result = await deleteWatchProgressForUser(parsed.data.userId)
   const events = await deleteWatchEventsForUser(prisma, parsed.data.userId)
+  console.warn(
+    `[watch-progress] event=erasure reason=${parsed.data.reason ?? "unspecified"} progress=${result.deletedCount} events=${events.deletedCount}`,
+  )
   return NextResponse.json({
     ...result,
     deletedWatchEventCount: events.deletedCount,

@@ -336,7 +336,9 @@ describe("mobile login configuration", () => {
       options.user.deleteUser?.sendDeleteAccountVerification,
     ).toBeUndefined()
     expect(options.user.deleteUser?.beforeDelete).toBeTypeOf("function")
-    expect(options.user.deleteUser?.afterDelete).toBeTypeOf("function")
+    // No afterDelete: every side effect runs before the row is deleted, so a
+    // failure can still abort. A post-delete hook could only log.
+    expect(options.user.deleteUser?.afterDelete).toBeUndefined()
   })
 
   it("declares the clientKind session field without client input", async () => {

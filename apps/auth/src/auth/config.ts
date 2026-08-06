@@ -221,10 +221,12 @@ export const auth = betterAuth({
     // No mailer exists platform-wide, so deletion verifies intent via a
     // fresh session (SSO re-auth in the app) instead of a verification
     // email — auth-owner direction, 2026-08-04.
+    //
+    // Every side effect is a beforeDelete: a failure there aborts with the
+    // account intact, which an afterDelete cannot do — see the service.
     deleteUser: {
       enabled: true,
       beforeDelete: accountDeletionHooks.beforeDelete,
-      afterDelete: accountDeletionHooks.afterDelete,
     },
   },
   databaseHooks: {
