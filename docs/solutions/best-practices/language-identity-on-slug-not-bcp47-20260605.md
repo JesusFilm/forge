@@ -1,6 +1,7 @@
 ---
 title: "Key language identity on the unique slug, not BCP-47"
 date: "2026-06-05"
+last_updated: "2026-08-06"
 category: "best-practices"
 module: "apps/mobile"
 problem_type: "best_practice"
@@ -11,6 +12,7 @@ applies_when:
   - "Matching a stored language preference against another item's available language options"
   - "Building any cross-content language identity key in apps/mobile, apps/web, or apps/tv"
   - "Tempted to compare or dedupe languages by BCP-47 tag (full or prefix)"
+  - "Building a multilingual search index whose locale fields control tokenization"
 symptoms:
   - "Picking Korean dub re-selected Kurmanji Standard on re-entry (prefix collision ko vs ko-kmr)"
   - "Picking plain English re-selected English North American Indigenous (en vs en-nai)"
@@ -21,6 +23,7 @@ related_components:
   - "apps/web"
   - "apps/tv"
   - "watch-experience"
+  - "apps/admin"
 tags:
   - "language"
   - "bcp47"
@@ -29,6 +32,7 @@ tags:
   - "mobile"
   - "watch"
   - "identity"
+  - "typesense"
 ---
 
 # Key language identity on the unique slug, not BCP-47
@@ -88,6 +92,35 @@ export function resolveDefaultSlug(
 
 The option list carries `languageSlug` alongside the per-video variant `slug`, so resolution matches on identity but returns the variant slug the player needs. The preference is **soft**: when no option matches the stored slug (the video lacks that language), resolution falls through the locale → primary → English → first chain, so it still defaults sanely.
 
+The same boundary applies to multilingual serving indexes. A locale-aware
+tokenizer and a language-identity filter solve different problems:
+
+- Key and facet each localized search document by the exact Forge language
+  slug, because `Language.slug` is unique while `Language.bcp47` is not
+  (`apps/admin/prisma/schema.prisma:806-809`).
+- Use the BCP-47 base only to choose the Typesense field tokenizer. The Watch
+  lexical projection derives any valid two-letter field dynamically and puts
+  longer or private tags in generic fallback fields
+  (`apps/admin/src/services/typesense-watch-search-lexical.ts:49-58` and
+  `:129-133`).
+- When a legacy localization has no slug, use one validated, normalized locale
+  identity as a compatibility fallback. Reject a row that has neither a safe
+  slug nor a safe locale instead of importing an unfilterable document
+  (`apps/admin/src/services/typesense-watch-search-lexical.ts:61-74` and
+  `:104-111`).
+- Keep `languageIdentity` faceted and require every lexical request to filter
+  it before canonical-video grouping
+  (`apps/admin/src/services/typesense-watch-search-schema.ts:133-139` and
+  `apps/admin/src/services/typesense-watch-search.service.ts:298-332`).
+
+Do not put the slug into Typesense's `locale` schema option. The slug identifies
+the Forge Language; the locale option configures text processing. A query may
+use both `slug:french` and `locale:fr` during a compatibility window, but a
+slug-backed document carries only the slug identity. This prevents two distinct
+Languages that share `fr`, `ko`, or another BCP-47 label from entering the same
+lexical candidate pool
+(`apps/admin/src/services/typesense-watch-search.service.ts:984-1014`).
+
 ## Why This Matters
 
 - **`languageSlug` is the stable, unique language-entity identifier** (`"korean"`, `"kurmanji-standard"`, `"english-north-american-indigenous"`). One language → one slug, globally, across all content. Exact equality on it cannot select a sibling.
@@ -99,6 +132,10 @@ This is the **third recurrence** of the bcp47-vs-slug identity bug shape on the 
 ## When to Apply
 
 Any language picker or cross-content language preference (mobile, web, tv): the moment a language choice is stored once and re-applied against a _different_ item's option list, key it on the unique language-entity slug and match exactly. Reserve bcp47/locale-prefix matching for best-effort-from-device-locale fallbacks.
+
+Also apply this rule when projecting localized titles or descriptions into a
+search engine. Language identity controls document IDs and filters; BCP-47
+controls tokenizer selection and request negotiation.
 
 ## Examples
 
@@ -122,3 +159,4 @@ The deliberate ordering plus the slug/prefix disagreement is the load-bearing gu
 - `../logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md` — sibling symptom (watch page shows wrong language), distinct cause; note its selection chain still includes a bcp47 match step, which exact-slug matching should gate before.
 - `../best-practices/mobile-video-detail-page-patterns-20260527.md` — same mobile surface; documents the expo-video language _switch_ mechanism. This doc refines how the active language is _identified_.
 - `../design-patterns/lean-bulk-lazy-per-item-graphql-fetch-20260604.md` — same files (`WatchSessionProvider.tsx`, `normalizeVideo.ts`), orthogonal concern (payload/over-fetch).
+- `precomputed-hybrid-search-serving-index-20260803.md` — applies the identity/tokenization split to the Typesense Watch Search serving projection while keeping transcript embeddings separate.

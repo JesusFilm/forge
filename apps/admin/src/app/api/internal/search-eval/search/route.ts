@@ -4,7 +4,7 @@ import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isValidSearchTraceSamplingBearer } from "@/auth/search-trace-bearer"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
-import { recordWatchSearchTraceSafely } from "@/services/search-trace.service"
+import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import {
   createTypesenseWatchSearchService,
   TypesenseWatchSearchUnavailableError,
@@ -139,7 +139,7 @@ export async function POST(request: Request): Promise<Response> {
         : new WatchSearchService(prisma)
     if (service == null) throw new TypesenseWatchSearchUnavailableError()
     const response = await service.search(input)
-    await recordWatchSearchTraceSafely(
+    enqueueWatchSearchTrace(
       {
         input,
         response,
@@ -147,7 +147,7 @@ export async function POST(request: Request): Promise<Response> {
         completedAt: new Date(),
       },
       prisma,
-    ).catch(() => undefined)
+    )
 
     const videoIds = response.results
       .filter((result) => result.type === "video")
