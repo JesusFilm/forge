@@ -65,7 +65,7 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns its gql.tada introspection and codegen artifact.
 
 - `packages/admin-graphql` exposes `adminGraphql()` + `AdminFragmentOf`/`AdminResultOf`/`AdminVariablesOf` type aliases + `readFragment`. SDL-only consumption — never imports from `apps/admin/src/domain/*` at runtime (sidesteps the tsx-ESM trap).
-- Operations (queries, mutations, fragments) are defined in the consuming apps, never in the client packages. Web's operations live in `apps/web/src/lib/content.ts`, `search.ts`, `recommendations.ts`, `demo-search.ts`, and the fragment files in `apps/web/src/lib/fragments/`. The shared `WatchExperience` root composition is re-exported from `@forge/admin-graphql/fragments`.
+- Operations (queries, mutations, fragments) are defined in the consuming apps by default. A contract shared by more than one runtime path may live under `@forge/admin-graphql/operations` so browser-direct and server callers cannot drift. Web's app-owned operations live in `apps/web/src/lib/content.ts`, `search.ts`, `recommendations.ts`, `demo-search.ts`, and the fragment files in `apps/web/src/lib/fragments/`. Shared Watch composition is re-exported from `@forge/admin-graphql/fragments`.
 - After any schema change on EITHER side: run that package's codegen to regenerate the introspection `.d.ts`. CI has separate drift jobs (`graphql-generate`, `admin-graphql-generate`, `admin-schema-drift`) that fail if you forget.
 
 ### Next.js (apps/web)

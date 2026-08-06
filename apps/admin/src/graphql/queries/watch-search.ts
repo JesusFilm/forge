@@ -1,4 +1,5 @@
 import { builder } from "@/graphql/builder"
+import { env } from "@/config/env"
 import type {
   WatchSearchAction,
   WatchSearchAvailability,
@@ -13,6 +14,54 @@ import type {
 import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
 import { enqueueWatchSearchShadow } from "@/services/watch-search-shadow.service"
+
+type WatchSearchRequestContext = {
+  request: Request
+  user: { role: string; fleet?: boolean } | null
+}
+
+type WatchSearchWebRoutingPolicy = {
+  primaryMode: "DEFAULT" | "MODERN"
+  defaultShadowEnabled: boolean
+}
+
+function isCanonicalWebBrowserRequest(ctx: WatchSearchRequestContext): boolean {
+  return (
+    ctx.user == null &&
+    ctx.request.headers.get("origin") === env.WEB_CANONICAL_ORIGIN
+  )
+}
+
+export function resolveWatchSearchInputForRequest(
+  input: WatchSearchServiceInput,
+  ctx: WatchSearchRequestContext,
+  policy: WatchSearchWebRoutingPolicy = {
+    primaryMode: env.WATCH_SEARCH_PRIMARY_MODE,
+    defaultShadowEnabled: env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+  },
+): WatchSearchServiceInput {
+  if (!isCanonicalWebBrowserRequest(ctx)) return input
+
+  const mode = policy.primaryMode === "MODERN" ? "modern" : "default"
+  return {
+    ...input,
+    mode,
+    shadowMode:
+      mode === "modern" && policy.defaultShadowEnabled ? "default" : undefined,
+  }
+}
+
+function isWebShadowRequest(ctx: WatchSearchRequestContext): boolean {
+  if (ctx.user?.role === "CONSUMER_BEARER" && ctx.user.fleet !== true) {
+    return true
+  }
+
+  // Public Watch searches run directly from the browser to avoid another Web
+  // server hop. Origin is only a soft surface discriminator, not an auth
+  // boundary; the shadow queue's concurrency and capacity limits contain the
+  // extra work even when a non-browser caller spoofs this header.
+  return isCanonicalWebBrowserRequest(ctx)
+}
 
 const WatchSearchResultTypeEnum = builder.enumType("WatchSearchResultType", {
   values: {
@@ -282,7 +331,8 @@ builder.queryFields((t) => ({
       input: t.arg({ type: WatchSearchInput, required: true }),
     },
     resolve: async (_root, args, ctx) => {
-      const input = args.input as WatchSearchServiceInput
+      const requestedInput = args.input as WatchSearchServiceInput
+      const input = resolveWatchSearchInputForRequest(requestedInput, ctx)
       const startedAt = new Date()
       const service =
         input.mode === "modern"
@@ -303,8 +353,7 @@ builder.queryFields((t) => ({
       if (
         input.mode === "modern" &&
         input.shadowMode === "default" &&
-        ctx.user?.role === "CONSUMER_BEARER" &&
-        ctx.user.fleet !== true
+        isWebShadowRequest(ctx)
       ) {
         enqueueWatchSearchShadow({
           input,

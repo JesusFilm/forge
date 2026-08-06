@@ -2,8 +2,9 @@
 
 This report evaluates the parallel `MODERN` Watch Search backend and defines a
 reversible frontend promotion. The GraphQL compatibility default remains the
-PostgreSQL `DEFAULT` backend; production Web explicitly selects `MODERN` and
-requests a bounded `DEFAULT` shadow after the rollout evidence below passes.
+PostgreSQL `DEFAULT` backend. The production browser omits mode selection;
+Admin recognizes the canonical Web origin and applies `MODERN` plus a bounded
+`DEFAULT` shadow on every request after the rollout evidence below passes.
 Admin remains the public search gateway and owns language interpretation,
 query embeddings, visibility, watchability, analytics, degradation, and the
 GraphQL contract. Typesense is a private serving index for lexical and semantic
@@ -31,12 +32,14 @@ direct production mutation from a workstation. The evidence is:
    The reviewed qrel set is still empty, so this supports guarded promotion and
    shadow observation, not declaration of a new absolute relevance baseline.
 
-Production Web must select `MODERN` explicitly rather than changing the public
-GraphQL compatibility default. Omitted mode and `DEFAULT` continue to use
-PostgreSQL. Do not expose Typesense directly to Web or ship a write/admin key to
-a browser. Local and test Web processes retain `DEFAULT`. Production-mode
-builds, including deployed previews, select MODERN unless their environment
-explicitly sets `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`.
+Production Web must reach `MODERN` through Admin's canonical-browser policy
+rather than by changing the public GraphQL compatibility default. Omitted mode
+continues to mean PostgreSQL `DEFAULT` for every noncanonical caller. The
+browser receives neither a Typesense endpoint nor a write/admin key. Local,
+preview, API, AI-agent, and other callers whose `Origin` is not the canonical
+Web origin retain the omitted-mode `DEFAULT` behavior. Admin defaults canonical
+production Web requests to MODERN unless its service environment explicitly
+sets `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`.
 
 ## Comparison And Corpus Status
 
@@ -479,24 +482,31 @@ Monitor and page on:
 
 ## Rollout and Rollback
 
-1. Merge the application changes through the normal PR process. Production Web
-   then explicitly sends `mode: MODERN`; local/test Web keeps `DEFAULT`. The
-   GraphQL omitted-mode behavior does not change.
-2. While MODERN is primary, Web also sends `shadowMode: DEFAULT`. Admin honors
-   that field only for its non-fleet Web consumer bearer, returns the MODERN
-   response, and schedules DEFAULT through `after()` with concurrency 1 and a
-   capacity of 64 per Admin process. Saturation and failures are logged but
-   cannot change or delay the primary response.
+1. Merge the application changes through the normal PR process. The production
+   browser continues to omit `mode` and `shadowMode`. Admin recognizes an
+   anonymous request whose `Origin` exactly matches `WEB_CANONICAL_ORIGIN` and
+   applies its primary/shadow policy per request. The GraphQL omitted-mode
+   behavior does not change for every other caller.
+2. While MODERN is primary, Admin adds `shadowMode: DEFAULT` to the effective
+   canonical-browser input, returns the MODERN response, and schedules DEFAULT
+   through `after()` with concurrency 1 and a capacity of 64 per Admin process.
+   Trusted non-fleet consumer bearers may still request shadow explicitly.
+   Saturation and failures are logged but cannot change or delay the primary
+   response. `Origin` is a spoofable surface discriminator, never an
+   authentication or authorization boundary.
 3. Primary and shadow traces share the primary request ID and carry explicit
    `primary`/`shadow` roles. Product request/click analytics, long-lived
    aggregates, and eval sampling exclude shadows so user counts and query
    intent are not doubled; raw Admin traces retain both executions for
    comparison.
-4. Immediate traffic rollback is a Web configuration change:
-   `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`. This stops requesting shadows as well
-   and does not move Typesense aliases, delete indexes, or require an Admin
-   change. To retain MODERN while stopping only comparison load, set
-   `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false`.
+4. Immediate traffic rollback is an Admin service configuration change:
+   `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`, followed by the normal Admin service
+   restart/redeploy that applies environment changes. Admin overwrites any
+   stale canonical-browser mode on every request, so cached and already-open
+   Watch pages cannot retain MODERN. This stops requesting shadows as well and
+   does not move Typesense aliases or delete indexes. To retain MODERN while
+   stopping only comparison load, set
+   `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false` on Admin.
 5. Stop promotion on visibility mismatch, relevance regression,
    synchronization lag, sustained memory pressure, elevated search errors, or
    the 550 ms full-round-trip p95 gate failing. A failed Typesense service does
@@ -508,6 +518,11 @@ Monitor and page on:
    a separate destructive action and is never part of traffic rollback.
 7. Never deploy from a workstation. Application and configuration changes ship
    only through review, CI, merge to main, and the normal deployment process.
+8. The production acceptance smoke must use the browser's actual contract: an
+   anonymous GraphQL request with canonical Web `Origin`, no `mode`, and no
+   `shadowMode`. It passes only when the response reports
+   `searchMode: "watch-search-typesense"`. Repeat without the canonical origin
+   to confirm the public compatibility path still reports `watch-search`.
 
 ## Vendor References
 
