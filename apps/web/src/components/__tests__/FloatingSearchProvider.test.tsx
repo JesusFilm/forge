@@ -380,12 +380,14 @@ async function flushSearchControllerMount() {
   })
 }
 
-async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
+async function submitSearch(input: HTMLInputElement, query: string) {
   act(() => {
     setInputValue(input, query)
   })
+  const form = input.form
+  if (!form) throw new Error("Expected search input to belong to a form")
   await act(async () => {
-    vi.advanceTimersByTime(300)
+    form.requestSubmit()
     await Promise.resolve()
     await Promise.resolve()
   })
@@ -629,6 +631,60 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
+  it("does not search an instant-shell draft when the controller mounts", async () => {
+    act(() => {
+      root.render(
+        <SearchControllerTestShell initialOpen initialQuery="jesus" />,
+      )
+    })
+
+    await flushResolvedSearch()
+
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+  })
+
+  it("consumes a cold-shell submit snapshot once", async () => {
+    mockedRunSearch.mockResolvedValue(searchResult("watch-search"))
+    const intent = { id: 1, query: "jesus" }
+    const setQuery = vi.fn()
+
+    act(() => {
+      root.render(
+        <FloatingSearchController
+          open
+          closing={false}
+          query="jesus edited later"
+          setOpen={vi.fn()}
+          setQuery={setQuery}
+          pendingSubmitIntent={intent}
+        />,
+      )
+    })
+    await flushResolvedSearch()
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "jesus" }),
+    )
+    expect(setQuery).not.toHaveBeenCalled()
+
+    act(() => {
+      root.render(
+        <FloatingSearchController
+          open
+          closing={false}
+          query="another draft"
+          setOpen={vi.fn()}
+          setQuery={setQuery}
+          pendingSubmitIntent={intent}
+        />,
+      )
+    })
+    await flushResolvedSearch()
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+  })
+
   it("passes the actual UI locale while preserving an absent route language", async () => {
     setRequestLocale("es")
     mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
@@ -2347,6 +2403,45 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("keeps keyword edits local until the search form is submitted", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    const input = await openSearchOverlay()
+    const form = input.closest("form")
+    const submitButton = form?.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    )
+
+    expect(form).not.toBeNull()
+    expect(input.type).toBe("search")
+    expect(input.getAttribute("enterkeyhint")).toBe("search")
+    expect(submitButton?.disabled).toBe(true)
+
+    act(() => {
+      setInputValue(input, "jesus")
+      vi.advanceTimersByTime(1_500)
+    })
+
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+
+    expect(submitButton?.getAttribute("aria-label")).toBe("Search videos")
+    expect(submitButton?.className).toContain("h-11")
+    expect(submitButton?.className).toContain("w-11")
+    expect(submitButton?.disabled).toBe(false)
+
+    await act(async () => {
+      submitButton?.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "jesus" }),
+    )
+  })
+
   it("closes search without navigating when the header logo is clicked", async () => {
     vi.useFakeTimers()
     await openSearchOverlay()
@@ -2446,6 +2541,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
           query=""
           setOpen={vi.fn()}
           setQuery={vi.fn()}
+          onSubmit={vi.fn()}
           headerTopClass={FLOATING_HEADER_TOP_CLASS}
           logoSlotClass="w-12"
           headerLanguageControlVisible={false}
@@ -2650,7 +2746,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     mockedRunSearch.mockReturnValueOnce(delayedSearch.promise)
 
     const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "jesus")
+    await submitSearch(input, "jesus")
 
     const close = document.querySelector(
       '[data-testid="floating-header-search-close"]',
@@ -2989,7 +3085,7 @@ describe("FloatingSearchProvider — search language selection", () => {
     )
 
     const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, SPANISH_CONFIRMATION_QUERY)
+    await submitSearch(input, SPANISH_CONFIRMATION_QUERY)
 
     expect(document.body.textContent).not.toContain("Spanish detected")
     expect(document.body.textContent).not.toContain("Search in Spanish")
@@ -3035,7 +3131,7 @@ describe("FloatingSearchProvider — search language selection", () => {
       await Promise.resolve()
     })
 
-    await submitDebouncedSearch(input, "日本")
+    await submitSearch(input, "日本")
 
     expect(document.querySelector('[role="status"]')).toBeNull()
     expect(mockedRunSearch).toHaveBeenCalledWith(
@@ -3061,7 +3157,7 @@ describe("FloatingSearchProvider — search pagination", () => {
     )
 
     const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
+    await submitSearch(input, "the bible project")
 
     expect(mockedRunSearch).toHaveBeenCalledTimes(1)
     expect(mockedRunSearch).toHaveBeenCalledWith(
@@ -3084,7 +3180,7 @@ describe("FloatingSearchProvider — search pagination", () => {
     )
 
     const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
+    await submitSearch(input, "the bible project")
 
     const link = Array.from(document.querySelectorAll("a")).find(
       (anchor) => anchor.getAttribute("href") === "/first-result-slug.html",
@@ -3166,7 +3262,7 @@ describe("FloatingSearchProvider — search pagination", () => {
     try {
       const replaceState = vi.spyOn(window.history, "replaceState")
       const input = await openSearchOverlay()
-      await submitDebouncedSearch(input, "jesus")
+      await submitSearch(input, "jesus")
       expect(document.body.textContent).toContain("Jesus Result")
 
       act(() => {
@@ -3175,14 +3271,16 @@ describe("FloatingSearchProvider — search pagination", () => {
       })
 
       expect(window.location.search).toBe("?utm=campaign")
+      expect(mockedRunSearch).toHaveBeenCalledTimes(1)
 
-      await act(async () => {
+      act(() => {
         setInputValue(input, "the bible project")
         vi.advanceTimersByTime(300)
-        await Promise.resolve()
-        await Promise.resolve()
       })
+      expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+
       await act(async () => {
+        input.form?.requestSubmit()
         vi.advanceTimersByTime(250)
         await Promise.resolve()
         await Promise.resolve()
@@ -3218,7 +3316,12 @@ describe("FloatingSearchProvider — search pagination", () => {
       .mockResolvedValueOnce(makeSearchResponse(nextResults, false))
 
     const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
+    await submitSearch(input, "the bible project")
+
+    act(() => {
+      setInputValue(input, "a different draft")
+    })
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
 
     const loadMore = Array.from(document.querySelectorAll("button")).find(
       (button) => button.textContent?.trim() === "Load more",

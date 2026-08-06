@@ -1,11 +1,6 @@
 "use client"
 
-import {
-  useEffect,
-  useRef,
-  type ChangeEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react"
+import { useEffect, useRef, type ChangeEvent } from "react"
 import { useTranslations } from "next-intl"
 
 import {
@@ -31,6 +26,7 @@ type SearchOverlayInstantShellProps = {
   closing: boolean
   query: string
   setQuery: (query: string) => void
+  onSubmit: (query: string) => void
   setOpen: (open: boolean) => void
   headerTopClass: string
   logoSlotClass: string
@@ -42,6 +38,7 @@ export function SearchOverlayInstantShell({
   closing,
   query,
   setQuery,
+  onSubmit,
   setOpen,
   headerTopClass,
   logoSlotClass,
@@ -63,10 +60,6 @@ export function SearchOverlayInstantShell({
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setQuery(event.target.value)
-  }
-
-  const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") event.preventDefault()
   }
 
   const clearInput = () => {
@@ -108,7 +101,7 @@ export function SearchOverlayInstantShell({
             ref={inputRef}
             value={query}
             onChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
+            onSubmit={onSubmit}
             onClear={clearInput}
             placeholder={t("placeholder")}
             aria-label={t("inputLabel")}

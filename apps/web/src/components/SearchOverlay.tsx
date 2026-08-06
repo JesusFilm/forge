@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
@@ -74,8 +73,6 @@ const CATEGORY_TITLE_KEYS: Record<
   christmas: "categoryChristmas",
 }
 
-const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
-
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
   const pathname = usePathname()
@@ -102,7 +99,6 @@ export function SearchOverlay() {
     error,
     searched,
     languageOptions,
-    languageOptionsLoaded,
     languageOptionsLoading,
     languageOptionsError,
     selectedSearchLanguageOption,
@@ -122,15 +118,11 @@ export function SearchOverlay() {
   const [closePortalContainer, setClosePortalContainer] =
     useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingSearchAfterLanguageLoadRef = useRef<string | null>(null)
   const recordedResultClickKeysRef = useRef<Set<string>>(new Set())
   const recordedResultsViewedKeysRef = useRef<Map<string, Set<string>>>(
     new Map(),
   )
   const [languageAutocompleteOpen, setLanguageAutocompleteOpen] =
-    useState(false)
-  const [languageMetadataFallbackReady, setLanguageMetadataFallbackReady] =
     useState(false)
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
@@ -204,27 +196,6 @@ export function SearchOverlay() {
     return () => document.removeEventListener("keydown", handleTab)
   }, [open])
 
-  // Cleanup debounce timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  const languageOptionsReadyForSearch =
-    languageOptionsLoaded || languageMetadataFallbackReady
-
-  useEffect(() => {
-    if (!open || languageOptionsLoaded) return
-    const fallbackTimer = setTimeout(() => {
-      setLanguageMetadataFallbackReady(true)
-    }, SEARCH_LANGUAGE_METADATA_FALLBACK_MS)
-    return () => {
-      clearTimeout(fallbackTimer)
-      setLanguageMetadataFallbackReady(false)
-    }
-  }, [languageOptionsLoaded, open])
-
   const visibleResultIds = useMemo(
     () => displayResults.map((row) => row.id),
     [displayResults],
@@ -251,54 +222,22 @@ export function SearchOverlay() {
     })
   }, [searchResultAnalytics, visibleResultIds])
 
-  useEffect(() => {
-    if (!languageOptionsReadyForSearch) return
-    const pendingQuery = pendingSearchAfterLanguageLoadRef.current
-    if (pendingQuery == null || pendingQuery !== query) return
-    pendingSearchAfterLanguageLoadRef.current = null
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (pendingQuery.trim().length === 0) return
-    debounceRef.current = setTimeout(() => {
-      void search(pendingQuery)
-    }, 300)
-  }, [languageOptionsReadyForSearch, query, search])
-
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value
-      setQuery(newValue)
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      if (!languageOptionsReadyForSearch) {
-        pendingSearchAfterLanguageLoadRef.current = newValue
-        return
-      }
-      pendingSearchAfterLanguageLoadRef.current = null
-      debounceRef.current = setTimeout(() => {
-        void search(newValue)
-      }, 300)
+      setQuery(e.target.value)
     },
-    [languageOptionsReadyForSearch, setQuery, search],
+    [setQuery],
   )
 
-  const handleInputKeyDown = useCallback(
-    (e: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== "Enter") return
-      e.preventDefault()
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      if (!languageOptionsReadyForSearch) {
-        pendingSearchAfterLanguageLoadRef.current = query
-        return
-      }
-      pendingSearchAfterLanguageLoadRef.current = null
-      void search(query)
+  const handleSearchSubmit = useCallback(
+    (submittedQuery: string) => {
+      void search(submittedQuery)
     },
-    [languageOptionsReadyForSearch, query, search],
+    [search],
   )
 
   const handleCategoryClick = useCallback(
     (searchTerm: string) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      pendingSearchAfterLanguageLoadRef.current = null
       void search(searchTerm)
     },
     [search],
@@ -307,8 +246,6 @@ export function SearchOverlay() {
   const handleSemanticLanguageClick = useCallback(
     (language: SearchLanguageOption, regionName?: string) => {
       if (!language.publicSlug) return
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      pendingSearchAfterLanguageLoadRef.current = null
       setLanguageAutocompleteOpen(false)
       selectSearchLanguage(language, regionName)
       if (query.trim().length > 0) {
@@ -322,8 +259,6 @@ export function SearchOverlay() {
   )
 
   const handleResetSearchLanguage = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    pendingSearchAfterLanguageLoadRef.current = null
     setLanguageAutocompleteOpen(false)
     resetSearchLanguageToDefault()
   }, [resetSearchLanguageToDefault])
@@ -333,8 +268,6 @@ export function SearchOverlay() {
   }, [setOpen])
 
   const handleClearInput = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    pendingSearchAfterLanguageLoadRef.current = null
     void search("")
     inputRef.current?.focus()
   }, [search])
@@ -430,7 +363,7 @@ export function SearchOverlay() {
             ref={inputRef}
             value={query}
             onChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
+            onSubmit={handleSearchSubmit}
             onClear={handleClearInput}
             placeholder={t("placeholder")}
             aria-label={t("inputLabel")}
