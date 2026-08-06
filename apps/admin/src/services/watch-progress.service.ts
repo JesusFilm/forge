@@ -32,10 +32,14 @@ function normalizeEntry(entry: WatchProgressInput & { videoId: string }) {
   const positionSeconds = Math.floor(
     Math.min(Math.max(0, entry.positionSeconds), durationSeconds),
   )
-  const lastWatchedAt =
-    entry.updatedAt != null && Number.isFinite(Date.parse(entry.updatedAt))
-      ? new Date(entry.updatedAt)
-      : new Date()
+  // Clamp to server time: a client cannot legitimately record a future
+  // position, and an unclamped skewed clock would win the staleness guard
+  // against every later write, freezing the row permanently.
+  const clientMs =
+    entry.updatedAt != null ? Date.parse(entry.updatedAt) : Number.NaN
+  const lastWatchedAt = Number.isFinite(clientMs)
+    ? new Date(Math.min(clientMs, Date.now()))
+    : new Date()
   return {
     videoId: entry.videoId,
     languageSlug: entry.languageSlug?.trim() || null,
@@ -77,6 +81,16 @@ async function resolveEntryVideoIds(
     if (videoId) resolved.push({ ...entry, videoId })
   }
   return resolved
+}
+
+/** Prisma's unique-constraint violation — the concurrent-create race. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  )
 }
 
 function newestByVideoId<T extends { videoId: string; lastWatchedAt: Date }>(
@@ -146,56 +160,49 @@ export async function upsertWatchProgress({
   const validEntriesForVideos = normalized.filter((entry) =>
     validVideoIds.has(entry.videoId),
   )
-  const existingRows = await prisma.watchProgress.findMany({
-    where: {
-      userId,
-      videoId: { in: validEntriesForVideos.map((entry) => entry.videoId) },
-    },
-    select: {
-      videoId: true,
-      lastWatchedAt: true,
-    },
-  })
-  const existingByVideoId = new Map(
-    existingRows.map((row) => [row.videoId, row]),
-  )
-  const validEntries = validEntriesForVideos.filter((entry) => {
-    const current = existingByVideoId.get(entry.videoId)
-    return !current || entry.lastWatchedAt >= current.lastWatchedAt
-  })
+  if (validEntriesForVideos.length === 0) return []
 
-  if (validEntries.length === 0) return []
+  // The staleness guard lives in the WRITE, not in a preceding read: a
+  // read-then-write pair lets a second device commit between the two, so the
+  // last arrival won by timing rather than by recency and could rewind
+  // progress. Each entry is independently atomic; there is no cross-entry
+  // invariant, so no batch transaction (which would also make the
+  // unique-violation path below poison the whole statement in Postgres).
+  const accepted: WatchProgressView[] = []
+  for (const entry of validEntriesForVideos) {
+    const data = {
+      languageSlug: entry.languageSlug,
+      positionSeconds: entry.positionSeconds,
+      durationSeconds: entry.durationSeconds,
+      completed: entry.completed,
+      lastWatchedAt: entry.lastWatchedAt,
+    }
+    const updated = await prisma.watchProgress.updateMany({
+      where: {
+        userId,
+        videoId: entry.videoId,
+        lastWatchedAt: { lte: entry.lastWatchedAt },
+      },
+      data,
+    })
+    if (updated.count > 0) {
+      accepted.push(toView({ videoId: entry.videoId, ...data }))
+      continue
+    }
+    // Nothing updated: either no row exists yet, or a newer one already does.
+    try {
+      const created = await prisma.watchProgress.create({
+        data: { userId, videoId: entry.videoId, ...data },
+      })
+      accepted.push(toView(created))
+    } catch (error) {
+      // A concurrent writer created the row first; its value is newer than
+      // ours by definition, so dropping this entry is the correct outcome.
+      if (!isUniqueViolation(error)) throw error
+    }
+  }
 
-  const rows = await prisma.$transaction(
-    validEntries.map((entry) =>
-      prisma.watchProgress.upsert({
-        where: {
-          userId_videoId: {
-            userId,
-            videoId: entry.videoId,
-          },
-        },
-        create: {
-          userId,
-          videoId: entry.videoId,
-          languageSlug: entry.languageSlug,
-          positionSeconds: entry.positionSeconds,
-          durationSeconds: entry.durationSeconds,
-          completed: entry.completed,
-          lastWatchedAt: entry.lastWatchedAt,
-        },
-        update: {
-          positionSeconds: entry.positionSeconds,
-          languageSlug: entry.languageSlug,
-          durationSeconds: entry.durationSeconds,
-          completed: entry.completed,
-          lastWatchedAt: entry.lastWatchedAt,
-        },
-      }),
-    ),
-  )
-
-  return rows.map(toView)
+  return accepted
 }
 
 export async function deleteWatchProgressForUser(userId: string) {

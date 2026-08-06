@@ -6,7 +6,10 @@ const prismaMock = vi.hoisted(() => ({
   },
   watchProgress: {
     findMany: vi.fn(),
-    upsert: vi.fn(),
+    // The staleness guard lives in updateMany's WHERE; create covers the
+    // no-row-yet case and rejects with P2002 when a concurrent writer won.
+    updateMany: vi.fn(),
+    create: vi.fn(),
     deleteMany: vi.fn(),
   },
   $transaction: vi.fn(async (operations: Array<Promise<unknown>>) =>
@@ -24,6 +27,14 @@ import {
   listWatchProgress,
   upsertWatchProgress,
 } from "./watch-progress.service"
+
+/** A row that does not exist yet: the conditional update matches nothing. */
+function stubNoExistingRow() {
+  prismaMock.watchProgress.updateMany.mockResolvedValue({ count: 0 })
+  prismaMock.watchProgress.create.mockImplementation(
+    async (args: { data: Record<string, unknown> }) => args.data,
+  )
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -63,22 +74,7 @@ describe("watch-progress service", () => {
 
   it("upserts only existing videos and marks 90 percent progress complete", async () => {
     prismaMock.video.findMany.mockResolvedValueOnce([{ id: "video-1" }])
-    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
-    prismaMock.watchProgress.upsert.mockImplementation(
-      async (args: {
-        create: {
-          videoId: string
-          languageSlug: string | null
-          positionSeconds: number
-          durationSeconds: number
-          completed: boolean
-          lastWatchedAt: Date
-        }
-      }) => ({
-        ...args.create,
-        lastWatchedAt: args.create.lastWatchedAt,
-      }),
-    )
+    stubNoExistingRow()
 
     const result = await upsertWatchProgress({
       userId: "user-1",
@@ -110,17 +106,17 @@ describe("watch-progress service", () => {
         updatedAt: "2026-07-02T00:00:00.000Z",
       },
     ])
-    expect(prismaMock.watchProgress.upsert).toHaveBeenCalledTimes(1)
+    expect(prismaMock.watchProgress.create).toHaveBeenCalledTimes(1)
   })
 
   it("does not overwrite newer progress with stale submitted progress", async () => {
     prismaMock.video.findMany.mockResolvedValueOnce([{ id: "video-1" }])
-    prismaMock.watchProgress.findMany.mockResolvedValueOnce([
-      {
-        videoId: "video-1",
-        lastWatchedAt: new Date("2026-07-03T00:00:00.000Z"),
-      },
-    ])
+    // Stored row is newer, so the conditional WHERE matches nothing and the
+    // create then loses to the existing row.
+    prismaMock.watchProgress.updateMany.mockResolvedValue({ count: 0 })
+    prismaMock.watchProgress.create.mockRejectedValue(
+      Object.assign(new Error("unique constraint"), { code: "P2002" }),
+    )
 
     const result = await upsertWatchProgress({
       userId: "user-1",
@@ -136,7 +132,62 @@ describe("watch-progress service", () => {
     })
 
     expect(result).toEqual([])
-    expect(prismaMock.watchProgress.upsert).not.toHaveBeenCalled()
+  })
+
+  it("puts the staleness guard IN the write, not a preceding read", async () => {
+    // The discriminating case for the two-device rewind: a read-then-write
+    // pair lets another device commit in the gap. Asserting the predicate is
+    // on the write means restoring an unconditional upsert fails here.
+    prismaMock.video.findMany.mockResolvedValueOnce([{ id: "video-1" }])
+    stubNoExistingRow()
+
+    await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          videoId: "video-1",
+          positionSeconds: 10,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+      ],
+    })
+
+    expect(prismaMock.watchProgress.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "user-1",
+          videoId: "video-1",
+          lastWatchedAt: { lte: new Date("2026-07-02T00:00:00.000Z") },
+        }),
+      }),
+    )
+    // No pre-read of the current row: that read is what created the race.
+    expect(prismaMock.watchProgress.findMany).not.toHaveBeenCalled()
+  })
+
+  it("clamps a future client timestamp to server time", async () => {
+    // An unclamped skewed clock wins the guard against every later write and
+    // freezes the row permanently.
+    prismaMock.video.findMany.mockResolvedValueOnce([{ id: "video-1" }])
+    stubNoExistingRow()
+    const before = Date.now()
+
+    const result = await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          videoId: "video-1",
+          positionSeconds: 10,
+          durationSeconds: 100,
+          updatedAt: "2099-01-01T00:00:00.000Z",
+        },
+      ],
+    })
+
+    const stored = Date.parse(result[0]?.updatedAt ?? "")
+    expect(stored).toBeGreaterThanOrEqual(before)
+    expect(stored).toBeLessThanOrEqual(Date.now())
   })
 
   it("deletes progress rows by consumer user id", async () => {
@@ -157,16 +208,7 @@ describe("watch-progress service — mobile extensions", () => {
     prismaMock.video.findMany
       .mockResolvedValueOnce([{ id: "video-1", slug: "birth-of-jesus" }])
       .mockResolvedValueOnce([{ id: "video-1" }])
-    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
-    prismaMock.watchProgress.upsert.mockImplementation(
-      async (args: { create: { videoId: string; lastWatchedAt: Date } }) => ({
-        languageSlug: null,
-        positionSeconds: 30,
-        durationSeconds: 100,
-        completed: false,
-        ...args.create,
-      }),
-    )
+    stubNoExistingRow()
 
     const result = await upsertWatchProgress({
       userId: "user-1",
@@ -188,28 +230,14 @@ describe("watch-progress service — mobile extensions", () => {
 
     expect(result).toHaveLength(1)
     expect(result[0]?.videoId).toBe("video-1")
-    expect(prismaMock.watchProgress.upsert).toHaveBeenCalledTimes(1)
+    expect(prismaMock.watchProgress.create).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the newest entry when an id-keyed and slug-keyed entry hit the same video", async () => {
     prismaMock.video.findMany
       .mockResolvedValueOnce([{ id: "video-1", slug: "birth-of-jesus" }])
       .mockResolvedValueOnce([{ id: "video-1" }])
-    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
-    prismaMock.watchProgress.upsert.mockImplementation(
-      async (args: {
-        create: {
-          videoId: string
-          positionSeconds: number
-          lastWatchedAt: Date
-        }
-      }) => ({
-        languageSlug: null,
-        durationSeconds: 100,
-        completed: false,
-        ...args.create,
-      }),
-    )
+    stubNoExistingRow()
 
     const result = await upsertWatchProgress({
       userId: "user-1",
@@ -231,12 +259,12 @@ describe("watch-progress service — mobile extensions", () => {
 
     expect(result).toHaveLength(1)
     expect(result[0]?.positionSeconds).toBe(44)
-    expect(prismaMock.watchProgress.upsert).toHaveBeenCalledTimes(1)
+    expect(prismaMock.watchProgress.create).toHaveBeenCalledTimes(1)
   })
 
   it("drops entries carrying neither a video id nor a slug", async () => {
     prismaMock.video.findMany.mockResolvedValue([])
-    prismaMock.watchProgress.findMany.mockResolvedValueOnce([])
+    stubNoExistingRow()
 
     const result = await upsertWatchProgress({
       userId: "user-1",
@@ -250,7 +278,8 @@ describe("watch-progress service — mobile extensions", () => {
     })
 
     expect(result).toEqual([])
-    expect(prismaMock.watchProgress.upsert).not.toHaveBeenCalled()
+    expect(prismaMock.watchProgress.updateMany).not.toHaveBeenCalled()
+    expect(prismaMock.watchProgress.create).not.toHaveBeenCalled()
   })
 
   it("clears exactly one video's progress row", async () => {
