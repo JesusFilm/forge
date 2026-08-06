@@ -268,11 +268,27 @@ type BetterAuthExpoClient = {
       data: { user: SignedInUserPayload } | null
       error?: { message?: string } | null
     }>
+    /** Native email/password (F2). The expo client stamps every request
+     *  with `expo-origin`, which is what marks the session as mobile. */
+    email: (options: { email: string; password: string }) => Promise<{
+      data: { user: SignedInUserPayload } | null
+      error?: { code?: string | null; message?: string | null } | null
+    }>
     /** Hosted-page fallback: the jfp self-RP flow (browser sheet + expo
      *  cookie handoff land the session in SecureStore). */
     oauth2: (options: { providerId: string; callbackURL: string }) => Promise<{
       data: unknown
       error?: { message?: string } | null
+    }>
+  }
+  signUp: {
+    email: (options: {
+      email: string
+      password: string
+      name: string
+    }) => Promise<{
+      data: { user: SignedInUserPayload } | null
+      error?: { code?: string | null; message?: string | null } | null
     }>
   }
   $fetch: (

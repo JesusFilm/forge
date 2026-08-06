@@ -11,6 +11,10 @@
 
 export const JFP_MOBILE_PROVIDER_ID = "jfp"
 
+/** apps/mobile's `app.json` scheme. `MOBILE_APP_SCHEME_ORIGIN` derives from
+ *  this so the trusted origin and the session stamp cannot disagree. */
+export const MOBILE_APP_SCHEME = "forgemobile"
+
 export const MOBILE_SESSION_CLIENT_KIND = "mobile"
 
 export const MOBILE_CLIENT_CLAIM = "https://jesusfilm.org/claims/client"
@@ -21,20 +25,52 @@ export type SessionCreateRequestContext = {
   path?: string
   body?: unknown
   params?: unknown
+  headers?: { get: (name: string) => string | null } | null
+  request?: {
+    headers?: { get: (name: string) => string | null } | null
+  } | null
+}
+
+/** Email sign-in/up is shared with web, so the CALLER is the discriminator. */
+const EMAIL_CREDENTIAL_PATHS = new Set(["/sign-in/email", "/sign-up/email"])
+
+/**
+ * The Expo client sends `expo-origin: <scheme>://` on every request and the
+ * expo server plugin copies it into `origin`, which better-auth then checks
+ * against trustedOrigins. Reading either spelling means the stamp does not
+ * depend on which of the two runs first.
+ */
+function isMobileOrigin(ctx: SessionCreateRequestContext): boolean {
+  const headers = ctx.headers ?? ctx.request?.headers
+  if (!headers) return false
+  const origin = headers.get("expo-origin") ?? headers.get("origin")
+  return origin != null && origin.startsWith(`${MOBILE_APP_SCHEME}://`)
 }
 
 /**
  * Mobile-only session entry points:
  * - `/sign-in/social` with a provider idToken — native Apple/Google sheets.
- *   Web and every other first-party app sign in through browser flows
- *   (`/callback/:provider`, `/sign-in/email`) and never post idTokens.
+ *   Web and every other first-party app sign in through browser flows and
+ *   never post idTokens.
  * - `/oauth2/callback/jfp` — the self-RP hosted-page fallback; only the
  *   mobile app signs in through the jfp generic-oauth provider.
+ * - `/sign-in/email` and `/sign-up/email` FROM the mobile app scheme. These
+ *   two are shared with web, so unlike the others the path alone proves
+ *   nothing and the origin decides.
+ *
+ * Every signal here is client-shaped, including the pre-existing idToken
+ * check: nothing stops a non-browser caller from claiming to be mobile. That
+ * is acceptable because the claim buys only own-data watch-progress access at
+ * admin — the same data that caller could already reach as themselves.
  */
 export function resolveSessionClientKind(
   ctx: SessionCreateRequestContext | null | undefined,
 ): typeof MOBILE_SESSION_CLIENT_KIND | undefined {
   if (!ctx?.path) return undefined
+
+  if (EMAIL_CREDENTIAL_PATHS.has(ctx.path) && isMobileOrigin(ctx)) {
+    return MOBILE_SESSION_CLIENT_KIND
+  }
 
   // The endpoint context carries the route pattern (":providerId"), so the
   // provider id is read from params; the concrete-path form is kept too.

@@ -22,6 +22,13 @@ import {
 } from "./authSession"
 import { env } from "../env"
 import { reportDatadogAction } from "./datadog"
+import {
+  classifyEmailAuthFailure,
+  classifyLoginMethod,
+  normalizeEmail,
+  type EmailAuthFailure,
+  type LoginMethod,
+} from "./emailAuth"
 import { noteAccountCreated, wasAccountJustCreated } from "./newAccountNotice"
 
 export type SignInOutcome =
@@ -138,6 +145,78 @@ export async function signInWithGoogle(): Promise<SignInOutcome> {
 }
 
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+/**
+ * Ask auth which method owns this email (the same check the web login page
+ * makes) so someone whose account is a Google/Apple identity is pointed at
+ * that button instead of creating a duplicate. Advisory only: a failed
+ * lookup falls through to the password form, and the server still enforces.
+ */
+export async function lookupLoginMethod(email: string): Promise<LoginMethod> {
+  try {
+    const result = await getAuthClient().$fetch("/login-method", {
+      method: "POST",
+      body: { email: normalizeEmail(email) },
+    })
+    return classifyLoginMethod(result.data)
+  } catch {
+    return { kind: "password" }
+  }
+}
+
+export type EmailAuthOutcome =
+  | { status: "success" }
+  | { status: "failed"; reason: EmailAuthFailure }
+
+async function completeEmailAuth(
+  attempt: () => Promise<{
+    data: { user: SignedInUserPayload } | null
+    error?: { code?: string | null; message?: string | null } | null
+  }>,
+): Promise<EmailAuthOutcome> {
+  let result: Awaited<ReturnType<typeof attempt>>
+  try {
+    result = await attempt()
+  } catch {
+    return { status: "failed", reason: "retryable" }
+  }
+  if (result.error) {
+    return { status: "failed", reason: classifyEmailAuthFailure(result.error) }
+  }
+  if (!result.data?.user) return { status: "failed", reason: "retryable" }
+  // The error is already classified above; hand on the success half so the
+  // shared path applies the session, the R15 notice, and the RUM action.
+  const data = result.data
+  const outcome = await completeSignIn(async () => ({ data }))
+  return outcome.status === "success"
+    ? { status: "success" }
+    : { status: "failed", reason: "retryable" }
+}
+
+export function signInWithEmail(
+  email: string,
+  password: string,
+): Promise<EmailAuthOutcome> {
+  return completeEmailAuth(() =>
+    getAuthClient().signIn.email({ email: normalizeEmail(email), password }),
+  )
+}
+
+export function signUpWithEmail(
+  email: string,
+  password: string,
+): Promise<EmailAuthOutcome> {
+  const normalized = normalizeEmail(email)
+  return completeEmailAuth(() =>
+    getAuthClient().signUp.email({
+      email: normalized,
+      password,
+      // Better Auth requires a name; auth derives a display name server-side
+      // and the user can never see this placeholder before it is replaced.
+      name: normalized.split("@")[0] ?? normalized,
+    }),
+  )
+}
 
 /**
  * Hosted-page fallback (F2): the jfp self-RP flow. The Expo client opens

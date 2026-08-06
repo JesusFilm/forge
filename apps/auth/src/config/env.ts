@@ -1,5 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
+import { MOBILE_APP_SCHEME } from "@/auth/mobile-session"
 
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value
@@ -100,7 +101,8 @@ function parseOriginList(value: string | undefined): string[] {
 
 // The mobile app's deep-link scheme (apps/mobile app.json). Trusted so the
 // Better Auth Expo plugin can hand session cookies back on scheme redirects.
-export const MOBILE_APP_SCHEME_ORIGIN = "forgemobile://"
+// Derived, so the trusted origin and the mobile session stamp share a source.
+export const MOBILE_APP_SCHEME_ORIGIN = `${MOBILE_APP_SCHEME}://`
 
 export function getAuthTrustedOrigins(): string[] {
   const productionWebOrigins = [

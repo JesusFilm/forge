@@ -11,6 +11,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import * as AppleAuthentication from "expo-apple-authentication"
 import { useRouter } from "expo-router"
 
+import { EmailAuthForm } from "../src/components/auth/EmailAuthForm"
 import { useTypography } from "../src/hooks/useTypography"
 import {
   signInWithApple,
@@ -32,16 +33,17 @@ type SheetState =
   | { phase: "error" }
 
 /**
- * Sign-in formSheet (U6): native Apple (iOS) and Google sheets, with every
- * other provider reachable through the hosted auth page (F2). Success
- * dismisses immediately so the signed-in Profile is the confirmation. A
- * cancel returns quietly; a failure AFTER the provider sheet succeeded
- * surfaces a dismissible error with retry.
+ * Sign-in formSheet (U6): native Apple (iOS), Google, and email/password
+ * sheets. Facebook has no native sheet, so the hosted auth page stays
+ * reachable below the fold (R2). Success dismisses immediately so the
+ * signed-in Profile is the confirmation. A cancel returns quietly; a failure
+ * AFTER the provider sheet succeeded surfaces a dismissible error with retry.
  */
 export default function SignInSheet() {
   const typography = useTypography()
   const router = useRouter()
   const [state, setState] = useState<SheetState>({ phase: "idle" })
+  const [showEmail, setShowEmail] = useState(false)
 
   const runFlow = (method: string, flow: () => Promise<SignInOutcome>) => {
     setState({ phase: "busy", method })
@@ -117,21 +119,41 @@ export default function SignInSheet() {
           <Text style={styles.providerLabel}>Continue with Google</Text>
         </Pressable>
 
+        {showEmail ? (
+          <EmailAuthForm onSignedIn={() => router.back()} />
+        ) : (
+          <Pressable
+            onPress={() => {
+              if (!busy) setShowEmail(true)
+            }}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.providerButton,
+              pressed && feedback.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with email"
+            {...{ "dd-action-name": "sign-in-email" }}
+          >
+            <Ionicons name="mail-outline" size={20} color={TEXT_PRIMARY} />
+            <Text style={styles.providerLabel}>Continue with email</Text>
+          </Pressable>
+        )}
+
+        {/* Facebook has no native sheet (a deliberate scope boundary), so it
+            stays reachable only through the hosted page. */}
         <Pressable
           onPress={() => {
             if (!busy) runFlow("hosted", signInWithHostedPage)
           }}
           disabled={busy}
-          style={({ pressed }) => [
-            styles.providerButton,
-            pressed && feedback.pressed,
-          ]}
+          hitSlop={8}
+          style={({ pressed }) => [pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel="Continue with email or other options"
+          accessibilityLabel="More sign-in options"
           {...{ "dd-action-name": "sign-in-hosted" }}
         >
-          <Ionicons name="mail-outline" size={20} color={TEXT_PRIMARY} />
-          <Text style={styles.providerLabel}>Email or other options</Text>
+          <Text style={styles.moreOptionsLabel}>More sign-in options</Text>
         </Pressable>
 
         {busy ? (
@@ -146,6 +168,13 @@ export default function SignInSheet() {
 }
 
 const styles = StyleSheet.create({
+  moreOptionsLabel: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    fontSize: 14,
+    paddingVertical: 8,
+    textAlign: "center",
+  },
   container: {
     flex: 1,
     paddingHorizontal: 24,

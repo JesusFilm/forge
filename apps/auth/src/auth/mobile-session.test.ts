@@ -7,6 +7,13 @@ import {
   resolveSessionClientKind,
 } from "./mobile-session"
 
+/** Minimal Headers stand-in — only `get` is read. */
+function headers(values: Record<string, string>) {
+  return {
+    get: (name: string) => values[name.toLowerCase()] ?? null,
+  }
+}
+
 describe("resolveSessionClientKind", () => {
   it("stamps native Apple idToken sign-ins as mobile", () => {
     expect(
@@ -50,11 +57,88 @@ describe("resolveSessionClientKind", () => {
     ).toBeUndefined()
   })
 
-  it("does not stamp email sign-ins", () => {
+  it("does not stamp email sign-ins from the web page", () => {
+    // Same endpoint the mobile app uses, so the origin — not the path —
+    // is what separates them.
     expect(
       resolveSessionClientKind({
         path: "/sign-in/email",
         body: { email: "person@example.com", password: "pw" },
+        headers: headers({ origin: "https://auth.jesusfilm.org" }),
+      }),
+    ).toBeUndefined()
+  })
+
+  it("does not stamp email sign-ins with no origin at all", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-in/email",
+        body: { email: "person@example.com", password: "pw" },
+      }),
+    ).toBeUndefined()
+  })
+
+  it("stamps email sign-in from the mobile app scheme", () => {
+    // Without this the user signs in fine but the JWT carries no client
+    // claim, so admin rejects every progress call — a silent half-failure.
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-in/email",
+        body: { email: "person@example.com", password: "pw" },
+        headers: headers({ "expo-origin": "forgemobile://" }),
+      }),
+    ).toBe("mobile")
+  })
+
+  it("stamps email SIGN-UP from the mobile app scheme", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-up/email",
+        body: { email: "new@example.com", password: "pw" },
+        headers: headers({ "expo-origin": "forgemobile://" }),
+      }),
+    ).toBe("mobile")
+  })
+
+  it("reads the origin the expo plugin rewrites as well as the raw header", () => {
+    // The server plugin copies expo-origin into origin; the stamp must not
+    // depend on which of the two ran first.
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-in/email",
+        body: {},
+        headers: headers({ origin: "forgemobile://" }),
+      }),
+    ).toBe("mobile")
+  })
+
+  it("reads headers off ctx.request when they are not hoisted onto ctx", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-in/email",
+        body: {},
+        request: { headers: headers({ origin: "forgemobile://" }) },
+      }),
+    ).toBe("mobile")
+  })
+
+  it("does not stamp a scheme that merely starts like the mobile one", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-in/email",
+        body: {},
+        headers: headers({ origin: "forgemobileevil://" }),
+      }),
+    ).toBeUndefined()
+  })
+
+  it("does not stamp non-credential paths on the mobile origin", () => {
+    // The origin widens exactly two shared endpoints, not the whole surface.
+    expect(
+      resolveSessionClientKind({
+        path: "/sign-in/username",
+        body: {},
+        headers: headers({ origin: "forgemobile://" }),
       }),
     ).toBeUndefined()
   })
