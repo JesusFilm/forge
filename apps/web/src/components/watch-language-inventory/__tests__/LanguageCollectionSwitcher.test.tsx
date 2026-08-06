@@ -22,19 +22,24 @@ vi.mock("@/components/watch/LanguageCombobox", () => ({
       options,
       value,
       onChange,
+      triggerWrapper,
     }: {
       options: Array<{ slug: string }>
       value: string
       onChange: (slug: string) => void
-    }) => (
-      <button
-        type="button"
-        data-testid="language-combobox-mock"
-        data-option-slugs={options.map((option) => option.slug).join(",")}
-        data-value={value}
-        onClick={() => onChange("russian")}
-      />
-    ),
+      triggerWrapper?: (trigger: React.ReactNode) => React.ReactNode
+    }) => {
+      const trigger = (
+        <button
+          type="button"
+          data-testid="language-combobox-mock"
+          data-option-slugs={options.map((option) => option.slug).join(",")}
+          data-value={value}
+          onClick={() => onChange("russian")}
+        />
+      )
+      return triggerWrapper ? triggerWrapper(trigger) : trigger
+    },
   ),
 }))
 
@@ -95,5 +100,17 @@ describe("LanguageCollectionSwitcher", () => {
 
     expect(routerPushMock).toHaveBeenCalledTimes(1)
     expect(routerPushMock).toHaveBeenCalledWith("/russian.html/videos")
+
+    const trigger = document.querySelector<HTMLButtonElement>(
+      '[data-testid="language-combobox-mock"]',
+    )
+    expect(trigger?.getAttribute("data-english-assist")).toBe("chooseLanguage")
+    expect(trigger?.title).toBe("Choose a language collection")
+    expect(
+      document.querySelector('[title="Language collection"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('[title="Items in this section"]'),
+    ).not.toBeNull()
   })
 })

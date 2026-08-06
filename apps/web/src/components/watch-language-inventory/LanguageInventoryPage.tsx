@@ -34,7 +34,13 @@ import {
   type WatchLanguageInventoryCard,
   type WatchLanguageInventoryModel,
 } from "@/lib/watch-language-inventory"
+import { EnglishAssistGuide } from "./EnglishAssistGuide"
+import { EnglishAssistTooltipController } from "./EnglishAssistTooltipController"
 import { LanguageCollectionSwitcher } from "./LanguageCollectionSwitcher"
+import {
+  englishAssistAttributes,
+  type EnglishAssistToken,
+} from "./english-assist"
 
 type IconComponent = ComponentType<{ className?: string }>
 
@@ -169,12 +175,14 @@ function sortGroupItems(
 }
 
 function SectionMetricAnchor({
+  assistToken,
   href,
   icon: Icon,
   label,
   tone,
   value,
 }: {
+  assistToken: EnglishAssistToken
   href: string
   icon: IconComponent
   label: string
@@ -200,6 +208,7 @@ function SectionMetricAnchor({
     <a
       href={href}
       aria-label={t("sectionMetricLabel", { label, count: value })}
+      {...englishAssistAttributes(assistToken)}
       className={cn(
         "group relative flex aspect-[3/4] w-[9.5rem] flex-col overflow-hidden rounded-lg border p-4 text-white shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:shadow-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:w-[11rem] lg:w-[12rem]",
         toneClass,
@@ -226,11 +235,13 @@ function SectionMetricAnchor({
 }
 
 function InventoryCardFrame({
+  assistToken,
   href,
   title,
   className,
   children,
 }: {
+  assistToken: EnglishAssistToken
   href: Route | null
   title: string
   className: string
@@ -245,7 +256,12 @@ function InventoryCardFrame({
   }
 
   return (
-    <Link href={href} aria-label={title} className={className}>
+    <Link
+      href={href}
+      aria-label={title}
+      className={className}
+      {...englishAssistAttributes(assistToken)}
+    >
       {children}
     </Link>
   )
@@ -306,6 +322,7 @@ function InventoryCard({
 
   return (
     <InventoryCardFrame
+      assistToken={item.childCount > 0 ? "openCollection" : "openVideo"}
       href={item.href}
       title={item.title}
       className={frameClassName}
@@ -330,7 +347,12 @@ function InventoryCard({
         {isInteractive ? (
           <VideoThumbnailInteractionFrame data-testid="language-inventory-thumbnail-frame" />
         ) : null}
-        <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">
+        <div
+          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-bold text-white backdrop-blur"
+          {...englishAssistAttributes(
+            item.availability === "AUDIO" ? "stateAudio" : "stateSubtitles",
+          )}
+        >
           {item.availability === "AUDIO" ? (
             <Headphones className="h-3.5 w-3.5" aria-hidden />
           ) : (
@@ -351,7 +373,9 @@ function InventoryCard({
           {promoted ? (
             <>
               <span aria-hidden="true">/</span>
-              <span>{t("newLabel")}</span>
+              <span {...englishAssistAttributes("stateNew")}>
+                {t("newLabel")}
+              </span>
             </>
           ) : null}
         </div>
@@ -504,7 +528,11 @@ function CompactVideoRow({
   }
 
   return (
-    <Link href={item.href} className={className}>
+    <Link
+      href={item.href}
+      className={className}
+      {...englishAssistAttributes("openVideo")}
+    >
       {content}
     </Link>
   )
@@ -553,6 +581,7 @@ function CollectionGroupOverview({ group }: { group: GroupedInventoryVideos }) {
           <Link
             href={collection.href}
             className="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-200/35 bg-amber-200/10 px-4 py-2 text-sm font-black text-amber-100 transition hover:border-amber-200/60 hover:bg-amber-200/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+            {...englishAssistAttributes("openCollection")}
           >
             {t("openCollection")}
             <ArrowUpRight className="h-4 w-4" aria-hidden />
@@ -599,7 +628,10 @@ function GroupedVideoListSection({
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1 text-sm font-semibold text-amber-200">
+            <div
+              className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1 text-sm font-semibold text-amber-200"
+              {...englishAssistAttributes("labelCollections")}
+            >
               <Icon className="h-4 w-4" aria-hidden />
               {eyebrow}
             </div>
@@ -610,7 +642,10 @@ function GroupedVideoListSection({
               {description}
             </p>
           </div>
-          <div className="text-sm font-semibold text-stone-400">
+          <div
+            className="text-sm font-semibold text-stone-400"
+            {...englishAssistAttributes("labelItemCount")}
+          >
             {t("videosInGroups", {
               videoCount: totalItems,
               groupCount: groups.length,
@@ -657,6 +692,7 @@ function GroupedVideoListSection({
 }
 
 function InventorySection({
+  assistToken,
   id,
   eyebrow,
   title,
@@ -666,6 +702,7 @@ function InventorySection({
   testId,
   empty,
 }: {
+  assistToken: EnglishAssistToken
   id: string
   eyebrow: string
   title: string
@@ -685,7 +722,10 @@ function InventorySection({
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1 text-sm font-semibold text-amber-200">
+            <div
+              className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1 text-sm font-semibold text-amber-200"
+              {...englishAssistAttributes(assistToken)}
+            >
               <Icon className="h-4 w-4" aria-hidden />
               {eyebrow}
             </div>
@@ -696,7 +736,10 @@ function InventorySection({
               {description}
             </p>
           </div>
-          <div className="text-sm font-semibold text-stone-400">
+          <div
+            className="text-sm font-semibold text-stone-400"
+            {...englishAssistAttributes("labelItemCount")}
+          >
             {t("itemCount", { count: items.length })}
           </div>
         </div>
@@ -776,6 +819,7 @@ export function LanguageInventoryPage({
       className="min-h-screen bg-stone-950 text-stone-100"
       data-testid="language-inventory-page"
     >
+      <EnglishAssistTooltipController />
       <section className="relative isolate overflow-hidden border-b border-white/10 bg-stone-950">
         {heroImage ? (
           <Image
@@ -809,6 +853,9 @@ export function LanguageInventoryPage({
             totalItems={inventory.counts.total}
           />
         </div>
+        <div className="relative mx-auto -mt-4 flex max-w-7xl justify-end px-5 pb-5 sm:px-8">
+          <EnglishAssistGuide />
+        </div>
       </section>
 
       <nav
@@ -827,6 +874,7 @@ export function LanguageInventoryPage({
             <CarouselContent className="-ml-5">
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
+                  assistToken="sectionNew"
                   href="#new"
                   icon={Sparkles}
                   label={t("new")}
@@ -836,6 +884,7 @@ export function LanguageInventoryPage({
               </CarouselItem>
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
+                  assistToken="sectionVideoBible"
                   href="#bible-gospels"
                   icon={BookOpen}
                   label={t("videoBible")}
@@ -845,6 +894,7 @@ export function LanguageInventoryPage({
               </CarouselItem>
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
+                  assistToken="sectionBibleProject"
                   href="#bible-project"
                   icon={BookOpen}
                   label={t("bibleProject")}
@@ -854,6 +904,7 @@ export function LanguageInventoryPage({
               </CarouselItem>
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
+                  assistToken="sectionSports"
                   href="#sports"
                   icon={Trophy}
                   label={t("sports")}
@@ -863,6 +914,7 @@ export function LanguageInventoryPage({
               </CarouselItem>
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
+                  assistToken="sectionCollections"
                   href="#audio-collections"
                   icon={Library}
                   label={t("collections")}
@@ -872,6 +924,7 @@ export function LanguageInventoryPage({
               </CarouselItem>
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
+                  assistToken="sectionSubtitlesOnly"
                   href="#subtitles-only"
                   icon={Captions}
                   label={t("subtitlesOnly")}
@@ -880,8 +933,14 @@ export function LanguageInventoryPage({
                 />
               </CarouselItem>
             </CarouselContent>
-            <CarouselPrevious label={watchHome("previousVideoPreview")} />
-            <CarouselNext label={watchHome("nextVideoPreview")} />
+            <CarouselPrevious
+              label={watchHome("previousVideoPreview")}
+              {...englishAssistAttributes("previousSection")}
+            />
+            <CarouselNext
+              label={watchHome("nextVideoPreview")}
+              {...englishAssistAttributes("nextSection")}
+            />
           </Carousel>
         </div>
       </nav>
@@ -896,7 +955,10 @@ export function LanguageInventoryPage({
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-300/10 px-3 py-1 text-sm font-semibold text-teal-100">
+              <div
+                className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-300/10 px-3 py-1 text-sm font-semibold text-teal-100"
+                {...englishAssistAttributes("stateNew")}
+              >
                 <Sparkles className="h-4 w-4" aria-hidden />
                 {t("newlyAdded")}
               </div>
@@ -904,7 +966,10 @@ export function LanguageInventoryPage({
                 {t("newVideosTitle", { language: languageDisplayName })}
               </h2>
             </div>
-            <div className="hidden items-center gap-2 text-sm font-semibold text-stone-400 sm:flex">
+            <div
+              className="hidden items-center gap-2 text-sm font-semibold text-stone-400 sm:flex"
+              {...englishAssistAttributes("stateNewestFirst")}
+            >
               <Clock className="h-4 w-4" aria-hidden />
               {t("newestFirst")}
             </div>
@@ -930,6 +995,7 @@ export function LanguageInventoryPage({
       </section>
 
       <InventorySection
+        assistToken="labelVideoBible"
         id="bible-gospels"
         eyebrow={t("bibleAndGospelFilms")}
         title={t("videoBibleCollectionsTitle", {
@@ -945,6 +1011,7 @@ export function LanguageInventoryPage({
       />
 
       <InventorySection
+        assistToken="labelBibleProject"
         id="bible-project"
         eyebrow={t("bibleProject")}
         title={t("bibleProjectCollectionsTitle", {
@@ -960,6 +1027,7 @@ export function LanguageInventoryPage({
       />
 
       <InventorySection
+        assistToken="labelSports"
         id="sports"
         eyebrow={t("sportsStories")}
         title={t("sportsTitle", { language: languageDisplayName })}
@@ -987,6 +1055,7 @@ export function LanguageInventoryPage({
       />
 
       <InventorySection
+        assistToken="labelSubtitlesOnly"
         id="subtitles-only"
         eyebrow={t("subtitlesAvailable")}
         title={t("subtitlesTitle", { language: languageDisplayName })}
