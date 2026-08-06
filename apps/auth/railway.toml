@@ -7,6 +7,21 @@ builder = "NIXPACKS"
 buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/auth build && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static"
 
 [deploy]
+# Nothing in this repo applied auth's migrations before feat-322 — the
+# db:migrate:deploy script existed but had no caller, unlike apps/admin which
+# runs it here. A migration that never runs is worse than none: the code ships
+# expecting a table that does not exist, and Prisma's P2021 surfaces as a 500,
+# not as the 503 clients are built to handle.
+#
+# BEFORE the first deploy that carries this line, confirm per environment:
+#   1. the service's Config-as-code Path really points at apps/auth/railway.toml
+#      (otherwise this file is inert and the dashboard is canonical), and
+#   2. SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY 1;
+#      lists 0001_init, 0002_add_jwks and 0002_agent_login_users as applied.
+# If that table is empty or missing, the schema was created out of band and
+# `migrate deploy` will try to apply 0001_init over live tables and fail the
+# deploy. Baseline it with `prisma migrate resolve --applied` first.
+preDeployCommand = "pnpm --filter @forge/auth db:migrate:deploy"
 startCommand = "HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
