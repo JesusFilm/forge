@@ -50,7 +50,8 @@
     "mastra:dev": "mastra dev --dir src/mastra-playground",
     "smoke:draft-workflow": "tsx --env-file=.env src/scripts/smoke-mastra-draft-workflow.ts",
     "smoke:watch-progress-write": "tsx src/scripts/smoke-watch-progress-write.ts",
-    "smoke:mastra-chat": "tsx --env-file=.env src/scripts/smoke-mastra-chat.ts"
+    "smoke:mastra-chat": "tsx --env-file=.env src/scripts/smoke-mastra-chat.ts",
+    "smoke:watch-progress-erasure": "tsx src/scripts/smoke-watch-progress-erasure.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "3.0.79",
