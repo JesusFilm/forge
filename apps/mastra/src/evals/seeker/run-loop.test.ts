@@ -53,27 +53,27 @@ describe("pinEvalKey", () => {
  * Import-order source pin (finding #13; the retrieve-answer.test.ts
  * stripped-source technique applied to import ORDER). The pin-before-import
  * ordering only holds if NOTHING in run-loop's static import block
- * transitively evaluates the agent module: ./prompt-sections value-imports
- * SEEKER_SYSTEM_PROMPT_FALLBACK from seeker-agent, whose top level runs
+ * transitively evaluates the agent module, whose top level runs
  * `buildSeekerAgent()` — the whole Mastra model-router chain — before
- * pinEvalKey() could fire. Every other static import was audited: env,
- * hashes, models, openrouter, questions, rag, types reach only node
- * builtins/zod (questions and fixture-rag touch agent-adjacent modules via
- * `import type` only, which erases). A future static import that re-defeats
- * the ordering fails here. Type-only imports of the forbidden modules would
- * be erased at runtime, but the pin rejects them too — cheap insurance
- * against a later flip to a value import.
+ * pinEvalKey() could fire. The static import block was audited: env, cli,
+ * hashes, models, questions, rag, types reach only node builtins/zod;
+ * budgets is a zero-import constants module; the prompt constants and
+ * prompt-sections come from the dependency-FREE `seeker-prompt` leaf (its
+ * import-freeness is pinned below, so the static prompt path can never grow
+ * back into the agent chain). A future static import that re-defeats the
+ * ordering fails here. Type-only imports of the forbidden module would be
+ * erased at runtime, but the pin rejects them too — cheap insurance against
+ * a later flip to a value import.
  */
 describe("spend-guard import order (source pin)", () => {
-  function strippedRunLoopSource(): string {
+  function strippedSource(url: URL): string {
     // Comments stripped first so a commented-out import can neither satisfy
     // nor spoil the pin.
-    const source = readFileSync(
-      new URL("./run-loop.ts", import.meta.url),
-      "utf8",
-    )
+    const source = readFileSync(url, "utf8")
     return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
   }
+  const strippedRunLoopSource = (): string =>
+    strippedSource(new URL("./run-loop.ts", import.meta.url))
 
   it("keeps agent-reaching modules OUT of run-loop's static import block", () => {
     const code = strippedRunLoopSource()
@@ -81,7 +81,33 @@ describe("spend-guard import order (source pin)", () => {
     // Anti-vacuous: the scan must actually be seeing the import block.
     expect(staticImports.length).toBeGreaterThan(5)
     for (const statement of staticImports) {
-      expect(statement).not.toMatch(/prompt-sections|mastra\/agents/)
+      // Everything under mastra/agents is banned EXCEPT the seeker-prompt
+      // leaf, whose import-freeness the next pin holds.
+      expect(statement).not.toMatch(/mastra\/agents\/(?!seeker-prompt)/)
+    }
+  })
+
+  it("keeps the static prompt path a leaf — seeker-prompt imports nothing, prompt-sections reaches only node:crypto + the leaf", () => {
+    // run-loop (and prompt-sections) statically import the prompt constants,
+    // which is spend-guard-safe ONLY while this path stays out of the agent
+    // chain. One added import in either file could re-evaluate the model
+    // router before pinEvalKey().
+    const leaf = strippedSource(
+      new URL("../../mastra/agents/seeker-prompt.ts", import.meta.url),
+    )
+    expect(leaf).not.toMatch(/^\s*import\s/m)
+    expect(leaf).not.toMatch(/\brequire\(/)
+    // Anti-vacuous: the constants really live there.
+    expect(leaf).toMatch(/export const SEEKER_SYSTEM_PROMPT_FALLBACK/)
+
+    const sections = strippedSource(
+      new URL("./prompt-sections.ts", import.meta.url),
+    )
+    const sectionImports =
+      sections.match(/^import[\s\S]*?from\s+"[^"]+"/gm) ?? []
+    expect(sectionImports.length).toBeGreaterThan(0)
+    for (const statement of sectionImports) {
+      expect(statement).toMatch(/"node:crypto"|mastra\/agents\/seeker-prompt/)
     }
   })
 
@@ -96,12 +122,11 @@ describe("spend-guard import order (source pin)", () => {
     expect(code).toMatch(/decoding:\s*null/)
   })
 
-  it("loads prompt-sections and the agent module ONLY via post-pin dynamic import()", () => {
+  it("loads the agent module ONLY via post-pin dynamic import()", () => {
     const code = strippedRunLoopSource()
-    // Both modules are still consumed — through import(), inside main(),
-    // after pinEvalKey(). If either disappears entirely the identity stamp
-    // is broken, so pin their dynamic presence too.
-    expect(code).toMatch(/import\("\.\/prompt-sections"\)/)
+    // The agent module is still consumed — through import(), inside main(),
+    // after pinEvalKey(). If it disappears entirely the run has no agent, so
+    // pin its dynamic presence too.
     expect(code).toMatch(/import\("\.\.\/\.\.\/mastra\/agents\/seeker-agent"\)/)
     // And the pin runs before the dynamic batch in program order.
     expect(code.indexOf("pinEvalKey(process.env)")).toBeLessThan(

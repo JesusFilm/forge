@@ -187,6 +187,19 @@ export function identityMismatch(
   return problems
 }
 
+/**
+ * The corpus a run was generated against, from its retrieval stamp; null for
+ * mode-"none" and unstamped legacy runs. Shared by the judge's corpus assert
+ * (run-judge.ts) and the gate's fixture-integrity refusal (run-gate.ts) so
+ * the two can never diverge on what "stamped" means.
+ */
+export function stampedCorpusSha(identity: RunIdentity): string | null {
+  const retrieval = identity.retrieval
+  return retrieval != null && retrieval.mode !== "none"
+    ? retrieval.corpusSha256
+    : null
+}
+
 export type ToolCallRecord = {
   name: string
   /** The query the MODEL chose (tool-loop) or ours verbatim (injected). */

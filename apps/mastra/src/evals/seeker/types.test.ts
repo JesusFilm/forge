@@ -5,6 +5,7 @@ import {
   coerceAnswerRun,
   identityMismatch,
   normalizeLegacyAnswerRun,
+  stampedCorpusSha,
   type LegacyAnswerRun,
   type RunIdentity,
 } from "./types"
@@ -237,5 +238,35 @@ describe("bandFor", () => {
     expect(bandFor(0.9)).toBe("pass")
     expect(bandFor(0.8)).toBe("borderline")
     expect(bandFor(0.5)).toBe("fail")
+  })
+})
+
+describe("stampedCorpusSha", () => {
+  it("returns the stamped corpus for fixture-world modes and null otherwise", () => {
+    expect(
+      stampedCorpusSha(
+        identity({
+          retrieval: { mode: "fixtures", corpusSha256: "c1", topK: 5 },
+        }),
+      ),
+    ).toBe("c1")
+    expect(
+      stampedCorpusSha(
+        identity({
+          retrieval: { mode: "tool-loop", corpusSha256: "c2", topK: 5 },
+        }),
+      ),
+    ).toBe("c2")
+    expect(
+      stampedCorpusSha(identity({ retrieval: { mode: "none" } })),
+    ).toBeNull()
+    // Unstamped legacy artifacts must report null, never crash.
+    expect(
+      stampedCorpusSha(
+        identity({
+          retrieval: undefined as unknown as RunIdentity["retrieval"],
+        }),
+      ),
+    ).toBeNull()
   })
 })

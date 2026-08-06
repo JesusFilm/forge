@@ -56,21 +56,19 @@
  *   pnpm --filter @forge/mastra eval:seeker:gate -- --baseline-dir=apps/mastra/evals/results/seeker-baseline
  *   pnpm --filter @forge/mastra eval:seeker:gate -- --confirm-judged=apps/mastra/eval-runs/seeker-confirm/judged.json
  */
-import { readFile, mkdir, writeFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { hardFailViolations, runAnswerChecks } from "./checks"
-import { flag, loadFixtures } from "./cli"
+import { flag, loadAnswersFile, loadFixtures, loadJudgedFile } from "./cli"
 import type { RagFixtureFile } from "./rag"
 import { scoreJudgeRun } from "./score"
 import {
-  coerceAnswerRun,
   identityMismatch,
-  JUDGE_RUN_KIND,
+  stampedCorpusSha,
   type AnswerRun,
   type JudgeRun,
-  type RunIdentity,
 } from "./types"
 import { classFor } from "./weights"
 
@@ -181,6 +179,20 @@ export type GateReport = {
 
 function cellKey(questionId: string, model: string): string {
   return `${questionId}|${model}`
+}
+
+/** questionId|model → criterionId → verdict, over judged cells only. Used
+ *  for both the baseline and the confirmation run's verdict lookups. */
+function verdictsByCell(run: JudgeRun): Map<string, Map<string, string>> {
+  const byCell = new Map<string, Map<string, string>>()
+  for (const cell of run.judged) {
+    if (cell.status !== "judged" || !cell.verdicts) continue
+    byCell.set(
+      cellKey(cell.questionId, cell.model),
+      new Map(cell.verdicts.map((v) => [v.criterionId, v.verdict])),
+    )
+  }
+  return byCell
 }
 
 function hardFailsByCell(
@@ -306,18 +318,12 @@ export function evaluateGate(input: {
       }
     }
     if (input.allowCorpusMismatch !== true) {
-      const stampedCorpus = (identity: RunIdentity): string | null => {
-        const retrieval = identity.retrieval
-        return retrieval != null && retrieval.mode !== "none"
-          ? retrieval.corpusSha256
-          : null
-      }
       const corpusProblems: string[] = []
       for (const [label, identity] of [
         ["current", current.judged.identity],
         ["baseline", baseline.judged.identity],
       ] as const) {
-        const stamped = stampedCorpus(identity)
+        const stamped = stampedCorpusSha(identity)
         if (stamped !== fixtures.corpusSha256) {
           corpusProblems.push(
             `fixtures corpus ${fixtures.corpusSha256.slice(0, 12)}… does not match the ${label} run's stamped corpus ${stamped?.slice(0, 12) ?? "(unstamped)"}… — pass --allow-corpus-mismatch only for a deliberate legacy replay`,
@@ -404,7 +410,7 @@ export function evaluateGate(input: {
     "cited-urls-grounded",
     "cited-source-names-grounded",
   ])
-  const COUNT_CHECKS = ["tool-called", "word-count", "prose-format"] as const
+  const FORMAT_CHECKS = ["word-count", "prose-format"] as const
   const baselineFails = hardFailsByCell(baseline.answers, fixtures)
   const currentFails = hardFailsByCell(current.answers, fixtures)
   const newHardFails: GateHardFail[] = []
@@ -500,19 +506,10 @@ export function evaluateGate(input: {
       toolSkipPooled,
     }
   }
-  const formatDeltas = COUNT_CHECKS.slice(1).flatMap((checkId) =>
-    countDelta(checkId),
-  )
+  const formatDeltas = FORMAT_CHECKS.flatMap((checkId) => countDelta(checkId))
 
   // 2. Judge verdict flips (baseline satisfied → current violated).
-  const baselineVerdicts = new Map<string, Map<string, string>>()
-  for (const cell of baseline.judged.judged) {
-    if (cell.status !== "judged" || !cell.verdicts) continue
-    baselineVerdicts.set(
-      cellKey(cell.questionId, cell.model),
-      new Map(cell.verdicts.map((v) => [v.criterionId, v.verdict])),
-    )
-  }
+  const baselineVerdicts = verdictsByCell(baseline.judged)
   const groundingFlips: GateVerdictFlip[] = []
   const triageFlips: GateVerdictFlip[] = []
   for (const cell of current.judged.judged) {
@@ -574,14 +571,7 @@ export function evaluateGate(input: {
           `confirm run coverage: only ${confirmStats.judgedCount}/${gridKeys.size} grid cells judged (${confirmStats.invalid} invalid, ${confirmStats.answerError} answer-error) — cannot confirm flips on partial evidence`,
         ]
       } else {
-        const confirmVerdicts = new Map<string, Map<string, string>>()
-        for (const cell of confirm.judged) {
-          if (cell.status !== "judged" || !cell.verdicts) continue
-          confirmVerdicts.set(
-            cellKey(cell.questionId, cell.model),
-            new Map(cell.verdicts.map((v) => [v.criterionId, v.verdict])),
-          )
-        }
+        const confirmVerdicts = verdictsByCell(confirm)
         for (const flip of groundingFlips) {
           const reproduced =
             confirmVerdicts
@@ -649,18 +639,6 @@ export function evaluateGate(input: {
   }
 }
 
-async function loadAnswers(path: string): Promise<AnswerRun> {
-  return coerceAnswerRun(JSON.parse(await readFile(path, "utf8")))
-}
-
-async function loadJudged(path: string): Promise<JudgeRun> {
-  const run = JSON.parse(await readFile(path, "utf8")) as JudgeRun
-  if (run.kind !== JUDGE_RUN_KIND) {
-    throw new Error(`${path} is not a seeker-eval judgements file`)
-  }
-  return run
-}
-
 async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   const currentDir = resolve(
@@ -693,10 +671,10 @@ async function main(): Promise<void> {
     baselineJudged,
     fixtures,
   ] = await Promise.all([
-    loadAnswers(resolve(currentDir, "answers.json")),
-    loadJudged(resolve(currentDir, "judged.json")),
-    loadAnswers(resolve(baselineDir, "answers.json")),
-    loadJudged(resolve(baselineDir, "judged.json")),
+    loadAnswersFile(resolve(currentDir, "answers.json")),
+    loadJudgedFile(resolve(currentDir, "judged.json")),
+    loadAnswersFile(resolve(baselineDir, "answers.json")),
+    loadJudgedFile(resolve(baselineDir, "judged.json")),
     loadFixtures(
       resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
     ),
@@ -705,7 +683,7 @@ async function main(): Promise<void> {
   // Second independent judged run for flip confirmation (decision #7).
   const confirmPath = flag(argv, "confirm-judged")
   const confirmJudged = confirmPath
-    ? await loadJudged(resolve(process.cwd(), confirmPath))
+    ? await loadJudgedFile(resolve(process.cwd(), confirmPath))
     : null
 
   const report = evaluateGate({

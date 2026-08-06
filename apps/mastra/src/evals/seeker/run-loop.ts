@@ -21,10 +21,12 @@
  * `process.env.OPENROUTER_API_KEY` with the eval key in-process so no ambient
  * dev/prod key can be billed. `pinEvalKey` is exported and unit-tested
  * (run-loop.test.ts) — the mechanism, not just the happy path. The
- * before-any-agent-import ordering is REAL, not aspirational: every module
- * that transitively value-imports the agent (prompt-sections, the agent
- * itself) loads via dynamic import() after the pin, and run-loop.test.ts
- * pins the static import block against regressions (finding #13).
+ * before-any-agent-import ordering is REAL, not aspirational: the agent
+ * module (the one static dependency whose top level evaluates the model
+ * router) loads via dynamic import() after the pin; the prompt constants
+ * come from the dependency-FREE `seeker-prompt` leaf, so the static import
+ * block never reaches the agent chain. run-loop.test.ts pins both the
+ * static import block and the leaf's import-freeness (finding #13).
  *
  *   pnpm --filter @forge/mastra eval:seeker:loop
  *   pnpm --filter @forge/mastra eval:seeker:loop -- --limit=1
@@ -33,17 +35,16 @@ import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import {
+  SEEKER_SYSTEM_PROMPT_FALLBACK,
+  SEEKER_SYSTEM_PROMPT_NAME,
+} from "../../mastra/agents/seeker-prompt"
+import { TIME_BUDGET_MS } from "../../mastra/budgets"
 import { csv, flag, loadFixtures } from "./cli"
 import { KEY_VARIABLE, keyHelpText, loadEnvFiles } from "./env"
 import { criteriaHash, gitSha, sha256 } from "./hashes"
 import { answeringModelsByIds, costUsd, type AnsweringModel } from "./models"
-// NO static import of ./prompt-sections here: it value-imports
-// SEEKER_SYSTEM_PROMPT_FALLBACK from the agent module, whose top level runs
-// `buildSeekerAgent()` — evaluating the whole Mastra model-router chain
-// BEFORE pinEvalKey() could run (review finding #13). It loads via dynamic
-// import() inside main(), in the post-pin batch. The source-pin test in
-// run-loop.test.ts fails if a static import of prompt-sections or the agent
-// module ever returns. (./cli is safe: node builtins + ./rag + ./types only.)
+import { SECTION_MAPPING_VERSION } from "./prompt-sections"
 import { QUESTIONS, QUESTION_SET_ID, type Question } from "./questions"
 import type { RagFixture } from "./rag"
 import {
@@ -60,8 +61,10 @@ const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
 const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
 
 /** Wall-clock ceiling per cell — the same 90s budget `/forge-seeker` runs
- *  under (`TIME_BUDGET_MS.chatTurn`), so a hung provider cannot wedge a run. */
-const CELL_TIMEOUT_MS = 90_000
+ *  under, imported from the route's own constant (budgets.ts has zero
+ *  imports, so this is spend-guard-safe) — a hung provider cannot wedge a
+ *  run, and the eval can never drift from the route's real budget. */
+const CELL_TIMEOUT_MS = TIME_BUDGET_MS.chatTurn
 
 /**
  * The key-hygiene mechanism, factored for direct unit testing. Operates on an
@@ -150,11 +153,15 @@ async function runCell(input: {
 }): Promise<{ record: AnswerRecord; transcript: LoopTranscriptCell }> {
   const { agent, question, model, sampleId, calls, fixture } = input
   const startedAt = Date.now()
-  const base = {
-    questionId: question.id,
-    category: question.category,
-    model: model.id,
-  }
+
+  let outcome:
+    | {
+        ok: true
+        text: string
+        finishReason: string | null
+        usage: { input: number; output: number }
+      }
+    | { ok: false; error: string }
   try {
     // Decision 2026-08-04 (#14): NO decoding pin here — the gating run must
     // sample exactly the distribution production serves, and nothing on the
@@ -169,85 +176,81 @@ async function runCell(input: {
       abortSignal: AbortSignal.timeout(CELL_TIMEOUT_MS),
     })
     if (result.error) throw result.error
-    const latencyMs = Date.now() - startedAt
-    const usage = {
-      input: result.totalUsage?.inputTokens ?? 0,
-      output: result.totalUsage?.outputTokens ?? 0,
-    }
-    const toolCalls: ToolCallRecord[] = calls.map((call) => ({
-      name: call.name,
-      arguments: call.arguments,
-      servedFrom: call.servedFrom,
-      queryDrift: call.queryDrift,
-    }))
-    const record: AnswerRecord = {
-      ...base,
+    outcome = {
       ok: true,
       text: result.text,
       finishReason: result.finishReason ?? null,
-      usage,
-      costUsd: costUsd(model.id, usage),
-      latencyMs,
-      toolCalls,
-      // THE measurement injected mode cannot make: did the model, free to
-      // choose, actually retrieve?
-      skippedTool: calls.length === 0,
-    }
-    return {
-      record,
-      transcript: {
-        questionId: question.id,
-        model: model.id,
-        sampleId,
-        toolCalls: calls.map((call) => ({
-          ...call,
-          servedPassages: fixture.result,
-        })),
-        text: result.text,
-        finishReason: result.finishReason ?? null,
-        usage,
-        costUsd: record.costUsd,
-        latencyMs,
+      usage: {
+        input: result.totalUsage?.inputTokens ?? 0,
+        output: result.totalUsage?.outputTokens ?? 0,
       },
     }
   } catch (cause) {
-    const latencyMs = Date.now() - startedAt
-    const message = cause instanceof Error ? cause.message : String(cause)
-    const record: AnswerRecord = {
-      ...base,
+    outcome = {
       ok: false,
-      text: null,
-      finishReason: null,
-      usage: null,
-      costUsd: null,
-      latencyMs,
-      error: message,
-      toolCalls: calls.map((call) => ({
-        name: call.name,
-        arguments: call.arguments,
-        servedFrom: call.servedFrom,
-        queryDrift: call.queryDrift,
-      })),
-      skippedTool: calls.length === 0,
+      error: cause instanceof Error ? cause.message : String(cause),
     }
-    return {
-      record,
-      transcript: {
-        questionId: question.id,
-        model: model.id,
-        sampleId,
-        toolCalls: calls.map((call) => ({
-          ...call,
-          servedPassages: fixture.result,
-        })),
+  }
+  const latencyMs = Date.now() - startedAt
+
+  // `calls` is filled by the tool recorder DURING generate, so these
+  // projections must run after it settles — shared by both outcomes.
+  const toolCalls: ToolCallRecord[] = calls.map((call) => ({
+    name: call.name,
+    arguments: call.arguments,
+    servedFrom: call.servedFrom,
+    queryDrift: call.queryDrift,
+  }))
+  const transcriptToolCalls = calls.map((call) => ({
+    ...call,
+    servedPassages: fixture.result,
+  }))
+
+  const base = {
+    questionId: question.id,
+    category: question.category,
+    model: model.id,
+  }
+  const record: AnswerRecord = outcome.ok
+    ? {
+        ...base,
+        ok: true,
+        text: outcome.text,
+        finishReason: outcome.finishReason,
+        usage: outcome.usage,
+        costUsd: costUsd(model.id, outcome.usage),
+        latencyMs,
+        toolCalls,
+        // THE measurement injected mode cannot make: did the model, free to
+        // choose, actually retrieve?
+        skippedTool: calls.length === 0,
+      }
+    : {
+        ...base,
+        ok: false,
         text: null,
         finishReason: null,
         usage: null,
         costUsd: null,
         latencyMs,
-        error: message,
-      },
-    }
+        error: outcome.error,
+        toolCalls,
+        skippedTool: calls.length === 0,
+      }
+  return {
+    record,
+    transcript: {
+      questionId: question.id,
+      model: model.id,
+      sampleId,
+      toolCalls: transcriptToolCalls,
+      text: outcome.ok ? outcome.text : null,
+      finishReason: outcome.ok ? outcome.finishReason : null,
+      usage: outcome.ok ? outcome.usage : null,
+      costUsd: record.costUsd,
+      latencyMs,
+      ...(outcome.ok ? {} : { error: outcome.error }),
+    },
   }
 }
 
@@ -289,31 +292,25 @@ async function main(): Promise<void> {
     )
   }
 
-  // Import the production seam ONLY after the key pin above. The instructions
-  // stamp resolves through the SAME helper the agent's own resolver uses, so
-  // identity records what the model actually saw (fallback locally; langfuse
-  // + version when configured). ./prompt-sections belongs in this post-pin
-  // batch too: it value-imports the agent module for the fallback prompt
-  // text, so a static import would evaluate `buildSeekerAgent()` before the
-  // pin (finding #13).
+  // Import the production seam ONLY after the key pin above — the agent
+  // module's top level evaluates the whole Mastra model-router chain
+  // (finding #13). The instructions stamp resolves through the SAME helper
+  // the agent's own resolver uses, so identity records what the model
+  // actually saw (fallback locally; langfuse + version when configured).
+  // The prompt constants and section mapping are static imports: they come
+  // from the dependency-free `seeker-prompt` leaf, never the agent chain.
   const [
-    {
-      buildSeekerAgent,
-      SEEKER_SYSTEM_PROMPT_FALLBACK,
-      SEEKER_SYSTEM_PROMPT_NAME,
-    },
+    { buildSeekerAgent },
     langfuse,
     fixtureRag,
     memoryModule,
     storageModule,
-    { SECTION_MAPPING_VERSION },
   ] = await Promise.all([
     import("../../mastra/agents/seeker-agent"),
     import("../../services/langfuse-prompt-client"),
     import("./fixture-rag"),
     import("@mastra/memory"),
     import("@mastra/core/storage"),
-    import("./prompt-sections"),
   ])
 
   const resolvedPrompt = await langfuse.getManagedPrompt({

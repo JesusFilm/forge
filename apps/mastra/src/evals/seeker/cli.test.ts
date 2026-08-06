@@ -5,7 +5,15 @@ import { fileURLToPath } from "node:url"
 
 import { describe, expect, it } from "vitest"
 
-import { csv, flag, loadFixtures, runRequiresFixtures } from "./cli"
+import {
+  csv,
+  flag,
+  loadAnswersFile,
+  loadAnswersFileIfPresent,
+  loadFixtures,
+  loadJudgedFile,
+  runRequiresFixtures,
+} from "./cli"
 
 describe("flag", () => {
   it("returns the value of a --name=value argument and undefined otherwise", () => {
@@ -67,5 +75,64 @@ describe("runRequiresFixtures — mode-aware requirement (finding #12)", () => {
     ).toBe(true)
     expect(runRequiresFixtures({ mode: "none" })).toBe(false)
     expect(runRequiresFixtures(undefined)).toBe(false)
+  })
+})
+
+describe("loadAnswersFile / loadJudgedFile — shared loud loaders (decision 2026-08-04 #9)", () => {
+  async function tempFile(name: string, content: string): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "seeker-cli-test-"))
+    const path = join(dir, name)
+    await writeFile(path, content)
+    return path
+  }
+
+  it("loadAnswersFile throws distinctly on absence, corrupt JSON, and wrong kind", async () => {
+    await expect(
+      loadAnswersFile(
+        fileURLToPath(new URL("./no-such-answers.json", import.meta.url)),
+      ),
+    ).rejects.toThrow(/answers file not found/)
+    await expect(
+      loadAnswersFile(await tempFile("answers.json", "{ not json")),
+    ).rejects.toThrow(/not valid JSON/)
+    await expect(
+      loadAnswersFile(
+        await tempFile("answers.json", JSON.stringify({ kind: "other" })),
+      ),
+    ).rejects.toThrow(/not a seeker-eval answers file/)
+  })
+
+  it("loadAnswersFileIfPresent returns null ONLY for absence — corrupt JSON still throws", async () => {
+    await expect(
+      loadAnswersFileIfPresent(
+        fileURLToPath(new URL("./no-such-answers.json", import.meta.url)),
+      ),
+    ).resolves.toBeNull()
+    // The fail-open shape this loader replaced (run-report's swallow-to-null)
+    // must stay unrepresentable: a PRESENT-but-broken file is loud.
+    await expect(
+      loadAnswersFileIfPresent(await tempFile("answers.json", "{ not json")),
+    ).rejects.toThrow(/not valid JSON/)
+    await expect(
+      loadAnswersFileIfPresent(
+        await tempFile("answers.json", JSON.stringify({ kind: "other" })),
+      ),
+    ).rejects.toThrow(/not a seeker-eval answers file/)
+  })
+
+  it("loadJudgedFile throws distinctly on absence, corrupt JSON, and wrong kind", async () => {
+    await expect(
+      loadJudgedFile(
+        fileURLToPath(new URL("./no-such-judged.json", import.meta.url)),
+      ),
+    ).rejects.toThrow(/judgements file not found/)
+    await expect(
+      loadJudgedFile(await tempFile("judged.json", "{ not json")),
+    ).rejects.toThrow(/not valid JSON/)
+    await expect(
+      loadJudgedFile(
+        await tempFile("judged.json", JSON.stringify({ kind: "other" })),
+      ),
+    ).rejects.toThrow(/not a seeker-eval judgements file/)
   })
 })

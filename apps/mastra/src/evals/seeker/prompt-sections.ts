@@ -16,13 +16,16 @@
  * `SECTION_MAPPING_VERSION`, which run identity stamps so cross-mapping runs
  * refuse to compare.
  *
- * The prompt text is IMPORTED from the agent module — never hand-copied —
- * so the eval always sees the exact fallback production compiles in.
- * (Read-only import; this lane never modifies seeker-agent.ts.)
+ * The prompt text is IMPORTED — never hand-copied — so the eval always sees
+ * the exact fallback production compiles in. It comes from the
+ * dependency-FREE `seeker-prompt` leaf (which seeker-agent.ts consumes and
+ * re-exports), so importing this module never evaluates the agent's
+ * model-router chain — the property run-loop.ts's spend guard depends on
+ * (leaf-ness pinned in run-loop.test.ts).
  */
 import { createHash } from "node:crypto"
 
-import { SEEKER_SYSTEM_PROMPT_FALLBACK } from "../../mastra/agents/seeker-agent"
+import { SEEKER_SYSTEM_PROMPT_FALLBACK } from "../../mastra/agents/seeker-prompt"
 
 /**
  * Section names. `unowned` is a deliberate pseudo-section for behaviours the
@@ -136,16 +139,3 @@ export const LINE_SECTIONS: ReadonlyArray<{
   },
   { line: 12, lineStart: "SAFETY:", section: "safety" },
 ]
-
-export function sectionForLine(line: number): PromptSectionId {
-  const entry = LINE_SECTIONS.find((candidate) => candidate.line === line)
-  if (!entry) throw new Error(`no section mapping for prompt line ${line}`)
-  return entry.section
-}
-
-/** Lines owned by a section, for report rollups and ablation tooling. */
-export function linesForSection(section: PromptSectionId): number[] {
-  return LINE_SECTIONS.filter((entry) => entry.section === section).map(
-    (entry) => entry.line,
-  )
-}

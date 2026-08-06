@@ -13,20 +13,20 @@
  *
  *   pnpm --filter @forge/mastra eval:seeker:report
  */
-import { readFile, mkdir, writeFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { hardFailViolations, runAnswerChecks, type CheckResult } from "./checks"
-import { flag, loadFixtures, runRequiresFixtures } from "./cli"
-import { scoreJudgeRun } from "./score"
 import {
-  coerceAnswerRun,
-  identityMismatch,
-  JUDGE_RUN_KIND,
-  type AnswerRun,
-  type JudgeRun,
-} from "./types"
+  flag,
+  loadAnswersFileIfPresent,
+  loadFixtures,
+  loadJudgedFile,
+  runRequiresFixtures,
+} from "./cli"
+import { scoreJudgeRun } from "./score"
+import { identityMismatch } from "./types"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
@@ -34,14 +34,6 @@ const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
 
 function shortModel(model: string): string {
   return model.split("/").pop()?.replace(":free", "") ?? model
-}
-
-async function loadAnswers(path: string): Promise<AnswerRun | null> {
-  try {
-    return coerceAnswerRun(JSON.parse(await readFile(path, "utf8")))
-  } catch {
-    return null
-  }
 }
 
 async function main(): Promise<void> {
@@ -54,10 +46,7 @@ async function main(): Promise<void> {
     process.cwd(),
     flag(argv, "answers") ?? resolve(DEFAULT_RUNS_DIR, "answers.json"),
   )
-  const run = JSON.parse(await readFile(inPath, "utf8")) as JudgeRun
-  if (run.kind !== JUDGE_RUN_KIND) {
-    throw new Error(`${inPath} is not a seeker-eval judgements file`)
-  }
+  const run = await loadJudgedFile(inPath)
   // Fail-closed, mode-aware fixtures resolution (decision 2026-08-04 #9 —
   // this was the last swallow-to-null loader): a fixture-world run's checks
   // section must not silently vanish on a load failure; a mode-"none" run
@@ -67,7 +56,10 @@ async function main(): Promise<void> {
         resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
       )
     : null
-  const answers = await loadAnswers(answersPath)
+  // Absence-tolerant ONLY: a never-written answers file renders a judge-only
+  // report, but a corrupt one throws — the checks section and answer text
+  // must never silently vanish on a swallowed load (decision #9).
+  const answers = await loadAnswersFileIfPresent(answersPath)
   const outPath = resolve(
     process.cwd(),
     flag(argv, "out") ?? resolve(DEFAULT_RUNS_DIR, "report.md"),
@@ -280,7 +272,10 @@ async function main(): Promise<void> {
         "| --- | --- | --- |",
       )
       for (const verdict of entry.verdicts) {
+        // Backslashes first, or escaping a pipe could itself be un-escaped
+        // by a preceding literal backslash (CodeQL js/incomplete-sanitization).
         const reasoning = verdict.reasoning
+          .replace(/\\/g, "\\\\")
           .replace(/\|/g, "\\|")
           .replace(/\n/g, " ")
           .slice(0, 200)

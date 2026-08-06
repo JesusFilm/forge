@@ -28,11 +28,11 @@
  *     --in=apps/mastra/eval-runs/seeker/answers.json \
  *     --out=/tmp/judged.json
  */
-import { readFile, mkdir, writeFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { flag, loadFixtures, runRequiresFixtures } from "./cli"
+import { flag, loadAnswersFile, loadFixtures, runRequiresFixtures } from "./cli"
 import { requireOpenRouterKey } from "./env"
 import { criteriaHash, sha256, weightsHash } from "./hashes"
 import { costUsd, JUDGE_MODEL } from "./models"
@@ -40,8 +40,8 @@ import { completeJson, EvalLlmError, type Usage } from "./openrouter"
 import { criteriaFor, questionById, type Criterion } from "./questions"
 import type { RagFixtureFile } from "./rag"
 import {
-  coerceAnswerRun,
   JUDGE_RUN_KIND,
+  stampedCorpusSha,
   type AnswerRecord,
   type CriterionVerdict,
   type JudgedAnswer,
@@ -364,11 +364,7 @@ export function assertFixtureCorpusMatchesRun(input: {
   identity: RunIdentity
   allowCorpusMismatch: boolean
 }): void {
-  const retrieval = input.identity.retrieval
-  const stamped =
-    retrieval != null && retrieval.mode !== "none"
-      ? retrieval.corpusSha256
-      : null
+  const stamped = stampedCorpusSha(input.identity)
   if (stamped === input.fixtures.corpusSha256) return
   if (input.allowCorpusMismatch) {
     console.warn(
@@ -394,7 +390,7 @@ async function main(): Promise<void> {
     flag(argv, "out") ?? resolve(DEFAULT_RUNS_DIR, "judged.json"),
   )
 
-  const run = coerceAnswerRun(JSON.parse(await readFile(inPath, "utf8")))
+  const run = await loadAnswersFile(inPath)
 
   // Mode-aware, fail-closed fixtures resolution — see the helpers above.
   const allowCorpusMismatch = argv.includes("--allow-corpus-mismatch")

@@ -10,13 +10,12 @@
  *   pnpm --filter @forge/mastra eval:seeker:score
  *   pnpm --filter @forge/mastra eval:seeker:score -- --in=... --out=...
  */
-import { readFile, mkdir, writeFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { flag } from "./cli"
+import { flag, loadJudgedFile } from "./cli"
 import { scoreJudgeRun } from "./score"
-import { JUDGE_RUN_KIND, type JudgeRun } from "./types"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
@@ -32,10 +31,7 @@ async function main(): Promise<void> {
     flag(argv, "out") ?? resolve(DEFAULT_RUNS_DIR, "score.json"),
   )
 
-  const run = JSON.parse(await readFile(inPath, "utf8")) as JudgeRun
-  if (run.kind !== JUDGE_RUN_KIND) {
-    throw new Error(`${inPath} is not a seeker-eval judgements file`)
-  }
+  const run = await loadJudgedFile(inPath)
 
   const score = scoreJudgeRun(run)
 

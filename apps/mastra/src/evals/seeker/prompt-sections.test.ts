@@ -3,13 +3,11 @@ import { describe, expect, it } from "vitest"
 import {
   EXPECTED_PROMPT_SHA256,
   LINE_SECTIONS,
-  linesForSection,
   PROMPT_SECTION_IDS,
   PROMPT_UNDER_TEST,
   promptLines,
   promptSha256,
   SECTION_MAPPING_VERSION,
-  sectionForLine,
 } from "./prompt-sections"
 import { SEEKER_SYSTEM_PROMPT_FALLBACK } from "../../mastra/agents/seeker-agent"
 
@@ -54,16 +52,5 @@ describe("prompt-sections drift guard", () => {
     for (const entry of LINE_SECTIONS) {
       expect(PROMPT_SECTION_IDS).toContain(entry.section)
     }
-  })
-
-  it("resolves lines to sections and sections to lines consistently", () => {
-    expect(sectionForLine(0)).toBe("persona")
-    expect(sectionForLine(12)).toBe("safety")
-    expect(() => sectionForLine(99)).toThrow(/no section mapping/)
-    for (const line of linesForSection("citation-discipline")) {
-      expect(sectionForLine(line)).toBe("citation-discipline")
-    }
-    // `unowned` is a pseudo-section for behaviours no prompt line owns.
-    expect(linesForSection("unowned")).toHaveLength(0)
   })
 })

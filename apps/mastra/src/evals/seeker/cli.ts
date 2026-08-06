@@ -4,13 +4,15 @@
  * `flag` ×7, `csv` ×2, `loadFixtures` ×5 under two divergent contracts —
  * the async swallow-to-null variant WAS findings #4/#12).
  *
- * `loadFixtures` has ONE contract: fail closed, loudly, with DISTINCT
- * messages for an absent file, an unreadable file, corrupt JSON, and a
- * wrong-kind file — each has a different fix, and every entrypoint's
- * main() maps a throw to a nonzero exit. The "proceed without fixtures"
- * lane for mode-"none" runs lives at the PURE APIs (evaluateGate's
- * nullable fixtures input; run-judge/run-report passing null explicitly
- * when `runRequiresFixtures` says no) — never inside this loader.
+ * The loaders (`loadFixtures`, `loadAnswersFile`, `loadJudgedFile`) have ONE
+ * contract: fail closed, loudly, with DISTINCT messages for an absent file,
+ * an unreadable file, corrupt JSON, and a wrong-kind file — each has a
+ * different fix, and every entrypoint's main() maps a throw to a nonzero
+ * exit. The "proceed without fixtures" lane for mode-"none" runs lives at
+ * the PURE APIs (evaluateGate's nullable fixtures input; run-judge/
+ * run-report passing null explicitly when `runRequiresFixtures` says no) —
+ * never inside a loader. `loadAnswersFileIfPresent` is the one deliberate
+ * exception, and it tolerates ONLY absence.
  *
  * Deliberately dependency-light: imports only node builtins, ./rag, and
  * ./types (none of which reach the agent module), so run-loop's
@@ -19,7 +21,13 @@
 import { readFile } from "node:fs/promises"
 
 import { loadableFixtureFile, type RagFixtureFile } from "./rag"
-import type { RunIdentity } from "./types"
+import {
+  coerceAnswerRun,
+  JUDGE_RUN_KIND,
+  type AnswerRun,
+  type JudgeRun,
+  type RunIdentity,
+} from "./types"
 
 /** `--name=value` argv lookup shared by every entrypoint. */
 export function flag(
@@ -73,6 +81,66 @@ export async function loadFixtures(path: string): Promise<RagFixtureFile> {
     throw new Error(`${path} is not a chat-eval RAG fixture file (wrong kind)`)
   }
   return file
+}
+
+/** Read a file's text; null ONLY on ENOENT — other read errors throw loudly. */
+async function readTextIfPresent(
+  path: string,
+  what: string,
+): Promise<string | null> {
+  try {
+    return await readFile(path, "utf8")
+  } catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code === "ENOENT") return null
+    throw new Error(
+      `${what} file at ${path} could not be read: ${cause instanceof Error ? cause.message : String(cause)}`,
+    )
+  }
+}
+
+function parseJsonArtifact(raw: string, path: string, what: string): unknown {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    throw new Error(`${what} file at ${path} is not valid JSON`)
+  }
+}
+
+/**
+ * Loud shared loader for answers artifacts (current or prototype-era kind) —
+ * the same one-contract rule as `loadFixtures`: every failure mode throws
+ * with the path in the message; no caller ever swallows a load into null.
+ */
+export async function loadAnswersFile(path: string): Promise<AnswerRun> {
+  const raw = await readTextIfPresent(path, "answers")
+  if (raw == null) throw new Error(`answers file not found at ${path}`)
+  return coerceAnswerRun(parseJsonArtifact(raw, path, "answers"))
+}
+
+/**
+ * Absence-tolerant variant for the ONE caller allowed to proceed without
+ * answers (run-report renders a judge-only report when the answers file was
+ * never written): null ONLY when the file is absent — a corrupt or
+ * wrong-kind file still throws, so a checks section can never silently
+ * vanish (decision 2026-08-04 #9).
+ */
+export async function loadAnswersFileIfPresent(
+  path: string,
+): Promise<AnswerRun | null> {
+  const raw = await readTextIfPresent(path, "answers")
+  if (raw == null) return null
+  return coerceAnswerRun(parseJsonArtifact(raw, path, "answers"))
+}
+
+/** Loud shared loader for judgements artifacts — same contract as above. */
+export async function loadJudgedFile(path: string): Promise<JudgeRun> {
+  const raw = await readTextIfPresent(path, "judgements")
+  if (raw == null) throw new Error(`judgements file not found at ${path}`)
+  const run = parseJsonArtifact(raw, path, "judgements") as JudgeRun
+  if (run.kind !== JUDGE_RUN_KIND) {
+    throw new Error(`${path} is not a seeker-eval judgements file`)
+  }
+  return run
 }
 
 /**
