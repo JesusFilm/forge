@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 6, 2026)
 
-- **Total tickets:** 487
-- **Complete:** 372
+- **Total tickets:** 492
+- **Complete:** 375
 - **In progress:** 36
-- **Not started:** 29
-- **Blocked:** 50
-- **Overdue and not complete:** 94
+- **Not started:** 30
+- **Blocked:** 51
+- **Overdue and not complete:** 95
 
 ## Feature Index
 
@@ -101,7 +101,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-311](content-discovery/feat-311-admin-fireworks-query-embeddings.md)                                     | Admin Fireworks query embedding provider                                                        | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-326](content-discovery/feat-326-admin-search-results-pagination.md)                                      | Admin search results pagination                                                                 | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-312](content-discovery/feat-312-admin-query-embedding-fast-fail.md)                                      | Admin query embedding one-second fast fail                                                      | codex      | P1       | 2026-08-03 | 1    | 2026-08-03 | complete    |
+| [feat-335](content-discovery/feat-335-watch-language-inventory-english-assist.md)                              | Watch language inventory English assistance                                                     | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-335](content-discovery/feat-335-watch-search-han-query-trigger.md)                                       | Remove Web Watch search frontend language detection                                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-336](content-discovery/feat-336-watch-localized-title-fallback.md)                                       | Watch localized title fallback                                                                  | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-336](content-discovery/feat-336-watch-search-overlay-backdrop-continuity.md)                             | Watch search overlay backdrop continuity                                                        | vlad       | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
@@ -401,7 +403,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-325](platform/feat-325-watch-search-direct-client-contract.md)                   | Watch search direct client contract                                              | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-334](platform/feat-334-watch-player-volume-preference.md)                        | Watch player volume preference persistence                                       | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |
 | [feat-334](platform/feat-334-web-redis-isr-cache.md)                                   | Web Redis-backed ISR cache                                                       | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |
+| [feat-335](platform/feat-335-watch-language-inventory-experience-section.md)           | Watch language inventory Experience section                                      | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | blocked     |
+| [feat-337](platform/feat-337-watch-language-inventory-direct-catalog.md)               | Focus Watch language inventory on the dubbed catalog                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
+| [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
 | [feat-102](platform/feat-102-admin-login-copy-simplification.md)                       | Admin Login Copy Simplification                                                  | tataihono  | P2       | 2026-04-16 | 1    | 2026-04-16 | complete    |
@@ -512,7 +517,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | 2026-07-22 | 2    | 2026-07-23 | complete    |
 | [feat-320](topic-experiences/feat-320-experience-create-generate-mcp.md)                    | Experience create + generate tools for the JFP Admin MCP                         | ekkasit   | P1       | 2026-07-27 | 5    | 2026-07-31 | in-progress |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
-| [feat-337](topic-experiences/feat-337-watch-download-sequence-prefixes.md)                  | Watch download sequence prefixes                                                 | vlad      | P1       | 2026-08-06 | 1    | 2026-08-06 | complete    |
+| [feat-338](topic-experiences/feat-338-watch-download-sequence-prefixes.md)                  | Watch download sequence prefixes                                                 | vlad      | P1       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
