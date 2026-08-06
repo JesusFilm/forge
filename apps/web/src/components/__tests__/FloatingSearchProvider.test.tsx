@@ -2413,13 +2413,19 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const submitButton = form?.querySelector<HTMLButtonElement>(
       'button[type="submit"]',
     )
+    const leadingIcon = form?.querySelector(
+      '[data-testid="search-overlay-input-icon"], [data-testid="search-overlay-instant-input-icon"]',
+    )
 
     expect(form).not.toBeNull()
     expect(input.type).toBe("search")
     expect(input.getAttribute("enterkeyhint")).toBe("search")
+    expect(leadingIcon).not.toBeNull()
+    expect(leadingIcon?.closest("button")).toBeNull()
     expect(submitButton?.disabled).toBe(true)
-    expect(submitButton?.className).toContain("disabled:bg-transparent")
-    expect(submitButton?.className).not.toContain("disabled:bg-stone-200")
+    expect(submitButton?.getAttribute("aria-hidden")).toBe("true")
+    expect(submitButton?.className).toContain("w-0")
+    expect(submitButton?.className).toContain("opacity-0")
 
     act(() => {
       setInputValue(input, "jesus")
@@ -2429,9 +2435,17 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).not.toHaveBeenCalled()
 
     expect(submitButton?.getAttribute("aria-label")).toBe("Search videos")
+    expect(submitButton?.getAttribute("aria-hidden")).toBe("false")
     expect(submitButton?.className).toContain("h-11")
-    expect(submitButton?.className).toContain("w-11")
+    expect(submitButton?.className).toContain("min-w-11")
+    expect(submitButton?.className).toContain("opacity-100")
     expect(submitButton?.disabled).toBe(false)
+    expect(submitButton?.textContent).toContain("Search videos")
+    expect(submitButton?.querySelector("svg")).not.toBeNull()
+    expect(submitButton?.querySelector("span")?.className).toContain("hidden")
+    expect(submitButton?.querySelector("span")?.className).toContain(
+      "sm:inline",
+    )
 
     await act(async () => {
       submitButton?.click()

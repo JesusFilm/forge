@@ -9,7 +9,7 @@ import {
   type MouseEventHandler,
   type RefObject,
 } from "react"
-import { Search } from "lucide-react"
+import { CornerDownLeft, Search } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
@@ -124,20 +124,15 @@ export const FloatingSearchFieldInput = forwardRef<
       role="search"
       aria-label={t("searchRegion")}
       onSubmit={handleSubmit}
-      className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} !gap-2 !px-2 !py-1 ${wrapperClassName ?? ""}`}
+      className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} !gap-1 !px-2 !py-1 ${wrapperClassName ?? ""}`}
     >
-      <button
-        type="submit"
-        aria-label={t("searchRegion")}
-        disabled={!hasValue}
-        className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-950 text-white transition-[background-color,color,transform] hover:bg-stone-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-transparent disabled:text-stone-400 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
-      >
+      <span className="inline-flex h-11 w-10 shrink-0 items-center justify-center text-stone-400">
         <Search
           aria-hidden
           data-testid={iconTestId}
           className="h-5 w-5 shrink-0"
         />
-      </button>
+      </span>
       <input
         ref={ref}
         type="search"
@@ -147,6 +142,26 @@ export const FloatingSearchFieldInput = forwardRef<
         className={`min-w-0 flex-1 cursor-text appearance-none bg-transparent text-base text-stone-950 outline-none placeholder:text-stone-500 [&::-webkit-search-cancel-button]:appearance-none ${inputClassName ?? ""}`}
         {...props}
       />
+      <button
+        type="submit"
+        aria-label={t("searchRegion")}
+        aria-hidden={!hasValue}
+        disabled={!hasValue}
+        tabIndex={hasValue ? 0 : -1}
+        className={`inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-xl bg-stone-950 text-white transition-[width,opacity,padding,background-color,color,transform] duration-200 hover:bg-stone-700 active:scale-95 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2 ${
+          hasValue
+            ? "min-w-11 px-2 opacity-100"
+            : "w-0 overflow-hidden px-0 opacity-0"
+        }`}
+      >
+        <CornerDownLeft aria-hidden className="h-5 w-5 shrink-0" />
+        <span
+          aria-hidden
+          className="hidden whitespace-nowrap text-sm font-semibold sm:inline"
+        >
+          {t("searchRegion")}
+        </span>
+      </button>
       {hasValue && onClear ? (
         <button
           type="button"
