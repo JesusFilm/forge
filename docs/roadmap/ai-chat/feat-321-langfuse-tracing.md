@@ -17,7 +17,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-05 via [PR #TBD](https://github.com/JesusFilm/forge/pulls) (`feat(mastra): Langfuse tracing for the seeker agent (ai-chat feat-321)`).
+**Shipped:** 2026-08-06 via [PR #1874](https://github.com/JesusFilm/forge/pull/1874) (`feat(mastra): langfuse tracing for the seeker agent (ai-chat feat-321)`).
 
 **What landed.** Opt-in Langfuse tracing for `/forge-seeker` turns behind the
 default-off `LANGFUSE_TRACING_ENABLED` string-boolean: a second observability

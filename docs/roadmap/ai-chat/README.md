@@ -11,7 +11,7 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 5, 2026)
+## Status (August 6, 2026)
 
 - **Total tickets:** 52
 - ✅ **Complete:** 42
@@ -65,7 +65,7 @@ from the main DS Year 1 roadmap.
 | [feat-304](feat-304-chat-production-egress-pin.md)                     | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | ✅ complete    | [#1731](https://github.com/JesusFilm/forge/pull/1731)                                                        |
 | [feat-305](feat-305-chat-healthcheck.md)                               | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1762](https://github.com/JesusFilm/forge/pull/1762)                                                        |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                     | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | ✅ complete    | [#1765](https://github.com/JesusFilm/forge/pull/1765), [#1768](https://github.com/JesusFilm/forge/pull/1768) |
-| [feat-321](feat-321-langfuse-tracing.md)                               | Langfuse tracing for the Seeker agent                                        | jian wei | P2       | 2026-07-29 | 3    | ✅ complete    | —                                                                                                            |
+| [feat-321](feat-321-langfuse-tracing.md)                               | Langfuse tracing for the Seeker agent                                        | jian wei | P2       | 2026-07-29 | 3    | ✅ complete    | [#1874](https://github.com/JesusFilm/forge/pull/1874)                                                        |
 | [feat-326](feat-326-admin-agent-tools-availability-kind.md)            | Admin agent-tools search-videos: expose availability.kind                    | jian wei | P1       | 2026-08-03 | 1    | ✅ complete    | [#1813](https://github.com/JesusFilm/forge/pull/1813)                                                        |
 | [feat-327](feat-327-seeker-video-tools-result-projection.md)           | Seeker video tools + declared-video result projection (SEEKER_VIDEO_ENABLED) | jian wei | P1       | 2026-08-04 | 3    | ✅ complete    | [#1820](https://github.com/JesusFilm/forge/pull/1820)                                                        |
 | [feat-328](feat-328-chat-inline-video-rendering.md)                    | Chat inline video rendering from the result frame                            | jian wei | P1       | 2026-08-07 | 2    | ✅ complete    | [#1832](https://github.com/JesusFilm/forge/pull/1832)                                                        |
