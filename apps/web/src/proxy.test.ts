@@ -592,9 +592,8 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     const homepageSource = vi.fn(async () => "available" as const)
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(manifestSource)
-    resetHomepageAvailabilitySource = setWatchHomepageAvailabilitySourceForTest(
-      homepageSource,
-    )
+    resetHomepageAvailabilitySource =
+      setWatchHomepageAvailabilitySourceForTest(homepageSource)
 
     for (const slug of [
       "english",
@@ -610,9 +609,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       expect(response.status).toBe(308)
       expect(location.pathname).toBe("/")
       expect(location.search).toBe(`?utm_source=qa&ref=${slug}`)
-      expect(response.headers.get("cache-control")).toBe(
-        "private, max-age=0",
-      )
+      expect(response.headers.get("cache-control")).toBe("private, max-age=0")
       expect(rewritePath(response)).toBeNull()
     }
 
@@ -672,12 +669,8 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       },
     }))
 
-    const inventory = await proxy(
-      makeRequest("/english-british.html/videos"),
-    )
-    const video = await proxy(
-      makeRequest("/jesus.html/english-british.html"),
-    )
+    const inventory = await proxy(makeRequest("/english-british.html/videos"))
+    const video = await proxy(makeRequest("/jesus.html/english-british.html"))
     const episode = await proxy(
       makeRequest(
         "/lumo-the-gospel-of-john.html/wedding-in-cana/english-british.html",
@@ -685,9 +678,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     )
 
     expect(rewritePath(inventory)).toBe("/en/en-GB/videos/english-british")
-    expect(rewritePath(video)).toBe(
-      "/en/en-GB/jesus.html/english-british.html",
-    )
+    expect(rewritePath(video)).toBe("/en/en-GB/jesus.html/english-british.html")
     expect(rewritePath(episode)).toBe(
       "/en/en-GB/lumo-the-gospel-of-john.html/lumo-john-1-35-2-22/english-british.html",
     )

@@ -70,9 +70,7 @@ export function languageSwitcherTarget(
       return localizedHistoryPath(language)
     default:
       if (isConsolidatedEnglishHomeLanguageSlug(language)) {
-        return language === "english"
-          ? "/"
-          : languageVideosIndexPath(language)
+        return language === "english" ? "/" : languageVideosIndexPath(language)
       }
       return localizedHomePath(language)
   }

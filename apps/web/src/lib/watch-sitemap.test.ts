@@ -100,9 +100,7 @@ describe("watch sitemap rendering", () => {
       },
     ])
     expect(homepageEntries.flatMap(({ alternates }) => alternates)).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ hreflang: "en-GB" }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ hreflang: "en-GB" })]),
     )
   })
 

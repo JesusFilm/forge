@@ -223,9 +223,7 @@ export function isPublicWatchLanguageSlug(slug: string): boolean {
  * fallback is broader than the product policy and must not retire unrelated
  * language homepages that happen to render with English chrome.
  */
-export function isConsolidatedEnglishHomeLanguageSlug(
-  slug: string,
-): boolean {
+export function isConsolidatedEnglishHomeLanguageSlug(slug: string): boolean {
   return (
     slug === "english" ||
     slug === "english-african" ||
