@@ -287,7 +287,7 @@ for locale execution; the exception itself is proven by exact Forge IDs.
 
 - `apps/web/src/i18n/__tests__/messages-parity.test.ts`
 - `apps/web/messages/ro.json` only if the audit finds missing or English copy
-- `docs/roadmap/content-discovery/feat-338-watch-romanian-playable-search-inventory.md`
+- `docs/roadmap/content-discovery/feat-339-watch-romanian-playable-search-inventory.md`
 - `docs/roadmap/platform/feat-254-watch-universal-multilingual-search.md`
 - `docs/roadmap/README.md`
 

@@ -115,6 +115,16 @@ export const retrieveAnswerOutputSchema = z
 export type RetrieveAnswerInput = z.input<typeof retrieveAnswerInputSchema>
 export type RetrieveAnswerOutput = z.output<typeof retrieveAnswerOutputSchema>
 
+/**
+ * Injectable search dependency shared by `executeRetrieveAnswer` and
+ * `buildRetrieveAnswerTool` — the exact call shape of the real RAG client.
+ * Production binds `searchJesusfilmRag`; the seeker eval binds a
+ * fixture-backed function serving committed passages.
+ */
+export type RetrieveAnswerSearch = (
+  input: JesusfilmRagSearchInput,
+) => ReturnType<typeof searchJesusfilmRag>
+
 /** Codepoint-safe slice — a UTF-16 `.slice` can split a surrogate pair. */
 function truncateCodepoints(value: string, maxCodepoints: number): string {
   const codepoints = Array.from(value)
@@ -150,9 +160,7 @@ function logRetrievalUnavailable(failure: JesusfilmRagClientFailure): void {
 export async function executeRetrieveAnswer(
   input: RetrieveAnswerInput,
   options: {
-    search?: (
-      input: JesusfilmRagSearchInput,
-    ) => ReturnType<typeof searchJesusfilmRag>
+    search?: RetrieveAnswerSearch
   } = {},
 ): Promise<RetrieveAnswerOutput> {
   const parsed = retrieveAnswerInputSchema.parse(input)
@@ -190,11 +198,39 @@ export async function executeRetrieveAnswer(
   }
 }
 
-export const retrieveAnswerTool = createTool({
-  id: "retrieveAnswer",
-  description:
-    "Retrieve ranked, cited passages from the Jesus Film retrieval corpus for a seeker's factual question. Returns passages (text, source name, title, URL, relevance score) for you to synthesize a source-attributed answer — it does NOT generate the answer itself. A status of 'empty' means no passages were found; 'unavailable' means retrieval could not run.",
-  inputSchema: retrieveAnswerInputSchema,
-  outputSchema: retrieveAnswerOutputSchema,
-  execute: async (inputData) => executeRetrieveAnswer(inputData),
-})
+/**
+ * Factory for the `retrieveAnswer` tool (chat-eval agent-factory seam, PR B).
+ *
+ * `executeRetrieveAnswer` has always taken an injectable `search`, but the
+ * module-level `createTool` closure bound the default client and accepted no
+ * injection — so the seam was unreachable from the agent's tool-calling loop.
+ * This factory closes that gap: the seeker eval builds the REAL tool over a
+ * frozen fixture-backed search function (`buildSeekerAgent({ ragSearch })`
+ * threads through here), while production stays on the zero-option singleton
+ * below. When `search` is omitted, `executeRetrieveAnswer`'s own default
+ * binding (the real RAG client) applies — this factory adds no second
+ * default.
+ */
+export function buildRetrieveAnswerTool(
+  options: { search?: RetrieveAnswerSearch } = {},
+) {
+  const { search } = options
+  return createTool({
+    id: "retrieveAnswer",
+    description:
+      "Retrieve ranked, cited passages from the Jesus Film retrieval corpus for a seeker's factual question. Returns passages (text, source name, title, URL, relevance score) for you to synthesize a source-attributed answer — it does NOT generate the answer itself. A status of 'empty' means no passages were found; 'unavailable' means retrieval could not run.",
+    inputSchema: retrieveAnswerInputSchema,
+    outputSchema: retrieveAnswerOutputSchema,
+    execute: async (inputData) =>
+      executeRetrieveAnswer(inputData, search === undefined ? {} : { search }),
+  })
+}
+
+/**
+ * Production singleton — built with NO options so the real RAG client stays
+ * the search binding. The no-override call is pinned by the call-site
+ * source-pin test in retrieve-answer.test.ts (feat-283 discipline): passing
+ * any option here is a one-line revert surface that would silently swap the
+ * production tool's data source.
+ */
+export const retrieveAnswerTool = buildRetrieveAnswerTool()

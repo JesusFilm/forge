@@ -249,6 +249,7 @@ export type WatchRouteSnapshotChild = {
 }
 
 export type WatchRouteSnapshotChildRelation = {
+  order: number | null
   child: WatchRouteSnapshotChild | null
 }
 
@@ -1484,6 +1485,7 @@ export class VideoService {
         orderBy: VIDEO_RELATION_ORDER_BY,
         select: {
           id: true,
+          order: true,
           childId: true,
           child: {
             select: {
@@ -1521,6 +1523,7 @@ export class VideoService {
             orderBy: VIDEO_RELATION_ORDER_BY,
             select: {
               id: true,
+              order: true,
               parentId: true,
               childId: true,
               child: {
@@ -1772,7 +1775,7 @@ export class VideoService {
     for (const relation of parentChildRelations) {
       const child = makeChild(relation.child, false)
       const children = parentChildrenByParentId.get(relation.parentId) ?? []
-      children.push({ child })
+      children.push({ order: relation.order, child })
       parentChildrenByParentId.set(relation.parentId, children)
     }
 
@@ -1864,6 +1867,7 @@ export class VideoService {
           : null,
       })),
       children: childRelations.map((relation) => ({
+        order: relation.order,
         child: makeChild(relation.child, true),
       })),
       bibleCitations: citations.map((citation) => ({

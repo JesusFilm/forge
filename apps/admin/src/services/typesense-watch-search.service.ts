@@ -35,7 +35,10 @@ import {
   type TypesenseWatchCatalogPreviewDocument,
   watchLexicalQueryFields,
 } from "./typesense-watch-search-locales"
-import { resolveSearchLanguageSignals } from "./search-language-resolution"
+import {
+  resolveSearchLanguageSignals,
+  resolveSearchQueryScriptContext,
+} from "./search-language-resolution"
 import { watchSearchQueryVariants } from "./watch-search-query-normalization"
 import {
   defaultWatchSearchEmbedder,
@@ -802,16 +805,49 @@ export class TypesenseWatchSearchService {
       localeForLanguageSlug(languageInterpretation.routeLanguageSlug) ??
       languageInterpretation.routeLanguageBcp47 ??
       "en"
+    const queryScriptContext =
+      languageInterpretation.queryLanguageSlug == null &&
+      languageInterpretation.queryNamedLanguageSlug == null
+        ? resolveSearchQueryScriptContext(query)
+        : null
+    const queryScriptLexicalContext =
+      queryScriptContext?.targetLanguageSlug ===
+      languageInterpretation.targetLanguageSlug
+        ? queryScriptContext.lexicalContext
+        : null
     const queryLocale =
+      queryScriptLexicalContext?.tokenizerLocale ??
       evidenceLocales.find(
         ({ slug }) => slug === languageInterpretation.queryLanguageSlug,
-      )?.locale ?? preferredLocale
-    const lexicalLanguageSlug =
-      languageInterpretation.queryLanguageSlug ??
-      languageInterpretation.queryNamedLanguageSlug ??
-      languageInterpretation.displayLanguageSlug ??
-      languageInterpretation.targetLanguageSlug ??
-      languageInterpretation.routeLanguageSlug
+      )?.locale ??
+      preferredLocale
+    const lexicalLanguageIdentities = (
+      queryScriptLexicalContext
+        ? queryScriptLexicalContext.languageSlugs.map((languageSlug) =>
+            typesenseWatchLanguageIdentity({
+              languageSlug,
+              locale: queryLocale,
+            }),
+          )
+        : [
+            typesenseWatchLanguageIdentity({
+              languageSlug:
+                languageInterpretation.queryLanguageSlug ??
+                languageInterpretation.queryNamedLanguageSlug ??
+                languageInterpretation.displayLanguageSlug ??
+                languageInterpretation.targetLanguageSlug ??
+                languageInterpretation.routeLanguageSlug,
+              locale: queryLocale,
+            }),
+            typesenseWatchLanguageIdentity({
+              languageSlug: null,
+              locale: queryLocale,
+            }),
+          ]
+    ).filter(
+      (identity, index, all): identity is string =>
+        Boolean(identity) && all.indexOf(identity) === index,
+    )
     const titleQuery = queryWithoutLanguageHints(query, [
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
@@ -821,7 +857,7 @@ export class TypesenseWatchSearchService {
       titleQuery,
       preferredLocale,
       queryLocale,
-      lexicalLanguageSlug,
+      lexicalLanguageIdentities,
       targetLanguageSlug: languageInterpretation.targetLanguageSlug,
       evidenceLocales,
       candidateLimit,
@@ -1032,7 +1068,7 @@ export class TypesenseWatchSearchService {
     titleQuery,
     preferredLocale,
     queryLocale,
-    lexicalLanguageSlug,
+    lexicalLanguageIdentities,
     targetLanguageSlug,
     evidenceLocales,
     candidateLimit,
@@ -1044,7 +1080,7 @@ export class TypesenseWatchSearchService {
     titleQuery: string
     preferredLocale: string
     queryLocale: string
-    lexicalLanguageSlug: string | null
+    lexicalLanguageIdentities: string[]
     targetLanguageSlug: string
     evidenceLocales: EvidenceLocale[]
     candidateLimit: number
@@ -1121,18 +1157,17 @@ export class TypesenseWatchSearchService {
       lane,
       query,
       fields,
-      languageSlug,
-      locale,
+      identities,
+      evidenceLanguageSlug,
       fallbackOnly,
     }: {
       lane: "title" | "metadata"
       query: string
       fields: readonly string[]
-      languageSlug: string | null
-      locale: string
+      identities: string[]
+      evidenceLanguageSlug: string | null
       fallbackOnly: boolean
     }) => {
-      const identities = languageIdentities(languageSlug, locale)
       const key = [
         lane,
         query,
@@ -1146,7 +1181,7 @@ export class TypesenseWatchSearchService {
         lane,
         query,
         fields,
-        evidenceLanguageSlug: fallbackOnly ? languageSlug : null,
+        evidenceLanguageSlug,
         fallbackOnly,
         requests: lexicalLaneRequests(
           query,
@@ -1157,24 +1192,27 @@ export class TypesenseWatchSearchService {
       })
     }
     const lexicalEvidence = evidenceLocales.find(
-      ({ slug, locale }) =>
-        slug === lexicalLanguageSlug || locale === queryLocale,
+      ({ locale }) => locale === queryLocale,
     )
     const lexicalFallbackOnly = lexicalEvidence?.fallbackOnly ?? false
     addLexicalSearch({
       lane: "title",
       query: titleQuery,
       fields: titleFields,
-      languageSlug: lexicalLanguageSlug,
-      locale: queryLocale,
+      identities: lexicalLanguageIdentities,
+      evidenceLanguageSlug: lexicalFallbackOnly
+        ? (lexicalEvidence?.slug ?? null)
+        : null,
       fallbackOnly: lexicalFallbackOnly,
     })
     addLexicalSearch({
       lane: "metadata",
       query: titleQuery,
       fields: metadataFields,
-      languageSlug: lexicalLanguageSlug,
-      locale: queryLocale,
+      identities: lexicalLanguageIdentities,
+      evidenceLanguageSlug: lexicalFallbackOnly
+        ? (lexicalEvidence?.slug ?? null)
+        : null,
       fallbackOnly: lexicalFallbackOnly,
     })
     const fallbackEvidence = evidenceLocales.find(
@@ -1193,8 +1231,11 @@ export class TypesenseWatchSearchService {
           lane: "title",
           query,
           fields: fallbackTitleFields,
-          languageSlug: fallbackEvidence.slug,
-          locale: fallbackEvidence.locale,
+          identities: languageIdentities(
+            fallbackEvidence.slug,
+            fallbackEvidence.locale,
+          ),
+          evidenceLanguageSlug: fallbackEvidence.slug,
           fallbackOnly: true,
         })
       }
@@ -1202,8 +1243,11 @@ export class TypesenseWatchSearchService {
         lane: "metadata",
         query: titleQuery,
         fields: watchLexicalQueryFields(fallbackEvidence.locale, "metadata"),
-        languageSlug: fallbackEvidence.slug,
-        locale: fallbackEvidence.locale,
+        identities: languageIdentities(
+          fallbackEvidence.slug,
+          fallbackEvidence.locale,
+        ),
+        evidenceLanguageSlug: fallbackEvidence.slug,
         fallbackOnly: true,
       })
     }
