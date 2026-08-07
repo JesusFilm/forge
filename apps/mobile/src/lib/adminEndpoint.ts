@@ -11,6 +11,13 @@ export const LOCAL_ADMIN_GRAPHQL_URL = "http://localhost:3003/api/graphql"
 export const PRODUCTION_ADMIN_GRAPHQL_URL =
   "https://admin.jesusfilm.org/api/graphql"
 
+/** Named here so the refusal message and the docs can't drift from the wiring. */
+export const ALLOW_PRODUCTION_ADMIN_ENV_VAR =
+  "EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN"
+
+/** The per-machine slot: development-only, and never written by fetch-secrets. */
+export const PER_MACHINE_ENV_FILE = "apps/mobile/.env.development.local"
+
 /** The Android emulator reaches the host machine here, never via loopback. */
 const ANDROID_EMULATOR_HOST = "10.0.2.2"
 
@@ -91,4 +98,47 @@ export function resolveAdminGraphqlUrl(
     configured ??
     (isDev ? LOCAL_ADMIN_GRAPHQL_URL : PRODUCTION_ADMIN_GRAPHQL_URL)
   return normalizeAdminHost(base, platform, isDev)
+}
+
+export type AdminEndpointAccess =
+  | { allowed: true }
+  | { allowed: false; message: string }
+
+/**
+ * Fail closed: a development bundle may not talk to production admin without a
+ * deliberate override. Only a known production host refuses — a LAN address, a
+ * tunnel, or an emulator alias boots normally (KTD8).
+ *
+ * Called unconditionally at `env.ts` module scope in EVERY build, so the
+ * non-development short-circuit is the first line: a release bundle never
+ * reaches the parsing path at all.
+ */
+export function decideAdminEndpointAccess(
+  url: string,
+  isDev: boolean,
+  override: string | null | undefined,
+): AdminEndpointAccess {
+  if (!isDev) return { allowed: true }
+  if (classifyAdminHost(url) !== "production") return { allowed: true }
+  // Empty string is absent, matching the env schema's emptyStringAsUndefined.
+  if (override != null && override !== "") return { allowed: true }
+  return {
+    allowed: false,
+    message: [
+      `Refusing to start a development build against production admin.`,
+      ``,
+      `Resolved admin endpoint: ${url}`,
+      ``,
+      `Development sessions write to production — search events, search traces,`,
+      `and query text. Point EXPO_PUBLIC_ADMIN_GRAPHQL_URL at a local admin in`,
+      `${PER_MACHINE_ENV_FILE}, or remove it entirely to use the local default`,
+      `${LOCAL_ADMIN_GRAPHQL_URL}.`,
+      ``,
+      `To use production deliberately, set ${ALLOW_PRODUCTION_ADMIN_ENV_VAR}=1 in`,
+      `that same file.`,
+      ``,
+      `Cold-restart Metro after either change — Expo inlines EXPO_PUBLIC_* at`,
+      `bundler startup, so a reload picks up nothing.`,
+    ].join("\n"),
+  }
 }

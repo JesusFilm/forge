@@ -1,12 +1,15 @@
 import {
+  ALLOW_PRODUCTION_ADMIN_ENV_VAR,
   LOCAL_ADMIN_GRAPHQL_URL,
   PRODUCTION_ADMIN_GRAPHQL_URL,
   classifyAdminHost,
+  decideAdminEndpointAccess,
   normalizeAdminHost,
   resolveAdminGraphqlUrl,
 } from "../adminEndpoint"
 
 const PROD = PRODUCTION_ADMIN_GRAPHQL_URL
+const LAN = "http://192.168.1.20:3003/api/graphql"
 
 describe("resolveAdminGraphqlUrl", () => {
   it("falls back to local admin in a development bundle with nothing configured", () => {
@@ -138,4 +141,37 @@ describe("classifyAdminHost", () => {
       expect(classifyAdminHost(url)).toBe("other")
     },
   )
+})
+
+describe("decideAdminEndpointAccess", () => {
+  it("refuses a development bundle resolved to production admin", () => {
+    const decision = decideAdminEndpointAccess(PROD, true, undefined)
+    expect(decision.allowed).toBe(false)
+    if (decision.allowed) throw new Error("expected a refusal")
+    expect(decision.message).toContain("admin.jesusfilm.org")
+    expect(decision.message).toContain(ALLOW_PRODUCTION_ADMIN_ENV_VAR)
+  })
+
+  it("allows production admin when the override is set", () => {
+    expect(decideAdminEndpointAccess(PROD, true, "1").allowed).toBe(true)
+  })
+
+  it("never refuses in a release bundle", () => {
+    expect(decideAdminEndpointAccess(PROD, false, undefined).allowed).toBe(true)
+  })
+
+  it.each([LOCAL_ADMIN_GRAPHQL_URL, "http://10.0.2.2:3003/api/graphql"])(
+    "allows a development bundle on %s",
+    (url) => {
+      expect(decideAdminEndpointAccess(url, true, undefined).allowed).toBe(true)
+    },
+  )
+
+  it("allows a LAN address without the override — physical-device work", () => {
+    expect(decideAdminEndpointAccess(LAN, true, undefined).allowed).toBe(true)
+  })
+
+  it("treats an empty-string override as absent", () => {
+    expect(decideAdminEndpointAccess(PROD, true, "").allowed).toBe(false)
+  })
 })
