@@ -16,8 +16,6 @@ const _inlined = {
 }
 void _inlined
 
-const DEFAULT_ADMIN_GRAPHQL_URL = "https://admin.jesusfilm.org/api/graphql"
-
 const createAppEnv = () =>
   createEnv({
     clientPrefix: "EXPO_PUBLIC_",
@@ -77,4 +75,4 @@ try {
   )
 }
 
-export { env, DEFAULT_ADMIN_GRAPHQL_URL }
+export { env }

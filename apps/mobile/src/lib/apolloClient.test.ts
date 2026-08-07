@@ -13,7 +13,6 @@ jest.mock("../env", () => ({
     EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE: undefined,
     EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE: undefined,
   },
-  DEFAULT_ADMIN_GRAPHQL_URL: "https://admin.jesusfilm.org/api/graphql",
 }))
 
 jest.mock("./viewer-id", () => ({ getViewerId: () => "vid-123" }))
