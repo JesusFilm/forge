@@ -88,8 +88,8 @@ try {
 }
 
 // Module scope is the earliest app-owned code and the only seam guaranteed to
-// run before all three getGraphQLUrl() callers. app/_layout.tsx wraps its
-// require in a try/catch that renders the thrown message verbatim (KTD1).
+// run before all three getGraphQLUrl() callers. The throw surfaces on the RN
+// dev overlay, NOT _layout.tsx's Startup Error panel (see the KTD1 correction).
 const resolvedAdminGraphqlUrl = resolveAdminGraphqlUrl(
   env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
   __DEV__,
