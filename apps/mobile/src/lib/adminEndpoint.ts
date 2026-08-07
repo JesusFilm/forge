@@ -8,8 +8,12 @@
 /** Development default. `localhost` matches `.env.ci` and the TV prior art. */
 export const LOCAL_ADMIN_GRAPHQL_URL = "http://localhost:3003/api/graphql"
 
-export const PRODUCTION_ADMIN_GRAPHQL_URL =
-  "https://admin.jesusfilm.org/api/graphql"
+// Declared as a literal, not parsed out of the URL below: deriving it at module
+// scope would mean a broken `URL` silently empties the production set, and the
+// refusal would fail OPEN — the exact outcome this module exists to prevent.
+const PRODUCTION_ADMIN_HOST = "admin.jesusfilm.org"
+
+export const PRODUCTION_ADMIN_GRAPHQL_URL = `https://${PRODUCTION_ADMIN_HOST}/api/graphql`
 
 /** Named here so the refusal message and the docs can't drift from the wiring. */
 export const ALLOW_PRODUCTION_ADMIN_ENV_VAR =
@@ -32,7 +36,7 @@ const LOCAL_HOSTS = new Set([
   ANDROID_EMULATOR_HOST,
 ])
 
-const PRODUCTION_HOSTS = new Set([hostOf(PRODUCTION_ADMIN_GRAPHQL_URL) ?? ""])
+const PRODUCTION_HOSTS = new Set([PRODUCTION_ADMIN_HOST])
 
 export type AdminHostKind = "local" | "production" | "other"
 
