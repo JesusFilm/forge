@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resolveSearchLanguageSignals } from "./search-language-resolution"
+import {
+  resolveSearchLanguageSignals,
+  resolveSearchQueryScriptContext,
+} from "./search-language-resolution"
 
 function mockPrisma() {
   return {
@@ -259,6 +262,40 @@ describe("resolveSearchLanguageSignals", () => {
       targetLanguageSource: "query_script",
       queryNamedLanguageSlug: null,
       routeLanguageSlug: "english",
+    })
+  })
+
+  it("keeps Han lexical localizations separate from the Mandarin playback target", async () => {
+    await expect(
+      resolveSearchLanguageSignals({
+        prisma,
+        input: { query: "耶稣", routeLanguageSlug: "english" },
+      }),
+    ).resolves.toMatchObject({
+      targetLanguageSlug: "mandarin-china",
+      targetLanguageSource: "query_script",
+      routeLanguageSlug: "english",
+    })
+    expect(resolveSearchQueryScriptContext("耶稣")).toEqual({
+      targetLanguageSlug: "mandarin-china",
+      lexicalContext: {
+        tokenizerLocale: "zh",
+        languageSlugs: ["chinese-simplified", "chinese-traditional"],
+      },
+    })
+    expect(resolveSearchQueryScriptContext("耶穌")).toEqual({
+      targetLanguageSlug: "mandarin-china",
+      lexicalContext: {
+        tokenizerLocale: "zh",
+        languageSlugs: ["chinese-simplified", "chinese-traditional"],
+      },
+    })
+  })
+
+  it("does not broaden non-Han script inference into lexical language aliases", () => {
+    expect(resolveSearchQueryScriptContext("Иисус и надежда")).toEqual({
+      targetLanguageSlug: "russian",
+      lexicalContext: null,
     })
   })
 
