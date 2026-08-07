@@ -34,7 +34,10 @@ import {
   type TypesenseWatchCatalogPreviewDocument,
   watchLexicalQueryFields,
 } from "./typesense-watch-search-locales"
-import { resolveSearchLanguageSignals } from "./search-language-resolution"
+import {
+  resolveSearchLanguageSignals,
+  resolveSearchQueryScriptContext,
+} from "./search-language-resolution"
 import {
   defaultWatchSearchEmbedder,
   type WatchSearchInput,
@@ -700,16 +703,49 @@ export class TypesenseWatchSearchService {
       localeForLanguageSlug(languageInterpretation.routeLanguageSlug) ??
       languageInterpretation.routeLanguageBcp47 ??
       "en"
+    const queryScriptContext =
+      languageInterpretation.queryLanguageSlug == null &&
+      languageInterpretation.queryNamedLanguageSlug == null
+        ? resolveSearchQueryScriptContext(query)
+        : null
+    const queryScriptLexicalContext =
+      queryScriptContext?.targetLanguageSlug ===
+      languageInterpretation.targetLanguageSlug
+        ? queryScriptContext.lexicalContext
+        : null
     const queryLocale =
+      queryScriptLexicalContext?.tokenizerLocale ??
       evidenceLocales.find(
         ({ slug }) => slug === languageInterpretation.queryLanguageSlug,
-      )?.locale ?? preferredLocale
-    const lexicalLanguageSlug =
-      languageInterpretation.queryLanguageSlug ??
-      languageInterpretation.queryNamedLanguageSlug ??
-      languageInterpretation.displayLanguageSlug ??
-      languageInterpretation.targetLanguageSlug ??
-      languageInterpretation.routeLanguageSlug
+      )?.locale ??
+      preferredLocale
+    const lexicalLanguageIdentities = (
+      queryScriptLexicalContext
+        ? queryScriptLexicalContext.languageSlugs.map((languageSlug) =>
+            typesenseWatchLanguageIdentity({
+              languageSlug,
+              locale: queryLocale,
+            }),
+          )
+        : [
+            typesenseWatchLanguageIdentity({
+              languageSlug:
+                languageInterpretation.queryLanguageSlug ??
+                languageInterpretation.queryNamedLanguageSlug ??
+                languageInterpretation.displayLanguageSlug ??
+                languageInterpretation.targetLanguageSlug ??
+                languageInterpretation.routeLanguageSlug,
+              locale: queryLocale,
+            }),
+            typesenseWatchLanguageIdentity({
+              languageSlug: null,
+              locale: queryLocale,
+            }),
+          ]
+    ).filter(
+      (identity, index, all): identity is string =>
+        Boolean(identity) && all.indexOf(identity) === index,
+    )
     const titleQuery = queryWithoutLanguageHints(query, [
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
@@ -728,7 +764,7 @@ export class TypesenseWatchSearchService {
       titleQuery,
       preferredLocale,
       queryLocale,
-      lexicalLanguageSlug,
+      lexicalLanguageIdentities,
       evidenceLocales,
       candidateLimit,
       offset,
@@ -912,7 +948,7 @@ export class TypesenseWatchSearchService {
     titleQuery,
     preferredLocale,
     queryLocale,
-    lexicalLanguageSlug,
+    lexicalLanguageIdentities,
     evidenceLocales,
     candidateLimit,
     offset,
@@ -924,7 +960,7 @@ export class TypesenseWatchSearchService {
     titleQuery: string
     preferredLocale: string
     queryLocale: string
-    lexicalLanguageSlug: string | null
+    lexicalLanguageIdentities: string[]
     evidenceLocales: Array<{ slug: string; locale: string }>
     candidateLimit: number
     offset: number
@@ -984,19 +1020,6 @@ export class TypesenseWatchSearchService {
     const retrievalStartedAt = performance.now()
     const titleFields = watchLexicalQueryFields(queryLocale, "title")
     const metadataFields = watchLexicalQueryFields(queryLocale, "metadata")
-    const lexicalLanguageIdentities = [
-      typesenseWatchLanguageIdentity({
-        languageSlug: lexicalLanguageSlug,
-        locale: queryLocale,
-      }),
-      typesenseWatchLanguageIdentity({
-        languageSlug: null,
-        locale: queryLocale,
-      }),
-    ].filter(
-      (identity, index, all): identity is string =>
-        Boolean(identity) && all.indexOf(identity) === index,
-    )
     const searches = [
       lexicalLaneRequest(
         titleQuery,

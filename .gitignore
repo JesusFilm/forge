@@ -76,3 +76,6 @@ apps/mobile/design-mockups/
 devo/
 
 /local/
+# Seeker eval working runs (paid artifacts land in apps/mastra/evals/results/ when promoted to baseline)
+apps/mastra/eval-runs/
+eval-runs/

@@ -3,12 +3,20 @@ import { createHash } from "node:crypto"
 import {
   ADMIN_MCP_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
+  TV_DEVICE_CLIENT_IDS,
   type RegisteredAppSeed,
 } from "@/domain/apps"
 import { AUTH_SCOPES, type AuthScopeKey } from "@/domain/scopes"
 import { prisma } from "@/db/client"
+// Imported, never re-declared. This seeder is the ONLY writer of the device
+// grant type and `resolveDeviceClient` is its only reader, so a second copy of
+// the literal would be a producer/consumer seam where one edit silently kills
+// every TV sign-in (the gate fails closed and no test observes both halves).
+import { DEVICE_GRANT_TYPE } from "@/services/device-client.service"
 
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
+const BROWSER_GRANT_TYPES = ["authorization_code", "refresh_token"]
+const TV_DEVICE_CLIENT_ID_SET = new Set<string>(TV_DEVICE_CLIENT_IDS)
 const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
 // Markers identify PRE-EXISTING dynamically-registered Admin MCP clients so
 // later-added default scopes can be appended. They must exclude every scope
@@ -128,6 +136,16 @@ function isCodexLoopbackMcpCallback(redirectUri: string) {
   }
 }
 
+// The device grant is admitted per registered client, not globally: the device
+// endpoints check OauthClient.grantTypes, and dynamic client registration is
+// open, so only the seeded TV client ids may ever carry the device grant type.
+// Every other first-party client keeps exactly the browser grant pair.
+function getGrantTypes(clientId: string) {
+  return TV_DEVICE_CLIENT_ID_SET.has(clientId)
+    ? [...BROWSER_GRANT_TYPES, DEVICE_GRANT_TYPE]
+    : [...BROWSER_GRANT_TYPES]
+}
+
 async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
   const app = await prisma.registeredApp.upsert({
     where: { key: appSeed.key },
@@ -193,7 +211,7 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
         public: true,
         requirePKCE: true,
         tokenEndpointAuthMethod: "none",
-        grantTypes: ["authorization_code", "refresh_token"],
+        grantTypes: getGrantTypes(environment.clientId),
         responseTypes: ["code"],
         metadata: {
           appKey: appSeed.key,
@@ -214,7 +232,7 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
         public: true,
         requirePKCE: true,
         tokenEndpointAuthMethod: "none",
-        grantTypes: ["authorization_code", "refresh_token"],
+        grantTypes: getGrantTypes(environment.clientId),
         responseTypes: ["code"],
         metadata: {
           appKey: appSeed.key,

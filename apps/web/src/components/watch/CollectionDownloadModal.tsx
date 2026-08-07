@@ -44,7 +44,8 @@ type StoredCollectionDownloadResume = Pick<
   "completed" | "failed" | "total"
 >
 
-const COLLECTION_DOWNLOAD_RESUME_KEY = "forge.watch.collection-download-resume"
+const COLLECTION_DOWNLOAD_RESUME_KEY =
+  "forge.watch.collection-download-resume.v2"
 const COLLECTION_THUMBNAIL_STACK_CLASSES = [
   "translate-y-7 min-[700px]:translate-y-10",
   "translate-x-3 translate-y-3.5 min-[700px]:translate-x-4 min-[700px]:translate-y-5",

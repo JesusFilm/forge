@@ -444,6 +444,13 @@ const envSchema = z.object({
   // Basic auth (`base64(public:secret)`) — Langfuse's documented auth scheme.
   LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
   LANGFUSE_SECRET_KEY: z.string().min(1).optional(),
+  // Default-off gate for Langfuse tracing (feat-321). Unlike the prompt
+  // helper (a read), tracing WRITES raw seeker conversation content to
+  // Langfuse, so credential presence alone must never turn it on — the
+  // key pair was provisioned for prompt reads (feat-296) and already
+  // exists in Railway. Only the literal string "true" enables the
+  // exporter; unset/"false" keeps today's local-DuckDB-only posture.
+  LANGFUSE_TRACING_ENABLED: z.string().optional(),
   // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
   // this single-attempt prompt-fetch timeout must stay strictly inside any
   // future chat-turn budget. The 10_000 cap keeps even the widest override
@@ -500,13 +507,16 @@ const envSchema = z.object({
   // `SEEKER_ROUTE_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_ROUTE_ENABLED: z.string().optional(),
   // Default-off gate for the seeker's video capability (feat-327, plan D6):
-  // the `searchVideos` + `featureVideo` tools, the interim video-guidance
-  // instruction block, and — through them — the declared-video projection on
-  // the `/forge-seeker` terminal result frame. Optional + no default: unset
-  // means the seeker behaves byte-identically to its pre-feat-327 self. Read
-  // via the repo's string-boolean convention (`=== "true"`, matching
-  // SEEKER_ROUTE_ENABLED), NOT JS truthiness, so `SEEKER_VIDEO_ENABLED="false"`
-  // stays disabled. No new required-at-boot var.
+  // the `searchVideos` + `featureVideo` tools and — through them — the
+  // declared-video projection on the `/forge-seeker` terminal result frame.
+  // Since feat-330 it gates the TOOLS ONLY: the video-featuring guidance is
+  // durable content in the Langfuse-managed `seeker-system` prompt and in
+  // SEEKER_SYSTEM_PROMPT_FALLBACK, served in BOTH flag states and phrased
+  // tool-conditionally, so unset means the resolved TOOL SET matches the
+  // pre-feat-327 agent while the resolved PROMPT does not. Optional + no
+  // default. Read via the repo's string-boolean convention (`=== "true"`,
+  // matching SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
+  // `SEEKER_VIDEO_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_VIDEO_ENABLED: z.string().optional(),
   SUBTITLE_ENRICHMENT_MODEL: z
     .string()
@@ -822,6 +832,9 @@ export const env = envSchema.parse({
   LANGFUSE_BASE_URL: emptyToUndefined(process.env.LANGFUSE_BASE_URL),
   LANGFUSE_PUBLIC_KEY: emptyToUndefined(process.env.LANGFUSE_PUBLIC_KEY),
   LANGFUSE_SECRET_KEY: emptyToUndefined(process.env.LANGFUSE_SECRET_KEY),
+  LANGFUSE_TRACING_ENABLED: emptyToUndefined(
+    process.env.LANGFUSE_TRACING_ENABLED,
+  ),
   LANGFUSE_TIMEOUT_MS: emptyToUndefined(process.env.LANGFUSE_TIMEOUT_MS),
   LANGFUSE_USER_AGENT: emptyToUndefined(process.env.LANGFUSE_USER_AGENT),
   LANGFUSE_MAX_RESPONSE_BYTES: emptyToUndefined(
@@ -1251,13 +1264,16 @@ export function isSeekerRouteEnabled(): boolean {
 }
 
 /**
- * Whether the seeker's video capability is armed (feat-327, plan D6). Gates
- * the `searchVideos` + `featureVideo` tools and the interim video-guidance
- * instruction block on `seekerAgent`. Default-off: the capability stays inert
- * unless this is explicitly set to the string `"true"`. Uses the repo's
- * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
- * truthiness — `"false"` (or any other value) keeps the tools off and the
- * resolved instructions byte-identical to the managed prompt.
+ * Whether the seeker's video capability is armed (feat-327, plan D6). Since
+ * feat-330 this gates the `searchVideos` + `featureVideo` tools on
+ * `seekerAgent` and NOTHING ELSE — the video-featuring guidance moved into the
+ * durable prompt (Langfuse-managed `seeker-system` + the compiled-in fallback),
+ * so flipping this off removes the tools while the tool-conditional guidance is
+ * still served. That is deliberate: it makes this flag a clean rollout/rollback
+ * lever whose flip cannot change what `/api/agents*` serves. Default-off: the
+ * capability stays inert unless this is explicitly set to the string `"true"`.
+ * Uses the repo's string-boolean convention (matching `SEEKER_ROUTE_ENABLED`),
+ * NOT JS truthiness — `"false"` (or any other value) keeps the tools off.
  *
  * The `/forge-seeker` route deliberately does NOT read this flag: with the
  * tools unregistered there are no `searchVideos`/`featureVideo` tool results
@@ -1280,6 +1296,18 @@ export function isSeekerVideoEnabled(): boolean {
  */
 export function isAiGatewaySeekerEnabled(): boolean {
   return env.AI_GATEWAY_SEEKER_ENABLED === "true"
+}
+
+/**
+ * Whether seeker traces are exported to Langfuse (feat-321). Default-off:
+ * tracing writes RAW conversation content off the box, so it must be an
+ * explicit operator decision — the Langfuse key pair already present for
+ * prompt reads (feat-296) must never enable it by itself. Uses the repo's
+ * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * truthiness — `"false"` (or any other value) keeps tracing off.
+ */
+export function isLangfuseTracingEnabled(): boolean {
+  return env.LANGFUSE_TRACING_ENABLED === "true"
 }
 
 /**

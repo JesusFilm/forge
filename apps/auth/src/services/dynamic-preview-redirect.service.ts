@@ -1,7 +1,10 @@
 import { prisma } from "@/db/client"
 import { ADMIN_MCP_CODEX_CLIENT_ID } from "@/domain/apps"
 
-const DYNAMIC_PREVIEW_CLIENT_IDS = new Set([
+// Exported so membership can be pinned directly: the hostname regexes below
+// only cover admin/mastra prefixes, so a behavioural test alone cannot tell
+// "this client id is not in the set" from "no hostname rule matched it".
+export const DYNAMIC_PREVIEW_CLIENT_IDS: ReadonlySet<string> = new Set([
   "jfp_admin_preview",
   "jfp_admin_staging",
   "jfp_mastra_studio_preview",
