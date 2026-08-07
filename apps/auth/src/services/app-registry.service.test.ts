@@ -51,6 +51,52 @@ describe("app registry policy", () => {
     ).not.toThrow()
   })
 
+  it("allows TV device clients to register with no browser origin", () => {
+    expect(() =>
+      validateAppEnvironmentPolicy({
+        clientId: "jfp_tv_production",
+        kind: "production",
+        status: "approved",
+        autoApprove: true,
+        redirectUris: ["https://auth.jesusfilm.org/device/callback"],
+        allowedOrigins: [],
+        defaultScopes: ["openid"],
+      }),
+    ).not.toThrow()
+  })
+
+  it("still requires an allowed origin for clients outside the exemption set", () => {
+    // Anti-vacuous companion: the TV case above passes because of set
+    // membership, not because the allowed-origin check stopped running.
+    expect(() =>
+      validateAppEnvironmentPolicy({
+        clientId: "jfp_web_production",
+        kind: "production",
+        status: "approved",
+        autoApprove: true,
+        redirectUris: ["https://www.jesusfilm.org/watch/api/auth/callback"],
+        allowedOrigins: [],
+        defaultScopes: ["openid"],
+      }),
+    ).toThrow("App environment must define at least one allowed origin.")
+  })
+
+  it("does not let the TV origin exemption waive its sentinel redirect URI", () => {
+    // The device grant binds a redirect URI into the authorization code, so a
+    // TV environment seeded without one is a misconfiguration, not a variant.
+    expect(() =>
+      validateAppEnvironmentPolicy({
+        clientId: "jfp_tv_production",
+        kind: "production",
+        status: "approved",
+        autoApprove: true,
+        redirectUris: [],
+        allowedOrigins: [],
+        defaultScopes: ["openid"],
+      }),
+    ).toThrow("App environment must define at least one redirect URI.")
+  })
+
   it("still requires static redirects for regular clients", () => {
     expect(() =>
       validateAppEnvironmentPolicy({
@@ -76,6 +122,7 @@ describe("app registry policy", () => {
       "chat",
       "admin-mcp",
       "mobile",
+      "tv",
     ])
 
     for (const seed of seeds) {

@@ -622,6 +622,26 @@ Experience-editor video library server-action searches use
 `experience-editor-media-collection-picker` and keep picker context in bounded
 metadata.
 
+GraphQL Watch Search additionally supports a Web-only comparison seam. The
+canonical anonymous browser surface omits mode selection; Admin applies
+`WATCH_SEARCH_PRIMARY_MODE` and `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED` on every
+request so cached or already-open Watch pages cannot bypass an operator
+rollback. Other callers retain the public omitted-mode `DEFAULT` contract.
+Trusted non-fleet Web consumer bearers may also request shadow work explicitly.
+
+When `MODERN` is primary, Admin may request `DEFAULT` as shadow work. The
+resolver returns the primary result before Next.js `after()` starts the shadow,
+and a per-process queue caps it at one concurrent execution and 64 reserved
+jobs. Primary and shadow traces share the primary request ID and carry
+`traceRole` plus `shadowOfRequestId`; product analytics filters shadow traces,
+skips their long-lived aggregate update, and marks them ineligible for eval
+sampling so user intent and request counts are not doubled. The canonical
+browser seam compares `Origin` with `WEB_CANONICAL_ORIGIN`; this is a spoofable
+surface discriminator, never authorization. Missing/noncanonical anonymous
+origins and fleet callers cannot trigger extra work. Queue bounds contain
+spoofed-origin load. Shadow failure, trace failure, or saturation must remain
+invisible to the public response.
+
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
 parsing, requires a bearer from `SEARCH_TRACE_SAMPLING_API_KEYS`, and defaults

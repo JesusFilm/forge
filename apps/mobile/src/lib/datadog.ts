@@ -112,6 +112,24 @@ export function resolveViewName(
   return { key: pathname, name }
 }
 
+/**
+ * Modal sheets are real routes that used to END the watch view, fragmenting one
+ * playback into many short views. Matched on the route PATTERN, so a video
+ * slugged literally "language" still resolves as "watch/[slug]".
+ */
+const SHEET_VIEW_PATTERNS: ReadonlySet<string> = new Set([
+  "watch/language",
+  "watch/subtitle",
+  "watch/download",
+  "series/language",
+  "series/subtitle",
+  "series/download",
+])
+
+export function isSheetViewRoute(segments: readonly string[]): boolean {
+  return SHEET_VIEW_PATTERNS.has(segments.filter(Boolean).join("/"))
+}
+
 /** Cheap provisioning gate for hot paths — no URL parse or config allocation. */
 export function isDatadogProvisioned(): boolean {
   return getDatadogCredentials() != null
@@ -192,6 +210,48 @@ export function createDatadogInitWatchdog({
 /** Process-wide watchdog instance, mirroring the SDK's one-shot init behavior. */
 export const datadogInitWatchdog = createDatadogInitWatchdog()
 
+/**
+ * CombinedGraphQLErrors concatenates every error, so a partial-failure body can
+ * reach multi-KB ("Unexpected error." x200 in prod). Error Tracking groups by
+ * message, so uncapped it bloats payloads AND splits one fault across issues.
+ */
+const MAX_ERROR_MESSAGE_LENGTH = 300
+
+/** Static suffix: a length-dependent one re-splits one fault across issues. */
+const TRUNCATION_SUFFIX = "… (truncated)"
+
+export function capErrorMessage(
+  message: string,
+  maxLength: number = MAX_ERROR_MESSAGE_LENGTH,
+): string {
+  return capErrorMessageWithMeta(message, maxLength).message
+}
+
+/** Same cap, plus how much was dropped — for the RUM context, never the message. */
+export function capErrorMessageWithMeta(
+  message: string,
+  maxLength: number = MAX_ERROR_MESSAGE_LENGTH,
+): { message: string; truncatedChars: number } {
+  // Collapse consecutive duplicates. Compare against the previous KEPT line: a
+  // raw previous-element compare let a dropped blank line separate two
+  // identical faults back into distinct grouping keys.
+  const deduped: string[] = []
+  for (const part of message.split("\n")) {
+    const trimmed = part.trim()
+    if (trimmed.length === 0) continue
+    if (deduped[deduped.length - 1] === trimmed) continue
+    deduped.push(trimmed)
+  }
+  const collapsed = deduped.join(" ").replace(/\s+/g, " ").trim()
+  if (collapsed.length <= maxLength) {
+    return { message: collapsed, truncatedChars: 0 }
+  }
+  return {
+    message: `${collapsed.slice(0, maxLength)}${TRUNCATION_SUFFIX}`,
+    truncatedChars: collapsed.length - maxLength,
+  }
+}
+
 /** Reports a handled JS error to Datadog RUM. Mirrors web's reportDatadogRumError. */
 export function reportDatadogError(
   error: unknown,
@@ -199,11 +259,14 @@ export function reportDatadogError(
 ): void {
   safeDatadogCall(() => {
     const err = error instanceof Error ? error : new Error(String(error))
+    const capped = capErrorMessageWithMeta(err.message)
     return DdRum.addError(
-      err.message,
+      capped.message,
       ErrorSource.SOURCE,
       err.stack ?? "",
-      context,
+      capped.truncatedChars > 0
+        ? { ...context, message_truncated_chars: capped.truncatedChars }
+        : context,
     )
   })
 }

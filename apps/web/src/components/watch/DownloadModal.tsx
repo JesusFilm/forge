@@ -28,6 +28,7 @@ import { redirectToAuth } from "@/components/watch/download-session-client"
 import {
   buildDownloadFilename,
   buildDownloadProxyUrl,
+  type DownloadSequence,
 } from "@/components/watch/download-link"
 import {
   bucketDownloads,
@@ -48,6 +49,7 @@ export type DownloadModalProps = {
   languageCode?: string | null
   languageName?: string | null
   languageSlug?: string | null
+  downloadSequence?: DownloadSequence | null
   variantId: string
   videoSlug: string
   accountGateEnabled?: boolean
@@ -78,6 +80,7 @@ export function DownloadModal({
   languageCode,
   languageName,
   languageSlug,
+  downloadSequence = null,
   variantId,
   videoSlug,
   accountGateEnabled = false,
@@ -263,6 +266,7 @@ export function DownloadModal({
       languageName,
       languageSlug,
       renditionHeight: selected.download.height,
+      sequence: downloadSequence,
       tier: selected.tier,
       videoSlug,
       videoTitle,

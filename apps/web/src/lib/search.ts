@@ -1,6 +1,8 @@
-import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import type { AdminResultOf } from "@forge/admin-graphql"
+import { adminWatchSearchOperation } from "@forge/admin-graphql/operations"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
+import { env } from "@/env"
 import {
   publicSlugForLocale,
   type SearchLanguageResolution,
@@ -119,58 +121,24 @@ export type SearchActionResult =
 
 const MAX_QUERY_LENGTH = 200
 
-const watchSearchOperation = adminGraphql(`
-  query WatchSearch($input: WatchSearchInput!) {
-    watchSearch(input: $input) {
-      requestId
-      query
-      degraded
-      laneStatuses {
-        lane
-        status
-        elapsedMs
-        resultCount
-        reason
-      }
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        snippet
-        playbackId
-        startSeconds
-        score
-        label
-        durationSeconds
-        childCount
-        languageSlug
-        languageEnglishName
-        availability {
-          kind
-          languageEnglishName
-        }
-        evidence {
-          label
-          languageSlug
-        }
-        action {
-          hrefLanguageSlug
-        }
-      }
-      hasMore
-      searchMode
-      latencyMs
-      nextOffset
-    }
+export type WatchSearchPrimaryMode = "DEFAULT" | "MODERN"
+
+export function resolveWatchSearchRouting(
+  mode: WatchSearchPrimaryMode,
+  defaultShadowEnabled: boolean,
+): {
+  mode: WatchSearchPrimaryMode
+  shadowMode: "DEFAULT" | undefined
+} {
+  return {
+    mode,
+    shadowMode:
+      mode === "MODERN" && defaultShadowEnabled ? "DEFAULT" : undefined,
   }
-`)
+}
 
 type WatchSearchResult = AdminResultOf<
-  typeof watchSearchOperation
+  typeof adminWatchSearchOperation
 >["watchSearch"]
 
 type WatchSearchResultItem = NonNullable<
@@ -265,11 +233,16 @@ export async function searchVideos(
   languageContext: SearchVideosLanguageContext = {},
 ): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
+  const routing = resolveWatchSearchRouting(
+    env.WATCH_SEARCH_PRIMARY_MODE,
+    env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+  )
   const result = await semanticSearchAdminClient.query({
-    query: watchSearchOperation,
+    query: adminWatchSearchOperation,
     variables: {
       input: {
         query: truncatedQuery,
+        ...routing,
         clientRequestId: languageContext.clientRequestId,
         targetLanguageSlug: languageContext.targetLanguageSlug,
         queryLanguageSlug: languageContext.queryLanguageSlug,

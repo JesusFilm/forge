@@ -3,7 +3,7 @@ id: "feat-327"
 title: "Seeker video tools + declared-video result projection (SEEKER_VIDEO_ENABLED)"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-04"
 duration: 3
 depends_on:
@@ -16,6 +16,23 @@ tags:
   - "ai-pipeline"
   - "search"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-04 via [PR #1820](https://github.com/JesusFilm/forge/pull/1820) (`feat(mastra): seeker video tools + declared-video projection (ai-chat feat-327)`).
+
+**What landed.** The two flag-gated tools (`searchVideos`, `featureVideo`) on the single `seekerAgent` plus the declared-video projection onto the `/forge-seeker` terminal frame, all behind default-off `SEEKER_VIDEO_ENABLED`. Beyond the brief: production sampling during the smoke found 1.5% of featurable rows carrying slugs outside the D9 pattern, so the shape gates were lifted into one shared module (`seeker-video-gates.ts`) and applied at the TOOL boundary as well as the route projection — a live-site census (1,154 published slugs, all conformant; both offending rows 404 and absent from the sitemap) affirmed D9's pattern unchanged and showed those rows are unpublished, so dropping them prevents pairing a working player with a dead caption link. The agent-tools buffered read gained a byte cap, and `ADMIN_AGENT_TOOLS_ALLOWED_HOSTS` became required-when-URL-set in production via a new boot guard (a tightening that also covers the experience-authoring agents, which share the pair). One flag-off behavior is deliberately NOT byte-identical: function-valued `tools` removes the agent's tools from Mastra's global registry, so they are no longer reachable on `/api/tools/:toolId/execute` — documented and pinned rather than reverted, because it takes credentialed tools off a code-unauthenticated surface. Compound was executed in-PR rather than deferred.
+
+**Compound docs.** Two worked instances (23 + 24) appended to [`docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md), plus prevention-checklist item 9 and a refinement to item 7.
+
+**Residual risk / follow-ups.**
+
+- **Re-ask limitation:** asking for an earlier video again yields reply text without a video (the declaration union is turn-scoped, so the id resolves to nothing). Decided by jian wei to wait for [feat-330](feat-330-seeker-video-prompt-langfuse.md)'s re-ask rule rather than extend the interim block.
+  > **Superseded 2026-08-04 by [feat-330](feat-330-seeker-video-prompt-langfuse.md):** the durable prompt now instructs the model to search again in the current turn before declaring, so a re-ask resolves against that turn's union. The MECHANISM is unchanged — the union is still turn-scoped — so this is an instruction-level mitigation whose reliability tracks BOTH the model's compliance AND whether the re-search actually surfaces the same row (`searchVideos` is a fresh semantic top-8, not a lookup by id). `event=video_feature_invalid_declaration reason=id_not_in_results` covers only the declare-from-memory path; a compliant re-search that simply misses the earlier video emits NO log at all, so that signal reading zero is not evidence the re-ask case is solved — dogfood transcripts are. feat-330's prompt adds an explicit branch for that case (decline rather than substitute a different video), which is likewise instruction-level.
+- **Slug SHAPE is not page LIVENESS:** an ASCII-slugged unpublished row passes every gate and would still ship a dead caption link. Catalog-hygiene question raised with the Core-sync owner; no gate in this arc can answer it.
+- **Boot-guard precondition:** the healthcheck that converts a boot throw into a refused promotion is operator-verified at rollout runbook step 2, not code-guaranteed — `railway.toml` applies only when the service's Config-as-code Path points at it.
+
+**Unblocked.** [feat-328](feat-328-chat-inline-video-rendering.md), [feat-329](feat-329-chat-video-sources-replay-persistence.md), [feat-330](feat-330-seeker-video-prompt-langfuse.md).
 
 ## Problem
 
@@ -60,7 +77,7 @@ candidates well (plan E5) but title-matching the reply text is a dead end
 - `extractSources` (the projection + toolResults mechanism)
 - `SEEKER_ROUTE_ENABLED` (flag pattern)
 - `searchVideosOutputSchema` / `searchVideosResponseSchema` (widening sites)
-- `SEEKER_SYSTEM_PROMPT_FALLBACK` (must stay byte-identical when flag off)
+- `SEEKER_SYSTEM_PROMPT_FALLBACK` (must stay byte-identical when flag off — since [feat-330](feat-330-seeker-video-prompt-langfuse.md) this means "the flag changes no prompt text in either direction", NOT "a flag-off prompt has no video content"; the durable guidance is served in both states)
 - `toolCallingTurn` (step caps the tools live under)
 
 ## What To Build
@@ -154,7 +171,10 @@ grounding (E7 best-effort).
 - Unknown-kind row (`"some_future_kind"`) parses and is filtered
   (fail-closed).
 - Flag-off pinned test covers BOTH halves against the real env seam:
-  resolved instructions byte-identical AND the tool set exactly
+  resolved instructions byte-identical (since
+  [feat-330](feat-330-seeker-video-prompt-langfuse.md) this is one half of a
+  CROSS-FILE invariant — the flag-ON suite asserts the same equality, and only
+  the pair proves the flag changes no prompt text) AND the tool set exactly
   `{ retrieveAnswer }` — asserted on the AGENT's resolved tool set (the
   artifact `/api/agents/*` serves), never on a gating helper's return
   value, which would survive a direct unconditional registration at the
@@ -177,3 +197,4 @@ grounding (E7 best-effort).
   PLUS the factual+video both-tools-fire probe (measure the E7 skip on the
   SHIPPED single-agent shape — plan U2 verification); flag off: no tool
   calls, byte-identical prompt.
+  > **Stale since 2026-08-04 ([feat-330](feat-330-seeker-video-prompt-langfuse.md)) — do not re-run this recipe as written.** "Flag off: byte-identical prompt" meant, at feat-327's ship time, that a flag-off agent showed no trace of video capability. It is now narrower but still true in a different sense: flag-off and flag-on resolve to the SAME text, and that text ALWAYS carries the `VIDEO FEATURING` section. So a flag-off probe correctly shows no tool calls, but the served prompt does mention video and the model will say it cannot look up a video when asked. That is the intended kill-switch behavior, not a regression.

@@ -31,6 +31,8 @@ let reportDatadogError:
   | undefined
 let addDatadogTiming: typeof import("../src/lib/datadog").addDatadogTiming
 let datadogLog: typeof import("../src/lib/datadog").datadogLog
+let Linking: typeof import("expo-linking")
+let initDeepLinkOrigins: typeof import("../src/lib/deepLinkOrigin").initDeepLinkOrigins
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -69,6 +71,8 @@ try {
   reportDatadogError = datadog.reportDatadogError
   addDatadogTiming = datadog.addDatadogTiming
   datadogLog = datadog.datadogLog
+  Linking = require("expo-linking")
+  initDeepLinkOrigins = require("../src/lib/deepLinkOrigin").initDeepLinkOrigins
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -227,6 +231,15 @@ export default function RootLayout() {
       cancelled = true
     }
   }, [hydrated])
+
+  // Records which slugs arrived from OUTSIDE the app, so deep-link attribution
+  // reads the opening URL instead of guessing from stack shape.
+  useEffect(() => {
+    return initDeepLinkOrigins({
+      getInitialURL: () => Linking.getInitialURL(),
+      addUrlListener: (handler) => Linking.addEventListener("url", handler),
+    })
+  }, [])
 
   // R20: js-thread time-to-interactive — the first real-tree paint past the
   // hydration gate. Fires once; native app-start hides this Hermes stall.

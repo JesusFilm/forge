@@ -71,6 +71,7 @@ export const watchVideoShellFragment = adminGraphql(`
           dominantColor
         }
         children {
+          order
           child {
             documentId: id
             slug
@@ -89,6 +90,7 @@ export const watchVideoShellFragment = adminGraphql(`
       }
     }
     children {
+      order
       child {
         documentId: id
         slug
@@ -157,6 +159,7 @@ export const watchVideoLocalizedCopyFragment = adminGraphql(`
           title
         }
         children {
+          order
           child {
             documentId: id
             locales(locale: $locale, languageSlug: $languageSlug) {
@@ -169,6 +172,7 @@ export const watchVideoLocalizedCopyFragment = adminGraphql(`
       }
     }
     children {
+      order
       child {
         documentId: id
         locales(locale: $locale, languageSlug: $languageSlug) {
@@ -301,6 +305,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
               title
             }
             children {
+              order
               child {
                 documentId
                 slug
@@ -335,6 +340,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           }
         }
         children {
+          order
           child {
             documentId
             slug

@@ -95,7 +95,7 @@ export function useManagedVideoPlayer(
       return
     datadogLog.info("video.qoe", {
       ...summary,
-      source: sessionSourceRef.current,
+      playback_source: sessionSourceRef.current,
     })
   }, [])
 
@@ -340,7 +340,7 @@ export function useManagedVideoPlayer(
         stallEmittedRef.current = true
         datadogLog.warn("video.playhead_stall", {
           content_id: sessionContentIdRef.current,
-          source: sessionSourceRef.current,
+          playback_source: sessionSourceRef.current,
         })
       }
     }, STALL_POLL_MS)

@@ -2662,6 +2662,10 @@ function watchSearchOffset(metadata: Prisma.JsonValue | null) {
   return jsonNumber(jsonRecord(metadata)?.offset) ?? 0
 }
 
+function isWatchSearchShadowTrace(metadata: Prisma.JsonValue | null) {
+  return jsonString(jsonRecord(metadata)?.traceRole) === "shadow"
+}
+
 type WatchSearchAnalyticsHydratedVideo = {
   id: string
   slug: string
@@ -2832,12 +2836,17 @@ export async function loadWatchSearchAnalyticsData(
     () =>
       prisma.searchTrace.findMany({
         where: {
-          searchMode: "watch-search",
+          searchMode: {
+            in: ["watch-search", "watch-search-typesense"],
+          },
           routeSource: "GRAPHQL",
           createdAt: { gte: since },
         },
         orderBy: { createdAt: "desc" },
-        take: window === "24h" ? 200 : window === "7d" ? 500 : 1000,
+        // A MODERN request can now add one DEFAULT shadow trace. Read twice
+        // the historical row budget, then exclude shadows from product
+        // analytics so user-intent and click metrics are not double-counted.
+        take: window === "24h" ? 400 : window === "7d" ? 1000 : 2000,
         select: {
           id: true,
           requestId: true,
@@ -2860,19 +2869,20 @@ export async function loadWatchSearchAnalyticsData(
       trace,
     ])
   }
-  const traceGroups = [...tracesByRequestId.entries()].map(
+  const traceGroups = [...tracesByRequestId.entries()].flatMap(
     ([requestId, groupedTraces]) => {
-      const sortedTraces = [...groupedTraces].sort((left, right) => {
-        const offsetDiff =
-          watchSearchOffset(left.metadata) - watchSearchOffset(right.metadata)
-        if (offsetDiff !== 0) return offsetDiff
-        return left.createdAt.getTime() - right.createdAt.getTime()
-      })
-      return {
-        requestId,
-        traces: sortedTraces,
-        primaryTrace: sortedTraces[0] ?? groupedTraces[0],
-      }
+      const servingTraces = groupedTraces
+        .filter((trace) => !isWatchSearchShadowTrace(trace.metadata))
+        .sort((left, right) => {
+          const offsetDiff =
+            watchSearchOffset(left.metadata) - watchSearchOffset(right.metadata)
+          if (offsetDiff !== 0) return offsetDiff
+          return left.createdAt.getTime() - right.createdAt.getTime()
+        })
+      const primaryTrace = servingTraces[0]
+      return primaryTrace
+        ? [{ requestId, traces: servingTraces, primaryTrace }]
+        : []
     },
   )
   const requestIds = traceGroups.map((group) => group.requestId)

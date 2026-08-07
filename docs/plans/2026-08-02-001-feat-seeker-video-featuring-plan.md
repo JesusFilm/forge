@@ -1,7 +1,7 @@
 ---
 title: "feat: Seeker video featuring in chat"
 type: feat
-status: active
+status: completed
 date: 2026-08-02
 ---
 
@@ -272,6 +272,13 @@ silently ignored whenever Langfuse serves, so:
 - **U5 ordering:** Langfuse UI edit FIRST, then merge. Between edit and merge
   the appended interim block briefly duplicates the guidance (benign
   redundancy); the reverse order leaves tools live with no guidance.
+  > **Correction (owner, 2026-08-06):** edit-first stands, but "benign" is
+  > wrong. During that window the agent serves the NEW managed text with the
+  > OLD interim block appended AFTER it — a CONTRADICTORY overlap, not a
+  > duplicate: the old block's absolute "never feature a video you have
+  > already featured earlier in this conversation" lands last, while the new
+  > text permits exactly that on an explicit re-ask. Accepted as trivial at
+  > dogfood scale; merge-first remains unacceptable (tools live, no guidance).
 
 ### P3. `featureVideo` mechanics (plan-decided)
 
@@ -356,6 +363,78 @@ target_audio=<n> availability_missing=<n>` — so a contract regression
 - **Graceful degradation preserved:** any client failure (unconfigured, auth,
   timeout, 5xx, parse) collapses to `{ videos: [] }` exactly as the existing
   tool does.
+
+> **Correction (2026-08-04, U2 implementation) — P4's per-turn cap premise:**
+> P4 above justifies the per-turn counter with "per-invocation tools
+> resolution makes a per-turn counter cheap". That premise is measured WRONG
+> for the pinned `@mastra/core` 1.55.0: the function-valued `tools` resolver
+> fires **twice per turn** — a fixed count, independent of step count, both at
+> stream setup rather than per step. The cap is nonetheless correct, because it
+> is keyed on the per-turn executing tool INSTANCE, which is stable for the
+> whole turn: a real three-call turn hits the HTTP client exactly twice, the
+> third result is empty, a second turn on the SAME long-lived agent gets a
+> fresh budget, and two concurrent turns on one agent stay independent. Those
+> real-agent tests in `seeker-search-videos.test.ts` are the standing guard —
+> a future `@mastra/*` bump that resolved per STEP would fail CI rather than
+> silently unenforce the cap. Do not restate the original premise as fact.
+
+> **Correction (2026-08-04, U2 implementation) — D9's slug pattern, affirmed
+> with evidence, and a new P4 shape gate:** D9's slug pattern
+> (`^[a-z0-9][a-z0-9_-]{0,80}$`) is AFFIRMED UNCHANGED. A live public
+> watch-site census (all 10 sitemap parts, 31,402 URLs, 1,154 distinct content
+> slugs) found every published slug conformant — zero non-ASCII slugs exist on
+> the site. Two non-conforming slugs DO reach admin's agent-tools wire
+> (`la-búsqueda-the-search`, `tümlükden-nura`; 2 of 132 sampled featurable
+> videos, 1.5%), but both are unpublished catalog rows: they 404 in accented
+> AND ASCII-folded URL shapes and appear in no sitemap. Widening the pattern to
+> admit them would therefore have shipped a working player beside a DEAD
+> caption link. The same sample found 0/132 `videoId` and 0/132 `playbackId`
+> failures, so no other gate has this exposure.
+>
+> Consequence for P4: the seeker search tool now applies the D9 shape gates at
+> the TOOL boundary too, so the model is never shown a candidate the route
+> could not attach. Previously such a row could be shown, re-ranked, and
+> declared, and the turn would attach nothing (`reason=projection_failed`)
+> while the reply text still offered a video. The patterns are shared from one
+> module (`apps/mastra/src/mastra/seeker-video-gates.ts`); the route still
+> re-validates the declared row over an `unknown` payload, so D9's
+> belt-and-braces is intact — sharing the constants is not skipping the check.
+>
+> Operator-facing consequences of that shape gate, so the runbook below and
+> P4's filter-observability bullet stay usable without being rewritten:
+>
+> - The observability line gained a FIFTH field. It now reads
+>   `[seeker-search] event=video_candidates_filtered returned=<n> playable=<n>
+target_audio=<n> availability_missing=<n> shape_dropped=<n>`. The first
+>   four keep their exact pre-existing meanings. Read step 3's diagnostic
+>   ladder with a third branch: `availability_missing` non-zero means the admin
+>   contract; `shape_dropped` non-zero means conformant-by-semantics rows were
+>   dropped for SHAPE (catalog slugs outside the D9 pattern), which is a
+>   catalog-data signal, not a retrieval one; both zero on an empty result
+>   means genuine retrieval. Note `target_audio` counts rows that passed
+>   SEMANTICS — the count the model actually saw is
+>   `target_audio - shape_dropped`.
+> - Step 2 now has an ORDERING requirement. `ADMIN_AGENT_TOOLS_ALLOWED_HOSTS`
+>   became required-when-`ADMIN_AGENT_TOOLS_URL`-is-set in production
+>   (`assertAdminAgentToolsBaseUrlAllowedForProduction`, feat-327). Set the
+>   URL, key, and allowlist in ONE Railway variable edit: a two-edit sequence
+>   leaves a deploy with the URL set and no allowlist, which fails its boot
+>   assert. Symmetrically for step 5's rollback — the note that "the
+>   agent-tools env pair can stay" still holds, but do not clear ONLY the
+>   allowlist while leaving the URL set; clear the group or neither. Same
+>   teardown-order hazard the Langfuse group carries.
+> - Precondition before this ships (operator, not code): confirm the mastra
+>   Railway service has a healthcheck path configured — `railway.toml` declares
+>   one but Railway reads that file only when the service's Config-as-code Path
+>   points at it — and confirm production either has `ADMIN_AGENT_TOOLS_URL`
+>   unset or already paired with a matching allowlist. The plan states the pair
+>   was never provisioned in production, which if still true makes both checks
+>   a formality.
+>
+> Residual, named honestly: slug SHAPE is not page LIVENESS. An ASCII-slugged
+> unpublished row passes every gate and would still ship a dead caption link.
+> That is a catalog-hygiene question, raised with the Core-sync owner
+> separately; no gate in this arc can answer it.
 
 ### P5. Availability modeled tolerantly at the mastra client (plan-decided)
 
@@ -673,6 +752,21 @@ below the assistant turn.
   degrades that ONE turn to text, never unmounts the chat tree. Without it,
   U4's replay would make a render crash durable per thread — the feat-268
   lesson applied to this new render surface.
+
+  > **Correction (2026-08-04, U3 implementation):** chunk-load failure is
+  > session-scoped and NOT mitigatable at the import layer in this build — the
+  > rejection is cached by BOTH Turbopack's emitted browser runtime (per-chunk
+  > record, `loadingStarted` never reset, no eviction on error) AND the
+  > module-scoped React.lazy payload. The retry wrapper added during
+  > implementation received the same cached rejection on every attempt and was
+  > removed as inert; it only delayed the fallback ~900 ms. A persistent
+  > failure degrades every video turn in the session (caption links stay
+  > live); recovery is a page reload. Containment stays per-turn for render
+  > throws and playback errors only. Mechanism verified 2026-08-04 by reading
+  > the built runtime chunk (next@16.2.4, Turbopack); bundler-scoped —
+  > webpack's runtime evicts failed chunk records, where a bounded retry WOULD
+  > work; re-verify at the emitted-runtime layer on any bundler change.
+
 - `apps/chat/src/components/chat/message-list.tsx` — `<VideoCard>` sibling
   block after the message text (streaming + finalized branches).
 - Tests colocated with each; `apps/chat/CLAUDE.md` updated.
@@ -768,6 +862,19 @@ sources (D8) — closing the accepted D7 gap.
   to persist a compact `{ videoId, playbackId, slug, languageSlug }` record
   on message metadata at send time (a U2-adjacent amendment) rather than
   re-deriving at replay.
+  > **Gate result (2026-08-04, PR #1836, U4 implementation) — recorded here as this
+  > bullet requires.** PASSED; the re-derivation path was built and the named
+  > fallback was not needed. Observed stored part shape, against
+  > `@mastra/core` 1.55.0 / `@mastra/memory` 1.24.0:
+  > `{ type: "tool-invocation", toolInvocation: { state: "result", toolCallId,
+args, toolName, result } }`, interleaved with `step-start` markers and a
+  > trailing `text` part. Two findings the gate was not looking for: a tool
+  > whose `execute` THROWS persists its error message as a plain **string**
+  > `result` (a production shape the projection must tolerate), and the store
+  > put the whole turn — tool parts AND reply text — on ONE assistant message.
+  > That second finding is why the split-turn case below is covered only by a
+  > mocked fixture, and why the real-memory smoke carries an in-place label
+  > saying it cannot discriminate the last-text-bearing rule.
 - **Turn association:** stored tool parts can land on their own tool-only
   assistant message (chat's replay client already drops empty-text messages
   for exactly this case). The replay projection groups stored messages into
@@ -824,6 +931,27 @@ sources (D8) — closing the accepted D7 gap.
   (~6.6 MB < 8 MiB) is asserted as a computation over the named constants —
   the test proves the projection ENFORCES the bound, not that a payload
   happens to fit.
+  > **Correction (2026-08-05, PR #1836, U4 implementation) — the prescribed assertion is
+  > tautological.** "Asserted as a computation over the named constants" cannot
+  > do the job this scenario wants. Recomputing the expression that DEFINES the
+  > constant only catches a bound somebody RAISED; it is silent about a field
+  > nobody counted — which is exactly what happened. The bounds above cover a
+  > source's `snippet`, but `sourceName`, `title`, `url`, and the video's
+  > `title` also cross the wire and nothing upstream bounds them (the RAG tool
+  > truncates only a passage's `text`; admin truncates neither a video title nor
+  > a source label). The landed test therefore **serializes a maximal thread and
+  > measures its real byte length**, and the projection bounds every one of
+  > those fields. Falsification: removing the cap on ONE display string
+  > (`sourceName`) makes the measuring test report 12,062,894 B against the
+  > 8,388,608 B cap while the computed assertion stays green. Two consequences
+  > worth carrying: the derivation must also count the JSON envelope, and URLs
+  > are bounded by DROPPING the source rather than truncating (a cut URL still
+  > parses as https and renders a live-looking link to a 404). The stakes are
+  > higher than "truncated": over-cap → 502 → replay `failed` → R22 blocks every
+  > send into that conversation, so the thread becomes permanently unreadable
+  > AND unusable. The landed derivation is 8,153,600 B against the 8,388,608 B
+  > consumer cap; the ~6.6 MB figure above counted only `snippet`. Captured in
+  > `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md`.
 
 **Verification:** both suites + typecheck green; real-Postgres replay smoke;
 browser: reload a dogfood thread and see the player and sources return.
@@ -884,6 +1012,13 @@ Tool-conditional phrasing throughout (P2 kill-switch semantics).
   smart quotes, trailing whitespace, and line endings all diverge silently
   through a web UI, and a divergence surfaces only during a Langfuse outage,
   when the "identical" fallback suddenly changes behavior.
+  > **Dropped (owner, 2026-08-06):** the sha256 byte-parity gate is NOT
+  > adopted, and this bullet's premise is superseded. The fallback is not a
+  > mirror of the managed prompt — it is the PR-reviewed rollback copy, and
+  > the managed prompt is maintained independently (feat-272's original
+  > intent). There is no standing match requirement in either direction. At
+  > landing the operator simply verifies the Langfuse edit landed as intended.
+  > This applies equally to the Execution note below.
 
 **Execution note:** sequencing is operator-coupled — Langfuse UI edit first,
 then merge (P2). Do not merge before the operator confirms the edit on both
@@ -950,20 +1085,61 @@ flip is an operator action with a strict order:
    `event=video_feature_invalid_declaration reason=id_not_in_results` also
    fires on legitimate "show me that one again" turns (turn-scoped union) —
    frequency, not existence, is the signal.
+   > **Correction (2026-08-04, U2 implementation):** that ladder now has a
+   > THIRD branch. The line gained a fifth field, `shape_dropped=<n>`:
+   > non-zero means rows passed semantics but were dropped for SHAPE (catalog
+   > slugs outside the D9 pattern) — a catalog-data signal, NOT retrieval. So
+   > read it as: `availability_missing` non-zero → admin contract;
+   > `shape_dropped` non-zero → catalog shape; both zero on an empty result →
+   > genuine retrieval (then the embedding-stall caveat above applies). Also
+   > note `target_audio` counts rows that passed semantics — the count the
+   > model actually saw is `target_audio - shape_dropped`. Full context in the
+   > P4/D9 correction note in Key Technical Decisions above.
 4. **Provisioning gotchas (learned 2026-07-29):** the receiver trims
    allowlist entries but NOT the presented key, and neither side strips
    quotes — mint clean values; Doppler does NOT sync to Railway for admin —
    the Railway Variables tab is authoritative.
 5. Rollback: `SEEKER_VIDEO_ENABLED=false` (redeploy). Before U5 lands this
-   restores byte-identical pre-arc behavior; AFTER U5 the managed prompt
-   still carries the (tool-conditional) video guidance — the agent says it
-   can't search rather than reverting wholesale. The agent-tools env pair can
-   stay — but note that leaves the experience-agent tools live (step 2's
-   warning); retiring the pair is a separate decision.
+   restores byte-identical pre-arc behavior **for new turns**; AFTER U5 the
+   managed prompt still carries the (tool-conditional) video guidance — the
+   agent says it can't search rather than reverting wholesale. The agent-tools
+   env pair can stay — but note that leaves the experience-agent tools live
+   (step 2's warning); retiring the pair is a separate decision.
+   > **Amendment (2026-08-04, PR #1836, U4/feat-329):** the flag bounds what the seeker
+   > can DECLARE, not what was already stored. Since U4 re-derives attachments
+   > from stored tool parts at replay time, flipping it to `false` stops new
+   > videos but leaves ALREADY-STORED ones rendering when a thread is reopened
+   > — the replay route reads no flag of its own, and unlike the send path it
+   > cannot be inert by construction (the send path has no chunks to resolve
+   > with the tools unregistered; replay's chunks persist in the store). Full
+   > retraction of historical videos is `SEEKER_ROUTE_ENABLED=false`, which
+   > darkens the whole ai-chat lane (sends AND history) — or purging the
+   > affected threads. If a rollback trigger ever requires that historical
+   > videos stop rendering (bad catalog data, a dead-link class, a takedown),
+   > gate replay's `video` on the flag too; that seam does not exist today.
+   > **Ruled 2026-08-05 (PR #1836): the documented-partial semantics are ACCEPTED and the
+   > seam is deliberately not built** — revisit on audience widening (the
+   > feat-236 era) or an incident class requiring visual retraction of
+   > already-featured videos. Cited sources were never gated by this flag on
+   > any path.
 6. **Key hygiene:** once step 3 verifies, REMOVE every pre-existing entry
    from admin's `ADMIN_AGENT_TOOLS_API_KEYS` and redeploy, so exactly ONE
    caller credential — the newly minted production key — remains. Re-mint
    fresh local credentials later if needed for local smokes.
+   > **Amendment (2026-08-04, PR #1836, owner-approved — rides the U4/feat-329 PR):**
+   > this step's END STATE is not "exactly one entry" but exactly TWO KNOWN
+   > entries, held permanently: (1) the production key, held ONLY by the
+   > Railway mastra service, and (2) the operator's local dev key, kept so
+   > local smokes (including this arc's) stay runnable without re-minting each
+   > time. Remove everything else. The two keys NEVER cross the Railway/local
+   > tier boundary in either direction — the production key never goes on a
+   > laptop, the local key never goes into Railway — so a leaked local key is
+   > revoked by deleting one CSV entry, with no production rotation. This is
+   > the same two-key-pair posture the repo already runs for Langfuse (one
+   > Railway pair, one local-dev pair in the `forge-mastra` project); the
+   > earlier "exactly ONE caller credential" wording predates that reasoning
+   > and is superseded here. Auditing stays trivial: any entry that is neither
+   > of the two known keys is unexplained and should be removed.
 
 The operator also owns: the U5 Langfuse UI edit (both labels, exact text from
 the PR), and the flag flip itself. Audience stays the existing

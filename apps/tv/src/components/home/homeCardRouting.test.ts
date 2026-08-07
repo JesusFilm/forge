@@ -121,3 +121,30 @@ describe("resolveHomeCardPath", () => {
     ).toBe(true)
   })
 })
+
+describe("autoplay option", () => {
+  const card = {
+    slug: "stunned",
+    title: "Stunned",
+    imageUrl: null,
+    landscapeImageUrl: "https://img.example/l.jpg",
+    rawLabel: null,
+  }
+
+  it("appends autoplay=1 for watch cards when requested", () => {
+    const path = resolveHomeCardPath(card, { autoplay: true })!
+    expect(path.startsWith("/watch/stunned?seed=")).toBe(true)
+    expect(path.endsWith("&autoplay=1")).toBe(true)
+  })
+
+  it("omits the flag by default", () => {
+    expect(resolveHomeCardPath(card)).not.toContain("autoplay")
+  })
+
+  it("never autoplays a series card (no player on that screen)", () => {
+    const series = { ...card, rawLabel: "SERIES" }
+    const path = resolveHomeCardPath(series, { autoplay: true })!
+    expect(path.startsWith("/series/")).toBe(true)
+    expect(path).not.toContain("autoplay")
+  })
+})

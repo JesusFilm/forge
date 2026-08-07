@@ -283,7 +283,7 @@ deliberate deferral, not an omission.
 
 TV mirrors web's **non-sensitive** signals and deliberately skips the sensitive or inapplicable ones.
 
-**Matched** (joinable with web dashboards): route/screen views, GraphQL resources, errors + native crashes, content-selection actions (stable `dd-action-name` on home/series/search cards), the per-search `watch_search` structured Log (web's canonical `@watch_search.*` shape), and the `watch_search.result_clicked` custom action.
+**Matched** (joinable with web dashboards): route/screen views, GraphQL resources, errors + native crashes, content-selection actions (stable `dd-action-name` on home/series/search cards), the per-search structured Log under the shared cross-client message `watch_search analytics` (web's canonical `@watch_search.*` shape; TV omits the `event_name` attribute, so the runbook's canonical query needs TV added explicitly), and the `watch_search.result_clicked` custom action. Mobile speaks the same shared contract since 2026-08-04 — `docs/operations/watch-search-analytics-datadog.md` is the cross-client runbook.
 
 **Deliberately unmatched** — three web signals TV does not collect:
 

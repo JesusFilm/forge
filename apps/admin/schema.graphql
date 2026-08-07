@@ -1861,6 +1861,7 @@ type WatchRouteSnapshotChild {
 
 type WatchRouteSnapshotChildRelation {
   child: WatchRouteSnapshotChild
+  order: Int
 }
 
 type WatchRouteSnapshotImage {
@@ -2019,12 +2020,17 @@ input WatchSearchInput {
   currentWatchLanguageSlug: String
   displayLanguageSlug: String
   limit: Int
+  mode: WatchSearchMode
   offset: Int
   query: String!
   queryLanguageSlug: String
   queryNamedLanguageSlug: String
   resultTypes: [WatchSearchResultType!]
   routeLanguageSlug: String
+  """
+  Best-effort comparison mode for trusted Web traffic. Shadow work never changes the serving response.
+  """
+  shadowMode: WatchSearchMode
   targetLanguageSlug: String
 }
 
@@ -2047,6 +2053,11 @@ type WatchSearchLanguageInterpretation {
   routeLanguageSlug: String
   targetLanguageSlug: String!
   targetLanguageSource: String!
+}
+
+enum WatchSearchMode {
+  DEFAULT
+  MODERN
 }
 
 type WatchSearchResponse {

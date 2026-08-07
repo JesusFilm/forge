@@ -76,6 +76,77 @@ function hostAllowed(
   return allowed.has(host)
 }
 
+/**
+ * Copied from `langfuse-prompt-client.ts` / `jesusfilm-rag-client.ts` (feat-202
+ * byte-cap OOM guard; no shared helpers module exists yet). Applied here in
+ * feat-327, when this client first entered a user-facing conversational path
+ * (the seeker's `searchVideos`) inside the single Node process that runs every
+ * Mastra agent and workflow.
+ *
+ * Read and JSON-parse a response body, bounded at `maxBytes`. Streams the body
+ * with a running byte counter rather than trusting `Content-Length` (absent or
+ * spoofable); the instant the counter exceeds `maxBytes` it cancels the reader
+ * — aborting the underlying socket so a misbehaving upstream can't keep filling
+ * the heap — and returns `undefined`.
+ *
+ * Returns `undefined` on EVERY failure mode (absent body, read error, over-cap,
+ * decode error, JSON parse error), preserving the no-throw surface: over-cap
+ * rides the EXISTING `undefined → parse_error` graceful path, which every tool
+ * already degrades to an empty result. The catch swallows silently and MUST NOT
+ * log the caught error: a `JSON.parse` `SyntaxError` can embed raw body
+ * fragments (here: catalog snippets), and logging it would leak them.
+ *
+ * This client reads a body ONLY on the 200 path — `failureForStatus` classifies
+ * from the status code alone and never touches the error body — so this is the
+ * one and only buffering read to guard.
+ */
+async function readJsonBodyCapped(
+  response: Response,
+  maxBytes: number,
+): Promise<unknown> {
+  const stream = response.body
+  if (!stream) return undefined
+  // `reader` is acquired INSIDE the try and released in a guarded `finally` so
+  // BOTH ends of the no-throw boundary are structural, not dependent on timing:
+  // a `getReader()` throw (e.g. a double-locked body) is swallowed to undefined,
+  // and `releaseLock()` (which throws if a read is still pending) can never
+  // escape and mask the graceful return.
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  try {
+    reader = stream.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > maxBytes) {
+        // Abort the underlying stream (not merely stop reading) so the socket
+        // stops filling the heap. The over-cap body then degrades gracefully.
+        await reader.cancel()
+        return undefined
+      }
+      chunks.push(value)
+    }
+    const merged = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      merged.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return JSON.parse(new TextDecoder().decode(merged))
+  } catch {
+    return undefined
+  } finally {
+    try {
+      reader?.releaseLock()
+    } catch {
+      // Cleanup must never escape — see the no-throw boundary note above.
+    }
+  }
+}
+
 function failureForStatus(status: number): AdminAgentToolFailure {
   if (status === 401 || status === 403) {
     return { ok: false, reason: "auth_failed", retryable: false, status }
@@ -154,7 +225,10 @@ async function callAdminAgentTool<T>(args: {
     return failureForStatus(response.status)
   }
 
-  const body = await response.json().catch(() => undefined)
+  // Byte-capped (feat-327) — an over-cap body maps to `undefined`, which the
+  // parse below turns into the EXISTING `parse_error` graceful path. No new
+  // branch, and the caught error is never logged (leak control).
+  const body = await readJsonBodyCapped(response, config.maxResponseBytes)
   const data = args.parse(body)
   if (data === null) {
     return {
@@ -171,6 +245,27 @@ async function callAdminAgentTool<T>(args: {
 // search-videos
 // ---------------------------------------------------------------------------
 
+/**
+ * Wire-parse contract for admin's `/api/internal/agent-tools/search-videos`.
+ *
+ * The playback trio (`playbackId`/`durationSeconds`/`languageSlug`, admin PR
+ * #1789) and `availability` (feat-326) are all `.optional()` per plan P5, so a
+ * pre-widening admin deployment still validates and the tool simply sees rows
+ * that are not featurable. `availability.kind` is a TOLERANT string, never a
+ * closed enum: an unknown future kind must parse fine and then fail-close at
+ * the seeker tool's `=== "target_audio"` comparison, rather than failing the
+ * parse and collapsing the whole search to empty.
+ *
+ * `playbackId` is `.optional()` but NOT `.nullable()` — it mirrors the producer
+ * contract, where admin's `playbackId !== null` playability filter runs before
+ * projection. A hypothetical null would fail this parse into the EXISTING
+ * `parse_error` → empty-result path: fail-closed and graceful, never a throw.
+ *
+ * Kept structurally identical to `searchVideosOutputSchema` in
+ * `../mastra/tools/search-videos.ts` (the shared executor is a pass-through);
+ * a parity test in `../mastra/tools/agent-tools.test.ts` pins the two row shapes
+ * against each other so they cannot drift.
+ */
 const searchVideosResponseSchema = z.object({
   videos: z.array(
     z.object({
@@ -179,9 +274,16 @@ const searchVideosResponseSchema = z.object({
       snippet: z.string(),
       slug: z.string(),
       imageUrl: z.string().nullable(),
+      playbackId: z.string().optional(),
+      durationSeconds: z.number().nullable().optional(),
+      languageSlug: z.string().nullable().optional(),
+      availability: z.object({ kind: z.string() }).optional(),
     }),
   ),
 })
+
+/** Exported for the drift guard in `../mastra/tools/agent-tools.test.ts`. */
+export const _searchVideosResponseSchema = searchVideosResponseSchema
 export type AdminSearchVideosData = z.infer<typeof searchVideosResponseSchema>
 
 export type SearchVideosViaAdminInput = {

@@ -190,11 +190,31 @@ export const HomeCard = memo(function HomeCard({
                 <View style={styles.thumbEdge} pointerEvents="none" />
               )}
 
-              {card.metaLabel != null ? (
+              {/* Focus-gated chips (Continue Watching's "N min left") appear
+                  only on the focused card; every other rail's chip is
+                  always-on. */}
+              {card.metaLabel != null &&
+              (!card.metaLabelOnFocusOnly || focused) ? (
                 <View style={styles.chip} pointerEvents="none">
                   <Text style={styles.chipText} numberOfLines={1}>
                     {card.metaLabel}
                   </Text>
+                </View>
+              ) : null}
+
+              {/* Continue Watching progress bar (Netflix-style bottom bar).
+                  Only shelf cards carry progressFraction; width is a plain
+                  percent string — no animation, so no per-frame work. */}
+              {card.progressFraction != null && card.progressFraction > 0 ? (
+                <View style={styles.progressTrack} pointerEvents="none">
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${Math.min(100, Math.max(2, Math.round(card.progressFraction * 100)))}%`,
+                      },
+                    ]}
+                  />
                 </View>
               ) : null}
             </View>
@@ -211,9 +231,14 @@ export const HomeCard = memo(function HomeCard({
           >
             {card.title}
           </Text>
-          <Text style={styles.kind} numberOfLines={1}>
-            {card.label}
-          </Text>
+          {/* Kind line is optional: the Continue Watching shelf leaves it
+              empty because the rail header already says it, and repeating it
+              under every card is noise. */}
+          {card.label !== "" ? (
+            <Text style={styles.kind} numberOfLines={1}>
+              {card.label}
+            </Text>
+          ) : null}
         </View>
       </Animated.View>
     </Pressable>
@@ -261,6 +286,21 @@ function makeVariantStyles(variant: HomeCardVariant) {
       paddingVertical: scale(4),
       borderRadius: scale(8),
       backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    progressTrack: {
+      position: "absolute",
+      left: scale(12),
+      right: scale(12),
+      bottom: scale(10),
+      height: scale(6),
+      borderRadius: scale(3),
+      backgroundColor: "rgba(255,255,255,0.35)",
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: scale(3),
+      backgroundColor: WATCH_THEME.accent,
     },
     chipText: {
       fontFamily: "System",

@@ -6,6 +6,7 @@ import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
 
 import { agentLoginPlugin } from "@/auth/agent-login-plugin"
+import { deviceGrantPlugin } from "@/auth/device-grant-plugin"
 import { mobileAppleCredentialPlugin } from "@/auth/mobile-apple-plugin"
 import {
   JFP_MOBILE_PROVIDER_ID,
@@ -253,6 +254,7 @@ export const auth = betterAuth({
       },
     }),
     agentLoginPlugin(),
+    deviceGrantPlugin(),
     mobileAppleCredentialPlugin(),
     oauthProvider({
       loginPage: "/login",
