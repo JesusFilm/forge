@@ -29,6 +29,7 @@
     "@mastra/core": "1.55.0",
     "@mastra/duckdb": "1.5.2",
     "@mastra/editor": "0.13.9",
+    "@mastra/langfuse": "1.4.6",
     "@mastra/loggers": "1.2.0",
     "@mastra/mcp": "1.15.0",
     "@mastra/memory": "1.24.0",
