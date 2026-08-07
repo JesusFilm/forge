@@ -148,6 +148,8 @@ export type WatchChildLanguage = {
 
 export type WatchChild = {
   documentId: string
+  /** One-based canonical position from VideoRelation.order; null is unsequenced. */
+  order?: number | null
   slug: string | null
   title: string | null
   label: string | null
@@ -546,6 +548,7 @@ type AdminVideoVariantRaw = {
 }
 
 type AdminChildRelationRaw = {
+  order?: number | null
   child: {
     documentId: string | null
     slug?: string | null
@@ -632,6 +635,7 @@ type AdminVideoRouteSnapshotStudyQuestionAliases = {
 }
 
 type AdminVideoRouteSnapshotChildRelation = {
+  order?: number | null
   child:
     | (NonNullable<AdminChildRelationRaw["child"]> &
         AdminVideoRouteSnapshotAliases)
@@ -785,6 +789,7 @@ function normalizeChild(
   if (!child || !child.documentId) return null
   return {
     documentId: child.documentId,
+    ...(rel.order === undefined ? {} : { order: rel.order }),
     slug: child.slug ?? null,
     title:
       firstNonBlankLocaleTitle(child.locales) ??
@@ -818,6 +823,7 @@ function normalizeParent(
         if (!c || !c.documentId) return null
         return {
           documentId: c.documentId,
+          ...(childRel.order === undefined ? {} : { order: childRel.order }),
           slug: c.slug ?? null,
           title:
             firstNonBlankLocaleTitle(c.locales) ?? humanizeContentSlug(c.slug),
@@ -1388,6 +1394,7 @@ function mergeLocaleTitleFallback(
 }
 
 type ChildRelationWithLocales = {
+  order?: number | null
   child:
     | ({
         documentId: string | null
@@ -1547,6 +1554,7 @@ function snapshotChildRelationsForLayer(
   layer: AdminVideoRouteSnapshotCopyLayer,
 ): AdminVideoLocalizedCopyRaw["children"] {
   return (relations ?? []).map((relation) => ({
+    ...relation,
     child: relation.child
       ? {
           ...relation.child,

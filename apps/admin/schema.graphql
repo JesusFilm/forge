@@ -1840,6 +1840,7 @@ type WatchRouteSnapshotChild {
 
 type WatchRouteSnapshotChildRelation {
   child: WatchRouteSnapshotChild
+  order: Int
 }
 
 type WatchRouteSnapshotImage {
