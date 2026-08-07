@@ -1,13 +1,37 @@
-# Railway only reads this file if the service's Config-as-code Path is set to
-# apps/auth/railway.toml. Otherwise configure the same commands in the Railway
-# dashboard and treat that dashboard config as canonical.
+# NOT IN EFFECT. As of 2026-08-07 the production @forge/auth service has no
+# Config-as-code Path set (`serviceInstance.railwayConfigFile` is null), so
+# Railway ignores this file entirely and the DASHBOARD IS CANONICAL — exactly
+# the fallback apps/auth/CLAUDE.md describes.
+#
+# What the dashboard actually runs today, mirrored below so the two do not drift
+# and so flipping the switch would not change behaviour:
+#
+#   build:  pnpm install --frozen-lockfile
+#           && pnpm --filter @forge/auth db:generate
+#           && pnpm --filter @forge/auth build
+#           && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static
+#   start:  pnpm --filter @forge/auth db:migrate:deploy
+#           && pnpm --filter @forge/auth seed:first-party-apps
+#           && HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js
+#
+# So migrations and the first-party seed DO run on every deploy — they ride the
+# start command rather than a preDeploy hook. Two consequences worth knowing:
+#
+#   1. A failed migration is a crash loop, not a refused promotion. The
+#      healthcheck below never gets a chance to reject a bad release cleanly.
+#   2. Every replica runs both on start. Prisma takes an advisory lock for
+#      migrations so that is safe today, but it is safe by accident, not design.
+#
+# Moving both to `preDeployCommand` would fix (1) and (2) — but only once the
+# Config-as-code Path is actually set. Until someone does that, editing this
+# file changes nothing.
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/auth build && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/auth db:generate && pnpm --filter @forge/auth build && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static"
 
 [deploy]
-startCommand = "HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js"
+startCommand = "pnpm --filter @forge/auth db:migrate:deploy && pnpm --filter @forge/auth seed:first-party-apps && HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

@@ -20,6 +20,24 @@ vi.mock("@/db/client", () => ({
   },
 }))
 
+// Deliberately a literal, not an import: this is the WIRE value the TV sends as
+// `grant_type` and the value `resolveDeviceClient` gates on. Keeping a hand-
+// written copy here is what makes a rename of the shared constant go red
+// instead of silently re-pointing producer and consumer together.
+const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code"
+const TV_CLIENT_IDS = [
+  "jfp_tv_local",
+  "jfp_tv_preview",
+  "jfp_tv_staging",
+  "jfp_tv_production",
+]
+
+type OAuthClientUpsertCall = {
+  where: { clientId: string }
+  create: { grantTypes: string[] }
+  update: { grantTypes: string[] }
+}
+
 describe("seedFirstPartyApps", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -32,10 +50,13 @@ describe("seedFirstPartyApps", () => {
   it("seeds scopes and OAuth clients for every first-party app", async () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
+    // admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 + admin-mcp 5 +
+    // tv 4 = 27 environments; oauthClients adds the 4 manager session-service
+    // clients on top.
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 6,
-      environments: 23,
-      oauthClients: 27,
+      apps: 7,
+      environments: 27,
+      oauthClients: 31,
       scopes: 21,
     })
 
@@ -207,6 +228,71 @@ describe("seedFirstPartyApps", () => {
         }),
       }),
     )
+  })
+
+  it("records the device grant type for every TV client in both upsert branches", async () => {
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+
+    await seedFirstPartyApps()
+
+    const tvGrantTypes = [
+      "authorization_code",
+      "refresh_token",
+      DEVICE_CODE_GRANT_TYPE,
+    ]
+
+    for (const clientId of TV_CLIENT_IDS) {
+      expect(upsertOAuthClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { clientId },
+          create: expect.objectContaining({
+            clientId,
+            grantTypes: tvGrantTypes,
+            scopes: [
+              "openid",
+              "profile:read",
+              "email:read",
+              "offline_access",
+              "web:watch-events:write",
+            ],
+            public: true,
+            requirePKCE: true,
+            tokenEndpointAuthMethod: "none",
+          }),
+          // The update branch is what a re-deploy writes over an existing row;
+          // a device grant recorded only on create never reaches a seeded env.
+          update: expect.objectContaining({
+            grantTypes: tvGrantTypes,
+          }),
+        }),
+      )
+    }
+  })
+
+  it("keeps the device grant type off every non-TV client", async () => {
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+
+    await seedFirstPartyApps()
+
+    const calls = upsertOAuthClient.mock.calls.map(
+      ([call]) => call as OAuthClientUpsertCall,
+    )
+    const nonTvCalls = calls.filter(
+      (call) => !TV_CLIENT_IDS.includes(call.where.clientId),
+    )
+    const tvCalls = calls.filter((call) =>
+      TV_CLIENT_IDS.includes(call.where.clientId),
+    )
+
+    // Anti-vacuous: both partitions must be populated, or "no non-TV client
+    // carries the grant" would pass on an empty list.
+    expect(tvCalls).toHaveLength(TV_CLIENT_IDS.length)
+    expect(nonTvCalls.length).toBeGreaterThan(0)
+
+    for (const call of nonTvCalls) {
+      expect(call.create.grantTypes).not.toContain(DEVICE_CODE_GRANT_TYPE)
+      expect(call.update.grantTypes).not.toContain(DEVICE_CODE_GRANT_TYPE)
+    }
   })
 
   it("appends offline_access to existing dynamic Codex MCP clients only", async () => {
