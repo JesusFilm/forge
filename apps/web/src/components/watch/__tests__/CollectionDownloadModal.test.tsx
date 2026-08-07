@@ -784,6 +784,40 @@ describe("CollectionDownloadModal", () => {
     ).toBeNull()
   })
 
+  it("ignores retries stored before sequence-prefixed filenames", async () => {
+    window.sessionStorage.setItem(
+      "forge.watch.collection-download-resume:lumo-luke:english",
+      JSON.stringify({
+        completed: [],
+        failed: [
+          {
+            item: {
+              id: "episode-1",
+              filename: "Episode-One_English_eng_1080p.mp4",
+              title: "Episode One",
+              url: "/watch/api/download?downloadId=download-1",
+            },
+            reason: "auth-required",
+          },
+        ],
+        total: 2,
+      }),
+    )
+
+    renderModal()
+    await flush()
+
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-progress"]',
+      ),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-collection-download-start"]')
+        ?.textContent,
+    ).toContain("Download all")
+  })
+
   it("restores a failed-only retry after signing in mid-batch", async () => {
     const resumedEpisodes = [
       ...episodes,

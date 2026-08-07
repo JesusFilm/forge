@@ -744,6 +744,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
           languageCode="eng"
           languageName="English"
           languageSlug="english"
+          downloadSequence={{ position: 1, total: 61 }}
           variantId="variant-1"
           videoSlug="jesus"
           videoTitle="Jesus Film"
@@ -782,7 +783,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
     expect(a.getAttribute("href")).not.toContain("stream.mux.com")
     // Filename is derived from title, selected audio language, code, and height.
     const downloadAttr = a.getAttribute("download") ?? ""
-    expect(downloadAttr).toBe("Jesus-Film_English_eng_360p.mp4")
+    expect(downloadAttr).toBe("01_Jesus-Film_English_eng_360p.mp4")
     expect(a.getAttribute("href")).toContain(
       `filename=${encodeURIComponent(downloadAttr)}`,
     )

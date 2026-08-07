@@ -448,6 +448,7 @@ export function SeriesPageClient({
           collectionTitle={series.title}
           episodes={episodes.map((episode) => ({
             documentId: episode.documentId,
+            order: episode.order ?? null,
             slug: episode.slug,
             title: episode.title,
             thumbnailUrl: resolveEpisodeImageUrl(episode),

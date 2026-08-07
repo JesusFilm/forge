@@ -54,10 +54,12 @@ import {
 } from "../../services/langfuse-prompt-client"
 import {
   retrieveAnswerOutputSchema,
+  retrieveAnswerTool,
   RETRIEVE_ANSWER_EMPTY_MESSAGE,
   RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
 } from "../tools/retrieve-answer"
 import {
+  buildSeekerAgent,
   buildSeekerModelList,
   createGatewayFetchWithTimeout,
   createSeekerInstructionsResolver,
@@ -464,7 +466,7 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
   })
 
-  it("call-site source pin: the tools registration wires the bare gate, with no injected seam (feat-327)", () => {
+  it("call-site source pin: the factory defaults to the bare tool gate", () => {
     // Companion to the artifact assertions above, in the feat-283 idiom: an
     // injectable seam at a production call site is a one-line revert surface.
     // Pin that `tools:` is registered ONCE and wired to the bare
@@ -479,8 +481,11 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const code = source
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "")
-    expect(code).toMatch(/tools:\s*buildSeekerTools,/)
-    expect(code.match(/\btools:/g)).toHaveLength(1)
+    expect(code).toMatch(
+      /overrides\.ragSearch\s*===\s*undefined\s*\?\s*buildSeekerTools/,
+    )
+    expect(code).toMatch(/\btools,/)
+    expect(code.match(/\btools:/g) ?? []).toHaveLength(0)
   })
 
   it("call-site source pin: buildSeekerTools mints the search tool with NO injected options (feat-327)", () => {
@@ -502,7 +507,7 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(code.match(/createSeekerSearchVideosTool\(/g)).toHaveLength(1)
   })
 
-  it("call-site source pin: exactly one instructions registration, wiring the bare resolver, outside comments", () => {
+  it("call-site source pin: exactly one instructions registration, defaulting to the bare resolver, outside comments", () => {
     // feat-283 corollary: an injectable seam at a production call site is a
     // one-line revert surface. Pin that the registration passes NO overrides —
     // a `createSeekerInstructionsResolver({ config: … })` or a reverted inline
@@ -518,7 +523,9 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const code = source
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "")
-    expect(code).toMatch(/instructions:\s*createSeekerInstructionsResolver\(\)/)
+    expect(code).toMatch(
+      /instructions:\s*overrides\.instructions\s*\?\?\s*createSeekerInstructionsResolver\(\)/,
+    )
     expect(code.match(/\binstructions:/g)).toHaveLength(1)
   })
 
@@ -752,5 +759,58 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE).toBe(
       "Retrieval is unavailable. Tell the seeker you cannot provide a grounded answer, and continue the conversation.",
     )
+  })
+})
+
+describe("buildSeekerAgent factory seam", () => {
+  it("keeps the production singleton on the zero-override path", () => {
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+
+    expect(code).toMatch(/export const seekerAgent = buildSeekerAgent\(\)/)
+    expect(code.match(/\bnew Agent\(/g)).toHaveLength(1)
+    expect(code.match(/\bbuildSeekerAgent\(/g)).toHaveLength(2)
+  })
+
+  it("applies eval-only instruction and RAG overrides", async () => {
+    let receivedQuery = ""
+    const agent = buildSeekerAgent({
+      instructions: "EVAL STUB INSTRUCTIONS",
+      ragSearch: ({ query }) => {
+        receivedQuery = query
+        return Promise.resolve({
+          ok: true,
+          results: [
+            {
+              score: 0.91,
+              text: "Jesus wept with those who mourned.",
+              citation: {
+                sourceName: "Fixture Source",
+                title: null,
+                url: "https://fixtures.example.org/passage-1",
+              },
+            },
+          ],
+        })
+      },
+    })
+
+    expect(await agent.getInstructions()).toBe("EVAL STUB INSTRUCTIONS")
+    const tool = (await agent.listTools())
+      .retrieveAnswer as typeof retrieveAnswerTool
+    expect(tool).not.toBe(retrieveAnswerTool)
+    const output = await tool.execute?.(
+      { query: "why does God allow suffering?" },
+      undefined as unknown as Parameters<
+        NonNullable<typeof retrieveAnswerTool.execute>
+      >[1],
+    )
+    expect(receivedQuery).toBe("why does God allow suffering?")
+    expect(output).toMatchObject({ status: "ok" })
   })
 })
