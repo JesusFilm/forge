@@ -1,7 +1,7 @@
 ---
 title: "feat: Seeker video featuring in chat"
 type: feat
-status: active
+status: completed
 date: 2026-08-02
 ---
 
@@ -272,6 +272,13 @@ silently ignored whenever Langfuse serves, so:
 - **U5 ordering:** Langfuse UI edit FIRST, then merge. Between edit and merge
   the appended interim block briefly duplicates the guidance (benign
   redundancy); the reverse order leaves tools live with no guidance.
+  > **Correction (owner, 2026-08-06):** edit-first stands, but "benign" is
+  > wrong. During that window the agent serves the NEW managed text with the
+  > OLD interim block appended AFTER it — a CONTRADICTORY overlap, not a
+  > duplicate: the old block's absolute "never feature a video you have
+  > already featured earlier in this conversation" lands last, while the new
+  > text permits exactly that on an explicit re-ask. Accepted as trivial at
+  > dogfood scale; merge-first remains unacceptable (tools live, no guidance).
 
 ### P3. `featureVideo` mechanics (plan-decided)
 
@@ -1005,6 +1012,13 @@ Tool-conditional phrasing throughout (P2 kill-switch semantics).
   smart quotes, trailing whitespace, and line endings all diverge silently
   through a web UI, and a divergence surfaces only during a Langfuse outage,
   when the "identical" fallback suddenly changes behavior.
+  > **Dropped (owner, 2026-08-06):** the sha256 byte-parity gate is NOT
+  > adopted, and this bullet's premise is superseded. The fallback is not a
+  > mirror of the managed prompt — it is the PR-reviewed rollback copy, and
+  > the managed prompt is maintained independently (feat-272's original
+  > intent). There is no standing match requirement in either direction. At
+  > landing the operator simply verifies the Langfuse edit landed as intended.
+  > This applies equally to the Execution note below.
 
 **Execution note:** sequencing is operator-coupled — Langfuse UI edit first,
 then merge (P2). Do not merge before the operator confirms the edit on both

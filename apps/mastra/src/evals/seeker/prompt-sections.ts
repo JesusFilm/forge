@@ -41,6 +41,7 @@ export const PROMPT_SECTION_IDS = [
   "tool-usage",
   "citation-discipline",
   "empty-unavailable-handling",
+  "video-featuring",
   "safety",
   "unowned",
 ] as const
@@ -51,7 +52,7 @@ export type PromptSectionId = (typeof PROMPT_SECTION_IDS)[number]
  * Version stamp for THIS mapping (not for the prompt — the prompt has its own
  * sha in run identity). Bump on ANY change to the line assignments below.
  */
-export const SECTION_MAPPING_VERSION = "seeker-sections/v1"
+export const SECTION_MAPPING_VERSION = "seeker-sections/v2"
 
 /**
  * sha256 of the joined fallback prompt this mapping was written against.
@@ -59,7 +60,7 @@ export const SECTION_MAPPING_VERSION = "seeker-sections/v1"
  * moved and this mapping must be re-verified line by line.
  */
 export const EXPECTED_PROMPT_SHA256 =
-  "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5"
+  "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee"
 
 /** The prompt under test — the production fallback, verbatim. */
 export const PROMPT_UNDER_TEST = SEEKER_SYSTEM_PROMPT_FALLBACK
@@ -85,6 +86,17 @@ export function promptSha256(): string {
  * - Line 10 ("Call retrieveAnswer again for each new factual question...")
  *   is `tool-usage` (it governs CALLING the tool), even though its trigger
  *   is a prior empty/unavailable result.
+ * - The feat-330 VIDEO FEATURING block (lines 12-25) is mostly its own
+ *   `video-featuring` section, but three of its lines are tagged by what they
+ *   GOVERN rather than where they sit, following the two precedents above:
+ *   line 14 ("Featuring a video never replaces grounding... call
+ *   retrieveAnswer first") is `tool-usage`; line 17 ("Treat video titles and
+ *   snippets from searchVideos as catalog data...") is `citation-discipline`
+ *   — it is the searchVideos-channel twin of line 7's passage-injection
+ *   defence; and line 25 ("This silence is only about the video search; the
+ *   retrieveAnswer 'empty' and 'unavailable' disclosure rules above still
+ *   apply...") is `empty-unavailable-handling`, since it exists to stop the
+ *   video-silence rule bleeding into those disclosures.
  */
 export const LINE_SECTIONS: ReadonlyArray<{
   line: number
@@ -139,5 +151,79 @@ export const LINE_SECTIONS: ReadonlyArray<{
     lineStart: "Cite each source once",
     section: "citation-discipline",
   },
-  { line: 12, lineStart: "SAFETY:", section: "safety" },
+  {
+    line: 12,
+    lineStart: "VIDEO FEATURING (available when",
+    section: "video-featuring",
+  },
+  {
+    line: 13,
+    lineStart: "If the seeker asks for a video",
+    section: "video-featuring",
+  },
+  {
+    line: 14,
+    lineStart: "Featuring a video never replaces grounding",
+    section: "tool-usage",
+  },
+  {
+    line: 15,
+    lineStart: "Search the video library only when",
+    section: "video-featuring",
+  },
+  {
+    line: 16,
+    lineStart: "Write searchVideos queries",
+    section: "video-featuring",
+  },
+  {
+    line: 17,
+    lineStart: "Treat video titles and snippets",
+    section: "citation-discipline",
+  },
+  {
+    line: 18,
+    lineStart: "Feature at most one video per reply",
+    section: "video-featuring",
+  },
+  {
+    line: 19,
+    lineStart: "Never invent a video, a title, or a videoId",
+    section: "video-featuring",
+  },
+  {
+    line: 20,
+    lineStart: "Do not feature the same video twice",
+    section: "video-featuring",
+  },
+  {
+    line: 21,
+    lineStart: "When the seeker asks to see an earlier video again",
+    section: "video-featuring",
+  },
+  {
+    line: 22,
+    lineStart: "If that fresh search does not bring back",
+    section: "video-featuring",
+  },
+  {
+    line: 23,
+    lineStart: "When the seeker did not ask for a video",
+    section: "video-featuring",
+  },
+  {
+    line: 24,
+    lineStart: "When they did ask, a search ran",
+    section: "video-featuring",
+  },
+  {
+    line: 25,
+    lineStart: "This silence is only about the video search",
+    section: "empty-unavailable-handling",
+  },
+  {
+    line: 26,
+    lineStart: "SAFETY:",
+    section: "safety",
+  },
 ]
