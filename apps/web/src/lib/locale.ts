@@ -73,8 +73,8 @@ export function parseAcceptLanguage(
 
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
   // Admin currently exposes generic `eng` for this regional public audio
-  // slug. Keep the distinct British homepage on its actual regional identity
-  // so HTML language and sitemap hreflang signals agree.
+  // slug. Keep British inventory and media documents on their actual regional
+  // identity even though English homepage aliases consolidate to `/watch`.
   "english-british": "en-GB",
   // Admin's generated Language.bcp47 corpus does not currently include this
   // public audio slug, but the URL contract does. Keep the raw dub slug in
@@ -215,6 +215,23 @@ export function slugToBcp47Primary(slug: string): string | null {
 export function isPublicWatchLanguageSlug(slug: string): boolean {
   if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)) return false
   return PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)
+}
+
+/**
+ * Exact audio-language aliases whose one-segment homepages consolidate to the
+ * generic international-English Watch home. Keep this explicit: UI-locale
+ * fallback is broader than the product policy and must not retire unrelated
+ * language homepages that happen to render with English chrome.
+ */
+export function isConsolidatedEnglishHomeLanguageSlug(
+  slug: string,
+): boolean {
+  return (
+    slug === "english" ||
+    slug === "english-african" ||
+    slug === "english-british" ||
+    slug === "english-north-american-indigenous"
+  )
 }
 
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {

@@ -2048,6 +2048,23 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     )
   })
 
+  it("returns regional English media routes to the generic Watch home", () => {
+    navigationMocks.pathname = "/jesus.html/english-british.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>British English video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("/")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
+  })
+
   it("uses compact English-video chrome on the language-less canonical route and explicit compatibility route", () => {
     for (const pathname of [
       "/jesus.html",

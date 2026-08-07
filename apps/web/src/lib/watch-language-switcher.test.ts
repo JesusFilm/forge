@@ -42,6 +42,26 @@ describe("languageSwitcherTarget", () => {
     expect(
       languageSwitcherTarget("/french.html/history", "portuguese-brazil"),
     ).toBe("/portuguese-brazil.html/history")
+    expect(languageSwitcherTarget("/languages", "english")).toBe(
+      "/english.html/languages",
+    )
+    expect(languageSwitcherTarget("/history", "english-british")).toBe(
+      "/english-british.html/history",
+    )
+  })
+
+  it("routes consolidated English fallback destinations without retired homes", () => {
+    expect(languageSwitcherTarget("/jesus.html", "english")).toBe("/")
+
+    for (const slug of [
+      "english-african",
+      "english-british",
+      "english-north-american-indigenous",
+    ]) {
+      expect(languageSwitcherTarget("/jesus.html", slug)).toBe(
+        `/${slug}.html/videos`,
+      )
+    }
   })
 
   it.each(["en", "pt-br", "English", "../english", "missing-language"])(

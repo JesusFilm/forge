@@ -6,6 +6,7 @@ import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 import {
   isLocale,
   isLocaleSlug,
+  isConsolidatedEnglishHomeLanguageSlug,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
   parseAcceptLanguage,
@@ -86,6 +87,28 @@ describe("isLocaleSlug (bcp47 OR English-name kebab heuristic)", () => {
 })
 
 describe("public watch language slug guards", () => {
+  it("enumerates only the English audio slugs whose homepages consolidate", () => {
+    for (const slug of [
+      "english",
+      "english-african",
+      "english-british",
+      "english-north-american-indigenous",
+    ]) {
+      expect(isConsolidatedEnglishHomeLanguageSlug(slug)).toBe(true)
+    }
+
+    for (const slug of [
+      "english-australian",
+      "fernando-po-creole-english",
+      "spanish-castilian",
+      "en",
+      "English",
+      "",
+    ]) {
+      expect(isConsolidatedEnglishHomeLanguageSlug(slug)).toBe(false)
+    }
+  })
+
   it("keeps the shared slug-only corpus aligned with Web's BCP-47 map", () => {
     const expected = new Set([
       ...Object.keys(LANGUAGE_BCP47_MAP),
@@ -330,7 +353,7 @@ describe("resolveWatchLocaleIdentity", () => {
     })
   })
 
-  it("uses the regional English identity for the British homepage", () => {
+  it("uses the regional English identity for British audio documents", () => {
     expect(resolveWatchLocaleIdentity("english-british")).toEqual({
       locale: "en",
       htmlLang: "en-GB",

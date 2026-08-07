@@ -1,6 +1,9 @@
 import type { Route } from "next"
 
-import { isPublicWatchLanguageSlug } from "./locale"
+import {
+  isConsolidatedEnglishHomeLanguageSlug,
+  isPublicWatchLanguageSlug,
+} from "./locale"
 import {
   languageVideosIndexPath,
   localizedHistoryPath,
@@ -66,6 +69,11 @@ export function languageSwitcherTarget(
     case "localized-history":
       return localizedHistoryPath(language)
     default:
+      if (isConsolidatedEnglishHomeLanguageSlug(language)) {
+        return language === "english"
+          ? "/"
+          : languageVideosIndexPath(language)
+      }
       return localizedHomePath(language)
   }
 }

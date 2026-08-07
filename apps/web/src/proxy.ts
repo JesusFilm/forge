@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import {
   DEFAULT_LOCALE,
+  isConsolidatedEnglishHomeLanguageSlug,
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
@@ -156,6 +157,12 @@ function stripSafeSlug(segment: string): string | null {
   return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
 }
 
+function isConsolidatedEnglishHomepagePath(pathname: string): boolean {
+  const match = /^\/([a-z0-9-]+)\.html\/?$/.exec(pathname)
+  const slug = match?.[1]
+  return Boolean(slug && isConsolidatedEnglishHomeLanguageSlug(slug))
+}
+
 function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   const segments = splitPath(pathname)
   const [locale, htmlLang, ...rest] = segments
@@ -197,6 +204,9 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
     !isSafeCanonicalPath(canonicalPublicPath)
   ) {
     return { kind: "not-found" }
+  }
+  if (isConsolidatedEnglishHomepagePath(canonicalPublicPath)) {
+    canonicalPublicPath = "/"
   }
   return { kind: "redirect", pathname: canonicalPublicPath }
 }
@@ -472,6 +482,7 @@ async function isAdmittedInternalRewrite(
   ) {
     return false
   }
+  if (isConsolidatedEnglishHomepagePath(claimedPublicPathname)) return false
   if (
     canonicalizeWatchPath({ rawPathname: claimedPublicPathname }).kind ===
     "redirect"
@@ -496,6 +507,12 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
   if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
+
+  if (isConsolidatedEnglishHomepagePath(pathname)) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/"
+    return buildRedirect(url, 308)
+  }
 
   const claimedPublicPathname = request.headers.get(
     WATCH_INTERNAL_REWRITE_HEADER,

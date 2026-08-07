@@ -53,7 +53,10 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
+import {
+  isConsolidatedEnglishHomeLanguageSlug,
+  isPublicWatchHomeLanguageSlug,
+} from "@/lib/locale"
 import {
   localizedHomePath,
   parseWatchPath,
@@ -230,7 +233,8 @@ export function FloatingSearchProvider({
   const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
   const logoHref = isWatchHome
     ? "https://www.jesusfilm.org/"
-    : currentLocaleSlug && currentLocaleSlug !== "english"
+    : currentLocaleSlug &&
+        !isConsolidatedEnglishHomeLanguageSlug(currentLocaleSlug)
       ? localizedHomePath(currentLocaleSlug)
       : "/"
   const logoSlotClass = isWatchHome

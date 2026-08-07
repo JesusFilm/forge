@@ -587,9 +587,110 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/ru/ru/russian.html")
   })
 
-  it("rewrites the English-British homepage with a regional htmlLang", async () => {
-    const response = await proxy(makeRequest("/english-british.html"))
-    expect(rewritePath(response)).toBe("/en/en-GB/english-british.html")
+  it("permanently redirects every consolidated English homepage before admission", async () => {
+    const manifestSource = vi.fn(async () => ({ ...TEST_MANIFEST }))
+    const homepageSource = vi.fn(async () => "available" as const)
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(manifestSource)
+    resetHomepageAvailabilitySource = setWatchHomepageAvailabilitySourceForTest(
+      homepageSource,
+    )
+
+    for (const slug of [
+      "english",
+      "english-african",
+      "english-british",
+      "english-north-american-indigenous",
+    ]) {
+      const response = await proxy(
+        makeRequest(`/${slug}.html?utm_source=qa&ref=${slug}`),
+      )
+      const location = new URL(response.headers.get("location") ?? "")
+
+      expect(response.status).toBe(308)
+      expect(location.pathname).toBe("/")
+      expect(location.search).toBe(`?utm_source=qa&ref=${slug}`)
+      expect(response.headers.get("cache-control")).toBe(
+        "private, max-age=0",
+      )
+      expect(rewritePath(response)).toBeNull()
+    }
+
+    expect(manifestSource).not.toHaveBeenCalled()
+    expect(homepageSource).not.toHaveBeenCalled()
+  })
+
+  it("redirects consolidated trailing-slash and visible internal aliases to root in one hop", async () => {
+    for (const path of [
+      "/english-british.html/",
+      "/en/en/english.html",
+      "/en/eng/english-african.html",
+      "/en/en-GB/english-british.html",
+      "/en/en-nai/english-north-american-indigenous.html",
+    ]) {
+      const response = await proxy(makeRequest(`${path}?ref=visible`))
+      const location = new URL(response.headers.get("location") ?? "")
+
+      expect(response.status).toBe(308)
+      expect(location.pathname).toBe("/")
+      expect(location.search).toBe("?ref=visible")
+      expect(rewritePath(response)).toBeNull()
+    }
+  })
+
+  it("rejects an internal rewrite claim for a consolidated English homepage", async () => {
+    const response = await proxy(
+      makeRequest("/en/en-GB/english-british.html", {
+        headers: new Headers([
+          [WATCH_INTERNAL_REWRITE_HEADER, "/english-british.html"],
+        ]),
+      }),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("preserves British English inventory and media route identity", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageSlugs: [
+        ...TEST_MANIFEST.audioLanguageSlugs,
+        "english-british",
+      ],
+      audioLanguageIndexesByContent: {
+        ...TEST_MANIFEST.audioLanguageIndexesByContent,
+        jesus: [
+          ...(TEST_MANIFEST.audioLanguageIndexesByContent?.jesus ?? []),
+          8,
+        ],
+      },
+      audioLanguageIndexesByEpisode: {
+        "lumo-the-gospel-of-john": {
+          "lumo-john-1-35-2-22": [8],
+        },
+      },
+    }))
+
+    const inventory = await proxy(
+      makeRequest("/english-british.html/videos"),
+    )
+    const video = await proxy(
+      makeRequest("/jesus.html/english-british.html"),
+    )
+    const episode = await proxy(
+      makeRequest(
+        "/lumo-the-gospel-of-john.html/wedding-in-cana/english-british.html",
+      ),
+    )
+
+    expect(rewritePath(inventory)).toBe("/en/en-GB/videos/english-british")
+    expect(rewritePath(video)).toBe(
+      "/en/en-GB/jesus.html/english-british.html",
+    )
+    expect(rewritePath(episode)).toBe(
+      "/en/en-GB/lumo-the-gospel-of-john.html/lumo-john-1-35-2-22/english-british.html",
+    )
   })
 
   it("rewrites localized videos indexes while preserving the raw language slug", async () => {
