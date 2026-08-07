@@ -9,7 +9,8 @@ completed_date: "2026-07-23"
 duration: 1
 depends_on:
   - "feat-184"
-blocks: []
+blocks:
+  - "feat-341"
 tags:
   - "platform"
   - "web"
@@ -19,6 +20,11 @@ tags:
 ---
 
 ## Problem
+
+> Superseded on 2026-08-07 by `feat-341`. The two-home cluster below records
+> the shipped historical decision; Forge now consolidates English homepage
+> aliases because the ministry does not publish distinct regional English
+> homepage content.
 
 The default Watch homepage and the English-British homepage are indexable and
 self-canonical, but the Watch sitemap does not connect them with reciprocal

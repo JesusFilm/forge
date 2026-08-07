@@ -357,6 +357,11 @@ rewrite cannot collapse back to the ambiguous one-segment public path.
   language-less `en`, explicit non-English targets, preserved `en-GB`,
   uniqueness, reciprocity, self-inclusion, and no contextual targets.
 
+> **Supersession (2026-08-07):** `feat-341` retires the separate
+> English-British homepage and its homepage sitemap alternate. `en-GB` remains
+> the HTML language identity for British English inventory and media documents;
+> it no longer identifies a Watch homepage.
+
 ### U4. Update non-Web Forge public link producers
 
 - **Goal:** Stop Forge-owned apps from distributing the explicit English

@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 6, 2026)
+## Status (August 7, 2026)
 
-- **Total tickets:** 492
-- **Complete:** 375
+- **Total tickets:** 495
+- **Complete:** 377
 - **In progress:** 36
-- **Not started:** 30
+- **Not started:** 31
 - **Blocked:** 51
 - **Overdue and not complete:** 95
 
@@ -51,6 +51,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-273](content-discovery/feat-273-admin-search-trace-write-diagnostics.md)                                 | Admin search trace write diagnostics                                                            | codex      | P0       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-276](content-discovery/feat-276-admin-video-library-search-client-traces.md)                             | Admin video library search client traces                                                        | codex      | P0       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-334](content-discovery/feat-334-watch-search-typesense-parallel-backend.md)                              | Watch Search Typesense parallel backend                                                         | codex      | P0       | 2026-08-03 | 2    | 2026-08-04 | complete    |
+| [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal      | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
@@ -405,6 +406,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-334](platform/feat-334-web-redis-isr-cache.md)                                   | Web Redis-backed ISR cache                                                       | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |
 | [feat-335](platform/feat-335-watch-language-inventory-experience-section.md)           | Watch language inventory Experience section                                      | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | blocked     |
 | [feat-337](platform/feat-337-watch-language-inventory-direct-catalog.md)               | Focus Watch language inventory on the dubbed catalog                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-341](platform/feat-341-consolidate-english-watch-homepages.md)                   | Consolidate English Watch homepages                                              | vlad       | P1       | 2026-08-07 | 1    | 2026-08-07 | complete    |
+| [feat-336](platform/feat-336-admin-multi-client-token-introspection.md)                | Admin introspection for more than one client id                                  | unassigned | P1       | 2026-08-11 | 2    | 2026-08-12 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
