@@ -617,7 +617,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(homepageSource).not.toHaveBeenCalled()
   })
 
-  it("redirects consolidated trailing-slash and visible internal aliases to root in one hop", async () => {
+  it("collapses consolidated proxy-visible alias forms to root before admission", async () => {
     for (const path of [
       "/english-british.html/",
       "/en/en/english.html",

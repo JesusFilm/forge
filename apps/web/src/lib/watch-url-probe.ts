@@ -1,3 +1,5 @@
+import { CONSOLIDATED_ENGLISH_HOME_LANGUAGE_SLUGS } from "./locale"
+
 // Cutover-verification probe for the /watch URL space (Phase 6).
 //
 // The fixtures below are the §5 URL matrix from
@@ -25,6 +27,8 @@ export type WatchUrlFixture = {
   expectedCanonicalPath?: string
   /** The route must publish a page-level JSON-LD URL matching the canonical. */
   requireStructuredDataCanonical?: boolean
+  /** Preview must reach this path through exactly one intentional redirect. */
+  expectedRedirectPath?: string
 }
 
 const ROOTS: readonly string[] = [
@@ -32,7 +36,6 @@ const ROOTS: readonly string[] = [
   // NOTE: `/watch/` (trailing slash) lives in REDIRECTS — it 308s to `/watch`
   // per §5.4, so it is probed as a redirect, not a root 200.
   "/watch/languages",
-  "/watch/english.html",
   "/watch/russian.html",
   "/watch/portuguese-brazil.html",
   "/watch/portuguese-portugal.html",
@@ -143,6 +146,14 @@ const REDIRECTS: readonly string[] = [
   "/watch/jesus.html/chinese-mandarin.html",
 ]
 
+const CONSOLIDATED_ENGLISH_HOME_REDIRECTS: readonly WatchUrlFixture[] =
+  CONSOLIDATED_ENGLISH_HOME_LANGUAGE_SLUGS.map((slug) => ({
+    path: `/watch/${slug}.html`,
+    group: "5.4 normalization redirects",
+    expect: "redirect",
+    expectedRedirectPath: "/watch",
+  }))
+
 // §5.5 — query params / fragment must still 200 (same final content URL).
 const QUERY_PARAMS: readonly string[] = [
   "/watch/jesus.html?t=120",
@@ -236,6 +247,7 @@ export const WATCH_URL_FIXTURES: readonly WatchUrlFixture[] = [
   ...fixturesOf(EXPLICIT_LANGUAGE, "5.2 standalone videos", "ok"),
   ...fixturesOf(EPISODES, "5.3 episodes", "ok"),
   ...fixturesOf(REDIRECTS, "5.4 normalization redirects", "redirect"),
+  ...CONSOLIDATED_ENGLISH_HOME_REDIRECTS,
   ...fixturesOf(QUERY_PARAMS, "5.5 query params", "ok"),
   ...fixturesOf(EXPECTED_404S, "5.6 expected 404s", "notfound"),
   ...fixturesOf(PASSTHROUGH, "5.7 asset/framework subtrees", "passthrough"),
@@ -327,6 +339,7 @@ type ClassifyFixture = {
   requireDirect?: boolean
   expectedCanonicalPath?: string
   requireStructuredDataCanonical?: boolean
+  expectedRedirectPath?: string
 }
 
 function passthroughViolation(
@@ -487,6 +500,25 @@ export function classifyProbe(
       outcome: "error",
       note: `production returned ${production.status}; cannot baseline`,
     }
+  }
+
+  if (fixture?.expectedRedirectPath) {
+    const reachedPlannedTarget =
+      vc === 2 &&
+      preview.redirectHops === 1 &&
+      preview.finalPath === fixture.expectedRedirectPath
+    return reachedPlannedTarget
+      ? {
+          outcome: "acceptable",
+          note: `planned redirect reached ${fixture.expectedRedirectPath} in 1 hop`,
+        }
+      : {
+          outcome: "hard-regression",
+          note:
+            "PLANNED REDIRECT CONTRACT: " +
+            `expected 1 hop to ${fixture.expectedRedirectPath}, got ${preview.status} after ` +
+            `${preview.redirectHops} hop(s) at ${preview.finalPath}`,
+        }
   }
 
   if (fixture?.requireDirect) {

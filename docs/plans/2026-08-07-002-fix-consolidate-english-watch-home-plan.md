@@ -37,7 +37,7 @@ Watch currently admits every public audio-language slug as a localized homepage.
 
 - R1. `/watch` is the sole indexable and self-canonical English Watch homepage.
 - R2. Every current one-segment English audio homepage alias redirects directly to `/watch` with a permanent HTTP status before manifest admission or page rendering.
-- R3. Redirects preserve the incoming query string, collapse the supported trailing-slash alias in one hop, and do not admit a caller-spoofed internal rewrite to the retired page.
+- R3. Redirects preserve the incoming query string and do not admit a caller-spoofed internal rewrite to the retired page.
 - R4. Forge-owned homepage links stop emitting retired English homepage aliases.
 
 **Language and media preservation**
@@ -84,7 +84,7 @@ Within `apps/web`, `/` is the base-path-relative pathname whose public URL is `/
 ### Key Technical Decisions
 
 - KTD1. **Centralize the retired English-home policy.** Define an exact, edge-safe predicate for the current English audio slugs in `apps/web/src/lib/locale.ts`. Do not infer the policy from fallback UI locale because unsupported languages can also fall back to English chrome.
-- KTD2. **Redirect at the proxy boundary.** Match the exact lowercase one-segment English homepage aliases, including their supported trailing-slash form, before canonicalization, manifest admission, or rendering. Return a direct `308` through the existing redirect helper, preserve query parameters, normalize the visible internal locale form directly to `/`, and reject marked internal rewrites that claim a retired alias.
+- KTD2. **Redirect at the proxy boundary.** Match the exact lowercase one-segment English homepage aliases before canonicalization, manifest admission, or rendering. Return a direct `308` through the existing redirect helper, preserve query parameters, normalize the visible internal locale form directly to `/`, and reject marked internal rewrites that claim a retired alias. Next.js retains ownership of its existing leading trailing-slash normalization before the proxy runs.
 - KTD3. **Make internal navigation destination-aware.** Homepage/logo destinations for every consolidated English alias point directly to `/`. The global fallback language switcher sends generic English to `/` and regional or accent-specific English to its language inventory so the choice still has a visible language-scoped result.
 - KTD4. **Keep one self-inclusive homepage sitemap group.** Emit one `/watch` entry with distinct `en` and `x-default` annotations that share the same target. This preserves the generator and auditor invariants without manufacturing a regional alternate.
 - KTD5. **Retain regional document identity below the homepage.** Keep the `english-british` HTML-language override and all exact-slug media routing. Update homepage-specific comments or test names that would otherwise misdescribe the surviving behavior.
@@ -92,7 +92,7 @@ Within `apps/web`, `/` is the base-path-relative pathname whose public URL is `/
 ### Assumptions
 
 - The current consolidated alias set is `english`, `english-african`, `english-british`, and `english-north-american-indigenous`. A future English audio slug requires an explicit product decision and policy-test update rather than automatic locale-family inference.
-- Uppercase extensions and bare no-extension aliases retain their current normalization or not-found behavior; this migration owns the canonical lowercase `.html` aliases and their trailing slash.
+- Uppercase extensions, bare no-extension aliases, and trailing-slash normalization retain their current framework behavior; this migration owns the canonical lowercase `.html` aliases.
 - Redirect cache headers retain the existing proxy policy. Production cache-policy changes are outside this scope.
 - Regional English global-picker fallback to the exact inventory is the safest unvalidated navigation default because it preserves the selected audio identity without restoring a regional homepage.
 
@@ -137,22 +137,24 @@ The redirect and navigation policy converge homepage traffic without changing th
 - **Goal:** Make every current English homepage alias converge on `/watch` while regional English inventories and media routes remain exact-slug destinations.
 - **Requirements:** R1-R8; KTD1-KTD3 and KTD5.
 - **Dependencies:** None.
-- **Files:** `apps/web/src/lib/locale.ts`, `apps/web/src/lib/locale.test.ts`, `apps/web/src/proxy.ts`, `apps/web/src/proxy.test.ts`, `apps/web/src/lib/watch-language-switcher.ts`, `apps/web/src/lib/watch-language-switcher.test.ts`, `apps/web/src/components/FloatingSearchProvider.tsx`, `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`.
+- **Files:** `apps/web/src/lib/locale.ts`, `apps/web/src/lib/locale.test.ts`, `apps/web/src/proxy.ts`, `apps/web/src/proxy.test.ts`, `apps/web/src/lib/watch-language-switcher.ts`, `apps/web/src/lib/watch-language-switcher.test.ts`, `apps/web/src/components/FloatingSearchProvider.tsx`, `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`, `apps/web/src/lib/watch-url-probe.ts`, `apps/web/src/lib/watch-url-probe.test.ts`.
 - **Approach:**
   1. Add the exact English-home policy beside public Watch language identity helpers and characterize its current corpus.
-  2. Apply the policy to public aliases, trailing-slash aliases, visible internal prefixes, and internal rewrite validation before any data-bearing admission path.
+  2. Apply the policy to public aliases, visible internal prefixes, and internal rewrite validation before any data-bearing admission path.
   3. Update internal homepage/logo and global fallback destinations per KTD3 without changing inventory or playable-language route builders.
-  4. Preserve the regional HTML-language override and rename only stale homepage-specific wording.
+  4. Teach the cutover URL probe that each retired homepage is an intentional one-hop redirect to `/watch`.
+  5. Preserve the regional HTML-language override and rename only stale homepage-specific wording.
 - **Patterns to follow:** Reuse `buildRedirect`, the structural `ProxyRequest` test harness, exact `LocaleSlug` identity, `languageVideosIndexPath`, and existing route-surface registration tests.
 - **Test scenarios:**
   1. Covers AE1. Each exact English homepage alias returns `308` to `/`, preserves query parameters, sets the established redirect cache header, and does not produce an internal rewrite.
-  2. The supported trailing-slash form and visible locale-prefixed form each reach `/` in one redirect.
+  2. The visible locale-prefixed form reaches `/` in one redirect, and the framework-normalized trailing-slash form then follows the same retired-alias redirect.
   3. A request carrying the internal rewrite header for a retired alias is rejected rather than admitted.
   4. Proxy spies prove alias requests do not fetch the route manifest or homepage availability.
   5. Covers AE2 and AE5. British inventory, standalone video, and episode requests retain their exact slug, existing internal route, and `en-GB` identity; another non-English localized homepage retains its current behavior.
   6. Covers AE4. Generic English fallback targets `/`; each regional English fallback targets its inventory; language, history, and inventory utility surfaces remain language-bearing.
   7. A regional English media page's floating home/logo link targets `/` directly instead of a retired alias.
-- **Verification:** Focused locale, proxy, language-switcher, and Floating Search provider suites prove both the redirect boundary and preserved deep routes.
+  8. Cutover-probe fixtures cover all four retired aliases and fail if any preview misses `/watch` or adds a redirect hop.
+- **Verification:** Focused locale, proxy, language-switcher, Floating Search provider, and URL-probe suites prove both the redirect boundary and preserved deep routes.
 
 ### U2. Collapse the homepage sitemap cluster
 
@@ -185,15 +187,15 @@ The redirect and navigation policy converge homepage traffic without changing th
 
 ## Verification Contract
 
-| Gate | Command or evidence | Proves |
-|---|---|---|
-| Focused behavior | `pnpm --filter @forge/web test -- src/proxy.test.ts src/lib/locale.test.ts src/lib/watch-language-switcher.test.ts src/components/__tests__/FloatingSearchProvider.test.tsx src/lib/watch-sitemap.test.ts src/lib/watch-sitemap-audit.test.ts src/app/sitemap.test.ts` | Redirect, internal navigation, regional media preservation, and sitemap contracts |
-| Type safety | `pnpm --filter @forge/web typecheck` | Route and branded-path changes remain type-correct |
-| Static quality | `pnpm --filter @forge/web lint` | CI-sensitive lint and generated locale checks pass |
-| Production compile | `pnpm --filter @forge/web build` | Proxy, App Router, and static route integration compile without adding page-load work |
-| Roadmap index | `pnpm --filter @forge/roadmap generate:readme` | Successor ticket and status totals are regenerated from source tickets |
-| Diff hygiene | `git diff --check` | No whitespace or patch-format defects remain |
-| Browser proof | Request each retired English homepage alias and confirm a direct permanent redirect to `/watch`; inspect `/watch` for its self-canonical URL and zero page-head hreflang; open a known British-audio inventory and media URL and confirm the explicit slug plus `html lang="en-GB"`; exercise the language picker and one client-side Search open/close control; inspect browser errors and loading behavior | Public crawler/user behavior and unchanged frontend initialization |
+| Gate               | Command or evidence                                                                                                                                                                                                                                                                                                                                                                                          | Proves                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Focused behavior   | `pnpm --filter @forge/web test -- src/proxy.test.ts src/lib/locale.test.ts src/lib/watch-language-switcher.test.ts src/components/__tests__/FloatingSearchProvider.test.tsx src/lib/watch-sitemap.test.ts src/lib/watch-sitemap-audit.test.ts src/app/sitemap.test.ts src/lib/watch-url-probe.test.ts`                                                                                                       | Redirect, internal navigation, regional media preservation, cutover probe, and sitemap contracts |
+| Type safety        | `pnpm --filter @forge/web typecheck`                                                                                                                                                                                                                                                                                                                                                                         | Route and branded-path changes remain type-correct                                               |
+| Static quality     | `pnpm --filter @forge/web lint`                                                                                                                                                                                                                                                                                                                                                                              | CI-sensitive lint and generated locale checks pass                                               |
+| Production compile | `pnpm --filter @forge/web build`                                                                                                                                                                                                                                                                                                                                                                             | Proxy, App Router, and static route integration compile without adding page-load work            |
+| Roadmap index      | `pnpm --filter @forge/roadmap generate:readme`                                                                                                                                                                                                                                                                                                                                                               | Successor ticket and status totals are regenerated from source tickets                           |
+| Diff hygiene       | `git diff --check`                                                                                                                                                                                                                                                                                                                                                                                           | No whitespace or patch-format defects remain                                                     |
+| Browser proof      | Request each retired English homepage alias and confirm a direct permanent redirect to `/watch`; inspect `/watch` for its self-canonical URL and zero page-head hreflang; open a known British-audio inventory and media URL and confirm the explicit slug plus `html lang="en-GB"`; exercise the language picker and one client-side Search open/close control; inspect browser errors and loading behavior | Public crawler/user behavior and unchanged frontend initialization                               |
 
 ---
 

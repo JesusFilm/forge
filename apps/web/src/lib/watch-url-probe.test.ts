@@ -300,6 +300,36 @@ describe("classifyProbe", () => {
     expect(outcome).toBe("acceptable")
     expect(note).toMatch(/root search-modal/)
   })
+
+  it("acceptable: a retired English homepage reaches its declared root target", () => {
+    const { outcome, note } = classifyProbe(
+      result({ finalPath: "/watch/english-british.html" }),
+      result({ finalPath: "/watch", redirectHops: 1 }),
+      {
+        path: "/watch/english-british.html",
+        expect: "redirect",
+        expectedRedirectPath: "/watch",
+      },
+    )
+
+    expect(outcome).toBe("acceptable")
+    expect(note).toContain("planned redirect reached /watch in 1 hop")
+  })
+
+  it("hard-regression: a retired English homepage misses its declared target", () => {
+    const { outcome, note } = classifyProbe(
+      result({ finalPath: "/watch/english-british.html" }),
+      result({ finalPath: "/watch/languages", redirectHops: 1 }),
+      {
+        path: "/watch/english-british.html",
+        expect: "redirect",
+        expectedRedirectPath: "/watch",
+      },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toContain("PLANNED REDIRECT CONTRACT")
+  })
 })
 
 describe("WATCH_URL_FIXTURES integrity", () => {
@@ -376,6 +406,24 @@ describe("WATCH_URL_FIXTURES integrity", () => {
       expect: "ok",
       requireDirect: true,
     })
+  })
+
+  it("records every retired English homepage as a planned root redirect", () => {
+    const fixtures = new Map(
+      WATCH_URL_FIXTURES.map((fixture) => [fixture.path, fixture]),
+    )
+
+    for (const slug of [
+      "english",
+      "english-african",
+      "english-british",
+      "english-north-american-indigenous",
+    ]) {
+      expect(fixtures.get(`/watch/${slug}.html`)).toMatchObject({
+        expect: "redirect",
+        expectedRedirectPath: "/watch",
+      })
+    }
   })
 
   it("does not impose direct-route semantics on legacy baseline-only fixtures", () => {

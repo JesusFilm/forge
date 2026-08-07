@@ -223,13 +223,20 @@ export function isPublicWatchLanguageSlug(slug: string): boolean {
  * fallback is broader than the product policy and must not retire unrelated
  * language homepages that happen to render with English chrome.
  */
+export const CONSOLIDATED_ENGLISH_HOME_LANGUAGE_SLUGS: readonly string[] =
+  Object.freeze([
+    "english",
+    "english-african",
+    "english-british",
+    "english-north-american-indigenous",
+  ])
+
+const CONSOLIDATED_ENGLISH_HOME_LANGUAGE_SLUG_SET = new Set(
+  CONSOLIDATED_ENGLISH_HOME_LANGUAGE_SLUGS,
+)
+
 export function isConsolidatedEnglishHomeLanguageSlug(slug: string): boolean {
-  return (
-    slug === "english" ||
-    slug === "english-african" ||
-    slug === "english-british" ||
-    slug === "english-north-american-indigenous"
-  )
+  return CONSOLIDATED_ENGLISH_HOME_LANGUAGE_SLUG_SET.has(slug)
 }
 
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
