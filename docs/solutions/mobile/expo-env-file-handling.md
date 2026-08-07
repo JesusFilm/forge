@@ -10,6 +10,30 @@ severity: high
 last_updated: 2026-06-22
 ---
 
+> **Superseded in part — 2026-08-07 (feat-338, `apps/mobile` only).** Three
+> things below no longer hold for mobile:
+>
+> 1. **`.env.development.local` is the general per-machine endpoint slot**, not
+>    just the physical-device LAN IP. `fetch-secrets` replaces `.env.local`
+>    wholesale, so an endpoint kept there is lost on the next run; a
+>    development-scoped file survives it and is never loaded in production mode,
+>    so it also cannot reach a published bundle. Section 3's "fall back to the
+>    `127.0.0.1:3003` endpoint in `.env.local`" no longer describes the setup.
+> 2. **Both `localhost` and `127.0.0.1` work.** Section 3's warning that
+>    `localhost` "loops through admin's auth-host proxy" no longer reproduces:
+>    measured 2026-08-07 against a running local admin, both spellings return
+>    HTTP 200, and `apps/admin` has no `middleware.ts`. The in-code default uses
+>    `localhost`, and either spelling is rewritten to `10.0.2.2` on the Android
+>    emulator.
+> 3. **No endpoint file is needed at all for simulator work.** A development
+>    bundle defaults to local admin, refuses to start against production admin
+>    without `EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN`, and prints its resolved
+>    endpoint at startup. See `apps/mobile/CLAUDE.md` § Admin endpoint
+>    resolution.
+>
+> The env-file priority order, the ATS exception, and every EAS Update gotcha
+> below are unchanged and still current. `apps/tv` is unaffected throughout.
+
 ## Problem
 
 Real iOS devices showed "Network Request Failed" or "Aborted" when connecting to the local admin GraphQL API, while simulators worked fine. Multiple cascading issues were discovered:

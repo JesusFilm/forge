@@ -80,6 +80,39 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 
+## Admin endpoint resolution (feat-338)
+
+**A development bundle defaults to local admin** —
+`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` on the Android
+emulator. No env file required: a fresh clone or a fresh worktree is already
+pointed at local admin. Release bundles are unchanged and default to production.
+All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
+`src/env.ts` and `src/lib/config.ts` both consume.
+
+- **A development bundle resolving to `admin.jesusfilm.org` refuses to start.**
+  A local session writes `RecordWatchSearchEvent` rows plus admin-side search
+  traces into the production database, and opening Discover fires six searches
+  before anyone types. The throw happens at `src/env.ts` module scope and
+  surfaces through the existing Startup Error panel in `app/_layout.tsx`.
+- **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
+  visibly — the startup line then names production on every launch.
+- **Only the known production host refuses.** A LAN address, a tunnel, or an
+  emulator alias boots normally, so physical-device work is unaffected.
+- **Every development launch prints its endpoint**:
+  `[admin-endpoint] admin_endpoint.url=… admin_endpoint.kind=…`.
+- **An endpoint that refuses connections raises a dev-only banner** over Home
+  (`src/components/DevEndpointNotice.tsx`) instead of letting the frozen
+  `fallbackConfig` masquerade as loaded content.
+
+**Per-machine overrides go in `apps/mobile/.env.development.local`** — never
+`.env.local`. `fetch-secrets` replaces `.env.local` wholesale, so a hand-added
+line there is lost on the next run; and `.env.development.local` is never loaded
+in production mode, so it cannot be inlined into a published bundle.
+
+Local admin needs `pnpm --filter @forge/admin dev` on port 3003 against a
+pgvector-capable Postgres. Getting production-shaped content into it is tracked
+under `feat-328`; until then Home falls through to its frozen fallback.
+
 ## Running on a simulator (env setup)
 
 **Before launching apps/mobile on a simulator, ALWAYS run
@@ -89,8 +122,11 @@ inherit `.env.local` (gitignored), so `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (the
 to the shared anonymous rate-limit bucket until it's seeded.
 
 The script is idempotent: it seeds `apps/mobile/.env.local` from the main
-checkout with the search token. It's a shortcut — the canonical way to populate
-the full env (and the fallback on a fresh solo clone with no other checkout) is
+checkout with the search token. It deliberately does NOT copy
+`EXPO_PUBLIC_ADMIN_GRAPHQL_URL` — the code default covers it, and propagating
+whatever the main checkout carried is how a worktree ends up on production admin
+without anyone deciding to. It's a shortcut — the canonical way to populate the
+full env (and the fallback on a fresh solo clone with no other checkout) is
 `pnpm --filter @forge/mobile fetch-secrets` (Doppler `forge-mobile`). Run either
 BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
 change made after boot needs a Metro restart to take effect.
