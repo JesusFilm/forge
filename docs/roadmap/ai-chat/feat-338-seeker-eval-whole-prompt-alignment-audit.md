@@ -28,6 +28,9 @@ and injects that exact text into every cell, preventing a cache-TTL expiry or
 mid-run label move from making later cells diverge from the stamped run
 identity.
 
+**Compound docs.**
+[Stochastic eval gates need confirmation and a refused state](../../solutions/architecture-patterns/stochastic-eval-gates-need-confirmation-and-refusal.md).
+
 **Residual risk / follow-ups.** Langfuse label moves remain outside PR/CI
 enforcement, as accepted by feat-272. The eval can review a whole candidate
 prompt before promotion but cannot technically require that review.
