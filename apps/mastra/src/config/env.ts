@@ -507,13 +507,16 @@ const envSchema = z.object({
   // `SEEKER_ROUTE_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_ROUTE_ENABLED: z.string().optional(),
   // Default-off gate for the seeker's video capability (feat-327, plan D6):
-  // the `searchVideos` + `featureVideo` tools, the interim video-guidance
-  // instruction block, and — through them — the declared-video projection on
-  // the `/forge-seeker` terminal result frame. Optional + no default: unset
-  // means the seeker behaves byte-identically to its pre-feat-327 self. Read
-  // via the repo's string-boolean convention (`=== "true"`, matching
-  // SEEKER_ROUTE_ENABLED), NOT JS truthiness, so `SEEKER_VIDEO_ENABLED="false"`
-  // stays disabled. No new required-at-boot var.
+  // the `searchVideos` + `featureVideo` tools and — through them — the
+  // declared-video projection on the `/forge-seeker` terminal result frame.
+  // Since feat-330 it gates the TOOLS ONLY: the video-featuring guidance is
+  // durable content in the Langfuse-managed `seeker-system` prompt and in
+  // SEEKER_SYSTEM_PROMPT_FALLBACK, served in BOTH flag states and phrased
+  // tool-conditionally, so unset means the resolved TOOL SET matches the
+  // pre-feat-327 agent while the resolved PROMPT does not. Optional + no
+  // default. Read via the repo's string-boolean convention (`=== "true"`,
+  // matching SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
+  // `SEEKER_VIDEO_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_VIDEO_ENABLED: z.string().optional(),
   SUBTITLE_ENRICHMENT_MODEL: z
     .string()
@@ -1261,13 +1264,16 @@ export function isSeekerRouteEnabled(): boolean {
 }
 
 /**
- * Whether the seeker's video capability is armed (feat-327, plan D6). Gates
- * the `searchVideos` + `featureVideo` tools and the interim video-guidance
- * instruction block on `seekerAgent`. Default-off: the capability stays inert
- * unless this is explicitly set to the string `"true"`. Uses the repo's
- * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
- * truthiness — `"false"` (or any other value) keeps the tools off and the
- * resolved instructions byte-identical to the managed prompt.
+ * Whether the seeker's video capability is armed (feat-327, plan D6). Since
+ * feat-330 this gates the `searchVideos` + `featureVideo` tools on
+ * `seekerAgent` and NOTHING ELSE — the video-featuring guidance moved into the
+ * durable prompt (Langfuse-managed `seeker-system` + the compiled-in fallback),
+ * so flipping this off removes the tools while the tool-conditional guidance is
+ * still served. That is deliberate: it makes this flag a clean rollout/rollback
+ * lever whose flip cannot change what `/api/agents*` serves. Default-off: the
+ * capability stays inert unless this is explicitly set to the string `"true"`.
+ * Uses the repo's string-boolean convention (matching `SEEKER_ROUTE_ENABLED`),
+ * NOT JS truthiness — `"false"` (or any other value) keeps the tools off.
  *
  * The `/forge-seeker` route deliberately does NOT read this flag: with the
  * tools unregistered there are no `searchVideos`/`featureVideo` tool results
