@@ -182,6 +182,23 @@ const signal = init?.signal
 
 ### 6. Publishing and Sharing
 
+> **Superseded 2026-08-07 (feat-338).** Publish through the scripts, which name
+> the EAS environment and disable dotenv so a developer's local env files cannot
+> reach the bundle:
+>
+> ```bash
+> pnpm --filter @forge/mobile update:preview
+> pnpm --filter @forge/mobile update:production
+> ```
+>
+> A bare `eas update` with no `--environment` runs `expo export` in production
+> mode, which reads `.env.local` — that is the route by which a local admin
+> endpoint could reach testers. Use a raw command only for a throwaway branch
+> (`--branch <name> --environment <env>`), never for a live channel. See
+> `apps/mobile/CLAUDE.md` § Publishing an EAS Update.
+
+The original command, kept for the record:
+
 ```bash
 cd apps/mobile
 eas update --branch preview --message "Sprint demo" --platform all

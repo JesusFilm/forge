@@ -131,6 +131,44 @@ full env (and the fallback on a fresh solo clone with no other checkout) is
 BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
 change made after boot needs a Metro restart to take effect.
 
+## Publishing an EAS Update
+
+Use the scripts. Both name their EAS environment and disable dotenv, so a
+developer's local env files cannot reach a published bundle:
+
+```bash
+pnpm --filter @forge/mobile update:preview     # preview channel
+pnpm --filter @forge/mobile update:production  # production channel — every beta tester
+```
+
+Each element is load-bearing:
+
+- `--environment <name>` pulls the EAS Environment values AND makes `eas-cli`
+  inject `EXPO_NO_DOTENV=1` into the export subprocess. Without it, `expo export`
+  runs in production mode and reads `.env.local`.
+- `EXPO_NO_DOTENV=1` is set explicitly too, so the guarantee does not rest on a
+  CLI internal that `eas.json` floors only at `>= 16.0.0`.
+- `--message` stops a fire-and-forget script prompting on stdin.
+- `touch src/env.ts` is belt-and-braces against the stale-Metro-cache white
+  screen recorded in
+  `docs/solutions/runtime-errors/metro-env-inlining-eas-update-white-screen-20260410.md`.
+
+The old preview script copied `.env.production` over `.env.local` and restored
+it on exit. That file is dead Strapi-era configuration with no admin endpoint,
+no search bearer, and no Datadog variables, so the swap that prevented the leak
+also stripped published previews of telemetry. Delete your local copy; nothing
+reads it. The Strapi token inside it is a separate rotation task — deleting a
+local file does not revoke it.
+
+Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
+once on preview before you ever need it on production.
+
+**Never set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in an EAS environment.** With dotenv
+disabled, resolution falls through to the in-code production default, which is
+already correct and already reviewed. A dashboard-typed URL runs zod on the
+device — a scheme-less host or stray whitespace would show every beta tester a
+Startup Error panel.
+
 ## Observability (Datadog)
 
 Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in

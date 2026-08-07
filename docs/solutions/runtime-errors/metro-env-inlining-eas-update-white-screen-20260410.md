@@ -127,6 +127,26 @@ Also added an `ErrorBoundary` class component wrapping the app tree for render-t
 
 ### 3. `update:preview` script with env swap + cache invalidation
 
+> **Superseded 2026-08-07 (feat-338).** Do not copy the script below. The
+> `.env.local` swap was replaced by naming the EAS environment and disabling
+> dotenv outright:
+>
+> ```json
+> "update:preview": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel preview --environment preview --message \"preview update\"",
+> "update:production": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel production --environment production --message \"production update\""
+> ```
+>
+> `--environment` makes `eas-cli` inject `EXPO_NO_DOTENV=1` into the export
+> subprocess, so dotenv files become unreachable rather than merely outranked;
+> the variable is set explicitly as well so the guarantee does not rest on a CLI
+> internal. `.env.production` was dead Strapi-era configuration — the swap that
+> prevented the leak also stripped published previews of their Datadog variables
+> and search bearer. The `touch` stays as belt-and-braces for the cache problem
+> this document is actually about. See `apps/mobile/CLAUDE.md` § Publishing an
+> EAS Update.
+
+The original recipe, kept for the record:
+
 ```json
 "update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'"
 ```
