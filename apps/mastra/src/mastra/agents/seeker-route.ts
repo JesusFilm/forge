@@ -3,11 +3,16 @@
  *
  * Bearer-gated, default-off `POST /forge-seeker`: an internal, server-to-server
  * dogfooding surface that streams the existing `seekerAgent` (feat-198/199). It
- * mirrors `experience-chat-route.ts` but adds two things that template does not:
+ * mirrors `experience-chat-route.ts` but adds three things that template does
+ * not:
  *   1. per-session memory keying — `threadId` (required) + optional `resourceId`
- *      threaded into `agent.stream(..., { memory })`; and
+ *      threaded into `agent.stream(..., { memory })`;
  *   2. extraction of the `retrieveAnswer` tool's `sources[]` for the terminal
- *      `result` frame, plus a `grounded` flag.
+ *      `result` frame, plus a `grounded` flag; and
+ *   3. Langfuse trace routing (feat-321) — every send stamps the per-process
+ *      tracing marker plus session/user/prompt-provenance metadata via
+ *      `buildSeekerTracingCallOptions`, so enabled deployments export the
+ *      turn's raw trace to Langfuse (see `../langfuse-tracing.ts`).
  *
  * Wire frames (one SSE event each):
  *   - token_delta  { text }                                          — per stream chunk
@@ -44,8 +49,19 @@
  * `reason` only (R12).
  */
 
+import type { RequestContext } from "@mastra/core/di"
+
 import { getOpenRouterApiKey } from "../../config/env"
+import {
+  getManagedPrompt,
+  type ManagedPromptResult,
+} from "../../services/langfuse-prompt-client"
 import { refuseUnlessLaneAdmitted } from "../ai-chat-lane-admission"
+import { buildSeekerTracingCallOptions } from "../langfuse-tracing"
+import {
+  SEEKER_SYSTEM_PROMPT_FALLBACK,
+  SEEKER_SYSTEM_PROMPT_NAME,
+} from "./seeker-agent"
 import { settleWithinBudget, TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
 import {
   authorizeAiChatThreadAccess,
@@ -85,6 +101,10 @@ type SeekerStreamAgent = {
         resource: string
         options?: { generateTitle?: boolean }
       }
+      /** Routes this run's trace to the Langfuse observability config (feat-321). */
+      requestContext?: RequestContext
+      /** Root-span metadata: Langfuse session/user/prompt-version stamps (feat-321). */
+      tracingOptions?: { metadata?: Record<string, unknown> }
     },
   ) => Promise<SeekerStreamOutput> | SeekerStreamOutput
 }
@@ -121,6 +141,17 @@ export type SeekerRouteHandlerInput = {
    * is deterministically testable without faking `AbortSignal.timeout`.
    */
   budgetMs?: number
+  /**
+   * Seam: prompt provenance for the trace metadata stamp (feat-321).
+   * Defaults to the real `getManagedPrompt` read of `seeker-system` — the
+   * same cache entry the agent's own instructions resolver uses, so the
+   * stamped version agrees with the served prompt except across a
+   * TTL-boundary refresh mid-turn (accepted; post-hoc attribution, not
+   * detection — feat-272 item 5). `getManagedPrompt` never throws. The
+   * registration in index.ts passes nothing; the seam exists so tests can
+   * pin the langfuse/fallback/stale metadata branches deterministically.
+   */
+  getPromptProvenance?: () => Promise<ManagedPromptResult>
 }
 
 const SEEKER_AGENT_ID = "seekerAgent"
@@ -221,6 +252,11 @@ export async function handleSeekerRouteRequest({
   getServiceKeys,
   getMemory = () => getAiChatMemory(),
   budgetMs = TIME_BUDGET_MS.chatTurn,
+  getPromptProvenance = () =>
+    getManagedPrompt({
+      name: SEEKER_SYSTEM_PROMPT_NAME,
+      fallback: SEEKER_SYSTEM_PROMPT_FALLBACK,
+    }),
 }: SeekerRouteHandlerInput): Promise<Response> {
   // Gates 1–2 — the shared lane admission preamble (feat-283): enable flag
   // FIRST (KTD7, 404 — no bearer check, no body read, no agent lookup when
@@ -319,10 +355,24 @@ export async function handleSeekerRouteRequest({
           return
         }
 
+        // Langfuse tracing (feat-321): the marker-stamped RequestContext plus
+        // prompt-provenance metadata, assembled by the tracing module. When
+        // tracing is disabled the marker matches no registered config and the
+        // run stays on the redacted default — safe to stamp unconditionally.
+        // `getPromptProvenance` never rejects (managed-prompt no-throw union).
+        const tracing = buildSeekerTracingCallOptions({
+          promptName: SEEKER_SYSTEM_PROMPT_NAME,
+          promptProvenance: await getPromptProvenance(),
+          resource: memory.resource,
+          thread: memory.thread,
+        })
+
         output = await agent.stream(prompt, {
           maxSteps: STEP_CAPS.toolCallingTurn,
           abortSignal,
           memory,
+          requestContext: tracing.requestContext,
+          tracingOptions: tracing.tracingOptions,
         })
         reader = output.textStream.getReader()
         let full = ""

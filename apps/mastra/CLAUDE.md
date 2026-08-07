@@ -248,6 +248,8 @@ of the defaults and validation contract.
 | `LANGFUSE_MAX_RESPONSE_BYTES`                | Byte-cap on the buffered Langfuse prompt response body, applied to both the success and error-path reads (streamed byte counter aborts past the cap). Optional, runtime default `262144` (256 KiB), schema-capped at 5 MiB (`5242880`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `LANGFUSE_USER_AGENT`                        | Non-default user agent for Langfuse prompt requests. Defaults to `forge-mastra-langfuse/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `LANGFUSE_PROMPT_DEFAULT_LABEL`              | Optional env rung of the helper's label resolution: call parameter > this var > `production` (never implicit `latest`). No default. Lets a staging deploy track staging-labeled prompts with zero consumer code change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `LANGFUSE_TRACING_ENABLED`                   | Default-off gate for Langfuse tracing of seeker turns (feat-321). Optional, **no default** — only the literal `"true"` enables it (repo string-boolean convention); credential presence alone never does, because the key pair predates tracing (provisioned for prompt reads, feat-296). When enabled AND the `LANGFUSE_BASE_URL`/`PUBLIC_KEY`/`SECRET_KEY` trio is set, `/forge-seeker` turns export **RAW conversation content** (owner decision, feat-321) to the `forge-mastra` Langfuse project — and to Langfuse ONLY (2026-08-05 decision): no local copy, raw or redacted, reaches the DuckDB volume, so retention/erasure obligations attach to one store. Never required at boot; partial credentials log `[langfuse-tracing] event=tracing_disabled reason=config_missing` and stay off.                                                                                                                                                                                                                         |
+| `LANGFUSE_MEDIA_UPLOAD_ENABLED`              | Langfuse SDK auto media upload. **Code-defaulted to `"false"`** — the enabled tracing path seeds this var before constructing the exporter (`@mastra/langfuse` 1.4.6 forwards no code-level option, so the env var is the only lever). Any non-empty operator value wins, including an explicit `"true"` to re-enable; a BLANK value is treated as unset and re-seeded, because the SDK reads only `false`/`0` (case-insensitive, no surrounding whitespace) as disabled and treats blank — or any other value, e.g. `no`/`off` — as ON (verified `@langfuse/otel` 5.10.0). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `LANGFUSE_PROMPT_CACHE_TTL_MS`               | TTL for the in-process managed-prompt cache. Defaults to `60000`, schema-capped at `3600000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS`        | Failure cooldown that suppresses refetch attempts while serving stale/fallback. Defaults to `10000`, schema-capped at `300000`; `getLangfuseConfig()` clamps the effective cooldown to ≤ the effective TTL (the smaller value wins).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -820,7 +822,10 @@ default-off `/forge-seeker` exposure and that no OTHER route wires the agent in
 RESOLVED system prompt verbatim (`/api/agents*` serializes
 `getInstructions()`), so the Langfuse-managed tuned text is confidential
 only up to that network boundary and must never carry secrets. The safety line bounds leaked-output blast radius; the
-`redactPromptBodies` processor blanks span `input`/`output` in traces. Do not
+`redactPromptBodies` processor blanks span `input`/`output` in traces on the
+DEFAULT observability config (when `LANGFUSE_TRACING_ENABLED="true"` AND the
+credential trio is set, seeker-route turns are instead routed to the
+unredacted `langfuse-seeker` config — see "Langfuse prompt management" → Tracing below). Do not
 expose to a public surface before the deferred guardrail gate AND a gateway
 access decision.
 
@@ -990,11 +995,39 @@ every key, and prompt versions/labels are project-scoped with no cross-project
 copy (per-environment projects make promotion a manual re-authoring).
 Provisioning is tracked in `docs/roadmap/ai-chat/feat-296-langfuse-configuration.md`.
 
-**No tracing:** the helper only reads prompts, so nothing this module does
-sends data to Langfuse. Mastra's own spans go to a local DuckDB store with
-`sensitiveDataFilter` and `redactPromptBodies` blanking span input/output.
-Langfuse tracing is separate, unbuilt work — see
-`docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`.
+**Tracing (feat-321, default-off):** the prompt helper itself only reads
+prompts — tracing is the separate `src/mastra/langfuse-tracing.ts` module.
+Gated on `LANGFUSE_TRACING_ENABLED="true"` plus the credential trio (see the
+env table): when on, `/forge-seeker` turns are routed by an unguessable
+per-process marker to the `langfuse-seeker` observability config, which
+exports **RAW conversation content** (owner decision, feat-321 — no
+`redactPromptBodies`) to **Langfuse only**, stamped
+with session (`threadId`), user (`resource`), and `seeker-system`
+prompt-version provenance. Every OTHER trace stays on the redacted default
+config — `sensitiveDataFilter` plus `redactPromptBodies` blanking span
+input/output — whose `default`-first registration order is enforced
+structurally by `buildObservabilityConfigs` (the registry treats the first
+entry as the process default; see
+`docs/solutions/best-practices/order-sensitive-registry-config-structural-enforcement.md`).
+
+**Langfuse-only export (2026-08-05 decision).** The `langfuse-seeker` config
+carries NO storage exporter, so an enabled deployment writes nothing raw to
+the DuckDB volume — retention and erasure govern exactly one store. Accepted
+trade-offs: routed seeker runs do not appear in Studio's trace viewer
+(Langfuse is the viewer), and a Langfuse outage drops those spans with no
+local fallback (observability loss only — conversations persist in
+Postgres). Restoring a REDACTED local copy later needs a redacting wrapper
+around the storage exporter, never a bare `MastraStorageExporter` in this
+config (processors apply per-config, not per-exporter). Media upload is
+code-defaulted off — see `LANGFUSE_MEDIA_UPLOAD_ENABLED` in the env table.
+Open operator items before enabling in Railway (feat-321): the retention
+sweep for exported Langfuse traces
+(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, 30/180 days)
+and per-user erasure across Langfuse + `ai_chat`
+(`docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`) — the
+ai-chat erasure runbook above covers Postgres only. Platform rationale and
+flip triggers:
+`docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
 
 **The seeker agent is the helper's one consumer (feat-272, 2026-07-29).**
 `seeker-agent.ts` backs its `instructions` with `getManagedPrompt` — prompt
