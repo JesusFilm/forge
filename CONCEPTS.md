@@ -543,6 +543,12 @@ A client-generated, stable-per-device identifier a Fleet Client attaches to a re
 
 ## User sign-in
 
+### First-Party App
+
+One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
+
+Registration is per environment, not per app: an app holds a separate registration for each environment it runs in, each carrying its own client identifier, exact-match redirect targets, allowed browser origins, default scopes, and approval posture. Apps differ in how a person signs in — a browser redirect, a code displayed on one screen and approved on another device, or a native platform credential — but every route resolves to the same person and the same SSO Session. The registry is upsert-only and never prunes: editing a registration is scrubbed into the provider on the next deploy, while removing one from the registry leaves the live registration in place, so retiring an app is a deliberate out-of-band step rather than a deletion from the list.
+
 ### SSO Session
 
 The sign-in session the auth provider itself holds for a person, shared by all first-party relying apps — signing in to any one app rides it, and it is what lets a later sign-in skip the login page.
@@ -597,7 +603,7 @@ The code-defined content set that fills consumer clients' home screens: a featur
 
 The signed-in continuity behavior: a partially watched video shows a progress bar at the account's latest recorded position, and playback resumes from that position with a start-over option — whichever signed-in device or surface recorded it.
 
-Signed-in only: anonymous playback records nothing, and nothing merges into the account at a later sign-in. Distinct from a Continue Watching shelf — a home row listing in-progress videos — which is a separate, deferred surface.
+Two mechanisms carry this name and must not be conflated. The account-backed one above is signed-in only: anonymous playback records nothing to the account, nothing merges into the account at a later sign-in, and signing out clears what was recorded locally. Separately, a surface may keep its own local shelf — a per-install list of latest positions with the display fields a home row needs, never synced and never account-scoped — which lets a signed-out viewer resume on that surface alone. The two use independent thresholds for what counts as worth resuming, and a surface holding only the local shelf has no entitlement to read or write account positions.
 
 ### Cinematic
 
