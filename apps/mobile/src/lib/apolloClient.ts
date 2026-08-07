@@ -7,6 +7,7 @@ import {
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { ErrorLink } from "@apollo/client/link/error"
 import { getMainDefinition } from "@apollo/client/utilities"
+import { noteAdminEndpointUnreachable } from "./adminEndpoint"
 import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
 import { WATCH_SEARCH_EVENT_OPERATION_NAME } from "./queries"
@@ -200,11 +201,37 @@ export function reportGraphqlOperationError(
   reportDatadogError(error, { origin: "graphql_network_error", operation })
 }
 
+/**
+ * Whether a failure means "nothing answered at the endpoint" (R12). React
+ * Native's fetch exposes no connection-refused or DNS discriminator, so the
+ * test is negative: not a GraphQL error inside an HTTP 200, not an abort this
+ * client initiated. Everything left is a configuration problem, not a content
+ * one, and must not be absorbed silently by the Home fallback path.
+ */
+export function isUnreachableEndpointError(error: unknown): boolean {
+  if (CombinedGraphQLErrors.is(error)) return false
+  if (isClientAbortError(error)) return false
+  return true
+}
+
+/**
+ * Dev-only, and the gate is the first line: this runs in the link chain of
+ * every build. It cannot gate the whole handler — the Datadog report above it
+ * is exactly what release bundles need.
+ */
+function noteUnreachableEndpointInDev(error: unknown): void {
+  if (!__DEV__) return
+  if (!isUnreachableEndpointError(error)) return
+  noteAdminEndpointUnreachable(getGraphQLUrl())
+}
+
 // onError-style link (v4 ErrorLink): every operation's downstream failure routes
 // through the pure reporter. Self-gates on provisioning, so always safe in-chain.
-function createErrorLink(): ErrorLink {
+// Exported so the R12 wiring — not just its classifier — is under test.
+export function createErrorLink(): ErrorLink {
   return new ErrorLink(({ error, operation }) => {
     reportGraphqlOperationError(error, operation.operationName)
+    noteUnreachableEndpointInDev(error)
   })
 }
 

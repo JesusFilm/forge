@@ -222,3 +222,49 @@ describe("reportAdminEndpoint", () => {
     },
   )
 })
+
+// Fresh module per test: the unreachable latch is module scope, and "once per
+// launch" is exactly what a shared instance across tests would hide.
+describe("admin endpoint unreachable signal", () => {
+  let mod: typeof import("../adminEndpoint")
+  let error: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.resetModules()
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    mod = require("../adminEndpoint")
+    error = jest.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    error.mockRestore()
+  })
+
+  it("starts with no endpoint marked unreachable", () => {
+    expect(mod.getUnreachableAdminEndpoint()).toBeNull()
+  })
+
+  it("records the endpoint and names it in a loud console error", () => {
+    mod.noteAdminEndpointUnreachable(LOCAL_ADMIN_GRAPHQL_URL)
+    expect(mod.getUnreachableAdminEndpoint()).toBe(LOCAL_ADMIN_GRAPHQL_URL)
+    expect(String(error.mock.calls[0][0])).toContain(LOCAL_ADMIN_GRAPHQL_URL)
+  })
+
+  it("emits once per launch, not once per failed query", () => {
+    mod.noteAdminEndpointUnreachable(LOCAL_ADMIN_GRAPHQL_URL)
+    mod.noteAdminEndpointUnreachable(LOCAL_ADMIN_GRAPHQL_URL)
+    mod.noteAdminEndpointUnreachable(LAN)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(mod.getUnreachableAdminEndpoint()).toBe(LOCAL_ADMIN_GRAPHQL_URL)
+  })
+
+  it("notifies subscribers, and stops after unsubscribe", () => {
+    const seen: string[] = []
+    const unsubscribe = mod.subscribeAdminEndpointUnreachable(() => {
+      seen.push(mod.getUnreachableAdminEndpoint() ?? "")
+    })
+    mod.noteAdminEndpointUnreachable(LOCAL_ADMIN_GRAPHQL_URL)
+    unsubscribe()
+    expect(seen).toEqual([LOCAL_ADMIN_GRAPHQL_URL])
+  })
+})

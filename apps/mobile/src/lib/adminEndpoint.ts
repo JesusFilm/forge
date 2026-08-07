@@ -159,3 +159,36 @@ export function reportAdminEndpoint(url: string, isDev: boolean): void {
 
   console.info(formatAdminEndpointReport(url))
 }
+
+// The Apollo link chain lives outside React, so the unreachable signal rides a
+// module-scope subscribable rather than component state. The Startup Error
+// panel cannot be reused: its `moduleError` is assigned once inside the require
+// try/catch and has no setter, so nothing can raise it after boot (KTD9).
+let unreachableEndpoint: string | null = null
+const unreachableListeners = new Set<() => void>()
+
+export function formatAdminEndpointUnreachable(url: string): string {
+  return `[admin-endpoint] admin_endpoint.unreachable=true admin_endpoint.url=${url} — nothing answered. Start local admin (pnpm --filter @forge/admin dev) or point the endpoint elsewhere in ${PER_MACHINE_ENV_FILE} and cold-restart Metro. Home is showing its frozen fallback, not loaded content.`
+}
+
+/** One-shot per launch: a failing screen retries, and one notice is the point. */
+export function noteAdminEndpointUnreachable(url: string): void {
+  if (unreachableEndpoint != null) return
+  unreachableEndpoint = url
+
+  console.error(formatAdminEndpointUnreachable(url))
+  for (const listener of unreachableListeners) listener()
+}
+
+export function getUnreachableAdminEndpoint(): string | null {
+  return unreachableEndpoint
+}
+
+export function subscribeAdminEndpointUnreachable(
+  listener: () => void,
+): () => void {
+  unreachableListeners.add(listener)
+  return () => {
+    unreachableListeners.delete(listener)
+  }
+}

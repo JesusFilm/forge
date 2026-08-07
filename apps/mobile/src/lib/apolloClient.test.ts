@@ -17,6 +17,14 @@ jest.mock("../env", () => ({
 
 jest.mock("./viewer-id", () => ({ getViewerId: () => "vid-123" }))
 
+// Partial mock: config.ts still resolves through the real module, but the
+// unreachable latch is one-shot per module instance, so the emit is spied
+// rather than exercised here (its own behaviour is pinned in adminEndpoint).
+jest.mock("./adminEndpoint", () => ({
+  ...jest.requireActual("./adminEndpoint"),
+  noteAdminEndpointUnreachable: jest.fn(),
+}))
+
 jest.mock("@datadog/mobile-react-native", () => ({
   DdLogs: {
     info: jest.fn().mockResolvedValue(undefined),
@@ -46,10 +54,13 @@ import type { DocumentNode } from "graphql"
 import { DdLogs, DdRum } from "@datadog/mobile-react-native"
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { env } from "../env"
+import { noteAdminEndpointUnreachable } from "./adminEndpoint"
 import {
   ClientAbortError,
+  createErrorLink,
   createRequestChain,
   fetchWithTimeout,
+  isUnreachableEndpointError,
   reportGraphqlOperationError,
 } from "./apolloClient"
 
@@ -438,5 +449,96 @@ describe("client abort classification (prod shape, end-to-end)", () => {
       "RecordWatchSearchEvent",
     )
     expect(mockAddError).not.toHaveBeenCalled()
+  })
+})
+
+describe("unreachable admin endpoint (R12)", () => {
+  const noteMock = noteAdminEndpointUnreachable as jest.Mock
+
+  // Drives the REAL error link, so the wiring — not just the classifier — is
+  // what these assertions depend on.
+  function driveErrorLink(error: unknown): void {
+    const terminal = new ApolloLink(
+      () =>
+        new Observable<ApolloLink.Result>((subscriber) =>
+          subscriber.error(error),
+        ),
+    )
+    const client = new ApolloClient({
+      cache: new InMemoryCache(),
+      link: ApolloLink.empty(),
+    })
+    ApolloLink.execute(
+      createErrorLink().concat(terminal),
+      {
+        query: gql`
+          query GetVideoBySlug {
+            __typename
+          }
+        `,
+      },
+      { client },
+    ).subscribe({ error: () => undefined })
+  }
+
+  it("classifies a bare network failure as unreachable", () => {
+    expect(
+      isUnreachableEndpointError(new TypeError("Network request failed")),
+    ).toBe(true)
+  })
+
+  it("does not classify a GraphQL error inside an HTTP 200 body", () => {
+    const err = new CombinedGraphQLErrors({ errors: [{ message: "boom" }] })
+    expect(isUnreachableEndpointError(err)).toBe(false)
+  })
+
+  it("does not classify a client-initiated abort", () => {
+    expect(isUnreachableEndpointError(new ClientAbortError())).toBe(false)
+  })
+
+  it("notes the resolved endpoint when the network fails outright", () => {
+    driveErrorLink(new TypeError("Network request failed"))
+    expect(noteMock).toHaveBeenCalledWith(
+      "https://admin.jesusfilm.org/api/graphql",
+    )
+  })
+
+  it("stays quiet for a GraphQL error inside an HTTP 200 body", () => {
+    driveErrorLink(new CombinedGraphQLErrors({ errors: [{ message: "boom" }] }))
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  it("stays quiet for a client-initiated abort", () => {
+    driveErrorLink(new ClientAbortError())
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  // __DEV__ is a bundler-injected global with no ambient type here.
+  const devFlag = globalThis as unknown as { __DEV__: boolean }
+
+  function asReleaseBundle(run: () => void): void {
+    const previous = devFlag.__DEV__
+    devFlag.__DEV__ = false
+    try {
+      run()
+    } finally {
+      devFlag.__DEV__ = previous
+    }
+  }
+
+  // This handler is in the link chain of EVERY build, so the release gate has
+  // to be structural in the source, not merely asserted here.
+  it("stays quiet in a release bundle", () => {
+    asReleaseBundle(() =>
+      driveErrorLink(new TypeError("Network request failed")),
+    )
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  it("still reports GraphQL errors to Datadog in a release bundle", () => {
+    asReleaseBundle(() =>
+      driveErrorLink(new CombinedGraphQLErrors({ errors: [{ message: "x" }] })),
+    )
+    expect(mockAddError).toHaveBeenCalled()
   })
 })
