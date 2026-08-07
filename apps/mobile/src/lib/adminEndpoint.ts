@@ -1,16 +1,11 @@
-/**
- * Admin GraphQL endpoint resolution — a dependency-free leaf.
- *
- * It imports nothing from `env.ts` or `config.ts` so the startup refusal and the
- * startup report can both sit at `env.ts` module scope without a require cycle.
- */
+// A dependency-free leaf: importing nothing from `env.ts` or `config.ts` is what
+// lets the refusal and the report sit at env module scope without a cycle.
 
 /** Development default. `localhost` matches `.env.ci` and the TV prior art. */
 export const LOCAL_ADMIN_GRAPHQL_URL = "http://localhost:3003/api/graphql"
 
-// Declared as a literal, not parsed out of the URL below: deriving it at module
-// scope would mean a broken `URL` silently empties the production set, and the
-// refusal would fail OPEN — the exact outcome this module exists to prevent.
+// A literal, not parsed from the URL below: a broken `URL` would silently empty
+// the production set and the refusal would fail OPEN.
 const PRODUCTION_ADMIN_HOST = "admin.jesusfilm.org"
 
 export const PRODUCTION_ADMIN_GRAPHQL_URL = `https://${PRODUCTION_ADMIN_HOST}/api/graphql`
@@ -40,11 +35,7 @@ const PRODUCTION_HOSTS = new Set([PRODUCTION_ADMIN_HOST])
 
 export type AdminHostKind = "local" | "production" | "other"
 
-/**
- * Parsed hostname, or null when the value is not a parseable absolute URL.
- * Never throws: both callers run in release bundles, where an exception would
- * reach a beta tester as a hard failure.
- */
+/** Never throws — both callers run in release bundles. Null when unparseable. */
 function hostOf(url: string | null | undefined): string | null {
   if (!url) return null
   try {
@@ -54,11 +45,9 @@ function hostOf(url: string | null | undefined): string | null {
   }
 }
 
-/**
- * Classify by parsed hostname, never by substring — `admin.jesusfilm.org.evil`
- * and a `?to=admin.jesusfilm.org` query must not read as production, and only
- * `production` refuses. Anything unparseable is `other`, the safe answer.
- */
+// Parsed hostname, never a substring: `admin.jesusfilm.org.evil` and a
+// `?to=admin.jesusfilm.org` query must not read as production. Unparseable is
+// `other`, the safe answer, because only `production` refuses.
 export function classifyAdminHost(
   url: string | null | undefined,
 ): AdminHostKind {
@@ -69,11 +58,8 @@ export function classifyAdminHost(
   return "other"
 }
 
-/**
- * Rewrite a loopback host to the Android emulator alias so one configured value
- * works on both simulators. Development only, and unchanged for every other
- * host — a LAN address is already reachable from the emulator.
- */
+// Loopback -> emulator alias, so one configured value works on both simulators.
+// Every other host is left alone; a LAN address already reaches the emulator.
 export function normalizeAdminHost(
   url: string,
   platform: string,
@@ -89,10 +75,8 @@ export function normalizeAdminHost(
   return head + url.slice(marker + 3).replace(host, ANDROID_EMULATOR_HOST)
 }
 
-/**
- * The single resolution path. `getGraphQLUrl()` and the startup report both call
- * it, so the reported endpoint cannot diverge from the one actually used.
- */
+// The single resolution path, so the reported endpoint cannot diverge from the
+// one actually used.
 export function resolveAdminGraphqlUrl(
   configured: string | null | undefined,
   isDev: boolean,
@@ -108,15 +92,9 @@ export type AdminEndpointAccess =
   | { allowed: true }
   | { allowed: false; message: string }
 
-/**
- * Fail closed: a development bundle may not talk to production admin without a
- * deliberate override. Only a known production host refuses — a LAN address, a
- * tunnel, or an emulator alias boots normally (KTD8).
- *
- * Called unconditionally at `env.ts` module scope in EVERY build, so the
- * non-development short-circuit is the first line: a release bundle never
- * reaches the parsing path at all.
- */
+// Called at env module scope in EVERY build, so the non-dev short-circuit is the
+// first line — a release bundle never reaches the parsing path. Only a known
+// production host refuses; a LAN address or tunnel boots normally (KTD8).
 export function decideAdminEndpointAccess(
   url: string,
   isDev: boolean,
@@ -147,12 +125,8 @@ export function decideAdminEndpointAccess(
   }
 }
 
-/**
- * Plain `key=value` line, matching the repo's structured-log convention. It is
- * a console line and nothing else (KTD4): env.ts is imported by datadog.ts, so
- * telemetering from env module scope would close a cycle — and the native SDK
- * has not initialized that early anyway.
- */
+// A console line and nothing else (KTD4): datadog.ts imports env.ts, so
+// telemetering from env module scope would close a cycle.
 export function formatAdminEndpointReport(url: string): string {
   return `[admin-endpoint] admin_endpoint.url=${url} admin_endpoint.kind=${classifyAdminHost(url)}`
 }
@@ -164,10 +138,9 @@ export function reportAdminEndpoint(url: string, isDev: boolean): void {
   console.info(formatAdminEndpointReport(url))
 }
 
-// The Apollo link chain lives outside React, so the unreachable signal rides a
-// module-scope subscribable rather than component state. The Startup Error
-// panel cannot be reused: its `moduleError` is assigned once inside the require
-// try/catch and has no setter, so nothing can raise it after boot (KTD9).
+// The link chain lives outside React, so the signal rides a module-scope store.
+// The Startup Error panel cannot be reused — its `moduleError` has no setter, so
+// nothing can raise it after boot (KTD9).
 let unreachableEndpoint: string | null = null
 const unreachableListeners = new Set<() => void>()
 

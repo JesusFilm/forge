@@ -10,7 +10,7 @@ severity: high
 last_updated: 2026-06-22
 ---
 
-> **Superseded in part — 2026-08-07 (feat-338, `apps/mobile` only).** Three
+> **Superseded in part — 2026-08-07 (feat-339, `apps/mobile` only).** Three
 > things below no longer hold for mobile:
 >
 > 1. **`.env.development.local` is the general per-machine endpoint slot**, not

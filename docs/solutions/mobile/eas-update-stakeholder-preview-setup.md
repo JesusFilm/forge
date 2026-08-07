@@ -158,6 +158,16 @@ The admin GraphQL endpoint serves the app's reads anonymously, so there's no
 
 ### 4. Config — fall back to the production default, never to empty/localhost
 
+> **Superseded 2026-08-07 (feat-339).** All three claims below are now false for
+> `apps/mobile`: `DEFAULT_ADMIN_GRAPHQL_URL` no longer exists (it moved to
+> `PRODUCTION_ADMIN_GRAPHQL_URL` in `src/lib/adminEndpoint.ts`), a **development**
+> bundle now defaults to local admin rather than production, and resolution
+> **does** split on `Platform.OS` (loopback is rewritten to `10.0.2.2` on the
+> Android emulator). Release bundles still fall back to the production default,
+> which is the part of this section that survives. The env-var-must-be-optional
+> reasoning in the paragraph after the snippet is also unchanged. See
+> `apps/mobile/CLAUDE.md` § Admin endpoint resolution.
+
 The original silent chain (`?? "" || "http://localhost:1337/graphql"`) hid misconfig behind a dead localhost URL. The current resolver returns the env var **or a real production default** — never an empty string, and no `Platform.OS` split:
 
 ```typescript
@@ -182,7 +192,7 @@ const signal = init?.signal
 
 ### 6. Publishing and Sharing
 
-> **Superseded 2026-08-07 (feat-338).** Publish through the scripts, which name
+> **Superseded 2026-08-07 (feat-339).** Publish through the scripts, which name
 > the EAS environment and disable dotenv so a developer's local env files cannot
 > reach the bundle:
 >

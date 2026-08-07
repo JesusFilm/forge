@@ -127,7 +127,7 @@ Also added an `ErrorBoundary` class component wrapping the app tree for render-t
 
 ### 3. `update:preview` script with env swap + cache invalidation
 
-> **Superseded 2026-08-07 (feat-338).** Do not copy the script below. The
+> **Superseded 2026-08-07 (feat-339).** Do not copy the script below. The
 > `.env.local` swap was replaced by naming the EAS environment and disabling
 > dotenv outright:
 >

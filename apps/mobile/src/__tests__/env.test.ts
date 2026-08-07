@@ -1,9 +1,6 @@
-// Requires the REAL env.ts, which the two mocked suites cannot: it proves the
-// refusal and the startup report actually fire at module evaluation, and that
-// env.ts pulls in no Datadog dependency (KTD4 — that would close a cycle, and
-// the native SDK has not initialized this early).
-// require() is the point here — each case re-evaluates env.ts under different
-// process.env, which a hoisted static import cannot do.
+// Requires the REAL env.ts, which the two mocked suites cannot — proving the
+// refusal and report fire at module scope, and that env.ts pulls in no Datadog.
+// require() is the point: each case re-evaluates under different process.env.
 /* eslint-disable @typescript-eslint/no-require-imports */
 jest.mock("@datadog/mobile-react-native", () => {
   throw new Error("native module absent")
@@ -82,5 +79,44 @@ describe("env.ts module evaluation", () => {
     expect(() => require("../env")).not.toThrow()
 
     expect(reports()[0]).toContain("192.168.1.20")
+  })
+
+  // Every other case runs under jest's ambient __DEV__ === true, so none can see
+  // a call site that hardcoded the flag. These read the REAL global at the REAL
+  // call sites — what stands between a one-line revert and a localhost release.
+  describe("release bundle (__DEV__ false at the real call sites)", () => {
+    const devFlag = globalThis as unknown as { __DEV__: boolean }
+    let previousDev: boolean
+
+    beforeEach(() => {
+      previousDev = devFlag.__DEV__
+      devFlag.__DEV__ = false
+    })
+
+    afterEach(() => {
+      devFlag.__DEV__ = previousDev
+    })
+
+    it("resolves production from env.ts and config.ts with nothing configured", () => {
+      set(ENDPOINT, undefined)
+      set(OVERRIDE, undefined)
+
+      expect(() => require("../env")).not.toThrow()
+      expect(require("../lib/config").getGraphQLUrl()).toBe(
+        PRODUCTION_ADMIN_GRAPHQL_URL,
+      )
+      expect(reports()).toHaveLength(0)
+    })
+
+    it("never refuses production admin, with or without the override", () => {
+      set(ENDPOINT, PRODUCTION_ADMIN_GRAPHQL_URL)
+      set(OVERRIDE, undefined)
+
+      expect(() => require("../env")).not.toThrow()
+      expect(require("../lib/config").getGraphQLUrl()).toBe(
+        PRODUCTION_ADMIN_GRAPHQL_URL,
+      )
+      expect(reports()).toHaveLength(0)
+    })
   })
 })

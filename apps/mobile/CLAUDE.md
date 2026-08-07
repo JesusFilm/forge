@@ -80,7 +80,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 
-## Admin endpoint resolution (feat-338)
+## Admin endpoint resolution (feat-339)
 
 **A development bundle defaults to local admin** —
 `http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` on the Android

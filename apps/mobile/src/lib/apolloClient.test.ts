@@ -52,7 +52,11 @@ import {
 } from "@apollo/client"
 import type { DocumentNode } from "graphql"
 import { DdLogs, DdRum } from "@datadog/mobile-react-native"
-import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import {
+  CombinedGraphQLErrors,
+  ServerError,
+  ServerParseError,
+} from "@apollo/client/errors"
 import { env } from "../env"
 import { noteAdminEndpointUnreachable } from "./adminEndpoint"
 import {
@@ -496,6 +500,25 @@ describe("unreachable admin endpoint (R12)", () => {
     expect(isUnreachableEndpointError(new ClientAbortError())).toBe(false)
   })
 
+  // An HTTP status is proof the endpoint answered, so the notice's
+  // "Nothing answered / Start local admin" copy would misdiagnose it.
+  it("does not classify an HTTP error response as unreachable", () => {
+    const response = { status: 500, statusText: "Server Error" } as Response
+    expect(
+      isUnreachableEndpointError(
+        new ServerError("failed", { response, bodyText: "boom" }),
+      ),
+    ).toBe(false)
+    expect(
+      isUnreachableEndpointError(
+        new ServerParseError(new Error("bad json"), {
+          response,
+          bodyText: "<html>502</html>",
+        }),
+      ),
+    ).toBe(false)
+  })
+
   it("notes the resolved endpoint when the network fails outright", () => {
     driveErrorLink(new TypeError("Network request failed"))
     expect(noteMock).toHaveBeenCalledWith(
@@ -510,6 +533,16 @@ describe("unreachable admin endpoint (R12)", () => {
 
   it("stays quiet for a client-initiated abort", () => {
     driveErrorLink(new ClientAbortError())
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  it("stays quiet for a live endpoint returning an HTTP error", () => {
+    driveErrorLink(
+      new ServerError("failed", {
+        response: { status: 500, statusText: "Server Error" } as Response,
+        bodyText: "boom",
+      }),
+    )
     expect(noteMock).not.toHaveBeenCalled()
   })
 

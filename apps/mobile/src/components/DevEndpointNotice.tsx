@@ -5,15 +5,9 @@ import {
   subscribeAdminEndpointUnreachable,
 } from "../lib/adminEndpoint"
 
-/**
- * Development-only banner for an admin endpoint that refused the connection.
- * It sits OVER whatever Home rendered rather than replacing it: a failed fetch
- * falls through to the frozen fallback, which otherwise looks like a load.
- *
- * The signal comes from a module-scope store because the Apollo link chain that
- * raises it lives outside React. `app/_layout.tsx` requires this file only
- * under `__DEV__`, so a release bundle never pulls it in.
- */
+// Sits OVER whatever Home rendered rather than replacing it: a failed fetch
+// falls through to the frozen fallback, which otherwise looks like a load.
+// `_layout.tsx` requires this only under `__DEV__`, so release never pulls it in.
 export function DevEndpointNotice() {
   const endpoint = useSyncExternalStore(
     subscribeAdminEndpointUnreachable,
