@@ -77,10 +77,16 @@ plus a dated update to
 `docs/solutions/integration-issues/mastra-editor-peer-range-false-negative-20260722.md`
 (ported to `main` here; its version blocker dissolved in PR #1794).
 
-**Residual risk / follow-ups.** Tracing ships OFF: enabling it in Railway is
-gated on feat-336 (retention) and feat-337 (erasure), plus setting
-`LANGFUSE_MEDIA_UPLOAD_ENABLED=false` explicitly and re-running one live
-seeker-turn smoke (the pre-review smoke used the now-replaced name marker).
+**Residual risk / follow-ups.** Tracing ships OFF. **Dogfood enablement is
+NOT gated on feat-336/feat-337 (owner, 2026-08-07).** Those two now gate
+AUDIENCE WIDENING — the feat-339 register's concern — not the first flip:
+the dogfood audience is allowlisted and tiny, manual Langfuse deletion
+covers the interim, and feat-336's sweep drains the backlog retroactively
+once it ships. Two things are NOT waived at first enable: set
+`LANGFUSE_MEDIA_UPLOAD_ENABLED=false` in the same Railway edit as the flag,
+and run one live seeker-turn smoke confirming a trace lands in
+`forge-mastra` with session / user / prompt-version stamps — required
+because the 2026-07-29 smoke predates the token-marker change.
 No exporter flush on SIGTERM — the final batch is lost per redeploy
 (observability only). `LangfuseExporter` DOES expose `flush()`/`shutdown()`;
 what is missing is a server-lifecycle hook that calls them, so the remedy is

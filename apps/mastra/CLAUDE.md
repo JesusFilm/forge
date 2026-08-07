@@ -1020,12 +1020,18 @@ Postgres). Restoring a REDACTED local copy later needs a redacting wrapper
 around the storage exporter, never a bare `MastraStorageExporter` in this
 config (processors apply per-config, not per-exporter). Media upload is
 code-defaulted off — see `LANGFUSE_MEDIA_UPLOAD_ENABLED` in the env table.
-Open operator items before enabling in Railway (feat-321): the retention
-sweep for exported Langfuse traces
-(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, 30/180 days)
-and per-user erasure across Langfuse + `ai_chat`
-(`docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`) — the
-ai-chat erasure runbook above covers Postgres only. Platform rationale and
+Enabling in Railway (feat-321) — do BOTH in the same edit as the flag:
+set `LANGFUSE_MEDIA_UPLOAD_ENABLED=false`, then run one live seeker-turn
+smoke and confirm the trace lands in `forge-mastra` carrying session, user,
+and prompt-version stamps. Dogfood enablement does NOT wait on the
+retention sweep
+(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, 30/180
+days) or per-user erasure
+(`docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`): those two
+gate AUDIENCE WIDENING, not the first flip — the dogfood audience is
+allowlisted and tiny, manual Langfuse deletion covers the interim, and the
+sweep drains backlog retroactively. Note the ai-chat erasure runbook above
+covers Postgres only. Platform rationale and
 flip triggers:
 `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
 

@@ -24,8 +24,14 @@ accumulate with **no expiry** — configurable retention is a paid feature
 mirrors the ai-chat Postgres retention (feat-208): **30 days for anonymous
 resources, 180 days for `user:*` resources**, enforced by a self-built daily
 sweep. Until this ships, `LANGFUSE_TRACING_ENABLED=true` means indefinite
-raw-conversation accumulation in Langfuse — treat this ticket as part of the
-enable-in-production precondition set tracked by feat-339.
+raw-conversation accumulation in Langfuse.
+
+**This does NOT gate dogfood enablement (owner, 2026-08-07)** — tracing may
+be switched on for the allowlisted dogfood audience before this ships:
+volume is tiny, manual Langfuse deletion covers the interim, and the sweep
+below drains the accumulated backlog retroactively when it lands. What this
+ticket DOES gate is **audience widening**, tracked in the feat-339
+public-release register.
 
 **Semantics differ from the Postgres purge — do not assume they agree.** The
 ai-chat purge keys on ROLLING last-activity (`updatedAt`, bumped by
