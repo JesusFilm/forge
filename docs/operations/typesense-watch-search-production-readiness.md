@@ -68,23 +68,108 @@ normal PR merge, run the initial broad rebuild inside the isolated
 missing transcript alias and bootstraps it. Later routine releases reuse that
 physical transcript collection and rebuild only catalog, availability, and
 localized lexical projections.
-Record the physical collection names, catalog count, availability count,
-transcript count, public transcript count, estimated vector bytes, per-case
-rankings, overlap, lane timings, disk use, and Typesense `/metrics.json` before
-and after the build. Never persist the Railway token or rendered database URL
-in the repository, logs, or benchmark output.
 
-An operator explicitly starts a new vector generation when transcript data,
-visibility, model dimensions, or schema changes require it:
+### Localized subtitle projection repair
+
+Before rebuilding, produce a read-only, row-level audit of every localized
+subtitle target in scope. Do not authorize work from aggregate counts. The
+audit must record:
+
+- `Video.coreId`, transcript BCP-47 language, transcript/edition/video IDs,
+  `source_kind`, source subtitle ID, and source Forge language ID and slug;
+- exact edition/video binding through a non-deleted dub, plus non-deleted
+  video, edition, subtitle, and language state;
+- `noIndex=false`, at least one non-deleted published display locale, and the
+  current subtitle's VTT or SRT source;
+- transcript and chunk counts, non-null chunk-vector count, embedding provider,
+  model, final and native dimensions, transform version, and stored source
+  hash; and
+- whether persisted source ID, language ID/slug, language tag, format, URL,
+  edition, and video still match the source selected by
+  `transcript-source-resolver.service.ts`. Content-freshness checks must use the
+  workflow/ingest source-hash contract, not a hash invented from the URL.
+
+The saved audit output must contain one concrete command-scope
+`(coreId, language, repairCategory)` tuple, list every matching video edition,
+and include transcript/subtitle IDs plus the reason beside each edition. A
+tuple is actionable only when every edition selected by that `coreId` and
+language has the same repair category. Use these categories only:
+
+| Repair category     | Required action                                                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projection-only`   | Exact live subtitle provenance and healthy existing chunks/vectors. Make no embedding-provider call; use only the explicit transcript projection rebuild below. |
+| `missing`           | No transcript row exists. Run the scoped transcript backfill in `idempotent` mode.                                                                              |
+| `repair`            | Current source/provenance matches, but the expected chunks or vectors are missing/unhealthy. Run the scoped transcript backfill in `repair` mode.               |
+| `force`             | Every edition in the audited command scope is stale or lacks required provenance. Do not run when matching editions have mixed categories.                      |
+| `private-no-action` | The video/source is not currently public-eligible. Keep its broad-corpus chunks private; do not manufacture eligibility.                                        |
+
+Run one command per audited command scope so multiple ID/language lists cannot
+broaden the repair set:
+
+```bash
+# missing
+pnpm --filter @forge/admin run-embeds --pipeline=transcript \
+  --core-id=<core-id> --language=<bcp47> \
+  --transcript-mode=idempotent
+
+# matching-provenance unhealthy chunks/vectors
+pnpm --filter @forge/admin run-embeds --pipeline=transcript \
+  --core-id=<core-id> --language=<bcp47> \
+  --transcript-mode=repair
+
+# audited stale or provenance-less row only
+pnpm --filter @forge/admin run-embeds --pipeline=transcript \
+  --core-id=<core-id> --language=<bcp47> \
+  --transcript-mode=force
+```
+
+Never run language-wide `force`. A public-visibility policy change with healthy
+chunks/vectors is `projection-only`; it does not regenerate embeddings.
+`run-embeds` has no video-edition filter: `--core-id` plus `--language` selects
+every matching edition. If the exhaustive audit finds mixed categories in that
+scope, do not run `force`; resolve the individual edition state first or add an
+edition-scoped CLI before repair.
+
+On the 16 GiB service, first prove capacity for the entire old/new overlap
+window by temporarily raising the memory limit or using a separate build node.
+Do not start an explicit transcript rebuild on the ordinary single-generation
+budget. Successful publication retires the prior broad transcript generation;
+its former alias target is not a promised rollback. Immediate traffic rollback
+is `WATCH_SEARCH_PRIMARY_MODE=DEFAULT` through the normal Admin deploy, while
+Typesense recovery is a snapshot restore or deliberate rebuild. Then run the
+required projection rebuild:
 
 ```bash
 pnpm --filter @forge/admin index:typesense-watch-search -- \
   --rebuild-transcripts
 ```
 
-The completed stats must say `transcriptReused: false` for that operation and
-`transcriptReused: true` for an ordinary release refresh. Unknown or misspelled
-arguments fail before any index work begins.
+Save the final JSON stats and verify all of the following before accepting the
+publication:
+
+1. `transcriptReused` is `false`; record `transcriptDocuments`,
+   `publicTranscriptDocuments`, and the derived private count
+   (`transcriptDocuments - publicTranscriptDocuments`).
+2. The `watch_search_transcripts` alias target exactly equals the reported
+   `transcriptCollection`.
+3. A public representative with an English display locale and Romanian
+   subtitle has a Romanian transcript document with `publiclyVisible:true`.
+4. `JESUS`, `Isus`, `Iisus`, `fiul risipitor`, `anxietate`, `iertare`, and
+   `Crăciun` pass; the representative result is Romanian-playable and native
+   topic matches expose a Romanian transcript snippet.
+5. A subsequent ordinary metadata refresh reports `transcriptReused:true`.
+
+Record physical collection names, catalog/availability/lexical counts, public
+and private transcript counts, estimated vector bytes, per-case rankings, lane
+timings, disk use, and Typesense `/metrics.json` before and after the build.
+Never persist the Railway token or rendered database URL in the repository,
+logs, or benchmark output. Unknown or misspelled index arguments fail before
+any index work begins.
+
+Routine metadata refreshes do not recompute transcript visibility. Until the
+incremental transcript refresh described later in this document exists,
+subtitle provenance, deletion, availability, or visibility-policy changes
+require this explicit transcript projection rebuild.
 
 ## `JESUS` Ranking Review
 

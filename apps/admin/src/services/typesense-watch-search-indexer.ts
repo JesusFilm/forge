@@ -190,6 +190,8 @@ async function loadSubtitleRows(
     JOIN video_dub vd
       ON vd.video_edition_id = vs.video_edition_id
      AND vd.deleted_at IS NULL
+     AND vd.published = true
+     AND NULLIF(BTRIM(vd.hls), '') IS NOT NULL
     JOIN video v
       ON v.id = vd.video_id
      AND v.deleted_at IS NULL
@@ -199,7 +201,10 @@ async function loadSubtitleRows(
      AND l.deleted_at IS NULL
      AND l.slug IS NOT NULL
     WHERE vs.deleted_at IS NULL
-      AND (vs.vtt_src IS NOT NULL OR vs.srt_src IS NOT NULL)
+      AND (
+        NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
+        OR NULLIF(BTRIM(vs.srt_src), '') IS NOT NULL
+      )
       AND EXISTS (
         SELECT 1 FROM video_locale vl
         WHERE vl.video_id = v.id
@@ -409,12 +414,50 @@ async function loadTranscriptBatch(
       (
         v.deleted_at IS NULL
         AND v.no_index = false
-        AND EXISTS (
-          SELECT 1 FROM video_locale vl
-          WHERE vl.video_id = v.id
-            AND vl.locale = vtc.language
-            AND vl.status = 'published'
-            AND vl.deleted_at IS NULL
+        AND (
+          EXISTS (
+            SELECT 1 FROM video_locale evidence_vl
+            WHERE evidence_vl.video_id = v.id
+              AND evidence_vl.locale = vtc.language
+              AND evidence_vl.status = 'published'
+              AND evidence_vl.deleted_at IS NULL
+          )
+          OR (
+            EXISTS (
+              SELECT 1 FROM video_locale display_vl
+              WHERE display_vl.video_id = v.id
+                AND display_vl.status = 'published'
+                AND display_vl.deleted_at IS NULL
+            )
+            AND vt.source_kind = 'subtitle'
+            AND vt.language = vtc.language
+            AND EXISTS (
+              SELECT 1
+              FROM video_subtitle vs
+              JOIN video_edition ve
+                ON ve.id = vt.video_edition_id
+               AND ve.deleted_at IS NULL
+              JOIN video_dub vd
+                ON vd.video_edition_id = vt.video_edition_id
+               AND vd.video_id = vt.video_id
+               AND vd.deleted_at IS NULL
+               AND vd.published = true
+               AND NULLIF(BTRIM(vd.hls), '') IS NOT NULL
+              JOIN language l
+                ON l.id = vt.source_language_id
+               AND l.bcp47 = vt.language
+               AND l.slug IS NOT NULL
+               AND l.deleted_at IS NULL
+              WHERE vs.id = vt.source_subtitle_id
+                AND vs.language_id = vt.source_language_id
+                AND vs.video_edition_id = vt.video_edition_id
+                AND vs.deleted_at IS NULL
+                AND (
+                  NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
+                  OR NULLIF(BTRIM(vs.srt_src), '') IS NOT NULL
+                )
+            )
+          )
         )
       ) AS "publiclyVisible"
     FROM video_transcript_chunk vtc

@@ -214,6 +214,8 @@ export class SearchWatchabilityService {
       JOIN video_dub vd
         ON vd.video_edition_id = vs.video_edition_id
        AND vd.deleted_at IS NULL
+       AND vd.published = true
+       AND NULLIF(BTRIM(vd.hls), '') IS NOT NULL
        AND vd.video_id IN (${Prisma.join(videoIds)})
       LEFT JOIN language l
         ON l.id = vs.language_id
@@ -221,7 +223,10 @@ export class SearchWatchabilityService {
        AND l.slug IS NOT NULL
       WHERE vs.deleted_at IS NULL
         AND vs.language_id = ${languageId}
-        AND (vs.vtt_src IS NOT NULL OR vs.srt_src IS NOT NULL)
+        AND (
+          NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
+          OR NULLIF(BTRIM(vs.srt_src), '') IS NOT NULL
+        )
       ORDER BY COALESCE(vs.video_id, vd.video_id), vs.id ASC
     `)
   }

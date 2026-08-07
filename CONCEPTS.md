@@ -296,9 +296,11 @@ The eligibility of search evidence to contribute to viewer-facing Watch Search,
 distinct from whether that evidence belongs to the Search Serving Index.
 
 Public Search Visibility requires the source video to remain viewer-visible and
-the evidence language to have matching published content. Losing eligibility
-removes the evidence from public results without requiring a valid Content
-Embedding to be regenerated.
+the evidence language to have matching published content. Localized subtitle
+evidence can qualify independently of localized display metadata when its exact
+subtitle provenance, language and edition binding, live track, and playable
+delivery remain valid. Losing eligibility removes the evidence from public
+results without requiring a valid Content Embedding to be regenerated.
 
 ### Search Eval Caller Track
 

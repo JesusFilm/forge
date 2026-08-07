@@ -128,9 +128,10 @@ describe("Typesense Watch Search indexer", () => {
     ).strings.join(" ")
     expect(subtitleSql).toContain("v.no_index = false")
     expect(subtitleSql).toContain("vl.status = 'published'")
-    expect(subtitleSql).toContain(
-      "vs.vtt_src IS NOT NULL OR vs.srt_src IS NOT NULL",
-    )
+    expect(subtitleSql).toContain("vd.published = true")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vd.hls), '') IS NOT NULL")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vs.srt_src), '') IS NOT NULL")
     expect(documents).toEqual([
       expect.objectContaining({
         id: "video-1",
@@ -221,7 +222,7 @@ describe("Typesense Watch Search indexer", () => {
     ).rejects.toThrow("batch size must be a positive integer")
   })
 
-  it("indexes the broad transcript corpus with per-record public visibility", async () => {
+  it("indexes exact live subtitle provenance publicly while retaining private transcripts", async () => {
     const embeddingText = `[${new Array(TYPESENSE_WATCH_EMBEDDING_DIMENSIONS)
       .fill("0")
       .join(",")}]`
@@ -230,24 +231,34 @@ describe("Typesense Watch Search indexer", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
-          id: "chunk-private",
-          videoId: "video-private",
-          coreId: "private-core",
-          language: "en",
-          text: "Private transcript",
+          id: "chunk-subtitle-public",
+          videoId: "video-subtitle-public",
+          coreId: "subtitle-public-core",
+          language: "ro",
+          text: "Transcriere română",
           startSeconds: 0,
           embeddingText,
-          publiclyVisible: false,
+          publiclyVisible: true,
         },
         {
-          id: "chunk-public",
-          videoId: "video-public",
-          coreId: "public-core",
+          id: "chunk-legacy-public",
+          videoId: "video-legacy-public",
+          coreId: "legacy-public-core",
           language: "fr",
-          text: "Public transcript",
+          text: "Transcription publique historique",
           startSeconds: 1,
           embeddingText,
           publiclyVisible: true,
+        },
+        {
+          id: "chunk-private",
+          videoId: "video-private",
+          coreId: "private-core",
+          language: "ro",
+          text: "Private transcript",
+          startSeconds: 2,
+          embeddingText,
+          publiclyVisible: false,
         },
       ])
       .mockResolvedValueOnce([])
@@ -255,15 +266,31 @@ describe("Typesense Watch Search indexer", () => {
       video: {
         findMany: vi.fn(async () => [
           {
-            id: "video-public",
-            coreId: "public-core",
-            slug: "public-video",
+            id: "video-subtitle-public",
+            coreId: "subtitle-public-core",
+            slug: "subtitle-public-video",
+            label: null,
+            locales: [
+              {
+                locale: "en",
+                title: "Public video",
+                description: "English-only display locale",
+              },
+            ],
+            dubs: [],
+            images: [],
+            children: [],
+          },
+          {
+            id: "video-legacy-public",
+            coreId: "legacy-public-core",
+            slug: "legacy-public-video",
             label: null,
             locales: [
               {
                 locale: "fr",
-                title: "Vidéo publique",
-                description: "Description publique",
+                title: "Vidéo publique historique",
+                description: "Description publique historique",
               },
             ],
             dubs: [],
@@ -292,11 +319,39 @@ describe("Typesense Watch Search indexer", () => {
       queryRaw.mock.calls[1]?.[0] as unknown as { strings: string[] }
     ).strings.join(" ")
     expect(transcriptSql).toContain('AS "publiclyVisible"')
-    expect(transcriptSql).not.toMatch(
-      /JOIN video v\s+ON v\.id = vt\.video_id\s+AND v\.deleted_at/,
+    expect(transcriptSql).toMatch(
+      /v\.deleted_at IS NULL\s+AND v\.no_index = false/,
     )
-    expect(stats.transcriptDocuments).toBe(2)
-    expect(stats.publicTranscriptDocuments).toBe(1)
+    expect(transcriptSql).toMatch(
+      /EXISTS \(\s+SELECT 1 FROM video_locale display_vl\s+WHERE display_vl\.video_id = v\.id\s+AND display_vl\.status = 'published'\s+AND display_vl\.deleted_at IS NULL\s+\)/,
+    )
+    expect(transcriptSql).toMatch(
+      /EXISTS \(\s+SELECT 1 FROM video_locale evidence_vl\s+WHERE evidence_vl\.video_id = v\.id\s+AND evidence_vl\.locale = vtc\.language\s+AND evidence_vl\.status = 'published'\s+AND evidence_vl\.deleted_at IS NULL\s+\)/,
+    )
+    expect(transcriptSql).toContain("vt.source_kind = 'subtitle'")
+    expect(transcriptSql).toContain("vs.id = vt.source_subtitle_id")
+    expect(transcriptSql).toContain("vs.language_id = vt.source_language_id")
+    expect(transcriptSql).toContain("vs.video_edition_id = vt.video_edition_id")
+    expect(transcriptSql).toContain("ve.id = vt.video_edition_id")
+    expect(transcriptSql).toContain("ve.deleted_at IS NULL")
+    expect(transcriptSql).toContain("vd.video_edition_id = vt.video_edition_id")
+    expect(transcriptSql).toContain("vd.video_id = vt.video_id")
+    expect(transcriptSql).toContain("vd.deleted_at IS NULL")
+    expect(transcriptSql).toContain("vd.published = true")
+    expect(transcriptSql).toContain("NULLIF(BTRIM(vd.hls), '') IS NOT NULL")
+    expect(transcriptSql).toContain("l.id = vt.source_language_id")
+    expect(transcriptSql).toContain("l.bcp47 = vt.language")
+    expect(transcriptSql).toContain("l.slug IS NOT NULL")
+    expect(transcriptSql).toContain("vt.language = vtc.language")
+    expect(transcriptSql).toContain("l.deleted_at IS NULL")
+    expect(transcriptSql).toContain("vs.deleted_at IS NULL")
+    expect(transcriptSql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
+    expect(transcriptSql).toContain("NULLIF(BTRIM(vs.srt_src), '') IS NOT NULL")
+    expect(transcriptSql).toMatch(
+      /FROM video_transcript_chunk vtc\s+JOIN video_transcript vt[\s\S]+JOIN video v\s+ON v\.id = vt\.video_id[\s\S]+WHERE vtc\.embedding IS NOT NULL[\s\S]+ORDER BY vtc\.id ASC\s+LIMIT/,
+    )
+    expect(stats.transcriptDocuments).toBe(3)
+    expect(stats.publicTranscriptDocuments).toBe(2)
     const transcriptImports = vi
       .mocked(typesense.importDocuments)
       .mock.calls.filter(([collection]) =>
@@ -306,24 +361,36 @@ describe("Typesense Watch Search indexer", () => {
     expect(transcriptImports).toEqual([
       [
         expect.objectContaining({
-          id: "chunk-private",
+          id: "chunk-subtitle-public",
           documentKind: "transcript",
-          canonicalVideoId: "core:private-core",
-          publiclyVisible: false,
-        }),
-        expect.objectContaining({
-          id: "chunk-public",
-          documentKind: "transcript",
-          canonicalVideoId: "core:public-core",
+          canonicalVideoId: "core:subtitle-public-core",
+          language: "ro",
           publiclyVisible: true,
           embedding: expect.any(Array),
+        }),
+        expect.objectContaining({
+          id: "chunk-legacy-public",
+          documentKind: "transcript",
+          canonicalVideoId: "core:legacy-public-core",
+          publiclyVisible: true,
+          embedding: expect.any(Array),
+        }),
+        expect.objectContaining({
+          id: "chunk-private",
+          documentKind: "transcript",
+          publiclyVisible: false,
         }),
       ],
     ])
     expect(transcriptImports[0]?.[0]).not.toHaveProperty("titles")
     expect(typesense.importDocuments).toHaveBeenCalledWith(
       "watch_search_lexical_broad-corpus-test",
-      [expect.objectContaining({ title_fr: ["Vidéo publique"] })],
+      expect.arrayContaining([
+        expect.objectContaining({ title_en: ["Public video"] }),
+        expect.objectContaining({
+          title_fr: ["Vidéo publique historique"],
+        }),
+      ]),
     )
   })
 

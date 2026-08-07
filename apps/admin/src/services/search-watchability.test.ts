@@ -82,6 +82,13 @@ describe("SearchWatchabilityService", () => {
       subtitles: true,
       videoSubtitleId: "sub-ru",
     })
+    const subtitleSql = (
+      prisma.$queryRaw.mock.calls[0]?.[0] as { strings: string[] }
+    ).strings.join(" ")
+    expect(subtitleSql).toContain("vd.published = true")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vd.hls), '') IS NOT NULL")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vs.srt_src), '') IS NOT NULL")
   })
 
   it("does not let subtitles override target-language audio", async () => {

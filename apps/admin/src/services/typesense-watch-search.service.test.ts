@@ -18,6 +18,7 @@ import {
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
 import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
+import { WatchSearchValidationError } from "./watch-search.service"
 
 vi.mock("./search-language-resolution", () => ({
   resolveSearchLanguageSignals: vi.fn(async () => ({
@@ -73,6 +74,63 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
   subtitleOptionsJson: "[]",
 }
 
+const romanianLanguageSignals = {
+  queryLanguageSlug: "romanian",
+  queryNamedLanguageSlug: null,
+  targetLanguageSlug: "romanian",
+  targetLanguageSource: "explicit_target" as const,
+  displayLanguageSlug: "romanian",
+  displayLanguageBcp47: "ro",
+  routeLanguageSlug: "romanian",
+  routeLanguageBcp47: "ro",
+  currentWatchLanguageSlug: null,
+  acceptLanguage: null,
+  acceptLanguageSlug: null,
+}
+
+function englishEvidenceCatalogDocument({
+  id,
+  title,
+  romanianPlayable,
+}: {
+  id: string
+  title: string
+  romanianPlayable: boolean
+}): TypesenseWatchCatalogDocument {
+  const languageId = romanianPlayable ? "language-ro" : "language-en"
+  const languageSlug = romanianPlayable ? "romanian" : "english"
+  return {
+    ...catalogDocument,
+    id,
+    coreId: `core-${id}`,
+    slug: id,
+    titles: [title],
+    localeCodes: ["en"],
+    descriptions: [`English evidence for ${title}`],
+    localesJson: JSON.stringify([
+      {
+        locale: "en",
+        languageSlug: "english",
+        title,
+        description: `English evidence for ${title}`,
+      },
+    ]),
+    audioLanguageSlugs: [languageSlug],
+    subtitleLanguageSlugs: [],
+    audioOptionsJson: JSON.stringify([
+      {
+        id: `dub-${id}`,
+        languageId,
+        languageSlug,
+        languageEnglishName: romanianPlayable ? "Romanian" : "English",
+        playbackId: `playback-${id}`,
+        durationSeconds: 180,
+      },
+    ]),
+    subtitleOptionsJson: "[]",
+  }
+}
+
 function availabilityDocumentsForCatalog(
   catalog: TypesenseWatchCatalogDocument[],
 ): TypesenseWatchAvailabilityDocument[] {
@@ -122,17 +180,32 @@ function availabilityDocumentsForCatalog(
 
 function prismaFixture({
   fallbackLanguages = [],
+  targetLanguage = {
+    id: "language-fr",
+    slug: "french",
+    name: { en: "French" },
+    bcp47: "fr",
+  },
+  evidenceLanguages,
 }: {
   fallbackLanguages?: Array<{ id: string; slug: string }>
+  targetLanguage?: {
+    id: string
+    slug: string
+    name: { en: string }
+    bcp47: string
+  }
+  evidenceLanguages?: Array<{ slug: string; bcp47: string }>
 } = {}): PrismaClient {
   return {
     language: {
-      findFirst: vi.fn(async () => ({
-        id: "language-fr",
-        slug: "french",
-        name: { en: "French" },
-      })),
-      findMany: vi.fn(async () => [{ slug: "french", bcp47: "fr" }]),
+      findFirst: vi.fn(async () => targetLanguage),
+      findMany: vi.fn(
+        async () =>
+          evidenceLanguages ?? [
+            { slug: targetLanguage.slug, bcp47: targetLanguage.bcp47 },
+          ],
+      ),
     },
     languageFallback: {
       findMany: vi.fn(async () =>
@@ -159,6 +232,7 @@ function typesenseFixture({
     videoId: string
     text: string
     vectorDistance: number
+    language?: string
   }>
   hybrid?: Array<{
     document: TypesenseWatchTranscriptDocument
@@ -207,16 +281,14 @@ function typesenseFixture({
               catalog.find((document) => document.id === entry.videoId)
                 ?.coreId ?? entry.videoId
             }`,
-            language: "fr",
+            language: entry.language ?? "fr",
             publiclyVisible: true,
             text: entry.text,
             startSeconds: 42,
           },
         }))
         const semanticEntries = (hybrid ?? inferredSemantic).filter(
-          (entry) =>
-            entry.document.documentKind === "transcript" &&
-            String(entry.document.language) === "fr",
+          (entry) => entry.document.documentKind === "transcript",
         )
         const lexicalDocuments = buildTypesenseWatchLexicalDocuments(lexical)
         return searches.map((request) => {
@@ -235,7 +307,13 @@ function typesenseFixture({
                     vectorDistance: undefined,
                     document,
                   }))
-              : semanticEntries
+              : semanticEntries.filter(
+                  (entry) =>
+                    requestedFilterValues.length === 0 ||
+                    requestedFilterValues.includes(
+                      String(entry.document.language),
+                    ),
+                )
           const groups = new Map<string, Array<(typeof entries)[number]>>()
           for (const entry of entries) {
             const group = groups.get(entry.document.canonicalVideoId) ?? []
@@ -278,7 +356,7 @@ function typesenseFixture({
                 documentKind: "transcript" as const,
                 videoId: entry.videoId,
                 canonicalVideoId: `video:${entry.videoId}`,
-                language: "fr",
+                language: entry.language ?? "fr",
                 publiclyVisible: true,
                 text: entry.text,
                 startSeconds: 42,
@@ -453,7 +531,7 @@ describe("TypesenseWatchSearchService", () => {
     })
     const response = await responsePromise
 
-    expect(typesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(3)
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(6)
     const languageLane = response.laneStatuses.find(
       (lane) => lane.lane === "language_resolution",
     )
@@ -510,6 +588,646 @@ describe("TypesenseWatchSearchService", () => {
       availability: { kind: "target_audio", audio: true },
       evidence: { kind: "exact_title" },
     })
+  })
+
+  it.each(["JESUS", "Isus", "Iisus"])(
+    "retrieves Romanian-playable JESUS through bounded English title evidence for %s",
+    async (query) => {
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+        romanianLanguageSignals,
+      )
+      const playable = englishEvidenceCatalogDocument({
+        id: "video-jesus",
+        title: "JESUS",
+        romanianPlayable: true,
+      })
+      const typesense = typesenseFixture({
+        lexical: [playable],
+        catalog: [playable],
+      })
+      const service = new TypesenseWatchSearchService(
+        prismaFixture({
+          targetLanguage: {
+            id: "language-ro",
+            slug: "romanian",
+            name: { en: "Romanian" },
+            bcp47: "ro",
+          },
+          evidenceLanguages: [
+            { slug: "romanian", bcp47: "ro" },
+            { slug: "english", bcp47: "en" },
+          ],
+        }),
+        typesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query,
+        targetLanguageSlug: "romanian",
+        displayLanguageSlug: "romanian",
+      })
+
+      expect(response.results).toEqual([
+        expect.objectContaining({
+          id: playable.id,
+          title: "JESUS",
+          playbackId: "playback-video-jesus",
+          availability: expect.objectContaining({
+            kind: "target_audio",
+            languageSlug: "romanian",
+          }),
+          action: {
+            kind: "watch",
+            hrefLanguageSlug: "romanian",
+          },
+        }),
+      ])
+      expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+            q: "JESUS",
+            query_by: "title_en,title_fallback",
+            filter_by: expect.stringContaining("`slug:english`"),
+          }),
+        ]),
+      )
+    },
+  )
+
+  it.each(["fiul risipitor", "anxietate", "iertare", "Crăciun"])(
+    "returns target-watchable English semantic evidence for Romanian topic query %s",
+    async (query) => {
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+        romanianLanguageSignals,
+      )
+      const playable = englishEvidenceCatalogDocument({
+        id: "video-romanian-playable",
+        title: "Romanian-playable story",
+        romanianPlayable: true,
+      })
+      const englishOnly = englishEvidenceCatalogDocument({
+        id: "video-english-only",
+        title: "English-only story",
+        romanianPlayable: false,
+      })
+      const typesense = typesenseFixture({
+        lexical: [],
+        catalog: [playable, englishOnly],
+        hybrid: [
+          {
+            vectorDistance: 0.2,
+            document: {
+              id: `chunk-playable-${query}`,
+              documentKind: "transcript",
+              videoId: playable.id,
+              canonicalVideoId: `core:${playable.coreId}`,
+              language: "en",
+              publiclyVisible: true,
+              titles: playable.titles,
+              text: `Relevant English evidence for ${query}`,
+              startSeconds: 12,
+            },
+          },
+          {
+            vectorDistance: 0.1,
+            document: {
+              id: `chunk-english-only-${query}`,
+              documentKind: "transcript",
+              videoId: englishOnly.id,
+              canonicalVideoId: `core:${englishOnly.coreId}`,
+              language: "en",
+              publiclyVisible: true,
+              titles: englishOnly.titles,
+              text: `Stronger English-only evidence for ${query}`,
+              startSeconds: 18,
+            },
+          },
+        ],
+      })
+      const service = new TypesenseWatchSearchService(
+        prismaFixture({
+          targetLanguage: {
+            id: "language-ro",
+            slug: "romanian",
+            name: { en: "Romanian" },
+            bcp47: "ro",
+          },
+          evidenceLanguages: [
+            { slug: "romanian", bcp47: "ro" },
+            { slug: "english", bcp47: "en" },
+          ],
+          fallbackLanguages: [{ id: "language-en", slug: "english" }],
+        }),
+        typesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query,
+        targetLanguageSlug: "romanian",
+        displayLanguageSlug: "romanian",
+      })
+
+      expect(response.results.map((result) => result.id)).toEqual([playable.id])
+      expect(response.results[0]).toMatchObject({
+        availability: {
+          kind: "target_audio",
+          languageSlug: "romanian",
+        },
+        evidence: {
+          kind: "transcript_semantic",
+          languageSlug: "english",
+        },
+      })
+    },
+  )
+
+  it("keeps native transcript evidence atomic when fallback title evidence is stronger", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const playable = englishEvidenceCatalogDocument({
+      id: "video-native-transcript-fallback-title",
+      title: "Hope",
+      romanianPlayable: true,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesenseFixture({
+        lexical: [playable],
+        catalog: [playable],
+        semantic: [
+          ...Array.from({ length: 3 }, (_value, index) => ({
+            videoId: playable.id,
+            text: `English fallback ${index}`,
+            vectorDistance: 0.1 + index / 100,
+            language: "en",
+          })),
+          {
+            videoId: playable.id,
+            text: "Speranța rămâne vie.",
+            vectorDistance: 0.2,
+            language: "ro",
+          },
+        ],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Hope",
+      targetLanguageSlug: "romanian",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      id: playable.id,
+      snippet: "Speranța rămâne vie.",
+      evidence: {
+        kind: "transcript_semantic",
+        languageSlug: "romanian",
+      },
+    })
+  })
+
+  it("fills a Romanian page after excluding stronger English-only groups", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const englishOnly = Array.from({ length: 21 }, (_value, index) =>
+      englishEvidenceCatalogDocument({
+        id: `video-english-only-${index.toString().padStart(2, "0")}`,
+        title: `English-only story ${index}`,
+        romanianPlayable: false,
+      }),
+    )
+    const playable = englishEvidenceCatalogDocument({
+      id: "video-romanian-playable-after-cutoff",
+      title: "Romanian-playable story after cutoff",
+      romanianPlayable: true,
+    })
+    const secondPlayable = englishEvidenceCatalogDocument({
+      id: "video-second-romanian-playable",
+      title: "Second Romanian-playable story",
+      romanianPlayable: true,
+    })
+    const catalog = [...englishOnly, playable, secondPlayable]
+    const typesense = typesenseFixture({
+      lexical: [],
+      catalog,
+      hybrid: catalog.map((document, index) => ({
+        vectorDistance: 0.1 + index / 1_000,
+        document: {
+          id: `chunk-${document.id}`,
+          documentKind: "transcript",
+          videoId: document.id,
+          canonicalVideoId: `core:${document.coreId}`,
+          language: "en",
+          publiclyVisible: true,
+          titles: document.titles,
+          text: `English evidence ${index}`,
+          startSeconds: index,
+        },
+      })),
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "iertare",
+      targetLanguageSlug: "romanian",
+      displayLanguageSlug: "romanian",
+      limit: 1,
+    })
+    const nextResponse = await service.search({
+      query: "iertare",
+      targetLanguageSlug: "romanian",
+      displayLanguageSlug: "romanian",
+      offset: 1,
+      limit: 1,
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([playable.id])
+    expect(response.hasMore).toBe(true)
+    expect(nextResponse.results.map((result) => result.id)).toEqual([
+      secondPlayable.id,
+    ])
+    expect(nextResponse.hasMore).toBe(false)
+  })
+
+  it("keeps English evidence gated and expands Isus when English is explicit", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      ...romanianLanguageSignals,
+      queryLanguageSlug: "english",
+    })
+    const playable = englishEvidenceCatalogDocument({
+      id: "video-explicit-english-playable",
+      title: "JESUS",
+      romanianPlayable: true,
+    })
+    const englishOnly = englishEvidenceCatalogDocument({
+      id: "video-explicit-english-only",
+      title: "JESUS Film",
+      romanianPlayable: false,
+    })
+    const typesense = typesenseFixture({
+      lexical: [playable, englishOnly],
+      catalog: [playable, englishOnly],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Isus",
+      targetLanguageSlug: "romanian",
+      queryLanguageSlug: "english",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([playable.id])
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+          q: "JESUS",
+          query_by: "title_en,title_fallback",
+        }),
+      ]),
+    )
+  })
+
+  it.each([
+    { slug: "spanish-castilian", bcp47: "es", englishName: "Spanish" },
+    { slug: "hindi", bcp47: "hi", englishName: "Hindi" },
+  ])(
+    "uses bounded English evidence for non-English target $slug",
+    async ({ slug, bcp47, englishName }) => {
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+        ...romanianLanguageSignals,
+        queryLanguageSlug: slug,
+        targetLanguageSlug: slug,
+        displayLanguageSlug: slug,
+        displayLanguageBcp47: bcp47,
+        routeLanguageSlug: slug,
+        routeLanguageBcp47: bcp47,
+      })
+      const playable = {
+        ...englishEvidenceCatalogDocument({
+          id: `video-${slug}-playable`,
+          title: "Hope for Everyone",
+          romanianPlayable: false,
+        }),
+        audioLanguageSlugs: [slug],
+        audioOptionsJson: JSON.stringify([
+          {
+            id: `dub-${slug}`,
+            languageId: `language-${slug}`,
+            languageSlug: slug,
+            languageEnglishName: englishName,
+            playbackId: `playback-${slug}`,
+            durationSeconds: 180,
+          },
+        ]),
+      }
+      const englishOnly = englishEvidenceCatalogDocument({
+        id: `video-${slug}-english-only`,
+        title: "Hope in English Only",
+        romanianPlayable: false,
+      })
+      const typesense = typesenseFixture({
+        lexical: [playable, englishOnly],
+        catalog: [playable, englishOnly],
+      })
+      const service = new TypesenseWatchSearchService(
+        prismaFixture({
+          targetLanguage: {
+            id: `language-${slug}`,
+            slug,
+            name: { en: englishName },
+            bcp47,
+          },
+          evidenceLanguages: [
+            { slug, bcp47 },
+            { slug: "english", bcp47: "en" },
+          ],
+        }),
+        typesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query: "Hope",
+        targetLanguageSlug: slug,
+      })
+
+      expect(response.results.map((result) => result.id)).toEqual([playable.id])
+      expect(response.results[0]).toMatchObject({
+        playbackId: `playback-${slug}`,
+        availability: { kind: "target_audio", languageSlug: slug },
+      })
+      expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+            query_by: "title_en,title_fallback",
+            filter_by: expect.stringContaining("`slug:english`"),
+          }),
+        ]),
+      )
+    },
+  )
+
+  it("does not add fallback lanes for an English target", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      ...romanianLanguageSignals,
+      queryLanguageSlug: "english",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      displayLanguageBcp47: "en",
+      routeLanguageSlug: "english",
+      routeLanguageBcp47: "en",
+    })
+    const playable = englishEvidenceCatalogDocument({
+      id: "video-english-playable",
+      title: "Hope for Everyone",
+      romanianPlayable: false,
+    })
+    const typesense = typesenseFixture({
+      lexical: [playable],
+      catalog: [playable],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-en",
+          slug: "english",
+          name: { en: "English" },
+          bcp47: "en",
+        },
+        evidenceLanguages: [{ slug: "english", bcp47: "en" }],
+      }),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Hope",
+      targetLanguageSlug: "english",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([playable.id])
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(3)
+  })
+
+  it("caps repeated Romanian query-variant contributions per candidate lane", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const native = {
+      ...englishEvidenceCatalogDocument({
+        id: "a-native-romanian-title",
+        title: "Isus",
+        romanianPlayable: true,
+      }),
+      coreId: "shared-jesus-core",
+      localeCodes: ["ro"],
+      localesJson: JSON.stringify([
+        {
+          locale: "ro",
+          languageSlug: "romanian",
+          title: "Isus",
+          description: "Povestea lui Isus",
+        },
+      ]),
+    }
+    const fallback = {
+      ...englishEvidenceCatalogDocument({
+        id: "z-english-jesus-title",
+        title: "JESUS",
+        romanianPlayable: true,
+      }),
+      coreId: "shared-jesus-core",
+    }
+    const catalog = [native, fallback]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Isus",
+      targetLanguageSlug: "romanian",
+      limit: 1,
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([native.id])
+  })
+
+  it("returns English evidence with Romanian subtitle-only availability", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const subtitlePlayable = {
+      ...englishEvidenceCatalogDocument({
+        id: "video-romanian-subtitle",
+        title: "The Prodigal Son",
+        romanianPlayable: false,
+      }),
+      subtitleLanguageSlugs: ["romanian"],
+      subtitleOptionsJson: JSON.stringify([
+        {
+          id: "subtitle-ro",
+          languageId: "language-ro",
+          languageSlug: "romanian",
+        },
+      ]),
+    }
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        fallbackLanguages: [{ id: "language-en", slug: "english" }],
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesenseFixture({
+        lexical: [subtitlePlayable],
+        catalog: [subtitlePlayable],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "fiul risipitor",
+      targetLanguageSlug: "romanian",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      id: subtitlePlayable.id,
+      availability: { kind: "target_subtitle" },
+    })
+  })
+
+  it("gates degraded English lexical evidence by Romanian availability", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const mixedLocaleEnglishOnly = {
+      ...englishEvidenceCatalogDocument({
+        id: "video-degraded-english-only",
+        title: "JESUS",
+        romanianPlayable: false,
+      }),
+      localeCodes: ["ro", "en"],
+      localesJson: JSON.stringify([
+        {
+          locale: "ro",
+          languageSlug: "romanian",
+          title: "Isus",
+          description: "Descriere romana",
+        },
+        {
+          locale: "en",
+          languageSlug: "english",
+          title: "JESUS",
+          description: "English evidence",
+        },
+      ]),
+    }
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        fallbackLanguages: [{ id: "language-en", slug: "english" }],
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesenseFixture({
+        lexical: [mixedLocaleEnglishOnly],
+        catalog: [mixedLocaleEnglishOnly],
+        hybridError: new TypesenseRequestError(
+          "Field canonicalVideoId not found",
+          400,
+        ),
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding), logger: { warn: vi.fn() } },
+    )
+
+    const response = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "romanian",
+    })
+
+    expect(response.results).toEqual([])
   })
 
   it("uses the existing token-contained exact-title semantics", async () => {
@@ -618,10 +1336,10 @@ describe("TypesenseWatchSearchService", () => {
       coreId: `core-jesus-${index}`,
       slug: `jesus-${index}`,
       titles: [index === 0 ? "JESUS" : `JESUS Film ${index}`],
-      localeCodes: ["fr"],
+      localeCodes: ["en"],
       localesJson: JSON.stringify([
         {
-          locale: "fr",
+          locale: "en",
           title: index === 0 ? "JESUS" : `JESUS Film ${index}`,
           description: null,
         },
@@ -665,6 +1383,13 @@ describe("TypesenseWatchSearchService", () => {
         request.include_fields ===
           "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl",
     )
+    const watchabilityCatalogRequest = requests.find(
+      (request) =>
+        request.collection !== TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+        request.collection !== TYPESENSE_WATCH_AVAILABILITY_ALIAS &&
+        request.q === "*" &&
+        request.include_fields === "id",
+    )
     const availabilityRequest = requests.find(
       (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
     )
@@ -692,12 +1417,21 @@ describe("TypesenseWatchSearchService", () => {
     expect(
       requests.some(
         (request) =>
+          request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+          request.filter_by ===
+            "documentKind:=transcript && publiclyVisible:=true && language:=[`en`]",
+      ),
+    ).toBe(true)
+    expect(
+      requests.some(
+        (request) =>
           request.q === "*" &&
           request.include_fields === "id,titles,localesJson",
       ),
     ).toBe(false)
     expect(resultHydrationRequests).toHaveLength(1)
-    expect(resultHydrationRequests[0]?.per_page).toBe(21)
+    expect(resultHydrationRequests[0]?.per_page).toBe(20)
+    expect(watchabilityCatalogRequest?.per_page).toBe(100)
     expect(availabilityRequest).toMatchObject({
       q: "*",
       include_fields:
@@ -709,7 +1443,8 @@ describe("TypesenseWatchSearchService", () => {
     expect(
       typesense.multiSearch.mock.calls.some(
         ([searches]) =>
-          searches.includes(resultHydrationRequests[0]) &&
+          watchabilityCatalogRequest != null &&
+          searches.includes(watchabilityCatalogRequest) &&
           availabilityRequest != null &&
           searches.includes(availabilityRequest),
       ),
@@ -820,7 +1555,7 @@ describe("TypesenseWatchSearchService", () => {
     ).toBe(false)
   })
 
-  it("uses one offset query for deep native pagination", async () => {
+  it("retrieves the bounded prefix for deep native pagination", async () => {
     const catalog = Array.from({ length: 260 }, (_value, index) => ({
       ...catalogDocument,
       id: `video-${index.toString().padStart(3, "0")}`,
@@ -848,15 +1583,138 @@ describe("TypesenseWatchSearchService", () => {
 
     expect(response.results.map((result) => result.id)).toEqual(["video-250"])
     expect(response.hasMore).toBe(true)
-    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
-          page: 2,
-          per_page: 250,
-        }),
-      ]),
+    const nativeTitleRequests = (
+      typesense.multiSearch.mock.calls[0]?.[0] ?? []
+    ).filter(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        request.query_by === "title_fr,title_fallback",
     )
+    expect(nativeTitleRequests).toEqual([
+      expect.objectContaining({ page: 1, per_page: 250 }),
+      expect.objectContaining({ page: 2, per_page: 250 }),
+    ])
+  })
+
+  it("batches a maximum bounded native prefix without losing lane pages", async () => {
+    const typesense = typesenseFixture({
+      lexical: [catalogDocument],
+      catalog: [catalogDocument],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    await service.search({
+      query: "Care",
+      targetLanguageSlug: "french",
+      offset: 12_449,
+      limit: 50,
+    })
+
+    expect(
+      typesense.multiSearch.mock.calls.every(
+        ([searches]) => searches.length <= 50,
+      ),
+    ).toBe(true)
+    const requests = typesense.multiSearch.mock.calls.flatMap(
+      ([searches]) => searches,
+    )
+    const nativeTitleRequests = requests.filter(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        request.query_by === "title_fr,title_fallback",
+    )
+    expect(nativeTitleRequests).toHaveLength(50)
+    expect(nativeTitleRequests.map((request) => request.page)).toEqual(
+      Array.from({ length: 50 }, (_value, index) => index + 1),
+    )
+    expect(
+      requests.find(
+        (request) =>
+          request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS &&
+          request.group_by === "canonicalVideoId",
+      ),
+    ).toMatchObject({ page: 1, per_page: 80 })
+  })
+
+  it("applies fallback watchability before slicing across 250-group pages", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const rejectedEnglishOnly = englishEvidenceCatalogDocument({
+      id: "video-english-only-rejected",
+      title: "Hope 000",
+      romanianPlayable: false,
+    })
+    const romanianPlayable = Array.from({ length: 250 }, (_value, index) =>
+      englishEvidenceCatalogDocument({
+        id: `video-romanian-playable-${index.toString().padStart(3, "0")}`,
+        title: `Hope ${(index + 1).toString().padStart(3, "0")}`,
+        romanianPlayable: true,
+      }),
+    )
+    const catalog = [rejectedEnglishOnly, ...romanianPlayable]
+    const typesense = typesenseFixture({ lexical: catalog, catalog })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Hope",
+      targetLanguageSlug: "romanian",
+      offset: 249,
+      limit: 1,
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([
+      "video-romanian-playable-249",
+    ])
+    expect(response.nextOffset).toBe(250)
+    expect(response.hasMore).toBe(false)
+    const fallbackTitleRequests = (
+      typesense.multiSearch.mock.calls[0]?.[0] ?? []
+    ).filter(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        request.query_by === "title_en,title_fallback",
+    )
+    expect(fallbackTitleRequests).toEqual([
+      expect.objectContaining({ page: 1, per_page: 250 }),
+      expect.objectContaining({ page: 2, per_page: 250 }),
+    ])
+  })
+
+  it("rejects pagination just outside the bounded candidate window", async () => {
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({}) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    await expect(
+      service.search({
+        query: "Care",
+        targetLanguageSlug: "french",
+        offset: 12_499,
+        limit: 1,
+      }),
+    ).rejects.toThrow(WatchSearchValidationError)
   })
 
   it("returns transcript evidence when metadata has no matching terms", async () => {
@@ -916,7 +1774,7 @@ describe("TypesenseWatchSearchService", () => {
     ).toBe(false)
   })
 
-  it("uses one grouped native hybrid request and returns one language variant", async () => {
+  it("uses grouped native and fallback semantic lanes and returns one language variant", async () => {
     const embedder = vi.fn(async () => embedding)
     const typesense = typesenseFixture({
       lexical: [],
@@ -990,6 +1848,14 @@ describe("TypesenseWatchSearchService", () => {
           group_limit: 3,
           filter_by:
             "documentKind:=transcript && publiclyVisible:=true && language:=[`fr`]",
+        }),
+        expect.objectContaining({
+          collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+          q: "*",
+          group_by: "canonicalVideoId",
+          group_limit: 3,
+          filter_by:
+            "documentKind:=transcript && publiclyVisible:=true && language:=[`en`]",
         }),
       ]),
     )
@@ -1354,6 +2220,20 @@ describe("TypesenseWatchSearchService", () => {
         per_page: 100,
         page: 1,
       }),
+      expect.objectContaining({
+        collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+        q: "communion",
+        query_by: "title_en,title_fallback",
+        per_page: 100,
+        page: 1,
+      }),
+      expect.objectContaining({
+        collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+        q: "communion",
+        query_by: "metadata_en,metadata_fallback",
+        per_page: 100,
+        page: 1,
+      }),
     ])
   })
 
@@ -1400,6 +2280,65 @@ describe("TypesenseWatchSearchService", () => {
     expect(embedder).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps native semantic evidence when degraded lexical evidence is fallback-only", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+      romanianLanguageSignals,
+    )
+    const playable = englishEvidenceCatalogDocument({
+      id: "video-degraded-native-semantic",
+      title: "Hope",
+      romanianPlayable: true,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-ro",
+          slug: "romanian",
+          name: { en: "Romanian" },
+          bcp47: "ro",
+        },
+        evidenceLanguages: [
+          { slug: "romanian", bcp47: "ro" },
+          { slug: "english", bcp47: "en" },
+        ],
+      }),
+      typesenseFixture({
+        lexical: [playable],
+        catalog: [playable],
+        semantic: [
+          {
+            videoId: playable.id,
+            text: "Speranță pentru fiecare zi.",
+            vectorDistance: 0.2,
+            language: "ro",
+          },
+        ],
+        hybridError: new TypesenseRequestError(
+          "Field canonicalVideoId not found",
+          400,
+        ),
+      }) as unknown as TypesenseClient,
+      {
+        embedder: vi.fn(async () => embedding),
+        logger: { warn: vi.fn() },
+      },
+    )
+
+    const response = await service.search({
+      query: "Hope",
+      targetLanguageSlug: "romanian",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      id: playable.id,
+      snippet: "Speranță pentru fiecare zi.",
+      evidence: {
+        kind: "transcript_semantic",
+        languageSlug: "romanian",
+      },
+    })
+  })
+
   it("reserves one multi-search slot for legacy semantic retrieval", async () => {
     const typesense = typesenseFixture({
       lexical: [catalogDocument],
@@ -1417,17 +2356,52 @@ describe("TypesenseWatchSearchService", () => {
     await service.search({
       query: "communion",
       targetLanguageSlug: "french",
-      offset: 20_000,
+      offset: 12_199,
       limit: 50,
     })
 
-    const legacyRequests = typesense.multiSearch.mock.calls[1]?.[0] ?? []
+    const legacyRequests =
+      typesense.multiSearch.mock.calls
+        .map(([searches]) => searches)
+        .find(
+          (searches) =>
+            searches.some(
+              (request) =>
+                request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+            ) &&
+            searches.every(
+              (request) => request.collection !== TYPESENSE_WATCH_LEXICAL_ALIAS,
+            ),
+        ) ?? []
     expect(legacyRequests).toHaveLength(50)
     expect(
       legacyRequests.filter(
         (request) => request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
       ),
     ).toHaveLength(1)
+  })
+
+  it("rejects a degraded legacy page beyond its semantic-reserved prefix", async () => {
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: [catalogDocument],
+        hybridError: new TypesenseRequestError(
+          "Field canonicalVideoId not found",
+          400,
+        ),
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding), logger: { warn: vi.fn() } },
+    )
+
+    await expect(
+      service.search({
+        query: "communion",
+        targetLanguageSlug: "french",
+        offset: 12_200,
+        limit: 50,
+      }),
+    ).rejects.toThrow(WatchSearchValidationError)
   })
 
   it("does not double Typesense latency after a transient hybrid failure", async () => {
