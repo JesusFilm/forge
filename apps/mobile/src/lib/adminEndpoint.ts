@@ -142,3 +142,20 @@ export function decideAdminEndpointAccess(
     ].join("\n"),
   }
 }
+
+/**
+ * Plain `key=value` line, matching the repo's structured-log convention. It is
+ * a console line and nothing else (KTD4): env.ts is imported by datadog.ts, so
+ * telemetering from env module scope would close a cycle — and the native SDK
+ * has not initialized that early anyway.
+ */
+export function formatAdminEndpointReport(url: string): string {
+  return `[admin-endpoint] admin_endpoint.url=${url} admin_endpoint.kind=${classifyAdminHost(url)}`
+}
+
+/** Fires once at env module evaluation, not per query. Development only. */
+export function reportAdminEndpoint(url: string, isDev: boolean): void {
+  if (!isDev) return
+
+  console.info(formatAdminEndpointReport(url))
+}

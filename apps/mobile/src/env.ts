@@ -3,6 +3,7 @@ import { Platform } from "react-native"
 import { z } from "zod"
 import {
   decideAdminEndpointAccess,
+  reportAdminEndpoint,
   resolveAdminGraphqlUrl,
 } from "./lib/adminEndpoint"
 
@@ -103,5 +104,9 @@ const adminEndpointAccess = decideAdminEndpointAccess(
 if (!adminEndpointAccess.allowed) {
   throw new Error(adminEndpointAccess.message)
 }
+
+// Once per Metro start — not inside getGraphQLUrl(), which the Datadog provider
+// re-invokes on every render.
+reportAdminEndpoint(resolvedAdminGraphqlUrl, __DEV__)
 
 export { env }

@@ -4,7 +4,9 @@ import {
   PRODUCTION_ADMIN_GRAPHQL_URL,
   classifyAdminHost,
   decideAdminEndpointAccess,
+  formatAdminEndpointReport,
   normalizeAdminHost,
+  reportAdminEndpoint,
   resolveAdminGraphqlUrl,
 } from "../adminEndpoint"
 
@@ -174,4 +176,49 @@ describe("decideAdminEndpointAccess", () => {
   it("treats an empty-string override as absent", () => {
     expect(decideAdminEndpointAccess(PROD, true, "").allowed).toBe(false)
   })
+})
+
+describe("reportAdminEndpoint", () => {
+  let info: jest.SpyInstance
+
+  beforeEach(() => {
+    info = jest.spyOn(console, "info").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    info.mockRestore()
+  })
+
+  it.each([
+    ["the local default", LOCAL_ADMIN_GRAPHQL_URL],
+    ["a configured local endpoint", "http://127.0.0.1:3003/api/graphql"],
+    ["a LAN address", LAN],
+    ["production on the override path", PROD],
+  ])("names %s", (_label, url) => {
+    reportAdminEndpoint(url, true)
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(String(info.mock.calls[0][0])).toContain(url)
+  })
+
+  it("emits nothing in a release bundle", () => {
+    reportAdminEndpoint(PROD, false)
+    expect(info).not.toHaveBeenCalled()
+  })
+
+  it("names the resolved host kind so a production session is obvious", () => {
+    expect(formatAdminEndpointReport(PROD)).toContain("production")
+    expect(formatAdminEndpointReport(LOCAL_ADMIN_GRAPHQL_URL)).toContain(
+      "local",
+    )
+  })
+
+  // Datadog drops these attribute names silently on ingest. The report is a
+  // plain console line today; this pins that it never grows a bare reserved key.
+  it.each(["host", "source", "service", "status", "message", "trace_id"])(
+    "uses no key named %s",
+    (reserved) => {
+      const line = formatAdminEndpointReport(PROD)
+      expect(line).not.toMatch(new RegExp(`(^|\\s)${reserved}=`))
+    },
+  )
 })
