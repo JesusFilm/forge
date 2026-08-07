@@ -92,8 +92,17 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
 - **A development bundle resolving to `admin.jesusfilm.org` refuses to start.**
   A local session writes `RecordWatchSearchEvent` rows plus admin-side search
   traces into the production database, and opening Discover fires six searches
-  before anyone types. The throw happens at `src/env.ts` module scope and
-  surfaces through the existing Startup Error panel in `app/_layout.tsx`.
+  before anyone types. The throw happens at `src/env.ts` module scope, and the
+  message names the resolved host and the override.
+  **Do not assume it renders the Startup Error panel in `app/_layout.tsx`.**
+  expo-router evaluates route modules eagerly, and `useWatchHome.ts` reaches
+  `env.ts` through a static import chain outside that file's guarded `require`,
+  so the throw escapes as an uncaught error — observed on the simulator
+  2026-08-07 as the dev error overlay, with this stack:
+  `env.ts -> config.ts -> apolloClient.ts -> useWatchHome.ts`. That overlay
+  shows the message verbatim and selectable, which is why R2 still needs no new
+  UI. This only ever matters in development: the refusal is `__DEV__`-gated, so
+  a release bundle never reaches it.
 - **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
   visibly — the startup line then names production on every launch.
 - **Only the known production host refuses.** A LAN address, a tunnel, or an
@@ -166,8 +175,8 @@ once on preview before you ever need it on production.
 **Never set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in an EAS environment.** With dotenv
 disabled, resolution falls through to the in-code production default, which is
 already correct and already reviewed. A dashboard-typed URL runs zod on the
-device — a scheme-less host or stray whitespace would show every beta tester a
-Startup Error panel.
+device — a scheme-less host or stray whitespace would throw at module scope and
+hard-fail startup for every beta tester.
 
 ## Observability (Datadog)
 

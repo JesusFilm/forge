@@ -46,9 +46,12 @@ fallback.
 2. `apps/mobile/src/env.ts` — module-scope refusal and report. The earliest
    app-owned code, and the only seam guaranteed to run before all three
    `getGraphQLUrl()` callers.
-3. `apps/mobile/app/_layout.tsx` — the require try/catch whose Startup Error
-   panel renders the refusal message verbatim; also the `__DEV__`-gated require
-   and mount of `DevEndpointNotice`.
+3. `apps/mobile/app/_layout.tsx` — the `__DEV__`-gated require and mount of
+   `DevEndpointNotice`, and the pre-existing require try/catch. Note that the
+   try/catch does **not** reliably catch the endpoint refusal: expo-router
+   evaluates route modules eagerly and `useWatchHome.ts` reaches `env.ts`
+   outside it, so the throw surfaces as the dev error overlay instead
+   (observed 2026-08-07). The message is verbatim and selectable either way.
 4. `apps/mobile/src/lib/apolloClient.ts` — `isUnreachableEndpointError` plus the
    dev-gated emit riding `createErrorLink`.
 5. `apps/mobile/CLAUDE.md` — § Admin endpoint resolution, § Publishing an EAS
@@ -94,8 +97,8 @@ Shipped in this ticket:
 - **No `apps/admin` change.** Nothing here requires one.
 - **No admin endpoint in any EAS environment.** With dotenv disabled, resolution
   falls through to the in-code production default, which is already correct.
-  A dashboard-typed URL runs zod on the device and can show every beta tester a
-  Startup Error panel.
+  A dashboard-typed URL runs zod on the device and can hard-fail startup for
+  every beta tester.
 - **Only a known production host refuses.** A LAN address, a tunnel, or an
   emulator alias must boot normally, or the documented physical-device workflow
   breaks.
