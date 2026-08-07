@@ -13,10 +13,10 @@ from the main DS Year 1 roadmap.
 
 ## Status (August 7, 2026)
 
-- **Total tickets:** 50
-- ✅ **Complete:** 42
-- 🟡 **In progress:** 1
-- 🔵 **Not started:** 7
+- **Total tickets:** 53
+- ✅ **Complete:** 43
+- 🟡 **In progress:** 0
+- 🔵 **Not started:** 10
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -65,11 +65,14 @@ from the main DS Year 1 roadmap.
 | [feat-304](feat-304-chat-production-egress-pin.md)                     | Production egress pin for the chat → Mastra host allowlist                   | jian wei | P2       | 2026-07-23 | 1    | ✅ complete    | [#1731](https://github.com/JesusFilm/forge/pull/1731)                                                        |
 | [feat-305](feat-305-chat-healthcheck.md)                               | Railway healthcheck for the chat service                                     | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1762](https://github.com/JesusFilm/forge/pull/1762)                                                        |
 | [feat-306](feat-306-chat-egress-pin-boot-throw.md)                     | Fail the deploy on a misconfigured Seeker egress pin                         | jian wei | P3       | 2026-07-25 | 1    | ✅ complete    | [#1765](https://github.com/JesusFilm/forge/pull/1765), [#1768](https://github.com/JesusFilm/forge/pull/1768) |
-| [feat-321](feat-321-langfuse-tracing.md)                               | Langfuse tracing for the Seeker agent (stub — decision capture)              | jian wei | P2       | 2026-09-01 | 3    | 🟡 in-progress | —                                                                                                            |
+| [feat-321](feat-321-langfuse-tracing.md)                               | Langfuse tracing for the Seeker agent                                        | jian wei | P2       | 2026-07-29 | 3    | ✅ complete    | [#1874](https://github.com/JesusFilm/forge/pull/1874)                                                        |
 | [feat-326](feat-326-admin-agent-tools-availability-kind.md)            | Admin agent-tools search-videos: expose availability.kind                    | jian wei | P1       | 2026-08-03 | 1    | ✅ complete    | [#1813](https://github.com/JesusFilm/forge/pull/1813)                                                        |
 | [feat-327](feat-327-seeker-video-tools-result-projection.md)           | Seeker video tools + declared-video result projection (SEEKER_VIDEO_ENABLED) | jian wei | P1       | 2026-08-04 | 3    | ✅ complete    | [#1820](https://github.com/JesusFilm/forge/pull/1820)                                                        |
 | [feat-328](feat-328-chat-inline-video-rendering.md)                    | Chat inline video rendering from the result frame                            | jian wei | P1       | 2026-08-07 | 2    | ✅ complete    | [#1832](https://github.com/JesusFilm/forge/pull/1832)                                                        |
 | [feat-329](feat-329-chat-video-sources-replay-persistence.md)          | Replay persistence: featured video + sources survive thread reload           | jian wei | P1       | 2026-08-10 | 2    | ✅ complete    | [#1836](https://github.com/JesusFilm/forge/pull/1836)                                                        |
 | [feat-330](feat-330-seeker-video-prompt-langfuse.md)                   | Durable video-featuring guidance in the Langfuse seeker prompt               | jian wei | P1       | 2026-08-10 | 1    | 🔵 not-started | —                                                                                                            |
 | [feat-334](feat-334-chat-render-boundary-clamp-guard-consolidation.md) | Chat render-boundary + clamp-guard consolidation                             | jian wei | P2       | 2026-08-14 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-336](feat-336-langfuse-trace-retention-job.md)                   | Langfuse trace retention job (30/180-day sweep)                              | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                                                                            |
+| [feat-337](feat-337-per-user-erasure-capability.md)                    | Per-user erasure across Langfuse traces and ai_chat Postgres                 | jian wei | P2       | 2026-08-10 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-338](feat-338-seeker-eval-whole-prompt-alignment-audit.md)       | Seeker eval whole-prompt alignment audit                                     | jaco     | P1       | 2026-08-07 | 1    | ✅ complete    | [#1856](https://github.com/JesusFilm/forge/pull/1856)                                                        |
+| [feat-339](feat-339-seeker-public-release-register.md)                 | Seeker public-release readiness register (living decision capture)           | jian wei | P1       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |

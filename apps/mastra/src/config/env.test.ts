@@ -1320,6 +1320,69 @@ describe("Mastra env", () => {
     expect(isAiGatewaySeekerEnabled()).toBe(false)
   })
 
+  // --- feat-321: LANGFUSE_TRACING_ENABLED default-off string-boolean gate ---
+
+  it("disables Langfuse tracing when LANGFUSE_TRACING_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety
+    // default: a naive `Boolean(env.LANGFUSE_TRACING_ENABLED)` would enable
+    // raw-content export on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "false")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="TRUE" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "TRUE")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="1" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "1")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('enables Langfuse tracing only when LANGFUSE_TRACING_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "true")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(true)
+  })
+
+  it("keeps LANGFUSE_TRACING_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with LANGFUSE_TRACING_ENABLED unset still boots — and
+    // stays off, so credential presence alone never exports content.
+    stubProductionBaseline()
+    // LANGFUSE_TRACING_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isLangfuseTracingEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
   // --- feat-208: AI_CHAT_MEMORY_BACKEND kill-switch precedence ---
 
   it("resolves the ai-chat backend to MASTRA_STORAGE_BACKEND (postgres default) when the override is unset", async () => {

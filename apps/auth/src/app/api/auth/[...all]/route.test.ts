@@ -882,3 +882,296 @@ describe("Auth route wrapper", () => {
     expect(authGet).not.toHaveBeenCalled()
   })
 })
+
+describe("device grant rate limiting", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    authPost.mockResolvedValue(Response.json({ ok: true }))
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+  })
+
+  /**
+   * The catch-all hands plugin endpoints straight to better-auth, which applies
+   * no limiter of its own. These branches are the only per-IP throttle in front
+   * of the device endpoints, so each one is pinned individually — a deleted
+   * branch must fail a test rather than silently unthrottle an endpoint.
+   */
+  const throttled = [
+    ["device", "code"],
+    ["device", "token"],
+    ["device", "approve"],
+    ["device", "deny"],
+  ] as const
+
+  for (const segments of throttled) {
+    const path = segments.join("/")
+
+    it(`throttles POST ${path} before reaching better-auth`, async () => {
+      rateLimitAuthRoute.mockResolvedValueOnce({
+        allowed: false,
+        source: "local",
+      })
+
+      const { POST } = await import("./route")
+      const response = await POST(
+        new Request(`http://localhost:3004/api/auth/${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        }),
+        { params: Promise.resolve({ all: [...segments] }) },
+      )
+
+      expect(response.status).toBe(429)
+      // RFC 8628's own back-off signal, so a conforming client already knows
+      // how to react to it.
+      await expect(response.json()).resolves.toMatchObject({
+        error: "slow_down",
+      })
+      expect(authPost).not.toHaveBeenCalled()
+    })
+
+    it(`passes ${path} through when under the limit`, async () => {
+      const { POST } = await import("./route")
+      const response = await POST(
+        new Request(`http://localhost:3004/api/auth/${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        }),
+        { params: Promise.resolve({ all: [...segments] }) },
+      )
+
+      expect(response.status).toBe(200)
+      expect(authPost).toHaveBeenCalled()
+    })
+  }
+
+  it("throttles GET device/status", async () => {
+    rateLimitAuthRoute.mockResolvedValueOnce({
+      allowed: false,
+      source: "local",
+    })
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/device/status?user_code=1"),
+      { params: Promise.resolve({ all: ["device", "status"] }) },
+    )
+
+    expect(response.status).toBe(429)
+    expect(authGet).not.toHaveBeenCalled()
+  })
+
+  it("leaves non-device routes on their existing limits", async () => {
+    // Anti-vacuous companion: proves the device branch is selective rather than
+    // a blanket limiter that would have caught this path anyway.
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+
+    const { GET } = await import("./route")
+    await GET(new Request("http://localhost:3004/api/auth/ok"), {
+      params: Promise.resolve({ all: ["ok"] }),
+    })
+
+    expect(rateLimitAuthRoute).not.toHaveBeenCalled()
+    expect(authGet).toHaveBeenCalled()
+  })
+
+  it("gives each device endpoint its own bucket", async () => {
+    // A shared bucket would let ~180 legitimate polls exhaust the issuance
+    // allowance for everyone behind the same NAT.
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      { params: Promise.resolve({ all: ["device", "code"] }) },
+    )
+
+    expect(rateLimitAuthRoute).toHaveBeenCalledWith(
+      expect.objectContaining({ route: "device/code" }),
+    )
+  })
+
+  it("allows a full 15-minute poll run without throttling the TV", async () => {
+    // 15 minutes at the advertised 5s interval is ~180 polls; the ceiling must
+    // sit above that or a well-behaved device throttles itself out.
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/device/token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      { params: Promise.resolve({ all: ["device", "token"] }) },
+    )
+
+    const call = rateLimitAuthRoute.mock.calls[0][0] as {
+      limit: number
+      windowMs: number
+    }
+    expect(call.limit).toBeGreaterThan((15 * 60) / 5)
+  })
+})
+
+describe("device sign-in continuation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+  })
+
+  async function signInWith(oauthQuery: string): Promise<string | undefined> {
+    authPost.mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { "set-cookie": "better-auth.session_token=abc" },
+      }),
+    )
+
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "viewer@example.com",
+          password: "correct-horse",
+          oauth_query: oauthQuery,
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "email"] }) },
+    )
+
+    const forwarded = authPost.mock.calls[0]?.[0] as Request | undefined
+    if (!forwarded) return undefined
+    return (JSON.parse(await forwarded.text()) as { callbackURL?: string })
+      .callbackURL
+  }
+
+  it("returns a device sign-in to the approval page", async () => {
+    // Reverting the device branch sends this to /api/auth/oauth2/authorize,
+    // which strands the viewer away from the code they were approving.
+    await expect(signInWith("user_code=0194507302&prompt=login")).resolves.toBe(
+      "http://localhost:3004/device?user_code=0194507302",
+    )
+  })
+
+  it("normalizes a pasted code before returning to the page", async () => {
+    await expect(signInWith("user_code=019-450-7302")).resolves.toBe(
+      "http://localhost:3004/device?user_code=0194507302",
+    )
+  })
+
+  it("leaves an ordinary OAuth sign-in on the authorize hop", async () => {
+    // Anti-vacuous companion: proves the device branch is selective rather than
+    // capturing every continuation.
+    await expect(
+      signInWith(
+        "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback&scope=openid",
+      ),
+    ).resolves.toContain("/api/auth/oauth2/authorize")
+  })
+
+  it("does not let a user code divert an OAuth authorize continuation", async () => {
+    // Appending user_code= to a legitimate /login?client_id=… link must not
+    // redirect that sign-in to the approval page.
+    await expect(
+      signInWith(
+        "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback&user_code=0194507302",
+      ),
+    ).resolves.toContain("/api/auth/oauth2/authorize")
+  })
+
+  it("ignores a user code that normalizes to nothing", async () => {
+    // Falls back to the ordinary continuation rather than sending the viewer to
+    // an approval page for a code that cannot exist.
+    await expect(signInWith("user_code=!!!")).resolves.not.toContain("/device?")
+  })
+
+  it("carries nothing but the code across to the page", async () => {
+    // The URL is rebuilt rather than forwarded, so an injected parameter cannot
+    // ride along into the approval page.
+    const url = await signInWith(
+      "user_code=0194507302&redirectTo=https%3A%2F%2Fevil.example&prompt=login",
+    )
+    expect(url).toBe("http://localhost:3004/device?user_code=0194507302")
+    expect(url).not.toContain("evil.example")
+  })
+})
+
+describe("device responses are never cached", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+  })
+
+  /**
+   * The plugin passes Cache-Control to ctx.json, but better-call@1.3.5 drops
+   * per-response headers (it shadows its own `headers` binding while copying
+   * them). Measured: /device/token returned only content-type while its body
+   * carried an access token. RFC 6749 §5.1 makes no-store a MUST there, so the
+   * guarantee is enforced here instead of depending on the dependency.
+   */
+  it("sets no-store on the token response, which carries bearer tokens", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ access_token: "jfp_at_x", refresh_token: "jfp_rt_y" }),
+    )
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/device/token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      { params: Promise.resolve({ all: ["device", "token"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(response.headers.get("pragma")).toBe("no-cache")
+    // The body must survive being rewrapped.
+    await expect(response.json()).resolves.toMatchObject({
+      access_token: "jfp_at_x",
+    })
+  })
+
+  it("sets no-store on the issuance response, which carries a live user code", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ user_code: "0194507302" }))
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      { params: Promise.resolve({ all: ["device", "code"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("sets no-store on the status lookup", async () => {
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/device/status?user_code=1"),
+      { params: Promise.resolve({ all: ["device", "status"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+  })
+
+  it("leaves non-device responses alone", async () => {
+    // Anti-vacuous companion: proves this is scoped to the device lane rather
+    // than a blanket rewrite of every auth response.
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/ok"),
+      { params: Promise.resolve({ all: ["ok"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBeNull()
+  })
+})
