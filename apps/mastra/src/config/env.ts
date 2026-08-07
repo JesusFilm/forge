@@ -444,6 +444,13 @@ const envSchema = z.object({
   // Basic auth (`base64(public:secret)`) — Langfuse's documented auth scheme.
   LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
   LANGFUSE_SECRET_KEY: z.string().min(1).optional(),
+  // Default-off gate for Langfuse tracing (feat-321). Unlike the prompt
+  // helper (a read), tracing WRITES raw seeker conversation content to
+  // Langfuse, so credential presence alone must never turn it on — the
+  // key pair was provisioned for prompt reads (feat-296) and already
+  // exists in Railway. Only the literal string "true" enables the
+  // exporter; unset/"false" keeps today's local-DuckDB-only posture.
+  LANGFUSE_TRACING_ENABLED: z.string().optional(),
   // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
   // this single-attempt prompt-fetch timeout must stay strictly inside any
   // future chat-turn budget. The 10_000 cap keeps even the widest override
@@ -822,6 +829,9 @@ export const env = envSchema.parse({
   LANGFUSE_BASE_URL: emptyToUndefined(process.env.LANGFUSE_BASE_URL),
   LANGFUSE_PUBLIC_KEY: emptyToUndefined(process.env.LANGFUSE_PUBLIC_KEY),
   LANGFUSE_SECRET_KEY: emptyToUndefined(process.env.LANGFUSE_SECRET_KEY),
+  LANGFUSE_TRACING_ENABLED: emptyToUndefined(
+    process.env.LANGFUSE_TRACING_ENABLED,
+  ),
   LANGFUSE_TIMEOUT_MS: emptyToUndefined(process.env.LANGFUSE_TIMEOUT_MS),
   LANGFUSE_USER_AGENT: emptyToUndefined(process.env.LANGFUSE_USER_AGENT),
   LANGFUSE_MAX_RESPONSE_BYTES: emptyToUndefined(
@@ -1280,6 +1290,18 @@ export function isSeekerVideoEnabled(): boolean {
  */
 export function isAiGatewaySeekerEnabled(): boolean {
   return env.AI_GATEWAY_SEEKER_ENABLED === "true"
+}
+
+/**
+ * Whether seeker traces are exported to Langfuse (feat-321). Default-off:
+ * tracing writes RAW conversation content off the box, so it must be an
+ * explicit operator decision — the Langfuse key pair already present for
+ * prompt reads (feat-296) must never enable it by itself. Uses the repo's
+ * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * truthiness — `"false"` (or any other value) keeps tracing off.
+ */
+export function isLangfuseTracingEnabled(): boolean {
+  return env.LANGFUSE_TRACING_ENABLED === "true"
 }
 
 /**
