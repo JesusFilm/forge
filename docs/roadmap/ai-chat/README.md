@@ -13,10 +13,10 @@ from the main DS Year 1 roadmap.
 
 ## Status (August 7, 2026)
 
-- **Total tickets:** 53
+- **Total tickets:** 54
 - ✅ **Complete:** 44
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 9
+- 🔵 **Not started:** 10
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -76,3 +76,4 @@ from the main DS Year 1 roadmap.
 | [feat-337](feat-337-per-user-erasure-capability.md)                    | Per-user erasure across Langfuse traces and ai_chat Postgres                 | jian wei | P2       | 2026-08-10 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-338](feat-338-seeker-eval-whole-prompt-alignment-audit.md)       | Seeker eval whole-prompt alignment audit                                     | jaco     | P1       | 2026-08-07 | 1    | ✅ complete    | [#1856](https://github.com/JesusFilm/forge/pull/1856)                                                        |
 | [feat-339](feat-339-seeker-public-release-register.md)                 | Seeker public-release readiness register (living decision capture)           | jian wei | P1       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-340](feat-340-seeker-eval-experiment-workflow.md)                | Seeker eval experiment workflow                                              | jaco     | P2       | 2026-08-17 | 5    | 🔵 not-started | —                                                                                                            |
