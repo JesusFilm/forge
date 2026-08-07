@@ -53,6 +53,23 @@ export function nextBatchAction(
  * queued, or one an in-flight transfer owns (downloading/paused). A downloaded
  * copy IS queueable — the pump swaps it to the new choice at its turn.
  */
+/**
+ * Whether an empty-queue pump wake should release the occupancy scope. False
+ * for an already-empty scope: the pump wakes on every records change, so an
+ * unguarded release would emit a no-op `batch.pump` log row per wake.
+ */
+export function shouldReleaseBatchScope(
+  records: Readonly<Record<string, OfflineDownloadRecord>>,
+  batchSlugs: ReadonlySet<string>,
+): boolean {
+  if (batchSlugs.size === 0) return false
+  return !Object.values(records).some(
+    (record) =>
+      batchSlugs.has(record.videoSlug) &&
+      (record.state === "downloading" || record.state === "paused"),
+  )
+}
+
 export function canQueueBatchDownload(
   records: Readonly<Record<string, OfflineDownloadRecord>>,
   queue: readonly StartDownloadRequest[],

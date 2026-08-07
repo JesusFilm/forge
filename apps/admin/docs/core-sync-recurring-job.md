@@ -6,12 +6,10 @@ calls `runSync(syncPrisma, ...)`.
 
 ## Required Env
 
-- `DATABASE_URL` - admin app database.
-- `DATABASE_URL_SYNC` - dedicated Prisma pool for Core Sync. Production should
-  not reuse the failed tiny full-sync posture (`connection_limit=2` with a
-  short acquire timeout). Start around `connection_limit=5&pool_timeout=60`,
-  then tune against total Postgres capacity, admin web replica count, workflow
-  runtime pool usage, and expected operator access.
+- `DATABASE_URL` - plain admin app Postgres URL. Prisma pool configuration
+  lives in `src/db/client.ts` through `@prisma/adapter-pg`: the main Admin
+  client uses a 10-connection pool, and `syncPrisma` uses a separate
+  5-connection Core Sync pool with a longer connection timeout.
 - `WORKFLOW_TARGET_WORLD` - set to `@workflow/world-postgres` in Railway.
 - `WORKFLOW_RUNNER_ENABLED` - set to `true` only on the dedicated admin worker
   service that should execute Postgres World jobs. Leave unset or `false` on
@@ -88,14 +86,13 @@ calls `runSync(syncPrisma, ...)`.
 ## Full-Sync Pool Resilience Notes
 
 Before rerunning a production full sync after a pool-timeout incident, verify
-the worker's effective sync URL shape without printing the URL or credentials.
+the worker's effective sync pool shape without printing the URL or credentials.
 Record only the sanitized facts operators need:
 
-- whether `DATABASE_URL_SYNC` is set on the worker service,
-- the sync `connection_limit`,
-- the sync `pool_timeout`,
+- the configured `syncPrisma` pool size,
+- the configured `syncPrisma` connection timeout,
 - worker process count and `WORKFLOW_POSTGRES_WORKER_CONCURRENCY`,
-- admin web replica count and main `DATABASE_URL` pool size,
+- admin web replica count and main Prisma pool size,
 - and the remaining database connection headroom.
 
 The `videos` phase is the longest Core-owned write phase. During a full run,

@@ -10,9 +10,15 @@
  *      `result` frame, plus a `grounded` flag.
  *
  * Wire frames (one SSE event each):
- *   - token_delta  { text }                                 — per stream chunk
- *   - result       { text, sources, grounded, producedBy }  — terminal success
- *   - error        { reason }                                — terminal failure
+ *   - token_delta  { text }                                          — per stream chunk
+ *   - result       { text, sources, grounded, producedBy, video? }   — terminal success
+ *   - error        { reason }                                        — terminal failure
+ *
+ * `video` (feat-327) is the OPTIONAL declared-video attachment: present only
+ * when this turn's model both searched and declared a pick that survives the
+ * projection gates, OMITTED (never null) otherwise. The projections and the
+ * declaration ladder live in `./seeker-turn-projection.ts` (feat-329, plan
+ * P8), shared with the replay path so the two cannot drift.
  *
  * Defense-in-depth gates, checked in order: the shared lane admission
  * preamble (`refuseUnlessLaneAdmitted`, feat-283 — enable flag (KTD7) → 404,
@@ -46,6 +52,16 @@ import {
   type AiChatOwnershipMemory,
 } from "../ai-chat-thread-ownership"
 import { aiChatMemoryConfigFor, getAiChatMemory } from "../ai-chat-memory"
+// The projections + declaration ladder live in the shared module (feat-329,
+// plan P8) so the REPLAY path resolves attachments identically. This route
+// owns only the adapter down to `SeekerToolChunk` and the operator logging.
+import {
+  resolveTurnAttachments,
+  type SeekerToolChunk,
+  type SeekerTurnAttachments,
+  type SeekerWireSource,
+  type SeekerWireVideo,
+} from "./seeker-turn-projection"
 
 // Narrow structural surface of the seeker agent's streaming API (avoids
 // fighting the generic Agent.stream signature; the runtime contract is
@@ -113,16 +129,6 @@ const SEEKER_AGENT_ID = "seekerAgent"
  * `resourceId` optional to callers while satisfying the runtime memory guard.
  */
 export const SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"
-const RETRIEVE_ANSWER_TOOL_NAME = "retrieveAnswer"
-
-/** A single source as projected onto the wire (KTD4 allowlist). */
-type SeekerWireSource = {
-  sourceName: string
-  title: string | null
-  url: string
-  score: number
-  snippet: string
-}
 
 function sseFrame(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -161,55 +167,48 @@ function isSeekerBody(
 }
 
 /**
- * Project a single retrieveAnswer source onto the wire field-by-field (KTD4).
- * Never spreads — a future field added to the tool's source shape cannot
- * silently widen the wire. `snippet` is the tool's already-capped `text`.
- * Returns null when the candidate is not a well-shaped source object.
+ * Send-path adapter (plan P8): normalize this turn's `toolResults` chunks —
+ * `{ payload: { toolName, result } }` — into the shared module's
+ * `{ toolName, result }`. Chunks with no string tool name are dropped; the
+ * replay route supplies its own adapter over its own stored shape.
  */
-function projectSource(candidate: unknown): SeekerWireSource | null {
-  if (typeof candidate !== "object" || candidate === null) return null
-  const s = candidate as {
-    text?: unknown
-    sourceName?: unknown
-    title?: unknown
-    url?: unknown
-    score?: unknown
+function toTurnChunks(chunks: SeekerToolResultChunk[]): SeekerToolChunk[] {
+  const normalized: SeekerToolChunk[] = []
+  for (const chunk of chunks) {
+    const toolName = chunk?.payload?.toolName
+    if (typeof toolName === "string") {
+      normalized.push({ toolName, result: chunk.payload?.result })
+    }
   }
-  if (typeof s.sourceName !== "string") return null
-  if (typeof s.url !== "string") return null
-  if (typeof s.score !== "number") return null
-  return {
-    sourceName: s.sourceName,
-    title: typeof s.title === "string" ? s.title : null,
-    url: s.url,
-    score: s.score,
-    snippet: typeof s.text === "string" ? s.text : "",
-  }
+  return normalized
 }
 
 /**
- * Extract `{ sources, grounded }` from the resolved tool results. Reads the
- * LAST `retrieveAnswer` chunk, projects its `result.sources` through the
- * allowlist, and sets `grounded` only when that result's `status === "ok"`.
- * Pure + total: any shape mismatch degrades to `{ sources: [], grounded:false }`.
+ * Emit this turn's operator lines from the resolved attachments (feat-327).
+ *
+ * The declaration ladder and the E7 signal are RESOLVED in the shared module
+ * and LOGGED here, because only the live path should speak: replay re-resolves
+ * every stored turn on every thread open, and those rejections were already
+ * logged when the turn ran.
+ *
+ * `video_turn_missing_retrieval` is the E7 signal — a turn that used a video
+ * tool but never called `retrieveAnswer`, answering a faith question with no
+ * grounding and no citations. The plan REQUIRES measuring that skip frequency
+ * on the shipped shape; `grounded` on the wire cannot substitute, since it is
+ * also false when retrieval ran and returned empty.
+ *
+ * Enum-only: video ids are catalog data and acceptable, titles and query text
+ * are not.
  */
-function extractSources(chunks: SeekerToolResultChunk[]): {
-  sources: SeekerWireSource[]
-  grounded: boolean
-} {
-  let last: { result?: unknown } | undefined
-  for (const chunk of chunks) {
-    if (chunk?.payload?.toolName === RETRIEVE_ANSWER_TOOL_NAME) {
-      last = chunk.payload
-    }
+function logTurnAttachments(attachments: SeekerTurnAttachments): void {
+  if (attachments.videoRejection) {
+    console.warn(
+      `[seeker-route] event=video_feature_invalid_declaration reason=${attachments.videoRejection}`,
+    )
   }
-  if (!last) return { sources: [], grounded: false }
-  const result = last.result as { status?: unknown; sources?: unknown }
-  const rawSources = Array.isArray(result?.sources) ? result.sources : []
-  const sources = rawSources
-    .map(projectSource)
-    .filter((s): s is SeekerWireSource => s !== null)
-  return { sources, grounded: result?.status === "ok" }
+  if (attachments.ungroundedVideoTurn) {
+    console.warn("[seeker-route] event=video_turn_missing_retrieval")
+  }
 }
 
 export async function handleSeekerRouteRequest({
@@ -336,16 +335,25 @@ export async function handleSeekerRouteRequest({
           }
         }
 
-        // Source extraction is isolated: a rejected `toolResults` promise (or a
-        // malformed shape) AFTER a successful textStream drain degrades to an
-        // ungrounded `result` — never an `error` frame for an otherwise-good
-        // generation (KTD4).
+        // Tool-result extraction is isolated: a rejected `toolResults` promise
+        // (or a malformed shape) AFTER a successful textStream drain degrades
+        // to an ungrounded, video-less `result` — never an `error` frame for an
+        // otherwise-good generation (KTD4, and plan D4 for the video half).
         let sources: SeekerWireSource[] = []
         let grounded = false
+        let video: SeekerWireVideo | undefined
         try {
-          const extracted = extractSources(await output.toolResults)
-          sources = extracted.sources
-          grounded = extracted.grounded
+          const chunks = await output.toolResults
+          // feat-329: projections + ladder come from the shared module so the
+          // replay path resolves identically; this route owns only the adapter
+          // and the operator logging. Naturally inert with SEEKER_VIDEO_ENABLED
+          // off — the tools are not registered, so no searchVideos/featureVideo
+          // chunks exist and no second flag read can drift from the agent's.
+          const attachments = resolveTurnAttachments(toTurnChunks(chunks))
+          sources = attachments.sources
+          grounded = attachments.grounded
+          video = attachments.video
+          logTurnAttachments(attachments)
         } catch {
           console.warn(
             "[seeker-route] event=tool_results_extraction_failed reason=extraction_failed",
@@ -358,6 +366,8 @@ export async function handleSeekerRouteRequest({
             sources,
             grounded,
             producedBy: SEEKER_AGENT_ID,
+            // OMITTED, never null, when nothing valid was declared (plan D9).
+            ...(video ? { video } : {}),
           }),
         )
       } catch {

@@ -67,6 +67,17 @@ export const watchCanonicalOriginEnvSchema = httpOriginEnvSchema(
   "WATCH_CANONICAL_ORIGIN",
 )
 
+export const watchSearchPrimaryModeEnvSchema = z
+  .enum(["DEFAULT", "MODERN"])
+  .optional()
+  .default("MODERN")
+
+export const watchSearchDefaultShadowEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("true")
+  .transform((value) => value === "true")
+
 /**
  * Shared schema fragment for env vars representing a positive-int
  * concurrency cap (e.g. `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so
@@ -168,12 +179,10 @@ export const env = createEnv({
   server: {
     // Unit 2 — Prisma / Postgres
     //
-    // DATABASE_URL: main pool. Recommend `?connection_limit=10&pool_timeout=20`.
-    // DATABASE_URL_SYNC: dedicated pool for Core sync workflow. Production
-    // should start around `?connection_limit=5&pool_timeout=60`, then tune
-    // against total Postgres capacity — see src/db/client.ts.
+    // DATABASE_URL: plain Postgres connection URL. Prisma pool configuration
+    // lives in src/db/client.ts via @prisma/adapter-pg so the same URL remains
+    // compatible with libpq tools such as pg_dump, psql, and pg_restore.
     DATABASE_URL: z.string().url(),
-    DATABASE_URL_SYNC: z.string().url().optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -212,6 +221,13 @@ export const env = createEnv({
     WATCH_CANONICAL_ORIGIN: watchCanonicalOriginEnvSchema
       .optional()
       .default(DEFAULT_WATCH_CANONICAL_ORIGIN),
+    // Canonical browser Watch requests omit GraphQL mode selection. Admin
+    // applies these controls per request so cached or already-hydrated pages
+    // cannot bypass a DEFAULT rollback. Other omitted-mode callers retain the
+    // public GraphQL DEFAULT contract.
+    WATCH_SEARCH_PRIMARY_MODE: watchSearchPrimaryModeEnvSchema,
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      watchSearchDefaultShadowEnabledEnvSchema,
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
@@ -578,7 +594,6 @@ export const env = createEnv({
     DD_ENV: datadogServerEnvFallback(),
     DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
     DD_VERSION: datadogVersionFallback(),
-    DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
     ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
     AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),
@@ -626,6 +641,11 @@ export const env = createEnv({
     WATCH_CANONICAL_ORIGIN:
       emptyToUndefined(process.env.WATCH_CANONICAL_ORIGIN) ??
       DEFAULT_WATCH_CANONICAL_ORIGIN,
+    WATCH_SEARCH_PRIMARY_MODE:
+      emptyToUndefined(process.env.WATCH_SEARCH_PRIMARY_MODE) ?? "MODERN",
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      emptyToUndefined(process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED) ??
+      "true",
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),

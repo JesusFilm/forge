@@ -1,4 +1,8 @@
-import { canQueueBatchDownload, nextBatchAction } from "../batchDownloadQueue"
+import {
+  canQueueBatchDownload,
+  nextBatchAction,
+  shouldReleaseBatchScope,
+} from "../batchDownloadQueue"
 import type { OfflineDownloadRecord } from "../offlineManifest"
 import type { StartDownloadRequest } from "../downloadLifecycle"
 
@@ -151,5 +155,32 @@ describe("canQueueBatchDownload (batch-queue acceptance gate)", () => {
   it("accepts re-queueing after a failed attempt (failed is not live)", () => {
     const records = asMap(rec("e1", "failed"))
     expect(canQueueBatchDownload(records, [], "e1")).toBe(true)
+  })
+})
+
+describe("shouldReleaseBatchScope (empty-queue pump wake)", () => {
+  it("empty scope → no release (the pump wakes per records change; an unguarded release logs a no-op row every wake)", () => {
+    expect(
+      shouldReleaseBatchScope(asMap(rec("v1", "downloaded")), new Set()),
+    ).toBe(false)
+  })
+
+  it("drained scope (all members terminal) → release", () => {
+    const records = asMap(rec("e1", "downloaded"), rec("e2", "failed"))
+    expect(shouldReleaseBatchScope(records, new Set(["e1", "e2"]))).toBe(true)
+  })
+
+  it("scope with a downloading member → hold", () => {
+    const records = asMap(rec("e1", "downloading"), rec("e2", "downloaded"))
+    expect(shouldReleaseBatchScope(records, new Set(["e1", "e2"]))).toBe(false)
+  })
+
+  it("scope with a paused member → hold (Pause all keeps the slot)", () => {
+    const records = asMap(rec("e1", "paused"))
+    expect(shouldReleaseBatchScope(records, new Set(["e1"]))).toBe(false)
+  })
+
+  it("scoped slug whose record is gone → release (deleted records hold nothing)", () => {
+    expect(shouldReleaseBatchScope({}, new Set(["e1"]))).toBe(true)
   })
 })

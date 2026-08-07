@@ -13,13 +13,23 @@ import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { datadogLog } from "../../src/lib/datadog"
+import { datadogLog, reportDatadogAction } from "../../src/lib/datadog"
 import {
+  WATCH_SEARCH_LOG_MESSAGE,
+  buildWatchSearchLogAttributes,
   generateSearchRequestId,
-  parseSearchErrorCode,
   resolveWatchSearchOutcome,
 } from "../../src/lib/watchSearchLog"
 import {
+  WATCH_SEARCH_RESULT_CLICKED_ACTION,
+  buildWatchSearchResultClickContext,
+} from "../../src/lib/watchSearchRum"
+import {
+  recordResultClicked,
+  recordResultsViewed,
+} from "../../src/lib/watchSearchEvents"
+import {
+  MAX_QUERY_LENGTH,
   buildWatchSearchInput,
   mapWatchSearchResponse,
   parseSearchError,
@@ -47,7 +57,6 @@ import {
   TEXT_SECONDARY,
 } from "../../src/lib/color"
 
-const MAX_QUERY_LENGTH = 200
 const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
@@ -94,14 +103,38 @@ export default function DiscoverScreen() {
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
-      // Join the click back to its originating search (result_clicked ↔
-      // watch_search share search_request_id); content_id = slug so the detail
-      // route's content.resolution joins the same journey.
-      datadogLog.info("search.result_clicked", {
-        search_request_id: searchRequestIdRef.current,
-        position: resultsRef.current.indexOf(result),
-        content_id: result.slug,
-      })
+      // Telemetry must never break the tap: the RUM context builder runs as
+      // an argument, outside reportDatadogAction's own never-throw wrapper,
+      // so guard the whole block (mirrors sendEvent's builder-inside-try).
+      try {
+        // The click joins its search via the shared search_request_id; the RUM
+        // context's result_slug joins the detail route's content journey.
+        const position = resultsRef.current.indexOf(result) + 1
+        const requestId = searchRequestIdRef.current
+        // Web-verbatim dedup (KTD3): one requestId:resultId:position triple
+        // fires BOTH the RUM action and the admin event (SearchOverlay's
+        // shared gate).
+        const clickKey = `${requestId}:${result.id}:${position}`
+        if (!reportedClicksRef.current.has(clickKey)) {
+          reportedClicksRef.current.add(clickKey)
+          reportDatadogAction(
+            WATCH_SEARCH_RESULT_CLICKED_ACTION,
+            buildWatchSearchResultClickContext(result, {
+              position,
+              searchRequestId: requestId,
+            }),
+          )
+          void recordResultClicked({
+            requestId,
+            resultId: result.id,
+            resultType: result.type,
+            position,
+            visibleResultIds: resultsRef.current.map((r) => r.id),
+          })
+        }
+      } catch {
+        // Navigation below must run regardless.
+      }
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
         router.push(`/experience/${encodeURIComponent(result.slug)}`)
@@ -143,6 +176,10 @@ export default function DiscoverScreen() {
   // Current search's correlation id + a live results mirror, both read by
   // handleSelectResult to attribute a click to its search without dep churn.
   const searchRequestIdRef = useRef("")
+  // Send-once ledgers for admin events (KTD3, web-verbatim): clicks keyed
+  // requestId:resultId:position so a re-listed item re-fires; views per request.
+  const reportedClicksRef = useRef<Set<string>>(new Set())
+  const reportedViewedRef = useRef<Map<string, Set<string>>>(new Map())
   // Term the VISIBLE results belong to. loadMore must page this, not the live
   // input, which can drift ahead during the debounce window.
   const submittedTermRef = useRef("")
@@ -256,6 +293,24 @@ export default function DiscoverScreen() {
     })
   }, [results.length, fadeAnim, scaleAnim])
 
+  // Impressions are page-arrival (R8): only the two success paths call this,
+  // and the per-request Set drops already-reported ids, so re-renders and
+  // replays post nothing further (AE4). Failures never reach it (F2).
+  const reportViewed = useCallback((addedResults: readonly SearchResult[]) => {
+    const requestId = searchRequestIdRef.current
+    const recorded =
+      reportedViewedRef.current.get(requestId) ?? new Set<string>()
+    reportedViewedRef.current.set(requestId, recorded)
+    const newIds = addedResults
+      .map((result) => result.id)
+      .filter((id) => !recorded.has(id))
+    if (newIds.length === 0) return
+    for (const id of newIds) {
+      recorded.add(id)
+    }
+    void recordResultsViewed({ requestId, visibleResultIds: newIds })
+  }, [])
+
   const search = useCallback(
     async (q: string) => {
       const trimmed = q.trim().slice(0, MAX_QUERY_LENGTH)
@@ -267,6 +322,10 @@ export default function DiscoverScreen() {
       // finally can no longer fire, so release both flags here or "Load more"
       // stays stuck on "Loading..." for the rest of the session.
       releaseLoadingMore()
+      // Viewed map cleared per search only bounds growth (keys embed the
+      // request id, KTD3). The click ledger is NOT cleared — clearing it
+      // would reopen the duplicate-click window while a search is in flight.
+      reportedViewedRef.current.clear()
       // Retire the pager before any await — the footer stays mounted and
       // hit-testable through animateOut's fade, and a tap there would page the
       // old term onto whatever replaces it.
@@ -309,9 +368,10 @@ export default function DiscoverScreen() {
         SKELETON_DELAY_MS,
       )
 
-      // One correlation id per search, joined by result_clicked (R33/R35).
+      // One correlation id per search (R33/R35). The ref adopts it only on
+      // success, so clicks always attribute to the search whose results are
+      // on screen — a failed search leaves the previous id in place.
       const searchRequestId = generateSearchRequestId()
-      searchRequestIdRef.current = searchRequestId
       const startedAt = Date.now()
 
       try {
@@ -336,6 +396,11 @@ export default function DiscoverScreen() {
           trimmed,
           0,
         )
+        // Adopt admin's echo BEFORE any signal fires: a malformed client id is
+        // silently substituted server-side, and signals keyed to ours would
+        // join to nothing (KTD1). Failures get no echo; the minted id stays.
+        const adoptedRequestId = page.requestId ?? searchRequestId
+        searchRequestIdRef.current = adoptedRequestId
         submittedTermRef.current = trimmed
         submittedRequestIdRef.current = thisRequest
         batchStartRef.current = 0
@@ -344,18 +409,21 @@ export default function DiscoverScreen() {
         setNextOffset(page.nextOffset)
         setResultsKey((k) => k + 1)
 
-        const { outcome, result_count } = resolveWatchSearchOutcome({
-          term: trimmed,
-          results: page.results,
-        })
-        datadogLog.info("watch_search", {
-          term: trimmed,
-          outcome,
-          result_count,
-          latency_ms: Date.now() - startedAt,
-          request_type: "initial",
-          search_request_id: searchRequestId,
-        })
+        datadogLog.info(
+          WATCH_SEARCH_LOG_MESSAGE,
+          buildWatchSearchLogAttributes({
+            outcome: resolveWatchSearchOutcome({ results: page.results }),
+            requestType: "search",
+            searchRequestId: adoptedRequestId,
+            query: trimmed,
+            offset: 0,
+            clientLatencyMs: Date.now() - startedAt,
+            latencyMs: page.latencyMs,
+            degraded: page.degraded,
+            responseSearchMode: page.searchMode,
+          }),
+        )
+        reportViewed(page.results)
 
         fadeAnim.setValue(0)
         scaleAnim.setValue(0.97)
@@ -381,13 +449,20 @@ export default function DiscoverScreen() {
         scaleAnim.setValue(1)
         setErrorSource("search")
         setError(parseSearchError(e))
-        // Rate-limit/auth reject as a 200-body GraphQL code, not a 429 (R34).
-        datadogLog.warn("watch_search_failed", {
-          term: trimmed,
-          code: parseSearchErrorCode(e),
-          request_type: "initial",
-          search_request_id: searchRequestId,
-        })
+        // warn, not error — two constraints: benign rate-limits share this
+        // path (R34), and error-level logs copy every attribute incl.
+        // watch_search.query into RUM errors, outside the R43 Logs posture.
+        datadogLog.warn(
+          WATCH_SEARCH_LOG_MESSAGE,
+          buildWatchSearchLogAttributes({
+            outcome: resolveWatchSearchOutcome({ results: null, error: e }),
+            requestType: "search",
+            searchRequestId,
+            query: trimmed,
+            offset: 0,
+            clientLatencyMs: Date.now() - startedAt,
+          }),
+        )
       } finally {
         if (requestIdRef.current === thisRequest) {
           if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -396,7 +471,14 @@ export default function DiscoverScreen() {
         }
       }
     },
-    [fadeAnim, scaleAnim, animateOut, results.length, releaseLoadingMore],
+    [
+      fadeAnim,
+      scaleAnim,
+      animateOut,
+      results.length,
+      releaseLoadingMore,
+      reportViewed,
+    ],
   )
 
   function handleChangeText(text: string) {
@@ -460,6 +542,10 @@ export default function DiscoverScreen() {
         term,
         nextOffset,
       )
+      // Visible count BEFORE this page appends: the generation guard above
+      // keeps the ref equal to the updater's prev, and unlike the updater it
+      // also exists on the empty page, where no updater runs.
+      const priorVisibleCount = resultsRef.current.length
       if (page.results.length > 0) {
         // Idempotent under a replayed updater: prev is the same list either way.
         setResults((prev) => {
@@ -478,28 +564,42 @@ export default function DiscoverScreen() {
       setHasMore(page.hasMore)
       setNextOffset(page.nextOffset)
 
-      const { outcome, result_count } = resolveWatchSearchOutcome({
-        term,
-        results: page.results,
-      })
-      datadogLog.info("watch_search", {
-        term,
-        outcome,
-        result_count,
-        latency_ms: Date.now() - startedAt,
-        request_type: "page",
-        search_request_id: searchRequestId,
-      })
+      datadogLog.info(
+        WATCH_SEARCH_LOG_MESSAGE,
+        buildWatchSearchLogAttributes({
+          outcome: resolveWatchSearchOutcome({ results: page.results }),
+          requestType: "load_more",
+          priorVisibleCount,
+          searchRequestId,
+          query: term,
+          // The offset REQUESTED: setNextOffset above can't rebind this
+          // render's const.
+          offset: nextOffset,
+          clientLatencyMs: Date.now() - startedAt,
+          latencyMs: page.latencyMs,
+          degraded: page.degraded,
+          responseSearchMode: page.searchMode,
+        }),
+      )
+      reportViewed(page.results)
     } catch (e: unknown) {
       if (requestIdRef.current !== thisRequest) return
       setErrorSource("page")
       setError(parseSearchError(e))
-      datadogLog.warn("watch_search_failed", {
-        term,
-        code: parseSearchErrorCode(e),
-        request_type: "page",
-        search_request_id: searchRequestId,
-      })
+      // warn, not error: R34 benign rate-limits + the R43 level constraint
+      // (see the search catch); no impressions on failure (F2).
+      datadogLog.warn(
+        WATCH_SEARCH_LOG_MESSAGE,
+        buildWatchSearchLogAttributes({
+          outcome: resolveWatchSearchOutcome({ results: null, error: e }),
+          requestType: "load_more",
+          priorVisibleCount: resultsRef.current.length,
+          searchRequestId,
+          query: term,
+          offset: nextOffset,
+          clientLatencyMs: Date.now() - startedAt,
+        }),
+      )
     } finally {
       // Only the owning generation, and not a page awaiting a reveal, releases
       // here; search() resets both flags unconditionally, and a page awaiting
@@ -509,7 +609,7 @@ export default function DiscoverScreen() {
         setLoadingMore(false)
       }
     }
-  }, [hasMore, nextOffset, releaseLoadingMore])
+  }, [hasMore, nextOffset, releaseLoadingMore, reportViewed])
 
   // The appended batch's first row has laid out — the results the tap asked for
   // are on screen, so the footer may finally stop saying Loading…

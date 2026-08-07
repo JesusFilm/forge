@@ -12,6 +12,7 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { LinkModal } from "../LinkModal"
 import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
+import { getResumePosition } from "../../lib/watchEvents/continueWatching"
 import { buildShareUrl } from "./detailsHelpers"
 import { WATCH_THEME } from "./watchDetailTheme"
 import type { ActionRowPill } from "./actionRowScrollGlide"
@@ -62,10 +63,38 @@ export function DetailsActionRow({
     return () => clearTimeout(id)
   }, [playPreferredFocus])
 
+  // Continue Watching: the saved resume point for this video, refreshed when
+  // the overlay closes so a re-press resumes from the JUST-watched position.
+  const [resumeAtSeconds, setResumeAtSeconds] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const id = video?.documentId
+    if (!id || state.isVisible) return
+    void getResumePosition(id).then((position) => {
+      if (!cancelled) setResumeAtSeconds(position)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [video?.documentId, state.isVisible])
+
   const handlePlay = () => {
     const hls = activeVariant?.hls
     if (!hls || !validateStreamingUrl(hls)) return
-    playVideo(hls, title ?? undefined, undefined)
+    // Identity rides along for anonymous watch-event capture (feat-322):
+    // admin Video documentId + the selected dub's documentId.
+    playVideo(
+      hls,
+      title ?? undefined,
+      undefined,
+      video?.documentId
+        ? {
+            videoId: video.documentId,
+            videoDubId: activeVariant?.documentId ?? null,
+          }
+        : undefined,
+      resumeAtSeconds ?? undefined,
+    )
   }
 
   // Share continuation URL → QR fallback: the public watch URL, validated

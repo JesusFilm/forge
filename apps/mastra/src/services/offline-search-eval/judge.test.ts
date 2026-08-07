@@ -55,6 +55,51 @@ describe("offline search eval judge", () => {
     expect(body.messages[1].content).toContain("Query: Jesus")
   })
 
+  it("scores one public result list with the absolute Watch rubric", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                rating: "useful",
+                rationale: "The result satisfies the felt-need query.",
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 9, completion_tokens: 4 },
+      }),
+    )
+    const judge = createOfflineSearchEvalJudge({
+      apiKey: "key",
+      model: "test-model",
+      fetchImpl,
+    })
+
+    await expect(
+      judge.judgePointwise({
+        query: "finding hope when life feels heavy",
+        locale: "en",
+        intent: "semantic-intent",
+        results: [],
+      }),
+    ).resolves.toEqual({
+      rating: "useful",
+      rationale: "The result satisfies the felt-need query.",
+      tokens: { input: 9, output: 4 },
+      model: "test-model",
+    })
+
+    const call = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit]
+    const body = JSON.parse(String(call[1].body))
+    expect(body.messages[0].content).toContain("absolute relevance")
+    expect(body.messages[1].content).toContain("Intent: semantic-intent")
+    expect(body.response_format.json_schema.name).toBe(
+      "offline_search_eval_pointwise_rating",
+    )
+  })
+
   it("rejects invalid model output", async () => {
     const judge = createOfflineSearchEvalJudge({
       apiKey: "key",

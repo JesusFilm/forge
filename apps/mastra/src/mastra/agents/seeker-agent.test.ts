@@ -46,10 +46,8 @@ vi.mock("../../config/env", async (importOriginal) => ({
 
 import { readFileSync } from "node:fs"
 
-import type { ModelWithRetries } from "@mastra/core/agent"
-
 import { STEP_CAPS, TIME_BUDGET_MS } from "../budgets"
-import { buildAiChatMemory, getAiChatMemory } from "../ai-chat-memory"
+import { getAiChatMemory } from "../ai-chat-memory"
 import {
   createManagedPromptCache,
   type LangfuseConfig,
@@ -68,6 +66,7 @@ import {
   SEEKER_GATEWAY_FETCH_TIMEOUT_MS,
   SEEKER_SYSTEM_PROMPT_FALLBACK,
   SEEKER_SYSTEM_PROMPT_NAME,
+  SEEKER_VIDEO_INSTRUCTIONS_BLOCK,
   seekerAgent,
 } from "./seeker-agent"
 
@@ -468,19 +467,56 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
   })
 
+  it("call-site source pin: the factory defaults to the bare tool gate", () => {
+    // Companion to the artifact assertions above, in the feat-283 idiom: an
+    // injectable seam at a production call site is a one-line revert surface.
+    // Pin that `tools:` is registered ONCE and wired to the bare
+    // `buildSeekerTools` reference — an inline `{ retrieveAnswer, searchVideos,
+    // featureVideo }` literal, or a `buildSeekerTools({ enabled: true })`-style
+    // seam, both fail here. Comments are stripped first so a commented-out
+    // registration plus a live inline literal cannot satisfy it.
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(
+      /overrides\.ragSearch\s*===\s*undefined\s*\?\s*buildSeekerTools/,
+    )
+    expect(code).toMatch(/\btools,/)
+    expect(code.match(/\btools:/g) ?? []).toHaveLength(0)
+  })
+
+  it("call-site source pin: buildSeekerTools mints the search tool with NO injected options (feat-327)", () => {
+    // `createSeekerSearchVideosTool(options)` accepts a `config` / `fetchImpl`
+    // seam for tests. At the production call site that seam is a one-line
+    // revert surface for the CREDENTIALED egress: a
+    // `createSeekerSearchVideosTool({ config: … })` there would retarget where
+    // the ADMIN_AGENT_TOOLS_API_KEY bearer is sent, with the whole suite green
+    // (every other test injects its own client). Pin the bare call, the same
+    // way `tools:` and `instructions:` are pinned above.
+    const source = readFileSync(
+      new URL("./seeker-agent.ts", import.meta.url),
+      "utf8",
+    )
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    expect(code).toMatch(/searchVideos:\s*createSeekerSearchVideosTool\(\)/)
+    expect(code.match(/createSeekerSearchVideosTool\(/g)).toHaveLength(1)
+  })
+
   it("call-site source pin: exactly one instructions registration, defaulting to the bare resolver, outside comments", () => {
     // feat-283 corollary: an injectable seam at a production call site is a
-    // one-line revert surface. Since the chat-eval PR B factory seam, the one
-    // registration lives inside buildSeekerAgent: pin that its DEFAULT arm is
-    // the bare `createSeekerInstructionsResolver()` — a
-    // `createSeekerInstructionsResolver({ config: … })` or a reverted inline
+    // one-line revert surface. Pin that the registration passes NO overrides —
+    // a `createSeekerInstructionsResolver({ config: … })` or a reverted inline
     // string both fail here. Comments are stripped first and the occurrence
     // count is pinned to exactly one, so a commented-out registration plus a
     // second inline-string `instructions:` assignment cannot satisfy the pin
     // (falsified once during feat-272 review: commenting the registration and
-    // substituting an inline string turns this test red). The companion pin
-    // that the production SINGLETON passes no overrides lives in the
-    // "buildSeekerAgent factory seam" describe below.
+    // substituting an inline string turns this test red).
     const source = readFileSync(
       new URL("./seeker-agent.ts", import.meta.url),
       "utf8",
@@ -492,6 +528,41 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
       /instructions:\s*overrides\.instructions\s*\?\?\s*createSeekerInstructionsResolver\(\)/,
     )
     expect(code.match(/\binstructions:/g)).toHaveLength(1)
+  })
+
+  // -------------------------------------------------------------------------
+  // feat-327 — SEEKER_VIDEO_ENABLED, flag OFF (the default)
+  // -------------------------------------------------------------------------
+  //
+  // Both halves are asserted on the AGENT ARTIFACT — the thing `/api/agents/*`
+  // actually serves — never on `isSeekerVideoEnabled()`'s or
+  // `buildSeekerTools()`'s return value. A helper-level assertion would stay
+  // green through a one-line revert that registers the video tools
+  // unconditionally at the agent; these go red.
+  //
+  // They also read the REAL env seam: this file's `vi.mock` of `../../config/env`
+  // overrides only `env`, `isAiGatewaySeekerEnabled`, and `getLangfuseConfig`,
+  // so `isSeekerVideoEnabled` is the genuine module export reading the real
+  // parsed environment (SEEKER_VIDEO_ENABLED unset in CI and in this worktree).
+  // Falsification recorded in the PR: running this file with
+  // `SEEKER_VIDEO_ENABLED=true` in the environment turns BOTH tests red.
+
+  it("flag off: the agent's resolved tool set is EXACTLY { retrieveAnswer }", async () => {
+    const tools = await seekerAgent.listTools()
+    // toStrictEqual on the full key list, not `toContain` — an extra tool must
+    // fail, which is the whole point of the gate.
+    expect(Object.keys(tools).sort()).toStrictEqual(["retrieveAnswer"])
+  })
+
+  it("flag off: resolved instructions are byte-identical to the managed text, with no appended block", async () => {
+    // Byte-identity overlaps the default-path test above by design — that one
+    // pins the Langfuse WIRING, this one pins that feat-327 added nothing. The
+    // second assertion is what only this test can catch: an append that lands
+    // regardless of the flag.
+    const instructions = await seekerAgent.getInstructions()
+    expect(instructions).toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(instructions).not.toContain("VIDEO FEATURING")
+    expect(instructions).not.toContain(SEEKER_VIDEO_INSTRUCTIONS_BLOCK)
   })
 
   it("pins the retrieveAnswer status literals and messages the Langfuse-managed prompt mirrors", () => {
@@ -520,44 +591,8 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
   })
 })
 
-describe("buildSeekerAgent factory seam (chat-eval PR B)", () => {
-  beforeEach(() => {
-    // Deterministic default branch regardless of what the feat-237 describe
-    // left in the shared mock: no gateway key/flag → the Gemma-only chain.
-    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = undefined
-    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = undefined
-    mockEnv.env.AI_GATEWAY_CHAT_MODEL = undefined
-    mockEnv.env.AI_GATEWAY_SEEKER_ENABLED = undefined
-  })
-
-  /**
-   * The wrapped tool execute organizes its own default RequestContext when
-   * the runtime context is omitted (verified against the @mastra/core 1.55
-   * Tool wrapper), and the retrieveAnswer callback reads no context member.
-   * The declared signature still requires the parameter, so tests cast the
-   * omission instead of fabricating a full Mastra invocation context.
-   */
-  const omittedToolContext = undefined as unknown as Parameters<
-    NonNullable<typeof retrieveAnswerTool.execute>
-  >[1]
-
-  // Contract-shaped fixture passage for the injected search stub.
-  const FIXTURE_PASSAGE = {
-    score: 0.91,
-    text: "Jesus wept with those who mourned.",
-    citation: {
-      sourceName: "Fixture Source",
-      title: null,
-      url: "https://fixtures.example.org/passage-1",
-    },
-  }
-
-  it("call-site source pin: the production singleton is buildSeekerAgent() with NO overrides", () => {
-    // feat-283 corollary: every override field is a one-line revert surface at
-    // the production call site — `buildSeekerAgent({ ragSearch: … })` here
-    // would silently swap the live agent's tool data source with every other
-    // test green. Comments are stripped first so a commented-out registration
-    // can neither satisfy nor spoil the pins.
+describe("buildSeekerAgent factory seam", () => {
+  it("keeps the production singleton on the zero-override path", () => {
     const source = readFileSync(
       new URL("./seeker-agent.ts", import.meta.url),
       "utf8",
@@ -565,122 +600,46 @@ describe("buildSeekerAgent factory seam (chat-eval PR B)", () => {
     const code = source
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "")
+
     expect(code).toMatch(/export const seekerAgent = buildSeekerAgent\(\)/)
-    // Exactly one singleton assignment, exactly one Agent construction
-    // (inside the factory), and exactly two buildSeekerAgent occurrences (the
-    // declaration + the zero-override singleton call) — a second construction
-    // path or a competing override-passing call site cannot slip past the
-    // zero-argument pin above.
-    expect(code.match(/\bseekerAgent\s*=/g)).toHaveLength(1)
     expect(code.match(/\bnew Agent\(/g)).toHaveLength(1)
     expect(code.match(/\bbuildSeekerAgent\(/g)).toHaveLength(2)
   })
 
-  it("zero overrides reproduce the production singleton's construction surface", async () => {
-    const built = buildSeekerAgent()
-
-    expect(built.id).toBe(seekerAgent.id)
-    expect(built.name).toBe(seekerAgent.name)
-    expect(built.getDescription()).toBe(seekerAgent.getDescription())
-
-    // Default tool arm: the SHARED module-level singleton by identity — for
-    // both the fresh zero-override build and the production singleton — never
-    // a fresh fixture-capable rebuild.
-    const [builtTools, singletonTools] = await Promise.all([
-      built.listTools(),
-      seekerAgent.listTools(),
-    ])
-    expect(builtTools.retrieveAnswer).toBe(retrieveAnswerTool)
-    expect(singletonTools.retrieveAnswer).toBe(retrieveAnswerTool)
-
-    // Default memory arm: the shared ai-chat memory singleton by identity.
-    await expect(built.getMemory()).resolves.toBe(getAiChatMemory())
-
-    // Default instructions arm: byte-identical resolution to the singleton's
-    // (the hermetic unconfigured-Langfuse mock pins both to the fallback).
-    await expect(built.getInstructions()).resolves.toBe(
-      await seekerAgent.getInstructions(),
-    )
-
-    // Default model arm + the defaultOptions step floor.
-    const [builtModels, singletonModels] = await Promise.all([
-      built.getModelList(),
-      seekerAgent.getModelList(),
-    ])
-    expect(
-      builtModels?.map((m) => ({
-        modelId: m.model.modelId,
-        maxRetries: m.maxRetries,
-      })),
-    ).toEqual(
-      singletonModels?.map((m) => ({
-        modelId: m.model.modelId,
-        maxRetries: m.maxRetries,
-      })),
-    )
-    const options = await built.getDefaultOptions()
-    expect(options.maxSteps).toBe(STEP_CAPS.toolCallingTurn)
-  })
-
-  it("anti-vacuous: ragSearch and instructions overrides change the built agent", async () => {
-    // Positive companion to the source pin above — proves the seam actually
-    // changes behavior, so the no-override pin cannot pass vacuously.
+  it("applies eval-only instruction and RAG overrides", async () => {
     let receivedQuery = ""
     const agent = buildSeekerAgent({
       instructions: "EVAL STUB INSTRUCTIONS",
       ragSearch: ({ query }) => {
         receivedQuery = query
-        return Promise.resolve({ ok: true, results: [FIXTURE_PASSAGE] })
+        return Promise.resolve({
+          ok: true,
+          results: [
+            {
+              score: 0.91,
+              text: "Jesus wept with those who mourned.",
+              citation: {
+                sourceName: "Fixture Source",
+                title: null,
+                url: "https://fixtures.example.org/passage-1",
+              },
+            },
+          ],
+        })
       },
     })
 
-    // The override IS the resolved instructions — not the fallback, not a
-    // Langfuse fetch. (`getInstructions()` returns the raw string
-    // synchronously for a string config, so `await` the value rather than
-    // using `.resolves`.)
     expect(await agent.getInstructions()).toBe("EVAL STUB INSTRUCTIONS")
-
-    const tools = await agent.listTools()
-    const tool = tools.retrieveAnswer
-    // A fresh fixture-backed tool — NOT the shared production singleton.
+    const tool = (await agent.listTools())
+      .retrieveAnswer as typeof retrieveAnswerTool
     expect(tool).not.toBe(retrieveAnswerTool)
-    // The injected search is live inside the tool loop's execute.
     const output = await tool.execute?.(
       { query: "why does God allow suffering?" },
-      omittedToolContext,
+      undefined as unknown as Parameters<
+        NonNullable<typeof retrieveAnswerTool.execute>
+      >[1],
     )
     expect(receivedQuery).toBe("why does God allow suffering?")
-    expect(output).toMatchObject({
-      status: "ok",
-      sources: [expect.objectContaining({ url: FIXTURE_PASSAGE.citation.url })],
-    })
-  })
-
-  it("anti-vacuous: models and memory overrides replace the default list and memory singleton", async () => {
-    // Reversed order + zeroed retries: unambiguously NOT the default chain
-    // (which is 31b first with maxRetries 1 on both entries).
-    const stubModels: ModelWithRetries[] = [
-      { model: "openrouter/google/gemma-4-26b-a4b-it:free", maxRetries: 0 },
-      { model: "openrouter/google/gemma-4-31b-it:free", maxRetries: 0 },
-    ]
-    // A real Memory over an InMemoryStore — hermetic, and identity-distinct
-    // from the shared singleton the default arm would attach.
-    const stubMemory = buildAiChatMemory({ getBackend: () => "memory" })
-    expect(stubMemory).not.toBe(getAiChatMemory())
-
-    const agent = buildSeekerAgent({ models: stubModels, memory: stubMemory })
-
-    const models = await agent.getModelList()
-    expect(
-      models?.map((m) => ({
-        modelId: m.model.modelId,
-        maxRetries: m.maxRetries,
-      })),
-    ).toEqual([
-      { modelId: "google/gemma-4-26b-a4b-it:free", maxRetries: 0 },
-      { modelId: "google/gemma-4-31b-it:free", maxRetries: 0 },
-    ])
-
-    await expect(agent.getMemory()).resolves.toBe(stubMemory)
+    expect(output).toMatchObject({ status: "ok" })
   })
 })

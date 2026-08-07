@@ -8,9 +8,13 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { env } from "@/config/env"
 import {
+  discoverVideoDbBackupFreshnessFromPages,
+  type VideoDbBackupFreshness,
+} from "@/services/video-db-backup/freshness"
+import {
   type VideoDbBackupProfile,
   VIDEO_DB_BACKUP_PROFILES,
-} from "@/scripts/video-db-backup"
+} from "@/services/video-db-backup/profiles"
 
 export const runtime = "nodejs"
 
@@ -18,12 +22,6 @@ const BACKUP_PREFIX = "admin-video-db-backups"
 const SIGNED_URL_TTL_SECONDS = 10 * 60
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 60_000
-
-type BackupObject = {
-  key: string
-  size?: number
-  lastModified?: Date
-}
 
 function unauthorized(): Response {
   return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -127,35 +125,30 @@ function createS3Client(config: ReturnType<typeof requireS3Config>): S3Client {
   })
 }
 
-async function findLatestBackupObject(
+async function discoverLatestBackupFreshness(
   s3: S3Client,
   bucket: string,
   profile: VideoDbBackupProfile,
-): Promise<BackupObject> {
+): Promise<VideoDbBackupFreshness> {
   const prefix = `${BACKUP_PREFIX}/${profile}/`
-  const response = await s3.send(
-    new ListObjectsV2Command({
-      Bucket: bucket,
-      Prefix: prefix,
-    }),
-  )
-  const latest = (response.Contents ?? [])
-    .filter((object) => object.Key?.endsWith(".dump"))
-    .sort(
-      (left, right) =>
-        (right.LastModified?.getTime() ?? 0) -
-        (left.LastModified?.getTime() ?? 0),
-    )[0]
-
-  if (!latest?.Key) {
-    throw new Error(`No backup objects found under ${prefix}`)
-  }
-
-  return {
-    key: latest.Key,
-    size: latest.Size,
-    lastModified: latest.LastModified,
-  }
+  return discoverVideoDbBackupFreshnessFromPages(async (continuationToken) => {
+    const response = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    )
+    return {
+      objects: (response.Contents ?? []).map((object) => ({
+        key: object.Key ?? "",
+        size: object.Size,
+        lastModified: object.LastModified,
+      })),
+      isTruncated: response.IsTruncated,
+      nextContinuationToken: response.NextContinuationToken,
+    }
+  })
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -191,7 +184,24 @@ export async function POST(request: Request): Promise<Response> {
 
   const s3 = createS3Client(config)
   try {
-    const latest = await findLatestBackupObject(s3, config.bucket, profile)
+    const freshness = await discoverLatestBackupFreshness(
+      s3,
+      config.bucket,
+      profile,
+    )
+    if (freshness.status === "not-found") {
+      return Response.json(
+        { error: "backup-not-found", profile, freshness },
+        { status: 404 },
+      )
+    }
+    if (freshness.status === "unavailable-metadata") {
+      return Response.json(
+        { error: "backup-freshness-unavailable", profile, freshness },
+        { status: 503 },
+      )
+    }
+
     const expiresAt = new Date(
       Date.now() + SIGNED_URL_TTL_SECONDS * 1000,
     ).toISOString()
@@ -199,7 +209,7 @@ export async function POST(request: Request): Promise<Response> {
       s3,
       new GetObjectCommand({
         Bucket: config.bucket,
-        Key: latest.key,
+        Key: freshness.key,
       }),
       { expiresIn: SIGNED_URL_TTL_SECONDS },
     )
@@ -208,7 +218,9 @@ export async function POST(request: Request): Promise<Response> {
       JSON.stringify({
         event: "video-db.backup.presigned",
         profile,
-        key: latest.key,
+        key: freshness.key,
+        freshness: freshness.status,
+        evaluatedAt: freshness.evaluatedAt,
         expiresAt,
       }),
     )
@@ -216,12 +228,15 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({
       url,
       profile,
-      key: latest.key,
+      key: freshness.key,
       expiresAt,
       expiresInSeconds: SIGNED_URL_TTL_SECONDS,
-      size: latest.size,
-      lastModified: latest.lastModified?.toISOString(),
+      size: freshness.size,
+      lastModified: freshness.lastModified,
+      freshness,
     })
+  } catch {
+    return serviceUnavailable("backup-storage-unavailable")
   } finally {
     s3.destroy()
   }

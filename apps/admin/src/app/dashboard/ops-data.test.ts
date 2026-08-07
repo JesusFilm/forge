@@ -7,6 +7,9 @@ const { userCount, userFindMany, managerMembershipFindMany } = vi.hoisted(
     managerMembershipFindMany: vi.fn(),
   }),
 )
+const { syncLockFindUnique } = vi.hoisted(() => ({
+  syncLockFindUnique: vi.fn(),
+}))
 const {
   searchTraceFindMany,
   watchSearchEventFindMany,
@@ -51,6 +54,9 @@ vi.mock("@/db/client", () => ({
     managerMembership: {
       findMany: (...args: unknown[]) => managerMembershipFindMany(...args),
     },
+    syncLock: {
+      findUnique: (...args: unknown[]) => syncLockFindUnique(...args),
+    },
     searchTrace: {
       findMany: (...args: unknown[]) => searchTraceFindMany(...args),
     },
@@ -67,12 +73,16 @@ vi.mock("@/db/client", () => ({
 }))
 
 vi.mock("@/config/env", () => mockEnv)
+vi.mock("@/services/core-sync/watermark", () => ({
+  getAllWatermarks: vi.fn(async () => []),
+}))
 
 import {
   buildUserTableRow,
   buildLanguageDiagnosticRow,
   loadEmbeddingsData,
   loadSettingsData,
+  loadSystemStatusData,
   loadWatchSearchAnalyticsData,
   loadUsersData,
   runSemanticSearch,
@@ -116,6 +126,8 @@ function mockEmbeddingCounts({
 
 beforeEach(() => {
   queryRaw.mockReset()
+  syncLockFindUnique.mockReset()
+  syncLockFindUnique.mockResolvedValue(null)
   searchTraceFindMany.mockReset()
   watchSearchEventFindMany.mockReset()
   videoFindMany.mockReset()
@@ -319,6 +331,45 @@ describe("embedding provider readiness", () => {
   })
 })
 
+describe("system status workflow incidents", () => {
+  it("shows stored workflow errors before start summaries for failed backup runs", async () => {
+    queryRaw.mockResolvedValueOnce([
+      {
+        id: "backup-run-1",
+        runtimeRunId: "runtime-run-1",
+        workflowKey: "video-db-backup",
+        trigger: "SCHEDULED",
+        status: "FAILED",
+        summary: "Video DB video-search backup workflow started by scheduler.",
+        error:
+          'pg_dump: error: invalid URI query parameter: "connection_limit"',
+        createdAt: new Date("2026-08-03T09:00:00.000Z"),
+        startedAt: new Date("2026-08-03T09:00:01.000Z"),
+        finishedAt: new Date("2026-08-03T09:00:02.000Z"),
+        durationMs: 1000,
+        skippedLock: null,
+      },
+    ])
+
+    const data = await loadSystemStatusData()
+
+    expect(data.incidents).toContainEqual(
+      expect.objectContaining({
+        title: "video-db-backup FAILED",
+        detail:
+          'pg_dump: error: invalid URI query parameter: "connection_limit"',
+        statusLabel: "FAILED",
+        statusTone: "danger",
+      }),
+    )
+    expect(data.incidents).not.toContainEqual(
+      expect.objectContaining({
+        detail: "Video DB video-search backup workflow started by scheduler.",
+      }),
+    )
+  })
+})
+
 describe("loadWatchSearchAnalyticsData", () => {
   it("displays target language names for stored language codes", async () => {
     searchTraceFindMany.mockResolvedValueOnce([
@@ -327,7 +378,7 @@ describe("loadWatchSearchAnalyticsData", () => {
         requestId: "req_en",
         queryText: "Jesus",
         locale: "en",
-        searchMode: "watch-search",
+        searchMode: "watch-search-typesense",
         resultCount: 0,
         outcome: "SUCCESS",
         metadata: {
@@ -338,6 +389,24 @@ describe("loadWatchSearchAnalyticsData", () => {
           results: [],
         },
         createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+      {
+        id: "trace_en_shadow",
+        requestId: "req_en",
+        queryText: "Jesus",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 7,
+        outcome: "SUCCESS",
+        metadata: {
+          traceRole: "shadow",
+          language: {
+            targetLanguageSlug: "en",
+            targetLanguageSource: "route_locale",
+          },
+          results: [{ id: "shadow_only_video", type: "video" }],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.100Z"),
       },
     ])
     watchSearchEventFindMany.mockResolvedValueOnce([])
@@ -364,8 +433,17 @@ describe("loadWatchSearchAnalyticsData", () => {
     )
     expect(data.selectedRequest).toEqual(
       expect.objectContaining({
+        searchMode: "watch-search-typesense",
         targetLanguageSlug: "en",
         targetLanguageLabel: "English",
+      }),
+    )
+    expect(data.requests).toHaveLength(1)
+    expect(videoFindMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: expect.arrayContaining(["shadow_only_video"]) },
+        }),
       }),
     )
   })
@@ -549,11 +627,13 @@ describe("loadWatchSearchAnalyticsData", () => {
     expect(searchTraceFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          searchMode: "watch-search",
+          searchMode: {
+            in: ["watch-search", "watch-search-typesense"],
+          },
           routeSource: "GRAPHQL",
           createdAt: { gte: new Date("2026-07-08T12:30:00.000Z") },
         }),
-        take: 100,
+        take: 1000,
       }),
     )
     expect(watchSearchEventFindMany).toHaveBeenCalledWith(
@@ -789,6 +869,135 @@ describe("loadWatchSearchAnalyticsData", () => {
     expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
       expect.objectContaining({ value: "0" }),
     )
+  })
+
+  it("paginates Watch search requests after grouping traces", async () => {
+    searchTraceFindMany.mockResolvedValueOnce(
+      Array.from({ length: 30 }, (_, index) => ({
+        id: `trace_${index + 1}`,
+        requestId: `req_${String(index + 1).padStart(2, "0")}`,
+        queryText: `query ${index + 1}`,
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "en",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date(
+          `2026-07-15T12:${String(index).padStart(2, "0")}:00.000Z`,
+        ),
+      })),
+    )
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      page: 2,
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.pagination).toEqual({
+      currentPage: 2,
+      pageSize: 25,
+      totalPages: 2,
+      totalRequests: 30,
+      startIndex: 25,
+      endIndex: 30,
+    })
+    expect(data.requests).toHaveLength(5)
+    expect(data.requests[0]?.requestId).toBe("req_26")
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "30" }),
+    )
+  })
+
+  it("collapses one-letter Watch search typing bursts before pagination", async () => {
+    searchTraceFindMany.mockResolvedValueOnce([
+      {
+        id: "trace_jesus",
+        requestId: "req_jesus",
+        queryText: "jesus",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 2,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:06.000Z"),
+      },
+      {
+        id: "trace_jesu",
+        requestId: "req_jesu",
+        queryText: "jesu",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 1,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:03.000Z"),
+      },
+      {
+        id: "trace_jes",
+        requestId: "req_jes",
+        queryText: "jes",
+        locale: "en",
+        searchMode: "watch-search",
+        resultCount: 0,
+        outcome: "SUCCESS",
+        metadata: {
+          language: {
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route_locale",
+          },
+          results: [],
+        },
+        createdAt: new Date("2026-07-15T12:00:00.000Z"),
+      },
+    ])
+    watchSearchEventFindMany.mockResolvedValueOnce([])
+
+    const data = await loadWatchSearchAnalyticsData({
+      window: "7d",
+      now: new Date("2026-07-15T12:30:00.000Z"),
+    })
+
+    expect(data.requests).toEqual([
+      expect.objectContaining({
+        requestId: "req_jesus",
+        queryText: "jesus",
+        collapsedRequestCount: 3,
+        collapsedQueryStart: "jes",
+        collapsedStartedAtIso: "2026-07-15T12:00:00.000Z",
+      }),
+    ])
+    expect(data.pagination).toEqual(
+      expect.objectContaining({
+        totalRequests: 1,
+        totalPages: 1,
+      }),
+    )
+    expect(data.metrics.find((metric) => metric.label === "Searches")).toEqual(
+      expect.objectContaining({ value: "3" }),
+    )
+    expect(
+      data.insights.find((insight) => insight.label === "Raw Query"),
+    ).toEqual(expect.objectContaining({ value: "2 hidden" }))
   })
 })
 

@@ -202,6 +202,20 @@ jobs:
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do
             cp "$f" "$(dirname "$f")/.env"
           done
+      - name: Install PostgreSQL 18 client for Admin snapshot contracts
+        if: matrix.service == '@forge/admin'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          source /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/18/bin:$PATH"
+          pg_dump --version | grep -F 'PostgreSQL) 18.'
+          pg_restore --version | grep -F 'PostgreSQL) 18.'
+          psql --version | grep -F 'PostgreSQL) 18.'
       - name: Test package
         run: pnpm --filter "${{ matrix.service }}" run --if-present test
 
@@ -251,5 +265,8 @@ jobs:
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do
             cp "$f" "$(dirname "$f")/.env"
           done
+          if [ "${{ matrix.service }}" = "@forge/admin" ]; then
+            cat apps/admin/.env.ci >> "$GITHUB_ENV"
+          fi
       - name: Build package
         run: pnpm --filter "${{ matrix.service }}" run --if-present build

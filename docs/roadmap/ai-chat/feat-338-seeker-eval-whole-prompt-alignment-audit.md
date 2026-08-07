@@ -1,5 +1,5 @@
 ---
-id: "feat-326"
+id: "feat-338"
 title: "Seeker eval whole-prompt alignment audit"
 owner: "jaco"
 priority: "P1"

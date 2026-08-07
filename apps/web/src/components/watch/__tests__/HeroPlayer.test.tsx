@@ -78,6 +78,10 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
   return { muxVideoMock, mockPlayerRef }
 })
 
+const { writeWatchVolumePreferenceMock } = vi.hoisted(() => ({
+  writeWatchVolumePreferenceMock: vi.fn(),
+}))
+
 vi.mock("@forge/video-player", () => ({
   MuxVideo: muxVideoMock,
 }))
@@ -155,6 +159,15 @@ vi.mock("@/env", () => ({
   },
 }))
 
+vi.mock("@/lib/watch-volume-preference", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/watch-volume-preference")>()
+  return {
+    ...actual,
+    writeWatchVolumePreference: writeWatchVolumePreferenceMock,
+  }
+})
+
 // Configurable URLSearchParams stand-in so individual tests can drive the
 // useSearchParams hook to specific values (e.g. ?autoplay=1) without
 // shadowing the module-scope mock.
@@ -230,6 +243,7 @@ let root: Root
 
 beforeEach(() => {
   muxVideoMock.mockClear()
+  writeWatchVolumePreferenceMock.mockClear()
   mockPlayerRef.current = null
   mockRouterPush.mockClear()
   mockSearchParams.current = new URLSearchParams()
@@ -243,6 +257,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  window.localStorage.clear()
 })
 
 function makeBlock({
@@ -2006,6 +2021,10 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(clickEvent.defaultPrevented).toBe(true)
     expect(events).toEqual(["currentTime=0", "muted=false", "play()"])
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    expect(writeWatchVolumePreferenceMock).toHaveBeenCalledWith({
+      muted: false,
+      volume: 1,
+    })
   })
 
   it("pre-reveal video click starts playback from 0 with sound", async () => {
@@ -3421,6 +3440,10 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
     // to the autoplay-blocked recovery path.
     expect(events).toEqual([])
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    expect(writeWatchVolumePreferenceMock).toHaveBeenCalledWith({
+      muted: false,
+      volume: 1,
+    })
   })
 
   it("computes sticky `top` from measured hero height once ResizeObserver fires", async () => {
@@ -4133,6 +4156,7 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     expect(mediaFrame?.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video",
     )
+    expect(writeWatchVolumePreferenceMock).not.toHaveBeenCalled()
   })
 
   it("leaves the player muted when play() rejects (no MEI grant)", async () => {

@@ -6,7 +6,11 @@ import {
   authHeadersForOperation,
   buildAuthHeaders,
 } from "../authHeaders"
-import { WATCH_SEARCH } from "../queries"
+import {
+  RECORD_WATCH_SEARCH_EVENT,
+  WATCH_SEARCH,
+  WATCH_SEARCH_EVENT_OPERATION_NAME,
+} from "../queries"
 
 // The consumer bearer must be attached whenever a token is configured, and the
 // anonymous shape returned when it isn't, so the app still boots unprovisioned.
@@ -88,5 +92,31 @@ describe("SEARCH_OPERATION_NAME ↔ WATCH_SEARCH", () => {
     const sdl = print(WATCH_SEARCH as unknown as DocumentNode)
     expect(sdl).toContain("watchSearch(input: $input)")
     expect(sdl).not.toMatch(/\bsearch\(q:/)
+  })
+})
+
+// The event mutation is public fire-and-forget telemetry; a bearer on it would
+// spend the fleet key's per-device search budget once per tap (KTD6).
+describe("RecordWatchSearchEvent rides without the fleet bearer", () => {
+  it("returns no headers for the event mutation even fully provisioned", () => {
+    expect(
+      authHeadersForOperation(
+        WATCH_SEARCH_EVENT_OPERATION_NAME,
+        "abc123",
+        "device-1",
+      ),
+    ).toEqual({})
+  })
+
+  // The bearer gate and apolloClient's RUM-error exemption both match on the
+  // operation NAME: renaming the mutation toward "WatchSearch" would spend the
+  // fleet key per tap; renaming it off the constant would un-shed RUM errors.
+  it("pins the mutation document's name to the exemption constant", () => {
+    const doc = RECORD_WATCH_SEARCH_EVENT as unknown as DocumentNode
+    const operation = doc.definitions.find(
+      (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
+    )
+    expect(operation?.name?.value).toBe(WATCH_SEARCH_EVENT_OPERATION_NAME)
+    expect(operation?.name?.value).not.toBe(SEARCH_OPERATION_NAME)
   })
 })

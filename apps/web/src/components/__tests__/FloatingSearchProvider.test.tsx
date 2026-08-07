@@ -193,6 +193,14 @@ const spanishSearchLanguage = {
   regionNames: ["Europe"],
 }
 
+const japaneseSearchLanguage = {
+  englishName: "Japanese",
+  nativeName: "日本語",
+  bcp47: "ja",
+  publicSlug: "japanese",
+  regionNames: ["Asia"],
+}
+
 const SPANISH_CONFIRMATION_QUERY = "películas bíblicas para niños cristianos"
 
 function mockEnglishAndSpanishSearchLanguages() {
@@ -381,14 +389,6 @@ async function submitDebouncedSearch(input: HTMLInputElement, query: string) {
     await Promise.resolve()
     await Promise.resolve()
   })
-}
-
-async function openSpanishLanguageConfirmation(input: HTMLInputElement) {
-  await act(async () => {
-    setInputValue(input, SPANISH_CONFIRMATION_QUERY)
-    await Promise.resolve()
-  })
-  return document.querySelector('[role="status"]')
 }
 
 async function flushResolvedSearch() {
@@ -2854,11 +2854,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
       ),
     ).toBeNull()
-    expect(bottomBackdrop).not.toBeNull()
-    expect(bottomBackdrop?.className).toContain("absolute")
-    expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")
-    expect(bottomBackdrop?.className).toContain("bg-black/85")
-    expect(bottomBackdrop?.className).toContain("backdrop-blur-[14px]")
+    expect(bottomBackdrop).toBeNull()
     expect(scrollBody?.className).toContain("z-1")
     expect(scrollBody?.className).toContain("top-44")
     expect(scrollBody?.className).toContain("md:top-32")
@@ -2977,146 +2973,48 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   })
 })
 
-describe("FloatingSearchProvider — pending language confirmation", () => {
-  it("hides prior cards and pagination behind an announced confirmation", async () => {
+describe("FloatingSearchProvider — search language selection", () => {
+  it("searches a foreign-language query immediately without a detection confirmation", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    mockedRunSearch
-      .mockResolvedValueOnce(
-        makeSearchResponse(
-          [makeSearchResult("prior-result", "Prior Bible Project Result")],
-          true,
-        ),
-      )
-      .mockResolvedValueOnce(
-        searchResult("watch-search", {
-          results: [makeSearchResult("spanish-result", "Spanish Result")],
-          query: SPANISH_CONFIRMATION_QUERY,
-          resolvedLanguage: {
-            locale: "es",
-            publicSlug: "spanish-castilian",
-            englishName: "Spanish, Castilian",
-            source: "explicit-selection",
-          },
-        }),
-      )
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", {
+        results: [makeSearchResult("spanish-result", "Spanish Result")],
+        query: SPANISH_CONFIRMATION_QUERY,
+      }),
+    )
 
     const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
-    expect(document.body.textContent).toContain("Prior Bible Project Result")
-    expect(document.body.textContent).toContain("Load more")
+    await submitDebouncedSearch(input, SPANISH_CONFIRMATION_QUERY)
 
-    const status = await openSpanishLanguageConfirmation(input)
-
-    expect(status?.textContent).toContain("Spanish detected")
-    expect(status?.getAttribute("aria-live")).toBe("polite")
-    expect(document.body.textContent).not.toContain(
-      "Prior Bible Project Result",
-    )
-    expect(document.body.textContent).not.toContain("Load more")
-
-    const confirm = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Search in Spanish",
-    )
-    await act(async () => {
-      confirm?.click()
-      vi.advanceTimersByTime(200)
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(document.querySelector('[role="status"]')).toBeNull()
-    expect(mockedRunSearch).toHaveBeenLastCalledWith(
+    expect(document.body.textContent).not.toContain("Spanish detected")
+    expect(document.body.textContent).not.toContain("Search in Spanish")
+    expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        languageContext: expect.objectContaining({
-          targetLanguageSlug: "spanish-castilian",
-        }),
         query: SPANISH_CONFIRMATION_QUERY,
       }),
     )
     expect(document.body.textContent).toContain("Spanish Result")
   })
 
-  it("hides a prior no-results state while confirmation is pending", async () => {
+  it("searches Han-script input in the manually selected language", async () => {
     vi.useFakeTimers()
-    mockEnglishAndSpanishSearchLanguages()
-    mockedRunSearch.mockResolvedValueOnce(makeSearchResponse([], false))
-
-    const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
-    expect(document.body.textContent).toContain(
-      'No results for "the bible project"',
-    )
-
-    await openSpanishLanguageConfirmation(input)
-
-    expect(document.body.textContent).toContain("Spanish detected")
-    expect(document.body.textContent).not.toContain("No results for")
-    expect(document.body.textContent).not.toContain(
-      "Try different keywords or choose another search language",
-    )
-  })
-
-  it("hides a prior error state while confirmation is pending", async () => {
-    vi.useFakeTimers()
-    mockEnglishAndSpanishSearchLanguages()
-    mockedRunSearch.mockRejectedValueOnce(new Error("network failed"))
-
-    const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
-    expect(document.body.textContent).toContain(
-      "Search failed. Please try again.",
-    )
-    expect(document.body.textContent).toContain("Retry search")
-
-    await openSpanishLanguageConfirmation(input)
-
-    expect(document.body.textContent).toContain("Spanish detected")
-    expect(document.body.textContent).not.toContain(
-      "Search failed. Please try again.",
-    )
-    expect(document.body.textContent).not.toContain("Retry search")
-  })
-
-  it("hides the loading skeleton while confirmation is pending", async () => {
-    vi.useFakeTimers()
-    mockEnglishAndSpanishSearchLanguages()
-    const pendingSearch = deferred<SearchActionResult>()
-    mockedRunSearch.mockReturnValueOnce(pendingSearch.promise)
-
-    const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "the bible project")
-    await act(async () => {
-      vi.advanceTimersByTime(500)
-      await Promise.resolve()
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [englishSearchLanguage, japaneseSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
     })
-    expect(document.querySelector(".animate-pulse")).not.toBeNull()
-
-    await openSpanishLanguageConfirmation(input)
-
-    expect(document.body.textContent).toContain("Spanish detected")
-    expect(document.querySelector(".animate-pulse")).toBeNull()
-    expect(document.body.textContent).not.toContain("Searching...")
-
-    pendingSearch.resolve(makeSearchResponse([], false))
-    await flushResolvedSearch()
-  })
-
-  it("uses the manual language combobox as the refusal path", async () => {
-    vi.useFakeTimers()
-    mockEnglishAndSpanishSearchLanguages()
     mockedRunSearch.mockResolvedValueOnce(
       searchResult("watch-search", {
-        results: [makeSearchResult("english-result", "English Result")],
-        query: SPANISH_CONFIRMATION_QUERY,
+        results: [makeSearchResult("japanese-result", "Japanese Result")],
+        query: "日本",
       }),
     )
 
     const input = await openSearchOverlay()
-    await openSpanishLanguageConfirmation(input)
-    expect(document.body.textContent).toContain("Spanish detected")
-
     const languageTrigger = document.querySelector(
       '[data-testid="language-combobox-trigger"]',
     ) as HTMLButtonElement
@@ -3124,25 +3022,27 @@ describe("FloatingSearchProvider — pending language confirmation", () => {
       languageTrigger.click()
       await Promise.resolve()
     })
-    const englishOption = document.querySelector(
-      '[data-language-slug="english"]',
+    const japaneseOption = document.querySelector(
+      '[data-language-slug="japanese"]',
     ) as HTMLButtonElement
     await act(async () => {
-      englishOption.click()
+      japaneseOption.click()
       await Promise.resolve()
       await Promise.resolve()
     })
+
+    await submitDebouncedSearch(input, "日本")
 
     expect(document.querySelector('[role="status"]')).toBeNull()
     expect(mockedRunSearch).toHaveBeenCalledWith(
       expect.objectContaining({
         languageContext: expect.objectContaining({
-          targetLanguageSlug: "english",
+          targetLanguageSlug: "japanese",
         }),
-        query: SPANISH_CONFIRMATION_QUERY,
+        query: "日本",
       }),
     )
-    expect(document.body.textContent).toContain("English Result")
+    expect(document.body.textContent).toContain("Japanese Result")
   })
 })
 

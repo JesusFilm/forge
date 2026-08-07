@@ -70,7 +70,6 @@ export const LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES = [
   "LanguageInventory",
   "VideoLabels",
   "WatchHome",
-  "WatchHomeSections",
 ] as const satisfies readonly ClientMessageNamespace[]
 
 export const LANGUAGE_INDEX_CLIENT_MESSAGE_NAMESPACES = [

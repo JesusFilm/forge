@@ -89,6 +89,15 @@ flowchart TB
 
 - R20. A send that is denied by the gate or session expiry on a server-origin conversation surfaces a visible failure notice on that turn; it never silently degrades to the stub reply. Stub degrade remains only for conversations that were never persisted server-side.
 - R21. Replay is a projection: only user and assistant turns as plain text reach the browser — tool-call internals, retrieval payloads, and provider metadata never do. Replayed turns render without grounded/source/engine badges, and very long turns truncate at the projection's per-message text cap (accepted fidelity loss).
+  > **Superseded in part (2026-08-05, PR #1836, feat-329 U4):** R21's PAYLOAD clause no
+  > longer holds. Retrieval payloads DO now reach the browser on replay, as an
+  > allowlisted per-message `sources` / `video` re-derived from stored tool
+  > parts — that is the whole point of feat-329, which closed the accepted D7
+  > gap where a featured video and its citations vanished on reload. R21's
+  > BADGE clause stands unchanged: a replayed turn renders its player and
+  > sources and still carries no engine/grounded badge. The per-message text
+  > cap also stands, now joined by replay-only bounds on the attachments. See
+  > `docs/plans/2026-08-02-001-feat-seeker-video-featuring-plan.md` unit U4.
 - R22. While a selected thread's transcript is loading, failed, or unavailable, sends into that conversation are blocked; resuming is only possible from a loaded transcript.
 
 ### Key Flows
@@ -121,6 +130,9 @@ flowchart TB
 - AE15. **Covers R19.** Given the implementation PR's diff, then feat-236's removal recipe reflects the new `resolveSeekerGate` call sites, and `grep -rn "resolveSeekerGate" apps/chat/src` matches the recipe's call-site list.
 - AE16. **Covers R20.** Given a server-persisted conversation — hydrated from history, or started this session with at least one completed Seeker turn — and a session the gate now denies, when the user sends, then a visible failure notice renders on that turn and no stub reply text appears.
 - AE17. **Covers R21.** Given a persisted thread containing tool-call parts, when replayed, then the wire payload contains only user/assistant text fields — no tool, source, or provider-metadata fields.
+  > **Superseded in part (2026-08-05, PR #1836, feat-329 U4):** the wire payload may now
+  > additionally carry allowlisted per-message `sources` and `video` fields. The
+  > "no provider-metadata, no raw tool payload" half of this criterion stands.
 - AE18. **Covers R22.** Given a selected thread whose transcript is still loading, then sends are blocked; once the transcript loads, sending works.
 
 ### Scope Boundaries

@@ -1,7 +1,10 @@
 "use client"
 
+import { Fragment, useState } from "react"
 import type { Route } from "next"
-import { DataTable, cx } from "@/components/admin-ui"
+import Link from "next/link"
+import { ChevronDown, ChevronRight } from "lucide-react"
+import { cx } from "@/components/admin-ui"
 import type {
   WatchSearchAnalyticsRequestRow,
   WatchSearchAnalyticsWindow,
@@ -69,7 +72,55 @@ function requestHref(
   return `/dashboard/search/${encodeURIComponent(request.requestId)}?${query.toString()}`
 }
 
-export function WatchSearchResultsTable({
+function ResultMetric({
+  label,
+  value,
+}: {
+  label: string
+  value: string | number
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="label-text">{label}</div>
+      <div className="mt-1 truncate font-mono text-[12px] text-[var(--color-text-secondary)]">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function DisclosureButton({
+  expanded,
+  request,
+  toggle,
+}: {
+  expanded: boolean
+  request: WatchSearchAnalyticsRequestRow
+  toggle: () => void
+}) {
+  if (request.collapsedRequests.length === 0) {
+    return null
+  }
+
+  const Icon = expanded ? ChevronDown : ChevronRight
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+      aria-expanded={expanded}
+      aria-label={
+        expanded
+          ? `Collapse ${request.collapsedRequests.length} child searches`
+          : `Expand ${request.collapsedRequests.length} child searches`
+      }
+    >
+      <Icon className="h-4 w-4" strokeWidth={1.7} />
+    </button>
+  )
+}
+
+function ChildSearchList({
   requests,
   window,
 }: {
@@ -77,99 +128,325 @@ export function WatchSearchResultsTable({
   window: WatchSearchAnalyticsWindow
 }) {
   return (
-    <DataTable
-      columns={[
-        "Query",
-        "Date",
-        "Target",
-        "Results",
-        "Click",
-        "Latency",
-        "Status",
-      ]}
-      rowHrefs={
-        requests.length > 0
-          ? requests.map((request) => requestHref(request, window) as Route)
-          : undefined
+    <div className="divide-y divide-[var(--color-hairline)] rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)]">
+      {requests.map((request) => (
+        <Link
+          key={request.requestId}
+          href={requestHref(request, window) as Route}
+          className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-3 py-2 transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+        >
+          <span
+            className="line-clamp-1 min-w-0 break-words text-[13px] text-[var(--color-text-secondary)]"
+            title={request.queryText || "Redacted query"}
+          >
+            {request.queryText || "Redacted query"}
+          </span>
+          <span className="mono-meta whitespace-nowrap text-[var(--color-text-muted)]">
+            {displayDateTime(request.createdAtIso)}
+          </span>
+          <span className="font-mono text-[12px] text-[var(--color-text-muted)]">
+            {request.resultCount}
+          </span>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+export function WatchSearchResultsTable({
+  requests,
+  window,
+}: {
+  requests: WatchSearchAnalyticsRequestRow[]
+  window: WatchSearchAnalyticsWindow
+}) {
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => new Set(),
+  )
+
+  function toggleGroup(requestId: string) {
+    setExpandedGroups((current) => {
+      const next = new Set(current)
+      if (next.has(requestId)) {
+        next.delete(requestId)
+      } else {
+        next.add(requestId)
       }
-      rows={
-        requests.length > 0
-          ? requests.map((request) => [
-              <div
-                key={`${request.requestId}-query`}
-                className="min-w-[220px] truncate text-[13px] font-medium"
-              >
-                {request.queryText || "Redacted query"}
-              </div>,
-              <span
-                key={`${request.requestId}-date`}
-                className="mono-meta whitespace-nowrap text-[var(--color-text-muted)]"
-              >
-                {displayDateTime(request.createdAtIso)}
-              </span>,
-              <span key={`${request.requestId}-target`} className="text-[13px]">
-                {request.targetLanguageLabel}
-              </span>,
-              <span
-                key={`${request.requestId}-results`}
-                className="font-mono text-[13px]"
-              >
-                {request.resultCount}
-              </span>,
-              <span
-                key={`${request.requestId}-click`}
-                className="font-mono text-[12px] text-[var(--color-text-secondary)]"
-              >
-                {request.clickedPosition
-                  ? `rank ${request.clickedPosition}`
-                  : "none"}
-              </span>,
-              <span
-                key={`${request.requestId}-latency`}
-                className="font-mono text-[12px] text-[var(--color-text-secondary)]"
-              >
-                {request.latencyMs === null
-                  ? "n/a"
-                  : `${Math.round(request.latencyMs)}ms`}
-              </span>,
-              <span
-                key={`${request.requestId}-status`}
-                className="flex items-center"
-              >
+      return next
+    })
+  }
+
+  if (requests.length === 0) {
+    return (
+      <div className="px-4 py-3">
+        <div className="text-[13px] font-medium">No search traces</div>
+        <div className="mono-meta mt-1 text-[var(--color-text-muted)]">
+          Try a wider time window or run a search on /watch.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="divide-y divide-[var(--color-hairline)] lg:hidden">
+        {requests.map((request) => (
+          <div key={request.requestId}>
+            <div className="px-4 py-3">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-start">
+                  <div className="flex justify-center px-2">
+                    <DisclosureButton
+                      expanded={expandedGroups.has(request.requestId)}
+                      request={request}
+                      toggle={() => toggleGroup(request.requestId)}
+                    />
+                  </div>
+                  <Link
+                    href={requestHref(request, window) as Route}
+                    className="line-clamp-2 min-w-0 break-words text-[13px] leading-5 font-medium"
+                    title={request.queryText || "Redacted query"}
+                  >
+                    {request.queryText || "Redacted query"}
+                  </Link>
+                </div>
                 <InlineStatus value={request.outcome} />
-              </span>,
-            ])
-          : [
-              [
-                <div key="empty-query">
-                  <div className="text-[13px] font-medium">
-                    No Watch search traces
-                  </div>
-                  <div className="mono-meta text-[var(--color-text-muted)]">
-                    Try a wider time window or run a search on /watch.
-                  </div>
-                </div>,
-                <span key="empty-date" className="mono-meta">
-                  --
-                </span>,
-                <span key="empty-target" className="mono-meta">
-                  --
-                </span>,
-                <span key="empty-results" className="mono-meta">
-                  --
-                </span>,
-                <span key="empty-click" className="mono-meta">
-                  --
-                </span>,
-                <span key="empty-latency" className="mono-meta">
-                  --
-                </span>,
-                <span key="empty-status" className="mono-meta">
-                  --
-                </span>,
-              ],
-            ]
-      }
-    />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+                <ResultMetric
+                  label="Date"
+                  value={displayDateTime(request.createdAtIso)}
+                />
+                <ResultMetric
+                  label="Target"
+                  value={request.targetLanguageLabel}
+                />
+                <ResultMetric label="Results" value={request.resultCount} />
+                <ResultMetric
+                  label="Latency"
+                  value={
+                    request.latencyMs === null
+                      ? "n/a"
+                      : `${Math.round(request.latencyMs)}ms`
+                  }
+                />
+              </div>
+              {request.clickedPosition ? (
+                <div className="mono-meta mt-3 text-[var(--color-text-muted)]">
+                  Clicked rank {request.clickedPosition}
+                </div>
+              ) : null}
+            </div>
+            {expandedGroups.has(request.requestId) ? (
+              <div className="border-t border-[var(--color-hairline)] bg-[var(--color-surface-raised)]/35 px-4 py-3">
+                <ChildSearchList
+                  requests={request.collapsedRequests}
+                  window={window}
+                />
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className="hidden lg:block">
+        <div className="app-card overflow-x-auto rounded-none border-0">
+          <table className="w-full border-collapse text-left">
+            <thead className="hairline-strong-b">
+              <tr className="h-10">
+                {[
+                  "",
+                  "Query",
+                  "Date",
+                  "Target",
+                  "Results",
+                  "Click",
+                  "Latency",
+                  "Status",
+                ].map((column, index) => (
+                  <th
+                    key={column || "toggle"}
+                    className={cx(
+                      "label-text px-4",
+                      index === 0 && "w-11 px-2",
+                      index === 1 && "pr-4 pl-0",
+                    )}
+                    aria-label={
+                      index === 0 ? "Expand grouped searches" : undefined
+                    }
+                  >
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((request) => (
+                <Fragment key={request.requestId}>
+                  <tr className="hairline-b h-[52px]">
+                    <td className="w-11 align-middle">
+                      <div className="flex h-[52px] items-center justify-center px-2 py-2">
+                        <DisclosureButton
+                          expanded={expandedGroups.has(request.requestId)}
+                          request={request}
+                          toggle={() => toggleGroup(request.requestId)}
+                        />
+                      </div>
+                    </td>
+                    <td className="align-middle">
+                      <div className="w-[min(34rem,42vw)] min-w-[180px] max-w-[34rem] py-2 pr-4 pl-0">
+                        <Link
+                          href={requestHref(request, window) as Route}
+                          className="line-clamp-2 min-w-0 break-words text-[13px] leading-5 font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:text-[var(--color-brand)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                          title={request.queryText || "Redacted query"}
+                        >
+                          {request.queryText || "Redacted query"}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="align-middle">
+                      <Link
+                        href={requestHref(request, window) as Route}
+                        className="flex h-[52px] items-center px-4 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                      >
+                        <span className="mono-meta whitespace-nowrap text-[var(--color-text-muted)]">
+                          {displayDateTime(request.createdAtIso)}
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="align-middle">
+                      <Link
+                        href={requestHref(request, window) as Route}
+                        className="flex h-[52px] items-center px-4 py-2 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                      >
+                        {request.targetLanguageLabel}
+                      </Link>
+                    </td>
+                    <td className="align-middle">
+                      <Link
+                        href={requestHref(request, window) as Route}
+                        className="flex h-[52px] items-center px-4 py-2 font-mono text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                      >
+                        {request.resultCount}
+                      </Link>
+                    </td>
+                    <td className="align-middle">
+                      <Link
+                        href={requestHref(request, window) as Route}
+                        className="flex h-[52px] items-center px-4 py-2 font-mono text-[12px] text-[var(--color-text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                      >
+                        {request.clickedPosition
+                          ? `rank ${request.clickedPosition}`
+                          : "none"}
+                      </Link>
+                    </td>
+                    <td className="align-middle">
+                      <Link
+                        href={requestHref(request, window) as Route}
+                        className="flex h-[52px] items-center px-4 py-2 font-mono text-[12px] text-[var(--color-text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                      >
+                        {request.latencyMs === null
+                          ? "n/a"
+                          : `${Math.round(request.latencyMs)}ms`}
+                      </Link>
+                    </td>
+                    <td className="align-middle">
+                      <Link
+                        href={requestHref(request, window) as Route}
+                        className="flex h-[52px] items-center px-4 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                      >
+                        <InlineStatus value={request.outcome} />
+                      </Link>
+                    </td>
+                  </tr>
+                  {expandedGroups.has(request.requestId)
+                    ? request.collapsedRequests.map((childRequest) => (
+                        <tr
+                          key={childRequest.requestId}
+                          className="hairline-b h-[52px] bg-[var(--color-surface-raised)]/35"
+                        >
+                          <td className="w-11 align-middle">
+                            <div className="flex h-[52px] items-center justify-center px-2 py-2">
+                              <span className="h-6 w-px bg-[var(--color-hairline-strong)]" />
+                            </div>
+                          </td>
+                          <td className="align-middle">
+                            <div className="w-[min(34rem,42vw)] min-w-[180px] max-w-[34rem] py-2 pr-4 pl-0">
+                              <Link
+                                href={
+                                  requestHref(childRequest, window) as Route
+                                }
+                                className="line-clamp-2 min-w-0 break-words text-[13px] leading-5 font-normal text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:text-[var(--color-brand)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                                title={
+                                  childRequest.queryText || "Redacted query"
+                                }
+                              >
+                                {childRequest.queryText || "Redacted query"}
+                              </Link>
+                            </div>
+                          </td>
+                          <td className="align-middle">
+                            <Link
+                              href={requestHref(childRequest, window) as Route}
+                              className="flex h-[52px] items-center px-4 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                            >
+                              <span className="mono-meta whitespace-nowrap text-[var(--color-text-muted)]">
+                                {displayDateTime(childRequest.createdAtIso)}
+                              </span>
+                            </Link>
+                          </td>
+                          <td className="align-middle">
+                            <Link
+                              href={requestHref(childRequest, window) as Route}
+                              className="flex h-[52px] items-center px-4 py-2 text-[13px] text-[var(--color-text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                            >
+                              {childRequest.targetLanguageLabel}
+                            </Link>
+                          </td>
+                          <td className="align-middle">
+                            <Link
+                              href={requestHref(childRequest, window) as Route}
+                              className="flex h-[52px] items-center px-4 py-2 font-mono text-[13px] text-[var(--color-text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                            >
+                              {childRequest.resultCount}
+                            </Link>
+                          </td>
+                          <td className="align-middle">
+                            <Link
+                              href={requestHref(childRequest, window) as Route}
+                              className="flex h-[52px] items-center px-4 py-2 font-mono text-[12px] text-[var(--color-text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                            >
+                              {childRequest.clickedPosition
+                                ? `rank ${childRequest.clickedPosition}`
+                                : "none"}
+                            </Link>
+                          </td>
+                          <td className="align-middle">
+                            <Link
+                              href={requestHref(childRequest, window) as Route}
+                              className="flex h-[52px] items-center px-4 py-2 font-mono text-[12px] text-[var(--color-text-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                            >
+                              {childRequest.latencyMs === null
+                                ? "n/a"
+                                : `${Math.round(childRequest.latencyMs)}ms`}
+                            </Link>
+                          </td>
+                          <td className="align-middle">
+                            <Link
+                              href={requestHref(childRequest, window) as Route}
+                              className="flex h-[52px] items-center px-4 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                            >
+                              <InlineStatus value={childRequest.outcome} />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))
+                    : null}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   )
 }

@@ -455,6 +455,43 @@ bucket env vars already managed through Doppler/Railway:
 `RAILWAY_S3_SECRET_ACCESS_KEY`. Backups upload under the fixed
 `admin-video-db-backups/<profile>/` prefix.
 
+There are two scheduled snapshot products:
+
+- `video-core` is the catalog-only default used when no profile flag is
+  supplied.
+- `video-search` is the explicit opt-in (`--profile=video-search`) and adds
+  `video_scene`, `video_scene_locale`, `video_transcript`, and
+  `video_transcript_chunk`, including the vectors already stored in those
+  rows. Publication copies existing database values; it never calls an
+  embedding provider and must not add an embedding-readiness gate.
+
+Legacy or explicit database URLs may contain Prisma-only `connection_limit`,
+`pool_timeout`, and `schema` options that native PostgreSQL clients reject.
+The snapshot script resolves URL precedence once, creates a separate native
+client URL with only those reviewed options removed, and leaves
+`process.env.DATABASE_URL` unchanged. Prisma's pool budgets live in the
+`@prisma/adapter-pg` client configuration: the main client keeps a maximum of
+10 connections and Core Sync keeps a separate maximum of 5 connections.
+This boundary is load-bearing because transcript embedding concurrency and
+Core Sync isolation rely on those code-defined profiles.
+The native URL filter operates on the raw query component so libpq multi-host
+authorities and percent-encoded supported values are preserved byte-for-byte.
+Scheduled/generated exports also require configured bucket storage before any
+native process starts; only an explicit developer-owned `--out` may omit an
+upload destination.
+
+The reviewed profiles intentionally exclude editorial `media_asset` rows and
+Admin users. Before `pg_dump`, source preflight therefore requires every
+`video_locale.social_image_asset_id` to be null. A non-null reference fails the
+profile attempt visibly instead of publishing an archive that cannot restore
+into a pristine database. If snapshots later need social-image identity,
+design a sanitized dependency closure rather than silently adding Admin users.
+
+Successful workflow-ledger results retain dump size, export duration, upload
+duration, profile, and exact bucket key. A completed dump logs size and export
+duration before upload, and a failed upload logs its elapsed duration without
+credentials, so capacity and cost evidence survives an upload failure.
+
 The schedule is fixed in code at daily 09:00 UTC. The admin Railway image gets
 PostgreSQL 18 client tools from the admin service's Railpack variable
 `RAILPACK_PACKAGES=postgres@18.1`; keep that in sync with the managed database
@@ -512,6 +549,29 @@ to restore into local or staging Postgres. The restore path reads
 video manifest tables, and refuses `--target-env=production` unless
 `--allow-production-target` is also present.
 
+Latest restore selects `video-core` by default. Pass
+`--profile=video-search` to opt into the embedding-bearing artifact. Latest
+object discovery is paginated and snapshots older than 36 hours stop before
+download unless the operator explicitly passes `--allow-stale`. Restore logs
+the preflight/import duration after success.
+Restore preflight requires migration
+`0047_video_locale_search_social_metadata`, validates the exact table-data
+manifest, and fully decodes the selected payload to `/dev/null` before the
+existing truncate. `restore:video-db:latest` rejects caller-supplied `--in` so
+the archive named by freshness metadata is always the archive handed to
+`pg_restore`.
+
+The incremental Railway bill is driven by the compressed artifact size and
+measured export/upload runtime, not embedding API usage. At current published
+rates, a daily artifact of `S` billed GB contributes about `$1.50 × S` monthly
+service egress. With no retention, first-month average bucket storage is about
+`$0.2325 × S`; month-twelve storage alone is about `$5.1825 × S`. Add measured
+compute as `30 × D × ($0.000463 × C + $0.000231 × M)`, where `D` is minutes per
+daily run, `C` average vCPU, and `M` average GB RAM. Railway rounds fractional
+bucket GB-month usage up, so use the workspace bill for the final value.
+Bucket downloads/presigned URLs and S3 operations are free; service uploads to
+the bucket incur egress.
+
 For local/staging self-service, prefer the presigned latest-backup path:
 
 ```bash
@@ -561,6 +621,26 @@ Experience-editor video library server-action searches use
 `requestedMode` to a closed client label such as
 `experience-editor-media-collection-picker` and keep picker context in bounded
 metadata.
+
+GraphQL Watch Search additionally supports a Web-only comparison seam. The
+canonical anonymous browser surface omits mode selection; Admin applies
+`WATCH_SEARCH_PRIMARY_MODE` and `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED` on every
+request so cached or already-open Watch pages cannot bypass an operator
+rollback. Other callers retain the public omitted-mode `DEFAULT` contract.
+Trusted non-fleet Web consumer bearers may also request shadow work explicitly.
+
+When `MODERN` is primary, Admin may request `DEFAULT` as shadow work. The
+resolver returns the primary result before Next.js `after()` starts the shadow,
+and a per-process queue caps it at one concurrent execution and 64 reserved
+jobs. Primary and shadow traces share the primary request ID and carry
+`traceRole` plus `shadowOfRequestId`; product analytics filters shadow traces,
+skips their long-lived aggregate update, and marks them ineligible for eval
+sampling so user intent and request counts are not doubled. The canonical
+browser seam compares `Origin` with `WEB_CANONICAL_ORIGIN`; this is a spoofable
+surface discriminator, never authorization. Missing/noncanonical anonymous
+origins and fleet callers cannot trigger extra work. Queue bounds contain
+spoofed-origin load. Shadow failure, trace failure, or saturation must remain
+invisible to the public response.
 
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
@@ -1138,8 +1218,8 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   after the 20 minute confirmation window. Do not sleep inside the worker step.
 - Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
   backfill is now network-bound on Mastra plus DB-bound inside the
-  ingest callback; default `5` leaves headroom on admin's
-  `connection_limit=10` pool. Per-target progress streams via
+  ingest callback; default `5` leaves headroom on admin's main
+  PrismaPg adapter pool. Per-target progress streams via
   `transcript_index_complete` / `_skipped` / `_failed` log events and
   a single `event=start` carrying resolved concurrency and `groupCount`.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation

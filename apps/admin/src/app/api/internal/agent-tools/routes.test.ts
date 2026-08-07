@@ -138,6 +138,7 @@ describe("agent-tools routes", () => {
             playbackId: "pb-1",
             durationSeconds: 312,
             languageSlug: "english",
+            availability: { kind: "target_audio" },
           },
         ],
       })
@@ -156,6 +157,7 @@ describe("agent-tools routes", () => {
             playbackId: "pb-1",
             durationSeconds: 312,
             languageSlug: "english",
+            availability: { kind: "target_audio" },
           },
         ],
       })
