@@ -983,6 +983,15 @@ could harden this into a real check later (deferred, not built).
 
 ## Langfuse prompt management
 
+Official Seeker prompt/model experiments are repository-native under
+`evals/experiments/seeker/`; the operator workflow and manifest template live
+in that directory's `README.md`. Experiment attempts resolve exact managed
+prompt versions before generation, retain every terminal outcome, and exclude
+managed prompt bodies and secrets. Promotion is always a separate PR that
+consumes committed eligible evidence and updates the exact code pin plus
+canonical benchmark together. The Langfuse `production` label remains an
+alert-only marker and never selects traffic.
+
 `src/services/langfuse-prompt-client.ts` (plan
 `docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md`) is the
 retrieval helper for Langfuse-managed system prompts — two layers in one

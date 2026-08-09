@@ -21,6 +21,7 @@
     "eval:seeker:loop": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-loop.ts",
     "eval:seeker:gate": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-gate.ts",
     "eval:seeker:experiment": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/command.ts",
+    "eval:seeker:experiment:run": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/command.ts",
     "eval:seeker:experiment:verdict": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/cli.ts",
     "eval:seeker:experiment:promote": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/cli.ts promote",
     "seed:search-eval": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts",
