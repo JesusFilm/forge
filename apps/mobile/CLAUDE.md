@@ -80,6 +80,48 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 
+## App icon
+
+Every icon asset is generated from one vector source by
+`scripts/generate-app-icon.mjs` (`pnpm icons:generate`). **Never hand-edit the
+PNGs or `assets/AppIcon.icon/` — regenerate.** The script borrows `apps/admin`'s
+`sharp` on purpose; adding it here would ship a native binary into every EAS build.
+
+- **iOS** uses a real Icon Composer bundle (`ios.icon: "./assets/AppIcon.icon"`),
+  supported by Expo SDK 54's `withIosIcons`. Layers stay FLAT — iOS 26 applies the
+  specular highlight and drop shadow itself, so baking them in double-applies them.
+- `icon.json` is hand-authored against a schema recovered from Xcode 26's
+  `IconComposerFoundation` (verified 2026-08-07, Xcode 26.5). Two rules it
+  enforces that are easy to trip over: colours are strings `"srgb:r,g,b,a"`
+  with **alpha required**, and a `linear-gradient` takes a bare array of
+  **exactly two** colours.
+- Validate any `icon.json` change before pushing with this command **exactly** —
+  the flags are load-bearing:
+
+  ```bash
+  xcrun actool --compile /tmp/iconcheck --platform iphoneos \
+    --minimum-deployment-target 26.0 --app-icon AppIcon \
+    --output-partial-info-plist /tmp/iconcheck/p.plist assets/AppIcon.icon
+  ```
+
+  `mkdir -p /tmp/iconcheck` first. **Without `--platform` and
+  `--minimum-deployment-target`, actool exits 0 and compiles nothing** — it
+  prints only a notices plist, so an abbreviated invocation silently passes on a
+  broken bundle. With them, exit code is trustworthy: 0 plus an `Assets.car` on
+  success, 1 plus a `com.apple.actool.errors` key on failure.
+
+- **Android** gets separate foreground / background / monochrome layers. The symbol
+  is drawn at `0.6 × 72/108` of the canvas, not `0.6` — Android's 108dp canvas only
+  shows its middle 72dp, so matching iOS's apparent size needs the smaller number.
+- The symbol is centred on its **centroid** (53.9% / 41.6% of its box), not its
+  bounding box; the sliced corner removes weight and a box-centred symbol sags.
+  Every run re-derives those constants from the path and aborts before writing
+  anything if they have drifted, so a stale `CX`/`CY` cannot reach an asset.
+  `--verify-centroid` runs the same check on its own and prints the measurement.
+- The JFP symbol on near-black is **not** one of the four symbol-on-background
+  combinations `brandpad.io/jfp` permits. It matches the existing tvOS tile, which
+  has the same issue. Pending a waiver from the brand owner.
+
 ## Running on a simulator (env setup)
 
 **Before launching apps/mobile on a simulator, ALWAYS run
