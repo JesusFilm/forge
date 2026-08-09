@@ -188,6 +188,23 @@ export function identityMismatch(
 }
 
 /**
+ * Experiment-only comparison policy. It is deliberately additive: existing
+ * full/generation/gate call sites retain their established behavior.
+ */
+export function experimentIdentityMismatch(
+  left: RunIdentity,
+  right: RunIdentity,
+  axis: "prompt" | "model",
+): string[] {
+  const problems = identityMismatch(left, right, "full")
+  const allowed =
+    axis === "prompt"
+      ? new Set(["prompt", "langfuse prompt version"])
+      : new Set(["answering models"])
+  return problems.filter((problem) => !allowed.has(problem))
+}
+
+/**
  * The corpus a run was generated against, from its retrieval stamp; null for
  * mode-"none" and unstamped legacy runs. Shared by the judge's corpus assert
  * (run-judge.ts) and the gate's fixture-integrity refusal (gate.ts) so
