@@ -1014,13 +1014,15 @@ prompts or labels — authoring and versioning stay in the Langfuse UI.
 **Project posture (2026-07-28; supersedes plan KTD8's per-environment
 projects):** ONE Langfuse project, **`forge-mastra`**, in the same Langfuse
 organisation as `JesusFilm/core`'s Journeys project. Environments are
-distinguished by **labels** on prompt versions — `production` (Railway, the
-default when `LANGFUSE_PROMPT_DEFAULT_LABEL` is unset) and `development`
+distinguished by **labels** on prompt versions — `production` (a deployment
+marker) and `development`
 (local). Additional agents become additional prompt names in this project,
 never additional projects. Two key pairs live inside it — one for Railway, one
 for local dev — so a leaked local key is revoked without rotating production's;
-never copy the Railway key onto a laptop. **Moving the `production` label IS
-the release mechanism** — it changes agent behaviour with no PR, CI or deploy —
+never copy the Railway key onto a laptop. **Moving the `production` label is
+not the release mechanism.** Production traffic resolves the exact version and
+SHA-256 hash reviewed in `seeker-production-config.ts`; label drift creates an
+actionable alert but does not fail deployment or change served behavior —
 and there is **no technical control over who may move it**: protected labels
 are a Team/Enterprise feature this organisation is not on, and they work by
 blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
@@ -1080,13 +1082,14 @@ covers Postgres only. Platform rationale and
 flip triggers:
 `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
 
-**The seeker agent is the helper's one consumer (feat-272, 2026-07-29).**
-`seeker-agent.ts` backs its `instructions` with `getManagedPrompt` — prompt
-name `seeker-system` (compile-time constant `SEEKER_SYSTEM_PROMPT_NAME`), no
-label pinned in code (env resolution: `LANGFUSE_PROMPT_DEFAULT_LABEL` >
-`production`) — through the exported `createSeekerInstructionsResolver`
-factory; `SEEKER_SYSTEM_PROMPT_FALLBACK` is the full working prompt served
-byte-identically whenever Langfuse is unconfigured or unreachable. The WHOLE
+**The seeker agent is the helper's production consumer.** `seeker-agent.ts`
+backs its `instructions` with strict exact-version resolution of the provider,
+name, immutable revision, and expected content hash in
+`seeker-production-config.ts`; `LANGFUSE_PROMPT_DEFAULT_LABEL` remains only for
+candidate intake and label health checks. `SEEKER_SYSTEM_PROMPT_FALLBACK` is
+the full working prompt served byte-identically whenever exact resolution is
+unavailable or mismatched, stamped as degraded fallback with one critical
+alert per resolver. The WHOLE
 prompt is Langfuse-managed (no composition split — see the whole-prompt
 decision above), so editing the fallback, `retrieve-answer.ts`'s status
 literals, or its message constants requires updating the `seeker-system`

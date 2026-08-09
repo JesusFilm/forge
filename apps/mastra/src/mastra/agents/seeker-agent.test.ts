@@ -48,10 +48,8 @@ import { readFileSync } from "node:fs"
 
 import { STEP_CAPS, TIME_BUDGET_MS } from "../budgets"
 import { getAiChatMemory } from "../ai-chat-memory"
-import {
-  createManagedPromptCache,
-  type LangfuseConfig,
-} from "../../services/langfuse-prompt-client"
+import type { LangfuseConfig } from "../../services/langfuse-prompt-client"
+import { SEEKER_PRODUCTION_PROMPT } from "./seeker-production-config"
 import {
   retrieveAnswerOutputSchema,
   retrieveAnswerTool,
@@ -368,44 +366,82 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     secretKey: undefined,
   }
 
-  // A realistic tuned managed prompt: full base + delta, never a stub. Serving
-  // it VERBATIM (below) is also the anti-vacuous companion proving the
-  // resolver does not simply always return the fallback.
-  const TUNED_PROMPT = `${SEEKER_SYSTEM_PROMPT_FALLBACK}\nTUNED (Langfuse-managed variant): prefer concise answers.`
-
-  function managedPromptResponse(text: string): Promise<Response> {
-    return Promise.resolve(
-      new Response(
-        JSON.stringify({
-          name: SEEKER_SYSTEM_PROMPT_NAME,
-          version: 7,
-          type: "text",
-          prompt: text,
-          labels: ["production"],
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
+  it("requests the repository-pinned exact version and validates its hash", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            name: SEEKER_SYSTEM_PROMPT_NAME,
+            version: SEEKER_PRODUCTION_PROMPT.revision,
+            type: "text",
+            prompt: SEEKER_SYSTEM_PROMPT_FALLBACK,
+            labels: ["development"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
       ),
     )
-  }
+    const resolve = createSeekerInstructionsResolver({
+      config: wiringConfig,
+      fetchImpl,
+      logSink: () => {},
+    })
 
-  it("serves the managed prompt verbatim when Langfuse is configured, requesting the compile-time seeker-system name", async () => {
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
+      `https://langfuse.internal/api/public/v2/prompts/seeker-system?version=${SEEKER_PRODUCTION_PROMPT.revision}`,
+    )
+  })
+
+  it("preserves fallback availability and emits one critical degraded alert", async () => {
+    const logSink = vi.fn()
     const fetchImpl = vi.fn<typeof fetch>(() =>
-      managedPromptResponse(TUNED_PROMPT),
+      Promise.reject(new TypeError("unreachable")),
+    )
+    const resolve = createSeekerInstructionsResolver({
+      config: wiringConfig,
+      fetchImpl,
+      logSink,
+    })
+
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(logSink).toHaveBeenCalledTimes(1)
+    expect(logSink).toHaveBeenCalledWith(
+      expect.stringMatching(/severity=critical.*state=degraded_fallback/),
+    )
+    expect(logSink.mock.calls[0]?.[0]).not.toContain(
+      SEEKER_SYSTEM_PROMPT_FALLBACK,
+    )
+  })
+
+  it("serves the pinned managed prompt verbatim when Langfuse is configured", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            name: SEEKER_SYSTEM_PROMPT_NAME,
+            version: Number(SEEKER_PRODUCTION_PROMPT.revision),
+            type: "text",
+            prompt: SEEKER_SYSTEM_PROMPT_FALLBACK,
+            labels: ["production"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
     )
 
     const resolve = createSeekerInstructionsResolver({
       config: wiringConfig,
       fetchImpl,
-      cache: createManagedPromptCache(),
     })
 
-    await expect(resolve()).resolves.toBe(TUNED_PROMPT)
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
-    // Pin the wire contract of the wiring: the compile-time prompt name and
-    // the layer-2-resolved default label (no env default in this config).
+    // The movable production label is marker-only and never selects traffic.
     const calledUrl = String(fetchImpl.mock.calls[0]?.[0])
     expect(calledUrl).toBe(
-      "https://langfuse.internal/api/public/v2/prompts/seeker-system?label=production",
+      `https://langfuse.internal/api/public/v2/prompts/seeker-system?version=${SEEKER_PRODUCTION_PROMPT.revision}`,
     )
   })
 
@@ -415,7 +451,6 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const resolve = createSeekerInstructionsResolver({
       config: unconfigured,
       fetchImpl,
-      cache: createManagedPromptCache(),
       // Silence the (correct) once-per-process config_missing failure log.
       logSink: () => {},
     })
@@ -436,7 +471,6 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const resolve = createSeekerInstructionsResolver({
       config: wiringConfig,
       fetchImpl,
-      cache: createManagedPromptCache(),
       logSink: () => {},
     })
 
