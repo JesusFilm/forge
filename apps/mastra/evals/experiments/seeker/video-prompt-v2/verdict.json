@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "seeker-verdict/v1",
+  "experimentId": "video-prompt-v2",
+  "attemptId": "attempt-001",
+  "candidateId": "video-prompt-v2",
+  "verdict": "deferred",
+  "actor": "codex",
+  "recordedAt": "2026-08-09T22:11:33.426Z",
+  "reasoning": "OpenRouter free-model rate limits and timeouts left both exact-version runs below the required complete 10-cell coverage, so the prompt comparison is not evaluable and must be retried without changing the prompt axis.",
+  "evidence": [
+    "attempts/attempt-001/gate-report.json",
+    "attempts/attempt-001/comparison.md",
+    "attempts/attempt-001/score.json"
+  ],
+  "eligibility": {
+    "gate": {
+      "outcome": "refused"
+    },
+    "criterion": {
+      "id": "minimum-run-score",
+      "version": "1",
+      "outcome": "passed"
+    },
+    "eligible": false,
+    "evidence": [
+      "attempts/attempt-001/gate-report.json",
+      "attempts/attempt-001/comparison.md",
+      "attempts/attempt-001/score.json"
+    ]
+  }
+}
