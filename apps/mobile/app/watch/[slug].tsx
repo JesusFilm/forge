@@ -48,7 +48,6 @@ import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
-import { getProgressSync } from "../../src/lib/watchProgress/syncClient"
 import {
   progressBarState,
   resumePositionSeconds,
@@ -258,7 +257,8 @@ export default function WatchVideoPage() {
   // lazy media loads — so a cold load paints it, not a "Subtitles" placeholder.
   const languageActionLabel = activeVariant?.languageName ?? null
 
-  // Continue watching (KTD6): resume eligibility + the per-video clear.
+  // Continue watching (KTD6): resume eligibility for the player's
+  // auto-seek and autostart.
   const progressEntry = useWatchProgressEntry(video?.documentId)
   const progressState = progressBarState(progressEntry)
   const resumeAtSeconds =
@@ -521,6 +521,7 @@ export default function WatchVideoPage() {
                   : null
             }
             resumeAtSeconds={resumeAtSeconds}
+            autostart
           />
         )}
       </View>
@@ -619,31 +620,6 @@ export default function WatchVideoPage() {
 
             <SignInPrompt />
 
-            {progressState.visible && (
-              <Pressable
-                onPress={() => {
-                  void getProgressSync().clearEntry(video.documentId)
-                }}
-                style={({ pressed }) => [
-                  styles.clearProgressRow,
-                  pressed && { opacity: 0.7 },
-                ]}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Remove from continue watching"
-                {...{ "dd-action-name": "clear-progress" }}
-              >
-                <Ionicons
-                  name="close-circle-outline"
-                  size={18}
-                  color={ACCENT_ON_DARK}
-                />
-                <Text style={styles.clearProgressLabel}>
-                  Remove from continue watching
-                </Text>
-              </Pressable>
-            )}
-
             <VideoDescription description={video.description} />
 
             {video.siblings.length > 0 && (
@@ -733,21 +709,6 @@ const styles = StyleSheet.create({
   },
   sectionGap: {
     marginTop: 16,
-  },
-  // 44pt minimum hit target, clearly separated from the player's
-  // Resume/Start-over chips (it lives in the body, not the chrome).
-  clearProgressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  clearProgressLabel: {
-    color: ACCENT_ON_DARK,
-    fontFamily: "System",
-    fontSize: 14,
-    fontWeight: "600",
   },
   inlineError: {
     paddingHorizontal: 16,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
+  AppState,
   Platform,
   Pressable,
   StyleSheet,
@@ -58,10 +59,13 @@ type VideoPlayerProps = {
   horizontalInset?: number
   /** Progress-recording identity (KTD5). Absent = no recording (hero-safe). */
   progressIdentity?: ProgressIdentity | null
-  /** Resume-eligible position (KTD6). When set, the pre-start overlay
-   *  offers Resume / Start over; resuming seeks then plays on user tap —
-   *  never autoplay. */
+  /** Resume-eligible position (KTD6). When set, the player seeks here by
+   *  itself once the source loads — no Resume button. */
   resumeAtSeconds?: number | null
+  /** Start playing once the source is ready, without a tap. Opt-in per call
+   *  site: this player also backs the series-detail trailer dock, so an
+   *  implicit default would autoplay surfaces that never asked for it. */
+  autostart?: boolean
 }
 
 export function VideoPlayer({
@@ -74,6 +78,7 @@ export function VideoPlayer({
   horizontalInset = 0,
   progressIdentity = null,
   resumeAtSeconds = null,
+  autostart = false,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
@@ -146,6 +151,64 @@ export function VideoPlayer({
     n: number
   } | null>(null)
   const seekNonceRef = useRef(0)
+
+  // Autostart: the video begins playing on its own once the source is ready,
+  // and a saved position seeks itself. Play and seek are latched SEPARATELY:
+  // `resumeAtSeconds` hydrates asynchronously and can arrive after the source
+  // has loaded, so one shared latch would forfeit the seek permanently.
+  const autoPlayedRef = useRef(false)
+  const resumeSeekedRef = useRef(false)
+  useEffect(() => {
+    autoPlayedRef.current = false
+    resumeSeekedRef.current = false
+  }, [streamingUrl])
+  useEffect(() => {
+    if (!autostart) return
+
+    const applySeek = () => {
+      if (resumeSeekedRef.current || resumeAtSeconds == null) return
+      try {
+        player.currentTime = resumeAtSeconds
+      } catch {
+        return // Released mid-seek; leave unlatched so a later pass retries.
+      }
+      resumeSeekedRef.current = true
+      // The scrubber polls at 500ms and is idle until playback reports in,
+      // so signal it or the restored position reads 0:00 for a beat.
+      seekNonceRef.current += 1
+      setSeekSignal({ time: resumeAtSeconds, n: seekNonceRef.current })
+    }
+
+    const applyPlay = () => {
+      if (autoPlayedRef.current) return
+      // Never start audio the viewer cannot see. The adapter owns AppState
+      // resume and has no way to observe or undo a play issued from here
+      // while backgrounded.
+      if (AppState.currentState !== "active") return
+      try {
+        player.play()
+      } catch {
+        return // Released; leave unlatched so a later load can still start.
+      }
+      autoPlayedRef.current = true
+      // Reported only once playback actually started, so the adoption metric
+      // cannot count a released player as a successful autostart.
+      reportDatadogAction("autostart_applied", {
+        resumed: resumeSeekedRef.current,
+      })
+    }
+
+    const onSourceLoad = () => {
+      applySeek()
+      applyPlay()
+    }
+    const sub = player.addListener("sourceLoad", onSourceLoad)
+    // A resume position can hydrate after the source already loaded — seek
+    // then, rather than losing it. Guarded on having played so this never
+    // fires against a previous, still-loaded source mid-swap.
+    if (autoPlayedRef.current) applySeek()
+    return () => sub.remove()
+  }, [player, resumeAtSeconds, streamingUrl, autostart])
 
   useEffect(() => {
     return () => {
@@ -346,50 +409,6 @@ export function VideoPlayer({
           />
         </Animated.View>
       )}
-
-      {/* LAST sibling deliberately. Plain siblings hit-test in reverse
-          declaration order, and the chrome mounts visible from frame one with
-          its bottomBar (a pointerEvents:auto View) overlapping these chips. */}
-      {!hasStarted && resumeAtSeconds != null && (
-        <View style={playerStyles.resumeRow} pointerEvents="box-none">
-          <Pressable
-            onPress={() => {
-              player.currentTime = resumeAtSeconds
-              player.play()
-              // The adoption metric's second RUM action (Success Criteria).
-              reportDatadogAction("resume_selected", {})
-            }}
-            style={({ pressed }) => [
-              playerStyles.resumeButton,
-              pressed && { opacity: 0.8 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Resume from ${formatResumeTime(resumeAtSeconds)}`}
-            {...{ "dd-action-name": "player-resume" }}
-          >
-            <Ionicons name="play" size={16} color="#000" />
-            <Text style={playerStyles.resumeLabel}>
-              Resume {formatResumeTime(resumeAtSeconds)}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              player.currentTime = 0
-              player.play()
-              reportDatadogAction("start_over_selected", {})
-            }}
-            style={({ pressed }) => [
-              playerStyles.startOverButton,
-              pressed && { opacity: 0.8 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Start from the beginning"
-            {...{ "dd-action-name": "player-start-over" }}
-          >
-            <Text style={playerStyles.startOverLabel}>Start over</Text>
-          </Pressable>
-        </View>
-      )}
     </View>
   )
 }
@@ -429,54 +448,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     marginTop: 2,
-  },
-})
-
-/** m:ss / h:mm:ss for the resume chip. */
-function formatResumeTime(seconds: number): string {
-  const total = Math.max(0, Math.floor(seconds))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const mm = h > 0 ? String(m).padStart(2, "0") : String(m)
-  const ss = String(s).padStart(2, "0")
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
-}
-
-const playerStyles = StyleSheet.create({
-  resumeRow: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  resumeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    backgroundColor: "#ffffff",
-  },
-  resumeLabel: {
-    color: "#000000",
-    fontFamily: "System",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  startOverButton: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  startOverLabel: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontSize: 14,
-    fontWeight: "600",
   },
 })

@@ -1,9 +1,9 @@
 /**
  * Web-parity playback thresholds (KTD6): bar percent = position/duration,
  * hidden below 1%, snapped to full at >= 90%, resume offered only between
- * those bounds, resume seeks to at most one second before the end, and
- * resuming never autoplays (the caller's job). Same numbers web ships so
- * cross-device behavior feels identical.
+ * those bounds, and resume seeks to at most one second before the end.
+ * Same numbers web ships so cross-device behavior feels identical.
+ * (Mobile autostarts on load since 2026-08-10; web still requires a tap.)
  */
 
 export const VISIBLE_MIN_RATIO = 0.01
