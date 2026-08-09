@@ -60,6 +60,16 @@ describe("experiment evidence schemas", () => {
         recordedAt: "2026-08-10T10:00:00.000Z",
         reasoning: "The confidence interval is too wide.",
         evidence: ["attempts/attempt-001/comparison.json"],
+        eligibility: {
+          gate: { outcome: "green" },
+          criterion: {
+            id: "minimum-run-score",
+            version: "1",
+            outcome: "passed",
+          },
+          eligible: true,
+          evidence: ["attempts/attempt-001/comparison.json"],
+        },
       }).verdict,
     ).toBe("inconclusive")
     expect(

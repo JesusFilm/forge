@@ -198,12 +198,30 @@ export const AttemptCompletionSchema = z
 
 export const EligibilityRecordSchema = z
   .object({
-    gate: z.enum(["green", "red", "refused"]),
-    criterion: z.enum(["passed", "failed", "unknown", "unavailable"]),
+    gate: z.object({ outcome: z.enum(["green", "red", "refused"]) }).strict(),
+    criterion: z
+      .object({
+        id: z.string().min(1).max(128),
+        version: z.string().min(1).max(64),
+        outcome: z.enum(["passed", "failed", "unknown", "unavailable"]),
+      })
+      .strict(),
     eligible: z.boolean(),
     evidence: z.array(RepositoryRelativePathSchema).min(1),
   })
   .strict()
+  .superRefine((record, context) => {
+    const derived =
+      record.gate.outcome === "green" && record.criterion.outcome === "passed"
+    if (record.eligible !== derived)
+      context.addIssue({
+        code: "custom",
+        path: ["eligible"],
+        message: "must equal the derived gate and criterion outcome",
+      })
+  })
+
+export type EligibilityRecord = z.infer<typeof EligibilityRecordSchema>
 
 export const VerdictRecordSchema = z
   .object({
@@ -216,6 +234,7 @@ export const VerdictRecordSchema = z
     recordedAt: z.iso.datetime(),
     reasoning: z.string().min(10).max(10_000),
     evidence: z.array(RepositoryRelativePathSchema).min(1),
+    eligibility: EligibilityRecordSchema,
   })
   .strict()
 
