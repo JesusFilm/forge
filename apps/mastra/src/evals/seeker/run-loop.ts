@@ -280,6 +280,21 @@ async function main(): Promise<void> {
     process.cwd(),
     flag(argv, "transcripts") ?? resolve(DEFAULT_RUNS_DIR, "transcripts.json"),
   )
+  const officialVersionRaw = flag(argv, "prompt-version")
+  const officialHash = flag(argv, "prompt-hash")
+  if ((officialVersionRaw == null) !== (officialHash == null)) {
+    throw new Error(
+      "--prompt-version and --prompt-hash must be supplied together",
+    )
+  }
+  const officialVersion =
+    officialVersionRaw == null ? null : Number(officialVersionRaw)
+  if (
+    officialVersion != null &&
+    (!Number.isSafeInteger(officialVersion) || officialVersion <= 0)
+  ) {
+    throw new Error("--prompt-version must be a positive integer")
+  }
 
   // A gating run with a fixture hole is a setup fault, not a finding.
   const missing = questions.filter(
@@ -301,33 +316,73 @@ async function main(): Promise<void> {
   // make identity stamp one prompt while later cells generate under another.
   // The prompt constants and section mapping are static imports: they come
   // from the dependency-free `seeker-prompt` leaf, never the agent chain.
-  const [
-    { buildSeekerAgent },
-    langfuse,
-    fixtureRag,
-    memoryModule,
-    storageModule,
-  ] = await Promise.all([
-    import("../../mastra/agents/seeker-agent"),
-    import("../../services/langfuse-prompt-client"),
-    import("./fixture-rag"),
-    import("@mastra/memory"),
-    import("@mastra/core/storage"),
-  ])
+  // Official experiment identity is resolved and checked before importing the
+  // agent module. That module constructs the default agent at top level, so
+  // moving this check below the import would make zero-spend refusal false.
+  const langfuse = await import("../../services/langfuse-prompt-client")
+  const injectedOfficialText = process.env.SEEKER_EVAL_RESOLVED_PROMPT
+  if (injectedOfficialText != null && officialVersion == null) {
+    throw new Error("SEEKER_EVAL_RESOLVED_PROMPT requires exact prompt flags")
+  }
+  if (
+    injectedOfficialText != null &&
+    sha256(injectedOfficialText) !== officialHash
+  ) {
+    throw new Error(
+      "official prompt preflight failed: injected content hash mismatch",
+    )
+  }
+  let prompt: {
+    text: string
+    source: "langfuse" | "fallback"
+    version?: number
+    resolvedLabel: string | null
+  }
+  if (injectedOfficialText != null) {
+    prompt = {
+      text: injectedOfficialText,
+      source: "langfuse",
+      version: officialVersion!,
+      resolvedLabel: null,
+    }
+  } else if (officialVersion == null) {
+    prompt = await langfuse.getManagedPrompt({
+      name: SEEKER_SYSTEM_PROMPT_NAME,
+      fallback: SEEKER_SYSTEM_PROMPT_FALLBACK,
+    })
+  } else {
+    const exact = await langfuse.resolveExactManagedPrompt({
+      name: SEEKER_SYSTEM_PROMPT_NAME,
+      version: officialVersion,
+      expectedContentHash: officialHash,
+    })
+    if (!exact.ok) {
+      throw new Error(
+        `official prompt preflight failed: ${exact.reason}${exact.detail ? `/${exact.detail}` : ""}`,
+      )
+    }
+    prompt = {
+      text: exact.text,
+      source: "langfuse",
+      version: Number(exact.identity.revision),
+      resolvedLabel: null,
+    }
+  }
 
-  const resolvedPrompt = await langfuse.getManagedPrompt({
-    name: SEEKER_SYSTEM_PROMPT_NAME,
-    fallback: SEEKER_SYSTEM_PROMPT_FALLBACK,
-  })
+  const [{ buildSeekerAgent }, fixtureRag, memoryModule, storageModule] =
+    await Promise.all([
+      import("../../mastra/agents/seeker-agent"),
+      import("./fixture-rag"),
+      import("@mastra/memory"),
+      import("@mastra/core/storage"),
+    ])
 
   const identity: RunIdentity = {
-    promptSha256: sha256(resolvedPrompt.text),
-    promptSource: resolvedPrompt.source,
-    promptLangfuseVersion: resolvedPrompt.version ?? null,
+    promptSha256: sha256(prompt.text),
+    promptSource: prompt.source,
+    promptLangfuseVersion: prompt.version ?? null,
     promptLangfuseLabel:
-      resolvedPrompt.source === "langfuse"
-        ? resolvedPrompt.resolvedLabel
-        : null,
+      prompt.source === "langfuse" ? prompt.resolvedLabel : null,
     sectionMappingVersion: SECTION_MAPPING_VERSION,
     questionSetId: QUESTION_SET_ID,
     questionIds: questions.map((question) => question.id),
@@ -387,7 +442,7 @@ async function main(): Promise<void> {
         memory: new memoryModule.Memory({
           storage: new storageModule.InMemoryStore(),
         }),
-        instructions: resolvedPrompt.text,
+        instructions: prompt.text,
       })
       const { record, transcript } = await runCell({
         agent,
@@ -425,7 +480,7 @@ async function main(): Promise<void> {
     startedAt,
     finishedAt,
     resolvedPrompt: {
-      text: resolvedPrompt.text,
+      text: prompt.text,
       sha256: identity.promptSha256,
       source: identity.promptSource,
       langfuseVersion: identity.promptLangfuseVersion,
