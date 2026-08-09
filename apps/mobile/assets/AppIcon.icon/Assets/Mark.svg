@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs><linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F65360"/>
+      <stop offset="1" stop-color="#DE202D"/>
+    </linearGradient></defs>
+  <path d="M45.854 -0.000301361H2.34C1.048 -0.000301361 0 1.0467 0 2.3397V20.2427C0 21.2917 0.699 22.2137 1.709 22.4957L47.072 35.2077C47.636 35.3657 48.194 34.9417 48.194 34.3567V2.3397C48.194 1.0467 47.147 -0.000301361 45.854 -0.000301361Z" transform="translate(180.961,325.370) scale(12.748475)" fill="url(#mark)"/>
+</svg>
