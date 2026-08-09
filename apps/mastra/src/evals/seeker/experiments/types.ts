@@ -247,7 +247,11 @@ export type ExperimentManifestInput = {
   hypothesis: string
   criterion: z.input<typeof HypothesisCriterionSchema>
   comparisonAxis: z.input<typeof ComparisonAxisSchema>
-  productionBenchmark: { path: string; identity: ResolvedIdentity }
+  productionBenchmark: {
+    path: string
+    identity: ResolvedIdentity
+    captureExactManaged?: true
+  }
   candidates: Array<{ id: string; identity: ResolvedIdentity }>
   lifecycle: z.input<typeof ExperimentLifecycleSchema>
 }

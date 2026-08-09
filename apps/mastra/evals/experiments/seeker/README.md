@@ -29,6 +29,13 @@ Complete the owner, hypothesis, criterion, one comparison axis, benchmark, and
 candidates before spending. Prompt experiments may change only prompt revision
 and hash; model experiments may change only the ordered model route identity.
 
+For the one-time migration away from the legacy fallback benchmark, set
+`productionBenchmark.captureExactManaged` to `true`. The coordinator then
+exact-resolves and freshly executes that managed baseline before any candidate,
+stores both sides in the immutable attempt, and never treats the legacy
+fallback artifact as managed evidence. Remove this flag once promotion has
+materialized the first managed canonical benchmark.
+
 Run an official immutable attempt from the repository root:
 
 ```bash

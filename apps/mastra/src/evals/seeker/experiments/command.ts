@@ -110,9 +110,55 @@ async function generateEvidence(
       REPO_ROOT,
       input.manifest.productionBenchmark.path,
     )
-    const baselineDir = baselinePath.endsWith(".json")
+    let baselineDir = baselinePath.endsWith(".json")
       ? dirname(baselinePath)
       : baselinePath
+
+    let capturedBaseline:
+      | {
+          answers: unknown
+          transcripts: unknown
+          judged: unknown
+          score: unknown
+        }
+      | undefined
+    if (input.manifest.productionBenchmark.captureExactManaged) {
+      const promptText = input.resolvedProductionPromptText
+      if (promptText == null)
+        throw new Error("resolved production benchmark prompt text missing")
+      baselineDir = join(scratch, "production-benchmark")
+      const prompt = input.manifest.productionBenchmark.identity.prompt
+      const modelRoutes = serializeSupportedModelRoutes(
+        input.manifest.productionBenchmark.identity.model.routes,
+      )
+      await runLeaf(
+        "src/evals/seeker/run-loop.ts",
+        [
+          `--out=${join(baselineDir, "answers.json")}`,
+          `--transcripts=${join(baselineDir, "transcripts.json")}`,
+          `--fixtures=${DEFAULT_FIXTURES}`,
+          `--model-routes=${modelRoutes}`,
+          `--prompt-version=${prompt.revision}`,
+          `--prompt-hash=${prompt.contentHash}`,
+        ],
+        { env: { SEEKER_EVAL_RESOLVED_PROMPT: promptText } },
+      )
+      await runLeaf("src/evals/seeker/run-judge.ts", [
+        `--in=${join(baselineDir, "answers.json")}`,
+        `--out=${join(baselineDir, "judged.json")}`,
+        `--fixtures=${DEFAULT_FIXTURES}`,
+      ])
+      await runLeaf("src/evals/seeker/run-score.ts", [
+        `--in=${join(baselineDir, "judged.json")}`,
+        `--out=${join(baselineDir, "score.json")}`,
+      ])
+      capturedBaseline = {
+        answers: await loadJson(join(baselineDir, "answers.json")),
+        transcripts: await loadJson(join(baselineDir, "transcripts.json")),
+        judged: await loadJson(join(baselineDir, "judged.json")),
+        score: await loadJson(join(baselineDir, "score.json")),
+      }
+    }
 
     for (const candidate of input.manifest.candidates) {
       const candidateDir = join(scratch, candidate.id)
@@ -172,18 +218,30 @@ async function generateEvidence(
     return {
       "answers.json": {
         schemaVersion: "seeker-experiment-answers/v1",
+        ...(capturedBaseline
+          ? { productionBenchmark: capturedBaseline.answers }
+          : {}),
         candidates: answers,
       },
       "transcripts.json": {
         schemaVersion: "seeker-experiment-transcripts/v1",
+        ...(capturedBaseline
+          ? { productionBenchmark: capturedBaseline.transcripts }
+          : {}),
         candidates: transcripts,
       },
       "judged.json": {
         schemaVersion: "seeker-experiment-judged/v1",
+        ...(capturedBaseline
+          ? { productionBenchmark: capturedBaseline.judged }
+          : {}),
         candidates: judged,
       },
       "score.json": {
         schemaVersion: "seeker-experiment-scores/v1",
+        ...(capturedBaseline
+          ? { productionBenchmark: capturedBaseline.score }
+          : {}),
         candidates: scores,
       },
       "gate-report.json": {

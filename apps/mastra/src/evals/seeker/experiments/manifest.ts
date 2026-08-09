@@ -64,6 +64,11 @@ const BaseManifestSchema = z
       .object({
         path: RepositoryRelativePathSchema,
         identity: ResolvedIdentitySchema,
+        // Bootstrap the first managed canonical benchmark without pretending
+        // the legacy fallback artifact already carries managed provenance.
+        // The coordinator exact-resolves and freshly executes this identity
+        // before generating or comparing any candidate.
+        captureExactManaged: z.literal(true).optional(),
       })
       .strict(),
     candidates: z

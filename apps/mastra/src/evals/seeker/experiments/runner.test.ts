@@ -166,6 +166,49 @@ describe("runExperiment preflight", () => {
 })
 
 describe("runExperiment integration", () => {
+  it("exact-resolves and captures a managed production benchmark before spend", async () => {
+    const input = manifest()
+    input.productionBenchmark.captureExactManaged = true
+    const { root, dir } = await packageWith(input)
+    const resolvePrompt = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        revision: "42",
+        contentHash: hash("a"),
+        text: "managed baseline prompt",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        revision: "43",
+        contentHash: hash("f"),
+        text: "managed candidate prompt",
+      })
+    const generate = vi.fn(async ({ resolvedProductionPromptText }) => {
+      expect(resolvedProductionPromptText).toBe("managed baseline prompt")
+      return {
+        "answers.json": { kind: "answers" },
+        "transcripts.json": { kind: "transcripts" },
+        "judged.json": { kind: "judged" },
+        "score.json": { kind: "score" },
+        "comparison.md": "# comparison\n",
+        "gate-report.json": { verdict: "green" },
+      }
+    })
+    await runExperiment({
+      experimentsRoot: root,
+      experimentDir: dir,
+      attemptId: "attempt-1",
+      loadBenchmarkIdentity: vi.fn(() => {
+        throw new Error("legacy benchmark must not be relabeled")
+      }),
+      resolvePrompt,
+      generate,
+    })
+    expect(resolvePrompt).toHaveBeenCalledTimes(2)
+    expect(generate).toHaveBeenCalledOnce()
+  })
+
   it("persists resolved identity before spend and completes package-local evidence", async () => {
     const { root, dir } = await packageWith(manifest())
     const observed: string[] = []

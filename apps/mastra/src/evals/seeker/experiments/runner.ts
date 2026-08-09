@@ -38,6 +38,7 @@ export type RunExperimentInput = {
     manifest: ReturnType<typeof ExperimentManifestSchema.parse>
     resolvedIdentities: Record<string, ResolvedIdentity>
     resolvedPromptTexts: Record<string, string>
+    resolvedProductionPromptText?: string
     reuseAttemptDir?: string
   }) => Promise<GeneratedEvidence>
 }
@@ -102,16 +103,41 @@ export async function runExperiment(
   )
 
   try {
-    const loadedBaseline = input.loadBenchmarkIdentity
-      ? await input.loadBenchmarkIdentity(manifest.productionBenchmark.path)
-      : manifest.productionBenchmark.identity
-    if (
-      !sameIdentity(
-        ResolvedIdentitySchema.parse(loadedBaseline),
-        manifest.productionBenchmark.identity,
-      )
-    ) {
-      throw new Error("benchmark identity mismatch during official preflight")
+    let resolvedProductionPromptText: string | undefined
+    if (manifest.productionBenchmark.captureExactManaged) {
+      const expected = manifest.productionBenchmark.identity.prompt
+      const resolution = await input.resolvePrompt({
+        provider: expected.provider,
+        name: expected.name,
+        revision: expected.revision,
+        contentHash: expected.contentHash,
+      })
+      if (
+        !resolution.ok ||
+        resolution.revision !== expected.revision ||
+        resolution.contentHash !== expected.contentHash ||
+        resolution.text == null
+      ) {
+        const reason = resolution.ok
+          ? "immutable identity mismatch"
+          : resolution.reason
+        throw new Error(
+          `official prompt preflight refused production benchmark: ${reason}`,
+        )
+      }
+      resolvedProductionPromptText = resolution.text
+    } else {
+      const loadedBaseline = input.loadBenchmarkIdentity
+        ? await input.loadBenchmarkIdentity(manifest.productionBenchmark.path)
+        : manifest.productionBenchmark.identity
+      if (
+        !sameIdentity(
+          ResolvedIdentitySchema.parse(loadedBaseline),
+          manifest.productionBenchmark.identity,
+        )
+      ) {
+        throw new Error("benchmark identity mismatch during official preflight")
+      }
     }
 
     const resolvedIdentities: Record<string, ResolvedIdentity> = {}
@@ -140,7 +166,10 @@ export async function runExperiment(
       if (resolution.text != null)
         resolvedPromptTexts[candidate.id] = resolution.text
     }
-    writer.registerSensitiveValues(Object.values(resolvedPromptTexts))
+    writer.registerSensitiveValues([
+      ...Object.values(resolvedPromptTexts),
+      ...(resolvedProductionPromptText ? [resolvedProductionPromptText] : []),
+    ])
 
     if ((await readFile(manifestPath, "utf8")) !== manifestSource) {
       throw new Error("experiment manifest changed during preflight")
@@ -201,6 +230,7 @@ export async function runExperiment(
       manifest,
       resolvedIdentities,
       resolvedPromptTexts,
+      ...(resolvedProductionPromptText ? { resolvedProductionPromptText } : {}),
       ...(reuseAttemptDir ? { reuseAttemptDir } : {}),
     })
     for (const [path, value] of Object.entries(evidence)) {
@@ -216,7 +246,10 @@ export async function runExperiment(
       input.experimentsRoot,
       manifest.id,
       input.attemptId,
-      Object.values(resolvedPromptTexts),
+      [
+        ...Object.values(resolvedPromptTexts),
+        ...(resolvedProductionPromptText ? [resolvedProductionPromptText] : []),
+      ],
     )
     return { attemptDir: writer.attemptDir, completed: true }
   } catch (cause) {
