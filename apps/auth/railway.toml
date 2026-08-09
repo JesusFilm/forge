@@ -1,37 +1,33 @@
-# NOT IN EFFECT. As of 2026-08-07 the production @forge/auth service has no
-# Config-as-code Path set (`serviceInstance.railwayConfigFile` is null), so
-# Railway ignores this file entirely and the DASHBOARD IS CANONICAL — exactly
-# the fallback apps/auth/CLAUDE.md describes.
+# READ THIS BEFORE EDITING — the two environments disagree, on purpose.
 #
-# What the dashboard actually runs today, mirrored below so the two do not drift
-# and so flipping the switch would not change behaviour:
+#   production  Config-as-code Path is NOT set, so Railway ignores this file and
+#               the DASHBOARD is canonical. Its start command runs
+#               `db:migrate:deploy && seed:first-party-apps && node server.js`,
+#               and production has DATABASE_URL, so migrations apply on deploy.
 #
-#   build:  pnpm install --frozen-lockfile
-#           && pnpm --filter @forge/auth db:generate
-#           && pnpm --filter @forge/auth build
-#           && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static
-#   start:  pnpm --filter @forge/auth db:migrate:deploy
-#           && pnpm --filter @forge/auth seed:first-party-apps
-#           && HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js
+#   stage       Config-as-code Path IS set to /apps/auth/railway.toml, so this
+#               file WINS over the dashboard. Stage has no auth Postgres and no
+#               DATABASE_URL — `@forge/auth/db` has never been deployed there.
 #
-# So migrations and the first-party seed DO run on every deploy — they ride the
-# start command rather than a preDeploy hook. Two consequences worth knowing:
+# That asymmetry is why this file must NOT run migrations. Putting
+# `db:migrate:deploy` in either `startCommand` or `preDeployCommand` here takes
+# stage down: Prisma exits P1012 "Environment variable not found: DATABASE_URL",
+# the `&&` chain stops, the server never listens, and the healthcheck fails four
+# times before the deploy is marked FAILED. That is not hypothetical — it
+# happened on 2026-08-07 between 01:37 and 02:26 UTC, five consecutive failed
+# stage deploys, after feat-322 added a migration step here on the assumption
+# that this file was inert. It is inert in production only.
 #
-#   1. A failed migration is a crash loop, not a refused promotion. The
-#      healthcheck below never gets a chance to reject a bad release cleanly.
-#   2. Every replica runs both on start. Prisma takes an advisory lock for
-#      migrations so that is safe today, but it is safe by accident, not design.
-#
-# Moving both to `preDeployCommand` would fix (1) and (2) — but only once the
-# Config-as-code Path is actually set. Until someone does that, editing this
-# file changes nothing.
+# Before adding anything database-touching to this file, either provision an
+# auth Postgres in stage and set DATABASE_URL, or unset stage's Config-as-code
+# Path so the dashboard governs there too.
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/auth db:generate && pnpm --filter @forge/auth build && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/auth build && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static"
 
 [deploy]
-startCommand = "pnpm --filter @forge/auth db:migrate:deploy && pnpm --filter @forge/auth seed:first-party-apps && HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js"
+startCommand = "HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
