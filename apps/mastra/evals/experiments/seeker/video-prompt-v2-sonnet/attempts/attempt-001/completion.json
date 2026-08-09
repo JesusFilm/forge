@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "seeker-attempt/v1",
+  "experimentId": "video-prompt-v2-sonnet",
+  "attemptId": "attempt-001",
+  "completedAt": "2026-08-09T22:41:28.823Z",
+  "inventory": {
+    "experimentId": "video-prompt-v2-sonnet",
+    "attemptId": "attempt-001",
+    "artifacts": [
+      {
+        "kind": "resolved-identity",
+        "path": "attempts/attempt-001/resolved-identity.json",
+        "sha256": "d1f683a723f099db3e196edac8f6aaca30e025cc0a4fb54e5a174d20f92930ef"
+      },
+      {
+        "kind": "answers",
+        "path": "attempts/attempt-001/answers.json",
+        "sha256": "bf07dd7666f5b365bd6c41b938b61f69bc712b855bff43dead5a1052e4e06c25"
+      },
+      {
+        "kind": "transcripts",
+        "path": "attempts/attempt-001/transcripts.json",
+        "sha256": "2039c03b33e6dc7d212f64162d26433135cec921bc3fcbab04d8977a5cd69548"
+      },
+      {
+        "kind": "judged",
+        "path": "attempts/attempt-001/judged.json",
+        "sha256": "7ee7fad42a1577d34cbca5d7744fae6a35b06ccbad7d60f017e77912a4711147"
+      },
+      {
+        "kind": "score",
+        "path": "attempts/attempt-001/score.json",
+        "sha256": "1e79f88add6b86bc96b3b474dc49dd5b6336bd972372d38bfbe87b97324157d9"
+      },
+      {
+        "kind": "comparison",
+        "path": "attempts/attempt-001/comparison.md",
+        "sha256": "0c2438fe49484f5b76d5bc2561aa6e004c5fbd551fb74813ee6cc6bc2c7c5c4a"
+      },
+      {
+        "kind": "gate-report",
+        "path": "attempts/attempt-001/gate-report.json",
+        "sha256": "d1cfc22dfa49d2256927fbfa0876787920f0858bb1a91893d54e3c7425bb574e"
+      }
+    ]
+  }
+}

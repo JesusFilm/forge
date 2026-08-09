@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "seeker-verdict/v1",
+  "experimentId": "video-prompt-v2-sonnet",
+  "attemptId": "attempt-001",
+  "candidateId": "video-prompt-v2",
+  "verdict": "failed",
+  "actor": "codex",
+  "recordedAt": "2026-08-09T22:41:51.148Z",
+  "reasoning": "The complete paid Sonnet and Haiku comparison produced 10 of 10 judged cells on both prompt versions, but version 2 introduced a deterministic cited-source-names-grounded hard failure on q-suffering; the gate is red and the candidate is not eligible for promotion.",
+  "evidence": [
+    "attempts/attempt-001/gate-report.json",
+    "attempts/attempt-001/comparison.md",
+    "attempts/attempt-001/score.json"
+  ],
+  "eligibility": {
+    "gate": {
+      "outcome": "red"
+    },
+    "criterion": {
+      "id": "minimum-run-score",
+      "version": "1",
+      "outcome": "passed"
+    },
+    "eligible": false,
+    "evidence": [
+      "attempts/attempt-001/gate-report.json",
+      "attempts/attempt-001/comparison.md",
+      "attempts/attempt-001/score.json"
+    ]
+  }
+}
