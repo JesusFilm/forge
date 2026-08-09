@@ -6,7 +6,7 @@ import {
 export const SEEKER_PRODUCTION_PROMPT = {
   provider: "langfuse",
   name: "seeker-system",
-  revision: "1",
+  revision: "2",
   contentHash:
     "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
 } as const
