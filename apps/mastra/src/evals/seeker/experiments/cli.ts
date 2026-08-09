@@ -4,6 +4,8 @@ import { pathToFileURL } from "node:url"
 
 import { csv, flag } from "../cli"
 import { TerminalVerdictSchema } from "./types"
+import { ResolvedIdentitySchema } from "./types"
+import { preparePromotion, type PromotionResult } from "./promotion"
 import { recordTerminalVerdict, type TerminalVerdictResult } from "./verdict"
 
 export function verdictCommandArgs(argv: readonly string[]) {
@@ -50,7 +52,59 @@ export async function executeVerdictCommand(
   })
 }
 
+export function promotionCommandArgs(argv: readonly string[]) {
+  const required = (name: string): string => {
+    const value = flag(argv, name)?.trim()
+    if (!value) throw new Error(`--${name}=<value> is required`)
+    return value
+  }
+  return {
+    experimentPath: required("experiment"),
+    attemptId: required("attempt"),
+    candidateId: required("candidate"),
+    evidenceCommit: required("commit"),
+    productionIdentityPath: required("production-identity"),
+    benchmarkDir: required("benchmark-dir"),
+    materialize: argv.includes("--materialize"),
+  }
+}
+
+export async function executePromotionCommand(
+  argv: readonly string[],
+  cwd = process.cwd(),
+  promoter: typeof preparePromotion = preparePromotion,
+): Promise<PromotionResult> {
+  const args = promotionCommandArgs(argv)
+  const identity = ResolvedIdentitySchema.parse(
+    JSON.parse(
+      await (
+        await import("node:fs/promises")
+      ).readFile(resolve(cwd, args.productionIdentityPath), "utf8"),
+    ),
+  )
+  return promoter({
+    repositoryRoot: cwd,
+    experimentPath: args.experimentPath,
+    attemptId: args.attemptId,
+    candidateId: args.candidateId,
+    evidenceCommit: args.evidenceCommit,
+    proposedIdentity: identity,
+    benchmarkDir: args.benchmarkDir,
+    materialize: args.materialize,
+  })
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<void> {
+  if (argv[0] === "promote") {
+    const result = await executePromotionCommand(argv.slice(1))
+    console.log(
+      result.valid
+        ? `promotion validated for ${result.source.experimentId}`
+        : `promotion requires a fresh qualifying run: ${result.mismatches.join(", ")}`,
+    )
+    if (!result.valid) process.exitCode = 1
+    return
+  }
   const result = await executeVerdictCommand(argv)
   console.log(`recorded terminal verdict at ${result.path}`)
 }
