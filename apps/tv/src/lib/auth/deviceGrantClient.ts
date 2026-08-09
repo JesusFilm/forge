@@ -221,3 +221,86 @@ export async function pollDeviceToken(
       }
   }
 }
+
+/**
+ * Refresh outcomes, split by what the caller should DO about them.
+ *
+ * The distinction is the whole point: `invalid_grant` means the server has
+ * disowned this refresh token and no amount of retrying will help — the viewer
+ * must sign in again. Anything else (offline, 500, timeout) leaves the grant
+ * intact, so wiping the session would sign a viewer out for a passing wifi
+ * blip. Collapsing these two into one failure case is how TVs end up
+ * mysteriously logged out overnight.
+ */
+export type RefreshOutcome =
+  | { kind: "refreshed"; tokens: DeviceTokens }
+  | { kind: "revoked"; code: string }
+  | { kind: "retryable" }
+
+export async function refreshAccessToken(
+  config: DeviceGrantConfig,
+  refreshToken: string,
+): Promise<RefreshOutcome> {
+  let result: Awaited<ReturnType<typeof postJson>>
+  try {
+    result = await postJson(`${config.authBaseUrl}/api/auth/oauth2/token`, {
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: config.clientId,
+    })
+  } catch {
+    return { kind: "retryable" }
+  }
+
+  const { ok, status, json } = result
+  if (ok && typeof json.access_token === "string") {
+    return {
+      kind: "refreshed",
+      tokens: {
+        accessToken: json.access_token,
+        // The server may rotate the refresh token. When it does not, the
+        // caller must keep the existing one rather than storing undefined.
+        refreshToken:
+          typeof json.refresh_token === "string"
+            ? json.refresh_token
+            : undefined,
+        idToken: typeof json.id_token === "string" ? json.id_token : undefined,
+        scope: typeof json.scope === "string" ? json.scope : undefined,
+        expiresInSeconds:
+          typeof json.expires_in === "number" ? json.expires_in : undefined,
+      },
+    }
+  }
+
+  const error = (json as ErrorBody).error
+  // Only the server explicitly disowning the grant ends the session. A 500 is
+  // the server having a bad day, not a revocation.
+  if (error === "invalid_grant" || error === "invalid_client") {
+    return { kind: "revoked", code: error }
+  }
+  if (status >= 500 || status === 429) return { kind: "retryable" }
+  return error != null
+    ? { kind: "revoked", code: error }
+    : { kind: "retryable" }
+}
+
+/**
+ * Best-effort revocation on sign out.
+ *
+ * Never throws and its result is deliberately ignored: local sign-out must
+ * succeed even from a plane. The server-side token then simply lives out its
+ * natural expiry, which is why the caller wipes local storage regardless.
+ */
+export async function revokeToken(
+  config: DeviceGrantConfig,
+  token: string,
+): Promise<void> {
+  try {
+    await postJson(`${config.authBaseUrl}/api/auth/oauth2/revoke`, {
+      token,
+      client_id: config.clientId,
+    })
+  } catch {
+    // Intentionally swallowed — see the docblock.
+  }
+}
