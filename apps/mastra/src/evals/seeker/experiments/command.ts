@@ -136,11 +136,9 @@ async function generateEvidence(
       )
 
       answers[candidate.id] = await loadJson(join(candidateDir, "answers.json"))
-      const transcript = (await loadJson(
+      transcripts[candidate.id] = await loadJson(
         join(candidateDir, "transcripts.json"),
-      )) as { resolvedPrompt?: Record<string, unknown> }
-      if (transcript.resolvedPrompt) delete transcript.resolvedPrompt.text
-      transcripts[candidate.id] = transcript
+      )
       judged[candidate.id] = await loadJson(join(candidateDir, "judged.json"))
       scores[candidate.id] = await loadJson(join(candidateDir, "score.json"))
       gates[candidate.id] = await loadJson(

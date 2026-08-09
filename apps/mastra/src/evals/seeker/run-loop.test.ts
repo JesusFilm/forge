@@ -152,4 +152,10 @@ describe("spend-guard import order (source pin)", () => {
     expect(code.match(/langfuse\.resolveExactManagedPrompt/g)).toHaveLength(1)
     expect(code).toMatch(/instructions:\s*prompt\.text/)
   })
+
+  it("records immutable prompt identity without serializing the managed body", () => {
+    const code = strippedRunLoopSource()
+    expect(code).toMatch(/resolvedPrompt:\s*\{\s*sha256:/)
+    expect(code).not.toMatch(/resolvedPrompt:\s*\{\s*text:\s*prompt\.text/)
+  })
 })

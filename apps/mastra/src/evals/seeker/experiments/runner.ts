@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { basename, resolve } from "node:path"
 
-import { createAttemptWriter } from "./artifacts"
+import { boundedDiagnostic, createAttemptWriter } from "./artifacts"
 import { ExperimentManifestSchema } from "./manifest"
 import {
   AttemptCompletionSchema,
@@ -64,7 +64,7 @@ function safeDiagnostic(cause: unknown): {
     stage: /preflight|manifest|benchmark|prompt/i.test(message)
       ? "preflight"
       : "pipeline",
-    reason: message.slice(0, 500),
+    reason: boundedDiagnostic(message),
   }
 }
 
@@ -136,6 +136,7 @@ export async function runExperiment(
       if (resolution.text != null)
         resolvedPromptTexts[candidate.id] = resolution.text
     }
+    writer.registerSensitiveValues(Object.values(resolvedPromptTexts))
 
     if ((await readFile(manifestPath, "utf8")) !== manifestSource) {
       throw new Error("experiment manifest changed during preflight")

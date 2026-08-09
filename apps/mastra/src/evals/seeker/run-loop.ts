@@ -118,9 +118,8 @@ export type LoopTranscriptFile = {
   kind: "seeker-eval-transcripts"
   startedAt: string
   finishedAt: string
-  /** The RESOLVED prompt this run generated under, verbatim + provenance. */
+  /** Immutable prompt provenance. Managed prompt bodies are never artifacts. */
   resolvedPrompt: {
-    text: string
     sha256: string
     source: "langfuse" | "fallback"
     langfuseVersion: number | null
@@ -480,7 +479,6 @@ async function main(): Promise<void> {
     startedAt,
     finishedAt,
     resolvedPrompt: {
-      text: prompt.text,
       sha256: identity.promptSha256,
       source: identity.promptSource,
       langfuseVersion: identity.promptLangfuseVersion,
