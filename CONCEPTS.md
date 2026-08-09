@@ -729,6 +729,15 @@ The TV home's top-of-screen canvas that reflects whatever card currently holds D
 
 ## Watch player UI
 
+### Forge Subtitle Track
+
+The single browser text track that Watch injects for the subtitle selected from
+a Video Edition, distinct from player-generated tracks that are not exposed as
+Forge subtitle choices.
+
+It is a public in-page media consumer: its VTT must load through a same-origin
+response that remains separate from protected file-download behavior.
+
 ### Watch Modal Activity
 
 The aggregate ownership state of every Watch overlay that must suspend route-owned playback, independent of which component renders the overlay or which player is active.
