@@ -7,6 +7,7 @@ import {
   RepositoryRelativePathSchema,
   ResolvedIdentitySchema,
   SafeIdSchema,
+  type ComparisonAxis,
   type ExperimentManifestInput,
   type ResolvedIdentity,
 } from "./types"
@@ -18,7 +19,7 @@ function comparable(value: unknown): string {
 export function resolvedIdentityMismatch(
   baseline: ResolvedIdentity,
   candidate: ResolvedIdentity,
-  axis: "prompt" | "model",
+  axis: ComparisonAxis,
 ): string[] {
   const mismatches: string[] = []
   if (baseline.prompt.provider !== candidate.prompt.provider)

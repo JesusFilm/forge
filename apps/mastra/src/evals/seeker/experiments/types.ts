@@ -129,6 +129,8 @@ export const TerminalVerdictSchema = z.enum([
   "deferred",
 ])
 export const ComparisonAxisSchema = z.enum(["prompt", "model"])
+export type TerminalVerdict = z.infer<typeof TerminalVerdictSchema>
+export type ComparisonAxis = z.infer<typeof ComparisonAxisSchema>
 
 const ArtifactRecordSchema = z
   .object({

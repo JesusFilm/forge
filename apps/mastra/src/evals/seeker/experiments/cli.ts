@@ -1,29 +1,30 @@
 #!/usr/bin/env tsx
+import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import { csv, flag } from "../cli"
-import { TerminalVerdictSchema } from "./types"
-import { ResolvedIdentitySchema } from "./types"
+import { ResolvedIdentitySchema, TerminalVerdictSchema } from "./types"
 import { preparePromotion, type PromotionResult } from "./promotion"
 import { recordTerminalVerdict, type TerminalVerdictResult } from "./verdict"
 
+function requiredFlag(argv: readonly string[], name: string): string {
+  const value = flag(argv, name)?.trim()
+  if (!value) throw new Error(`--${name}=<value> is required`)
+  return value
+}
+
 export function verdictCommandArgs(argv: readonly string[]) {
-  const required = (name: string): string => {
-    const value = flag(argv, name)?.trim()
-    if (!value) throw new Error(`--${name}=<value> is required`)
-    return value
-  }
-  const evidence = csv(required("evidence"))
+  const evidence = csv(requiredFlag(argv, "evidence"))
   if (evidence.length === 0)
     throw new Error("--evidence requires at least one path")
   return {
-    experimentDir: required("experiment"),
-    attemptId: required("attempt"),
-    candidateId: required("candidate"),
-    verdict: TerminalVerdictSchema.parse(required("verdict")),
-    actor: required("actor"),
-    reasoning: required("reason"),
+    experimentDir: requiredFlag(argv, "experiment"),
+    attemptId: requiredFlag(argv, "attempt"),
+    candidateId: requiredFlag(argv, "candidate"),
+    verdict: TerminalVerdictSchema.parse(requiredFlag(argv, "verdict")),
+    actor: requiredFlag(argv, "actor"),
+    reasoning: requiredFlag(argv, "reason"),
     evidence,
     experimentsRoot: flag(argv, "experiments-root")?.trim(),
   }
@@ -53,18 +54,13 @@ export async function executeVerdictCommand(
 }
 
 export function promotionCommandArgs(argv: readonly string[]) {
-  const required = (name: string): string => {
-    const value = flag(argv, name)?.trim()
-    if (!value) throw new Error(`--${name}=<value> is required`)
-    return value
-  }
   return {
-    experimentPath: required("experiment"),
-    attemptId: required("attempt"),
-    candidateId: required("candidate"),
-    evidenceCommit: required("commit"),
-    productionIdentityPath: required("production-identity"),
-    benchmarkDir: required("benchmark-dir"),
+    experimentPath: requiredFlag(argv, "experiment"),
+    attemptId: requiredFlag(argv, "attempt"),
+    candidateId: requiredFlag(argv, "candidate"),
+    evidenceCommit: requiredFlag(argv, "commit"),
+    productionIdentityPath: requiredFlag(argv, "production-identity"),
+    benchmarkDir: requiredFlag(argv, "benchmark-dir"),
     materialize: argv.includes("--materialize"),
   }
 }
@@ -77,9 +73,7 @@ export async function executePromotionCommand(
   const args = promotionCommandArgs(argv)
   const identity = ResolvedIdentitySchema.parse(
     JSON.parse(
-      await (
-        await import("node:fs/promises")
-      ).readFile(resolve(cwd, args.productionIdentityPath), "utf8"),
+      await readFile(resolve(cwd, args.productionIdentityPath), "utf8"),
     ),
   )
   return promoter({

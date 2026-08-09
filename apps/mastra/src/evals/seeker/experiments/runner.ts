@@ -64,7 +64,7 @@ function safeDiagnostic(cause: unknown): {
     stage: /preflight|manifest|benchmark|prompt/i.test(message)
       ? "preflight"
       : "pipeline",
-    reason: boundedDiagnostic(message),
+    reason: boundedDiagnostic(cause),
   }
 }
 

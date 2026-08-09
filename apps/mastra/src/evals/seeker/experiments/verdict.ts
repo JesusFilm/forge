@@ -10,6 +10,7 @@ import {
   TerminalVerdictSchema,
   VerdictRecordSchema,
   type EligibilityRecord,
+  type TerminalVerdict,
 } from "./types"
 
 export type RecordTerminalVerdictInput = {
@@ -17,7 +18,7 @@ export type RecordTerminalVerdictInput = {
   experimentDir: string
   attemptId: string
   candidateId: string
-  verdict: "successful" | "failed" | "inconclusive" | "deferred"
+  verdict: TerminalVerdict
   actor: string
   recordedAt?: string
   reasoning: string

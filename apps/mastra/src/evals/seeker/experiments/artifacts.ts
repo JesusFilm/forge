@@ -43,6 +43,13 @@ export function sanitizeEvidence(
   sensitiveValues: readonly string[] = [],
 ): unknown {
   const sentinels = sensitiveValues.filter((item) => item.length > 0)
+  return sanitizeEvidenceValue(value, sentinels)
+}
+
+function sanitizeEvidenceValue(
+  value: unknown,
+  sentinels: readonly string[],
+): unknown {
   if (typeof value === "string") {
     if (
       SECRET_VALUE.test(value) ||
@@ -54,14 +61,14 @@ export function sanitizeEvidence(
       : value
   }
   if (Array.isArray(value))
-    return value.map((item) => sanitizeEvidence(item, sentinels))
+    return value.map((item) => sanitizeEvidenceValue(item, sentinels))
   if (value != null && typeof value === "object")
     return Object.fromEntries(
       Object.entries(value).map(([key, child]) => [
         key,
         SECRET_KEY.test(key) && key !== "traceId"
           ? "[REDACTED]"
-          : sanitizeEvidence(child, sentinels),
+          : sanitizeEvidenceValue(child, sentinels),
       ]),
     )
   return value
@@ -119,14 +126,12 @@ async function atomicExclusiveWrite(
   path: string,
   content: string,
 ): Promise<void> {
-  if (await exists(path)) throw new Error(`artifact already exists: ${path}`)
   await mkdir(dirname(path), { recursive: true })
   const temporary = `${path}.tmp-${process.pid}-${crypto.randomUUID()}`
   await writeFile(temporary, content, { encoding: "utf8", flag: "wx" })
   try {
     // Hard-link creation is exclusive: unlike rename(), it cannot replace a
-    // concurrently-created immutable artifact between the existence check
-    // and publication.
+    // concurrently-created immutable artifact during publication.
     await link(temporary, path)
   } catch (cause) {
     if ((cause as NodeJS.ErrnoException).code === "EEXIST") {
