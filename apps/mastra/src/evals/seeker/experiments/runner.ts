@@ -2,7 +2,11 @@ import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { basename, resolve } from "node:path"
 
-import { boundedDiagnostic, createAttemptWriter } from "./artifacts"
+import {
+  boundedDiagnostic,
+  createAttemptWriter,
+  scanExperimentPackage,
+} from "./artifacts"
 import { ExperimentManifestSchema } from "./manifest"
 import {
   AttemptCompletionSchema,
@@ -208,6 +212,12 @@ export async function runExperiment(
       else await writer.writeJson(path, value)
     }
     await writer.complete(REQUIRED_EVIDENCE)
+    await scanExperimentPackage(
+      input.experimentsRoot,
+      manifest.id,
+      input.attemptId,
+      Object.values(resolvedPromptTexts),
+    )
     return { attemptDir: writer.attemptDir, completed: true }
   } catch (cause) {
     try {

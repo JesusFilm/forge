@@ -39,7 +39,12 @@ const identity = ResolvedIdentitySchema.parse({
 })
 
 async function fixture(
-  options: { verdict?: string; eligible?: boolean; mutate?: boolean } = {},
+  options: {
+    verdict?: string
+    eligible?: boolean
+    mutate?: boolean
+    gateVerdict?: "green" | "red"
+  } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), "seeker-promotion-"))
   await exec("git", ["init", "-q"], { cwd: root })
@@ -48,6 +53,34 @@ async function fixture(
   const experiment = "apps/mastra/evals/experiments/seeker/exp-one"
   const attempt = `${experiment}/attempts/attempt-one`
   await mkdir(join(root, attempt), { recursive: true })
+  await writeFile(
+    join(root, experiment, "experiment.json"),
+    JSON.stringify({
+      schemaVersion: "seeker-experiment/v1",
+      id: "exp-one",
+      owner: "Test owner",
+      hypothesis: "The candidate improves the benchmark.",
+      criterion: {
+        id: "minimum-run-score",
+        version: "1",
+        parameters: { minimum: 0.8 },
+      },
+      comparisonAxis: "prompt",
+      productionBenchmark: {
+        path: "apps/mastra/evals/results/seeker-baseline",
+        identity: {
+          ...identity,
+          prompt: {
+            ...identity.prompt,
+            revision: "41",
+            contentHash: "b".repeat(64),
+          },
+        },
+      },
+      candidates: [{ id: "candidate-one", identity }],
+      lifecycle: "review-ready",
+    }),
+  )
   const artifacts: Array<{ kind: string; path: string; sha256: string }> = []
   const evidence: Array<[string, string, string]> = [
     [
@@ -61,7 +94,14 @@ async function fixture(
           name,
           `${name}.json`,
           JSON.stringify({
-            candidates: { "candidate-one": { kind: `${name}.json`, identity } },
+            candidates: {
+              "candidate-one": {
+                kind: `${name}.json`,
+                identity,
+                ...(name === "score" ? { runScore: 0.9 } : {}),
+                ...(name === "gate-report" ? { verdict: "green" } : {}),
+              },
+            },
           }),
         ] as [string, string, string],
     ),
@@ -69,7 +109,11 @@ async function fixture(
     [
       "gate-report",
       "gate-report.json",
-      JSON.stringify({ candidates: { "candidate-one": { outcome: "green" } } }),
+      JSON.stringify({
+        candidates: {
+          "candidate-one": { verdict: options.gateVerdict ?? "green" },
+        },
+      }),
     ],
   ]
   for (const [kind, name, content] of evidence) {
@@ -108,7 +152,11 @@ async function fixture(
       evidence: ["attempts/attempt-one/gate-report.json"],
       eligibility: {
         gate: { outcome: "green" },
-        criterion: { id: "criterion", version: "1", outcome: "passed" },
+        criterion: {
+          id: "minimum-run-score",
+          version: "1",
+          outcome: "passed",
+        },
         eligible: options.eligible ?? true,
         evidence: ["attempts/attempt-one/gate-report.json"],
       },
@@ -197,5 +245,98 @@ describe("preparePromotion", () => {
       mismatches: ["runtime"],
     })
     await expect(readFile(join(output, "answers.json"))).rejects.toThrow()
+  })
+
+  it("ignores intake provenance when comparing executed prompt identity", async () => {
+    const f = await fixture()
+    const proposed = {
+      ...identity,
+      prompt: {
+        ...identity.prompt,
+        provenance: {
+          intakeSelector: { kind: "label" as const, value: "candidate" },
+        },
+      },
+    }
+    await expect(
+      preparePromotion({
+        repositoryRoot: f.root,
+        experimentPath: f.experiment,
+        attemptId: "attempt-one",
+        candidateId: "candidate-one",
+        evidenceCommit: f.commit,
+        proposedIdentity: proposed,
+        productionPrompt: identity.prompt,
+        benchmarkDir: join(f.root, "benchmark"),
+        materialize: false,
+      }),
+    ).resolves.toMatchObject({ valid: true, mismatches: [] })
+  })
+
+  it("rejects verdict eligibility that disagrees with committed gate evidence", async () => {
+    const f = await fixture({ gateVerdict: "red" })
+    await expect(
+      preparePromotion({
+        repositoryRoot: f.root,
+        experimentPath: f.experiment,
+        attemptId: "attempt-one",
+        candidateId: "candidate-one",
+        evidenceCommit: f.commit,
+        proposedIdentity: identity,
+        productionPrompt: identity.prompt,
+        benchmarkDir: join(f.root, "benchmark"),
+        materialize: false,
+      }),
+    ).rejects.toThrow(
+      "eligibility does not match committed experiment evidence",
+    )
+  })
+
+  it("rolls back the prior benchmark when atomic replacement fails", async () => {
+    const f = await fixture()
+    const output = join(f.root, "benchmark")
+    await mkdir(output)
+    await writeFile(join(output, "sentinel.txt"), "prior benchmark")
+    await expect(
+      preparePromotion(
+        {
+          repositoryRoot: f.root,
+          experimentPath: f.experiment,
+          attemptId: "attempt-one",
+          candidateId: "candidate-one",
+          evidenceCommit: f.commit,
+          proposedIdentity: identity,
+          productionPrompt: identity.prompt,
+          benchmarkDir: output,
+          materialize: true,
+        },
+        {
+          rename: async () =>
+            Promise.reject(new Error("injected rename failure")),
+        },
+      ),
+    ).rejects.toThrow("injected rename failure")
+    await expect(readFile(join(output, "sentinel.txt"), "utf8")).resolves.toBe(
+      "prior benchmark",
+    )
+  })
+
+  it("refuses materialization when a backup sidecar already exists", async () => {
+    const f = await fixture()
+    const output = join(f.root, "benchmark")
+    await mkdir(`${output}.promotion-backup`)
+    await expect(
+      preparePromotion({
+        repositoryRoot: f.root,
+        experimentPath: f.experiment,
+        attemptId: "attempt-one",
+        candidateId: "candidate-one",
+        evidenceCommit: f.commit,
+        proposedIdentity: identity,
+        productionPrompt: identity.prompt,
+        benchmarkDir: output,
+        materialize: true,
+      }),
+    ).rejects.toThrow("promotion backup sidecar already exists")
   })
 })

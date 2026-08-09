@@ -27,7 +27,7 @@ const MinimumScoreDeltaParameters = z
 const registry: Record<string, CriterionEvaluator> = {
   "minimum-run-score@1": (parameters, { score }) => {
     const parsed = MinimumRunScoreParameters.safeParse(parameters)
-    if (!parsed.success) return null
+    if (!parsed.success) return "unavailable"
     const runScore = (score as { runScore?: unknown } | null)?.runScore
     if (typeof runScore !== "number" || !Number.isFinite(runScore))
       return "unavailable"
@@ -35,7 +35,7 @@ const registry: Record<string, CriterionEvaluator> = {
   },
   "minimum-score-delta@1": (parameters, { gateReport }) => {
     const parsed = MinimumScoreDeltaParameters.safeParse(parameters)
-    if (!parsed.success) return null
+    if (!parsed.success) return "unavailable"
     const delta = (gateReport as { scoreDelta?: { delta?: unknown } } | null)
       ?.scoreDelta?.delta
     if (typeof delta !== "number" || !Number.isFinite(delta))

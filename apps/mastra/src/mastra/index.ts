@@ -163,6 +163,7 @@ import {
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
+import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
 import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
 import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
@@ -962,4 +963,5 @@ setInstructionResolver(async (agentId) => {
 // redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
 if (env.NODE_ENV === "production") {
   startAiChatRetentionPurge()
+  startSeekerPromptHealthMonitor()
 }

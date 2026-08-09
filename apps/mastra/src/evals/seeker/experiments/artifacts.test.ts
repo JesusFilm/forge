@@ -145,6 +145,38 @@ describe("experiment attempt artifacts", () => {
     expect(source).toContain("trace-safe")
   })
 
+  it("redacts Langfuse public and secret keys at the JSON write boundary", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seeker-experiment-"))
+    const writer = await createAttemptWriter(root, "exp-one", "attempt-1")
+    await writer.writeJson("transcripts.json", {
+      langfusePublicKey: "pk-lf-publiccredential123",
+      nested: "sk-lf-secretcredential123",
+    })
+    const source = await readFile(
+      join(writer.attemptDir, "transcripts.json"),
+      "utf8",
+    )
+    expect(source).not.toContain("pk-lf-")
+    expect(source).not.toContain("sk-lf-")
+    expect(source).toContain("[REDACTED]")
+  })
+
+  it("refuses Langfuse keys in text artifacts before package completion", async () => {
+    const root = await mkdtemp(join(tmpdir(), "seeker-experiment-"))
+    const writer = await createAttemptWriter(root, "exp-one", "attempt-1")
+    for (const path of REQUIRED) {
+      if (path === "comparison.md")
+        await writer.writeText(
+          path,
+          "# comparison\n\npk-lf-publiccredential123\n",
+        )
+      else await writer.writeJson(path, {})
+    }
+    await expect(writer.complete(REQUIRED)).rejects.toThrow(
+      /unsafe content.*comparison/,
+    )
+  })
+
   it("validates inventory checksums and scans a complete package", async () => {
     const root = await mkdtemp(join(tmpdir(), "seeker-experiment-"))
     await completePackage(root)

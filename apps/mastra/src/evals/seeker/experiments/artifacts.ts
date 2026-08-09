@@ -14,9 +14,9 @@ import { z } from "zod"
 import { AttemptCompletionSchema, SafeIdSchema } from "./types"
 
 const SECRET_KEY =
-  /(?:authorization|api[-_]?key|credential|secret|password|prompt(?:text|body)|instructions|trace(?:payload|body|content))/i
+  /(?:authorization|api[-_]?key|credential|secret|password|langfuse(?:public|secret)?key|prompt(?:text|body)|instructions|trace(?:payload|body|content))/i
 const SECRET_VALUE =
-  /(?:bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|pk)_[a-z0-9_-]{12,})/i
+  /(?:bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|pk)_[a-z0-9_-]{12,}|(?:sk|pk)-lf-[a-z0-9_-]{8,})/i
 const MAX_DIAGNOSTIC_CHARS = 500
 
 export const ComparisonArtifactSchema = z

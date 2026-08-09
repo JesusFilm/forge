@@ -23,10 +23,30 @@ async function loadJson(path: string): Promise<unknown> {
   return JSON.parse(await readFile(path, "utf8"))
 }
 
-async function loadBenchmarkIdentity(path: string): Promise<ResolvedIdentity> {
+export async function loadBenchmarkIdentity(
+  path: string,
+): Promise<ResolvedIdentity> {
   const value = await loadJson(resolve(REPO_ROOT, path))
   const candidate = (value as { identity?: unknown }).identity ?? value
   return ResolvedIdentitySchema.parse(candidate)
+}
+
+export function serializeSupportedModelRoutes(
+  routes: ResolvedIdentity["model"]["routes"],
+): string {
+  for (const route of routes) {
+    if (
+      route.provider !== "openrouter" ||
+      route.endpoint !== "model-router" ||
+      route.baseUrl != null ||
+      route.timeoutMs != null ||
+      route.configurationHash != null
+    )
+      throw new Error(
+        `unsupported model route identity: ${route.provider}/${route.endpoint}`,
+      )
+  }
+  return JSON.stringify(routes)
 }
 
 async function runLeaf(
@@ -100,16 +120,16 @@ async function generateEvidence(
       const promptText = input.resolvedPromptTexts[candidate.id]
       if (promptText == null)
         throw new Error(`resolved prompt text missing for ${candidate.id}`)
-      const models = candidate.identity.model.routes
-        .map((route) => route.model)
-        .join(",")
+      const modelRoutes = serializeSupportedModelRoutes(
+        candidate.identity.model.routes,
+      )
       await runLeaf(
         "src/evals/seeker/run-loop.ts",
         [
           `--out=${join(candidateDir, "answers.json")}`,
           `--transcripts=${join(candidateDir, "transcripts.json")}`,
           `--fixtures=${DEFAULT_FIXTURES}`,
-          `--models=${models}`,
+          `--model-routes=${modelRoutes}`,
           `--prompt-version=${prompt.revision}`,
           `--prompt-hash=${prompt.contentHash}`,
         ],

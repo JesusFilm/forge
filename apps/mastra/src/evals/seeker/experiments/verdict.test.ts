@@ -147,6 +147,27 @@ describe("recordTerminalVerdict", () => {
     ).rejects.toThrow(/checksum mismatch/)
   })
 
+  it("refuses a verdict when the completed package contains an untracked partial", async () => {
+    const { root, experimentDir } = await completedExperiment("green")
+    await writeFile(
+      join(experimentDir, "attempts/attempt-1/score.json.partial"),
+      "{}",
+    )
+    await expect(
+      recordTerminalVerdict({
+        experimentsRoot: root,
+        experimentDir,
+        attemptId: "attempt-1",
+        candidateId: "candidate-one",
+        verdict: "failed",
+        actor: "reviewer@example.org",
+        recordedAt: "2026-08-10T10:00:00.000Z",
+        reasoning: "The package scan must precede the human verdict action.",
+        evidence,
+      }),
+    ).rejects.toThrow(/forbidden or untracked package artifact/)
+  })
+
   it("does not rewrite prior eligibility when policy or opinion changes", async () => {
     const { root, experimentDir } = await completedExperiment("red")
     await recordTerminalVerdict({

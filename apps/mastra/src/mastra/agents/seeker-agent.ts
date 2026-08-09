@@ -288,12 +288,24 @@ export type SeekerAgentOverrides = {
  * or stale cache; moving `production` cannot change live traffic.
  */
 export function createSeekerInstructionsResolver(
-  overrides: Pick<ExactManagedPromptInput, "config" | "fetchImpl"> & {
+  overrides: Omit<
+    ExactManagedPromptInput,
+    "name" | "version" | "expectedContentHash"
+  > & {
     logSink?: (line: string) => void
+    /** Legacy test seam; exact resolution is intentionally uncached. */
+    cache?: unknown
+    pinned?: {
+      provider: string
+      name: string
+      revision: string
+      contentHash: string
+    }
   } = {},
 ): () => Promise<string> {
   let criticalAlertEmitted = false
   return async () => {
+    const pinned = overrides.pinned ?? SEEKER_PRODUCTION_PROMPT
     // feat-330 (plan P2 end state): the resolved managed text is returned
     // VERBATIM — there is no longer any code-appended block, and this resolver
     // reads no flag. `SEEKER_VIDEO_ENABLED` now gates `buildSeekerTools` only,
@@ -303,9 +315,9 @@ export function createSeekerInstructionsResolver(
     // in SEEKER_SYSTEM_PROMPT_FALLBACK above). Do not reintroduce an append
     // here: it would silently diverge the two prompt sources again.
     const resolved = await resolveExactManagedPrompt({
-      name: SEEKER_PRODUCTION_PROMPT.name,
-      version: Number(SEEKER_PRODUCTION_PROMPT.revision),
-      expectedContentHash: SEEKER_PRODUCTION_PROMPT.contentHash,
+      name: pinned.name,
+      version: Number(pinned.revision),
+      expectedContentHash: pinned.contentHash,
       config: overrides.config,
       fetchImpl: overrides.fetchImpl,
     })
@@ -314,7 +326,7 @@ export function createSeekerInstructionsResolver(
     if (!criticalAlertEmitted) {
       criticalAlertEmitted = true
       ;(overrides.logSink ?? console.error)(
-        `[seeker-production-prompt] severity=critical state=degraded_fallback provider=${SEEKER_PRODUCTION_PROMPT.provider} name=${SEEKER_PRODUCTION_PROMPT.name} revision=${SEEKER_PRODUCTION_PROMPT.revision} reason=${resolved.reason}${resolved.detail ? ` detail=${resolved.detail}` : ""}`,
+        `[seeker-production-prompt] severity=critical state=degraded_fallback provider=${pinned.provider} name=${pinned.name} revision=${pinned.revision} reason=${resolved.reason}${resolved.detail ? ` detail=${resolved.detail}` : ""}`,
       )
     }
     return SEEKER_SYSTEM_PROMPT_FALLBACK

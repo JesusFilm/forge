@@ -1,5 +1,8 @@
+import { readFile } from "node:fs/promises"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
+import { ExperimentManifestSchema } from "./manifest"
 import { EligibilityRecordSchema } from "./types"
 import { evaluateEligibility } from "./eligibility"
 
@@ -59,19 +62,43 @@ describe("evaluateEligibility", () => {
     ).toBe("passed")
   })
 
-  it("treats an unsupported version and malformed parameters as unknown", () => {
-    for (const candidate of [
-      { ...criterion, version: "2" },
-      { ...criterion, parameters: { minimum: "high" } },
-    ])
-      expect(
-        evaluateEligibility({
-          gateReport: { verdict: "green" },
-          criterion: candidate,
-          score: { runScore: 1 },
-          evidence: ["attempts/attempt-1/gate-report.json"],
-        }).criterion.outcome,
-      ).toBe("unknown")
+  it("parses the shipped template criterion and can derive eligibility", async () => {
+    const template = ExperimentManifestSchema.parse(
+      JSON.parse(
+        await readFile(
+          resolve(
+            import.meta.dirname,
+            "../../../../evals/experiments/seeker/experiment.template.json",
+          ),
+          "utf8",
+        ),
+      ),
+    )
+    expect(
+      evaluateEligibility({
+        gateReport: { verdict: "green" },
+        criterion: template.criterion,
+        score: { runScore: 0.95 },
+        evidence: ["attempts/attempt-1/score.json"],
+      }),
+    ).toMatchObject({
+      criterion: { id: "minimum-run-score", outcome: "passed" },
+      eligible: true,
+    })
+  })
+
+  it("distinguishes unsupported evaluators from malformed parameters", () => {
+    const evaluate = (candidate: unknown) =>
+      evaluateEligibility({
+        gateReport: { verdict: "green" },
+        criterion: candidate,
+        score: { runScore: 1 },
+        evidence: ["attempts/attempt-1/gate-report.json"],
+      }).criterion.outcome
+    expect(evaluate({ ...criterion, version: "2" })).toBe("unknown")
+    expect(evaluate({ ...criterion, parameters: { minimum: "high" } })).toBe(
+      "unavailable",
+    )
   })
 
   it("rejects a persisted eligibility flag that disagrees with its inputs", () => {

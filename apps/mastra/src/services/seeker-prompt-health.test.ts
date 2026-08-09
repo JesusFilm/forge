@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { createSeekerPromptHealthCheck } from "./seeker-prompt-health"
+import {
+  createSeekerPromptHealthCheck,
+  startSeekerPromptHealthMonitor,
+} from "./seeker-prompt-health"
 
 describe("createSeekerPromptHealthCheck", () => {
   it("alerts once for label lag, recovers once, and never blocks pinned traffic", async () => {
@@ -63,5 +66,39 @@ describe("createSeekerPromptHealthCheck", () => {
     })
     expect(await check()).toMatchObject({ healthy: false, critical: true })
     expect(log.mock.calls[0][0]).toContain("effect=pinned_version_unavailable")
+  })
+})
+
+describe("startSeekerPromptHealthMonitor", () => {
+  it("runs at boot and daily only in configured production", async () => {
+    vi.useFakeTimers()
+    const check = vi.fn().mockResolvedValue(undefined)
+    const monitor = startSeekerPromptHealthMonitor({
+      environment: {
+        NODE_ENV: "production",
+        LANGFUSE_BASE_URL: "https://langfuse.example",
+        LANGFUSE_PUBLIC_KEY: "pk-lf-public",
+        LANGFUSE_SECRET_KEY: "sk-lf-secret",
+      },
+      check,
+      intervalMs: 100,
+    })
+    expect(monitor).not.toBeNull()
+    expect(check).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(check).toHaveBeenCalledTimes(2)
+    monitor?.stop()
+    vi.useRealTimers()
+  })
+
+  it("stays silent outside configured production", () => {
+    const check = vi.fn()
+    expect(
+      startSeekerPromptHealthMonitor({
+        environment: { NODE_ENV: "production" },
+        check,
+      }),
+    ).toBeNull()
+    expect(check).not.toHaveBeenCalled()
   })
 })

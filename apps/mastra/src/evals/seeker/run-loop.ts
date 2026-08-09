@@ -55,6 +55,7 @@ import {
   type ToolCallRecord,
 } from "./types"
 import type { FixtureSearchCall } from "./fixture-rag"
+import type { ModelWithRetries } from "@mastra/core/agent"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_RUNS_DIR = resolve(MODULE_DIR, "../../../eval-runs/seeker")
@@ -65,6 +66,32 @@ const DEFAULT_FIXTURES = resolve(MODULE_DIR, "fixtures/rag-fixtures.json")
  *  imports, so this is spend-guard-safe) — a hung provider cannot wedge a
  *  run, and the eval can never drift from the route's real budget. */
 const CELL_TIMEOUT_MS = TIME_BUDGET_MS.chatTurn
+
+export function parseOrderedModelRoutes(source: string): ModelWithRetries[] {
+  const parsed = JSON.parse(source) as Array<{
+    provider?: unknown
+    model?: unknown
+    endpoint?: unknown
+    maxRetries?: unknown
+  }>
+  if (
+    !Array.isArray(parsed) ||
+    parsed.length === 0 ||
+    parsed.some(
+      (route) =>
+        route.provider !== "openrouter" ||
+        route.endpoint !== "model-router" ||
+        typeof route.model !== "string" ||
+        !Number.isInteger(route.maxRetries) ||
+        Number(route.maxRetries) < 0,
+    )
+  )
+    throw new Error("--model-routes contains an unsupported route identity")
+  return parsed.map((route) => ({
+    model: `openrouter/${String(route.model)}`,
+    maxRetries: Number(route.maxRetries),
+  }))
+}
 
 /**
  * The key-hygiene mechanism, factored for direct unit testing. Operates on an
@@ -263,7 +290,18 @@ async function main(): Promise<void> {
   const fixtures = await loadFixtures(
     resolve(process.cwd(), flag(argv, "fixtures") ?? DEFAULT_FIXTURES),
   )
-  const models = answeringModelsByIds(csv(flag(argv, "models")))
+  const routeSource = flag(argv, "model-routes")
+  let orderedRoutes: ModelWithRetries[] | null = null
+  let models: AnsweringModel[]
+  if (routeSource != null) {
+    orderedRoutes = parseOrderedModelRoutes(routeSource)
+    const routeId = orderedRoutes
+      .map((route) => String(route.model).replace(/^openrouter\//, ""))
+      .join(" -> ")
+    models = [{ id: routeId, label: "ordered-fallback", note: "manifest" }]
+  } else {
+    models = answeringModelsByIds(csv(flag(argv, "models")))
+  }
   const limitRaw = flag(argv, "limit")
   const limit = limitRaw ? Number(limitRaw) : QUESTIONS.length
   if (!Number.isFinite(limit) || limit < 1) {
@@ -437,7 +475,9 @@ async function main(): Promise<void> {
           questionText: question.text,
           onCall: (call) => calls.push(call),
         }),
-        models: [{ model: `openrouter/${model.id}`, maxRetries: 1 }],
+        models: orderedRoutes ?? [
+          { model: `openrouter/${model.id}`, maxRetries: 1 },
+        ],
         memory: new memoryModule.Memory({
           storage: new storageModule.InMemoryStore(),
         }),

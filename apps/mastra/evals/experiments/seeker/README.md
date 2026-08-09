@@ -78,9 +78,10 @@ unknown, or unavailable machine evidence promotable.
 
 ## Separate promotion change
 
-Promotion never belongs in the experiment-evidence PR. After evidence is
-committed and reviewed, create a separate branch and validate the package at
-its evidence commit:
+Promotion never belongs in the experiment-evidence PR. After that PR is merged,
+create a separate branch from current `main`, update the repository production
+prompt pin, and write the matching proposed production identity file. Then
+validate the committed evidence package against that proposed identity:
 
 ```bash
 pnpm --filter @forge/mastra eval:seeker:experiment:promote -- \
@@ -92,9 +93,10 @@ pnpm --filter @forge/mastra eval:seeker:experiment:promote -- \
 ```
 
 Run without `--materialize` first. Only after read-only validation passes,
-rerun with `--materialize`, then review the production prompt pin and all four
-canonical benchmark files in the same promotion PR. Any identity change after
-the accepted attempt requires a fresh qualifying benchmark.
+rerun with `--materialize`. Review the already-updated production prompt pin
+and all four newly materialized canonical benchmark files together in the same
+promotion PR. Any identity change after the accepted attempt requires a fresh
+qualifying benchmark.
 
 After merge, move the Langfuse `production` label to the pinned version. A
 mismatch is an actionable alert, not a traffic selector or deployment blocker.

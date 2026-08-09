@@ -232,6 +232,33 @@ describe("runExperiment integration", () => {
     ).rejects.toThrow(/missing required artifact/)
   })
 
+  it("refuses an untracked partial artifact after completion", async () => {
+    const { root, dir } = await packageWith(manifest())
+    await expect(
+      runExperiment({
+        experimentsRoot: root,
+        experimentDir: dir,
+        attemptId: "attempt-1",
+        resolvePrompt: vi.fn().mockResolvedValue({
+          ok: true,
+          revision: "43",
+          contentHash: hash("f"),
+        }),
+        generate: async ({ attemptDir }) => {
+          await writeFile(join(attemptDir, "answers.json.partial"), "{}")
+          return {
+            "answers.json": {},
+            "transcripts.json": {},
+            "judged.json": {},
+            "score.json": {},
+            "comparison.md": "# comparison\n",
+            "gate-report.json": {},
+          }
+        },
+      }),
+    ).rejects.toThrow(/forbidden or untracked package artifact/)
+  })
+
   it("reuses only a completed full-identity-matching attempt", async () => {
     const { root, dir } = await packageWith(manifest())
     const resolution = vi

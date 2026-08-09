@@ -1,6 +1,13 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import {
+  access,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises"
 import { basename, dirname, join, resolve, sep } from "node:path"
 import { promisify } from "node:util"
 
@@ -10,6 +17,8 @@ import {
   VerdictRecordSchema,
   type ResolvedIdentity,
 } from "./types"
+import { evaluateEligibility } from "./eligibility"
+import { ExperimentManifestSchema } from "./manifest"
 import { SEEKER_PRODUCTION_PROMPT } from "../../../mastra/agents/seeker-production-config"
 
 const exec = promisify(execFile)
@@ -88,13 +97,26 @@ function identityMismatches(
     "runtime",
   ] as const
   return keys.filter(
-    (key) => JSON.stringify(accepted[key]) !== JSON.stringify(proposed[key]),
+    (key) =>
+      JSON.stringify(executedIdentityField(key, accepted[key])) !==
+      JSON.stringify(executedIdentityField(key, proposed[key])),
+  )
+}
+
+function executedIdentityField(key: string, value: unknown): unknown {
+  if (key !== "prompt" || value == null || typeof value !== "object")
+    return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      ([field]) => field !== "provenance",
+    ),
   )
 }
 
 /** Read-only validation precedes every write; source evidence is read from Git, never trusted from disk. */
 export async function preparePromotion(
   input: PromotionInput,
+  dependencies: { rename?: typeof rename } = {},
 ): Promise<PromotionResult> {
   const root = resolve(input.repositoryRoot)
   const experimentPath = relativeInside(root, input.experimentPath)
@@ -115,10 +137,12 @@ export async function preparePromotion(
   }
   const attempt = `${experimentPath}/attempts/${input.attemptId}`
   const paths = [
+    `${experimentPath}/experiment.json`,
     `${experimentPath}/verdict.json`,
     `${attempt}/completion.json`,
     `${attempt}/resolved-identity.json`,
     ...BENCHMARK_FILES.map((name) => `${attempt}/${name}`),
+    `${attempt}/gate-report.json`,
   ]
   const committed = new Map<string, string>()
   for (const path of paths) {
@@ -138,8 +162,11 @@ export async function preparePromotion(
       )
   }
 
-  const verdict = VerdictRecordSchema.parse(
+  const manifest = ExperimentManifestSchema.parse(
     JSON.parse(committed.get(paths[0])!),
+  )
+  const verdict = VerdictRecordSchema.parse(
+    JSON.parse(committed.get(paths[1])!),
   )
   if (
     verdict.experimentId !== source.experimentId ||
@@ -159,7 +186,7 @@ export async function preparePromotion(
     throw new Error("promotion candidate is not automatically eligible")
 
   const completion = AttemptCompletionSchema.parse(
-    JSON.parse(committed.get(paths[1])!),
+    JSON.parse(committed.get(paths[2])!),
   )
   if (
     completion.experimentId !== source.experimentId ||
@@ -181,16 +208,40 @@ export async function preparePromotion(
         `promotion evidence differs from committed revision: ${artifactPath}`,
       )
   }
-  const resolved = JSON.parse(committed.get(paths[2])!) as {
+  const resolved = JSON.parse(committed.get(paths[3])!) as {
     candidates?: Record<string, unknown>
   }
   const accepted = ResolvedIdentitySchema.parse(
     resolved.candidates?.[input.candidateId],
   )
   const proposed = ResolvedIdentitySchema.parse(input.proposedIdentity)
+  const gateAggregate = JSON.parse(
+    committed.get(`${attempt}/gate-report.json`)! as string,
+  ) as { candidates?: Record<string, unknown> }
+  const scoreAggregate = JSON.parse(
+    committed.get(`${attempt}/score.json`)! as string,
+  ) as { candidates?: Record<string, unknown> }
+  const recomputedEligibility = evaluateEligibility({
+    criterion: manifest.criterion,
+    gateReport: gateAggregate.candidates?.[input.candidateId],
+    score: scoreAggregate.candidates?.[input.candidateId],
+    evidence: verdict.eligibility.evidence,
+  })
   if (
-    JSON.stringify(proposed.prompt) !==
-    JSON.stringify(input.productionPrompt ?? SEEKER_PRODUCTION_PROMPT)
+    JSON.stringify(recomputedEligibility) !==
+    JSON.stringify(verdict.eligibility)
+  )
+    throw new Error(
+      "terminal verdict eligibility does not match committed experiment evidence",
+    )
+  if (
+    JSON.stringify(executedIdentityField("prompt", proposed.prompt)) !==
+    JSON.stringify(
+      executedIdentityField(
+        "prompt",
+        input.productionPrompt ?? SEEKER_PRODUCTION_PROMPT,
+      ),
+    )
   )
     throw new Error(
       "proposed identity does not match the repository production prompt pin",
@@ -214,10 +265,17 @@ export async function preparePromotion(
     }
 
   const temporary = `${benchmarkPath}.promotion-${process.pid}-${crypto.randomUUID()}`
+  const backup = `${benchmarkPath}.promotion-backup`
+  try {
+    await access(backup)
+    throw new Error(`promotion backup sidecar already exists: ${backup}`)
+  } catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code !== "ENOENT") throw cause
+  }
   await mkdir(temporary, { recursive: true })
   try {
     for (const [index, name] of BENCHMARK_FILES.entries()) {
-      const aggregate = JSON.parse(committed.get(paths[index + 3])!) as {
+      const aggregate = JSON.parse(committed.get(paths[index + 4])!) as {
         candidates?: Record<string, unknown>
       }
       const artifact = aggregate.candidates?.[input.candidateId]
@@ -232,8 +290,20 @@ export async function preparePromotion(
       )
     }
     await mkdir(dirname(benchmarkPath), { recursive: true })
-    await rm(benchmarkPath, { recursive: true, force: true })
-    await rename(temporary, benchmarkPath)
+    let previousMoved = false
+    try {
+      await rename(benchmarkPath, backup)
+      previousMoved = true
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code !== "ENOENT") throw cause
+    }
+    try {
+      await (dependencies.rename ?? rename)(temporary, benchmarkPath)
+    } catch (cause) {
+      if (previousMoved) await rename(backup, benchmarkPath)
+      throw cause
+    }
+    if (previousMoved) await rm(backup, { recursive: true })
   } catch (cause) {
     await rm(temporary, { recursive: true, force: true })
     throw cause

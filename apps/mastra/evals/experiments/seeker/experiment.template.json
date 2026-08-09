@@ -6,7 +6,7 @@
   "criterion": {
     "id": "minimum-run-score",
     "version": "1",
-    "parameters": { "candidateId": "candidate-prompt", "minimum": 0.95 }
+    "parameters": { "minimum": 0.95 }
   },
   "comparisonAxis": "prompt",
   "productionBenchmark": {

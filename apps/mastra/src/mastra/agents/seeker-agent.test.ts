@@ -45,6 +45,7 @@ vi.mock("../../config/env", async (importOriginal) => ({
 }))
 
 import { readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
 
 import { STEP_CAPS, TIME_BUDGET_MS } from "../budgets"
 import { getAiChatMemory } from "../ai-chat-memory"
@@ -365,6 +366,42 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     publicKey: undefined,
     secretKey: undefined,
   }
+
+  it("pins the compiled fallback bytes to the production content hash", () => {
+    expect(
+      createHash("sha256").update(SEEKER_SYSTEM_PROMPT_FALLBACK).digest("hex"),
+    ).toBe(SEEKER_PRODUCTION_PROMPT.contentHash)
+  })
+
+  it("returns matching managed text rather than vacuously falling back", async () => {
+    const managed = `${SEEKER_SYSTEM_PROMPT_FALLBACK}\nmanaged-only-marker`
+    const contentHash = createHash("sha256").update(managed).digest("hex")
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            name: SEEKER_SYSTEM_PROMPT_NAME,
+            version: 99,
+            type: "text",
+            prompt: managed,
+            labels: [],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    )
+    const resolve = createSeekerInstructionsResolver({
+      config: wiringConfig,
+      fetchImpl,
+      pinned: {
+        provider: "langfuse",
+        name: SEEKER_SYSTEM_PROMPT_NAME,
+        revision: "99",
+        contentHash,
+      },
+    })
+    await expect(resolve()).resolves.toBe(managed)
+  })
 
   it("requests the repository-pinned exact version and validates its hash", async () => {
     const fetchImpl = vi.fn<typeof fetch>(() =>

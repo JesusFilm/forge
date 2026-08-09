@@ -60,3 +60,36 @@ export function createSeekerPromptHealthCheck({
 }
 
 export const checkSeekerPromptHealth = createSeekerPromptHealthCheck()
+
+export const SEEKER_PROMPT_HEALTH_INTERVAL_MS = 24 * 60 * 60 * 1_000
+
+/** Boot + daily alert loop. It never blocks traffic or throws into startup. */
+export function startSeekerPromptHealthMonitor({
+  environment = process.env,
+  check = checkSeekerPromptHealth,
+  intervalMs = SEEKER_PROMPT_HEALTH_INTERVAL_MS,
+}: {
+  environment?: Record<string, string | undefined>
+  check?: () => Promise<unknown>
+  intervalMs?: number
+} = {}): { stop: () => void } | null {
+  if (
+    environment.NODE_ENV !== "production" ||
+    !environment.LANGFUSE_BASE_URL ||
+    !environment.LANGFUSE_PUBLIC_KEY ||
+    !environment.LANGFUSE_SECRET_KEY
+  )
+    return null
+
+  const run = () => {
+    void check().catch(() => {
+      console.warn(
+        "[seeker-prompt-health] event=check_failed effect=alert_only",
+      )
+    })
+  }
+  run()
+  const timer = setInterval(run, intervalMs)
+  timer.unref?.()
+  return { stop: () => clearInterval(timer) }
+}

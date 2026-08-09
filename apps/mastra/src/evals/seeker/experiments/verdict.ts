@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { basename, join, resolve } from "node:path"
 
-import { validateCompletedAttempt } from "./artifacts"
+import { scanExperimentPackage } from "./artifacts"
 import { evaluateEligibility } from "./eligibility"
 import {
   AttemptCompletionSchema,
@@ -58,7 +58,7 @@ export async function recordTerminalVerdict(
     if ((cause as NodeJS.ErrnoException).code !== "ENOENT") throw cause
   }
 
-  await validateCompletedAttempt(
+  await scanExperimentPackage(
     input.experimentsRoot,
     experimentId,
     input.attemptId,
