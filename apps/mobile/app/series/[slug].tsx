@@ -429,6 +429,7 @@ export default function SeriesScreen() {
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             horizontalInset={PLAYER_SIDE_PADDING}
+            autostart
           />
         </View>
       )}

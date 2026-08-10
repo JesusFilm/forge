@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { isValidWatchProgressBearer } from "@/auth/watch-progress-bearer"
+import { prisma } from "@/db/client"
+import { deleteWatchEventsForUser } from "@/services/watch-events.service"
 import {
   deleteWatchProgressForUser,
   listWatchProgress,
@@ -15,7 +17,9 @@ const entrySchema = z.object({
   languageSlug: z.string().min(1).nullable().optional(),
   positionSeconds: z.number().finite().min(0),
   durationSeconds: z.number().finite().positive(),
-  updatedAt: z.string().datetime().optional(),
+  // Required: the service drops an entry it cannot timestamp, so accepting
+  // an absent value here would silently discard the write.
+  updatedAt: z.string().datetime(),
 })
 
 const upsertSchema = z.object({
@@ -25,6 +29,14 @@ const upsertSchema = z.object({
 
 const deleteSchema = z.object({
   userId: z.string().min(1),
+  /**
+   * Which caller erased, since apps/auth (account deletion) and apps/web (a
+   * user clearing their own history) hit this route with otherwise identical
+   * bodies. Optional so web's existing call keeps working; anything that must
+   * treat a deletion differently — a tombstone, say — keys on this, never on
+   * "DELETE was called".
+   */
+  reason: z.enum(["account-deleted", "history-cleared"]).optional(),
 })
 
 function unauthorized() {
@@ -89,6 +101,24 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   const parsed = deleteSchema.safeParse(body)
   if (!parsed.success) return badRequest("userId is required")
 
-  const result = await deleteWatchProgressForUser(parsed.data.userId)
-  return NextResponse.json(result)
+  // The analytics log is erased ONLY for an account deletion. apps/web calls
+  // this same route for a user-initiated clear-history, which must remove the
+  // resume positions without destroying that user's whole watch-event log.
+  const erasesEvents = parsed.data.reason === "account-deleted"
+
+  // One transaction: a partial erasure would leave apps/auth aborting the
+  // deletion — and telling the user nothing changed — with rows already gone.
+  const [result, events] = await prisma.$transaction(async (tx) => [
+    await deleteWatchProgressForUser(parsed.data.userId, tx),
+    erasesEvents
+      ? await deleteWatchEventsForUser(tx, parsed.data.userId)
+      : { deletedCount: 0 },
+  ])
+  console.warn(
+    `[watch-progress] event=erasure reason=${parsed.data.reason ?? "unspecified"} progress=${result.deletedCount} events=${events.deletedCount}`,
+  )
+  return NextResponse.json({
+    ...result,
+    deletedWatchEventCount: events.deletedCount,
+  })
 }

@@ -46,6 +46,12 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
+import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
+import {
+  progressBarState,
+  resumePositionSeconds,
+} from "../../src/lib/watchProgress/thresholds"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -250,6 +256,18 @@ export default function WatchVideoPage() {
   // "Off"/the active name, falling back to the persisted preferred name while the
   // lazy media loads — so a cold load paints it, not a "Subtitles" placeholder.
   const languageActionLabel = activeVariant?.languageName ?? null
+
+  // Continue watching (KTD6): resume eligibility for the player's
+  // auto-seek and autostart.
+  const progressEntry = useWatchProgressEntry(video?.documentId)
+  const progressState = progressBarState(progressEntry)
+  const resumeAtSeconds =
+    progressEntry && progressState.resumeEligible
+      ? resumePositionSeconds(
+          progressEntry.positionSeconds,
+          progressEntry.durationSeconds,
+        )
+      : null
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
@@ -490,6 +508,20 @@ export default function WatchVideoPage() {
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             horizontalInset={PLAYER_SIDE_PADDING}
+            progressIdentity={
+              // Offline playback may predate the record load — the slug is
+              // the on-device key admin resolves server-side (KTD8).
+              video?.documentId
+                ? {
+                    videoId: video.documentId,
+                    languageSlug: activeVariant?.languageSlug ?? null,
+                  }
+                : offlineSource
+                  ? { videoSlug: decodedSlug, languageSlug: null }
+                  : null
+            }
+            resumeAtSeconds={resumeAtSeconds}
+            autostart
           />
         )}
       </View>
@@ -585,6 +617,8 @@ export default function WatchVideoPage() {
               subtitleLabel={subtitleActionLabel}
               subtitleActive={subtitleActive}
             />
+
+            <SignInPrompt />
 
             <VideoDescription description={video.description} />
 

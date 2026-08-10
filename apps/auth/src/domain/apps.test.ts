@@ -12,6 +12,8 @@ import {
   MASTRA_STUDIO_APP_SEED,
   MANAGER_APP_KEY,
   MANAGER_APP_SEED,
+  MOBILE_APP_KEY,
+  MOBILE_APP_SEED,
   TV_APP_KEY,
   TV_APP_SEED,
   TV_DEFAULT_SCOPES,
@@ -30,6 +32,7 @@ describe("first-party app seeds", () => {
       MASTRA_STUDIO_APP_KEY,
       CHAT_APP_KEY,
       ADMIN_MCP_APP_KEY,
+      MOBILE_APP_KEY,
       TV_APP_KEY,
     ])
     expect(MANAGER_APP_SEED).toEqual(
@@ -511,5 +514,51 @@ describe("first-party app seeds", () => {
         }),
       ]),
     )
+  })
+})
+
+describe("mobile app seed", () => {
+  it("registers mobile with https self-RP callbacks only — never a custom-scheme redirect", () => {
+    expect(MOBILE_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "production",
+    ])
+    expect(MOBILE_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "local",
+          clientId: "jfp_mobile_local",
+          redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+          allowedOrigins: ["http://localhost:3004"],
+          autoApprove: true,
+        }),
+        expect.objectContaining({
+          key: "production",
+          clientId: "jfp_mobile_production",
+          redirectUris: [
+            "https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp",
+          ],
+          allowedOrigins: ["https://auth.jesusfilm.org"],
+          autoApprove: true,
+        }),
+      ]),
+    )
+
+    for (const environment of MOBILE_APP_SEED.environments) {
+      for (const redirectUri of environment.redirectUris) {
+        expect(redirectUri).toMatch(/^https?:\/\//)
+      }
+    }
+  })
+
+  it("grants mobile identity-only scopes — progress permissions ride admin's MOBILE_USER principal", () => {
+    for (const environment of MOBILE_APP_SEED.environments) {
+      expect(environment.defaultScopes).toEqual([
+        "openid",
+        "profile:read",
+        "email:read",
+      ])
+      expect(assertKnownScopes(environment.defaultScopes)).toBeTruthy()
+    }
   })
 })

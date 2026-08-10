@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
+  AppState,
   Platform,
   Pressable,
   StyleSheet,
@@ -18,6 +19,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import { reportDatadogAction } from "../../lib/datadog"
+import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
 import {
   DOUBLE_TAP_MS,
@@ -54,6 +57,15 @@ type VideoPlayerProps = {
    *  16:9 height is computed from the reduced width (no letterbox). Ignored in
    *  fullscreen. Default 0. */
   horizontalInset?: number
+  /** Progress-recording identity (KTD5). Absent = no recording (hero-safe). */
+  progressIdentity?: ProgressIdentity | null
+  /** Resume-eligible position (KTD6). When set, the player seeks here by
+   *  itself once the source loads — no Resume button. */
+  resumeAtSeconds?: number | null
+  /** Start playing once the source is ready, without a tap. Opt-in per call
+   *  site: this player also backs the series-detail trailer dock, so an
+   *  implicit default would autoplay surfaces that never asked for it. */
+  autostart?: boolean
 }
 
 export function VideoPlayer({
@@ -64,6 +76,9 @@ export function VideoPlayer({
   fullscreen = false,
   onToggleFullscreen,
   horizontalInset = 0,
+  progressIdentity = null,
+  resumeAtSeconds = null,
+  autostart = false,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
@@ -76,15 +91,19 @@ export function VideoPlayer({
   // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
   // pause) lives in the shared adapter (todo 016); this component owns the
   // chrome, captions, and tap handling.
-  const { player, isPlaying } = useManagedVideoPlayer(streamingUrl, (p) => {
-    // Favor a fast first frame over deep prebuffer — JFP audience skews to
-    // low-bandwidth networks. (Android-only fields are ignored on iOS.)
-    p.bufferOptions = {
-      minBufferForPlayback: 1,
-      preferredForwardBufferDuration: 8,
-      prioritizeTimeOverSizeThreshold: true,
-    }
-  })
+  const { player, isPlaying } = useManagedVideoPlayer(
+    streamingUrl,
+    (p) => {
+      // Favor a fast first frame over deep prebuffer — JFP audience skews to
+      // low-bandwidth networks. (Android-only fields are ignored on iOS.)
+      p.bufferOptions = {
+        minBufferForPlayback: 1,
+        preferredForwardBufferDuration: 8,
+        prioritizeTimeOverSizeThreshold: true,
+      }
+    },
+    { progress: progressIdentity },
+  )
 
   // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
   // instead). These three events cover every AVPlayer auto-select; a fourth
@@ -132,6 +151,63 @@ export function VideoPlayer({
     n: number
   } | null>(null)
   const seekNonceRef = useRef(0)
+
+  // Play and seek latch SEPARATELY: resumeAtSeconds hydrates async and can
+  // arrive after the source loads, so one shared latch would forfeit the
+  // seek and let playback from 0 overwrite the saved position.
+  const autoPlayedRef = useRef(false)
+  const resumeSeekedRef = useRef(false)
+  useEffect(() => {
+    autoPlayedRef.current = false
+    resumeSeekedRef.current = false
+  }, [streamingUrl])
+  useEffect(() => {
+    if (!autostart) return
+
+    const applySeek = () => {
+      if (resumeSeekedRef.current || resumeAtSeconds == null) return
+      try {
+        player.currentTime = resumeAtSeconds
+      } catch {
+        return // Released mid-seek; leave unlatched so a later pass retries.
+      }
+      resumeSeekedRef.current = true
+      // The scrubber polls at 500ms and is idle until playback reports in,
+      // so signal it or the restored position reads 0:00 for a beat.
+      seekNonceRef.current += 1
+      setSeekSignal({ time: resumeAtSeconds, n: seekNonceRef.current })
+    }
+
+    const applyPlay = () => {
+      if (autoPlayedRef.current) return
+      // Never start audio the viewer cannot see. The adapter owns AppState
+      // resume and has no way to observe or undo a play issued from here
+      // while backgrounded.
+      if (AppState.currentState !== "active") return
+      try {
+        player.play()
+      } catch {
+        return // Released; leave unlatched so a later load can still start.
+      }
+      autoPlayedRef.current = true
+      // Reported only once playback actually started, so the adoption metric
+      // cannot count a released player as a successful autostart.
+      reportDatadogAction("autostart_applied", {
+        resumed: resumeSeekedRef.current,
+      })
+    }
+
+    const onSourceLoad = () => {
+      applySeek()
+      applyPlay()
+    }
+    const sub = player.addListener("sourceLoad", onSourceLoad)
+    // A resume position can hydrate after the source already loaded — seek
+    // then, rather than losing it. Guarded on having played so this never
+    // fires against a previous, still-loaded source mid-swap.
+    if (autoPlayedRef.current) applySeek()
+    return () => sub.remove()
+  }, [player, resumeAtSeconds, streamingUrl, autostart])
 
   useEffect(() => {
     return () => {

@@ -1,3 +1,4 @@
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import {
   FlatList,
   StyleSheet,
@@ -118,6 +119,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         <View style={styles.titleOverlay} pointerEvents="none">
           <Text style={[styles.cardTitle, typography.bodySmall]}>{title}</Text>
         </View>
+        <WatchProgressBar videoId={item.videoId} />
       </PressableCard>
     )
   }
