@@ -14,6 +14,9 @@ export const CHAT_APP_KEY = "chat"
 export const ADMIN_MCP_APP_KEY = "admin-mcp"
 export const TV_APP_KEY = "tv"
 export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
+export const MOBILE_APP_KEY = "mobile"
+export const MOBILE_LOCAL_CLIENT_ID = "jfp_mobile_local"
+export const MOBILE_PRODUCTION_CLIENT_ID = "jfp_mobile_production"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -71,6 +74,14 @@ export const WEB_DEFAULT_SCOPES = [
 // Identity-only: chat performs no authorization, so no *:access or
 // membership:read (feat-207 R7).
 export const CHAT_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+] satisfies AuthScopeKey[]
+
+// Identity-only: mobile's watch-progress permissions ride admin's MOBILE_USER
+// principal (JWKS-verified user JWT), not OAuth scopes.
+export const MOBILE_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
@@ -450,6 +461,38 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+// Self-RP: Auth is the OAuth client toward its own provider, so redirect
+// URIs are Auth's https callback — forgemobile:// never reaches the OAuth
+// layer. The server-side exchange keeps any secret out of the app.
+export const MOBILE_APP_SEED: RegisteredAppSeed = {
+  key: MOBILE_APP_KEY,
+  displayName: "Jesus Film Watch",
+  description: "Jesus Film mobile watch experience.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: MOBILE_LOCAL_CLIENT_ID,
+      redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+      postLogoutRedirectUris: ["http://localhost:3004"],
+      allowedOrigins: ["http://localhost:3004"],
+      defaultScopes: MOBILE_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: MOBILE_PRODUCTION_CLIENT_ID,
+      redirectUris: ["https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp"],
+      postLogoutRedirectUris: ["https://auth.jesusfilm.org"],
+      allowedOrigins: ["https://auth.jesusfilm.org"],
+      defaultScopes: MOBILE_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 // A television never navigates a redirect — it displays a code and polls. But
 // @better-auth/oauth-provider's authorization_code grant REQUIRES a
 // redirect_uri: it is bound into the authorization code at issuance and
@@ -535,5 +578,6 @@ export const FIRST_PARTY_APP_SEEDS = [
   MASTRA_STUDIO_APP_SEED,
   CHAT_APP_SEED,
   ADMIN_MCP_APP_SEED,
+  MOBILE_APP_SEED,
   TV_APP_SEED,
 ] satisfies RegisteredAppSeed[]

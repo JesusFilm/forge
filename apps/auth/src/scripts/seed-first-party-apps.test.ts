@@ -51,12 +51,12 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     // admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 + admin-mcp 5 +
-    // tv 4 = 27 environments; oauthClients adds the 4 manager session-service
-    // clients on top.
+    // mobile 2 + tv 4 = 29 environments; oauthClients adds the 4 manager
+    // session-service clients on top.
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 7,
-      environments: 27,
-      oauthClients: 31,
+      apps: 8,
+      environments: 29,
+      oauthClients: 33,
       scopes: 21,
     })
 

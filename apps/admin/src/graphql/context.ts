@@ -17,9 +17,10 @@
 // a session cookie who also forwards a consumer-app bearer keeps their
 // editorial role. YTM-002 adds `VIDEO_MAPPER`, a mapper-only catalog-sync
 // bearer. Web signed-in watch-event writes mint `WEB_USER` after Auth token
-// introspection. The bearer-resolution chain is:
+// introspection. Mobile signed-in progress ops mint `MOBILE_USER` after local
+// JWKS verification of the Auth-issued user JWT. The bearer-resolution chain is:
 //   session -> workflow-bearer -> manager-bearer -> video-mapper-bearer ->
-//   web-user-token -> consumer-bearer -> PUBLIC
+//   mobile-user-token -> web-user-token -> consumer-bearer -> PUBLIC
 // in that order; the first match wins. The internal bearer CSVs are
 // contractually disjoint per `config/env.ts`; precedence here is the safety
 // net if that invariant ever drifts.
@@ -40,6 +41,7 @@ import {
 } from "@/auth/principal"
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
 import { isValidManagerBearer } from "@/auth/manager-bearer"
+import { resolveMobileUserPrincipalFromToken } from "@/auth/mobile-user-token"
 import { isValidVideoMapperBearer } from "@/auth/video-mapper-bearer"
 import { resolveWebUserPrincipalFromToken } from "@/auth/web-user-token"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
@@ -69,8 +71,16 @@ export async function createContext({
     } else if (isValidVideoMapperBearer(authHeader)) {
       user = VIDEO_MAPPER_PRINCIPAL
     } else {
-      const webUser = await resolveWebUserPrincipalFromToken(authHeader)
-      if (webUser) {
+      // Mobile runs BEFORE web-user: mobile JWTs verify locally against
+      // Auth's JWKS, while the web branch introspects every unrecognized
+      // bearer over the network (a wasted 3s budget per mobile request).
+      const mobileUser = await resolveMobileUserPrincipalFromToken(authHeader)
+      const webUser = mobileUser
+        ? null
+        : await resolveWebUserPrincipalFromToken(authHeader)
+      if (mobileUser) {
+        user = mobileUser
+      } else if (webUser) {
         user = webUser
       } else {
         const consumer = isValidConsumerBearer(authHeader)

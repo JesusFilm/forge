@@ -2,6 +2,11 @@ import { type ComponentProps } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
+import {
+  WatchProgressBar,
+  progressAccessibilityText,
+} from "../watch/WatchProgressBar"
+import { useWatchProgressEntry } from "../../hooks/useWatchProgressEntry"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import type { WatchEpisode } from "../../lib/normalizeVideo"
@@ -53,6 +58,7 @@ export function SeriesEpisodeCard({
   downloadState,
 }: SeriesEpisodeCardProps) {
   const imageUrl = resolveImageUrl(episode.posterUrl)
+  const progressEntry = useWatchProgressEntry(episode.documentId)
   const badge =
     downloadState && downloadState !== "none" ? BADGE[downloadState] : null
   const title = episode.title ?? "Episode"
@@ -62,7 +68,13 @@ export function SeriesEpisodeCard({
       <Pressable
         onPress={() => onSelect(episode)}
         accessibilityRole="button"
-        accessibilityLabel={badge ? `${title}, ${badge.a11y}` : title}
+        accessibilityLabel={[
+          title,
+          badge?.a11y,
+          progressAccessibilityText(progressEntry),
+        ]
+          .filter(Boolean)
+          .join(", ")}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
         <View style={styles.thumb}>
@@ -98,6 +110,8 @@ export function SeriesEpisodeCard({
               <Ionicons name={badge.icon} size={16} color={badge.color} />
             </View>
           ) : null}
+
+          <WatchProgressBar videoId={episode.documentId} />
         </View>
       </Pressable>
     </View>
