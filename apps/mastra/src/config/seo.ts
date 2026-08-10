@@ -13,6 +13,8 @@ const seoEnvironmentSchema = z.object({
   SEO_GSC_PROPERTY_IDS: optionalString,
   SEO_GA4_PROPERTY_IDS: optionalString,
   SEO_GOOGLE_ACCESS_TOKEN: optionalString,
+  SEO_GOOGLE_CREDENTIALS_JSON: optionalString,
+  SEO_GOOGLE_PROJECT_ID: optionalString,
   SEO_OPENAI_API_KEY: optionalString,
   SEO_OPENAI_MODEL: z.string().min(1).default("gpt-5.4-mini"),
   SEO_ALLOWED_PAGE_HOSTS: optionalString,
@@ -79,6 +81,8 @@ export type SeoConfig = {
   gscPropertyIds: string[]
   ga4PropertyIds: string[]
   googleAccessToken?: string
+  googleCredentialsJson?: string
+  googleProjectId?: string
   openAiApiKey?: string
   openAiModel: string
   allowedPageHosts: string[]
@@ -109,6 +113,14 @@ export type SeoConfig = {
   }
 }
 
+export function getGoogleSealedCredentialState(
+  credentialsJson: string | undefined,
+  projectId: string | undefined,
+): "absent" | "complete" | "incomplete" {
+  if (!credentialsJson && !projectId) return "absent"
+  return credentialsJson && projectId ? "complete" : "incomplete"
+}
+
 export function getSeoConfig(
   source: NodeJS.ProcessEnv = process.env,
 ): SeoConfig {
@@ -127,6 +139,8 @@ export function getSeoConfig(
     gscPropertyIds: csv(parsed.SEO_GSC_PROPERTY_IDS),
     ga4PropertyIds: csv(parsed.SEO_GA4_PROPERTY_IDS),
     googleAccessToken: parsed.SEO_GOOGLE_ACCESS_TOKEN,
+    googleCredentialsJson: parsed.SEO_GOOGLE_CREDENTIALS_JSON,
+    googleProjectId: parsed.SEO_GOOGLE_PROJECT_ID,
     openAiApiKey: parsed.SEO_OPENAI_API_KEY,
     openAiModel: parsed.SEO_OPENAI_MODEL,
     allowedPageHosts: csv(parsed.SEO_ALLOWED_PAGE_HOSTS).map((host) =>
@@ -175,10 +189,16 @@ export function getSeoCapabilities(
   config: SeoConfig = getSeoConfig(),
   firecrawlConfigured = Boolean(process.env.FIRECRAWL_API_KEY),
 ): SeoCapabilities {
-  const googleConfigured =
-    Boolean(config.googleAccessToken) ||
-    Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS) ||
-    Boolean(process.env.GOOGLE_CLOUD_PROJECT)
+  const sealedCredentialState = getGoogleSealedCredentialState(
+    config.googleCredentialsJson,
+    config.googleProjectId,
+  )
+  const googleConfigured = config.googleAccessToken
+    ? true
+    : sealedCredentialState === "complete" ||
+      (sealedCredentialState === "absent" &&
+        (Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS) ||
+          Boolean(process.env.GOOGLE_CLOUD_PROJECT)))
   return {
     gsc: googleConfigured && config.gscPropertyIds.length > 0,
     ga4: googleConfigured && config.ga4PropertyIds.length > 0,

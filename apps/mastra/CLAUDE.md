@@ -534,9 +534,15 @@ rows remain unknown. Other Mastra workflows should resolve the registered agent
 and structured tools in-process; do not add an internal MCP or public agent
 route without a concrete authenticated caller.
 
-Google access prefers Application Default Credentials or Workload Identity;
-property lists, allowed page/Admin hosts, provider caps, thresholds, and the
-optional Linear destination use the `SEO_*` variables documented in
+Google access prefers Application Default Credentials or Workload Identity.
+Railway may instead provide a sealed service-account JSON through
+`SEO_GOOGLE_CREDENTIALS_JSON` together with the exact expected
+`SEO_GOOGLE_PROJECT_ID`; Mastra validates the service-account type, project,
+email, and private-key shape only when Google access is requested and never
+writes the credential to disk or logs it. `SEO_GOOGLE_ACCESS_TOKEN` remains a
+short-lived diagnostic escape hatch and takes precedence when present.
+Property lists, allowed page/Admin hosts, provider caps, thresholds, and the
+optional Linear destination use the remaining `SEO_*` variables documented in
 `.env.example`. Workload calls to Admin carry a short-lived Ed25519 assertion
 in `x-forge-seo-assertion`, bound to environment, endpoint capability, exact
 request digest, and a replay-protected identifier. Provider configuration is
