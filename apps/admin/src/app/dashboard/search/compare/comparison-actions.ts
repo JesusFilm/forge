@@ -1,6 +1,6 @@
 "use server"
 
-import { createHash } from "node:crypto"
+import { createHmac } from "node:crypto"
 
 import { redirect } from "next/navigation"
 import { z } from "zod"
@@ -60,7 +60,11 @@ function comparisonEnabled() {
 }
 
 function actorFingerprint(id: string) {
-  return createHash("sha256").update(id).digest("hex").slice(0, 32)
+  return createHmac("sha256", env.ADMIN_SESSION_SECRET)
+    .update("watch-search-comparison-actor\0")
+    .update(id)
+    .digest("hex")
+    .slice(0, 32)
 }
 
 export async function requireCurrentAdminEvaluator() {

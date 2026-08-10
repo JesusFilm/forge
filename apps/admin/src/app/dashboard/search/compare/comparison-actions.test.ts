@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto"
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const requireAdminSession = vi.fn()
@@ -9,6 +11,7 @@ const redirect = vi.fn((path: string) => {
   throw new Error(`redirect:${path}`)
 })
 const mockEnv = vi.hoisted(() => ({
+  ADMIN_SESSION_SECRET: "admin-session-secret-at-least-32-chars",
   WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED: true,
 }))
 
@@ -71,7 +74,11 @@ describe("runWatchSearchComparison", () => {
       select: { id: true, role: true },
     })
     expect(compare).toHaveBeenCalledWith({
-      actorKey: expect.stringMatching(/^[a-f0-9]{32}$/),
+      actorKey: createHmac("sha256", mockEnv.ADMIN_SESSION_SECRET)
+        .update("watch-search-comparison-actor\0")
+        .update("admin-1")
+        .digest("hex")
+        .slice(0, 32),
       input: {
         query: "Jesus Japanese",
         targetLanguageSlug: "japanese",
