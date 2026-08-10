@@ -48,7 +48,7 @@ function Spotlight({
         {result.imageUrl ? (
           <Image
             src={result.imageUrl}
-            alt={result.title ?? section.videoSlug}
+            alt={result.title}
             fill
             sizes="(max-width: 768px) 100vw, 720px"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -116,7 +116,7 @@ function ThemeCarousel({
               {result.imageUrl ? (
                 <Image
                   src={result.imageUrl}
-                  alt={result.title ?? result.slug}
+                  alt={result.title}
                   fill
                   sizes="240px"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"

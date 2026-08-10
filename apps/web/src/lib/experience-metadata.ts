@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import {
   experienceToMetadata,
   resolveWatchPage,
@@ -332,7 +333,11 @@ function toMetadata(
       resolvedPage.routeVideo.description ??
       resolvedPage.routeVideo.snippet ??
       ""
-    const baseTitle = resolvedPage.routeVideo.title || options?.slug || "Watch"
+    const baseTitle =
+      resolveVideoDisplayTitle({
+        requestedTitles: [resolvedPage.routeVideo.title],
+        slug: resolvedPage.routeVideo.slug ?? options?.slug,
+      }) ?? "Watch"
     const title =
       trimmedValue(resolvedPage.routeVideo.searchTitle) ??
       `${baseTitle} ${TITLE_SUFFIX}`

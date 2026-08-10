@@ -1,6 +1,7 @@
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql } from "@forge/admin-graphql"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import client from "@/lib/admin-client"
 
 // Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
@@ -65,6 +66,9 @@ const GET_VIDEO_BY_SLUG = adminGraphql(`
         title
         description
       }
+      englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+        title
+      }
     }
   }
 `)
@@ -127,7 +131,14 @@ const fetchVideoBySlug = unstable_cache(
       return {
         documentId: raw.documentId,
         slug: raw.slug ?? null,
-        title: localeRow?.title ?? null,
+        title:
+          resolveVideoDisplayTitle({
+            requestedTitles: raw.locales?.map((locale) => locale.title),
+            englishTitles: raw.englishTitleLocales?.map(
+              (locale) => locale.title,
+            ),
+            slug: raw.slug ?? slug,
+          }) ?? null,
         description: localeRow?.description ?? null,
         images: (raw.images ?? []).map((img) => ({
           url: img.url ?? null,
@@ -142,7 +153,7 @@ const fetchVideoBySlug = unstable_cache(
       return null
     }
   },
-  ["video-by-slug"],
+  ["video-by-slug-v2"],
   { revalidate: 60 },
 )
 

@@ -1,4 +1,5 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
@@ -12,7 +13,7 @@ import {
 import { fetchWatchProgressForUser } from "@/lib/watch-progress-server"
 
 const WATCH_HISTORY_VIDEO = adminGraphql(`
-  query WatchHistoryVideo($id: ID!, $locale: String!, $languageSlug: String) {
+  query WatchHistoryVideo($id: ID!, $languageSlug: String) {
     video(id: $id) {
       documentId: id
       slug
@@ -25,9 +26,12 @@ const WATCH_HISTORY_VIDEO = adminGraphql(`
         mobileCinematicLow
         videoStill
       }
-      locales(locale: $locale, languageSlug: $languageSlug) {
+      locales(languageSlug: $languageSlug) {
         title
         imageAlt
+      }
+      englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+        title
       }
       dubs {
         slug
@@ -146,7 +150,6 @@ async function fetchHistoryVideo(videoId: string, languageSlug: string | null) {
     query: WATCH_HISTORY_VIDEO,
     variables: {
       id: videoId,
-      locale: "en",
       languageSlug: languageSlug ?? "english",
     },
     fetchPolicy: "no-cache",
@@ -177,7 +180,14 @@ export async function fetchWatchHistoryVideoDetails(
       const video = await fetchHistoryVideo(videoId, languageSlug)
       if (!video) return null
 
-      const title = video.locales?.[0]?.title?.trim() || video.slug || "Video"
+      const title =
+        resolveVideoDisplayTitle({
+          requestedTitles: video.locales?.map((locale) => locale.title),
+          englishTitles: video.englishTitleLocales?.map(
+            (locale) => locale.title,
+          ),
+          slug: video.slug,
+        }) ?? "Video"
       const durationLabel =
         video.durationSeconds != null
           ? formatDuration(video.durationSeconds) || null

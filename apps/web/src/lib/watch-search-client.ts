@@ -5,6 +5,10 @@ import {
   adminWatchSearchOperation,
   adminWatchSearchQuery,
 } from "@forge/admin-graphql/operations"
+import {
+  firstNonBlankText,
+  repairLegacyVideoDisplayTitle,
+} from "@forge/content-display"
 
 import { env } from "@/env"
 import {
@@ -138,15 +142,23 @@ function toWatchSearchResultType(
 function mapWatchSearchResult(
   result: WatchSearchGraphqlItem,
 ): SearchResult | null {
-  if (!result.type || !result.id || !result.slug || !result.title) {
+  if (!result.type || !result.id || !result.slug) {
     return null
   }
+  const title =
+    result.type === "VIDEO"
+      ? repairLegacyVideoDisplayTitle({
+          title: result.title,
+          slug: result.slug,
+        })
+      : firstNonBlankText([result.title])
+  if (!title) return null
 
   return {
     type: result.type.toLowerCase() as SearchContentType,
     id: result.id,
     slug: result.slug,
-    title: result.title,
+    title,
     imageUrl: result.imageUrl ?? null,
     imageBlurDataUrl: result.imageBlurDataUrl ?? null,
     muxThumbnailBlurDataUrl: result.muxThumbnailBlurDataUrl ?? null,

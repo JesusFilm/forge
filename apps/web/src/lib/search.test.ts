@@ -323,4 +323,32 @@ describe("searchVideos", () => {
       childCount: 2,
     })
   })
+
+  it("repairs a legacy Video title that equals its raw search slug", async () => {
+    semanticSearchAdminQuery.mockResolvedValueOnce({
+      data: {
+        watchSearch: {
+          results: [
+            {
+              type: "VIDEO",
+              id: "video-1",
+              slug: "miraculous-catch-of-fish",
+              title: "miraculous-catch-of-fish",
+              snippet: "",
+              score: 1,
+            },
+          ],
+          hasMore: false,
+          query: "fish",
+          searchMode: "watch-search",
+          latencyMs: 1,
+          nextOffset: 0,
+        },
+      },
+    })
+
+    const data = await searchVideos("fish")
+
+    expect(data.results[0]?.title).toBe("Miraculous Catch Of Fish")
+  })
 })

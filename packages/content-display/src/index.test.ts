@@ -96,3 +96,27 @@ describe("content display title policy", () => {
     })
   })
 })
+
+describe("repairLegacyVideoDisplayTitle", () => {
+  it("humanizes a raw slug persisted as a legacy title", async () => {
+    const { repairLegacyVideoDisplayTitle } = await import("./index")
+
+    expect(
+      repairLegacyVideoDisplayTitle({
+        title: "miraculous-catch-of-fish",
+        slug: "miraculous-catch-of-fish",
+      }),
+    ).toBe("Miraculous Catch Of Fish")
+  })
+
+  it("preserves a distinct authored title", async () => {
+    const { repairLegacyVideoDisplayTitle } = await import("./index")
+
+    expect(
+      repairLegacyVideoDisplayTitle({
+        title: "A Miraculous Catch",
+        slug: "miraculous-catch-of-fish",
+      }),
+    ).toBe("A Miraculous Catch")
+  })
+})

@@ -43,6 +43,30 @@ function buildQueueForTitles(titles: string[]) {
 }
 
 describe("collection download options", () => {
+  it("repairs a legacy raw-slug episode title for visible download copy", () => {
+    const result = buildCollectionDownloadOptions(
+      [
+        {
+          documentId: "v1",
+          order: 1,
+          slug: "miraculous-catch-of-fish",
+          title: "miraculous-catch-of-fish",
+        },
+      ],
+      [
+        {
+          documentId: "dub-1",
+          videoId: "v1",
+          downloads: [
+            { documentId: "d1", height: 720, quality: "high", size: 100 },
+          ],
+        },
+      ],
+    )
+
+    expect(result.candidates[0]?.title).toBe("Miraculous Catch Of Fish")
+  })
+
   it("returns an empty quality list when no episodes are downloadable", () => {
     expect(buildCollectionDownloadOptions(episodes, [])).toEqual({
       candidates: [],

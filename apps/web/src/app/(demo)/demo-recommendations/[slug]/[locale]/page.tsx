@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import type { Route } from "next"
 import Image from "next/image"
 import Link from "next/link"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getSceneRecommendations, getVideoBySlug } from "@/lib/recommendations"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
@@ -18,13 +19,17 @@ export async function generateMetadata({
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
   const video = await getVideoBySlug(slug, locale)
-  const title = video?.title
-    ? `Recommendations: ${video.title}`
+  const displayTitle = resolveVideoDisplayTitle({
+    requestedTitles: [video?.title],
+    slug: video?.slug ?? slug,
+  })
+  const title = displayTitle
+    ? `Recommendations: ${displayTitle}`
     : "Recommendations Demo"
 
   return {
     title,
-    description: `Scene-based recommendations for ${video?.title ?? slug}`,
+    description: `Scene-based recommendations for ${displayTitle ?? "this video"}`,
   }
 }
 
@@ -115,6 +120,11 @@ export default async function DemoRecommendationsPage({ params }: PageProps) {
 
   const imageUrl =
     video.images?.[0]?.mobileCinematicHigh ?? video.images?.[0]?.url ?? null
+  const displayTitle =
+    resolveVideoDisplayTitle({
+      requestedTitles: [video.title],
+      slug: video.slug ?? slug,
+    }) ?? "Video"
 
   return (
     <main className="min-h-screen bg-stone-900">
@@ -127,7 +137,7 @@ export default async function DemoRecommendationsPage({ params }: PageProps) {
         </div>
 
         <VideoHeroSection
-          title={video.title ?? slug}
+          title={displayTitle}
           description={video.description ?? null}
           imageUrl={imageUrl}
         />

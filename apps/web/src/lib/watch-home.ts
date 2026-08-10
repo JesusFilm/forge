@@ -2,6 +2,10 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import {
+  firstNonBlankText,
+  resolveVideoDisplayTitle,
+} from "@forge/content-display"
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
 import { localWatchHomeBlurDataUrl } from "@/lib/enrichment"
@@ -397,7 +401,21 @@ function normalizeCard(args: {
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
       : 0
-  const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const requestedTitle = firstNonBlankText(
+    args.video.locales?.map((candidate) => candidate.title),
+  )
+  const title =
+    resolveVideoDisplayTitle({
+      requestedTitles: [
+        ...(args.video.locales?.map((candidate) => candidate.title) ?? []),
+        ...(args.video.broadTitleLocales?.map((candidate) => candidate.title) ??
+          []),
+      ],
+      englishTitles: args.video.englishTitleLocales?.map(
+        (candidate) => candidate.title,
+      ),
+      slug: args.video.slug,
+    }) ?? "Video"
   const href = buildHref({
     slug: args.video.slug ?? null,
     parentSlug: args.parent?.slug ?? null,
@@ -405,7 +423,7 @@ function normalizeCard(args: {
   })
 
   const missingData: WatchHomeMissingData[] = []
-  if (!locale?.title) {
+  if (!requestedTitle) {
     missingData.push(
       missingEntry({
         sectionId: args.sectionId,

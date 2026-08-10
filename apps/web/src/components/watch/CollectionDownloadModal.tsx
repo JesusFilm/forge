@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Download, LoaderCircle, LogIn, Square } from "lucide-react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
+import { repairLegacyVideoDisplayTitle } from "@forge/content-display"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
@@ -572,7 +573,10 @@ export function CollectionDownloadModal({
                   >
                     {options.skipped.map((episode) => (
                       <li key={episode.documentId}>
-                        {episode.title ?? episode.slug ?? episode.documentId}
+                        {repairLegacyVideoDisplayTitle({
+                          title: episode.title,
+                          slug: episode.slug,
+                        }) ?? "Video"}
                       </li>
                     ))}
                   </ul>

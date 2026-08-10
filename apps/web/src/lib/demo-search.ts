@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import client from "@/lib/admin-client"
 
 // Minimal fetch for the /demo-search watch page. Intentionally decoupled from
@@ -24,6 +25,9 @@ const GET_DEMO_VIDEO = adminGraphql(`
       locales(locale: $locale) {
         title
         description
+      }
+      englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+        title
       }
       variants: dubs {
         documentId: id
@@ -86,7 +90,14 @@ const fetchDemoVideo = unstable_cache(
       const localeRow = record.locales?.[0] ?? null
 
       return {
-        title: localeRow?.title ?? slug,
+        title:
+          resolveVideoDisplayTitle({
+            requestedTitles: record.locales?.map((locale) => locale.title),
+            englishTitles: record.englishTitleLocales?.map(
+              (locale) => locale.title,
+            ),
+            slug: record.slug ?? slug,
+          }) ?? "Video",
         description: localeRow?.description ?? null,
         streamingUrl: variant?.hls ?? null,
         posterUrl: imageUrl,
@@ -103,7 +114,7 @@ const fetchDemoVideo = unstable_cache(
       return null
     }
   },
-  ["demo-search-video"],
+  ["demo-search-video-v2"],
   { revalidate: 60 },
 )
 

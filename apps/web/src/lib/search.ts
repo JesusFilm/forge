@@ -1,5 +1,9 @@
 import type { AdminResultOf } from "@forge/admin-graphql"
 import { adminWatchSearchOperation } from "@forge/admin-graphql/operations"
+import {
+  firstNonBlankText,
+  repairLegacyVideoDisplayTitle,
+} from "@forge/content-display"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
 import { env } from "@/env"
@@ -156,15 +160,23 @@ function toWatchSearchResultType(
 function mapWatchSearchResult(
   result: WatchSearchResultItem,
 ): SearchResult | null {
-  if (!result.type || !result.id || !result.slug || !result.title) {
+  if (!result.type || !result.id || !result.slug) {
     return null
   }
+  const title =
+    result.type === "VIDEO"
+      ? repairLegacyVideoDisplayTitle({
+          title: result.title,
+          slug: result.slug,
+        })
+      : firstNonBlankText([result.title])
+  if (!title) return null
 
   return {
     type: result.type.toLowerCase() as SearchContentType,
     id: result.id,
     slug: result.slug,
-    title: result.title,
+    title,
     imageUrl: result.imageUrl,
     imageBlurDataUrl: result.imageBlurDataUrl,
     muxThumbnailBlurDataUrl: result.muxThumbnailBlurDataUrl,

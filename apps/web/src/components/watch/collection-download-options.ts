@@ -9,6 +9,7 @@ import {
   type DownloadTier,
   type WatchDownloadOption,
 } from "@/components/watch/download-options"
+import { repairLegacyVideoDisplayTitle } from "@forge/content-display"
 import type { WatchCollectionDownloadDub } from "@/lib/watch-collection-download-actions"
 
 export type CollectionDownloadEpisode = {
@@ -92,7 +93,11 @@ export function buildCollectionDownloadOptions(
       documentId: episode.documentId,
       sequence: resolveDownloadSequence(sequenceParent, episode.documentId),
       slug: episode.slug,
-      title: episode.title ?? episode.slug,
+      title:
+        repairLegacyVideoDisplayTitle({
+          title: episode.title,
+          slug: episode.slug,
+        }) ?? "Video",
       thumbnailUrl: episode.thumbnailUrl ?? null,
       variantId: dub.documentId,
       tiers: Object.fromEntries(

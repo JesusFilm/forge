@@ -107,7 +107,7 @@ export function AiExperienceGeneratorDemo({
     setIsPending(true)
     const compact = results.slice(0, MAX_RESULTS_FOR_PROMPT).map((r) => ({
       slug: r.slug,
-      title: r.title ?? r.slug,
+      title: r.title,
       snippet: r.snippet ?? "",
     }))
     try {

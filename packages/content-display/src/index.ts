@@ -38,3 +38,28 @@ export function resolveVideoDisplayTitle({
     humanizeContentSlug(slug)
   )
 }
+
+/**
+ * Repairs a value from a known legacy display cache/index that historically
+ * persisted the raw Video slug as its title fallback. Only call this at those
+ * allowlisted compatibility boundaries; authored titles can legitimately
+ * equal a slug and must not be rewritten globally.
+ */
+export function repairLegacyVideoDisplayTitle({
+  title,
+  slug,
+}: {
+  title?: string | null
+  slug?: string | null
+}): string | undefined {
+  const normalizedTitle = firstNonBlankText([title])
+  const normalizedSlug = slug?.trim()
+
+  return resolveVideoDisplayTitle({
+    requestedTitles:
+      normalizedTitle && normalizedTitle !== normalizedSlug
+        ? [normalizedTitle]
+        : [],
+    slug,
+  })
+}

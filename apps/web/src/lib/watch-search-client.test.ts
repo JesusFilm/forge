@@ -66,4 +66,40 @@ describe("searchWatchDirect", () => {
     expect(body.variables.input).not.toHaveProperty("generationId")
     expect(body.variables.input).not.toHaveProperty("candidate")
   })
+
+  it("repairs a legacy Video title that equals its raw search slug", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {
+              watchSearch: {
+                results: [
+                  {
+                    type: "VIDEO",
+                    id: "video-1",
+                    slug: "miraculous-catch-of-fish",
+                    title: "miraculous-catch-of-fish",
+                    snippet: "",
+                    score: 1,
+                  },
+                ],
+                hasMore: false,
+                query: "fish",
+                searchMode: "watch-search",
+                latencyMs: 1,
+                nextOffset: 0,
+              },
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    )
+
+    const data = await searchWatchDirect({ query: "fish" })
+
+    expect(data.results[0]?.title).toBe("Miraculous Catch Of Fish")
+  })
 })

@@ -138,12 +138,64 @@ describe("buildWatchHomeModelFromVideos", () => {
     await import("../watch-home")
 
     expect(unstableCacheCalls).toContainEqual({
-      keyParts: ["watch-home", "v6-real-images-with-dominant-colors"],
+      keyParts: ["watch-home", "v7-display-title-fallback"],
       options: {
         revalidate: 60,
         tags: ["watch:home", "watch:video"],
       },
     })
+  })
+
+  it("falls back only a blank requested title to English", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "ar",
+      languageSlug: "modern-standard-arabic",
+      videos: [
+        makeVideo({
+          slug: "miraculous-catch-of-fish",
+          locales: [
+            {
+              documentId: "locale-ar",
+              languageSlug: "modern-standard-arabic",
+              title: "   ",
+              description: "وصف عربي",
+              snippet: "ملخص عربي",
+              imageAlt: "صورة عربية",
+            },
+          ],
+          broadTitleLocales: [{ title: "" }],
+          englishTitleLocales: [{ title: "Miraculous Catch of Fish" }],
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]).toMatchObject({
+      title: "Miraculous Catch of Fish",
+      description: "ملخص عربي",
+      imageAlt: "صورة عربية",
+      href: "/miraculous-catch-of-fish.html/modern-standard-arabic.html",
+    })
+  })
+
+  it("humanizes a slug instead of exposing a raw slug or core id", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "fr",
+      languageSlug: "french",
+      videos: [
+        makeVideo({
+          slug: "miraculous--catch_of-fish",
+          locales: [],
+          broadTitleLocales: [],
+          englishTitleLocales: [],
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]?.title).toBe("Miraculous Catch Of Fish")
   })
 
   it("maps admin videos into hero slides and configured sections with safe watch URLs", async () => {

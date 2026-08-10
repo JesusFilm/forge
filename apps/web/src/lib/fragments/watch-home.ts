@@ -22,13 +22,19 @@ export const watchHomeVideoFragment = adminGraphql(`
       blurDataUrl
       dominantColor
     }
-    locales(locale: $locale, languageSlug: $languageSlug) {
+    locales(languageSlug: $languageSlug) {
       documentId: id
       languageSlug
       title
       description
       snippet
       imageAlt
+    }
+    broadTitleLocales: locales(locale: $locale) {
+      title
+    }
+    englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+      title
     }
     preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
       documentId: id
@@ -73,13 +79,22 @@ export const watchHomeVideoFragment = adminGraphql(`
           blurDataUrl
           dominantColor
         }
-        locales(locale: $locale, languageSlug: $languageSlug) {
+        locales(languageSlug: $languageSlug) {
           documentId: id
           languageSlug
           title
           description
           snippet
           imageAlt
+        }
+        broadTitleLocales: locales(locale: $locale) {
+          title
+        }
+        englishTitleLocales: locales(
+          locale: "en"
+          languageSlug: "english"
+        ) {
+          title
         }
         preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
           documentId: id
