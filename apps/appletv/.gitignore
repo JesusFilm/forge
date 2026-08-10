@@ -1,0 +1,6 @@
+# The Xcode project is GENERATED from project.yml (xcodegen) — never commit it.
+# Regenerating on checkout is one command and avoids every pbxproj merge war.
+*.xcodeproj
+xcuserdata/
+DerivedData/
+build/

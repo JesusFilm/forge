@@ -1,0 +1,63 @@
+# xcodegen spec for the native tvOS app (feat: Apple TV in the Apple ecosystem).
+#
+# `xcodegen generate` (from this directory) produces JesusFilmTV.xcodeproj.
+# The project file is a build artifact and stays gitignored — this spec is the
+# source of truth, and file adds/removes only need a regenerate, never manual
+# pbxproj surgery.
+#
+# Distinct bundle id from the React Native app (org.jesusfilm.forgewatch) so
+# both can sit on the same device/simulator while this one grows up.
+
+name: JesusFilmTV
+options:
+  bundleIdPrefix: org.jesusfilm
+  deploymentTarget:
+    tvOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: DQ48D9BF2V
+    TARGETED_DEVICE_FAMILY: "3"
+    GENERATE_INFOPLIST_FILE: YES
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"
+
+targets:
+  JesusFilmTV:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.jesusfilm.forgetv.native
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        INFOPLIST_KEY_CFBundleDisplayName: Jesus Film
+        # Everything this app talks to is https (admin, auth, Mux) — no ATS
+        # exceptions, and adding one should be treated as a design smell.
+
+  JesusFilmTVTests:
+    type: bundle.unit-test
+    platform: tvOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: JesusFilmTV
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.jesusfilm.forgetv.native.tests
+
+schemes:
+  JesusFilmTV:
+    build:
+      targets:
+        JesusFilmTV: all
+        JesusFilmTVTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - JesusFilmTVTests
