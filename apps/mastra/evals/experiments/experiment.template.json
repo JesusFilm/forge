@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "seeker-experiment/v1",
+  "id": "2026-01-01-001-seeker-describe-intent",
+  "owner": "replace-with-owner",
+  "hypothesis": "State the expected measurable improvement before running the experiment.",
+  "criterion": {
+    "id": "minimum-run-score",
+    "version": "1",
+    "parameters": { "minimum": 0.95 }
+  },
+  "comparisonAxis": "prompt",
+  "productionBenchmark": {
+    "path": "apps/mastra/evals/results/seeker-baseline/answers.json",
+    "identity": {
+      "prompt": {
+        "provider": "langfuse",
+        "name": "seeker-system",
+        "revision": "replace-with-production-revision",
+        "contentHash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "model": {
+        "routing": "ordered-fallback",
+        "routes": [
+          {
+            "provider": "openrouter",
+            "model": "replace-with-production-model",
+            "endpoint": "model-router",
+            "maxRetries": 1
+          }
+        ]
+      },
+      "decoding": { "mode": "provider-default" },
+      "questionSet": {
+        "id": "seeker-eval/v1",
+        "questionIds": ["replace-with-question-id"]
+      },
+      "criteria": {
+        "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "judge": {
+        "model": "replace-with-judge-model",
+        "rubricHash": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "retrieval": {
+        "mode": "fixtures",
+        "corpusHash": "3333333333333333333333333333333333333333333333333333333333333333",
+        "topK": 5
+      },
+      "runtime": {
+        "configurationHash": "4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "candidate-prompt",
+      "identity": {
+        "prompt": {
+          "provider": "langfuse",
+          "name": "seeker-system",
+          "revision": "replace-with-candidate-revision",
+          "contentHash": "5555555555555555555555555555555555555555555555555555555555555555",
+          "provenance": {
+            "intakeSelector": {
+              "kind": "label",
+              "value": "replace-with-intake-label"
+            }
+          }
+        },
+        "model": {
+          "routing": "ordered-fallback",
+          "routes": [
+            {
+              "provider": "openrouter",
+              "model": "replace-with-production-model",
+              "endpoint": "model-router",
+              "maxRetries": 1
+            }
+          ]
+        },
+        "decoding": { "mode": "provider-default" },
+        "questionSet": {
+          "id": "seeker-eval/v1",
+          "questionIds": ["replace-with-question-id"]
+        },
+        "criteria": {
+          "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        "judge": {
+          "model": "replace-with-judge-model",
+          "rubricHash": "2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "retrieval": {
+          "mode": "fixtures",
+          "corpusHash": "3333333333333333333333333333333333333333333333333333333333333333",
+          "topK": 5
+        },
+        "runtime": {
+          "configurationHash": "4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      }
+    }
+  ],
+  "lifecycle": "draft"
+}

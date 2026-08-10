@@ -4,7 +4,7 @@ import {
   type SeedPromptCase,
 } from "./types"
 
-export const SEARCH_EVAL_SEED_PROMPT_SET_VERSION = "search-eval-seed-prompts/v5"
+export const SEARCH_EVAL_SEED_PROMPT_SET_VERSION = "search-eval-seed-prompts/v7"
 
 type SeedPromptInput = Omit<SeedPromptCase, "source" | "callerTracks"> & {
   callerTracks?: readonly SearchEvalCallerTrack[]
@@ -617,6 +617,21 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
     operatorNotes: "Algolia no-result query, 2026-05-22..2026-06-21: count=1.",
   }),
   seedPrompt({
+    id: "seed-thai-who-is-jesus",
+    locale: "th",
+    languageSlug: "thai",
+    queryText: "พระเยซูคือใคร",
+    tags: [
+      "locale",
+      "semantic-language",
+      "question",
+      "core-title",
+      "multilingual",
+    ],
+    operatorNotes:
+      "Release-gate coverage for Thai-script JESUS-family retrieval and Thai watchability.",
+  }),
+  seedPrompt({
     id: "seed-chinese-vegetable-animation",
     locale: "zh",
     languageSlug: "mandarin-china",
@@ -630,6 +645,21 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
       "mismatch",
     ],
     operatorNotes: "Algolia no-result query, 2026-05-22..2026-06-21: count=4.",
+  }),
+  seedPrompt({
+    id: "seed-chinese-who-is-jesus",
+    locale: "zh",
+    languageSlug: "mandarin-china",
+    queryText: "耶稣是谁？",
+    tags: [
+      "locale",
+      "semantic-language",
+      "question",
+      "core-title",
+      "multilingual",
+    ],
+    operatorNotes:
+      "Release-gate coverage for Mandarin-script JESUS-family retrieval and Mandarin watchability.",
   }),
   seedPrompt({
     id: "seed-finding-hope-heavy",
@@ -805,6 +835,22 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
     queryText: "world cup 2026 outreach",
     tags: ["algolia-no-result", "confusing", "sports-outreach"],
     operatorNotes: "Algolia no-result query, 2026-05-22..2026-06-21: count=1.",
+  }),
+  seedPrompt({
+    id: "seed-no-result-random-development",
+    ...ENGLISH,
+    queryText: "xqzv jmpld frrbn 839471",
+    tags: ["confusing", "expected-no-result"],
+    operatorNotes:
+      "Deterministic development restraint case: random tokens must not force a result.",
+  }),
+  seedPrompt({
+    id: "seed-no-result-random-held-out",
+    ...ENGLISH,
+    queryText: "qvzx nrmpt klwbd 528063",
+    tags: ["confusing", "expected-no-result"],
+    operatorNotes:
+      "Held-out restraint case: random tokens must not force a result.",
   }),
   seedPrompt({
     id: "seed-ai-easter-devotional-hope",

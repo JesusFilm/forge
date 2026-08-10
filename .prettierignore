@@ -15,6 +15,10 @@ apps/mastra-gateway/src/generated
 apps/manager/src/app/.well-known/workflow/v1
 apps/cms/.strapi
 apps/cms/.strapi-updater.json
+
+# Append-only Seeker experiment evidence is checksum-addressed by completion.json.
+apps/mastra/evals/experiments/**/attempts/**
+
 output/
 .cursor
 .local

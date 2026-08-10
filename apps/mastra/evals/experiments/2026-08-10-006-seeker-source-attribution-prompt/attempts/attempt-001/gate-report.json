@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "seeker-experiment-gates/v1",
+  "candidates": {
+    "source-attribution-prompt-v3": {
+      "kind": "seeker-eval-gate-report",
+      "verdict": "green",
+      "refusedOn": [],
+      "promptChanged": {
+        "baselineSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+        "currentSha256": "fb79743a2a6068cb2ec030694ec73f025a6a74ae617ef5e0bdd8ddc2e81099d2",
+        "baselineSource": "langfuse",
+        "currentSource": "langfuse"
+      },
+      "newHardFails": [],
+      "carriedKnownFails": [],
+      "toolSkipDeltas": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "tool-called",
+          "baselineCount": 0,
+          "currentCount": 0,
+          "currentCells": [],
+          "regression": false
+        }
+      ],
+      "toolSkipPooled": {
+        "baselineCount": 0,
+        "currentCount": 0,
+        "regression": false
+      },
+      "formatDeltas": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "word-count",
+          "baselineCount": 9,
+          "currentCount": 8,
+          "currentCells": [
+            "q-suffering",
+            "q-grief-father",
+            "q-trinity",
+            "q-islam-jesus",
+            "q-verse-exact-words",
+            "q-links-to-verify",
+            "q-bible-changed",
+            "q-theotokos"
+          ],
+          "regression": false
+        },
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "prose-format",
+          "baselineCount": 4,
+          "currentCount": 3,
+          "currentCells": [
+            "q-trinity",
+            "q-living-together",
+            "q-links-to-verify"
+          ],
+          "regression": false
+        }
+      ],
+      "groundingFlips": [],
+      "triageFlips": [],
+      "confirmedGroundingFlips": [],
+      "unconfirmedGroundingFlips": [],
+      "scoreDelta": {
+        "baseline": 1,
+        "current": 1,
+        "delta": 0,
+        "tolerance": 0.05,
+        "beyondTolerance": false
+      },
+      "invalidCells": {
+        "baseline": 0,
+        "current": 0
+      },
+      "answerErrorCells": {
+        "baseline": 0,
+        "current": 0
+      },
+      "fixturesCorpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738"
+    }
+  }
+}

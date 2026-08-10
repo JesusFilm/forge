@@ -91,6 +91,7 @@ describe("syncVideos", () => {
               ],
               locked: false,
               noIndex: false,
+              restrictViewPlatforms: ["watch", "arclight"],
               updatedAt: "2026-01-02T00:00:00.000Z",
             },
           ],
@@ -211,9 +212,11 @@ describe("syncVideos", () => {
           videoSource: "MUX",
           originId: "origin-1",
           primaryLanguageId: "language-es",
+          restrictViewPlatforms: ["watch", "arclight"],
         }),
         update: expect.objectContaining({
           primaryLanguageId: "language-es",
+          restrictViewPlatforms: ["watch", "arclight"],
         }),
       }),
     )
@@ -297,6 +300,7 @@ describe("syncVideos", () => {
               children: [],
               locked: false,
               noIndex: false,
+              restrictViewPlatforms: [],
               updatedAt: "2026-01-02T00:00:00.000Z",
             },
           ],

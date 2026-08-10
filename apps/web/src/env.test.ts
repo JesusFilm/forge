@@ -23,6 +23,8 @@ function useBaseEnv() {
   delete process.env.VERCEL_ENV
   delete process.env.VERCEL_GIT_COMMIT_SHA
   delete process.env.GIT_COMMIT_SHA
+  delete process.env.WATCH_SEARCH_PRIMARY_MODE
+  delete process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED
 }
 
 describe("web env — Datadog RUM config", () => {
@@ -122,5 +124,46 @@ describe("web env — Admin GraphQL URL", () => {
     await expect(import("./env")).rejects.toThrow(
       "Invalid environment variables",
     )
+  })
+})
+
+describe("web env — Watch search rollout", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("keeps local and test processes on DEFAULT", async () => {
+    vi.stubEnv("NODE_ENV", "test")
+
+    const { env } = await import("./env")
+
+    expect(env.WATCH_SEARCH_PRIMARY_MODE).toBe("DEFAULT")
+    expect(env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED).toBe(true)
+  })
+
+  it("defaults production-mode builds to MODERN", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    const { env } = await import("./env")
+
+    expect(env.WATCH_SEARCH_PRIMARY_MODE).toBe("MODERN")
+  })
+
+  it("honors the DEFAULT traffic rollback and shadow kill switch", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    process.env.WATCH_SEARCH_PRIMARY_MODE = "DEFAULT"
+    process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED = "false"
+
+    const { env } = await import("./env")
+
+    expect(env.WATCH_SEARCH_PRIMARY_MODE).toBe("DEFAULT")
+    expect(env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED).toBe(false)
   })
 })

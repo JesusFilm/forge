@@ -46,12 +46,15 @@ import {
 import { env } from "../env"
 import {
   addDatadogTiming,
+  capErrorMessage,
+  capErrorMessageWithMeta,
   createDatadogInitWatchdog,
   datadogGraphqlHeaders,
   datadogLog,
   getDatadogRumConfig,
   hostFromUrl,
   isDatadogProvisioned,
+  isSheetViewRoute,
   parseSampleRate,
   reportDatadogError,
   resolveViewName,
@@ -420,5 +423,135 @@ describe("datadogLog (never-throw contract)", () => {
     mockLogInfo.mockRejectedValueOnce(new Error("intake unreachable"))
     expect(() => datadogLog.info("hello")).not.toThrow()
     await flushMicrotasks()
+  })
+})
+
+// CombinedGraphQLErrors concatenates every error — prod carried "Unexpected
+// error." x200 as one message. Error Tracking groups by message, so uncapped it
+// bloats payloads AND splits one fault into many count-dependent issues.
+describe("capErrorMessage (runaway CombinedGraphQLErrors messages)", () => {
+  it("leaves a normal message untouched", () => {
+    expect(capErrorMessage("rate limited")).toBe("rate limited")
+  })
+
+  it("collapses a repeated fault to a single grouping key", () => {
+    expect(capErrorMessage("Unexpected error.\nUnexpected error.")).toBe(
+      "Unexpected error.",
+    )
+  })
+
+  it("reduces the real prod shape to one short line", () => {
+    const capped = capErrorMessage("Unexpected error.\n".repeat(200))
+    expect(capped).toBe("Unexpected error.")
+  })
+
+  // THE point of the change: prod produced five separate Error Tracking issues
+  // for one fault because each response carried a different number of copies.
+  // Every length of the same repeated fault must now be byte-identical.
+  it.each([2, 9, 13, 60, 200])(
+    "yields an identical message for a run of %i copies",
+    (n) => {
+      expect(capErrorMessage("Unexpected error.\n".repeat(n))).toBe(
+        capErrorMessage("Unexpected error."),
+      )
+    },
+  )
+
+  // A dropped blank line must not let two identical faults survive as distinct
+  // grouping keys — the exact hole a raw previous-element compare left open.
+  it("collapses duplicates separated by a blank line", () => {
+    expect(capErrorMessage("Unexpected error.\n\nUnexpected error.")).toBe(
+      capErrorMessage("Unexpected error."),
+    )
+    expect(capErrorMessage("Unexpected error.\n\n".repeat(50))).toBe(
+      "Unexpected error.",
+    )
+  })
+
+  // Dedupe must not erase genuinely different errors in a partial-failure body.
+  it("keeps distinct errors while collapsing the repeats around them", () => {
+    const mixed = "Unexpected error.\nUnexpected error.\nrate limited\n"
+    expect(capErrorMessage(mixed)).toBe("Unexpected error. rate limited")
+  })
+
+  // A message still over the cap after deduping must be truncated.
+  it("caps a long run of distinct errors", () => {
+    const distinct = Array.from(
+      { length: 60 },
+      (_, i) => `field ${i} is invalid`,
+    ).join("\n")
+    const capped = capErrorMessage(distinct)
+    expect(capped.length).toBeLessThan(360)
+    expect(capped.endsWith("… (truncated)")).toBe(true)
+  })
+
+  // THE property this function exists for. A length-dependent suffix made two
+  // different-length renderings of one fault into two Error Tracking issues —
+  // exactly the splitting the cap was added to stop.
+  it("gives two different over-cap lengths of one fault the same message", () => {
+    const run = (n: number) =>
+      capErrorMessage(
+        Array.from({ length: n }, (_, i) => `field ${i} is invalid`).join("\n"),
+      )
+    expect(run(60)).toBe(run(70))
+  })
+
+  // The dropped-byte count still has to survive — in the context, not the message.
+  it("reports the dropped char count out of band", () => {
+    const long = "x".repeat(1000)
+    expect(capErrorMessageWithMeta(long).truncatedChars).toBe(700)
+    expect(capErrorMessageWithMeta("short").truncatedChars).toBe(0)
+  })
+
+  it("attaches message_truncated_chars to the RUM context when truncated", () => {
+    mockAddError.mockClear()
+    reportDatadogError(new Error("x".repeat(1000)), { origin: "test" })
+    const ctx = mockAddError.mock.calls[0]?.[3] as Record<string, unknown>
+    expect(ctx.message_truncated_chars).toBe(700)
+  })
+
+  it("omits message_truncated_chars when nothing was dropped", () => {
+    mockAddError.mockClear()
+    reportDatadogError(new Error("short"), { origin: "test" })
+    const ctx = mockAddError.mock.calls[0]?.[3] as Record<string, unknown>
+    expect(ctx).not.toHaveProperty("message_truncated_chars")
+  })
+
+  it("reports the error message through DdRum capped, not raw", () => {
+    mockAddError.mockClear()
+    reportDatadogError(new Error("Unexpected error.\n".repeat(200)))
+    const [message] = mockAddError.mock.calls[0] as [string]
+    expect(message.length).toBeLessThan(360)
+  })
+})
+
+// Sheets are real routes, so each used to end the watch view and start its own —
+// fragmenting one playback into several short views and under-reporting watch
+// time. Matched on the route PATTERN, never the literal path.
+describe("isSheetViewRoute", () => {
+  it.each([
+    ["watch", "language"],
+    ["watch", "subtitle"],
+    ["watch", "download"],
+    ["series", "language"],
+    ["series", "subtitle"],
+    ["series", "download"],
+  ])("treats %s/%s as a sheet", (a, b) => {
+    expect(isSheetViewRoute([a, b])).toBe(true)
+  })
+
+  // The discriminating case: a dynamic slug resolves to the "[slug]" pattern, so
+  // a video whose slug is literally "language" still starts its own view.
+  it("does not treat watch/[slug] as a sheet", () => {
+    expect(isSheetViewRoute(["watch", "[slug]"])).toBe(false)
+  })
+
+  it.each([
+    [["(tabs)"]],
+    [["(tabs)", "library"]],
+    [["series", "[slug]"]],
+    [["experience", "[slug]"]],
+  ])("does not treat %s as a sheet", (segments) => {
+    expect(isSheetViewRoute(segments as string[])).toBe(false)
   })
 })

@@ -1,6 +1,7 @@
 ---
 title: "Core-sync video-subtitles soft-delete wipes valid rows when a run's fetch is incomplete"
 date: "2026-07-22"
+last_updated: "2026-08-03"
 category: integration-issues
 module: apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
 problem_type: integration_issue
@@ -11,9 +12,10 @@ symptoms:
   - "Production admin returns englishSubs=0 for the JESUS-segment editions while the Core gateway has the English VTTs"
   - "The TV showcase sentence-aware hop feature is silently data-gated to 1 of 6 centerpieces (only my-last-day has a reachable English VTT in prod)"
 root_cause: logic_error
-resolution_type: documentation_update
+resolution_type: code_fix
 severity: high
 related_components:
+  - apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
   - apps/admin/src/services/core-sync/phases/sync-video-images.ts
   - apps/tv/src/lib/showcaseMode/sentenceTimingSource.ts
   - apps/tv/src/components/showcaseMode/ShowcaseScreen.tsx
@@ -63,8 +65,34 @@ English VTTs, which in turn data-gates the TV showcase sentence-aware hop featur
 
 ## Solution
 
-Two parts: the local recovery that was applied here, and the code guard that is **recommended but not
-yet applied** (apps/admin is owned by another engineer — surfaced as a hand-off, not fixed in-branch).
+**Durable resolution (2026-08-03).** Core already exposes the needed table-shaped
+API: `videoSubtitles(where, offset, limit)` and `videoSubtitlesCount(where)`.
+Admin now reads subtitles from that flat entity surface instead of from nested
+`videos { subtitles }` pages.
+
+The normal incremental fast path still filters Core subtitles by
+`updatedAt >= since`. After the incremental pass, Admin fetches a full Core
+subtitle ID inventory, verifies it against `videoSubtitlesCount`, and double
+reads the ID set before trusting it for deletes. If that inventory contains Core
+IDs missing from active Admin Core rows, the phase escalates to a full flat row
+payload fetch and upserts the missing rows before any delete is considered.
+Full/non-incremental subtitle runs fetch full row payloads directly.
+
+Deletes no longer use "not restamped during this run" as proof. The only delete
+authority is absence from the verified Core ID inventory, and the SQL predicate
+is limited to active Admin rows with `source = CORE` and non-null `core_id`.
+Manager-owned subtitles and non-Core rows are never targeted. Core page errors,
+parse failures, duplicate inventory IDs, count mismatches, unstable inventory
+reads, missing parent relationships, and Manager-owned Core-ID collisions all
+fail closed without a delete.
+
+The normal scheduled/manual Core Sync is the repair path for JESUS video
+`1_jf-0-0`; no direct production SQL patch and no Core deploy are required.
+Existing Watch manifest invalidation publishes the restored transcript through
+the normal data path.
+
+The SQL below records how the disposable local database was recovered during
+the original investigation. It must not be used as the production repair path.
 
 **Local recovery (applied).** The soft-delete only sets `deleted_at`, so the over-deletion is reversible.
 Restore rows this run wrongly deleted — deleted just now, but `synced_at` predates the run:
@@ -76,7 +104,7 @@ WHERE deleted_at >= '<run start>'
   AND (synced_at IS NULL OR synced_at < '<run start>');
 ```
 
-**Recommended guard (admin-owned, not yet applied).** The destructive pass is
+**Superseded historical proposal.** The destructive pass was
 `sync-video-subtitles.ts:319-329`:
 
 ```ts
@@ -95,15 +123,10 @@ if (!since && stats.errors === 0) {
 }
 ```
 
-The only guards today are `firstPageWasEmpty` (page 0 only, `:309`) and `errors === 0`. Neither catches a
-run that returned _some_ pages but far fewer rows than exist. Gate the delete on a **fetch-completeness
-sanity check** — e.g. skip (or hard-fail) the soft-delete when `totalSubtitlesSeen` is implausibly low
-versus the current stored `video_subtitle` count (a run that fetched 208 must never delete 10,695). A short
-fetch should degrade to "sync nothing" or a loud failure, never a silent mass delete.
-
-**Operational mitigation** for a prod re-sync until the guard lands: watch the `video-subtitles`
-phase counts live and kill the run before the delete if `updated` is far below the stored total; or
-re-sync subtitles for the specific affected videos rather than a catalogue-wide `--full`.
+The former idea was to gate the global delete using a fetched/stored ratio. That
+would catch spectacular coverage collapses, but it would not prove that any
+specific row was removed from Core. It was therefore rejected as a deletion
+authority in favor of the verified full Core ID inventory.
 
 ## Why This Works
 
@@ -124,6 +147,18 @@ learning is not the specific fetch failure but the **soft-delete's lack of a com
 turns any incomplete fetch into silent data loss.
 
 ## Prevention
+
+- **Use the flat entity API when Core exposes one.** Syncing subtitles through
+  `videoSubtitles` keeps the page boundary aligned with the rows Admin writes.
+- **An ID inventory identifies drift; full row payloads repair it.** A list of
+  IDs can prove Admin is missing old unchanged rows, but only row payloads can
+  recreate them.
+- **Only a verified full Core ID set can authorize absence-based deletes.**
+  Aggregate counts and ratios can alert, but cannot prove that any particular
+  record was removed from Core.
+- **Source ownership is part of the delete predicate.** Core sync may prune only
+  active `source = CORE` rows with non-null `core_id`; local/Manager subtitles
+  remain outside Core authority.
 
 - **Never let a "delete everything not re-fetched" pass run destructively without a fetch-completeness
   gate.** Any soft-delete/prune-after-sync (this phase, and any sibling that mirrors the pattern) must

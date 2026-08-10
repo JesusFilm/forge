@@ -38,7 +38,9 @@ Fragments live under `@forge/admin-graphql/fragments`:
 import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 ```
 
-That's the whole API: one factory, three type utilities, one `readFragment` helper, plus the fragment barrel.
+The package also exposes narrowly shared contracts under
+`@forge/admin-graphql/operations` when the same operation is executed by more
+than one runtime path.
 
 ## Generation flow
 
@@ -62,7 +64,7 @@ If you find yourself reaching for an admin runtime type, lift the shape into the
 
 ## Conventions
 
-- Operations are defined in consuming apps (e.g., `apps/web/src/lib/...`) using the `adminGraphql()` factory exported here.
+- Operations are defined in consuming apps (e.g., `apps/web/src/lib/...`) using the `adminGraphql()` factory exported here by default. Put an operation under `src/operations/` only when multiple runtime paths need one selection set and variable contract; keep page-specific selections in the consuming app.
 - Root WatchExperience composition + per-block fragments live in this package under `src/fragments/`. They're shared infrastructure across web routes. Per-page custom selections stay colocated in the consuming app.
 - Run codegen after every admin SDL change.
 - Commit generated type files — they are part of the contract.

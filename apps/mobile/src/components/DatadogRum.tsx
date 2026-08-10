@@ -84,8 +84,8 @@ export function MobileDatadogProvider({ children }: { children: ReactNode }) {
         trackInteractions: true,
         trackResources: true, // auto-instruments fetch/XHR into per-request RUM
         // Cancelled requests still surface as native -999 "cancelled" RUM errors
-        // (noise; JS-side aborts are skipped in apolloClient's error link). A clean
-        // filter needs errorEventMapper — file-config-only (see the RN mapper doc).
+        // (noise; JS-side aborts are skipped in apolloClient's error link). No SDK
+        // knob drops them: errorEventMapper runs only inside DdRum.addError (JS).
         trackErrors: true,
         nativeCrashReportEnabled: true,
         sessionSampleRate: config.sessionSampleRate,

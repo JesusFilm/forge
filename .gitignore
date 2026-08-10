@@ -76,3 +76,9 @@ apps/mobile/design-mockups/
 devo/
 
 /local/
+# Seeker eval working runs (paid artifacts land in apps/mastra/evals/results/ when promoted to baseline)
+apps/mastra/eval-runs/
+eval-runs/
+# Explicit local-only Seeker prompt debugging. Repository evidence writers
+# reject traversal and never target this scratch tree.
+apps/mastra/.seeker-eval-debug/

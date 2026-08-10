@@ -106,13 +106,56 @@ describe("mergeReplayMessages (KTD11/KTD5)", () => {
     expect(merged[0]).toEqual({ id: "t1", role: "user", content: "old q" })
   })
 
-  it("maps replayed turns to bare text — no engine/grounded/sources metadata", () => {
+  it("maps an attachment-less replayed turn to bare text — no engine/grounded", () => {
     const [message] = mergeReplayMessages(
       [{ id: "t1", role: "assistant", text: "answer", createdAt: "x" }],
       [],
     )
     expect(message).toEqual({ id: "t1", role: "assistant", content: "answer" })
     expect(Object.keys(message!)).toEqual(["id", "role", "content"])
+  })
+
+  it("carries feat-329 attachments through while still stripping the badges", () => {
+    // R21 is BADGE stripping, not attachment stripping: the player and the
+    // sources return on reload, the engine/grounded tags do not.
+    const [message] = mergeReplayMessages(
+      [
+        {
+          id: "t1",
+          role: "assistant",
+          text: "answer",
+          createdAt: "x",
+          sources: [
+            {
+              sourceName: "S",
+              title: null,
+              url: "https://example.org/a",
+              score: 1,
+              snippet: "p",
+            },
+          ],
+          video: {
+            videoId: "v1",
+            title: "T",
+            playbackId: "abcdEFGH1234",
+            durationSeconds: 10,
+            watchUrl: "https://www.jesusfilm.org/watch/t.html",
+          },
+        },
+      ],
+      [],
+    )
+    expect(message!.sources).toHaveLength(1)
+    expect(message!.video?.videoId).toBe("v1")
+    expect(Object.keys(message!)).toEqual([
+      "id",
+      "role",
+      "content",
+      "sources",
+      "video",
+    ])
+    expect(message!.engine).toBeUndefined()
+    expect(message!.grounded).toBeUndefined()
   })
 })
 

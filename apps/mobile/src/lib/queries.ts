@@ -47,6 +47,10 @@ export const WATCH_SEARCH = adminGraphql(`
       query
       hasMore
       nextOffset
+      requestId
+      latencyMs
+      degraded
+      searchMode
       results {
         type
         id
@@ -73,6 +77,42 @@ export type WatchSearchWire =
 export type WatchSearchResultItem = NonNullable<
   NonNullable<AdminResultOf<typeof WATCH_SEARCH>["watchSearch"]>["results"]
 >[number]
+
+// ── Watch search event mutation ─────────────────────────────────────
+
+/** Pinned by apolloClient's error-link exemption (KTD6) and the U7 guard test. */
+export const WATCH_SEARCH_EVENT_OPERATION_NAME = "RecordWatchSearchEvent"
+
+// Mirrors web's operation (search-actions.ts) MINUS $occurredAt: admin rejects
+// stamps >24h past / >5min future, so a skew-clocked device would silently lose
+// every event. Admin stamps its own clock; web's runs on a server clock.
+export const RECORD_WATCH_SEARCH_EVENT = adminGraphql(`
+  mutation RecordWatchSearchEvent(
+    $requestId: String!
+    $eventType: WatchSearchEventType!
+    $client: WatchSearchEventClient!
+    $resultId: ID
+    $resultType: WatchSearchEventResultType
+    $position: Int
+    $visibleResultIds: [String!]
+    $routeLanguageSlug: String
+    $searchLanguageSlug: String
+  ) {
+    recordWatchSearchEvent(
+      requestId: $requestId
+      eventType: $eventType
+      client: $client
+      resultId: $resultId
+      resultType: $resultType
+      position: $position
+      visibleResultIds: $visibleResultIds
+      routeLanguageSlug: $routeLanguageSlug
+      searchLanguageSlug: $searchLanguageSlug
+    ) {
+      id
+    }
+  }
+`)
 
 // ── Derived types ───────────────────────────────────────────────────
 
@@ -110,6 +150,12 @@ export type SearchResponse = {
   /** Offset to request for the next page; admin owns the cursor arithmetic. */
   readonly nextOffset: number
   readonly results: readonly SearchResult[]
+  /** Admin's echoed correlation id; joins client telemetry to the server trace. */
+  readonly requestId: string | null
+  /** Server-side latency as admin measured it, distinct from client wall time. */
+  readonly latencyMs: number | null
+  readonly degraded: boolean | null
+  readonly searchMode: string | null
 }
 
 // ── Video detail query (standalone, not Experience-bound) ──────────

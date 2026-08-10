@@ -1,4 +1,23 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import type { Principal } from "@/auth/principal"
+import { isEditorOrAdmin } from "@/auth/principal"
+
+// Core's per-platform view restriction (`Video.restrictViewPlatforms`,
+// synced read-only — see core-sync/phases/sync-videos.ts). Only the "watch"
+// platform is checked: Forge's web/mobile/tv apps all consume the one
+// `apps/admin` GraphQL schema (no per-forge-client granularity exists or is
+// needed), so Core's single "watch" restriction correctly maps to "hide from
+// all three." EDITOR/ADMIN callers always bypass this — the dashboard needs
+// to keep showing restricted videos so editors can review/manage them.
+export function notRestrictedFromWatchWhere(): Prisma.VideoWhereInput {
+  return { NOT: { restrictViewPlatforms: { has: "watch" } } }
+}
+
+export function watchVisibilityWhere(
+  user: Principal | null,
+): Prisma.VideoWhereInput {
+  return isEditorOrAdmin(user) ? {} : notRestrictedFromWatchWhere()
+}
 
 export type SearchWatchabilityKind =
   | "target_audio"
@@ -87,6 +106,7 @@ function playableDubWhere(videoIds: readonly string[]) {
       deletedAt: null,
       noIndex: false,
       locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
+      ...notRestrictedFromWatchWhere(),
     },
     OR: [{ videoEditionId: null }, { videoEdition: { deletedAt: null } }],
   }

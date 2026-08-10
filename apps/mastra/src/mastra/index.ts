@@ -25,6 +25,7 @@ import {
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { supportResearchAgent } from "./agents/support-research-agent"
 import { copyAgent } from "./agents/devotional/copy-agent"
 import { highlighterAgent } from "./agents/devotional/highlighter-agent"
 import { setInstructionResolver } from "./agents/devotional/instruction-resolver"
@@ -57,6 +58,10 @@ import {
   type SeekerRouteMastra,
 } from "./agents/seeker-route"
 import {
+  buildObservabilityConfigs,
+  selectObservabilityConfig,
+} from "./langfuse-tracing"
+import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
@@ -72,6 +77,7 @@ import {
   handleOfflineSearchEvalRouteRequest,
   offlineSearchEvalWorkflow,
 } from "./workflows/offline-search-eval"
+import { absoluteSearchEvalWorkflow } from "./workflows/absolute-search-eval"
 import {
   handleSearchEvalCandidateReviewRouteRequest,
   searchEvalCandidateReviewWorkflow,
@@ -136,6 +142,7 @@ import {
   handleYouTubeDiscoveryRouteRequest,
   youtubeAiChristianDiscoveryWorkflow,
 } from "./workflows/youtube-ai-christian-discovery"
+import { dailySupportResearchWorkflow } from "./workflows/daily-support-research"
 import {
   handlePinterestDiscoveryRouteRequest,
   pinterestAiChristianDiscoveryWorkflow,
@@ -158,6 +165,7 @@ import {
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
+import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
 import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
 import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
@@ -236,6 +244,19 @@ const redactPromptBodies: SpanOutputProcessor = {
   shutdown: async () => {},
 }
 
+// Observability configs: the redacted local default plus, when opted in
+// (feat-321: LANGFUSE_TRACING_ENABLED=true AND the credential trio), the raw
+// seeker → Langfuse config. The builder enforces the load-bearing ordering
+// invariant structurally — `default` is always the FIRST entry, because the
+// registry treats index 0 as the default instance (see langfuse-tracing.ts).
+const observabilityConfigs = buildObservabilityConfigs({
+  serviceName: "forge-mastra",
+  sampling: { type: SamplingStrategyType.ALWAYS },
+  logging: { enabled: true, level: "info" },
+  spanOutputProcessors: [redactPromptBodies],
+  exporters: [new MastraStorageExporter()],
+})
+
 // Draft/chat agents ported from admin (consolidation U4). Built once here so
 // the experience-chat Memory singleton is shared and the workflow agents are
 // registered by id for the workflow's `getAgentById(...)` lookups. The
@@ -253,6 +274,7 @@ export const mastra = new Mastra({
     smokeAgent,
     seekerAgent,
     webResearchAgent,
+    supportResearchAgent,
     scriptureAgent,
     safetyAgent,
     modernizerAgent,
@@ -268,6 +290,7 @@ export const mastra = new Mastra({
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
     offlineSearchEvalWorkflow,
+    absoluteSearchEvalWorkflow,
     searchEvalCandidateReviewWorkflow,
     searchEvalNativeSuiteWorkflow,
     searchEvalOrchestratorWorkflow,
@@ -286,6 +309,7 @@ export const mastra = new Mastra({
     devotionalApproveWorkflow,
     devotionalPublishWorkflow,
     youtubeAiChristianDiscoveryWorkflow,
+    dailySupportResearchWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
@@ -322,15 +346,11 @@ export const mastra = new Mastra({
   }),
   observability: new Observability({
     sensitiveDataFilter: true,
-    configs: {
-      default: {
-        serviceName: "forge-mastra",
-        sampling: { type: SamplingStrategyType.ALWAYS },
-        logging: { enabled: true, level: "info" },
-        spanOutputProcessors: [redactPromptBodies],
-        exporters: [new MastraStorageExporter()],
-      },
-    },
+    // One config per trace: runs the seeker route stamps with the
+    // request-context marker go to the raw Langfuse config (feat-321, when
+    // enabled + configured); everything else stays on the redacted default.
+    configSelector: selectObservabilityConfig,
+    configs: observabilityConfigs,
   }),
   server: {
     studioBase: "/studio",
@@ -947,4 +967,5 @@ setInstructionResolver(async (agentId) => {
 // redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
 if (env.NODE_ENV === "production") {
   startAiChatRetentionPurge()
+  startSeekerPromptHealthMonitor()
 }

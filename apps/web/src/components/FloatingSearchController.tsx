@@ -13,21 +13,22 @@ import { usePathname } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 
 import { isPublicWatchLanguageSlug } from "@/lib/locale"
-import { runSearch } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import type { SearchActionResultSource, SearchResult } from "@/lib/search"
 import {
   MAX_SEARCH_LANGUAGE_FILTERS,
+  findQueryNamedLanguageOption,
   findSearchLanguageOptionByPublicSlug,
   groupSearchLanguagesByRegion,
   normalizeSearchLanguageEnglishNames,
+  publicSlugForLocale,
+  resolveSearchLanguage,
   stripLanguageFromSearchQuery,
   type SearchLanguageCountrySuggestion,
   type SearchLanguageOption,
 } from "@/lib/search-language"
-import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
 import { parseWatchPath } from "@/lib/routes"
-import { WATCH_SEARCH_ANALYTICS_SURFACE } from "@/lib/watch-search-analytics-contract"
+import { searchWatchDirect } from "@/lib/watch-search-client"
 import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
@@ -40,6 +41,7 @@ import { SearchOverlay } from "./SearchOverlay"
 const SEARCH_PAGE_SIZE = 10
 const SEARCH_LANGUAGE_OPTIONS_FALLBACK_MS = 1200
 const DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY = "__default__"
+const WATCH_SEARCH_RESULT_SOURCE: SearchActionResultSource = "watch-search"
 
 type SearchLanguageOptionsResponse = Awaited<
   ReturnType<typeof getSearchLanguageOptions>
@@ -70,7 +72,6 @@ type ActiveSearchSignature = {
   searchLanguageEnglishName: string | null
   searchLanguageSlug: string | null
   searchRequestId: string
-  detectedQueryLanguage: string | null
 }
 
 export type FloatingSearchControllerProps = {
@@ -131,9 +132,6 @@ export function FloatingSearchController({
   const [languageOptionsError, setLanguageOptionsError] = useState<
     string | null
   >(null)
-  const [languageFacets, setLanguageFacets] = useState<Record<string, number>>(
-    {},
-  )
   const [selectedLanguageEnglishNames, setSelectedLanguageEnglishNames] =
     useState<string[]>([])
   const [selectedLanguageRegionByName, setSelectedLanguageRegionByName] =
@@ -325,25 +323,8 @@ export function FloatingSearchController({
 
   useEffect(() => {
     if (!open) return
-    void refreshLanguageOptions(
-      Object.keys(languageFacets).length > 0 ? languageFacets : undefined,
-    )
-  }, [open, languageFacets, refreshLanguageOptions])
-
-  const maybeSetLanguageFacets = useCallback(
-    (
-      nextLanguageFacets: Record<string, number>,
-      activeLanguageEnglishNames: readonly string[],
-    ): void => {
-      if (activeLanguageEnglishNames.length > 0) return
-      setLanguageFacets((currentLanguageFacets) =>
-        languageFacetsEqual(currentLanguageFacets, nextLanguageFacets)
-          ? currentLanguageFacets
-          : nextLanguageFacets,
-      )
-    },
-    [],
-  )
+    void refreshLanguageOptions()
+  }, [open, refreshLanguageOptions])
 
   const clearLoadingForRequest = useCallback((requestId: number): void => {
     if (requestIdRef.current !== requestId) return
@@ -417,11 +398,7 @@ export function FloatingSearchController({
         const currentLanguageOptions = languageOptionsLoadedRef.current
           ? languageOptionsRef.current
           : await withSearchLanguageOptionsFallback(
-              refreshLanguageOptions(
-                Object.keys(languageFacets).length > 0
-                  ? languageFacets
-                  : undefined,
-              ),
+              refreshLanguageOptions(),
               () => languageOptionsRef.current,
             )
         if (requestIdRef.current !== thisRequest) return
@@ -444,49 +421,41 @@ export function FloatingSearchController({
           activeLanguageSlug ??
           selectedSearchLanguageOptionRef.current?.publicSlug ??
           null
-        const detectedQueryLanguage = detectWatchQueryLanguage({
-          currentLanguageSlug: searchLanguageSlug ?? routeLanguageSlug,
+        const acceptLanguage = readBrowserAcceptLanguage()
+        const selectedLanguageEnglishNames =
+          normalizeSearchLanguageEnglishNames(activeLanguageEnglishNames)
+        const queryNamedLanguage = findQueryNamedLanguageOption(
+          cappedQuery,
+          currentLanguageOptions,
+        )
+        const resolvedLanguage = resolveSearchLanguage({
+          selectedEnglishNames: selectedLanguageEnglishNames,
+          explicitSlug: activeLanguageSlug,
+          routeLanguageSlug,
+          acceptLanguage,
           languageOptions: currentLanguageOptions,
-          query: cappedQuery,
         })
-
-        const data = await runSearch({
+        const data = await searchWatchDirect({
           query: cappedQuery,
           limit: SEARCH_PAGE_SIZE,
           offset: 0,
-          languageEnglishNames: activeLanguageEnglishNames,
-          languageOptions: currentLanguageOptions,
-          languageSlug: activeLanguageSlug,
-          languageSlugIsExplicit: activeLanguageSlugIsExplicit,
-          routeLanguageSlug,
-          uiLocale,
-          analytics: {
-            detectedQueryLanguage,
-            requestType: "search",
-            searchRequestId,
-            surface: WATCH_SEARCH_ANALYTICS_SURFACE,
-            visibleResultCount: 0,
+          type: "video",
+          locale: uiLocale,
+          resolvedLanguage,
+          languageContext: {
+            clientRequestId: searchRequestId,
+            targetLanguageSlug:
+              activeLanguageSlug != null && activeLanguageSlugIsExplicit
+                ? resolvedLanguage.publicSlug
+                : null,
+            queryNamedLanguageSlug: queryNamedLanguage?.publicSlug,
+            displayLanguageSlug: publicSlugForLocale(uiLocale),
+            routeLanguageSlug,
+            acceptLanguage,
           },
         })
 
         if (requestIdRef.current !== thisRequest) return
-
-        if (!data.ok) {
-          setResults([])
-          setDisplayResults([])
-          setHasMore(false)
-          setResultSource(data.resultSource)
-          activeSearchSignatureRef.current = null
-          setSearchResultAnalytics(null)
-          setError(tSearchOverlay("searchFailed"))
-          if (data.languageFacets) {
-            maybeSetLanguageFacets(
-              data.languageFacets,
-              activeLanguageEnglishNames,
-            )
-          }
-          return
-        }
 
         const newResults = data.results
         const responseSearchRequestId = data.requestId ?? searchRequestId
@@ -494,9 +463,9 @@ export function FloatingSearchController({
         setDisplayResults(newResults)
         setResultsKey((k) => k + 1)
         setHasMore(data.hasMore)
-        setResultSource(data.resultSource)
+        setResultSource(WATCH_SEARCH_RESULT_SOURCE)
         const signatureLanguageSlug = activeLanguageSlugIsExplicit
-          ? data.resolvedLanguage.publicSlug
+          ? resolvedLanguage.publicSlug
           : null
         const searchLanguageEnglishName = activeLanguageEnglishNames[0] ?? null
         activeSearchSignatureRef.current = {
@@ -505,26 +474,19 @@ export function FloatingSearchController({
           languageSlug: signatureLanguageSlug,
           languageSlugIsExplicit: activeLanguageSlugIsExplicit,
           routeLanguageSlug,
-          resultSource: data.resultSource,
+          resultSource: WATCH_SEARCH_RESULT_SOURCE,
           nextOffset: data.nextOffset ?? newResults.length,
           searchLanguageEnglishName,
           searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
           searchRequestId: responseSearchRequestId,
-          detectedQueryLanguage,
         }
         setSearchResultAnalytics({
-          resultSource: data.resultSource,
+          resultSource: WATCH_SEARCH_RESULT_SOURCE,
           routeLanguageSlug,
           searchLanguageEnglishName,
           searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
           searchRequestId: responseSearchRequestId,
         })
-        if (data.languageFacets) {
-          maybeSetLanguageFacets(
-            data.languageFacets,
-            activeLanguageEnglishNames,
-          )
-        }
       } catch {
         if (requestIdRef.current === thisRequest) {
           activeSearchSignatureRef.current = null
@@ -539,8 +501,6 @@ export function FloatingSearchController({
     },
     [
       clearLoadingForRequest,
-      languageFacets,
-      maybeSetLanguageFacets,
       refreshLanguageOptions,
       routeLanguageSlug,
       setQuery,
@@ -571,45 +531,48 @@ export function FloatingSearchController({
     // new search supersedes us mid-fetch.
     const thisRequest = requestIdRef.current
     try {
-      const data = await runSearch({
+      const acceptLanguage = readBrowserAcceptLanguage()
+      const resolvedLanguage = resolveSearchLanguage({
+        selectedEnglishNames: expectedSignature.languageEnglishNames,
+        explicitSlug: expectedSignature.languageSlug,
+        routeLanguageSlug,
+        acceptLanguage,
+        languageOptions: languageOptionsRef.current,
+      })
+      const queryNamedLanguage = findQueryNamedLanguageOption(
+        currentQuery,
+        languageOptionsRef.current,
+      )
+      const data = await searchWatchDirect({
         query: currentQuery,
         limit: SEARCH_PAGE_SIZE,
         offset: expectedSignature.nextOffset,
-        languageEnglishNames: expectedSignature.languageEnglishNames,
-        languageOptions: languageOptionsRef.current,
-        languageSlug: expectedSignature.languageSlug,
-        languageSlugIsExplicit: expectedSignature.languageSlugIsExplicit,
-        routeLanguageSlug,
-        uiLocale,
-        analytics: {
-          detectedQueryLanguage: expectedSignature.detectedQueryLanguage,
-          expectedResultSource: expectedSignature.resultSource,
-          requestType: "load_more",
-          searchRequestId: expectedSignature.searchRequestId,
-          surface: WATCH_SEARCH_ANALYTICS_SURFACE,
-          visibleResultCount: displayResultsRef.current.length,
+        type: "video",
+        locale: uiLocale,
+        resolvedLanguage,
+        languageContext: {
+          clientRequestId: expectedSignature.searchRequestId,
+          targetLanguageSlug: expectedSignature.languageSlugIsExplicit
+            ? resolvedLanguage.publicSlug
+            : null,
+          queryNamedLanguageSlug: queryNamedLanguage?.publicSlug,
+          displayLanguageSlug: publicSlugForLocale(uiLocale),
+          routeLanguageSlug,
+          acceptLanguage,
         },
       })
       if (requestIdRef.current !== thisRequest) return
-      if (data.resultSource !== expectedSignature.resultSource) {
-        setError(tSearchOverlay("loadMoreFailed"))
-        return
-      }
-      if (!data.ok) {
-        setError(tSearchOverlay("loadMoreFailed"))
-        return
-      }
       setResults((prev) => [...prev, ...data.results])
       setDisplayResults((prev) => [...prev, ...data.results])
       setHasMore(data.hasMore)
-      setResultSource(data.resultSource)
+      setResultSource(WATCH_SEARCH_RESULT_SOURCE)
       activeSearchSignatureRef.current = {
         ...expectedSignature,
         nextOffset:
           data.nextOffset ?? expectedSignature.nextOffset + data.results.length,
       }
       setSearchResultAnalytics({
-        resultSource: data.resultSource,
+        resultSource: WATCH_SEARCH_RESULT_SOURCE,
         routeLanguageSlug,
         searchLanguageEnglishName: expectedSignature.searchLanguageEnglishName,
         searchLanguageSlug: expectedSignature.searchLanguageSlug,
@@ -828,22 +791,11 @@ function createSearchRequestId(): string {
   return `${Date.now().toString(36)}_${entropy}`
 }
 
-function detectWatchQueryLanguage({
-  currentLanguageSlug,
-  languageOptions,
-  query,
-}: {
-  currentLanguageSlug: string | null
-  languageOptions: readonly SearchLanguageOption[]
-  query: string
-}): string | null {
-  return (
-    detectQueryLanguageSuggestion({
-      currentLanguageSlug,
-      languageOptions,
-      query,
-    })?.option.publicSlug ?? null
-  )
+function readBrowserAcceptLanguage(): string | null {
+  if (typeof navigator === "undefined") return null
+  const languages = navigator.languages?.filter(Boolean)
+  if (languages?.length) return languages.join(",")
+  return navigator.language || null
 }
 
 function withSearchLanguageOptionsFallback(
@@ -873,20 +825,6 @@ function withSearchLanguageOptionsFallback(
       },
     )
   })
-}
-
-function languageFacetsEqual(
-  current: Record<string, number>,
-  next: Record<string, number>,
-): boolean {
-  const currentEntries = Object.entries(current)
-  const nextEntries = Object.entries(next)
-  if (currentEntries.length !== nextEntries.length) return false
-
-  for (const [language, count] of nextEntries) {
-    if (current[language] !== count) return false
-  }
-  return true
 }
 
 function defaultSearchLanguageOption({

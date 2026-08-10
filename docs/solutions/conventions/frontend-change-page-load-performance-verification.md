@@ -11,7 +11,7 @@ applies_when:
   - "Adding or moving network requests, dynamic imports, preloads, prefetches, or resource hints"
   - "Changing above-the-fold UI, especially on mobile"
 tags: [frontend, performance, page-load, verification, browser-smoke]
-related_components: [apps/web, apps/mobile, apps/tv]
+related_components: [apps/web, apps/chat, apps/mobile, apps/tv]
 ---
 
 # Frontend changes require page-load performance verification
@@ -123,8 +123,39 @@ Video capture shows autoplay works, and runtime proof confirms no video element
 exists at document load.
 ```
 
+## Measure the window where the risk lives
+
+Matching the proof to the risk (above) has a failure mode worth naming: taking a
+real measurement, on the wrong window, and reading it as clearance.
+
+For a **lazily-mounted** surface — a player, a heavy editor, anything behind
+`next/dynamic` — the risk is NOT the initial page load. It is the moment the
+chunk resolves and the component swaps in, mid-session, under content the reader
+is already looking at. An initial-load trace of a page that never mounts the
+component measures neither half of that. feat-328's first CLS reading was
+exactly this: a genuine 0.000, taken on a page with no video, offered as
+evidence about a video mount.
+
+Two measurements, not one:
+
+1. **The static chunk graph** — prove the deferred chunk is absent from the
+   initial request set. Reproducible without a browser: after `next build`,
+   compare `build-manifest.json`'s `rootMainFiles` plus the script tags in the
+   HTML that `next start` serves, against the chunk that actually contains the
+   heavy dependency (find it with a grep for a marker symbol). This half is
+   cheap and belongs in the PR body.
+2. **CLS across the mount window** — install a `layout-shift` PerformanceObserver,
+   trigger the interaction that mounts the component, and read the accumulated
+   value. Reserve the box in the same change: a lazily-mounted element with no
+   height reservation shifts everything below it when the chunk lands.
+
+Report which window each number came from. "CLS 0.000" is not a claim until it
+names the window it covers.
+
 ## Related
 
+- `docs/solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md`
+  — the same lazily-mounted surface, from the containment side.
 - `docs/solutions/performance-issues/watch-mobile-autoplay-delay-20260709.md` —
   the incident that surfaced the broader convention.
 - `docs/solutions/performance-issues/watch-hero-poster-idle-autoplay-20260610.md`

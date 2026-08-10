@@ -13,6 +13,17 @@ export type SeekerSource = {
   snippet: string
 }
 
+// The featured video as it reaches the UI (feat-328). Projected from the
+// terminal result frame by toVideo — every field is pattern-gated there, and
+// `watchUrl` is CLIENT-BUILT (no URL is ever trusted from the wire, plan D9).
+export type VideoAttachment = {
+  videoId: string
+  title: string
+  playbackId: string
+  durationSeconds: number | null
+  watchUrl: string
+}
+
 // Which engine produced an assistant turn (feat-205, R20). Every Seeker-on
 // assistant turn is marked so a Seeker answer is never confusable with a stub
 // one, and a conversation never silently mixes the two.
@@ -60,6 +71,9 @@ export type Message = {
   sources?: SeekerSource[]
   grounded?: boolean
   engine?: MessageEngine
+  // feat-328: the one video the Seeker featured on this turn. Terminal-frame
+  // only (plan D3) — set at finalize, never mid-stream.
+  video?: VideoAttachment
   // Set on a failed assistant turn so the UI renders a visible failure notice
   // (R14/R16/R17). Partial streamed text stays in `content`.
   error?: ReplyFailureReason

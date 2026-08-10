@@ -106,6 +106,9 @@ function itemToCard(
     null
   return {
     id,
+    // The admin Video id the progress store keys on — NOT `id`, which carries
+    // an index suffix for render-key uniqueness and would never match.
+    videoId: item.videoId || null,
     sourceId,
     coreId: cardCoreId,
     slug,

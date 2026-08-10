@@ -223,6 +223,62 @@ describe("Mastra env", () => {
     expect(getYouTubeConfig().apiKey).toBeUndefined()
   })
 
+  it("keeps support research disabled and bounded when unconfigured", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SUPPORT_RESEARCH_ENABLED", "")
+    vi.stubEnv("SUPPORT_RESEARCH_PROVIDER_APPROVED", "")
+    vi.stubEnv("HELP_SCOUT_CLIENT_ID", "")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_API_KEY", "")
+
+    const { getSupportResearchConfig } = await import("./env")
+
+    expect(getSupportResearchConfig()).toMatchObject({
+      enabled: false,
+      providerApproved: false,
+      model: "openai/gpt-5.4-mini",
+      allowedWatchHosts: [],
+      maxConversations: 200,
+      maxThreadsPerConversation: 20,
+      maxSanitizedCharacters: 12_000,
+      maxActionsPerRun: 5,
+      retentionDays: 90,
+      helpScout: {
+        clientId: undefined,
+        mailboxIds: [],
+      },
+      linear: { apiKey: undefined },
+    })
+  })
+
+  it("parses support research routing without exposing secret values", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SUPPORT_RESEARCH_ENABLED", "true")
+    vi.stubEnv("SUPPORT_RESEARCH_PROVIDER_APPROVED", "true")
+    vi.stubEnv(
+      "SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS",
+      "WWW.JESUSFILM.ORG, watch.example.org",
+    )
+    vi.stubEnv("HELP_SCOUT_CLIENT_ID", "help-id")
+    vi.stubEnv("HELP_SCOUT_CLIENT_SECRET", "help-secret")
+    vi.stubEnv("HELP_SCOUT_MAILBOX_IDS", "10, 20")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_API_KEY", "linear-secret")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_TEAM_ID", "team-id")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_PROJECT_ID", "project-id")
+
+    const { getSupportResearchConfig } = await import("./env")
+    const config = getSupportResearchConfig()
+
+    expect(config.enabled).toBe(true)
+    expect(config.providerApproved).toBe(true)
+    expect(config.allowedWatchHosts).toEqual([
+      "www.jesusfilm.org",
+      "watch.example.org",
+    ])
+    expect(config.helpScout.mailboxIds).toEqual(["10", "20"])
+    expect(config.helpScout.clientSecret).toBe("help-secret")
+    expect(config.linear.apiKey).toBe("linear-secret")
+  })
+
   it("defaults storage to the local gateway database in development", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("DATABASE_URL", "")
@@ -1105,6 +1161,160 @@ describe("Mastra env", () => {
     expect(isSeekerRouteEnabled()).toBe(false)
   })
 
+  // --- feat-327: ADMIN_AGENT_TOOLS_URL production egress guard ---
+  //
+  // Mirrors the JESUSFILM_RAG guard above case-for-case. The pair is a
+  // credentialed egress that feat-327 puts on a user-facing conversational
+  // path, so a production config with the URL set and no allowlist must fail
+  // PROMOTION rather than silently send the bearer to an unvetted host.
+
+  it("boots in production with the agent-tools URL unset (unprovisioned is valid)", async () => {
+    stubProductionBaseline()
+    // ADMIN_AGENT_TOOLS_URL deliberately unset — the tools degrade to empty.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("accepts an https agent-tools URL whose host is allowlisted in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "https://admin.jesusfilm.org")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_ALLOWED_HOSTS", "admin.jesusfilm.org")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http agent-tools URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "http://admin.jesusfilm.org")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_ALLOWED_HOSTS", "admin.jesusfilm.org")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects an agent-tools host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "https://evil.example")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_ALLOWED_HOSTS", "admin.jesusfilm.org")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a set agent-tools URL with no allowlist in production (fail-closed)", async () => {
+    // The case the operator explicitly accepted as a tightening:
+    // ADMIN_AGENT_TOOLS_ALLOWED_HOSTS becomes required-when-URL-set.
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "https://admin.jesusfilm.org")
+    // ADMIN_AGENT_TOOLS_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("does not throw on an unsafe agent-tools URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "http://localhost:4000")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  // --- feat-327: SEEKER_VIDEO_ENABLED default-off string-boolean gate (D6) ---
+
+  it("disables the seeker video capability when SEEKER_VIDEO_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isSeekerVideoEnabled } = await import("./env")
+
+    expect(isSeekerVideoEnabled()).toBe(false)
+  })
+
+  it('treats SEEKER_VIDEO_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // Same JS-truthiness trap as the sibling gates: a naive
+    // `Boolean(env.SEEKER_VIDEO_ENABLED)` would arm two credentialed tools on
+    // the code-unauthenticated /api/agents/* surface on the string "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_VIDEO_ENABLED", "false")
+
+    const { isSeekerVideoEnabled } = await import("./env")
+
+    expect(isSeekerVideoEnabled()).toBe(false)
+  })
+
+  it('enables the seeker video capability only when SEEKER_VIDEO_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_VIDEO_ENABLED", "true")
+
+    const { isSeekerVideoEnabled } = await import("./env")
+
+    expect(isSeekerVideoEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_VIDEO_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // SEEKER_VIDEO_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isSeekerVideoEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerVideoEnabled()).toBe(false)
+  })
+
+  // --- feat-327: ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES byte cap ---
+
+  it("defaults the agent-tools response byte cap to 2 MiB when unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { getAdminAgentToolsConfig } = await import("./env")
+
+    expect(getAdminAgentToolsConfig().maxResponseBytes).toBe(2_097_152)
+  })
+
+  it("projects an ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES override through the config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES", "1048576")
+
+    const { getAdminAgentToolsConfig } = await import("./env")
+
+    expect(getAdminAgentToolsConfig().maxResponseBytes).toBe(1_048_576)
+  })
+
+  it("rejects an agent-tools max-response-bytes above the 16 MiB schema cap at parse", async () => {
+    // Fail LOUD on an over-range operator typo rather than silently widening
+    // the OOM guard. 16_777_217 is one byte over the 16 MiB ceiling.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES", "16777217")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("keeps ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES out of the production required-var set", async () => {
+    stubProductionBaseline()
+    // ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES deliberately unset.
+
+    const { assertMastraRuntimeEnv, getAdminAgentToolsConfig } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getAdminAgentToolsConfig().maxResponseBytes).toBe(2_097_152)
+  })
+
   // --- feat-237: AI_GATEWAY_SEEKER_ENABLED default-off string-boolean gate ---
 
   it("disables the seeker gateway model when AI_GATEWAY_SEEKER_ENABLED is unset", async () => {
@@ -1164,6 +1374,69 @@ describe("Mastra env", () => {
 
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
     expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  // --- feat-321: LANGFUSE_TRACING_ENABLED default-off string-boolean gate ---
+
+  it("disables Langfuse tracing when LANGFUSE_TRACING_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety
+    // default: a naive `Boolean(env.LANGFUSE_TRACING_ENABLED)` would enable
+    // raw-content export on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "false")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="TRUE" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "TRUE")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="1" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "1")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('enables Langfuse tracing only when LANGFUSE_TRACING_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "true")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(true)
+  })
+
+  it("keeps LANGFUSE_TRACING_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with LANGFUSE_TRACING_ENABLED unset still boots — and
+    // stays off, so credential presence alone never exports content.
+    stubProductionBaseline()
+    // LANGFUSE_TRACING_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isLangfuseTracingEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isLangfuseTracingEnabled()).toBe(false)
   })
 
   // --- feat-208: AI_CHAT_MEMORY_BACKEND kill-switch precedence ---

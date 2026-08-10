@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
   env: {
@@ -45,6 +45,9 @@ function makePost({
 describe("video DB backup presign endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(Date, "now").mockReturnValue(
+      new Date("2026-05-15T00:00:00.000Z").getTime(),
+    )
     mockEnv.env.BACKUP_DOWNLOAD_API_KEYS = "dev-token,stg-token"
     mockEnv.env.RAILWAY_S3_BUCKET = "admin-db-backups"
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
@@ -63,6 +66,10 @@ describe("video DB backup presign endpoint", () => {
       ],
     })
     getSignedUrl.mockResolvedValue("https://signed.example.com/new.dump")
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it("rejects GET", async () => {
@@ -126,6 +133,10 @@ describe("video DB backup presign endpoint", () => {
       expiresInSeconds: 600,
       size: 20,
       lastModified: "2026-05-14T00:00:00.000Z",
+      freshness: expect.objectContaining({
+        status: "fresh",
+        ageMilliseconds: 24 * 60 * 60 * 1000,
+      }),
     })
     expect(getSignedUrl).toHaveBeenCalledWith(
       expect.anything(),
@@ -138,6 +149,149 @@ describe("video DB backup presign endpoint", () => {
       { expiresIn: 600 },
     )
     expect(destroyMock).toHaveBeenCalled()
+  })
+
+  it("paginates the complete profile prefix before selecting the newest object", async () => {
+    sendMock
+      .mockResolvedValueOnce({
+        Contents: [
+          {
+            Key: "admin-video-db-backups/video-search/first-page.dump",
+            LastModified: new Date("2026-05-13T00:00:00Z"),
+          },
+        ],
+        IsTruncated: true,
+        NextContinuationToken: "next-page",
+      })
+      .mockResolvedValueOnce({
+        Contents: [
+          {
+            Key: "admin-video-db-backups/video-search/newest.dump",
+            LastModified: new Date("2026-05-14T12:00:00Z"),
+          },
+        ],
+        IsTruncated: false,
+      })
+
+    const { POST } = await import("./route")
+    const res = await POST(makePost({ body: { profile: "video-search" } }))
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      profile: "video-search",
+      key: "admin-video-db-backups/video-search/newest.dump",
+      freshness: { status: "fresh" },
+    })
+    expect(sendMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: expect.objectContaining({ ContinuationToken: "next-page" }),
+      }),
+    )
+  })
+
+  it("classifies an object exactly 36 hours old as fresh", async () => {
+    sendMock.mockResolvedValueOnce({
+      Contents: [
+        {
+          Key: "admin-video-db-backups/video-core/threshold.dump",
+          LastModified: new Date("2026-05-13T12:00:00Z"),
+        },
+      ],
+    })
+
+    const { POST } = await import("./route")
+    const res = await POST(makePost())
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      freshness: {
+        status: "fresh",
+        ageMilliseconds: 36 * 60 * 60 * 1000,
+      },
+    })
+  })
+
+  it("returns stale signed metadata for restore acknowledgement", async () => {
+    sendMock.mockResolvedValueOnce({
+      Contents: [
+        {
+          Key: "admin-video-db-backups/video-core/stale.dump",
+          LastModified: new Date("2026-05-13T11:59:59.999Z"),
+        },
+      ],
+    })
+
+    const { POST } = await import("./route")
+    const res = await POST(makePost())
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      key: "admin-video-db-backups/video-core/stale.dump",
+      freshness: { status: "stale" },
+    })
+    expect(getSignedUrl).toHaveBeenCalledOnce()
+  })
+
+  it("returns the deliberate not-found contract without signing", async () => {
+    sendMock.mockResolvedValueOnce({ Contents: [] })
+
+    const { POST } = await import("./route")
+    const res = await POST(makePost())
+
+    expect(res.status).toBe(404)
+    await expect(res.json()).resolves.toMatchObject({
+      error: "backup-not-found",
+      profile: "video-core",
+      freshness: { status: "not-found" },
+    })
+    expect(getSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, new Date("invalid")])(
+    "returns unavailable metadata without signing for timestamp %s",
+    async (lastModified) => {
+      sendMock.mockResolvedValueOnce({
+        Contents: [
+          {
+            Key: "admin-video-db-backups/video-core/unusable.dump",
+            LastModified: lastModified,
+          },
+        ],
+      })
+
+      const { POST } = await import("./route")
+      const res = await POST(makePost())
+
+      expect(res.status).toBe(503)
+      await expect(res.json()).resolves.toMatchObject({
+        error: "backup-freshness-unavailable",
+        profile: "video-core",
+        freshness: {
+          status: "unavailable-metadata",
+          key: "admin-video-db-backups/video-core/unusable.dump",
+        },
+      })
+      expect(getSignedUrl).not.toHaveBeenCalled()
+    },
+  )
+
+  it("returns a clean storage error without leaking provider details", async () => {
+    sendMock.mockRejectedValueOnce(
+      new Error(
+        "secret-key https://signed.example.com/private.dump?credential=private",
+      ),
+    )
+
+    const { POST } = await import("./route")
+    const res = await POST(makePost())
+    const body = await res.text()
+
+    expect(res.status).toBe(503)
+    expect(body).toBe('{"error":"backup-storage-unavailable"}')
+    expect(body).not.toContain("secret-key")
+    expect(body).not.toContain("signed.example.com")
+    expect(getSignedUrl).not.toHaveBeenCalled()
   })
 
   it("does not log the bearer token", async () => {

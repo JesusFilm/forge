@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native"
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 
@@ -79,6 +80,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           </Text>
         )}
       </View>
+      <WatchProgressBar videoId={videoId} />
     </PressableCard>
   )
 }

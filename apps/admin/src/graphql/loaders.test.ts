@@ -217,6 +217,7 @@ describe("createLoaders", () => {
       parent: {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
       },
     })
     expect(rows.map((group) => group.map((row) => row.childId))).toEqual([
@@ -266,6 +267,40 @@ describe("createLoaders", () => {
       ["parent-1"],
       ["parent-2"],
     ])
+  })
+
+  it("excludes watch-restricted children when batching with public visibility", async () => {
+    const calls: Array<{ where: unknown }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoRelation: {
+        findMany: async (args: { where: { parentId: { in: string[] } } }) => {
+          calls.push({ where: args.where })
+          return args.where.parentId.in.map((parentId) => ({
+            id: `rel-${parentId}`,
+            parentId,
+            childId: `child-${parentId}`,
+          }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    await loaders.videoChildrenByParentId.load({
+      videoId: "parent-1",
+      visibleOnly: true,
+    })
+
+    expect(calls[0]?.where).toMatchObject({
+      child: {
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      },
+    })
   })
 })
 

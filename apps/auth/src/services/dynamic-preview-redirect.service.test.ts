@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
+import { TV_DEVICE_CLIENT_IDS } from "@/domain/apps"
+
 import {
+  DYNAMIC_PREVIEW_CLIENT_IDS,
   isDynamicLocalCodexMcpRedirectUriAllowed,
   isDynamicLocalWebRedirectUriAllowed,
   isDynamicRailwayPreviewRedirectUriAllowed,
@@ -78,6 +81,50 @@ describe("dynamic preview redirect policy", () => {
           "https://forgechat-anything.up.railway.app/api/auth/callback",
       }),
     ).toBe(false)
+  })
+
+  it("never lists a TV device client in DYNAMIC_PREVIEW_CLIENT_IDS", () => {
+    for (const clientId of TV_DEVICE_CLIENT_IDS) {
+      expect(DYNAMIC_PREVIEW_CLIENT_IDS.has(clientId)).toBe(false)
+    }
+    // Anti-vacuous: the set is real and non-empty, so the loop above is a
+    // statement about the TV client ids, not about an empty container.
+    expect(DYNAMIC_PREVIEW_CLIENT_IDS.has("jfp_admin_staging")).toBe(true)
+  })
+
+  it("keeps every TV device client out of the dynamic redirect sets", () => {
+    // The TV clients carry ONE sentinel redirect URI that is bound into the
+    // authorization code and never navigated. Admitting them to any dynamic
+    // set would let a caller persist an attacker-chosen redirect URI onto a
+    // client that redeems device codes.
+    for (const clientId of TV_DEVICE_CLIENT_IDS) {
+      // Falsification is uneven and the membership pin above is what actually
+      // holds the line. The local-web and Codex assertions DO go red if a TV id
+      // is added to their sets. The Railway one does NOT: admitting a TV id to
+      // DYNAMIC_PREVIEW_CLIENT_IDS still returns false because
+      // `isAllowedPreviewHostname` only knows the jfp_admin_/jfp_mastra_studio_
+      // prefixes. Verified by mutation. Keep it as defence in depth for the day
+      // a jfp_tv_ prefix branch is added there.
+      expect(
+        isDynamicRailwayPreviewRedirectUriAllowed({
+          clientId,
+          redirectUri:
+            "https://forge-admin-pr-123.up.railway.app/api/auth/callback",
+        }),
+      ).toBe(false)
+      expect(
+        isDynamicLocalWebRedirectUriAllowed({
+          clientId,
+          redirectUri: "http://localhost:51810/watch/api/auth/callback",
+        }),
+      ).toBe(false)
+      expect(
+        isDynamicLocalCodexMcpRedirectUriAllowed({
+          clientId,
+          redirectUri: "http://localhost:51810/auth/callback",
+        }),
+      ).toBe(false)
+    }
   })
 
   it("allows loopback watch callbacks for the local Web client", () => {

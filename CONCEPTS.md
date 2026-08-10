@@ -70,6 +70,11 @@ while a Dub's Core ID is Core's identifier for that specific language variant.
 
 A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their Episodes, films and their Chapters, and "Up Next" siblings are all formed — so a parent/child link alone does not say whether the parent is a container.
 
+A parent/child link may carry a canonical playback position. The position
+belongs to the relationship, not to the child Video, and remains the ordering
+authority when a viewer can see only a filtered subset. A link without a
+position is unsequenced.
+
 ### Dub
 
 One audio-language variant of a Video — the unit the watch screen's language picker selects (a popular title can have thousands of Dubs). A Dub carries its own playable stream and its own set of downloadable renditions, and points at the Video Edition whose subtitle tracks apply to it.
@@ -269,6 +274,22 @@ a high-strength source attribution on their own.
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
 
+Public compatibility and product serving policy are distinct. A generic caller
+may retain a stable omitted-mode default while Admin applies a surface-specific
+mode at a request-time orchestration boundary. Operational rollback belongs at
+that dynamic boundary rather than in cached client state.
+
+### Shadow Search
+
+A best-effort execution of a non-serving Search Pipeline Mode for the same
+submitted query, used to retain comparison evidence while another mode owns the
+viewer response.
+
+Shadow Search is bounded background work: saturation, failure, or a slow shadow
+must not change the primary result list or extend viewer-visible latency. Its
+results belong to evaluation and operational comparison rather than click or
+impression attribution.
+
 ### Search Candidate Window
 
 A bounded per-retriever set of eligible search candidates that is handed to
@@ -276,6 +297,59 @@ fusion after retrieval-specific ranking and filtering. Eligibility gates that
 affect whether a result can appear must run before the window; display-only
 hydration should run after the window so it cannot multiply or reorder
 candidates.
+
+### Search Serving Index
+
+A rebuildable, query-optimized projection of catalog metadata and Content
+Embeddings used by Admin search, distinct from the authoritative content store.
+
+A Search Serving Index may retain a broader semantic corpus than one caller can
+return. Each serving surface applies its own explicit visibility policy, while
+publication or availability changes update the projection without redefining
+the underlying embedding.
+
+### Search Candidate Generation
+
+An immutable, lifecycle-managed set of Search Serving Index projections built
+for private evaluation and possible later promotion without replacing the
+current serving indexes.
+
+A generation owns only the projections created for it and may share an
+explicitly versioned projection such as the transcript corpus. Evaluation,
+serving, and retirement authority remain separate so publishing a generation
+does not itself make it public.
+
+### Search Evaluation Pointer
+
+The server-owned reference that selects one ready Search Candidate Generation
+for private comparison and qualification without changing public search.
+
+### Search Serving Pointer
+
+The server-owned authorization that permits one qualified Search Candidate
+Generation to serve when the deployment selector independently names the same
+generation.
+
+The pointer is necessary but not sufficient for promotion: the candidate must
+still match its reviewed Search Candidate Identity and current baseline.
+
+### Search Qualification Lease
+
+A bounded, renewable claim that freezes one candidate and current-baseline
+identity while comparison or qualification work is active.
+
+Publication fails closed while a lease is active, and lease admission or
+renewal fails closed while publication owns the shared mutation boundary.
+
+### Public Search Visibility
+
+The eligibility of search evidence to contribute to viewer-facing Watch Search,
+distinct from whether that evidence belongs to the Search Serving Index.
+
+Public Search Visibility requires the source video to remain viewer-visible and
+the evidence language to have matching published content. Losing eligibility
+removes the evidence from public results without requiring a valid Content
+Embedding to be regenerated.
 
 ### Search Eval Caller Track
 
@@ -292,23 +366,70 @@ devotionals, experiences, or related-content sections and defaults to Hybrid
 Search. `semantic-diagnostic` isolates semantic retrieval quality and only runs
 with Semantic-Only Search.
 
+### Absolute Search Gate
+
+The release qualification for a Search Serving Index candidate based on
+whether its results satisfy public-search intent, independent of resemblance to
+the established Search Pipeline Mode.
+
+An Absolute Search Gate binds a frozen query set and reviewed canonical
+relevance judgments to one Search Candidate Identity. Deterministic relevance,
+language, duplication, degradation, latency, and capacity evidence must agree
+with pointwise judgment and named operator review before the candidate can
+become a baseline.
+
+### Search Candidate Identity
+
+The immutable identity under which one search release candidate was evaluated:
+its Search Candidate Generation, Admin application revision, transcript
+projection, reviewed relevance-set revision, and exact current baseline
+bindings.
+
+Release evidence fails closed when this identity is absent or when responses
+do not match it, so a deploy, relevance-set update, or index publication cannot
+silently reuse qualification from another candidate or baseline.
+
 ### Watch Search Analytics
 
-Server-side Datadog product observability for viewer-facing Watch search. Watch
+Datadog product observability for viewer-facing Watch search. Watch
 Search Analytics records anonymous submitted search requests, outcomes,
 no-result cases, load-more behavior, and result clicks so the team can
 understand common queries, failures, language mismatch signals, search-mode
 health, and clicked results.
 
-The canonical submitted-search event is emitted from the server-side search
-path using asynchronous, non-blocking, best-effort fire-and-forget delivery so
-search responses do not wait on Datadog. Browser RUM can add supplemental UI
-context and click signals, but RUM sampling is not the source of truth for
-submitted-search counts.
+The canonical submitted-search event is a structured log emitted from each
+client's canonical path — web's server-side search path; React Native clients
+(TV and mobile) emit it from the device via the Datadog Mobile
+SDK because they have no server tier — using asynchronous, non-blocking,
+best-effort fire-and-forget delivery so search responses do not wait on
+Datadog. RUM can add supplemental UI context and click signals, but RUM
+sampling is not the source of truth for submitted-search counts.
+
+Result clicks and impressions are additionally recorded first-party in admin's
+watch-search event store (client-tagged `WEB`/`MOBILE`/`TV`), which — unlike
+RUM — is unsampled and joins to Search Traces by the anonymous search request
+id.
 
 Watch Search Analytics is separate from Search Eval. It may include exact query
-text, but it must not attach name, email, full user id, auth token, cookie,
-session id, IP address, or bearer/API key material.
+text, but its authored payload must not attach name, email, full user id, auth
+token, cookie, session id, IP address, or bearer/API key material. RUM envelope
+context the Mobile SDK attaches to client-emitted events (session and view ids)
+is correlation context outside the authored payload, not an exception to this
+rule. On client-emitted events, log severity itself participates in
+containment: the Mobile SDK copies error-level logs' full authored attributes
+into RUM error events, so query-bearing logs stay below error level to keep
+exact query text bounded to the Logs store.
+
+### Search Trace
+
+An Admin-owned first-party record of one search request's resolved language,
+retrieval-lane outcomes, result summary, latency, and anonymous request identity,
+used for operational analysis and evaluation correlation.
+
+Search Trace persistence is best-effort observability, not part of search
+success. Accepted writes run after the response under bounded backpressure, so
+a slow analytics store cannot multiply database work or delay the public search
+contract; rejected or failed writes remain visible through health signals.
 
 ### Watch Analytics Context
 
@@ -323,6 +444,22 @@ payload. Until a Watch event provider owns that context, canonical server
 analytics should omit it and rely on server-derived dimensions plus the
 anonymous search request id.
 
+### Video Playback QoE
+
+The per-playback-session quality measurements a native client accumulates and
+reports once the session ends: time to first frame, rebuffer count, error
+count, and watched duration. It describes how well a single viewing went, and
+is deliberately narrower than it sounds — several things a naive reading would
+count are excluded by definition.
+
+Time to first frame is measured from the player's own mount, never from the
+surrounding screen's appearance, so navigation latency is not folded into it. A
+rebuffer is a stall that interrupts playback already in progress: the initial
+load, a viewer-initiated seek, and a Dub or source swap are all excluded, since
+none of them represents a viewer waiting on a stream that was already running.
+A session identifies its content by playback id rather than title, because the
+payload is constrained to non-sensitive, low-cardinality values.
+
 ### Search Language
 
 The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.
@@ -332,6 +469,8 @@ Search Language identity should travel as the public language slug selected or c
 ### Search Watchability
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+
+Only the target-audio and related-language states can carry a playable Dub; the target-subtitle and no-option states name what exists (subtitles in the target language, or nothing) without one.
 
 ### Query Language Suggestion
 
@@ -416,6 +555,12 @@ from stored embedding provenance and healthy vector rows, not from the lifetime
 of the trigger request that started it. Resume flows should preserve already
 healthy embeddings and continue from missing, legacy, or incomplete rows.
 
+### Video Database Snapshot
+
+A reviewed, profile-scoped, data-only export of production Admin video data for restoring production-like content into non-production environments. Its default form carries catalog and reference data, while its opt-in search form adds current transcript search state plus retained historical scene-search state.
+
+A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
+
 ## Known-caller auth
 
 ### Known-Caller Check
@@ -444,6 +589,12 @@ A client app distributed as many installed copies (mobile, TV) that share one ba
 A client-generated, stable-per-device identifier a Fleet Client attaches to a request so the server can count that device's rate budget on its own Rate-Limit Identity rather than a shared credential or a carrier-collapsed network address. It is an availability mechanism, not an authorization or abuse control: being client-supplied it is freely rotatable, so a global per-credential ceiling remains the abuse bound.
 
 ## User sign-in
+
+### First-Party App
+
+One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
+
+Registration is per environment, not per app: an app holds a separate registration for each environment it runs in, each carrying its own client identifier, exact-match redirect targets, allowed browser origins, default scopes, and approval posture. Apps differ in how a person signs in — a browser redirect, a code displayed on one screen and approved on another device, or a native platform credential — but every route resolves to the same person and the same SSO Session. The registry is upsert-only and never prunes: editing a registration is scrubbed into the provider on the next deploy, while removing one from the registry leaves the live registration in place, so retiring an app is a deliberate out-of-band step rather than a deletion from the list.
 
 ### SSO Session
 
@@ -494,6 +645,12 @@ The single Experience designated as the watch home for a given locale, resolved 
 ### Home Curation
 
 The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
+
+### Continue Watching
+
+The signed-in continuity behavior: a partially watched video shows a progress bar at the account's latest recorded position, and playback resumes from that position with a start-over option — whichever signed-in device or surface recorded it.
+
+Two mechanisms carry this name and must not be conflated. The account-backed one above is signed-in only: anonymous playback records nothing to the account, nothing merges into the account at a later sign-in, and signing out clears what was recorded locally. Separately, a surface may keep its own local shelf — a per-install list of latest positions with the display fields a home row needs, never synced and never account-scoped — which lets a signed-out viewer resume on that surface alone. The two use independent thresholds for what counts as worth resuming, and a surface holding only the local shelf has no entitlement to read or write account positions.
 
 ### Cinematic
 
@@ -619,6 +776,15 @@ The TV home's top-of-screen canvas that reflects whatever card currently holds D
 
 ## Watch player UI
 
+### Forge Subtitle Track
+
+The single browser text track that Watch injects for the subtitle selected from
+a Video Edition, distinct from player-generated tracks that are not exposed as
+Forge subtitle choices.
+
+It is a public in-page media consumer: its VTT must load through a same-origin
+response that remains separate from protected file-download behavior.
+
 ### Watch Modal Activity
 
 The aggregate ownership state of every Watch overlay that must suspend route-owned playback, independent of which component renders the overlay or which player is active.
@@ -681,6 +847,12 @@ The layered per-request decision in the chat app that resolves seeker-vs-stub: t
 
 The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
 
+### Featured Video
+
+The single library video the Seeker may attach to one reply — a recommendation rendered as an inline player beside the answer, distinct from the cited passages that ground the answer's text.
+
+The model **declares** a pick and never authors its payload: it may only name a video the same turn's own search returned, and every displayed field is re-projected from that search result through shape gates rather than taken from the model. A missing, malformed, or unmatched declaration attaches nothing and is never an error the reader sees. Because replies persist, a featured video is also re-derived when a conversation is replayed, so a replayed reply shows the video the turn featured, though a long title may appear shortened.
+
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
@@ -690,6 +862,20 @@ The external `jesusfilm-rag` retrieval service — a standalone system serving b
 A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI. Every agent's prompt lives in one Langfuse project, with labels marking which version each environment runs, so promoting a tuned prompt is a label move rather than a copy between projects. The seeker agent is the first consumer (feat-272): its whole system prompt — safety and citation wording included, no composition split — is the managed prompt `seeker-system`, with the full working text compiled in as the fallback. Confidentiality of the tuned text extends only to the Mastra network boundary: the runtime's built-in `/api/agents*` surface returns resolved instructions verbatim, so the managed prompt is kept out of the public repo but must never carry secrets.
 
 During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
+
+### Seeker Eval Experiment
+
+A predeclared comparison of Seeker behavior against a declared production benchmark, changing exactly one causal axis while holding every other execution identity dimension constant.
+
+Its manifest is an executable contract: supported identity dimensions control the run, every declared dimension is attested by the evidence, unsupported configurations refuse, and any reused evidence must match the declared identity and eligibility policy.
+
+### Experiment Attempt
+
+One append-only execution record within a Seeker Eval Experiment, preserving either complete benchmark evidence or a diagnostic refusal or failure without rewriting earlier attempts.
+
+An attempt is complete only after its required inventoried evidence has passed aggregate-schema, identity, sensitive-content, and inventory checks and its immutable completion record has been published; package eligibility additionally requires rejecting untracked sidecars.
+
+Once attempt bytes reach the repository's base branch they are historical evidence: later changes create a new attempt or experiment rather than modifying, deleting, renaming, or completing those bytes in place. A terminal verdict seals its whole experiment.
 
 ## Flagged ambiguities
 
