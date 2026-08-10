@@ -185,6 +185,75 @@ describe("resolveMobileUserPrincipalFromToken", () => {
     )
   })
 
+  it("refuses a symmetric key advertised in the JWKS", async () => {
+    // The derived allowlist must exclude HS* locally, not lean on jose being
+    // asymmetric-only: an empty allowlist fails closed at derivation.
+    stubJwksFetch([
+      { kty: "oct", alg: "HS256", k: "c2VjcmV0", kid: "hostile" } as JWK,
+    ])
+    const { resolveMobileUserPrincipalFromToken } =
+      await importMobileUserToken()
+
+    await expect(
+      resolveMobileUserPrincipalFromToken(`Bearer ${await mintJwt()}`),
+    ).resolves.toBeNull()
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("reason=jwks_unavailable"),
+    )
+  })
+
+  it("keeps asymmetric keys when a hostile symmetric key sits beside them", async () => {
+    // Anti-vacuous companion: proves the floor rejects HS256 specifically
+    // rather than rejecting every JWKS containing an unexpected key.
+    stubJwksFetch([
+      publicJwk,
+      { kty: "oct", alg: "HS256", k: "c2VjcmV0", kid: "hostile" } as JWK,
+    ])
+    const { resolveMobileUserPrincipalFromToken } =
+      await importMobileUserToken()
+
+    await expect(
+      resolveMobileUserPrincipalFromToken(`Bearer ${await mintJwt()}`),
+    ).resolves.toEqual(expect.objectContaining({ id: "auth-user-123" }))
+  })
+
+  it("aborts the JWKS transfer once it crosses the byte cap", async () => {
+    // Asserts the MECHANISM: a real stream whose cancel() records the abort.
+    // Merely stopping the read would leave the socket draining.
+    let cancelled = false
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024))
+    // Finite (8 x 64KB = 512KB, over the 256KB cap) so raising the cap fails
+    // this test fast instead of hanging on an endless body.
+    let sent = 0
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              pull(controller) {
+                if (sent++ >= 8) return controller.close()
+                controller.enqueue(chunk)
+              },
+              cancel() {
+                cancelled = true
+              },
+            }),
+          ),
+      ),
+    )
+    const { resolveMobileUserPrincipalFromToken } =
+      await importMobileUserToken()
+
+    await expect(
+      resolveMobileUserPrincipalFromToken(`Bearer ${await mintJwt()}`),
+    ).resolves.toBeNull()
+    expect(cancelled).toBe(true)
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("reason=jwks_unavailable"),
+    )
+  })
+
   it("rejects a JWT missing a subject", async () => {
     stubJwksFetch()
     const { resolveMobileUserPrincipalFromToken } =

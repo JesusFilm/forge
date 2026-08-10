@@ -35,6 +35,12 @@ const ALG_CACHE_TTL_MS = 10 * 60_000
 // Mirrors createRemoteJWKSet's own 30s cooldown so a stream of bad-alg
 // tokens cannot amplify into repeated outbound JWKS fetches.
 const ALG_REFETCH_COOLDOWN_MS = 30_000
+// A JWKS is a handful of keys; this is generous. Bounds the buffered read so a
+// misbehaving Auth cannot OOM the process every agent and route shares.
+const JWKS_MAX_BYTES = 256 * 1024
+// Asymmetric only. A hostile JWKS advertising HS256 would otherwise enter the
+// derived allowlist, leaving rejection to jose's internals rather than to us.
+const ASYMMETRIC_ALG = /^(RS|PS|ES)(256|384|512)$|^EdDSA$/
 
 type MobileJwtRejectionReason =
   | "expired"
@@ -97,6 +103,45 @@ function algFromKeyType(key: JsonWebKey): string | null {
   return null
 }
 
+/**
+ * Read a response body with a hard byte ceiling, cancelling the socket the
+ * instant it is crossed. Content-Length is advisory and not trusted.
+ */
+async function readCapped(response: Response): Promise<string> {
+  if (!response.body) return await response.text()
+  const reader = response.body.getReader()
+  try {
+    const chunks: Uint8Array[] = []
+    let total = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > JWKS_MAX_BYTES) {
+        // Abort the transfer rather than merely stop reading, then fall into
+        // the caller's existing jwks_unavailable path — never a new throw shape.
+        await reader.cancel()
+        throw new Error("jwks_too_large")
+      }
+      chunks.push(value)
+    }
+    const joined = new Uint8Array(total)
+    let offset = 0
+    for (const c of chunks) {
+      joined.set(c, offset)
+      offset += c.byteLength
+    }
+    return new TextDecoder().decode(joined)
+  } finally {
+    try {
+      reader.releaseLock()
+    } catch {
+      // Already released by cancel()
+    }
+  }
+}
+
 async function fetchAlgorithms(): Promise<string[]> {
   let keys: JsonWebKey[]
   try {
@@ -105,16 +150,20 @@ async function fetchAlgorithms(): Promise<string[]> {
       signal: AbortSignal.timeout(AUTH_FETCH_TIMEOUT_MS),
     })
     if (!response.ok) throw new Error("jwks_not_ok")
-    const body = (await response.json()) as { keys?: JsonWebKey[] }
+    const text = await readCapped(response)
+    const body = JSON.parse(text) as { keys?: JsonWebKey[] }
     keys = Array.isArray(body.keys) ? body.keys : []
   } catch {
+    // Never log the caught error: a JSON parse failure can embed raw body.
     throw new MobileJwtError("jwks_unavailable")
   }
 
   const algorithms = new Set<string>()
   for (const key of keys) {
     const explicit =
-      typeof key.alg === "string" && key.alg !== "none" ? key.alg : undefined
+      typeof key.alg === "string" && ASYMMETRIC_ALG.test(key.alg)
+        ? key.alg
+        : undefined
     const derived = explicit ?? algFromKeyType(key)
     if (derived) {
       algorithms.add(derived)
