@@ -139,6 +139,22 @@ projection by the exact data needed at each phase:
     vectors automatically; later vector/schema migrations require the explicit
     `--rebuild-transcripts` operation.
 
+### 2026-08-05 compatibility correction
+
+Subtitle-only routing added edition identity to transcript documents and made
+availability records the source of a playable-audio action. During the bounded
+code-first rollout, Admin may retry a projection that an older availability
+alias does not understand, but only for a recognized missing-field response;
+an unrelated 400 must still fail. A missing availability alias may use the
+legacy hydration path, while an extreme paginated response must stop at the
+configured bound and degrade through that same controlled fallback.
+
+Transcript reuse is stricter: if the active transcript collection does not
+contain `videoEditionId`, the indexer must fail before publishing any aliases
+and tell the operator to rerun with `--rebuild-transcripts`. This intentionally
+supersedes the earlier assumption that every later routine release could reuse
+any active transcript schema.
+
 ## Why This Works
 
 The first implemented change removed unused values from one hot-path read

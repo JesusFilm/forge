@@ -1,5 +1,13 @@
 # Seeker chat eval suite — decision doc
 
+> **Experiment workflow decision — 2026-08-10.** Git is the authoritative
+> ledger for every completed experiment, irrespective of outcome. An experiment
+> declares one causal axis and resolves managed prompts to immutable versions;
+> movable labels are intake and operational markers only. Production remains
+> pinned to an exact reviewed version and hash. Experiment evidence and the
+> later production/benchmark promotion must be separate changes; an alerting
+> `production`-label mismatch never changes traffic or blocks deployment.
+
 > **Status note — 2026-08-07.** feat-296 and feat-272 shipped on 2026-07-29.
 > The ENTIRE seeker instruction set is managed in Langfuse as ONE prompt,
 > `seeker-system`; code keeps only the byte-identical full fallback. This

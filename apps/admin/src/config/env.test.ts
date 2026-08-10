@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest"
 import {
   assertBearerCsvsDisjoint,
+  assertTypesenseCredentialsDisjoint,
   concurrencyEnvSchema,
   constrainedDecodingTrustedEnvSchema,
   DEFAULT_WEB_CANONICAL_ORIGIN,
@@ -14,6 +15,9 @@ import {
   searchTraceRawRetentionDaysEnvSchema,
   watchSearchDefaultShadowEnabledEnvSchema,
   watchSearchPrimaryModeEnvSchema,
+  watchSearchTypesenseProfileEnvSchema,
+  watchSearchCandidateComparisonEnabledEnvSchema,
+  watchSearchTranscriptProjectionRevisionEnvSchema,
   webCanonicalOriginEnvSchema,
   workflowStartupTransientAttemptsEnvSchema,
   workflowStartupTransientDelayMsEnvSchema,
@@ -42,6 +46,38 @@ describe("env", () => {
       expect(watchSearchDefaultShadowEnabledEnvSchema.parse("false")).toBe(
         false,
       )
+    })
+
+    it("defaults the private Typesense selector and comparison switch off safely", () => {
+      expect(watchSearchTypesenseProfileEnvSchema.parse(undefined)).toBe(
+        "CURRENT",
+      )
+      expect(
+        watchSearchCandidateComparisonEnabledEnvSchema.parse(undefined),
+      ).toBe(false)
+      expect(
+        watchSearchTranscriptProjectionRevisionEnvSchema.parse(undefined),
+      ).toBeUndefined()
+    })
+
+    it("accepts one exact candidate pin and rejects malformed selectors", () => {
+      expect(
+        watchSearchTypesenseProfileEnvSchema.parse("CANDIDATE:generation-7"),
+      ).toBe("CANDIDATE:generation-7")
+      expect(watchSearchTranscriptProjectionRevisionEnvSchema.parse("17")).toBe(
+        17n,
+      )
+      for (const value of [
+        "CANDIDATE",
+        "CANDIDATE:",
+        "candidate:generation-7",
+        "CANDIDATE:../generation",
+        "SERVING:generation-7",
+      ]) {
+        expect(() =>
+          watchSearchTypesenseProfileEnvSchema.parse(value),
+        ).toThrow()
+      }
     })
   })
 
@@ -474,6 +510,34 @@ describe("env", () => {
       // Key values stay redacted.
       expect(caught!.message).not.toContain("shared-1")
       expect(caught!.message).not.toContain("shared-2")
+    })
+  })
+
+  describe("search credential separation", () => {
+    it("keeps dedicated Typesense search and operator credentials disjoint", () => {
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          searchKey: "search-only",
+          operatorKey: "operator-only",
+        }),
+      ).not.toThrow()
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          searchKey: "shared",
+          operatorKey: "shared",
+        }),
+      ).toThrow(/must be disjoint/)
+    })
+
+    it("keeps candidate evaluation credentials disjoint from sampling", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          SEARCH_TRACE_SAMPLING_API_KEYS: "shared-eval",
+          CANDIDATE_SEARCH_EVAL_API_KEYS: "shared-eval",
+        }),
+      ).toThrow(
+        /SEARCH_TRACE_SAMPLING_API_KEYS and CANDIDATE_SEARCH_EVAL_API_KEYS/,
+      )
     })
   })
 

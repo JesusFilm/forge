@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   csv,
+  experimentCommandArgs,
   flag,
   loadAnswersFile,
   loadAnswersFileIfPresent,
@@ -21,6 +22,24 @@ describe("flag", () => {
     expect(flag(["--out=/tmp/x.json"], "limit")).toBeUndefined()
     // Prefix discipline: `--outfile=` must not satisfy `--out=`.
     expect(flag(["--outfile=/tmp/y.json"], "out")).toBeUndefined()
+  })
+})
+
+describe("experimentCommandArgs", () => {
+  it("requires one experiment directory and immutable attempt ID", () => {
+    expect(
+      experimentCommandArgs([
+        "--experiment=docs/seeker/exp-one",
+        "--attempt=attempt-1",
+      ]),
+    ).toEqual({
+      experimentDir: "docs/seeker/exp-one",
+      attemptId: "attempt-1",
+    })
+    expect(() => experimentCommandArgs(["--attempt=attempt-1"])).toThrow(
+      /--experiment/,
+    )
+    expect(() => experimentCommandArgs(["--experiment=x"])).toThrow(/--attempt/)
   })
 })
 

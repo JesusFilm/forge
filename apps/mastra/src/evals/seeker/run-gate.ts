@@ -48,6 +48,13 @@ async function main(): Promise<void> {
   // Deliberate legacy-replay escape only (finding #11) — without it a
   // fixture file whose corpus differs from the runs' stamp REFUSES.
   const allowCorpusMismatch = argv.includes("--allow-corpus-mismatch")
+  const experimentAxis = flag(argv, "experiment-axis")
+  if (
+    experimentAxis != null &&
+    experimentAxis !== "prompt" &&
+    experimentAxis !== "model"
+  )
+    throw new Error("--experiment-axis must be prompt or model")
 
   const [
     currentAnswers,
@@ -78,6 +85,7 @@ async function main(): Promise<void> {
     allowCorpusMismatch,
     confirmJudged,
     scoreTolerance: tolerance,
+    ...(experimentAxis ? { experimentAxis } : {}),
   })
 
   await mkdir(dirname(outPath), { recursive: true })

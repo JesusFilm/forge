@@ -47,6 +47,26 @@ export function csv(value: string | undefined): string[] {
     .filter((entry) => entry.length > 0)
 }
 
+export function experimentCommandArgs(argv: readonly string[]): {
+  experimentDir: string
+  attemptId: string
+  experimentsRoot?: string
+  reuseAttemptId?: string
+} {
+  const experimentDir = flag(argv, "experiment")?.trim()
+  const attemptId = flag(argv, "attempt")?.trim()
+  if (!experimentDir) throw new Error("--experiment=<directory> is required")
+  if (!attemptId) throw new Error("--attempt=<path-safe-id> is required")
+  const experimentsRoot = flag(argv, "experiments-root")?.trim()
+  const reuseAttemptId = flag(argv, "reuse-attempt")?.trim()
+  return {
+    experimentDir,
+    attemptId,
+    ...(experimentsRoot ? { experimentsRoot } : {}),
+    ...(reuseAttemptId ? { reuseAttemptId } : {}),
+  }
+}
+
 /**
  * Fail-closed fixtures load (review findings #4/#12). A swallowed load
  * failure silently vacates the grounded-citation lane (gate) or grades

@@ -24,6 +24,7 @@
  * LANGFUSE_* would otherwise turn these into live credentialed fetches).
  */
 
+import { createHash } from "node:crypto"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
 vi.hoisted(() => {
@@ -148,6 +149,12 @@ describe("video capability gate — flag ON (feat-327)", () => {
       config,
       fetchImpl,
       cache: createManagedPromptCache(),
+      pinned: {
+        provider: "langfuse",
+        name: SEEKER_SYSTEM_PROMPT_NAME,
+        revision: "7",
+        contentHash: createHash("sha256").update(TUNED).digest("hex"),
+      },
     })
 
     await expect(resolve()).resolves.toBe(TUNED)

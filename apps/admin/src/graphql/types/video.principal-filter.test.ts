@@ -181,36 +181,39 @@ describe("videoStudyQuestionsFilter", () => {
 })
 
 describe("videoParentsFilter", () => {
-  it("anonymous → only parents with a PUBLISHED locale and not soft-deleted", () => {
+  it("anonymous → only parents with a PUBLISHED locale, not soft-deleted, and not watch-restricted", () => {
     expect(videoParentsFilter(PUBLIC_USER)).toEqual({
       where: {
         parent: {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
-  it("VIEWER → same PUBLISHED-only filter as anonymous", () => {
+  it("VIEWER → same filter as anonymous", () => {
     expect(videoParentsFilter(VIEWER)).toEqual({
       where: {
         parent: {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
-  it("CONSUMER_BEARER (web SSR) → same PUBLISHED-only filter as anonymous", () => {
+  it("CONSUMER_BEARER (web SSR) → same filter as anonymous", () => {
     expect(videoParentsFilter(CONSUMER_BEARER)).toEqual({
       where: {
         parent: {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
@@ -231,36 +234,39 @@ describe("videoParentsFilter", () => {
 })
 
 describe("videoChildrenFilter", () => {
-  it("anonymous → only children with a PUBLISHED locale and not soft-deleted", () => {
+  it("anonymous → only children with a PUBLISHED locale, not soft-deleted, and not watch-restricted", () => {
     expect(videoChildrenFilter(PUBLIC_USER)).toEqual({
       where: {
         child: {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
-  it("VIEWER → same PUBLISHED-only filter as anonymous", () => {
+  it("VIEWER → same filter as anonymous", () => {
     expect(videoChildrenFilter(VIEWER)).toEqual({
       where: {
         child: {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
-  it("CONSUMER_BEARER (web SSR) → same PUBLISHED-only filter as anonymous", () => {
+  it("CONSUMER_BEARER (web SSR) → same filter as anonymous", () => {
     expect(videoChildrenFilter(CONSUMER_BEARER)).toEqual({
       where: {
         child: {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       },
       orderBy: VIDEO_RELATION_ORDER_BY,

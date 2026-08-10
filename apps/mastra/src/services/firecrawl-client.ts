@@ -45,6 +45,8 @@ export type FirecrawlScrapeResponse = {
   description: string | null
   statusCode: number | null
   contentType: string | null
+  cacheState?: string | null
+  cachedAt?: string | null
 }
 
 export type FirecrawlSearchInput = {
@@ -66,6 +68,8 @@ export type FirecrawlScrapeInput = {
   fetchImpl?: typeof fetch
   maxAttempts?: number
   sleep?: (ms: number) => Promise<void>
+  /** Force a provider live fetch while retaining cache metadata in the result. */
+  liveFetch?: boolean
 }
 
 const SearchResultSchema = z
@@ -118,6 +122,8 @@ const ScrapeMetadataSchema = z
     url: z.string().nullable().optional(),
     statusCode: z.number().nullable().optional(),
     contentType: z.string().nullable().optional(),
+    cacheState: z.string().nullable().optional(),
+    cachedAt: z.string().nullable().optional(),
   })
   .passthrough()
 
@@ -422,6 +428,7 @@ export async function scrapeFirecrawl({
   fetchImpl = fetch,
   maxAttempts = 3,
   sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+  liveFetch = false,
 }: FirecrawlScrapeInput): Promise<
   FirecrawlClientResult<FirecrawlScrapeResponse>
 > {
@@ -432,6 +439,7 @@ export async function scrapeFirecrawl({
       formats: ["markdown"],
       onlyMainContent,
       timeout: timeoutMs ?? config.timeoutMs,
+      ...(liveFetch ? { maxAge: 0 } : {}),
     },
     schema: ScrapeResponseSchema,
     config,
@@ -457,6 +465,10 @@ export async function scrapeFirecrawl({
       description: metadata?.description ?? null,
       statusCode: metadata?.statusCode ?? null,
       contentType: metadata?.contentType ?? null,
+      ...(metadata?.cacheState == null
+        ? {}
+        : { cacheState: metadata.cacheState }),
+      ...(metadata?.cachedAt == null ? {} : { cachedAt: metadata.cachedAt }),
     },
   }
 }

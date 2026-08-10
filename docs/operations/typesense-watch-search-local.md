@@ -84,6 +84,12 @@ chunks, read stored vectors, or call an embedding provider. This separation is
 what lets routine catalog releases finish without an hour-long 280k-vector
 import or a duplicate HNSW generation in memory.
 
+Reuse is allowed only when the active transcript schema contains
+`videoEditionId`. If an older alias lacks that field, the command fails before
+publishing any catalog, availability, or lexical alias and directs the operator
+to rerun with `--rebuild-transcripts`; it never publishes a mixed generation
+that cannot preserve edition-scoped subtitle routing.
+
 The command holds a dedicated-session PostgreSQL advisory lock from before the
 build starts through alias publication and old-collection retirement. A
 concurrent release fails fast instead of racing aliases or cleanup.
@@ -270,3 +276,23 @@ identity. Pairwise agreement with `DEFAULT` remains diagnostic only.
 ```bash
 scripts/typesense-watch-search-local.sh stop
 ```
+
+## Candidate qualification dry run
+
+The candidate benchmark is deliberately separate from the public Watch query.
+It freezes the four current physical collections and one candidate generation,
+holds a renewable evaluation lease, and alternates current-first and
+candidate-first requests. Raw query text is not written to its report.
+
+For a small local wiring check only:
+
+```bash
+WATCH_SEARCH_CANDIDATE_PAIRS_PER_CASE=2 \
+GIT_COMMIT_SHA="$(git rev-parse HEAD)" \
+  pnpm --filter @forge/admin benchmark:watch-search-candidate \
+  > .tmp/typesense-watch-search/candidate-qualification-dry-run.json
+```
+
+This local run must report `NOT_QUALIFIED`: relevance review, fixed-load
+resources, current-under-comparison interference, and operator review have not
+run. Do not turn a local result into production evidence or a passing qrel.

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { ForbiddenError } from "@/services/errors"
 import {
+  loadVideoSearchSocialLocale,
   loadVideoSearchSocialMediaLibrary,
   loadInitialVideoSearchSocialState,
   searchVideoSearchSocialLocales,
@@ -11,6 +12,8 @@ const editor = { id: "editor-1", role: "EDITOR" } as const
 
 function client() {
   return {
+    contentRevision: { findFirst: vi.fn().mockResolvedValue(null) },
+    seoProposalMaterialization: { findFirst: vi.fn().mockResolvedValue(null) },
     videoLocale: { findMany: vi.fn(), findFirst: vi.fn() },
     mediaFolder: { findMany: vi.fn() },
     mediaAsset: { findMany: vi.fn() },
@@ -102,10 +105,12 @@ describe("video Search and Social dashboard data", () => {
       title: "JÃ‰SUS",
       description: "Description",
       snippet: null,
+      imageAlt: null,
       searchTitle: null,
       searchDescription: null,
       socialImageAssetId: null,
       socialImageAsset: null,
+      updatedAt: new Date("2026-08-01T12:00:00.000Z"),
       video: { slug: "jesus" },
       language: {
         bcp47: "fr",
@@ -147,6 +152,49 @@ describe("video Search and Social dashboard data", () => {
             { previewObjectKey: { not: null } },
           ],
         },
+      }),
+    )
+  })
+
+  it("surfaces a missing approved draft without recreating canonical content", async () => {
+    const db = client()
+    db.videoLocale.findFirst.mockResolvedValue({
+      id: "locale-1",
+      videoId: "video-1",
+      locale: "en",
+      languageSlug: "english",
+      status: "PUBLISHED",
+      title: "JESUS",
+      description: "Description",
+      snippet: null,
+      imageAlt: null,
+      searchTitle: null,
+      searchDescription: null,
+      socialImageAssetId: null,
+      socialImageAsset: null,
+      updatedAt: new Date("2026-08-01T12:00:00.000Z"),
+      video: { slug: "jesus" },
+      language: {
+        bcp47: "en",
+        iso3: "eng",
+        name: { en: "English" },
+        slug: "english",
+      },
+    })
+    db.seoProposalMaterialization.findFirst.mockResolvedValue({
+      id: "materialization-1",
+    })
+
+    const result = await loadVideoSearchSocialLocale({
+      user: admin,
+      videoLocaleId: "locale-1",
+      client: db as never,
+    })
+
+    expect(result.seoDraft).toEqual({ state: "draft_missing" })
+    expect(db.seoProposalMaterialization.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ contentRevisionId: null }),
       }),
     )
   })

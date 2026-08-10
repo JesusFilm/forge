@@ -107,13 +107,18 @@ export const VERDICT_SCHEMA = {
   },
 }
 
+const JUDGE_RETRY_PROTOCOL =
+  "On the single malformed-output retry, report prior protocol errors and require exactly the supplied criterion IDs with no others."
+
 /**
  * Hash of everything that defines what a verdict MEANS beyond the criteria
  * text (which run identity hashes separately): the judge instructions and
  * the output schema. Editing either breaks run comparability.
  */
 export function rubricSha256(): string {
-  return sha256(`${JUDGE_SYSTEM}\n${JSON.stringify(VERDICT_SCHEMA)}`)
+  return sha256(
+    `${JUDGE_SYSTEM}\n${JUDGE_RETRY_PROTOCOL}\n${JSON.stringify(VERDICT_SCHEMA)}`,
+  )
 }
 
 /**
@@ -295,11 +300,24 @@ export async function judgeOneAnswer(
   const usage: Usage = { input: 0, output: 0 }
   let latencyMs = 0
   let lastProblems: string[] = []
+  const criterionIds = criteria.map((criterion) => criterion.id)
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     let verdicts: CriterionVerdict[]
     try {
-      const result = await deps.complete({ system: JUDGE_SYSTEM, user })
+      const retryCorrection =
+        attempt === 1
+          ? ""
+          : [
+              "",
+              "CORRECTION — the previous response violated the output protocol:",
+              ...lastProblems.map((problem) => `- ${problem}`),
+              `Return exactly these criterion ids and no others: ${criterionIds.join(", ")}`,
+            ].join("\n")
+      const result = await deps.complete({
+        system: JUDGE_SYSTEM,
+        user: `${user}${retryCorrection}`,
+      })
       usage.input += result.usage.input
       usage.output += result.usage.output
       latencyMs += result.latencyMs

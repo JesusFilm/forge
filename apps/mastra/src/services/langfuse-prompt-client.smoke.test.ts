@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest"
+import { createHash } from "node:crypto"
 
 import { env, getLangfuseConfig } from "../config/env"
 import {
   createManagedPromptCache,
   fetchLangfusePrompt,
   getManagedPrompt,
+  resolveExactManagedPrompt,
 } from "./langfuse-prompt-client"
 
 /**
@@ -88,6 +90,7 @@ const RUN_LANGFUSE_SMOKE = env.LANGFUSE_PROMPT_SMOKE_TEST === "1"
 
 const SMOKE_PROMPT_NAME = "forge-mastra-smoke/text-prompt"
 const SMOKE_PROMPT_LABEL = "production"
+const SMOKE_PROMPT_VERSION = 1
 // Non-default label carrying a DIFFERENT body than `production` — the only
 // way to prove `?label=` is sent AND honored (production is also Langfuse's
 // omitted-label default, so it can never prove label selection by itself).
@@ -113,6 +116,42 @@ describe.skipIf(!RUN_LANGFUSE_SMOKE)(
   "langfuse prompt client real-credential smoke",
   () => {
     const config = getLangfuseConfig()
+
+    it(
+      "retrieves the seeded immutable version and verifies its content hash",
+      async () => {
+        const expectedContentHash = createHash("sha256")
+          .update(SMOKE_SENTINEL_TEXT)
+          .digest("hex")
+        const result = await resolveExactManagedPrompt({
+          name: SMOKE_PROMPT_NAME,
+          version: SMOKE_PROMPT_VERSION,
+          expectedContentHash,
+          config,
+        })
+
+        if (!result.ok) {
+          expect.unreachable(
+            `Expected exact version ${SMOKE_PROMPT_VERSION} of the seeded ` +
+              `smoke prompt to resolve, but got reason=${result.reason}` +
+              (result.status !== undefined ? ` status=${result.status}` : "") +
+              (result.detail !== undefined ? ` detail=${result.detail}` : ""),
+          )
+        }
+
+        expect(result.identity).toEqual({
+          provider: "langfuse",
+          name: SMOKE_PROMPT_NAME,
+          revision: String(SMOKE_PROMPT_VERSION),
+          contentHash: expectedContentHash,
+        })
+        // Deliberately do not print or snapshot the managed prompt body.
+        expect(createHash("sha256").update(result.text).digest("hex")).toBe(
+          expectedContentHash,
+        )
+      },
+      SMOKE_TEST_TIMEOUT_MS,
+    )
 
     it(
       "resolves the manually seeded smoke prompt (fails LOUD with seeding guidance when it is missing)",

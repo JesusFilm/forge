@@ -76,9 +76,16 @@ vi.mock("@/components/watch/LanguageCombobox", () => ({
 // click → router.push path is observable without app-router setup.
 // The push spy is hoisted so handleLanguageChange navigation can be
 // asserted against the .html-shaped path the @/lib/routes builder emits.
-const { pushMock, writePreferredLanguageSlugMock } = vi.hoisted(() => ({
+const {
+  pushMock,
+  readSubtitlePreferenceMock,
+  writePreferredLanguageSlugMock,
+  writeSubtitlePreferenceMock,
+} = vi.hoisted(() => ({
   pushMock: vi.fn(),
+  readSubtitlePreferenceMock: vi.fn(),
   writePreferredLanguageSlugMock: vi.fn(),
+  writeSubtitlePreferenceMock: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -96,6 +103,11 @@ vi.mock("next/navigation", () => ({
 // tests don't depend on jsdom's cookie store behavior.
 vi.mock("@/lib/language-preference-client", () => ({
   writePreferredLanguageSlug: writePreferredLanguageSlugMock,
+}))
+
+vi.mock("@/lib/subtitle-preference-client", () => ({
+  readSubtitlePreference: readSubtitlePreferenceMock,
+  writeSubtitlePreference: writeSubtitlePreferenceMock,
 }))
 
 const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
@@ -125,17 +137,34 @@ const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
       open,
       variants,
       currentLanguageSlug,
+      subtitles,
+      currentSubtitleEnabled,
+      currentSubtitleSlug,
+      onSubtitleChange,
     }: {
       open: boolean
       variants: Array<{ language: { slug: string | null } | null }>
       currentLanguageSlug: string
+      subtitles?: Array<{ language: { slug: string | null } }>
+      currentSubtitleEnabled?: boolean
+      currentSubtitleSlug?: string | null
+      onSubtitleChange?: (enabled: boolean, languageSlug: string | null) => void
     }) => (
       <div
         data-testid="language-picker-modal-mock"
         data-open={String(open)}
         data-variant-count={String(variants.length)}
         data-current-slug={currentLanguageSlug}
-      />
+        data-subtitle-count={String(subtitles?.length ?? 0)}
+        data-subtitle-enabled={String(currentSubtitleEnabled ?? false)}
+        data-subtitle-slug={currentSubtitleSlug ?? ""}
+      >
+        <button
+          type="button"
+          data-testid="language-picker-disable-subtitles"
+          onClick={() => onSubtitleChange?.(false, null)}
+        />
+      </div>
     ),
   ),
 }))
@@ -165,6 +194,13 @@ beforeEach(() => {
   languagePickerModalMock.mockClear()
   pushMock.mockClear()
   writePreferredLanguageSlugMock.mockClear()
+  writeSubtitlePreferenceMock.mockClear()
+  readSubtitlePreferenceMock.mockReset()
+  readSubtitlePreferenceMock.mockReturnValue({
+    enabled: false,
+    explicit: false,
+    languageSlug: null,
+  })
   collectionDownloadModalMock.mockClear()
   resolveDownloadSessionAccessMock.mockReset()
   resolveDownloadSessionAccessMock.mockResolvedValue({
@@ -321,6 +357,147 @@ describe("SeriesPageClient — shared content surface", () => {
     for (const className of SERIES_CONTENT_GLASS_CLASS_NAME.split(" ")) {
       expect(metadata?.className).toContain(className)
     }
+  })
+
+  it("activates a routed subtitle on the playable series trailer", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/storyclubs.html/arabic-modern-standard.html?subtitles=russian",
+    )
+    const subtitles = [
+      {
+        documentId: "subtitle-russian",
+        language: {
+          slug: "russian",
+          name: "Russian",
+          nativeName: "русский",
+          bcp47: "ru",
+        },
+        vttSrc: "https://cdn.example/russian.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ] as Series["subtitles"]
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ subtitles })}
+          selectedVariant={makeSelectedVariant({
+            slug: "arabic-modern-standard",
+            bcp47: "ar",
+            name: "Arabic, Modern Standard",
+          })}
+          locale="arabic-modern-standard"
+          subtitleLanguageSlug="russian"
+        />,
+      )
+    })
+
+    expect(window.location.search).toBe("")
+    expect(writeSubtitlePreferenceMock).toHaveBeenCalledWith(true, "russian")
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        hasSubtitleOptions: true,
+        subtitleLanguageCode: "RU",
+        subtitleVttSrc:
+          "/watch/api/download?subtitleId=subtitle-russian&variantId=variant-1&disposition=inline",
+      }),
+    )
+    const modal = container.querySelector(
+      '[data-testid="language-picker-modal-mock"]',
+    )
+    expect(modal?.getAttribute("data-subtitle-count")).toBe("1")
+    expect(modal?.getAttribute("data-subtitle-enabled")).toBe("true")
+    expect(modal?.getAttribute("data-subtitle-slug")).toBe("russian")
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="language-picker-disable-subtitles"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(writeSubtitlePreferenceMock).toHaveBeenLastCalledWith(false, null)
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        subtitleLanguageCode: null,
+        subtitleVttSrc: null,
+      }),
+    )
+  })
+
+  it("restores a selected subtitle after an audio-language route remount", () => {
+    readSubtitlePreferenceMock.mockReturnValue({
+      enabled: true,
+      explicit: true,
+      languageSlug: "russian",
+    })
+    const subtitles = [
+      {
+        documentId: "subtitle-russian",
+        language: {
+          slug: "russian",
+          name: "Russian",
+          nativeName: "русский",
+          bcp47: "ru",
+        },
+        vttSrc: "https://cdn.example/russian.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ] as Series["subtitles"]
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ subtitles })}
+          selectedVariant={makeSelectedVariant({
+            slug: "english",
+            bcp47: "en",
+            name: "English",
+          })}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        subtitleLanguageCode: "RU",
+        subtitleVttSrc:
+          "/watch/api/download?subtitleId=subtitle-russian&variantId=variant-1&disposition=inline",
+      }),
+    )
+  })
+
+  it("cleans an unclaimed subtitle intent without enabling subtitles", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/storyclubs.html?subtitles=unknown-language&t=12",
+    )
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries()}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(window.location.search).toBe("?t=12")
+    expect(writeSubtitlePreferenceMock).not.toHaveBeenCalled()
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        subtitleLanguageCode: null,
+        subtitleVttSrc: null,
+      }),
+    )
   })
 })
 

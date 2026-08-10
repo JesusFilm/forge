@@ -5,6 +5,7 @@ import {
   mapVideoSearchSocialError,
   VideoSearchSocialInvalidAssetError,
   VideoSearchSocialService,
+  VideoSearchSocialStaleDraftError,
 } from "./video-search-social.service"
 
 const { emitRevalidateWebhook } = vi.hoisted(() => ({
@@ -15,8 +16,16 @@ vi.mock("./revalidate-webhook", () => ({ emitRevalidateWebhook }))
 
 function mockPrisma() {
   const tx = {
+    $queryRaw: vi.fn(),
+    contentRevision: {
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     videoLocale: {
       findFirst: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
     },
     mediaAsset: { findFirst: vi.fn() },
@@ -38,13 +47,43 @@ const activeLocale = {
   videoId: "video-1",
   locale: "en",
   languageSlug: "english",
+  languageId: "language-1",
+  languageCoreId: "529",
+  source: "MANAGER",
   status: "PUBLISHED",
   title: "JESUS",
   description: "Visible description",
+  snippet: null,
+  imageAlt: null,
   searchTitle: null,
   searchDescription: null,
   socialImageAssetId: null,
+  publishedAt: new Date("2026-07-01T00:00:00.000Z"),
+  syncedAt: null,
+  deletedAt: null,
+  createdAt: new Date("2026-06-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-08-01T12:00:00.000Z"),
   video: { slug: "jesus" },
+}
+
+function seoDraftSnapshot(overrides: Record<string, unknown> = {}) {
+  return {
+    v: 1,
+    data: {
+      id: activeLocale.id,
+      videoId: activeLocale.videoId,
+      locale: activeLocale.locale,
+      updatedAt: activeLocale.updatedAt.toISOString(),
+      title: "JESUS — Watch",
+      description: activeLocale.description,
+      snippet: activeLocale.snippet,
+      imageAlt: activeLocale.imageAlt,
+      searchTitle: "Watch JESUS",
+      searchDescription: "Watch the JESUS film.",
+      socialImageAssetId: null,
+      ...overrides,
+    },
+  }
 }
 
 describe("VideoSearchSocialService", () => {
@@ -251,6 +290,107 @@ describe("VideoSearchSocialService", () => {
         },
       }),
     ).resolves.toMatchObject({ searchTitle: "Safe public title" })
+  })
+
+  it("publishes one exact current SEO draft and revalidates after commit", async () => {
+    prisma.videoLocale.findFirst.mockResolvedValue(activeLocale)
+    prisma.contentRevision.findFirst.mockResolvedValue({
+      id: "revision-1",
+      snapshot: seoDraftSnapshot(),
+    })
+    prisma.contentRevision.create.mockResolvedValue({ id: "history-1" })
+    prisma.videoLocale.update.mockResolvedValue({
+      ...activeLocale,
+      title: "JESUS — Watch",
+      searchTitle: "Watch JESUS",
+      searchDescription: "Watch the JESUS film.",
+    })
+    prisma.contentRevision.update.mockResolvedValue({ id: "revision-1" })
+
+    await expect(
+      service.publishDraft({
+        user: ADMIN,
+        input: { videoLocaleId: "locale-1", revisionId: "revision-1" },
+      }),
+    ).resolves.toMatchObject({
+      sourceTitle: "JESUS — Watch",
+      searchTitle: "Watch JESUS",
+      seoDraft: null,
+    })
+
+    expect(prisma.contentRevision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entityType: "VideoLocale",
+        entityId: "locale-1",
+        status: "HISTORICAL",
+        revisedBy: "admin-1",
+        revisedByKind: "USER",
+      }),
+    })
+    expect(prisma.videoLocale.update).toHaveBeenCalledWith({
+      where: { id: "locale-1" },
+      data: {
+        title: "JESUS — Watch",
+        description: "Visible description",
+        snippet: null,
+        imageAlt: null,
+        searchTitle: "Watch JESUS",
+        searchDescription: "Watch the JESUS film.",
+        socialImageAssetId: null,
+      },
+      include: { video: { select: { slug: true } } },
+    })
+    expect(prisma.contentRevision.update).toHaveBeenCalledWith({
+      where: { id: "revision-1" },
+      data: { status: "HISTORICAL", appliedAt: expect.any(Date) },
+    })
+    expect(prisma.$transaction.mock.invocationCallOrder[0]).toBeLessThan(
+      emitRevalidateWebhook.mock.invocationCallOrder[0],
+    )
+    expect(emitRevalidateWebhook).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses a stale SEO draft without canonical or revision writes", async () => {
+    prisma.videoLocale.findFirst.mockResolvedValue(activeLocale)
+    prisma.contentRevision.findFirst.mockResolvedValue({
+      id: "revision-1",
+      snapshot: seoDraftSnapshot({ updatedAt: "2026-07-31T12:00:00.000Z" }),
+    })
+
+    await expect(
+      service.publishDraft({
+        user: ADMIN,
+        input: { videoLocaleId: "locale-1", revisionId: "revision-1" },
+      }),
+    ).rejects.toBeInstanceOf(VideoSearchSocialStaleDraftError)
+
+    expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    expect(prisma.videoLocale.update).not.toHaveBeenCalled()
+    expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    expect(emitRevalidateWebhook).not.toHaveBeenCalled()
+  })
+
+  it("discards a selected draft without touching canonical content", async () => {
+    prisma.contentRevision.updateMany.mockResolvedValue({ count: 1 })
+
+    await expect(
+      service.discardDraft({
+        user: ADMIN,
+        input: { videoLocaleId: "locale-1", revisionId: "revision-1" },
+      }),
+    ).resolves.toEqual({ revisionId: "revision-1", status: "DISCARDED" })
+
+    expect(prisma.contentRevision.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "revision-1",
+        entityType: "VideoLocale",
+        entityId: "locale-1",
+        status: "DRAFT",
+      },
+      data: { status: "DISCARDED" },
+    })
+    expect(prisma.videoLocale.update).not.toHaveBeenCalled()
+    expect(emitRevalidateWebhook).not.toHaveBeenCalled()
   })
 })
 

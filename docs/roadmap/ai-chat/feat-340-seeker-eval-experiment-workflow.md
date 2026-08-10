@@ -3,7 +3,7 @@ id: "feat-340"
 title: "Seeker eval experiment workflow"
 owner: "jaco"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-17"
 duration: 5
 depends_on: []
@@ -46,6 +46,9 @@ The workflow must support attributable prompt or model experiments, preserve eve
 - Add a separate promotion contract that consumes only successful, gate-eligible experiments and updates the production prompt version or model alongside the matching canonical benchmark.
 - Replace the fallback-based benchmark with a production-shaped, exact-version Langfuse benchmark.
 - Keep persisted experiment identities provider-neutral while limiting the first implementation to the current Langfuse prompt and Mastra runtime seams.
+- Enforce the Git ledger mechanically: base-branch experiment bytes are
+  immutable, open experiments may only gain new attempt IDs or their first
+  verdict, and a terminal verdict seals the experiment.
 
 ## Constraints
 
@@ -65,3 +68,6 @@ The workflow must support attributable prompt or model experiments, preserve eve
 - Prove red-gate experiments cannot enter promotion and human review remains a veto only.
 - Prove promotion either reuses an exact accepted identity as the benchmark or requires a fresh qualifying run.
 - Prove repository-pinned prompt traffic remains healthy when the Langfuse `production` label lags, while the mismatch emits an actionable alert.
+- Prove the dependency-free PR guard allows new experiments while rejecting
+  edits, deletion, renames, in-place attempt completion, and post-verdict
+  additions to base-branch evidence.

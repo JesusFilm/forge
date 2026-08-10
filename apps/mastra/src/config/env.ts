@@ -31,6 +31,15 @@ const DEFAULT_DEVOTIONAL_MODEL = "anthropic/claude-haiku-4-5"
 const DEFAULT_DEVOTIONAL_WORKSPACE_PREFIX = "devotional"
 const DEFAULT_DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX = 3
 const DEFAULT_YOUTUBE_ALLOWED_HOSTS = "www.googleapis.com"
+const DEFAULT_HELP_SCOUT_API_URL = "https://api.helpscout.net/v2"
+const DEFAULT_HELP_SCOUT_AUTH_URL = "https://api.helpscout.net/v2/oauth2/token"
+const DEFAULT_LINEAR_API_URL = "https://api.linear.app/graphql"
+const DEFAULT_SUPPORT_RESEARCH_MODEL = "openai/gpt-5.4-mini"
+const DEFAULT_SUPPORT_RESEARCH_TIMEOUT_MS = 15_000
+const DEFAULT_SUPPORT_RESEARCH_MAX_RESPONSE_BYTES = 1_048_576
+const DEFAULT_SUPPORT_RESEARCH_MAX_CONVERSATIONS = 200
+const DEFAULT_SUPPORT_RESEARCH_MAX_ACTIONS = 5
+const DEFAULT_SUPPORT_RESEARCH_RETENTION_DAYS = 90
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
@@ -476,10 +485,10 @@ const envSchema = z.object({
     .positive()
     .max(5_242_880)
     .optional(),
-  // Optional label the helper resolves prompts against when the caller does
-  // not pass one. No schema default — the helper's own resolution order is
-  // call parameter > this var > "production" (KTD3), so unset here still
-  // resolves to an explicit "production" label, never an implicit `latest`.
+  // Optional default for label-based candidate intake and health comparison.
+  // Production Seeker traffic never reads this selector: it resolves the
+  // exact repository pin in seeker-production-config.ts. The `production`
+  // label is an alert-only deployment marker.
   LANGFUSE_PROMPT_DEFAULT_LABEL: z.string().min(1).optional(),
   LANGFUSE_PROMPT_CACHE_TTL_MS: z.coerce
     .number()
@@ -560,6 +569,63 @@ const envSchema = z.object({
     .min(1)
     .default("openai/text-embedding-3-small"),
   TRANSCRIPT_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
+  SUPPORT_RESEARCH_ENABLED: z.enum(["true", "false"]).default("false"),
+  SUPPORT_RESEARCH_PROVIDER_APPROVED: z
+    .enum(["true", "false"])
+    .default("false"),
+  SUPPORT_RESEARCH_MODEL: z
+    .string()
+    .min(1)
+    .default(DEFAULT_SUPPORT_RESEARCH_MODEL),
+  SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS: z.string().min(1).optional(),
+  SUPPORT_RESEARCH_MAX_CONVERSATIONS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(1_000)
+    .default(DEFAULT_SUPPORT_RESEARCH_MAX_CONVERSATIONS),
+  SUPPORT_RESEARCH_MAX_ACTIONS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(25)
+    .default(DEFAULT_SUPPORT_RESEARCH_MAX_ACTIONS),
+  SUPPORT_RESEARCH_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120_000)
+    .default(DEFAULT_SUPPORT_RESEARCH_TIMEOUT_MS),
+  SUPPORT_RESEARCH_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10_485_760)
+    .default(DEFAULT_SUPPORT_RESEARCH_MAX_RESPONSE_BYTES),
+  SUPPORT_RESEARCH_RETENTION_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(365)
+    .default(DEFAULT_SUPPORT_RESEARCH_RETENTION_DAYS),
+  HELP_SCOUT_CLIENT_ID: z.string().min(1).optional(),
+  HELP_SCOUT_CLIENT_SECRET: z.string().min(1).optional(),
+  HELP_SCOUT_MAILBOX_IDS: z.string().min(1).optional(),
+  HELP_SCOUT_API_URL: z.string().url().default(DEFAULT_HELP_SCOUT_API_URL),
+  HELP_SCOUT_AUTH_URL: z.string().url().default(DEFAULT_HELP_SCOUT_AUTH_URL),
+  LINEAR_SUPPORT_RESEARCH_API_KEY: z.string().min(1).optional(),
+  LINEAR_SUPPORT_RESEARCH_API_URL: z
+    .string()
+    .url()
+    .default(DEFAULT_LINEAR_API_URL),
+  LINEAR_SUPPORT_RESEARCH_TEAM_ID: z.string().min(1).optional(),
+  LINEAR_SUPPORT_RESEARCH_PROJECT_ID: z.string().min(1).optional(),
+  LINEAR_SUPPORT_RESEARCH_CONFIRMED_BUG_LABEL_ID: z.string().min(1).optional(),
+  LINEAR_SUPPORT_RESEARCH_NEEDS_VALIDATION_LABEL_ID: z
+    .string()
+    .min(1)
+    .optional(),
+  LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID: z.string().min(1).optional(),
   YOUTUBE_API_KEY: z.string().min(1).optional(),
   YOUTUBE_ALLOWED_HOSTS: z
     .string()
@@ -894,6 +960,59 @@ export const env = envSchema.parse({
   TRANSCRIPT_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.TRANSCRIPT_EMBEDDING_PROVIDER,
   ),
+  SUPPORT_RESEARCH_ENABLED: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_ENABLED,
+  ),
+  SUPPORT_RESEARCH_PROVIDER_APPROVED: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_PROVIDER_APPROVED,
+  ),
+  SUPPORT_RESEARCH_MODEL: emptyToUndefined(process.env.SUPPORT_RESEARCH_MODEL),
+  SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS,
+  ),
+  SUPPORT_RESEARCH_MAX_CONVERSATIONS: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_MAX_CONVERSATIONS,
+  ),
+  SUPPORT_RESEARCH_MAX_ACTIONS: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_MAX_ACTIONS,
+  ),
+  SUPPORT_RESEARCH_TIMEOUT_MS: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_TIMEOUT_MS,
+  ),
+  SUPPORT_RESEARCH_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_MAX_RESPONSE_BYTES,
+  ),
+  SUPPORT_RESEARCH_RETENTION_DAYS: emptyToUndefined(
+    process.env.SUPPORT_RESEARCH_RETENTION_DAYS,
+  ),
+  HELP_SCOUT_CLIENT_ID: emptyToUndefined(process.env.HELP_SCOUT_CLIENT_ID),
+  HELP_SCOUT_CLIENT_SECRET: emptyToUndefined(
+    process.env.HELP_SCOUT_CLIENT_SECRET,
+  ),
+  HELP_SCOUT_MAILBOX_IDS: emptyToUndefined(process.env.HELP_SCOUT_MAILBOX_IDS),
+  HELP_SCOUT_API_URL: emptyToUndefined(process.env.HELP_SCOUT_API_URL),
+  HELP_SCOUT_AUTH_URL: emptyToUndefined(process.env.HELP_SCOUT_AUTH_URL),
+  LINEAR_SUPPORT_RESEARCH_API_KEY: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_API_KEY,
+  ),
+  LINEAR_SUPPORT_RESEARCH_API_URL: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_API_URL,
+  ),
+  LINEAR_SUPPORT_RESEARCH_TEAM_ID: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_TEAM_ID,
+  ),
+  LINEAR_SUPPORT_RESEARCH_PROJECT_ID: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_PROJECT_ID,
+  ),
+  LINEAR_SUPPORT_RESEARCH_CONFIRMED_BUG_LABEL_ID: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_CONFIRMED_BUG_LABEL_ID,
+  ),
+  LINEAR_SUPPORT_RESEARCH_NEEDS_VALIDATION_LABEL_ID: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_NEEDS_VALIDATION_LABEL_ID,
+  ),
+  LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID: emptyToUndefined(
+    process.env.LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID,
+  ),
   YOUTUBE_API_KEY: emptyToUndefined(process.env.YOUTUBE_API_KEY),
   YOUTUBE_ALLOWED_HOSTS: emptyToUndefined(process.env.YOUTUBE_ALLOWED_HOSTS),
   YOUTUBE_API_BASE_URL: emptyToUndefined(process.env.YOUTUBE_API_BASE_URL),
@@ -1168,6 +1287,97 @@ export function getYouTubeConfig(): YouTubeConfig {
     apiKey: env.YOUTUBE_API_KEY,
     baseUrl: env.YOUTUBE_API_BASE_URL,
     timeoutMs: env.YOUTUBE_SEARCH_TIMEOUT_MS,
+  }
+}
+
+export type SupportResearchConfig = {
+  enabled: boolean
+  providerApproved: boolean
+  model: string
+  databaseUrl: string
+  allowedWatchHosts: string[]
+  maxConversations: number
+  maxThreadsPerConversation: number
+  maxSanitizedCharacters: number
+  maxActionsPerRun: number
+  maxConsecutiveAnalysisFailures: number
+  timeoutMs: number
+  maxResponseBytes: number
+  retentionDays: number
+  confirmedConfidence: number
+  inferredConfidence: number
+  improvementActionability: number
+  improvementDistinctSources: number
+  improvementWindowDays: number
+  helpScout: {
+    clientId?: string
+    clientSecret?: string
+    mailboxIds: string[]
+    apiUrl: string
+    authUrl: string
+  }
+  linear: {
+    apiKey?: string
+    apiUrl: string
+    teamId?: string
+    projectId?: string
+    confirmedBugLabelId?: string
+    needsValidationLabelId?: string
+    uxLabelId?: string
+  }
+}
+
+function csvValues(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+/**
+ * Optional daily Help Scout research integration. Completeness and host safety
+ * are evaluated at workflow runtime so an unprovisioned environment still
+ * boots and exposes a typed disabled result in Studio.
+ */
+export function getSupportResearchConfig(): SupportResearchConfig {
+  return {
+    enabled: env.SUPPORT_RESEARCH_ENABLED === "true",
+    providerApproved: env.SUPPORT_RESEARCH_PROVIDER_APPROVED === "true",
+    model: env.SUPPORT_RESEARCH_MODEL,
+    databaseUrl: getMastraDatabaseUrl(),
+    allowedWatchHosts: csvValues(env.SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS).map(
+      (host) => host.toLowerCase(),
+    ),
+    maxConversations: env.SUPPORT_RESEARCH_MAX_CONVERSATIONS,
+    maxThreadsPerConversation: 20,
+    maxSanitizedCharacters: 12_000,
+    maxActionsPerRun: env.SUPPORT_RESEARCH_MAX_ACTIONS,
+    maxConsecutiveAnalysisFailures: 5,
+    timeoutMs: env.SUPPORT_RESEARCH_TIMEOUT_MS,
+    maxResponseBytes: env.SUPPORT_RESEARCH_MAX_RESPONSE_BYTES,
+    retentionDays: env.SUPPORT_RESEARCH_RETENTION_DAYS,
+    confirmedConfidence: 0.85,
+    inferredConfidence: 0.85,
+    improvementActionability: 0.8,
+    improvementDistinctSources: 3,
+    improvementWindowDays: 30,
+    helpScout: {
+      clientId: env.HELP_SCOUT_CLIENT_ID,
+      clientSecret: env.HELP_SCOUT_CLIENT_SECRET,
+      mailboxIds: csvValues(env.HELP_SCOUT_MAILBOX_IDS),
+      apiUrl: env.HELP_SCOUT_API_URL,
+      authUrl: env.HELP_SCOUT_AUTH_URL,
+    },
+    linear: {
+      apiKey: env.LINEAR_SUPPORT_RESEARCH_API_KEY,
+      apiUrl: env.LINEAR_SUPPORT_RESEARCH_API_URL,
+      teamId: env.LINEAR_SUPPORT_RESEARCH_TEAM_ID,
+      projectId: env.LINEAR_SUPPORT_RESEARCH_PROJECT_ID,
+      confirmedBugLabelId: env.LINEAR_SUPPORT_RESEARCH_CONFIRMED_BUG_LABEL_ID,
+      needsValidationLabelId:
+        env.LINEAR_SUPPORT_RESEARCH_NEEDS_VALIDATION_LABEL_ID,
+      uxLabelId: env.LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID,
+    },
   }
 }
 

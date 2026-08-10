@@ -15,6 +15,7 @@ import {
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 import type { Passage } from "@/services/scripture-passage.service"
+import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
@@ -140,6 +141,7 @@ export function videoParentsFilter(user: Principal | null): VideoRelationQuery {
       parent: {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
     },
     orderBy: videoRelationOrderBy,
@@ -155,6 +157,7 @@ export function videoChildrenFilter(
       child: {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
     },
     orderBy: videoRelationOrderBy,
@@ -559,6 +562,10 @@ builder.prismaObject("Video", {
     }),
     locked: t.exposeBoolean("locked"),
     noIndex: t.exposeBoolean("noIndex"),
+    restrictViewPlatforms: t.exposeStringList("restrictViewPlatforms", {
+      description:
+        'Core Platform slugs (e.g. "watch", "arclight") this video is restricted from viewing on. Synced read-only from Core; does not itself gate any public field — see search-watchability.ts and the public video resolvers for enforcement.',
+    }),
     aiMetadata: t.exposeBoolean("aiMetadata"),
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
@@ -1481,12 +1488,14 @@ builder.queryFields((t) => ({
       slug: t.arg.string({ required: true }),
       locale: t.arg.string({ required: true }),
       languageSlug: t.arg.string({ required: false }),
+      subtitleLanguageSlug: t.arg.string({ required: false }),
     },
     resolve: (_root, args, ctx) =>
       ctx.services.video.getWatchRouteSnapshotBySlug({
         slug: args.slug,
         locale: args.locale,
         languageSlug: args.languageSlug,
+        subtitleLanguageSlug: args.subtitleLanguageSlug,
         user: ctx.user,
       }),
   }),
@@ -1549,7 +1558,11 @@ builder.queryFields((t) => ({
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.list({
-        input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
+        input: {
+          limit: args.limit ?? 50,
+          offset: args.offset ?? 0,
+          excludeWatchRestricted: true,
+        },
         query,
       }),
   }),

@@ -964,6 +964,46 @@ describe("MediaCollection VideoCard href", () => {
     ).not.toBeNull()
   })
 
+  it.each([
+    {
+      authored:
+        "/watch/creation-to-christ.html/1-the-most-high-god-and-his-creation/english.html",
+      expected: "/watch/1-the-most-high-god-and-his-creation.html",
+    },
+    {
+      authored: "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+      expected: "/watch/lumo-john-1-1-34.html",
+    },
+    {
+      authored:
+        "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+      expected: "/watch/lumo-john-1-1-34.html/romanian.html",
+    },
+  ])(
+    "normalizes the authored discovery CTA $authored to $expected",
+    ({ authored, expected }) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              itemsSource: "manual",
+              mediaCtaLink: authored,
+              items: [makeManualItem()],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container
+          .querySelector<HTMLAnchorElement>(
+            "[data-testid='media-collection-cta']",
+          )
+          ?.getAttribute("href"),
+      ).toBe(expected)
+    },
+  )
+
   it("normalizes an authored root CTA to the watch base path", () => {
     act(() => {
       root.render(

@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 
 import { _searchVideosResponseSchema } from "../../services/admin-agent-tools-client"
 
-import { executeSearchVideos, searchVideosOutputSchema } from "./search-videos"
+import {
+  executeSearchVideos,
+  searchVideosOutputSchema,
+  searchVideosTool,
+} from "./search-videos"
 import { executeLookupBibleVerse } from "./lookup-bible-verse"
 import { executeFetchVideoImage } from "./fetch-video-image"
 
@@ -140,6 +144,15 @@ describe("executeFetchVideoImage", () => {
 })
 
 describe("searchVideos schema parity (feat-327)", () => {
+  it("explains the dual-language subtitle result contract to agents", () => {
+    expect(searchVideosTool.description).toContain(
+      "`languageSlug` is the playable audio language",
+    )
+    expect(searchVideosTool.description).toContain(
+      "`availability.languageSlug` is the requested subtitle language",
+    )
+  })
+
   it("keeps the tool output row and the client wire row structurally identical", () => {
     // `executeSearchVideos` is a straight pass-through of the client's parsed
     // rows, so the two schemas must widen together. Duplicated declarations
@@ -165,6 +178,9 @@ describe("searchVideos schema parity (feat-327)", () => {
           "languageSlug",
           "availability",
         ]),
+      )
+      expect(Object.keys(shape.availability.unwrap().shape)).toEqual(
+        expect.arrayContaining(["kind", "languageSlug"]),
       )
     }
   })

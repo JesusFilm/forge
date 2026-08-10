@@ -25,6 +25,8 @@ import {
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { seoMarketingAgent } from "./agents/seo-marketing-agent"
+import { supportResearchAgent } from "./agents/support-research-agent"
 import { copyAgent } from "./agents/devotional/copy-agent"
 import { highlighterAgent } from "./agents/devotional/highlighter-agent"
 import { setInstructionResolver } from "./agents/devotional/instruction-resolver"
@@ -141,6 +143,7 @@ import {
   handleYouTubeDiscoveryRouteRequest,
   youtubeAiChristianDiscoveryWorkflow,
 } from "./workflows/youtube-ai-christian-discovery"
+import { dailySupportResearchWorkflow } from "./workflows/daily-support-research"
 import {
   handlePinterestDiscoveryRouteRequest,
   pinterestAiChristianDiscoveryWorkflow,
@@ -153,6 +156,9 @@ import {
   handleTranscriptScriptureCorrectionRouteRequest,
   transcriptScriptureCorrectionWorkflow,
 } from "./workflows/transcript-scripture-correction"
+import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
+import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
+import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -163,6 +169,7 @@ import {
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
+import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
 import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
 import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
@@ -271,6 +278,8 @@ export const mastra = new Mastra({
     smokeAgent,
     seekerAgent,
     webResearchAgent,
+    seoMarketingAgent,
+    supportResearchAgent,
     scriptureAgent,
     safetyAgent,
     modernizerAgent,
@@ -305,9 +314,13 @@ export const mastra = new Mastra({
     devotionalApproveWorkflow,
     devotionalPublishWorkflow,
     youtubeAiChristianDiscoveryWorkflow,
+    dailySupportResearchWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
+    seoDailyAuditWorkflow,
+    seoExperimentEvaluationWorkflow,
+    seoTicketDispatchWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
     // workflow id so the U5 route can drive them via
     // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
@@ -962,4 +975,5 @@ setInstructionResolver(async (agentId) => {
 // redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
 if (env.NODE_ENV === "production") {
   startAiChatRetentionPurge()
+  startSeekerPromptHealthMonitor()
 }
