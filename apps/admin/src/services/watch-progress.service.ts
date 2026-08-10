@@ -39,9 +39,11 @@ function normalizeEntry(entry: WatchProgressInput & { videoId: string }) {
   // against every later write, freezing the row permanently.
   const clientMs =
     entry.updatedAt != null ? Date.parse(entry.updatedAt) : Number.NaN
-  const lastWatchedAt = Number.isFinite(clientMs)
-    ? new Date(Math.min(clientMs, Date.now()))
-    : new Date()
+  // Drop, never default to now: an unparseable stamp defaulted to server time
+  // would win `last_watched_at <= EXCLUDED` and overwrite a newer position —
+  // the exact staleness guard this field exists to feed.
+  if (!Number.isFinite(clientMs)) return null
+  const lastWatchedAt = new Date(Math.min(clientMs, Date.now()))
   return {
     videoId: entry.videoId,
     languageSlug: entry.languageSlug?.trim() || null,
@@ -140,7 +142,11 @@ export async function upsertWatchProgress({
   entries: WatchProgressInput[]
 }): Promise<WatchProgressView[]> {
   const idKeyedEntries = await resolveEntryVideoIds(entries)
-  const normalized = newestByVideoId(idKeyedEntries.map(normalizeEntry))
+  const normalized = newestByVideoId(
+    idKeyedEntries
+      .map(normalizeEntry)
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+  )
   const uniqueVideoIds = Array.from(
     new Set(normalized.map((entry) => entry.videoId)),
   )
@@ -157,7 +163,7 @@ export async function upsertWatchProgress({
   return writeNewestWins(userId, validEntriesForVideos)
 }
 
-type NormalizedEntry = ReturnType<typeof normalizeEntry>
+type NormalizedEntry = NonNullable<ReturnType<typeof normalizeEntry>>
 
 /**
  * One statement for the whole batch. The staleness guard lives in the WRITE

@@ -130,6 +130,40 @@ describe("watch-progress service", () => {
     )
   })
 
+  it("drops an entry whose updatedAt is unparseable", async () => {
+    // Defaulting a garbage stamp to server time made it the NEWEST write, so
+    // it won `last_watched_at <= EXCLUDED` and overwrote a newer position.
+    prismaMock.video.findMany.mockResolvedValueOnce([
+      { id: "video-1" },
+      { id: "video-2" },
+    ])
+    stubWriteAccepted()
+
+    await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          videoId: "video-1",
+          languageSlug: "english",
+          positionSeconds: 10,
+          durationSeconds: 100,
+          updatedAt: "not-a-date",
+        },
+        {
+          videoId: "video-2",
+          languageSlug: "english",
+          positionSeconds: 20,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+      ],
+    })
+
+    // Only the well-stamped entry reaches the batch; the malformed one never
+    // gets a chance to out-rank a newer stored row.
+    expect(lastWrite().videoIds).toBe('{"video-2"}')
+  })
+
   it("upserts only existing videos and marks 90 percent progress complete", async () => {
     prismaMock.video.findMany.mockResolvedValueOnce([{ id: "video-1" }])
     stubWriteAccepted()
