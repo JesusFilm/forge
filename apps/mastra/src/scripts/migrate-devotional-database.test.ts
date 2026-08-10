@@ -22,10 +22,9 @@ function result<T extends QueryResultRow>(rows: T[] = []): QueryResult<T> {
   }
 }
 
-function clientWithExisting(existing?: {
-  name: string
-  sha256: string
-}): MigrationClient & { calls: string[]; release: ReturnType<typeof vi.fn> } {
+function clientWithExisting(
+  existingByVersion: Record<number, { name: string; sha256: string }> = {},
+): MigrationClient & { calls: string[]; release: ReturnType<typeof vi.fn> } {
   const calls: string[] = []
   const release = vi.fn()
   return {
@@ -33,9 +32,11 @@ function clientWithExisting(existing?: {
     release,
     async query<T extends QueryResultRow>(
       text: string,
+      values?: readonly unknown[],
     ): Promise<QueryResult<T>> {
       calls.push(text)
       if (/select sha256, name/.test(text)) {
+        const existing = existingByVersion[Number(values?.[0])]
         return result(existing ? [existing as unknown as T] : [])
       }
       return result<T>()
@@ -51,7 +52,7 @@ describe("devotional database migrator", () => {
     })
 
     expect(migration).toEqual({
-      applied: ["001-devotional-workspace.sql"],
+      applied: ["001-devotional-workspace.sql", "002-support-research.sql"],
       skipped: [],
     })
     expect(client.calls[0]).toBe("begin")
@@ -63,23 +64,40 @@ describe("devotional database migrator", () => {
   })
 
   it("skips an identical applied migration and rejects checksum drift", async () => {
-    const filename = "001-devotional-workspace.sql"
-    const sql = await readFile(
-      resolve(DEFAULT_MIGRATIONS_DIRECTORY, filename),
-      "utf8",
+    const filenames = [
+      "001-devotional-workspace.sql",
+      "002-support-research.sql",
+    ] as const
+    const existingEntries = Object.fromEntries(
+      await Promise.all(
+        filenames.map(async (filename, index) => {
+          const sql = await readFile(
+            resolve(DEFAULT_MIGRATIONS_DIRECTORY, filename),
+            "utf8",
+          )
+          return [
+            index + 1,
+            {
+              name: filename,
+              sha256: createHash("sha256").update(sql).digest("hex"),
+            },
+          ]
+        }),
+      ),
     )
-    const sha256 = createHash("sha256").update(sql).digest("hex")
-    const identical = clientWithExisting({ name: filename, sha256 })
+    const identical = clientWithExisting(existingEntries)
 
     await expect(
       runDevotionalDatabaseMigrations({
         pool: { connect: async () => identical },
       }),
-    ).resolves.toEqual({ applied: [], skipped: [filename] })
+    ).resolves.toEqual({ applied: [], skipped: filenames })
 
     const changed = clientWithExisting({
-      name: filename,
-      sha256: "0".repeat(64),
+      1: {
+        name: filenames[0],
+        sha256: "0".repeat(64),
+      },
     })
     await expect(
       runDevotionalDatabaseMigrations({
@@ -92,6 +110,6 @@ describe("devotional database migrator", () => {
 
   it("accepts only version-prefixed SQL filenames", () => {
     expect(parseVersion("001-devotional-workspace.sql")).toBe(1)
-    expect(() => parseVersion("devotional.sql")).toThrow(/invalid devotional/)
+    expect(() => parseVersion("devotional.sql")).toThrow(/invalid Mastra/)
   })
 })
