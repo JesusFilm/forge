@@ -236,6 +236,33 @@ describe("VideoService", () => {
       ).resolves.not.toThrow()
     })
 
+    it("does not exclude watch-restricted videos by default (dashboard caller)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: {}, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("NOT")
+      expect(call.where).not.toHaveProperty("AND")
+    })
+
+    it("excludes watch-restricted videos when excludeWatchRestricted is set (public resolver)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { excludeWatchRestricted: true },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toEqual({
+        AND: [
+          { deletedAt: null },
+          { NOT: { restrictViewPlatforms: { has: "watch" } } },
+        ],
+      })
+    })
+
     it("filters across video identifiers and localized metadata when search is present", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
@@ -986,6 +1013,22 @@ describe("VideoService", () => {
         null,
       )
     })
+
+    // U2's "sole gate is the resolver's authScopes" contract (see file header)
+    // means getById never takes a `user` param, so this exclusion is
+    // unconditional — this is the public-only lookup path (never called by
+    // the dashboard), so there's no editor/admin case to special-case here.
+    it("excludes videos restricted from the watch platform", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getById({ id: "v-1", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        id: "v-1",
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
+    })
   })
 
   describe("getBySlug", () => {
@@ -995,6 +1038,18 @@ describe("VideoService", () => {
       const result = await service.getBySlug({ slug: "jf", query: {} })
 
       expect(result).toEqual({ id: "v-1", slug: "jf" })
+    })
+
+    it("excludes videos restricted from the watch platform", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({ slug: "jf", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        slug: "jf",
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
     })
   })
 
@@ -1008,13 +1063,14 @@ describe("VideoService", () => {
     })
 
     // NOTE: this asserts the WHERE-clause SHAPE the resolver hands Prisma — the
-    // dub itself and its parent video must both be non-deleted, mirroring what
-    // `videoBySlug { dubs }` exposes. A mock cannot prove Prisma actually emits
-    // the parent-video relation filter in SQL (the mocked-vs-real-contract gap);
-    // that negative case (live dub under a soft-deleted video -> null) was
-    // verified empirically against a real DB during review. There is no real-DB
+    // dub itself and its parent video must both be non-deleted and not
+    // restricted from the "watch" platform, mirroring what `videoBySlug { dubs }`
+    // exposes. A mock cannot prove Prisma actually emits the parent-video
+    // relation filter in SQL (the mocked-vs-real-contract gap); that negative
+    // case (live dub under a soft-deleted video -> null) was verified
+    // empirically against a real DB during review. There is no real-DB
     // integration harness in CI, so getBySlug/getById are gated the same way.
-    it("gates on the dub id AND both the dub and its parent video being non-deleted", async () => {
+    it("gates on the dub id AND both the dub and its parent video being non-deleted and unrestricted", async () => {
       prisma.videoDub.findFirst.mockResolvedValueOnce(null)
 
       await service.getDubById({ id: "dub-1", query: {} })
@@ -1022,7 +1078,10 @@ describe("VideoService", () => {
       const where = prisma.videoDub.findFirst.mock.calls[0][0].where
       expect(where.id).toBe("dub-1")
       expect(where).toHaveProperty("deletedAt", null)
-      expect(where.video).toEqual({ deletedAt: null })
+      expect(where.video).toEqual({
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
     })
 
     it("threads the resolver's prisma query selection through", async () => {
@@ -1530,6 +1589,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1", "core-missing", "core-2"] },
           deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
     })
@@ -1559,6 +1619,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1"] },
           deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
     })
@@ -1618,6 +1679,7 @@ describe("VideoService", () => {
       expect(call.where.video).toMatchObject({
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
       })
     })
 
@@ -1629,6 +1691,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("flattens each distinct dub's language into the minimal picker shape", async () => {
@@ -1705,6 +1768,7 @@ describe("VideoService", () => {
             deletedAt: null,
             locales: { some: { status: "PUBLISHED", deletedAt: null } },
             parents: { some: { parentId: "series-1" } },
+            NOT: { restrictViewPlatforms: { has: "watch" } },
           },
         },
         distinct: ["videoId"],
@@ -1725,6 +1789,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("returns the selected Dub rows unchanged", async () => {

@@ -111,6 +111,7 @@ describe("Typesense Watch Search indexer", () => {
           deletedAt: null,
           noIndex: false,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
         select: expect.objectContaining({
           dubs: expect.objectContaining({

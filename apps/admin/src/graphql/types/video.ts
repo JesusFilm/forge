@@ -15,6 +15,7 @@ import {
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 import type { Passage } from "@/services/scripture-passage.service"
+import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
@@ -140,6 +141,7 @@ export function videoParentsFilter(user: Principal | null): VideoRelationQuery {
       parent: {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
     },
     orderBy: videoRelationOrderBy,
@@ -155,6 +157,7 @@ export function videoChildrenFilter(
       child: {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
     },
     orderBy: videoRelationOrderBy,
@@ -1553,7 +1556,11 @@ builder.queryFields((t) => ({
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.list({
-        input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
+        input: {
+          limit: args.limit ?? 50,
+          offset: args.offset ?? 0,
+          excludeWatchRestricted: true,
+        },
         query,
       }),
   }),
