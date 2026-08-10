@@ -439,7 +439,7 @@ describe("buildWatchHomeSectionsFromExperience — coreId hydration", () => {
     expect(section.cards[0].imageUrl).toBe("https://img/curated.jpg")
   })
 
-  it("falls back to the item's mux thumbnail + slug title when the coreId does not hydrate", () => {
+  it("falls back to the item's mux thumbnail + readable slug title when the coreId does not hydrate", () => {
     const [section] = buildWatchHomeSectionsFromExperience(
       [
         mediaCollection({
@@ -455,7 +455,7 @@ describe("buildWatchHomeSectionsFromExperience — coreId hydration", () => {
       ],
       new Map(), // empty index → no hydration
     )
-    expect(section.cards[0].title).toBe("lumo-acts-1-1-8-3")
+    expect(section.cards[0].title).toBe("Lumo Acts 1 1 8 3")
     expect(section.cards[0].imageUrl).toBe(
       "https://image.mux.com/y2W2LCPRxygn8RdXmldloduOoKYJo8TaVJzdvjBrggw/thumbnail.png?width=1280&fit_mode=smartcrop",
     )

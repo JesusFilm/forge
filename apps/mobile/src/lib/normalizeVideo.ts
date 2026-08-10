@@ -1,4 +1,5 @@
 import type { WatchVideoData, WatchDubData, SeriesVideoData } from "./queries"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { isEpisodicSeriesLabel } from "./isSeriesRecord"
 import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
@@ -302,7 +303,11 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       ? {
           documentId: parent.documentId ?? "",
           slug: parent.slug ?? "",
-          title: pickFirstLocale(parent.locales).title ?? "",
+          title:
+            resolveVideoDisplayTitle({
+              requestedTitles: [pickFirstLocale(parent.locales).title],
+              slug: parent.slug,
+            }) ?? "Video",
         }
       : null
 
@@ -319,7 +324,11 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         documentId: child.documentId ?? "",
         slug: child.slug ?? "",
         label: child.label ?? null,
-        title: pickFirstLocale(child.locales).title,
+        title:
+          resolveVideoDisplayTitle({
+            requestedTitles: [pickFirstLocale(child.locales).title],
+            slug: child.slug,
+          }) ?? null,
         posterUrl: pickPosterUrl(child.images),
       })) ?? []
   const siblings = dedupeByDocumentId(rawSiblings)
@@ -361,7 +370,11 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     documentId: raw.documentId ?? "",
     slug: raw.slug ?? "",
     label: raw.label ?? null,
-    title: locale.title,
+    title:
+      resolveVideoDisplayTitle({
+        requestedTitles: [locale.title],
+        slug: raw.slug,
+      }) ?? null,
     description: locale.description,
     snippet: locale.snippet,
     posterUrl: pickPosterUrl(raw.images),
@@ -394,7 +407,11 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
       documentId: rel.child.documentId ?? "",
       slug: rel.child.slug ?? "",
       label: rel.child.label ?? null,
-      title: pickFirstLocale(rel.child.locales).title,
+      title:
+        resolveVideoDisplayTitle({
+          requestedTitles: [pickFirstLocale(rel.child.locales).title],
+          slug: rel.child.slug,
+        }) ?? null,
       posterUrl: pickPosterUrl(rel.child.images),
       // ?? undefined (not ?? 0): a real index/duration of 0 must round-trip as
       // 0, not be conflated with "not carried" (mirrors offlineManifest's trap).

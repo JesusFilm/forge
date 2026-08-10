@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { repairLegacyVideoDisplayTitle } from "@forge/content-display"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -26,15 +27,6 @@ import { SelectionCheckbox } from "./SelectionCheckbox"
 const RING_TRACK_COLOR = "rgba(255, 255, 255, 0.18)"
 const THUMB_GRADIENT: readonly [string, string] = ["#2a2f37", "#15171c"]
 const GROUPED_DIVIDER_COLOR = "rgba(255, 255, 255, 0.09)"
-
-/** Humanize a video slug as a title fallback when the record has no stored title. */
-function slugToTitle(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
 
 export interface DownloadRowProps {
   record: OfflineDownloadRecord
@@ -65,7 +57,11 @@ export const DownloadRow = memo(function DownloadRow({
   onLongPress,
 }: DownloadRowProps) {
   const typography = useTypography()
-  const title = record.title || slugToTitle(record.videoSlug)
+  const title =
+    repairLegacyVideoDisplayTitle({
+      title: record.title,
+      slug: record.videoSlug,
+    }) ?? "Video"
   const duration = formatLibraryDuration(record.durationSeconds)
   const rowState = useMemo(() => libraryRowState(record), [record])
   const failed = rowState.affordance === "retry"

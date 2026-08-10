@@ -135,6 +135,17 @@ describe("stripHtml", () => {
 })
 
 describe("mapWatchSearchResult", () => {
+  it("repairs a legacy Video title equal to its raw slug", () => {
+    expect(
+      mapWatchSearchResult(
+        row({
+          slug: "miraculous-catch-of-fish",
+          title: "miraculous-catch-of-fish",
+        }),
+      )?.title,
+    ).toBe("Miraculous Catch Of Fish")
+  })
+
   it("maps a complete row to the non-null UI shape", () => {
     expect(mapWatchSearchResult(row())).toEqual({
       type: "VIDEO",
@@ -153,12 +164,16 @@ describe("mapWatchSearchResult", () => {
 
   // Each of these is separately load-bearing: the card renders title, the
   // routing branch reads slug, keyExtractor reads type + id.
-  it.each(["type", "id", "slug", "title"] as const)(
+  it.each(["type", "id", "slug"] as const)(
     "drops a row missing %s rather than rendering a broken card",
     (field) => {
       expect(mapWatchSearchResult(row({ [field]: null }))).toBeNull()
     },
   )
+
+  it("humanizes the slug when a Video result title is absent", () => {
+    expect(mapWatchSearchResult(row({ title: null }))?.title).toBe("Jesus")
+  })
 
   it("keeps rows whose optional display fields are absent", () => {
     const mapped = mapWatchSearchResult(

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { getGraphQLUrl } from "../lib/config"
 import { pickThumbnailUrl, type VideoImage } from "../lib/types"
 import type { AdminBlock, WatchExperience } from "../lib/queries"
@@ -56,7 +57,7 @@ function buildBatchQuery(videoIds: string[]): string {
   const fields = safeIds
     .map(
       (id, i) =>
-        `v${i}: video(id: "${id}") { id images { mobileCinematicHigh mobileCinematicLow videoStill thumbnail url } locales(locale: "en") { title } }`,
+        `v${i}: video(id: "${id}") { id slug images { mobileCinematicHigh mobileCinematicLow videoStill thumbnail url } locales(locale: "en") { title } }`,
     )
     .join("\n    ")
   return `{\n    ${fields}\n  }`
@@ -94,6 +95,7 @@ export function useVideoThumbnails(
         for (let i = 0; i < videoIds.length; i++) {
           const videoData = json.data[`v${i}`] as {
             id?: string
+            slug?: string | null
             images?: VideoImage[]
             locales?: { title?: string | null }[] | null
           } | null
@@ -101,7 +103,11 @@ export function useVideoThumbnails(
           const thumb = videoData.images
             ? pickThumbnailUrl(videoData.images)
             : null
-          const title = videoData.locales?.[0]?.title?.trim() || null
+          const title =
+            resolveVideoDisplayTitle({
+              requestedTitles: videoData.locales?.map((locale) => locale.title),
+              slug: videoData.slug,
+            }) ?? null
           if (thumb || title) {
             map.set(videoData.id, { thumbnail: thumb ?? null, title })
           }

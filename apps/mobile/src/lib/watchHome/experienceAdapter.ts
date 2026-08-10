@@ -4,6 +4,7 @@
  * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
  */
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import {
   buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
@@ -87,12 +88,18 @@ function itemToCard(
   // authored title/image; hydrate both from the linked video so they read like
   // every other card. Authored overrides always win — working shelves unchanged.
   const hydrated = item.coreId ? videoByCoreId.get(item.coreId) : undefined
-  const hydratedTitle = hydrated?.locales?.[0]?.title ?? null
   const hydratedImage = hydrated ? pickAdminImage(hydrated.images ?? []) : null
   // Never blank: titleOverride, else labelOverride, else the linked video's
   // title, else the slug.
   const title =
-    item.titleOverride || item.labelOverride || hydratedTitle || slug
+    resolveVideoDisplayTitle({
+      requestedTitles: [
+        item.titleOverride,
+        item.labelOverride,
+        ...(hydrated?.locales?.map((locale) => locale.title) ?? []),
+      ],
+      slug,
+    }) ?? "Video"
   // collectionSize is a free-text String badge (e.g. "25 items"); blank/whitespace
   // reads as absent (trimmed), then falls to the label, else no badge.
   const size = item.collectionSize?.trim() || null

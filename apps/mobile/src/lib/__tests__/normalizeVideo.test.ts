@@ -248,6 +248,42 @@ describe("normalizeVideo", () => {
     expect(result.primaryLanguageBcp47).toBe("en")
   })
 
+  it("humanizes blank root, parent, and sibling titles without changing slugs", () => {
+    const raw = makeRawVideo({
+      slug: "miraculous--catch_of-fish",
+      locales: [{ documentId: "loc-1", title: "  " }],
+      parents: [
+        {
+          parent: {
+            documentId: "parent-1",
+            slug: "hope--stories",
+            label: "SERIES",
+            locales: [{ documentId: "parent-loc", title: "" }],
+            images: [],
+            children: [
+              {
+                child: {
+                  documentId: "vid-2",
+                  slug: "the_resurrection",
+                  label: "EPISODE",
+                  locales: [{ documentId: "child-loc", title: "\t" }],
+                  images: [],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    const result = normalizeVideo(raw)!
+
+    expect(result.title).toBe("Miraculous Catch Of Fish")
+    expect(result.slug).toBe("miraculous--catch_of-fish")
+    expect(result.parentSeries?.title).toBe("Hope Stories")
+    expect(result.siblings[0]?.title).toBe("The Resurrection")
+  })
+
   // U1: the watch route attaches seriesSlug/seriesTitle from parentSeries — but
   // ONLY for a genuine episodic SERIES parent, so standalone films that merely
   // belong to a COLLECTION don't fold into a Library series folder.
@@ -608,7 +644,7 @@ describe("normalizeVideo", () => {
       }),
     )!
 
-    expect(result.title).toBeNull()
+    expect(result.title).toBe("The Crucifixion")
     expect(result.description).toBeNull()
     expect(result.posterUrl).toBeNull()
     expect(result.streamingUrl).toBeNull()
@@ -710,7 +746,7 @@ describe("normalizeVideo — partial data (returnPartialData)", () => {
     expect(result.bibleCitations).toEqual([])
     expect(result.streamingUrl).toBeNull()
     expect(result.posterUrl).toBeNull()
-    expect(result.title).toBeNull()
+    expect(result.title).toBe("Lonely")
   })
 })
 
@@ -820,6 +856,28 @@ describe("normalizeSeries", () => {
     expect(result.episodes[0].posterUrl).toBe(
       "https://img.example.com/ep1-cine.jpg",
     )
+  })
+
+  it("humanizes an episode slug when its English title is blank", () => {
+    const raw = makeRawSeries()
+    const first = raw!.children![0]!
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          {
+            ...first,
+            child: {
+              ...first.child,
+              slug: "miraculous--catch_of-fish",
+              locales: [{ documentId: "blank", title: " " }],
+            },
+          },
+        ],
+      }),
+    )!
+
+    expect(result.episodes[0]?.title).toBe("Miraculous Catch Of Fish")
+    expect(result.episodes[0]?.slug).toBe("miraculous--catch_of-fish")
   })
 
   // U1: order → seriesEpisodeIndex and durationSeconds carry onto each episode

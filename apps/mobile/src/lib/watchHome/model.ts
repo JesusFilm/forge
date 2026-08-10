@@ -22,6 +22,10 @@ import {
   type WatchHomeCarouselSequenceData,
   type WatchHomeVideoSlide,
 } from "./carouselSequence"
+import {
+  firstNonBlankText,
+  resolveVideoDisplayTitle,
+} from "@forge/content-display"
 
 /**
  * Lean bulk-video input shape (KTD-2): card fields only, no dubs/variants.
@@ -172,10 +176,17 @@ function normalizeCard(args: {
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
       : 0
-  const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const requestedTitle = firstNonBlankText(
+    args.video.locales?.map((candidate) => candidate.title),
+  )
+  const title =
+    resolveVideoDisplayTitle({
+      requestedTitles: args.video.locales?.map((candidate) => candidate.title),
+      slug: args.video.slug,
+    }) ?? "Video"
 
   const missingData: WatchHomeMissingData[] = []
-  if (!locale?.title) {
+  if (!requestedTitle) {
     missingData.push({
       sectionId: args.sectionId,
       sourceId: args.sourceId,

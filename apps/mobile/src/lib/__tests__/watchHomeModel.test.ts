@@ -84,6 +84,23 @@ function firstCard(model: { sections: { cards: WatchHomeCard[] }[] }) {
 }
 
 describe("buildWatchHomeModelFromVideos", () => {
+  it("humanizes a blank localized title instead of exposing a slug or core id", () => {
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        videoInput("1_jf-0-0", {
+          slug: "miraculous--catch_of-fish",
+          locales: [{ title: "   ", description: "Localized description" }],
+        }),
+      ],
+    })
+
+    expect(firstCard(model)).toMatchObject({
+      title: "Miraculous Catch Of Fish",
+      description: "Localized description",
+      slug: "miraculous--catch_of-fish",
+    })
+  })
+
   it("renders resolved sections in config order and drops zero-card sections", () => {
     const model = buildWatchHomeModelFromVideos({
       videos: [
@@ -204,7 +221,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     })
 
     const card = firstCard(model)
-    expect(card.title).toBe("1_jf-0-0-slug")
+    expect(card.title).toBe("1 Jf 0 0 Slug")
     expect(card.imageUrl).toBeNull()
     const fields = model.missingData
       .filter((entry) => entry.sourceId === "1_jf-0-0")
