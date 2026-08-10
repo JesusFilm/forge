@@ -289,11 +289,14 @@ describe("SiblingCarousel — happy path", () => {
       "parent-2",
     ])
     expect(selector.value).toBe("parent-2")
-    expect(
-      container.querySelector(
-        "[data-href='/second-collection.html/current-video/english.html']",
-      ),
-    ).not.toBeNull()
+    const railText = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+      (item) => item.textContent,
+    ).join(" ")
+    expect(railText).toContain("Child 4")
+    expect(railText).toContain("Current Video")
+    expect(railText).toContain("Child 5")
+    expect(railText).not.toContain("Child 2")
   })
 
   it("keeps a one-option standalone collection selector visible", () => {
