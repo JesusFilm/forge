@@ -297,13 +297,26 @@ describe("mobile login configuration", () => {
   it("links consumer providers only on provider-verified emails (R1)", async () => {
     const options = await captureAuthOptions()
 
-    // Without blanket trust, better-auth links a matched-email account only
-    // when the provider asserts a verified email. okta and the jfp self-RP
-    // stay trusted as internal identity assertions.
+    // Config-level only: better-auth's linking decision needs a live instance
+    // and a database, so the behaviour itself is covered by the auth-side
+    // integration suite, not here.
     expect(options.account.accountLinking.trustedProviders).toEqual([
       "okta",
       "jfp",
     ])
+  })
+
+  it("never blanket-trusts a consumer provider (R1)", async () => {
+    const options = await captureAuthOptions()
+
+    // The toEqual above passes for ANY two-element array, so it cannot fail
+    // for the risk that matters. This names it: a consumer provider back in
+    // the trusted set links an unverified email onto an existing account.
+    for (const provider of ["google", "facebook", "apple"]) {
+      expect(options.account.accountLinking.trustedProviders).not.toContain(
+        provider,
+      )
+    }
   })
 
   it("registers the jfp self-RP provider as a public PKCE client of Auth's own OAuth provider", async () => {
