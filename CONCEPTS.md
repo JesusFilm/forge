@@ -816,6 +816,18 @@ A system prompt whose tunable text lives in Langfuse — versioned, label-addres
 
 During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
 
+### Seeker Eval Experiment
+
+A predeclared comparison of Seeker behavior against a declared production benchmark, changing exactly one causal axis while holding every other execution identity dimension constant.
+
+Its manifest is an executable contract: supported identity dimensions control the run, every declared dimension is attested by the evidence, unsupported configurations refuse, and any reused evidence must match the declared identity and eligibility policy.
+
+### Experiment Attempt
+
+One append-only execution record within a Seeker Eval Experiment, preserving either complete benchmark evidence or a diagnostic refusal or failure without rewriting earlier attempts.
+
+An attempt is complete only after its required inventoried evidence has passed aggregate-schema, identity, sensitive-content, and inventory checks and its immutable completion record has been published; package eligibility additionally requires rejecting untracked sidecars.
+
 ## Flagged ambiguities
 
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
