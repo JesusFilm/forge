@@ -80,32 +80,40 @@ export const JUDGE_SYSTEM = [
   "Return JSON only.",
 ].join("\n")
 
-export const VERDICT_SCHEMA = {
-  name: "seeker_eval_criterion_verdicts",
-  schema: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      verdicts: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            criterionId: { type: "string" },
-            verdict: {
-              type: "string",
-              enum: ["satisfied", "violated"],
+export function verdictSchema(criterionIds: readonly string[]) {
+  return {
+    name: "seeker_eval_criterion_verdicts",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        verdicts: {
+          type: "array",
+          minItems: criterionIds.length,
+          maxItems: criterionIds.length,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              criterionId: { type: "string", enum: [...criterionIds] },
+              verdict: {
+                type: "string",
+                enum: ["satisfied", "violated"],
+              },
+              reasoning: { type: "string" },
             },
-            reasoning: { type: "string" },
+            required: ["criterionId", "verdict", "reasoning"],
           },
-          required: ["criterionId", "verdict", "reasoning"],
         },
       },
+      required: ["verdicts"],
     },
-    required: ["verdicts"],
-  },
+  } as const
 }
+
+/** Stable template for hashing the judge protocol independently of a
+ * question's criterion inventory, which is hashed by the run identity. */
+export const VERDICT_SCHEMA = verdictSchema(["<criterion-id>"])
 
 /**
  * Hash of everything that defines what a verdict MEANS beyond the criteria
@@ -238,6 +246,7 @@ export function judgeUserMessage(input: {
 export type JudgeCompletion = (input: {
   system: string
   user: string
+  criterionIds: readonly string[]
 }) => Promise<{ value: CriterionVerdict[]; usage: Usage; latencyMs: number }>
 
 /**
@@ -295,11 +304,25 @@ export async function judgeOneAnswer(
   const usage: Usage = { input: 0, output: 0 }
   let latencyMs = 0
   let lastProblems: string[] = []
+  const criterionIds = criteria.map((criterion) => criterion.id)
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     let verdicts: CriterionVerdict[]
     try {
-      const result = await deps.complete({ system: JUDGE_SYSTEM, user })
+      const retryCorrection =
+        attempt === 1
+          ? ""
+          : [
+              "",
+              "CORRECTION — the previous response violated the output protocol:",
+              ...lastProblems.map((problem) => `- ${problem}`),
+              `Return exactly these criterion ids and no others: ${criterionIds.join(", ")}`,
+            ].join("\n")
+      const result = await deps.complete({
+        system: JUDGE_SYSTEM,
+        user: `${user}${retryCorrection}`,
+        criterionIds,
+      })
       usage.input += result.usage.input
       usage.output += result.usage.output
       latencyMs += result.latencyMs
@@ -411,12 +434,12 @@ async function main(): Promise<void> {
   console.log(`input : ${inPath} (${run.answers.length} answers)`)
   console.log("")
 
-  const complete: JudgeCompletion = ({ system, user }) =>
+  const complete: JudgeCompletion = ({ system, user, criterionIds }) =>
     completeJson({
       model: JUDGE_MODEL,
       system,
       user,
-      jsonSchema: VERDICT_SCHEMA,
+      jsonSchema: verdictSchema(criterionIds),
       parse: parseVerdicts,
     })
 
