@@ -459,3 +459,36 @@ U1 (spike) gates KTD1 and the deletion path. Then U2 (auth) → U3 → U4 (admin
 - Institutional learnings applied: operation-scoped fleet-bearer law; watch-progress user-isolation + staleness rules; hardened OIDC JWKS verification (alg allowlist from JWKS, fail-closed reason codes); force-login marker (hosted-fallback path only); client-mirrors-server-dedupe batch contract.
 - Prior plans: `docs/plans/2026-05-11-001-jesus-film-auth-platform-plan.md`, `docs/plans/2026-07-02-001-feat-web-auth-watch-history-plan.md`, `docs/plans/2026-05-27-001-feat-web-user-accounts-download-gate-plan.md`.
 - Vocabulary: `CONCEPTS.md` "User sign-in" (SSO Session, App-Local Session, Force-Login Marker), "Known-caller auth" (Consumer Bearer, Fleet Client, Viewer Id), and "Continue Watching".
+
+## Amendment — 2026-08-10 (shipped behavior)
+
+Additive record of where the shipped code diverges from the sections above.
+The original text stands as the decision at the time; these are the outcomes.
+
+- **R9 / KTD6 — resume UX.** "Option to start from the beginning" and
+  "resuming never autoplays" are superseded by silent auto-resume plus
+  autostart: the player seeks to the saved position and begins playing on
+  source load, with no Resume/Start-over overlay (rationale in dd7f7267).
+- **R16 — per-video clear.** Retired. Admin's `clearMyWatchProgress` mutation
+  is retained server-side as a web-parity candidate; mobile's client half
+  (operation, sync entry, store mutator) was removed.
+- **Success criteria — adoption metric.** The `resume_selected` /
+  `start_over_selected` RUM pair no longer exists; there is no choice left to
+  measure. `autostart_applied` replaces it and fires only after a successful
+  `play()`, so a released player cannot count as an autostart.
+- **R2 — native Google.** Deferred pending OAuth client provisioning. Google
+  remains reachable through the hosted auth page.
+- **U7 — deletion intent.** The verification-email flow is replaced by strict
+  fresh-session re-auth; no mailer exists platform-wide (auth-owner
+  direction, 2026-08-04).
+- **KTD8 — offline queue.** The queue is the failure path, not a first-write
+  path: every write attempts the network first and persists only on failure.
+  R7's outcome (no tick lost, flushed later) still holds.
+- **U2 — mobile OAuth client.** The seed registers auth's own https self-RP
+  callback rather than the plan's exact-match `forgemobile://` redirect — a
+  deliberate substitute so any hosted sign-in method ends in a real session
+  the Expo client can adopt.
+- **R3 — session persistence.** "Persists until explicit sign-out" is bounded
+  by the untouched global 7-day sliding window (`expiresIn` 7d, `updateAge`
+  1d), which the plan requires leaving global. A device idle beyond that
+  signs out silently.
