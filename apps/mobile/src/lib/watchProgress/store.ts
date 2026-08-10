@@ -106,14 +106,6 @@ export function applyLocalProgress(
   commit({ accountId: snapshot.accountId, entries })
 }
 
-/** Per-video clear (R16) — optimistic; the caller re-hydrates on failure. */
-export function clearProgressEntry(videoId: string) {
-  if (!snapshot.entries.has(videoId)) return
-  const entries = new Map(snapshot.entries)
-  entries.delete(videoId)
-  commit({ accountId: snapshot.accountId, entries })
-}
-
 /** Sign-out / account-switch reset: empties entries AND buffered intents. */
 export function resetToSignedOut() {
   bufferedIntents.clear()

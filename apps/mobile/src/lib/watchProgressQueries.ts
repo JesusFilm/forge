@@ -31,9 +31,3 @@ export const UPSERT_MY_WATCH_PROGRESS = adminGraphql(`
     }
   }
 `)
-
-export const CLEAR_MY_WATCH_PROGRESS = adminGraphql(`
-  mutation ClearMyWatchProgress($videoId: ID!) {
-    clearMyWatchProgress(videoId: $videoId)
-  }
-`)

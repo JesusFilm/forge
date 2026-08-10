@@ -1,7 +1,6 @@
 import {
   applyLocalProgress,
   bufferProgressIntent,
-  clearProgressEntry,
   drainProgressIntents,
   getProgressEntry,
   getProgressSnapshot,
@@ -58,18 +57,6 @@ describe("progress store", () => {
 
     applyLocalProgress("user-1", entry("video-1"))
     expect(getProgressEntry("video-1")).toBeDefined()
-  })
-
-  it("clears a single entry without touching the rest (R16)", () => {
-    hydrateProgress({
-      accountId: "user-1",
-      entries: [entry("video-1"), entry("video-2")],
-    })
-
-    clearProgressEntry("video-1")
-
-    expect(getProgressEntry("video-1")).toBeUndefined()
-    expect(getProgressEntry("video-2")).toBeDefined()
   })
 
   it("sign-out reset empties entries and buffered intents", () => {

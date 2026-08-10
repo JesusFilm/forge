@@ -153,7 +153,6 @@ describe("recorder + store + sync integration (the rate-limit property)", () => 
       getAccountId: () => "user-1",
       fetchEntries: async () => [],
       sendUpserts,
-      sendClear: async () => {},
       storage: {
         getItem: async () => null,
         setItem: async () => {},

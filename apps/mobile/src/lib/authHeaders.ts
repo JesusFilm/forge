@@ -40,7 +40,6 @@ export function authHeadersForOperation(
 export const PROGRESS_OPERATION_NAMES = [
   "MyWatchProgress",
   "UpsertMyWatchProgress",
-  "ClearMyWatchProgress",
 ] as const
 
 const PROGRESS_OPERATIONS: ReadonlySet<string> = new Set(

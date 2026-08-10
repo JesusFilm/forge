@@ -521,7 +521,7 @@ describe("createUserJwtLink (operation-scoped user JWT)", () => {
   it("forwards without the header when signed out", async () => {
     const headers = await headersThroughJwtLink(
       gql`
-        mutation ClearMyWatchProgress {
+        mutation UpsertMyWatchProgress {
           __typename
         }
       `,

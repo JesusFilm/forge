@@ -21,7 +21,6 @@ import {
 } from "./snapshot"
 import {
   bufferProgressIntent,
-  clearProgressEntry,
   drainProgressIntents,
   hydrateProgress,
   peekProgressIntents,
@@ -51,7 +50,6 @@ export type ProgressSyncDeps = {
     entries: ProgressWriteIntent[],
   ) => Promise<{ acceptedCount: number }>
   /** Server per-video clear (R16). Throws on failure. */
-  sendClear: (videoId: string) => Promise<void>
   storage: AsyncStorageLike
   now?: () => number
 }
@@ -245,21 +243,6 @@ export function createProgressSync(deps: ProgressSyncDeps) {
      * for the next reconnect.
      */
     flushQueue: flushQueueInternal,
-
-    /**
-     * Per-video clear (R16): optimistic — the bar disappears immediately;
-     * a failed mutation re-hydrates so the entry reappears rather than
-     * vanishing permanently (R11's fail-open posture).
-     */
-    async clearEntry(videoId: string): Promise<void> {
-      if (deps.getAccountId() == null) return
-      clearProgressEntry(videoId)
-      try {
-        await deps.sendClear(videoId)
-      } catch {
-        await hydrateFromServerInternal()
-      }
-    },
 
     /**
      * Drain buffered recorder intents on the batch cadence (KTD5): at most

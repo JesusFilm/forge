@@ -14,7 +14,6 @@ import {
   WATCH_SEARCH_EVENT_OPERATION_NAME,
 } from "../queries"
 import {
-  CLEAR_MY_WATCH_PROGRESS,
   GET_MY_WATCH_PROGRESS,
   UPSERT_MY_WATCH_PROGRESS,
 } from "../watchProgressQueries"
@@ -102,15 +101,18 @@ describe("SEARCH_OPERATION_NAME ↔ WATCH_SEARCH", () => {
   })
 })
 
-// KTD10: the signed-in user JWT rides ONLY the three progress operations —
-// the same operation-scoping law as the fleet search bearer. Pin the gate's
-// name set to the operations actually sent so a rename cannot silently
-// widen or strand the token.
+// KTD10: the signed-in user JWT rides ONLY the progress operations — the
+// same op-scoping law as the fleet search bearer. Pinning the set to what is
+// actually sent stops a rename silently widening or stranding the token.
 describe("isProgressOperation gate", () => {
-  it("admits exactly the three progress operations", () => {
+  it("admits exactly the two progress operations", () => {
     expect(isProgressOperation("MyWatchProgress")).toBe(true)
     expect(isProgressOperation("UpsertMyWatchProgress")).toBe(true)
-    expect(isProgressOperation("ClearMyWatchProgress")).toBe(true)
+  })
+
+  it("no longer admits the retired clear operation", () => {
+    // Its client half is gone; admin keeps the mutation for future parity.
+    expect(isProgressOperation("ClearMyWatchProgress")).toBe(false)
   })
 
   it("rejects public operations — the user JWT never rides them", () => {
@@ -127,11 +129,7 @@ describe("isProgressOperation gate", () => {
   })
 
   it("matches the operation names actually sent", () => {
-    const docs = [
-      GET_MY_WATCH_PROGRESS,
-      UPSERT_MY_WATCH_PROGRESS,
-      CLEAR_MY_WATCH_PROGRESS,
-    ]
+    const docs = [GET_MY_WATCH_PROGRESS, UPSERT_MY_WATCH_PROGRESS]
     const sentNames = docs.map((doc) => {
       const operation = (doc as unknown as DocumentNode).definitions.find(
         (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",

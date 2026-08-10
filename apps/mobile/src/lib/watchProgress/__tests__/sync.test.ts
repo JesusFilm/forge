@@ -10,7 +10,6 @@ import {
   bufferProgressIntent,
   getProgressEntry,
   getProgressSnapshot,
-  hydrateProgress,
   peekProgressIntents,
   resetToSignedOut,
   type WatchProgressEntry,
@@ -55,7 +54,6 @@ function buildSync(overrides: Partial<ProgressSyncDeps> = {}) {
     getAccountId: () => "user-1",
     fetchEntries: jest.fn(async () => [entry("video-1")]),
     sendUpserts: jest.fn(async () => ({ acceptedCount: 1 })),
-    sendClear: jest.fn(async () => {}),
     storage,
     now: () => NOW,
     ...overrides,
@@ -443,44 +441,6 @@ describe("drainIntents (KTD5 cadence)", () => {
     await sync.drainIntents({ forced: true })
 
     expect(deps.sendUpserts).not.toHaveBeenCalled()
-  })
-})
-
-describe("clearEntry (R16 optimistic clear)", () => {
-  it("removes the entry immediately and calls the server clear", async () => {
-    const { sync, deps } = buildSync()
-    hydrateProgress({
-      accountId: "user-1",
-      entries: [entry("video-1"), entry("video-2")],
-    })
-
-    await sync.clearEntry("video-1")
-
-    expect(getProgressEntry("video-1")).toBeUndefined()
-    expect(getProgressEntry("video-2")).toBeDefined()
-    expect(deps.sendClear).toHaveBeenCalledWith("video-1")
-  })
-
-  it("re-hydrates on a failed clear so the bar reappears rather than vanishing", async () => {
-    const fetchEntries = jest.fn(async () => [entry("video-1")])
-    const { sync } = buildSync({
-      fetchEntries,
-      sendClear: jest.fn(async () => {
-        throw new Error("clear failed")
-      }),
-    })
-    hydrateProgress({ accountId: "user-1", entries: [entry("video-1")] })
-
-    await sync.clearEntry("video-1")
-
-    expect(fetchEntries).toHaveBeenCalled()
-    expect(getProgressEntry("video-1")).toBeDefined()
-  })
-
-  it("does nothing signed out", async () => {
-    const { sync, deps } = buildSync({ getAccountId: () => null })
-    await sync.clearEntry("video-1")
-    expect(deps.sendClear).not.toHaveBeenCalled()
   })
 })
 
