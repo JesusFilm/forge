@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { seoMarketingAgent } from "./seo-marketing-agent"
+import { getSeoConfig } from "../../config/seo"
+
+import {
+  buildSeoMarketingAgent,
+  seoMarketingAgent,
+} from "./seo-marketing-agent"
 
 describe("SEO Marketing Agent", () => {
   it("is stateless and exposes only read-only evidence/analysis tools", async () => {
@@ -13,5 +18,19 @@ describe("SEO Marketing Agent", () => {
       "seoGroundedSearchEvidenceTool",
       "seoGscEvidenceTool",
     ])
+  })
+
+  it("binds paid-first OpenRouter access to the SEO reasoning model", async () => {
+    const agent = buildSeoMarketingAgent(
+      getSeoConfig({
+        OPENROUTER_API_PAID_KEY: "paid-test-key",
+        SEO_OPENROUTER_MODEL: "openai/gpt-5.4-mini",
+      }),
+    )
+
+    await expect(agent.getModel()).resolves.toMatchObject({
+      modelId: "openai/gpt-5.4-mini",
+      provider: "openrouter.chat",
+    })
   })
 })

@@ -264,7 +264,7 @@ export const seoFirecrawlPageEvidenceTool = createTool({
 export const seoGroundedSearchEvidenceTool = createTool({
   id: "seoGroundedSearchEvidence",
   description:
-    "Collect one bounded OpenAI web_search observation with retained citations. Citation URLs are never auto-fetched.",
+    "Collect one bounded grounded web-search observation with retained citations. Citation URLs are never auto-fetched.",
   inputSchema: z
     .object({
       query: z.string().min(1).max(500),
