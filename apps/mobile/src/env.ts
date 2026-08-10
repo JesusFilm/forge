@@ -20,6 +20,9 @@ const _inlined = {
   datadogVersion: process.env.EXPO_PUBLIC_DATADOG_VERSION,
   datadogSessionSampleRate: process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
   datadogReplaySampleRate: process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
+  authBaseUrl: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+  googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
 }
 void _inlined
 
@@ -51,6 +54,14 @@ const createAppEnv = () =>
       // by datadog.ts's parseSampleRate.
       EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE: z.string().optional(),
       EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE: z.string().optional(),
+      // Auth service base URL — optional; unset falls back to production
+      // auth so store builds need no new env var.
+      EXPO_PUBLIC_AUTH_BASE_URL: z.string().url().optional(),
+      // Google OAuth client ids for native sign-in (webClientId mints the
+      // idToken audience auth verifies; iOS id configures the sheet).
+      // Optional so unprovisioned builds boot with Google sign-in hidden.
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: z.string().optional(),
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
@@ -71,6 +82,11 @@ const createAppEnv = () =>
         process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
       EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE:
         process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
+      EXPO_PUBLIC_AUTH_BASE_URL: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID:
+        process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:
+        process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     },
     isServer: false,
     emptyStringAsUndefined: true,

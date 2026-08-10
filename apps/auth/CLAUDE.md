@@ -89,3 +89,27 @@ document the dashboard as canonical.
   revocable, and audited.
 - Stdout logs must not include raw credentials, bearer tokens, refresh tokens,
   client secrets, or unnecessary PII.
+
+## Sign in with Apple — client-secret rotation
+
+Apple's "client secret" is an ES256 JWT signed with a Sign in with Apple
+`.p8` key, and Apple caps its lifetime at **6 months**. It is therefore a
+recurring operator task: when it expires, native Apple sign-in on
+`apps/mobile` stops working.
+
+```bash
+pnpm --filter @forge/auth mint:apple-client-secret \
+  "<path to AuthKey_XXXXXXXXXX.p8>" <team-id> <key-id> <client-id>
+```
+
+- `client-id` must equal the value presented to Apple's token endpoint. For
+  the native sheet that is the app bundle id, `org.jesusfilm.forgewatch` —
+  not the web Service ID.
+- The JWT prints on **stdout**; everything else (including the expiry date to
+  diary) goes to stderr, so a pipe stays clean.
+- Store it as `APPLE_NATIVE_CLIENT_SECRET` on the `forge-auth` Doppler
+  project. `APPLE_APP_BUNDLE_ID` must hold the same bundle id.
+- The `.p8` is a long-lived credential. Keep it out of the repo; the minted
+  JWT is a credential too.
+
+The current secret expires **2027-02-04**.

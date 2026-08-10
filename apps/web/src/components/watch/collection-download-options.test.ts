@@ -6,15 +6,16 @@ import {
 } from "./collection-download-options"
 
 const episodes = [
-  { documentId: "v1", slug: "one", title: "One" },
-  { documentId: "v2", slug: "two", title: "Two" },
-  { documentId: "v3", slug: "three", title: "Three" },
+  { documentId: "v1", order: 1, slug: "one", title: "One" },
+  { documentId: "v2", order: 2, slug: "two", title: "Two" },
+  { documentId: "v3", order: 3, slug: "three", title: "Three" },
 ]
 
 function buildQueueForTitles(titles: string[]) {
   const options = buildCollectionDownloadOptions(
     titles.map((title, index) => ({
       documentId: `v${index + 1}`,
+      order: index + 1,
       slug: `episode-${index + 1}`,
       title,
     })),
@@ -79,7 +80,7 @@ describe("collection download options", () => {
     expect(result.commonTiers).toEqual(["highest", "low"])
   })
 
-  it("builds compatible opaque proxy queue items", () => {
+  it("builds compatible opaque proxy queue items with canonical relation order", () => {
     const options = buildCollectionDownloadOptions(episodes.slice(0, 1), [
       {
         documentId: "dub-1",
@@ -97,7 +98,7 @@ describe("collection download options", () => {
       languageSlug: "english",
     })
 
-    expect(item.filename).toBe("One_English_eng_720p.mp4")
+    expect(item.filename).toBe("01_One_English_eng_720p.mp4")
     expect(item.url).toContain("/watch/api/download?")
     expect(item.url).toContain("downloadId=download-1")
     expect(item.url).not.toContain("stream.mux.com")
@@ -107,8 +108,8 @@ describe("collection download options", () => {
     const queue = buildQueueForTitles(["Same title", "Same-title"])
 
     expect(queue.map(({ filename }) => filename)).toEqual([
-      "Same-title_English_eng_720p.mp4",
-      "Same-title_English_eng_720p_2.mp4",
+      "01_Same-title_English_eng_720p.mp4",
+      "02_Same-title_English_eng_720p.mp4",
     ])
     for (const item of queue) {
       expect(
@@ -123,11 +124,80 @@ describe("collection download options", () => {
 
     expect(new Set(filenames).size).toBe(2)
     expect(filenames.every((filename) => filename.length <= 200)).toBe(true)
-    expect(filenames[1]).toMatch(/_2\.mp4$/)
+    expect(filenames[1]).toMatch(/^02_/)
     expect(
       new URL(queue[1].url, "https://watch.example").searchParams.get(
         "filename",
       ),
     ).toBe(filenames[1])
+  })
+
+  it("preserves canonical positions when an earlier episode is skipped", () => {
+    const options = buildCollectionDownloadOptions(episodes, [
+      {
+        documentId: "dub-1",
+        videoId: "v1",
+        downloads: [
+          { documentId: "download-1", height: 720, quality: "high", size: 100 },
+        ],
+      },
+      {
+        documentId: "dub-3",
+        videoId: "v3",
+        downloads: [
+          { documentId: "download-3", height: 720, quality: "high", size: 100 },
+        ],
+      },
+    ])
+
+    const queue = buildCollectionDownloadQueue({
+      candidates: options.candidates,
+      tier: "highest",
+      languageCode: "eng",
+      languageName: "English",
+      languageSlug: "english",
+    })
+
+    expect(queue.map(({ filename }) => filename)).toEqual([
+      "01_One_English_eng_720p.mp4",
+      "03_Three_English_eng_720p.mp4",
+    ])
+  })
+
+  it("preserves relation-order gaps and leaves null-order episodes unnumbered", () => {
+    const relationOrderedEpisodes = [
+      { documentId: "v1", order: 1, slug: "one", title: "One" },
+      { documentId: "v2", order: 3, slug: "two", title: "Two" },
+      { documentId: "v3", order: null, slug: "three", title: "Three" },
+    ]
+    const options = buildCollectionDownloadOptions(
+      relationOrderedEpisodes,
+      relationOrderedEpisodes.map((episode) => ({
+        documentId: `dub-${episode.documentId}`,
+        videoId: episode.documentId,
+        downloads: [
+          {
+            documentId: `download-${episode.documentId}`,
+            height: 720,
+            quality: "high",
+            size: 100,
+          },
+        ],
+      })),
+    )
+
+    const queue = buildCollectionDownloadQueue({
+      candidates: options.candidates,
+      tier: "highest",
+      languageCode: "eng",
+      languageName: "English",
+      languageSlug: "english",
+    })
+
+    expect(queue.map(({ filename }) => filename)).toEqual([
+      "01_One_English_eng_720p.mp4",
+      "03_Two_English_eng_720p.mp4",
+      "Three_English_eng_720p.mp4",
+    ])
   })
 })

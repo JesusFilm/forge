@@ -82,6 +82,16 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(schema.getType("WatchRouteSnapshotRootLocale")).toBeUndefined()
   })
 
+  it("exposes canonical order on Watch child relations", () => {
+    const fields = fieldsOf("WatchRouteSnapshotChildRelation") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+
+    expect(fields.order?.type.toString()).toBe("Int")
+    expect(fields.child?.type.toString()).toBe("WatchRouteSnapshotChild")
+  })
+
   it("Manager session/read/job contract types expose the expected shape", () => {
     expect(Object.keys(fieldsOf("ManagerViewer"))).toEqual(
       expect.arrayContaining([

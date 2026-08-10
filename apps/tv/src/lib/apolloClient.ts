@@ -6,7 +6,7 @@ import {
 } from "@apollo/client"
 import { getMainDefinition } from "@apollo/client/utilities"
 import { getGraphQLUrl, getApiToken } from "./config"
-import { authHeadersForOperation } from "./authHeaders"
+import { headersForOperation } from "./authHeaders"
 import { getViewerId } from "./viewer-id"
 import { datadogGraphqlHeaders, isDatadogProvisioned } from "./datadog"
 
@@ -45,17 +45,30 @@ function mergeContextHeaders(
  * tests can prove the Search bearer survives the attribution merge (U3).
  */
 export function createRequestChain(): ApolloLink {
-  // Bearer + x-viewer-id ride ONLY on the Search op: admin buckets a fleet key
-  // per device (consumer:<key>:v:<viewer_id> from x-viewer-id, else per IP).
-  // On public ops the bearer would pool the whole fleet into one bucket.
+  // Two disjoint allowlists, one selection point (`headersForOperation`):
+  //
+  //   FLEET token + x-viewer-id ride ONLY on the Search op — admin buckets a
+  //     fleet key per device (consumer:<key>:v:<viewer_id>), and on other public
+  //     ops the bearer would pool the whole fleet into one bucket.
+  //   USER access token rides ONLY on watch-event writes.
+  //
+  // The user token arrives through operation CONTEXT rather than being read
+  // here, because obtaining it may require an async refresh and this link is
+  // synchronous. The allowlist still lives in one place: a caller that sets
+  // `userAccessToken` on an operation outside USER_TOKEN_OPERATIONS gets no
+  // header, so context is a supply channel, never an override.
   const authLink = new ApolloLink((operation, forward) => {
+    const { userAccessToken } = operation.getContext() as {
+      userAccessToken?: string
+    }
     mergeContextHeaders(
       operation,
-      authHeadersForOperation(
-        operation.operationName,
-        getApiToken(),
-        getViewerId(),
-      ),
+      headersForOperation({
+        operationName: operation.operationName,
+        fleetToken: getApiToken(),
+        userAccessToken,
+        viewerId: getViewerId(),
+      }),
     )
     return forward(operation)
   })

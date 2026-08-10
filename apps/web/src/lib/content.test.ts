@@ -1076,6 +1076,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                   ],
                   children: [
                     {
+                      order: 7,
                       child: {
                         documentId: "nested-child-1",
                         slug: "episode__one--begins",
@@ -1103,6 +1104,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
             ],
             children: [
               {
+                order: 11,
                 child: {
                   documentId: "child-1",
                   slug: "the__first--chapter",
@@ -1145,7 +1147,9 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.parents[0]?.children[0]?.title).toBe(
       "Episode One Begins",
     )
+    expect(result?.video.parents[0]?.children[0]?.order).toBe(7)
     expect(result?.video.children[0]?.title).toBe("The First Chapter")
+    expect(result?.video.children[0]?.order).toBe(11)
   })
 
   it("falls back to English questions without losing localized title or dub selection", async () => {

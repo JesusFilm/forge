@@ -4,10 +4,16 @@ import { Agent } from "@mastra/core/agent"
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
 import { describe, expect, it, vi } from "vitest"
 
+import type { RequestContext } from "@mastra/core/di"
 import type { Memory } from "@mastra/memory"
 
 import { buildAiChatMemory } from "../ai-chat-memory"
 import type { AiChatOwnershipMemory } from "../ai-chat-thread-ownership"
+import {
+  LANGFUSE_SEEKER_TRACING_MARKER,
+  TRACING_CONFIG_CONTEXT_KEY,
+} from "../langfuse-tracing"
+import type { ManagedPromptResult } from "../../services/langfuse-prompt-client"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 import { FEATURE_VIDEO_TOOL_NAME } from "../tools/feature-video"
 import { SEEKER_SEARCH_VIDEOS_TOOL_NAME } from "../tools/seeker-search-videos"
@@ -37,6 +43,8 @@ type StreamOpts = {
   maxSteps?: number
   abortSignal?: AbortSignal
   memory?: { thread: string; resource: string }
+  requestContext?: RequestContext
+  tracingOptions?: { metadata?: Record<string, unknown> }
 }
 type ToolResultChunk = { payload?: { toolName?: string; result?: unknown } }
 
@@ -316,6 +324,88 @@ describe("handleSeekerRouteRequest — memory keying", () => {
     expect(bodyA).toContain("saw:thread-A")
     expect(bodyB).toContain("saw:thread-B")
     expect(bodyB).not.toContain("saw:thread-A")
+  })
+})
+
+// ===========================================================================
+// Langfuse tracing stamp (feat-321)
+// ===========================================================================
+
+describe("handleSeekerRouteRequest — Langfuse tracing stamp (feat-321)", () => {
+  function langfuseProvenance(
+    overrides: Partial<ManagedPromptResult> = {},
+  ): ManagedPromptResult {
+    return {
+      text: "prompt",
+      source: "langfuse",
+      version: 7,
+      resolvedLabel: "production",
+      ...overrides,
+    }
+  }
+
+  it("stamps the per-process tracing marker and base metadata on every send (no seam — default-source pin)", async () => {
+    // Deliberately NO getPromptProvenance override: the default must be the
+    // REAL getManagedPrompt, which in the unconfigured test env serves the
+    // compiled-in fallback (source "fallback", label "production", no
+    // version). A revert of the seam's default source cannot stay green.
+    const { mastra, streamCalls } = makeMastra({ chunks: ["ok"] })
+    await readSse(await handleSeekerRouteRequest(baseInput(mastra)))
+
+    expect(streamCalls).toHaveLength(1)
+    const opts = streamCalls[0].opts
+    expect(opts.requestContext?.get(TRACING_CONFIG_CONTEXT_KEY)).toBe(
+      LANGFUSE_SEEKER_TRACING_MARKER,
+    )
+    expect(opts.tracingOptions?.metadata).toMatchObject({
+      traceName: "seeker-turn",
+      userId: SEEKER_DEFAULT_RESOURCE_ID,
+      sessionId: "thread-1",
+      promptName: "seeker-system",
+      promptSource: "fallback",
+      promptLabel: "production",
+    })
+    expect(opts.tracingOptions?.metadata).not.toHaveProperty("promptVersion")
+    expect(opts.tracingOptions?.metadata).not.toHaveProperty("langfuse")
+  })
+
+  it("stamps version metadata and native prompt linkage for a versioned langfuse serve", async () => {
+    const { mastra, streamCalls } = makeMastra({ chunks: ["ok"] })
+    await readSse(
+      await handleSeekerRouteRequest(
+        baseInput(mastra, {
+          readJson: async () => ({
+            prompt: "hi",
+            threadId: "thread-9",
+            resourceId: "user:alice",
+          }),
+          getPromptProvenance: async () => langfuseProvenance(),
+        }),
+      ),
+    )
+
+    expect(streamCalls[0].opts.tracingOptions?.metadata).toMatchObject({
+      userId: "user:alice",
+      sessionId: "thread-9",
+      promptSource: "langfuse",
+      promptVersion: 7,
+      langfuse: { prompt: { name: "seeker-system", version: 7 } },
+    })
+  })
+
+  it("marks stale serves in the trace metadata", async () => {
+    const { mastra, streamCalls } = makeMastra({ chunks: ["ok"] })
+    await readSse(
+      await handleSeekerRouteRequest(
+        baseInput(mastra, {
+          getPromptProvenance: async () => langfuseProvenance({ stale: true }),
+        }),
+      ),
+    )
+
+    expect(streamCalls[0].opts.tracingOptions?.metadata).toMatchObject({
+      promptStale: true,
+    })
   })
 })
 

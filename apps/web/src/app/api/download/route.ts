@@ -31,6 +31,8 @@ const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
 const DOWNLOAD_AUTH_REQUIRED = "auth-required"
 const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
+const INLINE_SUBTITLE_TIMEOUT_MS = 30_000
+const DOWNLOAD_CACHE_CONTROL = "private, no-cache, no-store, must-revalidate"
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g
@@ -41,7 +43,7 @@ function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
-function isAnonymousInlineSubtitleRequest(
+function isAuthExemptInlineSubtitleRequest(
   searchParams: URLSearchParams,
 ): boolean {
   if (searchParams.get("disposition") !== "inline") return false
@@ -58,7 +60,7 @@ function isAnonymousInlineSubtitleRequest(
 
 async function resolveDownloadAccountGate(
   request: Request,
-  allowAnonymousInlineSubtitle: boolean,
+  allowAuthExemptInlineSubtitle: boolean,
 ): Promise<
   | {
       ok: true
@@ -72,7 +74,7 @@ async function resolveDownloadAccountGate(
   const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
     watchDownloadAccountGateFlagContext,
   )
-  if (!accountGateEnabled || allowAnonymousInlineSubtitle) {
+  if (!accountGateEnabled || allowAuthExemptInlineSubtitle) {
     return { ok: true, accountGateEnabled }
   }
 
@@ -273,10 +275,139 @@ function redirectToTarget(safeUrl: string): NextResponse {
     status: 302,
     headers: {
       Location: safeUrl,
-      "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      "Cache-Control": DOWNLOAD_CACHE_CONTROL,
       "X-Content-Type-Options": "nosniff",
     },
   })
+}
+
+function safeLogUrl(target: string): string {
+  try {
+    const url = new URL(target)
+    return url.origin + url.pathname
+  } catch {
+    return "<unparseable>"
+  }
+}
+
+function discardResponseBody(response: Response): void {
+  void response.body?.cancel().catch(() => undefined)
+}
+
+function streamResponseBody(
+  body: ReadableStream<Uint8Array>,
+  clearSubtitleTimeout: () => void,
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader()
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          clearSubtitleTimeout()
+          controller.close()
+          return
+        }
+        controller.enqueue(value)
+      } catch (error) {
+        clearSubtitleTimeout()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      clearSubtitleTimeout()
+      await reader.cancel(reason)
+    },
+  })
+}
+
+async function proxyInlineSubtitle(
+  request: Request,
+  safeUrl: string,
+): Promise<Response> {
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(
+    () => timeoutController.abort(),
+    INLINE_SUBTITLE_TIMEOUT_MS,
+  )
+  const clearSubtitleTimeout = () => clearTimeout(timeoutId)
+  const signal =
+    typeof AbortSignal.any === "function"
+      ? AbortSignal.any([request.signal, timeoutController.signal])
+      : timeoutController.signal
+
+  let upstream: Response
+  try {
+    // The validated VTT must remain same-origin for native <track> loading.
+    // Following a redirect here could bypass the target allowlist, so surface
+    // upstream redirects as a controlled failure instead.
+    // codeql[js/request-forgery]
+    upstream = await fetch(safeUrl, {
+      headers: { Accept: "text/vtt" },
+      redirect: "manual",
+      signal,
+    })
+  } catch (error) {
+    clearSubtitleTimeout()
+    if (request.signal.aborted) {
+      return new NextResponse(null, { status: 499 })
+    }
+    console.error("[api/download] inline subtitle fetch failed", {
+      target: safeLogUrl(safeUrl),
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return jsonError("Upstream subtitle fetch failed", 502)
+  }
+
+  if (
+    upstream.type === "opaqueredirect" ||
+    (upstream.status >= 300 && upstream.status < 400)
+  ) {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    console.error("[api/download] inline subtitle upstream redirected", {
+      target: safeLogUrl(safeUrl),
+    })
+    return jsonError("Upstream subtitle redirected; refusing to follow", 502)
+  }
+
+  if (!upstream.ok) {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    return jsonError(`Upstream ${upstream.status}`, upstream.status)
+  }
+
+  const contentType = upstream.headers.get("content-type")
+  const mediaType = contentType?.split(";", 1)[0]?.trim().toLowerCase()
+  if (mediaType !== "text/vtt") {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    console.error("[api/download] rejected non-VTT inline subtitle response", {
+      target: safeLogUrl(safeUrl),
+      contentType,
+    })
+    return jsonError("Upstream subtitle response was not VTT", 502)
+  }
+
+  if (!upstream.body) {
+    clearSubtitleTimeout()
+    return jsonError("Upstream subtitle had no body", 502)
+  }
+
+  const headers = new Headers({
+    "Cache-Control": DOWNLOAD_CACHE_CONTROL,
+    "Content-Disposition": "inline",
+    "Content-Type": contentType ?? "text/vtt",
+    "X-Content-Type-Options": "nosniff",
+  })
+  return new NextResponse(
+    streamResponseBody(upstream.body, clearSubtitleTimeout),
+    {
+      status: upstream.status,
+      headers,
+    },
+  )
 }
 
 function sanitizeDownloadFilename(raw: string | null): string {
@@ -330,18 +461,18 @@ function attachmentRedirectUrl(input: {
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
-  const anonymousInlineSubtitleRequest =
-    isAnonymousInlineSubtitleRequest(searchParams)
+  const authExemptInlineSubtitleRequest =
+    isAuthExemptInlineSubtitleRequest(searchParams)
   const disposition =
     searchParams.get("disposition") === "inline" ? "inline" : "attachment"
   const authGate = await resolveDownloadAccountGate(
     request,
-    anonymousInlineSubtitleRequest,
+    authExemptInlineSubtitleRequest,
   )
   if (!authGate.ok) return authGate.response
 
   const allowLegacyTarget =
-    anonymousInlineSubtitleRequest || authGate.accountGateEnabled
+    authExemptInlineSubtitleRequest || authGate.accountGateEnabled
 
   const resolvedTarget = await resolveRequestedTarget(searchParams, {
     allowLegacyTarget,
@@ -355,6 +486,10 @@ export async function GET(request: Request): Promise<Response> {
     return validation.errorResponse
   }
   const { safeUrl } = validation
+
+  if (authExemptInlineSubtitleRequest) {
+    return proxyInlineSubtitle(request, safeUrl)
+  }
 
   if (authGate.session?.accessToken && resolvedTarget.event) {
     const result = await recordWatchEventWithAccessToken(

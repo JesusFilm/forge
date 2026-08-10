@@ -70,6 +70,11 @@ while a Dub's Core ID is Core's identifier for that specific language variant.
 
 A piece of watchable content — a feature film, a segment of one, or a container node (series, collection) in a parent/child tree. A Video is not directly playable on its own: its watchable audio comes from its Dubs and its subtitles from a Video Edition. Videos relate to each other as parents and children, which is how series and their Episodes, films and their Chapters, and "Up Next" siblings are all formed — so a parent/child link alone does not say whether the parent is a container.
 
+A parent/child link may carry a canonical playback position. The position
+belongs to the relationship, not to the child Video, and remains the ordering
+authority when a viewer can see only a filtered subset. A link without a
+position is unsequenced.
+
 ### Dub
 
 One audio-language variant of a Video — the unit the watch screen's language picker selects (a popular title can have thousands of Dubs). A Dub carries its own playable stream and its own set of downloadable renditions, and points at the Video Edition whose subtitle tracks apply to it.
@@ -538,6 +543,12 @@ A client-generated, stable-per-device identifier a Fleet Client attaches to a re
 
 ## User sign-in
 
+### First-Party App
+
+One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
+
+Registration is per environment, not per app: an app holds a separate registration for each environment it runs in, each carrying its own client identifier, exact-match redirect targets, allowed browser origins, default scopes, and approval posture. Apps differ in how a person signs in — a browser redirect, a code displayed on one screen and approved on another device, or a native platform credential — but every route resolves to the same person and the same SSO Session. The registry is upsert-only and never prunes: editing a registration is scrubbed into the provider on the next deploy, while removing one from the registry leaves the live registration in place, so retiring an app is a deliberate out-of-band step rather than a deletion from the list.
+
 ### SSO Session
 
 The sign-in session the auth provider itself holds for a person, shared by all first-party relying apps — signing in to any one app rides it, and it is what lets a later sign-in skip the login page.
@@ -587,6 +598,12 @@ The single Experience designated as the watch home for a given locale, resolved 
 ### Home Curation
 
 The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
+
+### Continue Watching
+
+The signed-in continuity behavior: a partially watched video shows a progress bar at the account's latest recorded position, and playback resumes from that position with a start-over option — whichever signed-in device or surface recorded it.
+
+Two mechanisms carry this name and must not be conflated. The account-backed one above is signed-in only: anonymous playback records nothing to the account, nothing merges into the account at a later sign-in, and signing out clears what was recorded locally. Separately, a surface may keep its own local shelf — a per-install list of latest positions with the display fields a home row needs, never synced and never account-scoped — which lets a signed-out viewer resume on that surface alone. The two use independent thresholds for what counts as worth resuming, and a surface holding only the local shelf has no entitlement to read or write account positions.
 
 ### Cinematic
 
@@ -711,6 +728,15 @@ An expired, shape-drifted, or empty Home Snapshot never paints — launch falls 
 The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
+
+### Forge Subtitle Track
+
+The single browser text track that Watch injects for the subtitle selected from
+a Video Edition, distinct from player-generated tracks that are not exposed as
+Forge subtitle choices.
+
+It is a public in-page media consumer: its VTT must load through a same-origin
+response that remains separate from protected file-download behavior.
 
 ### Watch Modal Activity
 

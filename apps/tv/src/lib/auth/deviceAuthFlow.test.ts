@@ -1,32 +1,48 @@
 import {
-  createPendingSession,
-  DEFAULT_USER_CODE_FORMAT,
   DEVICE_VERIFICATION_URL,
+  displayVerificationUrl,
   formatUserCode,
   isSessionExpired,
-  SESSION_TTL_MS,
   verificationUrlWithCode,
+  type DeviceAuthSession,
 } from "./deviceAuthFlow"
 
+const session = (expiresAtMs: number): DeviceAuthSession => ({
+  userCode: "019-450-7302",
+  verificationUrl: `${DEVICE_VERIFICATION_URL}?user_code=019-450-7302`,
+  expiresAtMs,
+})
+
 describe("formatUserCode", () => {
-  it("groups an 8-char code as XXXX-XXXX", () => {
-    expect(formatUserCode("BXKDQWNM")).toBe("BXKD-QWNM")
+  it("groups the server's ten-digit code as XXX-XXX-XXXX", () => {
+    expect(formatUserCode("0194507302")).toBe("019-450-7302")
   })
 
   it("is idempotent on already-hyphenated input", () => {
-    expect(formatUserCode("BXKD-QWNM")).toBe("BXKD-QWNM")
+    expect(formatUserCode("019-450-7302")).toBe("019-450-7302")
   })
 
   it("leaves short fragments unhyphenated", () => {
-    expect(formatUserCode("BXK")).toBe("BXK")
+    expect(formatUserCode("019")).toBe("019")
+  })
+
+  it("keeps any remainder past the declared groups rather than truncating", () => {
+    // A server that lengthens the code must degrade to an ugly display, never
+    // to a code the phone will reject.
+    expect(formatUserCode("019450730212")).toBe("019-450-7302-12")
+  })
+
+  it("never drops a character", () => {
+    const raw = "0194507302"
+    expect(formatUserCode(raw).replace(/-/g, "")).toBe(raw)
   })
 })
 
 describe("verificationUrlWithCode", () => {
   it("appends the code as user_code", () => {
     expect(
-      verificationUrlWithCode("https://auth.example/device", "AB-CD"),
-    ).toBe("https://auth.example/device?user_code=AB-CD")
+      verificationUrlWithCode("https://auth.example/device", "019-450-7302"),
+    ).toBe("https://auth.example/device?user_code=019-450-7302")
   })
 
   it("URL-encodes reserved characters", () => {
@@ -36,103 +52,42 @@ describe("verificationUrlWithCode", () => {
   })
 })
 
-describe("createPendingSession", () => {
-  const fixed = (value: number) => () => value
-
-  it("builds a hyphenated 8-char code from the unambiguous charset", () => {
-    const session = createPendingSession({ nowMs: 1_000, random: fixed(0) })
-    expect(session.userCode).toBe("BBBB-BBBB")
-  })
-
-  it("clamps a random source that returns 1 into the charset", () => {
-    const session = createPendingSession({ nowMs: 1_000, random: fixed(1) })
-    expect(session.userCode).toBe("ZZZZ-ZZZZ")
-  })
-
-  it("targets the verification URL with the code pre-filled", () => {
-    const session = createPendingSession({ nowMs: 0, random: fixed(0) })
-    expect(session.verificationUrl).toBe(
-      `${DEVICE_VERIFICATION_URL}?user_code=BBBB-BBBB`,
+describe("displayVerificationUrl", () => {
+  it("strips the scheme for the on-screen caption", () => {
+    expect(displayVerificationUrl("https://auth.jesusfilm.org/device")).toBe(
+      "auth.jesusfilm.org/device",
     )
   })
 
-  it("expires exactly one TTL after creation", () => {
-    const session = createPendingSession({ nowMs: 5_000, random: fixed(0) })
-    expect(session.expiresAtMs).toBe(5_000 + SESSION_TTL_MS)
-    expect(isSessionExpired(session, 5_000 + SESSION_TTL_MS - 1)).toBe(false)
-    expect(isSessionExpired(session, 5_000 + SESSION_TTL_MS)).toBe(true)
+  it("never prints the user code carried by verification_uri_complete", () => {
+    const caption = displayVerificationUrl(
+      "https://auth.jesusfilm.org/device?user_code=0194507302",
+    )
+    expect(caption).toBe("auth.jesusfilm.org/device")
+    expect(caption).not.toContain("0194507302")
+    expect(caption).not.toContain("user_code")
+  })
+
+  it("drops a fragment-carried code too", () => {
+    expect(
+      displayVerificationUrl(
+        "https://auth.jesusfilm.org/device#user_code=0194507302",
+      ),
+    ).toBe("auth.jesusfilm.org/device")
+  })
+
+  it("handles a scheme-less URL unchanged", () => {
+    expect(displayVerificationUrl("auth.jesusfilm.org/device")).toBe(
+      "auth.jesusfilm.org/device",
+    )
   })
 })
 
-describe("user code formats", () => {
-  const seq = (values: number[]) => {
-    let i = 0
-    return () => values[i++ % values.length]!
-  }
-
-  it("mints an 8-char consonant code grouped 4-4", () => {
-    const s = createPendingSession({
-      nowMs: 0,
-      random: seq([0]),
-      format: "letters",
-    })
-    expect(s.userCode).toBe("BBBB-BBBB")
-    expect(s.format).toBe("letters")
-    expect(s.userCode.replace(/-/g, "")).toHaveLength(8)
-  })
-
-  it("mints a 10-digit code grouped 3-3-4", () => {
-    const s = createPendingSession({
-      nowMs: 0,
-      random: seq([0]),
-      format: "numbers",
-    })
-    expect(s.userCode).toBe("000-000-0000")
-    expect(s.format).toBe("numbers")
-    expect(s.userCode.replace(/-/g, "")).toHaveLength(10)
-  })
-
-  it("defaults to letters when no format is given", () => {
-    const s = createPendingSession({ nowMs: 0, random: seq([0]) })
-    expect(s.format).toBe(DEFAULT_USER_CODE_FORMAT)
-    expect(s.format).toBe("letters")
-  })
-
-  it("never emits a vowel or a lookalike in a letter code", () => {
-    const s = createPendingSession({
-      nowMs: 0,
-      random: seq([0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.99]),
-      format: "letters",
-    })
-    expect(s.userCode).not.toMatch(/[AEIOU01]/)
-  })
-
-  it("emits only digits in a numeric code", () => {
-    const s = createPendingSession({
-      nowMs: 0,
-      random: seq([0, 0.2, 0.4, 0.6, 0.8, 0.95]),
-      format: "numbers",
-    })
-    expect(s.userCode.replace(/-/g, "")).toMatch(/^\d+$/)
-  })
-
-  it("groups by format and is idempotent on hyphenated input", () => {
-    expect(formatUserCode("BXKDQWNM", "letters")).toBe("BXKD-QWNM")
-    expect(formatUserCode("BXKD-QWNM", "letters")).toBe("BXKD-QWNM")
-    expect(formatUserCode("0194507302", "numbers")).toBe("019-450-7302")
-    expect(formatUserCode("019-450-7302", "numbers")).toBe("019-450-7302")
-  })
-
-  it("keeps any remainder past the declared groups", () => {
-    expect(formatUserCode("BXKDQWNMZZ", "letters")).toBe("BXKD-QWNM-ZZ")
-  })
-
-  it("carries the code into the QR url", () => {
-    const s = createPendingSession({
-      nowMs: 0,
-      random: seq([0]),
-      format: "numbers",
-    })
-    expect(s.verificationUrl).toContain(encodeURIComponent(s.userCode))
+describe("isSessionExpired", () => {
+  it("flips exactly at the deadline", () => {
+    const s = session(5_000)
+    expect(isSessionExpired(s, 4_999)).toBe(false)
+    expect(isSessionExpired(s, 5_000)).toBe(true)
+    expect(isSessionExpired(s, 5_001)).toBe(true)
   })
 })

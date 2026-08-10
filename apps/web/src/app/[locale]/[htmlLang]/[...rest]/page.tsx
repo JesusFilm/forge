@@ -13,6 +13,7 @@ import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
+import { resolveDownloadSequence } from "@/components/watch/download-link"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -625,6 +626,10 @@ async function renderEpisode(shape: {
     mergedBlocks,
     resolved.selectedVariant,
   )
+  const downloadSequence = resolveDownloadSequence(
+    resolved.series,
+    resolved.video.documentId,
+  )
   const clientVideo = pruneWatchVideoForClient(
     resolved.video,
     resolved.selectedVariant,
@@ -655,6 +660,7 @@ async function renderEpisode(shape: {
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
+        downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
         variant={clientVariant}
         video={clientVideo}
@@ -751,6 +757,10 @@ async function renderVideo(shape: {
       mergedBlocks,
       watchVideo.selectedVariant,
     )
+    const downloadSequence = resolveDownloadSequence(
+      watchVideo.canonicalParent,
+      watchVideo.video.documentId,
+    )
     const clientVideo = pruneWatchVideoForClient(
       watchVideo.video,
       watchVideo.selectedVariant,
@@ -775,6 +785,7 @@ async function renderVideo(shape: {
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
+          downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
           variant={clientVariant}
           video={clientVideo}
