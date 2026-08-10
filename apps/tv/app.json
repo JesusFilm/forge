@@ -51,7 +51,8 @@
           "supportsBackgroundPlayback": false
         }
       ],
-      "./plugins/withTVInfoPlistFixes"
+      "./plugins/withTVInfoPlistFixes",
+      "expo-secure-store"
     ],
     "extra": {
       "router": {

@@ -10,6 +10,8 @@ depends_on:
   - "feat-121"
 blocks:
   - "feat-336"
+  # docs/roadmap/platform/feat-342-tv-device-grant-scaffold-teardown.md
+  - "feat-342"
 tags:
   - "platform"
   - "auth"
@@ -96,8 +98,8 @@ Three routes; pick one before any server code:
 2. `apps/auth/src/domain/apps.ts` + `scopes.ts` — client seed registry (no `tv` entry yet) and the closed scope catalog (`openid`, `profile:read`, `email:read`, `offline_access`, …). TV needs `offline_access` (long-lived living-room sessions), unlike web which deliberately omits it.
 3. `apps/chat/src/auth/oauth-client.ts` — the hardened relying-client template: id-token-only verification, JWKS-derived algorithm allowlist, fail-closed unconfigured, typed non-PII error codes. See `docs/solutions/architecture-patterns/hardened-oidc-id-token-verify-jose-jwks-20260702.md`.
 4. `apps/admin/src/auth/web-user-token.ts` — how admin turns a bearer into a `WEB_USER` principal via introspection; a TV client id must be added to `AUTH_WEB_USER_CLIENT_IDS` for TV tokens to pass.
-5. `apps/tv/src/components/profile/ProfileScreen.tsx` — the shipped UI scaffolding: pending (QR + user code + waiting) and signed-in states; the demo-approve row is the seam the real polling replaces.
-6. `apps/tv/src/lib/auth/deviceAuthFlow.ts` — pure state module mirroring RFC 8628 field names; `createPendingSession` is replaced by the real `/device/code` response.
+5. `apps/tv/src/components/profile/ProfileScreen.tsx` — the shipped UI scaffolding: pending (QR + user code + waiting) and signed-in states; the demo-approve row is the seam the real polling replaces. **Superseded 2026-08-10 (plan U4.5):** the demo-approve row and `DEMO_PROFILE` are removed; the screen now takes its phase from the device-grant wiring and mints nothing itself.
+6. `apps/tv/src/lib/auth/deviceAuthFlow.ts` — pure state module mirroring RFC 8628 field names; `createPendingSession` is replaced by the real `/device/code` response. **Superseded 2026-08-10 (plan U4.5, D2 resolved):** `createPendingSession` and the letters/numbers switch are removed — the server mints a ten-digit code and the TV only groups it via `formatUserCode`. Remaining teardown: `docs/roadmap/platform/feat-342-tv-device-grant-scaffold-teardown.md`.
 7. `apps/tv/src/lib/authHeaders.ts` + `src/lib/apolloClient.ts` (`mergeContextHeaders`) — the fleet bearer is pinned to the `WatchSearch` op; the user token MUST be a separate Apollo link, never a widening of that one.
 8. `apps/tv/src/lib/viewer-id.ts` — in-memory anonymous id; login-era follow-up is persisting it and merging into the account identity.
 9. `docs/plans/2026-07-02-001-feat-web-auth-watch-history-plan.md` + `docs/roadmap/platform/feat-229-web-auth-watch-history.md` — the closest shipped precedent (web).
@@ -119,14 +121,14 @@ Server (after the A/B decision):
 3. `tv` entry in `apps/auth/src/domain/apps.ts` (public client, `tokenEndpointAuthMethod: "none"`, scopes `openid profile:read email:read offline_access`) + seed run. Seed is upsert-only — never prunes.
 4. TV client id into admin's `AUTH_WEB_USER_CLIENT_IDS`.
 
-TV: 5. Replace `createPendingSession` stub with the real `/device/code` call; poll `/device/token` at the server-given interval honoring `authorization_pending`/`slow_down`; store tokens in `expo-secure-store` (new dependency + prebuild — AsyncStorage is plaintext and must not hold refresh tokens). 6. Auth provider in `app/_layout.tsx` following the require()-in-try/catch convention; profile data read from auth's userinfo endpoint (admin GraphQL has NO end-user read path). 7. Separate Apollo link attaching the user token (composes via `mergeContextHeaders`); fleet bearer stays pinned to `WatchSearch`. 8. Persist `viewer-id` across launches and thread it into the account merge.
+TV (items 5–8; the `createPendingSession` stub was removed 2026-08-10, plan U4.5): 5. Replace the local minter with the real `/device/code` call; poll `/device/token` at the server-given interval honoring `authorization_pending`/`slow_down`; store tokens in `expo-secure-store` (new dependency + prebuild — AsyncStorage is plaintext and must not hold refresh tokens). 6. Auth provider in `app/_layout.tsx` following the require()-in-try/catch convention; profile data read from auth's userinfo endpoint (admin GraphQL has NO end-user read path). 7. Separate Apollo link attaching the user token (composes via `mergeContextHeaders`); fleet bearer stays pinned to `WatchSearch`. 8. Persist `viewer-id` across launches and thread it into the account merge.
 
 ## Constraints
 
 - NEVER put the watch-progress service key in the TV binary — `EXPO_PUBLIC_*` is extractable; that REST surface trusts a caller-supplied userId (confused-deputy by design, server-side only).
 - No shared `.jesusfilm.org` cookie — per-app local sessions only (`docs/solutions/auth/admin-sso-uses-oauth-local-session-not-shared-cookies.md`).
 - The QR must show on BOTH platforms — do not gate on `isTvOS` like LinkModal does (its Android WebView branch would put a keyboard web form on a D-pad remote).
-- Datadog: TV asserts zero-PII (no `setUser`); user code/email must never reach an `accessibilityLabel` that becomes a RUM action name — use `ddActionName` overrides. Revisit the zero-PII claim in `docs/observability/datadog.md` when accounts land.
+- Datadog: TV asserts zero-PII (no `setUser`); user code/email must never reach an `accessibilityLabel` that becomes a RUM action name — use `ddActionName` overrides. **Done 2026-08-10 (plan U4.8):** the zero-PII claim in `docs/observability/datadog.md` was revisited for accounts and now names its own standing guard; sign-in signals live in `apps/tv/src/lib/auth/deviceGrantTelemetry.ts`, where every upstream string passes `sanitizeDeviceGrantDetail` (a `/token` error can embed `verification_uri_complete`, i.e. the live user code).
 - Typed text entry stays out of scope: TV's keyboard is letters-only; the device flow avoids it entirely.
 - feat-229 v1 exclusions still hold (no playlists, saved videos, parental controls, etc.) — this ticket is sign-in + profile display only.
 
