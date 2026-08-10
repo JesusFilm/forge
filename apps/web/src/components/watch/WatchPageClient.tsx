@@ -47,9 +47,9 @@ import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
-  buildMediaProxyUrl,
   buildDownloadFilename,
   buildDownloadProxyUrl,
+  buildSubtitleProxyUrl,
   type DownloadSequence,
 } from "@/components/watch/download-link"
 import { selectDefaultDownloadTier } from "@/components/watch/download-options"
@@ -67,6 +67,7 @@ import { languageCodeFor } from "@/lib/language-code"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
+  SUBTITLE_INTENT_PARAM,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
@@ -178,6 +179,7 @@ type WatchPageClientProps = {
    * links round-trip cleanly.
    */
   languageSlug?: string
+  subtitleLanguageSlug?: string | null
   collectionSlug?: string | null
   /**
    * Validated ISO locale ("en" | "es" | ...) from the URL `[locale]` segment.
@@ -262,6 +264,7 @@ export function WatchPageClient({
   variant,
   video,
   languageSlug,
+  subtitleLanguageSlug = null,
   collectionSlug = null,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
@@ -400,6 +403,30 @@ export function WatchPageClient({
     setSubtitleEnabled(pref.enabled && slugToUse != null)
   }, [currentLanguageSlug, subtitleInit, subtitles])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const currentRawIntent = url.searchParams.get(SUBTITLE_INTENT_PARAM)
+    if (currentRawIntent == null) return
+
+    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+
+    const intent = tryAsLocaleSlug(currentRawIntent)
+    if (subtitleLanguageSlug == null && intent != null) return
+    if (subtitleLanguageSlug != null && intent !== subtitleLanguageSlug) return
+    const availableIntent =
+      intent != null &&
+      subtitles.some((subtitle) => subtitle.language.slug === intent)
+        ? intent
+        : null
+
+    if (!availableIntent) return
+    setSubtitleSlug(availableIntent)
+    setSubtitleEnabled(true)
+    writeSubtitlePreference(true, availableIntent)
+  }, [subtitleLanguageSlug, subtitles])
+
   const selectedSubtitle = useMemo(() => {
     if (!subtitleEnabled || !subtitleSlug) return null
     return subtitles.find((item) => item.language.slug === subtitleSlug) ?? null
@@ -407,9 +434,12 @@ export function WatchPageClient({
 
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined
-    const rawVttSrc = selectedSubtitle?.vttSrc ?? null
-    return rawVttSrc ? buildMediaProxyUrl(rawVttSrc) : null
-  }, [selectedSubtitle, subtitles.length])
+    if (!selectedSubtitle?.vttSrc) return null
+    return buildSubtitleProxyUrl({
+      subtitleId: selectedSubtitle.documentId,
+      variantId: variant.documentId,
+    })
+  }, [selectedSubtitle, subtitles.length, variant.documentId])
 
   const subtitleLanguageCode = selectedSubtitle
     ? languageCodeFor(selectedSubtitle.language)

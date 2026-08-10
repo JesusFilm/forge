@@ -55,6 +55,7 @@ import {
 import {
   languageVideosIndexPath,
   localizedHomePath,
+  parseWatchSubtitleIntentSegment,
   WATCH_BASE_PATH,
   WATCH_PUBLIC_METADATA_ORIGIN,
   tryAsContentSlug,
@@ -92,7 +93,8 @@ import type { WatchRouteSurface } from "@/components/FloatingSearchContext"
 // route preserves ISR for the majority of traffic without the preference
 // cookie. Admin revalidation clears both route paths and tagged resolver data;
 // the route TTL is the fallback when a webhook or process-local invalidation is
-// missed.
+// missed. Subtitle intent is encoded by the proxy as a validated internal-only
+// trailing segment because Next empties searchParams under force-static.
 // Keep the build output clean so runtime ISR artifacts from old deploys cannot
 // be packaged as fresh pages. See
 // docs/solutions/web/nextjs-headers-defeats-route-cache.md.
@@ -288,6 +290,42 @@ function stripSafeSegment(segment: string): string | null {
   return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
 }
 
+function routeIntentFromRest(rest: string[]) {
+  const lastSegment = rest.at(-1)
+  const subtitleLanguageSlug = lastSegment
+    ? parseWatchSubtitleIntentSegment(lastSegment)
+    : null
+  return subtitleLanguageSlug
+    ? { rest: rest.slice(0, -1), subtitleLanguageSlug }
+    : { rest, subtitleLanguageSlug: null }
+}
+
+function resolveWatchRouteWithSubtitleIntent(
+  slug: string,
+  audioLanguageSlug: string,
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+) {
+  return subtitleLanguageSlug
+    ? resolveWatchRouteBySlug(slug, audioLanguageSlug, subtitleLanguageSlug)
+    : resolveWatchRouteBySlug(slug, audioLanguageSlug)
+}
+
+function resolveEpisodeWithSubtitleIntent(
+  seriesSlug: string,
+  episodeSlug: string,
+  audioLanguageSlug: string,
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+) {
+  return subtitleLanguageSlug
+    ? resolveSeriesEpisodeBySlug(
+        seriesSlug,
+        episodeSlug,
+        audioLanguageSlug,
+        subtitleLanguageSlug,
+      )
+    : resolveSeriesEpisodeBySlug(seriesSlug, episodeSlug, audioLanguageSlug)
+}
+
 function classify(rest: string[], internalLocale: UiLocale): Shape {
   if (rest.length === 1) {
     const slug = stripSafeSegment(rest[0])
@@ -401,9 +439,10 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { locale: rawInternalLocale, rest } = await params
+  const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(rest, internalLocale)
+  const shape = classify(routeIntent.rest, internalLocale)
   if (shape.kind !== "unknown") {
     setRequestLocale(shape.locale)
   }
@@ -420,7 +459,11 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+      const routeModel = await resolveWatchRouteWithSubtitleIntent(
+        slug,
+        rawLocale,
+        routeIntent.subtitleLanguageSlug,
+      )
       if (routeModel.kind === "series") {
         return generateSeriesMetadata(locale, {
           series: routeModel.video,
@@ -458,10 +501,11 @@ export async function generateMetadata({
     // contextual rendering, but publish the standalone child as metadata
     // identity when the series parent resolves.
     try {
-      const resolved = await resolveSeriesEpisodeBySlug(
+      const resolved = await resolveEpisodeWithSubtitleIntent(
         seriesSlug,
         episodeSlug,
         rawLocale,
+        routeIntent.subtitleLanguageSlug,
       )
       if (resolved) {
         return generateWatchVideoMetadata(locale, {
@@ -495,9 +539,10 @@ export async function generateMetadata({
 
 export default async function SlugRestPage({ params }: PageProps) {
   const { locale: rawInternalLocale, rest } = await params
+  const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(rest, internalLocale)
+  const shape = classify(routeIntent.rest, internalLocale)
 
   if (shape.kind === "unknown") notFound()
 
@@ -513,8 +558,8 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment"
       ? await renderOneSegment(shape)
       : shape.kind === "episode"
-        ? await renderEpisode(shape)
-        : await renderVideo(shape)
+        ? await renderEpisode(shape, routeIntent.subtitleLanguageSlug)
+        : await renderVideo(shape, routeIntent.subtitleLanguageSlug)
   const routeSurface = watchRouteSurfaceForShape(shape)
 
   return (
@@ -636,21 +681,25 @@ async function renderOneSegment(shape: {
   )
 }
 
-async function renderEpisode(shape: {
-  kind: "episode"
-  seriesSlug: string
-  episodeSlug: string
-  rawLocale: string
-  locale: UiLocale
-  implicitEnglish: boolean
-}) {
+async function renderEpisode(
+  shape: {
+    kind: "episode"
+    seriesSlug: string
+    episodeSlug: string
+    rawLocale: string
+    locale: UiLocale
+    implicitEnglish: boolean
+  },
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+) {
   const { seriesSlug, episodeSlug, rawLocale, locale, implicitEnglish } = shape
   const routeManifestPromise = getWatchRouteManifest().catch(() => null)
 
-  const resolved = await resolveSeriesEpisodeBySlug(
+  const resolved = await resolveEpisodeWithSubtitleIntent(
     seriesSlug,
     episodeSlug,
     rawLocale,
+    subtitleLanguageSlug,
   )
   if (!resolved) notFound()
 
@@ -674,6 +723,7 @@ async function renderEpisode(shape: {
           localeSlug,
           {
             reason: "locale-resolved",
+            subtitleLanguage: subtitleLanguageSlug ?? undefined,
           },
         ),
       )
@@ -749,6 +799,7 @@ async function renderEpisode(shape: {
         variant={clientVariant}
         video={clientVideo}
         languageSlug={languageSlug}
+        subtitleLanguageSlug={subtitleLanguageSlug}
         collectionSlug={seriesSlug}
         locale={locale}
         hideBibleQuotes={hideBibleQuotes}
@@ -760,12 +811,15 @@ async function renderEpisode(shape: {
   )
 }
 
-async function renderVideo(shape: {
-  kind: "video"
-  slug: string
-  rawLocale: string
-  locale: UiLocale
-}) {
+async function renderVideo(
+  shape: {
+    kind: "video"
+    slug: string
+    rawLocale: string
+    locale: UiLocale
+  },
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+) {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
   const routeManifestPromise = getWatchRouteManifest().catch(() => null)
@@ -777,7 +831,11 @@ async function renderVideo(shape: {
   // only a fallback after video and series routes fail to render.
   let routeModel: Awaited<ReturnType<typeof resolveWatchRouteBySlug>>
   try {
-    routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+    routeModel = await resolveWatchRouteWithSubtitleIntent(
+      slug,
+      rawLocale,
+      subtitleLanguageSlug,
+    )
   } catch (error) {
     logWatchServerEvent(
       "watch_route.video.resolve_failed",
@@ -804,6 +862,7 @@ async function renderVideo(shape: {
         redirect(
           watchVideoPath(contentSlug, localeSlug, {
             reason: "locale-resolved",
+            subtitleLanguage: subtitleLanguageSlug ?? undefined,
           }),
         )
       }
@@ -879,6 +938,7 @@ async function renderVideo(shape: {
           variant={clientVariant}
           video={clientVideo}
           languageSlug={languageSlug}
+          subtitleLanguageSlug={subtitleLanguageSlug}
           locale={locale}
           hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
@@ -977,6 +1037,7 @@ async function renderVideo(shape: {
               : null
           }
           locale={seriesLanguage?.slug ?? rawLocale}
+          subtitleLanguageSlug={subtitleLanguageSlug}
         />
       </>
     )

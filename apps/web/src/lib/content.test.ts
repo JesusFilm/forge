@@ -572,6 +572,74 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.localePublishedAt).toBeNull()
   })
 
+  it("hydrates the same-audio edition selected for requested subtitles", async () => {
+    const selectedEditionVariant = {
+      ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+      documentId: "variant-english-edition-with-russian",
+      duration: 110,
+    }
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchVideoRouteSnapshotBySlug: makeAdminVideo({
+            slug: "perfect-2",
+            // Admin has already preferred this edition over a longer English
+            // dub whose edition does not contain the requested Russian VTT.
+            variants: [selectedEditionVariant],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({
+            ...selectedEditionVariant,
+            videoEdition: {
+              subtitles: [
+                {
+                  documentId: "sub-russian-edition-wide",
+                  vttSrc: "https://cdn.example/russian.vtt",
+                  srtSrc: null,
+                  primary: false,
+                  aiGenerated: false,
+                  video: null,
+                  language: {
+                    coreId: "3934",
+                    bcp47: "ru",
+                    slug: "russian",
+                    name: "Russian",
+                  },
+                },
+              ],
+            },
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug(
+      "perfect-2",
+      "english",
+      "russian",
+    )
+
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      {
+        locale: "en",
+        languageSlug: "english",
+        subtitleLanguageSlug: "russian",
+        videoSlug: "perfect-2",
+      },
+      { id: "variant-english-edition-with-russian" },
+    ])
+    expect(result?.selectedVariant.documentId).toBe(
+      "variant-english-edition-with-russian",
+    )
+    expect(result?.video.subtitles).toEqual([
+      expect.objectContaining({ documentId: "sub-russian-edition-wide" }),
+    ])
+  })
+
   it("does not re-fetch when the primary fetch already returns a locale row", async () => {
     queryMock
       .mockResolvedValueOnce({
@@ -600,6 +668,79 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock).toHaveBeenCalledTimes(2)
     expect(result?.video.title).toBe("Jesus")
+  })
+
+  it("keeps edition-wide and current-Video subtitles while excluding sibling-owned tracks", async () => {
+    const subtitleLanguage = (slug: string, bcp47: string) => ({
+      coreId: slug,
+      bcp47,
+      slug,
+      name: slug,
+    })
+    const subtitle = ({
+      documentId,
+      languageSlug,
+      ownerId,
+    }: {
+      documentId: string
+      languageSlug: string
+      ownerId: string | null
+    }) => ({
+      documentId,
+      vttSrc: `https://cdn.example/${documentId}.vtt`,
+      srtSrc: null,
+      primary: false,
+      aiGenerated: false,
+      video: ownerId ? { documentId: ownerId } : null,
+      language: subtitleLanguage(
+        languageSlug,
+        languageSlug === "russian" ? "ru" : "en",
+      ),
+    })
+
+    queryMock
+      .mockResolvedValueOnce({
+        data: { videoBySlug: makeAdminVideo() },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({
+            videoEdition: {
+              subtitles: [
+                subtitle({
+                  documentId: "sub-sibling-ru",
+                  languageSlug: "russian",
+                  ownerId: "video-2",
+                }),
+                subtitle({
+                  documentId: "sub-global-ru",
+                  languageSlug: "russian",
+                  ownerId: null,
+                }),
+                subtitle({
+                  documentId: "sub-current-ru",
+                  languageSlug: "russian",
+                  ownerId: "video-1",
+                }),
+                subtitle({
+                  documentId: "sub-global-en",
+                  languageSlug: "english",
+                  ownerId: null,
+                }),
+              ],
+            },
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "en")
+
+    expect(result?.video.subtitles.map((track) => track.documentId)).toEqual([
+      "sub-global-en",
+      "sub-current-ru",
+    ])
   })
 
   it("queries admin content with BCP-47 when the watch URL uses an audio slug", async () => {

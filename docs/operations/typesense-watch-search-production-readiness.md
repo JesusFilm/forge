@@ -68,6 +68,11 @@ normal PR merge, run the initial broad rebuild inside the isolated
 missing transcript alias and bootstraps it. Later routine releases reuse that
 physical transcript collection and rebuild only catalog, availability, and
 localized lexical projections.
+Reuse is allowed only when the active transcript schema contains
+`videoEditionId`. If it does not, the index command fails before publishing any
+alias and requires the explicit `--rebuild-transcripts` operation below. Do not
+override that guard: a mixed generation cannot preserve edition-scoped
+subtitle routing.
 Record the physical collection names, catalog count, availability count,
 transcript count, public transcript count, estimated vector bytes, per-case
 rankings, overlap, lane timings, disk use, and Typesense `/metrics.json` before

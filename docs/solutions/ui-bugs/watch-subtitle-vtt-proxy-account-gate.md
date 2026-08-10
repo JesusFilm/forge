@@ -16,6 +16,7 @@ resolution_type: code_fix
 severity: high
 related_components:
   - "apps/web/src/app/api/download/route.ts"
+  - "apps/web/src/lib/subtitle-target.ts"
   - "apps/web/src/components/watch/HeroPlayer.tsx"
   - "apps/web/src/components/watch/WatchPageClient.tsx"
 tags:
@@ -82,16 +83,20 @@ large video bodies.
 ## Solution
 
 Classify the public browser-only request before applying download authorization.
-The exception requires `disposition=inline`, an allowlisted origin, and a URL
-pathname ending in `.vtt`. Only that shape bypasses the account gate
-(`apps/web/src/app/api/download/route.ts:46`,
-`apps/web/src/app/api/download/route.ts:61`). Inline video, VTT attachments,
-malformed URLs, and non-allowlisted origins stay on the protected path.
+The exception requires `disposition=inline` plus opaque `subtitleId` and
+`variantId` values. The browser never supplies the upstream URL used by
+`fetch`; Web resolves it server-side from the published Dub and requires the
+subtitle to belong to the same edition (and Video when the subtitle declares an
+owner). Inline video, VTT attachments, malformed identifiers, and legacy raw
+URLs stay on the protected path.
 
-The request still crosses the full SSRF boundary. `validateTarget` enforces the
-HTTPS allowlist, requires every IPv4 and IPv6 DNS answer to be public, and
-reconstructs the safe origin, pathname, and query before any server-side fetch
-(`apps/web/src/app/api/download/route.ts:231`).
+The resolved request still crosses the full SSRF boundary. `validateTarget`
+enforces the HTTPS allowlist, requires every IPv4 and IPv6 DNS answer to be
+public, and reconstructs the safe origin and pathname. Before fetching, Web
+requires the exact `https://api-media-core.jesusfilm.org` origin, rejects query
+strings, decodes and validates each path segment, then rebuilds the queryless
+`.vtt` path with `encodeURIComponent`. This both prevents path traversal and
+keeps public request values out of the fetch origin.
 
 For the classified request, `proxyInlineSubtitle` fetches upstream with only
 `Accept: text/vtt`, combines client cancellation with a 30-second timeout, and
@@ -163,8 +168,9 @@ low-bandwidth redirect contract.
   failure, missing-body, and ordinary-download redirect cases together as one
   regression matrix.
 - Do not relax the exception to all inline media or all `.vtt` paths. Preserve
-  the allowlist, public-IP DNS preflight, URL reconstruction, manual redirect
-  policy, exact `text/vtt` validation, and credential isolation.
+  opaque server-side resolution, same-edition ownership, the exact Core origin,
+  public-IP DNS preflight, queryless canonical path reconstruction, manual
+  redirect policy, exact `text/vtt` validation, and credential isolation.
 - Do not forward `Content-Length` or `Content-Encoding` unless the proxy can
   prove those values describe the emitted byte stream.
 - Re-test both signed-out and signed-in playback when changing the account gate,

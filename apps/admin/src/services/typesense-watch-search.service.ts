@@ -62,6 +62,7 @@ const MAX_LIMIT = 50
 const MAX_QUERY_LENGTH = 200
 const TYPESENSE_MAX_PER_PAGE = 250
 const TYPESENSE_MAX_MULTI_SEARCHES = 50
+const MAX_AVAILABILITY_OVERFLOW_SEARCHES = 50
 const MAX_LEXICAL_CANDIDATES =
   TYPESENSE_MAX_PER_PAGE * TYPESENSE_MAX_MULTI_SEARCHES
 const MAX_SEMANTIC_CANDIDATES = 40
@@ -87,8 +88,14 @@ const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
 const CATALOG_RESULT_FIELDS =
   "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl"
 const AVAILABILITY_RESULT_FIELDS =
-  "id,videoId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds"
+  "id,videoId,videoEditionId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds,hrefLanguageSlug,actionVideoDubId,actionPriority"
 const LEGACY_CATALOG_RESULT_FIELDS = `${CATALOG_RESULT_FIELDS},audioOptionsJson,subtitleOptionsJson`
+const AVAILABILITY_ACTION_FIELDS = [
+  "videoEditionId",
+  "hrefLanguageSlug",
+  "actionVideoDubId",
+  "actionPriority",
+] as const
 
 type TypesenseSearchClient = Pick<TypesenseClient, "multiSearch">
 
@@ -128,6 +135,7 @@ type MutableSearchDiagnostics = Omit<
 
 type Candidate = {
   videoId: string
+  videoEditionId: string | null
   kind: "exact" | "metadata" | "semantic"
   wholeTitleMatch: boolean
   sourceScore: number
@@ -135,6 +143,11 @@ type Candidate = {
   snippet: string | null
   startSeconds: number | null
 }
+
+type CandidateHydrationScope = Pick<
+  Candidate,
+  "videoId" | "videoEditionId" | "kind"
+>
 
 type CandidateRetrieval = {
   candidates: Candidate[]
@@ -223,14 +236,32 @@ export class TypesenseWatchSearchUnavailableError extends Error {
   }
 }
 
+class AvailabilityOverflowError extends Error {
+  constructor() {
+    super("Typesense availability hydration exceeded its overflow page budget")
+    this.name = "AvailabilityOverflowError"
+  }
+}
+
+function isLegacyAvailabilityProjection(error: unknown): boolean {
+  if (!(error instanceof TypesenseRequestError) || error.status !== 400) {
+    return false
+  }
+  const fieldFailure =
+    /(?:could not find|unknown|not found|does not exist)[^\n]*field|field[^\n]*(?:not found|unknown|does not exist)/i.test(
+      error.message,
+    )
+  return (
+    fieldFailure &&
+    AVAILABILITY_ACTION_FIELDS.some((field) => error.message.includes(field))
+  )
+}
+
 function isMissingAvailabilityProjection(
   error: unknown,
-  collection: string,
+  _collection: string,
 ): boolean {
-  return (
-    error instanceof TypesenseRequestError &&
-    (error.status === 404 || error.message.includes(collection))
-  )
+  return error instanceof TypesenseRequestError && error.status === 404
 }
 
 function isMissingLexicalProjection(
@@ -241,7 +272,7 @@ function isMissingLexicalProjection(
     error instanceof TypesenseRequestError &&
     (error.status === 400 || error.status === 404) &&
     new RegExp(
-      `${collection.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|title_[a-z]|metadata_[a-z]|canonicalVideoId|languageIdentity`,
+      `${collection.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|title_[a-z]|metadata_[a-z]|canonicalVideoId|videoEditionId|languageIdentity`,
     ).test(error.message)
   )
 }
@@ -422,7 +453,7 @@ function semanticLaneRequest(
     page: Math.floor(offset / perPage) + 1,
     per_page: perPage,
     include_fields:
-      "id,documentKind,videoId,canonicalVideoId,language,text,startSeconds",
+      "id,documentKind,videoId,videoEditionId,canonicalVideoId,language,text,startSeconds",
   }
 }
 
@@ -452,9 +483,67 @@ function englishName(value: unknown): string | null {
   return null
 }
 
+type SubtitleActionSortFields = Pick<
+  TypesenseWatchAvailabilityDocument,
+  | "actionPriority"
+  | "durationSeconds"
+  | "hrefLanguageSlug"
+  | "actionVideoDubId"
+  | "videoEditionId"
+  | "id"
+>
+
+function compareSubtitleActions(
+  left: SubtitleActionSortFields,
+  right: SubtitleActionSortFields,
+): number {
+  const priorityDelta =
+    (left.actionPriority ?? Number.MAX_SAFE_INTEGER) -
+    (right.actionPriority ?? Number.MAX_SAFE_INTEGER)
+  if (priorityDelta !== 0) return priorityDelta
+  const durationDelta =
+    (right.durationSeconds ?? -1) - (left.durationSeconds ?? -1)
+  if (durationDelta !== 0) return durationDelta
+  const slugDelta = (left.hrefLanguageSlug ?? "").localeCompare(
+    right.hrefLanguageSlug ?? "",
+  )
+  if (slugDelta !== 0) return slugDelta
+  const dubDelta = (left.actionVideoDubId ?? "").localeCompare(
+    right.actionVideoDubId ?? "",
+  )
+  if (dubDelta !== 0) return dubDelta
+  const editionDelta = (left.videoEditionId ?? "").localeCompare(
+    right.videoEditionId ?? "",
+  )
+  return editionDelta !== 0 ? editionDelta : left.id.localeCompare(right.id)
+}
+
+function legacySubtitleAvailability(
+  documentId: string,
+  option: TypesenseWatchSubtitleOption,
+): TypesenseWatchAvailabilityDocument {
+  return {
+    id: `${documentId}:${option.videoEditionId ?? "unscoped"}:${option.languageId}`,
+    videoId: documentId,
+    videoEditionId: option.videoEditionId ?? null,
+    languageId: option.languageId,
+    languageSlug: option.languageSlug,
+    languageEnglishName: option.languageEnglishName ?? null,
+    audio: false,
+    subtitles: true,
+    playbackId: option.playbackId ?? null,
+    durationSeconds: option.durationSeconds ?? null,
+    hrefLanguageSlug: option.hrefLanguageSlug ?? null,
+    actionVideoDubId: option.actionVideoDubId ?? null,
+    actionPriority: option.actionPriority ?? null,
+  }
+}
+
 function resolveLegacyWatchability(
   document: TypesenseWatchLegacyCatalogResultDocument,
   target: TargetLanguageContext,
+  candidateVideoEditionId: string | null,
+  requireVideoEditionIdForSubtitle: boolean,
 ): IndexedWatchability {
   const audioOptions = parseJsonArray<TypesenseWatchAudioOption>(
     document.audioOptionsJson,
@@ -477,19 +566,27 @@ function resolveLegacyWatchability(
       hrefLanguageSlug: targetAudio.languageSlug,
     }
   }
-  const targetSubtitle = subtitleOptions.find(
-    (option) => option.languageSlug === target.slug,
-  )
+  const targetSubtitle = subtitleOptions
+    .filter(
+      (option) =>
+        option.languageSlug === target.slug &&
+        (candidateVideoEditionId != null
+          ? option.videoEditionId === candidateVideoEditionId
+          : !requireVideoEditionIdForSubtitle),
+    )
+    .map((option) => legacySubtitleAvailability(document.id, option))
+    .sort(compareSubtitleActions)[0]
   if (targetSubtitle) {
     return {
       kind: "target_subtitle",
       languageSlug: targetSubtitle.languageSlug,
-      languageEnglishName: target.englishName,
+      languageEnglishName:
+        targetSubtitle.languageEnglishName ?? target.englishName,
       audio: false,
       subtitles: true,
-      playbackId: null,
-      durationSeconds: null,
-      hrefLanguageSlug: targetSubtitle.languageSlug,
+      playbackId: targetSubtitle.playbackId,
+      durationSeconds: targetSubtitle.durationSeconds,
+      hrefLanguageSlug: targetSubtitle.hrefLanguageSlug ?? null,
     }
   }
   for (const languageId of target.fallbackLanguageIds) {
@@ -524,32 +621,47 @@ function resolveLegacyWatchability(
 function resolveWatchability(
   availability: readonly TypesenseWatchAvailabilityDocument[],
   target: TargetLanguageContext,
+  candidateVideoEditionId: string | null,
+  requireVideoEditionIdForSubtitle: boolean,
 ): IndexedWatchability {
-  const targetOption = availability.find(
-    (option) => option.languageSlug === target.slug,
+  const targetAudio = availability.find(
+    (option) => option.languageSlug === target.slug && option.audio,
   )
-  if (targetOption?.audio) {
+  if (targetAudio) {
     return {
       kind: "target_audio",
-      languageSlug: targetOption.languageSlug,
-      languageEnglishName: targetOption.languageEnglishName,
+      languageSlug: targetAudio.languageSlug,
+      languageEnglishName: targetAudio.languageEnglishName,
       audio: true,
       subtitles: false,
-      playbackId: targetOption.playbackId,
-      durationSeconds: targetOption.durationSeconds,
-      hrefLanguageSlug: targetOption.languageSlug,
+      playbackId: targetAudio.playbackId,
+      durationSeconds: targetAudio.durationSeconds,
+      hrefLanguageSlug:
+        targetAudio.hrefLanguageSlug ?? targetAudio.languageSlug,
     }
   }
-  if (targetOption?.subtitles) {
+  const targetSubtitle = availability
+    .filter(
+      (option) =>
+        option.languageSlug === target.slug &&
+        option.subtitles &&
+        !option.audio &&
+        (candidateVideoEditionId != null
+          ? option.videoEditionId === candidateVideoEditionId
+          : !requireVideoEditionIdForSubtitle),
+    )
+    .sort(compareSubtitleActions)[0]
+  if (targetSubtitle) {
     return {
       kind: "target_subtitle",
-      languageSlug: targetOption.languageSlug,
-      languageEnglishName: target.englishName,
+      languageSlug: targetSubtitle.languageSlug,
+      languageEnglishName:
+        targetSubtitle.languageEnglishName ?? target.englishName,
       audio: false,
       subtitles: true,
-      playbackId: null,
-      durationSeconds: null,
-      hrefLanguageSlug: targetOption.languageSlug,
+      playbackId: targetSubtitle.playbackId,
+      durationSeconds: targetSubtitle.durationSeconds,
+      hrefLanguageSlug: targetSubtitle.hrefLanguageSlug ?? null,
     }
   }
   for (const languageId of target.fallbackLanguageIds) {
@@ -565,7 +677,7 @@ function resolveWatchability(
         subtitles: false,
         playbackId: fallback.playbackId,
         durationSeconds: fallback.durationSeconds,
-        hrefLanguageSlug: fallback.languageSlug,
+        hrefLanguageSlug: fallback.hrefLanguageSlug ?? fallback.languageSlug,
       }
     }
   }
@@ -988,9 +1100,7 @@ export class TypesenseWatchSearchService {
         nativeOffset + limit + 1,
       )
       hydratedById = await this.hydrateResultDocuments(
-        candidateGroups.flatMap((group) =>
-          group.map((candidate) => candidate.videoId),
-        ),
+        candidateGroups.flat(),
         target,
         diagnostics,
       )
@@ -1063,7 +1173,7 @@ export class TypesenseWatchSearchService {
         })
       const fallbackPage = rankedCandidates.slice(offset, offset + limit)
       hydratedById = await this.hydrateResultDocuments(
-        fallbackPage.map((entry) => entry.candidate.videoId),
+        fallbackPage.map((entry) => entry.candidate),
         target,
         diagnostics,
       )
@@ -1467,14 +1577,29 @@ export class TypesenseWatchSearchService {
         kindRank[candidate.kind] > kindRank[existing.kind]
           ? candidate
           : existing
+      const semanticEvidence =
+        existing.kind === "semantic"
+          ? existing
+          : candidate.kind === "semantic"
+            ? candidate
+            : null
       state.members.set(candidate.videoId, {
         ...preferred,
         wholeTitleMatch: existing.wholeTitleMatch || candidate.wholeTitleMatch,
         sourceScore: existing.sourceScore + contribution,
-        snippet: candidate.snippet ?? existing.snippet,
-        startSeconds: candidate.startSeconds ?? existing.startSeconds,
-        evidenceLanguageSlug:
-          candidate.evidenceLanguageSlug ?? existing.evidenceLanguageSlug,
+        ...(semanticEvidence
+          ? {
+              videoEditionId: semanticEvidence.videoEditionId,
+              snippet: semanticEvidence.snippet,
+              startSeconds: semanticEvidence.startSeconds,
+              evidenceLanguageSlug: semanticEvidence.evidenceLanguageSlug,
+            }
+          : {
+              snippet: candidate.snippet ?? existing.snippet,
+              startSeconds: candidate.startSeconds ?? existing.startSeconds,
+              evidenceLanguageSlug:
+                candidate.evidenceLanguageSlug ?? existing.evidenceLanguageSlug,
+            }),
       })
     }
 
@@ -1506,6 +1631,7 @@ export class TypesenseWatchSearchService {
             state,
             {
               videoId: hit.document.videoId,
+              videoEditionId: null,
               kind: exact ? "exact" : "metadata",
               wholeTitleMatch,
               sourceScore: 0,
@@ -1546,11 +1672,25 @@ export class TypesenseWatchSearchService {
         members: new Map<string, Candidate>(),
       }
       state.fusedScore += contribution
+      const winningHitByVideoId = new Map<
+        string,
+        TypesenseSearchHit<TypesenseWatchTranscriptDocument>
+      >()
       for (const hit of relevantHits) {
+        const existing = winningHitByVideoId.get(hit.document.videoId)
+        if (
+          !existing ||
+          (hit.vector_distance ?? 1) < (existing.vector_distance ?? 1)
+        ) {
+          winningHitByVideoId.set(hit.document.videoId, hit)
+        }
+      }
+      for (const hit of winningHitByVideoId.values()) {
         addCandidate(
           state,
           {
             videoId: hit.document.videoId,
+            videoEditionId: hit.document.videoEditionId ?? null,
             kind: "semantic",
             wholeTitleMatch: false,
             sourceScore: 0,
@@ -1616,6 +1756,7 @@ export class TypesenseWatchSearchService {
       const { exact, wholeTitleMatch } = classifyTitleMatch([locale.title])
       candidates.set(hit.document.id, {
         videoId: hit.document.id,
+        videoEditionId: null,
         kind: exact ? "exact" : "metadata",
         wholeTitleMatch,
         sourceScore: exact
@@ -1634,6 +1775,7 @@ export class TypesenseWatchSearchService {
       if (existing && existing.sourceScore >= similarity) continue
       candidates.set(hit.document.videoId, {
         videoId: hit.document.videoId,
+        videoEditionId: hit.document.videoEditionId ?? null,
         kind: "semantic",
         wholeTitleMatch: false,
         sourceScore: Math.max(0, Math.min(1, similarity)),
@@ -1651,52 +1793,91 @@ export class TypesenseWatchSearchService {
   }
 
   private async hydrateResultDocuments(
-    videoIds: readonly string[],
+    candidates: readonly CandidateHydrationScope[],
     target: TargetLanguageContext,
     diagnostics?: MutableSearchDiagnostics,
   ): Promise<Map<string, HydratedResultDocument>> {
-    const ids = [...new Set(videoIds)]
+    const candidateScopeByVideoId = new Map<string, CandidateHydrationScope>()
+    for (const candidate of candidates) {
+      if (!candidateScopeByVideoId.has(candidate.videoId)) {
+        candidateScopeByVideoId.set(candidate.videoId, candidate)
+      }
+    }
+    const ids = [...candidateScopeByVideoId.keys()]
     if (ids.length === 0) return new Map()
 
-    const languageIds = [target.id, ...target.fallbackLanguageIds].filter(
-      (value, index, all): value is string =>
-        value != null && all.indexOf(value) === index,
-    )
-    const searches: TypesenseSearchRequest[] = [
-      {
+    const catalogSearches: TypesenseSearchRequest[] = []
+    for (let index = 0; index < ids.length; index += TYPESENSE_MAX_PER_PAGE) {
+      const batch = ids.slice(index, index + TYPESENSE_MAX_PER_PAGE)
+      catalogSearches.push({
         collection: this.profile.binding.catalog,
         q: "*",
-        filter_by: `id:=[${ids.map((id) => `\`${id}\``).join(",")}]`,
-        per_page: ids.length,
+        filter_by: `id:=[${batch.map((id) => `\`${id}\``).join(",")}]`,
+        per_page: batch.length,
         include_fields: CATALOG_RESULT_FIELDS,
-      },
-    ]
-    if (languageIds.length > 0) {
+      })
+    }
+    const availabilitySearches: TypesenseSearchRequest[] = []
+    const addAvailabilitySearches = (
+      languageIds: readonly string[],
+      audioOnly: boolean,
+    ) => {
+      if (languageIds.length === 0) return
       const videoBatchSize = Math.max(
         1,
         Math.floor(TYPESENSE_MAX_PER_PAGE / languageIds.length),
       )
       for (let index = 0; index < ids.length; index += videoBatchSize) {
         const batch = ids.slice(index, index + videoBatchSize)
-        searches.push({
+        availabilitySearches.push({
           collection: this.profile.binding.availability,
           q: "*",
-          filter_by: `videoId:=[${batch.map((id) => `\`${id}\``).join(",")}] && languageId:=[${languageIds.map((id) => `\`${id}\``).join(",")}]`,
-          per_page: batch.length * languageIds.length,
+          filter_by: `videoId:=[${batch.map((id) => `\`${id}\``).join(",")}] && languageId:=[${languageIds.map((id) => `\`${id}\``).join(",")}]${audioOnly ? " && audio:=true" : ""}`,
+          per_page: TYPESENSE_MAX_PER_PAGE,
           include_fields: AVAILABILITY_RESULT_FIELDS,
         })
       }
     }
+    if (target.id) addAvailabilitySearches([target.id], false)
+    addAvailabilitySearches(
+      target.fallbackLanguageIds.filter((id) => id !== target.id),
+      true,
+    )
 
     try {
-      const [catalogResult, ...availabilityResults] = await this.multiSearch<
+      const initialResults = await this.multiSearchInBatches<
         TypesenseWatchCatalogResultDocument | TypesenseWatchAvailabilityDocument
-      >(searches, diagnostics)
+      >([...catalogSearches, ...availabilitySearches], diagnostics)
+      const catalogResults = initialResults.slice(0, catalogSearches.length)
+      const availabilityResults = initialResults.slice(catalogSearches.length)
+      const overflowSearches: TypesenseSearchRequest[] = []
+      for (const [index, result] of availabilityResults.entries()) {
+        const request = availabilitySearches[index]
+        if (!request) continue
+        const overflowPages = Math.max(
+          0,
+          Math.ceil(result.found / TYPESENSE_MAX_PER_PAGE) - 1,
+        )
+        if (
+          overflowSearches.length + overflowPages >
+          MAX_AVAILABILITY_OVERFLOW_SEARCHES
+        ) {
+          throw new AvailabilityOverflowError()
+        }
+        for (let page = 0; page < overflowPages; page += 1) {
+          overflowSearches.push({ ...request, page: page + 2 })
+        }
+      }
+      const overflowResults =
+        await this.multiSearchInBatches<TypesenseWatchAvailabilityDocument>(
+          overflowSearches,
+          diagnostics,
+        )
       const availabilityByVideoId = new Map<
         string,
         TypesenseWatchAvailabilityDocument[]
       >()
-      for (const hit of availabilityResults.flatMap(
+      for (const hit of [...availabilityResults, ...overflowResults].flatMap(
         (result) => result.hits ?? [],
       )) {
         const document = hit.document as TypesenseWatchAvailabilityDocument
@@ -1705,32 +1886,42 @@ export class TypesenseWatchSearchService {
         availabilityByVideoId.set(document.videoId, entries)
       }
       return new Map(
-        (catalogResult?.hits ?? []).map((hit) => {
-          const document = hit.document as TypesenseWatchCatalogResultDocument
-          return [
-            document.id,
-            {
-              document,
-              watchability: resolveWatchability(
-                availabilityByVideoId.get(document.id) ?? [],
-                target,
-              ),
-            },
-          ] as const
-        }),
+        catalogResults
+          .flatMap((result) => result.hits ?? [])
+          .map((hit) => {
+            const document = hit.document as TypesenseWatchCatalogResultDocument
+            const candidateScope = candidateScopeByVideoId.get(document.id)
+            return [
+              document.id,
+              {
+                document,
+                watchability: resolveWatchability(
+                  availabilityByVideoId.get(document.id) ?? [],
+                  target,
+                  candidateScope?.videoEditionId ?? null,
+                  candidateScope?.kind === "semantic",
+                ),
+              },
+            ] as const
+          }),
       )
     } catch (error) {
-      if (
-        !this.profile.allowCompatibilityFallback ||
-        !isMissingAvailabilityProjection(
+      const legacyProjection = isLegacyAvailabilityProjection(error)
+      const missingProjection =
+        !legacyProjection &&
+        isMissingAvailabilityProjection(
           error,
           this.profile.binding.availability,
         )
+      const overflow = error instanceof AvailabilityOverflowError
+      if (
+        !this.profile.allowCompatibilityFallback ||
+        (!missingProjection && !legacyProjection && !overflow)
       ) {
         throw error
       }
       this.logger.warn(
-        "[typesense-watch-search] event=availability_alias_fallback",
+        `[typesense-watch-search] event=${missingProjection ? "availability_alias_fallback" : overflow ? "availability_overflow_fallback" : "availability_projection_fallback"}`,
       )
       const legacyById =
         await this.catalogDocuments<TypesenseWatchLegacyCatalogResultDocument>(
@@ -1743,11 +1934,36 @@ export class TypesenseWatchSearchService {
           id,
           {
             document,
-            watchability: resolveLegacyWatchability(document, target),
+            watchability: resolveLegacyWatchability(
+              document,
+              target,
+              candidateScopeByVideoId.get(id)?.videoEditionId ?? null,
+              candidateScopeByVideoId.get(id)?.kind === "semantic",
+            ),
           },
         ]),
       )
     }
+  }
+
+  private async multiSearchInBatches<TDocument>(
+    searches: readonly TypesenseSearchRequest[],
+    diagnostics?: MutableSearchDiagnostics,
+  ): Promise<TypesenseSearchResult<TDocument>[]> {
+    const results: TypesenseSearchResult<TDocument>[] = []
+    for (
+      let index = 0;
+      index < searches.length;
+      index += TYPESENSE_MAX_MULTI_SEARCHES
+    ) {
+      results.push(
+        ...(await this.multiSearch<TDocument>(
+          searches.slice(index, index + TYPESENSE_MAX_MULTI_SEARCHES),
+          diagnostics,
+        )),
+      )
+    }
+    return results
   }
 
   private async catalogDocuments<

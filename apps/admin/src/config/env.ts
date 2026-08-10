@@ -302,6 +302,9 @@ export const env = createEnv({
     // Opt-in read-only integration test gate for the mapper catalog SQL.
     // Test-only; production code does not branch on this value.
     VIDEO_MAPPER_CATALOG_DB_TEST: z.enum(["1"]).optional(),
+    // Opt-in transactional integration test for DEFAULT and MODERN Watch
+    // subtitle/audio selection SQL. Test-only; production never branches on it.
+    WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
     // Narrow receiver-side CSV for Mastra -> Admin transcript vector ingest.
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
@@ -746,6 +749,7 @@ export const env = createEnv({
     VIDEO_MAPPER_CATALOG_DB_TEST: emptyToUndefined(
       process.env.VIDEO_MAPPER_CATALOG_DB_TEST,
     ),
+    WATCH_SEARCH_DB_TEST: emptyToUndefined(process.env.WATCH_SEARCH_DB_TEST),
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
