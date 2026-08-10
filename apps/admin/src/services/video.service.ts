@@ -2883,6 +2883,7 @@ export class VideoService {
       : {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
         }
 
     const dubs = await this.prisma.videoDub.findMany({
@@ -2939,6 +2940,7 @@ export class VideoService {
       : {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
         }
 
     return this.prisma.videoDub.findMany({

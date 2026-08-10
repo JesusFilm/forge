@@ -1544,6 +1544,7 @@ describe("VideoService", () => {
       expect(call.where.video).toMatchObject({
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
       })
     })
 
@@ -1555,6 +1556,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("flattens each distinct dub's language into the minimal picker shape", async () => {
@@ -1631,6 +1633,7 @@ describe("VideoService", () => {
             deletedAt: null,
             locales: { some: { status: "PUBLISHED", deletedAt: null } },
             parents: { some: { parentId: "series-1" } },
+            NOT: { restrictViewPlatforms: { has: "watch" } },
           },
         },
         distinct: ["videoId"],
@@ -1651,6 +1654,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("returns the selected Dub rows unchanged", async () => {
