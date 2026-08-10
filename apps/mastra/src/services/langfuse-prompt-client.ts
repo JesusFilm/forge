@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import { getLangfuseConfig, type LangfuseConfig } from "../config/env"
@@ -80,6 +81,12 @@ export type LangfusePromptFailureDetail =
   /** Only set for `parse_error` on a 200: KTD6 content-validation outcomes. */
   | "chat_type_unsupported"
   | "empty_prompt"
+  /** Caller supplied mutually exclusive or invalid immutable selectors. */
+  | "selector_conflict"
+  | "invalid_version"
+  /** Strict official resolution received identity other than the requested one. */
+  | "version_mismatch"
+  | "content_hash_mismatch"
 
 export type LangfusePromptClientFailure = {
   ok: false
@@ -103,6 +110,8 @@ export type LangfusePromptFetchInput = {
    * its own default (the `production` label per the documented contract).
    */
   label?: string
+  /** Exact immutable version selector. Mutually exclusive with `label`. */
+  version?: number
   config?: LangfuseConfig
   fetchImpl?: typeof fetch
 }
@@ -265,9 +274,29 @@ function failureForStatus(
 export async function fetchLangfusePrompt({
   name,
   label,
+  version,
   config = getLangfuseConfig(),
   fetchImpl = fetch,
 }: LangfusePromptFetchInput): Promise<LangfusePromptClientResult> {
+  if (label !== undefined && version !== undefined) {
+    return {
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      detail: "selector_conflict",
+    }
+  }
+  if (
+    version !== undefined &&
+    (!Number.isSafeInteger(version) || version <= 0)
+  ) {
+    return {
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      detail: "invalid_version",
+    }
+  }
   // Configured means the base URL AND both auth halves are present; degrade
   // (never boot-throw) on any third absent, distinguishing which for the
   // observable misconfiguration log layer 2 emits. Checked BEFORE any fetch.
@@ -312,6 +341,7 @@ export async function fetchLangfusePrompt({
     // Pass-through only: label resolution/defaulting is layer 2's job. Omitted
     // label means Langfuse applies its own documented default (`production`).
     if (label !== undefined) url.searchParams.set("label", label)
+    if (version !== undefined) url.searchParams.set("version", String(version))
   } catch {
     return { ok: false, reason: "rejected", retryable: false }
   }
@@ -404,6 +434,83 @@ export async function fetchLangfusePrompt({
     // Field projection (spread, not the parsed reference) mirrors the
     // template's discipline: nothing beyond the consumed shape escapes.
     labels: [...parsed.data.labels],
+  }
+}
+
+export type ImmutableManagedPromptIdentity = {
+  provider: "langfuse"
+  name: string
+  revision: string
+  contentHash: string
+}
+
+export type ExactManagedPromptResult =
+  | {
+      ok: true
+      text: string
+      identity: ImmutableManagedPromptIdentity
+    }
+  | LangfusePromptClientFailure
+
+export type ExactManagedPromptInput = Omit<
+  LangfusePromptFetchInput,
+  "label" | "version"
+> & {
+  version: number
+  expectedContentHash?: string
+}
+
+/**
+ * Strict, uncached resolution for official runs. It never consults the
+ * resilient managed-prompt cache and therefore cannot return stale or fallback
+ * text. Identity mismatches are failures whose typed result carries no prompt
+ * body.
+ */
+export async function resolveExactManagedPrompt({
+  name,
+  version,
+  expectedContentHash,
+  config,
+  fetchImpl,
+}: ExactManagedPromptInput): Promise<ExactManagedPromptResult> {
+  const fetched = await fetchLangfusePrompt({
+    name,
+    version,
+    config,
+    fetchImpl,
+  })
+  if (!fetched.ok) return fetched
+  if (fetched.version !== version) {
+    return {
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      detail: "version_mismatch",
+    }
+  }
+
+  const contentHash = createHash("sha256").update(fetched.text).digest("hex")
+  if (
+    expectedContentHash !== undefined &&
+    contentHash !== expectedContentHash
+  ) {
+    return {
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      detail: "content_hash_mismatch",
+    }
+  }
+
+  return {
+    ok: true,
+    text: fetched.text,
+    identity: {
+      provider: "langfuse",
+      name,
+      revision: String(fetched.version),
+      contentHash,
+    },
   }
 }
 

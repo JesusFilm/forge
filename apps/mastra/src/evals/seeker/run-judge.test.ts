@@ -139,6 +139,12 @@ describe("judgeOneAnswer — retry once, then invalid", () => {
     expect(result.status).toBe("judged")
     expect(result.retried).toBe(true)
     expect(complete).toHaveBeenCalledTimes(2)
+    expect(complete.mock.calls[1][0].user).toContain(
+      `missing verdict for ${CRITERIA[0].id}`,
+    )
+    expect(complete.mock.calls[1][0].user).toContain(
+      "Return exactly these criterion ids",
+    )
     // Usage accumulates across BOTH attempts — the retry is paid for.
     expect(result.judgeUsage).toEqual({ input: 20, output: 20 })
   })

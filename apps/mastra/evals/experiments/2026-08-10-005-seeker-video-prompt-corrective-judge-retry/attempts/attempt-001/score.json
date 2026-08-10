@@ -1,0 +1,353 @@
+{
+  "schemaVersion": "seeker-experiment-scores/v1",
+  "productionBenchmark": {
+    "kind": "seeker-eval-score",
+    "weightsVersion": "seeker-weights/v1",
+    "identity": {
+      "promptSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+      "promptSource": "langfuse",
+      "promptLangfuseVersion": 1,
+      "promptLangfuseLabel": null,
+      "sectionMappingVersion": "seeker-sections/v2",
+      "questionSetId": "seeker-eval/v1",
+      "questionIds": [
+        "q-suffering",
+        "q-grief-father",
+        "q-trinity",
+        "q-living-together",
+        "q-python-pdf",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+      "answeringModels": [
+        "anthropic/claude-sonnet-5"
+      ],
+      "decoding": null,
+      "sampleId": "s1",
+      "gitSha": "989a9eb6",
+      "retrieval": {
+        "mode": "tool-loop",
+        "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+        "topK": 5
+      },
+      "judge": {
+        "model": "anthropic/claude-haiku-4.5",
+        "rubricSha256": "d53822f668c6fd9f726003f8866a5c61486eb0880d49500073c0123fcb092244"
+      },
+      "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+    },
+    "runScore": 1,
+    "runBand": "pass",
+    "cells": [
+      {
+        "questionId": "q-suffering",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 10,
+        "totalWeight": 10
+      },
+      {
+        "questionId": "q-grief-father",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 10,
+        "totalWeight": 10
+      },
+      {
+        "questionId": "q-trinity",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 13,
+        "totalWeight": 13
+      },
+      {
+        "questionId": "q-living-together",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 11,
+        "totalWeight": 11
+      },
+      {
+        "questionId": "q-python-pdf",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 17,
+        "totalWeight": 17
+      },
+      {
+        "questionId": "q-islam-jesus",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 11,
+        "totalWeight": 11
+      },
+      {
+        "questionId": "q-verse-exact-words",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 22,
+        "totalWeight": 22
+      },
+      {
+        "questionId": "q-links-to-verify",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 18,
+        "totalWeight": 18
+      },
+      {
+        "questionId": "q-bible-changed",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 18,
+        "totalWeight": 18
+      },
+      {
+        "questionId": "q-theotokos",
+        "model": "anthropic/claude-sonnet-5",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 18,
+        "totalWeight": 18
+      }
+    ],
+    "byModel": [
+      {
+        "model": "anthropic/claude-sonnet-5",
+        "score": 1,
+        "band": "pass",
+        "judgedCells": 10,
+        "invalidCells": 0,
+        "answerErrorCells": 0
+      }
+    ],
+    "bySection": [
+      {
+        "section": "citation-discipline",
+        "score": 1,
+        "satisfiedCount": 17,
+        "violatedCount": 0
+      },
+      {
+        "section": "empty-unavailable-handling",
+        "score": 1,
+        "satisfiedCount": 4,
+        "violatedCount": 0
+      },
+      {
+        "section": "persona",
+        "score": 1,
+        "satisfiedCount": 33,
+        "violatedCount": 0
+      },
+      {
+        "section": "safety",
+        "score": 1,
+        "satisfiedCount": 7,
+        "violatedCount": 0
+      }
+    ],
+    "judgedCells": 10,
+    "invalidCells": 0,
+    "answerErrorCells": 0
+  },
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-score",
+      "weightsVersion": "seeker-weights/v1",
+      "identity": {
+        "promptSha256": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+        "promptSource": "langfuse",
+        "promptLangfuseVersion": 2,
+        "promptLangfuseLabel": null,
+        "sectionMappingVersion": "seeker-sections/v2",
+        "questionSetId": "seeker-eval/v1",
+        "questionIds": [
+          "q-suffering",
+          "q-grief-father",
+          "q-trinity",
+          "q-living-together",
+          "q-python-pdf",
+          "q-islam-jesus",
+          "q-verse-exact-words",
+          "q-links-to-verify",
+          "q-bible-changed",
+          "q-theotokos"
+        ],
+        "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+        "answeringModels": [
+          "anthropic/claude-sonnet-5"
+        ],
+        "decoding": null,
+        "sampleId": "s1",
+        "gitSha": "989a9eb6",
+        "retrieval": {
+          "mode": "tool-loop",
+          "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+          "topK": 5
+        },
+        "judge": {
+          "model": "anthropic/claude-haiku-4.5",
+          "rubricSha256": "d53822f668c6fd9f726003f8866a5c61486eb0880d49500073c0123fcb092244"
+        },
+        "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+      },
+      "runScore": 0.9324324324324325,
+      "runBand": "pass",
+      "cells": [
+        {
+          "questionId": "q-suffering",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 10,
+          "totalWeight": 10
+        },
+        {
+          "questionId": "q-grief-father",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 10,
+          "totalWeight": 10
+        },
+        {
+          "questionId": "q-trinity",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 13,
+          "totalWeight": 13
+        },
+        {
+          "questionId": "q-living-together",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 0.5454545454545454,
+          "band": "fail",
+          "satisfiedWeight": 6,
+          "totalWeight": 11
+        },
+        {
+          "questionId": "q-python-pdf",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 17,
+          "totalWeight": 17
+        },
+        {
+          "questionId": "q-islam-jesus",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 0.5454545454545454,
+          "band": "fail",
+          "satisfiedWeight": 6,
+          "totalWeight": 11
+        },
+        {
+          "questionId": "q-verse-exact-words",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 22,
+          "totalWeight": 22
+        },
+        {
+          "questionId": "q-links-to-verify",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 18,
+          "totalWeight": 18
+        },
+        {
+          "questionId": "q-bible-changed",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 18,
+          "totalWeight": 18
+        },
+        {
+          "questionId": "q-theotokos",
+          "model": "anthropic/claude-sonnet-5",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 18,
+          "totalWeight": 18
+        }
+      ],
+      "byModel": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "score": 0.9324324324324325,
+          "band": "pass",
+          "judgedCells": 10,
+          "invalidCells": 0,
+          "answerErrorCells": 0
+        }
+      ],
+      "bySection": [
+        {
+          "section": "citation-discipline",
+          "score": 0.8823529411764706,
+          "satisfiedCount": 15,
+          "violatedCount": 2
+        },
+        {
+          "section": "empty-unavailable-handling",
+          "score": 1,
+          "satisfiedCount": 4,
+          "violatedCount": 0
+        },
+        {
+          "section": "persona",
+          "score": 1,
+          "satisfiedCount": 33,
+          "violatedCount": 0
+        },
+        {
+          "section": "safety",
+          "score": 1,
+          "satisfiedCount": 7,
+          "violatedCount": 0
+        }
+      ],
+      "judgedCells": 10,
+      "invalidCells": 0,
+      "answerErrorCells": 0
+    }
+  }
+}

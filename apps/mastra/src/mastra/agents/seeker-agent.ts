@@ -20,8 +20,8 @@ import {
 } from "../gateway-constants"
 import { getAiChatMemory } from "../ai-chat-memory"
 import {
-  getManagedPrompt,
-  type ManagedPromptInput,
+  resolveExactManagedPrompt,
+  type ExactManagedPromptInput,
 } from "../../services/langfuse-prompt-client"
 import {
   buildRetrieveAnswerTool,
@@ -34,6 +34,11 @@ import {
   SEEKER_SYSTEM_PROMPT_FALLBACK,
   SEEKER_SYSTEM_PROMPT_NAME,
 } from "./seeker-prompt"
+import {
+  buildSeekerProductionIdentity,
+  SEEKER_PRODUCTION_GATEWAY_TIMEOUT_MS,
+  SEEKER_PRODUCTION_PROMPT,
+} from "./seeker-production-config"
 
 export { SEEKER_SYSTEM_PROMPT_FALLBACK, SEEKER_SYSTEM_PROMPT_NAME }
 
@@ -72,7 +77,8 @@ const require = createRequire(import.meta.url)
  * the 90s turn budget. If dogfood shows hangs eating that 55s often, the
  * follow-up is a time-to-first-byte + idle-per-chunk guard, not a lower cap.
  */
-export const SEEKER_GATEWAY_FETCH_TIMEOUT_MS = 55_000
+export const SEEKER_GATEWAY_FETCH_TIMEOUT_MS =
+  SEEKER_PRODUCTION_GATEWAY_TIMEOUT_MS
 
 /**
  * Timeout-wrapping fetch for the gateway entry (KTD9). Exported as a factory
@@ -143,12 +149,22 @@ export function createGatewayFetchWithTimeout(
  * load.
  */
 export function buildSeekerModelList(): ModelWithRetries[] {
-  const gemmaFallbackChain: ModelWithRetries[] = [
-    { model: "openrouter/google/gemma-4-31b-it:free", maxRetries: 1 },
-    { model: "openrouter/google/gemma-4-26b-a4b-it:free", maxRetries: 1 },
-  ]
+  const gatewayEnabled = Boolean(
+    env.AI_GATEWAY_CHAT_API_KEY && isAiGatewaySeekerEnabled(),
+  )
+  const identity = buildSeekerProductionIdentity({
+    gatewayEnabled,
+    gatewayModel: env.AI_GATEWAY_CHAT_MODEL,
+    gatewayBaseUrl: env.AI_GATEWAY_CHAT_BASE_URL,
+  })
+  const gemmaFallbackChain: ModelWithRetries[] = identity.models.routes
+    .filter((route) => route.provider === "openrouter")
+    .map((route) => ({
+      model: `openrouter/${route.model}`,
+      maxRetries: route.maxRetries,
+    }))
 
-  if (env.AI_GATEWAY_CHAT_API_KEY && isAiGatewaySeekerEnabled()) {
+  if (gatewayEnabled) {
     // JesusFilm AI gateway (OpenAI-compatible). The @ai-sdk/openai SDK is
     // loaded via the createRequire shim (not imported from ../providers) to
     // keep that module's static `@ai-sdk/*` imports out of the Mastra CLI
@@ -179,7 +195,7 @@ export function buildSeekerModelList(): ModelWithRetries[] {
         // to Mastra's MastraModelConfig union; the runtime contract is fine —
         // same drift default-chat-agent.ts / specialized-agents.ts absorb.
         model: gateway.chat(
-          env.AI_GATEWAY_CHAT_MODEL ?? "coding",
+          identity.models.routes[0]?.model ?? "coding",
         ) as unknown as MastraModelConfig,
         // 0, NOT 1 (deviation from the plan's R1, review-verified): Mastra's
         // per-entry retry (p-retry) retries ANY non-APICallError, so a KTD9
@@ -264,49 +280,42 @@ export type SeekerAgentOverrides = {
 }
 
 /**
- * Thin dynamic-instructions wrapper over `getManagedPrompt` (feat-272).
- * `DynamicArgument<string>` accepts an async FUNCTION returning
- * `Promise<string>` — never a bare promise — and `getManagedPrompt` cannot be
- * assigned directly (it takes its own options object and returns a
- * `ManagedPromptResult`, not a string). The helper never throws, so the
- * wrapper needs no error handling: every failure mode resolves to the full
- * fallback text above, and the TTL cache bounds fetch frequency to one
- * attempt per window regardless of turn rate.
- *
- * RETRACTION SEMANTICS (feat-272 constraint, decided at wiring): serve-stale
- * means DELETING the `seeker-system` prompt (or removing its label) in
- * Langfuse does NOT retract already-cached text from a running process — the
- * helper keeps serving stale managed text through non-retryable 404/401
- * cooldown windows, deliberately (it is the outage protection, and key
- * revocation must not take the agent down). Retraction is per-trigger:
- * - Bad version, trusted setup: re-point the label to a known-good version
- *   (effective within one cache TTL; +1 cooldown window worst case).
- * - Prompt deleted or key revoked: the label path is INERT (no version to
- *   point at / every refetch 401s and re-arms the cooldown) — unset
- *   `LANGFUSE_*` and redeploy is the only retraction; the restart clears
- *   the in-process cache and forces the compiled-in fallback.
- * - Compromised key: re-pointing races a live hostile writer — rotate the
- *   key pair FIRST, then unset + redeploy; do not restore `LANGFUSE_*`
- *   until the credential is replaced.
- * Teardown order: unset `LANGFUSE_BASE_URL` first (or the whole group in
- * one edit) — clearing only `LANGFUSE_ALLOWED_HOSTS` arms the production
- * boot guard and the failed deploy leaves the OLD process serving.
- *
- * Exported as a factory with the helper's injection seams so the wiring
- * itself is unit-testable (managed text served when configured; byte-identical
- * fallback otherwise). Production uses the bare `createSeekerInstructionsResolver()`
- * call below — pinned by the no-injection default-path tests plus the
- * call-site source pin in seeker-agent.test.ts, so this seam cannot silently
- * become a config revert surface (feat-283 corollary of the
- * mocked-shape-vs-real-contract discipline).
+ * Dynamic instructions resolve the repository-reviewed exact prompt version
+ * and expected hash. A missing, deleted, unauthorized, malformed, or
+ * mismatched managed version preserves runtime availability by returning the
+ * compiled fallback, but that path is explicitly degraded and emits one
+ * critical, body-free alert per resolver. Production never consults a label
+ * or stale cache; moving `production` cannot change live traffic.
  */
 export function createSeekerInstructionsResolver(
-  overrides: Pick<
-    ManagedPromptInput,
-    "config" | "fetchImpl" | "cache" | "now" | "logSink"
-  > = {},
+  overrides: Omit<
+    ExactManagedPromptInput,
+    "name" | "version" | "expectedContentHash"
+  > & {
+    logSink?: (line: string) => void
+    now?: () => number
+    failureCooldownMs?: number
+    /** Legacy test seam retained for call-site compatibility. */
+    cache?: unknown
+    pinned?: {
+      provider: string
+      name: string
+      revision: string
+      contentHash: string
+    }
+  } = {},
 ): () => Promise<string> {
+  let criticalAlertEmitted = false
+  let cacheEntry: { identity: string; text: string } | null = null
+  let failureCooldownUntil = 0
+  let inFlight: { identity: string; promise: Promise<string> } | null = null
   return async () => {
+    const pinned = overrides.pinned ?? SEEKER_PRODUCTION_PROMPT
+    const identityKey = `${pinned.provider}\u0000${pinned.name}\u0000${pinned.revision}\u0000${pinned.contentHash}`
+    if (cacheEntry?.identity === identityKey) return cacheEntry.text
+    const now = overrides.now?.() ?? Date.now()
+    if (now < failureCooldownUntil) return SEEKER_SYSTEM_PROMPT_FALLBACK
+    if (inFlight?.identity === identityKey) return inFlight.promise
     // feat-330 (plan P2 end state): the resolved managed text is returned
     // VERBATIM — there is no longer any code-appended block, and this resolver
     // reads no flag. `SEEKER_VIDEO_ENABLED` now gates `buildSeekerTools` only,
@@ -315,13 +324,41 @@ export function createSeekerInstructionsResolver(
     // video-featuring guidance lives in the managed prompt (and, as fallback,
     // in SEEKER_SYSTEM_PROMPT_FALLBACK above). Do not reintroduce an append
     // here: it would silently diverge the two prompt sources again.
-    return (
-      await getManagedPrompt({
-        name: SEEKER_SYSTEM_PROMPT_NAME,
-        fallback: SEEKER_SYSTEM_PROMPT_FALLBACK,
-        ...overrides,
+    const promise = (async () => {
+      const resolved = await resolveExactManagedPrompt({
+        name: pinned.name,
+        version: Number(pinned.revision),
+        expectedContentHash: pinned.contentHash,
+        config: overrides.config,
+        fetchImpl: overrides.fetchImpl,
       })
-    ).text
+      if (resolved.ok) {
+        cacheEntry = { identity: identityKey, text: resolved.text }
+        failureCooldownUntil = 0
+        criticalAlertEmitted = false
+        return resolved.text
+      }
+
+      failureCooldownUntil =
+        (overrides.now?.() ?? Date.now()) +
+        (overrides.failureCooldownMs ??
+          overrides.config?.promptFailureCooldownMs ??
+          10_000)
+
+      if (!criticalAlertEmitted) {
+        criticalAlertEmitted = true
+        ;(overrides.logSink ?? console.error)(
+          `[seeker-production-prompt] severity=critical state=degraded_fallback provider=${pinned.provider} name=${pinned.name} revision=${pinned.revision} reason=${resolved.reason}${resolved.detail ? ` detail=${resolved.detail}` : ""}`,
+        )
+      }
+      return SEEKER_SYSTEM_PROMPT_FALLBACK
+    })()
+    inFlight = { identity: identityKey, promise }
+    try {
+      return await promise
+    } finally {
+      if (inFlight?.promise === promise) inFlight = null
+    }
   }
 }
 
@@ -349,7 +386,7 @@ export function buildSeekerAgent(overrides: SeekerAgentOverrides = {}) {
     description:
       "Skeleton conversational agent for people exploring Christianity and who Jesus is. Studio-only, non-production prototype.",
     // Langfuse-managed system prompt (feat-272): resolved per turn through
-    // getManagedPrompt (name `seeker-system`, label via env resolution), with
+    // exact repository-pinned `seeker-system` version and hash, with
     // SEEKER_SYSTEM_PROMPT_FALLBACK served byte-identically whenever Langfuse
     // is unconfigured or unreachable. See createSeekerInstructionsResolver above.
     instructions: overrides.instructions ?? createSeekerInstructionsResolver(),

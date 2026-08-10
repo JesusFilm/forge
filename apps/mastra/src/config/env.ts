@@ -476,10 +476,10 @@ const envSchema = z.object({
     .positive()
     .max(5_242_880)
     .optional(),
-  // Optional label the helper resolves prompts against when the caller does
-  // not pass one. No schema default — the helper's own resolution order is
-  // call parameter > this var > "production" (KTD3), so unset here still
-  // resolves to an explicit "production" label, never an implicit `latest`.
+  // Optional default for label-based candidate intake and health comparison.
+  // Production Seeker traffic never reads this selector: it resolves the
+  // exact repository pin in seeker-production-config.ts. The `production`
+  // label is an alert-only deployment marker.
   LANGFUSE_PROMPT_DEFAULT_LABEL: z.string().min(1).optional(),
   LANGFUSE_PROMPT_CACHE_TTL_MS: z.coerce
     .number()

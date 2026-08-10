@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   bandFor,
   coerceAnswerRun,
+  experimentIdentityMismatch,
   identityMismatch,
   normalizeLegacyAnswerRun,
   stampedCorpusSha,
@@ -186,6 +187,51 @@ describe("identityMismatch — refuse-to-compare", () => {
         "gate",
       ),
     ).toContain("judge rubric")
+  })
+})
+
+describe("experimentIdentityMismatch — exactly one causal axis", () => {
+  it("prompt axis ignores only prompt identity", () => {
+    const baseline = identity()
+    expect(
+      experimentIdentityMismatch(
+        baseline,
+        identity({
+          promptSha256: "candidate",
+          promptLangfuseVersion: 42,
+          promptLangfuseLabel: "intake-only",
+        }),
+        "prompt",
+      ),
+    ).toEqual([])
+    expect(
+      experimentIdentityMismatch(
+        baseline,
+        identity({ promptSha256: "candidate", decoding: null }),
+        "prompt",
+      ),
+    ).toContain("decoding parameters")
+  })
+
+  it("model axis ignores only answering model identity", () => {
+    const baseline = identity()
+    expect(
+      experimentIdentityMismatch(
+        baseline,
+        identity({ answeringModels: ["candidate/model"] }),
+        "model",
+      ),
+    ).toEqual([])
+    expect(
+      experimentIdentityMismatch(
+        baseline,
+        identity({
+          answeringModels: ["candidate/model"],
+          promptSha256: "other",
+        }),
+        "model",
+      ),
+    ).toContain("prompt")
   })
 })
 

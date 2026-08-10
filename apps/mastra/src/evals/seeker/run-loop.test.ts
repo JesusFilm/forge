@@ -134,13 +134,28 @@ describe("spend-guard import order (source pin)", () => {
     )
   })
 
+  it("resolves exact official prompt identity before importing or constructing the agent", () => {
+    const code = strippedRunLoopSource()
+    expect(code.indexOf("resolveExactManagedPrompt")).toBeLessThan(
+      code.indexOf('import("../../mastra/agents/seeker-agent")'),
+    )
+    expect(code).toMatch(
+      /--prompt-version and --prompt-hash must be supplied together/,
+    )
+  })
+
   it("pins every cell to the one whole prompt stamped into run identity", () => {
     const code = strippedRunLoopSource()
     // A TTL expiry or label move must not let later cells generate under a
     // different prompt from the one recorded in identity and transcripts.
-    expect(
-      code.match(/const resolvedPrompt = await langfuse\.getManagedPrompt/g),
-    ).toHaveLength(1)
-    expect(code).toMatch(/instructions:\s*resolvedPrompt\.text/)
+    expect(code.match(/langfuse\.getManagedPrompt/g)).toHaveLength(1)
+    expect(code.match(/langfuse\.resolveExactManagedPrompt/g)).toHaveLength(1)
+    expect(code).toMatch(/instructions:\s*prompt\.text/)
+  })
+
+  it("records immutable prompt identity without serializing the managed body", () => {
+    const code = strippedRunLoopSource()
+    expect(code).toMatch(/resolvedPrompt:\s*\{\s*sha256:/)
+    expect(code).not.toMatch(/resolvedPrompt:\s*\{\s*text:\s*prompt\.text/)
   })
 })
