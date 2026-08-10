@@ -161,6 +161,14 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
   label carries user-typed text must override with a generic `dd-action-name` — `KeyButton`
   (`keyboard-key`) and the recent-search chips (`recent-search`, threaded through
   `FocusableCard`'s `ddActionName` prop, which forwards to its internal Pressable).
+- **Zero-PII with accounts (feat-322 U4.8):** TV now signs viewers in (RFC 8628 device grant) and
+  still attaches **no** identity — `setUser`/`setUserInfo` appears nowhere in `src/`, held by a
+  whole-source assertion in `src/lib/auth/deviceGrantTelemetry.test.ts`. All sign-in signals go
+  through `src/lib/auth/deviceGrantTelemetry.ts` (`device_grant.*`): counts, closed unions and
+  strings run through `sanitizeDeviceGrantDetail`. That sanitizer exists for one specific leak — a
+  `/token` error string can embed `verification_uri_complete`, i.e. the live `user_code` — so it
+  strips URL query/fragment, redacts code-shaped tokens anywhere, and caps length **last** (capping
+  first would still ship a code prefix). Never log a raw upstream error string on this surface.
 - **tvOS SDK patch (load-bearing):** `@datadog/mobile-react-native@3.5.2` does NOT compile on
   tvOS out of the box — `patches/@datadog__mobile-react-native@3.5.2.patch` guards two unguarded
   WebView refs the SDK missed (a stray `import DatadogWebViewTracking` in `DdSdkImplementation.swift`

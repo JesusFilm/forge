@@ -289,9 +289,15 @@ TV mirrors web's **non-sensitive** signals and deliberately skips the sensitive 
 
 - **Session Replay** — unsupported on tvOS (the SDK's WebView refs are patched out); never add it.
 - **Server-side APM spans** — web has a server tier; TV is a client-only app with no server component to trace.
-- **User-identity / PII** — web attaches `setUser` (email/name); TV has no accounts and stays anonymous (no `setUserInfo`).
+- **User-identity / PII** — web attaches `setUser` (email/name); TV never does.
 
-**TV-only** (no web counterpart): video playback QoE (`video_playback.*` — TTFF, rebuffering, errors, completion) and Home focus-restore health (`focus.restore_failed`).
+  **Revisited 2026-08-10 (feat-322 U4.8).** The original wording rested on "TV has no accounts", which is no longer true: the RFC 8628 device grant signs a viewer in on the TV. The posture is unchanged — TV still attaches no identity — but it is now a deliberate control rather than a side effect of having nothing to attach:
+  - `setUser` / `setUserInfo` is called nowhere in `apps/tv/src`. The standing guard is a whole-source assertion in `apps/tv/src/lib/auth/deviceGrantTelemetry.test.ts`, not a per-module convention — a `setUser` added in a screen three PRs from now is exactly the regression this claim is about.
+  - Sign-in telemetry rides one namespace, `device_grant.*` (`apps/tv/src/lib/auth/deviceGrantTelemetry.ts`): counts, closed unions and sanitized strings only. No user id, no email, no token, no viewer id.
+  - **The user code needs its own control, not a policy.** A `/token` error string can embed `verification_uri_complete`, which carries `?user_code=…` — the live code that grants an account. Every free-form string reaching Datadog therefore goes through `sanitizeDeviceGrantDetail`: strip URL query/fragment → redact code-shaped tokens anywhere in the string → flatten newlines → cap length **last**, so truncation can never publish a guessable code prefix.
+  - The on-screen code's `accessibilityLabel` is the generic `"Sign-in code"` for the same reason — RUM taps action names from labels.
+
+**TV-only** (no web counterpart): video playback QoE (`video_playback.*` — TTFF, rebuffering, errors, completion), Home focus-restore health (`focus.restore_failed`), and device-grant sign-in (`device_grant.*` — code request, approval latency, denial, expiry, transport degradation, refresh failure, sign-out scope, anonymous-merge outcome).
 
 **Sampling normalization:** TV runs 100% session sampling (`TrackingConsent.GRANTED`); web samples RUM sessions at 50% (Session Replay at 10%). Absolute-count comparisons across the two apps must normalize for this — roughly web ×2 on session-derived counts.
 

@@ -121,18 +121,25 @@ type ErrorBody = { error?: string; error_description?: string }
  */
 export const REQUEST_TIMEOUT_MS = 4000
 
-async function postJson(
+type HttpResult = {
+  ok: boolean
+  status: number
+  json: Record<string, unknown>
+}
+
+async function post(
   url: string,
-  body: unknown,
+  contentType: string,
+  body: string,
   timeoutMs = REQUEST_TIMEOUT_MS,
-): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
+): Promise<HttpResult> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { "content-type": contentType },
+      body,
       signal: controller.signal,
     })
     const json = (await res.json()) as Record<string, unknown>
@@ -140,6 +147,37 @@ async function postJson(
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** The device endpoints are this repo's own plugin and speak JSON. */
+async function postJson(
+  url: string,
+  body: unknown,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<HttpResult> {
+  return post(url, "application/json", JSON.stringify(body), timeoutMs)
+}
+
+/**
+ * The STANDARD OAuth endpoints (`/oauth2/token`, `/oauth2/revoke`) are
+ * better-auth's, not ours, and accept form encoding ONLY — RFC 6749 §4.1.3
+ * mandates it. Sending JSON there returns 415 with
+ * `Allowed types: application/x-www-form-urlencoded`, which would have made
+ * every refresh and every revocation fail. Verified against production
+ * 2026-08-10.
+ */
+async function postForm(
+  url: string,
+  fields: Record<string, string>,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<HttpResult> {
+  const body = Object.entries(fields)
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+    )
+    .join("&")
+  return post(url, "application/x-www-form-urlencoded", body, timeoutMs)
 }
 
 export async function requestDeviceCode(
@@ -241,9 +279,9 @@ export async function refreshAccessToken(
   config: DeviceGrantConfig,
   refreshToken: string,
 ): Promise<RefreshOutcome> {
-  let result: Awaited<ReturnType<typeof postJson>>
+  let result: HttpResult
   try {
-    result = await postJson(`${config.authBaseUrl}/api/auth/oauth2/token`, {
+    result = await postForm(`${config.authBaseUrl}/api/auth/oauth2/token`, {
       grant_type: "refresh_token",
       refresh_token: refreshToken,
       client_id: config.clientId,
@@ -275,7 +313,17 @@ export async function refreshAccessToken(
   const error = (json as ErrorBody).error
   // Only the server explicitly disowning the grant ends the session. A 500 is
   // the server having a bad day, not a revocation.
-  if (error === "invalid_grant" || error === "invalid_client") {
+  //
+  // `invalid_token` leads because it is what this server ACTUALLY emits for an
+  // unknown refresh token — verified against production 2026-08-10:
+  // `{"error":"invalid_token","error_description":"refresh token not found"}`.
+  // The RFC 6749 spellings follow as defensive siblings; deriving the literal
+  // from the spec alone would have left the real case to the fallback.
+  if (
+    error === "invalid_token" ||
+    error === "invalid_grant" ||
+    error === "invalid_client"
+  ) {
     return { kind: "revoked", code: error }
   }
   if (status >= 500 || status === 429) return { kind: "retryable" }
@@ -296,7 +344,7 @@ export async function revokeToken(
   token: string,
 ): Promise<void> {
   try {
-    await postJson(`${config.authBaseUrl}/api/auth/oauth2/revoke`, {
+    await postForm(`${config.authBaseUrl}/api/auth/oauth2/revoke`, {
       token,
       client_id: config.clientId,
     })

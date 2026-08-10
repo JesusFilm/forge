@@ -1,30 +1,26 @@
 // Profile / sign-in screen (feat-322, WATCH_THEME). Signed-out shows the
-// device-authorization UX: QR + user code + waiting state. The GRANT is
-// stubbed — apps/auth hasn't enabled its RFC 8628 device plugin yet, so the
-// "Approve (demo)" row stands in for the phone approval and Sign in yields
-// DEMO_PROFILE. The whole surface is gated by isProfileSurfaceEnabled().
-// Screen scaffold (title/section/row + focus-restore) mirrors SettingsScreen.
+// device-authorization UX: QR + user code + waiting state. The whole surface is
+// gated by isProfileSurfaceEnabled(). Screen scaffold (title/section/row +
+// focus-restore) mirrors SettingsScreen.
+//
+// This screen owns NO grant logic. Both scaffolds it once carried are gone
+// (plan U4.5): the local code minter (the server mints now) and the
+// letters/numbers evaluation switch (the format is a server-side decision,
+// identical on every platform forever). The phase is supplied by the real
+// device-grant wiring — apps/tv has no render harness, so anything decided in
+// here would be untestable by construction.
 
 import { useFocusEffect } from "expo-router"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
 import {
-  DEFAULT_USER_CODE_FORMAT,
-  USER_CODE_SPECS,
-  createPendingSession,
-  DEMO_PROFILE,
+  displayVerificationUrl,
   type DeviceAuthPhase,
-  type UserCodeFormat,
 } from "../../lib/auth/deviceAuthFlow"
-import {
-  loadUserCodeFormat,
-  nextUserCodeFormat,
-  saveUserCodeFormat,
-} from "../../lib/auth/userCodeFormatPreference"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
@@ -35,47 +31,20 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
 const ICON_SIZE = Math.round(scale(26))
 
-export function ProfileScreen() {
-  // Both RFC 8628 code formats ship behind a switch so the choice can be made
-  // from real screens (see the flow designs). The stored preference is read
-  // once on mount; until it lands the screen shows the default format.
-  const [codeFormat, setCodeFormat] = useState<UserCodeFormat>(
-    DEFAULT_USER_CODE_FORMAT,
-  )
+export type ProfileScreenProps = {
+  /** Supplied by the device-grant wiring. Defaults to signed-out so the screen
+   *  renders standalone; it never mints a session itself. */
+  phase?: DeviceAuthPhase
+  /** R6: an expired or stale code is replaced in place. */
+  onRequestNewCode?: () => void
+  onSignOut?: () => void
+}
 
-  // Entering the screen signed-out starts a sign-in session immediately —
-  // the QR is the screen's whole point, so there is no separate "start" press.
-  const [phase, setPhase] = useState<DeviceAuthPhase>(() => ({
-    kind: "pending",
-    session: createPendingSession({ nowMs: Date.now(), random: Math.random }),
-  }))
-
-  // Apply the persisted format on mount, re-minting the code so the screen and
-  // the preference can't disagree. Skipped when it already matches, so the
-  // code doesn't churn on every visit.
-  useEffect(() => {
-    let cancelled = false
-    void loadUserCodeFormat().then((stored) => {
-      if (cancelled || stored === DEFAULT_USER_CODE_FORMAT) return
-      setCodeFormat(stored)
-      setPhase((current) =>
-        current.kind === "pending"
-          ? {
-              kind: "pending",
-              session: createPendingSession({
-                nowMs: Date.now(),
-                random: Math.random,
-                format: stored,
-              }),
-            }
-          : current,
-      )
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
+export function ProfileScreen({
+  phase = { kind: "signedOut" },
+  onRequestNewCode,
+  onSignOut,
+}: ProfileScreenProps = {}) {
   // tvos#852: a stack pop drops focus to the top-left default. Remember the
   // focused row and re-focus it on re-entry (mirrors SettingsScreen's wiring).
   const focusMemoryRef = useRef<FocusMemory | null>(null)
@@ -100,43 +69,6 @@ export function ProfileScreen() {
       }
     }, []),
   )
-
-  const handleNewCode = useCallback(() => {
-    setPhase({
-      kind: "pending",
-      session: createPendingSession({
-        nowMs: Date.now(),
-        random: Math.random,
-        format: codeFormat,
-      }),
-    })
-  }, [codeFormat])
-
-  // Flip letters <-> numbers, mint a fresh code in the new shape, and persist
-  // the choice. Best-effort storage: a write failure still switches the screen.
-  const handleToggleCodeFormat = useCallback(() => {
-    const next = nextUserCodeFormat(codeFormat)
-    setCodeFormat(next)
-    setPhase({
-      kind: "pending",
-      session: createPendingSession({
-        nowMs: Date.now(),
-        random: Math.random,
-        format: next,
-      }),
-    })
-    void saveUserCodeFormat(next)
-  }, [codeFormat])
-
-  // Stub for the phone-side approval; replaced by real /device/token polling
-  // once the server grant exists (feat-322).
-  const handleDemoApprove = useCallback(() => {
-    setPhase({ kind: "signedIn", profile: DEMO_PROFILE })
-  }, [])
-
-  const handleSignOut = useCallback(() => {
-    handleNewCode()
-  }, [handleNewCode])
 
   if (phase.kind === "signedIn") {
     return (
@@ -169,7 +101,7 @@ export function ProfileScreen() {
             testID="profile-sign-out-row"
             icon="log-out-outline"
             label="Sign out"
-            onPress={handleSignOut}
+            onPress={onSignOut}
             onFocusNode={captureFocusedNode}
           />
         </View>
@@ -193,6 +125,8 @@ export function ProfileScreen() {
 
           {session != null ? (
             <>
+              {/* accessibilityLabel is generic on purpose: RUM taps action
+                  names from it, and the code must never become telemetry. */}
               <Text style={styles.userCode} accessibilityLabel="Sign-in code">
                 {session.userCode}
               </Text>
@@ -200,37 +134,18 @@ export function ProfileScreen() {
                 Waiting for approval on your phone…
               </Text>
             </>
-          ) : null}
+          ) : (
+            <Text style={styles.status}>Preparing your sign-in code…</Text>
+          )}
 
           <View style={styles.actions}>
             <ProfileRow
               testID="profile-new-code-row"
               icon="refresh-outline"
               label="Get a new code"
-              onPress={handleNewCode}
+              onPress={onRequestNewCode}
               onFocusNode={captureFocusedNode}
               hasTVPreferredFocus
-            />
-            {/* Demo-only stand-in for the phone approval — removed when the
-                real device grant lands (the surface itself is flag-gated). */}
-            <ProfileRow
-              testID="profile-demo-approve-row"
-              icon="checkmark-circle-outline"
-              label="Approve on this device (demo)"
-              onPress={handleDemoApprove}
-              onFocusNode={captureFocusedNode}
-            />
-            {/* Pre-ship evaluation switch: both RFC 8628 formats are built so
-                the choice is made from real screens. Removed with the losing
-                format once the call is made — the format must be identical on
-                every platform, forever. */}
-            <ProfileRow
-              testID="profile-code-format-row"
-              icon="swap-horizontal-outline"
-              label={`Code style: ${USER_CODE_SPECS[codeFormat].label}`}
-              value={USER_CODE_SPECS[nextUserCodeFormat(codeFormat)].sample}
-              onPress={handleToggleCodeFormat}
-              onFocusNode={captureFocusedNode}
             />
           </View>
         </View>
@@ -239,7 +154,7 @@ export function ProfileScreen() {
           <View style={styles.signInRight}>
             <SignInQr url={session.verificationUrl} />
             <Text style={styles.urlText} numberOfLines={1}>
-              auth.jesusfilm.org/device
+              {displayVerificationUrl(session.verificationUrl)}
             </Text>
           </View>
         ) : null}
