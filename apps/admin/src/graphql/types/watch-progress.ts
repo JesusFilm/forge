@@ -46,9 +46,9 @@ const WatchProgressUpsertInput = builder.inputType("WatchProgressUpsertInput", {
     languageSlug: t.string({ required: false }),
     positionSeconds: t.float({ required: true }),
     durationSeconds: t.float({ required: true }),
-    // Required, carrying the device's RECORDING time: the service falls
-    // back to now-time when absent, which would make every stale offline
-    // entry look newest and defeat the monotonic guard.
+    // Carries the device's RECORDING time. The service DROPS an entry it
+    // cannot parse rather than defaulting it, so a bad stamp loses the write
+    // instead of winning the monotonic guard.
     updatedAt: t.string({ required: true }),
   }),
 })

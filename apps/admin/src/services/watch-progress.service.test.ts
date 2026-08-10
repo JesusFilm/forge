@@ -130,6 +130,38 @@ describe("watch-progress service", () => {
     )
   })
 
+  it("rejects a pre-epoch updatedAt rather than passing it to the SQL cast", async () => {
+    // Math.min bounded only the future; a parseable year -271821 reached the
+    // timestamptz cast and took the whole 200-entry batch down with it.
+    prismaMock.video.findMany.mockResolvedValueOnce([
+      { id: "video-1" },
+      { id: "video-2" },
+    ])
+    stubWriteAccepted()
+
+    await upsertWatchProgress({
+      userId: "user-1",
+      entries: [
+        {
+          videoId: "video-1",
+          languageSlug: "english",
+          positionSeconds: 10,
+          durationSeconds: 100,
+          updatedAt: "-271821-04-20T00:00:00.000Z",
+        },
+        {
+          videoId: "video-2",
+          languageSlug: "english",
+          positionSeconds: 20,
+          durationSeconds: 100,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+      ],
+    })
+
+    expect(lastWrite().videoIds).toBe('{"video-2"}')
+  })
+
   it("drops an entry whose updatedAt is unparseable", async () => {
     // Defaulting a garbage stamp to server time made it the NEWEST write, so
     // it won `last_watched_at <= EXCLUDED` and overwrote a newer position.

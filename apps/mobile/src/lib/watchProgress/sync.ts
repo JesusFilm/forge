@@ -49,7 +49,6 @@ export type ProgressSyncDeps = {
   sendUpserts: (
     entries: ProgressWriteIntent[],
   ) => Promise<{ acceptedCount: number }>
-  /** Server per-video clear (R16). Throws on failure. */
   storage: AsyncStorageLike
   now?: () => number
 }

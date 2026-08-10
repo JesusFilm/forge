@@ -130,7 +130,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   opted out via `app.json` `allowBackup: false`. The short-lived user JWT is
   memory-only with single-flight refresh-on-expiry.
 - **Operation-scoped user JWT (same law as the fleet search bearer)**: the
-  signed-in JWT rides ONLY the three progress operations
+  signed-in JWT rides ONLY the progress operations
   (`PROGRESS_OPERATION_NAMES` in `src/lib/authHeaders.ts`); the async
   `createUserJwtLink` sits ahead of the sync header links and forwards every
   other operation untouched. Guard tests pin the gate to the operations

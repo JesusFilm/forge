@@ -309,9 +309,9 @@ describe("mobile login configuration", () => {
   it("never blanket-trusts a consumer provider (R1)", async () => {
     const options = await captureAuthOptions()
 
-    // The toEqual above passes for ANY two-element array, so it cannot fail
-    // for the risk that matters. This names it: a consumer provider back in
-    // the trusted set links an unverified email onto an existing account.
+    // The sibling toEqual is exact, but reads as a snapshot — easy to update
+    // to whatever the code now says. This names the risk instead: a consumer
+    // provider back in the trusted set links an unverified email.
     for (const provider of ["google", "facebook", "apple"]) {
       expect(options.account.accountLinking.trustedProviders).not.toContain(
         provider,

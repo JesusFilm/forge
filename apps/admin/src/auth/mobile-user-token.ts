@@ -4,6 +4,7 @@
 
 import {
   createRemoteJWKSet,
+  customFetch,
   decodeProtectedHeader,
   jwtVerify,
   type JWTPayload,
@@ -69,6 +70,9 @@ function getJwks(issuer: string) {
   if (jwksCache && jwksCache.issuer === issuer) return jwksCache.jwks
   const jwks = createRemoteJWKSet(jwksUrl(), {
     timeoutDuration: AUTH_FETCH_TIMEOUT_MS,
+    // jose refetches this URL on cache expiry and kid-miss, so it needs the
+    // same byte ceiling — capping only our alg read left the hot path open.
+    [customFetch]: cappedJwksFetch,
   })
   jwksCache = { issuer, jwks }
   return jwks
@@ -95,9 +99,17 @@ function algFromKeyType(key: JsonWebKey): string | null {
  * instant it is crossed. Content-Length is advisory and not trusted.
  */
 async function readCapped(response: Response): Promise<string> {
-  if (!response.body) return await response.text()
-  const reader = response.body.getReader()
+  if (!response.body) {
+    // Null body still buffers, so it is capped too — the law applies to
+    // EVERY buffering read, not just the streaming one.
+    const text = await response.text()
+    if (text.length > JWKS_MAX_BYTES)
+      throw new MobileJwtError("jwks_unavailable")
+    return text
+  }
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   try {
+    reader = response.body.getReader()
     const chunks: Uint8Array[] = []
     let total = 0
     for (;;) {
@@ -109,7 +121,7 @@ async function readCapped(response: Response): Promise<string> {
         // Abort the transfer rather than merely stop reading, then fall into
         // the caller's existing jwks_unavailable path — never a new throw shape.
         await reader.cancel()
-        throw new Error("jwks_too_large")
+        throw new MobileJwtError("jwks_unavailable")
       }
       chunks.push(value)
     }
@@ -121,12 +133,26 @@ async function readCapped(response: Response): Promise<string> {
     }
     return new TextDecoder().decode(joined)
   } finally {
+    // cancel() does not release the lock; releasing twice throws, so guard it.
     try {
-      reader.releaseLock()
+      reader?.releaseLock()
     } catch {
-      // Already released by cancel()
+      // Lock already released
     }
   }
+}
+
+/** Byte-capped fetch for jose's own JWKS refetches. */
+async function cappedJwksFetch(
+  ...args: Parameters<typeof fetch>
+): Promise<Response> {
+  const response = await fetch(...args)
+  if (!response.ok) return response
+  const text = await readCapped(response)
+  return new Response(text, {
+    status: response.status,
+    headers: { "content-type": "application/json" },
+  })
 }
 
 async function fetchAlgorithms(): Promise<string[]> {
@@ -147,10 +173,16 @@ async function fetchAlgorithms(): Promise<string[]> {
 
   const algorithms = new Set<string>()
   for (const key of keys) {
-    const explicit =
-      typeof key.alg === "string" && ASYMMETRIC_ALG.test(key.alg)
-        ? key.alg
-        : undefined
+    // A key that ADVERTISES an alg is taken at its word or skipped entirely.
+    // Falling through to algFromKeyType would silently substitute RS256 for a
+    // key that asked for HS256, admitting the alg the floor just rejected.
+    if (typeof key.alg === "string" && !ASYMMETRIC_ALG.test(key.alg)) {
+      console.warn(
+        `[mobile-auth] event=jwks_alg_rejected kty=${key.kty ?? "none"}`,
+      )
+      continue
+    }
+    const explicit = typeof key.alg === "string" ? key.alg : undefined
     const derived = explicit ?? algFromKeyType(key)
     if (derived) {
       algorithms.add(derived)

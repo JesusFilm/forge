@@ -17,7 +17,9 @@ const entrySchema = z.object({
   languageSlug: z.string().min(1).nullable().optional(),
   positionSeconds: z.number().finite().min(0),
   durationSeconds: z.number().finite().positive(),
-  updatedAt: z.string().datetime().optional(),
+  // Required: the service drops an entry it cannot timestamp, so accepting
+  // an absent value here would silently discard the write.
+  updatedAt: z.string().datetime(),
 })
 
 const upsertSchema = z.object({

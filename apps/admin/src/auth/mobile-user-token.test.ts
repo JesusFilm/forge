@@ -202,6 +202,30 @@ describe("resolveMobileUserPrincipalFromToken", () => {
     )
   })
 
+  it("does not substitute an asymmetric alg for a key that asked for HS256", async () => {
+    // The dangerous shape: kty RSA (so algFromKeyType yields RS256) with an
+    // explicit HS256. Falling through to the key type silently admits the
+    // very alg the floor rejected. kty "oct" cannot catch this.
+    stubJwksFetch([
+      {
+        kty: "RSA",
+        alg: "HS256",
+        n: "sXchDaQ",
+        e: "AQAB",
+        kid: "hostile",
+      } as JWK,
+    ])
+    const { resolveMobileUserPrincipalFromToken } =
+      await importMobileUserToken()
+
+    await expect(
+      resolveMobileUserPrincipalFromToken(`Bearer ${await mintJwt()}`),
+    ).resolves.toBeNull()
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("reason=jwks_unavailable"),
+    )
+  })
+
   it("keeps asymmetric keys when a hostile symmetric key sits beside them", async () => {
     // Anti-vacuous companion: proves the floor rejects HS256 specifically
     // rather than rejecting every JWKS containing an unexpected key.

@@ -50,7 +50,10 @@ function normalizeEntry(entry: WatchProgressInput & { videoId: string }) {
   // Drop, never default to now: an unparseable stamp defaulted to server time
   // would win `last_watched_at <= EXCLUDED` and overwrite a newer position —
   // the exact staleness guard this field exists to feed.
-  if (!Number.isFinite(clientMs)) return null
+  // Bounded BOTH ends: Math.min alone let a parseable year -271821 through to
+  // the timestamptz cast, which Postgres rejects and takes the whole batch
+  // down. Anything before the epoch cannot be a real watch position.
+  if (!Number.isFinite(clientMs) || clientMs < 0) return null
   const lastWatchedAt = new Date(Math.min(clientMs, Date.now()))
   return {
     videoId: entry.videoId,
