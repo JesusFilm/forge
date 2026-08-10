@@ -209,4 +209,33 @@ describe("credential separation", () => {
       spy.mockRestore()
     }
   })
+
+  // The case above passes for the wrong reason if the guard keys on the two
+  // PRODUCED Authorization headers instead of on the two allowlists: with no
+  // fleet key there is no fleet Authorization to compare against, so the check
+  // never trips and the USER's bearer ships on the overlapping operation. An
+  // unprovisioned EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN is a documented normal state
+  // on this app (apps/tv/CLAUDE.md), not a hypothetical, so the fail-closed
+  // claim has to hold without it. x-viewer-id must not survive either.
+  it("still sends neither credential when the fleet key is unprovisioned", () => {
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const overlapping = "OverlapOp"
+      ;(FLEET_TOKEN_OPERATIONS as string[]).push(overlapping)
+      ;(USER_TOKEN_OPERATIONS as string[]).push(overlapping)
+      expect(
+        headersForOperation({
+          operationName: overlapping,
+          fleetToken: undefined,
+          userAccessToken: USER,
+          viewerId: "device-1",
+        }),
+      ).toEqual({})
+      expect(spy).toHaveBeenCalled()
+    } finally {
+      ;(FLEET_TOKEN_OPERATIONS as string[]).pop()
+      ;(USER_TOKEN_OPERATIONS as string[]).pop()
+      spy.mockRestore()
+    }
+  })
 })

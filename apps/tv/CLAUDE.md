@@ -163,7 +163,9 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
   `FocusableCard`'s `ddActionName` prop, which forwards to its internal Pressable).
 - **Zero-PII with accounts (feat-322 U4.8):** TV now signs viewers in (RFC 8628 device grant) and
   still attaches **no** identity — `setUser`/`setUserInfo` appears nowhere in `src/`, held by a
-  whole-source assertion in `src/lib/auth/deviceGrantTelemetry.test.ts`. All sign-in signals go
+  whole-source assertion in `src/lib/auth/zeroPii.guard.test.js` (plain JS — it needs Node's
+  `fs`/`path`, which the RN tsconfig has no types for; same precedent as `watchSearch.guard.test.js`).
+  All sign-in signals go
   through `src/lib/auth/deviceGrantTelemetry.ts` (`device_grant.*`): counts, closed unions and
   strings run through `sanitizeDeviceGrantDetail`. That sanitizer exists for one specific leak — a
   `/token` error string can embed `verification_uri_complete`, i.e. the live `user_code` — so it

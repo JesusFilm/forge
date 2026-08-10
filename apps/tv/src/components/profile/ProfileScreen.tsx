@@ -82,11 +82,15 @@ export function ProfileScreen({
             Jesus Film account.
           </Text>
 
+          {/* These two rows render the viewer's real name and email as their
+              label, so both MUST carry a generic dd-action-name — see
+              ProfileRow's prop docs. */}
           <ProfileRow
             testID="profile-name-row"
             icon="person-outline"
             label={phase.profile.name}
             value="Name"
+            ddActionName="profile-name"
             onFocusNode={captureFocusedNode}
             hasTVPreferredFocus
           />
@@ -95,6 +99,7 @@ export function ProfileScreen({
             icon="mail-outline"
             label={phase.profile.email}
             value="Email"
+            ddActionName="profile-email"
             onFocusNode={captureFocusedNode}
           />
           <ProfileRow
@@ -174,6 +179,16 @@ type ProfileRowProps = {
   onPress?: () => void
   onFocusNode?: (node: ViewType | null) => void
   hasTVPreferredFocus?: boolean
+  /**
+   * Generic RUM action name. REQUIRED on any row whose `label` carries viewer
+   * data: Datadog derives the tap action name from `accessibilityLabel`, so
+   * `label={profile.email}` would publish the address as a RUM action name —
+   * the second documented PII channel on this app, and the one the
+   * `setUser`-shaped zero-PII guard cannot see (apps/tv/CLAUDE.md,
+   * "Action-name privacy"; feat-322 constraint "user code/email must never
+   * reach an accessibilityLabel").
+   */
+  ddActionName?: string
 }
 
 function ProfileRow({
@@ -184,6 +199,7 @@ function ProfileRow({
   onPress,
   onFocusNode,
   hasTVPreferredFocus,
+  ddActionName,
 }: ProfileRowProps) {
   // nativeDriver: false — the fill/ink interpolations below are colors, which
   // the native driver cannot animate.
@@ -237,6 +253,10 @@ function ProfileRow({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={value != null ? `${value}: ${label}` : label}
+      // Overrides the accessibilityLabel as the RUM action name. Spread
+      // conditionally so rows without viewer data keep their descriptive label
+      // (same shape as FocusableCard/ThumbCard).
+      {...(ddActionName ? { "dd-action-name": ddActionName } : {})}
     >
       <Animated.View style={[styles.row, animatedRow]}>
         <AnimatedFocusIcon name={icon} progress={progress} size={ICON_SIZE} />

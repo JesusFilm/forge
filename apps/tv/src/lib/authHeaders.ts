@@ -137,14 +137,24 @@ export function headersForOperation({
   userAccessToken,
   viewerId,
 }: OperationHeaderInputs): Record<string, string> {
-  const fleet = authHeadersForOperation(operationName, fleetToken, viewerId)
-  const user = userAuthHeadersForOperation(operationName, userAccessToken)
-
-  if (fleet.Authorization && user.Authorization) {
+  // Asks the ALLOWLISTS, not the headers they happened to produce. Keying on
+  // `fleet.Authorization && user.Authorization` fails OPEN in the state this
+  // app documents as normal: an unprovisioned `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`
+  // yields no fleet Authorization, so an overlapping operation would sail past
+  // the guard and ship the USER's bearer — the exact outcome it exists to
+  // prevent. The overlap is what is wrong; neither credential may ride it.
+  if (
+    operationName != null &&
+    FLEET_TOKEN_OPERATIONS.includes(operationName) &&
+    USER_TOKEN_OPERATIONS.includes(operationName)
+  ) {
     console.error(
       "[tv-auth] event=bearer_allowlist_overlap reason=two_credentials_one_operation",
     )
     return {}
   }
+
+  const fleet = authHeadersForOperation(operationName, fleetToken, viewerId)
+  const user = userAuthHeadersForOperation(operationName, userAccessToken)
   return { ...fleet, ...user }
 }

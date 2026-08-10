@@ -14,6 +14,7 @@ import {
   type DeviceGrantConfig,
   type DeviceTokens,
 } from "./deviceGrantClient"
+import { clearCachedDisplayName } from "./profile"
 import {
   clearSession,
   loadSession,
@@ -213,6 +214,14 @@ export async function signOut(): Promise<void> {
   cached = null
   inFlight = null
   await clearSession()
+  // Account isolation on a shared family TV. `clearSession` only empties the
+  // KEYCHAIN; the display name lives in regular (unencrypted) storage, so
+  // without this the outgoing viewer's real name stays on the device forever —
+  // there is no other eraser — and greets whoever signs in next. Lives here
+  // rather than at the button so no future sign-out path can forget it.
+  // `clearCachedDisplayName` swallows its own storage failures, so it cannot
+  // unwind a sign-out that has already happened.
+  await clearCachedDisplayName()
   notify()
 
   const token = session?.refreshToken ?? session?.accessToken

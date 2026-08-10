@@ -12,7 +12,7 @@
 //
 // Kept deliberately thin and re-readable for exactly that reason.
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { ProfileScreen } from "../src/components/profile/ProfileScreen"
 import {
@@ -82,20 +82,29 @@ export default function ProfileRoute() {
     void (async () => {
       try {
         const accessToken = await getValidAccessToken()
-        if (accessToken == null || cancelled) return
+        if (accessToken == null) return
 
         const result = await resolveTvIdentity({
           authBaseUrl: getDeviceGrantConfig().authBaseUrl,
           accessToken,
         })
-        if (cancelled || result.kind !== "ok") return
+        if (result.kind !== "ok") return
 
         const { subject, name, email } = result.identity
-        setIdentity({
-          userId: subject,
-          name: name ?? email ?? "Signed in",
-          email: email ?? "",
-        })
+        // `cancelled` gates the STATE UPDATE only. It must not gate the
+        // promotion below: the cleanup fires whenever the viewer leaves the
+        // screen, and `resolveTvIdentity` is a network round trip with a 6s
+        // budget, so a Back press right after approval would otherwise leave a
+        // signed-in viewer's buckets marked UNOWNED. That is the exact state
+        // `decideMergeAction` reads as `promote`, so the next person to sign in
+        // on the TV inherits them — see anonymousMerge.ts rule 1.
+        if (!cancelled) {
+          setIdentity({
+            userId: subject,
+            name: name ?? email ?? "Signed in",
+            email: email ?? "",
+          })
+        }
 
         // Idempotent by construction, and the isolation boundary: buckets
         // belonging to a DIFFERENT account are wiped rather than inherited by
@@ -123,13 +132,30 @@ export default function ProfileRoute() {
   }, [session])
 
   // Adopt a freshly granted session and report the terminal grant outcomes.
+  //
+  // `waitStartedAtRef` exists because `reportDeviceGrantApproved` is a DURATION
+  // signal — "how long the QR was on screen", the activation metric the
+  // device_grant.approved facet is sized on. Reporting a constant would publish
+  // a facet whose every value is a lie, which is worse than not shipping it.
   const phaseKind = grantState.phase.kind
+  const waitStartedAtRef = useRef<number | null>(null)
   useEffect(() => {
+    if (phaseKind === "waiting") {
+      // `??=` so a re-render mid-wait (each poll tick) does not restart the
+      // clock; `start()` clears it below when the code is replaced.
+      waitStartedAtRef.current ??= Date.now()
+      return
+    }
     if (phaseKind === "granted") {
-      reportDeviceGrantApproved(0)
+      const startedAtMs = waitStartedAtRef.current
+      waitStartedAtRef.current = null
+      reportDeviceGrantApproved(
+        startedAtMs != null ? (Date.now() - startedAtMs) / 1000 : 0,
+      )
       void hydrateSession().then(setSession, () => undefined)
       return
     }
+    waitStartedAtRef.current = null
     if (phaseKind === "denied") reportDeviceGrantDenied()
     if (phaseKind === "error") {
       const code =

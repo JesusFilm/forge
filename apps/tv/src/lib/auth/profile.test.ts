@@ -617,6 +617,55 @@ describe("resolveTvIdentity", () => {
     expect(await readCachedDisplayName()).toBe("Ada Lovelace")
   })
 
+  // The case above is VACUOUS for the hazard it names: with no idToken the
+  // fallback returns null and the cache write is never reached at all. These
+  // two exercise the branch that does reach it.
+  //
+  // The id_token is unverified and can predate a rename by weeks — Better
+  // Auth's refresh grant does not have to reissue one — so on the paths where
+  // userinfo FAILED it must not be allowed to overwrite a server-verified name.
+  it("does not overwrite a cached name with the unverified id_token's", async () => {
+    await writeCachedDisplayName("Ada Byron King")
+    const result = await resolveTvIdentity({
+      authBaseUrl: BASE,
+      accessToken: TOKEN,
+      idToken: makeIdToken({ sub: "user-1", name: "Ada Lovelace" }),
+      fetchImpl: stubFetch(new Error("Network request failed")),
+    })
+    if (result.kind !== "ok") throw new Error("unreachable")
+    expect(result.identity.name).toBe("Ada Lovelace")
+    expect(await readCachedDisplayName()).toBe("Ada Byron King")
+  })
+
+  // Same branch, the destructive direction: an id_token issued without a `name`
+  // claim would run the nameless-identity CLEAR and erase a correct name on
+  // nothing worse than hotel wifi.
+  it("does not blank a cached name when the id_token carries no name", async () => {
+    await writeCachedDisplayName("Ada Lovelace")
+    const result = await resolveTvIdentity({
+      authBaseUrl: BASE,
+      accessToken: TOKEN,
+      idToken: makeIdToken({ sub: "user-1" }),
+      fetchImpl: stubFetch(new Error("Network request failed")),
+    })
+    expect(result.kind).toBe("ok")
+    expect(await readCachedDisplayName()).toBe("Ada Lovelace")
+  })
+
+  // ...but an EMPTY cache has nothing to lose, so the fallback still earns the
+  // TV a name on its next cold launch. Without this the fill is dead code and
+  // deleting it would break nothing.
+  it("fills an empty cache from the fallback", async () => {
+    const result = await resolveTvIdentity({
+      authBaseUrl: BASE,
+      accessToken: TOKEN,
+      idToken: makeIdToken({ sub: "user-1", name: "Ada Lovelace" }),
+      fetchImpl: stubFetch(new Error("Network request failed")),
+    })
+    expect(result.kind).toBe("ok")
+    expect(await readCachedDisplayName()).toBe("Ada Lovelace")
+  })
+
   it("never throws", async () => {
     await expect(
       resolveTvIdentity({

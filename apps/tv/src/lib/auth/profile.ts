@@ -475,6 +475,29 @@ export async function cacheIdentityDisplayName(
   await writeCachedDisplayName(identity.name)
 }
 
+/**
+ * Fill the cache only when it is EMPTY — never overwrite, never clear.
+ *
+ * The write door for an `id_token_unverified` identity. That name is unverified
+ * AND can be arbitrarily stale (Better Auth's refresh grant need not reissue an
+ * id_token, so the one on disk may predate a rename by weeks), and it is
+ * produced on exactly the paths where userinfo FAILED. Letting it through
+ * `cacheIdentityDisplayName` would mean a network blip overwrites a fresh,
+ * server-verified name with a stale one — or, for an id_token carrying no
+ * `name` claim, blanks it outright. Both contradict `resolveTvIdentity`'s own
+ * rule that a failed read must not damage a name that is still correct.
+ *
+ * Filling an empty cache is still worth doing: a TV that has never completed a
+ * userinfo read has nothing to lose and gains a name on its next cold launch.
+ */
+async function cacheIdentityDisplayNameIfAbsent(
+  identity: TvIdentity,
+): Promise<void> {
+  if (!identity.name) return
+  if ((await readCachedDisplayName()) != null) return
+  await writeCachedDisplayName(identity.name)
+}
+
 // ── Composition ─────────────────────────────────────────────────────────────
 
 export type ResolveTvIdentityOptions = FetchUserInfoOptions & {
@@ -490,8 +513,10 @@ export type ResolveTvIdentityOptions = FetchUserInfoOptions & {
  * paint a dead session as a live one — exactly the state the caller needs to
  * see so it can refresh or sign out.
  *
- * A failed read never touches the cache: a network blip must not blank a name
- * that is still correct.
+ * A failed read never DAMAGES the cache: a network blip must not blank a name
+ * that is still correct, nor replace it with the unverified id_token's — which
+ * may predate a rename. Only the server-verified read may overwrite or clear;
+ * the fallback may fill an empty cache and nothing more.
  */
 export async function resolveTvIdentity(
   options: ResolveTvIdentityOptions,
@@ -505,6 +530,6 @@ export async function resolveTvIdentity(
 
   const fallback = decodeIdTokenClaimsUnverified(options.idToken)
   if (!fallback) return result
-  await cacheIdentityDisplayName(fallback)
+  await cacheIdentityDisplayNameIfAbsent(fallback)
   return { kind: "ok", identity: fallback }
 }

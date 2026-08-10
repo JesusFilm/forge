@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store"
 
 import type { RefreshOutcome } from "./deviceGrantClient"
+import { readCachedDisplayName, writeCachedDisplayName } from "./profile"
 import {
   __resetSessionForTests,
   adoptTokens,
@@ -338,5 +339,28 @@ describe("sign out", () => {
     await signOut()
     unsubscribe()
     expect(seen).toEqual(["signed_in", "signed_out"])
+  })
+
+  // Account isolation on a shared family TV. `clearSession` empties the
+  // KEYCHAIN only; the display name is deliberately kept in regular,
+  // unencrypted storage for a fast first frame, and this is its ONLY eraser in
+  // the whole app — nothing else removes the key. Without it the outgoing
+  // viewer's real name persists on the device indefinitely and greets whoever
+  // signs in next.
+  it("erases the cached display name", async () => {
+    await writeCachedDisplayName("Ada Lovelace")
+    await adoptTokens({ accessToken: "jfp_at_a", refreshToken: "jfp_rt_a" })
+    await signOut()
+    expect(await readCachedDisplayName()).toBeUndefined()
+  })
+
+  // The erase must not be contingent on the network, for the same reason the
+  // local sign-out is not: pin it against a revocation that fails.
+  it("erases the cached display name even when revocation fails", async () => {
+    await writeCachedDisplayName("Ada Lovelace")
+    await adoptTokens({ accessToken: "jfp_at_a", refreshToken: "jfp_rt_a" })
+    mockRevokeToken.mockRejectedValue(new Error("offline"))
+    await signOut()
+    expect(await readCachedDisplayName()).toBeUndefined()
   })
 })
