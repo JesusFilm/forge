@@ -241,6 +241,44 @@ describe("resolveMobileUserPrincipalFromToken", () => {
     ).resolves.toEqual(expect.objectContaining({ id: "auth-user-123" }))
   })
 
+  it("routes jose's own JWKS fetch through the cap, not just the alg read", async () => {
+    // The alg read and jose's createRemoteJWKSet fetch the SAME url. Capping
+    // only the former left the hot path open, since the alg cache stays warm
+    // while jose keeps refetching. Serve a small JWKS first, then an over-cap
+    // body: only the customFetch wiring can make the second one abort.
+    let cancelled = false
+    let call = 0
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024))
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        call += 1
+        if (call === 1) return Response.json({ keys: [publicJwk] })
+        let sent = 0
+        return new Response(
+          new ReadableStream({
+            pull(controller) {
+              if (sent++ >= 8) return controller.close()
+              controller.enqueue(chunk)
+            },
+            cancel() {
+              cancelled = true
+            },
+          }),
+        )
+      }),
+    )
+    const { resolveMobileUserPrincipalFromToken } =
+      await importMobileUserToken()
+
+    await expect(
+      resolveMobileUserPrincipalFromToken(`Bearer ${await mintJwt()}`),
+    ).resolves.toBeNull()
+    // Without [customFetch], jose reads the oversized body through the raw
+    // global fetch and nothing ever cancels it.
+    expect(cancelled).toBe(true)
+  })
+
   it("aborts the JWKS transfer once it crosses the byte cap", async () => {
     // Asserts the MECHANISM: a real stream whose cancel() records the abort.
     // Merely stopping the read would leave the socket draining.
