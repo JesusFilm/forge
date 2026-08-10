@@ -118,6 +118,24 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
     expect(chapters[0]?.excerpts.map((e) => e.coreId)).toEqual(["b", "a"])
   })
 
+  it("humanizes a blank hydrated title without changing the excerpt slug", () => {
+    const blankIndex = buildVideoByCoreIdIndex([
+      poolVideo("blank", {
+        slug: "miraculous--catch_of-fish",
+        locales: [{ title: " " }],
+      }),
+    ])
+    const { chapters } = parseShowcaseExperience(
+      [mediaCollection("Hope", ["blank"])],
+      blankIndex,
+    )
+
+    expect(chapters[0]?.excerpts[0]).toMatchObject({
+      title: "Miraculous Catch Of Fish",
+      slug: "miraculous--catch_of-fish",
+    })
+  })
+
   it("excludes the reserved showcase-stats section from chapters", () => {
     const blocks = [
       mediaCollection("Loneliness", ["a"]),
@@ -321,7 +339,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a"])],
       untitled,
     )
-    expect(chapters[0]?.excerpts[0]?.title).toBe("a-slug")
+    expect(chapters[0]?.excerpts[0]?.title).toBe("A Slug")
   })
 
   // KTD-4's hydration index indexes children too (a curated item can live only as

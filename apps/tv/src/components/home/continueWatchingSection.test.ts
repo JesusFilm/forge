@@ -52,12 +52,17 @@ describe("buildContinueWatchingSection", () => {
     ).toBeNull()
   })
 
-  it("falls back to slug when the title is missing", () => {
+  it("falls back to a readable slug when the title is missing or legacy-raw", () => {
     const section = buildContinueWatchingSection([
-      entry({ title: null, durationSeconds: null }),
+      entry({
+        slug: "miraculous-catch-of-fish",
+        title: "miraculous-catch-of-fish",
+        durationSeconds: null,
+      }),
     ])!
     const card = section.cards[0]!
-    expect(card.title).toBe("stunned")
+    expect(card.title).toBe("Miraculous Catch Of Fish")
+    expect(card.slug).toBe("miraculous-catch-of-fish")
     expect(card.durationSeconds).toBeNull()
   })
 })

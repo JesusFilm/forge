@@ -4,6 +4,7 @@
 
 import { useCallback } from "react"
 import { useRouter } from "expo-router"
+import { repairLegacyVideoDisplayTitle } from "@forge/content-display"
 
 import type { WatchSibling } from "../../lib/normalizeVideo"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
@@ -21,7 +22,12 @@ export function UpNextRail({ siblings }: { siblings: WatchSibling[] }) {
       // JFP siblings only carry the content-type label (e.g. "SERIES"), which
       // would repeat identically on every card — so no eyebrow, just the title.
       <ThumbCard
-        title={sibling.title ?? sibling.slug}
+        title={
+          repairLegacyVideoDisplayTitle({
+            title: sibling.title,
+            slug: sibling.slug,
+          }) ?? "Video"
+        }
         posterUrl={sibling.posterUrl}
         previewPlaybackId={
           isSeriesLabel(sibling.label) ? null : sibling.muxPlaybackId

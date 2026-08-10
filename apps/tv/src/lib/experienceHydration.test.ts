@@ -78,7 +78,7 @@ describe("resolveMediaItemTitle", () => {
     expect(resolveMediaItemTitle({ titleOverride: "  " }, jesus)).toBe("JESUS")
     expect(
       resolveMediaItemTitle({}, { slug: "life-of-jesus", locales: [] }),
-    ).toBe("life-of-jesus")
+    ).toBe("Life Of Jesus")
     expect(resolveMediaItemTitle({}, undefined)).toBe("Untitled")
   })
 })

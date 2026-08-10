@@ -116,6 +116,17 @@ describe("stripHtml", () => {
 })
 
 describe("mapWatchSearchResult", () => {
+  it("repairs a legacy Video title equal to its raw slug", () => {
+    expect(
+      mapWatchSearchResult(
+        row({
+          slug: "miraculous-catch-of-fish",
+          title: "miraculous-catch-of-fish",
+        }),
+      )?.title,
+    ).toBe("Miraculous Catch Of Fish")
+  })
+
   it("maps a full row to the non-null UI shape", () => {
     expect(
       mapWatchSearchResult(
@@ -147,12 +158,13 @@ describe("mapWatchSearchResult", () => {
   // Each required field gets its own case: the UI reads all four unconditionally
   // (searchResultPath does encodeURIComponent(result.slug)), so a null would
   // route to "/watch/undefined" rather than being dropped.
-  it.each(["type", "id", "slug", "title"])(
-    "drops a row missing %s",
-    (field) => {
-      expect(mapWatchSearchResult(row({ [field]: null }))).toBeNull()
-    },
-  )
+  it.each(["type", "id", "slug"])("drops a row missing %s", (field) => {
+    expect(mapWatchSearchResult(row({ [field]: null }))).toBeNull()
+  })
+
+  it("humanizes the slug when a Video result title is absent", () => {
+    expect(mapWatchSearchResult(row({ title: null }))?.title).toBe("Jesus")
+  })
 
   it("coerces absent optional fields to null, not undefined", () => {
     const mapped = mapWatchSearchResult(row())
@@ -201,7 +213,7 @@ describe("mapWatchSearchResponse", () => {
     expect(page).toMatchObject({
       query: "jesus",
       hasMore: false,
-      nextOffset: 21,
+      nextOffset: 22,
     })
   })
 

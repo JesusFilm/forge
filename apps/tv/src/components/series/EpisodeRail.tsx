@@ -6,6 +6,7 @@
 
 import { memo, useCallback } from "react"
 import { useRouter } from "expo-router"
+import { repairLegacyVideoDisplayTitle } from "@forge/content-display"
 
 import type { WatchEpisode } from "../../lib/normalizeVideo"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
@@ -68,7 +69,12 @@ export const EpisodeRail = memo(function EpisodeRail({
       const isNestedSeries = isSeriesLabel(episode.label)
       return (
         <ThumbCard
-          title={episode.title ?? episode.slug}
+          title={
+            repairLegacyVideoDisplayTitle({
+              title: episode.title,
+              slug: episode.slug,
+            }) ?? "Video"
+          }
           posterUrl={episode.posterUrl}
           eyebrow={
             isNestedSeries

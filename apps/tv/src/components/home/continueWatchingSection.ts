@@ -4,6 +4,7 @@
 // the Home screen's React graph.
 
 import type { ContinueWatchingEntry } from "../../lib/watchEvents/continueWatching"
+import { repairLegacyVideoDisplayTitle } from "@forge/content-display"
 import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
 
 export const CONTINUE_WATCHING_SECTION_ID = "continue-watching"
@@ -20,12 +21,15 @@ function minutesLeft(entry: ContinueWatchingEntry): number | null {
 
 function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
   const remaining = minutesLeft(entry)
+  const title =
+    repairLegacyVideoDisplayTitle({ title: entry.title, slug: entry.slug }) ??
+    "Video"
   return {
     id: `cw-${entry.videoId}`,
     sourceId: entry.videoId,
     coreId: entry.videoId,
     slug: entry.slug,
-    title: entry.title ?? entry.slug,
+    title,
     description: null,
     // Empty: HomeCard omits the kind line entirely, since the rail header
     // above already reads "Continue Watching".
@@ -39,7 +43,7 @@ function toCard(entry: ContinueWatchingEntry): WatchHomeCard {
     metaLabelOnFocusOnly: true,
     imageUrl: entry.imageUrl,
     landscapeImageUrl: entry.imageUrl,
-    imageAlt: entry.title ?? "Continue watching",
+    imageAlt: title,
     // Null on purpose: the shelf card stays a STATIC thumbnail. A focused card
     // does not animate a hover preview the way curated rails do.
     muxPlaybackId: null,

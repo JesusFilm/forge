@@ -2,6 +2,7 @@
 // resolves title/image from the linked video, hydrated by coreId.
 
 import { pickCardImage, type CardImageSource } from "./cardImage"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { resolveImageUrl } from "./resolveImageUrl"
 import type { NormalizedBlock } from "./normalizer"
 import { blockImageAssetPreviewUrl } from "./blockImageAsset"
@@ -78,11 +79,13 @@ export function resolveMediaItemTitle(
   video: HydratedVideo | undefined,
 ): string {
   return (
-    firstNonEmpty(
-      item.titleOverride,
-      video?.locales?.[0]?.title,
-      video?.slug,
-    ) ?? "Untitled"
+    resolveVideoDisplayTitle({
+      requestedTitles: [
+        item.titleOverride,
+        ...(video?.locales?.map((locale) => locale.title) ?? []),
+      ],
+      slug: video?.slug,
+    }) ?? "Untitled"
   )
 }
 

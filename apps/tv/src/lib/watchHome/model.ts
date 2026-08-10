@@ -16,6 +16,10 @@ import {
 import { pickCardImage } from "../cardImage"
 import { isSeriesLabel } from "../isSeriesRecord"
 import { buildHeroFeatured, buildHeroSourceMap } from "./heroQueue"
+import {
+  firstNonBlankText,
+  resolveVideoDisplayTitle,
+} from "@forge/content-display"
 
 /**
  * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
@@ -222,10 +226,17 @@ export function normalizeCard(args: {
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video ? resolvedChildren(args.video).length : 0
-  const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const requestedTitle = firstNonBlankText(
+    args.video.locales?.map((candidate) => candidate.title),
+  )
+  const title =
+    resolveVideoDisplayTitle({
+      requestedTitles: args.video.locales?.map((candidate) => candidate.title),
+      slug: args.video.slug,
+    }) ?? "Video"
 
   const missingData: WatchHomeMissingData[] = []
-  if (!locale?.title) {
+  if (!requestedTitle) {
     missingData.push({
       sectionId: args.sectionId,
       sourceId: args.sourceId,

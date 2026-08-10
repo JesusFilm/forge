@@ -3,6 +3,10 @@
 // TV-only: mobile has no equivalent module yet.
 
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import {
+  firstNonBlankText,
+  repairLegacyVideoDisplayTitle,
+} from "@forge/content-display"
 
 import type {
   SearchResponse,
@@ -86,12 +90,17 @@ export function stripHtml(value: string | null | undefined): string | null {
 export function mapWatchSearchResult(
   item: WatchSearchResultItem,
 ): SearchResult | null {
-  if (!item.type || !item.id || !item.slug || !item.title) return null
+  if (!item.type || !item.id || !item.slug) return null
+  const title =
+    item.type === "VIDEO"
+      ? repairLegacyVideoDisplayTitle({ title: item.title, slug: item.slug })
+      : firstNonBlankText([item.title])
+  if (!title) return null
   return {
     type: item.type,
     id: item.id,
     slug: item.slug,
-    title: item.title,
+    title,
     imageUrl: item.imageUrl ?? null,
     snippet: stripHtml(item.snippet),
     startSeconds: item.startSeconds ?? null,

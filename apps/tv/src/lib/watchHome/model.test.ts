@@ -38,6 +38,24 @@ function childRel(coreId: string): WatchHomeChildRelationInput {
 
 const heroVideos = WATCH_HOME_HERO_SOURCE_IDS.map((id) => video(id))
 
+it("humanizes a blank Watch home title without changing route identity", () => {
+  const card = normalizeCard({
+    sectionId: "test",
+    sourceId: "1_jf-0-0",
+    languageSlug: "english",
+    video: video("1_jf-0-0", {
+      slug: "miraculous--catch_of-fish",
+      locales: [{ title: " ", description: "Localized description" }],
+    }),
+  })
+
+  expect(card).toMatchObject({
+    title: "Miraculous Catch Of Fish",
+    description: "Localized description",
+    slug: "miraculous--catch_of-fish",
+  })
+})
+
 describe("buildWatchHomeModelFromVideos — featured", () => {
   it("builds featured from the playlist-sequence pool queue, emitting the parent film even with children (web-parity)", () => {
     // 1_jf-0-0 (JESUS) is a FEATURE_FILM playlist source with chapter children;

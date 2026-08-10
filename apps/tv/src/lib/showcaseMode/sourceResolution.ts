@@ -5,6 +5,7 @@
  */
 
 import { pickCardImage } from "../cardImage"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { getWatchHomeDeterministicOffset } from "../watchHome/heroQueue"
 import type {
   WatchHomeCard,
@@ -102,7 +103,11 @@ function videoToExcerpt(
     id: `${chapterId}:${coreId}`,
     coreId,
     slug,
-    title: video.locales?.[0]?.title ?? slug,
+    title:
+      resolveVideoDisplayTitle({
+        requestedTitles: video.locales?.map((locale) => locale.title),
+        slug,
+      }) ?? "Video",
     posterUrl: pickCardImage(video.images ?? [], "poster"),
     rawLabel: video.label ?? null,
   }

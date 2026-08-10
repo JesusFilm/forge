@@ -222,6 +222,32 @@ describe("normalizeVideo — base record", () => {
     expect(result.primaryLanguageBcp47).toBe("en")
   })
 
+  it("humanizes blank root, sibling, and chapter titles", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        slug: "miraculous--catch_of-fish",
+        locales: [{ documentId: "root-loc", title: " " }],
+        parents: [
+          {
+            parent: {
+              documentId: "parent-1",
+              slug: "hope-stories",
+              label: "COLLECTION",
+              locales: [],
+              images: [],
+              children: [makeChild("vid-2", "the_resurrection", "\t")],
+            },
+          },
+        ],
+        children: [makeEpisodeRel("chapter-1", "miraculous_chapter", "", 1)],
+      }),
+    )!
+
+    expect(result.title).toBe("Miraculous Catch Of Fish")
+    expect(result.siblings[0]?.title).toBe("The Resurrection")
+    expect(result.chapters[0]?.title).toBe("Miraculous Chapter")
+  })
+
   it("filters unpublished variants", () => {
     const result = normalizeVideo(makeRawVideo())!
     expect(result.variants).toHaveLength(2)
@@ -303,7 +329,7 @@ describe("normalizeVideo — base record", () => {
       }),
     )!
 
-    expect(result.title).toBeNull()
+    expect(result.title).toBe("The Crucifixion")
     expect(result.posterUrl).toBeNull()
     expect(result.streamingUrl).toBeNull()
     expect(result.muxPlaybackId).toBeNull()

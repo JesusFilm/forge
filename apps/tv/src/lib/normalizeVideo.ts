@@ -7,6 +7,7 @@ import type {
   WatchDubData,
   SeriesVideoData,
 } from "./videoQueries"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 
@@ -341,7 +342,11 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         documentId: child.documentId ?? "",
         slug: child.slug ?? "",
         label: child.label ?? null,
-        title: pickFirstLocale(child.locales).title,
+        title:
+          resolveVideoDisplayTitle({
+            requestedTitles: [pickFirstLocale(child.locales).title],
+            slug: child.slug,
+          }) ?? null,
         posterUrl: pickPosterUrl(child.images),
         muxPlaybackId: child.muxPlaybackId ?? null,
       })) ?? []
@@ -382,7 +387,11 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     documentId: raw.documentId ?? "",
     slug: raw.slug ?? "",
     label: raw.label ?? null,
-    title: locale.title,
+    title:
+      resolveVideoDisplayTitle({
+        requestedTitles: [locale.title],
+        slug: raw.slug,
+      }) ?? null,
     description: locale.description,
     snippet: locale.snippet,
     posterUrl: pickPosterUrl(raw.images),
@@ -422,7 +431,11 @@ function buildChildren(raw: {
         documentId: rel.child.documentId ?? "",
         slug: rel.child.slug ?? "",
         label: rel.child.label ?? null,
-        title: locale.title,
+        title:
+          resolveVideoDisplayTitle({
+            requestedTitles: [locale.title],
+            slug: rel.child.slug,
+          }) ?? null,
         description: locale.description,
         imageAlt: locale.imageAlt,
         posterUrl: pickPosterUrl(rel.child.images),
