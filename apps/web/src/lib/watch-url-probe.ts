@@ -25,6 +25,8 @@ export type WatchUrlFixture = {
   expectedCanonicalPath?: string
   /** The route must publish a page-level JSON-LD URL matching the canonical. */
   requireStructuredDataCanonical?: boolean
+  /** Production may 404 because this fixture intentionally adds a public route. */
+  allowProductionNotFound?: boolean
 }
 
 const ROOTS: readonly string[] = [
@@ -69,6 +71,9 @@ const EXPLICIT_LANGUAGE: readonly string[] = [
   "/watch/jesus.html/tamil.html",
   "/watch/jesus.html/zulu.html",
   "/watch/jesus.html/swahili.html",
+  "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/the-beginning.html/spanish-castilian.html",
   "/watch/magdalena-2.html/english.html",
   "/watch/magdalena.html/russian.html",
   "/watch/chosen-witness.html/english.html",
@@ -124,7 +129,15 @@ const EPISODES: readonly string[] = [
   "/watch/lumo-the-gospel-of-luke.html/birth-of-jesus/english.html",
   "/watch/lumo-the-gospel-of-luke.html/birth-of-jesus/spanish-castilian.html",
   "/watch/lumo-the-gospel-of-mark.html/jesus-baptism/english.html",
+  // Language-less contextual English is the preferred public form. The
+  // explicit English form remains a direct compatibility URL below.
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
   "/watch/jesus.html/the-beginning/english.html",
+  "/watch/jesus.html/the-beginning/romanian.html",
   "/watch/jesus.html/the-beginning/spanish-castilian.html",
   "/watch/jesus.html/the-beginning/russian.html",
 ]
@@ -148,10 +161,13 @@ const QUERY_PARAMS: readonly string[] = [
   "/watch/jesus.html?t=120",
   "/watch/jesus.html?autoplay=1",
   "/watch/jesus.html?utm_source=campaign&utm_medium=email",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
 ]
 
 const LANGUAGELESS_ENGLISH: readonly string[] = [
   "/watch/jesus.html",
+  "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-john-1-35-2-22.html",
   "/watch/magdalena-2.html",
   "/watch/chosen-witness.html",
   "/watch/wedding-in-cana.html",
@@ -198,11 +214,28 @@ function fixturesOf(
           requireStructuredDataCanonical: true,
         }
       : {}),
+    ...(WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS.has(path)
+      ? { allowProductionNotFound: true }
+      : {}),
   }))
 }
 
+const WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS: ReadonlySet<string> = new Set([
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
+])
+
 const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
   "/watch/jesus.html": "/watch/jesus.html",
+  "/watch/lumo-john-1-1-34.html": "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-john-1-35-2-22.html": "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-john-1-1-34.html/romanian.html":
+    "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-john-1-1-34.html/russian.html":
+    "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/the-beginning.html/spanish-castilian.html":
+    "/watch/the-beginning.html/spanish-castilian.html",
   "/watch/jesus.html/english.html": "/watch/jesus.html",
   "/watch/jesus.html/romanian.html": "/watch/jesus.html/romanian.html",
   "/watch/jesus.html/russian.html": "/watch/jesus.html/russian.html",
@@ -214,6 +247,20 @@ const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
     "/watch/lumo-the-gospel-of-john.html",
   "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html":
     "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html":
+    "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html":
+    "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html":
+    "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/jesus.html/the-beginning/romanian.html":
+    "/watch/the-beginning.html/romanian.html",
   "/watch/jesus.html/the-beginning/spanish-castilian.html":
     "/watch/the-beginning.html/spanish-castilian.html",
 }
@@ -254,9 +301,11 @@ export type ProbeResult = {
     types: string[]
     parseErrors: string[]
     pageUrls: string[]
+    videoObjects?: VideoObjectIdentity[]
   }
   documentIdentity?: {
     canonicalUrl: string | null
+    canonicalUrls?: string[]
     openGraphUrl: string | null
   }
   /** Set when the request failed at the transport layer (DNS, timeout, etc.). */
@@ -269,6 +318,42 @@ export type StructuredDataContract = {
   /** Entity types that this route class must never publish. */
   forbidden: readonly string[]
 }
+
+export type VideoObjectIdentity = {
+  name: string | null
+  url: string | null
+  contentUrl: string | null
+}
+
+export const WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS = [
+  {
+    contextual: "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+    standalone: "/watch/lumo-john-1-1-34.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+    standalone: "/watch/lumo-john-1-1-34.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+    standalone: "/watch/lumo-john-1-1-34.html/romanian.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+    standalone: "/watch/lumo-john-1-1-34.html/russian.html",
+  },
+  {
+    contextual: "/watch/jesus.html/the-beginning/spanish-castilian.html",
+    standalone: "/watch/the-beginning.html/spanish-castilian.html",
+  },
+  {
+    contextual: "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+    standalone: "/watch/lumo-john-1-35-2-22.html",
+  },
+] as const
 
 /**
  * Representative public routes whose schema is part of the cutover contract.
@@ -297,7 +382,15 @@ export const WATCH_STRUCTURED_DATA_CONTRACTS: Readonly<
     required: { VideoObject: 1 },
     forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
   },
+  "/watch/lumo-john-1-1-34.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
   "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html": {
     required: { VideoObject: 1 },
     forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
   },
@@ -327,6 +420,7 @@ type ClassifyFixture = {
   requireDirect?: boolean
   expectedCanonicalPath?: string
   requireStructuredDataCanonical?: boolean
+  allowProductionNotFound?: boolean
 }
 
 function passthroughViolation(
@@ -374,30 +468,37 @@ function canonicalIdentityViolations(
   const expected = fixture.expectedCanonicalPath
   if (!expected) return []
 
-  const canonicalPath = pathnameFromUrl(result.documentIdentity?.canonicalUrl)
-  const openGraphPath = pathnameFromUrl(result.documentIdentity?.openGraphUrl)
+  const expectedAbsolute = `https://www.jesusfilm.org${expected}`
+  const canonicalUrls =
+    result.documentIdentity?.canonicalUrls ??
+    (result.documentIdentity?.canonicalUrl
+      ? [result.documentIdentity.canonicalUrl]
+      : [])
   const violations: string[] = []
-  if (canonicalPath !== expected) {
+  if (canonicalUrls.length !== 1) {
     violations.push(
-      `canonical expected ${expected}, got ${canonicalPath ?? "missing"}`,
+      `expected exactly 1 canonical link, found ${canonicalUrls.length}`,
     )
   }
-  if (openGraphPath !== expected) {
+  if (canonicalUrls[0] !== expectedAbsolute) {
     violations.push(
-      `og:url expected ${expected}, got ${openGraphPath ?? "missing"}`,
+      `canonical expected ${expectedAbsolute}, got ${canonicalUrls[0] ?? "missing"}`,
+    )
+  }
+  if (result.documentIdentity?.openGraphUrl !== expectedAbsolute) {
+    violations.push(
+      `og:url expected ${expectedAbsolute}, got ${result.documentIdentity?.openGraphUrl ?? "missing"}`,
     )
   }
 
-  const pageUrlPaths = (result.structuredData?.pageUrls ?? []).map(
-    pathnameFromUrl,
-  )
-  if (fixture.requireStructuredDataCanonical && pageUrlPaths.length === 0) {
+  const pageUrls = result.structuredData?.pageUrls ?? []
+  if (fixture.requireStructuredDataCanonical && pageUrls.length === 0) {
     violations.push("page-level JSON-LD canonical URL missing")
   }
-  for (const pageUrlPath of pageUrlPaths) {
-    if (pageUrlPath !== expected) {
+  for (const pageUrl of pageUrls) {
+    if (pageUrl !== expectedAbsolute) {
       violations.push(
-        `page-level JSON-LD URL expected ${expected}, got ${pageUrlPath ?? "invalid"}`,
+        `page-level JSON-LD URL expected ${expectedAbsolute}, got ${pageUrl}`,
       )
     }
   }
@@ -574,7 +675,21 @@ export function classifyProbe(
     }
   }
 
-  // pc === 4 — production 404 (or other 4xx). §5.6: must STAY 404.
+  // pc === 4 — production 404 (or other 4xx). Only an explicitly opted-in
+  // `ok` fixture may expand the public route surface, after its direct,
+  // canonical, and schema contracts above have passed. Every other fixture
+  // must preserve the 4xx baseline.
+  if (
+    fixture?.expect === "ok" &&
+    fixture.allowProductionNotFound === true &&
+    vc === 2
+  ) {
+    return {
+      outcome: "acceptable",
+      note: `intentional route expansion: prod ${production.status} → preview direct ${preview.status}`,
+    }
+  }
+
   if (vc === 4) {
     return { outcome: "match", note: `404 preserved (${preview.status})` }
   }
@@ -597,6 +712,7 @@ export function parseJsonLdScripts(html: string): {
   types: string[]
   parseErrors: string[]
   pageUrls: string[]
+  videoObjects: VideoObjectIdentity[]
 } {
   const scripts = Array.from(
     html.matchAll(
@@ -606,12 +722,14 @@ export function parseJsonLdScripts(html: string): {
   const types: string[] = []
   const parseErrors: string[] = []
   const pageUrls: string[] = []
+  const videoObjects: VideoObjectIdentity[] = []
 
   for (const [index, match] of scripts.entries()) {
     try {
       const parsed = JSON.parse(match[1] ?? "") as unknown
       types.push(...collectJsonLdTypes(parsed))
       pageUrls.push(...collectJsonLdPageUrls(parsed))
+      videoObjects.push(...collectJsonLdVideoObjects(parsed))
     } catch (error) {
       parseErrors.push(
         `script ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
@@ -624,6 +742,7 @@ export function parseJsonLdScripts(html: string): {
     types,
     parseErrors,
     pageUrls,
+    videoObjects,
   }
 }
 
@@ -667,6 +786,61 @@ function collectJsonLdPageUrls(value: unknown): string[] {
   ]
 }
 
+function collectJsonLdVideoObjects(value: unknown): VideoObjectIdentity[] {
+  if (Array.isArray(value)) return value.flatMap(collectJsonLdVideoObjects)
+  if (typeof value !== "object" || value == null) return []
+
+  const record = value as Record<string, unknown>
+  const identity = ownJsonLdTypes(record).includes("VideoObject")
+    ? [
+        {
+          name: typeof record.name === "string" ? record.name : null,
+          url: typeof record.url === "string" ? record.url : null,
+          contentUrl:
+            typeof record.contentUrl === "string" ? record.contentUrl : null,
+        },
+      ]
+    : []
+  return [
+    ...identity,
+    ...Object.values(record).flatMap(collectJsonLdVideoObjects),
+  ]
+}
+
+export function primaryVideoIdentityViolations(
+  contextual: ProbeResult,
+  standalone: ProbeResult,
+): string[] {
+  const contextualVideos = contextual.structuredData?.videoObjects ?? []
+  const standaloneVideos = standalone.structuredData?.videoObjects ?? []
+  const violations: string[] = []
+  if (contextualVideos.length !== 1) {
+    violations.push(
+      `contextual page expected exactly 1 VideoObject identity, found ${contextualVideos.length}`,
+    )
+  }
+  if (standaloneVideos.length !== 1) {
+    violations.push(
+      `standalone page expected exactly 1 VideoObject identity, found ${standaloneVideos.length}`,
+    )
+  }
+  const contextualVideo = contextualVideos[0]
+  const standaloneVideo = standaloneVideos[0]
+  if (!contextualVideo || !standaloneVideo) return violations
+
+  for (const field of ["name", "contentUrl"] as const) {
+    if (
+      !contextualVideo[field] ||
+      contextualVideo[field] !== standaloneVideo[field]
+    ) {
+      violations.push(
+        `primary video ${field} differs: contextual ${contextualVideo[field] ?? "missing"}, standalone ${standaloneVideo[field] ?? "missing"}`,
+      )
+    }
+  }
+  return violations
+}
+
 function htmlAttribute(tag: string, name: string): string | null {
   const match = tag.match(
     new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"),
@@ -685,14 +859,19 @@ function htmlAttribute(tag: string, name: string): string | null {
 
 export function parseDocumentIdentity(html: string): {
   canonicalUrl: string | null
+  canonicalUrls: string[]
   openGraphUrl: string | null
 } {
   const linkTags = Array.from(html.matchAll(/<link\b[^>]*>/gi), ([tag]) => tag)
-  const canonicalTag = linkTags.find((tag) =>
+  const canonicalUrls = linkTags.flatMap((tag) =>
     (htmlAttribute(tag, "rel") ?? "")
       .toLowerCase()
       .split(/\s+/)
-      .includes("canonical"),
+      .includes("canonical")
+      ? [htmlAttribute(tag, "href")].filter(
+          (href): href is string => href != null,
+        )
+      : [],
   )
   const metaTags = Array.from(html.matchAll(/<meta\b[^>]*>/gi), ([tag]) => tag)
   const openGraphTag = metaTags.find(
@@ -703,7 +882,8 @@ export function parseDocumentIdentity(html: string): {
   )
 
   return {
-    canonicalUrl: canonicalTag ? htmlAttribute(canonicalTag, "href") : null,
+    canonicalUrl: canonicalUrls[0] ?? null,
+    canonicalUrls,
     openGraphUrl: openGraphTag ? htmlAttribute(openGraphTag, "content") : null,
   }
 }

@@ -24,7 +24,11 @@ const TEST_MANIFEST: WatchRouteManifest = {
   oneSegmentSlugs: ["easter", "jesus", "new-collection"],
   homepageLocales: ["en", "es"],
   episodePairsByParent: {
-    "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
+    "lumo-the-gospel-of-john": [
+      "lumo-john-1-1-34",
+      "lumo-john-1-35-2-22",
+      "wedding-in-cana",
+    ],
   },
   audioLanguageSlugs: [
     "aari",
@@ -38,6 +42,13 @@ const TEST_MANIFEST: WatchRouteManifest = {
   ],
   audioLanguageIndexesByContent: {
     jesus: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  audioLanguageIndexesByEpisode: {
+    "lumo-the-gospel-of-john": {
+      "lumo-john-1-1-34": [2, 4],
+      "lumo-john-1-35-2-22": [2],
+      "wedding-in-cana": [2],
+    },
   },
 }
 
@@ -627,6 +638,55 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     )
   })
 
+  it("directly rewrites an exact language-less English context and preserves its query", async () => {
+    const response = await proxy(
+      makeRequest(
+        "/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+    expect(rewrite.pathname).toBe(
+      "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+    )
+    expect(rewrite.search).toBe("?autoplay=1&utm_source=home")
+  })
+
+  it("keeps explicit English and international contextual routes directly admitted", async () => {
+    const explicitEnglish = await proxy(
+      makeRequest(
+        "/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+      ),
+    )
+    const explicitRussian = await proxy(
+      makeRequest(
+        "/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+      ),
+    )
+
+    expect(explicitEnglish.headers.get("location")).toBeNull()
+    expect(rewritePath(explicitEnglish)).toBe(
+      "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+    )
+    expect(explicitRussian.headers.get("location")).toBeNull()
+    expect(rewritePath(explicitRussian)).toBe(
+      "/ru/ru/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+    )
+  })
+
+  it("rewrites a short legacy episode alias to its exact current English context", async () => {
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/wedding-in-cana.html"),
+    )
+
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewritePath(response)).toBe(
+      "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-35-2-22.html",
+    )
+  })
+
   it("falls back chrome identity for unsupported audio-language families", async () => {
     const response = await proxy(makeRequest("/jesus.html/aari.html"))
     expect(rewritePath(response)).toBe("/en/en/jesus.html/aari.html")
@@ -689,6 +749,19 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(manifestReads).toBe(1)
   })
 
+  it("301 redirects a rejected short English context to an admitted standalone video", async () => {
+    const response = await proxy(
+      makeRequest(
+        "/discipleship.html/parable-of-the-sower-and-the-seed.html?ref=short-context",
+      ),
+    )
+
+    expect(response.status).toBe(301)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/parable-of-the-sower-and-the-seed.html")
+    expect(location.search).toBe("?ref=short-context")
+  })
+
   it("redirects a rejected English context to the canonical language-less standalone video", async () => {
     const response = await proxy(
       makeRequest(
@@ -728,18 +801,108 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
 
-    const response = await proxy(
+    const internationalResponse = await proxy(
       makeRequest(
         "/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
       ),
     )
+    const englishCompatibilityResponse = await proxy(
+      makeRequest(
+        "/discipleship.html/parable-of-the-sower-and-the-seed/english.html",
+      ),
+    )
 
-    expect(response.status).toBe(200)
-    expect(response.headers.get("location")).toBeNull()
-    expect(rewritePath(response)).toBe(
+    expect(internationalResponse.status).toBe(200)
+    expect(internationalResponse.headers.get("location")).toBeNull()
+    expect(rewritePath(internationalResponse)).toBe(
       "/es/es-419/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
     )
+    expect(englishCompatibilityResponse.status).toBe(200)
+    expect(englishCompatibilityResponse.headers.get("location")).toBeNull()
+    expect(rewritePath(englishCompatibilityResponse)).toBe(
+      "/en/en/discipleship.html/parable-of-the-sower-and-the-seed/english.html",
+    )
   })
+
+  it("fails closed for short contextual routes when the manifest is unavailable", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
+
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("fails closed when an older manifest cannot prove exact episode English", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageIndexesByEpisode: undefined,
+    }))
+
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("fails closed when the exact episode lacks English", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageIndexesByEpisode: {
+        "lumo-the-gospel-of-john": {
+          "lumo-john-1-1-34": [4],
+        },
+      },
+    }))
+
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("redirects rejected context to an independently admitted English child", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: [...TEST_MANIFEST.contentSlugs, "lumo-john-1-1-34"],
+      audioLanguageIndexesByContent: {
+        ...TEST_MANIFEST.audioLanguageIndexesByContent,
+        "lumo-john-1-1-34": [2],
+      },
+      audioLanguageIndexesByEpisode: {
+        "lumo-the-gospel-of-john": {
+          "lumo-john-1-1-34": [4],
+        },
+      },
+    }))
+
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
+    )
+
+    expect(response.status).toBe(301)
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+      "/lumo-john-1-1-34.html",
+    )
+  })
+
+  it.each(["constructor", "__proto__"])(
+    "fails closed for inherited-object episode slug %s",
+    async (episodeSlug) => {
+      const response = await proxy(
+        makeRequest(`/lumo-the-gospel-of-john.html/${episodeSlug}.html`),
+      )
+
+      expectNotFoundRewrite(response)
+    },
+  )
 
   it("keeps the fixed 404 sentinel internal", async () => {
     const visible = await proxy(makeRequest("/en/en/404"))
@@ -824,6 +987,33 @@ describe("proxy — visible internal-prefix policy", () => {
     expect(second.status).toBe(200)
   })
 
+  it("allows a proxy-originated short contextual rewrite to re-enter", async () => {
+    const first = await proxy(
+      makeRequest(
+        "/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1",
+      ),
+    )
+    const internalPath = rewritePath(first)
+
+    expect(internalPath).toBe(
+      "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+    )
+    expect(
+      first.headers.get(
+        `x-middleware-request-${WATCH_INTERNAL_REWRITE_HEADER}`,
+      ),
+    ).toBe("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html")
+
+    const second = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+
+    expect(second.status).toBe(200)
+    expect(second.headers.get("location")).toBeNull()
+  })
+
   it("does not trust a caller-supplied internal rewrite marker as admission", async () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
@@ -871,6 +1061,21 @@ describe("proxy — visible internal-prefix policy", () => {
     expect(response.status).toBe(308)
     const location = new URL(response.headers.get("location") ?? "")
     expect(location.pathname).toBe("/jesus.html")
+    expect(location.search).toBe("?ref=visible")
+  })
+
+  it("normalizes a visible internal English context to the short public URL", async () => {
+    const response = await proxy(
+      makeRequest(
+        "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html?ref=visible",
+      ),
+    )
+
+    expect(response.status).toBe(308)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe(
+      "/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+    )
     expect(location.search).toBe("?ref=visible")
   })
 

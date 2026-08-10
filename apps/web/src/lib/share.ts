@@ -11,6 +11,7 @@ import {
   watchVideoPath,
 } from "./routes"
 import { normalizePublicShareableOrigin } from "./url"
+import { resolveLegacyWatchEpisodeAlias } from "./watch-route-aliases"
 
 export type ResolveWatchShareUrlInput = {
   origin: string
@@ -71,9 +72,12 @@ export function resolveWatchShareUrlFromPathname({
     })
   }
   if (parsed.kind === "episode") {
+    const videoSlug =
+      resolveLegacyWatchEpisodeAlias(parsed.series, parsed.episode) ??
+      parsed.episode
     return resolveWatchShareUrl({
       origin,
-      videoSlug: parsed.episode,
+      videoSlug,
       languageSlug: parsed.lang,
     })
   }

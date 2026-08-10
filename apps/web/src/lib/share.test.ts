@@ -108,6 +108,21 @@ describe("resolveWatchShareUrlFromPathname", () => {
     ).toBe(`https://www.jesusfilm.org${publicPath}`)
   })
 
+  it.each([
+    "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+    "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+  ])(
+    "shares a contextual legacy alias by its canonical child identity",
+    (pathname) => {
+      expect(
+        resolveWatchShareUrlFromPathname({
+          origin: "http://localhost:3000",
+          pathname,
+        }),
+      ).toBe("https://www.jesusfilm.org/watch/lumo-john-1-35-2-22.html")
+    },
+  )
+
   it("preserves known non-video Watch routes on the public origin", () => {
     expect(
       resolveWatchShareUrlFromPathname({

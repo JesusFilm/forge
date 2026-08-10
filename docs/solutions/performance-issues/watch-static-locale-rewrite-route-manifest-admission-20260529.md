@@ -1,7 +1,7 @@
 ---
 title: "Bound Watch Static Route Admission with the Admin Route Manifest"
 date: "2026-05-29"
-last_updated: "2026-07-25"
+last_updated: "2026-08-01"
 category: "performance-issues"
 module: "apps/web watch routing"
 problem_type: "performance_issue"
@@ -311,6 +311,29 @@ and sitemap URL. `/watch/{slug}.html/english.html` remains a direct
 compatibility route and the internal renderer target. Non-English and
 contextual browser routes remain language-explicit; a Video slug matching a
 public language home also keeps explicit English.
+
+## 2026-07-27 Contextual English Supersession
+
+Eligible English contextual browser routes now use
+`/watch/{parent}.html/{episode}.html`. The proxy treats a non-language second
+segment as only a candidate: it serves the route directly only when the
+manifest's exact parent-child index and exact episode-audio index both admit
+English, then preserves the short internal rest shape and dispatches to the
+established episode renderer. Expanding the internal path to explicit English
+causes a server/client hydration mismatch even though the public URL stays
+short, so the short internal form is part of the route contract.
+
+This shorthand fails closed when the manifest is unavailable or lacks the
+exact indexes. Existing explicit-English and international contextual routes
+keep their compatibility behavior. Current public language slugs and legacy
+language aliases retain second-segment precedence, so colliding English
+episode slugs remain explicit. A wrong parent still uses the established
+standalone-child fallback when that child is independently admitted; unknown
+or non-English-only children remain fixed 404s.
+
+Both English contextual forms keep the language-less standalone child as
+canonical, Open Graph, JSON-LD, and Share identity, and neither contextual form
+is published in sitemap output.
 
 ## 2026-07-25 Cold Localized-Home Redirect Admission
 

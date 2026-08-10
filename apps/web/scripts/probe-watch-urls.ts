@@ -23,8 +23,10 @@ import { writeFileSync } from "node:fs"
 
 import {
   WATCH_URL_FIXTURES,
+  WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS,
   WATCH_STRUCTURED_DATA_CONTRACTS,
   classifyProbe,
+  primaryVideoIdentityViolations,
   probeUrl,
   type ProbeComparison,
 } from "../src/lib/watch-url-probe"
@@ -106,6 +108,26 @@ async function main() {
   }
   for (const c of comparisons) tally[c.outcome] += 1
 
+  const primaryVideoIdentityErrors: string[] = []
+  for (const pair of WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS) {
+    const contextual = comparisons.find((row) => row.path === pair.contextual)
+    const standalone = comparisons.find((row) => row.path === pair.standalone)
+    if (!contextual || !standalone) {
+      primaryVideoIdentityErrors.push(
+        `${pair.contextual} ↔ ${pair.standalone}: fixture missing from probe matrix`,
+      )
+      continue
+    }
+    for (const violation of primaryVideoIdentityViolations(
+      contextual.preview,
+      standalone.preview,
+    )) {
+      primaryVideoIdentityErrors.push(
+        `${pair.contextual} ↔ ${pair.standalone}: ${violation}`,
+      )
+    }
+  }
+
   console.log("\nStructured-data samples (literal initial-response scripts):")
   for (const comparison of comparisons) {
     if (!STRUCTURED_DATA_SAMPLES.has(comparison.path)) continue
@@ -116,6 +138,15 @@ async function main() {
         `      prod ${prod?.scriptCount ?? 0}: ${prod?.types.join(", ") || "none"}\n` +
         `      preview ${preview?.scriptCount ?? 0}: ${preview?.types.join(", ") || "none"}`,
     )
+  }
+
+  console.log("\nPrimary-video identity pairs:")
+  if (primaryVideoIdentityErrors.length === 0) {
+    for (const pair of WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS) {
+      console.log(`  ✓ ${pair.contextual} ↔ ${pair.standalone}`)
+    }
+  } else {
+    for (const error of primaryVideoIdentityErrors) console.log(`  ✗ ${error}`)
   }
 
   // Print every non-clean outcome (hard first, then soft, then error).
@@ -151,11 +182,17 @@ async function main() {
 
   const hardFail = tally["hard-regression"] > 0
   const softFail = softRate > SOFT_REGRESSION_BUDGET
-  if (hardFail || softFail || tally.error > 0) {
+  if (
+    hardFail ||
+    softFail ||
+    tally.error > 0 ||
+    primaryVideoIdentityErrors.length > 0
+  ) {
     console.error(
       `\n❌ Cutover gate FAILED — ${tally["hard-regression"]} hard regression(s), ` +
         `${(softRate * 100).toFixed(1)}% soft (budget ${(SOFT_REGRESSION_BUDGET * 100).toFixed(0)}%), ` +
-        `${tally.error} error(s). Review the buckets above before cutover.`,
+        `${tally.error} error(s), ${primaryVideoIdentityErrors.length} primary-video identity error(s). ` +
+        "Review the buckets above before cutover.",
     )
     process.exit(1)
   }
