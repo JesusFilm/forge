@@ -17,6 +17,7 @@ import {
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
+  type TypesenseWatchLocale,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
@@ -1068,6 +1069,7 @@ export class TypesenseWatchSearchService {
         diagnostics,
       )
     }
+    hydratedById = await this.withPublishedLocaleProjection(hydratedById)
     if (diagnostics) diagnostics.hydratedRecords = hydratedById.size
     const pageCandidates = nativeRanking
       ? rankedCandidates.slice(nativeOffset, nativeOffset + limit)
@@ -1781,6 +1783,60 @@ export class TypesenseWatchSearchService {
           (hit) => [hit.document.id, hit.document] as const,
         ),
       ),
+    )
+  }
+
+  private async withPublishedLocaleProjection(
+    hydratedById: Map<string, HydratedResultDocument>,
+  ): Promise<Map<string, HydratedResultDocument>> {
+    const videoIds = [...hydratedById.keys()]
+    if (videoIds.length === 0) return hydratedById
+
+    const localeRows = await this.prisma.videoLocale.findMany({
+      where: {
+        videoId: { in: videoIds },
+        status: "PUBLISHED",
+        deletedAt: null,
+        locale: { not: null },
+      },
+      orderBy: { id: "asc" },
+      select: {
+        videoId: true,
+        locale: true,
+        languageSlug: true,
+        title: true,
+        description: true,
+      },
+    })
+    const localesByVideoId = new Map<string, TypesenseWatchLocale[]>()
+    for (const row of localeRows) {
+      if (!row.locale) continue
+      const locales = localesByVideoId.get(row.videoId) ?? []
+      locales.push({
+        locale: row.locale,
+        languageSlug: row.languageSlug,
+        title: row.title?.trim() ?? "",
+        description: row.description,
+      })
+      localesByVideoId.set(row.videoId, locales)
+    }
+
+    return new Map(
+      [...hydratedById].map(([videoId, hydrated]) => {
+        const locales = localesByVideoId.get(videoId)
+        return [
+          videoId,
+          locales
+            ? {
+                ...hydrated,
+                document: {
+                  ...hydrated.document,
+                  localesJson: JSON.stringify(locales),
+                },
+              }
+            : hydrated,
+        ]
+      }),
     )
   }
 

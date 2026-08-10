@@ -19,6 +19,7 @@
  *    reference only (text is resolved at web render).
  */
 import type { PrismaClient } from "@prisma/client"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 
 import { videoStudyQuestionsFilter } from "@/graphql/types/video"
 
@@ -103,10 +104,19 @@ async function loadAnchorVideo(
 
   const [locales, dubs, images] = await Promise.all([
     prisma.videoLocale.findMany({
-      where: { videoId, locale, status: "PUBLISHED" },
-      select: { title: true, description: true },
+      where: {
+        videoId,
+        status: "PUBLISHED",
+        deletedAt: null,
+        OR: [{ locale }, { locale: "en" }, { languageSlug: "english" }],
+      },
+      select: {
+        locale: true,
+        languageSlug: true,
+        title: true,
+        description: true,
+      },
       orderBy: { updatedAt: "desc" },
-      take: 1,
     }),
     prisma.videoDub.findMany({
       where: { videoId, deletedAt: null },
@@ -126,7 +136,10 @@ async function loadAnchorVideo(
     }),
   ])
 
-  const preferredLocale = locales[0] ?? null
+  const preferredLocale = locales.find((row) => row.locale === locale) ?? null
+  const englishLocales = locales.filter(
+    (row) => row.locale === "en" || row.languageSlug === "english",
+  )
   const previewImageUrl = images.find((row) => row.url)?.url ?? null
 
   // Same dub-preference cascade as loadExperienceAiVideoCandidates: a playable
@@ -146,7 +159,12 @@ async function loadAnchorVideo(
   return {
     videoId: video.id,
     slug: video.slug,
-    title: preferredLocale?.title?.trim() || video.slug,
+    title:
+      resolveVideoDisplayTitle({
+        requestedTitles: [preferredLocale?.title],
+        englishTitles: englishLocales.map((row) => row.title),
+        slug: video.slug,
+      }) ?? "Video",
     description: preferredLocale?.description?.trim() || null,
     previewImageUrl,
     previewStreamUrl:

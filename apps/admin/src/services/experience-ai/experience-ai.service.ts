@@ -1,4 +1,5 @@
 import { Prisma, VideoLabel, type PrismaClient } from "@prisma/client"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 
 import { toPgVector } from "@/db/pgvector"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
@@ -174,10 +175,15 @@ export async function loadExperienceAiVideoCandidates(
   const videoIds = videos.map((video) => video.id)
   const [videoLocales, videoDubs, videoImages] = await Promise.all([
     prisma.videoLocale.findMany({
-      where: { videoId: { in: videoIds } },
+      where: {
+        videoId: { in: videoIds },
+        status: "PUBLISHED",
+        deletedAt: null,
+      },
       select: {
         videoId: true,
         locale: true,
+        languageSlug: true,
         title: true,
         description: true,
         status: true,
@@ -273,7 +279,16 @@ export async function loadExperienceAiVideoCandidates(
       ref: "",
       videoId: video.id,
       slug: video.slug,
-      title: preferredLocale?.title?.trim() || video.slug,
+      title:
+        resolveVideoDisplayTitle({
+          requestedTitles: [preferredLocale?.title],
+          englishTitles: localeRows
+            .filter(
+              (row) => row.locale === "en" || row.languageSlug === "english",
+            )
+            .map((row) => row.title),
+          slug: video.slug,
+        }) ?? "Video",
       description: preferredLocale?.description?.trim() || null,
       previewImageUrl,
       previewStreamUrl:

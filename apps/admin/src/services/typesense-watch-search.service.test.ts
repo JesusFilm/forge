@@ -256,6 +256,7 @@ function prismaFixture({
     name: { en: "French" },
   },
   evidenceLanguages = [{ slug: "french", bcp47: "fr" }],
+  videoLocales = [],
 }: {
   fallbackLanguages?: Array<{ id: string; slug: string }>
   targetLanguage?: {
@@ -264,6 +265,13 @@ function prismaFixture({
     name: Record<string, string>
   }
   evidenceLanguages?: Array<{ slug: string; bcp47: string }>
+  videoLocales?: Array<{
+    videoId: string
+    locale: string | null
+    languageSlug: string | null
+    title: string | null
+    description: string | null
+  }>
 } = {}): PrismaClient {
   return {
     language: {
@@ -277,6 +285,9 @@ function prismaFixture({
           fallbackLanguage: { slug: fallbackLanguage.slug },
         })),
       ),
+    },
+    videoLocale: {
+      findMany: vi.fn(async () => videoLocales),
     },
   } as unknown as PrismaClient
 }
@@ -502,6 +513,69 @@ describe("TypesenseWatchSearchService", () => {
   const embedding = new Array(TYPESENSE_WATCH_EMBEDDING_DIMENSIONS).fill(0)
 
   beforeEach(() => vi.clearAllMocks())
+
+  it("hydrates legacy catalog results with one published locale projection", async () => {
+    const englishOnlyDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      titles: ["The Fellowship of the Believers"],
+      localeCodes: ["en"],
+      localesJson: JSON.stringify([
+        {
+          locale: "en",
+          languageSlug: "english",
+          title: "The Fellowship of the Believers",
+          description: "English description",
+        },
+      ]),
+    }
+    const prisma = prismaFixture({
+      videoLocales: [
+        {
+          videoId: englishOnlyDocument.id,
+          locale: "fr",
+          languageSlug: "french",
+          title: "   ",
+          description: "Description française",
+        },
+        {
+          videoId: englishOnlyDocument.id,
+          locale: "en",
+          languageSlug: "english",
+          title: "The Fellowship of the Believers",
+          description: "English description",
+        },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prisma,
+      typesenseFixture({
+        lexical: [catalogDocument],
+        catalog: [englishOnlyDocument],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "fellowship",
+      displayLanguageSlug: "french",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      title: "The Fellowship of the Believers",
+      description: "Description française",
+    })
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          videoId: { in: [englishOnlyDocument.id] },
+          status: "PUBLISHED",
+          deletedAt: null,
+        }),
+      }),
+    )
+  })
 
   it("uses one exact candidate binding for every retrieval lane", async () => {
     const profile = createCandidateWatchSearchProfile({

@@ -233,7 +233,6 @@ export async function buildCatalogDocuments(
           where: {
             status: "PUBLISHED",
             deletedAt: null,
-            title: { not: null },
           },
           orderBy: { id: "asc" },
           select: {
@@ -286,18 +285,19 @@ export async function buildCatalogDocuments(
 
   return videos.flatMap((video) => {
     const locales: TypesenseWatchLocale[] = video.locales.flatMap((locale) =>
-      locale.locale && locale.title
+      locale.locale
         ? [
             {
               locale: locale.locale,
               languageSlug: locale.languageSlug,
-              title: locale.title,
+              title: locale.title?.trim() ?? "",
               description: locale.description,
             },
           ]
         : [],
     )
     if (locales.length === 0) return []
+    const titledLocales = locales.filter(({ title }) => title.length > 0)
 
     const audioOptions: TypesenseWatchAudioOption[] = []
     for (const dub of video.dubs) {
@@ -323,8 +323,8 @@ export async function buildCatalogDocuments(
         id: video.id,
         coreId: video.coreId,
         slug: video.slug,
-        titles: locales.map((locale) => locale.title),
-        localeCodes: locales.map((locale) => locale.locale),
+        titles: titledLocales.map((locale) => locale.title),
+        localeCodes: titledLocales.map((locale) => locale.locale),
         descriptions: locales.flatMap((locale) =>
           locale.description ? [locale.description] : [],
         ),

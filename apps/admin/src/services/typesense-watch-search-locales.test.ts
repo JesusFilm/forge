@@ -1,10 +1,67 @@
 import { describe, expect, it } from "vitest"
 import {
+  displayLocale,
   displayPreviewLocale,
   watchLexicalManifestQueryFields,
   watchLexicalQueryFields,
   type TypesenseWatchCatalogPreviewDocument,
 } from "./typesense-watch-search-locales"
+
+describe("displayLocale", () => {
+  it("falls back title field-by-field while preserving requested description", () => {
+    expect(
+      displayLocale(
+        {
+          slug: "miraculous-catch-of-fish",
+          titles: ["The Miraculous Catch of Fish"],
+          localesJson: JSON.stringify([
+            {
+              locale: "ar",
+              languageSlug: "arabic-standard",
+              title: "   ",
+              description: "وصف عربي",
+            },
+            {
+              locale: "en",
+              languageSlug: "english",
+              title: "  The Miraculous Catch of Fish  ",
+              description: "English description",
+            },
+          ]),
+        },
+        "ar",
+      ),
+    ).toEqual({
+      locale: "ar",
+      languageSlug: "arabic-standard",
+      title: "The Miraculous Catch of Fish",
+      description: "وصف عربي",
+    })
+  })
+
+  it("humanizes the slug instead of selecting an unrelated locale", () => {
+    expect(
+      displayLocale(
+        {
+          slug: "miraculous--catch_of-fish",
+          titles: ["Pêche miraculeuse"],
+          localesJson: JSON.stringify([
+            {
+              locale: "fr",
+              title: "Pêche miraculeuse",
+              description: "Description française",
+            },
+          ]),
+        },
+        "ar",
+      ),
+    ).toEqual({
+      locale: "ar",
+      title: "Miraculous Catch Of Fish",
+      description: null,
+    })
+  })
+})
 
 function preview(
   titles: string[],

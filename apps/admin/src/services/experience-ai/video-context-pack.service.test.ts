@@ -45,7 +45,13 @@ function makePrisma(o: Overrides = {}): PrismaClient {
         .mockResolvedValue(o.video === undefined ? PLAYABLE_VIDEO : o.video),
     },
     videoLocale: many(
-      o.videoLocale ?? [{ title: "The Resurrection", description: "A story." }],
+      o.videoLocale ?? [
+        {
+          locale: "en",
+          title: "The Resurrection",
+          description: "A story.",
+        },
+      ],
     ),
     videoDub: many(o.videoDub ?? [DUB]),
     videoImage: many(o.videoImage ?? [{ url: "https://example.com/img.jpg" }]),
@@ -92,6 +98,27 @@ describe("loadVideoContextPack", () => {
       scene: true,
       transcript: true,
       localeFallback: null,
+    })
+  })
+
+  it("uses English title fallback without replacing requested description", async () => {
+    const pack = await loadVideoContextPack(
+      makePrisma({
+        videoLocale: [
+          { locale: "ar", title: "   ", description: "وصف عربي" },
+          {
+            locale: "en",
+            title: "The Resurrection",
+            description: "English description",
+          },
+        ],
+      }),
+      { videoId: "vid1", locale: "ar" },
+    )
+
+    expect(pack?.video).toMatchObject({
+      title: "The Resurrection",
+      description: "وصف عربي",
     })
   })
 

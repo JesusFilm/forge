@@ -40,6 +40,52 @@ function viewerSafeVideo(title: string) {
 }
 
 describe("Typesense Watch Search indexer", () => {
+  it("retains published locale metadata when its title is blank", async () => {
+    const prisma = {
+      video: {
+        findMany: vi.fn(async () => [
+          {
+            ...viewerSafeVideo("English title"),
+            slug: "video-slug",
+            locales: [
+              {
+                locale: "ar",
+                languageSlug: "arabic-standard",
+                title: "   ",
+                description: "وصف عربي",
+              },
+              {
+                locale: "en",
+                languageSlug: "english",
+                title: "English title",
+                description: "English description",
+              },
+            ],
+          },
+        ]),
+      },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+
+    const [document] = await buildCatalogDocuments(prisma)
+
+    expect(document?.titles).toEqual(["English title"])
+    expect(JSON.parse(document?.localesJson ?? "[]")).toEqual([
+      {
+        locale: "ar",
+        languageSlug: "arabic-standard",
+        title: "",
+        description: "وصف عربي",
+      },
+      {
+        locale: "en",
+        languageSlug: "english",
+        title: "English title",
+        description: "English description",
+      },
+    ])
+  })
+
   it("builds catalog documents through the viewer-safety projection", async () => {
     const videoFindMany = vi.fn(async () => [
       {

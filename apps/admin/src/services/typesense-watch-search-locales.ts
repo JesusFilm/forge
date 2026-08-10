@@ -1,3 +1,4 @@
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import type { TypesenseCollectionField } from "./typesense-client"
 import type {
   TypesenseWatchCatalogDocument,
@@ -43,20 +44,36 @@ function parsedLocales(value: string): TypesenseWatchLocale[] {
 }
 
 export function displayLocale(
-  document: Pick<TypesenseWatchCatalogDocument, "localesJson" | "titles">,
+  document: Pick<TypesenseWatchCatalogDocument, "localesJson" | "titles"> &
+    Partial<Pick<TypesenseWatchCatalogDocument, "slug">>,
   preferredLocale: string,
 ): TypesenseWatchLocale {
   const locales = parsedLocales(document.localesJson)
-  return (
-    locales.find((locale) => locale.locale === preferredLocale) ??
-    locales.find((locale) => locale.locale === preferredLocale.slice(0, 2)) ??
-    locales.find((locale) => locale.locale === "en") ??
-    locales[0] ?? {
-      locale: preferredLocale,
-      title: document.titles[0] ?? "",
-      description: null,
-    }
+  const exactLocales = locales.filter(
+    (locale) => locale.locale === preferredLocale,
   )
+  const broadLocale = preferredLocale.slice(0, 2)
+  const broadLocales =
+    broadLocale === preferredLocale
+      ? []
+      : locales.filter((locale) => locale.locale === broadLocale)
+  const englishLocales = locales.filter((locale) => locale.locale === "en")
+  const requestedLocale = exactLocales[0] ?? broadLocales[0]
+
+  return {
+    ...(requestedLocale ?? {
+      locale: preferredLocale,
+      description: null,
+    }),
+    title:
+      resolveVideoDisplayTitle({
+        requestedTitles: [...exactLocales, ...broadLocales].map(
+          ({ title }) => title,
+        ),
+        englishTitles: englishLocales.map(({ title }) => title),
+        slug: document.slug,
+      }) ?? "",
+  }
 }
 
 export function hasAlignedLocaleCodes(
