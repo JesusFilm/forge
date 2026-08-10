@@ -62,5 +62,8 @@ describe("searchWatchDirect", () => {
     })
     expect(body.variables.input).not.toHaveProperty("mode")
     expect(body.variables.input).not.toHaveProperty("shadowMode")
+    expect(body.variables.input).not.toHaveProperty("profile")
+    expect(body.variables.input).not.toHaveProperty("generationId")
+    expect(body.variables.input).not.toHaveProperty("candidate")
   })
 })

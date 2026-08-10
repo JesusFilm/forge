@@ -295,6 +295,39 @@ return. Each serving surface applies its own explicit visibility policy, while
 publication or availability changes update the projection without redefining
 the underlying embedding.
 
+### Search Candidate Generation
+
+An immutable, lifecycle-managed set of Search Serving Index projections built
+for private evaluation and possible later promotion without replacing the
+current serving indexes.
+
+A generation owns only the projections created for it and may share an
+explicitly versioned projection such as the transcript corpus. Evaluation,
+serving, and retirement authority remain separate so publishing a generation
+does not itself make it public.
+
+### Search Evaluation Pointer
+
+The server-owned reference that selects one ready Search Candidate Generation
+for private comparison and qualification without changing public search.
+
+### Search Serving Pointer
+
+The server-owned authorization that permits one qualified Search Candidate
+Generation to serve when the deployment selector independently names the same
+generation.
+
+The pointer is necessary but not sufficient for promotion: the candidate must
+still match its reviewed Search Candidate Identity and current baseline.
+
+### Search Qualification Lease
+
+A bounded, renewable claim that freezes one candidate and current-baseline
+identity while comparison or qualification work is active.
+
+Publication fails closed while a lease is active, and lease admission or
+renewal fails closed while publication owns the shared mutation boundary.
+
 ### Public Search Visibility
 
 The eligibility of search evidence to contribute to viewer-facing Watch Search,
@@ -334,13 +367,14 @@ become a baseline.
 
 ### Search Candidate Identity
 
-The immutable identity of one search release candidate: the Admin application
-revision plus the physical catalog, availability, lexical, and transcript
-Search Serving Index generations evaluated with it.
+The immutable identity under which one search release candidate was evaluated:
+its Search Candidate Generation, Admin application revision, transcript
+projection, reviewed relevance-set revision, and exact current baseline
+bindings.
 
 Release evidence fails closed when this identity is absent or when responses
-show more than one application revision, so a deploy or index publication
-cannot silently mix candidates inside one Absolute Search Gate.
+do not match it, so a deploy, relevance-set update, or index publication cannot
+silently reuse qualification from another candidate or baseline.
 
 ### Watch Search Analytics
 

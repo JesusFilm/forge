@@ -1,5 +1,6 @@
 import type { Route } from "next"
 import Link from "next/link"
+import { env } from "@/config/env"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   DashboardPageHeader,
@@ -13,6 +14,7 @@ import {
   type WatchSearchAnalyticsWindow,
 } from "@/app/dashboard/ops-data"
 import { WatchSearchResultsTable } from "@/app/dashboard/search/watch-search-results-table"
+import { requireSession } from "@/auth/session"
 
 type SearchPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -61,6 +63,7 @@ function displayToken(value: string | null | undefined) {
 export default async function SearchPage({
   searchParams,
 }: SearchPageProps = {}) {
+  const principal = await requireSession()
   const messages = await getAdminMessages()
   const page = messages.pages.search
   const params = (await searchParams) ?? {}
@@ -81,21 +84,32 @@ export default async function SearchPage({
         title={page.title}
         description={page.description}
         action={
-          <div className="inline-flex rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1">
-            {WINDOW_OPTIONS.map((option) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {principal.role === "ADMIN" &&
+            env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED ? (
               <Link
-                key={option.value}
-                href={searchHref({ window: option.value }) as Route}
-                className={cx(
-                  "rounded-sm px-3 py-1.5 font-mono text-[11px] uppercase transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
-                  option.value === watchSearch.window
-                    ? "bg-[var(--color-brand)] text-white"
-                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
-                )}
+                href={"/dashboard/search/compare" as Route}
+                className="rounded-sm border border-[var(--color-hairline)] px-3 py-2 font-mono text-[11px] uppercase text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)]"
               >
-                {option.label}
+                Compare versions
               </Link>
-            ))}
+            ) : null}
+            <div className="inline-flex rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1">
+              {WINDOW_OPTIONS.map((option) => (
+                <Link
+                  key={option.value}
+                  href={searchHref({ window: option.value }) as Route}
+                  className={cx(
+                    "rounded-sm px-3 py-1.5 font-mono text-[11px] uppercase transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
+                    option.value === watchSearch.window
+                      ? "bg-[var(--color-brand)] text-white"
+                      : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                  )}
+                >
+                  {option.label}
+                </Link>
+              ))}
+            </div>
           </div>
         }
       />

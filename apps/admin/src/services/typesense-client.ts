@@ -169,6 +169,10 @@ export class TypesenseClient {
     return this.request("/collections")
   }
 
+  getCollectionSchema(name: string): Promise<TypesenseCollection> {
+    return this.request(`/collections/${encodeURIComponent(name)}`)
+  }
+
   deleteCollection(name: string): Promise<void> {
     return this.request(
       `/collections/${encodeURIComponent(name)}`,
