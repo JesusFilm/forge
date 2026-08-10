@@ -13,10 +13,12 @@ import {
   localizedHomePath,
   parseWatchPath,
   searchPath,
+  isLanguageLessWatchEpisodePathEligible,
   tryAsContentSlug,
   tryAsLocaleSlug,
   videosIndexPath,
   watchEpisodeAbsolute,
+  watchEpisodeExplicitLanguagePath,
   watchEpisodePath,
   watchVideoAbsolute,
   watchVideoExplicitLanguagePath,
@@ -193,13 +195,13 @@ describe("watchVideoExplicitLanguagePath", () => {
 })
 
 describe("watchEpisodePath", () => {
-  it("returns series.html/episode/lang.html shape (episode is bare)", () => {
+  it("omits English for an eligible contextual episode", () => {
     expect(watchEpisodePath(lumo, wedding, english)).toBe(
-      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html",
     )
   })
 
-  it("preserves bare episode segment even when locale options present", () => {
+  it("keeps international contextual routes explicit with locale options", () => {
     expect(
       watchEpisodePath(lumo, wedding, russian, {
         t: 10,
@@ -207,6 +209,44 @@ describe("watchEpisodePath", () => {
       }),
     ).toBe(
       "/lumo-the-gospel-of-john.html/wedding-in-cana/russian.html?t=10&subtitles=spanish-castilian",
+    )
+    expect(watchEpisodePath(lumo, wedding, romanian)).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/romanian.html",
+    )
+    expect(watchEpisodePath(lumo, wedding, spanishCastilian)).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/spanish-castilian.html",
+    )
+  })
+
+  it("keeps English explicit for public-language and legacy-alias episode slugs", () => {
+    for (const episode of [
+      asContentSlug("russian"),
+      asContentSlug("chinese-mandarin"),
+    ]) {
+      expect(watchEpisodePath(lumo, episode, english)).toBe(
+        `/lumo-the-gospel-of-john.html/${episode}/english.html`,
+      )
+      expect(isLanguageLessWatchEpisodePathEligible(episode)).toBe(false)
+    }
+  })
+
+  it("serializes one-shot query options on the short form", () => {
+    expect(
+      watchEpisodePath(lumo, wedding, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+      }),
+    ).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html?t=42&autoplay=1&_lr=1",
+    )
+  })
+})
+
+describe("watchEpisodeExplicitLanguagePath", () => {
+  it("always emits the explicit contextual language segment", () => {
+    expect(watchEpisodeExplicitLanguagePath(lumo, wedding, english)).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
 })
@@ -260,9 +300,9 @@ describe("absolute URL builders", () => {
     )
   })
 
-  it("watchEpisodeAbsolute matches three-segment shape with origin", () => {
+  it("watchEpisodeAbsolute uses the short public English shape", () => {
     expect(watchEpisodeAbsolute(lumo, wedding, english)).toBe(
-      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/lumo-the-gospel-of-john.html/wedding-in-cana/english.html`,
+      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/lumo-the-gospel-of-john.html/wedding-in-cana.html`,
     )
   })
 
@@ -366,6 +406,30 @@ describe("parseWatchPath", () => {
     })
   })
 
+  it("parses a non-language two-segment path as an English episode", () => {
+    expect(
+      parseWatchPath("/lumo-the-gospel-of-john.html/wedding-in-cana.html"),
+    ).toEqual({
+      kind: "episode",
+      series: "lumo-the-gospel-of-john",
+      episode: "wedding-in-cana",
+      lang: "english",
+    })
+  })
+
+  it("preserves current and legacy language precedence in two segments", () => {
+    expect(parseWatchPath("/jesus.html/russian.html")).toEqual({
+      kind: "video",
+      slug: "jesus",
+      lang: "russian",
+    })
+    expect(parseWatchPath("/jesus.html/chinese-mandarin.html")).toEqual({
+      kind: "video",
+      slug: "jesus",
+      lang: "chinese-mandarin",
+    })
+  })
+
   it("parses three-segment as episode (with .html on first + third only)", () => {
     expect(
       parseWatchPath(
@@ -405,6 +469,16 @@ describe("parseWatchPath", () => {
     const emitted = watchEpisodePath(lumo, wedding, english)
     const parsed = parseWatchPath(emitted)
     expect(parsed).toEqual({
+      kind: "episode",
+      series: "lumo-the-gospel-of-john",
+      episode: "wedding-in-cana",
+      lang: "english",
+    })
+  })
+
+  it("inverts the explicit-language episode path", () => {
+    const emitted = watchEpisodeExplicitLanguagePath(lumo, wedding, english)
+    expect(parseWatchPath(emitted)).toEqual({
       kind: "episode",
       series: "lumo-the-gospel-of-john",
       episode: "wedding-in-cana",

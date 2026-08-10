@@ -1,8 +1,10 @@
 import "server-only"
 
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import { unstable_cache } from "next/cache"
 
 import client from "@/lib/admin-client"
+import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
 export const getWatchSubtitleTargetOperation = adminGraphql(`
   query GetWatchSubtitleTarget($variantId: ID!) {
@@ -36,6 +38,23 @@ export type WatchSubtitleTargetResult =
   | { ok: true; target: string }
   | { ok: false; reason: "missing-params" | "not-found" | "unavailable" }
 
+async function queryWatchSubtitleVariant(
+  variantId: string,
+): Promise<WatchSubtitleTargetData["videoDub"]> {
+  const result = await client.query<WatchSubtitleTargetData>({
+    query: getWatchSubtitleTargetOperation,
+    variables: { variantId },
+    fetchPolicy: "no-cache",
+  })
+  return result.data?.videoDub ?? null
+}
+
+const fetchWatchSubtitleVariant = unstable_cache(
+  queryWatchSubtitleVariant,
+  ["watch-subtitle-target"],
+  { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
+)
+
 export async function resolveWatchSubtitleTarget({
   subtitleId,
   variantId,
@@ -44,13 +63,9 @@ export async function resolveWatchSubtitleTarget({
     return { ok: false, reason: "missing-params" }
   }
 
-  let result: { data?: WatchSubtitleTargetData | null }
+  let variant: WatchSubtitleTargetData["videoDub"]
   try {
-    result = await client.query<WatchSubtitleTargetData>({
-      query: getWatchSubtitleTargetOperation,
-      variables: { variantId },
-      fetchPolicy: "no-cache",
-    })
+    variant = await fetchWatchSubtitleVariant(variantId)
   } catch (err) {
     console.error("[watch-subtitle-target] admin lookup failed", {
       err: err instanceof Error ? err.message : String(err),
@@ -60,7 +75,6 @@ export async function resolveWatchSubtitleTarget({
     return { ok: false, reason: "unavailable" }
   }
 
-  const variant = result.data?.videoDub
   if (
     variant?.documentId !== variantId ||
     variant.published !== true ||

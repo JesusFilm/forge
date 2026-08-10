@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { notRestrictedFromWatchWhere } from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
@@ -295,6 +297,7 @@ export async function buildCatalogDocuments(
         deletedAt: null,
         noIndex: false,
         locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
       orderBy: { id: "asc" },
       select: {
@@ -477,6 +480,87 @@ export function buildAvailabilityDocuments(
     }
     return [...byEditionAndLanguage.values()]
   })
+}
+
+export type TypesenseWatchCandidateProjectionSnapshot = {
+  catalog: TypesenseWatchCatalogDocument[]
+  availability: TypesenseWatchAvailabilityDocument[]
+  lexical: ReturnType<typeof buildTypesenseWatchLexicalDocuments>
+  tokenizerLocales: string[]
+  counts: { catalog: number; availability: number; lexical: number }
+  digests: {
+    catalog: string
+    availability: string
+    lexical: string
+    combined: string
+  }
+  lexicalMemory: ReturnType<typeof estimateTypesenseKeywordMemory>
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJsonValue)
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, child]) => child !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, stableJsonValue(child)]),
+    )
+  }
+  return value
+}
+
+function projectionDigest(value: unknown): string {
+  const digest = createHash("sha256")
+    .update(JSON.stringify(stableJsonValue(value)))
+    .digest("hex")
+  return `sha256:${digest}`
+}
+
+export async function buildTypesenseWatchCandidateProjectionSnapshot(
+  prisma: PrismaClient,
+): Promise<TypesenseWatchCandidateProjectionSnapshot> {
+  return prisma.$transaction(
+    async (tx) => {
+      const catalog = (await buildCatalogDocuments(tx as PrismaClient)).sort(
+        (left, right) => left.id.localeCompare(right.id),
+      )
+      const availability = buildAvailabilityDocuments(catalog).sort(
+        (left, right) => left.id.localeCompare(right.id),
+      )
+      const lexical = buildTypesenseWatchLexicalDocuments(catalog).sort(
+        (left, right) => left.id.localeCompare(right.id),
+      )
+      const tokenizerLocales = typesenseWatchTokenizerLocales(lexical)
+      const catalogDigest = projectionDigest(catalog)
+      const availabilityDigest = projectionDigest(availability)
+      const lexicalDigest = projectionDigest(lexical)
+      const digests = {
+        catalog: catalogDigest,
+        availability: availabilityDigest,
+        lexical: lexicalDigest,
+        combined: projectionDigest({
+          catalog: catalogDigest,
+          availability: availabilityDigest,
+          lexical: lexicalDigest,
+        }),
+      }
+      return {
+        catalog,
+        availability,
+        lexical,
+        tokenizerLocales,
+        counts: {
+          catalog: catalog.length,
+          availability: availability.length,
+          lexical: lexical.length,
+        },
+        digests,
+        lexicalMemory: estimateTypesenseKeywordMemory(lexical),
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+  )
 }
 
 async function loadTranscriptBatch(

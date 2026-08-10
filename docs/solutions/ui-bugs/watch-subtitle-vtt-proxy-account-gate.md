@@ -1,21 +1,23 @@
 ---
-title: "Watch subtitle VTT proxy must remain public when downloads require accounts"
+title: "Watch subtitle VTT delivery must remain public and same-origin"
 date: "2026-07-13"
-last_updated: "2026-08-05"
+last_updated: "2026-08-06"
 category: docs/solutions/ui-bugs
 module: apps/web
 problem_type: ui_bug
 component: authentication
 symptoms:
-  - "Enabling subtitles creates the Forge text track, but the track enters error state with zero cues"
-  - "The same-origin subtitle URL returns 401 Authentication required for signed-out viewers"
-  - "The Admin-backed VTT exists and loads directly, but no custom subtitle overlay renders"
+  - "Selecting a subtitle creates the Forge text track, but the track enters error state with no cues"
+  - "The same-origin inline VTT endpoint returns 401 or redirects the native text-track request to another origin"
+  - "The upstream VTT succeeds in ordinary HTTP clients but does not grant cross-origin browser access"
+  - "Production inspection shows the Forge track at readyState 3 with cues unavailable"
 root_cause: wrong_api
 resolution_type: code_fix
 severity: high
 related_components:
   - "apps/web/src/app/api/download/route.ts"
   - "apps/web/src/lib/subtitle-target.ts"
+  - "apps/web/src/components/watch/HeroPlayer.tsx"
   - "apps/web/src/components/watch/WatchPageClient.tsx"
 tags:
   - "watch-page"
@@ -23,112 +25,160 @@ tags:
   - "vtt"
   - "download-proxy"
   - "authentication"
+  - "cors"
+  - "same-origin"
   - "text-track"
 ---
 
-# Watch subtitle VTT proxy must remain public when downloads require accounts
+# Watch subtitle VTT delivery must remain public and same-origin
 
 ## Problem
 
-Signed-out viewers could enable an Admin-backed subtitle on a single-video Watch
-page, but the video never produced subtitle cues. The client correctly injected
-the Forge-owned track; its same-origin VTT URL was routed through the download
-proxy, whose account gate rejected every anonymous request before fetching the
-subtitle.
+The Watch download endpoint serves two different browser consumers: protected
+file downloads and public in-page WebVTT tracks. Treating both as ordinary
+downloads broke subtitles in two separate ways.
+
+First, applying the account gate before classifying the request returned `401`
+to signed-out viewers. Later, redirecting every successful download away from
+Web made the same-origin `<track>` URL return `302` to
+`api-media-core.jesusfilm.org`. That upstream returned valid `200 text/vtt`, but
+without `Access-Control-Allow-Origin`. Ordinary HTTP clients followed the
+redirect and read the VTT, while the native text-track loader rejected the
+cross-origin response and produced no cues.
+
+The route therefore needs a narrow same-origin streaming path for public VTT
+tracks. Normal media downloads must continue to redirect so Web does not carry
+large video bodies.
 
 ## Symptoms
 
-- The Forge `TextTrack` existed with label `__forge_subtitle__`, but its
-  associated `<track>` had `readyState === 3` and `cues.length === 0`.
-- Fetching the exact track URL returned `401` with
-  `{"error":"Authentication required"}`.
-- Fetching the upstream `api-media-core.jesusfilm.org` asset returned a valid
-  `200 text/vtt` response.
+- The Forge-owned `<track>` existed with label `__forge_subtitle__`, but it had
+  `readyState === 3` and `TextTrack.cues` was unavailable.
+- In the account-gate regression, the same-origin track URL returned `401`
+  before DNS resolution or an upstream request.
+- In the redirect regression, the same-origin track URL returned `302`; the
+  destination returned `200 text/vtt`, which made command-line checks appear
+  healthy even though native browser loading failed CORS.
+- Same-audio-language subtitles could appear healthy while a selected alternate
+  track such as Simplified Chinese failed through the Forge-injected VTT path.
 
 ## What Didn't Work
 
-- Treating the symptom as a subtitle-selection or overlay bug was misleading.
-  The modal selection, Forge track identity, and overlay listener were already
-  correct; the browser could not load any cues.
-- Verifying only that the VTT URL appeared in the RSC payload was insufficient.
-  A valid URL can still fail at the same-origin proxy boundary.
+- Debugging subtitle selection or the overlay did not address the failure. The
+  selection and track injection had succeeded; delivery failed before cue
+  parsing.
+- Checking only that a VTT URL appeared in the page data was insufficient. The
+  exact response chain for that URL determines whether native cues can load.
+- Treating a successful direct request to the final VTT URL as browser proof
+  was misleading. Server and command-line clients do not enforce the native
+  text-track CORS boundary.
+- Redirecting all downloads kept media bandwidth off Web, but a cross-origin
+  redirect is not equivalent to same-origin `<track>` delivery when the target
+  does not opt into CORS.
+- Restoring the old general-purpose media proxy would fix subtitles at too high
+  a cost. Video attachments should still redirect.
+- Forwarding upstream `Content-Length` is unsafe because Node fetch may decode a
+  content-encoded body while retaining metadata for the encoded byte count.
 
 ## Solution
 
-Classify the one public in-page consumer before applying the download account
-gate. The browser sends only the Admin subtitle and playable Dub identifiers;
-it never sends the upstream URL used by `fetch`. Resolve that URL server-side
-from `videoDub(id) { videoEdition { subtitles } }`, and require that the Dub is
-published, the subtitle belongs to that exact edition, and any subtitle owner
-matches the Dub's Video.
+Classify the public browser-only request before applying download authorization.
+The exception requires `disposition=inline` plus opaque `subtitleId` and
+`variantId` values. The browser never supplies the upstream URL used by
+`fetch`; Web resolves it server-side from the published Dub and requires the
+subtitle to belong to the same edition (and Video when the subtitle declares an
+owner). Inline video, VTT attachments, malformed identifiers, and legacy raw
+URLs stay on the protected path.
 
-```ts
-function isAnonymousInlineSubtitleRequest(
-  searchParams: URLSearchParams,
-): boolean {
-  if (searchParams.get("disposition") !== "inline") return false
+The resolved request still crosses the full SSRF boundary. `validateTarget`
+enforces the HTTPS allowlist, requires every IPv4 and IPv6 DNS answer to be
+public, and reconstructs the safe origin and pathname. Before fetching, Web
+requires the exact `https://api-media-core.jesusfilm.org` origin, rejects query
+strings, decodes and validates each path segment, then rebuilds the queryless
+`.vtt` path with `encodeURIComponent`. This both prevents path traversal and
+keeps public request values out of the fetch origin.
 
-  return Boolean(
-    searchParams.get("subtitleId") && searchParams.get("variantId"),
-  )
-}
-```
+For the classified request, `proxyInlineSubtitle` fetches upstream with only
+`Accept: text/vtt`, combines client cancellation with a 30-second timeout, and
+sets `redirect: "manual"` (`apps/web/src/app/api/download/route.ts:325`,
+`apps/web/src/app/api/download/route.ts:346`). Browser cookies, authorization
+headers, and session tokens are not forwarded. Redirects are rejected rather
+than followed, non-success statuses are controlled, and successful responses
+must have an exact normalized `text/vtt` media type and a body
+(`apps/web/src/app/api/download/route.ts:364`,
+`apps/web/src/app/api/download/route.ts:375`,
+`apps/web/src/app/api/download/route.ts:383`,
+`apps/web/src/app/api/download/route.ts:393`). Rejected response bodies are
+cancelled so their connections can be released
+(`apps/web/src/app/api/download/route.ts:293`).
 
-After server-side resolution, require the exact
-`https://api-media-core.jesusfilm.org` origin, a queryless `.vtt` pathname, and
-canonicalize every decoded path segment through `encodeURIComponent` after
-rejecting dot, slash, and backslash segments. This is a real path-traversal
-boundary and the URI-encoding sanitizer that CodeQL's request-forgery model
-recognizes. Keep the route's generic URL allowlist and fail-closed public-DNS
-pre-flight as layered defenses. Fetch the rebuilt Core URL with a 10-second timeout and
-`redirect: "manual"`, then stream it through a hard 2 MiB limit. Do not trust
-`Content-Length` alone: a missing or dishonest header must not allow an
-unbounded buffer. Require a `WEBVTT` signature before returning the body as
-same-origin `text/vtt` with `nosniff`.
+The response stays streamed, and its timeout remains active until the body
+finishes, errors, or is cancelled (`apps/web/src/app/api/download/route.ts:297`).
+Web returns `Content-Disposition: inline`, the validated `Content-Type`,
+no-store caching, and `X-Content-Type-Options: nosniff`
+(`apps/web/src/app/api/download/route.ts:400`). It deliberately does not forward
+upstream `Content-Encoding` or `Content-Length`, because those headers may
+describe encoded bytes rather than the decoded stream.
 
-```ts
-const prefix = new TextDecoder()
-  .decode(body.slice(0, Math.min(body.byteLength, 64)))
-  .replace(/^\uFEFF/, "")
-if (!/^WEBVTT(?:[\t \r\n]|$)/.test(prefix)) {
-  return jsonError("Subtitle unavailable", 502)
-}
-```
+The GET handler enters this path only for the auth-exempt inline VTT. Every
+other download preserves the CDN redirect path
+(`apps/web/src/app/api/download/route.ts:490`,
+`apps/web/src/app/api/download/route.ts:513`).
 
-Attachment requests, inline video requests, malformed URLs, and non-allowlisted
-origins continue through the normal account gate.
+Regression coverage mirrors the boundary:
+
+- Same-origin VTT streaming and response headers:
+  `apps/web/src/app/api/download/route.test.ts:242`.
+- Whole-body timeout behavior:
+  `apps/web/src/app/api/download/route.test.ts:279`.
+- Redirect and non-VTT rejection:
+  `apps/web/src/app/api/download/route.test.ts:317` and
+  `apps/web/src/app/api/download/route.test.ts:342`.
+- Fetch failure, client abort, upstream status, and missing body:
+  `apps/web/src/app/api/download/route.test.ts:367` through
+  `apps/web/src/app/api/download/route.test.ts:430`.
+- Public VTT access and neighboring gated traffic:
+  `apps/web/src/app/api/download/route.auth.test.ts:189` and
+  `apps/web/src/app/api/download/route.auth.test.ts:216`.
 
 ## Why This Works
 
-The route had two distinct responsibilities sharing one handler: protected file
-downloads and same-origin delivery for a public browser text track. Applying the
-download permission policy before classifying the request made the public media
-consumer unreachable. Classifying the VTT path first restores that consumer,
-while opaque identifiers remove the public URL-to-fetch dataflow. Server-side
-edition/owner resolution, the exact origin and path, fail-closed DNS check,
-redirect refusal, byte cap, signature, and response headers keep the exception
-from widening into an anonymous download proxy. A same-origin endpoint that
-merely redirects is not enough: the browser still applies CORS to the final
-Core response.
+The browser now sees one origin for the full text-track request. Web fetches the
+already validated VTT and streams it as the response to the original same-origin
+URL, so the upstream does not need to grant browser CORS access. Native
+`<track>` loading can parse the response and populate cues instead of ending at
+`readyState === 3`.
+
+The exception stays smaller than a general media proxy. Request shape,
+allowlisted origin, public DNS resolution, reconstructed URL, manual redirect
+handling, exact response media type, bounded lifetime, and credential isolation
+must all agree before bytes are relayed. All other downloads retain the
+low-bandwidth redirect contract.
 
 ## Prevention
 
-- When adding authentication to a shared proxy, inventory every caller and
-  separate protected attachment/download traffic from public in-page media.
-- Browser subtitle proof must inspect `<track>.readyState`, `TextTrack.cues`, and
-  the exact track request status; a rendered selector or injected track alone is
-  not proof that cues loaded.
-- Add regression cases for the allowed anonymous VTT request and for nearby
-  denied shapes: inline video, VTT attachment, wildcard subdomains, DNS
-  failure, redirects, declared and streamed overflow, and a 200 response
-  without a WebVTT signature.
-- Never pass a public query-string URL into the server-side VTT `fetch`, even
-  behind allowlist and DNS checks. Resolve opaque content identity to the URL
-  server-side, rebuild its queryless path from encoded safe segments, then
-  preserve all origin, DNS, redirect, size, and signature defenses.
+- Before changing a shared media endpoint's authentication or transport model,
+  inventory its consumers by browser primitive. `<a download>`, `<video>`, and
+  `<track>` do not have interchangeable redirect and CORS behavior.
+- For subtitle QA, inspect `<track>.readyState`, `TextTrack.cues`, the exact
+  same-origin request, every redirect, and final response headers. A selector
+  state or direct upstream `200` is not sufficient proof.
+- Keep successful inline VTT, anonymous account-gate exemption, upstream
+  redirect rejection, non-VTT rejection, whole-body timeout, abort, upstream
+  failure, missing-body, and ordinary-download redirect cases together as one
+  regression matrix.
+- Do not relax the exception to all inline media or all `.vtt` paths. Preserve
+  opaque server-side resolution, same-edition ownership, the exact Core origin,
+  public-IP DNS preflight, queryless canonical path reconstruction, manual
+  redirect policy, exact `text/vtt` validation, and credential isolation.
+- Do not forward `Content-Length` or `Content-Encoding` unless the proxy can
+  prove those values describe the emitted byte stream.
+- Re-test both signed-out and signed-in playback when changing the account gate,
+  because public subtitles share a route with protected downloads.
 
 ## Related Issues
 
 - [SSRF defense for the Watch download proxy](../security-issues/ssrf-defense-streaming-proxy-and-codeql-fp-20260504.md)
 - [Watch subtitle overlay must ignore Mux-generated tracks](./watch-subtitle-overlay-mux-generated-track-leak.md)
 - [Watch caption defaults must be same-audio-language](./watch-caption-language-availability-20260615.md)
+- [FGE-67 implementation record](../../roadmap/media-generation/feat-341-watch-alternate-subtitle-track-loading.md)

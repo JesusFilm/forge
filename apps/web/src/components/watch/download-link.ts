@@ -49,9 +49,22 @@ export type BuildDownloadFilenameParams = {
   languageName?: string | null
   languageSlug?: string | null
   renditionHeight?: number | null
+  sequence?: DownloadSequence | null
   tier?: DownloadTier | null
   videoSlug?: string | null
   videoTitle?: string | null
+}
+
+export type DownloadSequence = {
+  position: number
+  total: number
+}
+
+export type DownloadSequenceParent = {
+  children: readonly {
+    documentId: string
+    order?: number | null
+  }[]
 }
 
 const DOWNLOAD_FILENAME_EXTENSION = ".mp4"
@@ -114,25 +127,81 @@ function renditionSegment(
   return codeSegment(tier, "unknown")
 }
 
+function sequenceSegment(
+  position: number | null | undefined,
+  total: number | null | undefined,
+): string | null {
+  if (!Number.isInteger(position) || position == null || position <= 0) {
+    return null
+  }
+  const totalWidth =
+    Number.isInteger(total) && total != null && total > 0
+      ? String(total).length
+      : 0
+  const width = Math.max(2, String(position).length, totalWidth)
+  return String(position).padStart(width, "0")
+}
+
+export function resolveDownloadSequence(
+  parent: DownloadSequenceParent | null | undefined,
+  videoDocumentId: string,
+): DownloadSequence | null {
+  if (!parent) return null
+  const child = parent.children.find(
+    (child) => child.documentId === videoDocumentId,
+  )
+  const position = child?.order
+  if (!Number.isInteger(position) || position == null || position <= 0) {
+    return null
+  }
+  const total = parent.children.reduce((highestOrder, candidate) => {
+    const order = candidate.order
+    return Number.isInteger(order) && order != null && order > highestOrder
+      ? order
+      : highestOrder
+  }, position)
+  return { position, total }
+}
+
 export function buildDownloadFilename({
   languageCode,
   languageName,
   languageSlug,
   renditionHeight,
+  sequence,
   tier,
   videoSlug,
   videoTitle,
 }: BuildDownloadFilenameParams): string {
+  const sequencePrefix = sequenceSegment(sequence?.position, sequence?.total)
+  const title = textSegmentFrom([videoTitle, videoSlug], "Video", {
+    requireAsciiLetter: true,
+  })
+  const language = textSegment(languageName, "Language")
   const segments = [
-    textSegmentFrom([videoTitle, videoSlug], "Video", {
-      requireAsciiLetter: true,
-    }),
-    textSegment(languageName, "Language"),
+    ...(sequencePrefix ? [sequencePrefix] : []),
+    title,
+    language,
     codeSegment(languageCode, languageSlug, languageName),
     renditionSegment(renditionHeight, tier),
   ]
   const maxBasenameLength =
     MAX_DOWNLOAD_FILENAME_LENGTH - DOWNLOAD_FILENAME_EXTENSION.length
+  let overflow = segments.join("_").length - maxBasenameLength
+
+  // Keep the sequence and identity suffix intact. Titles and display-language
+  // names are the descriptive fields, so trim those first when the filename
+  // would exceed the filesystem-safe limit.
+  for (const segmentIndex of [sequencePrefix ? 1 : 0, sequencePrefix ? 2 : 1]) {
+    if (overflow <= 0) break
+    const segment = segments[segmentIndex]!
+    const removable = Math.min(overflow, Math.max(0, segment.length - 1))
+    segments[segmentIndex] =
+      segment.slice(0, segment.length - removable).replace(/[._-]+$/g, "") ||
+      segment[0]!
+    overflow -= segment.length - segments[segmentIndex]!.length
+  }
+
   const basename =
     segments
       .join("_")

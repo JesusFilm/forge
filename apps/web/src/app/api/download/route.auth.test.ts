@@ -148,7 +148,7 @@ describe("GET /watch/api/download - account gate", () => {
     })
     expect(dns.resolve4).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
-  }, 15_000)
+  })
 
   it("redirects anonymous opaque-ID downloads when the account gate is disabled", async () => {
     queryMock.mockResolvedValueOnce({ data: adminVideoDub() })
@@ -174,7 +174,7 @@ describe("GET /watch/api/download - account gate", () => {
     )
     expect(fetchMock).not.toHaveBeenCalled()
     expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
-  }, 15_000)
+  })
 
   it("rejects anonymous raw-URL attachment downloads when the account gate is disabled", async () => {
     const fetchMock = vi.fn(async () => new Response("should not happen"))
@@ -196,10 +196,13 @@ describe("GET /watch/api/download - account gate", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("serves allowlisted inline VTT subtitles without an auth cookie", async () => {
+  it("streams allowlisted inline VTT subtitles without an auth cookie", async () => {
     queryMock.mockResolvedValueOnce({ data: adminVideoDub() })
     const fetchMock = vi.fn(
-      async () => new Response("WEBVTT\n\n00:00.000 --> 00:01.000\nHello"),
+      async () =>
+        new Response("WEBVTT\n\n", {
+          headers: { "content-type": "text/vtt" },
+        }),
     )
     vi.stubGlobal("fetch", fetchMock)
 
@@ -213,10 +216,13 @@ describe("GET /watch/api/download - account gate", () => {
     )
 
     expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("text/vtt")
     expect(response.headers.get("location")).toBeNull()
-    expect(response.headers.get("content-type")).toContain("text/vtt")
-    expect(await response.text()).toContain("WEBVTT")
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(await response.text()).toBe("WEBVTT\n\n")
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      expect.objectContaining({ redirect: "manual" }),
+    )
   })
 
   it("keeps anonymous non-VTT inline requests behind the account gate", async () => {

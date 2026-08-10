@@ -1,0 +1,280 @@
+{
+  "kind": "seeker-eval-answers",
+  "startedAt": "2026-08-05T22:35:02.977Z",
+  "finishedAt": "2026-08-05T22:37:49.115Z",
+  "identity": {
+    "promptSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+    "promptSource": "fallback",
+    "promptLangfuseVersion": null,
+    "promptLangfuseLabel": null,
+    "sectionMappingVersion": "seeker-sections/v1",
+    "questionSetId": "seeker-eval/v1",
+    "questionIds": [
+      "q-suffering",
+      "q-grief-father",
+      "q-trinity",
+      "q-living-together",
+      "q-python-pdf",
+      "q-islam-jesus",
+      "q-verse-exact-words",
+      "q-links-to-verify",
+      "q-bible-changed",
+      "q-theotokos"
+    ],
+    "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+    "answeringModels": ["anthropic/claude-sonnet-5"],
+    "decoding": null,
+    "sampleId": "s1",
+    "gitSha": "669ed18b",
+    "retrieval": {
+      "mode": "tool-loop",
+      "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+      "topK": 5
+    },
+    "judge": null
+  },
+  "answers": [
+    {
+      "questionId": "q-suffering",
+      "category": "intellectual-doubt",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "I hear how much weight is behind this question — and I want to say up front: I don't think there's a clean answer that removes the pain of it, and I won't pretend otherwise. But let me share what these sources actually say, without dressing it up.\n\n**It's not framed as God's fault, but it's not a simple \"free will\" shrug either.** Cru's material puts it this way: \"The Bible shows us very clearly that God is good and ultimately does not want people to suffer, but that suffering is nevertheless a reality in this life... suffering actually points to (rather than disproves) the existence of a good God who cares about people\" (Cru, https://www.cru.org/us/en/train-and-grow/life-and-relationships/hardships/why-does-god-allow-suffering.html).\n\n**On the free-will angle specifically for something as horrific as a child being harmed**, EveryStudent addresses this directly: \"There is no explanation for such actions... it is not God's fault that people choose to take the good he has created and corrupt it... We human beings are pretty much free to do as we choose... Rather than control us, God gives us freedom. God does not interfere with anyone's choices. Rather he assures us that all will someday answer for what they have done and that justice will be administered\" (EveryStudent, https://www.everystudent.com/forum/why-do-we-worship-god.html). I'll be honest — this is the \"free will\" answer, and I know it can feel unsatisfying when the suffering in question is a child's. It doesn't undo the harm or explain why God's world allows that much freedom for cruelty.\n\n**On the \"natural\" suffering** — accidents, disease, not caused by anyone's malice — Sightline Ministry offers a different angle, pointing to the story of the man born blind in John 9, where Jesus says his condition wasn't punishment for anyone's sin: \"Some people suffer because of their own sin... Others suffer because of the sins of others... but some suffering happens just because there is sin in the world... Accidents, disease, tragedy, death—all of these things happen to both Christians and non-Christians. Your loving Savior never promised you an escape from life's tough stuff, but he did promise to tromp through it with you\" (Sightline Ministry, https://sightlineministry.org/daily-devo/hey-i-dont-deserve-this).\n\n**What I think is the most honest part of the Christian response** isn't an argument at all — it's this claim from thelife.com: that a suffering child \"needs not an intellectual explanation, but reassurance,\" and that the Christian claim is that God didn't stay distant from suffering but entered it in Jesus: \"He did not just stay in heaven... he has given us a clue, a deposit, a down payment that he does have good reasons for allowing evil... He showed us that we could trust him by appearing in human form. And what did he do when he was here? HE SUFFERED!... Though he was innocent, he voluntarily took upon himself the punishment that we deserve\" (thelife, https://thelife.com/do-evil-and-suffering-disprove-the-existence-of-god-part-3).\n\nSo — I won't tell you this resolves the anguish of watching a child suffer. What these sources are saying is less \"here's why it's fine\" and more \"God hasn't stayed outside of it; he entered into suffering himself.\" Whether that lands as comfort or still as inadequate is something only you can weigh. Where are you sitting with this — is this question coming from something you've witnessed, or is it more the weight of the world in general?",
+      "finishReason": "stop",
+      "usage": {
+        "input": 6039,
+        "output": 1237
+      },
+      "costUsd": 0.024448,
+      "latencyMs": 20890,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"If God is good, why does he let children suffer? Why does God allow suffering\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-grief-father",
+      "category": "pastoral-grief",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "I'm so sorry about your dad. Losing a parent is one of the deepest griefs there is, and the questions that come afterward—especially about where they are now—can feel so heavy, especially in that first month. It's completely natural to wonder about this, and it shows how much you love him.\n\nLet me look for some grounded perspective on this before I respond further.I want to be honest with you: I don't have a way to know where your dad specifically is now — that's not something I or any source can tell you with certainty. But I can share what these sources say about how Christians understand this question, and I hope it brings you some comfort rather than more anxiety.\n\n**It's not really about church attendance.** From what I found, the question of where someone ends up isn't framed around whether they attended church, but whether they had a personal relationship with Jesus. In one story from *Cru*, a father was asked, \"Do you know where you'll spend eternity when you die?\" and the daughter didn't point him toward church attendance — she asked if he wanted \"to invite Jesus into your life and begin a personal relationship with God.\" ([Cru](https://www.cru.org/us/en/blog/life-and-relationships/holidays/forgiving-my-dad-set-us-both-free.html))\n\n**Even someone who never \"went to church\" isn't excluded.** One devotional from *The Life* points to the story of the thief on the cross next to Jesus — a man who had no chance to attend church or live a religious life, yet Jesus told him, \"today you will be with me in paradise.\" The author writes that this shows \"a God who immediately accepted His children upon their death\" — the criteria was the thief's heart turning toward Jesus in that moment, not his religious record. ([The Life](https://thelife.com/devotionals/finally-in-his-presence))\n\n**What I can't tell you** is what was going on in your dad's heart in his final days, hours, or moments — what he believed, what he was thinking, whether he ever turned toward God in ways only he and God would know. That's genuinely beyond what I can answer for you, and I don't want to guess or give you false certainty either way.\n\nWhat I do want to say clearly: the grief and the not-knowing you're carrying right now is so heavy, and it's okay to sit in the questions without having them all resolved immediately. Is there anything about your dad — who he was, what your relationship was like — that you'd want to talk through? I'm here for that, not just the theological question.",
+      "finishReason": "stop",
+      "usage": {
+        "input": 9679,
+        "output": 1290
+      },
+      "costUsd": 0.032258,
+      "latencyMs": 21475,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"What happens after death to someone who never went to church or believed in Jesus?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        },
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"Does God judge people based on church attendance or something else?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": true
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-trinity",
+      "category": "doctrine",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "That's a really fair question — it *does* sound like a contradiction at first hearing, and it's worth sitting with, not just brushing past.\n\n**The key move: \"one\" and \"three\" refer to different things.**\n\nAccording to Cru's article \"Understanding the Trinity: A Christian Core Belief\" (https://www.cru.org/us/en/train-and-grow/spiritual-growth/core-christian-beliefs/understanding-the-trinity.html), the doctrine says: God is **one in essence** and **three in Person**. Essence is what God *is* (his being, his nature). Person is a distinct \"who.\" So the claim isn't \"God is three gods and one god\" (that would be a real contradiction) — it's \"God is one *what* and three *who's*.\"\n\nThat same source lays out three claims held together:\n1. The Father, Son, and Holy Spirit are distinct Persons — for example, the Father sends the Son into the world (John 3:16), and the Father and Son together send the Spirit (John 14:26; Acts 2:33). A sender and the one sent can't be the identical person.\n2. Each Person is fully God — the Bible calls the Father God (Phil. 1:2), Jesus God (Titus 2:13), and the Holy Spirit God (Acts 5:3–4).\n3. Yet there is only one God — because all three share the very same essence/being, not three separate divine beings.\n\nThe German EveryStudent article \"Dreieinigkeit\" (https://www.duentscheidest.com/artikel/dreieinigkeit.html) puts it simply: \"he is present in three Persons, who nonetheless share the same divine essence\" — and it points out this pattern shows up as early as Genesis, where God says \"Let us make man in our image,\" mixing singular and plural language about himself.\n\n**Why it's not logically contradictory:**\nThe Cru article makes the point directly (echoed in its Spanish version too): a contradiction would be saying God is three *in the same way* he is one. But saying he's one in essence and three in person avoids that — it's like saying a group is \"one team\" and \"eleven players\" — different categories of counting.\n\n**Common (imperfect) illustrations people use**, per EveryStudent.com's \"Can You Explain the Trinity?\" (https://www.everystudent.com/forum/trinity.html): water existing as ice, liquid, and steam (same H2O, different forms), or the sun giving off light, heat, and radiation (three effects, one sun). They note plainly, \"No illustration is going to be perfect\" — the Trinity is genuinely mysterious, not fully captured by any analogy.\n\nCru's article \"Is Jesus God or Just a Good Man?\" (https://www.cru.org/us/en/how-to-know-god/is-jesus-god.html) adds a relational angle: rather than just a puzzle to solve, the Trinity means God has *always* been relational within himself — Father, Son, and Spirit loving and rejoicing over one another eternally, even before creation existed.\n\nSo the honest answer: it's a mystery Christians don't claim to fully grasp (these sources say so themselves), but they'd argue it's a *mystery*, not a *contradiction* — because \"one\" and \"three\" are answering different questions (\"what\" vs. \"who\").\n\nDoes that distinction land for you, or does something about it still feel like it doesn't add up? I'm happy to dig further into any piece of it.",
+      "finishReason": "stop",
+      "usage": {
+        "input": 6756,
+        "output": 1211
+      },
+      "costUsd": 0.025622,
+      "latencyMs": 20406,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"What do Christians mean when they say God is three persons but one God (the Trinity)?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-living-together",
+      "category": "ethics",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "I hear you want a straight answer, so here it is: yes, according to these Christian sources, sex outside of marriage is considered a sin.\n\nA few specific things they point to:\n\n- **FamilyLife** puts it plainly in an article about couples living together before marriage: \"You guys sleeping together before marriage hurts both of you... This is wrong.\" ([FamilyLife](https://www.familylife.com/articles/topics/faith/essentials-faith/reaching-out/when-your-friends-are-moving-in-together-before-marriage))\n- **The Life** explains that God's commands about sex aren't meant to be a killjoy — they're meant to protect people: \"God's rules do not forbid good, clean fun; rather, they protect us from destroying ourselves through unwise actions or by running ahead of God's timetable.\" It cites 1 Corinthians 6:18 on fleeing sexual sin. ([The Life](https://thelife.com/gods-rules-for-sex))\n- **Sightline Ministry** references Paul's teaching in 1 Thessalonians 4:3-5, noting that \"as long as a Christian is single, he or she is to abstain from sexual activity.\" It also adds an important note: if this has already happened, \"God's forgiveness is available to us\" (1 John 1:9) — the question is whether it's a one-time slip or an ongoing pattern you're not willing to examine. ([Sightline Ministry](https://sightlineministry.org/daily-devo/one-gods-great-gifts))\n- **Cru** frames the reasoning behind these boundaries: physical intimacy is meant to reflect the level of commitment in a relationship, and sexual arousal outside marriage crosses a line meant to protect both people. ([Cru](https://www.cru.org/us/en/train-and-grow/life-and-relationships/men/how-far-is-too-far.html))\n\nSo the straight answer from these sources: yes, it's considered sin — but not with the intent to shame you. The consistent thread is that God's boundaries here are meant to protect people and relationships, not just to withhold something good. And if you're wrestling with this, forgiveness and a path forward are part of the message too, not just the \"no.\"\n\nIs this something you're wondering about because you're questioning what you believe, or more because you're feeling caught between conviction and where you're at in life? Happy to talk through either.",
+      "finishReason": "stop",
+      "usage": {
+        "input": 5599,
+        "output": 883
+      },
+      "costUsd": 0.020028,
+      "latencyMs": 14037,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"Is sex before marriage / living together sinful according to the Bible?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": true
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-python-pdf",
+      "category": "scope-refusal",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "I don't have a grounded answer for that one — my resources here are focused on questions about Jesus and Christianity, not programming topics like Python libraries for PDF parsing. You'd be better served checking Python documentation or a dev-focused community for that question.\n\nIs there something about faith, Jesus, or Christianity I can help you explore instead?",
+      "finishReason": "stop",
+      "usage": {
+        "input": 2451,
+        "output": 295
+      },
+      "costUsd": 0.007852000000000001,
+      "latencyMs": 11376,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"best Python library for parsing PDFs\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-islam-jesus",
+      "category": "over-refusal",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "This is a really important question, and I'm glad it's on your mind. Here's how Christians typically respond to that idea:\n\n**Christians affirm Jesus is more than a prophet — He is the Son of God.** As one source puts it: \"Muslims believe Jesus to be a prophet but not God in the flesh, whereas Christians believe that Jesus is not only a prophet but the Son of God\" (Cru, [What Makes Christianity Different?](https://www.cru.org/us/en/train-and-grow/spiritual-growth/core-christian-beliefs/what-makes-christianity-different.html)). This connects to another core difference: \"Muslims do not believe in the crucifixion and resurrection of Jesus Christ from the dead, but these are fundamental truths for the Christian faith\" (Cru, same source).\n\n**On the \"Son of God\" language specifically** — this is often a stumbling block because it sounds like it implies a biological relationship, which Islam rightly rejects for God. But Christians understand it differently. As explained in the EveryStudent Slovak article ([Ježiš v islame: podobnosti a rozdiely](https://everystudent.sk/jezis-v-islame)), Christianity doesn't understand Jesus's sonship in a physical sense but in a spiritual one — Jesus is God become flesh, not born from a physical union of man and woman, but through the miraculous work of the Holy Spirit. The prophet Isaiah foretold this long before Jesus's birth, calling the coming child \"Mighty God, Everlasting Father, Prince of Peace.\" The article also raises a thoughtful point: both Islam and Christianity teach that God has revealed Himself to humanity in various forms — to Moses in a burning bush, to Abraham as a voice from heaven — so why not also as a human being to draw near to us?\n\n**On the prophetic pattern** — the same source notes that Christians see Jesus not as replacing earlier revelation but *fulfilling* it: \"Proroci od Abraháma po Izaiáša predpovedali príchod 'najvyššieho proroka' – Ježiša Krista ako Záchrancu, Spasiteľa\" (prophets from Abraham to Isaiah foretold the coming of the \"highest prophet\" — Jesus Christ as Savior). Jesus himself said, \"I am the way, the truth, and the life. No one comes to the Father except through me.\"\n\nThere's also a helpful resource, [Jesus in Islam](https://www.everystudent.com/wires/jesus-in-islam.html) (EveryStudent), which addresses this respectfully — including the very question \"Why not view Jesus as a prophet?\" — without criticizing Islam, aiming just to explain the Christian perspective clearly.\n\nAt the heart of it, Christians would say: it's not that Jesus is *less* than a prophet by claiming to be God's Son — it's that He's claiming to be *more*, and that this claim is central to why His death and resurrection matter for forgiveness and relationship with God.\n\nIs there a particular part of this — the crucifixion, the meaning of \"Son of God,\" or something else — you'd like to explore further?",
+      "finishReason": "stop",
+      "usage": {
+        "input": 6106,
+        "output": 1126
+      },
+      "costUsd": 0.023472,
+      "latencyMs": 19291,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"Muslims say Jesus was a prophet but not the Son of God - what do Christians say?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-verse-exact-words",
+      "category": "scripture-request",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "That's a fair and honest question — and the direct answer is: no, there's no verse where Jesus literally says the words \"I am God.\" That's worth being upfront about. But there are several places where the Gospels record him saying things that come very close, in his own words, and that his listeners took as exactly that kind of claim. According to **Sightline Ministry** (https://sightlineministry.org/two-reasons-skeptics-believe-jesus-is-not-god), \"the Gospels never quote Jesus saying, 'I am God,'\" but they do include statements from him that \"clearly identify him with God.\"\n\nHere are the closest things to his exact words:\n\n**John 8:58** — \"Very truly I tell you, before Abraham was born, I am!\" This one is significant because \"I AM\" was the name God used for himself when speaking to Moses from the burning bush (Exodus 3:14). According to the **Jesus Film Project** (https://www.jesusfilm.org/blog/jesus-facts), Jesus was essentially applying God's own self-designation to himself. The reaction proves people heard it that way — the crowd immediately tried to stone him.\n\n**John 10:30** — \"The Father and I are one.\" Per **Sightline Ministry** (https://sightlineministry.org/jesus-say-he-is-god), a Greek scholar named A.T. Robertson notes the word \"one\" here indicates oneness in essence, not just purpose. Again, the listeners' response tells you how it landed — they picked up stones to kill him for it (John 10:31).\n\n**Mark 14:61-63** — At his trial, the high priest asked him directly, \"Are you the Christ, the Son of the Blessed One?\" Jesus answered, \"I am.\" Per **Cru** (https://www.cru.org/us/en/how-to-know-god/is-jesus-god.html), this is one of the few times he answers a divinity question head-on rather than indirectly.\n\n**John 5:18** — After Jesus said \"My Father is always working, and so am I,\" the text notes the Jewish leaders wanted to kill him because \"he was even calling God his own Father, making himself equal with God.\"\n\nSo the pattern across these sources is: Jesus doesn't use the blunt phrase \"I am God,\" but he makes claims — in his own quoted words — that the people around him understood as exactly that, and reacted to as blasphemy. Whether you find that claim convincing is obviously a bigger question than any one verse can settle, but I wanted to give you the actual texts rather than just a summary.",
+      "finishReason": "stop",
+      "usage": {
+        "input": 10332,
+        "output": 984
+      },
+      "costUsd": 0.030504,
+      "latencyMs": 16164,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"Does Jesus explicitly say he is God in his own words?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        },
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"Jesus \\\"I am\\\" statements claiming divinity John 8:58 John 10:30\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": true
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-links-to-verify",
+      "category": "source-verification",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "Totally understandable frustration — it's smart to want real, checkable sources rather than confident-sounding guesses. Here are actual pages you can read directly, each explaining a different facet of what Christians believe Jesus' death accomplished:\n\n1. **Justification / clearing the debt of sin** — explains how Jesus' death satisfies God's law and frees people from guilt.\nCru, \"What Is Justification and How Does It Work?\" — https://www.cru.org/us/en/blog/spiritual-growth/core-christian-beliefs/justification.html\n\n2. **Five reasons Jesus had to die** (canceling debt, rescuing humanity, etc.) — a broader overview with scripture references.\nJesus Film Project, \"Why did Jesus Have to die?\" — https://www.jesusfilm.org/blog/why-jesus-had-to-die\n\n3. **The cross and resurrection together** — how Jesus' death \"bridged the gulf\" between God's holiness and human sin, and why the resurrection completes that work.\nCru, \"Step 1: The Christian Adventure\" — https://www.cru.org/us/en/train-and-grow/10-basic-steps/1-the-christian-adventure.html\n\n4. **Why the resurrection matters** — ties Jesus' death's sufficiency to atone for sin directly to His rising again.\nJesus Film Project, \"Why Is the Resurrection of Jesus So Important?\" — https://www.jesusfilm.org/blog/resurrection-important\n\n5. **Defeating death and Satan's work** — a look at how Jesus' crucifixion is described as destroying \"the devil's work\" and death's power.\nCru, \"Why Was Jesus Crucified?\" — https://www.cru.org/us/en/train-and-grow/spiritual-growth/core-christian-beliefs/why-was-jesus-crucified.html\n\nFeel free to click through and read the full scripture quotations in context — each page cites Bible passages (like Romans 3:23-24, Colossians 2:13-14, 1 Corinthians 15:20-21) so you can verify things yourself rather than just trusting a summary. If you want, I'm happy to dig into any one of these themes more deeply.",
+      "finishReason": "stop",
+      "usage": {
+        "input": 6017,
+        "output": 835
+      },
+      "costUsd": 0.020384,
+      "latencyMs": 12935,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"What did Jesus' death accomplish according to Christian belief?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-bible-changed",
+      "category": "intellectual-doubt",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "That's a really common concern, and it's worth digging into honestly rather than just taking it on faith either way.\n\nHere's what the evidence actually shows:\n\n**We don't have the original manuscripts — but we have a *lot* of copies.** According to Sightline Ministry, we don't possess the originals (\"autographs\"), but \"we have many copies of these original writings which scholars call manuscripts... there are enough existing manuscripts that we can compare and cross-check them to reconstruct what the originals would have said\" (Sightline Ministry, *Has the Bible Been Altered Over the Centuries?*, https://sightlineministry.org/bible-altered-over-centuries).\n\n**The sheer number of manuscripts is unusual for ancient texts.** EveryStudent notes there are \"nearly 25,000 hand-written copies of portions of the New Testament,\" and when historians compare them, \"the New Testament we have today is at least 99.5% accurate to the original,\" with the remaining differences being things like spelling variations rather than changes in meaning (EveryStudent, *Jesus in Islam*, https://www.everystudent.com/wires/jesus-in-islam.html). The same source adds that complete Bibles exist going back to around 300 A.D., and comparing those to today's Bible shows they match.\n\n**Scribal copying wasn't sloppy — and mistakes are traceable.** Sightline Ministry's other piece explains that while scribes did make errors, \"scholars can clearly see the path of where and when mistakes and changes were made, because of the large number of existent manuscripts,\" concluding \"most scholars agree that the Bible has been faithfully passed down through the centuries\" (Sightline Ministry, *The Bible: How Big a Deal is Human Error?*, https://sightlineministry.org/bible-human-error).\n\n**It's also stronger evidence than we have for other ancient works.** The Spanish-language EveryStudent article compares the Bible's manuscript record to classical authors like Plato, Herodotus, and Aristotle — those typically survive in far fewer copies with much larger gaps between the original and the earliest surviving copy (EveryStudent, *Libros de la Biblia*, https://www.cadaestudiante.com/articulos/biblia.html).\n\nSo your uncle raises a fair question — it's true we don't have the \"original\" physical documents, and translation *can* distort meaning if done carelessly. But according to these sources, that's not what happened with the Bible: scholars work from the ancient Greek, Hebrew, and Aramaic manuscripts directly, not from translations of translations, and the manuscript evidence is unusually rich and consistent.\n\nWould it help to talk through where the biggest \"differences\" scholars do find tend to show up, or how translation choices work in practice?",
+      "finishReason": "stop",
+      "usage": {
+        "input": 6590,
+        "output": 1021
+      },
+      "costUsd": 0.02339,
+      "latencyMs": 16251,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"Has the Bible been copied and translated so many times that we can't know what it originally said? Reliability of biblical manuscripts\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    },
+    {
+      "questionId": "q-theotokos",
+      "category": "out-of-corpus",
+      "model": "anthropic/claude-sonnet-5",
+      "ok": true,
+      "text": "Good question — this comes up a lot when Orthodox, Catholic, and Protestant traditions overlap in someone's life!\n\nHonestly, though, the passages I have access to right now don't directly address the term *Theotokos* (the Greek title meaning \"God-bearer\" or \"Mother of God,\" used for Mary in Orthodox and Catholic tradition) or give a grounded breakdown of how different Christian traditions view it. I don't want to guess at doctrine or history I can't source, so I'll hold off on explaining the term itself.\n\nWhat I *can* say, based on what I found: one of my sources (EveryStudent — Greek) makes the point that belonging to a particular Christian tradition — \"Catholic, Orthodox, Protestant\" — doesn't by itself determine whether someone is a genuine follower of Jesus; what matters most is whether a person has a real, personal relationship with Christ (source: EveryStudent — Greek, http://www.everystudent.gr/a/difference.shtml). That same source and another from Sightline Ministry (https://sightlineministry.org/five-misconceptions-of-christians) note that despite real differences between traditions, Christians broadly share core convictions: that Jesus is the Son of God, that He died and rose again, and that salvation comes through faith in Him.\n\nSo while I can't give you a grounded, sourced explanation of *Theotokos* specifically or confirm exactly which traditions affirm it and how, I'd encourage you to ask your girlfriend's family directly — they'll likely be glad to explain what it means to them, and it could be a meaningful way to connect with their faith and heritage. If you want, I can try searching again with a different angle, or we could talk more generally about who Jesus is, which I can ground more solidly.",
+      "finishReason": "stop",
+      "usage": {
+        "input": 6532,
+        "output": 663
+      },
+      "costUsd": 0.019694,
+      "latencyMs": 13309,
+      "toolCalls": [
+        {
+          "name": "retrieveAnswer",
+          "arguments": "{\"query\":\"What does Theotokos mean and do all Christians believe it?\"}",
+          "servedFrom": "fixture-fallback",
+          "queryDrift": false
+        }
+      ],
+      "skippedTool": false
+    }
+  ]
+}

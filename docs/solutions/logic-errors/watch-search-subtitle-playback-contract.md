@@ -130,11 +130,12 @@ enter the anonymous body path. The final fetch URL is rebuilt from that fixed
 origin plus individually decoded, traversal-checked, and URI-encoded path
 segments; query strings are rejected. The endpoint:
 
-- fails closed on missing or private DNS answers;
-- uses a 10-second timeout and refuses redirects;
-- rejects a declared or streamed body larger than 2 MiB;
-- requires a valid `WEBVTT` signature before caching; and
-- returns `text/vtt` with `nosniff`.
+- rejects private DNS answers while allowing a missing DNS answer to surface as
+  a controlled upstream failure;
+- uses a 30-second Core-fetch timeout and refuses redirects;
+- streams the upstream body without buffering it in Web memory;
+- requires an upstream `text/vtt` content type; and
+- returns private, no-store `text/vtt` with `nosniff`.
 
 All other media remains redirect-based. A wildcard origin allowlist or an
 unbounded `arrayBuffer()` would turn a narrow caption transport into an SSRF or

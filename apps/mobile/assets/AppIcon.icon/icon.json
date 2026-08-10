@@ -1,0 +1,33 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "srgb:0.16471,0.13725,0.12157,1",
+      "srgb:0.06275,0.05098,0.04706,1"
+    ]
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "Mark.svg",
+          "name": "Mark",
+          "hidden": false
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "blur-material": 0
+    }
+  ],
+  "supported-platforms": {
+    "circles": ["watchOS"],
+    "squares": ["macOS"]
+  }
+}

@@ -78,10 +78,12 @@ vi.mock("@/components/watch/LanguageCombobox", () => ({
 // asserted against the .html-shaped path the @/lib/routes builder emits.
 const {
   pushMock,
+  readSubtitlePreferenceMock,
   writePreferredLanguageSlugMock,
   writeSubtitlePreferenceMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
+  readSubtitlePreferenceMock: vi.fn(),
   writePreferredLanguageSlugMock: vi.fn(),
   writeSubtitlePreferenceMock: vi.fn(),
 }))
@@ -104,6 +106,7 @@ vi.mock("@/lib/language-preference-client", () => ({
 }))
 
 vi.mock("@/lib/subtitle-preference-client", () => ({
+  readSubtitlePreference: readSubtitlePreferenceMock,
   writeSubtitlePreference: writeSubtitlePreferenceMock,
 }))
 
@@ -192,6 +195,12 @@ beforeEach(() => {
   pushMock.mockClear()
   writePreferredLanguageSlugMock.mockClear()
   writeSubtitlePreferenceMock.mockClear()
+  readSubtitlePreferenceMock.mockReset()
+  readSubtitlePreferenceMock.mockReturnValue({
+    enabled: false,
+    explicit: false,
+    languageSlug: null,
+  })
   collectionDownloadModalMock.mockClear()
   resolveDownloadSessionAccessMock.mockReset()
   resolveDownloadSessionAccessMock.mockResolvedValue({
@@ -412,6 +421,77 @@ describe("SeriesPageClient — shared content surface", () => {
     })
 
     expect(writeSubtitlePreferenceMock).toHaveBeenLastCalledWith(false, null)
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        subtitleLanguageCode: null,
+        subtitleVttSrc: null,
+      }),
+    )
+  })
+
+  it("restores a selected subtitle after an audio-language route remount", () => {
+    readSubtitlePreferenceMock.mockReturnValue({
+      enabled: true,
+      explicit: true,
+      languageSlug: "russian",
+    })
+    const subtitles = [
+      {
+        documentId: "subtitle-russian",
+        language: {
+          slug: "russian",
+          name: "Russian",
+          nativeName: "русский",
+          bcp47: "ru",
+        },
+        vttSrc: "https://cdn.example/russian.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ] as Series["subtitles"]
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ subtitles })}
+          selectedVariant={makeSelectedVariant({
+            slug: "english",
+            bcp47: "en",
+            name: "English",
+          })}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        subtitleLanguageCode: "RU",
+        subtitleVttSrc:
+          "/watch/api/download?subtitleId=subtitle-russian&variantId=variant-1&disposition=inline",
+      }),
+    )
+  })
+
+  it("cleans an unclaimed subtitle intent without enabling subtitles", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/storyclubs.html?subtitles=unknown-language&t=12",
+    )
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries()}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(window.location.search).toBe("?t=12")
+    expect(writeSubtitlePreferenceMock).not.toHaveBeenCalled()
     expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         subtitleLanguageCode: null,

@@ -622,16 +622,25 @@ Experience-editor video library server-action searches use
 `experience-editor-media-collection-picker` and keep picker context in bounded
 metadata.
 
-GraphQL Watch Search additionally supports a trusted Web-only comparison seam:
-production Web can serve `MODERN` while requesting `DEFAULT` as shadow work.
-The resolver returns the primary result before Next.js `after()` starts the
-shadow, and a per-process queue caps it at one concurrent execution and 64
-reserved jobs. Primary and shadow traces share the primary request ID and carry
+GraphQL Watch Search additionally supports a Web-only comparison seam. The
+canonical anonymous browser surface omits mode selection; Admin applies
+`WATCH_SEARCH_PRIMARY_MODE` and `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED` on every
+request so cached or already-open Watch pages cannot bypass an operator
+rollback. Other callers retain the public omitted-mode `DEFAULT` contract.
+Trusted non-fleet Web consumer bearers may also request shadow work explicitly.
+
+When `MODERN` is primary, Admin may request `DEFAULT` as shadow work. The
+resolver returns the primary result before Next.js `after()` starts the shadow,
+and a per-process queue caps it at one concurrent execution and 64 reserved
+jobs. Primary and shadow traces share the primary request ID and carry
 `traceRole` plus `shadowOfRequestId`; product analytics filters shadow traces,
 skips their long-lived aggregate update, and marks them ineligible for eval
-sampling so user intent and request counts are not doubled. Anonymous and fleet
-callers cannot trigger this extra work. Shadow failure, trace failure, or
-saturation must remain invisible to the public response.
+sampling so user intent and request counts are not doubled. The canonical
+browser seam compares `Origin` with `WEB_CANONICAL_ORIGIN`; this is a spoofable
+surface discriminator, never authorization. Missing/noncanonical anonymous
+origins and fleet callers cannot trigger extra work. Queue bounds contain
+spoofed-origin load. Shadow failure, trace failure, or saturation must remain
+invisible to the public response.
 
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
@@ -2573,6 +2582,28 @@ candidates belong in the launch table; partial/NT-only candidates require
 explicit product approval. Web reads cached passage text through GraphQL
 `BibleCitation.passage(languageSlug:)`; other consumers may pass Core
 `languageId`. Web and consumers must not call the provider API directly.
+
+## SEO Experiment Ledger
+
+Admin is the durable authority for SEO runs, bounded evidence observations,
+immutable proposal versions, human decisions, draft/ticket materialization,
+objective activation, evaluation events, and reviewed lessons. Mastra calls
+only the narrow `/api/seo/ingest`, `/api/seo/evaluate`, and `/api/seo/tickets`
+capabilities. Manager decisions use the GraphQL Manager SEO contract.
+
+`SEO_APPROVAL_PUBLIC_KEYS` and `SEO_WORKLOAD_PUBLIC_KEYS` are JSON objects that
+map key IDs to SPKI Ed25519 public keys. `SEO_ASSERTION_ENVIRONMENT` binds every
+assertion to one of `local`, `preview`, `staging`, or `production`. Missing key
+maps do not block Admin boot; the corresponding SEO surface fails closed.
+Rotate keys with overlapping verifier maps, then remove the retired key after
+the maximum assertion lifetime. On compromise, remove the key immediately and
+leave Mastra `SEO_AUTOMATION_MODE=off` until a replacement is deployed.
+
+SEO approval never publishes canonical content. Editorial materialization
+creates an AI-attributed `ContentRevision` DRAFT after a locked base/draft
+conflict check. Engineering materialization persists an outbox entry before a
+provider call. Approval is not activation, and direct HTTP evidence is not
+Google indexing proof.
 
 ## Admin MCP (JFP Admin MCP — feat-276 + feat-320)
 

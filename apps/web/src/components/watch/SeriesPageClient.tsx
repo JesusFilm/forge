@@ -38,7 +38,10 @@ import {
   tryAsLocaleSlug,
   watchVideoPath,
 } from "@/lib/routes"
-import { writeSubtitlePreference } from "@/lib/subtitle-preference-client"
+import {
+  readSubtitlePreference,
+  writeSubtitlePreference,
+} from "@/lib/subtitle-preference-client"
 import { resolvePosterUrl } from "@/lib/url"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -146,10 +149,26 @@ export function SeriesPageClient({
   >(null)
 
   useEffect(() => {
+    const preference = readSubtitlePreference()
+    const preferredSlug =
+      preference.enabled &&
+      preference.languageSlug != null &&
+      subtitles.some(
+        (subtitle) => subtitle.language.slug === preference.languageSlug,
+      )
+        ? preference.languageSlug
+        : null
+    setSelectedSubtitleSlug(preferredSlug)
+  }, [selectedVariant?.documentId, subtitles])
+
+  useEffect(() => {
     if (typeof window === "undefined") return
     const url = new URL(window.location.href)
     const rawIntent = url.searchParams.get(SUBTITLE_INTENT_PARAM)
     if (rawIntent == null) return
+
+    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
 
     const intent = tryAsLocaleSlug(rawIntent)
     if (subtitleLanguageSlug == null && intent != null) return
@@ -159,9 +178,6 @@ export function SeriesPageClient({
       subtitles.some((subtitle) => subtitle.language.slug === intent)
         ? intent
         : null
-
-    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
-    window.history.replaceState(window.history.state, "", url.toString())
 
     if (!availableIntent) return
     setSelectedSubtitleSlug(availableIntent)
@@ -524,6 +540,7 @@ export function SeriesPageClient({
           collectionTitle={series.title}
           episodes={episodes.map((episode) => ({
             documentId: episode.documentId,
+            order: episode.order ?? null,
             slug: episode.slug,
             title: episode.title,
             thumbnailUrl: resolveEpisodeImageUrl(episode),

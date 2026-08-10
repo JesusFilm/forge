@@ -80,6 +80,48 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 
+## App icon
+
+Every icon asset is generated from one vector source by
+`scripts/generate-app-icon.mjs` (`pnpm icons:generate`). **Never hand-edit the
+PNGs or `assets/AppIcon.icon/` — regenerate.** The script borrows `apps/admin`'s
+`sharp` on purpose; adding it here would ship a native binary into every EAS build.
+
+- **iOS** uses a real Icon Composer bundle (`ios.icon: "./assets/AppIcon.icon"`),
+  supported by Expo SDK 54's `withIosIcons`. Layers stay FLAT — iOS 26 applies the
+  specular highlight and drop shadow itself, so baking them in double-applies them.
+- `icon.json` is hand-authored against a schema recovered from Xcode 26's
+  `IconComposerFoundation` (verified 2026-08-07, Xcode 26.5). Two rules it
+  enforces that are easy to trip over: colours are strings `"srgb:r,g,b,a"`
+  with **alpha required**, and a `linear-gradient` takes a bare array of
+  **exactly two** colours.
+- Validate any `icon.json` change before pushing with this command **exactly** —
+  the flags are load-bearing:
+
+  ```bash
+  xcrun actool --compile /tmp/iconcheck --platform iphoneos \
+    --minimum-deployment-target 26.0 --app-icon AppIcon \
+    --output-partial-info-plist /tmp/iconcheck/p.plist assets/AppIcon.icon
+  ```
+
+  `mkdir -p /tmp/iconcheck` first. **Without `--platform` and
+  `--minimum-deployment-target`, actool exits 0 and compiles nothing** — it
+  prints only a notices plist, so an abbreviated invocation silently passes on a
+  broken bundle. With them, exit code is trustworthy: 0 plus an `Assets.car` on
+  success, 1 plus a `com.apple.actool.errors` key on failure.
+
+- **Android** gets separate foreground / background / monochrome layers. The symbol
+  is drawn at `0.6 × 72/108` of the canvas, not `0.6` — Android's 108dp canvas only
+  shows its middle 72dp, so matching iOS's apparent size needs the smaller number.
+- The symbol is centred on its **centroid** (53.9% / 41.6% of its box), not its
+  bounding box; the sliced corner removes weight and a box-centred symbol sags.
+  Every run re-derives those constants from the path and aborts before writing
+  anything if they have drifted, so a stale `CX`/`CY` cannot reach an asset.
+  `--verify-centroid` runs the same check on its own and prints the measurement.
+- The JFP symbol on near-black is **not** one of the four symbol-on-background
+  combinations `brandpad.io/jfp` permits. It matches the existing tvOS tile, which
+  has the same issue. Pending a waiver from the brand owner.
+
 ## Running on a simulator (env setup)
 
 **Before launching apps/mobile on a simulator, ALWAYS run
@@ -120,3 +162,33 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
+
+## Auth + watch progress (feat: mobile login & continue watching)
+
+- **Session**: `src/lib/authSession.ts` owns the Better Auth Expo client
+  (lazy getter, never module-scope) and a subscribable snapshot readable
+  WITHOUT React — the Apollo link and recorder read it directly. Credentials
+  live in SecureStore with this-device-only accessibility; Android backup is
+  opted out via `app.json` `allowBackup: false`. The short-lived user JWT is
+  memory-only with single-flight refresh-on-expiry.
+- **Operation-scoped user JWT (same law as the fleet search bearer)**: the
+  signed-in JWT rides ONLY the progress operations
+  (`PROGRESS_OPERATION_NAMES` in `src/lib/authHeaders.ts`); the async
+  `createUserJwtLink` sits ahead of the sync header links and forwards every
+  other operation untouched. Guard tests pin the gate to the operations
+  actually sent — never widen it.
+- **Progress store**: `src/lib/watchProgress/` — account-tagged in-memory
+  store + versioned AsyncStorage snapshot + account-bound offline queue
+  (slug-keyed for downloaded playback; admin resolves slugs server-side).
+  Recording rides `useManagedVideoPlayer`'s existing 1s poll via
+  `options.progress` (heroes never reach the adapter, so they're excluded
+  structurally); writes batch at most once per 30s (admin's rate limiter
+  allows 30 mutations/min — never write per-tick), forced on
+  pause/background/unmount/end. Progress is signed-in ONLY (R10): sign-out
+  empties store, snapshot, and queue via `attachProgressLifecycle`.
+- **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
+  ≥90% snaps full) on every card surface EXCEPT the Library downloads row
+  (deferred — the row stores only a slug). Fold progress into
+  `accessibilityLabel` via `progressAccessibilityText`.
+- **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
+  only — never email or display name.

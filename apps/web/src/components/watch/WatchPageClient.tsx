@@ -50,6 +50,7 @@ import {
   buildDownloadFilename,
   buildDownloadProxyUrl,
   buildSubtitleProxyUrl,
+  type DownloadSequence,
 } from "@/components/watch/download-link"
 import { selectDefaultDownloadTier } from "@/components/watch/download-options"
 import { env } from "@/env"
@@ -168,6 +169,7 @@ function isPendingChapterStillRoutable(
 
 type WatchPageClientProps = {
   downloadButtonLabel?: string
+  downloadSequence?: DownloadSequence | null
   mergedBlocks: MergedWatchBlock[]
   variant: WatchVariant
   video: WatchVideoRecord
@@ -257,6 +259,7 @@ function buildShareFallbackHref({
 
 export function WatchPageClient({
   downloadButtonLabel,
+  downloadSequence = null,
   mergedBlocks,
   variant,
   video,
@@ -406,6 +409,9 @@ export function WatchPageClient({
     const currentRawIntent = url.searchParams.get(SUBTITLE_INTENT_PARAM)
     if (currentRawIntent == null) return
 
+    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+
     const intent = tryAsLocaleSlug(currentRawIntent)
     if (subtitleLanguageSlug == null && intent != null) return
     if (subtitleLanguageSlug != null && intent !== subtitleLanguageSlug) return
@@ -414,9 +420,6 @@ export function WatchPageClient({
       subtitles.some((subtitle) => subtitle.language.slug === intent)
         ? intent
         : null
-
-    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
-    window.history.replaceState(window.history.state, "", url.toString())
 
     if (!availableIntent) return
     setSubtitleSlug(availableIntent)
@@ -499,6 +502,7 @@ export function WatchPageClient({
         languageName: variant.language?.name ?? null,
         languageSlug: variant.language?.slug ?? null,
         renditionHeight: fallbackTier.download.height,
+        sequence: downloadSequence,
         tier: fallbackTier.tier,
         videoSlug,
         videoTitle: video.title,
@@ -508,6 +512,7 @@ export function WatchPageClient({
     })
   }, [
     downloadsForModal,
+    downloadSequence,
     selectedLanguageCode,
     variant.documentId,
     variant.language?.name,
@@ -819,6 +824,7 @@ export function WatchPageClient({
           languageCode={selectedLanguageCode}
           languageName={variant.language?.name ?? null}
           languageSlug={variant.language?.slug ?? null}
+          downloadSequence={downloadSequence}
           variantId={variant.documentId}
           videoSlug={videoSlug}
           accountGateEnabled={downloadAccountGateEnabled}

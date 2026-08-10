@@ -5,10 +5,7 @@
 // click through this same-origin endpoint lets Web keep opaque download IDs,
 // auth gating, and event recording without exposing raw CDN URLs in rendered
 // markup. Successful attachment downloads redirect to the CDN so Web does not
-// carry media streams. The narrow anonymous inline-VTT path is the exception:
-// browsers enforce CORS on `<track>` redirects, while the trusted Core media
-// origin does not emit an allow-origin header. Web therefore buffers only
-// small allowlisted VTT files and returns them same-origin.
+// carry media streams.
 
 import { promises as dns } from "node:dns"
 import { isIP } from "node:net"
@@ -35,8 +32,8 @@ const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
 const DOWNLOAD_AUTH_REQUIRED = "auth-required"
 const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
-const MAX_INLINE_SUBTITLE_BYTES = 2 * 1024 * 1024
-const INLINE_SUBTITLE_TIMEOUT_MS = 10_000
+const INLINE_SUBTITLE_TIMEOUT_MS = 30_000
+const DOWNLOAD_CACHE_CONTROL = "private, no-cache, no-store, must-revalidate"
 const INLINE_SUBTITLE_ORIGIN = "https://api-media-core.jesusfilm.org"
 
 // eslint-disable-next-line no-control-regex
@@ -62,7 +59,8 @@ function buildInlineSubtitleFetchUrl(target: string): string | null {
     const parsed = new URL(target)
     if (parsed.origin !== INLINE_SUBTITLE_ORIGIN || parsed.search) return null
 
-    const encodedSegments = parsed.pathname.split("/").map((rawSegment) => {
+    const encodedSegments: string[] = []
+    for (const rawSegment of parsed.pathname.split("/")) {
       const segment = decodeURIComponent(rawSegment)
       if (
         segment === "." ||
@@ -70,16 +68,13 @@ function buildInlineSubtitleFetchUrl(target: string): string | null {
         segment.includes("/") ||
         segment.includes("\\")
       ) {
-        throw new Error("invalid subtitle path segment")
+        return null
       }
-      return encodeURIComponent(segment)
-    })
+      encodedSegments.push(encodeURIComponent(segment))
+    }
     const encodedPath = encodedSegments.join("/")
     if (!encodedPath.toLowerCase().endsWith(".vtt")) return null
 
-    // `encodeURIComponent` is both the path-traversal boundary and the
-    // sanitizer recognized by CodeQL's js/request-forgery model. The origin
-    // stays a compile-time constant; public request values never choose it.
     return `${INLINE_SUBTITLE_ORIGIN}${encodedPath}`
   } catch {
     return null
@@ -88,7 +83,7 @@ function buildInlineSubtitleFetchUrl(target: string): string | null {
 
 async function resolveDownloadAccountGate(
   request: Request,
-  allowAnonymousInlineSubtitle: boolean,
+  allowAuthExemptInlineSubtitle: boolean,
 ): Promise<
   | {
       ok: true
@@ -102,7 +97,7 @@ async function resolveDownloadAccountGate(
   const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
     watchDownloadAccountGateFlagContext,
   )
-  if (!accountGateEnabled || allowAnonymousInlineSubtitle) {
+  if (!accountGateEnabled || allowAuthExemptInlineSubtitle) {
     return { ok: true, accountGateEnabled }
   }
 
@@ -183,7 +178,9 @@ async function resolvesToPublicIp(hostname: string): Promise<boolean> {
     if (r.status === "fulfilled") ips.push(...r.value)
   }
   if (ips.length === 0) {
-    return false
+    // No DNS answer at all: allow the browser/CDN request to surface the
+    // failure rather than guessing here.
+    return true
   }
   return ips.every((ip) => !(isPrivateIPv4(ip) || isPrivateIPv6(ip)))
 }
@@ -301,103 +298,147 @@ function redirectToTarget(safeUrl: string): NextResponse {
     status: 302,
     headers: {
       Location: safeUrl,
-      "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      "Cache-Control": DOWNLOAD_CACHE_CONTROL,
       "X-Content-Type-Options": "nosniff",
     },
   })
 }
 
-type BoundedBodyResult =
-  | { ok: true; body: ArrayBuffer }
-  | { ok: false; reason: "too-large" | "unavailable" }
-
-async function readBoundedBody(
-  response: Response,
-  maxBytes: number,
-): Promise<BoundedBodyResult> {
-  if (!response.body) return { ok: false, reason: "unavailable" }
-
-  const reader = response.body.getReader()
-  const chunks: Uint8Array[] = []
-  let totalBytes = 0
-
+function safeLogUrl(target: string): string {
   try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      totalBytes += value.byteLength
-      if (totalBytes > maxBytes) {
-        await reader.cancel()
-        return { ok: false, reason: "too-large" }
-      }
-      chunks.push(value)
-    }
+    const url = new URL(target)
+    return url.origin + url.pathname
   } catch {
-    return { ok: false, reason: "unavailable" }
-  } finally {
-    reader.releaseLock()
+    return "<unparseable>"
   }
-
-  const buffer = new ArrayBuffer(totalBytes)
-  const body = new Uint8Array(buffer)
-  let offset = 0
-  for (const chunk of chunks) {
-    body.set(chunk, offset)
-    offset += chunk.byteLength
-  }
-  return { ok: true, body: buffer }
 }
 
-function hasWebVttSignature(body: ArrayBuffer): boolean {
-  const prefix = new TextDecoder()
-    .decode(body.slice(0, Math.min(body.byteLength, 64)))
-    .replace(/^\uFEFF/, "")
-  return /^WEBVTT(?:[\t \r\n]|$)/.test(prefix)
+function discardResponseBody(response: Response): void {
+  void response.body?.cancel().catch(() => undefined)
 }
 
-async function proxyInlineSubtitle(safeUrl: string): Promise<Response> {
+function streamResponseBody(
+  body: ReadableStream<Uint8Array>,
+  clearSubtitleTimeout: () => void,
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader()
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          clearSubtitleTimeout()
+          controller.close()
+          return
+        }
+        controller.enqueue(value)
+      } catch (error) {
+        clearSubtitleTimeout()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      clearSubtitleTimeout()
+      await reader.cancel(reason)
+    },
+  })
+}
+
+async function proxyInlineSubtitle(
+  request: Request,
+  safeUrl: string,
+): Promise<Response> {
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(
+    () => timeoutController.abort(),
+    INLINE_SUBTITLE_TIMEOUT_MS,
+  )
+  const clearSubtitleTimeout = () => clearTimeout(timeoutId)
+  const signal =
+    typeof AbortSignal.any === "function"
+      ? AbortSignal.any([request.signal, timeoutController.signal])
+      : timeoutController.signal
+
   let upstream: Response
   try {
+    // The validated VTT must remain same-origin for native <track> loading.
+    // Following a redirect here could bypass the target allowlist, so surface
+    // upstream redirects as a controlled failure instead.
+    // codeql[js/request-forgery]
     upstream = await fetch(safeUrl, {
-      headers: { Accept: "text/vtt,text/plain;q=0.9" },
+      headers: { Accept: "text/vtt" },
+      method: request.method === "HEAD" ? "HEAD" : "GET",
       redirect: "manual",
-      signal: AbortSignal.timeout(INLINE_SUBTITLE_TIMEOUT_MS),
+      signal,
     })
-  } catch {
-    return jsonError("Subtitle unavailable", 502)
+  } catch (error) {
+    clearSubtitleTimeout()
+    if (request.signal.aborted) {
+      return new NextResponse(null, { status: 499 })
+    }
+    console.error("[api/download] inline subtitle fetch failed", {
+      target: safeLogUrl(safeUrl),
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return jsonError("Upstream subtitle fetch failed", 502)
   }
 
-  if (!upstream.ok || upstream.status >= 300) {
-    return jsonError("Subtitle unavailable", 502)
-  }
-
-  const declaredLength = Number(upstream.headers.get("content-length"))
   if (
-    Number.isFinite(declaredLength) &&
-    declaredLength > MAX_INLINE_SUBTITLE_BYTES
+    upstream.type === "opaqueredirect" ||
+    (upstream.status >= 300 && upstream.status < 400)
   ) {
-    return jsonError("Subtitle too large", 413)
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    console.error("[api/download] inline subtitle upstream redirected", {
+      target: safeLogUrl(safeUrl),
+    })
+    return jsonError("Upstream subtitle redirected; refusing to follow", 502)
   }
 
-  const bodyResult = await readBoundedBody(upstream, MAX_INLINE_SUBTITLE_BYTES)
-  if (!bodyResult.ok && bodyResult.reason === "too-large") {
-    return jsonError("Subtitle too large", 413)
-  }
-  if (!bodyResult.ok) {
-    return jsonError("Subtitle unavailable", 502)
-  }
-  if (!hasWebVttSignature(bodyResult.body)) {
-    return jsonError("Subtitle unavailable", 502)
+  if (!upstream.ok) {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    return jsonError(`Upstream ${upstream.status}`, upstream.status)
   }
 
-  return new Response(bodyResult.body, {
-    status: 200,
-    headers: {
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
-      "Content-Type": "text/vtt; charset=utf-8",
-      "X-Content-Type-Options": "nosniff",
-    },
+  const contentType = upstream.headers.get("content-type")
+  const mediaType = contentType?.split(";", 1)[0]?.trim().toLowerCase()
+  if (mediaType !== "text/vtt") {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    console.error("[api/download] rejected non-VTT inline subtitle response", {
+      target: safeLogUrl(safeUrl),
+      contentType,
+    })
+    return jsonError("Upstream subtitle response was not VTT", 502)
+  }
+
+  const headers = new Headers({
+    "Cache-Control": DOWNLOAD_CACHE_CONTROL,
+    "Content-Disposition": "inline",
+    "Content-Type": contentType ?? "text/vtt",
+    "X-Content-Type-Options": "nosniff",
   })
+
+  if (request.method === "HEAD") {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    return new NextResponse(null, { status: upstream.status, headers })
+  }
+
+  if (!upstream.body) {
+    clearSubtitleTimeout()
+    return jsonError("Upstream subtitle had no body", 502)
+  }
+
+  return new NextResponse(
+    streamResponseBody(upstream.body, clearSubtitleTimeout),
+    {
+      status: upstream.status,
+      headers,
+    },
+  )
 }
 
 function sanitizeDownloadFilename(raw: string | null): string {
@@ -496,6 +537,12 @@ export async function GET(request: Request): Promise<Response> {
   }
   const { safeUrl } = validation
 
+  if (anonymousInlineSubtitleRequest) {
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(request, inlineSubtitleUrl)
+  }
+
   if (authGate.session?.accessToken && downloadEvent) {
     const result = await recordWatchEventWithAccessToken(
       authGate.session.accessToken,
@@ -515,12 +562,6 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
-  if (anonymousInlineSubtitleRequest) {
-    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(safeUrl)
-    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
-    return proxyInlineSubtitle(inlineSubtitleUrl)
-  }
-
   return redirectToTarget(
     attachmentRedirectUrl({
       disposition,
@@ -532,6 +573,28 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function HEAD(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
+
+  if (isAnonymousInlineSubtitleRequest(searchParams)) {
+    const subtitleTarget = await resolveWatchSubtitleTarget({
+      subtitleId: searchParams.get("subtitleId"),
+      variantId: searchParams.get("variantId"),
+    })
+    if (!subtitleTarget.ok) {
+      if (subtitleTarget.reason === "missing-params") {
+        return jsonError("Subtitle identifiers required", 400)
+      }
+      if (subtitleTarget.reason === "unavailable") {
+        return jsonError("Subtitle lookup unavailable", 503)
+      }
+      return jsonError("Subtitle unavailable", 404)
+    }
+
+    const validation = await validateTarget(subtitleTarget.target)
+    if (!validation.ok) return validation.errorResponse
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(validation.safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(request, inlineSubtitleUrl)
+  }
 
   const resolvedTarget = await resolveRequestedTarget(searchParams)
   if (!resolvedTarget.ok) {

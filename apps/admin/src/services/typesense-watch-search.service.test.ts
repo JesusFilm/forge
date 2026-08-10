@@ -11,6 +11,7 @@ import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
 import { buildTypesenseWatchLexicalDocuments } from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+  TYPESENSE_WATCH_CATALOG_ALIAS,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_LEXICAL_ALIAS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
@@ -18,23 +19,35 @@ import {
   type TypesenseWatchCatalogDocument,
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
-import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
+import {
+  createCandidateWatchSearchProfile,
+  type TypesenseWatchSearchCollectionBinding,
+} from "./typesense-watch-search-profile"
+import {
+  resolveTypesenseWatchSearchApiKey,
+  TypesenseWatchSearchService,
+} from "./typesense-watch-search.service"
 
-vi.mock("./search-language-resolution", () => ({
-  resolveSearchLanguageSignals: vi.fn(async () => ({
-    queryLanguageSlug: "french",
-    queryNamedLanguageSlug: null,
-    targetLanguageSlug: "french",
-    targetLanguageSource: "target_language",
-    displayLanguageSlug: "french",
-    displayLanguageBcp47: "fr",
-    routeLanguageSlug: "french",
-    routeLanguageBcp47: "fr",
-    currentWatchLanguageSlug: null,
-    acceptLanguage: null,
-    acceptLanguageSlug: null,
-  })),
-}))
+vi.mock("./search-language-resolution", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./search-language-resolution")>()
+  return {
+    ...actual,
+    resolveSearchLanguageSignals: vi.fn(async () => ({
+      queryLanguageSlug: "french",
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "french",
+      targetLanguageSource: "target_language",
+      displayLanguageSlug: "french",
+      displayLanguageBcp47: "fr",
+      routeLanguageSlug: "french",
+      routeLanguageBcp47: "fr",
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })),
+  }
+})
 
 const catalogDocument: TypesenseWatchCatalogDocument = {
   id: "video-communion",
@@ -74,6 +87,121 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
   subtitleOptionsJson: "[]",
 }
 
+const jesusChineseCatalogDocument: TypesenseWatchCatalogDocument = {
+  id: "cmp76xcw602imny01vnsbwwy9",
+  coreId: "1_jf-0-0",
+  slug: "jesus",
+  titles: ["JESUS", "耶稣", "耶穌"],
+  localeCodes: ["en", "zh-hans", "zh-hant"],
+  descriptions: [],
+  localesJson: JSON.stringify([
+    {
+      locale: "en",
+      languageSlug: "english",
+      title: "JESUS",
+      description: "The life of Jesus.",
+    },
+    {
+      locale: "zh-Hans",
+      languageSlug: "chinese-simplified",
+      title: "耶稣",
+      description: "耶稣的一生。",
+    },
+    {
+      locale: "zh-Hant",
+      languageSlug: "chinese-traditional",
+      title: "耶穌",
+      description: "耶穌的一生。",
+    },
+  ]),
+  label: "featureFilm",
+  childCount: 0,
+  imageUrl: "https://example.com/jesus.jpg",
+  imageBlurDataUrl: null,
+  audioLanguageSlugs: ["mandarin-china"],
+  subtitleLanguageSlugs: [],
+  audioOptionsJson: JSON.stringify([
+    {
+      id: "dub-mandarin-china",
+      languageId: "language-mandarin-china",
+      languageSlug: "mandarin-china",
+      languageEnglishName: "Mandarin Chinese",
+      playbackId: "playback-mandarin-china",
+      durationSeconds: 7_677,
+    },
+  ]),
+  subtitleOptionsJson: "[]",
+}
+
+const japaneseCatalogDocument: TypesenseWatchCatalogDocument = {
+  id: "video-japan",
+  coreId: "core-japan",
+  slug: "japan",
+  titles: ["日本"],
+  localeCodes: ["ja"],
+  descriptions: [],
+  localesJson: JSON.stringify([
+    {
+      locale: "ja",
+      languageSlug: "japanese",
+      title: "日本",
+      description: "日本について。",
+    },
+  ]),
+  label: "shortFilm",
+  childCount: 0,
+  imageUrl: "https://example.com/japan.jpg",
+  imageBlurDataUrl: null,
+  audioLanguageSlugs: ["japanese"],
+  subtitleLanguageSlugs: [],
+  audioOptionsJson: JSON.stringify([
+    {
+      id: "dub-japanese",
+      languageId: "language-japanese",
+      languageSlug: "japanese",
+      languageEnglishName: "Japanese",
+      playbackId: "playback-japanese",
+      durationSeconds: 180,
+    },
+  ]),
+  subtitleOptionsJson: "[]",
+}
+
+const candidateFieldManifests = {
+  catalog: [{ name: "slug", type: "string" }],
+  availability: [{ name: "videoId", type: "string" }],
+  lexical: [
+    { name: "title_en", type: "string[]" },
+    { name: "title_fr", type: "string[]" },
+    { name: "title_ja", type: "string[]" },
+    { name: "title_ru", type: "string[]" },
+    { name: "title_zh", type: "string[]" },
+    { name: "title_fallback", type: "string[]" },
+    { name: "metadata_en", type: "string[]" },
+    { name: "metadata_fr", type: "string[]" },
+    { name: "metadata_ja", type: "string[]" },
+    { name: "metadata_ru", type: "string[]" },
+    { name: "metadata_zh", type: "string[]" },
+    { name: "metadata_fallback", type: "string[]" },
+  ],
+  transcript: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
+} as const
+
+function candidateProfile() {
+  return createCandidateWatchSearchProfile({
+    generationId: "generation-1",
+    applicationRevision: "revision-1",
+    transcriptProjectionRevision: 7n,
+    fieldManifests: candidateFieldManifests,
+    collections: {
+      catalog: "watch_search_candidate_generation-1_catalog",
+      availability: "watch_search_candidate_generation-1_availability",
+      lexical: "watch_search_candidate_generation-1_lexical",
+      transcript: "watch_search_transcripts_20260809",
+    },
+  })
+}
+
 function availabilityDocumentsForCatalog(
   catalog: TypesenseWatchCatalogDocument[],
 ): TypesenseWatchAvailabilityDocument[] {
@@ -82,17 +210,25 @@ function availabilityDocumentsForCatalog(
 
 function prismaFixture({
   fallbackLanguages = [],
+  targetLanguage = {
+    id: "language-fr",
+    slug: "french",
+    name: { en: "French" },
+  },
+  evidenceLanguages = [{ slug: "french", bcp47: "fr" }],
 }: {
   fallbackLanguages?: Array<{ id: string; slug: string }>
+  targetLanguage?: {
+    id: string
+    slug: string
+    name: Record<string, string>
+  }
+  evidenceLanguages?: Array<{ slug: string; bcp47: string }>
 } = {}): PrismaClient {
   return {
     language: {
-      findFirst: vi.fn(async () => ({
-        id: "language-fr",
-        slug: "french",
-        name: { en: "French" },
-      })),
-      findMany: vi.fn(async () => [{ slug: "french", bcp47: "fr" }]),
+      findFirst: vi.fn(async () => targetLanguage),
+      findMany: vi.fn(async () => evidenceLanguages),
     },
     languageFallback: {
       findMany: vi.fn(async () =>
@@ -114,6 +250,12 @@ function typesenseFixture({
   availability = availabilityDocumentsForCatalog(catalog),
   availabilityFound,
   availabilityError,
+  binding = {
+    catalog: TYPESENSE_WATCH_CATALOG_ALIAS,
+    availability: TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+    lexical: TYPESENSE_WATCH_LEXICAL_ALIAS,
+    transcript: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+  },
 }: {
   lexical?: TypesenseWatchCatalogDocument[]
   semantic?: Array<{
@@ -130,6 +272,7 @@ function typesenseFixture({
   availability?: TypesenseWatchAvailabilityDocument[]
   availabilityFound?: number
   availabilityError?: Error
+  binding?: TypesenseWatchSearchCollectionBinding
 }) {
   function projectDocument<TDocument extends object>(
     document: TDocument,
@@ -153,11 +296,7 @@ function typesenseFixture({
 
   return {
     multiSearch: vi.fn(async (searches: TypesenseSearchRequest[]) => {
-      if (
-        searches.some(
-          (search) => search.collection === TYPESENSE_WATCH_LEXICAL_ALIAS,
-        )
-      ) {
+      if (searches.some((search) => search.collection === binding.lexical)) {
         if (hybridError) throw hybridError
         const inferredSemantic = semantic.map((entry, index) => ({
           vectorDistance: entry.vectorDistance,
@@ -186,7 +325,7 @@ function typesenseFixture({
             ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
           ].map((match) => match[1])
           const entries =
-            request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS
+            request.collection === binding.lexical
               ? lexicalDocuments
                   .filter(
                     (document) =>
@@ -227,7 +366,7 @@ function typesenseFixture({
         })
       }
       return searches.map((request) => {
-        if (request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS) {
+        if (request.collection === binding.transcript) {
           return {
             found: semantic.length,
             out_of: semantic.length,
@@ -248,7 +387,7 @@ function typesenseFixture({
             })),
           }
         }
-        if (request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS) {
+        if (request.collection === binding.availability) {
           if (availabilityError) throw availabilityError
           const requestedValues = [
             ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
@@ -305,19 +444,312 @@ function typesenseFixture({
 }
 
 describe("TypesenseWatchSearchService", () => {
+  it("requires the search-only key for candidates while preserving the current fallback", () => {
+    const legacyOnly = {
+      legacyApiKey: "legacy-key",
+      searchApiKey: undefined,
+    }
+    expect(
+      resolveTypesenseWatchSearchApiKey({
+        ...legacyOnly,
+        allowLegacyFallback: true,
+      }),
+    ).toBe("legacy-key")
+    expect(
+      resolveTypesenseWatchSearchApiKey({
+        ...legacyOnly,
+        allowLegacyFallback: false,
+      }),
+    ).toBeUndefined()
+    expect(
+      resolveTypesenseWatchSearchApiKey({
+        searchApiKey: "search-only-key",
+        legacyApiKey: "legacy-key",
+        allowLegacyFallback: false,
+      }),
+    ).toBe("search-only-key")
+  })
+
   const embedding = new Array(TYPESENSE_WATCH_EMBEDDING_DIMENSIONS).fill(0)
 
   beforeEach(() => vi.clearAllMocks())
 
+  it("uses one exact candidate binding for every retrieval lane", async () => {
+    const profile = createCandidateWatchSearchProfile({
+      generationId: "generation-1",
+      applicationRevision: "revision-1",
+      transcriptProjectionRevision: 7n,
+      fieldManifests: candidateFieldManifests,
+      collections: {
+        catalog: "watch_search_candidate_generation-1_catalog",
+        availability: "watch_search_candidate_generation-1_availability",
+        lexical: "watch_search_candidate_generation-1_lexical",
+        transcript: "watch_search_transcripts_20260809",
+      },
+    })
+    const typesense = typesenseFixture({
+      lexical: [catalogDocument],
+      binding: profile.binding,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "communion",
+    })
+
+    expect(typesense.multiSearch).toHaveBeenCalledTimes(2)
+    expect(
+      typesense.multiSearch.mock.calls[0]?.[0].map(
+        (request) => request.collection,
+      ),
+    ).toEqual([
+      profile.binding.lexical,
+      profile.binding.lexical,
+      profile.binding.transcript,
+    ])
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        query_by: "title_en,title_fr,title_ja,title_ru,title_zh,title_fallback",
+        filter_by: undefined,
+      }),
+      expect.objectContaining({
+        query_by:
+          "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_zh,metadata_fallback",
+        filter_by: undefined,
+      }),
+      expect.objectContaining({
+        filter_by: "documentKind:=transcript && publiclyVisible:=true",
+      }),
+    ])
+    expect(
+      typesense.multiSearch.mock.calls.flatMap(([searches]) =>
+        searches.map((request) => request.collection),
+      ),
+    ).toEqual([
+      profile.binding.lexical,
+      profile.binding.lexical,
+      profile.binding.transcript,
+      profile.binding.catalog,
+      profile.binding.availability,
+    ])
+    expect(response.results[0]?.id).toBe(catalogDocument.id)
+    expect(response).not.toHaveProperty("diagnostics")
+    expect(diagnostics).toMatchObject({
+      profile: "CANDIDATE",
+      generationId: "generation-1",
+      applicationRevision: "revision-1",
+      transcriptProjectionRevision: 7n,
+      binding: profile.binding,
+      retrievalCalls: 2,
+      logicalSubsearches: 5,
+    })
+  })
+
+  it("never retries a missing candidate projection through current aliases", async () => {
+    const profile = createCandidateWatchSearchProfile({
+      generationId: "generation-1",
+      applicationRevision: "revision-1",
+      transcriptProjectionRevision: 7n,
+      fieldManifests: candidateFieldManifests,
+      collections: {
+        catalog: "watch_search_candidate_generation-1_catalog",
+        availability: "watch_search_candidate_generation-1_availability",
+        lexical: "watch_search_candidate_generation-1_lexical",
+        transcript: "watch_search_transcripts_20260809",
+      },
+    })
+    const typesense = {
+      multiSearch: vi.fn(async () => {
+        throw new TypesenseRequestError(
+          `missing ${profile.binding.lexical}`,
+          404,
+        )
+      }),
+    }
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    await expect(service.search({ query: "JESUS" })).rejects.toThrow(
+      profile.binding.lexical,
+    )
+    expect(typesense.multiSearch).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses retrieved lexical Language evidence to choose candidate playback", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      queryLanguageSlug: "japanese",
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "english",
+      targetLanguageSource: "fallback",
+      displayLanguageSlug: "english",
+      displayLanguageBcp47: "en",
+      routeLanguageSlug: null,
+      routeLanguageBcp47: null,
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const profile = candidateProfile()
+    const typesense = typesenseFixture({
+      lexical: [japaneseCatalogDocument],
+      binding: profile.binding,
+    })
+    const prisma = prismaFixture({
+      targetLanguage: {
+        id: "language-japanese",
+        slug: "japanese",
+        name: { en: "Japanese" },
+      },
+      evidenceLanguages: [
+        { slug: "japanese", bcp47: "ja" },
+        { slug: "english", bcp47: "en" },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prisma,
+      typesense as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({ query: "hope" })
+
+    expect(response.languageInterpretation.targetLanguageSlug).toBe("japanese")
+    expect(response.results[0]).toMatchObject({
+      id: japaneseCatalogDocument.id,
+      playbackId: "playback-japanese",
+      evidence: { languageSlug: "japanese" },
+      availability: { kind: "target_audio", languageSlug: "japanese" },
+    })
+    expect(typesense.multiSearch).toHaveBeenCalledTimes(2)
+    expect(prisma.language.findFirst).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps an explicit target ahead of retrieved candidate Language evidence", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      queryLanguageSlug: "japanese",
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "spanish-castilian",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "english",
+      displayLanguageBcp47: "en",
+      routeLanguageSlug: null,
+      routeLanguageBcp47: null,
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const profile = candidateProfile()
+    const typesense = typesenseFixture({
+      lexical: [japaneseCatalogDocument],
+      binding: profile.binding,
+    })
+    const prisma = prismaFixture({
+      targetLanguage: {
+        id: "language-es",
+        slug: "spanish-castilian",
+        name: { en: "Spanish" },
+      },
+      evidenceLanguages: [
+        { slug: "japanese", bcp47: "ja" },
+        { slug: "spanish-castilian", bcp47: "es" },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prisma,
+      typesense as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "hope",
+      targetLanguageSlug: "spanish-castilian",
+    })
+
+    expect(response.languageInterpretation).toMatchObject({
+      targetLanguageSlug: "spanish-castilian",
+      targetLanguageSource: "explicit_target",
+    })
+    expect(response.results[0]).toMatchObject({
+      evidence: { languageSlug: "japanese" },
+      availability: { kind: "unavailable" },
+    })
+    expect(typesense.multiSearch).toHaveBeenCalledTimes(2)
+    expect(prisma.language.findFirst).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns internal work diagnostics without changing the public response", async () => {
+    const typesense = typesenseFixture({ lexical: [catalogDocument] })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "communion",
+    })
+
+    expect(response).not.toHaveProperty("diagnostics")
+    expect(diagnostics).toMatchObject({
+      profile: "CURRENT",
+      generationId: null,
+      retrievalCalls: 2,
+      logicalSubsearches: 5,
+      hydratedRecords: 1,
+    })
+    expect(diagnostics.queryFieldCount).toBeGreaterThan(0)
+    expect(diagnostics.queryByBytes).toBeGreaterThan(0)
+    expect(diagnostics.candidates).toBeGreaterThan(0)
+    expect(diagnostics.typesenseWallTimeMs).toBeGreaterThanOrEqual(0)
+    expect(diagnostics.retryCount).toBe(0)
+    expect(diagnostics.groupedHits).toBeGreaterThan(0)
+    expect(diagnostics.binding).toEqual({
+      catalog: TYPESENSE_WATCH_CATALOG_ALIAS,
+      availability: TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+      lexical: TYPESENSE_WATCH_LEXICAL_ALIAS,
+      transcript: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+    })
+  })
+
+  it("gives every candidate locale field equal authority and lowers only fallback", async () => {
+    const typesense = typesenseFixture({ lexical: [catalogDocument] })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      {
+        embedder: vi.fn(async () => embedding),
+        profile: candidateProfile(),
+      },
+    )
+
+    await service.search({ query: "耶稣" })
+
+    expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          query_by:
+            "title_en,title_fr,title_ja,title_ru,title_zh,title_fallback",
+          query_by_weights: "4,4,4,4,4,1",
+          num_typos: "2,2,2,2,2,1",
+        }),
+        expect.objectContaining({
+          query_by:
+            "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_zh,metadata_fallback",
+          query_by_weights: "4,4,4,4,4,1",
+          num_typos: "2,2,2,2,2,1",
+        }),
+      ]),
+    )
+  })
+
   it.each([
-    {
-      name: "Chinese",
-      query: "耶稣",
-      slug: "mandarin-china",
-      bcp47: "zh-Hans",
-      titleFields: "title_zh,title_fallback",
-      metadataFields: "metadata_zh,metadata_fallback",
-    },
     {
       name: "Thai",
       query: "พระเยซู",
@@ -383,6 +815,197 @@ describe("TypesenseWatchSearchService", () => {
       )
     },
   )
+
+  it.each([
+    {
+      query: "耶稣",
+      localizationSlug: "chinese-simplified",
+      targetLanguageSource: "query_script" as const,
+    },
+    {
+      query: "耶穌",
+      localizationSlug: "chinese-traditional",
+      targetLanguageSource: "query_script" as const,
+    },
+    {
+      query: "耶稣",
+      localizationSlug: "chinese-simplified",
+      targetLanguageSource: "explicit_target" as const,
+    },
+  ])(
+    "retrieves the production-shaped JESUS localization for $query with $targetLanguageSource Mandarin audio",
+    async ({ query, localizationSlug, targetLanguageSource }) => {
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+        queryLanguageSlug: null,
+        queryNamedLanguageSlug: null,
+        targetLanguageSlug: "mandarin-china",
+        targetLanguageSource,
+        displayLanguageSlug: "english",
+        displayLanguageBcp47: "en",
+        routeLanguageSlug: null,
+        routeLanguageBcp47: null,
+        currentWatchLanguageSlug: null,
+        acceptLanguage: null,
+        acceptLanguageSlug: null,
+      })
+      const typesense = typesenseFixture({
+        lexical: [jesusChineseCatalogDocument],
+      })
+      const service = new TypesenseWatchSearchService(
+        prismaFixture({
+          targetLanguage: {
+            id: "language-mandarin-china",
+            slug: "mandarin-china",
+            name: { en: "Mandarin Chinese" },
+          },
+          evidenceLanguages: [{ slug: "mandarin-china", bcp47: "zh" }],
+        }),
+        typesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query,
+        targetLanguageSlug:
+          targetLanguageSource === "explicit_target"
+            ? "mandarin-china"
+            : undefined,
+      })
+      const titleRequest = typesense.multiSearch.mock.calls[0]?.[0].find(
+        (request) =>
+          request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+          String(request.query_by).startsWith("title_"),
+      )
+
+      expect(titleRequest).toMatchObject({
+        query_by: "title_zh,title_fallback",
+        filter_by:
+          "languageIdentity:=[`slug:chinese-simplified`,`slug:chinese-traditional`]",
+      })
+      expect(titleRequest?.filter_by).toContain(`\`slug:${localizationSlug}\``)
+      expect(response.results[0]).toMatchObject({
+        id: jesusChineseCatalogDocument.id,
+        slug: "jesus",
+        playbackId: "playback-mandarin-china",
+        availability: {
+          kind: "target_audio",
+          languageSlug: "mandarin-china",
+          audio: true,
+        },
+        evidence: { kind: "exact_title" },
+      })
+    },
+  )
+
+  it("keeps English lexical recall when Mandarin playback is selected", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      queryLanguageSlug: null,
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "mandarin-china",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "english",
+      displayLanguageBcp47: "en",
+      routeLanguageSlug: null,
+      routeLanguageBcp47: null,
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const typesense = typesenseFixture({
+      lexical: [jesusChineseCatalogDocument],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-mandarin-china",
+          slug: "mandarin-china",
+          name: { en: "Mandarin Chinese" },
+        },
+        evidenceLanguages: [{ slug: "mandarin-china", bcp47: "zh" }],
+      }),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "mandarin-china",
+    })
+    const titleRequest = typesense.multiSearch.mock.calls[0]?.[0].find(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        String(request.query_by).startsWith("title_"),
+    )
+
+    expect(titleRequest).toMatchObject({
+      query_by: "title_en,title_fallback",
+      filter_by: "languageIdentity:=[`slug:english`,`locale:en`]",
+    })
+    expect(response.results[0]).toMatchObject({
+      id: jesusChineseCatalogDocument.id,
+      slug: "jesus",
+      playbackId: "playback-mandarin-china",
+      availability: {
+        kind: "target_audio",
+        languageSlug: "mandarin-china",
+      },
+      evidence: { kind: "exact_title" },
+    })
+  })
+
+  it("keeps a Kanji-only query in Japanese lexical recall when Japanese playback is selected", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      queryLanguageSlug: null,
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "japanese",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "japanese",
+      displayLanguageBcp47: "ja",
+      routeLanguageSlug: null,
+      routeLanguageBcp47: null,
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const typesense = typesenseFixture({ lexical: [japaneseCatalogDocument] })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-japanese",
+          slug: "japanese",
+          name: { en: "Japanese" },
+        },
+        evidenceLanguages: [{ slug: "japanese", bcp47: "ja" }],
+      }),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "日本",
+      targetLanguageSlug: "japanese",
+    })
+    const titleRequest = typesense.multiSearch.mock.calls[0]?.[0].find(
+      (request) =>
+        request.collection === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+        String(request.query_by).startsWith("title_"),
+    )
+
+    expect(titleRequest).toMatchObject({
+      query_by: "title_ja,title_fallback",
+      filter_by: "languageIdentity:=[`slug:japanese`,`locale:ja`]",
+    })
+    expect(response.results[0]).toMatchObject({
+      id: japaneseCatalogDocument.id,
+      slug: "japan",
+      playbackId: "playback-japanese",
+      availability: {
+        kind: "target_audio",
+        languageSlug: "japanese",
+      },
+      evidence: { kind: "exact_title" },
+    })
+  })
 
   it("starts query embedding while language resolution is still pending", async () => {
     type LanguageSignals = Awaited<

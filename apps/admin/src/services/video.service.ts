@@ -27,6 +27,10 @@ import {
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
+import {
+  notRestrictedFromWatchWhere,
+  watchVisibilityWhere,
+} from "./search-watchability"
 import { ForbiddenError } from "./errors"
 
 /**
@@ -249,6 +253,7 @@ export type WatchRouteSnapshotChild = {
 }
 
 export type WatchRouteSnapshotChildRelation = {
+  order: number | null
   child: WatchRouteSnapshotChild | null
 }
 
@@ -436,6 +441,11 @@ type VideoListInput = {
   offset?: number
   search?: string
   sort?: VideoListSort
+  // Set by the public `videos` GraphQL resolver only — the dashboard's
+  // `live-data.ts` caller intentionally omits it (U2: list's own auth
+  // gate is the requireSession()'d route, and editors need to keep
+  // seeing watch-restricted videos in the library).
+  excludeWatchRestricted?: boolean
 }
 
 const VIDEO_CATEGORY_LABELS = {
@@ -1315,9 +1325,12 @@ export class VideoService {
   }
 
   async list({ input: raw, query }: { input: VideoListInput; query: object }) {
+    const filters = [videoListWhere(raw)]
+    if (raw.excludeWatchRestricted) filters.push(notRestrictedFromWatchWhere())
+
     return this.prisma.video.findMany({
       ...query,
-      where: videoListWhere(raw),
+      where: filters.length === 1 ? filters[0] : { AND: filters },
       orderBy: videoListOrderBy(raw.sort),
       take: Math.min(raw.limit ?? 50, 200),
       skip: raw.offset ?? 0,
@@ -1337,14 +1350,14 @@ export class VideoService {
   async getById({ id, query }: { id: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, ...notRestrictedFromWatchWhere() },
     })
   }
 
   async getBySlug({ slug, query }: { slug: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
-      where: { slug, deletedAt: null },
+      where: { slug, deletedAt: null, ...notRestrictedFromWatchWhere() },
     })
   }
 
@@ -1357,7 +1370,11 @@ export class VideoService {
   async getDubById({ id, query }: { id: string; query: object }) {
     return this.prisma.videoDub.findFirst({
       ...query,
-      where: { id, deletedAt: null, video: { deletedAt: null } },
+      where: {
+        id,
+        deletedAt: null,
+        video: { deletedAt: null, ...notRestrictedFromWatchWhere() },
+      },
     })
   }
 
@@ -1467,10 +1484,11 @@ export class VideoService {
       : {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
         }
 
     const root = await this.prisma.video.findFirst({
-      where: { slug, deletedAt: null },
+      where: { slug, deletedAt: null, ...watchVisibilityWhere(user) },
       select: {
         id: true,
         slug: true,
@@ -1506,6 +1524,7 @@ export class VideoService {
         orderBy: VIDEO_RELATION_ORDER_BY,
         select: {
           id: true,
+          order: true,
           childId: true,
           child: {
             select: {
@@ -1543,6 +1562,7 @@ export class VideoService {
             orderBy: VIDEO_RELATION_ORDER_BY,
             select: {
               id: true,
+              order: true,
               parentId: true,
               childId: true,
               child: {
@@ -1758,7 +1778,7 @@ export class VideoService {
     for (const relation of parentChildRelations) {
       const child = makeChild(relation.child, false)
       const children = parentChildrenByParentId.get(relation.parentId) ?? []
-      children.push({ child })
+      children.push({ order: relation.order, child })
       parentChildrenByParentId.set(relation.parentId, children)
     }
 
@@ -1832,6 +1852,7 @@ export class VideoService {
           : null,
       })),
       children: childRelations.map((relation) => ({
+        order: relation.order,
         child: makeChild(relation.child, true),
       })),
       bibleCitations: citations.map((citation) => ({
@@ -2077,6 +2098,7 @@ export class VideoService {
       where: {
         coreId: { in: uniqueCoreIds },
         deletedAt: null,
+        ...notRestrictedFromWatchWhere(),
       },
     })
     const rowByCoreId = new Map(rows.map((row) => [row.coreId, row]))
@@ -2116,7 +2138,7 @@ export class VideoService {
         )
         return tx.$queryRaw<WatchLanguageInventoryRow[]>`
       WITH inventory_language AS (
-        SELECT id, slug
+        SELECT id, slug, bcp47
         FROM language
         WHERE slug = ${language.slug}
           AND deleted_at IS NULL
@@ -2206,6 +2228,7 @@ export class VideoService {
           ON video.id = candidate."videoId"
         WHERE video.deleted_at IS NULL
           AND video.no_index = FALSE
+          AND NOT ('watch' = ANY(video.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2246,6 +2269,7 @@ export class VideoService {
         WHERE child."hasAudio" = TRUE
           AND parent.deleted_at IS NULL
           AND parent.no_index = FALSE
+          AND NOT ('watch' = ANY(parent.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2364,12 +2388,53 @@ export class VideoService {
         WHERE candidate_recency.recency_rank <= ${pageSize}
           OR candidate_recency."sortAt" IS NOT DISTINCT FROM candidate_cutoff."sortAt"
       ),
+      title_video_id AS MATERIALIZED (
+        SELECT candidate.id
+        FROM prelimited_candidates candidate
+      ),
+      title_locale AS MATERIALIZED (
+        SELECT DISTINCT ON (locale.video_id)
+          locale.video_id AS "videoId",
+          NULLIF(BTRIM(locale.title), '') AS title
+        FROM title_video_id title_video
+        JOIN video_locale locale
+          ON locale.video_id = title_video.id
+        JOIN inventory_language
+          ON TRUE
+        WHERE locale.deleted_at IS NULL
+          AND locale.status = 'published'
+          AND NULLIF(BTRIM(locale.title), '') IS NOT NULL
+          AND (
+            locale.language_id = inventory_language.id
+            OR locale.language_slug = inventory_language.slug
+            OR locale.locale = inventory_language.bcp47
+            OR locale.language_slug = 'english'
+            OR locale.locale = 'en'
+          )
+        ORDER BY
+          locale.video_id ASC,
+          CASE
+            WHEN locale.language_id = inventory_language.id THEN 0
+            WHEN locale.language_slug = inventory_language.slug THEN 1
+            WHEN locale.locale = inventory_language.bcp47 THEN 2
+            WHEN locale.language_slug = 'english' THEN 3
+            WHEN locale.locale = 'en' THEN 4
+            ELSE 5
+          END ASC,
+          locale.updated_at DESC,
+          locale.id ASC
+      ),
       candidate_display AS (
         SELECT
           candidate.*,
           COALESCE(
-            NULLIF(candidate_locale.title, ''),
-            NULLIF(candidate.slug, ''),
+            candidate_title_locale.title,
+            NULLIF(
+              INITCAP(
+                REGEXP_REPLACE(BTRIM(candidate.slug), '[-_]+', ' ', 'g')
+              ),
+              ''
+            ),
             candidate."coreId",
             candidate.id
           ) AS title,
@@ -2383,7 +2448,6 @@ export class VideoService {
           ON TRUE
         LEFT JOIN LATERAL (
           SELECT
-            locale.title,
             locale.description,
             locale.snippet,
             locale.image_alt
@@ -2395,14 +2459,17 @@ export class VideoService {
             CASE
               WHEN locale.language_id = inventory_language.id THEN 0
               WHEN locale.language_slug = inventory_language.slug THEN 1
-              WHEN locale.language_slug = 'english' THEN 2
-              WHEN locale.locale = 'en' THEN 3
-              ELSE 4
+              WHEN locale.locale = inventory_language.bcp47 THEN 2
+              WHEN locale.language_slug = 'english' THEN 3
+              WHEN locale.locale = 'en' THEN 4
+              ELSE 5
             END ASC,
             locale.updated_at DESC,
             locale.id ASC
           LIMIT 1
         ) candidate_locale ON TRUE
+        LEFT JOIN title_locale candidate_title_locale
+          ON candidate_title_locale."videoId" = candidate.id
       ),
       ranked_candidates AS (
         SELECT
@@ -2494,6 +2561,7 @@ export class VideoService {
           AND child_relation.parent_id = candidate.id
           AND child_video.deleted_at IS NULL
           AND child_video.no_index = FALSE
+          AND NOT ('watch' = ANY(child_video.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2507,8 +2575,13 @@ export class VideoService {
           parent.slug,
           relation.order AS "parentOrder",
           COALESCE(
-            NULLIF(parent_locale.title, ''),
-            NULLIF(parent.slug, ''),
+            parent_title_locale.title,
+            NULLIF(
+              INITCAP(
+                REGEXP_REPLACE(BTRIM(parent.slug), '[-_]+', ' ', 'g')
+              ),
+              ''
+            ),
             parent.core_id,
             parent.id
           ) AS title
@@ -2516,27 +2589,37 @@ export class VideoService {
         JOIN video parent
           ON parent.id = relation.parent_id
         LEFT JOIN LATERAL (
-          SELECT locale.title
+          SELECT NULLIF(BTRIM(locale.title), '') AS title
           FROM video_locale locale
           WHERE locale.video_id = parent.id
             AND locale.deleted_at IS NULL
             AND locale.status = 'published'
+            AND NULLIF(BTRIM(locale.title), '') IS NOT NULL
+            AND (
+              locale.language_id = inventory_language.id
+              OR locale.language_slug = inventory_language.slug
+              OR locale.locale = inventory_language.bcp47
+              OR locale.language_slug = 'english'
+              OR locale.locale = 'en'
+            )
           ORDER BY
             CASE
               WHEN locale.language_id = inventory_language.id THEN 0
               WHEN locale.language_slug = inventory_language.slug THEN 1
-              WHEN locale.language_slug = 'english' THEN 2
-              WHEN locale.locale = 'en' THEN 3
-              ELSE 4
+              WHEN locale.locale = inventory_language.bcp47 THEN 2
+              WHEN locale.language_slug = 'english' THEN 3
+              WHEN locale.locale = 'en' THEN 4
+              ELSE 5
             END ASC,
             locale.updated_at DESC,
             locale.id ASC
           LIMIT 1
-        ) parent_locale ON TRUE
+        ) parent_title_locale ON TRUE
         WHERE candidate.bucket <> 'audio_collection'
           AND relation.child_id = candidate.id
           AND parent.deleted_at IS NULL
           AND parent.no_index = FALSE
+          AND NOT ('watch' = ANY(parent.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2829,6 +2912,7 @@ export class VideoService {
       : {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
         }
 
     const dubs = await this.prisma.videoDub.findMany({
@@ -2885,6 +2969,7 @@ export class VideoService {
       : {
           deletedAt: null,
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
         }
 
     return this.prisma.videoDub.findMany({

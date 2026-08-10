@@ -315,6 +315,33 @@ describe("VideoService", () => {
       ).resolves.not.toThrow()
     })
 
+    it("does not exclude watch-restricted videos by default (dashboard caller)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: {}, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("NOT")
+      expect(call.where).not.toHaveProperty("AND")
+    })
+
+    it("excludes watch-restricted videos when excludeWatchRestricted is set (public resolver)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { excludeWatchRestricted: true },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toEqual({
+        AND: [
+          { deletedAt: null },
+          { NOT: { restrictViewPlatforms: { has: "watch" } } },
+        ],
+      })
+    })
+
     it("filters across video identifiers and localized metadata when search is present", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
@@ -842,6 +869,141 @@ describe("VideoService", () => {
       expect(sql).toContain("subtitle.vtt_src IS NOT NULL")
       expect(sql).toContain("subtitle.srt_src IS NOT NULL")
     })
+
+    it("resolves nonblank inventory titles before humanizing the slug", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "arabic-modern-standard",
+        name: { en: "Arabic, Modern Standard" },
+        bcp47: "ar",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "arabic-modern-standard",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      const candidateDisplay = sql.slice(
+        sql.indexOf("candidate_display AS"),
+        sql.indexOf("ranked_candidates AS"),
+      )
+      const titleVideoIds = sql.slice(
+        sql.indexOf("title_video_id AS MATERIALIZED"),
+        sql.indexOf("title_locale AS MATERIALIZED"),
+      )
+      const titleLocale = sql.slice(
+        sql.indexOf("title_locale AS MATERIALIZED"),
+        sql.indexOf("candidate_display AS"),
+      )
+      const candidateLocale = candidateDisplay.slice(
+        candidateDisplay.indexOf("LEFT JOIN LATERAL ("),
+        candidateDisplay.indexOf(") candidate_locale ON TRUE"),
+      )
+      const parentReference = sql.slice(
+        sql.indexOf("parent_ref.slug"),
+        sql.indexOf(") parent_ref ON TRUE"),
+      )
+      const parentTitleLocale = parentReference.slice(
+        parentReference.indexOf("LEFT JOIN LATERAL ("),
+        parentReference.indexOf(") parent_title_locale ON TRUE"),
+      )
+
+      expect(sql).toContain("SELECT id, slug, bcp47")
+      expect(candidateDisplay).toContain("candidate_title_locale.title")
+      expect(candidateDisplay).toMatch(
+        /LEFT JOIN title_locale candidate_title_locale\s+ON candidate_title_locale\."videoId" = candidate\.id/,
+      )
+      expect(titleVideoIds).toContain("SELECT candidate.id")
+      expect(titleVideoIds).not.toContain("video_relation")
+      expect(titleLocale).toContain("SELECT DISTINCT ON (locale.video_id)")
+      expect(titleLocale).toContain(
+        "NULLIF(BTRIM(locale.title), '') IS NOT NULL",
+      )
+      expect(titleLocale).toContain(
+        "locale.language_id = inventory_language.id",
+      )
+      expect(titleLocale).toContain(
+        "locale.language_slug = inventory_language.slug",
+      )
+      expect(titleLocale).toContain("locale.locale = inventory_language.bcp47")
+      expect(titleLocale).toContain("locale.language_slug = 'english'")
+      expect(titleLocale).toContain("locale.locale = 'en'")
+      expect(candidateDisplay).toContain(
+        "REGEXP_REPLACE(BTRIM(candidate.slug), '[-_]+', ' ', 'g')",
+      )
+      expect(candidateDisplay).toContain("candidate_locale.description")
+
+      const metadataRequestedBcp47 = candidateLocale.indexOf(
+        "WHEN locale.locale = inventory_language.bcp47 THEN 2",
+      )
+      const metadataEnglishSlug = candidateLocale.indexOf(
+        "WHEN locale.language_slug = 'english' THEN 3",
+      )
+      const metadataEnglishLocale = candidateLocale.indexOf(
+        "WHEN locale.locale = 'en' THEN 4",
+      )
+
+      expect(metadataRequestedBcp47).toBeGreaterThanOrEqual(0)
+      expect(metadataEnglishSlug).toBeGreaterThan(metadataRequestedBcp47)
+      expect(metadataEnglishLocale).toBeGreaterThan(metadataEnglishSlug)
+
+      const requestedId = titleLocale.indexOf(
+        "WHEN locale.language_id = inventory_language.id THEN 0",
+      )
+      const requestedSlug = titleLocale.indexOf(
+        "WHEN locale.language_slug = inventory_language.slug THEN 1",
+      )
+      const requestedBcp47 = titleLocale.indexOf(
+        "WHEN locale.locale = inventory_language.bcp47 THEN 2",
+      )
+      const englishSlug = titleLocale.indexOf(
+        "WHEN locale.language_slug = 'english' THEN 3",
+      )
+      const englishLocale = titleLocale.indexOf(
+        "WHEN locale.locale = 'en' THEN 4",
+      )
+
+      expect(requestedId).toBeGreaterThanOrEqual(0)
+      expect(requestedSlug).toBeGreaterThan(requestedId)
+      expect(requestedBcp47).toBeGreaterThan(requestedSlug)
+      expect(englishSlug).toBeGreaterThan(requestedBcp47)
+      expect(englishLocale).toBeGreaterThan(englishSlug)
+
+      expect(parentReference).toContain("parent_title_locale.title")
+      expect(parentTitleLocale).toContain(
+        "NULLIF(BTRIM(locale.title), '') IS NOT NULL",
+      )
+      expect(parentReference).toContain(
+        "REGEXP_REPLACE(BTRIM(parent.slug), '[-_]+', ' ', 'g')",
+      )
+      expect(parentTitleLocale).toMatch(
+        /AND\s+\(\s*locale\.language_id = inventory_language\.id\s+OR locale\.language_slug = inventory_language\.slug\s+OR locale\.locale = inventory_language\.bcp47\s+OR locale\.language_slug = 'english'\s+OR locale\.locale = 'en'\s*\)/,
+      )
+
+      const parentRequestedId = parentTitleLocale.indexOf(
+        "WHEN locale.language_id = inventory_language.id THEN 0",
+      )
+      const parentRequestedSlug = parentTitleLocale.indexOf(
+        "WHEN locale.language_slug = inventory_language.slug THEN 1",
+      )
+      const parentRequestedBcp47 = parentTitleLocale.indexOf(
+        "WHEN locale.locale = inventory_language.bcp47 THEN 2",
+      )
+      const parentEnglishSlug = parentTitleLocale.indexOf(
+        "WHEN locale.language_slug = 'english' THEN 3",
+      )
+      const parentEnglishLocale = parentTitleLocale.indexOf(
+        "WHEN locale.locale = 'en' THEN 4",
+      )
+      const parentFallback = parentTitleLocale.indexOf("ELSE 5")
+
+      expect(parentRequestedId).toBeGreaterThanOrEqual(0)
+      expect(parentRequestedSlug).toBeGreaterThan(parentRequestedId)
+      expect(parentRequestedBcp47).toBeGreaterThan(parentRequestedSlug)
+      expect(parentEnglishSlug).toBeGreaterThan(parentRequestedBcp47)
+      expect(parentEnglishLocale).toBeGreaterThan(parentEnglishSlug)
+      expect(parentFallback).toBeGreaterThan(parentEnglishLocale)
+    })
   })
 
   describe("countActive", () => {
@@ -930,6 +1092,22 @@ describe("VideoService", () => {
         null,
       )
     })
+
+    // U2's "sole gate is the resolver's authScopes" contract (see file header)
+    // means getById never takes a `user` param, so this exclusion is
+    // unconditional — this is the public-only lookup path (never called by
+    // the dashboard), so there's no editor/admin case to special-case here.
+    it("excludes videos restricted from the watch platform", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getById({ id: "v-1", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        id: "v-1",
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
+    })
   })
 
   describe("getBySlug", () => {
@@ -939,6 +1117,18 @@ describe("VideoService", () => {
       const result = await service.getBySlug({ slug: "jf", query: {} })
 
       expect(result).toEqual({ id: "v-1", slug: "jf" })
+    })
+
+    it("excludes videos restricted from the watch platform", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({ slug: "jf", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        slug: "jf",
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
     })
   })
 
@@ -952,13 +1142,14 @@ describe("VideoService", () => {
     })
 
     // NOTE: this asserts the WHERE-clause SHAPE the resolver hands Prisma — the
-    // dub itself and its parent video must both be non-deleted, mirroring what
-    // `videoBySlug { dubs }` exposes. A mock cannot prove Prisma actually emits
-    // the parent-video relation filter in SQL (the mocked-vs-real-contract gap);
-    // that negative case (live dub under a soft-deleted video -> null) was
-    // verified empirically against a real DB during review. There is no real-DB
+    // dub itself and its parent video must both be non-deleted and not
+    // restricted from the "watch" platform, mirroring what `videoBySlug { dubs }`
+    // exposes. A mock cannot prove Prisma actually emits the parent-video
+    // relation filter in SQL (the mocked-vs-real-contract gap); that negative
+    // case (live dub under a soft-deleted video -> null) was verified
+    // empirically against a real DB during review. There is no real-DB
     // integration harness in CI, so getBySlug/getById are gated the same way.
-    it("gates on the dub id AND both the dub and its parent video being non-deleted", async () => {
+    it("gates on the dub id AND both the dub and its parent video being non-deleted and unrestricted", async () => {
       prisma.videoDub.findFirst.mockResolvedValueOnce(null)
 
       await service.getDubById({ id: "dub-1", query: {} })
@@ -966,7 +1157,10 @@ describe("VideoService", () => {
       const where = prisma.videoDub.findFirst.mock.calls[0][0].where
       expect(where.id).toBe("dub-1")
       expect(where).toHaveProperty("deletedAt", null)
-      expect(where.video).toEqual({ deletedAt: null })
+      expect(where.video).toEqual({
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
     })
 
     it("threads the resolver's prisma query selection through", async () => {
@@ -1474,6 +1668,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1", "core-missing", "core-2"] },
           deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
     })
@@ -1503,6 +1698,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1"] },
           deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
     })
@@ -1562,6 +1758,7 @@ describe("VideoService", () => {
       expect(call.where.video).toMatchObject({
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
       })
     })
 
@@ -1573,6 +1770,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("flattens each distinct dub's language into the minimal picker shape", async () => {
@@ -1649,6 +1847,7 @@ describe("VideoService", () => {
             deletedAt: null,
             locales: { some: { status: "PUBLISHED", deletedAt: null } },
             parents: { some: { parentId: "series-1" } },
+            NOT: { restrictViewPlatforms: { has: "watch" } },
           },
         },
         distinct: ["videoId"],
@@ -1669,6 +1868,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("returns the selected Dub rows unchanged", async () => {

@@ -1,6 +1,26 @@
-# Railway only reads this file if the service's Config-as-code Path is set to
-# apps/auth/railway.toml. Otherwise configure the same commands in the Railway
-# dashboard and treat that dashboard config as canonical.
+# READ THIS BEFORE EDITING — the two environments disagree, on purpose.
+#
+#   production  Config-as-code Path is NOT set, so Railway ignores this file and
+#               the DASHBOARD is canonical. Its start command runs
+#               `db:migrate:deploy && seed:first-party-apps && node server.js`,
+#               and production has DATABASE_URL, so migrations apply on deploy.
+#
+#   stage       Config-as-code Path IS set to /apps/auth/railway.toml, so this
+#               file WINS over the dashboard. Stage has no auth Postgres and no
+#               DATABASE_URL — `@forge/auth/db` has never been deployed there.
+#
+# That asymmetry is why this file must NOT run migrations. Putting
+# `db:migrate:deploy` in either `startCommand` or `preDeployCommand` here takes
+# stage down: Prisma exits P1012 "Environment variable not found: DATABASE_URL",
+# the `&&` chain stops, the server never listens, and the healthcheck fails four
+# times before the deploy is marked FAILED. That is not hypothetical — it
+# happened on 2026-08-07 between 01:37 and 02:26 UTC, five consecutive failed
+# stage deploys, after feat-322 added a migration step here on the assumption
+# that this file was inert. It is inert in production only.
+#
+# Before adding anything database-touching to this file, either provision an
+# auth Postgres in stage and set DATABASE_URL, or unset stage's Config-as-code
+# Path so the dashboard governs there too.
 
 [build]
 builder = "NIXPACKS"

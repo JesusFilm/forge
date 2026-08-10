@@ -69,6 +69,7 @@ const VIDEOS_QUERY = `
       children { id }
       locked
       noIndex
+      restrictViewPlatforms
       updatedAt
     }
   }
@@ -123,6 +124,7 @@ type CoreVideo = {
   children: Array<{ id: string }>
   locked: boolean
   noIndex: boolean
+  restrictViewPlatforms: string[]
   updatedAt: string
 }
 
@@ -392,6 +394,7 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
+                  restrictViewPlatforms: video.restrictViewPlatforms,
                   aiMetadata: false,
                   source: "CORE",
                   primaryLanguageId,
@@ -408,6 +411,7 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
+                  restrictViewPlatforms: video.restrictViewPlatforms,
                   primaryLanguageId,
                   originId,
                   updatedAt: new Date(video.updatedAt),

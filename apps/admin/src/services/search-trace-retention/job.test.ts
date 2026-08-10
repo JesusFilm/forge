@@ -32,7 +32,16 @@ describe("search trace retention workflow job", () => {
       purgedGeneratedCandidateCount: 0,
       purgedWatchSearchEventCount: 0,
       purgedQueryEmbeddingCacheCount: 0,
+      purgedSeoEvidenceObservationCount: 0,
+      purgedSeoTicketOutboxAttemptCount: 0,
+      purgedSeoApprovalNonceCount: 0,
+      purgedSeoWorkloadAssertionCount: 0,
+      purgedSeoLessonCount: 0,
+      redactedSeoProposalVersionCount: 0,
+      redactedSeoDecisionCount: 0,
+      redactedSeoExperimentCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
+      redactedBefore: "2019-05-30T00:00:00.000Z",
     })
   })
 
@@ -177,7 +186,16 @@ describe("search trace retention workflow job", () => {
       purgedGeneratedCandidateCount: 3,
       purgedWatchSearchEventCount: 0,
       purgedQueryEmbeddingCacheCount: 0,
+      purgedSeoEvidenceObservationCount: 1,
+      purgedSeoTicketOutboxAttemptCount: 2,
+      purgedSeoApprovalNonceCount: 3,
+      purgedSeoWorkloadAssertionCount: 4,
+      purgedSeoLessonCount: 5,
+      redactedSeoProposalVersionCount: 6,
+      redactedSeoDecisionCount: 7,
+      redactedSeoExperimentCount: 8,
       purgedBefore: "2026-05-30T00:00:00.000Z",
+      redactedBefore: "2019-05-30T00:00:00.000Z",
     })
     const { runSearchTraceRetentionJob } = await import("./job")
 
@@ -206,7 +224,16 @@ describe("search trace retention workflow job", () => {
           purgedGeneratedCandidateCount: 3,
           purgedWatchSearchEventCount: 0,
           purgedQueryEmbeddingCacheCount: 0,
+          purgedSeoEvidenceObservationCount: 1,
+          purgedSeoTicketOutboxAttemptCount: 2,
+          purgedSeoApprovalNonceCount: 3,
+          purgedSeoWorkloadAssertionCount: 4,
+          purgedSeoLessonCount: 5,
+          redactedSeoProposalVersionCount: 6,
+          redactedSeoDecisionCount: 7,
+          redactedSeoExperimentCount: 8,
           purgedBefore: "2026-05-30T00:00:00.000Z",
+          redactedBefore: "2019-05-30T00:00:00.000Z",
         },
       }),
     })

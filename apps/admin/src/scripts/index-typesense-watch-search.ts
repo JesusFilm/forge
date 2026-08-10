@@ -2,13 +2,14 @@ import { pathToFileURL } from "node:url"
 import { Client } from "pg"
 import { prisma } from "@/db/client"
 import { TypesenseClient } from "@/services/typesense-client"
+import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import { TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID } from "@/services/typesense-watch-search-publication-lock"
 import {
   rebuildTypesenseWatchSearchIndex,
   type TypesenseWatchSearchTranscriptStrategy,
 } from "@/services/typesense-watch-search-indexer"
 
 const REBUILD_TRANSCRIPTS_FLAG = "--rebuild-transcripts"
-const TYPESENSE_WATCH_SEARCH_INDEX_LOCK_ID = 1_179_605_063
 
 export type TypesenseWatchSearchIndexLockClient = {
   connect(): Promise<void>
@@ -57,7 +58,7 @@ export async function withTypesenseWatchSearchIndexLock<T>(
   try {
     const result = await client.query(
       "SELECT pg_try_advisory_lock($1) AS acquired",
-      [TYPESENSE_WATCH_SEARCH_INDEX_LOCK_ID],
+      [TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID],
     )
     if (result.rows[0]?.acquired !== true) {
       throw new Error(
@@ -74,7 +75,7 @@ export async function withTypesenseWatchSearchIndexLock<T>(
       try {
         const result = await client.query(
           "SELECT pg_advisory_unlock($1) AS released",
-          [TYPESENSE_WATCH_SEARCH_INDEX_LOCK_ID],
+          [TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID],
         )
         if (result.rows[0]?.released !== true) {
           cleanupErrors.push(
@@ -115,6 +116,21 @@ export function parseTypesenseWatchSearchIndexArgs(argv: readonly string[]): {
   )
 }
 
+export async function runGuardedTypesenseWatchSearchPublication<T>(
+  transcriptStrategy: TypesenseWatchSearchTranscriptStrategy,
+  deps: {
+    assertCurrentPublicationAllowed(input: {
+      rebuildTranscripts: boolean
+    }): Promise<void>
+    publish(): Promise<T>
+  },
+): Promise<T> {
+  await deps.assertCurrentPublicationAllowed({
+    rebuildTranscripts: transcriptStrategy === "rebuild",
+  })
+  return deps.publish()
+}
+
 async function main(argv: readonly string[] = process.argv.slice(2)) {
   const { transcriptStrategy } = parseTypesenseWatchSearchIndexArgs(argv)
   const host = process.env.TYPESENSE_HOST
@@ -127,19 +143,28 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
     apiKey,
     timeoutMs: 120_000,
   })
-  const stats = await withTypesenseWatchSearchIndexLock(() =>
-    rebuildTypesenseWatchSearchIndex({
-      prisma,
-      typesense,
-      batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
-      transcriptStrategy,
-      onProgress: (progress) => {
-        process.stdout.write(
-          `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} lexical=${progress.lexicalDocuments} lexicalBytes=${progress.lexicalSearchableBytes} transcripts=${progress.transcriptDocuments} transcriptReused=${progress.transcriptReused}\n`,
-        )
-      },
-    }),
+  const generations = new TypesenseWatchSearchCandidateGenerationService(
+    prisma,
+    typesense,
   )
+  const stats = await withTypesenseWatchSearchIndexLock(async () => {
+    return runGuardedTypesenseWatchSearchPublication(transcriptStrategy, {
+      assertCurrentPublicationAllowed: (input) =>
+        generations.assertCurrentPublicationAllowed(input),
+      publish: () =>
+        rebuildTypesenseWatchSearchIndex({
+          prisma,
+          typesense,
+          batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
+          transcriptStrategy,
+          onProgress: (progress) => {
+            process.stdout.write(
+              `[typesense-watch-index] catalog=${progress.catalogDocuments} availability=${progress.availabilityDocuments} lexical=${progress.lexicalDocuments} lexicalBytes=${progress.lexicalSearchableBytes} transcripts=${progress.transcriptDocuments} transcriptReused=${progress.transcriptReused}\n`,
+            )
+          },
+        }),
+    })
+  })
   process.stdout.write(`${JSON.stringify(stats)}\n`)
 }
 

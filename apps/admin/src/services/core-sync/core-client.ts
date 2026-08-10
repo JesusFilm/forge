@@ -67,6 +67,7 @@ export async function coreQuery<T>(
   const url = env.CORE_API_URL ?? DEFAULT_URL
   const headers: Record<string, string> = {
     "content-type": "application/json",
+    "x-graphql-client-name": "watch",
   }
   if (env.CORE_API_TOKEN) {
     headers.authorization = `Bearer ${env.CORE_API_TOKEN}`

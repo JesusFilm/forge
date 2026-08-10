@@ -32,6 +32,11 @@ export type ManagerOverrideActor =
       approvedByUserId: string
     }
 
+export type ManagerInteractiveActor = Extract<
+  ManagerOverrideActor,
+  { kind: "session" }
+>
+
 function isValidManagerApiKey(token: string): boolean {
   const apiKey = env.MANAGER_API_KEY
   if (!apiKey) {
@@ -94,6 +99,33 @@ export function authenticateServiceBearerRequest(
     { error: "Service bearer token required" },
     { status: 403 },
   )
+}
+
+export async function authenticateInteractiveManagerRequest(
+  request: Request,
+): Promise<ManagerInteractiveActor | NextResponse> {
+  const session = await readSessionFromCookieHeader(
+    request.headers.get("cookie"),
+  )
+  if (!session) {
+    const hasBearer = request.headers
+      .get("authorization")
+      ?.startsWith("Bearer ")
+    return NextResponse.json(
+      {
+        error: hasBearer
+          ? "Interactive Manager session required; service keys cannot perform this action"
+          : "Interactive Manager session required",
+      },
+      { status: hasBearer ? 403 : 401 },
+    )
+  }
+
+  return {
+    kind: "session",
+    user: toManagerUser(session),
+    approvedByUserId: session.id,
+  }
 }
 
 export async function authenticateManagerOverrideRequest(

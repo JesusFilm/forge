@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { resolveWatchSearchInputForRequest } from "@/graphql/queries/watch-search"
 import { schema } from "@/graphql/schema"
 
 const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
@@ -42,6 +43,7 @@ type ResolverCtx = {
     role: "CONSUMER_BEARER" | "PUBLIC"
     fleet?: boolean
   } | null
+  request: Request
   prisma: unknown
   services: {
     watchSearch: { search: typeof searchMock }
@@ -73,12 +75,14 @@ async function invoke(
     role: "CONSUMER_BEARER",
     fleet: false,
   },
+  request = new Request("https://admin.jesusfilm.org/api/graphql"),
 ) {
   return getResolver()(
     null,
     args,
     {
       user,
+      request,
       prisma: { searchTrace: {}, searchTraceAggregate: {} },
       services: {
         watchSearch: { search: searchMock },
@@ -140,6 +144,18 @@ beforeEach(() => {
 })
 
 describe("watchSearch mode routing", () => {
+  it("does not expose candidate profile or generation selectors publicly", () => {
+    const input = schema.getType("WatchSearchInput")
+    const fields = "getFields" in input! ? input.getFields() : {}
+    expect(fields).not.toHaveProperty("profile")
+    expect(fields).not.toHaveProperty("generationId")
+    expect(fields).not.toHaveProperty("candidate")
+
+    const mode = schema.getType("WatchSearchMode")
+    const values =
+      "getValues" in mode! ? mode.getValues().map((row) => row.name) : []
+    expect(values).toEqual(["DEFAULT", "MODERN"])
+  })
   it("uses the modern service when mode is MODERN", async () => {
     const input = {
       query: "communion",
@@ -223,6 +239,82 @@ describe("watchSearch mode routing", () => {
     )
 
     expect(enqueueWatchSearchShadowMock).not.toHaveBeenCalled()
+  })
+
+  it("routes the anonymous canonical Web client to MODERN with DEFAULT shadow", async () => {
+    const input = { query: "communion" }
+    const effectiveInput = {
+      ...input,
+      mode: "modern" as const,
+      shadowMode: "default" as const,
+    }
+
+    const result = await invoke(
+      { input },
+      { search: typesenseSearchMock },
+      null,
+      new Request("https://admin.jesusfilm.org/api/graphql", {
+        headers: { origin: "https://www.jesusfilm.org" },
+      }),
+    )
+
+    expect(typesenseSearchMock).toHaveBeenCalledWith(effectiveInput)
+    expect(searchMock).not.toHaveBeenCalled()
+    expect(enqueueWatchSearchShadowMock).toHaveBeenCalledWith({
+      input: effectiveInput,
+      primaryResponse: result,
+      prisma: expect.anything(),
+      service: expect.objectContaining({ search: searchMock }),
+    })
+  })
+
+  it("applies the Admin DEFAULT rollback to a stale MODERN browser request", () => {
+    const requestContext = {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql", {
+        headers: { origin: "https://www.jesusfilm.org" },
+      }),
+    }
+    const staleClientInput = {
+      query: "communion",
+      mode: "modern" as const,
+      shadowMode: "default" as const,
+    }
+
+    expect(
+      resolveWatchSearchInputForRequest(staleClientInput, requestContext, {
+        primaryMode: "DEFAULT",
+        defaultShadowEnabled: false,
+      }),
+    ).toEqual({
+      query: "communion",
+      mode: "default",
+      shadowMode: undefined,
+    })
+  })
+
+  it("can stop shadow work without changing the MODERN primary", () => {
+    const requestContext = {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql", {
+        headers: { origin: "https://www.jesusfilm.org" },
+      }),
+    }
+
+    expect(
+      resolveWatchSearchInputForRequest(
+        { query: "communion" },
+        requestContext,
+        {
+          primaryMode: "MODERN",
+          defaultShadowEnabled: false,
+        },
+      ),
+    ).toEqual({
+      query: "communion",
+      mode: "modern",
+      shadowMode: undefined,
+    })
   })
 
   it("ignores shadow requests from fleet consumer bearers", async () => {

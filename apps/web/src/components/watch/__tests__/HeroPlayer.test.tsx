@@ -4484,7 +4484,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(button?.textContent).toContain("Next Episode")
     expect(mockRouterPush).toHaveBeenCalledTimes(1)
     expect(mockRouterPush).toHaveBeenCalledWith(
-      "/jesus.html/chapter-two/english.html?autoplay=1",
+      "/jesus.html/chapter-two.html?autoplay=1",
     )
   })
 
@@ -4523,7 +4523,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
 
     expect(mockRouterPush).toHaveBeenCalledTimes(1)
     expect(mockRouterPush).toHaveBeenCalledWith(
-      "/jesus.html/chapter-two/english.html?autoplay=1",
+      "/jesus.html/chapter-two.html?autoplay=1",
     )
   })
 
@@ -4616,7 +4616,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
 
     expect(mockRouterPush).toHaveBeenCalledTimes(1)
     expect(mockRouterPush).toHaveBeenCalledWith(
-      "/jesus.html/chapter-two/english.html?autoplay=1",
+      "/jesus.html/chapter-two.html?autoplay=1",
     )
   })
 
@@ -4687,7 +4687,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
 
     expect(mockRouterPush).toHaveBeenCalledTimes(1)
     expect(mockRouterPush).toHaveBeenCalledWith(
-      "/jesus.html/chapter-two/english.html?autoplay=1",
+      "/jesus.html/chapter-two.html?autoplay=1",
     )
   })
 })

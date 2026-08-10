@@ -67,6 +67,36 @@ export const watchCanonicalOriginEnvSchema = httpOriginEnvSchema(
   "WATCH_CANONICAL_ORIGIN",
 )
 
+export const watchSearchPrimaryModeEnvSchema = z
+  .enum(["DEFAULT", "MODERN"])
+  .optional()
+  .default("MODERN")
+
+export const watchSearchDefaultShadowEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("true")
+  .transform((value) => value === "true")
+
+export const watchSearchTypesenseProfileEnvSchema = z
+  .union([
+    z.literal("CURRENT"),
+    z.string().regex(/^CANDIDATE:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/),
+  ])
+  .optional()
+  .default("CURRENT")
+
+export const watchSearchCandidateComparisonEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+  .transform((value) => value === "true")
+
+export const watchSearchTranscriptProjectionRevisionEnvSchema = z.coerce
+  .bigint()
+  .nonnegative()
+  .optional()
+
 /**
  * Shared schema fragment for env vars representing a positive-int
  * concurrency cap (e.g. `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so
@@ -210,7 +240,30 @@ export const env = createEnv({
     WATCH_CANONICAL_ORIGIN: watchCanonicalOriginEnvSchema
       .optional()
       .default(DEFAULT_WATCH_CANONICAL_ORIGIN),
+    // Canonical browser Watch requests omit GraphQL mode selection. Admin
+    // applies these controls per request so cached or already-hydrated pages
+    // cannot bypass a DEFAULT rollback. Other omitted-mode callers retain the
+    // public GraphQL DEFAULT contract.
+    WATCH_SEARCH_PRIMARY_MODE: watchSearchPrimaryModeEnvSchema,
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      watchSearchDefaultShadowEnabledEnvSchema,
+    WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
+    WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
+      watchSearchCandidateComparisonEnabledEnvSchema,
+    WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
+      watchSearchTranscriptProjectionRevisionEnvSchema,
+    WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
+    // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
+    // Keyrings are JSON objects mapping `kid` to SPKI PEM. They are optional at
+    // boot: an unprovisioned environment keeps serving unrelated Admin routes,
+    // while the assertion verifier fails closed on the SEO surface.
+    SEO_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional()
+      .default("local"),
+    SEO_APPROVAL_PUBLIC_KEYS: z.string().min(1).optional(),
+    SEO_WORKLOAD_PUBLIC_KEYS: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
@@ -307,6 +360,9 @@ export const env = createEnv({
     // this CSV; it must stay disjoint from public search, workflow launch,
     // backup download, and vector-ingest credentials.
     SEARCH_TRACE_SAMPLING_API_KEYS: z.string().min(1).optional(),
+    CANDIDATE_SEARCH_EVAL_API_KEYS: z.string().min(1).optional(),
+    TYPESENSE_SEARCH_API_KEY: z.string().min(1).optional(),
+    TYPESENSE_OPERATOR_API_KEY: z.string().min(1).optional(),
     // Raw search traces expire before the 30-day hard ceiling so the daily
     // purge has a real safety margin. Aggregates survive without query text.
     SEARCH_TRACE_RAW_RETENTION_DAYS: searchTraceRawRetentionDaysEnvSchema,
@@ -626,7 +682,32 @@ export const env = createEnv({
     WATCH_CANONICAL_ORIGIN:
       emptyToUndefined(process.env.WATCH_CANONICAL_ORIGIN) ??
       DEFAULT_WATCH_CANONICAL_ORIGIN,
+    WATCH_SEARCH_PRIMARY_MODE:
+      emptyToUndefined(process.env.WATCH_SEARCH_PRIMARY_MODE) ?? "MODERN",
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      emptyToUndefined(process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED) ??
+      "true",
+    WATCH_SEARCH_TYPESENSE_PROFILE:
+      emptyToUndefined(process.env.WATCH_SEARCH_TYPESENSE_PROFILE) ?? "CURRENT",
+    WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
+      emptyToUndefined(process.env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) ??
+      "false",
+    WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION: emptyToUndefined(
+      process.env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION,
+    ),
+    WATCH_SEARCH_SERVING_QRELS_REVISION: emptyToUndefined(
+      process.env.WATCH_SEARCH_SERVING_QRELS_REVISION,
+    ),
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
+    SEO_ASSERTION_ENVIRONMENT: emptyToUndefined(
+      process.env.SEO_ASSERTION_ENVIRONMENT,
+    ),
+    SEO_APPROVAL_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SEO_APPROVAL_PUBLIC_KEYS,
+    ),
+    SEO_WORKLOAD_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SEO_WORKLOAD_PUBLIC_KEYS,
+    ),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
@@ -704,6 +785,15 @@ export const env = createEnv({
     ),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
+    ),
+    CANDIDATE_SEARCH_EVAL_API_KEYS: emptyToUndefined(
+      process.env.CANDIDATE_SEARCH_EVAL_API_KEYS,
+    ),
+    TYPESENSE_SEARCH_API_KEY: emptyToUndefined(
+      process.env.TYPESENSE_SEARCH_API_KEY,
+    ),
+    TYPESENSE_OPERATOR_API_KEY: emptyToUndefined(
+      process.env.TYPESENSE_OPERATOR_API_KEY,
     ),
     SEARCH_TRACE_RAW_RETENTION_DAYS: emptyToUndefined(
       process.env.SEARCH_TRACE_RAW_RETENTION_DAYS,
@@ -900,6 +990,7 @@ const BEARER_CSV_KEYS = [
   "WATCH_PROGRESS_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
   "SEARCH_TRACE_SAMPLING_API_KEYS",
+  "CANDIDATE_SEARCH_EVAL_API_KEYS",
 ] as const
 
 type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
@@ -963,6 +1054,19 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
   )
 }
 
+export function assertTypesenseCredentialsDisjoint(input: {
+  searchKey?: string
+  operatorKey?: string
+}): void {
+  const searchKey = input.searchKey?.trim()
+  const operatorKey = input.operatorKey?.trim()
+  if (searchKey && operatorKey && searchKey === operatorKey) {
+    throw new Error(
+      "TYPESENSE_SEARCH_API_KEY and TYPESENSE_OPERATOR_API_KEY must be disjoint",
+    )
+  }
+}
+
 // Boot-time invariant — fires on every import of `env`. Skipping this
 // during build-phase would let the disjointness contract bypass CI;
 // build phase passes empty/undefined for unset vars, which trivially
@@ -979,6 +1083,11 @@ assertBearerCsvsDisjoint({
   WATCH_PROGRESS_ADMIN_API_KEYS: env.WATCH_PROGRESS_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
   SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,
+  CANDIDATE_SEARCH_EVAL_API_KEYS: env.CANDIDATE_SEARCH_EVAL_API_KEYS,
+})
+assertTypesenseCredentialsDisjoint({
+  searchKey: env.TYPESENSE_SEARCH_API_KEY,
+  operatorKey: env.TYPESENSE_OPERATOR_API_KEY,
 })
 
 // Plan 003 retired the SEARCH_API_KEYS env-CSV partner branch — external

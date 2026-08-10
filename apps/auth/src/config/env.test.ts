@@ -134,3 +134,60 @@ describe("auth env", () => {
     expect(() => assertProductionAuthSecrets()).not.toThrow()
   })
 })
+
+describe("mobile auth env", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("always trusts the mobile app scheme origin", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { getAuthTrustedOrigins, MOBILE_APP_SCHEME_ORIGIN } = await loadEnv()
+
+    expect(MOBILE_APP_SCHEME_ORIGIN).toBe("forgemobile://")
+    expect(getAuthTrustedOrigins()).toContain("forgemobile://")
+  })
+
+  it("returns no Apple native config until both env vars are set", async () => {
+    vi.stubEnv("APPLE_APP_BUNDLE_ID", "org.jesusfilm.forgewatch")
+    vi.stubEnv("APPLE_NATIVE_CLIENT_SECRET", "")
+
+    const { getAppleNativeClientConfig } = await loadEnv()
+
+    expect(getAppleNativeClientConfig()).toBeNull()
+  })
+
+  it("returns the Apple native config when both env vars are set", async () => {
+    vi.stubEnv("APPLE_APP_BUNDLE_ID", "org.jesusfilm.forgewatch")
+    vi.stubEnv("APPLE_NATIVE_CLIENT_SECRET", "apple-native-secret")
+
+    const { getAppleNativeClientConfig } = await loadEnv()
+
+    expect(getAppleNativeClientConfig()).toEqual({
+      bundleId: "org.jesusfilm.forgewatch",
+      clientSecret: "apple-native-secret",
+    })
+  })
+
+  it("returns no admin erasure config until both env vars are set", async () => {
+    vi.stubEnv("ADMIN_WATCH_PROGRESS_BASE_URL", "http://localhost:3003")
+    vi.stubEnv("ADMIN_WATCH_PROGRESS_API_KEY", "")
+
+    const { getAdminWatchProgressErasureConfig } = await loadEnv()
+
+    expect(getAdminWatchProgressErasureConfig()).toBeNull()
+  })
+
+  it("returns the admin erasure config when both env vars are set", async () => {
+    vi.stubEnv("ADMIN_WATCH_PROGRESS_BASE_URL", "http://localhost:3003")
+    vi.stubEnv("ADMIN_WATCH_PROGRESS_API_KEY", "erasure-key")
+
+    const { getAdminWatchProgressErasureConfig } = await loadEnv()
+
+    expect(getAdminWatchProgressErasureConfig()).toEqual({
+      baseUrl: "http://localhost:3003",
+      apiKey: "erasure-key",
+    })
+  })
+})

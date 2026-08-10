@@ -13,12 +13,16 @@ import { cx } from "@/components/admin-ui"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { ImagePickerBrowser } from "@/app/dashboard/experiences/experience-editor/image-picker-browser"
 import {
+  discardVideoSearchSocialDraftAction,
   loadVideoSearchSocialLocaleAction,
   loadVideoSearchSocialMediaLibraryAction,
+  publishVideoSearchSocialDraftAction,
   saveVideoSearchSocialAction,
   searchVideoSearchSocialLocalesAction,
   type VideoSearchSocialLoadResult,
   type VideoSearchSocialMediaLibraryResult,
+  type VideoSearchSocialDiscardResult,
+  type VideoSearchSocialDraftResult,
   type VideoSearchSocialSaveResult,
   type VideoSearchSocialSearchResult,
 } from "./video-search-social-actions"
@@ -57,14 +61,26 @@ type VideoSearchSocialEditorProps = {
     searchTitle: string | null
     searchDescription: string | null
     socialImageAssetId: string | null
+    revisionId?: string | null
   }) => Promise<VideoSearchSocialSaveResult>
+  publishDraftAction?: (input: {
+    videoLocaleId: string
+    revisionId: string
+  }) => Promise<VideoSearchSocialDraftResult>
+  discardDraftAction?: (input: {
+    videoLocaleId: string
+    revisionId: string
+  }) => Promise<VideoSearchSocialDiscardResult>
 }
 
 function draftFromLocale(locale: VideoSearchSocialLocaleData | null): Draft {
+  const seoDraft = locale?.seoDraft?.state === "ready" ? locale.seoDraft : null
   return {
-    searchTitle: locale?.searchTitle ?? "",
-    searchDescription: locale?.searchDescription ?? "",
-    socialImageAssetId: locale?.socialImageAssetId ?? null,
+    searchTitle: seoDraft?.after.searchTitle ?? locale?.searchTitle ?? "",
+    searchDescription:
+      seoDraft?.after.searchDescription ?? locale?.searchDescription ?? "",
+    socialImageAssetId:
+      seoDraft?.after.socialImageAssetId ?? locale?.socialImageAssetId ?? null,
   }
 }
 
@@ -100,6 +116,8 @@ export function VideoSearchSocialEditor({
   loadAction = loadVideoSearchSocialLocaleAction,
   loadMediaLibraryAction = loadVideoSearchSocialMediaLibraryAction,
   saveAction = saveVideoSearchSocialAction,
+  publishDraftAction = publishVideoSearchSocialDraftAction,
+  discardDraftAction = discardVideoSearchSocialDraftAction,
 }: VideoSearchSocialEditorProps) {
   const [query, setQuery] = useState("")
   const [options, setOptions] = useState(initialOptions)
@@ -265,10 +283,15 @@ export function VideoSearchSocialEditor({
     setErrorCode(null)
     setMessage("Saving Search and Social metadata…")
     const submitted = normalizedDraft(draft)
+    const revisionId =
+      locale.seoDraft?.state === "ready"
+        ? locale.seoDraft.revisionId
+        : undefined
     let result: VideoSearchSocialSaveResult
     try {
       result = await saveAction({
         videoLocaleId: locale.videoLocaleId,
+        ...(revisionId ? { revisionId } : {}),
         ...submitted,
       })
     } catch {
@@ -301,6 +324,7 @@ export function VideoSearchSocialEditor({
             searchTitle: result.data.searchTitle,
             searchDescription: result.data.searchDescription,
             socialImageAssetId: result.data.socialImageAssetId,
+            seoDraft: result.data.seoDraft ?? current.seoDraft,
             socialImage:
               pickerLibrary.images.find(
                 (asset) => asset.id === result.data.socialImageAssetId,
@@ -310,6 +334,94 @@ export function VideoSearchSocialEditor({
     )
     setMessage("Search and Social metadata saved.")
     return true
+  }
+
+  async function publishSeoDraft() {
+    if (!locale || locale.seoDraft?.state !== "ready" || savingRef.current) {
+      return
+    }
+    savingRef.current = true
+    setSaving(true)
+    setErrorCode(null)
+    setMessage("Publishing the approved SEO draft…")
+    let result: VideoSearchSocialDraftResult
+    try {
+      result = await publishDraftAction({
+        videoLocaleId: locale.videoLocaleId,
+        revisionId: locale.seoDraft.revisionId,
+      })
+    } catch {
+      result = {
+        ok: false,
+        code: "SAVE_FAILED",
+        message: "The SEO draft could not be published. Please try again.",
+      }
+    }
+    savingRef.current = false
+    setSaving(false)
+    if (!result.ok) {
+      setErrorCode(result.code)
+      setMessage(result.message)
+      window.setTimeout(() => errorSummaryRef.current?.focus(), 0)
+      return
+    }
+    setLocale((current) =>
+      current
+        ? {
+            ...current,
+            sourceTitle: result.data.sourceTitle,
+            sourceDescription: result.data.sourceDescription,
+            searchTitle: result.data.searchTitle,
+            searchDescription: result.data.searchDescription,
+            socialImageAssetId: result.data.socialImageAssetId,
+            seoDraft: null,
+          }
+        : current,
+    )
+    setDraft({
+      searchTitle: result.data.searchTitle ?? "",
+      searchDescription: result.data.searchDescription ?? "",
+      socialImageAssetId: result.data.socialImageAssetId,
+    })
+    setMessage("SEO draft published and queued for page revalidation.")
+  }
+
+  async function discardSeoDraft() {
+    if (!locale || locale.seoDraft?.state !== "ready" || savingRef.current) {
+      return
+    }
+    savingRef.current = true
+    setSaving(true)
+    setErrorCode(null)
+    setMessage("Discarding the approved SEO draft…")
+    let result: VideoSearchSocialDiscardResult
+    try {
+      result = await discardDraftAction({
+        videoLocaleId: locale.videoLocaleId,
+        revisionId: locale.seoDraft.revisionId,
+      })
+    } catch {
+      result = {
+        ok: false,
+        code: "SAVE_FAILED",
+        message: "The SEO draft could not be discarded. Please try again.",
+      }
+    }
+    savingRef.current = false
+    setSaving(false)
+    if (!result.ok) {
+      setErrorCode(result.code)
+      setMessage(result.message)
+      window.setTimeout(() => errorSummaryRef.current?.focus(), 0)
+      return
+    }
+    setLocale((current) => (current ? { ...current, seoDraft: null } : current))
+    setDraft({
+      searchTitle: locale.searchTitle ?? "",
+      searchDescription: locale.searchDescription ?? "",
+      socialImageAssetId: locale.socialImageAssetId,
+    })
+    setMessage("SEO draft discarded. Canonical content was not changed.")
   }
 
   async function saveAndContinue() {
@@ -546,6 +658,63 @@ export function VideoSearchSocialEditor({
                   {locale.status}
                 </span>
               </header>
+
+              {locale.seoDraft?.state === "draft_missing" ? (
+                <div
+                  role="alert"
+                  className="rounded-sm border border-[var(--color-danger)] bg-[var(--color-surface)] p-3 text-[12px] text-[var(--color-text-secondary)]"
+                >
+                  This approved SEO draft is missing. Canonical content was not
+                  changed; return to Manager and reconcile the proposal.
+                </div>
+              ) : locale.seoDraft?.state === "ready" ? (
+                <div className="grid gap-3 rounded-sm border border-[var(--color-brand)] bg-[var(--color-surface)] p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="label-text">Approved SEO draft</div>
+                      <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
+                        {locale.seoDraft.revisedByKind} ·{" "}
+                        {locale.seoDraft.reason}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                        Changed:{" "}
+                        {locale.seoDraft.changedFields.join(", ") || "none"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void discardSeoDraft()}
+                        className="h-9 rounded-sm border border-[var(--color-hairline)] px-3 text-[12px] text-[var(--color-danger)] disabled:opacity-60"
+                      >
+                        Discard draft
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving || dirty || locale.seoDraft.stale}
+                        onClick={() => void publishSeoDraft()}
+                        className="h-9 rounded-sm bg-[var(--color-brand)] px-3 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Publish draft
+                      </button>
+                    </div>
+                  </div>
+                  {locale.seoDraft.stale ? (
+                    <p
+                      role="alert"
+                      className="text-[12px] text-[var(--color-danger)]"
+                    >
+                      Canonical content changed after this draft was created.
+                      Discard this stale draft; it cannot be published.
+                    </p>
+                  ) : dirty ? (
+                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                      Save your draft edits before publishing.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <fieldset
                 disabled={saving}

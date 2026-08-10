@@ -1,6 +1,56 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { Principal } from "@/auth/principal"
 
-import { SearchWatchabilityService } from "./search-watchability"
+import {
+  notRestrictedFromWatchWhere,
+  SearchWatchabilityService,
+  watchVisibilityWhere,
+} from "./search-watchability"
+
+const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
+const EDITOR: Principal = { id: "editor-1", role: "EDITOR" }
+const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
+const CONSUMER_BEARER: Principal = {
+  id: null,
+  role: "CONSUMER_BEARER",
+  rateLimitBucketKey: "consumer-bucket-key",
+}
+
+describe("notRestrictedFromWatchWhere", () => {
+  it("returns a NOT-has-watch where fragment", () => {
+    expect(notRestrictedFromWatchWhere()).toEqual({
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+})
+
+describe("watchVisibilityWhere", () => {
+  it("anonymous → excludes watch-restricted videos", () => {
+    expect(watchVisibilityWhere(null)).toEqual({
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+
+  it("VIEWER → excludes watch-restricted videos", () => {
+    expect(watchVisibilityWhere(VIEWER)).toEqual({
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+
+  it("CONSUMER_BEARER (web SSR) → excludes watch-restricted videos", () => {
+    expect(watchVisibilityWhere(CONSUMER_BEARER)).toEqual({
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+
+  it("EDITOR → no restriction (dashboard must show restricted videos)", () => {
+    expect(watchVisibilityWhere(EDITOR)).toEqual({})
+  })
+
+  it("ADMIN → no restriction (dashboard must show restricted videos)", () => {
+    expect(watchVisibilityWhere(ADMIN)).toEqual({})
+  })
+})
 
 function mockPrisma() {
   return {

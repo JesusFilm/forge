@@ -28,6 +28,7 @@ describe("CoreVideoSchema", () => {
         children: [],
         locked: false,
         noIndex: false,
+        restrictViewPlatforms: [],
         updatedAt: "2026-06-01T00:00:00.000Z",
       }).success,
     ).toBe(true)

@@ -1,7 +1,7 @@
 ---
 title: "Byte-cap buffered HTTP response reads to guard against OOM in a shared Node process"
 date: "2026-06-29"
-last_updated: "2026-08-05"
+last_updated: "2026-08-10"
 category: "best-practices"
 problem_type: "best_practice"
 module: "apps/mastra"
@@ -109,6 +109,14 @@ The seven rules that make this correct:
 
 1. **Apply at every buffering read, including the error path.** A multi-GB _error_ body OOMs identically to a success body. `readUpstreamReason` goes through the same helper.
 
+   **Corollary — a library holding its own client to the same upstream is a buffering read you cannot see (2026-08-10).** "Every buffering read" is an audit of call sites you wrote; it does not surface a fetch performed inside a dependency. Admin's mobile JWT verifier capped its own JWKS read while `createRemoteJWKSet` (jose) fetched the **same URL** through its own client during `jwtVerify`, buffering with a bare `response.json()` bounded only by `AbortSignal.timeout` — time, not bytes.
+
+   What makes this worse than half-covered is **which path is hot**. The derived-alg cache holds for 10 minutes, so in steady state the capped read is not consulted at all while jose's uncapped one keeps firing, and a caller minting tokens with random `kid`s re-triggers jose's read every 30s without ever touching the capped path. The guard covered the cold path and left the hot one open.
+
+   Two questions settle it. **Who else fetches this?** — grep the URL builder, not the guard; here `jwksUrl()` had two callers and one was capped. **Which path is hot?** — compare the caches; a guard on the cold path is close to no guard. Prefer the library's own injection seam (jose's `customFetch`, an `agent`, an `httpClient` option) so both reads share one ceiling by construction. If there is no seam, that asymmetry is itself a finding — record it rather than leaving the guard reading as complete.
+
+   Worked instance: `apps/admin/src/auth/mobile-user-token.ts` (PR #1876, open at time of writing). Three independent review lenses filed it separately; detection required reading the dependency's source, because nothing in admin's own code says the second fetch exists.
+
 2. **Count actual bytes; abort, don't just stop.** Don't trust `Content-Length` — it can be absent or spoofed. Sum `chunk.byteLength` as chunks arrive, and the instant `total > maxBytes` call `await reader.cancel()`. `cancel()` aborts the underlying socket so the upstream stops filling the heap; merely `break`ing out of the read loop would leave the socket draining.
 
 3. **Map over-cap (and every failure) to `undefined`, riding the existing path.** `undefined` is the keystone. The success site already feeds `undefined` into `SearchResponseSchema.safeParse(...)` → `parse_error`; the error site already treats a non-object as "no reason" and falls through to status-based classification. Both bottom out at the agent's `unavailable` status. So over-cap needs **no new branch, no throw, no change to the result-union or tool-result shape.**
@@ -214,6 +222,7 @@ Apply to **any outbound HTTP client that buffers a response body whose size it d
 - The client runs in a **shared/long-lived process** (a multi-tenant agent runtime, a server with many concurrent requests) where one OOM takes down co-tenants.
 - The upstream is a separate service (even a trusted first-party one) whose body size you cannot guarantee.
 - The client already has a **typed graceful-failure path** an over-cap read can degrade into — the cheapest possible integration.
+- A **library in the same process talks to that same upstream** — an SDK you hand a base URL, a JWKS/OIDC client, a telemetry exporter. Check its injection seam before treating your own cap as complete.
 
 The immediate sibling is `apps/mastra/src/services/firecrawl-client.ts`, which has the identical uncapped read at two sites; feat-202 consciously left it to its owners, but it is the same fix.
 

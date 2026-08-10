@@ -12,9 +12,11 @@ applies_when:
   - "Roadmap tickets reference the retired mechanism in entry points, constraints, or grep patterns as if it were live"
   - "Completed tickets carry 'pending operator work' paragraphs that read as immutable history but contain live instructions"
   - "Not-started tickets name the retired mechanism in forward-looking implementation guidance"
+  - "A surviving flag's config/env schema comment or accessor docstring still describes the retired mechanism by behavior, naming no symbol a grep could find"
 tags:
   - "retirement"
   - "docs-sweep"
+  - "code-comments"
   - "roadmap"
   - "supersession-note"
   - "stale-docs"
@@ -87,7 +89,16 @@ and that is this method's recall boundary.
 
 ```bash
 git grep -niE 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.md'
+git grep -niE 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.ts' '*.tsx'
 ```
+
+The second command is not optional — code COMMENTS are prose with the same
+blind spot. But **widening the glob is not the whole fix, and on its own it
+reproduces the miss**: run it with the same key set and a code-internal
+mechanism still returns zero. Harvest a name set for the code sweep too — see
+"The sweep covers `*.ts` COMMENT prose too" below, which is also where the
+glob list stops being two extensions and becomes "every tracked file type
+that carries comments".
 
 ### Classify every hit — two buckets, two actions
 
@@ -99,6 +110,10 @@ git grep -niE 'strapi|launchdarkly|\bLD\b|SEARCH_API_KEYS' -- '*.md'
   a short dated supersession note naming the successor**, adjacent to the
   stale paragraph, keeping the original body as the historical record. The
   intervention is additive — never a deletion, never an in-place rewrite.
+  (One carve-out: **code comments are corrected in place** — see "The sweep
+  covers `*.ts` COMMENT prose too" below. A source file has no reader who
+  wants its stale-comment history, and a dated blockquote inside `env.ts`
+  would be noise.)
 
 **Classify by content, never by document type.** A plan or a completed ticket
 is not historical wholesale: a never-executed operator section inside an
@@ -158,12 +173,69 @@ return empty over exactly the files that matter. And the two guardrails that
 catch stale _code_ references (compilation, mechanism-doc banners) don't reach
 instructions embedded in tickets whose status field says the file is done.
 
+### The sweep covers `*.ts` COMMENT prose too, not just markdown
+
+The same blindness lives **inside source files**. Comments are prose: they name
+the mechanism by behavior, so deleting the symbol leaves them untouched and the
+compiler has nothing to say about them. The glob is the easy half —
+`-- '*.ts' '*.tsx'` above is this repo's instance, and the rule is **every
+tracked file type that carries comments** (`.js`/`.mjs`/`.cjs`, `.yml` CI,
+`.prisma`, `.sql`, Dockerfiles, shell scripts).
+
+**The hard half is the KEY, and a widened glob alone reproduces the miss.** The
+markdown harvest recipe above is written for product-noun retirements ("Strapi",
+"the CMS", dashboard terms). A code-internal mechanism — an exported constant, a
+helper, a private flag — has no product noun, and the stale comment often sits
+under a **surviving** symbol's documentation, so a key harvested from the
+retired thing lands nowhere near it. Two additions for the code sweep:
+
+- **Harvest BEHAVIOR phrases, not identifiers** — the verb phrases and role
+  words the mechanism's own comments, plan, and CLAUDE.md use for it. For a
+  retired constant that meant `interim video-guidance|instruction block|appended
+after the (managed )?prompt`, not its exported name.
+- **For a PARTIAL retirement** — a flag or module survives and only what it
+  gated was removed — read the surviving artifact's schema comment and accessor
+  docstring **in full**, even when the noun grep returns zero hits there. This
+  is the same "read the highest-risk surfaces regardless of grep" instruction
+  the markdown triage already carries, applied to the flag's own documentation.
+
+The symbol grep coming back clean is the **precondition** for this sweep, not a
+substitute for it. Code-symbol hits should already be zero by the time you run
+it; if they are not, that is the first sweep's job, not this one's.
+
+**Where to start when the retirement is flag-gated:** the `config/env` module
+that documents the flag. Its schema comment and accessor docstring exist to tell
+a future maintainer what the flag controls, so they describe the retired
+mechanism by BEHAVIOR — and when it is deleted they become the most
+authoritative wrong answer in the repo, because the next person to ask "what
+does this flag do?" reads the docstring. (This is a starting point for
+flag-shaped retirements, not a universal ranking: half this document's own
+evidence base — an app deletion, a pipeline removal, an env-var retirement — is
+not flag-shaped.)
+
+Worked example — feat-330 deleted the exported constant
+`SEEKER_VIDEO_INSTRUCTIONS_BLOCK`. `git grep SEEKER_VIDEO_INSTRUCTIONS_BLOCK`
+came back clean, but `apps/mastra/src/config/env.ts` still described "the
+interim video-guidance instruction block" in two comment blocks — the Zod schema
+comment and the `isSeekerVideoEnabled` docstring — and the schema comment still
+claimed that with the flag unset "the seeker behaves byte-identically to its
+pre-feat-327 self", which the same change had just invalidated. The retired
+symbol appears in neither comment. Two independent reviewers found it; the
+author's own symbol grep could not.
+
+Classification is unchanged — historical/past-tense comments stay verbatim — but
+the ACTION differs for source files: a forward-looking comment is corrected in
+place rather than stamped with a dated supersession note, because a source file
+has no reader who wants its stale-comment history.
+
 ### Boundaries
 
 - **This complements, never replaces, the code-symbol sweep.** Both run at
   retirement time.
-- **No license to rewrite history.** Past-tense mentions stay verbatim. The
-  only edit is the adjacent dated supersession note.
+- **No license to rewrite history.** Past-tense mentions stay verbatim. In
+  markdown the only edit is the adjacent dated supersession note; in source
+  files a stale forward-looking COMMENT is corrected in place instead (see
+  the `*.ts` subsection).
 - **Not the removal-recipe pattern.** The removal-recipe ticket
   (`removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`) is
   written **in advance, at ship time**, for _planned_ removals of phase-scoped

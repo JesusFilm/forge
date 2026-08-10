@@ -27,6 +27,7 @@ describe("WatchVideo split GraphQL operations", () => {
     expect(printed).toMatch(/primaryLanguage\s*\{[\s\S]*?coreId[\s\S]*?bcp47/)
     expect(printed).toMatch(/parents\s*\{[\s\S]*?parent\s*\{/)
     expect(printed).toMatch(/children\s*\{[\s\S]*?child\s*\{/)
+    expect(printed).toMatch(/children\s*\{\s*order\s+child\s*\{/)
     expect(printed).not.toMatch(/\blocales\(/)
     expect(printed).not.toMatch(/\bstudyQuestions\(/)
     expect(printed).not.toMatch(/\bdubs\s*\{/)
@@ -53,6 +54,7 @@ describe("WatchVideo split GraphQL operations", () => {
     )
     expect(printed).toMatch(/parents\s*\{[\s\S]*?locales\(/)
     expect(printed).toMatch(/children\s*\{[\s\S]*?locales\(/)
+    expect(printed).toMatch(/children\s*\{\s*order\s+child\s*\{/)
 
     expect(printed).not.toMatch(/\bdubs\s*\{/)
     expect(printed).not.toMatch(/\bdownloads\s*\{/)
@@ -132,6 +134,9 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/\bmuxPlaybackId\b/)
     expect(printed).toMatch(/\bplayableDubLanguageCount\b/)
     expect(printed).toMatch(/\bpreferredVariant\b/)
+    expect(parentAndChildProjection).toMatch(
+      /children\s*\{\s*order\s+child\s*\{/,
+    )
     expect(printed).not.toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
     expect(printed).not.toMatch(/\.\.\.WatchVideoShell\b/)
     expect(printed).not.toMatch(/\blocales\(/)

@@ -1,4 +1,5 @@
-import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import type { AdminResultOf } from "@forge/admin-graphql"
+import { adminWatchSearchOperation } from "@forge/admin-graphql/operations"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
 import { env } from "@/env"
@@ -140,59 +141,8 @@ export function resolveWatchSearchRouting(
   }
 }
 
-const watchSearchOperation = adminGraphql(`
-  query WatchSearch($input: WatchSearchInput!) {
-    watchSearch(input: $input) {
-      requestId
-      query
-      degraded
-      laneStatuses {
-        lane
-        status
-        elapsedMs
-        resultCount
-        reason
-      }
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        snippet
-        playbackId
-        startSeconds
-        score
-        label
-        durationSeconds
-        childCount
-        languageSlug
-        languageEnglishName
-        availability {
-          kind
-          languageSlug
-          languageEnglishName
-        }
-        evidence {
-          label
-          languageSlug
-        }
-        action {
-          hrefLanguageSlug
-        }
-      }
-      hasMore
-      searchMode
-      latencyMs
-      nextOffset
-    }
-  }
-`)
-
 type WatchSearchResult = AdminResultOf<
-  typeof watchSearchOperation
+  typeof adminWatchSearchOperation
 >["watchSearch"]
 
 type WatchSearchResultItem = NonNullable<
@@ -305,7 +255,7 @@ export async function searchVideos(
     env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
   )
   const result = await semanticSearchAdminClient.query({
-    query: watchSearchOperation,
+    query: adminWatchSearchOperation,
     variables: {
       input: {
         query: truncatedQuery,

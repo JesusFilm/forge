@@ -267,7 +267,7 @@ claims made false by the producer repair.
 
 **Files:**
 
-- Create: `docs/roadmap/content-discovery/feat-336-watch-search-subtitle-audio-routing.md`
+- Create: `docs/roadmap/content-discovery/feat-346-watch-search-subtitle-audio-routing.md`
 - Modify: `docs/roadmap/README.md`
 - Modify: `docs/roadmap/ai-chat/feat-326-admin-agent-tools-availability-kind.md`
 - Modify: `docs/plans/2026-08-02-001-feat-seeker-video-featuring-plan.md`
@@ -277,7 +277,7 @@ claims made false by the producer repair.
 
 **Approach:**
 
-- Add `feat-336` in the Content Discovery lane with `status: "in-progress"`
+- Add `feat-346` in the Content Discovery lane with `status: "in-progress"`
   before implementation and add its README index row/count updates.
 - Replace the synthetic/unreachable wording with a dated additive correction:
   the same-edition fallback now makes the shape reachable; the agent-tools
@@ -470,7 +470,7 @@ roadmap work.
 
 **Files:**
 
-- Modify: `docs/roadmap/content-discovery/feat-336-watch-search-subtitle-audio-routing.md`
+- Modify: `docs/roadmap/content-discovery/feat-346-watch-search-subtitle-audio-routing.md`
 - Modify: `docs/roadmap/README.md`
 
 **Approach:**
@@ -486,7 +486,7 @@ roadmap work.
   result-card availability badge is required by this fix.
 - Capture a screenshot as visual proof and compare page-load requests/timing to
   ensure the new client intent does not add a data fetch or hydration loop.
-- Set `feat-336` to `complete` only after validation passes; record any genuine
+- Set `feat-346` to `complete` only after validation passes; record any genuine
   residual as a separate follow-up ticket rather than widening this fix.
 
 ---

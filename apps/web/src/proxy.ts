@@ -16,6 +16,7 @@ import {
   tryAsLocaleSlug,
   WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX,
   watchSubtitleIntentSegment,
+  watchEpisodePath,
   watchVideoExplicitLanguagePath,
   watchVideoPath,
 } from "@/lib/routes"
@@ -33,6 +34,7 @@ import {
 } from "@/lib/url-shape"
 import {
   getWatchRouteManifest,
+  isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
@@ -72,6 +74,7 @@ type RewriteDecision =
       internalPathname?: string
       languageHomeSlug?: string
       manifestRoute?: WatchRouteManifestRoute
+      requiresExactEpisodeAdmission?: boolean
     }
   | { kind: "pass" }
   | { kind: "not-found" }
@@ -205,6 +208,23 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       )
     }
   }
+  if (rest.length === 3) {
+    const parentSlug = stripSafeSlug(rest[0] ?? "")
+    const childSlug = stripSafeSlug(rest[1] ?? "")
+    const audioLanguageSlug = stripSafeSlug(rest[2] ?? "")
+    if (
+      parentSlug &&
+      childSlug &&
+      audioLanguageSlug &&
+      isPublicWatchLanguageSlug(audioLanguageSlug)
+    ) {
+      canonicalPublicPath = watchEpisodePath(
+        asContentSlug(parentSlug),
+        asContentSlug(childSlug),
+        asLocaleSlug(audioLanguageSlug),
+      )
+    }
+  }
   if (
     isUnsafeRedirectPath(canonicalPublicPath) ||
     !isSafeCanonicalPath(canonicalPublicPath)
@@ -284,7 +304,34 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!slug) return { kind: "not-found" }
     const rawAudioSlug = stripSafeSlug(localeSegment)
     if (!rawAudioSlug) return { kind: "not-found" }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    if (!isPublicWatchLanguageSlug(rawAudioSlug)) {
+      const defaultAudioLanguageSlug =
+        publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+      if (!defaultAudioLanguageSlug) return { kind: "not-found" }
+      const internalEpisodeSlug =
+        resolveLegacyWatchEpisodeAlias(slug, rawAudioSlug) ?? rawAudioSlug
+      return {
+        kind: "rewrite",
+        ...resolveWatchLocaleIdentity(defaultAudioLanguageSlug),
+        pathname,
+        ...(internalEpisodeSlug !== rawAudioSlug
+          ? {
+              internalPathname: watchEpisodePath(
+                asContentSlug(slug),
+                asContentSlug(internalEpisodeSlug),
+                asLocaleSlug(defaultAudioLanguageSlug),
+              ),
+            }
+          : {}),
+        manifestRoute: {
+          kind: "episode",
+          parentSlug: slug,
+          childSlug: internalEpisodeSlug,
+          audioLanguageSlug: defaultAudioLanguageSlug,
+        },
+        requiresExactEpisodeAdmission: true,
+      }
+    }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     return {
       kind: "rewrite",
@@ -449,6 +496,9 @@ async function classifyManifestAdmission(
 
   manifest ??= await getWatchRouteManifest()
   if (!manifest) {
+    if (decision.requiresExactEpisodeAdmission) {
+      return { kind: "not-found" }
+    }
     if (
       decision.manifestRoute.kind === "one-segment" &&
       !isOneSegmentCollectionSlug(decision.manifestRoute.slug)
@@ -478,7 +528,26 @@ async function classifyManifestAdmission(
     return defaultVideoAdmission ?? { kind: "not-found" }
   }
 
-  if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
+  if (
+    decision.requiresExactEpisodeAdmission &&
+    decision.manifestRoute.kind === "episode"
+  ) {
+    if (
+      isWatchEpisodeRouteExactlyAdmittedByManifest(
+        manifest,
+        decision.manifestRoute,
+      )
+    ) {
+      return { kind: "admit" }
+    }
+    // Preserve the legacy duplicate-expansion terminal 404 (`/slug` becomes
+    // `/slug.html/slug.html`) instead of turning it into a second redirect.
+    if (
+      decision.manifestRoute.parentSlug === decision.manifestRoute.childSlug
+    ) {
+      return { kind: "not-found" }
+    }
+  } else if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
     return { kind: "admit" }
   }
 
