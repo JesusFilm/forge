@@ -92,6 +92,14 @@ export function useDeviceGrant(enabled: boolean): UseDeviceGrant {
           deviceCode: grant.deviceCode,
           verifier: pkce.verifier,
         }
+        if (__DEV__) {
+          // Metro is the only console a physical TV has. The code itself must
+          // never appear here — same rule as telemetry — so this logs shape,
+          // not content.
+          console.log(
+            `[device-grant] event=code_issued len=${grant.userCode.length} expires_in=${grant.expiresInSeconds}s interval=${grant.intervalSeconds}s`,
+          )
+        }
         setState(onCodeIssued(stateRef.current, grant, Date.now()))
       } catch (error) {
         if (controller.signal.aborted) return
