@@ -68,10 +68,9 @@ export function createProgressRecorder(
       recordedAt,
     }
     if (!intent.videoId && !intent.videoSlug) return false
-    // Every write takes the same path. Routing on the SOURCE (a file:// URL)
-    // conflated "playing a downloaded file" with "the device is offline", so
-    // a downloaded film watched on wifi queued forever and never synced. The
-    // queue is the FAILURE path instead — see the sync layer.
+    // Every write takes the same path: routing on a file:// source conflated
+    // "downloaded" with "offline", so a download watched on wifi queued
+    // forever. The queue is the FAILURE path instead.
     deps.bufferIntent(intent)
     if (identity.videoId) {
       deps.applyLocal(accountId, {

@@ -1,19 +1,6 @@
-// Local (no-round-trip) verification of Auth-issued mobile user JWTs.
-//
-// The mobile app holds a short-lived JWT minted off its Auth session
-// (better-auth jwt plugin). Admin verifies it against Auth's published JWKS
-// and mints the `MOBILE_USER` principal — never introspection, which is why
-// this branch sits BEFORE the web-user branch in the context chain (that
-// branch spends a network round trip on every unrecognized bearer).
-//
-// Hardened per the JWKS-verification pattern in
-// docs/solutions/architecture-patterns/hardened-oidc-id-token-verify-jose-jwks-20260702.md:
-// the `algorithms` allowlist is DERIVED from the published JWKS (a hardcoded
-// pin would silently reject every token after an alg rotation), cached with a
-// bounded TTL, re-derived once on an alg-mismatch behind a refetch cooldown.
-// `createRemoteJWKSet` (asymmetric-only, kid-refetch) is the symmetric-key
-// barrier. Every rejection logs a distinct non-PII reason code; token and
-// claim VALUES are never logged.
+// Verifies mobile user JWTs locally so this branch can sit before web-user,
+// which spends a network round trip on every unrecognized bearer.
+// Hardening rationale: docs/solutions/architecture-patterns/hardened-oidc-id-token-verify-jose-jwks-20260702.md
 
 import {
   createRemoteJWKSet,

@@ -183,10 +183,8 @@ export function createProgressSync(deps: ProgressSyncDeps) {
       }
       const { acceptedCount } = await deps.sendUpserts(decision.writes)
       reportDroppedWrites(decision.writes.length, acceptedCount)
-      // Remove only what was sent. Blowing the whole key away would discard
-      // anything a concurrent failure persisted while this send was in
-      // flight — the chain serializes callers, but a re-read is still what
-      // makes the removal precise.
+      // Remove only what was sent: dropping the whole key would discard
+      // anything a concurrent failure persisted mid-flight.
       const sent = new Set(decision.writes.map(progressIntentKey))
       const current = await readQueue()
       const remaining = (current?.writes ?? []).filter(
@@ -261,22 +259,17 @@ export function createProgressSync(deps: ProgressSyncDeps) {
       if (!plan.send) return
       cadence = plan.nextState
       const intents = drainProgressIntents()
-      // Backlog FIRST. Queued writes are older than the fresh batch, so
-      // sending them second would make the server's staleness guard reject
-      // them — correctly, but that both loses ordering when a skewed clock
-      // clamps two writes to the same instant and fires a false
-      // writes_not_applied on every recovery. Oldest-first keeps arrival
-      // order and recency agreeing. It never throws (R7 retention is its own
-      // concern), so it cannot mask a failure of the send below.
+      // Backlog FIRST: queued writes are older, so sending them second lets
+      // the server's staleness guard reject them and fire a false
+      // writes_not_applied. It never throws, so it cannot mask the send below.
       await flushQueueInternal()
       try {
         const { acceptedCount } = await deps.sendUpserts(intents)
         reportDroppedWrites(intents.length, acceptedCount)
       } catch {
-        // Persist rather than re-buffer in memory: the queue survives an app
-        // kill and carries the recording account, so a later sign-in as
-        // someone else discards it instead of writing under the wrong
-        // identity (R7/R10). persistFailedWrites re-checks the account.
+        // Persist, not re-buffer: the queue survives an app kill and carries the
+        // recording account, so a later sign-in as someone else discards it
+        // rather than writing under them (R7/R10).
         await persistFailedWrites(accountId, intents)
       }
     },

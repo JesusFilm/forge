@@ -59,10 +59,9 @@ describe("appleNameForIdToken", () => {
   })
 
   it("returns undefined when Apple sends no name — the repeat-sign-in case", () => {
-    // Apple omits fullName on every authorization after the first, so this
-    // is the common path. It must be undefined rather than an empty object:
-    // Better Auth branches on `token.user?.name` being present at all, so
-    // `{}` would overwrite the stored name with "".
+    // Apple omits fullName after the first authorization, so this is the
+    // common path. Undefined, not {}: Better Auth branches on presence, so an
+    // empty object overwrites the stored name with "".
     expect(appleNameForIdToken(null)).toBeUndefined()
     expect(appleNameForIdToken(undefined)).toBeUndefined()
     expect(appleNameForIdToken({})).toBeUndefined()

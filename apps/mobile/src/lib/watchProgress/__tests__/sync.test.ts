@@ -238,10 +238,8 @@ describe("drainIntents (KTD5 cadence)", () => {
   })
 
   it("sends the queued backlog BEFORE the fresh batch", async () => {
-    // Oldest-first. Sending the backlog second makes the server's staleness
-    // guard reject it — correctly, but that loses the write whenever a
-    // skewed clock clamps both to the same instant, and fires a false
-    // writes_not_applied on every recovery.
+    // Oldest-first: sending the backlog second lets the staleness guard reject
+    // it, losing the write when a skewed clock clamps both to the same instant.
     const { sync, deps, storage } = buildSync()
     await storage.setItem(
       WATCH_PROGRESS_QUEUE_STORAGE_KEY,
@@ -318,10 +316,9 @@ describe("drainIntents (KTD5 cadence)", () => {
   })
 
   it("persists a failed batch to the durable queue, not just memory", async () => {
-    // The in-memory buffer dies with the process. A downloaded film watched
-    // on a flaky connection must survive an app kill, which is exactly what
-    // R7's queue is for — the queue is the FAILURE path, not a source-kind
-    // path, so this also covers watching a download while fully online.
+    // The in-memory buffer dies with the process, so R7's queue is what
+    // survives an app kill. It is the FAILURE path, not a source-kind path,
+    // so this covers a download watched fully online too.
     bufferProgressIntent(intent)
     const { sync, storage } = buildSync({
       sendUpserts: jest.fn(async () => {
@@ -500,10 +497,9 @@ describe("account boundary", () => {
 
 describe("queue serialization (onQueue)", () => {
   it("makes a second queue operation wait for the first to finish", async () => {
-    // The mutex exists for a real race: the foreground flush and the
-    // poll-driven drain are both fire-and-forget. Every other test awaits
-    // each call in turn, so none of them would notice its removal — this one
-    // starts two operations that genuinely overlap.
+    // The mutex guards a real race: flush and drain are fire-and-forget. Every
+    // other test awaits each call, so only this one — which starts two
+    // genuinely overlapping operations — would notice its removal.
     const storage = memoryStorage()
     let reads = 0
     let releaseFirstRead: () => void = () => {}

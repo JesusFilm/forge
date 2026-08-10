@@ -461,12 +461,9 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
-// Mobile's hosted-page fallback runs as a self-RP flow: Auth (via the jfp
-// generic-oauth provider) is the OAuth client toward its own oauth-provider,
-// so the redirect URIs are Auth's own https callback — the forgemobile://
-// scheme never appears at the OAuth layer, only in trusted origins. The
-// server-side exchange means no secret ships in the app; the client stays
-// public + PKCE like every other first-party seed.
+// Self-RP: Auth is the OAuth client toward its own provider, so redirect
+// URIs are Auth's https callback — forgemobile:// never reaches the OAuth
+// layer. The server-side exchange keeps any secret out of the app.
 export const MOBILE_APP_SEED: RegisteredAppSeed = {
   key: MOBILE_APP_KEY,
   displayName: "Jesus Film Watch",

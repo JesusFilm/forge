@@ -1,10 +1,6 @@
-// Viewer-scoped watch-progress surface (mobile continue-watching).
-//
-// All three operations resolve the account solely from the verified
-// principal (R13) — no argument carries a user id, and the server-to-server
-// internal REST route stays the only surface that accepts one. Gated by the
-// own-data permission keys the MOBILE_USER principal carries (ADMIN retains
-// them as operational override).
+// Viewer-scoped: the account comes solely from the verified principal (R13);
+// no argument carries a user id. The internal REST route stays the only
+// surface that accepts one.
 
 import { GraphQLError } from "graphql"
 

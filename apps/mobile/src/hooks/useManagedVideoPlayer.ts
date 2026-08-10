@@ -69,10 +69,9 @@ export function useManagedVideoPlayer(
   // the background after the AppState listener already paused.
   const isForegroundRef = useRef(true)
 
-  // ── Playback QoE session (R36/R38) ──────────────────────────────────
-  // Pure accumulator (createVideoQoeSession) fed from the listeners below; the
-  // summary emits once on session end (unmount / cross-asset swap). content_id
-  // is the Mux playback id (PII-free); source is offline vs network per R38.
+  // Playback QoE (R36/R38): pure accumulator fed by the listeners below,
+  // emitting once on session end. content_id is the Mux playback id, so the
+  // summary stays PII-free.
   const qoeRef = useRef<VideoQoeSession | null>(null)
   const sessionContentIdRef = useRef<string | null>(null)
   const sessionSourceRef = useRef<"offline" | "network">("network")
@@ -115,10 +114,8 @@ export function useManagedVideoPlayer(
     startQoeSession(creationSource)
   }
 
-  // ── Progress recorder (KTD5) ─────────────────────────────────────────
-  // One recorder per identity; an identity change (episode swap in the
-  // collection pager) flushes the departing video before re-keying. Offline
-  // (file://) playback routes writes to the account-bound queue.
+  // Progress recorder (KTD5): one per identity, so an episode swap flushes
+  // the departing video before re-keying.
   const progressIdentity = options?.progress ?? null
   const recorderRef = useRef<ProgressRecorder | null>(null)
   // languageSlug is part of the key: an audio-language switch mid-playback

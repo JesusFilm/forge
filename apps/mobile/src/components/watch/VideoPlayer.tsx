@@ -152,10 +152,9 @@ export function VideoPlayer({
   } | null>(null)
   const seekNonceRef = useRef(0)
 
-  // Autostart: the video begins playing on its own once the source is ready,
-  // and a saved position seeks itself. Play and seek are latched SEPARATELY:
-  // `resumeAtSeconds` hydrates asynchronously and can arrive after the source
-  // has loaded, so one shared latch would forfeit the seek permanently.
+  // Play and seek latch SEPARATELY: resumeAtSeconds hydrates async and can
+  // arrive after the source loads, so one shared latch would forfeit the
+  // seek and let playback from 0 overwrite the saved position.
   const autoPlayedRef = useRef(false)
   const resumeSeekedRef = useRef(false)
   useEffect(() => {
