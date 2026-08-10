@@ -178,6 +178,46 @@ describe("cited-source-names-grounded (hard-fail — the wired names half)", () 
     )
   })
 
+  it("accepts a readable title shortened across structural punctuation", () => {
+    const titled: RagFixtureFile = {
+      ...fixtures,
+      fixtures: [
+        {
+          ...fixtures.fixtures[0],
+          result: {
+            status: "ok",
+            sources: [
+              {
+                ...fixtures.fixtures[0].result.sources[0],
+                title:
+                  "The Life :: Do Evil and Suffering Disprove the Existence of God? (Part 3) The Emotional Problem",
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const results = runAnswerChecks(
+      answer(
+        `[Do Evil and Suffering Disprove the Existence of God? Part 3](${SERVED_URL})`,
+      ),
+      titled,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "pass",
+    )
+  })
+
+  it("still rejects an unrelated title after punctuation normalization", () => {
+    const results = runAnswerChecks(
+      answer(`[An Unrelated Explanation of Suffering](${SERVED_URL})`),
+      fixtures,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "violated",
+    )
+  })
+
   it("ignores a protocol-less URL used as link text — no name claim to check", () => {
     const bare = SERVED_URL.replace(/^https:\/\//, "")
     const results = runAnswerChecks(

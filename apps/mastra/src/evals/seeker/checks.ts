@@ -159,12 +159,17 @@ function checkUrlsGrounded(
 }
 
 function normalizeName(value: string): string {
-  return value
-    .replace(/[‘’‛]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase()
+  return (
+    value
+      .replace(/[‘’‛]/g, "'")
+      .replace(/[“”]/g, '"')
+      // Display titles may omit publisher punctuation or parenthesized styling.
+      // Compare the words, not presentation details such as `::`, `?`, or `(Part 3)`.
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase()
+  )
 }
 
 /**
