@@ -26,6 +26,10 @@ vi.mock("@/lib/admin-client", () => ({
   },
 }))
 
+vi.mock("next/cache", () => ({
+  unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+}))
+
 vi.mock("@/lib/watch-event-actions", () => ({
   recordWatchEventWithAccessToken: recordWatchEventWithAccessTokenMock,
 }))
