@@ -71,6 +71,8 @@ enum Queries {
             sectionKey
             mcTitle: title
             mcSubtitle: subtitle
+            mcDescription: description
+            categoryLabel
             items {
               titleOverride
               subtitleOverride

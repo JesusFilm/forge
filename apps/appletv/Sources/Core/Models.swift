@@ -23,6 +23,8 @@ struct WireBlock: Decodable {
     let sectionKey: String?
     let mcTitle: String?
     let mcSubtitle: String?
+    let mcDescription: String?
+    let categoryLabel: String?
     let items: [WireCollectionItem]?
 }
 
@@ -81,6 +83,10 @@ struct HomeModel: Equatable {
 struct Rail: Equatable, Identifiable {
     let id: String
     let title: String
+    /// The red uppercase label above the title ("A 7-DAY VIDEO JOURNEY").
+    let eyebrow: String?
+    /// Longer copy; the hero renders the first rail's.
+    let description: String?
     let items: [VideoCard]
 }
 
@@ -108,6 +114,8 @@ enum HomeProjection {
                 Rail(
                     id: block.sectionKey ?? "rail-\(index)",
                     title: block.mcTitle ?? block.mcSubtitle ?? "",
+                    eyebrow: block.categoryLabel,
+                    description: block.mcDescription,
                     items: cards
                 )
             )

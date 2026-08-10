@@ -7,7 +7,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Theme.background.ignoresSafeArea()
 
             switch viewModel.state {
             case .loading:
@@ -35,8 +35,8 @@ struct HomeView: View {
     private func content(_ model: HomeModel) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 56) {
-                if let featured = model.rails.first?.items.first {
-                    hero(featured)
+                if let firstRail = model.rails.first, let featured = firstRail.items.first {
+                    hero(featured, rail: firstRail)
                 }
                 ForEach(model.rails) { rail in
                     railView(rail)
@@ -51,39 +51,60 @@ struct HomeView: View {
 
     // MARK: - Hero
 
-    private func hero(_ card: VideoCard) -> some View {
+    private func hero(_ card: VideoCard, rail: Rail) -> some View {
+        // The RN hero composition: full-bleed artwork, red uppercase eyebrow,
+        // big left-aligned title, description paragraph, red CTA. The scrim
+        // doubles near the text so any poster stays readable.
         ZStack(alignment: .bottomLeading) {
             poster(for: card, heroWidth: true)
                 .frame(maxWidth: .infinity)
-                .frame(height: 640)
+                .frame(height: 760)
                 .clipped()
 
-            // Scrim keeps the title readable over any poster; fading to clear
-            // well below the top leaves the artwork dominant.
             LinearGradient(
-                colors: [.black.opacity(0.85), .black.opacity(0.35), .clear],
+                colors: [Theme.background.opacity(0.95), Theme.background.opacity(0.45), .clear],
                 startPoint: .bottom,
                 endPoint: .center
             )
+            LinearGradient(
+                colors: [Theme.background.opacity(0.8), .clear],
+                startPoint: .leading,
+                endPoint: .center
+            )
 
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 20) {
+                Theme.Eyebrow(text: rail.eyebrow ?? "Feature Film")
+
                 Text(card.title)
-                    .font(.system(size: 56, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 76, weight: .heavy))
+                    .foregroundStyle(Theme.text)
                     .lineLimit(2)
+
+                if let description = rail.description, !description.isEmpty {
+                    Text(description)
+                        .font(.system(size: 30))
+                        .foregroundStyle(Theme.text82)
+                        .lineLimit(3)
+                        .frame(maxWidth: 900, alignment: .leading)
+                }
 
                 if let playbackID = card.playbackID {
                     Button {
                         presentedPlayback = PlayerPresentation(playbackID: playbackID)
                     } label: {
                         Label("Play", systemImage: "play.fill")
-                            .font(.title3.weight(.semibold))
+                            .font(.system(size: 30, weight: .semibold))
+                            .foregroundStyle(Theme.text)
+                            .padding(.horizontal, 44)
+                            .padding(.vertical, 18)
+                            .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(WatchCardButtonStyle())
+                    .watchFocus()
                 }
             }
             .padding(.horizontal, 80)
-            .padding(.bottom, 60)
+            .padding(.bottom, 70)
         }
     }
 
@@ -91,12 +112,17 @@ struct HomeView: View {
 
     private func railView(_ rail: Rail) -> some View {
         VStack(alignment: .leading, spacing: 20) {
-            if !rail.title.isEmpty {
-                Text(rail.title)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 80)
+            VStack(alignment: .leading, spacing: 6) {
+                if let eyebrow = rail.eyebrow, !eyebrow.isEmpty {
+                    Theme.Eyebrow(text: eyebrow)
+                }
+                if !rail.title.isEmpty {
+                    Text(rail.title)
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(Theme.text)
+                }
             }
+            .padding(.horizontal, 80)
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 40) {
                     ForEach(rail.items) { card in
@@ -119,17 +145,19 @@ struct HomeView: View {
                     presentedPlayback = PlayerPresentation(playbackID: playbackID)
                 } label: {
                     cardPoster(for: card)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
                 }
-                .buttonStyle(.card)
+                .buttonStyle(WatchCardButtonStyle())
+                .watchFocus()
             } else {
                 // No playback id — nothing to open, so nothing to focus.
                 cardPoster(for: card)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
             }
 
             Text(card.title)
-                .font(.callout)
-                .foregroundStyle(.white.opacity(0.9))
+                .font(.system(size: 26, weight: .medium))
+                .foregroundStyle(Theme.text82)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(width: 400, alignment: .leading)
