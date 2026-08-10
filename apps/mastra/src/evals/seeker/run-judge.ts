@@ -80,40 +80,35 @@ export const JUDGE_SYSTEM = [
   "Return JSON only.",
 ].join("\n")
 
-export function verdictSchema(criterionIds: readonly string[]) {
-  return {
-    name: "seeker_eval_criterion_verdicts",
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        verdicts: {
-          type: "array",
-          minItems: criterionIds.length,
-          maxItems: criterionIds.length,
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              criterionId: { type: "string", enum: [...criterionIds] },
-              verdict: {
-                type: "string",
-                enum: ["satisfied", "violated"],
-              },
-              reasoning: { type: "string" },
+export const VERDICT_SCHEMA = {
+  name: "seeker_eval_criterion_verdicts",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      verdicts: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            criterionId: { type: "string" },
+            verdict: {
+              type: "string",
+              enum: ["satisfied", "violated"],
             },
-            required: ["criterionId", "verdict", "reasoning"],
+            reasoning: { type: "string" },
           },
+          required: ["criterionId", "verdict", "reasoning"],
         },
       },
-      required: ["verdicts"],
     },
-  } as const
+    required: ["verdicts"],
+  },
 }
 
-/** Stable template for hashing the judge protocol independently of a
- * question's criterion inventory, which is hashed by the run identity. */
-export const VERDICT_SCHEMA = verdictSchema(["<criterion-id>"])
+const JUDGE_RETRY_PROTOCOL =
+  "On the single malformed-output retry, report prior protocol errors and require exactly the supplied criterion IDs with no others."
 
 /**
  * Hash of everything that defines what a verdict MEANS beyond the criteria
@@ -121,7 +116,9 @@ export const VERDICT_SCHEMA = verdictSchema(["<criterion-id>"])
  * the output schema. Editing either breaks run comparability.
  */
 export function rubricSha256(): string {
-  return sha256(`${JUDGE_SYSTEM}\n${JSON.stringify(VERDICT_SCHEMA)}`)
+  return sha256(
+    `${JUDGE_SYSTEM}\n${JUDGE_RETRY_PROTOCOL}\n${JSON.stringify(VERDICT_SCHEMA)}`,
+  )
 }
 
 /**
@@ -246,7 +243,6 @@ export function judgeUserMessage(input: {
 export type JudgeCompletion = (input: {
   system: string
   user: string
-  criterionIds: readonly string[]
 }) => Promise<{ value: CriterionVerdict[]; usage: Usage; latencyMs: number }>
 
 /**
@@ -321,7 +317,6 @@ export async function judgeOneAnswer(
       const result = await deps.complete({
         system: JUDGE_SYSTEM,
         user: `${user}${retryCorrection}`,
-        criterionIds,
       })
       usage.input += result.usage.input
       usage.output += result.usage.output
@@ -434,12 +429,12 @@ async function main(): Promise<void> {
   console.log(`input : ${inPath} (${run.answers.length} answers)`)
   console.log("")
 
-  const complete: JudgeCompletion = ({ system, user, criterionIds }) =>
+  const complete: JudgeCompletion = ({ system, user }) =>
     completeJson({
       model: JUDGE_MODEL,
       system,
       user,
-      jsonSchema: verdictSchema(criterionIds),
+      jsonSchema: VERDICT_SCHEMA,
       parse: parseVerdicts,
     })
 

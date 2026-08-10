@@ -8,7 +8,6 @@ import {
   parseVerdicts,
   renderPassagesBlock,
   rubricSha256,
-  verdictSchema,
   verdictProtocolProblems,
   type JudgeCompletion,
 } from "./run-judge"
@@ -106,22 +105,6 @@ describe("verdictProtocolProblems — the amended protocol", () => {
   })
 })
 
-describe("verdictSchema", () => {
-  it("constrains criterion ids and verdict count to the current question", () => {
-    const ids = CRITERIA.map((criterion) => criterion.id)
-    const schema = verdictSchema(ids)
-    expect(schema.schema.properties.verdicts).toMatchObject({
-      minItems: ids.length,
-      maxItems: ids.length,
-      items: {
-        properties: {
-          criterionId: { type: "string", enum: ids },
-        },
-      },
-    })
-  })
-})
-
 describe("collapseAgreeingDuplicates", () => {
   it("drops identical repeats and keeps disagreements", () => {
     const [first] = cleanVerdicts()
@@ -156,9 +139,6 @@ describe("judgeOneAnswer — retry once, then invalid", () => {
     expect(result.status).toBe("judged")
     expect(result.retried).toBe(true)
     expect(complete).toHaveBeenCalledTimes(2)
-    expect(complete.mock.calls[1][0]).toMatchObject({
-      criterionIds: CRITERIA.map((criterion) => criterion.id),
-    })
     expect(complete.mock.calls[1][0].user).toContain(
       `missing verdict for ${CRITERIA[0].id}`,
     )
