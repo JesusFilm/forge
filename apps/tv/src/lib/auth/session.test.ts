@@ -300,6 +300,26 @@ describe("refresh outcomes", () => {
     expect(await loadSession()).toBeNull()
   })
 
+  it("a server revocation does NOT release the account marker", async () => {
+    // The load-bearing half of the isolation story: after a revocation the
+    // buckets stay on device, and the marker naming their owner is the ONLY
+    // thing standing between them and the next viewer. Same owner returning →
+    // "skip" (already merged); anyone else → "reset" (wiped, not inherited).
+    // Releasing the marker here would turn both into "promote".
+    const { readLocalUserMarker, writeLocalUserMarker } = jest.requireActual(
+      "./anonymousMerge",
+    ) as typeof import("./anonymousMerge")
+    await writeLocalUserMarker("user-a")
+
+    mockRefreshAccessToken.mockResolvedValue({
+      kind: "revoked",
+      code: "invalid_token",
+    })
+    expect(await getValidAccessToken()).toBeNull()
+
+    expect((await readLocalUserMarker()).userId).toBe("user-a")
+  })
+
   it("KEEPS the session when the failure is only retryable", async () => {
     // The falsifying case for treating every failure alike: a TV on flaky
     // wifi must not be signed out, or viewers get logged out overnight for no
