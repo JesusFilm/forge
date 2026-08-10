@@ -29,6 +29,7 @@
     "@datadog/browser-rum": "^7.2.0",
     "@datadog/browser-rum-react": "^7.2.0",
     "@forge/admin-graphql": "workspace:*",
+    "@forge/content-display": "workspace:*",
     "@forge/feature-flags": "workspace:*",
     "@forge/video-player": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",

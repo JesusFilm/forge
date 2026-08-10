@@ -158,6 +158,9 @@ importers:
       '@escape.tech/graphql-armor-max-tokens':
         specifier: 2.5.1
         version: 2.5.1
+      '@forge/content-display':
+        specifier: workspace:*
+        version: link:../../packages/content-display
       '@forge/experience-schema':
         specifier: workspace:*
         version: link:../../packages/experience-schema
@@ -768,6 +771,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/content-display':
+        specifier: workspace:*
+        version: link:../../packages/content-display
       '@forge/watch-url-policy':
         specifier: workspace:*
         version: link:../../packages/watch-url-policy
@@ -1017,6 +1023,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/content-display':
+        specifier: workspace:*
+        version: link:../../packages/content-display
       '@forge/watch-url-policy':
         specifier: workspace:*
         version: link:../../packages/watch-url-policy
@@ -1135,6 +1144,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/content-display':
+        specifier: workspace:*
+        version: link:../../packages/content-display
       '@forge/feature-flags':
         specifier: workspace:*
         version: link:../../packages/feature-flags
@@ -1294,6 +1306,18 @@ importers:
         specifier: 16.13.1
         version: 16.13.1
     devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3)
+
+  packages/content-display:
+    devDependencies:
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.2(jiti@2.6.1)
       typescript:
         specifier: ^5
         version: 5.9.3

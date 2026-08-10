@@ -75,6 +75,7 @@
     "@escape.tech/graphql-armor-max-aliases": "2.6.2",
     "@escape.tech/graphql-armor-max-depth": "2.4.2",
     "@escape.tech/graphql-armor-max-tokens": "2.5.1",
+    "@forge/content-display": "workspace:*",
     "@forge/experience-schema": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "0.21.1",

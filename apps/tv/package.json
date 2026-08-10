@@ -19,6 +19,7 @@
     "@datadog/mobile-react-native": "3.5.2",
     "@expo/vector-icons": "^15.1.1",
     "@forge/admin-graphql": "workspace:*",
+    "@forge/content-display": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
