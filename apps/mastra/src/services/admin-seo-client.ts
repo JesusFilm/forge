@@ -46,6 +46,7 @@ const StartRunRequestSchema = z
     windowStart: z.string().datetime().nullable().optional(),
     windowEnd: z.string().datetime().nullable().optional(),
     targetLimit: z.number().int().min(1).max(5_000).default(1_000),
+    leaseSeconds: z.number().int().min(60).max(1_800).default(900),
   })
   .strict()
 
@@ -122,6 +123,8 @@ const CompleteRunRequestSchema = z
   .object({
     action: z.literal("complete_run"),
     runId: BoundedIdSchema,
+    claimGeneration: z.number().int().positive(),
+    claimToken: BoundedIdSchema,
     status: z.enum(["completed", "partial", "failed"]),
     providerCoverage: z.unknown().default({}),
     report: z.unknown().default({}),
@@ -141,6 +144,14 @@ export const SeoIngestRequestSchema = z.discriminatedUnion("action", [
 export type SeoIngestRequest = z.infer<typeof SeoIngestRequestSchema>
 
 const StartRunResultSchema = RunRecordSchema.extend({
+  executionClaim: z
+    .object({
+      generation: z.number().int().positive(),
+      token: BoundedIdSchema,
+      expiresAt: z.string().datetime(),
+    })
+    .strict()
+    .nullable(),
   // U4 consumes these server-owned identities. They are optional during an
   // additive rollout so a partially deployed Admin safely produces no work.
   targets: z.array(RawTargetSchema).max(5_000).default([]),
@@ -168,6 +179,8 @@ const RawExperimentSchema = z
     treatmentSnapshot: z.unknown(),
     preChangeHash: DigestSchema,
     treatmentHash: DigestSchema,
+    expectedActivationHash: DigestSchema,
+    currentCanonicalActivationHash: DigestSchema.nullable(),
     activatedAt: z.coerce.date().nullable(),
     interimDueAt: z.coerce.date().nullable(),
     finalDueAt: z.coerce.date().nullable(),
@@ -288,6 +301,8 @@ export type SeoExperimentClaim = {
   lane: "editorial" | "engineering"
   canonicalUrl: string
   treatmentHash: string
+  expectedActivationHash: string
+  currentCanonicalActivationHash: string | null
   preChangeHash: string
   preChangeSnapshot: unknown
   activatedAt: string | null
@@ -580,6 +595,7 @@ export async function startSeoRun(
         mode: result.mode.toLowerCase() as "off" | "dry_run" | "live",
         deduplicated: result.replayed,
         status: result.status,
+        executionClaim: result.executionClaim,
       },
       targets,
       reviewedLessons: result.lessons,
@@ -680,6 +696,8 @@ export async function claimDueSeoExperiments(
           : "editorial",
       canonicalUrl: row.proposalVersion.proposal.canonicalUrl,
       treatmentHash: row.treatmentHash,
+      expectedActivationHash: row.expectedActivationHash,
+      currentCanonicalActivationHash: row.currentCanonicalActivationHash,
       preChangeHash: row.preChangeHash,
       preChangeSnapshot: row.preChangeSnapshot,
       activatedAt: row.activatedAt?.toISOString() ?? null,

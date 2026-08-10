@@ -39,6 +39,15 @@ export function seoContentHash(value: unknown): string {
   return createHash("sha256").update(canonicalJson(value)).digest("hex")
 }
 
+function pickFields(
+  value: Record<string, unknown>,
+  fields: ReadonlySet<string>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    [...fields].map((field) => [field, value[field] ?? null]),
+  )
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -83,6 +92,18 @@ const EXPERIENCE_FIELDS = new Set([
   "ogImageUrl",
   "blocks",
 ])
+
+export function seoVideoLocaleActivationHash(
+  value: Record<string, unknown>,
+): string {
+  return seoContentHash(pickFields(value, VIDEO_FIELDS))
+}
+
+export function seoExperienceLocaleActivationHash(
+  value: Record<string, unknown>,
+): string {
+  return seoContentHash(pickFields(value, EXPERIENCE_FIELDS))
+}
 
 export function seoVideoLocaleSnapshot(row: {
   id: string
@@ -182,6 +203,7 @@ export type SeoDraftMaterialization = {
   treatmentSnapshot: Prisma.InputJsonObject
   preChangeHash: string
   treatmentHash: string
+  expectedActivationHash: string
 }
 
 export class SeoTargetService {
@@ -222,7 +244,7 @@ export class SeoTargetService {
       !row ||
       row.deletedAt ||
       row.status === "ARCHIVED" ||
-      row.locale !== version.proposal.locale
+      (row.locale ?? row.languageSlug) !== version.proposal.locale
     ) {
       throw new SeoTargetStaleError()
     }
@@ -250,6 +272,7 @@ export class SeoTargetService {
       treatmentSnapshot: { v: 1, data: after } as Prisma.InputJsonObject,
       preChangeHash: seoContentHash(before),
       treatmentHash: seoContentHash(after),
+      expectedActivationHash: seoVideoLocaleActivationHash(after),
     }
   }
 
@@ -302,7 +325,64 @@ export class SeoTargetService {
       treatmentSnapshot: { v: 1, data: after } as Prisma.InputJsonObject,
       preChangeHash: seoContentHash(before),
       treatmentHash: seoContentHash(after),
+      expectedActivationHash: seoExperienceLocaleActivationHash(after),
     }
+  }
+
+  async currentHashes({
+    tx,
+    targetType,
+    targetId,
+    locale,
+  }: {
+    tx: SeoTransaction
+    targetType: string
+    targetId: string | null
+    locale: string
+  }): Promise<{ contentHash: string; activationHash: string } | null> {
+    if (!targetId) return null
+    if (targetType === "VideoLocale") {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM video_locale WHERE id = ${targetId} FOR SHARE`,
+      )
+      const row = await tx.videoLocale.findUnique({ where: { id: targetId } })
+      if (
+        !row ||
+        row.deletedAt ||
+        row.status === "ARCHIVED" ||
+        (row.locale ?? row.languageSlug) !== locale
+      ) {
+        return null
+      }
+      const snapshot = seoVideoLocaleSnapshot(row)
+      return {
+        contentHash: seoContentHash(snapshot),
+        activationHash: seoVideoLocaleActivationHash(snapshot),
+      }
+    }
+    if (targetType === "ExperienceLocale") {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM experience_locale WHERE id = ${targetId} FOR SHARE`,
+      )
+      const row = await tx.experienceLocale.findUnique({
+        where: { id: targetId },
+        include: { experience: { select: { archivedAt: true } } },
+      })
+      if (
+        !row ||
+        row.experience.archivedAt ||
+        row.status === "ARCHIVED" ||
+        row.locale !== locale
+      ) {
+        return null
+      }
+      const snapshot = seoExperienceLocaleSnapshot(row)
+      return {
+        contentHash: seoContentHash(snapshot),
+        activationHash: seoExperienceLocaleActivationHash(snapshot),
+      }
+    }
+    return null
   }
 
   private async assertNoDraft(

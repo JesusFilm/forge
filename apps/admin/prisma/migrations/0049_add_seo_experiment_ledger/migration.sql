@@ -42,6 +42,9 @@ CREATE TABLE "seo_run" (
   "ticket_count" INTEGER NOT NULL DEFAULT 0,
   "experiment_count" INTEGER NOT NULL DEFAULT 0,
   "suppressed_operations" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  "execution_fence_generation" INTEGER NOT NULL DEFAULT 0,
+  "execution_claim_token_hash" TEXT,
+  "execution_claim_expires_at" TIMESTAMP(3),
   "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "completed_at" TIMESTAMP(3),
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -167,6 +170,7 @@ CREATE TABLE "seo_experiment" (
   "treatment_snapshot" JSONB NOT NULL,
   "pre_change_hash" TEXT NOT NULL,
   "treatment_hash" TEXT NOT NULL,
+  "expected_activation_hash" TEXT NOT NULL,
   "observed_activation_hash" TEXT,
   "activated_at" TIMESTAMP(3),
   "measurement_starts_at" TIMESTAMP(3),
@@ -244,6 +248,7 @@ CREATE TABLE "seo_lesson" (
 CREATE UNIQUE INDEX "seo_run_idempotency_key_key" ON "seo_run"("idempotency_key");
 CREATE INDEX "seo_run_status_started_at_idx" ON "seo_run"("status", "started_at");
 CREATE INDEX "seo_run_mode_started_at_idx" ON "seo_run"("mode", "started_at");
+CREATE INDEX "seo_run_status_execution_claim_expires_at_idx" ON "seo_run"("status", "execution_claim_expires_at");
 CREATE UNIQUE INDEX "seo_evidence_observation_run_id_observation_key_key" ON "seo_evidence_observation"("run_id", "observation_key");
 CREATE INDEX "seo_evidence_observation_provider_retrieved_at_idx" ON "seo_evidence_observation"("provider", "retrieved_at");
 CREATE INDEX "seo_evidence_observation_expires_at_idx" ON "seo_evidence_observation"("expires_at");

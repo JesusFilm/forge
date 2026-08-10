@@ -51,6 +51,11 @@ function interpretationDeps(overrides: Parameters<typeof runSeoDailyAudit>[1]) {
           mode: "dry_run" as const,
           deduplicated: false,
           status: "RUNNING",
+          executionClaim: {
+            generation: 1,
+            token: "run-claim-token",
+            expiresAt: "2026-08-01T02:15:00.000Z",
+          },
         },
         targets: [],
         reviewedLessons: [{ id: "lesson-1", status: "ACTIVE" }],
@@ -123,6 +128,11 @@ describe("SEO daily audit workflow", () => {
                 mode: "dry_run",
                 deduplicated: false,
                 status: "RUNNING",
+                executionClaim: {
+                  generation: 1,
+                  token: "run-claim-token",
+                  expiresAt: "2026-08-01T02:15:00.000Z",
+                },
               },
               targets: [],
               reviewedLessons: [],
@@ -135,7 +145,45 @@ describe("SEO daily audit workflow", () => {
       },
     )
     expect(result.mode).toBe("dry_run")
+    expect(completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        claimGeneration: 1,
+        claimToken: "run-claim-token",
+      }),
+    )
     expect(order).toEqual(["start", "complete"])
+  })
+
+  it("does not recollect providers while the same run key is already claimed", async () => {
+    const queryGsc = vi.fn()
+    const completeRun = vi.fn()
+    const result = await runSeoDailyAudit(
+      { scheduledFor: "2026-08-01T02:00:00.000Z" },
+      {
+        config: getSeoConfig({ SEO_AUTOMATION_MODE: "live" }),
+        startRun: vi.fn(async () => ({
+          ok: true,
+          result: {
+            run: {
+              id: "run-1",
+              mode: "live",
+              deduplicated: true,
+              status: "RUNNING",
+              executionClaim: null,
+            },
+            targets: [],
+            reviewedLessons: [],
+          },
+        })) as never,
+        queryGsc: queryGsc as never,
+        completeRun: completeRun as never,
+        workflowRunId: "workflow-2",
+      },
+    )
+
+    expect(result).toMatchObject({ ok: true, reason: "in_progress" })
+    expect(queryGsc).not.toHaveBeenCalled()
+    expect(completeRun).not.toHaveBeenCalled()
   })
 
   it("does not recollect providers for a terminal replayed Admin run", async () => {
@@ -153,6 +201,7 @@ describe("SEO daily audit workflow", () => {
               mode: "live",
               deduplicated: true,
               status: "COMPLETED",
+              executionClaim: null,
             },
             targets: [],
             reviewedLessons: [],

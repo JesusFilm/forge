@@ -27,6 +27,8 @@ function claim(stage: "activation" | "final") {
     lane: "editorial" as const,
     canonicalUrl: "https://example.com/watch/jesus.html",
     treatmentHash: digest,
+    expectedActivationHash: digest,
+    currentCanonicalActivationHash: digest,
     preChangeHash: "b".repeat(64),
     preChangeSnapshot: {},
     activatedAt: "2026-07-01T00:00:00.000Z",
@@ -55,6 +57,19 @@ describe("SEO experiment evaluation workflow", () => {
     expect(claim).not.toHaveBeenCalled()
   })
 
+  it("makes no claims while automation is dry-run", async () => {
+    const claimDue = vi.fn()
+    const result = await runSeoExperimentEvaluation(
+      {},
+      {
+        config: getSeoConfig({ SEO_AUTOMATION_MODE: "dry_run" }),
+        claim: claimDue as never,
+      },
+    )
+    expect(result).toMatchObject({ ok: true, mode: "dry_run", claimed: 0 })
+    expect(claimDue).not.toHaveBeenCalled()
+  })
+
   it("is registered for the daily 02:30 UTC sweep", () => {
     const schedules = (
       seoExperimentEvaluationWorkflow as typeof seoExperimentEvaluationWorkflow & {
@@ -77,10 +92,6 @@ describe("SEO experiment evaluation workflow", () => {
           result: { experiments: [claim("activation")] },
         })) as never,
         record: record as never,
-        fetchImpl: vi.fn(
-          async () => new Response("treatment"),
-        ) as unknown as typeof fetch,
-        resolveHost: async () => [{ address: "93.184.216.34" }],
       },
     )
 
@@ -92,6 +103,87 @@ describe("SEO experiment evaluation workflow", () => {
         observedActivationHash: digest,
         activatedAt: expect.any(String),
       }),
+    )
+  })
+
+  it("hashes a hex-shaped response header as a raw value", async () => {
+    const headerValue = "d".repeat(64)
+    const expectedActivationHash = createHash("sha256")
+      .update(headerValue)
+      .digest("hex")
+    const record = vi.fn(async () => ({ ok: true, result: {} }))
+    const experiment = {
+      ...claim("activation"),
+      lane: "engineering" as const,
+      expectedActivationHash,
+      currentCanonicalActivationHash: null,
+      deploymentProbe: {
+        type: "response_header",
+        headerName: "x-forge-deployment",
+        expectedValue: headerValue,
+      },
+    }
+
+    const result = await runSeoExperimentEvaluation(
+      {},
+      {
+        config,
+        claim: vi.fn(async () => ({
+          ok: true,
+          result: { experiments: [experiment] },
+        })) as never,
+        record: record as never,
+        fetchImpl: vi.fn(
+          async () =>
+            new Response("ok", {
+              headers: { "x-forge-deployment": headerValue },
+            }),
+        ) as never,
+        resolveHost: async () => [{ address: "93.184.216.34" }],
+      },
+    )
+
+    expect(result).toMatchObject({ recorded: 1, failed: 0 })
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: "activated",
+        observedActivationHash: expectedActivationHash,
+      }),
+    )
+  })
+
+  it("isolates a malformed legacy probe from later experiment claims", async () => {
+    const record = vi.fn(async () => ({ ok: true, result: {} }))
+    const malformed = {
+      ...claim("activation"),
+      id: "experiment-malformed",
+      lane: "engineering" as const,
+      currentCanonicalActivationHash: null,
+      deploymentProbe: {
+        type: "response_header",
+        headerName: "bad header",
+        expectedValue: "deployed",
+      },
+    }
+
+    const result = await runSeoExperimentEvaluation(
+      {},
+      {
+        config,
+        claim: vi.fn(async () => ({
+          ok: true,
+          result: { experiments: [malformed, claim("activation")] },
+        })) as never,
+        record: record as never,
+        fetchImpl: vi.fn(async () => new Response("ok")) as never,
+        resolveHost: async () => [{ address: "93.184.216.34" }],
+      },
+    )
+
+    expect(result).toMatchObject({ claimed: 2, recorded: 1, failed: 1 })
+    expect(record).toHaveBeenCalledTimes(1)
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ experimentId: "experiment-1" }),
     )
   })
 

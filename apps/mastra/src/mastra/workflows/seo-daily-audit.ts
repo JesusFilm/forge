@@ -48,7 +48,7 @@ export const SeoDailyAuditOutputSchema = z
     workflowRunId: z.string(),
     adminRunId: z.string().nullable(),
     reason: z
-      .enum(["off", "completed", "partial", "admin_unavailable"])
+      .enum(["off", "in_progress", "completed", "partial", "admin_unavailable"])
       .nullable(),
     report: z
       .object({
@@ -371,6 +371,28 @@ export async function runSeoDailyAudit(
       proposals: [],
     })
   }
+  if (
+    started.result.run.status === "RUNNING" &&
+    !started.result.run.executionClaim
+  ) {
+    return SeoDailyAuditOutputSchema.parse({
+      ok: true,
+      mode,
+      workflowRunId,
+      adminRunId: started.result.run.id,
+      reason: "in_progress",
+      report: {
+        ...emptyReport,
+        eligibleCount: started.result.targets.length,
+        suppressedOperations: [
+          "provider_collection",
+          "proposal_persistence",
+          "run_already_in_progress",
+        ],
+      },
+      proposals: [],
+    })
+  }
   if (mode === "off") {
     return SeoDailyAuditOutputSchema.parse({
       ok: true,
@@ -383,6 +405,18 @@ export async function runSeoDailyAudit(
         eligibleCount: started.result.targets.length,
         suppressedOperations: ["provider_collection", "proposal_persistence"],
       },
+      proposals: [],
+    })
+  }
+  const executionClaim = started.result.run.executionClaim
+  if (!executionClaim) {
+    return SeoDailyAuditOutputSchema.parse({
+      ok: false,
+      mode,
+      workflowRunId,
+      adminRunId: started.result.run.id,
+      reason: "admin_unavailable",
+      report: emptyReport,
       proposals: [],
     })
   }
@@ -554,6 +588,8 @@ export async function runSeoDailyAudit(
   const completed = await (deps.completeRun ?? completeSeoRun)({
     action: "complete_run",
     runId: started.result.run.id,
+    claimGeneration: executionClaim.generation,
+    claimToken: executionClaim.token,
     status: partial ? "partial" : "completed",
     providerCoverage,
     report,
@@ -571,9 +607,13 @@ export async function runSeoDailyAudit(
     mode,
     workflowRunId,
     adminRunId: started.result.run.id,
-    reason: partial ? "partial" : "completed",
+    reason: completed.ok
+      ? partial
+        ? "partial"
+        : "completed"
+      : "admin_unavailable",
     report,
-    proposals,
+    proposals: completed.ok ? proposals : [],
   })
 }
 

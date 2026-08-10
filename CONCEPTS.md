@@ -281,6 +281,12 @@ matched measurement windows, confounders, outcome, rollback proposal, and any
 reviewed lesson. Mastra orchestrates the work, but the ledger remains the
 authoritative record rather than agent conversation memory.
 
+Its execution claims are reclaimable leases: expiry permits another worker to
+take ownership, while generation and token fencing determine who may complete.
+Experiments become measuring only after objective activation, overlap becomes a
+confounder only when treatments are simultaneously live, and canonical drift
+forces an inconclusive outcome rather than a lesson or rollback.
+
 ### Search Pipeline Mode
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.

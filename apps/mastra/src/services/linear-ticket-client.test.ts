@@ -100,6 +100,54 @@ describe("Linear SEO ticket client", () => {
     })
   })
 
+  it("preserves reconciliation identity when a valid brief is truncated", async () => {
+    const marker = "forge-seo:p1:v1:aaaaaaaaaaaa"
+    const payloadDigest = "a".repeat(64)
+    let description = ""
+    const result = await createLinearTicket(
+      {
+        marker,
+        payloadDigest,
+        brief: {
+          title: "Large approved brief",
+          description: "x".repeat(10_000),
+          acceptanceCriteria: ["y".repeat(1_000)],
+          affectedScope: ["z".repeat(2_000)],
+        },
+      },
+      {
+        ...options,
+        fetchImpl: vi.fn(async (_url, init) => {
+          const variables = (
+            JSON.parse(String(init?.body)) as {
+              variables: { input: { description: string } }
+            }
+          ).variables
+          description = variables.input.description
+          return Response.json({
+            data: {
+              issueCreate: {
+                success: true,
+                issue: {
+                  id: "issue-large",
+                  url: "https://linear.app/team/issue/FGE-LARGE",
+                  title: "Large approved brief",
+                  description,
+                  team: { id: "team-1" },
+                },
+              },
+            },
+          })
+        }) as unknown as typeof fetch,
+      },
+    )
+
+    expect(result.ok).toBe(true)
+    expect(description).toHaveLength(8_000)
+    expect(description).toContain(marker)
+    expect(description).toContain(`Payload digest: ${payloadDigest}`)
+  })
+
   it("returns exact multiple matches as manual-reconciliation candidates", async () => {
     const marker = "forge-seo:p1:v1:aaaaaaaaaaaa"
     const payloadDigest = "a".repeat(64)

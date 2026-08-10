@@ -74,6 +74,32 @@ describe("AdminGraphqlClient SEO contracts", () => {
     )
   })
 
+  it("accepts engineering proposals without an Admin content target", async () => {
+    const workspace = buildSeoDemoWorkspace()
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              managerSeoWorkspace: {
+                ...workspace,
+                proposals: [{ ...workspace.proposals[0], targetId: null }],
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    )
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example.test/api/graphql",
+      fetchImpl: fetchImpl as typeof fetch,
+    })
+
+    await expect(client.getSeoWorkspace()).resolves.toMatchObject({
+      proposals: [expect.objectContaining({ targetId: null })],
+    })
+  })
+
   it("selects and parses Admin's object-shaped proposal decision, materialization, and editorial diff", async () => {
     const workspace = buildSeoDemoWorkspace()
     const rawWorkspace = {

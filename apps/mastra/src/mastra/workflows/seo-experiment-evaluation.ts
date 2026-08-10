@@ -72,8 +72,19 @@ async function probeActivation(
     resolveHost?: Parameters<typeof fetchSeoUrl>[1]["resolveHost"]
   } = {},
 ): Promise<{ hash: string | null; matched: boolean; caveat?: string }> {
+  if (experiment.lane === "editorial") {
+    return {
+      hash: experiment.currentCanonicalActivationHash,
+      matched:
+        experiment.currentCanonicalActivationHash ===
+        experiment.expectedActivationHash,
+      ...(experiment.currentCanonicalActivationHash
+        ? {}
+        : { caveat: "canonical_content_unavailable" }),
+    }
+  }
   const probe = experiment.deploymentProbe
-  if (experiment.lane === "engineering" && !probe) {
+  if (!probe) {
     return { hash: null, matched: false, caveat: "ticket_only" }
   }
   if (probe && !["page_text_hash", "response_header"].includes(probe.type)) {
@@ -101,8 +112,7 @@ async function probeActivation(
     const observed = value == null ? null : sha256(value)
     return {
       hash: observed,
-      matched:
-        value === probe.expectedValue || observed === probe.expectedValue,
+      matched: observed === experiment.expectedActivationHash,
       ...(value == null ? { caveat: "header_missing" } : {}),
     }
   }
@@ -111,7 +121,7 @@ async function probeActivation(
   )
   return {
     hash: observed,
-    matched: observed === (probe?.expectedValue ?? experiment.treatmentHash),
+    matched: observed === experiment.expectedActivationHash,
   }
 }
 
@@ -280,10 +290,10 @@ export async function runSeoExperimentEvaluation(
 ) {
   const input = SeoExperimentEvaluationInputSchema.parse(rawInput)
   const config = deps.config ?? getSeoConfig()
-  if (config.automationMode === "off") {
+  if (config.automationMode !== "live") {
     return SeoExperimentEvaluationOutputSchema.parse({
       ok: true,
-      mode: "off",
+      mode: config.automationMode,
       claimed: 0,
       recorded: 0,
       awaitingActivation: 0,
@@ -313,57 +323,61 @@ export async function runSeoExperimentEvaluation(
   let insufficient = 0
   let failed = 0
   for (const experiment of claimed.result.experiments) {
-    let event: EvaluationEvent
-    if (experiment.stage === "activation") {
-      const probe = await probeActivation(experiment, config, {
-        fetchImpl: deps.fetchImpl,
-        resolveHost: deps.resolveHost,
+    try {
+      let event: EvaluationEvent
+      if (experiment.stage === "activation") {
+        const probe = await probeActivation(experiment, config, {
+          fetchImpl: deps.fetchImpl,
+          resolveHost: deps.resolveHost,
+        })
+        event = {
+          type:
+            probe.caveat === "ticket_only"
+              ? "ticket_only"
+              : probe.matched
+                ? "activated"
+                : "awaiting_activation",
+          observedAt: new Date().toISOString(),
+          observedHash: probe.hash,
+          metrics: {},
+          caveats: probe.caveat ? [probe.caveat] : [],
+        }
+        if (!probe.matched) awaitingActivation += 1
+      } else {
+        event = await evaluateMetrics(experiment, config, deps)
+        if (
+          experiment.stage === "interim" &&
+          !["insufficient_data", "inconclusive"].includes(event.type)
+        ) {
+          event = { ...event, type: "interim" }
+        }
+        if (event.type === "insufficient_data") insufficient += 1
+      }
+      const result = await (deps.record ?? recordSeoEvaluation)({
+        action: "record_result",
+        experimentId: experiment.id,
+        claimGeneration: experiment.claimGeneration,
+        claimToken: experiment.claimToken,
+        kind: experiment.stage,
+        outcome: event.type,
+        metrics: event.metrics,
+        evidenceDigest: sha256(JSON.stringify(event)),
+        confounders: experiment.confounders,
+        observedAt: event.observedAt,
+        observedActivationHash:
+          experiment.stage === "activation" && event.type === "activated"
+            ? event.observedHash
+            : null,
+        activatedAt:
+          experiment.stage === "activation" && event.type === "activated"
+            ? event.observedAt
+            : null,
       })
-      event = {
-        type:
-          probe.caveat === "ticket_only"
-            ? "ticket_only"
-            : probe.matched
-              ? "activated"
-              : "awaiting_activation",
-        observedAt: new Date().toISOString(),
-        observedHash: probe.hash,
-        metrics: {},
-        caveats: probe.caveat ? [probe.caveat] : [],
-      }
-      if (!probe.matched) awaitingActivation += 1
-    } else {
-      event = await evaluateMetrics(experiment, config, deps)
-      if (
-        experiment.stage === "interim" &&
-        !["insufficient_data", "inconclusive"].includes(event.type)
-      ) {
-        event = { ...event, type: "interim" }
-      }
-      if (event.type === "insufficient_data") insufficient += 1
+      if (result.ok) recorded += 1
+      else failed += 1
+    } catch {
+      failed += 1
     }
-    const outcome = await (deps.record ?? recordSeoEvaluation)({
-      action: "record_result",
-      experimentId: experiment.id,
-      claimGeneration: experiment.claimGeneration,
-      claimToken: experiment.claimToken,
-      kind: experiment.stage,
-      outcome: event.type,
-      metrics: event.metrics,
-      evidenceDigest: sha256(JSON.stringify(event)),
-      confounders: experiment.confounders,
-      observedAt: event.observedAt,
-      observedActivationHash:
-        experiment.stage === "activation" && event.type === "activated"
-          ? event.observedHash
-          : null,
-      activatedAt:
-        experiment.stage === "activation" && event.type === "activated"
-          ? event.observedAt
-          : null,
-    })
-    if (outcome.ok) recorded += 1
-    else failed += 1
   }
   return SeoExperimentEvaluationOutputSchema.parse({
     ok: failed === 0,

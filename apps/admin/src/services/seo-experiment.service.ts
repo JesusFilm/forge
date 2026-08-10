@@ -21,8 +21,8 @@ import {
   SeoTargetConflictError,
   SeoTargetService,
   SeoTargetStaleError,
-  seoExperienceLocaleSnapshot,
   seoContentHash,
+  seoExperienceLocaleSnapshot,
   seoVideoLocaleSnapshot,
 } from "./seo-target.service"
 
@@ -44,12 +44,13 @@ const ExperimentableEngineeringBrief = z
     ticketOnly: z.literal(false),
     deploymentProbe: z
       .object({
-        type: z.enum([
-          "page_text_hash",
-          "structured_data_path",
-          "response_header",
-          "performance_budget",
-        ]),
+        type: z.enum(["page_text_hash", "response_header"]),
+        expectedValue: z.string().trim().min(1).max(1_000),
+        headerName: z
+          .string()
+          .regex(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/)
+          .max(191)
+          .optional(),
       })
       .passthrough(),
   })
@@ -109,6 +110,7 @@ export const SeoStartRunInput = z
     windowStart: z.string().datetime().nullable().optional(),
     windowEnd: z.string().datetime().nullable().optional(),
     targetLimit: z.number().int().min(1).max(5_000).default(1_000),
+    leaseSeconds: z.number().int().min(60).max(1_800).default(900),
   })
   .strict()
 
@@ -116,6 +118,8 @@ export const SeoCompleteRunInput = z
   .object({
     action: z.literal("complete_run"),
     runId: BoundedId,
+    claimGeneration: z.number().int().positive(),
+    claimToken: BoundedId,
     status: SeoRunTerminalStatusInput,
     providerCoverage: JsonValue.default({}),
     report: JsonValue.default({}),
@@ -370,7 +374,20 @@ function iso(value: Date | null | undefined) {
 }
 
 export function isExperimentableEngineeringBrief(value: unknown): boolean {
-  return ExperimentableEngineeringBrief.safeParse(value).success
+  return engineeringExpectedActivationHash(value) !== null
+}
+
+function engineeringExpectedActivationHash(value: unknown): string | null {
+  const parsed = ExperimentableEngineeringBrief.safeParse(value)
+  if (!parsed.success) return null
+  const probe = parsed.data.deploymentProbe
+  if (probe.type === "page_text_hash") {
+    return Digest.safeParse(probe.expectedValue).success
+      ? probe.expectedValue
+      : null
+  }
+  if (!probe.headerName) return null
+  return createHash("sha256").update(probe.expectedValue).digest("hex")
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -493,37 +510,152 @@ export class SeoExperimentService {
     assertion: VerifiedSeoWorkloadAssertion
     input: z.infer<typeof SeoStartRunInput>
   }) {
-    return this.prisma.$transaction(async (tx) => {
-      await this.consumeWorkloadAssertion(tx, assertion)
-      const existing = await tx.seoRun.findUnique({
-        where: { idempotencyKey: input.idempotencyKey },
-      })
-      if (existing) {
-        const context = await this.loadRunContext(tx, input.targetLimit)
-        return { ...this.runRecord(existing), ...context, replayed: true }
-      }
-      const mode = leastPermissiveMode(
-        enumMode(input.mode),
-        await this.lockAutomationMode(tx),
-      )
-      const run = await tx.seoRun.create({
-        data: {
-          idempotencyKey: input.idempotencyKey,
-          mode,
-          windowStart: input.windowStart ? new Date(input.windowStart) : null,
-          windowEnd: input.windowEnd ? new Date(input.windowEnd) : null,
-          ...(mode === "OFF"
-            ? {
-                status: "COMPLETED",
-                completedAt: new Date(),
-                suppressedOperations: ["provider_work", "proposal_persistence"],
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            await this.consumeWorkloadAssertion(tx, assertion)
+            const mode = leastPermissiveMode(
+              enumMode(input.mode),
+              await this.lockAutomationMode(tx),
+            )
+            const now = new Date()
+            const runId = randomUUID()
+            const claimToken = randomUUID()
+            const claimTokenHash = createHash("sha256")
+              .update(claimToken)
+              .digest("hex")
+            const claimExpiresAt = new Date(
+              now.getTime() + input.leaseSeconds * 1_000,
+            )
+            let run = await tx.seoRun.upsert({
+              where: { idempotencyKey: input.idempotencyKey },
+              update: {},
+              create: {
+                id: runId,
+                idempotencyKey: input.idempotencyKey,
+                mode,
+                windowStart: input.windowStart
+                  ? new Date(input.windowStart)
+                  : null,
+                windowEnd: input.windowEnd ? new Date(input.windowEnd) : null,
+                ...(mode === "OFF"
+                  ? {
+                      status: "COMPLETED" as const,
+                      completedAt: now,
+                      suppressedOperations: [
+                        "provider_work",
+                        "proposal_persistence",
+                      ],
+                    }
+                  : {
+                      executionFenceGeneration: 1,
+                      executionClaimTokenHash: claimTokenHash,
+                      executionClaimExpiresAt: claimExpiresAt,
+                    }),
+              },
+            })
+            let executionClaim =
+              run.id === runId && mode !== "OFF"
+                ? {
+                    generation: 1,
+                    token: claimToken,
+                    expiresAt: claimExpiresAt.toISOString(),
+                  }
+                : null
+            let replayed = run.id !== runId
+            if (
+              replayed &&
+              run.status === "RUNNING" &&
+              (!run.executionClaimExpiresAt ||
+                run.executionClaimExpiresAt <= now)
+            ) {
+              if (mode === "OFF") {
+                const terminalized = await tx.seoRun.updateMany({
+                  where: {
+                    id: run.id,
+                    status: "RUNNING",
+                    OR: [
+                      { executionClaimExpiresAt: null },
+                      { executionClaimExpiresAt: { lte: now } },
+                    ],
+                  },
+                  data: {
+                    status: "COMPLETED",
+                    mode: "OFF",
+                    executionClaimTokenHash: null,
+                    executionClaimExpiresAt: null,
+                    suppressedOperations: {
+                      set: ["provider_work", "proposal_persistence"],
+                    },
+                    completedAt: now,
+                  },
+                })
+                if (terminalized.count === 1) {
+                  run = await tx.seoRun.findUniqueOrThrow({
+                    where: { id: run.id },
+                  })
+                }
+              } else {
+                const reclaimedMode = leastPermissiveMode(run.mode, mode)
+                const reclaimed = await tx.seoRun.updateMany({
+                  where: {
+                    id: run.id,
+                    status: "RUNNING",
+                    OR: [
+                      { executionClaimExpiresAt: null },
+                      { executionClaimExpiresAt: { lte: now } },
+                    ],
+                  },
+                  data: {
+                    mode: reclaimedMode,
+                    executionFenceGeneration: { increment: 1 },
+                    executionClaimTokenHash: claimTokenHash,
+                    executionClaimExpiresAt: claimExpiresAt,
+                  },
+                })
+                if (reclaimed.count === 1) {
+                  run = await tx.seoRun.findUniqueOrThrow({
+                    where: { id: run.id },
+                  })
+                  executionClaim = {
+                    generation: run.executionFenceGeneration,
+                    token: claimToken,
+                    expiresAt: claimExpiresAt.toISOString(),
+                  }
+                  replayed = false
+                }
               }
-            : {}),
-        },
-      })
-      const context = await this.loadRunContext(tx, input.targetLimit)
-      return { ...this.runRecord(run), ...context, replayed: false }
-    })
+            }
+            const context = await this.loadRunContext(tx, input.targetLimit)
+            return {
+              ...this.runRecord(run),
+              ...context,
+              executionClaim,
+              replayed,
+            }
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        )
+      } catch (error) {
+        if (
+          !(
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2034"
+          ) ||
+          attempt === 2
+        ) {
+          throw error
+        }
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            10 * 2 ** attempt + Math.floor(Math.random() * 10),
+          ),
+        )
+      }
+    }
+    throw new SeoLedgerConflictError("run_start_retry_exhausted")
   }
 
   async completeRun({
@@ -539,7 +671,29 @@ export class SeoExperimentService {
         const run = await tx.seoRun.findUnique({ where: { id: input.runId } })
         if (!run) throw new SeoLedgerConflictError("run_not_found")
         if (run.status !== "RUNNING") {
+          if (run.status !== enumRunStatus(input.status)) {
+            throw new SeoLedgerConflictError("run_fence_lost")
+          }
           return { ...this.runRecord(run), replayed: true }
+        }
+        const now = new Date()
+        const claimTokenHash = createHash("sha256")
+          .update(input.claimToken)
+          .digest("hex")
+        const consumedClaim = await tx.seoRun.updateMany({
+          where: {
+            id: run.id,
+            status: "RUNNING",
+            executionFenceGeneration: input.claimGeneration,
+            executionClaimTokenHash: claimTokenHash,
+          },
+          data: {
+            executionClaimTokenHash: null,
+            executionClaimExpiresAt: null,
+          },
+        })
+        if (consumedClaim.count !== 1) {
+          throw new SeoLedgerConflictError("run_fence_lost")
         }
         const effectiveMode = leastPermissiveMode(
           run.mode,
@@ -592,7 +746,7 @@ export class SeoExperimentService {
                       "experiment_creation",
                     ]),
                   ),
-            completedAt: new Date(),
+            completedAt: now,
           },
         })
         return { ...this.runRecord(completed), replayed: false }
@@ -779,13 +933,44 @@ export class SeoExperimentService {
             "Proposal expired and must be regenerated.",
           )
         }
-        const overlapCount = await tx.seoProposal.count({
-          where: {
-            id: { not: version.proposalId },
-            semanticConflictKey: version.proposal.semanticConflictKey,
-            status: { in: ["PROPOSED", "APPROVED", "MATERIALIZED"] },
-          },
-        })
+        const [overlappingProposals, activeOverlappingExperiments] =
+          await Promise.all([
+            tx.seoProposal.findMany({
+              where: {
+                id: { not: version.proposalId },
+                semanticConflictKey: version.proposal.semanticConflictKey,
+                status: { in: ["PROPOSED", "APPROVED", "MATERIALIZED"] },
+              },
+              select: { id: true },
+            }),
+            tx.seoExperiment.findMany({
+              where: {
+                proposalVersionId: { not: version.id },
+                status: { in: ["AWAITING_ACTIVATION", "MEASURING"] },
+                proposalVersion: {
+                  proposal: {
+                    semanticConflictKey: version.proposal.semanticConflictKey,
+                  },
+                },
+              },
+              select: {
+                id: true,
+                confounders: true,
+                proposalVersion: { select: { proposalId: true } },
+              },
+            }),
+          ])
+        const overlapIdentities = new Set(
+          overlappingProposals.map((proposal) => `proposal:${proposal.id}`),
+        )
+        for (const experiment of activeOverlappingExperiments) {
+          overlapIdentities.add(
+            experiment.proposalVersion.proposalId === version.proposalId
+              ? `experiment:${experiment.id}`
+              : `proposal:${experiment.proposalVersion.proposalId}`,
+          )
+        }
+        const overlapCount = overlapIdentities.size
         if (
           expectedAction === "approve" &&
           overlapCount > 0 &&
@@ -846,7 +1031,10 @@ export class SeoExperimentService {
           await tx.seoProposalMaterialization.create({
             data: { proposalVersionId: version.id, status: "TICKET_PENDING" },
           })
-          if (isExperimentableEngineeringBrief(version.engineeringBrief)) {
+          const expectedActivationHash = engineeringExpectedActivationHash(
+            version.engineeringBrief,
+          )
+          if (expectedActivationHash) {
             await tx.seoExperiment.create({
               data: {
                 proposalVersionId: version.id,
@@ -854,9 +1042,8 @@ export class SeoExperimentService {
                 treatmentSnapshot: inputJson(version.treatmentSnapshot),
                 preChangeHash: seoContentHash(version.preChangeSnapshot),
                 treatmentHash: seoContentHash(version.treatmentSnapshot),
-                confounders: inputJson(
-                  overlapCount > 0 ? ["overlapping_change"] : [],
-                ),
+                expectedActivationHash,
+                confounders: inputJson([]),
               },
             })
           }
@@ -909,9 +1096,8 @@ export class SeoExperimentService {
               treatmentSnapshot: materialized.treatmentSnapshot,
               preChangeHash: materialized.preChangeHash,
               treatmentHash: materialized.treatmentHash,
-              confounders: inputJson(
-                overlapCount > 0 ? ["overlapping_change"] : [],
-              ),
+              expectedActivationHash: materialized.expectedActivationHash,
+              confounders: inputJson([]),
             },
           })
           await tx.seoProposal.update({
@@ -1133,10 +1319,20 @@ export class SeoExperimentService {
           },
           include: { proposalVersion: { include: { proposal: true } } },
         })
+        const currentHashes =
+          experiment.proposalVersion.proposal.lane === "ENGINEERING"
+            ? null
+            : await this.targets.currentHashes({
+                tx,
+                targetType: experiment.proposalVersion.proposal.targetType,
+                targetId: experiment.proposalVersion.proposal.targetId,
+                locale: experiment.proposalVersion.proposal.locale,
+              })
         claimed.push({
           ...experiment,
           claimGeneration: experiment.evaluationFenceGeneration,
           claimToken,
+          currentCanonicalActivationHash: currentHashes?.activationHash ?? null,
         })
       }
       return claimed
@@ -1167,8 +1363,7 @@ export class SeoExperimentService {
       if (
         experiment.evaluationFenceGeneration !== input.claimGeneration ||
         experiment.evaluationClaimTokenHash !== claimTokenHash ||
-        !experiment.evaluationClaimExpiresAt ||
-        experiment.evaluationClaimExpiresAt <= new Date()
+        !experiment.evaluationClaimExpiresAt
       ) {
         throw new SeoLedgerConflictError("evaluation_fence_lost")
       }
@@ -1192,9 +1387,83 @@ export class SeoExperimentService {
         input.kind !== "activation" &&
         (experiment.status !== "MEASURING" ||
           !experiment.activatedAt ||
-          experiment.observedActivationHash !== experiment.treatmentHash)
+          experiment.observedActivationHash !==
+            experiment.expectedActivationHash)
       ) {
         throw new SeoLedgerConflictError("experiment_not_activated")
+      }
+      let observedActivationHash = input.observedActivationHash ?? null
+      let outcome = input.outcome
+      if (
+        input.kind === "activation" &&
+        experiment.proposalVersion.proposal.lane !== "ENGINEERING"
+      ) {
+        const currentHashes = await this.targets.currentHashes({
+          tx,
+          targetType: experiment.proposalVersion.proposal.targetType,
+          targetId: experiment.proposalVersion.proposal.targetId,
+          locale: experiment.proposalVersion.proposal.locale,
+        })
+        const currentActivationHash = currentHashes?.activationHash ?? null
+        const activationMatches =
+          currentActivationHash === experiment.expectedActivationHash
+        observedActivationHash = activationMatches
+          ? currentActivationHash
+          : null
+        outcome = activationMatches ? "activated" : "awaiting_activation"
+      }
+      if (
+        input.kind === "activation" &&
+        observedActivationHash &&
+        observedActivationHash !== experiment.expectedActivationHash
+      ) {
+        throw new SeoLedgerConflictError("activation_hash_mismatch")
+      }
+      const effectiveConfounders = new Set([
+        ...strings(experiment.confounders),
+        ...strings(input.confounders),
+      ])
+      let finalCanonicalHashes: {
+        contentHash: string
+        activationHash: string
+      } | null = null
+      if (
+        input.kind === "final" &&
+        ["beneficial", "neutral", "harmful"].includes(outcome.toLowerCase()) &&
+        experiment.proposalVersion.proposal.lane !== "ENGINEERING"
+      ) {
+        finalCanonicalHashes = await this.targets.currentHashes({
+          tx,
+          targetType: experiment.proposalVersion.proposal.targetType,
+          targetId: experiment.proposalVersion.proposal.targetId,
+          locale: experiment.proposalVersion.proposal.locale,
+        })
+        if (
+          finalCanonicalHashes?.activationHash !==
+          experiment.expectedActivationHash
+        ) {
+          effectiveConfounders.add("canonical_content_changed")
+          outcome = "inconclusive"
+        }
+      }
+      const overlappingExperiments =
+        input.kind === "activation" && observedActivationHash
+          ? await tx.seoExperiment.findMany({
+              where: {
+                id: { not: experiment.id },
+                status: "MEASURING",
+                proposalVersion: {
+                  proposal: {
+                    semanticConflictKey:
+                      experiment.proposalVersion.proposal.semanticConflictKey,
+                  },
+                },
+              },
+              select: { id: true, confounders: true },
+            })
+          : []
+      if (overlappingExperiments.length > 0) {
+        effectiveConfounders.add("overlapping_change")
       }
       const consumedFence = await tx.seoExperiment.updateMany({
         where: {
@@ -1202,7 +1471,6 @@ export class SeoExperimentService {
           status: experiment.status,
           evaluationFenceGeneration: input.claimGeneration,
           evaluationClaimTokenHash: claimTokenHash,
-          evaluationClaimExpiresAt: { gt: now },
         },
         data: {
           evaluationClaimTokenHash: null,
@@ -1212,27 +1480,32 @@ export class SeoExperimentService {
       if (consumedFence.count !== 1) {
         throw new SeoLedgerConflictError("evaluation_fence_lost")
       }
+      for (const overlapping of overlappingExperiments) {
+        const confounders = new Set(strings(overlapping.confounders))
+        confounders.add("overlapping_change")
+        await tx.seoExperiment.update({
+          where: { id: overlapping.id },
+          data: { confounders: inputJson([...confounders]) },
+        })
+      }
       const event = await tx.seoEvaluationEvent.create({
         data: {
           experimentId: experiment.id,
           kind: input.kind.toUpperCase() as "ACTIVATION" | "INTERIM" | "FINAL",
-          outcome: input.outcome,
+          outcome,
           metrics: inputJson(input.metrics),
           evidenceDigest: input.evidenceDigest,
-          confounders: inputJson(input.confounders),
+          confounders: inputJson([...effectiveConfounders]),
           observedAt: new Date(input.observedAt),
         },
       })
       const update: Prisma.SeoExperimentUpdateInput = {}
-      if (input.kind === "activation" && input.observedActivationHash) {
-        if (input.observedActivationHash !== experiment.treatmentHash) {
-          throw new SeoLedgerConflictError("activation_hash_mismatch")
-        }
+      if (input.kind === "activation" && observedActivationHash) {
         const activatedAt = input.activatedAt
           ? new Date(input.activatedAt)
           : new Date(input.observedAt)
         update.status = "MEASURING"
-        update.observedActivationHash = input.observedActivationHash
+        update.observedActivationHash = observedActivationHash
         update.activatedAt = activatedAt
         update.measurementStartsAt = activatedAt
         update.interimDueAt = new Date(activatedAt.getTime() + 7 * 86_400_000)
@@ -1240,7 +1513,7 @@ export class SeoExperimentService {
       } else if (input.kind === "interim") {
         update.interimDueAt = null
       } else if (input.kind === "final") {
-        const terminal = input.outcome.toUpperCase()
+        const terminal = outcome.toUpperCase()
         if (
           ["BENEFICIAL", "NEUTRAL", "HARMFUL", "INCONCLUSIVE"].includes(
             terminal,
@@ -1258,6 +1531,9 @@ export class SeoExperimentService {
           )
         }
       }
+      if (effectiveConfounders.size > 0) {
+        update.confounders = inputJson([...effectiveConfounders])
+      }
       await tx.seoExperiment.update({
         where: { id: experiment.id },
         data: update,
@@ -1267,7 +1543,12 @@ export class SeoExperimentService {
           tx,
           experiment,
           event,
-          input,
+          input: {
+            ...input,
+            outcome,
+            confounders: [...effectiveConfounders],
+          },
+          currentHashes: finalCanonicalHashes,
         })
       }
       return {
@@ -1290,9 +1571,17 @@ export class SeoExperimentService {
       await this.assertLiveAutomationMode(tx)
       const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT id FROM seo_ticket_outbox
-        WHERE status IN ('pending', 'retryable')
-          AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
-          AND (lease_expires_at IS NULL OR lease_expires_at <= NOW())
+        WHERE (
+          (
+            status IN ('pending', 'retryable')
+            AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
+            AND (lease_expires_at IS NULL OR lease_expires_at <= NOW())
+          )
+          OR (
+            status = 'claimed'
+            AND lease_expires_at <= NOW()
+          )
+        )
         ORDER BY created_at ASC
         LIMIT 1 FOR UPDATE SKIP LOCKED
       `)
@@ -1563,11 +1852,16 @@ export class SeoExperimentService {
     experiment,
     event,
     input,
+    currentHashes,
   }: {
     tx: SeoTransaction
     experiment: ExperimentWithProposal
     event: { id: string; outcome: string; observedAt: Date }
     input: RecordEvaluationInput
+    currentHashes: {
+      contentHash: string
+      activationHash: string
+    } | null
   }) {
     const terminal = input.outcome.toUpperCase()
     const confounders = strings(input.confounders)
@@ -1666,7 +1960,7 @@ export class SeoExperimentService {
         idempotencyKey: `rollback:${experiment.id}:v1`,
         payloadDigest,
         canonicalIdentityDigest: source.canonicalIdentityDigest,
-        baseContentHash: experiment.treatmentHash,
+        baseContentHash: currentHashes?.contentHash ?? experiment.treatmentHash,
         intent:
           "Restore the immutable pre-change state after a harmful result.",
         expectedOutcome:

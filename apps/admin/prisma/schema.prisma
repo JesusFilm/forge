@@ -864,6 +864,9 @@ model SeoRun {
   ticketCount          Int                      @default(0) @map("ticket_count")
   experimentCount      Int                      @default(0) @map("experiment_count")
   suppressedOperations String[]                 @default([]) @map("suppressed_operations")
+  executionFenceGeneration Int                  @default(0) @map("execution_fence_generation")
+  executionClaimTokenHash String?               @map("execution_claim_token_hash")
+  executionClaimExpiresAt DateTime?              @map("execution_claim_expires_at")
   startedAt            DateTime                 @default(now()) @map("started_at")
   completedAt          DateTime?                @map("completed_at")
   createdAt            DateTime                 @default(now()) @map("created_at")
@@ -873,6 +876,7 @@ model SeoRun {
 
   @@index([status, startedAt])
   @@index([mode, startedAt])
+  @@index([status, executionClaimExpiresAt])
   @@map("seo_run")
 }
 
@@ -1039,6 +1043,7 @@ model SeoExperiment {
   treatmentSnapshot      Json                 @map("treatment_snapshot")
   preChangeHash          String               @map("pre_change_hash")
   treatmentHash          String               @map("treatment_hash")
+  expectedActivationHash String               @map("expected_activation_hash")
   observedActivationHash String?              @map("observed_activation_hash")
   activatedAt            DateTime?            @map("activated_at")
   measurementStartsAt    DateTime?            @map("measurement_starts_at")

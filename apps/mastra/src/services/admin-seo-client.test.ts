@@ -46,6 +46,11 @@ describe("Admin SEO client", () => {
           mode: "DRY_RUN",
           status: "RUNNING",
           replayed: false,
+          executionClaim: {
+            generation: 1,
+            token: "run-claim-token",
+            expiresAt: "2026-08-01T00:15:00.000Z",
+          },
           targets: [],
           lessons: [],
           coverage: {},
@@ -76,6 +81,7 @@ describe("Admin SEO client", () => {
       windowStart: "2026-07-01T00:00:00.000Z",
       windowEnd: "2026-08-01T00:00:00.000Z",
       targetLimit: 100,
+      leaseSeconds: 900,
     })
     expect(sign).toHaveBeenCalledWith(
       expect.objectContaining({ capability: "ingest", rawBody }),

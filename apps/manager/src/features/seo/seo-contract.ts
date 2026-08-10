@@ -73,7 +73,7 @@ export type SeoProposal = {
   status: string
   lane: string
   targetType: string
-  targetId: string
+  targetId: string | null
   canonicalUrl: string
   locale: string
   intent: string
@@ -371,7 +371,7 @@ const rawProposalSchema = z.object({
   status: boundedString(80),
   lane: boundedString(80),
   targetType: boundedString(120),
-  targetId: boundedString(300),
+  targetId: boundedString(300).nullable(),
   canonicalUrl: boundedString(2_048),
   locale: boundedString(100),
   intent: boundedString(10_000),

@@ -189,20 +189,23 @@ export async function createLinearTicket(
       ambiguous: false,
     }
   }
-  const description = minimizeSeoText(
-    [
-      input.brief.description,
-      "",
-      "Acceptance criteria",
-      ...input.brief.acceptanceCriteria.map((item) => `- ${item}`),
-      "",
-      `Affected scope: ${input.brief.affectedScope.join(", ")}`,
-      "",
-      input.marker,
-      `Payload digest: ${input.payloadDigest}`,
-    ].join("\n"),
-    8_000,
-  )
+  const reconciliationIdentity = [
+    input.marker,
+    `Payload digest: ${input.payloadDigest}`,
+  ].join("\n")
+  const readableBrief = [
+    input.brief.description,
+    "",
+    "Acceptance criteria",
+    ...input.brief.acceptanceCriteria.map((item) => `- ${item}`),
+    "",
+    `Affected scope: ${input.brief.affectedScope.join(", ")}`,
+  ].join("\n")
+  const identitySuffix = `\n\n${reconciliationIdentity}`
+  const description = `${minimizeSeoText(
+    readableBrief,
+    8_000 - identitySuffix.length,
+  )}${identitySuffix}`
   const result = await linearGraphql(
     `mutation SeoTicketCreate($input: IssueCreateInput!) {
       issueCreate(input: $input) { success issue { id url title description team { id } } }

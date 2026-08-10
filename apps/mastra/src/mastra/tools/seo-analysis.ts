@@ -102,6 +102,11 @@ const EngineeringProposalSchema = CommonProposalSchema.extend({
       expectedValue: z.string().max(1_000),
       canonicalizationVersion: z.string().max(100),
       timeoutMs: z.number().int().min(1_000).max(30_000),
+      headerName: z
+        .string()
+        .regex(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/)
+        .max(191)
+        .optional(),
     })
     .strict()
     .nullable(),
