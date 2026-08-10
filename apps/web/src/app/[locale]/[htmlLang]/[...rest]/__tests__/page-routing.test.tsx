@@ -1311,6 +1311,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         "missing-current": ["m-two"],
         "too-short": ["storyclubs"],
         "collection-b": ["b-one", "storyclubs", "b-spanish"],
+        storyclubs: ["own-one", "own-two"],
       },
       audioLanguageSlugs: ["english", "spanish-castilian"],
       audioLanguageIndexesByEpisode: {
@@ -1322,6 +1323,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
           storyclubs: [0],
           "b-spanish": [1],
         },
+        storyclubs: { "own-one": [0], "own-two": [0] },
       },
     })
     mockRouteVideo(result)
@@ -1426,6 +1428,56 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     )
     expect(carousel?.canonicalParent?.slug).toBe("storyclubs")
     expect(carousel).not.toHaveProperty("selectableParents")
+  })
+
+  it("omits an own-children carousel with fewer than two admitted routes", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const ownChildren = [
+      {
+        documentId: "own-1",
+        slug: "own-one",
+        title: "Own One",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-1",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "own-2",
+        slug: "own-two",
+        title: "Own Two",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-fallback-other-language",
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(result.video as unknown as { children: typeof ownChildren }).children =
+      ownChildren
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: { storyclubs: ["own-one", "own-two"] },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        storyclubs: { "own-one": [0], "own-two": [1] },
+      },
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{ kind?: string }>
+    }
+    expect(
+      props.mergedBlocks.some((block) => block.kind === "SiblingCarousel"),
+    ).toBe(false)
+    expect(jsonLdByType("ItemList")).toBeNull()
   })
 
   it("starts the route manifest request alongside standalone video resolution", async () => {
@@ -1694,7 +1746,8 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const carouselChildren = [
       {
-        documentId: "video-1",
+        documentId: "v1",
+        order: 1,
         slug: "storyclubs",
         title: "StoryClubs",
         label: "episode",
@@ -1708,17 +1761,31 @@ describe("Catch-all routing — series branch (2-seg)", () => {
           },
         ],
         durationSeconds: 30,
-        muxPlaybackId: null,
+        muxPlaybackId: "mux-storyclubs",
         muxThumbnailBlurDataUrl: null,
       },
       {
         documentId: "video-2",
+        order: 2,
         slug: "another-story",
         title: "Another Story",
         label: "episode",
         images: [],
         durationSeconds: null,
-        muxPlaybackId: null,
+        muxPlaybackId: "mux-another-story",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "video-unavailable",
+        order: 3,
+        slug: "unavailable-story",
+        title: "Unavailable Story",
+        label: "episode",
+        images: [],
+        durationSeconds: null,
+        // Admin may return a playback fallback from another language. Route
+        // admission, not this value, determines selected-language availability.
+        muxPlaybackId: "mux-fallback-other-language",
         muxThumbnailBlurDataUrl: null,
       },
     ]
@@ -1742,12 +1809,44 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         canonicalParent: (typeof parents)[number]
       }
     ).canonicalParent = parents[0]!
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        jesus: ["storyclubs", "another-story", "unavailable-story"],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        jesus: {
+          storyclubs: [0],
+          "another-story": [0],
+          "unavailable-story": [1],
+        },
+      },
+    })
     mockRouteVideo(watchVideoResult)
 
     await render2Seg("storyclubs", "english")
 
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      downloadSequence?: { position: number; total: number } | null
+      mergedBlocks?: Array<{
+        kind?: string
+        canonicalParent?: { children?: Array<{ slug?: string }> }
+      }>
+    }
+    expect(props.downloadSequence).toEqual({ position: 1, total: 3 })
+    expect(
+      props.mergedBlocks
+        ?.find((block) => block.kind === "SiblingCarousel")
+        ?.canonicalParent?.children?.map((child) => child.slug),
+    ).toEqual(["storyclubs", "another-story"])
     expect(jsonLdByType("BreadcrumbList")).toBeNull()
-    expect(jsonLdByType("ItemList")).toMatchObject({
+    const itemList = jsonLdByType("ItemList")
+    expect(itemList?.numberOfItems).toBe(2)
+    expect(itemList).toMatchObject({
       itemListElement: [
         {
           "@type": "ListItem",
@@ -2264,6 +2363,37 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     ).toEqual(["watch-page-client-mock", "watch-home-footer"])
   })
 
+  it("starts the route manifest request alongside contextual episode resolution", async () => {
+    let resolveEpisode!: (value: ReturnType<typeof makeEpisodeResult>) => void
+    let resolveManifest!: (value: null) => void
+    resolveSeriesEpisodeBySlugMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveEpisode = resolve
+      }),
+    )
+    getWatchRouteManifestMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveManifest = resolve
+      }),
+    )
+
+    const renderPromise = render3Seg(
+      "lumo-the-gospel-of-john",
+      "wedding-in-cana",
+      "english",
+    )
+    await vi.waitFor(() => {
+      expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledTimes(1)
+      expect(getWatchRouteManifestMock).toHaveBeenCalledTimes(1)
+    })
+
+    resolveEpisode(makeEpisodeResult())
+    resolveManifest(null)
+    await renderPromise
+
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+  })
+
   it("suppresses all JSON-LD for noIndex contextual episodes", async () => {
     const result = makeEpisodeResult()
     result.video.noIndex = true
@@ -2285,6 +2415,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     }
     const anticipateChildren = pilatePageChapterSlugs.map((slug, index) => ({
       documentId: `pilate-chapter-${index + 1}`,
+      order: index + 1,
       slug,
       title: `Pilate chapter ${index + 1}`,
       label: "clip",
@@ -2332,6 +2463,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     )
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       collectionSlug?: string
+      downloadSequence?: { position: number; total: number } | null
       mergedBlocks?: Array<{
         kind?: string
         video?: { documentId?: string; slug?: string }
@@ -2372,6 +2504,7 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       slug: "jesus-is-crucified",
     })
     expect(props.collectionSlug).toBe("anticipate-the-resurrection")
+    expect(props.downloadSequence).toEqual({ position: 20, total: 29 })
     expect(jsonLdByType("BreadcrumbList")).toBeNull()
     expect(jsonLdByType("VideoObject")).toMatchObject({
       url: "https://www.jesusfilm.org/watch/jesus-is-crucified.html",
@@ -2393,7 +2526,96 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       position: 12,
       name: "Pilate chapter 12",
     })
-    expect(getWatchRouteManifestMock).not.toHaveBeenCalled()
+    expect(getWatchRouteManifestMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("omits contextual siblings not admitted for the selected language", async () => {
+    const result = makeEpisodeResult()
+    const children = [
+      {
+        documentId: "ep-1",
+        order: 1,
+        slug: "wedding-in-cana",
+        title: "Wedding in Cana",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-wedding",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "ep-2",
+        order: 2,
+        slug: "living-water",
+        title: "Living Water",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-living-water",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "ep-3",
+        order: 3,
+        slug: "unavailable-episode",
+        title: "Unavailable Episode",
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        // A non-null fallback playback ID must not keep this dead English link.
+        muxPlaybackId: "mux-fallback-other-language",
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(result.series as unknown as { children: typeof children }).children =
+      children
+    ;(
+      result.canonicalParent as unknown as { children: typeof children }
+    ).children = children
+    ;(
+      result.video.parents[0] as unknown as { children: typeof children }
+    ).children = children
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "lumo-the-gospel-of-john": [
+          "wedding-in-cana",
+          "living-water",
+          "unavailable-episode",
+        ],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        "lumo-the-gospel-of-john": {
+          "wedding-in-cana": [0],
+          "living-water": [0],
+          "unavailable-episode": [1],
+        },
+      },
+    })
+
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      downloadSequence?: { position: number; total: number } | null
+      mergedBlocks?: Array<{
+        kind?: string
+        canonicalParent?: { children?: Array<{ slug?: string }> }
+      }>
+    }
+    expect(props.downloadSequence).toEqual({ position: 1, total: 3 })
+    expect(
+      props.mergedBlocks
+        ?.find((block) => block.kind === "SiblingCarousel")
+        ?.canonicalParent?.children?.map((child) => child.slug),
+    ).toEqual(["wedding-in-cana", "living-water"])
+    const itemList = jsonLdByType("ItemList")
+    expect(itemList?.numberOfItems).toBe(2)
+    expect(JSON.stringify(itemList)).not.toContain("unavailable-episode")
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {

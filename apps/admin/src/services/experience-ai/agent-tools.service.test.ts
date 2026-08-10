@@ -32,9 +32,19 @@ describe("searchVideosForAgent", () => {
           title: "Jesus",
           imageUrl: "https://cdn/img.png",
           snippet: "About Jesus.",
-          playbackId: null, // unplayable in the locale — must be dropped
+          // Unplayable in the locale — must be dropped even though its
+          // availability kind is the most-eligible one (the playability
+          // filter is independent of kind).
+          playbackId: null,
           durationSeconds: 7674,
           languageSlug: "english",
+          availability: {
+            kind: "target_audio",
+            languageSlug: "english",
+            languageEnglishName: "English",
+            audio: true,
+            subtitles: false,
+          },
         },
         {
           type: "video",
@@ -46,6 +56,13 @@ describe("searchVideosForAgent", () => {
           playbackId: "pb-1", // playable — kept
           durationSeconds: 312,
           languageSlug: "english",
+          availability: {
+            kind: "target_audio",
+            languageSlug: "english",
+            languageEnglishName: "English",
+            audio: true,
+            subtitles: false,
+          },
         },
       ],
       hasMore: false,
@@ -74,7 +91,10 @@ describe("searchVideosForAgent", () => {
     // ONLY the playable row survives — this is the assertion a deleted filter
     // would fail (the null-playback row would leak through). toStrictEqual +
     // populated fixture fields so the playback-field projection is really
-    // pinned (toEqual ignores undefined-valued keys).
+    // pinned (toEqual ignores undefined-valued keys). The fixture's
+    // availability carries the FULL upstream object so this also pins the
+    // { kind }-only projection — passing result.availability through whole
+    // would leak languageSlug/audio/subtitles and fail here.
     expect(result.videos).toStrictEqual([
       {
         videoId: "vid-2",
@@ -85,6 +105,150 @@ describe("searchVideosForAgent", () => {
         playbackId: "pb-1",
         durationSeconds: 312,
         languageSlug: "english",
+        availability: { kind: "target_audio" },
+      },
+    ])
+  })
+
+  it("projects fallback availability kinds verbatim — admin reports kind, it never filters by it (feat-326/P6)", async () => {
+    // A playable target_subtitle row is the E10 blind spot: an
+    // all-target_audio fixture set leaves a kind filter vacuously green.
+    // Seeker's target_audio-only policy lives in mastra (feat-327), NOT here.
+    searchMock.mockResolvedValue({
+      results: [
+        {
+          type: "video",
+          id: "vid-1",
+          slug: "jesus",
+          title: "Jesus",
+          imageUrl: "https://cdn/img.png",
+          snippet: "About Jesus.",
+          playbackId: "pb-1",
+          durationSeconds: 7674,
+          languageSlug: "english",
+          availability: {
+            kind: "target_audio",
+            languageSlug: "english",
+            languageEnglishName: "English",
+            audio: true,
+            subtitles: false,
+          },
+        },
+        {
+          type: "video",
+          id: "vid-2",
+          slug: "easter",
+          title: "Easter",
+          imageUrl: null,
+          snippet: "Easter video.",
+          // Playable FALLBACK row. Deliberately synthetic:
+          // watchabilityFromSubtitle (search-watchability.ts) hardcodes
+          // playbackId null (verified by hand 2026-08-03; re-check if
+          // watchability changes), so a playable target_subtitle row cannot
+          // reach this projection in production today. The fixture pins the
+          // no-kind-filter contract for ALL kinds — including ones only a
+          // future upstream change could make playable. playbackId is the
+          // single deliberate synthetic divergence; every other field pair
+          // stays producer-consistent.
+          playbackId: "pb-2",
+          durationSeconds: 312,
+          languageSlug: "french",
+          availability: {
+            kind: "target_subtitle",
+            languageSlug: "french",
+            languageEnglishName: "French",
+            audio: false,
+            subtitles: true,
+          },
+        },
+      ],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "watch-search",
+    })
+    const prisma = {
+      language: { findFirst: vi.fn().mockResolvedValue({ slug: "french" }) },
+    } as AnyPrisma
+
+    const result = await searchVideosForAgent(prisma, {
+      q: "jesus",
+      locale: "fr",
+      limit: 5,
+    })
+
+    expect(result.videos).toStrictEqual([
+      {
+        videoId: "vid-1",
+        title: "Jesus",
+        snippet: "About Jesus.",
+        slug: "jesus",
+        imageUrl: "https://cdn/img.png",
+        playbackId: "pb-1",
+        durationSeconds: 7674,
+        languageSlug: "english",
+        availability: { kind: "target_audio" },
+      },
+      {
+        videoId: "vid-2",
+        title: "Easter",
+        snippet: "Easter video.",
+        slug: "easter",
+        imageUrl: null,
+        playbackId: "pb-2",
+        durationSeconds: 312,
+        languageSlug: "french",
+        availability: { kind: "target_subtitle" },
+      },
+    ])
+  })
+
+  it("projects explicit nulls for durationSeconds/languageSlug on a playable row (post-#1789 regression)", async () => {
+    searchMock.mockResolvedValue({
+      results: [
+        {
+          type: "video",
+          id: "vid-3",
+          slug: "hope",
+          title: "Hope",
+          imageUrl: null,
+          snippet: "Hope video.",
+          playbackId: "pb-3",
+          durationSeconds: null,
+          languageSlug: null,
+          availability: {
+            kind: "related_language",
+            languageSlug: "french",
+            languageEnglishName: "French",
+            audio: true,
+            subtitles: false,
+          },
+        },
+      ],
+      hasMore: false,
+      query: "hope",
+      searchMode: "watch-search",
+    })
+    const prisma = {
+      language: { findFirst: vi.fn().mockResolvedValue({ slug: "english" }) },
+    } as AnyPrisma
+
+    const result = await searchVideosForAgent(prisma, {
+      q: "hope",
+      locale: "en",
+      limit: 5,
+    })
+
+    expect(result.videos).toStrictEqual([
+      {
+        videoId: "vid-3",
+        title: "Hope",
+        snippet: "Hope video.",
+        slug: "hope",
+        imageUrl: null,
+        playbackId: "pb-3",
+        durationSeconds: null,
+        languageSlug: null,
+        availability: { kind: "related_language" },
       },
     ])
   })

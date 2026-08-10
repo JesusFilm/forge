@@ -2,10 +2,16 @@
 title: "pnpm patchedDependencies breaks filtered Docker installs unless patches/ is COPYed"
 category: build-errors
 date: 2026-06-11
+last_updated: 2026-08-01
 tags: [pnpm, docker, monorepo, patched-dependencies, railway, shorts-worker]
 module: apps/shorts-worker
-symptom: "ENOENT: no such file or directory, open '.../patches/react-native-tvos@0.81.5-2.patch' during pnpm install --frozen-lockfile in a Docker stage"
-root_cause: "pnpm hashes EVERY file in root package.json pnpm.patchedDependencies at install time, regardless of --filter scope — a Docker stage that copies only lockfile + manifests fails even when the filtered subtree never uses the patched package"
+problem_type: build_error
+component: tooling
+severity: high
+symptoms:
+  - "Filtered pnpm Docker installs fail when root patch files or workspace manifests are absent from the staged filesystem."
+root_cause: incomplete_setup
+resolution_type: code_fix
 ---
 
 # pnpm patchedDependencies breaks filtered Docker installs
@@ -42,3 +48,24 @@ Docker stage that runs `pnpm install` (the shorts-worker Dockerfile has two:
   against the staged file set (the deployment-verification review reproduced
   it in a temp dir before any image was built — cheap and worth doing for
   every new Dockerfile).
+- A recursive pnpm filter includes transitive workspace dependencies only when
+  their manifests exist in the filtered Docker stage. Whenever an app adds a
+  `workspace:*` dependency, copy that package's manifest into every install
+  stage, its source into build/runtime, and its package-level `node_modules`
+  into runtime when the source is executed there. Add the package path to the
+  Railway watch list as well.
+
+## Follow-up: source-shipped Workspace dependencies
+
+The devotional Workspace release added `@forge/devotional-workspace` to Shorts
+Worker. Repository tests remained green because the complete monorepo was
+available, while Railway's filtered Docker build could not resolve the omitted
+workspace package. Materializing that dependency then exposed two more
+container-only assumptions: `BodyInit` was not present in the filtered TypeScript
+environment, and Remotion could not resolve a source-shipped `./styles.js`
+specifier to `styles.ts`.
+
+The regression gate must execute the exact Docker `build` target, including
+both Remotion prebundles. Package tests alone do not prove that manifests,
+ambient types, source imports, and runtime workspace symlinks are present in
+the container's staged filesystem.

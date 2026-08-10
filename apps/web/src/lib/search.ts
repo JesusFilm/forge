@@ -1,6 +1,8 @@
-import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import type { AdminResultOf } from "@forge/admin-graphql"
+import { adminWatchSearchOperation } from "@forge/admin-graphql/operations"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
+import { env } from "@/env"
 import {
   publicSlugForLocale,
   type SearchLanguageResolution,
@@ -119,76 +121,25 @@ export type SearchActionResult =
 
 const MAX_QUERY_LENGTH = 200
 
-const watchSearchOperation = adminGraphql(`
-  query WatchSearch($input: WatchSearchInput!) {
-    watchSearch(input: $input) {
-      requestId
-      query
-      degraded
-      laneStatuses {
-        lane
-        status
-        elapsedMs
-        resultCount
-        reason
-      }
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        snippet
-        playbackId
-        startSeconds
-        score
-        label
-        durationSeconds
-        childCount
-        languageSlug
-        languageEnglishName
-        availability {
-          kind
-          languageEnglishName
-        }
-        evidence {
-          label
-          languageSlug
-        }
-        action {
-          hrefLanguageSlug
-        }
-      }
-      hasMore
-      searchMode
-      latencyMs
-      nextOffset
-    }
-  }
-`)
+export type WatchSearchPrimaryMode = "DEFAULT" | "MODERN"
 
-const watchSearchVideoCatalogLabelOperation = adminGraphql(`
-  query WatchSearchVideoCatalogLabel($slug: String!) {
-    videoBySlug(slug: $slug) {
-      label
-      children {
-        child {
-          id
-        }
-      }
-    }
+export function resolveWatchSearchRouting(
+  mode: WatchSearchPrimaryMode,
+  defaultShadowEnabled: boolean,
+): {
+  mode: WatchSearchPrimaryMode
+  shadowMode: "DEFAULT" | undefined
+} {
+  return {
+    mode,
+    shadowMode:
+      mode === "MODERN" && defaultShadowEnabled ? "DEFAULT" : undefined,
   }
-`)
+}
 
 type WatchSearchResult = AdminResultOf<
-  typeof watchSearchOperation
+  typeof adminWatchSearchOperation
 >["watchSearch"]
-
-type WatchSearchVideoCatalogLabelResult = AdminResultOf<
-  typeof watchSearchVideoCatalogLabelOperation
->["videoBySlug"]
 
 type WatchSearchResultItem = NonNullable<
   NonNullable<WatchSearchResult>["results"]
@@ -273,60 +224,6 @@ function mapWatchSearchAvailabilityKind(
   return null
 }
 
-async function hydrateMissingVideoLabels(
-  results: SearchResult[],
-): Promise<SearchResult[]> {
-  const candidates = results.filter(
-    (result) =>
-      result.type === "video" &&
-      result.label == null &&
-      result.slug.trim().length > 0,
-  )
-
-  if (candidates.length === 0) return results
-
-  const labels = new Map<
-    string,
-    { label: AdminVideoLabel | null; childCount: number | null }
-  >()
-  const slugs = Array.from(new Set(candidates.map((result) => result.slug)))
-
-  await Promise.all(
-    slugs.map(async (slug) => {
-      try {
-        const result = await semanticSearchAdminClient.query({
-          query: watchSearchVideoCatalogLabelOperation,
-          variables: { slug },
-          fetchPolicy: "no-cache",
-        })
-
-        const video: WatchSearchVideoCatalogLabelResult =
-          result.data?.videoBySlug ?? null
-
-        labels.set(slug, {
-          label: (video?.label as AdminVideoLabel | null) ?? null,
-          childCount:
-            video?.children?.filter((relation) => relation?.child != null)
-              .length ?? null,
-        })
-      } catch {
-        labels.set(slug, { label: null, childCount: null })
-      }
-    }),
-  )
-
-  return results.map((result) => {
-    const label = labels.get(result.slug)
-    if (!label?.label) return result
-
-    return {
-      ...result,
-      label: label.label,
-      childCount: result.childCount ?? label.childCount,
-    }
-  })
-}
-
 export async function searchVideos(
   query: string,
   limit = 20,
@@ -336,11 +233,16 @@ export async function searchVideos(
   languageContext: SearchVideosLanguageContext = {},
 ): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
+  const routing = resolveWatchSearchRouting(
+    env.WATCH_SEARCH_PRIMARY_MODE,
+    env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+  )
   const result = await semanticSearchAdminClient.query({
-    query: watchSearchOperation,
+    query: adminWatchSearchOperation,
     variables: {
       input: {
         query: truncatedQuery,
+        ...routing,
         clientRequestId: languageContext.clientRequestId,
         targetLanguageSlug: languageContext.targetLanguageSlug,
         queryLanguageSlug: languageContext.queryLanguageSlug,
@@ -367,12 +269,10 @@ export async function searchVideos(
     throw new Error("Watch search response was empty")
   }
 
-  const results = await hydrateMissingVideoLabels(
-    (response.results ?? []).flatMap((item) => {
-      const mapped = mapWatchSearchResult(item)
-      return mapped ? [mapped] : []
-    }),
-  )
+  const results = (response.results ?? []).flatMap((item) => {
+    const mapped = mapWatchSearchResult(item)
+    return mapped ? [mapped] : []
+  })
 
   return {
     results,

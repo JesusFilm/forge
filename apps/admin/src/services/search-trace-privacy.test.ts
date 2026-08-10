@@ -4,7 +4,9 @@ import {
   SEARCH_TRACE_RULE_LABEL_SOURCE,
   SEARCH_TRACE_RULE_LABEL_VERSION,
   classifySearchTraceQuery,
+  projectWatchSearchComparisonResult,
 } from "./search-trace-privacy"
+import type { WatchSearchComparisonResult } from "./typesense-watch-search-comparison.service"
 
 const now = new Date("2026-05-26T00:00:00.000Z")
 
@@ -139,5 +141,74 @@ describe("classifySearchTraceQuery", () => {
 
     expect(result.queryQualityLabel).toBe("unknown_ambiguous")
     expect(result.queryText).toHaveLength(1024)
+  })
+})
+
+describe("projectWatchSearchComparisonResult", () => {
+  it("redacts the query and emits JSON-safe bounded diagnostics", () => {
+    const success = {
+      status: "success" as const,
+      response: {
+        query: "token=supersecret123",
+        results: [],
+        hasMore: false,
+        nextOffset: 10,
+        searchMode: "watch-search-typesense",
+        requestId: "comparison-request",
+        degraded: false,
+        latencyMs: 10,
+        laneStatuses: [],
+        languageInterpretation: {
+          queryLanguageSlug: null,
+          queryNamedLanguageSlug: null,
+          targetLanguageSlug: "english",
+          targetLanguageSource: "fallback" as const,
+          displayLanguageSlug: null,
+          routeLanguageSlug: null,
+          currentWatchLanguageSlug: null,
+          acceptLanguage: null,
+          acceptLanguageSlug: null,
+        },
+      },
+      diagnostics: {
+        profile: "CANDIDATE" as const,
+        generationId: "generation-1",
+        applicationRevision: "revision-1",
+        transcriptProjectionRevision: 7n,
+        binding: {
+          catalog: "candidate-catalog",
+          availability: "candidate-availability",
+          lexical: "candidate-lexical",
+          transcript: "shared-transcript",
+        },
+        retrievalCalls: 2,
+        logicalSubsearches: 4,
+        queryFieldCount: 3,
+        queryByBytes: 30,
+        requestBytes: 100,
+        parsedResponseBytes: 200,
+        typesenseSearchTimeMs: 8,
+        typesenseWallTimeMs: 9,
+        retryCount: 0,
+        groupedHits: 2,
+        candidates: 2,
+        hydratedRecords: 1,
+      },
+    }
+    const result: WatchSearchComparisonResult = {
+      comparisonId: "comparison-1",
+      input: { query: "token=supersecret123" },
+      current: success,
+      candidate: success,
+    }
+
+    const projected = projectWatchSearchComparisonResult(result)
+    const json = JSON.stringify(projected)
+
+    expect(json).not.toContain("supersecret123")
+    expect(projected.input.query).toContain("[redacted-credential]")
+    expect(projected.candidate).toMatchObject({
+      diagnostics: { transcriptProjectionRevision: "7" },
+    })
   })
 })

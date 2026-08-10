@@ -15,6 +15,9 @@
  * body (R5 — the proxy resolves it from the session).
  */
 
+import { toSources, toVideo, type VideoRejectReason } from "./chat-stub"
+import type { SeekerSource, VideoAttachment } from "./conversations"
+
 /** One sidebar row from the server listing. `title` may be `""` — the
  * untitled sentinel the UI renders as a date-derived fallback label. */
 export type HistoryThreadSummary = {
@@ -23,12 +26,20 @@ export type HistoryThreadSummary = {
   updatedAt: string
 }
 
-/** One replayed turn: plain text only (R21 — no sources/engine metadata). */
+/**
+ * One replayed turn. Text plus, since feat-329, the attachments the turn
+ * carried when it ran — re-validated here through the SAME projections the
+ * live wire uses, so the replay payload is never trusted more than the live
+ * one. R21 still holds: no engine/grounded metadata rides this shape, so a
+ * replayed turn renders its sources and player but no badges.
+ */
 export type HistoryMessage = {
   id: string
   role: "user" | "assistant"
   text: string
   createdAt: string
+  sources?: SeekerSource[]
+  video?: VideoAttachment
 }
 
 /** The closed client-side failure vocabulary (see module JSDoc). */
@@ -111,25 +122,38 @@ function projectThread(candidate: unknown): HistoryThreadSummary | null {
   }
 }
 
-function projectMessage(candidate: unknown): HistoryMessage | null {
+function projectMessage(
+  candidate: unknown,
+  onVideoRejected: (reason: VideoRejectReason) => void,
+): HistoryMessage | null {
   if (typeof candidate !== "object" || candidate === null) return null
   const m = candidate as {
     id?: unknown
     role?: unknown
     text?: unknown
     createdAt?: unknown
+    sources?: unknown
+    video?: unknown
   }
   if (typeof m.id !== "string" || m.id.length === 0) return null
   if (m.role !== "user" && m.role !== "assistant") return null
   const text = typeof m.text === "string" ? m.text : ""
   // A turn with no projected text (e.g. a tool-only assistant step) renders
-  // as an empty bubble — drop it rather than show noise.
+  // as an empty bubble — drop it rather than show noise. Unchanged by
+  // feat-329: the server attaches to the turn's text-bearing message, so a
+  // dropped tool-only step never takes an attachment with it.
   if (text.trim().length === 0) return null
+  // Malformed attachments degrade to ABSENT — never a failed replay. The
+  // transcript is the point; a turn that loses its player still reads.
+  const sources = toSources(m.sources)
+  const video = toVideo(m.video, onVideoRejected)
   return {
     id: m.id,
     role: m.role,
     text,
     createdAt: typeof m.createdAt === "string" ? m.createdAt : "",
+    ...(sources.length > 0 ? { sources } : {}),
+    ...(video ? { video } : {}),
   }
 }
 
@@ -200,10 +224,23 @@ export async function fetchHistoryThread({
   if (body === undefined || !Array.isArray(body.messages)) {
     return { ok: false, reason: "unavailable" }
   }
-  return {
-    ok: true,
-    messages: body.messages
-      .map(projectMessage)
-      .filter((message): message is HistoryMessage => message !== null),
+  // AGGREGATE the video diagnostic (feat-329): a thread open re-projects every
+  // stored turn, so the live per-rejection warning would burst. One line per
+  // replay, counts only — never a wire value.
+  const rejected = new Map<VideoRejectReason, number>()
+  const messages = body.messages
+    .map((candidate) =>
+      projectMessage(candidate, (reason) => {
+        rejected.set(reason, (rejected.get(reason) ?? 0) + 1)
+      }),
+    )
+    .filter((message): message is HistoryMessage => message !== null)
+  if (rejected.size > 0) {
+    const counts = [...rejected.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([reason, count]) => `${reason}=${count}`)
+      .join(" ")
+    console.warn(`[chat-video] event=replay_projection_rejected ${counts}`)
   }
+  return { ok: true, messages }
 }

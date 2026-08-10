@@ -1,6 +1,7 @@
 ---
 title: "Mastra runtime upgrades require revalidating Devotional Workspace boundaries"
 date: "2026-07-31"
+last_updated: "2026-08-01"
 category: "integration-issues"
 module: "apps/mastra"
 problem_type: "integration_issue"
@@ -10,6 +11,7 @@ symptoms:
   - "Direct AWS SDK and PostgreSQL dependencies no longer matched the provider versions selected by the upgraded Mastra adapters."
   - "Programmatic workflow launchers assembled durable input without parsing it through the workflow's runtime schema."
   - "Railway S3 filesystem and digest operations lacked one shared, finite timeout and retry contract."
+  - "The initial cutover design also gave Shorts Worker permanent Devotional Workspace S3 credentials instead of a bounded media-execution capability."
 root_cause: "incomplete_setup"
 resolution_type: "code_fix"
 severity: "medium"
@@ -84,6 +86,13 @@ production incident.
 - Assuming a generic verification test covers a human-approval suspension.
   Source files remain editable while a run is suspended, so mutation between
   suspension and resume is a first-class state transition.
+- Giving Shorts Worker the Devotional Workspace bucket credentials because it
+  renders the bytes. Execution responsibility does not imply storage authority;
+  this widened the credential blast radius and duplicated Workspace ownership.
+- Minting a new temporary upload key when reattaching to an active Worker job.
+  The Worker deduplicates by stable output identity and input hash, so the
+  reattached caller must refresh capabilities for the same keys the active job
+  is already writing.
 - An earlier investigation found that the expected local `devo/corpus` files
   were gitignored and absent, and that Forge had no remote Workspace provider.
   Proxying large MP4 bytes through Mastra merely to write them into Workspace
@@ -209,6 +218,55 @@ The completed integration validation covered:
   filesystem and BM25 search;
 - fresh GitHub checks for PR #1796, including CodeQL, formatting, commit lint,
   patched-dependency guard, affected checks, and schema drift.
+- the signed-capability correction suites: 1,569 Mastra tests, 171 Shorts
+  Worker tests, 66 composition tests, and 3 dedicated Workspace-contract tests;
+  plus typecheck and lint for all four packages and production builds for
+  Mastra Studio and Shorts Worker.
+
+### 6. Keep Workspace credentials in Mastra
+
+The Devotional Workspace owner now writes input artifacts and manifests,
+creates short-lived signed GET/PUT capabilities, and finalizes Worker uploads.
+Shorts Worker receives only the exact capabilities needed for one attempt:
+
+```ts
+const uploadId = inputHash
+const workspaceTransfer = devotionalWorkspaceTransferSchema.parse({
+  schemaVersion: "1",
+  attempt,
+  manifest: await store.createReadGrant(manifestRef),
+  inputs: inputReadGrants,
+  outputs: await createAttemptUploadGrants(uploadId),
+})
+```
+
+The pure-Zod artifact, manifest, and capability schemas live in the neutral
+`@forge/devotional-workspace` package. Mastra and Worker share that versioned
+data-plane contract without making either app depend on the other or placing
+Workspace ownership inside the rendering-composition package.
+
+The Worker has no `DEVOTIONAL_WORKSPACE_S3_*` or Workspace-prefix credentials.
+In production it accepts a capability only when every URL uses HTTPS, has the
+configured exact storage origin, targets its declared attempt-scoped key, and
+expires inside the bounded transfer window. Redirects are disabled.
+
+### 7. Verify before promoting or serving output
+
+The Worker streams each completed MP4 to its signed temporary PUT while hashing
+the bytes. Mastra then verifies the claimed size and SHA-256 from Workspace,
+moves the object to its content-addressed canonical key, and writes the output
+manifest. The manifest persists the verified object ETag. Later checks use that
+ETag, and Range playback binds both the signed GET and upstream request to it
+with `If-Match`, preventing a different object version from being served after
+verification.
+
+A retry first reads the canonical output manifest and reuses it only when it
+contains exactly the expected portrait and wide MP4s, both belong to the same
+attempt, and both still pass Workspace integrity checks. Active-job reattachment
+uses the stable input hash as its temporary upload identity so refreshed signed
+URLs target the same keys. Transient polling failures are retried without
+cancelling a healthy render; terminal failure, confirmed cancellation, and
+timeout paths clean temporary uploads.
 
 ## Why This Works
 
@@ -222,6 +280,15 @@ The completed integration validation covered:
   the failure mode most likely to evade mocked error responses.
 - Digest checks at approval resume and pre-publish preserve one coherent source
   generation even though Studio editors can change Workspace files at any time.
+- Temporary signed capabilities preserve the ownership boundary: Mastra remains
+  the only service with durable Workspace authority while Shorts Worker can
+  still execute large media transfers directly against storage.
+- Content-addressed final keys plus SHA-256 verification establish byte
+  identity; persisted ETags and `If-Match` bind later Range delivery to the
+  exact storage version that passed verification.
+- Stable upload identities and verified canonical output manifests make retries
+  attachable without issuing permanent credentials or rerendering completed
+  attempts.
 - Layered validation distinguishes package correctness, Studio composition,
   and CI evidence from credentialed production release gates.
 
@@ -243,6 +310,16 @@ The completed integration validation covered:
 - For every suspendable workflow, mutate authoritative inputs between suspend
   and resume. Assert both cleanup and the downstream side effect that must not
   occur.
+- Treat signed URLs as transient capabilities. Never persist or log their query
+  strings, require an exact configured storage origin, validate the declared
+  object key, reject redirects, and cap their lifetime.
+- Keep temporary upload keys stable across active-job reattachment, and prove a
+  completed retry verifies canonical outputs without calling the Worker again.
+- Verify large output bytes once before canonical promotion, persist a storage
+  version validator, and bind subsequent conditional or Range reads to it.
+- Retry transient status-poll transport failures without cancelling the remote
+  job. Reserve cancellation and upload cleanup for explicit aborts, timeouts,
+  invalid terminal responses, and terminal job states.
 - Treat green CI as proof only for the surfaces it exercised. Keep live Railway
   storage/database, restart recovery, migrations, backup/restore, and canary
   checks as explicit release evidence.

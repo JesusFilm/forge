@@ -28,8 +28,13 @@ vi.mock("./embeddings.service", () => ({
       this.name = "EmbeddingsBatchError"
     }
   },
-  EXPERIENCE_EMBEDDING_DIMENSIONS: 1536,
+  EXPERIENCE_EMBEDDING_DIMENSIONS: 3,
   OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
+  currentEmbeddingProviderIdentity: () => ({
+    provider: "openrouter",
+    model: "qwen/qwen3-embedding-8b",
+    dimensions: 3,
+  }),
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
 }))
 
@@ -52,11 +57,13 @@ vi.mock("./search-watchability", () => ({
 import { EmbeddingsBatchError } from "./embeddings.service"
 
 import {
+  defaultWatchSearchEmbedder,
   prewarmWatchSearchQueryEmbeddings,
   WATCH_SEARCH_STARTER_QUERIES,
   WatchSearchService,
   WatchSearchValidationError,
 } from "./watch-search.service"
+import { resetWatchSearchQueryEmbeddingProcessCacheForTests } from "./watch-search-query-embedding-cache"
 
 function mockPrisma() {
   return {
@@ -66,6 +73,9 @@ function mockPrisma() {
       findMany: vi.fn(),
     },
     videoImage: {
+      findMany: vi.fn(),
+    },
+    video: {
       findMany: vi.fn(),
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -241,11 +251,13 @@ describe("WatchSearchService", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks()
+    resetWatchSearchQueryEmbeddingProcessCacheForTests()
     prisma = mockPrisma()
     prisma.$executeRaw.mockResolvedValue(1)
     prisma.$queryRaw.mockResolvedValue([])
     prisma.language.findMany.mockResolvedValue(activeSearchLanguages)
     prisma.videoImage.findMany.mockResolvedValue([])
+    prisma.video.findMany.mockResolvedValue([])
     generateExperienceEmbeddingMock.mockResolvedValue({
       embedding: [0.1, 0.2, 0.3],
     })
@@ -468,6 +480,13 @@ describe("WatchSearchService", () => {
         blurDataUrl: "data:image/jpeg;base64,BLUR==",
       },
     ])
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        label: "FEATURE_FILM",
+        children: [],
+      },
+    ])
 
     const result = await service.search({
       query: "JESUS Russian",
@@ -500,6 +519,8 @@ describe("WatchSearchService", () => {
         imageUrl: "https://cdn.example/hero.jpg",
         imageBlurDataUrl: "data:image/jpeg;base64,BLUR==",
         snippet: "The story of Jesus.",
+        label: "FEATURE_FILM",
+        childCount: 0,
         playbackId: "mux-russian",
         durationSeconds: 7200,
         languageSlug: "russian",
@@ -525,6 +546,65 @@ describe("WatchSearchService", () => {
         },
       }),
     ])
+  })
+
+  it("hydrates catalog fields only for the final result page", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("video-1", "First"),
+          exactTitleResult("video-2", "Second"),
+          exactTitleResult("video-3", "Third"),
+        ],
+      }),
+    )
+    hydrateMock.mockResolvedValue(
+      new Map([
+        ["video-1", targetAudioWatchability("video-1")],
+        ["video-2", targetAudioWatchability("video-2")],
+        ["video-3", targetAudioWatchability("video-3")],
+      ]),
+    )
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        label: "FEATURE_FILM",
+        children: [],
+      },
+      {
+        id: "video-2",
+        label: "SERIES",
+        children: [{ childId: "child-1" }, { childId: "child-2" }],
+      },
+    ])
+
+    const result = await service.search({
+      query: "hope",
+      targetLanguageSlug: "russian",
+      displayLanguageSlug: "english",
+      limit: 2,
+    })
+
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: { in: ["video-1", "video-2"] },
+          deletedAt: null,
+        },
+      }),
+    )
+    expect(result.results).toHaveLength(2)
+    expect(result.hasMore).toBe(true)
+    expect(result.results[0]).toMatchObject({
+      id: "video-1",
+      label: "FEATURE_FILM",
+      childCount: 0,
+    })
+    expect(result.results[1]).toMatchObject({
+      id: "video-2",
+      label: "SERIES",
+      childCount: 2,
+    })
   })
 
   it("uses every watchability tier after whole-title class and relevance tie", async () => {
@@ -1561,12 +1641,12 @@ describe("WatchSearchService", () => {
     })
 
     expect(generateExperienceEmbeddingMock).not.toHaveBeenCalled()
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
     expect(result.laneStatuses).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           lane: "semantic_embedding",
-          detail: "cache_hit",
+          detail: "cache_l2_hit",
         }),
       ]),
     )
@@ -1604,12 +1684,7 @@ describe("WatchSearchService", () => {
   })
 
   it("stores default query embeddings in the database for repeated watch searches", async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
-      {
-        embedding: [0.1, 0.2, 0.3],
-        expiresAt: new Date(Date.now() + 60_000),
-      },
-    ])
+    prisma.$queryRaw.mockResolvedValueOnce([])
     service = new WatchSearchService(prisma)
 
     const first = await service.search({
@@ -1627,10 +1702,60 @@ describe("WatchSearchService", () => {
     expect(generateExperienceEmbeddingMock).toHaveBeenCalledWith(
       "Jesus Chinese",
     )
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
     expect(prisma.$executeRaw.mock.calls[0]).toContain(86_400_000)
     expect(firstSemanticEmbeddingDetail(first.laneStatuses)).toBe("cache_miss")
-    expect(firstSemanticEmbeddingDetail(second.laneStatuses)).toBe("cache_hit")
+    expect(firstSemanticEmbeddingDetail(second.laneStatuses)).toBe(
+      "cache_l1_hit",
+    )
+  })
+
+  it("coalesces concurrent default query embedding misses", async () => {
+    const durableLookup = deferred<unknown[]>()
+    prisma.$queryRaw.mockReturnValueOnce(durableLookup.promise)
+
+    const first = defaultWatchSearchEmbedder(prisma, "Jesus Chinese")
+    const second = defaultWatchSearchEmbedder(prisma, "  Jesus   Chinese  ")
+    durableLookup.resolve([])
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { embedding: [0.1, 0.2, 0.3], detail: "cache_miss" },
+      { embedding: [0.1, 0.2, 0.3], detail: "cache_coalesced" },
+    ])
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(generateExperienceEmbeddingMock).toHaveBeenCalledTimes(1)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+  })
+
+  it("fails open to the provider when the durable embedding cache is unavailable", async () => {
+    prisma.$queryRaw.mockRejectedValueOnce(new Error("pool unavailable"))
+    prisma.$executeRaw.mockRejectedValueOnce(new Error("pool unavailable"))
+
+    await expect(
+      defaultWatchSearchEmbedder(prisma, "Jesus Chinese"),
+    ).resolves.toEqual({
+      embedding: [0.1, 0.2, 0.3],
+      detail: "cache_l2_error",
+    })
+    expect(generateExperienceEmbeddingMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not cache invalid provider dimensions or a rejected flight", async () => {
+    generateExperienceEmbeddingMock
+      .mockResolvedValueOnce({ embedding: [0.1, 0.2] })
+      .mockResolvedValueOnce({ embedding: [0.1, 0.2, 0.3] })
+
+    await expect(
+      defaultWatchSearchEmbedder(prisma, "Jesus Chinese"),
+    ).rejects.toThrow("3 finite dimensions")
+    await expect(
+      defaultWatchSearchEmbedder(prisma, "Jesus Chinese"),
+    ).resolves.toEqual({
+      embedding: [0.1, 0.2, 0.3],
+      detail: "cache_miss",
+    })
+    expect(generateExperienceEmbeddingMock).toHaveBeenCalledTimes(2)
   })
 
   it("prewarms default watch category query embeddings", async () => {

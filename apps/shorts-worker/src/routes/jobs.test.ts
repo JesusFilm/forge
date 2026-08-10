@@ -1,4 +1,5 @@
 import type { IncomingMessage } from "node:http"
+import { createHash } from "node:crypto"
 import { Readable, Writable } from "node:stream"
 import { describe, expect, it } from "vitest"
 import { createJobLanes } from "../jobs.js"
@@ -6,6 +7,7 @@ import type {
   runDevotionalRender,
   RunDevotionalRenderInput,
 } from "../devotional-render.js"
+import type { DevotionalWorkspaceTransfer } from "../devotional-transfer.js"
 import type { runPrepare, RunPrepareInput } from "../prepare.js"
 import type { runRender, RunRenderInput } from "../render.js"
 import { createHandleRequest } from "../server.js"
@@ -146,6 +148,114 @@ const devotionalRenderBody = {
   inputHash: "a".repeat(64),
 }
 
+const devotionalAttempt = {
+  workspaceGeneration: 3,
+  attemptId: "attempt_3",
+  runId: "mastra-run-1",
+}
+const devotionalAttemptToken = createHash("sha256")
+  .update(devotionalAttempt.attemptId)
+  .digest("hex")
+  .slice(0, 24)
+const signedExpiresAt = new Date(Date.now() + 60 * 60_000).toISOString()
+const signedCapabilityUrl = (key: string) =>
+  `https://bucket.example/${key}?signed=secret`
+const workspaceRef = (name: string) => ({
+  schemaVersion: "2" as const,
+  key: `runs/g3/${devotionalAttemptToken}/run-input/${"a".repeat(64)}/${name}`,
+  digest: "a".repeat(64),
+  size: 10,
+  contentType: name.endsWith(".json") ? "application/json" : "audio/mpeg",
+  attempt: devotionalAttempt,
+})
+const signedWorkspaceTransfer = {
+  schemaVersion: "1",
+  attempt: devotionalAttempt,
+  manifest: {
+    ref: {
+      ...workspaceRef("manifest.json"),
+      key: `runs/g3/${devotionalAttemptToken}/run-input/manifest.json`,
+    },
+    url: signedCapabilityUrl(
+      `runs/g3/${devotionalAttemptToken}/run-input/manifest.json`,
+    ),
+    expiresAt: signedExpiresAt,
+  },
+  inputs: [
+    {
+      artifactType: "devotional-render-input-v1",
+      ext: "json",
+      ref: workspaceRef("input.json"),
+      url: signedCapabilityUrl(workspaceRef("input.json").key),
+      expiresAt: signedExpiresAt,
+    },
+    {
+      artifactType: "devotional-narration-cover-v1",
+      ext: "mp3",
+      ref: workspaceRef("cover.mp3"),
+      url: signedCapabilityUrl(workspaceRef("cover.mp3").key),
+      expiresAt: signedExpiresAt,
+    },
+  ],
+  outputs: [
+    {
+      artifactType: "devotional-output-portrait-v1",
+      ext: "mp4",
+      key: `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/portrait.mp4`,
+      contentType: "video/mp4",
+      url: signedCapabilityUrl(
+        `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/portrait.mp4`,
+      ),
+      expiresAt: signedExpiresAt,
+    },
+    {
+      artifactType: "devotional-output-wide-v1",
+      ext: "mp4",
+      key: `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/wide.mp4`,
+      contentType: "video/mp4",
+      url: signedCapabilityUrl(
+        `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/wide.mp4`,
+      ),
+      expiresAt: signedExpiresAt,
+    },
+  ],
+} satisfies DevotionalWorkspaceTransfer
+
+const signedDevotionalResult = {
+  artifacts: [
+    {
+      assetId: devotionalRenderBody.outputAssetId,
+      artifactType: "devotional-output-portrait-v1",
+      ext: "mp4",
+    },
+    {
+      assetId: devotionalRenderBody.outputAssetId,
+      artifactType: "devotional-output-wide-v1",
+      ext: "mp4",
+    },
+  ],
+  report: {
+    portrait: {
+      artifact: {
+        assetId: devotionalRenderBody.outputAssetId,
+        artifactType: "devotional-output-portrait-v1",
+        ext: "mp4",
+      },
+      ...renderReport,
+    },
+    wide: {
+      artifact: {
+        assetId: devotionalRenderBody.outputAssetId,
+        artifactType: "devotional-output-wide-v1",
+        ext: "mp4",
+      },
+      outputDurationSec: renderReport.outputDurationSec,
+      width: 1920,
+      height: 1080,
+    },
+  },
+} satisfies Awaited<ReturnType<typeof runDevotionalRender>>
+
 const authedHeaders = { authorization: "Bearer test-key" }
 const auth = { apiKeysCsv: "test-key", nodeEnv: "production" }
 
@@ -156,6 +266,7 @@ function buildHandler(overrides?: Parameters<typeof createHandleRequest>[0]) {
       render: { concurrency: 1, limit: 2 },
     }),
     auth,
+    devotionalWorkspaceAllowedOrigin: "https://bucket.example",
     runPrepareImpl: (async () => ({
       artifacts: [],
       report: prepareReport,
@@ -578,6 +689,68 @@ describe("devotional render job lifecycle", () => {
         },
       },
     })
+  })
+
+  it("passes a validated signed Workspace transfer without logging or persisting URLs", async () => {
+    const inputs: RunDevotionalRenderInput[] = []
+    const handler = buildHandler({
+      runDevotionalRenderImpl: async (input: RunDevotionalRenderInput) => {
+        inputs.push(input)
+        return signedDevotionalResult
+      },
+    })
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        ...devotionalRenderBody,
+        runId: devotionalAttempt.runId,
+        workspaceTransfer: signedWorkspaceTransfer,
+      },
+    })
+    expect(submit.statusCode).toBe(202)
+    await settle()
+
+    expect(inputs[0]?.workspaceTransfer).toEqual(signedWorkspaceTransfer)
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${submit.body.workerJobId as string}`,
+      headers: authedHeaders,
+    })
+    expect(JSON.stringify(status.body)).not.toContain("signed=secret")
+  })
+
+  it("rejects a signed Workspace transfer targeting a private host before enqueue", async () => {
+    let calls = 0
+    const handler = buildHandler({
+      runDevotionalRenderImpl: async () => {
+        calls += 1
+        return signedDevotionalResult
+      },
+    })
+    const response = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        ...devotionalRenderBody,
+        runId: devotionalAttempt.runId,
+        workspaceTransfer: {
+          ...signedWorkspaceTransfer,
+          manifest: {
+            ...signedWorkspaceTransfer.manifest,
+            url: "https://169.254.169.254/metadata",
+          },
+        },
+      },
+    })
+    expect(response).toEqual({
+      statusCode: 400,
+      body: { error: "invalid_body" },
+    })
+    await settle()
+    expect(calls).toBe(0)
   })
 
   it("dedupes active devotional renders by output asset and input hash", async () => {

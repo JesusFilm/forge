@@ -16,8 +16,15 @@ export type RoutableHomeCard = Pick<
  * Series cards → /series, everything else → /watch. Fed the RAW `rawLabel`, and
  * `childCount` is NOT consulted — a film's chapter clips must not route it to
  * /series. String href, not object (an object double-encodes the seed).
+ *
+ * `autoplay` appends the flag the watch screen reads to jump straight into
+ * playback (the Continue Watching shelf — a viewer resuming a video should not
+ * have to press Play again). Ignored on the /series path, which has no player.
  */
-export function resolveHomeCardPath(card: RoutableHomeCard): string | null {
+export function resolveHomeCardPath(
+  card: RoutableHomeCard,
+  options?: { autoplay?: boolean },
+): string | null {
   if (!card.slug) return null
   const seed = encodeWatchSeed({
     slug: card.slug,
@@ -27,6 +34,8 @@ export function resolveHomeCardPath(card: RoutableHomeCard): string | null {
     imageUrl: card.landscapeImageUrl ?? card.imageUrl,
     playbackId: null,
   })
-  const base = isSeriesLabel(card.rawLabel) ? "/series" : "/watch"
-  return `${base}/${encodeURIComponent(card.slug)}?seed=${seed}`
+  const isSeries = isSeriesLabel(card.rawLabel)
+  const base = isSeries ? "/series" : "/watch"
+  const autoplay = options?.autoplay === true && !isSeries ? "&autoplay=1" : ""
+  return `${base}/${encodeURIComponent(card.slug)}?seed=${seed}${autoplay}`
 }

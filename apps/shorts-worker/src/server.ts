@@ -17,6 +17,7 @@ export type ServerDependencies = {
   auth?: JobsRouteOptions["auth"]
   nodeEnv?: JobsRouteOptions["nodeEnv"]
   allowedSourceHosts?: JobsRouteOptions["allowedSourceHosts"]
+  devotionalWorkspaceAllowedOrigin?: JobsRouteOptions["devotionalWorkspaceAllowedOrigin"]
   runPrepareImpl?: JobsRouteOptions["runPrepareImpl"]
   runRenderImpl?: JobsRouteOptions["runRenderImpl"]
   runDevotionalRenderImpl?: JobsRouteOptions["runDevotionalRenderImpl"]
@@ -28,6 +29,7 @@ export function createHandleRequest({
   auth,
   nodeEnv,
   allowedSourceHosts,
+  devotionalWorkspaceAllowedOrigin,
   runPrepareImpl,
   runRenderImpl,
   runDevotionalRenderImpl,
@@ -38,6 +40,7 @@ export function createHandleRequest({
     auth,
     nodeEnv,
     allowedSourceHosts,
+    devotionalWorkspaceAllowedOrigin,
     runPrepareImpl,
     runRenderImpl,
     runDevotionalRenderImpl,

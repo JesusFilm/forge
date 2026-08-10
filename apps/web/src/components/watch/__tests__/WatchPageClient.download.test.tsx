@@ -200,12 +200,14 @@ afterEach(() => {
 })
 
 function renderWatchPage({
+  downloadSequence,
   image,
   languageSlug = "english",
   playbackId = "playback-1",
   subtitles = [],
   videoSlug = "jesus-is-brought-to-pilate",
 }: {
+  downloadSequence?: { position: number; total: number } | null
   image?: { mobileCinematicHigh?: string | null }
   languageSlug?: string
   playbackId?: string | null
@@ -246,6 +248,7 @@ function renderWatchPage({
   act(() => {
     root.render(
       <WatchPageClient
+        downloadSequence={downloadSequence}
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
@@ -337,13 +340,26 @@ describe("WatchPageClient download boundary", () => {
     expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
   })
 
+  it("prefixes the default download filename with its ordered position", () => {
+    renderWatchPage({ downloadSequence: { position: 7, total: 61 } })
+
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      `filename=${encodeURIComponent(
+        "07_Jesus-Is-Brought-to-Pilate_English_eng_360p.mp4",
+      )}`,
+    )
+  })
+
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
       accountGateEnabled: false,
       authenticated: true,
     })
-    renderWatchPage()
+    renderWatchPage({ downloadSequence: { position: 7, total: 61 } })
 
     await act(async () => {
       document
@@ -363,8 +379,10 @@ describe("WatchPageClient download boundary", () => {
       variantId: string
       videoSlug: string
       accountGateEnabled: boolean
+      downloadSequence: { position: number; total: number } | null
     }
     expect(latestProps.accountGateEnabled).toBe(false)
+    expect(latestProps.downloadSequence).toEqual({ position: 7, total: 61 })
     expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
     expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.languageCode).toBe("eng")

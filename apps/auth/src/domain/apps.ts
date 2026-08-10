@@ -12,7 +12,11 @@ export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
 export const CHAT_APP_KEY = "chat"
 export const ADMIN_MCP_APP_KEY = "admin-mcp"
+export const TV_APP_KEY = "tv"
 export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
+export const MOBILE_APP_KEY = "mobile"
+export const MOBILE_LOCAL_CLIENT_ID = "jfp_mobile_local"
+export const MOBILE_PRODUCTION_CLIENT_ID = "jfp_mobile_production"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -73,6 +77,34 @@ export const CHAT_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
+] satisfies AuthScopeKey[]
+
+// Identity-only: mobile's watch-progress permissions ride admin's MOBILE_USER
+// principal (JWKS-verified user JWT), not OAuth scopes.
+export const MOBILE_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+] satisfies AuthScopeKey[]
+
+// Identity + persistence only: the TV performs no authorization, so no *:access
+// and no membership:read. Two entries are load-bearing and must not be trimmed:
+//
+//   offline_access         — a living-room device keeps its session for weeks,
+//                            so it needs a refresh token (the device grant is
+//                            the only way it gets one; nobody types on a TV).
+//   web:watch-events:write — admin's usableWebUserSubject
+//                            (apps/admin/src/auth/web-user-token.ts) rejects any
+//                            token whose scope list omits it, regardless of
+//                            client-id allowlisting, AND the TV promotes its
+//                            anonymous Continue Watching queue into the account
+//                            once the viewer signs in.
+export const TV_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "offline_access",
+  "web:watch-events:write",
 ] satisfies AuthScopeKey[]
 
 // experience:create / experience:generate are experience-level primitives
@@ -429,6 +461,116 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+// Self-RP: Auth is the OAuth client toward its own provider, so redirect
+// URIs are Auth's https callback — forgemobile:// never reaches the OAuth
+// layer. The server-side exchange keeps any secret out of the app.
+export const MOBILE_APP_SEED: RegisteredAppSeed = {
+  key: MOBILE_APP_KEY,
+  displayName: "Jesus Film Watch",
+  description: "Jesus Film mobile watch experience.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: MOBILE_LOCAL_CLIENT_ID,
+      redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+      postLogoutRedirectUris: ["http://localhost:3004"],
+      allowedOrigins: ["http://localhost:3004"],
+      defaultScopes: MOBILE_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: MOBILE_PRODUCTION_CLIENT_ID,
+      redirectUris: ["https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp"],
+      postLogoutRedirectUris: ["https://auth.jesusfilm.org"],
+      allowedOrigins: ["https://auth.jesusfilm.org"],
+      defaultScopes: MOBILE_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
+// A television never navigates a redirect — it displays a code and polls. But
+// @better-auth/oauth-provider's authorization_code grant REQUIRES a
+// redirect_uri: it is bound into the authorization code at issuance and
+// re-compared at /api/auth/oauth2/token. So each TV environment registers
+// exactly one SENTINEL redirect URI. It is a binding value, never a navigable
+// URL: no browser is ever sent there, and no route serves it. Keeping it inside
+// the environment's own auth origin means a leaked device code cannot be
+// steered at a host we do not control.
+export const TV_APP_SEED: RegisteredAppSeed = {
+  key: TV_APP_KEY,
+  displayName: "Jesus Film TV",
+  description:
+    "Living-room Jesus Film watch experience for Apple TV and Android TV.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_tv_local",
+      redirectUris: ["http://localhost:3004/device/callback"],
+      postLogoutRedirectUris: [],
+      // A TV has no browser origin, so there is nothing to CORS-approve.
+      allowedOrigins: [],
+      defaultScopes: TV_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "preview",
+      kind: "preview",
+      clientId: "jfp_tv_preview",
+      redirectUris: ["https://auth-preview.jesusfilm.org/device/callback"],
+      postLogoutRedirectUris: [],
+      allowedOrigins: [],
+      defaultScopes: TV_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "staging",
+      kind: "staging",
+      clientId: "jfp_tv_staging",
+      redirectUris: ["https://auth-stage.jesusfilm.org/device/callback"],
+      postLogoutRedirectUris: [],
+      allowedOrigins: [],
+      defaultScopes: TV_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_tv_production",
+      redirectUris: ["https://auth.jesusfilm.org/device/callback"],
+      postLogoutRedirectUris: [],
+      allowedOrigins: [],
+      defaultScopes: TV_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
+// The seeded TV client ids, in seed order. Two callers consume this list: the
+// seeder (which writes the device grant type onto exactly these clients) and
+// the app-environment policy exemption (a TV has no browser origin).
+//
+// It is NOT the runtime admission gate. The device endpoints admit a client by
+// reading `OauthClient.grantTypes` off the persisted row
+// (`resolveDeviceClient` in `services/device-client.service.ts`), so this list
+// only decides which rows the seeder writes that grant type onto. That
+// indirection is deliberate — an operator can revoke a TV client by disabling
+// its row or stripping its grant types without a code change — but it also
+// means adding an id here and deploying is what admits it, not this constant
+// on its own.
+export const TV_DEVICE_CLIENT_IDS = [
+  "jfp_tv_local",
+  "jfp_tv_preview",
+  "jfp_tv_staging",
+  "jfp_tv_production",
+] as const
+
 export const FIRST_PARTY_APP_SEEDS = [
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
@@ -436,4 +578,6 @@ export const FIRST_PARTY_APP_SEEDS = [
   MASTRA_STUDIO_APP_SEED,
   CHAT_APP_SEED,
   ADMIN_MCP_APP_SEED,
+  MOBILE_APP_SEED,
+  TV_APP_SEED,
 ] satisfies RegisteredAppSeed[]

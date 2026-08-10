@@ -1,67 +1,6 @@
 // Pure zod schema + constants for the daily-devotional video composition.
 // Self-contained and independent of the production "short" composition.
 import { z } from "zod"
-
-const SHA256 = /^[a-f0-9]{64}$/
-const SAFE_ATTEMPT_ID = /^[a-zA-Z0-9_-]+$/
-
-export const devotionalAttemptIdentitySchema = z
-  .object({
-    workspaceGeneration: z.number().int().positive(),
-    attemptId: z.string().regex(SAFE_ATTEMPT_ID).max(128),
-    runId: z.string().regex(SAFE_ATTEMPT_ID).max(128),
-  })
-  .strict()
-
-export const devotionalWorkspaceArtifactRefSchema = z
-  .object({
-    schemaVersion: z.literal("2"),
-    key: z.string().min(1).max(1024),
-    digest: z.string().regex(SHA256),
-    size: z.number().int().positive(),
-    contentType: z.string().min(1).max(128),
-    attempt: devotionalAttemptIdentitySchema,
-  })
-  .strict()
-
-export const devotionalWorkspaceManifestSchema = z
-  .object({
-    schemaVersion: z.literal("2"),
-    kind: z.enum(["run-input", "attempt-output"]),
-    attempt: devotionalAttemptIdentitySchema,
-    artifacts: z
-      .array(
-        z
-          .object({
-            artifactType: z.string().regex(SAFE_ATTEMPT_ID),
-            ext: z.string().regex(SAFE_ATTEMPT_ID),
-            ref: devotionalWorkspaceArtifactRefSchema,
-          })
-          .strict(),
-      )
-      .min(1),
-    selectedSources: z
-      .array(
-        z
-          .object({
-            path: z.string().startsWith("/inputs/"),
-            category: z.string().min(1).max(128),
-            digest: z.string().regex(SHA256),
-            size: z.number().int().nonnegative(),
-            modifiedAt: z.string().datetime(),
-            etag: z.string().optional(),
-            title: z.string().min(1).max(500),
-          })
-          .strict(),
-      )
-      .max(500)
-      .optional(),
-  })
-  .strict()
-
-export type DevotionalWorkspaceArtifactRef = z.infer<
-  typeof devotionalWorkspaceArtifactRefSchema
->
 import { devotionalRenderConfigSchema } from "./styles"
 export {
   devotionalRenderConfigSchema,

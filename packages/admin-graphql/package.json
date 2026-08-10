@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./fragments": "./src/fragments/index.ts"
+    "./fragments": "./src/fragments/index.ts",
+    "./operations": "./src/operations/index.ts"
   },
   "scripts": {
     "generate": "gql-tada generate output",

@@ -48,7 +48,9 @@ import { DdLogs, DdRum } from "@datadog/mobile-react-native"
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { env } from "../env"
 import {
+  ClientAbortError,
   createRequestChain,
+  createUserJwtLink,
   fetchWithTimeout,
   reportGraphqlOperationError,
 } from "./apolloClient"
@@ -287,12 +289,105 @@ describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)",
     expect(mockAddError).not.toHaveBeenCalled()
   })
 
-  // Message text alone never suppresses (AWS-NoSuchKey classification law):
-  // no real RN abort lacks the AbortError name, so this shape is a genuine error.
+  // Message text alone never suppresses (AWS-NoSuchKey law). RN's real abort
+  // does lack the name, but fetchWithTimeout converts it from the signal first,
+  // so a bare message-only "Aborted" reaching here is a genuine error.
   it("still reports a message-only 'Aborted' error (no AbortError name)", () => {
     reportGraphqlOperationError(new Error("Aborted"), "GetVideoBySlug")
     expect(mockAddError).toHaveBeenCalledWith(
       "Aborted",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetVideoBySlug" },
+    )
+  })
+
+  it("skips the typed ClientAbortError from fetchWithTimeout", () => {
+    reportGraphqlOperationError(new ClientAbortError(), "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // An unbounded walk lets a cause CYCLE throw RangeError out of this reporter,
+  // which has no safeDatadogCall wrapper and would escape into the error link.
+  it("does not throw on a cause cycle", () => {
+    const a = new Error("a") as Error & { cause?: unknown }
+    const b = new Error("b") as Error & { cause?: unknown }
+    a.cause = b
+    b.cause = a
+    expect(() => reportGraphqlOperationError(a, "GetVideoBySlug")).not.toThrow()
+    expect(mockAddError).toHaveBeenCalled()
+  })
+
+  it("stops looking past the cause depth bound", () => {
+    const deep = new Error("l0") as Error & { cause?: unknown }
+    let tip = deep
+    for (let i = 1; i <= 5; i++) {
+      const next = new Error(`l${i}`) as Error & { cause?: unknown }
+      tip.cause = next
+      tip = next
+    }
+    ;(tip as { isClientAbort?: boolean }).isClientAbort = true
+    reportGraphqlOperationError(deep, "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalled()
+  })
+
+  it("skips an abort Apollo wrapped one level deep (cause chain)", () => {
+    const wrapped = new Error("Network request failed")
+    wrapped.cause = new ClientAbortError()
+    reportGraphqlOperationError(wrapped, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+})
+
+// The production contract, not the branch shape: prod RUM carried 400 errors as
+// name "Error" / message "Aborted", which a name-only check can never suppress.
+// Drives that REAL shape through fetchWithTimeout to the suppressed reporter.
+describe("client abort classification (prod shape, end-to-end)", () => {
+  const realFetch = globalThis.fetch
+  afterEach(() => {
+    jest.useRealTimers()
+    globalThis.fetch = realFetch
+  })
+
+  it("converts RN's name-less Error('Aborted') into a suppressed ClientAbortError", async () => {
+    // RN's actual rejection shape: a plain Error whose name is "Error".
+    globalThis.fetch = jest.fn((_input, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new Error("Aborted")),
+        )
+      })
+    }) as unknown as typeof fetch
+
+    const external = new AbortController()
+    const pending = fetchWithTimeout(
+      "https://admin.jesusfilm.org/api/graphql",
+      {
+        signal: external.signal,
+      },
+    )
+    external.abort()
+
+    const caught: unknown = await pending.catch((e: unknown) => e)
+    expect(caught).toBeInstanceOf(ClientAbortError)
+
+    reportGraphqlOperationError(caught, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  it("leaves a genuine network failure unconverted and reported", async () => {
+    globalThis.fetch = jest.fn(() =>
+      Promise.reject(new Error("socket hang up")),
+    ) as unknown as typeof fetch
+
+    const caught: unknown = await fetchWithTimeout(
+      "https://admin.jesusfilm.org/api/graphql",
+    ).catch((e: unknown) => e)
+    expect(caught).not.toBeInstanceOf(ClientAbortError)
+
+    reportGraphqlOperationError(caught, "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalledWith(
+      "socket hang up",
       "SOURCE",
       expect.any(String),
       { origin: "graphql_network_error", operation: "GetVideoBySlug" },
@@ -323,5 +418,116 @@ describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)",
       expect.any(String),
       { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
     )
+  })
+
+  // KTD6 exemption: anonymous event mutations accept per-IP rate shedding, so a
+  // shed RecordWatchSearchEvent must not file a RUM error. One test per error
+  // shape — a shed arrives as GraphQL-in-200 RATE_LIMITED, a drop as a network
+  // error — and the "still reports" cases above are the anti-vacuous contrast.
+  it("skips the exempted event op on the GraphQL-in-200 branch (rate shed)", () => {
+    const err = new CombinedGraphQLErrors({
+      errors: [
+        { message: "rate limited", extensions: { code: "RATE_LIMITED" } },
+      ],
+    })
+    reportGraphqlOperationError(err, "RecordWatchSearchEvent")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  it("skips the exempted event op on the network-error branch", () => {
+    reportGraphqlOperationError(
+      new Error("socket hang up"),
+      "RecordWatchSearchEvent",
+    )
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+})
+
+// KTD10 guard: the user JWT rides ONLY progress operations. The async link
+// must leave public operations untouched (and synchronous) even with a live
+// session able to mint a token.
+describe("createUserJwtLink (operation-scoped user JWT)", () => {
+  function headersThroughJwtLink(
+    query: DocumentNode,
+    getJwt: () => Promise<string | null>,
+  ): Promise<Record<string, string> | undefined> {
+    return new Promise((resolve) => {
+      let captured: Record<string, string> | undefined
+      const terminal = new ApolloLink((operation) => {
+        captured = operation.getContext().headers as Record<string, string>
+        return new Observable<ApolloLink.Result>((subscriber) =>
+          subscriber.complete(),
+        )
+      })
+      const client = new ApolloClient({
+        cache: new InMemoryCache(),
+        link: ApolloLink.empty(),
+      })
+      ApolloLink.execute(
+        createUserJwtLink(getJwt).concat(terminal),
+        { query },
+        { client },
+      ).subscribe({
+        complete: () => resolve(captured),
+        error: () => resolve(captured),
+      })
+    })
+  }
+
+  it("public operations with a live session get NO user header — the guard that matters most", async () => {
+    const getJwt = jest.fn(async () => "user-jwt")
+    const headers = await headersThroughJwtLink(
+      gql`
+        query WatchSearch {
+          __typename
+        }
+      `,
+      getJwt,
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+    // The link must not even consult the session for public traffic.
+    expect(getJwt).not.toHaveBeenCalled()
+  })
+
+  it("progress operations carry the freshly minted JWT", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        query MyWatchProgress {
+          __typename
+        }
+      `,
+      async () => "user-jwt",
+    )
+
+    expect(headers?.Authorization).toBe("Bearer user-jwt")
+  })
+
+  it("forwards without the header when the mint fails (fail-open)", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        mutation UpsertMyWatchProgress {
+          __typename
+        }
+      `,
+      async () => {
+        throw new Error("mint failed")
+      },
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+  })
+
+  it("forwards without the header when signed out", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        mutation UpsertMyWatchProgress {
+          __typename
+        }
+      `,
+      async () => null,
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
   })
 })

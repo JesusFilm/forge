@@ -12,6 +12,8 @@ const _inlined = {
   ddSite: process.env.EXPO_PUBLIC_DATADOG_SITE,
   ddEnv: process.env.EXPO_PUBLIC_DATADOG_ENV,
   ddVersion: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+  profileEnabled: process.env.EXPO_PUBLIC_TV_PROFILE_ENABLED,
+  authBaseUrl: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
 }
 void _inlined
 
@@ -29,6 +31,17 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_SITE: z.string().optional(),
       EXPO_PUBLIC_DATADOG_ENV: z.string().optional(),
       EXPO_PUBLIC_DATADOG_VERSION: z.string().optional(),
+      // Profile/sign-in surface (feat-322) — "1" shows it in release builds;
+      // dev builds always show it. Optional so unprovisioned builds boot.
+      EXPO_PUBLIC_TV_PROFILE_ENABLED: z.string().optional(),
+      // Identity provider for the RFC 8628 device grant (feat-322). Optional
+      // with a production default so an unprovisioned build still signs in;
+      // point it at a local apps/auth to test the flow end to end.
+      EXPO_PUBLIC_AUTH_BASE_URL: z
+        .string()
+        .url()
+        .optional()
+        .default("https://auth.jesusfilm.org"),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_GRAPHQL_URL: process.env.EXPO_PUBLIC_GRAPHQL_URL,
@@ -41,6 +54,9 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_SITE: process.env.EXPO_PUBLIC_DATADOG_SITE,
       EXPO_PUBLIC_DATADOG_ENV: process.env.EXPO_PUBLIC_DATADOG_ENV,
       EXPO_PUBLIC_DATADOG_VERSION: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+      EXPO_PUBLIC_TV_PROFILE_ENABLED:
+        process.env.EXPO_PUBLIC_TV_PROFILE_ENABLED,
+      EXPO_PUBLIC_AUTH_BASE_URL: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
     },
     isServer: false,
     emptyStringAsUndefined: true,

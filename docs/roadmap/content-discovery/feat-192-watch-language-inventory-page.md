@@ -9,6 +9,7 @@ duration: 2
 depends_on: []
 blocks:
   - "feat-253"
+  - "feat-335"
 tags:
   - "web"
   - "watch"

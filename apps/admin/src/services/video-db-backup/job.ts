@@ -9,10 +9,9 @@ import {
 } from "@/services/workflow-run-log.service"
 import {
   SCHEDULED_VIDEO_DB_BACKUP_PROFILES,
-  runScheduledVideoDbBackup,
   type VideoDbBackupJobResult,
   type VideoDbBackupProfile,
-} from "@/scripts/video-db-backup"
+} from "@/services/video-db-backup/profiles"
 import {
   runVideoDbBackup,
   runVideoDbBackupScheduler,
@@ -134,6 +133,8 @@ export async function runVideoDbBackupJob(
   }
 
   try {
+    const { runScheduledVideoDbBackup } =
+      await import("@/scripts/video-db-backup")
     const result = await runScheduledVideoDbBackup(input.profile)
 
     if (input.ledgerRunId) {

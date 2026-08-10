@@ -50,10 +50,16 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Langfuse UI. ONE Langfuse project (`forge-mastra`) holds every agent's
   prompt, with labels `production` / `development` distinguishing
   environments; two key pairs (Railway + local dev) live inside it. The
-  seeker agent is the one consumer (feat-272): its `instructions` resolve
-  through `getManagedPrompt` (prompt `seeker-system`, WHOLE prompt — no
-  composition split) with the full working text as compiled-in fallback.
-  Langfuse tracing is separate unbuilt work (feat-321).
+  seeker agent resolves `seeker-system` by the exact repository-pinned version
+  and content hash in `seeker-production-config.ts` (WHOLE prompt — no
+  composition split), with the full working text as compiled-in degraded
+  fallback. The `production` label is an alert-only deployment marker, not a
+  production traffic selector; label defaults remain for candidate intake.
+  Langfuse tracing shipped separately (feat-321): opt-in, default-off behind
+  `LANGFUSE_TRACING_ENABLED` plus the credential trio, routing seeker turns
+  by a per-process marker to a dedicated observability config that exports
+  RAW conversation content to Langfuse ONLY — no local copy. Every other
+  trace stays on the redacted default config.
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized
@@ -84,8 +90,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - App-to-runtime calls use service bearer authentication.
 - Owns the owner-approved `video-first-devotional` durable control loop as a
   narrow exception to the default Manager-owned heavy-media orchestration rule.
-  Mastra owns workflow state, approval, polling, and publish handoff; Shorts
-  Worker continues to own all media bytes, ffmpeg, Chromium, and rendering.
+  Mastra owns workflow state, canonical Workspace inputs/outputs, approval,
+  polling, and publish handoff. Shorts Worker owns media processing, ffmpeg,
+  Chromium, and rendering through short-lived attempt-bound capabilities; it
+  has no permanent devotional Workspace credentials.
 
 ## Boundaries
 
@@ -104,8 +112,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Postgres workflow persistence; authenticated, serialized lifecycle routes;
   canonical starts idempotent per UTC date; retries idempotent per parent-run
   and variant identity; attributable human approval; disjoint approval and
-  playback bearers; authenticated worker calls; private durable worker object
-  storage; and a Mastra poll deadline strictly above the capped worker deadline.
+  playback bearers; authenticated worker calls; Mastra-owned private Workspace
+  storage with expiring Worker capabilities; and a Mastra poll deadline
+  strictly above the capped worker deadline.
   Loss of any invariant requires `DEVOTIONAL_NEW_RUNS_ENABLED=false`, scheduler
   shutdown, and restoration or Manager migration before new work resumes. Do
   not generalize this exception without explicit owner approval in root rules.

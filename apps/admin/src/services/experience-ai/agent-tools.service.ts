@@ -24,7 +24,10 @@
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
-import { WatchSearchService } from "@/services/watch-search.service"
+import {
+  WatchSearchService,
+  type WatchSearchAvailabilityKind,
+} from "@/services/watch-search.service"
 import { pickLocalisedName } from "./citation-reference"
 
 // ---------------------------------------------------------------------------
@@ -48,9 +51,12 @@ export const searchVideosRequestSchema = z.object({
 })
 export type SearchVideosRequest = z.infer<typeof searchVideosRequestSchema>
 
-// Since the playback-field widening this shape is a SUPERSET of the in-process
-// twin's (src/mastra/tools/search-videos.ts) — the two are no longer
-// field-identical; reconcile deliberately if they ever re-converge.
+// Since the playback-field (#1789) and availability.kind (feat-326) widenings
+// this shape is a SUPERSET of the in-process twin's
+// (src/mastra/tools/search-videos.ts) — the two are no longer field-identical;
+// reconcile deliberately if they ever re-converge. availability is a nested
+// object mirroring the upstream WatchSearchAvailability shape so later
+// widening (languageSlug, audio/subtitles) is additive, not a rename.
 export type AgentVideoResult = {
   videoId: string
   title: string
@@ -60,6 +66,7 @@ export type AgentVideoResult = {
   playbackId: string
   durationSeconds: number | null
   languageSlug: string | null
+  availability: { kind: WatchSearchAvailabilityKind }
 }
 
 export async function searchVideosForAgent(
@@ -94,6 +101,15 @@ export async function searchVideosForAgent(
             playbackId: result.playbackId,
             durationSeconds: result.durationSeconds,
             languageSlug: result.languageSlug,
+            // kind only, never the whole availability object (allowlist
+            // projection). Fallback kinds (target_subtitle/related_language)
+            // are REPORTED, never filtered — this endpoint serves multiple
+            // agent consumers; the seeker's target_audio-only rule is mastra
+            // policy (feat-327). Note: the playability filter above bounds
+            // today's reachable kinds to target_audio | related_language
+            // (target_subtitle/unavailable watchability always carries
+            // playbackId null — search-watchability.ts).
+            availability: { kind: result.availability.kind },
           },
         ]
       : [],

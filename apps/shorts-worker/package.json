@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
+    "@forge/devotional-workspace": "workspace:*",
     "@forge/shorts-compositions": "workspace:*",
     "@remotion/bundler": "4.0.475",
     "@remotion/install-whisper-cpp": "4.0.475",

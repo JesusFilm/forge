@@ -13,6 +13,7 @@ import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
+import { resolveDownloadSequence } from "@/components/watch/download-link"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -159,6 +160,58 @@ function pruneMergedWatchBlocksForClient(
   })
 }
 
+function withAdmittedCarouselChildren<T extends CarouselParent>(
+  parent: T,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): T {
+  // Preserve the existing fail-open behavior during a manifest outage. The
+  // manifest is the exact selected-language route contract when available;
+  // muxPlaybackId is not, because Admin may fall back to another language.
+  if (!manifest) return parent
+
+  const parentSlug = tryAsContentSlug(parent.slug ?? "")
+  const children = parentSlug
+    ? parent.children.filter((child) => {
+        const childSlug = tryAsContentSlug(child.slug ?? "")
+        return (
+          childSlug != null &&
+          isWatchRouteAdmittedByManifest(manifest, {
+            kind: "episode",
+            parentSlug,
+            childSlug,
+            audioLanguageSlug: languageSlug,
+          })
+        )
+      })
+    : []
+
+  return children.length === parent.children.length
+    ? parent
+    : { ...parent, children }
+}
+
+function withAdmittedVideoChildren(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): WatchVideoRecord {
+  const filteredParent = withAdmittedCarouselChildren(
+    {
+      documentId: video.documentId,
+      slug: video.slug,
+      title: video.title,
+      children: video.children,
+    },
+    languageSlug,
+    manifest,
+  )
+
+  return filteredParent.children === video.children
+    ? video
+    : { ...video, children: filteredParent.children }
+}
+
 function selectableParentsForStandaloneVideo(
   video: WatchVideoRecord,
   languageSlug: string,
@@ -170,18 +223,12 @@ function selectableParentsForStandaloneVideo(
     const parentSlug = tryAsContentSlug(parent.slug ?? "")
     if (!parentSlug) return []
 
-    const children = parent.children.filter((child) => {
-      const childSlug = tryAsContentSlug(child.slug ?? "")
-      return (
-        childSlug != null &&
-        isWatchRouteAdmittedByManifest(manifest, {
-          kind: "episode",
-          parentSlug,
-          childSlug,
-          audioLanguageSlug: languageSlug,
-        })
-      )
-    })
+    const filteredParent = withAdmittedCarouselChildren(
+      { ...parent, slug: parentSlug },
+      languageSlug,
+      manifest,
+    )
+    const { children } = filteredParent
 
     if (
       children.length < 2 ||
@@ -192,9 +239,9 @@ function selectableParentsForStandaloneVideo(
 
     return [
       {
-        documentId: parent.documentId,
+        documentId: filteredParent.documentId,
         slug: parentSlug,
-        title: parent.title,
+        title: filteredParent.title,
         children,
       },
     ]
@@ -582,6 +629,7 @@ async function renderEpisode(shape: {
   locale: UiLocale
 }) {
   const { seriesSlug, episodeSlug, rawLocale, locale } = shape
+  const routeManifestPromise = getWatchRouteManifest().catch(() => null)
 
   const resolved = await resolveSeriesEpisodeBySlug(
     seriesSlug,
@@ -609,21 +657,43 @@ async function renderEpisode(shape: {
   }
 
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
-    await Promise.all([
+  const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
+  const [
+    [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes],
+    routeManifest,
+    initialTranscript,
+  ] = await Promise.all([
+    Promise.all([
       getDownloadButtonLabel(route, locale),
       getQuestionPanelEnabled(route),
       getHideBibleQuotesEnabled(route),
-    ])
+    ]),
+    routeManifestPromise,
+    getInitialTranscriptForWatchVideo(resolved.video, resolved.selectedVariant),
+  ])
+  const carouselVideo = withAdmittedVideoChildren(
+    resolved.video,
+    languageSlug,
+    routeManifest,
+  )
+  const carouselSeries = withAdmittedCarouselChildren(
+    resolved.series,
+    languageSlug,
+    routeManifest,
+  )
   const mergedBlocks = mergeWatchExperience({
-    video: resolved.video,
+    video: carouselVideo,
     variant: resolved.selectedVariant,
-    canonicalParent: resolved.series,
+    canonicalParent: carouselSeries,
   })
   const clientVariant = pruneWatchVariantForClient(resolved.selectedVariant)
   const clientMergedBlocks = pruneMergedWatchBlocksForClient(
     mergedBlocks,
     resolved.selectedVariant,
+  )
+  const downloadSequence = resolveDownloadSequence(
+    resolved.series,
+    resolved.video.documentId,
   )
   const clientVideo = pruneWatchVideoForClient(
     resolved.video,
@@ -637,11 +707,6 @@ async function renderEpisode(shape: {
     pathLocale: rawLocale,
     seriesSlug,
   })
-  const initialTranscript = await getInitialTranscriptForWatchVideo(
-    resolved.video,
-    resolved.selectedVariant,
-  )
-  const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
   const relatedItemsJson = metadataModel.noIndex
     ? null
     : watchRelatedItemListStructuredDataJson({
@@ -655,6 +720,7 @@ async function renderEpisode(shape: {
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
+        downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
         variant={clientVariant}
         video={clientVideo}
@@ -740,8 +806,13 @@ async function renderVideo(shape: {
       languageSlug,
       routeManifest,
     )
+    const carouselVideo = withAdmittedVideoChildren(
+      watchVideo.video,
+      languageSlug,
+      routeManifest,
+    )
     const mergedBlocks = mergeWatchExperience({
-      video: watchVideo.video,
+      video: carouselVideo,
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
       selectableParents,
@@ -750,6 +821,10 @@ async function renderVideo(shape: {
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
       mergedBlocks,
       watchVideo.selectedVariant,
+    )
+    const downloadSequence = resolveDownloadSequence(
+      watchVideo.canonicalParent,
+      watchVideo.video.documentId,
     )
     const clientVideo = pruneWatchVideoForClient(
       watchVideo.video,
@@ -775,6 +850,7 @@ async function renderVideo(shape: {
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
+          downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
           variant={clientVariant}
           video={clientVideo}

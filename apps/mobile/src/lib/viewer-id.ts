@@ -13,12 +13,16 @@ export function uuidV4Fallback(): string {
   })
 }
 
-/** Stable per-launch viewer id, generated lazily on first use. */
-export function getViewerId(): string {
-  if (cachedViewerId) return cachedViewerId
+/** Runtime randomUUID when present, else the RFC4122 v4 fallback (Hermes). */
+export function randomUUIDCompat(): string {
   const runtimeCrypto = (
     globalThis as { crypto?: { randomUUID?: () => string } }
   ).crypto
-  cachedViewerId = runtimeCrypto?.randomUUID?.() ?? uuidV4Fallback()
+  return runtimeCrypto?.randomUUID?.() ?? uuidV4Fallback()
+}
+
+/** Stable per-launch viewer id, generated lazily on first use. */
+export function getViewerId(): string {
+  cachedViewerId ??= randomUUIDCompat()
   return cachedViewerId
 }

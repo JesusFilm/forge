@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto"
 
 import { z } from "zod"
+import {
+  devotionalAttemptIdentitySchema,
+  devotionalWorkspaceManifestSchema,
+  devotionalWorkspaceTransferSchema,
+  type DevotionalWorkspaceTransfer,
+} from "@forge/devotional-workspace"
 
 import { env } from "../../config/env"
 import type { RenderDocument } from "./authored-data"
@@ -8,6 +14,17 @@ import { readResponseJsonCapped } from "./bounded-response"
 import type { ProducedDevotionalAudio } from "./devotional-audio"
 import type { GeneratedDevotional } from "./generate-devotional"
 import type { DevotionalSourceRef } from "./workspace/state-schema"
+import {
+  DevotionalWorkspaceArtifactRefSchema,
+  devotionalAttemptRoot,
+  devotionalWorkspaceArtifactKey,
+  devotionalWorkspaceManifestKey,
+  type DevotionalAttemptIdentity,
+  type DevotionalWorkspaceArtifactRef,
+  type DevotionalWorkspaceMediaStore,
+  type DevotionalWorkspaceReadGrant,
+  type DevotionalWorkspaceUploadGrant,
+} from "./workspace/media-store"
 
 export const DEVOTIONAL_INPUT_ARTIFACT_TYPE = "devotional-render-input-v1"
 export const DEVOTIONAL_MUSIC_ARTIFACT_TYPE = "devotional-music-v1"
@@ -16,6 +33,10 @@ export const DEVOTIONAL_WIDE_ARTIFACT_TYPE = "devotional-output-wide-v1"
 
 const HTTP_TIMEOUT_MS = 30_000
 const POLL_INTERVAL_MS = 5_000
+// Shorts Worker deliberately keeps job state in memory. A deployment can make
+// an accepted job return 404, so retry the same deterministic submission a
+// bounded number of times without extending the original poll deadline.
+const MAX_LOST_JOB_RESUBMITS = 2
 // Keep the orchestrator ceiling strictly above the worker's 70-minute render
 // deadline so the worker can persist its terminal status after cleanup.
 const POLL_TIMEOUT_MS = 80 * 60_000
@@ -24,19 +45,14 @@ const MAX_RESPONSE_BYTES = 256 * 1024
 const SAFE_ID = /^[a-zA-Z0-9_-]+$/
 const SHA256 = /^[a-f0-9]{64}$/
 
-const AttemptSchema = z.object({
-  workspaceGeneration: z.number().int().positive(),
-  attemptId: z.string().regex(SAFE_ID).max(128),
-  runId: z.string().regex(SAFE_ID).max(128),
-})
+const AttemptSchema = devotionalAttemptIdentitySchema
 
-const WorkspaceRefSchema = z.object({
-  schemaVersion: z.literal("2"),
-  key: z.string().min(1),
-  digest: z.string().regex(SHA256),
-  size: z.number().int().positive(),
-  contentType: z.string().min(1),
-  attempt: AttemptSchema,
+const WorkspaceRefSchema = DevotionalWorkspaceArtifactRefSchema
+const WorkspaceManifestSchema = devotionalWorkspaceManifestSchema
+const WorkspacePlaybackManifestSchema = WorkspaceManifestSchema.extend({
+  // Pre-cutover Worker-owned manifests included render diagnostics here.
+  // Playback ignores them but must keep serving already-issued v2 asset IDs.
+  report: z.unknown().optional(),
 })
 
 const ArtifactRefSchema = z
@@ -49,6 +65,7 @@ const ArtifactRefSchema = z
     digest: z.string().regex(SHA256).optional(),
     size: z.number().int().positive().optional(),
     contentType: z.string().min(1).optional(),
+    etag: z.string().min(1).max(256).optional(),
     attempt: AttemptSchema.optional(),
   })
   .passthrough()
@@ -74,6 +91,18 @@ const JobStatusSchema = z
   })
   .passthrough()
 
+function parseWorkspaceRef(ref: z.infer<typeof ArtifactRefSchema>) {
+  return WorkspaceRefSchema.safeParse({
+    schemaVersion: ref.schemaVersion,
+    key: ref.key,
+    digest: ref.digest,
+    size: ref.size,
+    contentType: ref.contentType,
+    etag: ref.etag,
+    attempt: ref.attempt,
+  })
+}
+
 export type DevotionalVideoArtifact = {
   assetId: string
   artifactType:
@@ -85,6 +114,7 @@ export type DevotionalVideoArtifact = {
   digest?: string
   size?: number
   contentType?: string
+  etag?: string
   attempt?: z.infer<typeof AttemptSchema>
 }
 
@@ -101,6 +131,17 @@ export type DevotionalWorkerClientOptions = {
   pollTimeoutMs?: number
   sleep?: (ms: number) => Promise<void>
   abortSignal?: AbortSignal
+  workspaceMediaStore?: DevotionalWorkspaceMediaStore
+}
+
+type SignedWorkspaceTransfer = DevotionalWorkspaceTransfer
+
+let configuredWorkspaceMediaStore: DevotionalWorkspaceMediaStore | undefined
+
+export function configureDevotionalWorkerWorkspaceMediaStore(
+  mediaStore: DevotionalWorkspaceMediaStore,
+): void {
+  configuredWorkspaceMediaStore = mediaStore
 }
 
 export class DevotionalWorkerError extends Error {
@@ -304,7 +345,7 @@ async function request(
   }
 }
 
-async function upload(
+async function uploadLegacy(
   client: ResolvedClient,
   attempt: z.infer<typeof AttemptSchema>,
   assetId: string,
@@ -369,6 +410,227 @@ async function upload(
   return payload.data.artifact
 }
 
+async function writeWorkspaceInput(options: {
+  store: DevotionalWorkspaceMediaStore
+  attempt: DevotionalAttemptIdentity
+  artifactType: string
+  ext: "json" | "mp3"
+  body: Uint8Array | string
+}): Promise<{
+  artifactType: string
+  ext: "json" | "mp3"
+  ref: DevotionalWorkspaceArtifactRef
+  grant: DevotionalWorkspaceReadGrant
+}> {
+  const body =
+    typeof options.body === "string"
+      ? Buffer.from(options.body)
+      : Buffer.from(options.body)
+  const digest = createHash("sha256").update(body).digest("hex")
+  const ref = await options.store.writeImmutableArtifact({
+    key: devotionalWorkspaceArtifactKey({
+      attempt: options.attempt,
+      area: "run-input",
+      digest,
+      fileName: `${options.artifactType}.${options.ext}`,
+    }),
+    body,
+    contentType: options.ext === "json" ? "application/json" : "audio/mpeg",
+    attempt: options.attempt,
+  })
+  return {
+    artifactType: options.artifactType,
+    ext: options.ext,
+    ref,
+    grant: await options.store.createReadGrant(ref),
+  }
+}
+
+function workspaceAssetId(options: {
+  kind: "input" | "output"
+  attempt: DevotionalAttemptIdentity
+  manifest: DevotionalWorkspaceArtifactRef
+}): string {
+  const prefix = options.kind === "input" ? "dv2i" : "dv2o"
+  const token = devotionalAttemptRoot(options.attempt).split("/").at(-1)
+  return `${prefix}_g${options.attempt.workspaceGeneration}_${token}_${options.manifest.digest}_${options.manifest.size}`
+}
+
+function parseWorkspaceAssetId(assetId: string): {
+  kind: "input" | "output"
+  workspaceGeneration: number
+  attemptToken: string
+  manifestDigest: string
+  manifestSize: number
+} | null {
+  const match = /^(dv2i|dv2o)_g(\d+)_([a-f0-9]{24})_([a-f0-9]{64})_(\d+)$/.exec(
+    assetId,
+  )
+  if (!match?.[1] || !match[2] || !match[3] || !match[4] || !match[5]) {
+    return null
+  }
+  const workspaceGeneration = Number(match[2])
+  const manifestSize = Number(match[5])
+  if (
+    !Number.isSafeInteger(workspaceGeneration) ||
+    workspaceGeneration <= 0 ||
+    !Number.isSafeInteger(manifestSize) ||
+    manifestSize <= 0
+  ) {
+    return null
+  }
+  return {
+    kind: match[1] === "dv2i" ? "input" : "output",
+    workspaceGeneration,
+    attemptToken: match[3],
+    manifestDigest: match[4],
+    manifestSize,
+  }
+}
+
+async function finalizeSignedOutputs(options: {
+  store: DevotionalWorkspaceMediaStore
+  attempt: DevotionalAttemptIdentity
+  outputAssetId: string
+  refs: z.infer<typeof ArtifactRefSchema>[]
+  grants: readonly DevotionalWorkspaceUploadGrant[]
+}): Promise<DevotionalVideoArtifacts> {
+  const find = (artifactType: string) =>
+    options.refs.find(
+      (ref) =>
+        ref.assetId === options.outputAssetId &&
+        ref.artifactType === artifactType &&
+        ref.ext === "mp4",
+    )
+  const portrait = find(DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE)
+  const wide = find(DEVOTIONAL_WIDE_ARTIFACT_TYPE)
+  if (!portrait || !wide) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "shorts-worker completed without both devotional video uploads",
+      false,
+    )
+  }
+  const finalize = async (
+    ref: typeof portrait,
+    fileName: "portrait.mp4" | "wide.mp4",
+  ) => {
+    const parsed = parseWorkspaceRef(ref)
+    const grant = options.grants.find((entry) => entry.key === ref.key)
+    if (
+      !parsed.success ||
+      !grant ||
+      parsed.data.contentType !== "video/mp4" ||
+      parsed.data.attempt.workspaceGeneration !==
+        options.attempt.workspaceGeneration ||
+      parsed.data.attempt.attemptId !== options.attempt.attemptId ||
+      parsed.data.attempt.runId !== options.attempt.runId
+    ) {
+      throw new DevotionalWorkerError(
+        "invalid_response",
+        "shorts-worker returned an invalid signed upload reference",
+        false,
+      )
+    }
+    return options.store.finalizeUpload({
+      grant,
+      digest: parsed.data.digest,
+      size: parsed.data.size,
+      attempt: options.attempt,
+      fileName,
+    })
+  }
+  const [portraitRef, wideRef] = await Promise.all([
+    finalize(portrait, "portrait.mp4"),
+    finalize(wide, "wide.mp4"),
+  ])
+  const manifestJson = JSON.stringify({
+    schemaVersion: "2",
+    kind: "attempt-output",
+    attempt: options.attempt,
+    artifacts: [
+      {
+        artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+        ext: "mp4",
+        ref: portraitRef,
+      },
+      {
+        artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+        ext: "mp4",
+        ref: wideRef,
+      },
+    ],
+  })
+  const manifest = await options.store.writeImmutableArtifact({
+    key: devotionalWorkspaceManifestKey({
+      attempt: options.attempt,
+      area: "attempt-output",
+    }),
+    body: manifestJson,
+    contentType: "application/json",
+    attempt: options.attempt,
+  })
+  const assetId = workspaceAssetId({
+    kind: "output",
+    attempt: options.attempt,
+    manifest,
+  })
+  return {
+    portrait: {
+      assetId,
+      artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+      ext: "mp4",
+      ...portraitRef,
+    },
+    wide: {
+      assetId,
+      artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+      ext: "mp4",
+      ...wideRef,
+    },
+  }
+}
+
+async function existingSignedOutputs(
+  store: DevotionalWorkspaceMediaStore,
+  attempt: DevotionalAttemptIdentity,
+): Promise<DevotionalVideoArtifacts | null> {
+  const existing = await store.readAttemptOutput(attempt)
+  if (!existing) return null
+  const find = (artifactType: string) =>
+    existing.manifest.artifacts.find(
+      (entry) => entry.artifactType === artifactType && entry.ext === "mp4",
+    )?.ref
+  const portrait = find(DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE)
+  const wide = find(DEVOTIONAL_WIDE_ARTIFACT_TYPE)
+  if (!portrait || !wide) {
+    throw new DevotionalWorkerError(
+      "invalid_response",
+      "existing devotional output manifest is incomplete",
+      false,
+    )
+  }
+  const assetId = workspaceAssetId({
+    kind: "output",
+    attempt,
+    manifest: existing.manifestRef,
+  })
+  return {
+    portrait: {
+      assetId,
+      artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+      ext: "mp4",
+      ...portrait,
+    },
+    wide: {
+      assetId,
+      artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+      ext: "mp4",
+      ...wide,
+    },
+  }
+}
+
 async function jsonResponse(response: Response): Promise<unknown> {
   return readResponseJsonCapped(response, MAX_RESPONSE_BYTES)
 }
@@ -403,7 +665,7 @@ function expectedArtifacts(
   }
   const checked = (ref: z.infer<typeof ArtifactRefSchema>) => {
     if (ref.assetId.startsWith("dv2o_")) {
-      const parsed = WorkspaceRefSchema.safeParse(ref)
+      const parsed = parseWorkspaceRef(ref)
       const filename =
         ref.artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
           ? "portrait.mp4"
@@ -509,96 +771,195 @@ export async function renderDevotionalOnWorker(
   const specJson = JSON.stringify(spec)
   const hash = createHash("sha256").update(specJson)
 
-  const uploaded: Array<{
+  const inputBodies: Array<{
     artifactType: string
     ext: "json" | "mp3"
-    ref: z.infer<typeof WorkspaceRefSchema>
-  }> = []
-  for (const segment of input.audio.segments) {
-    hash.update(segment.audio.bytes)
-    const artifactType = narrationArtifactType(segment.id)
-    const ref = await upload(
-      client,
-      attempt,
-      stagingAssetId,
-      artifactType,
-      "mp3",
-      segment.audio.bytes,
-    )
-    uploaded.push({ artifactType, ext: "mp3", ref })
-  }
+    body: Uint8Array | string
+  }> = input.audio.segments.map((segment) => ({
+    artifactType: narrationArtifactType(segment.id),
+    ext: "mp3",
+    body: segment.audio.bytes,
+  }))
   if (input.audio.music) {
-    hash.update(input.audio.music.audio.bytes)
-    const ref = await upload(
-      client,
-      attempt,
-      stagingAssetId,
-      DEVOTIONAL_MUSIC_ARTIFACT_TYPE,
-      "mp3",
-      input.audio.music.audio.bytes,
-    )
-    uploaded.push({
+    inputBodies.push({
       artifactType: DEVOTIONAL_MUSIC_ARTIFACT_TYPE,
       ext: "mp3",
-      ref,
+      body: input.audio.music.audio.bytes,
     })
   }
-  const specRef = await upload(
-    client,
-    attempt,
-    stagingAssetId,
-    DEVOTIONAL_INPUT_ARTIFACT_TYPE,
-    "json",
-    specJson,
-  )
-  uploaded.push({
+  inputBodies.push({
     artifactType: DEVOTIONAL_INPUT_ARTIFACT_TYPE,
     ext: "json",
-    ref: specRef,
+    body: specJson,
   })
-  const manifestJson = JSON.stringify({
-    schemaVersion: "2",
-    kind: "run-input",
-    attempt,
-    artifacts: uploaded,
-    selectedSources: input.selectedSources ?? [],
-  })
-  const manifestRef = await upload(
-    client,
-    attempt,
-    stagingAssetId,
-    "devotional-input-manifest-v2",
-    "json",
-    manifestJson,
-  )
-  const inputAssetId = `dv2i_g${input.workspaceGeneration}_${attemptToken}_${manifestRef.digest}_${manifestRef.size}`
+  for (const artifact of inputBodies.filter(({ ext }) => ext === "mp3")) {
+    hash.update(artifact.body)
+  }
+  const inputHash = hash.digest("hex")
 
-  const submitted = await request(client, "/jobs", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      kind: "devotional-render",
-      runId: safeRunId,
-      inputAssetId,
-      outputAssetId,
-      inputHash: hash.digest("hex"),
-    }),
+  const workspaceMediaStore =
+    options.workspaceMediaStore ?? configuredWorkspaceMediaStore
+  const signedTransfer = workspaceMediaStore?.supportsSignedTransfers === true
+  let inputAssetId: string
+  let workspaceTransfer: SignedWorkspaceTransfer | undefined
+  let outputGrants:
+    | [DevotionalWorkspaceUploadGrant, DevotionalWorkspaceUploadGrant]
+    | undefined
+  if (signedTransfer && workspaceMediaStore) {
+    const existing = await existingSignedOutputs(workspaceMediaStore, attempt)
+    if (existing) return existing
+    const inputs = await Promise.all(
+      inputBodies.map((artifact) =>
+        writeWorkspaceInput({
+          store: workspaceMediaStore,
+          attempt,
+          ...artifact,
+        }),
+      ),
+    )
+    const manifestJson = JSON.stringify({
+      schemaVersion: "2",
+      kind: "run-input",
+      attempt,
+      artifacts: inputs.map(({ artifactType, ext, ref }) => ({
+        artifactType,
+        ext,
+        ref,
+      })),
+      selectedSources: input.selectedSources ?? [],
+    })
+    const manifestRef = await workspaceMediaStore.writeImmutableArtifact({
+      key: devotionalWorkspaceManifestKey({ attempt, area: "run-input" }),
+      body: manifestJson,
+      contentType: "application/json",
+      attempt,
+    })
+    const manifest = await workspaceMediaStore.createReadGrant(manifestRef)
+    // The Worker dedupes active jobs by outputAssetId + inputHash. Reattached
+    // callers must therefore mint fresh URLs for the same temporary keys.
+    const uploadId = inputHash
+    const [portraitUploadGrant, wideUploadGrant] = await Promise.all([
+      workspaceMediaStore.createUploadGrant({
+        attempt,
+        uploadId,
+        fileName: "portrait.mp4",
+      }),
+      workspaceMediaStore.createUploadGrant({
+        attempt,
+        uploadId,
+        fileName: "wide.mp4",
+      }),
+    ])
+    outputGrants = [portraitUploadGrant, wideUploadGrant]
+    inputAssetId = workspaceAssetId({
+      kind: "input",
+      attempt,
+      manifest: manifestRef,
+    })
+    workspaceTransfer = devotionalWorkspaceTransferSchema.parse({
+      schemaVersion: "1",
+      attempt,
+      manifest,
+      inputs: inputs.map(({ artifactType, ext, grant }) => ({
+        artifactType,
+        ext,
+        ...grant,
+      })),
+      outputs: [
+        {
+          artifactType: DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE,
+          ext: "mp4",
+          ...portraitUploadGrant,
+        },
+        {
+          artifactType: DEVOTIONAL_WIDE_ARTIFACT_TYPE,
+          ext: "mp4",
+          ...wideUploadGrant,
+        },
+      ],
+    })
+  } else {
+    const uploaded: Array<{
+      artifactType: string
+      ext: "json" | "mp3"
+      ref: z.infer<typeof WorkspaceRefSchema>
+    }> = []
+    for (const artifact of inputBodies) {
+      const ref = await uploadLegacy(
+        client,
+        attempt,
+        stagingAssetId,
+        artifact.artifactType,
+        artifact.ext,
+        artifact.body,
+      )
+      uploaded.push({
+        artifactType: artifact.artifactType,
+        ext: artifact.ext,
+        ref,
+      })
+    }
+    const manifestJson = JSON.stringify({
+      schemaVersion: "2",
+      kind: "run-input",
+      attempt,
+      artifacts: uploaded,
+      selectedSources: input.selectedSources ?? [],
+    })
+    const manifestRef = await uploadLegacy(
+      client,
+      attempt,
+      stagingAssetId,
+      "devotional-input-manifest-v2",
+      "json",
+      manifestJson,
+    )
+    inputAssetId = workspaceAssetId({
+      kind: "input",
+      attempt,
+      manifest: manifestRef,
+    })
+  }
+
+  const submissionBody = JSON.stringify({
+    kind: "devotional-render",
+    runId: safeRunId,
+    inputAssetId,
+    outputAssetId,
+    inputHash,
+    ...(workspaceTransfer ? { workspaceTransfer } : {}),
   })
-  const submitBody = await jsonResponse(submitted)
-  const workerJobId =
-    submitBody &&
-    typeof submitBody === "object" &&
-    "workerJobId" in submitBody &&
-    typeof submitBody.workerJobId === "string"
-      ? submitBody.workerJobId
-      : null
-  if (!submitted.ok || !workerJobId) {
+  const submitWorkerJob = async () => {
+    const response = await request(client, "/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: submissionBody,
+    })
+    const body = await jsonResponse(response)
+    const workerJobId =
+      body &&
+      typeof body === "object" &&
+      "workerJobId" in body &&
+      typeof body.workerJobId === "string"
+        ? body.workerJobId
+        : null
+    return { response, workerJobId }
+  }
+
+  const submitted = await submitWorkerJob()
+  if (!submitted.response.ok || !submitted.workerJobId) {
+    if (workspaceMediaStore && outputGrants) {
+      await Promise.allSettled(
+        outputGrants.map((grant) => workspaceMediaStore.discardUpload(grant)),
+      )
+    }
     throw new DevotionalWorkerError(
       "upstream_failed",
-      `shorts-worker job submission failed with HTTP ${submitted.status}`,
-      submitted.status >= 500 || submitted.status === 409,
+      `shorts-worker job submission failed with HTTP ${submitted.response.status}`,
+      submitted.response.status >= 500 || submitted.response.status === 409,
     )
   }
+  let workerJobId = submitted.workerJobId
 
   const intervalMs = options.pollIntervalMs ?? POLL_INTERVAL_MS
   const timeoutMs = options.pollTimeoutMs ?? POLL_TIMEOUT_MS
@@ -606,35 +967,104 @@ export async function renderDevotionalOnWorker(
     options.sleep ??
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const deadline = Date.now() + timeoutMs
-  const cancelWorkerJob = async () => {
-    await request(client, `/jobs/${encodeURIComponent(workerJobId)}`, {
-      method: "DELETE",
-    }).catch(() => undefined)
+  const discardOutputGrants = async (retry: boolean) => {
+    if (!workspaceMediaStore || !outputGrants) return
+    const discard = () =>
+      Promise.allSettled(
+        outputGrants.map((grant) => workspaceMediaStore.discardUpload(grant)),
+      )
+    await discard()
+    if (retry) {
+      await sleep(250)
+      await discard()
+    }
+  }
+  const cancelWorkerJob = async (): Promise<boolean> => {
+    const response = await request(
+      client,
+      `/jobs/${encodeURIComponent(workerJobId)}`,
+      { method: "DELETE" },
+    ).catch(() => null)
+    return response?.ok === true
   }
   const cancelled = async (): Promise<never> => {
-    await cancelWorkerJob()
+    if (await cancelWorkerJob()) await discardOutputGrants(true)
     throw new DevotionalWorkerError(
       "job_failed",
       "shorts-worker devotional render was cancelled",
       false,
     )
   }
+  const waitForNextPoll = async (): Promise<void> => {
+    if (!options.abortSignal) {
+      await sleep(intervalMs)
+      return
+    }
+    await new Promise<void>((resolve) => {
+      const signal = options.abortSignal!
+      const onAbort = () => {
+        clearTimeout(timer)
+        resolve()
+      }
+      const timer = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort)
+        resolve()
+      }, intervalMs)
+      signal.addEventListener("abort", onAbort, { once: true })
+    })
+  }
+  let lostJobResubmits = 0
   while (Date.now() <= deadline) {
     if (options.abortSignal?.aborted) {
       await cancelled()
     }
-    const response = await request(
-      client,
-      `/jobs/${encodeURIComponent(workerJobId)}`,
-      { method: "GET" },
-      HTTP_TIMEOUT_MS,
-      options.abortSignal,
-    ).catch(async (error) => {
+    let response: Response
+    try {
+      response = await request(
+        client,
+        `/jobs/${encodeURIComponent(workerJobId)}`,
+        { method: "GET" },
+        HTTP_TIMEOUT_MS,
+        options.abortSignal,
+      )
+    } catch {
       if (options.abortSignal?.aborted) await cancelled()
-      throw error
-    })
+      if (Date.now() > deadline) break
+      await waitForNextPoll()
+      continue
+    }
+    if (response.status === 429 || response.status >= 500) {
+      await response.body?.cancel().catch(() => undefined)
+      await waitForNextPoll()
+      continue
+    }
+    if (response.status === 404) {
+      await response.body?.cancel().catch(() => undefined)
+      if (lostJobResubmits >= MAX_LOST_JOB_RESUBMITS) {
+        await discardOutputGrants(true)
+        throw new DevotionalWorkerError(
+          "invalid_response",
+          "shorts-worker lost the devotional render after bounded resubmissions",
+          false,
+        )
+      }
+      const resubmitted = await submitWorkerJob()
+      if (!resubmitted.response.ok || !resubmitted.workerJobId) {
+        await discardOutputGrants(false)
+        throw new DevotionalWorkerError(
+          "upstream_failed",
+          `shorts-worker job resubmission failed with HTTP ${resubmitted.response.status}`,
+          resubmitted.response.status >= 500 ||
+            resubmitted.response.status === 409,
+        )
+      }
+      workerJobId = resubmitted.workerJobId
+      lostJobResubmits += 1
+      continue
+    }
     const parsed = JobStatusSchema.safeParse(await jsonResponse(response))
     if (!response.ok || !parsed.success) {
+      if (await cancelWorkerJob()) await discardOutputGrants(true)
       throw new DevotionalWorkerError(
         "invalid_response",
         `shorts-worker job status returned HTTP ${response.status}`,
@@ -642,6 +1072,20 @@ export async function renderDevotionalOnWorker(
       )
     }
     if (parsed.data.status === "completed" && parsed.data.result) {
+      if (workspaceTransfer && workspaceMediaStore && outputGrants) {
+        try {
+          return await finalizeSignedOutputs({
+            store: workspaceMediaStore,
+            attempt,
+            outputAssetId,
+            refs: parsed.data.result.artifacts,
+            grants: outputGrants,
+          })
+        } catch (error) {
+          await discardOutputGrants(false)
+          throw error
+        }
+      }
       return expectedArtifacts(
         outputAssetId,
         parsed.data.result.artifacts,
@@ -649,30 +1093,16 @@ export async function renderDevotionalOnWorker(
       )
     }
     if (parsed.data.status === "failed" || parsed.data.status === "cancelled") {
+      await discardOutputGrants(false)
       throw new DevotionalWorkerError(
         "job_failed",
         parsed.data.error?.messages.join("; ") ?? "shorts-worker job failed",
         parsed.data.error?.retryable ?? false,
       )
     }
-    if (options.abortSignal) {
-      await new Promise<void>((resolve) => {
-        const signal = options.abortSignal!
-        const onAbort = () => {
-          clearTimeout(timer)
-          resolve()
-        }
-        const timer = setTimeout(() => {
-          signal.removeEventListener("abort", onAbort)
-          resolve()
-        }, intervalMs)
-        signal.addEventListener("abort", onAbort, { once: true })
-      })
-    } else {
-      await sleep(intervalMs)
-    }
+    await waitForNextPoll()
   }
-  await cancelWorkerJob()
+  if (await cancelWorkerJob()) await discardOutputGrants(true)
   throw new DevotionalWorkerError(
     "job_timeout",
     `shorts-worker devotional render exceeded ${timeoutMs}ms`,
@@ -693,6 +1123,74 @@ export async function fetchDevotionalWorkerArtifact(
   range?: string,
   options: DevotionalWorkerClientOptions = {},
 ): Promise<Response> {
+  const workspaceMediaStore =
+    options.workspaceMediaStore ?? configuredWorkspaceMediaStore
+  const parsedAsset = parseWorkspaceAssetId(artifact.assetId)
+  if (
+    parsedAsset?.kind === "output" &&
+    workspaceMediaStore?.supportsSignedTransfers
+  ) {
+    let payload: unknown
+    try {
+      payload = JSON.parse(
+        (
+          await workspaceMediaStore.readManifest({
+            workspaceGeneration: parsedAsset.workspaceGeneration,
+            attemptToken: parsedAsset.attemptToken,
+            kind: "attempt-output",
+            digest: parsedAsset.manifestDigest,
+            size: parsedAsset.manifestSize,
+          })
+        ).toString("utf8"),
+      )
+    } catch {
+      throw new DevotionalWorkerError(
+        "job_failed",
+        "devotional output manifest is unavailable or invalid",
+        false,
+      )
+    }
+    const manifest = WorkspacePlaybackManifestSchema.safeParse(payload)
+    const expectedRoot = `runs/g${parsedAsset.workspaceGeneration}/${parsedAsset.attemptToken}/attempt-output`
+    const manifestMatchesAsset =
+      manifest.success &&
+      manifest.data.kind === "attempt-output" &&
+      manifest.data.attempt.workspaceGeneration ===
+        parsedAsset.workspaceGeneration &&
+      devotionalAttemptRoot(manifest.data.attempt) ===
+        `runs/g${parsedAsset.workspaceGeneration}/${parsedAsset.attemptToken}`
+    const ref = manifestMatchesAsset
+      ? manifest.data.artifacts.find(
+          (entry) =>
+            entry.artifactType === artifact.artifactType &&
+            entry.ext === artifact.ext,
+        )?.ref
+      : undefined
+    const expectedFileName =
+      artifact.artifactType === DEVOTIONAL_PORTRAIT_ARTIFACT_TYPE
+        ? "portrait.mp4"
+        : artifact.artifactType === DEVOTIONAL_WIDE_ARTIFACT_TYPE
+          ? "wide.mp4"
+          : null
+    if (
+      !manifestMatchesAsset ||
+      !ref ||
+      !expectedFileName ||
+      ref.attempt.workspaceGeneration !==
+        manifest.data.attempt.workspaceGeneration ||
+      ref.attempt.attemptId !== manifest.data.attempt.attemptId ||
+      ref.attempt.runId !== manifest.data.attempt.runId ||
+      ref.contentType !== "video/mp4" ||
+      ref.key !== `${expectedRoot}/${ref.digest}/${expectedFileName}`
+    ) {
+      throw new DevotionalWorkerError(
+        "job_failed",
+        "devotional output manifest is incomplete",
+        false,
+      )
+    }
+    return workspaceMediaStore.fetchArtifact(ref, range)
+  }
   const client = resolveClient(options)
   return request(
     client,
@@ -711,6 +1209,36 @@ export async function verifyDevotionalWorkerArtifacts(
   artifacts: DevotionalVideoArtifacts,
   options: DevotionalWorkerClientOptions = {},
 ): Promise<void> {
+  const workspaceMediaStore =
+    options.workspaceMediaStore ?? configuredWorkspaceMediaStore
+  if (
+    workspaceMediaStore &&
+    [artifacts.portrait, artifacts.wide].every(
+      (artifact) =>
+        artifact.schemaVersion === "2" &&
+        artifact.key &&
+        artifact.digest &&
+        artifact.size &&
+        artifact.contentType &&
+        artifact.attempt,
+    )
+  ) {
+    const refs = [artifacts.portrait, artifacts.wide].map((artifact) => {
+      const parsed = parseWorkspaceRef(artifact)
+      if (!parsed.success) {
+        throw new DevotionalWorkerError(
+          "invalid_response",
+          "devotional v2 artifact reference is incomplete",
+          false,
+        )
+      }
+      return parsed.data
+    })
+    await Promise.all(
+      refs.map((ref) => workspaceMediaStore.verifyArtifact(ref)),
+    )
+    return
+  }
   const client = resolveClient(options)
   for (const artifact of [artifacts.portrait, artifacts.wide]) {
     const response = await request(

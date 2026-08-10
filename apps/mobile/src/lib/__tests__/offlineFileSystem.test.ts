@@ -59,7 +59,7 @@ describe("downloadToFile", () => {
     expect(datadogLog.warn).toHaveBeenCalledWith(
       "sidecar.download_bad_status",
       {
-        status: 400,
+        http_status: 400,
       },
     )
   })

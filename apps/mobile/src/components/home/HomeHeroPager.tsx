@@ -189,7 +189,9 @@ export function HomeHeroPager({
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status !== "error") return
       const current = stateRef.current
-      const message =
+      // Not `message`: that is a Datadog reserved log field and the wrapper's
+      // own first argument already sets it, so a `message` key is dropped.
+      const errorMessage =
         error?.message != null
           ? sanitizeVideoErrorMessage(error.message)
           : "video playback error"
@@ -205,7 +207,7 @@ export function HomeHeroPager({
           phase: "transition_hold",
           content_id:
             held?.kind === "video" ? (held.slug ?? held.id) : held?.id,
-          message,
+          error_message: errorMessage,
         })
         return
       }
@@ -215,7 +217,7 @@ export function HomeHeroPager({
       datadogLog.warn("video.playback_error", {
         surface: "hero",
         content_id: slide.slug,
-        message,
+        error_message: errorMessage,
       })
       dispatch({ type: "STREAM_ERROR" })
     })

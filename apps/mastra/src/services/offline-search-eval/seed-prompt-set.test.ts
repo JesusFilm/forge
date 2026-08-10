@@ -8,11 +8,11 @@ import {
 } from "./seed-prompt-set"
 
 describe("search eval seed prompt set", () => {
-  it("includes a 100-query launch-readiness suite with unique ids", () => {
+  it("includes a 100-plus-query launch-readiness suite with unique ids", () => {
     const publicWatchPrompts = seedPromptsForLocales(undefined, {
       callerTrack: "public-watch",
     })
-    expect(publicWatchPrompts).toHaveLength(100)
+    expect(publicWatchPrompts).toHaveLength(104)
     expect(SEARCH_EVAL_SEED_PROMPTS.length).toBeGreaterThan(100)
 
     const ids = SEARCH_EVAL_SEED_PROMPTS.map((prompt) => prompt.id)
@@ -125,7 +125,7 @@ describe("search eval seed prompt set", () => {
 
   it("keeps prompt metadata non-gating and locale-filterable", () => {
     expect(SEARCH_EVAL_SEED_PROMPT_SET_VERSION).toBe(
-      "search-eval-seed-prompts/v5",
+      "search-eval-seed-prompts/v7",
     )
     expect(
       SEARCH_EVAL_SEED_PROMPTS.every(
@@ -220,6 +220,16 @@ describe("search eval seed prompt set", () => {
           id: "seed-chinese-vegetable-animation",
           locale: "zh",
           languageSlug: "mandarin-china",
+        }),
+        expect.objectContaining({
+          id: "seed-chinese-who-is-jesus",
+          locale: "zh",
+          languageSlug: "mandarin-china",
+        }),
+        expect.objectContaining({
+          id: "seed-thai-who-is-jesus",
+          locale: "th",
+          languageSlug: "thai",
         }),
       ]),
     )
