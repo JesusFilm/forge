@@ -26,7 +26,7 @@ export async function validateAdminManagerSession({
       "ADMIN_GRAPHQL_URL and either ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET are required for Manager access validation",
     )
   }
-  const bearerToken = await getAdminManagerSessionBearer()
+  const bearerToken = await getAdminManagerServiceBearer()
 
   const response = await fetch(sessionUrl, {
     method: "POST",
@@ -77,7 +77,7 @@ function hasManagerValidationCredential() {
   )
 }
 
-async function getAdminManagerSessionBearer() {
+export async function getAdminManagerServiceBearer() {
   if (
     env.AUTH_ISSUER_URL &&
     env.AUTH_MANAGER_SERVICE_CLIENT_ID &&

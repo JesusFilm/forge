@@ -53,6 +53,15 @@ export const env = createEnv({
     ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
+    // SEO delegated approval proof (plan 2026-08-01-001). Optional at boot:
+    // the workspace remains read-only when no active private key is present.
+    // Admin verifies the matching public key from SEO_APPROVAL_PUBLIC_KEYS.
+    SEO_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .default("local"),
+    SEO_APPROVAL_KEY_ID: z.string().min(1).optional(),
+    SEO_APPROVAL_PRIVATE_KEY: z.string().min(1).optional(),
+
     // Admin embed-trigger proxy (plan 006) — manager exposes
     // /api/admin-embeds/transcript, which forwards to admin's GraphQL
     // trigger mutation using the bearer key below. Both vars are optional
@@ -159,6 +168,9 @@ export const env = createEnv({
       process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
     ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
     ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
+    SEO_ASSERTION_ENVIRONMENT: process.env.SEO_ASSERTION_ENVIRONMENT ?? "local",
+    SEO_APPROVAL_KEY_ID: process.env.SEO_APPROVAL_KEY_ID,
+    SEO_APPROVAL_PRIVATE_KEY: process.env.SEO_APPROVAL_PRIVATE_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
