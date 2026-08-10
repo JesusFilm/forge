@@ -70,6 +70,13 @@ async function completeSignIn(
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 
+/** A cancelled provider sheet is a user choice, not a failure to report. */
+function toSignInOutcome(error: unknown): SignInOutcome {
+  return classifySignInFailure("provider-sheet", error) === "cancelled"
+    ? { status: "cancelled" }
+    : { status: "error" }
+}
+
 export async function signInWithApple(): Promise<SignInOutcome> {
   const AppleAuthentication =
     require("expo-apple-authentication") as typeof import("expo-apple-authentication")
@@ -87,9 +94,7 @@ export async function signInWithApple(): Promise<SignInOutcome> {
     authorizationCode = credential.authorizationCode
     name = appleNameForIdToken(credential.fullName)
   } catch (error) {
-    return classifySignInFailure("provider-sheet", error) === "cancelled"
-      ? { status: "cancelled" }
-      : { status: "error" }
+    return toSignInOutcome(error)
   }
   if (!identityToken) return { status: "error" }
 
@@ -130,9 +135,7 @@ export async function signInWithGoogle(): Promise<SignInOutcome> {
     idToken = response.type === "success" ? response.data.idToken : undefined
     if (response.type === "cancelled") return { status: "cancelled" }
   } catch (error) {
-    return classifySignInFailure("provider-sheet", error) === "cancelled"
-      ? { status: "cancelled" }
-      : { status: "error" }
+    return toSignInOutcome(error)
   }
   if (!idToken) return { status: "error" }
 
@@ -232,9 +235,7 @@ export async function signInWithHostedPage(): Promise<SignInOutcome> {
     })
     if (result.error) return { status: "error" }
   } catch (error) {
-    return classifySignInFailure("provider-sheet", error) === "cancelled"
-      ? { status: "cancelled" }
-      : { status: "error" }
+    return toSignInOutcome(error)
   }
   const store = getAuthSession()
   await store.refresh()
