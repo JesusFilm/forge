@@ -15,8 +15,11 @@ const seoEnvironmentSchema = z.object({
   SEO_GOOGLE_ACCESS_TOKEN: optionalString,
   SEO_GOOGLE_CREDENTIALS_JSON: optionalString,
   SEO_GOOGLE_PROJECT_ID: optionalString,
+  OPENROUTER_API_PAID_KEY: optionalString,
+  OPENROUTER_API_KEY: optionalString,
   SEO_OPENAI_API_KEY: optionalString,
   SEO_OPENAI_MODEL: z.string().min(1).default("gpt-5.4-mini"),
+  SEO_OPENROUTER_MODEL: optionalString,
   SEO_ALLOWED_PAGE_HOSTS: optionalString,
   SEO_ADMIN_BASE_URL: optionalString,
   SEO_ADMIN_ALLOWED_HOSTS: optionalString,
@@ -76,6 +79,10 @@ function csv(value: string | undefined): string[] {
   ]
 }
 
+function openRouterModelId(value: string): string {
+  return value.includes("/") ? value : `openai/${value}`
+}
+
 export type SeoConfig = {
   automationMode: SeoAutomationMode
   gscPropertyIds: string[]
@@ -83,6 +90,8 @@ export type SeoConfig = {
   googleAccessToken?: string
   googleCredentialsJson?: string
   googleProjectId?: string
+  openRouterApiKey?: string
+  openRouterModel: string
   openAiApiKey?: string
   openAiModel: string
   allowedPageHosts: string[]
@@ -113,6 +122,35 @@ export type SeoConfig = {
   }
 }
 
+export type SeoLlmProviderConfig = {
+  id: "openrouter" | "openai"
+  apiKey: string
+  baseUrl: string
+  model: string
+}
+
+export function getSeoLlmProviderConfig(
+  config: SeoConfig,
+): SeoLlmProviderConfig | undefined {
+  if (config.openRouterApiKey) {
+    return {
+      id: "openrouter",
+      apiKey: config.openRouterApiKey,
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: config.openRouterModel,
+    }
+  }
+  if (config.openAiApiKey) {
+    return {
+      id: "openai",
+      apiKey: config.openAiApiKey,
+      baseUrl: "https://api.openai.com/v1",
+      model: config.openAiModel,
+    }
+  }
+  return undefined
+}
+
 export function getGoogleSealedCredentialState(
   credentialsJson: string | undefined,
   projectId: string | undefined,
@@ -125,6 +163,7 @@ export function getSeoConfig(
   source: NodeJS.ProcessEnv = process.env,
 ): SeoConfig {
   const parsed = seoEnvironmentSchema.parse(source)
+  const openAiModel = parsed.SEO_OPENAI_MODEL.replace(/^openai\//u, "")
   if (
     source.NODE_ENV === "production" &&
     parsed.SEO_ASSERTION_ENVIRONMENT === "local" &&
@@ -141,8 +180,13 @@ export function getSeoConfig(
     googleAccessToken: parsed.SEO_GOOGLE_ACCESS_TOKEN,
     googleCredentialsJson: parsed.SEO_GOOGLE_CREDENTIALS_JSON,
     googleProjectId: parsed.SEO_GOOGLE_PROJECT_ID,
+    openRouterApiKey:
+      parsed.OPENROUTER_API_PAID_KEY ?? parsed.OPENROUTER_API_KEY,
+    openRouterModel: openRouterModelId(
+      parsed.SEO_OPENROUTER_MODEL ?? openAiModel,
+    ),
     openAiApiKey: parsed.SEO_OPENAI_API_KEY,
-    openAiModel: parsed.SEO_OPENAI_MODEL,
+    openAiModel,
     allowedPageHosts: csv(parsed.SEO_ALLOWED_PAGE_HOSTS).map((host) =>
       host.toLowerCase(),
     ),
@@ -203,7 +247,7 @@ export function getSeoCapabilities(
     gsc: googleConfigured && config.gscPropertyIds.length > 0,
     ga4: googleConfigured && config.ga4PropertyIds.length > 0,
     firecrawl: firecrawlConfigured,
-    groundedSearch: Boolean(config.openAiApiKey),
+    groundedSearch: Boolean(getSeoLlmProviderConfig(config)),
     adminLedger: Boolean(
       config.admin.baseUrl &&
       config.admin.keyId &&

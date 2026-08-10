@@ -2,7 +2,11 @@ import { createHash, randomUUID } from "node:crypto"
 
 import { z } from "zod"
 
-import { getSeoConfig, type SeoConfig } from "../config/seo"
+import {
+  getSeoConfig,
+  getSeoLlmProviderConfig,
+  type SeoConfig,
+} from "../config/seo"
 import { minimizeSeoText, minimizeSeoUrl } from "./seo-data-minimization"
 import type { SeoEvidenceObservation, SeoProviderFailure } from "./seo-evidence"
 import { readSeoJson } from "./seo-http"
@@ -74,9 +78,11 @@ export async function searchGroundedWeb(input: {
   observationId?: string
 }): Promise<GroundedSearchResult> {
   const config = input.config ?? getSeoConfig()
-  if (!config.openAiApiKey) {
+  const provider = getSeoLlmProviderConfig(config)
+  if (!provider) {
     return { ok: false, reason: "config_missing", retryable: false }
   }
+  const useOpenRouter = provider.id === "openrouter"
   const query = minimizeSeoText(input.query, 500).trim()
   if (!query) return { ok: false, reason: "rejected", retryable: false }
   const fetchImpl = input.fetchImpl ?? fetch
@@ -87,19 +93,34 @@ export async function searchGroundedWeb(input: {
   for (let attempt = 1; attempt <= config.maxProviderAttempts; attempt += 1) {
     let response: Response
     try {
-      response = await fetchImpl("https://api.openai.com/v1/responses", {
+      response = await fetchImpl(`${provider.baseUrl}/responses`, {
         method: "POST",
         headers: {
-          authorization: `Bearer ${config.openAiApiKey}`,
+          authorization: `Bearer ${provider.apiKey}`,
           "content-type": "application/json",
           "user-agent": "forge-mastra-seo/1.0",
         },
         body: JSON.stringify({
-          model: config.openAiModel,
+          model: provider.model,
           input: query,
-          tools: [{ type: "web_search" }],
+          tools: [
+            useOpenRouter
+              ? {
+                  type: "openrouter:web_search",
+                  parameters: {
+                    engine: "auto",
+                    max_results: 5,
+                    max_uses: 1,
+                    max_total_results: 5,
+                    search_context_size: "low",
+                  },
+                }
+              : { type: "web_search" },
+          ],
           tool_choice: "required",
-          include: ["web_search_call.action.sources"],
+          ...(useOpenRouter
+            ? { max_tool_calls: 1 }
+            : { include: ["web_search_call.action.sources"] }),
           max_output_tokens: 1_500,
         }),
         redirect: "error",
@@ -214,7 +235,9 @@ export async function searchGroundedWeb(input: {
         caveats: [
           "Grounded model output is an observation, not authoritative Search Console ranking evidence.",
           "Citation URLs are retained as bounded references and are never fetched automatically.",
-          ...(incomplete ? ["OpenAI reported an incomplete response."] : []),
+          ...(incomplete
+            ? ["The grounded-search provider reported an incomplete response."]
+            : []),
           ...(missingSearchCall
             ? ["The response contained no web_search_call item."]
             : []),
