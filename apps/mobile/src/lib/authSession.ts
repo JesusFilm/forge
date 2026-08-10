@@ -342,6 +342,16 @@ export function getAuthClient(): BetterAuthExpoClient {
  * treating that as signed-out wipes the store, snapshot, and unsent queue.
  * Throwing routes it to refresh()'s degrade path instead.
  */
+/** Carries the upstream status as a field so callers never parse a message. */
+export class SessionFetchError extends Error {
+  readonly status: number | null
+  constructor(status: number | null) {
+    super("session_fetch_failed")
+    this.name = "SessionFetchError"
+    this.status = status
+  }
+}
+
 export function userFromSessionResult(result: {
   data?: {
     user?: {
@@ -353,7 +363,7 @@ export function userFromSessionResult(result: {
   error?: { status?: number | null; message?: string | null } | null
 }): AuthUser | null {
   if (result.error) {
-    throw new Error(`session_fetch_failed:${result.error.status ?? "unknown"}`)
+    throw new SessionFetchError(result.error.status ?? null)
   }
   const user = result.data?.user
   if (!user) return null

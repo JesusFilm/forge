@@ -6,6 +6,7 @@ import {
   isJwtFresh,
   rumUserFromSession,
   userFromSessionResult,
+  SessionFetchError,
   type AuthSessionDeps,
 } from "../authSession"
 
@@ -345,7 +346,13 @@ describe("userFromSessionResult (outage is not a sign-out)", () => {
     // offline queue on a transient auth outage.
     expect(() =>
       userFromSessionResult({ data: null, error: { status: 503 } }),
-    ).toThrow(/session_fetch_failed/)
+    ).toThrow(SessionFetchError)
+    try {
+      userFromSessionResult({ data: null, error: { status: 503 } })
+    } catch (e) {
+      // The status rides as a field — callers never parse a message.
+      expect((e as SessionFetchError).status).toBe(503)
+    }
   })
 
   it("throws even when an error arrives alongside data", () => {
@@ -354,7 +361,7 @@ describe("userFromSessionResult (outage is not a sign-out)", () => {
         data: { user: { id: "user-1" } },
         error: { status: 500 },
       }),
-    ).toThrow(/session_fetch_failed/)
+    ).toThrow(SessionFetchError)
   })
 })
 
@@ -363,7 +370,7 @@ describe("refresh() keeps the session through an outage", () => {
     const fetchSession = jest
       .fn<Promise<{ id: string } | null>, []>()
       .mockResolvedValueOnce({ id: "user-1" })
-      .mockRejectedValueOnce(new Error("session_fetch_failed:503"))
+      .mockRejectedValueOnce(new SessionFetchError(503))
     const { store } = buildStore({ fetchSession })
 
     await store.refresh()

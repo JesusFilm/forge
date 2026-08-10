@@ -2,6 +2,14 @@ import { randomUUID } from "node:crypto"
 import { prisma } from "@/db/client"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
+/** Bulk-write invariant breach — a bug in this module, never client input. */
+export class WatchProgressWriteError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WatchProgressWriteError"
+  }
+}
+
 const COMPLETE_THRESHOLD = 0.9
 const MAX_HISTORY_LIMIT = 200
 
@@ -201,7 +209,7 @@ async function writeNewestWins(
       { name: "completions", length: completions.length },
       { name: "watchedAts", length: watchedAts.length },
     ],
-    (message) => new Error(message),
+    (message) => new WatchProgressWriteError(message),
   )
 
   // `newestByVideoId` above is load-bearing here, not just an optimisation:
