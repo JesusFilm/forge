@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 10, 2026)
 
-- **Total tickets:** 501
-- **Complete:** 382
+- **Total tickets:** 502
+- **Complete:** 383
 - **In progress:** 36
 - **Not started:** 32
 - **Blocked:** 51
@@ -414,6 +414,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-343](platform/feat-343-watch-sibling-language-availability.md)                   | Watch sibling selected-language availability                                     | codex      | P1       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-345](platform/feat-345-mastra-seo-sealed-google-credentials.md)                  | Support sealed Google credentials for Mastra SEO                                 | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
 | [feat-347](platform/feat-347-mastra-seo-openrouter-provider.md)                        | Reuse Mastra OpenRouter access for SEO                                           | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
+| [feat-348](platform/feat-348-mastra-seo-google-response-pagination.md)                 | Bound Mastra SEO Google response pages                                           | codex      | P1       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-336](platform/feat-336-admin-multi-client-token-introspection.md)                | Admin introspection for more than one client id                                  | unassigned | P1       | 2026-08-11 | 2    | 2026-08-12 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |

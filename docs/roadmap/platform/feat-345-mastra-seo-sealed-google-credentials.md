@@ -8,7 +8,8 @@ start_date: "2026-08-10"
 duration: 2
 depends_on:
   - "feat-344"
-blocks: []
+blocks:
+  - "feat-348"
 tags:
   - "platform"
   - "mastra"

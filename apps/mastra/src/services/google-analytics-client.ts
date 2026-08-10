@@ -11,6 +11,7 @@ import {
 } from "./google-auth-client"
 import { minimizeSeoUrl } from "./seo-data-minimization"
 import type { SeoEvidenceObservation, SeoProviderFailure } from "./seo-evidence"
+import { boundedSeoProviderPageSize } from "./seo-http"
 
 const GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 const ALLOWED_DIMENSIONS = new Set(["date", "landingPagePlusQueryString"])
@@ -123,11 +124,19 @@ export async function queryGoogleAnalytics(input: {
   if (!token.ok) return token
 
   const rows: Ga4Row[] = []
-  const pageSize = Math.min(10_000, config.maxGa4Rows)
+  let pageSize = boundedSeoProviderPageSize({
+    maxRows: config.maxGa4Rows,
+    maxResponseBytes: config.maxResponseBytes,
+    providerMaxRows: 10_000,
+  })
   let metadata: z.infer<typeof ResponseSchema>["metadata"]
   let propertyQuota: unknown
-  let declaredRowCount = 0
+  let declaredRowCount: number | null = null
   while (rows.length < config.maxGa4Rows) {
+    const requestedPageSize = Math.min(
+      pageSize,
+      config.maxGa4Rows - rows.length,
+    )
     const response = await requestGoogleJson({
       url: new URL(
         `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(input.propertyId)}:runReport`,
@@ -151,7 +160,7 @@ export async function queryGoogleAnalytics(input: {
               },
             }
           : {}),
-        limit: String(Math.min(pageSize, config.maxGa4Rows - rows.length)),
+        limit: String(requestedPageSize),
         offset: String(rows.length),
         returnPropertyQuota: true,
       },
@@ -161,14 +170,46 @@ export async function queryGoogleAnalytics(input: {
       fetchImpl: input.fetchImpl,
       sleep: input.sleep,
     })
-    if (!response.ok) return response
+    if (!response.ok) {
+      if (response.reason === "response_too_large" && requestedPageSize > 1) {
+        pageSize = Math.max(1, Math.floor(requestedPageSize / 2))
+        continue
+      }
+      return response.reason === "response_too_large"
+        ? { ok: false, reason: "parse_error", retryable: true }
+        : response
+    }
     const parsed = ResponseSchema.safeParse(response.body)
     if (!parsed.success)
       return { ok: false, reason: "parse_error", retryable: true }
+    if (parsed.data.rows.length > requestedPageSize) {
+      return { ok: false, reason: "parse_error", retryable: true }
+    }
+    const responseRowCount = parsed.data.rowCount
+    if (responseRowCount == null) {
+      if (parsed.data.rows.length > 0 || declaredRowCount != null) {
+        return { ok: false, reason: "parse_error", retryable: true }
+      }
+    } else {
+      if (
+        (declaredRowCount != null && responseRowCount !== declaredRowCount) ||
+        responseRowCount < rows.length + parsed.data.rows.length
+      ) {
+        return { ok: false, reason: "parse_error", retryable: true }
+      }
+      declaredRowCount = responseRowCount
+    }
     metadata = parsed.data.metadata ?? metadata
     propertyQuota = parsed.data.propertyQuota ?? propertyQuota
-    declaredRowCount = parsed.data.rowCount ?? declaredRowCount
-    if (parsed.data.rows.length === 0) break
+    if (parsed.data.rows.length === 0) {
+      if (
+        declaredRowCount != null &&
+        rows.length < Math.min(declaredRowCount, config.maxGa4Rows)
+      ) {
+        return { ok: false, reason: "parse_error", retryable: true }
+      }
+      break
+    }
     for (const row of parsed.data.rows) {
       if (
         row.dimensionValues.length !== dimensions.length ||
@@ -201,11 +242,21 @@ export async function queryGoogleAnalytics(input: {
       }
       rows.push({ dimensions: projectedDimensions, metrics: projectedMetrics })
     }
-    if (parsed.data.rows.length < pageSize) break
+    if (parsed.data.rows.length < requestedPageSize) {
+      if (
+        declaredRowCount != null &&
+        rows.length < Math.min(declaredRowCount, config.maxGa4Rows)
+      ) {
+        return { ok: false, reason: "parse_error", retryable: true }
+      }
+      break
+    }
   }
 
   const capped =
-    rows.length >= config.maxGa4Rows && declaredRowCount > rows.length
+    rows.length >= config.maxGa4Rows &&
+    declaredRowCount != null &&
+    declaredRowCount > rows.length
   const thresholded = metadata?.subjectToThresholding === true
   const dataLoss = metadata?.dataLossFromOtherRow === true
   const caveats = [
@@ -234,7 +285,7 @@ export async function queryGoogleAnalytics(input: {
       dimensions,
       metrics,
       rowCount: rows.length,
-      declaredRowCount,
+      declaredRowCount: declaredRowCount ?? rows.length,
       rows,
       propertyTimezone: metadata?.timeZone ?? null,
       currencyCode: metadata?.currencyCode ?? null,
