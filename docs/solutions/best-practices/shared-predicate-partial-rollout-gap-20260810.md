@@ -67,7 +67,7 @@ function didn't touch it, and no compiler or lint rule flagged the gap.
 ## What didn't work
 
 - Trusting the PR description's surface list at face value. It named
-  the right *feature area* ("series parent/child relations") but the
+  the right _feature area_ ("series parent/child relations") but the
   actual enumeration of call sites under that area was incomplete.
 - Grepping for the new predicate's usages to confirm coverage. That only
   proves where the predicate WAS applied, not where a same-shape
@@ -75,8 +75,8 @@ function didn't touch it, and no compiler or lint rule flagged the gap.
 
 ## Solution
 
-Grep for the *shape* being replaced, not just the *call sites the diff
-touched*: search the whole affected service/loader files for other
+Grep for the _shape_ being replaced, not just the _call sites the diff
+touched_: search the whole affected service/loader files for other
 literal `{ deletedAt: null, locales: { some: { status: "PUBLISHED", ... } } }`-
 shaped objects (the pre-existing "is this row publicly visible" idiom),
 independently of whether the PR's diff mentions them. Any hit is a
@@ -95,7 +95,7 @@ EDITOR/ADMIN callers.
 A shared predicate is only as complete as its adoption. When a codebase
 has an established idiom (hand-rolled visibility `where` objects,
 repeated across files because Prisma composition doesn't force
-centralization), introducing a shared function to replace *some*
+centralization), introducing a shared function to replace _some_
 instances of that idiom leaves the rest silently stale — they still
 compile, still pass their existing tests (which were written against the
 OLD, narrower visibility contract), and look identical to a reviewer
