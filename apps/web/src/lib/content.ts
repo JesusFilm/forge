@@ -2543,8 +2543,9 @@ function nextWatchItemFromChild(
  * Returns a carousel block with the most relevant peer set, or null when none
  * is available:
  *
- * 1. When the standalone route supplies eligible selectable parents, use the
- *    first as the default and retain all choices for the client selector.
+ * 1. When the standalone route supplies eligible selectable parents, use its
+ *    server-selected default (or the first eligible parent as fallback) while
+ *    retaining all choices in relation order for the client selector.
  * 2. When the current video has its **own** children (a parent / collection
  *    video like JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
@@ -2558,11 +2559,17 @@ export function buildSiblingCarouselBlock(
   canonicalParent: WatchParent | null,
   video: WatchVideoRecord,
   selectableParents: CarouselParent[] = [],
+  defaultSelectableParentDocumentId?: string,
 ): WatchSiblingCarouselBlock | null {
   if (selectableParents.length > 0) {
+    const defaultParent =
+      selectableParents.find(
+        (parent) => parent.documentId === defaultSelectableParentDocumentId,
+      ) ?? selectableParents[0]!
+
     return {
       kind: "SiblingCarousel",
-      canonicalParent: selectableParents[0]!,
+      canonicalParent: defaultParent,
       currentVideoDocumentId: video.documentId,
       selectableParents,
     }
@@ -2723,6 +2730,8 @@ type MergeWatchExperienceArgs = {
   canonicalParent: WatchParent | null
   /** Eligible collection choices supplied only by the standalone route. */
   selectableParents?: CarouselParent[]
+  /** Preferred standalone collection identity after route eligibility. */
+  defaultSelectableParentDocumentId?: string
   /** Optional Experience override — when omitted, all 6 slots auto-template. */
   experience?: WatchExperience | null
 }
@@ -2752,6 +2761,7 @@ export function mergeWatchExperience({
   variant,
   canonicalParent,
   selectableParents,
+  defaultSelectableParentDocumentId,
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
@@ -2793,7 +2803,12 @@ export function mergeWatchExperience({
   pushSlot("HeroPlayer", buildHeroBlock(video, variant, canonicalParent))
   pushSlot(
     "SiblingCarousel",
-    buildSiblingCarouselBlock(canonicalParent, video, selectableParents),
+    buildSiblingCarouselBlock(
+      canonicalParent,
+      video,
+      selectableParents,
+      defaultSelectableParentDocumentId,
+    ),
   )
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))

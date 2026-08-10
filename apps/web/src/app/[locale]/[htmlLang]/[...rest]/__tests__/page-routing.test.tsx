@@ -1217,173 +1217,212 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ).toEqual(["watch-page-client-mock", "watch-home-footer"])
   })
 
-  it("builds ordered standalone collection choices from exact admitted current-language routes", async () => {
-    const result = makeWatchVideoResult("featureFilm")
-    const child = (documentId: string, slug: string, title: string) => ({
-      documentId,
-      slug,
-      title,
-      label: "episode",
-      images: [],
-      durationSeconds: 30,
-      muxPlaybackId: `mux-${documentId}`,
-      muxThumbnailBlurDataUrl: null,
-    })
-    const current = child("v1", "storyclubs", "StoryClubs")
-    const ownChildren = [
-      child("own-1", "own-one", "Own One"),
-      child("own-2", "own-two", "Own Two"),
-    ]
-    const parents = [
-      {
-        documentId: "parent-a",
-        slug: "collection-a",
-        title: "Collection A",
-        noIndex: false,
-        label: "collection",
-        images: [],
-        children: [
-          current,
-          child("a-2", "a-two", "A Two"),
-          child("a-3", "a-three", "A Three"),
-        ],
-      },
-      {
-        documentId: "parent-missing-current",
-        slug: "missing-current",
-        title: "Missing Current",
-        noIndex: false,
-        label: "collection",
-        images: [],
-        children: [current, child("m-2", "m-two", "M Two")],
-      },
-      {
-        documentId: "parent-too-short",
-        slug: "too-short",
-        title: "Too Short",
-        noIndex: false,
-        label: "collection",
-        images: [],
-        children: [current, child("s-2", "s-two", "S Two")],
-      },
-      {
-        documentId: "parent-invalid-slug",
-        slug: "Not Public",
-        title: "Invalid Slug",
-        noIndex: false,
-        label: "collection",
-        images: [],
-        children: [current, child("i-2", "i-two", "I Two")],
-      },
-      {
-        documentId: "parent-b",
-        slug: "collection-b",
-        title: "Collection B",
-        noIndex: false,
-        label: "collection",
-        images: [],
-        children: [
-          child("b-1", "b-one", "B One"),
-          current,
-          child("b-es", "b-spanish", "Spanish Only"),
-        ],
-      },
-    ]
-    ;(
-      result.video as unknown as {
-        children: typeof ownChildren
-        parents: typeof parents
-      }
-    ).children = ownChildren
-    ;(
-      result.video as unknown as {
-        children: typeof ownChildren
-        parents: typeof parents
-      }
-    ).parents = parents
-    getWatchRouteManifestMock.mockResolvedValue({
-      version: "1",
-      generatedAt: "2026-07-22T12:00:00.000Z",
-      contentSlugs: [],
-      oneSegmentSlugs: [],
-      episodePairsByParent: {
-        "collection-a": ["storyclubs", "a-two", "a-three"],
-        "missing-current": ["m-two"],
-        "too-short": ["storyclubs"],
-        "collection-b": ["b-one", "storyclubs", "b-spanish"],
-        storyclubs: ["own-one", "own-two"],
-      },
-      audioLanguageSlugs: ["english", "spanish-castilian"],
-      audioLanguageIndexesByEpisode: {
-        "collection-a": { storyclubs: [0], "a-two": [0], "a-three": [1] },
-        "missing-current": { "m-two": [0] },
-        "too-short": { storyclubs: [0] },
-        "collection-b": {
-          "b-one": [0],
-          storyclubs: [0],
-          "b-spanish": [1],
-        },
-        storyclubs: { "own-one": [0], "own-two": [0] },
-      },
-    })
-    mockRouteVideo(result)
-
-    await render2Seg("storyclubs", "english")
-
-    const props = watchPageClientMock.mock.calls[0]?.[0] as {
-      mergedBlocks: Array<{
-        kind?: string
-        video?: { documentId?: string; slug?: string }
-        nextWatchItem?: { parentSlug?: string } | null
-        canonicalParent?: { slug?: string; children?: Array<{ slug: string }> }
-        selectableParents?: Array<{
-          slug: string
-          children: Array<{ slug: string }>
-        }>
-      }>
-    }
-    const carousel = props.mergedBlocks.find(
-      (block) => block.kind === "SiblingCarousel",
-    )
-    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
-      "collection-a",
-      "collection-b",
-    ])
-    expect(
-      carousel?.selectableParents?.map((parent) =>
-        parent.children.map((entry) => entry.slug),
-      ),
-    ).toEqual([
-      ["storyclubs", "a-two"],
-      ["b-one", "storyclubs"],
-    ])
-    expect(carousel?.canonicalParent?.slug).toBe("collection-a")
-    expect(carousel?.canonicalParent?.children).toHaveLength(2)
-    const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
-    expect(hero?.nextWatchItem).toMatchObject({
-      parentSlug: "storyclubs",
-      slug: "own-one",
-      documentId: "own-1",
-    })
-    expect(
-      props.mergedBlocks.find((block) => block.kind === "Share")?.video,
-    ).toMatchObject({ documentId: "v1", slug: "storyclubs" })
-    expect(jsonLdByType("BreadcrumbList")).toBeNull()
-    expect(jsonLdByType("ItemList")).toMatchObject({
-      itemListElement: [
-        {
-          position: 1,
-          name: "StoryClubs",
-          url: "https://www.jesusfilm.org/watch/storyclubs.html",
-        },
-        {
-          position: 2,
-          name: "A Two",
-          url: "https://www.jesusfilm.org/watch/a-two.html",
-        },
+  it.each([
+    {
+      caseName: "Admin enum labels",
+      featureFilmLabel: "FEATURE_FILM",
+      expectedCanonicalSlug: "collection-b",
+      expectedItemList: [
+        { position: 1, name: "B One", slug: "b-one" },
+        { position: 2, name: "StoryClubs", slug: "storyclubs" },
       ],
-    })
-  })
+    },
+    {
+      caseName: "camelCase labels",
+      featureFilmLabel: "featureFilm",
+      expectedCanonicalSlug: "collection-b",
+      expectedItemList: [
+        { position: 1, name: "B One", slug: "b-one" },
+        { position: 2, name: "StoryClubs", slug: "storyclubs" },
+      ],
+    },
+    {
+      caseName: "no eligible feature film",
+      featureFilmLabel: "collection",
+      expectedCanonicalSlug: "collection-a",
+      expectedItemList: [
+        { position: 1, name: "StoryClubs", slug: "storyclubs" },
+        { position: 2, name: "A Two", slug: "a-two" },
+      ],
+    },
+  ])(
+    "defaults standalone collection choices from eligible parents ($caseName)",
+    async ({ featureFilmLabel, expectedCanonicalSlug, expectedItemList }) => {
+      const result = makeWatchVideoResult("featureFilm")
+      const child = (documentId: string, slug: string, title: string) => ({
+        documentId,
+        slug,
+        title,
+        label: "episode",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: `mux-${documentId}`,
+        muxThumbnailBlurDataUrl: null,
+      })
+      const current = child("v1", "storyclubs", "StoryClubs")
+      const ownChildren = [
+        child("own-1", "own-one", "Own One"),
+        child("own-2", "own-two", "Own Two"),
+      ]
+      const parents = [
+        {
+          documentId: "parent-a",
+          slug: "collection-a",
+          title: "Collection A",
+          noIndex: false,
+          label: "collection",
+          images: [],
+          children: [
+            current,
+            child("a-2", "a-two", "A Two"),
+            child("a-3", "a-three", "A Three"),
+          ],
+        },
+        {
+          documentId: "parent-missing-current",
+          slug: "missing-current",
+          title: "Missing Current",
+          noIndex: false,
+          label: "collection",
+          images: [],
+          children: [current, child("m-2", "m-two", "M Two")],
+        },
+        {
+          documentId: "parent-too-short",
+          slug: "too-short",
+          title: "Too Short",
+          noIndex: false,
+          label: "FEATURE_FILM",
+          images: [],
+          children: [current, child("s-2", "s-two", "S Two")],
+        },
+        {
+          documentId: "parent-invalid-slug",
+          slug: "Not Public",
+          title: "Invalid Slug",
+          noIndex: false,
+          label: "collection",
+          images: [],
+          children: [current, child("i-2", "i-two", "I Two")],
+        },
+        {
+          documentId: "parent-b",
+          slug: "collection-b",
+          title: "Feature Film B",
+          noIndex: false,
+          label: featureFilmLabel,
+          images: [],
+          children: [
+            child("b-1", "b-one", "B One"),
+            current,
+            child("b-es", "b-spanish", "Spanish Only"),
+          ],
+        },
+        {
+          documentId: "parent-c",
+          slug: "collection-c",
+          title: "Feature Film C",
+          noIndex: false,
+          label: featureFilmLabel,
+          images: [],
+          children: [current, child("c-2", "c-two", "C Two")],
+        },
+      ]
+      ;(
+        result.video as unknown as {
+          children: typeof ownChildren
+          parents: typeof parents
+        }
+      ).children = ownChildren
+      ;(
+        result.video as unknown as {
+          children: typeof ownChildren
+          parents: typeof parents
+        }
+      ).parents = parents
+      getWatchRouteManifestMock.mockResolvedValue({
+        version: "1",
+        generatedAt: "2026-07-22T12:00:00.000Z",
+        contentSlugs: [],
+        oneSegmentSlugs: [],
+        episodePairsByParent: {
+          "collection-a": ["storyclubs", "a-two", "a-three"],
+          "missing-current": ["m-two"],
+          "too-short": ["storyclubs"],
+          "collection-b": ["b-one", "storyclubs", "b-spanish"],
+          "collection-c": ["storyclubs", "c-two"],
+          storyclubs: ["own-one", "own-two"],
+        },
+        audioLanguageSlugs: ["english", "spanish-castilian"],
+        audioLanguageIndexesByEpisode: {
+          "collection-a": { storyclubs: [0], "a-two": [0], "a-three": [1] },
+          "missing-current": { "m-two": [0] },
+          "too-short": { storyclubs: [0] },
+          "collection-b": {
+            "b-one": [0],
+            storyclubs: [0],
+            "b-spanish": [1],
+          },
+          "collection-c": { storyclubs: [0], "c-two": [0] },
+          storyclubs: { "own-one": [0], "own-two": [0] },
+        },
+      })
+      mockRouteVideo(result)
+
+      await render2Seg("storyclubs", "english")
+
+      const props = watchPageClientMock.mock.calls[0]?.[0] as {
+        mergedBlocks: Array<{
+          kind?: string
+          video?: { documentId?: string; slug?: string }
+          nextWatchItem?: { parentSlug?: string } | null
+          canonicalParent?: {
+            slug?: string
+            children?: Array<{ slug: string }>
+          }
+          selectableParents?: Array<{
+            slug: string
+            children: Array<{ slug: string }>
+          }>
+        }>
+      }
+      const carousel = props.mergedBlocks.find(
+        (block) => block.kind === "SiblingCarousel",
+      )
+      expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual(
+        ["collection-a", "collection-b", "collection-c"],
+      )
+      expect(
+        carousel?.selectableParents?.map((parent) =>
+          parent.children.map((entry) => entry.slug),
+        ),
+      ).toEqual([
+        ["storyclubs", "a-two"],
+        ["b-one", "storyclubs"],
+        ["storyclubs", "c-two"],
+      ])
+      expect(carousel?.canonicalParent?.slug).toBe(expectedCanonicalSlug)
+      expect(carousel?.canonicalParent?.children).toHaveLength(2)
+      const hero = props.mergedBlocks.find(
+        (block) => block.kind === "HeroPlayer",
+      )
+      expect(hero?.nextWatchItem).toMatchObject({
+        parentSlug: "storyclubs",
+        slug: "own-one",
+        documentId: "own-1",
+      })
+      expect(
+        props.mergedBlocks.find((block) => block.kind === "Share")?.video,
+      ).toMatchObject({ documentId: "v1", slug: "storyclubs" })
+      expect(jsonLdByType("BreadcrumbList")).toBeNull()
+      expect(jsonLdByType("ItemList")).toMatchObject({
+        itemListElement: expectedItemList.map(({ slug, ...item }) => ({
+          ...item,
+          url: `https://www.jesusfilm.org/watch/${slug}.html`,
+        })),
+      })
+    },
+  )
 
   it("keeps the standalone own-children fallback when the manifest is unavailable", async () => {
     const result = makeWatchVideoResult("featureFilm")

@@ -123,7 +123,6 @@ export function SiblingCarousel({
     block.selectableParents != null && block.selectableParents.length > 0
       ? block.selectableParents
       : null
-  const defaultParent = selectableParents?.[0] ?? canonicalParent
   const [parentSelection, setParentSelection] = useState<{
     sourceVideoDocumentId: string
     parentDocumentId: string
@@ -131,7 +130,7 @@ export function SiblingCarousel({
   const selectedParentDocumentId =
     parentSelection?.sourceVideoDocumentId === currentVideoDocumentId
       ? parentSelection.parentDocumentId
-      : defaultParent.documentId
+      : canonicalParent.documentId
   const selectedParent =
     selectableParents?.find(
       (parent) => parent.documentId === selectedParentDocumentId,

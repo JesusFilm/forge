@@ -273,6 +273,29 @@ const pilatePageChapterSlugs = [
 ]
 
 describe("SiblingCarousel — happy path", () => {
+  it("initializes from the canonical parent without reordering collection options", () => {
+    const block = makeSelectableBlock()
+    block.canonicalParent = block.selectableParents![1]!
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const selector = container.querySelector(
+      "[data-testid='sibling-carousel-parent-selector']",
+    ) as HTMLSelectElement
+    expect(Array.from(selector.options, (option) => option.value)).toEqual([
+      "parent-1",
+      "parent-2",
+    ])
+    expect(selector.value).toBe("parent-2")
+    expect(
+      container.querySelector(
+        "[data-href='/second-collection.html/current-video/english.html']",
+      ),
+    ).not.toBeNull()
+  })
+
   it("keeps a one-option standalone collection selector visible", () => {
     const block = makeSelectableBlock()
     block.selectableParents = block.selectableParents?.slice(0, 1)

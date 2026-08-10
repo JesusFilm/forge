@@ -61,6 +61,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   watchHomeCollectionStructuredDataJson,
   watchRelatedItemListStructuredDataJson,
@@ -216,10 +217,15 @@ function selectableParentsForStandaloneVideo(
   video: WatchVideoRecord,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
-): CarouselParent[] {
-  if (!manifest) return []
+): {
+  selectableParents: CarouselParent[]
+  defaultParentDocumentId: string | undefined
+} {
+  if (!manifest) {
+    return { selectableParents: [], defaultParentDocumentId: undefined }
+  }
 
-  return video.parents.flatMap((parent) => {
+  const eligibleParents = video.parents.flatMap((parent) => {
     const parentSlug = tryAsContentSlug(parent.slug ?? "")
     if (!parentSlug) return []
 
@@ -239,13 +245,23 @@ function selectableParentsForStandaloneVideo(
 
     return [
       {
-        documentId: filteredParent.documentId,
-        slug: parentSlug,
-        title: filteredParent.title,
-        children,
+        parent: {
+          documentId: filteredParent.documentId,
+          slug: parentSlug,
+          title: filteredParent.title,
+          children,
+        },
+        label: parent.label,
       },
     ]
   })
+
+  return {
+    selectableParents: eligibleParents.map(({ parent }) => parent),
+    defaultParentDocumentId: eligibleParents.find(
+      ({ label }) => videoLabelMessageKey(label) === "featureFilm",
+    )?.parent.documentId,
+  }
 }
 
 // Catch-all dispatcher for the one-, two-, and three-segment watch URL shapes.
@@ -801,11 +817,12 @@ async function renderVideo(shape: {
       ),
     ])
     const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
-    const selectableParents = selectableParentsForStandaloneVideo(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-    )
+    const { selectableParents, defaultParentDocumentId } =
+      selectableParentsForStandaloneVideo(
+        watchVideo.video,
+        languageSlug,
+        routeManifest,
+      )
     const carouselVideo = withAdmittedVideoChildren(
       watchVideo.video,
       languageSlug,
@@ -816,6 +833,7 @@ async function renderVideo(shape: {
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
       selectableParents,
+      defaultSelectableParentDocumentId: defaultParentDocumentId,
     })
     const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(

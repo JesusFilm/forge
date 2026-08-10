@@ -121,6 +121,7 @@ function asArgs(args: {
   variant: ReturnType<typeof makeVariant>
   canonicalParent: ReturnType<typeof makeParent> | null
   selectableParents?: ReturnType<typeof makeParent>[]
+  defaultSelectableParentDocumentId?: string
   experience?: { blocks?: unknown[] } | null
 }) {
   return args as never
@@ -533,6 +534,7 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
         variant: makeVariant(),
         canonicalParent: null,
         selectableParents,
+        defaultSelectableParentDocumentId: "parent-b",
       }),
     )
     const carousel = merged.find(
@@ -546,7 +548,7 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
       isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
         ? carousel.canonicalParent
         : null,
-    ).toEqual(selectableParents[0])
+    ).toEqual(selectableParents[1])
     expect(
       isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
         ? carousel.selectableParents
@@ -557,6 +559,23 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
         ? hero.nextWatchItem
         : undefined,
     ).toMatchObject({ parentSlug: "jesus", documentId: "own-1" })
+  })
+
+  it("falls back to the first selectable parent when no preferred identity is supplied", () => {
+    const video = makeVideo()
+    const selectableParents = [
+      makeParent({ documentId: "parent-a", slug: "collection-a" }),
+      makeParent({ documentId: "parent-b", slug: "collection-b" }),
+    ]
+
+    const block = buildSiblingCarouselBlock(
+      null,
+      video as never,
+      selectableParents as never,
+    )
+
+    expect(block?.canonicalParent).toEqual(selectableParents[0])
+    expect(block?.selectableParents).toEqual(selectableParents)
   })
 
   it("synthesizes a virtual parent from video.children when video has >= 2 own children", () => {
