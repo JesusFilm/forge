@@ -91,6 +91,27 @@ pnpm --filter @forge/mastra eval:seeker:experiment:verdict -- \
 A human can veto automatic eligibility but cannot make red, refused, failed,
 unknown, or unavailable machine evidence promotable.
 
+## Git ledger enforcement
+
+Immutability begins when experiment bytes reach the base branch. The required
+`experiment-ledger` CI check compares each PR's base and head Git trees without
+installing dependencies or running paid evals:
+
+- `README.md` and `experiment.template.json` remain mutable authoring inputs.
+- A new experiment directory may change freely within its originating PR.
+- Any experiment file already present on the base branch may not be modified,
+  deleted, or renamed.
+- An experiment without a base-branch verdict may add a genuinely new attempt
+  ID or its one `verdict.json`; an existing attempt may never gain more files.
+- Once `verdict.json` reaches the base branch, the whole experiment is sealed.
+
+If a check fails, preserve the historical bytes and create a new attempt or a
+new experiment. Run the same dependency-free guard locally with:
+
+```bash
+node scripts/check-seeker-experiment-ledger.mjs --base=origin/main --head=HEAD
+```
+
 ## Separate promotion change
 
 Promotion never belongs in the experiment-evidence PR. After that PR is merged,

@@ -828,6 +828,8 @@ One append-only execution record within a Seeker Eval Experiment, preserving eit
 
 An attempt is complete only after its required inventoried evidence has passed aggregate-schema, identity, sensitive-content, and inventory checks and its immutable completion record has been published; package eligibility additionally requires rejecting untracked sidecars.
 
+Once attempt bytes reach the repository's base branch they are historical evidence: later changes create a new attempt or experiment rather than modifying, deleting, renaming, or completing those bytes in place. A terminal verdict seals its whole experiment.
+
 ## Flagged ambiguities
 
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.

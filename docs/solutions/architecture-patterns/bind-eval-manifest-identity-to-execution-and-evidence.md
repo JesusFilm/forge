@@ -102,6 +102,16 @@ result, and refuse configurations the leaf pipeline cannot execute exactly.
    then verifies the published inventory and rejects untracked sidecars
    (`apps/mastra/src/evals/seeker/experiments/artifacts.ts:312`).
 
+7. **Enforce append-only history at the Git merge boundary.** Runtime writers
+   cannot prevent a later commit from editing historical JSON. Compare the PR's
+   base and head trees in an always-reporting, dependency-free CI check
+   (`scripts/check-seeker-experiment-ledger.mjs`). Preserve every file already
+   on the base branch, allow only a genuinely new attempt or the first terminal
+   verdict for an open experiment, and seal the whole experiment after that
+   verdict. Test the policy independently of Git traversal
+   (`scripts/check-seeker-experiment-ledger.test.mjs`) and make the CI job a
+   required status check (`.github/workflows/ci.yml`).
+
 ## Why This Matters
 
 Eval evidence can authorize a prompt or model promotion. If identity is only
@@ -130,6 +140,12 @@ scan that rejects untracked sidecars.
 The same pattern applies to benchmark, build, migration, and batch-job
 manifests: declaration, execution, emitted identity, reuse eligibility, and
 terminal publication must form one continuous chain of proof.
+
+Application-level exclusive writes protect one execution process; base-vs-head
+CI protects the historical ledger from later pull requests. Both boundaries are
+required. A local hook is insufficient because authors can bypass it, while a
+required repository check runs in the merge path and reports even on unrelated
+PRs (where it exits immediately with no ledger changes).
 
 Keep semantic policies separate. Citation aliases, managed-prompt runtime
 caching, and which comparison axes are supported are product decisions. They
