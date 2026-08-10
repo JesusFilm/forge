@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 10, 2026)
 
-- **Total tickets:** 498
-- **Complete:** 379
+- **Total tickets:** 499
+- **Complete:** 380
 - **In progress:** 36
 - **Not started:** 32
 - **Blocked:** 51
@@ -403,6 +403,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-323](platform/feat-323-watch-video-search-social-metadata.md)                    | Add localized Watch video search and social metadata                             | codex      | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
 | [feat-324](platform/feat-324-validate-watch-video-search-metadata.md)                  | Validate Watch video search metadata in Google                                   | codex      | P1       | 2026-08-01 | 14   | 2026-08-14 | not-started |
 | [feat-326](platform/feat-326-daily-support-user-research-agent.md)                     | Add daily support and user research agent                                        | codex      | P1       | 2026-08-01 | 14   | 2026-08-14 | complete    |
+| [feat-344](platform/feat-344-mastra-seo-marketing-agent.md)                            | Add Mastra SEO marketing agent and Manager workspace                             | codex      | P1       | 2026-08-01 | 21   | 2026-08-21 | complete    |
 | [feat-325](platform/feat-325-watch-search-direct-client-contract.md)                   | Watch search direct client contract                                              | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-334](platform/feat-334-watch-player-volume-preference.md)                        | Watch player volume preference persistence                                       | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |
 | [feat-334](platform/feat-334-web-redis-isr-cache.md)                                   | Web Redis-backed ISR cache                                                       | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |

@@ -32,7 +32,16 @@ export type SearchTraceRetentionJobResult = {
   purgedGeneratedCandidateCount: number
   purgedWatchSearchEventCount: number
   purgedQueryEmbeddingCacheCount: number
+  purgedSeoEvidenceObservationCount: number
+  purgedSeoTicketOutboxAttemptCount: number
+  purgedSeoApprovalNonceCount: number
+  purgedSeoWorkloadAssertionCount: number
+  purgedSeoLessonCount: number
+  redactedSeoProposalVersionCount: number
+  redactedSeoDecisionCount: number
+  redactedSeoExperimentCount: number
   purgedBefore: string
+  redactedBefore: string
 }
 
 export type SearchTraceRetentionDispatchResult = {
@@ -131,7 +140,20 @@ export async function runSearchTraceRetentionJob(
             purgedWatchSearchEventCount: result.purgedWatchSearchEventCount,
             purgedQueryEmbeddingCacheCount:
               result.purgedQueryEmbeddingCacheCount,
+            purgedSeoEvidenceObservationCount:
+              result.purgedSeoEvidenceObservationCount,
+            purgedSeoTicketOutboxAttemptCount:
+              result.purgedSeoTicketOutboxAttemptCount,
+            purgedSeoApprovalNonceCount: result.purgedSeoApprovalNonceCount,
+            purgedSeoWorkloadAssertionCount:
+              result.purgedSeoWorkloadAssertionCount,
+            purgedSeoLessonCount: result.purgedSeoLessonCount,
+            redactedSeoProposalVersionCount:
+              result.redactedSeoProposalVersionCount,
+            redactedSeoDecisionCount: result.redactedSeoDecisionCount,
+            redactedSeoExperimentCount: result.redactedSeoExperimentCount,
             purgedBefore: result.purgedBefore,
+            redactedBefore: result.redactedBefore,
           } satisfies Prisma.InputJsonValue,
         },
       })

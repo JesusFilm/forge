@@ -629,6 +629,7 @@ describe("permission matrix completeness", () => {
         "read:media-assets": true,
         "access:manager": true,
         "read:manager-read-models": true,
+        "read:manager-seo": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -658,6 +659,7 @@ describe("permission matrix completeness", () => {
     it("satisfies only Manager backend contract permissions", () => {
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
         "read:manager-read-models",
+        "read:manager-seo",
         "write:manager-jobs",
       ])
       const allKeys: Record<PermissionKey, true> = {
@@ -669,6 +671,7 @@ describe("permission matrix completeness", () => {
         "read:media-assets": true,
         "access:manager": true,
         "read:manager-read-models": true,
+        "read:manager-seo": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -713,6 +716,7 @@ describe("permission matrix completeness", () => {
         "read:media-assets": true,
         "access:manager": true,
         "read:manager-read-models": true,
+        "read:manager-seo": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -765,6 +769,7 @@ describe("permission matrix completeness", () => {
         "read:media-assets": true,
         "access:manager": true,
         "read:manager-read-models": true,
+        "read:manager-seo": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,

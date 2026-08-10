@@ -25,6 +25,7 @@ import {
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { seoMarketingAgent } from "./agents/seo-marketing-agent"
 import { supportResearchAgent } from "./agents/support-research-agent"
 import { copyAgent } from "./agents/devotional/copy-agent"
 import { highlighterAgent } from "./agents/devotional/highlighter-agent"
@@ -155,6 +156,9 @@ import {
   handleTranscriptScriptureCorrectionRouteRequest,
   transcriptScriptureCorrectionWorkflow,
 } from "./workflows/transcript-scripture-correction"
+import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
+import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
+import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -274,6 +278,7 @@ export const mastra = new Mastra({
     smokeAgent,
     seekerAgent,
     webResearchAgent,
+    seoMarketingAgent,
     supportResearchAgent,
     scriptureAgent,
     safetyAgent,
@@ -313,6 +318,9 @@ export const mastra = new Mastra({
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
+    seoDailyAuditWorkflow,
+    seoExperimentEvaluationWorkflow,
+    seoTicketDispatchWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
     // workflow id so the U5 route can drive them via
     // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which

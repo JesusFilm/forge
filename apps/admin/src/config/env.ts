@@ -254,6 +254,16 @@ export const env = createEnv({
       watchSearchTranscriptProjectionRevisionEnvSchema,
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
+    // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
+    // Keyrings are JSON objects mapping `kid` to SPKI PEM. They are optional at
+    // boot: an unprovisioned environment keeps serving unrelated Admin routes,
+    // while the assertion verifier fails closed on the SEO surface.
+    SEO_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional()
+      .default("local"),
+    SEO_APPROVAL_PUBLIC_KEYS: z.string().min(1).optional(),
+    SEO_WORKLOAD_PUBLIC_KEYS: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
@@ -686,6 +696,15 @@ export const env = createEnv({
       process.env.WATCH_SEARCH_SERVING_QRELS_REVISION,
     ),
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
+    SEO_ASSERTION_ENVIRONMENT: emptyToUndefined(
+      process.env.SEO_ASSERTION_ENVIRONMENT,
+    ),
+    SEO_APPROVAL_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SEO_APPROVAL_PUBLIC_KEYS,
+    ),
+    SEO_WORKLOAD_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SEO_WORKLOAD_PUBLIC_KEYS,
+    ),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),

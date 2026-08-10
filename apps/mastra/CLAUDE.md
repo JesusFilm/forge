@@ -518,6 +518,30 @@ Firecrawl MCP as the production path unless a later plan proves a real
 multi-tool MCP server need; MCP can be useful for local operator convenience but
 is not the deterministic product contract here.
 
+## SEO Marketing Agent
+
+`seoMarketingAgent` is a reusable, read-only Mastra agent for daily SEO
+opportunity analysis. The `seo-daily-audit` workflow runs at `0 2 * * *`, the
+experiment evaluator at `30 2 * * *`, and the approved Linear outbox sweep at
+`*/10 * * * *`. `SEO_AUTOMATION_MODE` defaults to `off`; use `dry_run` before
+`live`. Live mode may persist immutable proposals in Admin but still cannot
+approve, publish, deploy, or roll back content.
+
+Evidence lanes remain distinct: GSC describes Google Search performance, GA4
+is an engagement/mission guardrail, Firecrawl and direct fetches describe page
+state, and OpenAI Responses web search is a grounded observation. Missing GSC
+rows remain unknown. Other Mastra workflows should resolve the registered agent
+and structured tools in-process; do not add an internal MCP or public agent
+route without a concrete authenticated caller.
+
+Google access prefers Application Default Credentials or Workload Identity;
+property lists, allowed page/Admin hosts, provider caps, thresholds, and the
+optional Linear destination use the `SEO_*` variables documented in
+`.env.example`. Workload calls to Admin carry a short-lived Ed25519 assertion
+in `x-forge-seo-assertion`, bound to environment, endpoint capability, exact
+request digest, and a replay-protected identifier. Provider configuration is
+optional at boot and unavailable lanes must remain explicit.
+
 ## Seeker agent
 
 `seekerAgent` (feat-198, feat-199) is the first conversational agent of the

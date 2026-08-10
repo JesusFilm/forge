@@ -480,6 +480,9 @@ manager's `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Full checklist
 | AUTH_MANAGER_SERVICE_CLIENT_SECRET                | Manager service OAuth client secret for Admin session validation                              |
 | ADMIN_MANAGER_API_KEY                             | Legacy bearer key Manager uses for Admin Manager session/read/job contracts                   |
 | ADMIN_MANAGER_SESSION_URL                         | Optional override for Admin Manager session validation endpoint                               |
+| SEO_ASSERTION_ENVIRONMENT                         | Environment bound into delegated SEO approval assertions                                      |
+| SEO_APPROVAL_KEY_ID                               | Active Ed25519 key ID used only for interactive SEO decisions                                 |
+| SEO_APPROVAL_PRIVATE_KEY                          | PKCS8 Ed25519 private key matching an Admin verifier entry                                    |
 | ADMIN_GRAPHQL_URL                                 | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)                            |
 | ADMIN_EMBED_TRIGGER_API_KEY                       | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                                |
 | ADMIN_TRIGGER_API_KEYS                            | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2)                |
@@ -494,6 +497,20 @@ manager's `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Full checklist
 | SHORTS_WORKER_BASE_URL                            | shorts-worker base URL (optional — enables Shorts Studio)                                     |
 | SHORTS_WORKER_API_KEY                             | Bearer key Manager presents to shorts-worker (optional — enables Shorts Studio)               |
 | NEXT_PUBLIC_WATCH_URL                             | Public video watch URL (optional)                                                             |
+
+## SEO workspace
+
+`/dashboard/seo` is the authenticated, shared operator queue for the Mastra SEO
+Marketing Agent. Manager reads the Admin-owned experiment ledger and signs only
+short-lived, actor-bound approve, reject, lesson-review, and reconciliation
+assertions. Service API keys cannot perform those actions. Editorial approval
+creates an Admin draft; it does not publish. Engineering approval queues the
+exact approved brief; it does not prove deployment or activation.
+
+Keep the approval private key out of browser bundles and prompts. Rotate by
+adding the new public key to Admin first, switching Manager's key ID/private
+key, and removing the old verifier after the maximum assertion lifetime. With
+no approval key, the workspace remains read-only.
 
 ## Standalone smoke
 
