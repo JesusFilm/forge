@@ -8,7 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { experimentCommandArgs } from "../cli"
 import { resolveExactManagedPrompt } from "../../../services/langfuse-prompt-client"
 import { ResolvedIdentitySchema, type ResolvedIdentity } from "./types"
-import { runExperiment } from "./runner"
+import type { RunIdentity } from "../types"
+import { runExperiment, type GeneratedEvidence } from "./runner"
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const MASTRA_ROOT = resolve(MODULE_DIR, "../../../..")
@@ -46,10 +47,33 @@ export function serializeSupportedModelRoutes(
   return JSON.stringify(routes)
 }
 
-async function runLeaf(
+const LEAF_TIMEOUT_MS = 30 * 60_000
+const LEAF_TERMINATION_GRACE_MS = 5_000
+
+function stopChild(
+  child: ReturnType<typeof spawn>,
+  signal: NodeJS.Signals,
+): void {
+  if (child.pid != null && process.platform !== "win32") {
+    try {
+      process.kill(-child.pid, signal)
+      return
+    } catch {
+      // Fall through to the direct child when process-group signalling fails.
+    }
+  }
+  child.kill(signal)
+}
+
+export async function runLeaf(
   script: string,
   args: string[],
-  options: { env?: NodeJS.ProcessEnv; accepted?: number[] } = {},
+  options: {
+    env?: NodeJS.ProcessEnv
+    accepted?: number[]
+    timeoutMs?: number
+    terminationGraceMs?: number
+  } = {},
 ): Promise<void> {
   await new Promise<void>((resolvePromise, reject) => {
     const child = spawn(
@@ -62,21 +86,114 @@ async function runLeaf(
         resolve(MASTRA_ROOT, script),
         ...args,
       ],
-      { stdio: "inherit", env: { ...process.env, ...options.env } },
+      {
+        stdio: "inherit",
+        env: { ...process.env, ...options.env },
+        detached: process.platform !== "win32",
+      },
     )
-    child.once("error", reject)
+    let settled = false
+    let timedOut = false
+    const finish = (error?: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(deadline)
+      clearTimeout(escalation)
+      if (error) reject(error)
+      else resolvePromise()
+    }
+    let escalation: NodeJS.Timeout | undefined
+    const deadline = setTimeout(() => {
+      timedOut = true
+      stopChild(child, "SIGTERM")
+      escalation = setTimeout(() => {
+        stopChild(child, "SIGKILL")
+        finish(new Error(`${script} exceeded its overall deadline`))
+      }, options.terminationGraceMs ?? LEAF_TERMINATION_GRACE_MS)
+    }, options.timeoutMs ?? LEAF_TIMEOUT_MS)
+    child.once("error", (cause) => finish(cause))
     child.once("exit", (code) => {
-      if ((options.accepted ?? [0]).includes(code ?? -1)) resolvePromise()
-      else reject(new Error(`${script} exited with ${code ?? "no status"}`))
+      if (timedOut) finish(new Error(`${script} exceeded its overall deadline`))
+      else if ((options.accepted ?? [0]).includes(code ?? -1)) finish()
+      else finish(new Error(`${script} exited with ${code ?? "no status"}`))
     })
   })
 }
 
-async function generateEvidence(
+function expectedAnsweringModels(identity: ResolvedIdentity): string[] {
+  return [
+    identity.model.routes
+      .map((route) => route.model.replace(/^openrouter\//, ""))
+      .join(" -> "),
+  ]
+}
+
+export function assertExecutedIdentity(
+  actual: RunIdentity,
+  expected: ResolvedIdentity,
+  includeJudge: boolean,
+): void {
+  const mismatches: string[] = []
+  if (
+    actual.promptSource !== "langfuse" ||
+    actual.promptLangfuseVersion !== Number(expected.prompt.revision) ||
+    actual.promptSha256 !== expected.prompt.contentHash
+  )
+    mismatches.push("prompt")
+  if (
+    actual.questionSetId !== expected.questionSet.id ||
+    actual.questionIds.join(",") !== expected.questionSet.questionIds.join(",")
+  )
+    mismatches.push("question set")
+  if (
+    actual.answeringModels.join(",") !==
+    expectedAnsweringModels(expected).join(",")
+  )
+    mismatches.push("model routes")
+  const expectedDecoding =
+    expected.decoding.mode === "provider-default"
+      ? null
+      : {
+          temperature: expected.decoding.temperature,
+          maxTokens: expected.decoding.maxTokens,
+        }
+  if (
+    JSON.stringify(actual.decoding ?? null) !== JSON.stringify(expectedDecoding)
+  )
+    mismatches.push("decoding")
+  const retrieval = actual.retrieval
+  if (
+    retrieval.mode !== expected.retrieval.mode ||
+    (retrieval.mode !== "none" &&
+      expected.retrieval.mode !== "none" &&
+      (retrieval.corpusSha256 !== expected.retrieval.corpusHash ||
+        retrieval.topK !== expected.retrieval.topK))
+  )
+    mismatches.push("retrieval")
+  if (actual.runtimeConfigurationHash !== expected.runtime.configurationHash)
+    mismatches.push("runtime")
+  if (includeJudge) {
+    if (actual.criteriaSha256 !== expected.criteria.contentHash)
+      mismatches.push("criteria")
+    if (
+      actual.judge?.model !== expected.judge.model ||
+      actual.judge?.rubricSha256 !== expected.judge.rubricHash
+    )
+      mismatches.push("judge")
+  }
+  if (mismatches.length > 0)
+    throw new Error(
+      `executed evidence identity does not match manifest: ${mismatches.join(", ")}`,
+    )
+}
+
+export async function generateEvidence(
   input: Parameters<
     NonNullable<Parameters<typeof runExperiment>[0]["generate"]>
   >[0],
-): Promise<Record<string, unknown | string>> {
+  dependencies: { runLeaf?: typeof runLeaf } = {},
+): Promise<GeneratedEvidence> {
+  const executeLeaf = dependencies.runLeaf ?? runLeaf
   if (input.reuseAttemptDir != null) {
     return Object.fromEntries(
       await Promise.all(
@@ -128,7 +245,7 @@ async function generateEvidence(
       const modelRoutes = serializeSupportedModelRoutes(
         input.manifest.productionBenchmark.identity.model.routes,
       )
-      await runLeaf(
+      await executeLeaf(
         "src/evals/seeker/run-loop.ts",
         [
           `--out=${join(baselineDir, "answers.json")}`,
@@ -137,15 +254,16 @@ async function generateEvidence(
           `--model-routes=${modelRoutes}`,
           `--prompt-version=${prompt.revision}`,
           `--prompt-hash=${prompt.contentHash}`,
+          `--runtime-hash=${input.manifest.productionBenchmark.identity.runtime.configurationHash}`,
         ],
         { env: { SEEKER_EVAL_RESOLVED_PROMPT: promptText } },
       )
-      await runLeaf("src/evals/seeker/run-judge.ts", [
+      await executeLeaf("src/evals/seeker/run-judge.ts", [
         `--in=${join(baselineDir, "answers.json")}`,
         `--out=${join(baselineDir, "judged.json")}`,
         `--fixtures=${DEFAULT_FIXTURES}`,
       ])
-      await runLeaf("src/evals/seeker/run-score.ts", [
+      await executeLeaf("src/evals/seeker/run-score.ts", [
         `--in=${join(baselineDir, "judged.json")}`,
         `--out=${join(baselineDir, "score.json")}`,
       ])
@@ -155,6 +273,16 @@ async function generateEvidence(
         judged: await loadJson(join(baselineDir, "judged.json")),
         score: await loadJson(join(baselineDir, "score.json")),
       }
+      assertExecutedIdentity(
+        (capturedBaseline.answers as { identity: RunIdentity }).identity,
+        input.manifest.productionBenchmark.identity,
+        false,
+      )
+      assertExecutedIdentity(
+        (capturedBaseline.judged as { identity: RunIdentity }).identity,
+        input.manifest.productionBenchmark.identity,
+        true,
+      )
     }
 
     for (const candidate of input.manifest.candidates) {
@@ -166,7 +294,7 @@ async function generateEvidence(
       const modelRoutes = serializeSupportedModelRoutes(
         candidate.identity.model.routes,
       )
-      await runLeaf(
+      await executeLeaf(
         "src/evals/seeker/run-loop.ts",
         [
           `--out=${join(candidateDir, "answers.json")}`,
@@ -175,25 +303,27 @@ async function generateEvidence(
           `--model-routes=${modelRoutes}`,
           `--prompt-version=${prompt.revision}`,
           `--prompt-hash=${prompt.contentHash}`,
+          `--runtime-hash=${candidate.identity.runtime.configurationHash}`,
         ],
         { env: { SEEKER_EVAL_RESOLVED_PROMPT: promptText } },
       )
-      await runLeaf("src/evals/seeker/run-judge.ts", [
+      await executeLeaf("src/evals/seeker/run-judge.ts", [
         `--in=${join(candidateDir, "answers.json")}`,
         `--out=${join(candidateDir, "judged.json")}`,
         `--fixtures=${DEFAULT_FIXTURES}`,
       ])
-      await runLeaf("src/evals/seeker/run-score.ts", [
+      await executeLeaf("src/evals/seeker/run-score.ts", [
         `--in=${join(candidateDir, "judged.json")}`,
         `--out=${join(candidateDir, "score.json")}`,
       ])
-      await runLeaf(
+      await executeLeaf(
         "src/evals/seeker/run-gate.ts",
         [
           `--current-dir=${candidateDir}`,
           `--baseline-dir=${baselineDir}`,
           `--out=${join(candidateDir, "gate-report.json")}`,
           `--fixtures=${DEFAULT_FIXTURES}`,
+          `--experiment-axis=${input.manifest.comparisonAxis}`,
         ],
         { accepted: [0, 1, 2] },
       )
@@ -206,6 +336,16 @@ async function generateEvidence(
       scores[candidate.id] = await loadJson(join(candidateDir, "score.json"))
       gates[candidate.id] = await loadJson(
         join(candidateDir, "gate-report.json"),
+      )
+      assertExecutedIdentity(
+        (answers[candidate.id] as { identity: RunIdentity }).identity,
+        candidate.identity,
+        false,
+      )
+      assertExecutedIdentity(
+        (judged[candidate.id] as { identity: RunIdentity }).identity,
+        candidate.identity,
+        true,
       )
     }
     const rows = input.manifest.candidates.map((candidate) => {

@@ -242,12 +242,10 @@ export function citedNameIsServed(
     )
       return true
     const citedWords = cited.split(" ").filter((word) => word.length >= 3)
-    const servedWords = new Set(
-      entry.split(" ").filter((word) => word.length >= 3),
-    )
-    return (
-      citedWords.length >= 2 &&
-      citedWords.every((word) => servedWords.has(word))
+    const servedWords = entry.split(" ").filter((word) => word.length >= 3)
+    if (citedWords.length < 2) return false
+    return servedWords.some((_, start) =>
+      citedWords.every((word, offset) => servedWords[start + offset] === word),
     )
   })
 }

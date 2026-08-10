@@ -293,7 +293,9 @@ export function createSeekerInstructionsResolver(
     "name" | "version" | "expectedContentHash"
   > & {
     logSink?: (line: string) => void
-    /** Legacy test seam; exact resolution is intentionally uncached. */
+    now?: () => number
+    failureCooldownMs?: number
+    /** Legacy test seam retained for call-site compatibility. */
     cache?: unknown
     pinned?: {
       provider: string
@@ -304,8 +306,16 @@ export function createSeekerInstructionsResolver(
   } = {},
 ): () => Promise<string> {
   let criticalAlertEmitted = false
+  let cacheEntry: { identity: string; text: string } | null = null
+  let failureCooldownUntil = 0
+  let inFlight: { identity: string; promise: Promise<string> } | null = null
   return async () => {
     const pinned = overrides.pinned ?? SEEKER_PRODUCTION_PROMPT
+    const identityKey = `${pinned.provider}\u0000${pinned.name}\u0000${pinned.revision}\u0000${pinned.contentHash}`
+    if (cacheEntry?.identity === identityKey) return cacheEntry.text
+    const now = overrides.now?.() ?? Date.now()
+    if (now < failureCooldownUntil) return SEEKER_SYSTEM_PROMPT_FALLBACK
+    if (inFlight?.identity === identityKey) return inFlight.promise
     // feat-330 (plan P2 end state): the resolved managed text is returned
     // VERBATIM — there is no longer any code-appended block, and this resolver
     // reads no flag. `SEEKER_VIDEO_ENABLED` now gates `buildSeekerTools` only,
@@ -314,22 +324,41 @@ export function createSeekerInstructionsResolver(
     // video-featuring guidance lives in the managed prompt (and, as fallback,
     // in SEEKER_SYSTEM_PROMPT_FALLBACK above). Do not reintroduce an append
     // here: it would silently diverge the two prompt sources again.
-    const resolved = await resolveExactManagedPrompt({
-      name: pinned.name,
-      version: Number(pinned.revision),
-      expectedContentHash: pinned.contentHash,
-      config: overrides.config,
-      fetchImpl: overrides.fetchImpl,
-    })
-    if (resolved.ok) return resolved.text
+    const promise = (async () => {
+      const resolved = await resolveExactManagedPrompt({
+        name: pinned.name,
+        version: Number(pinned.revision),
+        expectedContentHash: pinned.contentHash,
+        config: overrides.config,
+        fetchImpl: overrides.fetchImpl,
+      })
+      if (resolved.ok) {
+        cacheEntry = { identity: identityKey, text: resolved.text }
+        failureCooldownUntil = 0
+        criticalAlertEmitted = false
+        return resolved.text
+      }
 
-    if (!criticalAlertEmitted) {
-      criticalAlertEmitted = true
-      ;(overrides.logSink ?? console.error)(
-        `[seeker-production-prompt] severity=critical state=degraded_fallback provider=${pinned.provider} name=${pinned.name} revision=${pinned.revision} reason=${resolved.reason}${resolved.detail ? ` detail=${resolved.detail}` : ""}`,
-      )
+      failureCooldownUntil =
+        (overrides.now?.() ?? Date.now()) +
+        (overrides.failureCooldownMs ??
+          overrides.config?.promptFailureCooldownMs ??
+          10_000)
+
+      if (!criticalAlertEmitted) {
+        criticalAlertEmitted = true
+        ;(overrides.logSink ?? console.error)(
+          `[seeker-production-prompt] severity=critical state=degraded_fallback provider=${pinned.provider} name=${pinned.name} revision=${pinned.revision} reason=${resolved.reason}${resolved.detail ? ` detail=${resolved.detail}` : ""}`,
+        )
+      }
+      return SEEKER_SYSTEM_PROMPT_FALLBACK
+    })()
+    inFlight = { identity: identityKey, promise }
+    try {
+      return await promise
+    } finally {
+      if (inFlight?.promise === promise) inFlight = null
     }
-    return SEEKER_SYSTEM_PROMPT_FALLBACK
   }
 }
 

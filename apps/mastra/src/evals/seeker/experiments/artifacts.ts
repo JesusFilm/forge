@@ -212,6 +212,13 @@ export async function createAttemptWriter(
           [...sensitiveValues].some((sentinel) => source.includes(sentinel))
         )
           throw new Error(`unsafe content in artifact: ${relativePath}`)
+        if (relativePath.endsWith(".json")) {
+          const parsed = JSON.parse(source)
+          if (
+            JSON.stringify(sanitizeEvidence(parsed)) !== JSON.stringify(parsed)
+          )
+            throw new Error(`sensitive key in artifact: ${relativePath}`)
+        }
         artifacts.push({
           kind:
             relativePath === "resolved-identity.json"

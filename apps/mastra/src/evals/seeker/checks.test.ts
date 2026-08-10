@@ -237,11 +237,38 @@ describe("cited-source-names-grounded (hard-fail — the wired names half)", () 
       ],
     }
     const results = runAnswerChecks(
-      answer(`[EveryVietStudent — Vietnamese](${SERVED_URL})`),
+      answer(`[Vietnamese — EveryVietStudent](${SERVED_URL})`),
       localized,
     )
     expect(checkById(results, "cited-source-names-grounded").status).toBe(
       "pass",
+    )
+  })
+
+  it("rejects a URL-scoped alias assembled by reordering served words", () => {
+    const titled: RagFixtureFile = {
+      ...fixtures,
+      fixtures: [
+        {
+          ...fixtures.fixtures[0],
+          result: {
+            status: "ok",
+            sources: [
+              {
+                ...fixtures.fixtures[0].result.sources[0],
+                title: "Jesus Film Project — What Is the Gospel?",
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const results = runAnswerChecks(
+      answer(`[The Gospel Project](${SERVED_URL})`),
+      titled,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "violated",
     )
   })
 

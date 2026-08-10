@@ -3,7 +3,7 @@ id: "feat-340"
 title: "Seeker eval experiment workflow"
 owner: "jaco"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-17"
 duration: 5
 depends_on: []

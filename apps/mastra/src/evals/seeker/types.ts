@@ -88,6 +88,8 @@ export type RunIdentity = {
    * only when BOTH sides carry it.
    */
   weightsSha256?: string
+  /** Experiment/runtime configuration identity. Legacy artifacts omit it. */
+  runtimeConfigurationHash?: string
 }
 
 /**
@@ -183,6 +185,13 @@ export function identityMismatch(
     left.weightsSha256 !== right.weightsSha256
   )
     problems.push("weights")
+
+  if (
+    left.runtimeConfigurationHash != null &&
+    right.runtimeConfigurationHash != null &&
+    left.runtimeConfigurationHash !== right.runtimeConfigurationHash
+  )
+    problems.push("runtime configuration")
 
   return problems
 }

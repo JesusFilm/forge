@@ -12,6 +12,8 @@ import { preparePromotion } from "./promotion"
 
 const exec = promisify(execFile)
 const hash = "a".repeat(64)
+const canonicalOutput = (root: string) =>
+  join(root, "apps/mastra/evals/results/seeker-baseline")
 const identity = ResolvedIdentitySchema.parse({
   prompt: {
     provider: "langfuse",
@@ -171,9 +173,26 @@ async function fixture(
 }
 
 describe("preparePromotion", () => {
+  it("refuses to materialize outside the canonical benchmark directory", async () => {
+    const f = await fixture()
+    await expect(
+      preparePromotion({
+        repositoryRoot: f.root,
+        experimentPath: f.experiment,
+        attemptId: "attempt-one",
+        candidateId: "candidate-one",
+        evidenceCommit: f.commit,
+        proposedIdentity: identity,
+        productionPrompt: identity.prompt,
+        benchmarkDir: join(f.root, "apps/mastra/src"),
+        materialize: true,
+      }),
+    ).rejects.toThrow(/canonical seeker benchmark directory/)
+  })
+
   it("validates committed exact-match evidence and materializes linked benchmark artifacts", async () => {
     const f = await fixture()
-    const output = join(f.root, "benchmark")
+    const output = canonicalOutput(f.root)
     const result = await preparePromotion({
       repositoryRoot: f.root,
       experimentPath: f.experiment,
@@ -223,7 +242,7 @@ describe("preparePromotion", () => {
 
   it("requires a fresh run for any complete identity drift and writes nothing", async () => {
     const f = await fixture()
-    const output = join(f.root, "benchmark")
+    const output = canonicalOutput(f.root)
     const changed = {
       ...identity,
       runtime: { configurationHash: "b".repeat(64) },
@@ -294,8 +313,8 @@ describe("preparePromotion", () => {
 
   it("rolls back the prior benchmark when atomic replacement fails", async () => {
     const f = await fixture()
-    const output = join(f.root, "benchmark")
-    await mkdir(output)
+    const output = canonicalOutput(f.root)
+    await mkdir(output, { recursive: true })
     await writeFile(join(output, "sentinel.txt"), "prior benchmark")
     await expect(
       preparePromotion(
@@ -323,8 +342,8 @@ describe("preparePromotion", () => {
 
   it("refuses materialization when a backup sidecar already exists", async () => {
     const f = await fixture()
-    const output = join(f.root, "benchmark")
-    await mkdir(`${output}.promotion-backup`)
+    const output = canonicalOutput(f.root)
+    await mkdir(`${output}.promotion-backup`, { recursive: true })
     await expect(
       preparePromotion({
         repositoryRoot: f.root,

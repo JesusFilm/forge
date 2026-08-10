@@ -441,8 +441,12 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
       logSink,
     })
 
+    await expect(Promise.all([resolve(), resolve()])).resolves.toEqual([
+      SEEKER_SYSTEM_PROMPT_FALLBACK,
+      SEEKER_SYSTEM_PROMPT_FALLBACK,
+    ])
     await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
-    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
     expect(logSink).toHaveBeenCalledTimes(1)
     expect(logSink).toHaveBeenCalledWith(
       expect.stringMatching(/severity=critical.*state=degraded_fallback/),
@@ -473,6 +477,7 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
       fetchImpl,
     })
 
+    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
     await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     // The movable production label is marker-only and never selects traffic.

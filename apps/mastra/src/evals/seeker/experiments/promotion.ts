@@ -122,6 +122,13 @@ export async function preparePromotion(
   const experimentPath = relativeInside(root, input.experimentPath)
   const benchmarkPath = resolve(root, input.benchmarkDir)
   relativeInside(root, benchmarkPath)
+  if (
+    input.materialize &&
+    benchmarkPath !== resolve(root, "apps/mastra/evals/results/seeker-baseline")
+  )
+    throw new Error(
+      "promotion may materialize only the canonical seeker benchmark directory",
+    )
   await git(root, ["cat-file", "-e", `${input.evidenceCommit}^{commit}`])
   await git(root, ["merge-base", "--is-ancestor", input.evidenceCommit, "HEAD"])
   if ((await git(root, ["status", "--porcelain", "--", experimentPath])).trim())

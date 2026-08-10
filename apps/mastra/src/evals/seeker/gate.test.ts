@@ -168,12 +168,29 @@ describe("evaluateGate", () => {
     const report = evaluateGate({
       current: makeRunPair({
         identity: { answeringModels: ["other/model"] },
+        answer: { model: "other/model" },
+        judgedCell: { model: "other/model" },
       }),
       baseline: makeRunPair({}),
       fixtures: FIXTURES,
     })
     expect(report.verdict).toBe("refused")
     expect(report.refusedOn).toContain("answering models")
+  })
+
+  it("allows answering-model differences for a declared model experiment", () => {
+    const report = evaluateGate({
+      current: makeRunPair({
+        identity: { answeringModels: ["other/model"] },
+        answer: { model: "other/model" },
+        judgedCell: { model: "other/model" },
+      }),
+      baseline: makeRunPair({}),
+      fixtures: FIXTURES,
+      experimentAxis: "model",
+    })
+    expect(report.verdict).toBe("green")
+    expect(report.refusedOn).not.toContain("answering models")
   })
 
   it("does NOT refuse on a prompt change — the prompt is the subject under test", () => {

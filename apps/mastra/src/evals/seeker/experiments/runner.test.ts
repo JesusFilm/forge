@@ -61,6 +61,32 @@ async function packageWith(
   return { root, dir }
 }
 
+function generatedEvidence() {
+  return {
+    "answers.json": {
+      schemaVersion: "seeker-experiment-answers/v1" as const,
+      candidates: {},
+    },
+    "transcripts.json": {
+      schemaVersion: "seeker-experiment-transcripts/v1" as const,
+      candidates: {},
+    },
+    "judged.json": {
+      schemaVersion: "seeker-experiment-judged/v1" as const,
+      candidates: {},
+    },
+    "score.json": {
+      schemaVersion: "seeker-experiment-scores/v1" as const,
+      candidates: {},
+    },
+    "comparison.md": "# comparison\n",
+    "gate-report.json": {
+      schemaVersion: "seeker-experiment-gates/v1" as const,
+      candidates: {},
+    },
+  }
+}
+
 describe("runExperiment preflight", () => {
   it.each([
     ["fallback", { ok: false as const, reason: "fallback" }],
@@ -186,14 +212,7 @@ describe("runExperiment integration", () => {
       })
     const generate = vi.fn(async ({ resolvedProductionPromptText }) => {
       expect(resolvedProductionPromptText).toBe("managed baseline prompt")
-      return {
-        "answers.json": { kind: "answers" },
-        "transcripts.json": { kind: "transcripts" },
-        "judged.json": { kind: "judged" },
-        "score.json": { kind: "score" },
-        "comparison.md": "# comparison\n",
-        "gate-report.json": { verdict: "green" },
-      }
+      return generatedEvidence()
     })
     await runExperiment({
       experimentsRoot: root,
@@ -225,14 +244,7 @@ describe("runExperiment integration", () => {
         observed.push(
           await readFile(join(attemptDir, "resolved-identity.json"), "utf8"),
         )
-        return {
-          "answers.json": { kind: "answers" },
-          "transcripts.json": { kind: "transcripts" },
-          "judged.json": { kind: "judged" },
-          "score.json": { kind: "score" },
-          "comparison.md": "# comparison\n",
-          "gate-report.json": { verdict: "green" },
-        }
+        return generatedEvidence()
       },
     })
     expect(observed).toHaveLength(1)
@@ -272,7 +284,7 @@ describe("runExperiment integration", () => {
         attemptId: "attempt-2",
         generate: vi.fn().mockResolvedValue({}),
       }),
-    ).rejects.toThrow(/missing required artifact/)
+    ).rejects.toThrow(/comparison.md/)
   })
 
   it("refuses an untracked partial artifact after completion", async () => {
@@ -289,14 +301,7 @@ describe("runExperiment integration", () => {
         }),
         generate: async ({ attemptDir }) => {
           await writeFile(join(attemptDir, "answers.json.partial"), "{}")
-          return {
-            "answers.json": {},
-            "transcripts.json": {},
-            "judged.json": {},
-            "score.json": {},
-            "comparison.md": "# comparison\n",
-            "gate-report.json": {},
-          }
+          return generatedEvidence()
         },
       }),
     ).rejects.toThrow(/forbidden or untracked package artifact/)
@@ -307,14 +312,7 @@ describe("runExperiment integration", () => {
     const resolution = vi
       .fn()
       .mockResolvedValue({ ok: true, revision: "43", contentHash: hash("f") })
-    const evidence = {
-      "answers.json": {},
-      "transcripts.json": {},
-      "judged.json": {},
-      "score.json": {},
-      "comparison.md": "# comparison\n",
-      "gate-report.json": {},
-    }
+    const evidence = generatedEvidence()
     await runExperiment({
       experimentsRoot: root,
       experimentDir: dir,
@@ -346,5 +344,87 @@ describe("runExperiment integration", () => {
         generate,
       }),
     ).rejects.toThrow(/reuse attempt artifact integrity mismatch/)
+  })
+
+  it("refuses reuse when the experiment eligibility policy changes", async () => {
+    const original = manifest()
+    const { root, dir } = await packageWith(original)
+    const resolution = vi
+      .fn()
+      .mockResolvedValue({ ok: true, revision: "43", contentHash: hash("f") })
+    const evidence = generatedEvidence()
+    await runExperiment({
+      experimentsRoot: root,
+      experimentDir: dir,
+      attemptId: "attempt-1",
+      resolvePrompt: resolution,
+      generate: vi.fn().mockResolvedValue(evidence),
+    })
+    await writeFile(
+      join(dir, "experiment.json"),
+      JSON.stringify({
+        ...original,
+        criterion: {
+          ...original.criterion,
+          parameters: { minimum: 0.1 },
+        },
+      }),
+    )
+    await expect(
+      runExperiment({
+        experimentsRoot: root,
+        experimentDir: dir,
+        attemptId: "attempt-2",
+        reuseAttemptId: "attempt-1",
+        resolvePrompt: resolution,
+        generate: vi.fn().mockResolvedValue(evidence),
+      }),
+    ).rejects.toThrow(/reuse attempt manifest policy mismatch/)
+  })
+
+  it("rejects arbitrary generated evidence before publishing completion", async () => {
+    const { root, dir } = await packageWith(manifest())
+    await expect(
+      runExperiment({
+        experimentsRoot: root,
+        experimentDir: dir,
+        attemptId: "attempt-1",
+        resolvePrompt: vi.fn().mockResolvedValue({
+          ok: true,
+          revision: "43",
+          contentHash: hash("f"),
+        }),
+        generate: vi.fn().mockResolvedValue({
+          ...generatedEvidence(),
+          "unexpected.json": {},
+        }),
+      }),
+    ).rejects.toThrow()
+    await expect(
+      readFile(join(dir, "attempts/attempt-1/completion.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  it("does not publish completion before the sensitive-key scan succeeds", async () => {
+    const { root, dir } = await packageWith(manifest())
+    await expect(
+      runExperiment({
+        experimentsRoot: root,
+        experimentDir: dir,
+        attemptId: "attempt-1",
+        resolvePrompt: vi.fn().mockResolvedValue({
+          ok: true,
+          revision: "43",
+          contentHash: hash("f"),
+        }),
+        generate: vi.fn().mockResolvedValue({
+          ...generatedEvidence(),
+          "comparison.md": "Bearer abcdefghijklmnopqrstuvwxyz",
+        }),
+      }),
+    ).rejects.toThrow(/unsafe content/)
+    await expect(
+      readFile(join(dir, "attempts/attempt-1/completion.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" })
   })
 })

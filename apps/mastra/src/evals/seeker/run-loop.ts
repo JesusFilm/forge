@@ -319,6 +319,7 @@ async function main(): Promise<void> {
   )
   const officialVersionRaw = flag(argv, "prompt-version")
   const officialHash = flag(argv, "prompt-hash")
+  const runtimeConfigurationHash = flag(argv, "runtime-hash")
   if ((officialVersionRaw == null) !== (officialHash == null)) {
     throw new Error(
       "--prompt-version and --prompt-hash must be supplied together",
@@ -438,6 +439,7 @@ async function main(): Promise<void> {
       topK: fixtures.topK,
     },
     judge: null,
+    ...(runtimeConfigurationHash ? { runtimeConfigurationHash } : {}),
   }
 
   console.log(
