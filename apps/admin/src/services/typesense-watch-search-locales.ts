@@ -1,3 +1,4 @@
+import type { TypesenseCollectionField } from "./typesense-client"
 import type {
   TypesenseWatchCatalogDocument,
   TypesenseWatchLocale,
@@ -14,6 +15,20 @@ export function watchLexicalQueryFields(
   return tokenizerLocale
     ? [`${lane}_${tokenizerLocale}`, `${lane}_fallback`]
     : [`${lane}_fallback`]
+}
+
+export function watchLexicalManifestQueryFields(
+  fields: readonly TypesenseCollectionField[],
+  lane: TypesenseWatchLexicalLane,
+): string[] {
+  const prefix = `${lane}_`
+  return fields.flatMap((field) =>
+    field.name.startsWith(prefix) &&
+    field.index !== false &&
+    (field.type === "string" || field.type === "string[]")
+      ? [field.name]
+      : [],
+  )
 }
 
 export type TypesenseWatchCatalogPreviewDocument = Pick<

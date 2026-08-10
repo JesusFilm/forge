@@ -5,6 +5,7 @@ export const TYPESENSE_WATCH_CATALOG_ALIAS = "watch_search_catalog"
 export const TYPESENSE_WATCH_AVAILABILITY_ALIAS = "watch_search_availability"
 export const TYPESENSE_WATCH_LEXICAL_ALIAS = "watch_search_lexical"
 export const TYPESENSE_WATCH_TRANSCRIPT_ALIAS = "watch_search_transcripts"
+export const TYPESENSE_WATCH_CANDIDATE_PREFIX = "watch_search_candidate"
 export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
 
 export type TypesenseWatchLocale = {
@@ -76,6 +77,49 @@ export type TypesenseWatchTranscriptDocument = {
 
 function physicalName(alias: string, buildId: string): string {
   return `${alias}_${buildId.replace(/[^A-Za-z0-9_-]/g, "_")}`
+}
+
+function candidateGenerationId(generationId: string): string {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(generationId)) {
+    throw new Error(
+      "Typesense Watch candidate generation id must be a collision-proof safe token",
+    )
+  }
+  return generationId
+}
+
+export function candidateWatchCollectionNames(generationId: string) {
+  const id = candidateGenerationId(generationId)
+  const prefix = `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_${id}`
+  return {
+    catalog: `${prefix}_catalog`,
+    availability: `${prefix}_availability`,
+    lexical: `${prefix}_lexical`,
+  } as const
+}
+
+export function candidateWatchCollectionSchemas(
+  generationId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+) {
+  const names = candidateWatchCollectionNames(generationId)
+  return {
+    catalog: {
+      ...watchCatalogCollectionSchema("candidate"),
+      name: names.catalog,
+    },
+    availability: {
+      ...watchAvailabilityCollectionSchema("candidate"),
+      name: names.availability,
+    },
+    lexical: {
+      ...watchLexicalCollectionSchema("candidate", tokenizerLocales),
+      name: names.lexical,
+    },
+  } satisfies Record<
+    keyof ReturnType<typeof candidateWatchCollectionNames>,
+    TypesenseCollectionSchema
+  >
 }
 
 export function watchCatalogCollectionSchema(

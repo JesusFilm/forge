@@ -79,6 +79,57 @@ describe("TypesenseClient", () => {
     )
   })
 
+  it("fetches one exact physical collection schema for publication validation", async () => {
+    const schema = {
+      name: "watch_candidate_catalog_generation_1",
+      fields: [
+        { name: "id", type: "string" },
+        { name: "titles", type: "string[]", locale: "zh" },
+      ],
+      num_documents: 1_070,
+    }
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(schema))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.getCollectionSchema("watch_candidate_catalog_generation_1"),
+    ).resolves.toEqual(schema)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8108/collections/watch_candidate_catalog_generation_1",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-typesense-api-key": "test-key",
+        }),
+      }),
+    )
+  })
+
+  it("normalizes collection-schema HTTP failures without treating 404 as absent", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("missing collection", { status: 404 }))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.getCollectionSchema("missing_candidate_collection"),
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        name: "TypesenseRequestError",
+        status: 404,
+      }),
+    )
+  })
+
   it("checks every row in an HTTP-200 import response", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

@@ -4,6 +4,7 @@ import type { TypesenseClient } from "./typesense-client"
 import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
+  buildTypesenseWatchCandidateProjectionSnapshot,
   canonicalTypesenseVideoId,
   estimateTypesenseVectorMemoryBytes,
   parseTypesenseVector,
@@ -179,6 +180,49 @@ describe("Typesense Watch Search indexer", () => {
         durationSeconds: 180,
       },
     ])
+  })
+
+  it("derives deterministic candidate projections from one repeatable-read snapshot", async () => {
+    let sourceTitle = "Before snapshot"
+    const transaction = vi.fn(
+      async (
+        run: (tx: unknown) => Promise<unknown>,
+        options: { isolationLevel: string },
+      ) => {
+        const capturedTitle = sourceTitle
+        const tx = {
+          video: {
+            findMany: vi.fn(async () => {
+              sourceTitle = "After snapshot"
+              return [viewerSafeVideo(capturedTitle)]
+            }),
+          },
+          $queryRaw: vi.fn(async () => []),
+        }
+        expect(options).toEqual({ isolationLevel: "RepeatableRead" })
+        return run(tx)
+      },
+    )
+    const prisma = { $transaction: transaction } as unknown as PrismaClient
+
+    const before = await buildTypesenseWatchCandidateProjectionSnapshot(prisma)
+    const after = await buildTypesenseWatchCandidateProjectionSnapshot(prisma)
+
+    expect(before.catalog[0]?.titles).toEqual(["Before snapshot"])
+    expect(before.lexical[0]).toMatchObject({
+      title_en: ["Before snapshot"],
+      metadata_en: ["Before snapshot description"],
+    })
+    expect(before.counts).toEqual({ catalog: 1, availability: 0, lexical: 1 })
+    expect(before.digests).toEqual(
+      expect.objectContaining({
+        catalog: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        availability: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        lexical: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        combined: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      }),
+    )
+    expect(after.digests.combined).not.toBe(before.digests.combined)
   })
 
   it("estimates vector RAM using the Typesense sizing formula", () => {

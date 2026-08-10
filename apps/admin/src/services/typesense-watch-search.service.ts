@@ -10,13 +10,10 @@ import {
   type TypesenseSearchGroup,
   type TypesenseSearchHit,
   type TypesenseSearchRequest,
+  type TypesenseSearchResult,
 } from "./typesense-client"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
 import {
-  TYPESENSE_WATCH_AVAILABILITY_ALIAS,
-  TYPESENSE_WATCH_CATALOG_ALIAS,
-  TYPESENSE_WATCH_LEXICAL_ALIAS,
-  TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
@@ -32,12 +29,23 @@ import {
   displayPreviewLocale,
   hasAlignedLocaleCodes,
   type TypesenseWatchCatalogPreviewDocument,
+  watchLexicalManifestQueryFields,
   watchLexicalQueryFields,
 } from "./typesense-watch-search-locales"
 import {
+  createCurrentWatchSearchProfile,
+  type TypesenseWatchSearchCollectionBinding,
+  type TypesenseWatchSearchProfile,
+} from "./typesense-watch-search-profile"
+import {
   resolveSearchLanguageSignals,
   resolveSearchQueryScriptContext,
+  type SearchLanguageSignalSource,
 } from "./search-language-resolution"
+import {
+  buildTypesenseWatchSearchQueryPlan,
+  type TypesenseWatchQueryLanguageCandidate,
+} from "./typesense-watch-search-query-plan"
 import {
   defaultWatchSearchEmbedder,
   type WatchSearchInput,
@@ -88,6 +96,34 @@ type TypesenseWatchSearchDeps = {
   embedder?: WatchSearchQueryEmbedder
   embeddingTimeoutMs?: number
   logger?: Pick<Console, "warn">
+  profile?: TypesenseWatchSearchProfile
+}
+
+export type TypesenseWatchSearchDiagnostics = {
+  profile: TypesenseWatchSearchProfile["kind"]
+  generationId: string | null
+  applicationRevision: string | null
+  transcriptProjectionRevision: bigint | null
+  binding: TypesenseWatchSearchCollectionBinding
+  retrievalCalls: number
+  logicalSubsearches: number
+  queryFieldCount: number
+  queryByBytes: number
+  requestBytes: number
+  parsedResponseBytes: number
+  typesenseSearchTimeMs: number
+  typesenseWallTimeMs: number
+  retryCount: number
+  groupedHits: number
+  candidates: number
+  hydratedRecords: number
+}
+
+type MutableSearchDiagnostics = Omit<
+  TypesenseWatchSearchDiagnostics,
+  "queryFieldCount"
+> & {
+  queryFields: Set<string>
 }
 
 type Candidate = {
@@ -187,20 +223,25 @@ export class TypesenseWatchSearchUnavailableError extends Error {
   }
 }
 
-function isMissingAvailabilityAlias(error: unknown): boolean {
+function isMissingAvailabilityProjection(
+  error: unknown,
+  collection: string,
+): boolean {
   return (
     error instanceof TypesenseRequestError &&
-    (error.status === 404 ||
-      error.message.includes(TYPESENSE_WATCH_AVAILABILITY_ALIAS))
+    (error.status === 404 || error.message.includes(collection))
   )
 }
 
-function isMissingLexicalProjection(error: unknown): boolean {
+function isMissingLexicalProjection(
+  error: unknown,
+  collection: string,
+): boolean {
   return (
     error instanceof TypesenseRequestError &&
     (error.status === 400 || error.status === 404) &&
     new RegExp(
-      `${TYPESENSE_WATCH_LEXICAL_ALIAS}|title_[a-z]|metadata_[a-z]|canonicalVideoId|languageIdentity`,
+      `${collection.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|title_[a-z]|metadata_[a-z]|canonicalVideoId|languageIdentity`,
     ).test(error.message)
   )
 }
@@ -260,6 +301,20 @@ function normalizedTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLocaleLowerCase()
 }
 
+function lexicalEvidenceLanguageSlug(identity: string): string | null {
+  const match = /^slug:(.+)$/.exec(identity)
+  return match?.[1] ?? null
+}
+
+function signalSourceForCandidate(
+  candidate: TypesenseWatchQueryLanguageCandidate,
+): SearchLanguageSignalSource {
+  if (candidate.reason === "explicit_target") return "explicit_target"
+  if (candidate.reason === "script") return "query_script"
+  if (candidate.reason === "context") return "current_watch"
+  return "query_named_language"
+}
+
 function createTitleMatchClassifier(query: string) {
   const normalizedQuery = normalizedTitle(query)
   const exactTitleTokens = tokenizeForExactTitle(query)
@@ -279,6 +334,7 @@ function createTitleMatchClassifier(query: string) {
 }
 
 function lexicalSearchRequests(
+  collection: string,
   query: string,
   candidateLimit: number,
   maxRequests = TYPESENSE_MAX_MULTI_SEARCHES,
@@ -286,7 +342,7 @@ function lexicalSearchRequests(
   const perPage = Math.min(candidateLimit, TYPESENSE_MAX_PER_PAGE)
   const pageCount = Math.min(Math.ceil(candidateLimit / perPage), maxRequests)
   return Array.from({ length: pageCount }, (_value, index) => ({
-    collection: TYPESENSE_WATCH_CATALOG_ALIAS,
+    collection,
     q: query,
     query_by: "titles,descriptions",
     query_by_weights: "4,1",
@@ -299,27 +355,33 @@ function lexicalSearchRequests(
 }
 
 function lexicalLaneRequest(
+  collection: string,
   query: string,
   fields: readonly string[],
-  languageIdentities: readonly string[],
+  languageIdentities: readonly string[] | null,
   candidateLimit: number,
   offset: number,
 ): TypesenseSearchRequest {
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
+  const isFallbackField = (field: string) => field.endsWith("_fallback")
   return {
-    collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+    collection,
     q: query,
     query_by: fields.join(","),
     query_by_weights: fields
-      .map((_field, index) => (index === 0 ? 4 : 1))
+      .map((field) => (isFallbackField(field) ? 1 : 4))
       .join(","),
     page: Math.floor(offset / perPage) + 1,
     per_page: perPage,
     group_by: "canonicalVideoId",
     group_limit: HYBRID_GROUP_LIMIT,
-    filter_by: `languageIdentity:=[${languageIdentities.map((identity) => `\`${identity}\``).join(",")}]`,
+    filter_by: languageIdentities
+      ? `languageIdentity:=[${languageIdentities.map((identity) => `\`${identity}\``).join(",")}]`
+      : undefined,
     prefix: true,
-    num_typos: fields.map((_field, index) => (index === 0 ? 2 : 1)).join(","),
+    num_typos: fields
+      .map((field) => (isFallbackField(field) ? 1 : 2))
+      .join(","),
     split_join_tokens: "always",
     text_match_type: "max_weight",
     prioritize_exact_match: true,
@@ -336,10 +398,12 @@ function lexicalLaneRequest(
 }
 
 function semanticLaneRequest(
+  collection: string,
   embedding: readonly number[],
   evidenceLocales: Array<{ slug: string; locale: string }>,
   candidateLimit: number,
   offset: number,
+  globalRecall = false,
 ): TypesenseSearchRequest {
   const vectorCandidateLimit = HYBRID_VECTOR_CANDIDATES
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
@@ -347,10 +411,12 @@ function semanticLaneRequest(
     .map(({ locale }) => `\`${locale}\``)
     .join(",")
   return {
-    collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+    collection,
     q: "*",
     vector_query: `embedding:([${embedding.join(",")}], k:${vectorCandidateLimit}, distance_threshold:${1 - MIN_SEMANTIC_SIMILARITY})`,
-    filter_by: `documentKind:=transcript && publiclyVisible:=true && language:=[${filterValues}]`,
+    filter_by: globalRecall
+      ? "documentKind:=transcript && publiclyVisible:=true"
+      : `documentKind:=transcript && publiclyVisible:=true && language:=[${filterValues}]`,
     group_by: "canonicalVideoId",
     group_limit: HYBRID_GROUP_LIMIT,
     page: Math.floor(offset / perPage) + 1,
@@ -639,6 +705,7 @@ export class TypesenseWatchSearchService {
   private readonly embedder: WatchSearchQueryEmbedder
   private readonly embeddingTimeoutMs: number
   private readonly logger: Pick<Console, "warn">
+  private readonly profile: TypesenseWatchSearchProfile
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -650,9 +717,88 @@ export class TypesenseWatchSearchService {
     this.embeddingTimeoutMs =
       deps.embeddingTimeoutMs ?? DEFAULT_EMBEDDING_TIMEOUT_MS
     this.logger = deps.logger ?? console
+    this.profile = deps.profile ?? createCurrentWatchSearchProfile()
+  }
+
+  async searchWithDiagnostics(input: WatchSearchInput): Promise<{
+    response: WatchSearchResponse
+    diagnostics: TypesenseWatchSearchDiagnostics
+  }> {
+    const diagnostics: MutableSearchDiagnostics = {
+      profile: this.profile.kind,
+      generationId: this.profile.generationId,
+      applicationRevision: this.profile.applicationRevision,
+      transcriptProjectionRevision: this.profile.transcriptProjectionRevision,
+      binding: this.profile.binding,
+      retrievalCalls: 0,
+      logicalSubsearches: 0,
+      queryFields: new Set(),
+      queryByBytes: 0,
+      requestBytes: 0,
+      parsedResponseBytes: 0,
+      typesenseSearchTimeMs: 0,
+      typesenseWallTimeMs: 0,
+      retryCount: 0,
+      groupedHits: 0,
+      candidates: 0,
+      hydratedRecords: 0,
+    }
+    const response = await this.executeSearch(input, diagnostics)
+    const { queryFields, ...publicDiagnostics } = diagnostics
+    return {
+      response,
+      diagnostics: {
+        ...publicDiagnostics,
+        queryFieldCount: queryFields.size,
+      },
+    }
+  }
+
+  private async multiSearch<T>(
+    searches: readonly TypesenseSearchRequest[],
+    diagnostics?: MutableSearchDiagnostics,
+  ): Promise<TypesenseSearchResult<T>[]> {
+    if (diagnostics) {
+      diagnostics.retrievalCalls += 1
+      diagnostics.logicalSubsearches += searches.length
+      diagnostics.requestBytes += Buffer.byteLength(
+        JSON.stringify({ searches }),
+      )
+      for (const search of searches) {
+        const queryBy = String(search.query_by ?? "")
+        diagnostics.queryByBytes += Buffer.byteLength(queryBy)
+        for (const field of queryBy.split(",").filter(Boolean)) {
+          diagnostics.queryFields.add(field)
+        }
+      }
+    }
+    const startedAt = diagnostics ? performance.now() : 0
+    const results = await this.typesense.multiSearch<T>(searches)
+    if (diagnostics) {
+      diagnostics.typesenseWallTimeMs += performance.now() - startedAt
+      diagnostics.parsedResponseBytes += Buffer.byteLength(
+        JSON.stringify(results),
+      )
+      diagnostics.typesenseSearchTimeMs += results.reduce(
+        (total, result) => total + result.search_time_ms,
+        0,
+      )
+      diagnostics.groupedHits += results.reduce(
+        (total, result) => total + (result.grouped_hits?.length ?? 0),
+        0,
+      )
+    }
+    return results
   }
 
   async search(input: WatchSearchInput): Promise<WatchSearchResponse> {
+    return this.executeSearch(input)
+  }
+
+  private async executeSearch(
+    input: WatchSearchInput,
+    diagnostics?: MutableSearchDiagnostics,
+  ): Promise<WatchSearchResponse> {
     const startedAt = performance.now()
     const query = input.query.trim().slice(0, MAX_QUERY_LENGTH)
     if (!query) throw new WatchSearchValidationError("Search query is required")
@@ -680,14 +826,35 @@ export class TypesenseWatchSearchService {
       }),
     )
     const languageStartedAt = performance.now()
-    const languageInterpretation = await resolveSearchLanguageSignals({
+    const baseLanguageInterpretation = await resolveSearchLanguageSignals({
       prisma: this.prisma,
       input,
     })
-    const [target, evidenceLocales] = await Promise.all([
-      this.targetLanguageContext(languageInterpretation.targetLanguageSlug),
+    const candidateQueryPlan =
+      this.profile.kind === "CANDIDATE"
+        ? await buildTypesenseWatchSearchQueryPlan({
+            prisma: this.prisma,
+            query,
+            baseResolution: baseLanguageInterpretation,
+          })
+        : null
+    let languageInterpretation = candidateQueryPlan
+      ? {
+          ...baseLanguageInterpretation,
+          targetLanguageSlug: candidateQueryPlan.targetLanguageSlug,
+          targetLanguageSource: candidateQueryPlan.targetLanguageSource,
+          queryNamedLanguageSlug:
+            candidateQueryPlan.namedLanguageSlug ??
+            baseLanguageInterpretation.queryNamedLanguageSlug,
+        }
+      : baseLanguageInterpretation
+    const provisionalTargetLanguageSlug =
+      languageInterpretation.targetLanguageSlug
+    const [provisionalTarget, evidenceLocales] = await Promise.all([
+      this.targetLanguageContext(provisionalTargetLanguageSlug),
       this.evidenceLocales(languageInterpretation),
     ])
+    let target = provisionalTarget
     laneStatuses.push(
       laneStatus({
         lane: "language_resolution",
@@ -704,6 +871,7 @@ export class TypesenseWatchSearchService {
       languageInterpretation.routeLanguageBcp47 ??
       "en"
     const queryScriptContext =
+      this.profile.kind === "CURRENT" &&
       languageInterpretation.queryLanguageSlug == null &&
       languageInterpretation.queryNamedLanguageSlug == null
         ? resolveSearchQueryScriptContext(query)
@@ -746,10 +914,12 @@ export class TypesenseWatchSearchService {
       (identity, index, all): identity is string =>
         Boolean(identity) && all.indexOf(identity) === index,
     )
-    const titleQuery = queryWithoutLanguageHints(query, [
-      languageInterpretation.queryNamedLanguageSlug,
-      languageInterpretation.targetLanguageSlug,
-    ])
+    const titleQuery =
+      candidateQueryPlan?.contentQuery ??
+      queryWithoutLanguageHints(query, [
+        languageInterpretation.queryNamedLanguageSlug,
+        languageInterpretation.targetLanguageSlug,
+      ])
     const candidateLimit = Math.min(
       Math.max(offset + limit + 1, MIN_FALLBACK_CANDIDATES),
       MAX_LEXICAL_CANDIDATES,
@@ -772,7 +942,43 @@ export class TypesenseWatchSearchService {
       embeddingPromise,
       timelineStartedAt: startedAt,
       laneStatuses,
+      diagnostics,
     })
+    if (candidateQueryPlan) {
+      const evidenceLanguageSlugs = new Set(
+        candidates.flatMap(({ evidenceLanguageSlug }) =>
+          evidenceLanguageSlug ? [evidenceLanguageSlug] : [],
+        ),
+      )
+      const targetIsAuthoritative =
+        baseLanguageInterpretation.targetLanguageSource === "explicit_target" ||
+        candidateQueryPlan.namedLanguageSlug != null
+      const supportedCandidate = targetIsAuthoritative
+        ? null
+        : (candidateQueryPlan.languageCandidates.find(({ slug }) =>
+            evidenceLanguageSlugs.has(slug),
+          ) ?? null)
+      if (supportedCandidate) {
+        languageInterpretation = {
+          ...languageInterpretation,
+          targetLanguageSlug: supportedCandidate.slug,
+          targetLanguageSource: signalSourceForCandidate(supportedCandidate),
+        }
+      }
+      if (
+        languageInterpretation.targetLanguageSlug !==
+        provisionalTargetLanguageSlug
+      ) {
+        target = await this.targetLanguageContext(
+          languageInterpretation.targetLanguageSlug,
+        )
+      }
+    }
+    if (diagnostics) {
+      diagnostics.candidates = new Set(
+        candidates.map((candidate) => candidate.videoId),
+      ).size
+    }
     const watchabilityStartedAt = performance.now()
     let rankedCandidates: RankedCandidate[]
     let hydratedById: Map<string, HydratedResultDocument>
@@ -786,6 +992,7 @@ export class TypesenseWatchSearchService {
           group.map((candidate) => candidate.videoId),
         ),
         target,
+        diagnostics,
       )
       rankedCandidates = candidateGroups.flatMap((group) => {
         const watchableMembers = group.flatMap((candidate) => {
@@ -821,6 +1028,7 @@ export class TypesenseWatchSearchService {
         await this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
           missingPreviewIds,
           CATALOG_WATCHABILITY_PREVIEW_FIELDS,
+          diagnostics,
         )
       for (const [videoId, document] of missingPreviews) {
         previewById.set(videoId, document)
@@ -857,8 +1065,10 @@ export class TypesenseWatchSearchService {
       hydratedById = await this.hydrateResultDocuments(
         fallbackPage.map((entry) => entry.candidate.videoId),
         target,
+        diagnostics,
       )
     }
+    if (diagnostics) diagnostics.hydratedRecords = hydratedById.size
     const pageCandidates = nativeRanking
       ? rankedCandidates.slice(nativeOffset, nativeOffset + limit)
       : rankedCandidates.slice(offset, offset + limit)
@@ -956,6 +1166,7 @@ export class TypesenseWatchSearchService {
     embeddingPromise,
     timelineStartedAt,
     laneStatuses,
+    diagnostics,
   }: {
     titleQuery: string
     preferredLocale: string
@@ -968,8 +1179,11 @@ export class TypesenseWatchSearchService {
     embeddingPromise: Promise<EmbeddingOutcome>
     timelineStartedAt: number
     laneStatuses: WatchSearchLaneStatus[]
+    diagnostics?: MutableSearchDiagnostics
   }): Promise<CandidateRetrieval> {
-    if (evidenceLocales.length === 0) {
+    const globalCandidateRecall = this.profile.kind === "CANDIDATE"
+    const semanticEligible = globalCandidateRecall || evidenceLocales.length > 0
+    if (!semanticEligible) {
       laneStatuses.push(
         laneStatus({
           lane: "semantic_embedding",
@@ -983,8 +1197,7 @@ export class TypesenseWatchSearchService {
       )
     }
 
-    const embeddingOutcome =
-      evidenceLocales.length > 0 ? await embeddingPromise : null
+    const embeddingOutcome = semanticEligible ? await embeddingPromise : null
     let embedding: number[] | null = null
     if (embeddingOutcome?.status === "fulfilled") {
       embedding = embeddingOutcome.embedding
@@ -1018,38 +1231,47 @@ export class TypesenseWatchSearchService {
     }
 
     const retrievalStartedAt = performance.now()
-    const titleFields = watchLexicalQueryFields(queryLocale, "title")
-    const metadataFields = watchLexicalQueryFields(queryLocale, "metadata")
+    const lexicalManifest = this.profile.fieldManifests?.lexical ?? []
+    const titleFields = globalCandidateRecall
+      ? watchLexicalManifestQueryFields(lexicalManifest, "title")
+      : watchLexicalQueryFields(queryLocale, "title")
+    const metadataFields = globalCandidateRecall
+      ? watchLexicalManifestQueryFields(lexicalManifest, "metadata")
+      : watchLexicalQueryFields(queryLocale, "metadata")
     const searches = [
       lexicalLaneRequest(
+        this.profile.binding.lexical,
         titleQuery,
         titleFields,
-        lexicalLanguageIdentities,
+        globalCandidateRecall ? null : lexicalLanguageIdentities,
         candidateLimit,
         offset,
       ),
       lexicalLaneRequest(
+        this.profile.binding.lexical,
         titleQuery,
         metadataFields,
-        lexicalLanguageIdentities,
+        globalCandidateRecall ? null : lexicalLanguageIdentities,
         candidateLimit,
         offset,
       ),
-      ...(embedding && evidenceLocales.length > 0
+      ...(embedding
         ? [
             semanticLaneRequest(
+              this.profile.binding.transcript,
               embedding,
               evidenceLocales,
               candidateLimit,
               offset,
+              globalCandidateRecall,
             ),
           ]
         : []),
     ]
     try {
-      const results = await this.typesense.multiSearch<
+      const results = await this.multiSearch<
         TypesenseWatchLexicalDocument | TypesenseWatchTranscriptDocument
-      >(searches)
+      >(searches, diagnostics)
       const titleGroups = (results[0]?.grouped_hits ??
         []) as TypesenseSearchGroup<TypesenseWatchLexicalDocument>[]
       const metadataGroups = (results[1]?.grouped_hits ??
@@ -1093,7 +1315,12 @@ export class TypesenseWatchSearchService {
         nativeRanking: true,
       }
     } catch (error) {
-      if (!isMissingLexicalProjection(error)) throw error
+      if (
+        !this.profile.allowCompatibilityFallback ||
+        !isMissingLexicalProjection(error, this.profile.binding.lexical)
+      ) {
+        throw error
+      }
       const reason =
         error instanceof Error ? error.message : "lexical_projection_failure"
       this.logger.warn(
@@ -1101,6 +1328,7 @@ export class TypesenseWatchSearchService {
       )
       const fallbackStartedAt = performance.now()
       const lexicalRequests = lexicalSearchRequests(
+        this.profile.binding.catalog,
         titleQuery,
         candidateLimit,
         embedding
@@ -1110,23 +1338,26 @@ export class TypesenseWatchSearchService {
       const filterValues = evidenceLocales
         .map(({ locale }) => `\`${locale}\``)
         .join(",")
-      const results = await this.typesense.multiSearch<
+      const results = await this.multiSearch<
         TypesenseWatchCatalogPreviewDocument | TypesenseWatchTranscriptDocument
-      >([
-        ...lexicalRequests,
-        ...(embedding
-          ? [
-              {
-                collection: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
-                q: "*",
-                vector_query: `embedding:([${embedding.join(",")}], k:${MAX_SEMANTIC_CANDIDATES})`,
-                filter_by: `language:=[${filterValues}] && publiclyVisible:=true`,
-                per_page: MAX_SEMANTIC_CANDIDATES,
-                exclude_fields: "embedding",
-              },
-            ]
-          : []),
-      ])
+      >(
+        [
+          ...lexicalRequests,
+          ...(embedding
+            ? [
+                {
+                  collection: this.profile.binding.transcript,
+                  q: "*",
+                  vector_query: `embedding:([${embedding.join(",")}], k:${MAX_SEMANTIC_CANDIDATES})`,
+                  filter_by: `language:=[${filterValues}] && publiclyVisible:=true`,
+                  per_page: MAX_SEMANTIC_CANDIDATES,
+                  exclude_fields: "embedding",
+                },
+              ]
+            : []),
+        ],
+        diagnostics,
+      )
       const lexicalHits = await this.withLegacyLocaleProjection(
         results
           .slice(0, lexicalRequests.length)
@@ -1135,6 +1366,7 @@ export class TypesenseWatchSearchService {
             0,
             candidateLimit,
           ) as TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
+        diagnostics,
       )
       const semanticHits = embedding
         ? ((results.at(-1)?.hits ??
@@ -1277,7 +1509,9 @@ export class TypesenseWatchSearchService {
               kind: exact ? "exact" : "metadata",
               wholeTitleMatch,
               sourceScore: 0,
-              evidenceLanguageSlug: null,
+              evidenceLanguageSlug: lexicalEvidenceLanguageSlug(
+                hit.document.languageIdentity,
+              ),
               snippet: lane === "metadata" ? (values[0] ?? null) : null,
               startSeconds: null,
             },
@@ -1419,6 +1653,7 @@ export class TypesenseWatchSearchService {
   private async hydrateResultDocuments(
     videoIds: readonly string[],
     target: TargetLanguageContext,
+    diagnostics?: MutableSearchDiagnostics,
   ): Promise<Map<string, HydratedResultDocument>> {
     const ids = [...new Set(videoIds)]
     if (ids.length === 0) return new Map()
@@ -1429,7 +1664,7 @@ export class TypesenseWatchSearchService {
     )
     const searches: TypesenseSearchRequest[] = [
       {
-        collection: TYPESENSE_WATCH_CATALOG_ALIAS,
+        collection: this.profile.binding.catalog,
         q: "*",
         filter_by: `id:=[${ids.map((id) => `\`${id}\``).join(",")}]`,
         per_page: ids.length,
@@ -1444,7 +1679,7 @@ export class TypesenseWatchSearchService {
       for (let index = 0; index < ids.length; index += videoBatchSize) {
         const batch = ids.slice(index, index + videoBatchSize)
         searches.push({
-          collection: TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+          collection: this.profile.binding.availability,
           q: "*",
           filter_by: `videoId:=[${batch.map((id) => `\`${id}\``).join(",")}] && languageId:=[${languageIds.map((id) => `\`${id}\``).join(",")}]`,
           per_page: batch.length * languageIds.length,
@@ -1454,11 +1689,9 @@ export class TypesenseWatchSearchService {
     }
 
     try {
-      const [catalogResult, ...availabilityResults] =
-        await this.typesense.multiSearch<
-          | TypesenseWatchCatalogResultDocument
-          | TypesenseWatchAvailabilityDocument
-        >(searches)
+      const [catalogResult, ...availabilityResults] = await this.multiSearch<
+        TypesenseWatchCatalogResultDocument | TypesenseWatchAvailabilityDocument
+      >(searches, diagnostics)
       const availabilityByVideoId = new Map<
         string,
         TypesenseWatchAvailabilityDocument[]
@@ -1487,7 +1720,15 @@ export class TypesenseWatchSearchService {
         }),
       )
     } catch (error) {
-      if (!isMissingAvailabilityAlias(error)) throw error
+      if (
+        !this.profile.allowCompatibilityFallback ||
+        !isMissingAvailabilityProjection(
+          error,
+          this.profile.binding.availability,
+        )
+      ) {
+        throw error
+      }
       this.logger.warn(
         "[typesense-watch-search] event=availability_alias_fallback",
       )
@@ -1495,6 +1736,7 @@ export class TypesenseWatchSearchService {
         await this.catalogDocuments<TypesenseWatchLegacyCatalogResultDocument>(
           ids,
           LEGACY_CATALOG_RESULT_FIELDS,
+          diagnostics,
         )
       return new Map(
         [...legacyById].map(([id, document]) => [
@@ -1513,6 +1755,7 @@ export class TypesenseWatchSearchService {
   >(
     videoIds: readonly string[],
     includeFields?: string,
+    diagnostics?: MutableSearchDiagnostics,
   ): Promise<Map<string, TDocument>> {
     const ids = [...new Set(videoIds)]
     if (ids.length === 0) return new Map()
@@ -1524,14 +1767,14 @@ export class TypesenseWatchSearchService {
     ) {
       const batch = ids.slice(index, index + MAX_CATALOG_HYDRATION_BATCH)
       searches.push({
-        collection: TYPESENSE_WATCH_CATALOG_ALIAS,
+        collection: this.profile.binding.catalog,
         q: "*",
         filter_by: `id:=[${batch.map((id) => `\`${id}\``).join(",")}]`,
         per_page: batch.length,
         include_fields: includeFields,
       })
     }
-    const results = await this.typesense.multiSearch<TDocument>(searches)
+    const results = await this.multiSearch<TDocument>(searches, diagnostics)
     return new Map(
       results.flatMap((result) =>
         (result.hits ?? []).map(
@@ -1543,6 +1786,7 @@ export class TypesenseWatchSearchService {
 
   private async withLegacyLocaleProjection(
     hits: TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
+    diagnostics?: MutableSearchDiagnostics,
   ): Promise<TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[]> {
     const legacyIds = hits
       .filter((hit) => !hasAlignedLocaleCodes(hit.document))
@@ -1553,6 +1797,7 @@ export class TypesenseWatchSearchService {
       await this.catalogDocuments<TypesenseWatchLegacyCatalogLocaleDocument>(
         legacyIds,
         LEGACY_CATALOG_LOCALE_FIELDS,
+        diagnostics,
       )
     return hits.map((hit) => {
       const legacy = legacyById.get(hit.document.id)
@@ -1676,13 +1921,30 @@ export class TypesenseWatchSearchService {
 
 export function createTypesenseWatchSearchService(
   prisma: PrismaClient,
+  profile: TypesenseWatchSearchProfile = createCurrentWatchSearchProfile(),
 ): TypesenseWatchSearchService | null {
   const host = process.env.TYPESENSE_HOST
-  const apiKey = process.env.TYPESENSE_API_KEY
+  const apiKey = resolveTypesenseWatchSearchApiKey({
+    searchApiKey: process.env.TYPESENSE_SEARCH_API_KEY,
+    legacyApiKey: process.env.TYPESENSE_API_KEY,
+    allowLegacyFallback: profile.kind === "CURRENT",
+  })
   if (!host || !apiKey) return null
   return new TypesenseWatchSearchService(
     prisma,
     new TypesenseClient({ host, apiKey, timeoutMs: 2_000 }),
+    { profile },
+  )
+}
+
+export function resolveTypesenseWatchSearchApiKey(input: {
+  searchApiKey?: string
+  legacyApiKey?: string
+  allowLegacyFallback: boolean
+}): string | undefined {
+  return (
+    input.searchApiKey ??
+    (input.allowLegacyFallback ? input.legacyApiKey : undefined)
   )
 }
 
