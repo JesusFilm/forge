@@ -24,6 +24,7 @@
  */
 
 import { z } from "zod"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 
 import {
   DraftVideoSectionSchema,
@@ -189,9 +190,12 @@ export function buildSectionPrompt(input: ExperienceSectionRequest): string {
   const { anchorCandidate, grounding } = input
   const lines: string[] = []
   lines.push(`Locale: ${input.locale}`)
-  lines.push(
-    `Anchor video (candidate "v01"): ${anchorCandidate.title ?? anchorCandidate.slug ?? anchorCandidate.videoId}`,
-  )
+  const anchorTitle =
+    resolveVideoDisplayTitle({
+      requestedTitles: [anchorCandidate.title],
+      slug: anchorCandidate.slug,
+    }) ?? "Video"
+  lines.push(`Anchor video (candidate "v01"): ${anchorTitle}`)
   if (anchorCandidate.description) {
     lines.push(`Anchor description: ${anchorCandidate.description}`)
   }

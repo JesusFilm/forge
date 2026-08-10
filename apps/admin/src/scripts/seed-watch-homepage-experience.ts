@@ -15,6 +15,7 @@
 import { fileURLToPath } from "node:url"
 import { resolve } from "node:path"
 import type { VideoLabel } from "@prisma/client"
+import { resolveVideoDisplayTitle } from "@forge/content-display"
 import { BlocksSchema } from "@/domain/blocks"
 
 type WatchHomeSeedSection = {
@@ -361,7 +362,11 @@ function buildMediaItem(video: SeedVideo) {
   return compactMediaItem({
     videoId: video.id,
     videoSlug: video.slug,
-    titleOverride: locale?.title ?? video.coreId ?? video.id,
+    titleOverride:
+      resolveVideoDisplayTitle({
+        requestedTitles: [locale?.title],
+        slug: video.slug,
+      }) ?? "Video",
     subtitleOverride: truncateDescription(
       locale?.snippet ?? locale?.description,
     ),

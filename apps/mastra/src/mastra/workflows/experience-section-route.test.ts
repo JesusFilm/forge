@@ -6,6 +6,7 @@ import {
 } from "@forge/experience-schema"
 
 import {
+  buildSectionPrompt,
   handleExperienceSectionRouteRequest,
   type SectionAgentMastra,
 } from "./experience-section-route"
@@ -51,6 +52,23 @@ const REQUEST_BODY = {
     ],
   },
 }
+
+it("uses a readable anchor title instead of a raw slug or internal id", () => {
+  const prompt = buildSectionPrompt({
+    locale: "en",
+    anchorCandidate: {
+      videoId: "internal-video-id",
+      title: " ",
+      slug: "miraculous--catch_of-fish",
+    },
+    grounding: { studyQuestions: [], citations: [] },
+  })
+
+  expect(prompt).toContain(
+    'Anchor video (candidate "v01"): Miraculous Catch Of Fish',
+  )
+  expect(prompt).not.toContain("internal-video-id")
+})
 
 type GenerateOpts = {
   maxOutputTokens?: number

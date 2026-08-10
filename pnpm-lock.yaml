@@ -616,6 +616,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: 3.1100.0
         version: 3.1100.0
+      '@forge/content-display':
+        specifier: workspace:*
+        version: link:../../packages/content-display
       '@forge/devotional-workspace':
         specifier: workspace:*
         version: link:../../packages/devotional-workspace

@@ -2467,8 +2467,7 @@ export class VideoService {
               ),
               ''
             ),
-            candidate."coreId",
-            candidate.id
+            'Video'
           ) AS title,
           COALESCE(
             NULLIF(candidate_locale.description, ''),
@@ -2614,8 +2613,7 @@ export class VideoService {
               ),
               ''
             ),
-            parent.core_id,
-            parent.id
+            'Video'
           ) AS title
         FROM video_relation relation
         JOIN video parent

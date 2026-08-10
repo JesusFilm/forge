@@ -852,6 +852,8 @@ describe("VideoService", () => {
       expect(candidateDisplay).toContain(
         "REGEXP_REPLACE(BTRIM(candidate.slug), '[-_]+', ' ', 'g')",
       )
+      expect(candidateDisplay).not.toContain('candidate."coreId"')
+      expect(candidateDisplay).not.toMatch(/candidate\.id\s*\)\s+AS title/)
       expect(candidateDisplay).toContain("candidate_locale.description")
 
       const metadataRequestedBcp47 = candidateLocale.indexOf(
@@ -897,6 +899,8 @@ describe("VideoService", () => {
       expect(parentReference).toContain(
         "REGEXP_REPLACE(BTRIM(parent.slug), '[-_]+', ' ', 'g')",
       )
+      expect(parentReference).not.toContain("parent.core_id")
+      expect(parentReference).not.toMatch(/parent\.id\s*\)\s+AS title/)
       expect(parentTitleLocale).toMatch(
         /AND\s+\(\s*locale\.language_id = inventory_language\.id\s+OR locale\.language_slug = inventory_language\.slug\s+OR locale\.locale = inventory_language\.bcp47\s+OR locale\.language_slug = 'english'\s+OR locale\.locale = 'en'\s*\)/,
       )

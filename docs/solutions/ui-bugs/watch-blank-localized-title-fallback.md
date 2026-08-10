@@ -92,8 +92,7 @@ COALESCE(
     INITCAP(REGEXP_REPLACE(BTRIM(candidate.slug), '[-_]+', ' ', 'g')),
     ''
   ),
-  candidate."coreId",
-  candidate.id
+  'Video'
 ) AS title
 ```
 
@@ -113,6 +112,42 @@ The first requested row remains the source for non-title fields. Root, parent,
 top-level child, and nested child normalizers all use the same final
 `humanizeContentSlug(slug)` safety fallback. Unrelated locale titles are never
 admitted.
+
+## Cross-platform follow-up
+
+PR #1870 fixed language inventory and Web route snapshots, but Watch home,
+search, history, downloads, recommendations, generated content, mobile, and TV
+still had independent `title ?? slug` or `title ?? coreId` fallbacks. The policy
+now lives in the runtime-neutral `@forge/content-display` package:
+
+1. first trimmed nonblank requested title candidate;
+2. first trimmed nonblank published English candidate when that producer has
+   localized data;
+3. humanized Video slug;
+4. an existing neutral product label such as `Video` only when no usable slug
+   exists.
+
+The compatibility helper `repairLegacyVideoDisplayTitle` is deliberately
+limited to known caches/indexes that historically persisted a raw slug in the
+`title` field. It is not used for authored Experience titles, because an
+authored title may legitimately equal a slug.
+
+### Audited boundaries
+
+| Boundary | Resolution point | Identity preserved |
+| --- | --- | --- |
+| Admin Watch inventory | bounded inventory SQL | slug, Core ID |
+| Admin Typesense search | index projection plus one bounded result-page locale hydration | search document ID and slug |
+| Admin/Mastra Experience AI | candidate/context and section-prompt producers | candidate ref, Video ID, slug |
+| Web Watch home | exact, broad, and English title aliases in one GraphQL operation | href and cache identity |
+| Web history/search/recommendations/downloads | producer normalizers plus allowlisted stale-data read repair | route slug, download proxy inputs |
+| Mobile home/detail/series/search/downloads | model and persisted-record boundaries | route and offline manifest slug |
+| TV home/detail/series/search/SDUI/showcase | model boundaries; continue-watching read repair | route and progress-store slug |
+
+Authored override precedence remains unchanged. The Admin media-collection
+resolver that intentionally permits a titleless card remains titleless; this
+policy only supplies a title where the existing product contract already
+renders a Video title placeholder.
 
 ## Why This Works
 
@@ -141,6 +176,11 @@ in 0.96 seconds, the warm request in 0.175 seconds, and direct SQL execution in
   inventory data whenever localization joins change.
 - Browser-smoke an RTL inventory and a linked collection, including console
   inspection and preservation of requested-language copy.
+- Search both gql.tada `adminGraphql(...)` and Apollo/raw GraphQL call sites;
+  aliases and client-side query strings otherwise evade a one-style audit.
+- Treat slugs as identity until a display boundary. Humanization must never
+  alter URLs, cache keys, analytics, filenames used as machine identity, or
+  playback selection.
 
 ## Related Issues
 
@@ -148,4 +188,6 @@ in 0.96 seconds, the warm request in 0.175 seconds, and direct SQL execution in
 - `docs/solutions/performance-issues/watch-non-cloudflare-performance-hardening-20260611.md`
 - `docs/solutions/integration-issues/admin-jsonb-locale-map-vs-strapi-string-silent-drop-20260515.md`
 - `docs/solutions/architecture-patterns/tv-sdui-mediacollection-card-image-title-resolution.md`
+- `docs/plans/2026-08-10-001-fix-video-display-title-fallback-plan.md`
+- `docs/roadmap/content-discovery/feat-344-watch-cross-platform-display-title-fallback.md`
 - No directly matching GitHub issue was found in the bounded search.
