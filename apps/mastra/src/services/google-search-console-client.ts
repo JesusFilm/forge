@@ -10,6 +10,7 @@ import {
   type GoogleTokenProvider,
 } from "./google-auth-client"
 import type { SeoEvidenceObservation, SeoProviderFailure } from "./seo-evidence"
+import { boundedSeoProviderPageSize } from "./seo-http"
 
 const GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
 const GSC_ENDPOINT = "https://searchconsole.googleapis.com/webmasters/v3/sites/"
@@ -102,12 +103,20 @@ export async function queryGoogleSearchConsole(input: {
   )([GSC_SCOPE])
   if (!token.ok) return token
 
-  const pageSize = Math.min(25_000, config.maxGscRows)
+  let pageSize = boundedSeoProviderPageSize({
+    maxRows: config.maxGscRows,
+    maxResponseBytes: config.maxResponseBytes,
+    providerMaxRows: 25_000,
+  })
   const rows: GscRow[] = []
   let aggregation: string | null = null
   let firstIncompleteDate: string | null = null
   let pageCount = 0
   while (rows.length < config.maxGscRows) {
+    const requestedPageSize = Math.min(
+      pageSize,
+      config.maxGscRows - rows.length,
+    )
     const response = await requestGoogleJson({
       url: endpoint(input.propertyId),
       accessToken: token.accessToken,
@@ -117,7 +126,7 @@ export async function queryGoogleSearchConsole(input: {
         dimensions: input.dimensions,
         type: "web",
         dataState: input.dataState ?? "final",
-        rowLimit: Math.min(pageSize, config.maxGscRows - rows.length),
+        rowLimit: requestedPageSize,
         startRow: rows.length,
         ...(input.filters?.length
           ? {
@@ -140,9 +149,20 @@ export async function queryGoogleSearchConsole(input: {
       fetchImpl: input.fetchImpl,
       sleep: input.sleep,
     })
-    if (!response.ok) return response
+    if (!response.ok) {
+      if (response.reason === "response_too_large" && requestedPageSize > 1) {
+        pageSize = Math.max(1, Math.floor(requestedPageSize / 2))
+        continue
+      }
+      return response.reason === "response_too_large"
+        ? { ok: false, reason: "parse_error", retryable: true }
+        : response
+    }
     const parsed = ResponseSchema.safeParse(response.body)
     if (!parsed.success) {
+      return { ok: false, reason: "parse_error", retryable: true }
+    }
+    if (parsed.data.rows.length > requestedPageSize) {
       return { ok: false, reason: "parse_error", retryable: true }
     }
     pageCount += 1
@@ -157,7 +177,7 @@ export async function queryGoogleSearchConsole(input: {
       return { ok: false, reason: "parse_error", retryable: true }
     }
     rows.push(...validRows)
-    if (parsed.data.rows.length < pageSize) break
+    if (parsed.data.rows.length < requestedPageSize) break
   }
 
   const capped = rows.length >= config.maxGscRows

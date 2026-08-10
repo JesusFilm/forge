@@ -1,10 +1,39 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { fetchSeoUrl, validateSeoUrl } from "./seo-http"
+import {
+  boundedSeoProviderPageSize,
+  fetchSeoUrl,
+  readSeoBody,
+  validateSeoUrl,
+} from "./seo-http"
 
 const publicDns = async () => [{ address: "93.184.216.34", family: 4 }]
 
 describe("SEO URL safety", () => {
+  it("bounds provider pages by total, provider, and response limits", () => {
+    expect(
+      boundedSeoProviderPageSize({
+        maxRows: 25_000,
+        maxResponseBytes: 2_097_152,
+        providerMaxRows: 10_000,
+      }),
+    ).toBe(2_044)
+    expect(
+      boundedSeoProviderPageSize({
+        maxRows: 7,
+        maxResponseBytes: 16_384,
+        providerMaxRows: 10_000,
+      }),
+    ).toBe(7)
+    expect(
+      boundedSeoProviderPageSize({
+        maxRows: 25_000,
+        maxResponseBytes: 8_388_608,
+        providerMaxRows: 1_000,
+      }),
+    ).toBe(1_000)
+  })
+
   it.each([
     "https://127.0.0.1/path",
     "https://2130706433/path",
@@ -53,5 +82,25 @@ describe("SEO URL safety", () => {
       ) as unknown as typeof fetch,
     })
     expect(result).toEqual({ ok: false, reason: "body_too_large" })
+  })
+
+  it("cancels an oversized response stream", async () => {
+    let cancelled = false
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("oversized"))
+        },
+        cancel() {
+          cancelled = true
+        },
+      }),
+    )
+
+    await expect(readSeoBody(response, 3)).resolves.toEqual({
+      ok: false,
+      reason: "body_too_large",
+    })
+    expect(cancelled).toBe(true)
   })
 })

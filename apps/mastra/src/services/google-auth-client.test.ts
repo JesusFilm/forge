@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { getGoogleAccessToken } from "./google-auth-client"
+import { getGoogleAccessToken, requestGoogleJson } from "./google-auth-client"
 
 const scopes = ["https://www.googleapis.com/auth/webmasters.readonly"]
 const privateKey = [
@@ -270,5 +270,101 @@ describe("getGoogleAccessToken", () => {
       getGoogleAccessToken(scopes, { authFactory }),
     ).resolves.toEqual({ ok: true, accessToken: "adc-token" })
     expect(authFactory).toHaveBeenCalledWith({ scopes })
+  })
+})
+
+describe("requestGoogleJson", () => {
+  const request = (fetchImpl: typeof fetch) =>
+    requestGoogleJson({
+      url: new URL("https://www.googleapis.com/example"),
+      accessToken: "access",
+      body: {},
+      timeoutMs: 1_000,
+      maxResponseBytes: 16,
+      maxAttempts: 1,
+      fetchImpl,
+    })
+
+  it("distinguishes an oversized response from invalid JSON", async () => {
+    await expect(
+      request(
+        vi.fn(
+          async () => new Response("x".repeat(17)),
+        ) as unknown as typeof fetch,
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "response_too_large",
+      retryable: true,
+    })
+    await expect(
+      request(vi.fn(async () => new Response("{")) as unknown as typeof fetch),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+    })
+  })
+
+  it("retries a response stream failure as a network error", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              controller.error(new Error("stream failed"))
+            },
+          }),
+        ),
+    ) as unknown as typeof fetch
+
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: {},
+        timeoutMs: 1_000,
+        maxResponseBytes: 16,
+        maxAttempts: 2,
+        fetchImpl,
+        sleep: async () => undefined,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries an aborted response stream as a timeout", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              controller.error(new DOMException("timed out", "TimeoutError"))
+            },
+          }),
+        ),
+    ) as unknown as typeof fetch
+
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: {},
+        timeoutMs: 1_000,
+        maxResponseBytes: 16,
+        maxAttempts: 2,
+        fetchImpl,
+        sleep: async () => undefined,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "timeout",
+      retryable: true,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 })

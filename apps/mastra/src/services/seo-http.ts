@@ -14,6 +14,30 @@ export type SeoSafeUrlResult =
   | { ok: true; url: URL }
   | { ok: false; reason: SeoUrlFailureReason }
 
+const SEO_RESPONSE_OVERHEAD_BYTES = 4_096
+const SEO_ESTIMATED_ROW_BYTES = 1_024
+
+export function boundedSeoProviderPageSize(options: {
+  maxRows: number
+  maxResponseBytes: number
+  providerMaxRows: number
+}): number {
+  const reservedBytes = Math.min(
+    SEO_RESPONSE_OVERHEAD_BYTES,
+    Math.floor(options.maxResponseBytes / 4),
+  )
+  const rowsWithinByteBudget = Math.max(
+    1,
+    Math.floor(
+      (options.maxResponseBytes - reservedBytes) / SEO_ESTIMATED_ROW_BYTES,
+    ),
+  )
+  return Math.max(
+    1,
+    Math.min(options.maxRows, options.providerMaxRows, rowsWithinByteBudget),
+  )
+}
+
 export function classifySeoHttpStatus(status: number): {
   reason: "auth_failed" | "rate_limited" | "network_error" | "rejected"
   retryable: boolean
@@ -145,7 +169,10 @@ export async function validateSeoUrl(
 export async function readSeoBody(
   response: Response,
   maxBytes: number,
-): Promise<{ ok: true; bytes: Uint8Array } | { ok: false }> {
+): Promise<
+  | { ok: true; bytes: Uint8Array }
+  | { ok: false; reason: "body_too_large" | "read_error" | "timeout" }
+> {
   if (!response.body) return { ok: true, bytes: new Uint8Array() }
   const reader = response.body.getReader()
   const chunks: Uint8Array[] = []
@@ -157,12 +184,19 @@ export async function readSeoBody(
       size += next.value.byteLength
       if (size > maxBytes) {
         await reader.cancel().catch(() => undefined)
-        return { ok: false }
+        return { ok: false, reason: "body_too_large" }
       }
       chunks.push(next.value)
     }
-  } catch {
-    return { ok: false }
+  } catch (error) {
+    return {
+      ok: false,
+      reason:
+        error instanceof DOMException &&
+        (error.name === "TimeoutError" || error.name === "AbortError")
+          ? "timeout"
+          : "read_error",
+    }
   } finally {
     try {
       reader.releaseLock()
@@ -179,17 +213,34 @@ export async function readSeoBody(
   return { ok: true, bytes }
 }
 
+export async function readSeoJsonResult(
+  response: Response,
+  maxBytes: number,
+): Promise<
+  | { ok: true; body: unknown }
+  | {
+      ok: false
+      reason: "body_too_large" | "read_error" | "timeout" | "parse_error"
+    }
+> {
+  const body = await readSeoBody(response, maxBytes)
+  if (!body.ok) return body
+  try {
+    return {
+      ok: true,
+      body: JSON.parse(new TextDecoder().decode(body.bytes)),
+    }
+  } catch {
+    return { ok: false, reason: "parse_error" }
+  }
+}
+
 export async function readSeoJson(
   response: Response,
   maxBytes: number,
 ): Promise<unknown | undefined> {
-  const body = await readSeoBody(response, maxBytes)
-  if (!body.ok) return undefined
-  try {
-    return JSON.parse(new TextDecoder().decode(body.bytes))
-  } catch {
-    return undefined
-  }
+  const result = await readSeoJsonResult(response, maxBytes)
+  return result.ok ? result.body : undefined
 }
 
 export async function fetchSeoUrl(
@@ -257,7 +308,13 @@ export async function fetchSeoUrl(
       continue
     }
     const body = await readSeoBody(response, options.maxBytes)
-    if (!body.ok) return { ok: false, reason: "body_too_large" }
+    if (!body.ok) {
+      return {
+        ok: false,
+        reason:
+          body.reason === "body_too_large" ? "body_too_large" : "network_error",
+      }
+    }
     return {
       ok: true,
       url: safe.url.toString(),

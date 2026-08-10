@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { getGoogleSealedCredentialState, getSeoConfig } from "../config/seo"
 import type { SeoProviderFailure } from "./seo-evidence"
-import { classifySeoHttpStatus, readSeoJson } from "./seo-http"
+import { classifySeoHttpStatus, readSeoJsonResult } from "./seo-http"
 
 export type GoogleAccessTokenResult =
   | { ok: true; accessToken: string }
@@ -166,7 +166,11 @@ export async function requestGoogleJson(options: {
   maxAttempts: number
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
-}): Promise<{ ok: true; body: unknown } | SeoProviderFailure> {
+}): Promise<
+  | { ok: true; body: unknown }
+  | SeoProviderFailure
+  | { ok: false; reason: "response_too_large"; retryable: true }
+> {
   const fetchImpl = options.fetchImpl ?? fetch
   const sleep =
     options.sleep ??
@@ -219,10 +223,26 @@ export async function requestGoogleJson(options: {
       }
       return last
     }
-    const body = await readSeoJson(response, options.maxResponseBytes)
-    return body === undefined
-      ? { ok: false, reason: "parse_error", retryable: true }
-      : { ok: true, body }
+    const body = await readSeoJsonResult(response, options.maxResponseBytes)
+    if (!body.ok) {
+      if (body.reason === "body_too_large") {
+        return { ok: false, reason: "response_too_large", retryable: true }
+      }
+      if (body.reason === "parse_error") {
+        return { ok: false, reason: "parse_error", retryable: true }
+      }
+      last = {
+        ok: false,
+        reason: body.reason === "timeout" ? "timeout" : "network_error",
+        retryable: true,
+      }
+      if (attempt < options.maxAttempts) {
+        await sleep(Math.min(250 * 2 ** (attempt - 1), 2_000))
+        continue
+      }
+      return last
+    }
+    return { ok: true, body: body.body }
   }
   return last
 }
