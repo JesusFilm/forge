@@ -13,10 +13,7 @@ import { runExperiment } from "./runner"
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url))
 const MASTRA_ROOT = resolve(MODULE_DIR, "../../../..")
 const REPO_ROOT = resolve(MASTRA_ROOT, "../..")
-const DEFAULT_EXPERIMENTS_ROOT = resolve(
-  REPO_ROOT,
-  "docs/seeker-eval-experiments",
-)
+const DEFAULT_EXPERIMENTS_ROOT = resolve(MASTRA_ROOT, "evals/experiments")
 const DEFAULT_FIXTURES = resolve(MODULE_DIR, "../fixtures/rag-fixtures.json")
 
 async function loadJson(path: string): Promise<unknown> {

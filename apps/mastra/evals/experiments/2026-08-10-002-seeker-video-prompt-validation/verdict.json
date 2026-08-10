@@ -1,6 +1,6 @@
 {
   "schemaVersion": "seeker-verdict/v1",
-  "experimentId": "video-prompt-v2-sonnet",
+  "experimentId": "2026-08-10-002-seeker-video-prompt-validation",
   "attemptId": "attempt-001",
   "candidateId": "video-prompt-v2",
   "verdict": "failed",

@@ -1,14 +1,12 @@
 {
   "schemaVersion": "seeker-experiment/v1",
-  "id": "video-prompt-v2-sonnet",
+  "id": "2026-08-10-001-seeker-video-prompt-provider-diagnostic",
   "owner": "jaco-brink",
-  "hypothesis": "Langfuse seeker-system version 2 preserves or improves the established Seeker evaluation score relative to exact managed version 1 when both prompts are answered by paid Claude Sonnet 5 and judged by paid Claude Haiku 4.5.",
+  "hypothesis": "Langfuse seeker-system version 2 preserves or improves the established Seeker evaluation score relative to exact managed version 1 while adding the production video-search guidance.",
   "criterion": {
     "id": "minimum-run-score",
     "version": "1",
-    "parameters": {
-      "minimum": 0.95
-    }
+    "parameters": { "minimum": 0.95 }
   },
   "comparisonAxis": "prompt",
   "productionBenchmark": {
@@ -26,15 +24,19 @@
         "routes": [
           {
             "provider": "openrouter",
-            "model": "anthropic/claude-sonnet-5",
+            "model": "google/gemma-4-31b-it:free",
+            "endpoint": "model-router",
+            "maxRetries": 1
+          },
+          {
+            "provider": "openrouter",
+            "model": "google/gemma-4-26b-a4b-it:free",
             "endpoint": "model-router",
             "maxRetries": 1
           }
         ]
       },
-      "decoding": {
-        "mode": "provider-default"
-      },
+      "decoding": { "mode": "provider-default" },
       "questionSet": {
         "id": "seeker-eval/v1",
         "questionIds": [
@@ -63,7 +65,7 @@
         "topK": 5
       },
       "runtime": {
-        "configurationHash": "76fd63ddd840f51547f7212fe97a86544cb47901bbd02dad6d911597d9e45153"
+        "configurationHash": "00499f459fa39c333121fd1a4a4d1be24e5e6c8219c0b601578f18b730430818"
       }
     }
   },
@@ -77,10 +79,7 @@
           "revision": "2",
           "contentHash": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
           "provenance": {
-            "intakeSelector": {
-              "kind": "label",
-              "value": "production"
-            }
+            "intakeSelector": { "kind": "label", "value": "production" }
           }
         },
         "model": {
@@ -88,15 +87,19 @@
           "routes": [
             {
               "provider": "openrouter",
-              "model": "anthropic/claude-sonnet-5",
+              "model": "google/gemma-4-31b-it:free",
+              "endpoint": "model-router",
+              "maxRetries": 1
+            },
+            {
+              "provider": "openrouter",
+              "model": "google/gemma-4-26b-a4b-it:free",
               "endpoint": "model-router",
               "maxRetries": 1
             }
           ]
         },
-        "decoding": {
-          "mode": "provider-default"
-        },
+        "decoding": { "mode": "provider-default" },
         "questionSet": {
           "id": "seeker-eval/v1",
           "questionIds": [
@@ -125,7 +128,7 @@
           "topK": 5
         },
         "runtime": {
-          "configurationHash": "76fd63ddd840f51547f7212fe97a86544cb47901bbd02dad6d911597d9e45153"
+          "configurationHash": "00499f459fa39c333121fd1a4a4d1be24e5e6c8219c0b601578f18b730430818"
         }
       }
     }

@@ -984,7 +984,7 @@ could harden this into a real check later (deferred, not built).
 ## Langfuse prompt management
 
 Official Seeker prompt/model experiments are repository-native under
-`evals/experiments/seeker/`; the operator workflow and manifest template live
+`evals/experiments/`; the operator workflow and manifest template live
 in that directory's `README.md`. Experiment attempts resolve exact managed
 prompt versions before generation, retain every terminal outcome, and exclude
 managed prompt bodies and secrets. Promotion is always a separate PR that

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "seeker-verdict/v1",
-  "experimentId": "video-prompt-v2",
+  "experimentId": "2026-08-10-001-seeker-video-prompt-provider-diagnostic",
   "attemptId": "attempt-001",
   "candidateId": "video-prompt-v2",
   "verdict": "deferred",

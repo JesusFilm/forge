@@ -250,7 +250,7 @@ sequenceDiagram
 ### Output Structure
 
 ```text
-apps/mastra/evals/experiments/seeker/
+apps/mastra/evals/experiments/
 └── <experiment-id>/
     ├── manifest.json
     ├── attempts/
@@ -584,16 +584,16 @@ The exact filenames may be adjusted during implementation if the schemas remain 
 
 **Files:**
 
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/manifest.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/resolved-identity.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/answers.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/transcripts.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/judged.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/score.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/comparison.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/gate-report.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/attempts/<attempt-id>/completion.json`
-- `apps/mastra/evals/experiments/seeker/<experiment-id>/verdict.json`
+- `apps/mastra/evals/experiments/<experiment-id>/manifest.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/resolved-identity.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/answers.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/transcripts.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/judged.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/candidates/<candidate-id>/score.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/comparison.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/gate-report.json`
+- `apps/mastra/evals/experiments/<experiment-id>/attempts/<attempt-id>/completion.json`
+- `apps/mastra/evals/experiments/<experiment-id>/verdict.json`
 - `apps/mastra/evals/results/seeker-baseline/answers.json`
 - `apps/mastra/evals/results/seeker-baseline/judged.json`
 - `apps/mastra/evals/results/seeker-baseline/score.json`

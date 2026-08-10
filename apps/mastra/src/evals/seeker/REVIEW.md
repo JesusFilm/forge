@@ -3,7 +3,7 @@
 > **Current experiment review path — 2026-08-10.** The historical baseline
 > below records the eval-suite build, but its prompt provenance is fallback and
 > it is not official managed-prompt promotion evidence. New official work uses
-> [`../../../evals/experiments/seeker/README.md`](../../../evals/experiments/seeker/README.md):
+> [`../../../evals/experiments/README.md`](../../../evals/experiments/README.md):
 > review the complete immutable attempt, record a human terminal verdict, and
 > commit every outcome. A successful eligible experiment is consumed only by a
 > separate promotion change that validates the evidence commit and materializes

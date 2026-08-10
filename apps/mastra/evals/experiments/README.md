@@ -1,9 +1,15 @@
-# Seeker managed-prompt experiments
+# Managed-prompt experiments
 
-This directory is the Git ledger for official Seeker prompt and model
+This flat directory is the Git ledger for official agent prompt and model
 experiments. Each experiment lives at `<experiment-id>/experiment.json`; its
 immutable attempts and terminal verdict remain beside that manifest. Commit
 every terminal outcome, including failed, inconclusive, and deferred work.
+
+Name experiment directories `YYYY-MM-DD-NNN-<agent>-<intent>`. The ISO date
+makes the ledger sort chronologically, the three-digit sequence disambiguates
+same-day work, and the suffix identifies the agent and experimental question.
+Keep prompt versions and model names in `experiment.json` unless they are the
+question being tested.
 
 Start from [`experiment.template.json`](./experiment.template.json). Replace
 every example identity value with values derived from the repository production
@@ -24,7 +30,9 @@ The template is illustrative input, not experiment evidence or a baseline.
 
 ## Create and preflight
 
-Copy the template into a lowercase path-safe `<experiment-id>` directory.
+Copy the template into a lowercase path-safe
+`YYYY-MM-DD-NNN-<agent>-<intent>` directory and use that full directory name
+as the manifest `id`.
 Complete the owner, hypothesis, criterion, one comparison axis, benchmark, and
 candidates before spending. Prompt experiments may change only prompt revision
 and hash; model experiments may change only the ordered model route identity.
@@ -40,8 +48,8 @@ Run an official immutable attempt from the repository root:
 
 ```bash
 pnpm --filter @forge/mastra eval:seeker:experiment:run -- \
-  --experiment=apps/mastra/evals/experiments/seeker/<experiment-id> \
-  --experiments-root=apps/mastra/evals/experiments/seeker \
+  --experiment=apps/mastra/evals/experiments/<experiment-id> \
+  --experiments-root=apps/mastra/evals/experiments \
   --attempt=<attempt-id>
 ```
 
@@ -59,8 +67,8 @@ a complete prior attempt whose checksums and full identity match:
 
 ```bash
 pnpm --filter @forge/mastra eval:seeker:experiment:run -- \
-  --experiment=apps/mastra/evals/experiments/seeker/<experiment-id> \
-  --experiments-root=apps/mastra/evals/experiments/seeker \
+  --experiment=apps/mastra/evals/experiments/<experiment-id> \
+  --experiments-root=apps/mastra/evals/experiments \
   --attempt=<new-attempt-id> --reuse-attempt=<complete-attempt-id>
 ```
 
@@ -73,7 +81,7 @@ Record the human terminal verdict with repository-relative evidence links:
 
 ```bash
 pnpm --filter @forge/mastra eval:seeker:experiment:verdict -- \
-  --experiment=apps/mastra/evals/experiments/seeker/<experiment-id> \
+  --experiment=apps/mastra/evals/experiments/<experiment-id> \
   --attempt=<attempt-id> --candidate=<candidate-id> \
   --verdict=<successful|failed|inconclusive|deferred> \
   --actor=<reviewer> --reason='<review reasoning>' \
@@ -92,7 +100,7 @@ validate the committed evidence package against that proposed identity:
 
 ```bash
 pnpm --filter @forge/mastra eval:seeker:experiment:promote -- \
-  --experiment=apps/mastra/evals/experiments/seeker/<experiment-id> \
+  --experiment=apps/mastra/evals/experiments/<experiment-id> \
   --attempt=<attempt-id> --candidate=<candidate-id> \
   --commit=<evidence-commit> \
   --production-identity=<proposed-production-identity.json> \

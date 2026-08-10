@@ -50,7 +50,7 @@ async function fixture(
   await exec("git", ["init", "-q"], { cwd: root })
   await exec("git", ["config", "user.email", "test@example.org"], { cwd: root })
   await exec("git", ["config", "user.name", "Test"], { cwd: root })
-  const experiment = "apps/mastra/evals/experiments/seeker/exp-one"
+  const experiment = "apps/mastra/evals/experiments/exp-one"
   const attempt = `${experiment}/attempts/attempt-one`
   await mkdir(join(root, attempt), { recursive: true })
   await writeFile(

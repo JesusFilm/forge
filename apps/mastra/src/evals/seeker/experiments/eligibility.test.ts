@@ -68,7 +68,7 @@ describe("evaluateEligibility", () => {
         await readFile(
           resolve(
             import.meta.dirname,
-            "../../../../evals/experiments/seeker/experiment.template.json",
+            "../../../../evals/experiments/experiment.template.json",
           ),
           "utf8",
         ),

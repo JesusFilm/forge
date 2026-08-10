@@ -1,6 +1,6 @@
 {
   "schemaVersion": "seeker-experiment/v1",
-  "id": "replace-with-experiment-id",
+  "id": "2026-01-01-001-seeker-describe-intent",
   "owner": "replace-with-owner",
   "hypothesis": "State the expected measurable improvement before running the experiment.",
   "criterion": {
