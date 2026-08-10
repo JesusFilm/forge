@@ -10,6 +10,7 @@
 // goes through safeStorage (AsyncStorage with in-memory fallback, the
 // watchPreferences pattern) and is best-effort only.
 
+import * as Crypto from "expo-crypto"
 import { getStorage } from "../safeStorage"
 import { uuidV4Fallback } from "../viewer-id"
 
@@ -155,9 +156,7 @@ export function parseQueue(raw: string | null): QueuedWatchEvent[] {
 }
 
 /**
- * RFC 4122 v4, reusing the app's existing generator (`lib/viewer-id.ts`) rather
- * than minting a second one — Hermes has no `crypto.randomUUID`, so that module
- * already owns the fallback and its tests.
+ * RFC 4122 v4 for the persisted watch-history id.
  *
  * The two ids stay distinct by LIFETIME, deliberately: `viewer-id.ts` is
  * per-launch and in-memory (search rate-limit bucketing), while this one is
@@ -165,13 +164,23 @@ export function parseQueue(raw: string | null): QueuedWatchEvent[] {
  * header names cross-launch persistence as "a login-era follow-up" — this is
  * that follow-up.
  *
- * Security note: this id is an anonymous grouping key, never a bearer. When the
- * sign-in merge lands (plan U4.6) the server must authenticate the account and
- * ignore any entry whose claimed user differs from the session — the id must
- * never be sufficient on its own to claim history, because it is not minted
- * from a CSPRNG (no cheap one exists here without a native module).
+ * Security note: this id is an anonymous grouping key, never a bearer. The
+ * sign-in merge (plan U4.6) still requires the server to authenticate the
+ * account and ignore any entry whose claimed user differs from the session —
+ * that constraint holds regardless of how well this id is minted.
+ *
+ * Since feat-322 the id DOES come from a CSPRNG on device — expo-crypto arrived
+ * for PKCE and is preferred here. It deliberately does NOT delegate to
+ * `getViewerId`: that one memoises a single id for the process lifetime, and
+ * reusing it would collapse the two lifetimes this docblock just distinguished.
+ * Each call must mint a fresh id.
  */
 export function generateViewerId(): string {
+  try {
+    return Crypto.randomUUID()
+  } catch {
+    // Native module unavailable — fall through to the runtime, then the shape.
+  }
   const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } })
     .crypto
   if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID()
