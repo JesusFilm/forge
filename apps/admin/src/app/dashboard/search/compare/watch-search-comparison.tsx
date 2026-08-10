@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import { PrimaryButton, StatusPill } from "@/components/admin-ui"
+import type { WatchSearchLanguageOption } from "@/services/watch-search-language-options.service"
 
 import {
   runWatchSearchComparison,
@@ -209,7 +210,11 @@ export function WatchSearchComparisonPanes({
   )
 }
 
-export function WatchSearchComparison() {
+export function WatchSearchComparison({
+  languageOptions,
+}: {
+  languageOptions: readonly WatchSearchLanguageOption[]
+}) {
   const [state, action, pending] = useActionState(
     runWatchSearchComparison,
     initialState,
@@ -230,23 +235,20 @@ export function WatchSearchComparison() {
             className="mt-1 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-background)] px-3 py-2"
           />
         </label>
-        <label>
-          <span className="label-text">Target language slug</span>
-          <input
-            name="targetLanguageSlug"
-            maxLength={128}
-            placeholder="japanese"
+        <label className="xl:col-span-2">
+          <span className="label-text">Language</span>
+          <select
+            name="languageSelection"
+            defaultValue=""
             className="mt-1 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-background)] px-3 py-2"
-          />
-        </label>
-        <label>
-          <span className="label-text">Locale</span>
-          <input
-            name="locale"
-            maxLength={32}
-            placeholder="ja-JP"
-            className="mt-1 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-background)] px-3 py-2"
-          />
+          >
+            <option value="">Auto-detect from query</option>
+            {languageOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           <span className="label-text">Results</span>
