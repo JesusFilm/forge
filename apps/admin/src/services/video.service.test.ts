@@ -5,6 +5,7 @@ import {
   VideoService,
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
+  WATCH_VIDEOS_BY_IDS_MAX,
 } from "./video.service"
 
 describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
@@ -1032,6 +1033,54 @@ describe("VideoService", () => {
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
       })
+    })
+  })
+
+  describe("getWatchVideosByIds", () => {
+    it("returns visible videos in caller order, omits unknown ids, and preserves duplicates", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "video-2" },
+        { id: "video-1" },
+      ])
+
+      const result = await service.getWatchVideosByIds({
+        ids: ["video-1", "missing", "video-2", "video-1"],
+        query: { include: { images: true } },
+      })
+
+      expect(result.map((row) => row.id)).toEqual([
+        "video-1",
+        "video-2",
+        "video-1",
+      ])
+      expect(prisma.video.findMany).toHaveBeenCalledWith({
+        include: { images: true },
+        where: {
+          id: { in: ["video-1", "missing", "video-2"] },
+          deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
+        },
+      })
+    })
+
+    it("forces id into select-shaped queries and enforces the public batch cap", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([{ id: "video-1" }])
+
+      await service.getWatchVideosByIds({
+        ids: ["video-1"],
+        query: { select: { slug: true } },
+      })
+      expect(prisma.video.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ select: { slug: true, id: true } }),
+      )
+
+      const tooMany = Array.from(
+        { length: WATCH_VIDEOS_BY_IDS_MAX + 1 },
+        (_, index) => `video-${index}`,
+      )
+      await expect(
+        service.getWatchVideosByIds({ ids: tooMany, query: {} }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
     })
   })
 

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react"
 import { resolveVideoDisplayTitle } from "@forge/content-display"
-import { getGraphQLUrl } from "../lib/config"
+import { getApolloClient } from "../lib/apolloClient"
 import { pickThumbnailUrl, type VideoImage } from "../lib/types"
-import type { AdminBlock, WatchExperience } from "../lib/queries"
+import {
+  GET_WATCH_VIDEOS_BY_IDS,
+  type AdminBlock,
+  type WatchExperience,
+} from "../lib/queries"
 
 // videoId → its resolvable card thumbnail and localized title. Both nullable:
 // a video may resolve one without the other (missing images or empty locale).
@@ -10,7 +14,7 @@ export type VideoMeta = { thumbnail: string | null; title: string | null }
 export type VideoMetaMap = Map<string, VideoMeta>
 
 const FETCH_TIMEOUT_MS = 15_000
-const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
+const MAX_BATCH_SIZE = 200
 
 function collectVideoIds(experience: WatchExperience | null): string[] {
   if (!experience?.blocks) return []
@@ -50,19 +54,6 @@ function collectVideoIds(experience: WatchExperience | null): string[] {
   return Array.from(ids)
 }
 
-function buildBatchQuery(videoIds: string[]): string {
-  const safeIds = videoIds.filter((id) => SAFE_ID_RE.test(id))
-  // Hardcoded en locale (app-wide convention); flat MediaCollection items carry
-  // no title, so the card resolves it from the linked video's localized title.
-  const fields = safeIds
-    .map(
-      (id, i) =>
-        `v${i}: video(id: "${id}") { id slug images { mobileCinematicHigh mobileCinematicLow videoStill thumbnail url } locales(locale: "en") { title } }`,
-    )
-    .join("\n    ")
-  return `{\n    ${fields}\n  }`
-}
-
 export function useVideoThumbnails(
   experience: WatchExperience | null,
 ): VideoMetaMap {
@@ -80,36 +71,44 @@ export function useVideoThumbnails(
 
     async function fetchThumbnails() {
       try {
-        const response = await fetch(getGraphQLUrl(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: buildBatchQuery(videoIds) }),
-          signal: controller.signal,
-        })
-
+        const batches = Array.from(
+          { length: Math.ceil(videoIds.length / MAX_BATCH_SIZE) },
+          (_, index) =>
+            videoIds.slice(
+              index * MAX_BATCH_SIZE,
+              (index + 1) * MAX_BATCH_SIZE,
+            ),
+        )
+        const results = await Promise.all(
+          batches.map((ids) =>
+            getApolloClient().query({
+              query: GET_WATCH_VIDEOS_BY_IDS,
+              variables: { ids },
+              fetchPolicy: "no-cache",
+              context: { fetchOptions: { signal: controller.signal } },
+            }),
+          ),
+        )
         if (controller.signal.aborted) return
-        const json = await response.json()
-        if (controller.signal.aborted || !json.data) return
 
         const map: VideoMetaMap = new Map()
-        for (let i = 0; i < videoIds.length; i++) {
-          const videoData = json.data[`v${i}`] as {
-            id?: string
-            slug?: string | null
-            images?: VideoImage[]
-            locales?: { title?: string | null }[] | null
-          } | null
-          if (!videoData?.id) continue
+        for (const videoData of results.flatMap(
+          (result) => result.data?.watchVideosByIds ?? [],
+        )) {
+          if (!videoData?.documentId) continue
           const thumb = videoData.images
-            ? pickThumbnailUrl(videoData.images)
+            ? pickThumbnailUrl([...videoData.images] as VideoImage[])
             : null
           const title =
             resolveVideoDisplayTitle({
               requestedTitles: videoData.locales?.map((locale) => locale.title),
+              englishTitles: videoData.englishLanguageTitleLocales?.map(
+                (locale) => locale.title,
+              ),
               slug: videoData.slug,
             }) ?? null
           if (thumb || title) {
-            map.set(videoData.id, { thumbnail: thumb ?? null, title })
+            map.set(videoData.documentId, { thumbnail: thumb ?? null, title })
           }
         }
         if (!controller.signal.aborted) setMeta(map)

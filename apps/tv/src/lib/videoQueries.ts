@@ -34,6 +34,12 @@ export const watchVideoFragment = graphql(`
       snippet
       imageAlt
     }
+    englishTitleLocales: locales(locale: "en") {
+      title
+    }
+    englishLanguageTitleLocales: locales(languageSlug: "english") {
+      title
+    }
     parents {
       parent {
         documentId: id
@@ -42,6 +48,12 @@ export const watchVideoFragment = graphql(`
         locales(locale: $locale) {
           documentId: id
           languageSlug
+          title
+        }
+        englishTitleLocales: locales(locale: "en") {
+          title
+        }
+        englishLanguageTitleLocales: locales(languageSlug: "english") {
           title
         }
         images {
@@ -60,6 +72,12 @@ export const watchVideoFragment = graphql(`
             locales(locale: $locale) {
               documentId: id
               languageSlug
+              title
+            }
+            englishTitleLocales: locales(locale: "en") {
+              title
+            }
+            englishLanguageTitleLocales: locales(languageSlug: "english") {
               title
             }
             images {
@@ -133,6 +151,12 @@ export const GET_VIDEO_BY_SLUG = graphql(
               description
               imageAlt
             }
+            englishTitleLocales: locales(locale: "en") {
+              title
+            }
+            englishLanguageTitleLocales: locales(languageSlug: "english") {
+              title
+            }
             images {
               documentId: id
               url
@@ -177,6 +201,12 @@ export const seriesWatchVideoFragment = graphql(`
       description
       snippet
       imageAlt
+    }
+    englishTitleLocales: locales(locale: "en") {
+      title
+    }
+    englishLanguageTitleLocales: locales(languageSlug: "english") {
+      title
     }
     variants: dubs {
       documentId: id
@@ -235,6 +265,12 @@ export const GET_SERIES_BY_SLUG = graphql(
               title
               description
               imageAlt
+            }
+            englishTitleLocales: locales(locale: "en") {
+              title
+            }
+            englishLanguageTitleLocales: locales(languageSlug: "english") {
+              title
             }
             images {
               documentId: id

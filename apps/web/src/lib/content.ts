@@ -6,6 +6,10 @@ import {
   type AdminFragmentOf,
   type AdminResultOf,
 } from "@forge/admin-graphql"
+import {
+  firstNonBlankText,
+  resolveVideoDisplayTitle,
+} from "@forge/content-display"
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
@@ -792,8 +796,10 @@ function normalizeChild(
     ...(rel.order === undefined ? {} : { order: rel.order }),
     slug: child.slug ?? null,
     title:
-      firstNonBlankLocaleTitle(child.locales) ??
-      humanizeContentSlug(child.slug),
+      resolveVideoDisplayTitle({
+        requestedTitles: child.locales?.map(({ title }) => title),
+        slug: child.slug,
+      }) ?? null,
     label: child.label ?? null,
     images: normalizeImages(child.images),
     durationSeconds: child.durationSeconds ?? null,
@@ -812,8 +818,10 @@ function normalizeParent(
     documentId: parent.documentId,
     slug: parent.slug ?? null,
     title:
-      firstNonBlankLocaleTitle(parent.locales) ??
-      humanizeContentSlug(parent.slug),
+      resolveVideoDisplayTitle({
+        requestedTitles: parent.locales?.map(({ title }) => title),
+        slug: parent.slug,
+      }) ?? null,
     noIndex: parent.noIndex ?? null,
     label: parent.label ?? null,
     images: normalizeImages(parent.images),
@@ -826,7 +834,10 @@ function normalizeParent(
           ...(childRel.order === undefined ? {} : { order: childRel.order }),
           slug: c.slug ?? null,
           title:
-            firstNonBlankLocaleTitle(c.locales) ?? humanizeContentSlug(c.slug),
+            resolveVideoDisplayTitle({
+              requestedTitles: c.locales?.map(({ title }) => title),
+              slug: c.slug,
+            }) ?? null,
           label: c.label ?? null,
           images: normalizeImages(c.images),
           muxPlaybackId: c.muxPlaybackId ?? null,
@@ -945,7 +956,10 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     publishedAt: raw.publishedAt ?? null,
     localePublishedAt: localeRow?.publishedAt ?? null,
     title:
-      firstNonBlankLocaleTitle(raw.locales) ?? humanizeContentSlug(raw.slug),
+      resolveVideoDisplayTitle({
+        requestedTitles: raw.locales?.map(({ title }) => title),
+        slug: raw.slug,
+      }) ?? null,
     snippet: localeRow?.snippet ?? null,
     description: localeRow?.description ?? null,
     noIndex: raw.noIndex ?? null,
@@ -1360,28 +1374,10 @@ function hasItems<T>(items: readonly T[] | null | undefined): boolean {
   return (items?.length ?? 0) > 0
 }
 
-function nonBlankText(value: string | null | undefined): string | null {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : null
-}
-
-function humanizeContentSlug(slug: string | null | undefined): string | null {
-  const words = slug
-    ?.trim()
-    .split(/[-_]+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-  return words && words.length > 0 ? words.join(" ") : null
-}
-
 function firstNonBlankLocaleTitle(
   locales: readonly AdminLocaleRaw[] | null | undefined,
 ): string | null {
-  for (const locale of locales ?? []) {
-    const title = nonBlankText(locale.title)
-    if (title) return title
-  }
-  return null
+  return firstNonBlankText(locales?.map(({ title }) => title)) ?? null
 }
 
 function mergeLocaleTitleFallback(

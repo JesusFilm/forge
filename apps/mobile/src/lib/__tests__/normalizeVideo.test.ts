@@ -75,6 +75,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         imageAlt: "Crucifixion scene",
       },
     ],
+    englishTitleLocales: [],
+    englishLanguageTitleLocales: [],
     parents: [
       {
         parent: {
@@ -88,6 +90,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
               title: "The Easter Story",
             },
           ],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [],
           images: [],
           children: [
             {
@@ -102,6 +106,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     title: "The Crucifixion",
                   },
                 ],
+                englishTitleLocales: [],
+                englishLanguageTitleLocales: [],
                 images: [
                   {
                     documentId: "cimg-1",
@@ -126,6 +132,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     title: "The Resurrection",
                   },
                 ],
+                englishTitleLocales: [],
+                englishLanguageTitleLocales: [],
                 images: [
                   {
                     documentId: "cimg-2",
@@ -150,6 +158,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                     title: "The Ascension",
                   },
                 ],
+                englishTitleLocales: [],
+                englishLanguageTitleLocales: [],
                 images: [],
               },
             },
@@ -246,6 +256,25 @@ describe("normalizeVideo", () => {
     expect(result.muxPlaybackId).toBe("abc123")
     expect(result.duration).toBe(725)
     expect(result.primaryLanguageBcp47).toBe("en")
+  })
+
+  it("uses published English for a blank requested title without replacing requested metadata", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        locales: [
+          {
+            documentId: "loc-ar",
+            title: " ",
+            description: "Requested description",
+          },
+        ],
+        englishTitleLocales: [],
+        englishLanguageTitleLocales: [{ title: "The Miraculous Catch" }],
+      }),
+    )!
+
+    expect(result.title).toBe("The Miraculous Catch")
+    expect(result.description).toBe("Requested description")
   })
 
   it("humanizes blank root, parent, and sibling titles without changing slugs", () => {
@@ -459,6 +488,8 @@ describe("normalizeVideo", () => {
               title: "The Resurrection",
             },
           ],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [],
           images: [],
         },
       },
@@ -858,7 +889,7 @@ describe("normalizeSeries", () => {
     )
   })
 
-  it("humanizes an episode slug when its English title is blank", () => {
+  it("uses a published English episode title when requested copy is blank", () => {
     const raw = makeRawSeries()
     const first = raw!.children![0]!
     const result = normalizeSeries(
@@ -870,13 +901,17 @@ describe("normalizeSeries", () => {
               ...first.child,
               slug: "miraculous--catch_of-fish",
               locales: [{ documentId: "blank", title: " " }],
+              englishTitleLocales: [],
+              englishLanguageTitleLocales: [
+                { title: "The Miraculous Catch of Fish" },
+              ],
             },
           },
         ],
       }),
     )!
 
-    expect(result.episodes[0]?.title).toBe("Miraculous Catch Of Fish")
+    expect(result.episodes[0]?.title).toBe("The Miraculous Catch of Fish")
     expect(result.episodes[0]?.slug).toBe("miraculous--catch_of-fish")
   })
 

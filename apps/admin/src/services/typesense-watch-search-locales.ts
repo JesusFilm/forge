@@ -57,7 +57,9 @@ export function displayLocale(
     broadLocale === preferredLocale
       ? []
       : locales.filter((locale) => locale.locale === broadLocale)
-  const englishLocales = locales.filter((locale) => locale.locale === "en")
+  const englishLocales = locales.filter(
+    (locale) => locale.locale === "en" || locale.languageSlug === "english",
+  )
   const requestedLocale = exactLocales[0] ?? broadLocales[0]
 
   return {

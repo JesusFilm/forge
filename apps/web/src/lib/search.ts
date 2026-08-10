@@ -1,9 +1,6 @@
 import type { AdminResultOf } from "@forge/admin-graphql"
 import { adminWatchSearchOperation } from "@forge/admin-graphql/operations"
-import {
-  firstNonBlankText,
-  repairLegacyVideoDisplayTitle,
-} from "@forge/content-display"
+import { resolveWatchSearchDisplayTitle } from "@forge/content-display"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
 import { env } from "@/env"
@@ -163,13 +160,11 @@ function mapWatchSearchResult(
   if (!result.type || !result.id || !result.slug) {
     return null
   }
-  const title =
-    result.type === "VIDEO"
-      ? repairLegacyVideoDisplayTitle({
-          title: result.title,
-          slug: result.slug,
-        })
-      : firstNonBlankText([result.title])
+  const title = resolveWatchSearchDisplayTitle({
+    title: result.title,
+    slug: result.slug,
+    isVideo: result.type === "VIDEO",
+  })
   if (!title) return null
 
   return {

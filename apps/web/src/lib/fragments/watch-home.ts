@@ -33,7 +33,10 @@ export const watchHomeVideoFragment = adminGraphql(`
     broadTitleLocales: locales(locale: $locale) {
       title
     }
-    englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+    englishTitleLocales: locales(locale: "en") {
+      title
+    }
+    englishLanguageTitleLocales: locales(languageSlug: "english") {
       title
     }
     preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
@@ -90,10 +93,10 @@ export const watchHomeVideoFragment = adminGraphql(`
         broadTitleLocales: locales(locale: $locale) {
           title
         }
-        englishTitleLocales: locales(
-          locale: "en"
-          languageSlug: "english"
-        ) {
+        englishTitleLocales: locales(locale: "en") {
+          title
+        }
+        englishLanguageTitleLocales: locales(languageSlug: "english") {
           title
         }
         preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {

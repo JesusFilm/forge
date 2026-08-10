@@ -101,6 +101,23 @@ describe("buildWatchHomeModelFromVideos", () => {
     })
   })
 
+  it("uses published English for a blank requested title and preserves requested description", () => {
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        videoInput("1_jf-0-0", {
+          locales: [{ title: " ", description: "Requested description" }],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [{ title: "Miraculous Catch" }],
+        }),
+      ],
+    })
+
+    expect(firstCard(model)).toMatchObject({
+      title: "Miraculous Catch",
+      description: "Requested description",
+    })
+  })
+
   it("renders resolved sections in config order and drops zero-card sections", () => {
     const model = buildWatchHomeModelFromVideos({
       videos: [

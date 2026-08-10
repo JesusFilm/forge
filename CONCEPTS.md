@@ -75,6 +75,19 @@ belongs to the relationship, not to the child Video, and remains the ordering
 authority when a viewer can see only a filtered subset. A link without a
 position is unsequenced.
 
+### Video Display Title
+
+The public, viewer-readable name of a Video: the first usable title in the
+requested language, then a published English title, then a humanized Video
+slug. It is field-level presentation data, so falling back the title never
+replaces requested-language descriptions or changes the raw slug, Core ID,
+route, cache key, analytics identity, or playback identity.
+
+A stored title equal to the slug is repaired only at known legacy
+cache/index boundaries that historically wrote the slug as placeholder text;
+authored titles are not globally rewritten because they may legitimately equal
+a slug.
+
 ### Dub
 
 One audio-language variant of a Video — the unit the watch screen's language picker selects (a popular title can have thousands of Dubs). A Dub carries its own playable stream and its own set of downloadable renditions, and points at the Video Edition whose subtitle tracks apply to it.

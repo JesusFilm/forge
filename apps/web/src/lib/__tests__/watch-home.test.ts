@@ -166,7 +166,8 @@ describe("buildWatchHomeModelFromVideos", () => {
             },
           ],
           broadTitleLocales: [{ title: "" }],
-          englishTitleLocales: [{ title: "Miraculous Catch of Fish" }],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [{ title: "Miraculous Catch of Fish" }],
         }),
       ] as never,
     })

@@ -48,6 +48,8 @@ export type WatchHomeChildVideoInput = {
   durationSeconds?: number | null
   images?: readonly WatchHomeImageInput[] | null
   locales?: readonly WatchHomeLocaleInput[] | null
+  englishTitleLocales?: readonly WatchHomeLocaleInput[] | null
+  englishLanguageTitleLocales?: readonly WatchHomeLocaleInput[] | null
 }
 
 export type WatchHomeChildRelationInput = {
@@ -226,12 +228,18 @@ export function normalizeCard(args: {
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video ? resolvedChildren(args.video).length : 0
-  const requestedTitle = firstNonBlankText(
-    args.video.locales?.map((candidate) => candidate.title),
+  const requestedTitles = args.video.locales?.map(
+    (candidate) => candidate.title,
   )
+  const requestedTitle = firstNonBlankText(requestedTitles)
   const title =
     resolveVideoDisplayTitle({
-      requestedTitles: args.video.locales?.map((candidate) => candidate.title),
+      requestedTitles,
+      englishTitles: [
+        ...(args.video.englishTitleLocales?.map((row) => row.title) ?? []),
+        ...(args.video.englishLanguageTitleLocales?.map((row) => row.title) ??
+          []),
+      ],
       slug: args.video.slug,
     }) ?? "Video"
 

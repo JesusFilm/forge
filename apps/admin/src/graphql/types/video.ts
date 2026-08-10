@@ -1579,6 +1579,21 @@ builder.queryFields((t) => ({
         query,
       }),
   }),
+  watchVideosByIds: t.prismaField({
+    type: ["Video"],
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Fetch ordered public Watch Video records by Admin id. Max 200 ids per call; unknown ids are omitted and duplicate ids are preserved.",
+    args: {
+      ids: t.arg.idList({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.services.video.getWatchVideosByIds({
+        ids: args.ids.map(String),
+        query,
+      }),
+  }),
   watchLanguageInventory: t.field({
     type: WatchLanguageInventoryRef,
     nullable: false,

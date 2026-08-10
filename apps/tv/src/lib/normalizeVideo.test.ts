@@ -23,6 +23,8 @@ function makeChild(
       locales: [
         { documentId: `${documentId}-loc`, languageSlug: "english", title },
       ],
+      englishTitleLocales: [],
+      englishLanguageTitleLocales: [],
       images: [] as {
         documentId: string
         url: string | null
@@ -101,6 +103,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         imageAlt: "Crucifixion scene",
       },
     ],
+    englishTitleLocales: [],
+    englishLanguageTitleLocales: [],
     parents: [
       {
         parent: {
@@ -114,6 +118,8 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
               title: "The Easter Story",
             },
           ],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [],
           images: [],
           // Inverted schema: only self-references.
           children: [
@@ -220,6 +226,25 @@ describe("normalizeVideo — base record", () => {
     expect(result.muxPlaybackId).toBe("abc123")
     expect(result.duration).toBe(725)
     expect(result.primaryLanguageBcp47).toBe("en")
+  })
+
+  it("uses published English for a blank requested title without replacing requested metadata", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        locales: [
+          {
+            documentId: "loc-ar",
+            title: " ",
+            description: "Requested description",
+          },
+        ],
+        englishTitleLocales: [],
+        englishLanguageTitleLocales: [{ title: "The Miraculous Catch" }],
+      }),
+    )!
+
+    expect(result.title).toBe("The Miraculous Catch")
+    expect(result.description).toBe("Requested description")
   })
 
   it("humanizes blank root, sibling, and chapter titles", () => {
@@ -486,6 +511,8 @@ function makeEpisodeRel(
           imageAlt: `${title} art`,
         },
       ],
+      englishTitleLocales: [],
+      englishLanguageTitleLocales: [],
       images: [
         {
           documentId: `${documentId}-img`,
@@ -512,7 +539,7 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
       makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
     ],
     ...overrides,
-  } as Parameters<typeof normalizeSeries>[0]
+  } as unknown as Parameters<typeof normalizeSeries>[0]
 }
 
 describe("normalizeSeries — base record + trailer", () => {
@@ -533,6 +560,29 @@ describe("normalizeSeries — base record + trailer", () => {
     expect(result.title).toBe("The Crucifixion")
     expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
     expect(result.variants).toHaveLength(2)
+  })
+
+  it("uses a published English episode title when requested copy is blank", () => {
+    const baseEpisode = makeEpisodeRel(
+      "ep-1",
+      "miraculous--catch_of-fish",
+      " ",
+      1,
+    )
+    const episode = {
+      ...baseEpisode,
+      child: {
+        ...baseEpisode.child,
+        englishLanguageTitleLocales: [
+          { title: "The Miraculous Catch of Fish" },
+        ],
+      },
+    }
+
+    const result = normalizeSeries(makeRawSeries({ children: [episode] }))!
+
+    expect(result.episodes[0]?.title).toBe("The Miraculous Catch of Fish")
+    expect(result.episodes[0]?.description).toBe("  description")
   })
 
   // Contract guard: SeriesWatchVideo selects dubs WITHOUT player-only

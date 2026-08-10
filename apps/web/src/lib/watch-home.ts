@@ -401,19 +401,24 @@ function normalizeCard(args: {
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
       : 0
-  const requestedTitle = firstNonBlankText(
-    args.video.locales?.map((candidate) => candidate.title),
-  )
+  const requestedTitles =
+    args.video.locales?.map((candidate) => candidate.title) ?? []
+  const requestedTitle = firstNonBlankText(requestedTitles)
   const title =
     resolveVideoDisplayTitle({
       requestedTitles: [
-        ...(args.video.locales?.map((candidate) => candidate.title) ?? []),
+        ...requestedTitles,
         ...(args.video.broadTitleLocales?.map((candidate) => candidate.title) ??
           []),
       ],
-      englishTitles: args.video.englishTitleLocales?.map(
-        (candidate) => candidate.title,
-      ),
+      englishTitles: [
+        ...(args.video.englishTitleLocales?.map(
+          (candidate) => candidate.title,
+        ) ?? []),
+        ...(args.video.englishLanguageTitleLocales?.map(
+          (candidate) => candidate.title,
+        ) ?? []),
+      ],
       slug: args.video.slug,
     }) ?? "Video"
   const href = buildHref({

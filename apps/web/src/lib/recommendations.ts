@@ -66,7 +66,10 @@ const GET_VIDEO_BY_SLUG = adminGraphql(`
         title
         description
       }
-      englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+      englishTitleLocales: locales(locale: "en") {
+        title
+      }
+      englishLanguageTitleLocales: locales(languageSlug: "english") {
         title
       }
     }
@@ -134,9 +137,11 @@ const fetchVideoBySlug = unstable_cache(
         title:
           resolveVideoDisplayTitle({
             requestedTitles: raw.locales?.map((locale) => locale.title),
-            englishTitles: raw.englishTitleLocales?.map(
-              (locale) => locale.title,
-            ),
+            englishTitles: [
+              ...(raw.englishTitleLocales?.map((row) => row.title) ?? []),
+              ...(raw.englishLanguageTitleLocales?.map((row) => row.title) ??
+                []),
+            ],
             slug: raw.slug ?? slug,
           }) ?? null,
         description: localeRow?.description ?? null,

@@ -30,6 +30,12 @@ export const watchHomeVideoFragment = graphql(`
       snippet
       imageAlt
     }
+    englishTitleLocales: locales(locale: "en") {
+      title
+    }
+    englishLanguageTitleLocales: locales(languageSlug: "english") {
+      title
+    }
     children {
       child {
         documentId: id
@@ -52,6 +58,12 @@ export const watchHomeVideoFragment = graphql(`
           description
           snippet
           imageAlt
+        }
+        englishTitleLocales: locales(locale: "en") {
+          title
+        }
+        englishLanguageTitleLocales: locales(languageSlug: "english") {
+          title
         }
       }
     }

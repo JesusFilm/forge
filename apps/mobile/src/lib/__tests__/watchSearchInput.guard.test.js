@@ -63,7 +63,7 @@ describe("watchSearch language input stays behind the builder", () => {
     // A broken root resolution or empty scan must not vacuously pass.
     expect(files.length).toBeGreaterThan(50)
     const entries = files.map((file) => ({
-      relative: path.relative(root, file),
+      relative: path.relative(root, file).split(path.sep).join("/"),
       content: fs.readFileSync(file, "utf8"),
     }))
     expect(findInlineLanguageInput(entries)).toEqual([])

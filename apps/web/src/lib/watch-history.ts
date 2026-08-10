@@ -12,9 +12,8 @@ import {
 } from "@/lib/routes"
 import { fetchWatchProgressForUser } from "@/lib/watch-progress-server"
 
-const WATCH_HISTORY_VIDEO = adminGraphql(`
-  query WatchHistoryVideo($id: ID!, $languageSlug: String) {
-    video(id: $id) {
+const watchHistoryVideoFragment = adminGraphql(`
+  fragment WatchHistoryVideoFields on Video @_unmask {
       documentId: id
       slug
       label
@@ -30,7 +29,10 @@ const WATCH_HISTORY_VIDEO = adminGraphql(`
         title
         imageAlt
       }
-      englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+      englishTitleLocales: locales(locale: "en") {
+        title
+      }
+      englishLanguageTitleLocales: locales(languageSlug: "english") {
         title
       }
       dubs {
@@ -47,9 +49,30 @@ const WATCH_HISTORY_VIDEO = adminGraphql(`
           label
         }
       }
-    }
   }
 `)
+
+const WATCH_HISTORY_VIDEOS = adminGraphql(
+  `
+    query WatchHistoryVideos($ids: [ID!]!, $languageSlug: String) {
+      watchVideosByIds(ids: $ids) {
+        ...WatchHistoryVideoFields
+      }
+    }
+  `,
+  [watchHistoryVideoFragment],
+)
+
+const WATCH_HISTORY_VIDEO = adminGraphql(
+  `
+    query WatchHistoryVideo($id: ID!, $languageSlug: String) {
+      video(id: $id) {
+        ...WatchHistoryVideoFields
+      }
+    }
+  `,
+  [watchHistoryVideoFragment],
+)
 
 type WatchHistoryVideoData = AdminResultOf<typeof WATCH_HISTORY_VIDEO>
 type WatchHistoryVideo = NonNullable<WatchHistoryVideoData["video"]>
@@ -157,6 +180,41 @@ async function fetchHistoryVideo(videoId: string, languageSlug: string | null) {
   return result.data?.video ?? null
 }
 
+async function fetchHistoryVideos(
+  videoIds: string[],
+  languageSlug: string | null,
+): Promise<WatchHistoryVideo[]> {
+  try {
+    const result = await client.query({
+      query: WATCH_HISTORY_VIDEOS,
+      variables: {
+        ids: videoIds,
+        languageSlug: languageSlug ?? "english",
+      },
+      fetchPolicy: "no-cache",
+    })
+    if (result.error) throw result.error
+    return result.data?.watchVideosByIds ?? []
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" &&
+            error !== null &&
+            "message" in error &&
+            typeof error.message === "string"
+          ? error.message
+          : ""
+    if (!message.includes('Cannot query field "watchVideosByIds"')) {
+      throw error
+    }
+    const videos = await Promise.all(
+      videoIds.map((videoId) => fetchHistoryVideo(videoId, languageSlug)),
+    )
+    return videos.filter((video): video is WatchHistoryVideo => video != null)
+  }
+}
+
 export async function fetchWatchHistoryVideoDetails(
   requests: WatchHistoryVideoRequest[],
 ): Promise<WatchHistoryVideoDetails[]> {
@@ -175,35 +233,53 @@ export async function fetchWatchHistoryVideoDetails(
         ]),
     ).values(),
   ).slice(0, 200)
-  const items = await Promise.all(
-    uniqueRequests.map(async ({ videoId, languageSlug }) => {
-      const video = await fetchHistoryVideo(videoId, languageSlug)
-      if (!video) return null
-
-      const title =
-        resolveVideoDisplayTitle({
-          requestedTitles: video.locales?.map((locale) => locale.title),
-          englishTitles: video.englishTitleLocales?.map(
-            (locale) => locale.title,
-          ),
-          slug: video.slug,
-        }) ?? "Video"
-      const durationLabel =
-        video.durationSeconds != null
-          ? formatDuration(video.durationSeconds) || null
-          : null
-
-      return {
-        videoId,
-        title,
-        label: labelText(video),
-        href: historyHref(video, languageSlug),
-        imageUrl: bestImage(video),
-        imageAlt: video.locales?.[0]?.imageAlt || title,
-        durationLabel,
-      }
-    }),
+  const requestsByLanguage = new Map<string, string[]>()
+  for (const request of uniqueRequests) {
+    requestsByLanguage.set(request.languageSlug, [
+      ...(requestsByLanguage.get(request.languageSlug) ?? []),
+      request.videoId,
+    ])
+  }
+  const videoById = new Map<string, WatchHistoryVideo>()
+  await Promise.all(
+    Array.from(requestsByLanguage.entries()).map(
+      async ([languageSlug, videoIds]) => {
+        const videos = await fetchHistoryVideos(videoIds, languageSlug)
+        for (const video of videos) {
+          if (video.documentId) videoById.set(video.documentId, video)
+        }
+      },
+    ),
   )
+
+  const items = uniqueRequests.map(({ videoId, languageSlug }) => {
+    const video = videoById.get(videoId)
+    if (!video) return null
+
+    const title =
+      resolveVideoDisplayTitle({
+        requestedTitles: video.locales?.map((locale) => locale.title),
+        englishTitles: [
+          ...(video.englishTitleLocales?.map((row) => row.title) ?? []),
+          ...(video.englishLanguageTitleLocales?.map((row) => row.title) ?? []),
+        ],
+        slug: video.slug,
+      }) ?? "Video"
+    const durationLabel =
+      video.durationSeconds != null
+        ? formatDuration(video.durationSeconds) || null
+        : null
+
+    return {
+      videoId,
+      title,
+      label: labelText(video),
+      href: historyHref(video, languageSlug),
+      imageUrl: bestImage(video),
+      imageAlt: video.locales?.[0]?.imageAlt || title,
+      durationLabel,
+    }
+  })
 
   return items.filter((item): item is WatchHistoryVideoDetails => item != null)
 }

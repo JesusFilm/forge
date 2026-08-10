@@ -56,6 +56,24 @@ it("humanizes a blank Watch home title without changing route identity", () => {
   })
 })
 
+it("uses published English for a blank requested title and preserves requested description", () => {
+  const card = normalizeCard({
+    sectionId: "test",
+    sourceId: "1_jf-0-0",
+    languageSlug: "english",
+    video: video("1_jf-0-0", {
+      locales: [{ title: " ", description: "Requested description" }],
+      englishTitleLocales: [],
+      englishLanguageTitleLocales: [{ title: "Miraculous Catch" }],
+    }),
+  })
+
+  expect(card).toMatchObject({
+    title: "Miraculous Catch",
+    description: "Requested description",
+  })
+})
+
 describe("buildWatchHomeModelFromVideos — featured", () => {
   it("builds featured from the playlist-sequence pool queue, emitting the parent film even with children (web-parity)", () => {
     // 1_jf-0-0 (JESUS) is a FEATURE_FILM playlist source with chapter children;

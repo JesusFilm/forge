@@ -363,6 +363,7 @@ type WatchRouteSnapshotCountRow = {
  * contract is double-locked.
  */
 export const VIDEOS_BY_CORE_IDS_MAX = 100
+export const WATCH_VIDEOS_BY_IDS_MAX = 200
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
 const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
@@ -1343,6 +1344,37 @@ export class VideoService {
     return this.prisma.video.findFirst({
       ...query,
       where: { slug, deletedAt: null, ...notRestrictedFromWatchWhere() },
+    })
+  }
+
+  async getWatchVideosByIds({
+    ids,
+    query,
+  }: {
+    ids: readonly string[]
+    query: object
+  }) {
+    if (ids.length === 0) return []
+    if (ids.length > WATCH_VIDEOS_BY_IDS_MAX) {
+      throw new VideoLookupValidationError(
+        `ids.length=${ids.length} exceeds max ${WATCH_VIDEOS_BY_IDS_MAX}`,
+      )
+    }
+
+    const uniqueIds = [...new Set(ids)]
+    const rows = await this.prisma.video.findMany({
+      ...withVideoIdForOrdering(query),
+      where: {
+        id: { in: uniqueIds },
+        deletedAt: null,
+        ...notRestrictedFromWatchWhere(),
+      },
+    })
+    const rowById = new Map(rows.map((row) => [row.id, row]))
+
+    return ids.flatMap((id) => {
+      const row = rowById.get(id)
+      return row == null ? [] : [row]
     })
   }
 
@@ -3160,6 +3192,18 @@ function withVideoCoreIdForOrdering(query: object): object {
     select: {
       ...prismaQuery.select,
       coreId: true,
+    },
+  }
+}
+
+function withVideoIdForOrdering(query: object): object {
+  const prismaQuery = query as { select?: Record<string, unknown> }
+  if (!prismaQuery.select) return query
+  return {
+    ...prismaQuery,
+    select: {
+      ...prismaQuery.select,
+      id: true,
     },
   }
 }

@@ -38,6 +38,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "videos",
   // Forge /watch home showcase lookup: public consumer read, normal Video shape.
   "watchHomeVideos",
+  // Bounded bulk lookup for Watch history and native Experience hydration.
+  "watchVideosByIds",
   // Forge /watch language inventory lookup: public consumer read, flat card shape.
   "watchLanguageInventory",
   // Forge /watch single-video cold route lookup: public consumer read, flat

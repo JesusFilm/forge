@@ -1,6 +1,7 @@
 ---
 title: "Watch blank localized title fallback"
 date: 2026-08-06
+last_updated: 2026-08-10
 category: ui-bugs
 module: watch
 problem_type: ui_bug
@@ -134,20 +135,57 @@ authored title may legitimately equal a slug.
 
 ### Audited boundaries
 
-| Boundary | Resolution point | Identity preserved |
-| --- | --- | --- |
-| Admin Watch inventory | bounded inventory SQL | slug, Core ID |
-| Admin Typesense search | index projection plus one bounded result-page locale hydration | search document ID and slug |
-| Admin/Mastra Experience AI | candidate/context and section-prompt producers | candidate ref, Video ID, slug |
-| Web Watch home | exact, broad, and English title aliases in one GraphQL operation | href and cache identity |
-| Web history/search/recommendations/downloads | producer normalizers plus allowlisted stale-data read repair | route slug, download proxy inputs |
-| Mobile home/detail/series/search/downloads | model and persisted-record boundaries | route and offline manifest slug |
-| TV home/detail/series/search/SDUI/showcase | model boundaries; continue-watching read repair | route and progress-store slug |
+| Boundary                                     | Resolution point                                                 | Identity preserved                |
+| -------------------------------------------- | ---------------------------------------------------------------- | --------------------------------- |
+| Admin Watch inventory                        | bounded inventory SQL                                            | slug, Core ID                     |
+| Admin Typesense search                       | index projection plus one bounded result-page locale hydration   | search document ID and slug       |
+| Admin/Mastra Experience AI                   | candidate/context and section-prompt producers                   | candidate ref, Video ID, slug     |
+| Web Watch home                               | exact, broad, and English title aliases in one GraphQL operation | href and cache identity           |
+| Web history/search/recommendations/downloads | producer normalizers plus allowlisted stale-data read repair     | route slug, download proxy inputs |
+| Mobile home/detail/series/search/downloads   | model and persisted-record boundaries                            | route and offline manifest slug   |
+| TV home/detail/series/search/SDUI/showcase   | model boundaries; continue-watching read repair                  | route and progress-store slug     |
+
+English candidates are queried through both public identities used by existing
+locale rows: `locale: "en"` and `languageSlug: "english"`. Producers keep the
+two aliases separate and pass all returned titles into the same deterministic
+resolver; combining both filters into one locale query would require an AND
+match and would incorrectly miss valid rows.
+
+Web history and native thumbnail hydration use the public
+`watchVideosByIds(ids: [ID!]!)` transport rather than one request per stored
+entry. The operation accepts at most 200 IDs, preserves caller order and
+duplicates, omits missing or Watch-restricted Videos, and returns only the
+fields each client needs. Web keeps its former per-video operation solely as a
+rolling-deployment fallback when an older Admin schema reports that the batch
+field does not exist.
 
 Authored override precedence remains unchanged. The Admin media-collection
 resolver that intentionally permits a titleless card remains titleless; this
 policy only supplies a title where the existing product contract already
 renders a Video title placeholder.
+
+## Verification and rollout
+
+- Shared policy tests cover trimming, requested/English precedence,
+  separator humanization, unrelated-locale rejection, and allowlisted legacy
+  repair.
+- Admin producer tests cover regional exact/broad ordering, duplicate requested
+  rows, published-English fallback, bounded Typesense page hydration, and the
+  public batch-query contract.
+- Web, mobile, and TV tests cover home, search, history, detail, series,
+  downloads, and persisted-data normalization while keeping localized
+  non-title metadata and route identity unchanged.
+- Local browser QA reached `/watch/jula.html` with HTTP 200, exercised Search
+  open/close, found no console errors or rendered raw slug, and stayed below the
+  five-second cold-load budget. The CI-safe local environment could not load
+  the upstream Experience payload, so the reported Jula title itself is proven
+  by producer/normalizer fixtures rather than claimed as live-content proof.
+
+Deploy Admin before clients that issue `watchVideosByIds`; the Web compatibility
+fallback makes a rolling deployment safe, while native releases follow the
+backend rollout. No production reindex or direct deployment belongs in the
+implementation PR: Typesense rewrites the final result-page projection at read
+time, and clients repair only known legacy stored placeholders.
 
 ## Why This Works
 

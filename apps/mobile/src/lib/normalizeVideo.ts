@@ -165,6 +165,37 @@ function pickFirstLocale(
   }
 }
 
+function videoDisplayTitleCandidates(video: {
+  locales?:
+    | readonly {
+        documentId?: string | null
+        languageSlug?: string | null
+        title?: string | null
+      }[]
+    | null
+  englishTitleLocales?: readonly { title?: string | null }[] | null
+  englishLanguageTitleLocales?: readonly { title?: string | null }[] | null
+}) {
+  return {
+    requestedTitles: [...(video.locales ?? [])]
+      .sort((left, right) => {
+        const bySlug = compareLanguageSlug(
+          left.languageSlug,
+          right.languageSlug,
+        )
+        return (
+          bySlug ||
+          (left.documentId ?? "").localeCompare(right.documentId ?? "")
+        )
+      })
+      .map((row) => row.title),
+    englishTitles: [
+      ...(video.englishTitleLocales?.map((row) => row.title) ?? []),
+      ...(video.englishLanguageTitleLocales?.map((row) => row.title) ?? []),
+    ],
+  }
+}
+
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
 
 // Permissive aliases let the shared builder accept BOTH the full watch fragment
@@ -305,7 +336,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
           slug: parent.slug ?? "",
           title:
             resolveVideoDisplayTitle({
-              requestedTitles: [pickFirstLocale(parent.locales).title],
+              ...videoDisplayTitleCandidates(parent),
               slug: parent.slug,
             }) ?? "Video",
         }
@@ -326,7 +357,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         label: child.label ?? null,
         title:
           resolveVideoDisplayTitle({
-            requestedTitles: [pickFirstLocale(child.locales).title],
+            ...videoDisplayTitleCandidates(child),
             slug: child.slug,
           }) ?? null,
         posterUrl: pickPosterUrl(child.images),
@@ -372,7 +403,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     label: raw.label ?? null,
     title:
       resolveVideoDisplayTitle({
-        requestedTitles: [locale.title],
+        ...videoDisplayTitleCandidates(raw),
         slug: raw.slug,
       }) ?? null,
     description: locale.description,
@@ -409,7 +440,7 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
       label: rel.child.label ?? null,
       title:
         resolveVideoDisplayTitle({
-          requestedTitles: [pickFirstLocale(rel.child.locales).title],
+          ...videoDisplayTitleCandidates(rel.child),
           slug: rel.child.slug,
         }) ?? null,
       posterUrl: pickPosterUrl(rel.child.images),

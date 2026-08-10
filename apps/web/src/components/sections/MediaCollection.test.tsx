@@ -817,8 +817,8 @@ describe("MediaCollection VideoCard href", () => {
       cards.map((card) => card.querySelector("img")?.getAttribute("alt")),
     ).toEqual(["", ""])
     expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
-      "Show titleless-null",
-      "Show titleless-blank",
+      "Show Titleless Null",
+      "Show Titleless Blank",
     ])
     expect(cards.every((card) => card.textContent === "")).toBe(true)
     expect(container.textContent).not.toContain("Untitled")
@@ -864,8 +864,8 @@ describe("MediaCollection VideoCard href", () => {
       container.querySelectorAll<HTMLElement>('a[data-testid="VideoCard"]'),
     )
     expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
-      "Show Episode titleless-one",
-      "Show Episode titleless-two",
+      "Show Episode Titleless One",
+      "Show Episode Titleless Two",
     ])
     expect(cards.map((card) => card.textContent)).toEqual([
       "Episode",

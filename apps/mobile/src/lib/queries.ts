@@ -163,6 +163,26 @@ export type SearchResponse = {
 // Lean by design: `dubs` OMITS each dub's `downloads` + `videoEdition.subtitles`
 // (birth-of-jesus has 2,259 dubs → ~9.5MB / ~13s if projected). The active
 // language's media is fetched lazily via GET_VIDEO_DUB; keep this selection lean.
+export const GET_WATCH_VIDEOS_BY_IDS = adminGraphql(`
+  query GetWatchVideosByIds($ids: [ID!]!) {
+    watchVideosByIds(ids: $ids) {
+      documentId: id
+      slug
+      images {
+        mobileCinematicHigh
+        mobileCinematicLow
+        videoStill
+        thumbnail
+        url
+      }
+      locales(locale: "en") { title }
+      englishLanguageTitleLocales: locales(languageSlug: "english") { title }
+    }
+  }
+`)
+
+export type WatchVideosByIdsData = AdminResultOf<typeof GET_WATCH_VIDEOS_BY_IDS>
+
 export const watchVideoFragment = adminGraphql(`
   fragment WatchVideo on Video @_unmask {
     documentId: id
@@ -188,6 +208,8 @@ export const watchVideoFragment = adminGraphql(`
       snippet
       imageAlt
     }
+    englishTitleLocales: locales(locale: "en") { title }
+    englishLanguageTitleLocales: locales(languageSlug: "english") { title }
     parents {
       parent {
         documentId: id
@@ -198,6 +220,8 @@ export const watchVideoFragment = adminGraphql(`
           languageSlug
           title
         }
+        englishTitleLocales: locales(locale: "en") { title }
+        englishLanguageTitleLocales: locales(languageSlug: "english") { title }
         images {
           documentId: id
           url
@@ -216,6 +240,8 @@ export const watchVideoFragment = adminGraphql(`
               languageSlug
               title
             }
+            englishTitleLocales: locales(locale: "en") { title }
+            englishLanguageTitleLocales: locales(languageSlug: "english") { title }
             images {
               documentId: id
               url
@@ -308,6 +334,8 @@ export const seriesWatchVideoFragment = adminGraphql(`
       snippet
       imageAlt
     }
+    englishTitleLocales: locales(locale: "en") { title }
+    englishLanguageTitleLocales: locales(languageSlug: "english") { title }
     variants: dubs {
       documentId: id
       slug
@@ -363,6 +391,8 @@ export const GET_SERIES_BY_SLUG = adminGraphql(
               languageSlug
               title
             }
+            englishTitleLocales: locales(locale: "en") { title }
+            englishLanguageTitleLocales: locales(languageSlug: "english") { title }
             images {
               documentId: id
               url
@@ -475,6 +505,8 @@ export const watchHomeVideoFragment = adminGraphql(`
       snippet
       imageAlt
     }
+    englishTitleLocales: locales(locale: "en") { title }
+    englishLanguageTitleLocales: locales(languageSlug: "english") { title }
     children {
       child {
         documentId: id
@@ -498,6 +530,8 @@ export const watchHomeVideoFragment = adminGraphql(`
           snippet
           imageAlt
         }
+        englishTitleLocales: locales(locale: "en") { title }
+        englishLanguageTitleLocales: locales(languageSlug: "english") { title }
       }
     }
   }

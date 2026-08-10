@@ -256,6 +256,53 @@ describe("loadExperienceAiVideoCandidates", () => {
     })
   })
 
+  it("uses every exact requested title before English", async () => {
+    const prisma = makePrisma()
+    seedCatalog(prisma)
+    prisma.videoLocale.findMany.mockResolvedValue([
+      {
+        videoId: "video-1",
+        locale: "pt-BR",
+        title: "   ",
+        description: "DescriÃ§Ã£o brasileira",
+        updatedAt: new Date("2026-04-22T10:00:00Z"),
+      },
+      {
+        videoId: "video-1",
+        locale: "pt-BR",
+        title: "HistÃ³ria de EsperanÃ§a",
+        description: "DescriÃ§Ã£o duplicada",
+        updatedAt: new Date("2026-04-22T09:00:00Z"),
+      },
+      {
+        videoId: "video-1",
+        locale: "en",
+        languageSlug: "english",
+        title: "Hope Story",
+        description: "English description",
+        updatedAt: new Date("2026-04-22T08:00:00Z"),
+      },
+    ])
+
+    const candidates = await loadExperienceAiVideoCandidates(prisma, {
+      locale: "pt-BR",
+      prompt: "hope",
+      limit: 1,
+    })
+
+    expect(candidates[0]).toMatchObject({
+      title: "HistÃ³ria de EsperanÃ§a",
+      description: "DescriÃ§Ã£o brasileira",
+    })
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ locale: "pt" }]),
+        }),
+      }),
+    )
+  })
+
   it("requires playable, non-container videos in the catalog query", async () => {
     const prisma = makePrisma()
     seedCatalog(prisma)

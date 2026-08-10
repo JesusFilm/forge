@@ -3,7 +3,7 @@ id: "feat-344"
 title: "Watch cross-platform display title fallback"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-10"
 duration: 3
 depends_on:
@@ -53,6 +53,8 @@ and TV can therefore display identifiers such as `miraculous-catch-of-fish`.
 - Keep public English candidates published and visible.
 - Keep GraphQL locale additions title-only and bounded; do not add per-card
   requests or heavy mobile/TV media fields.
+- Use the bounded public `watchVideosByIds` query for history and linked-video
+  hydration; deploy Admin before Web/native consumers.
 - Repair only allowlisted legacy fields whose historical producer stored a raw
   slug as placeholder text.
 - Do not change public Watch route shapes or deploy directly to production.
@@ -66,4 +68,3 @@ and TV can therefore display identifiers such as `miraculous-catch-of-fish`.
 - Browser QA of `/watch/jula.html` shows a readable carousel title, stable
   navigation and loading, and no new console errors.
 - Relevant typechecks, lint, formatting, and CI-sensitive checks pass.
-

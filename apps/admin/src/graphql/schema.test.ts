@@ -48,6 +48,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videoBySlug",
         "videos",
         "watchHomeVideos",
+        "watchVideosByIds",
         "watchLanguageInventory",
         "watchSearch",
         "videosByCoreIds",

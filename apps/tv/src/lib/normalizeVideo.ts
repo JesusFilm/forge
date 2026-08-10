@@ -185,6 +185,37 @@ function pickFirstLocale(
   }
 }
 
+function videoDisplayTitleCandidates(video: {
+  locales?:
+    | readonly {
+        documentId?: string | null
+        languageSlug?: string | null
+        title?: string | null
+      }[]
+    | null
+  englishTitleLocales?: readonly { title?: string | null }[] | null
+  englishLanguageTitleLocales?: readonly { title?: string | null }[] | null
+}) {
+  return {
+    requestedTitles: [...(video.locales ?? [])]
+      .sort((left, right) => {
+        const bySlug = compareLanguageSlug(
+          left.languageSlug,
+          right.languageSlug,
+        )
+        return (
+          bySlug ||
+          (left.documentId ?? "").localeCompare(right.documentId ?? "")
+        )
+      })
+      .map((row) => row.title),
+    englishTitles: [
+      ...(video.englishTitleLocales?.map((row) => row.title) ?? []),
+      ...(video.englishLanguageTitleLocales?.map((row) => row.title) ?? []),
+    ],
+  }
+}
+
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
 
 // The series query (SeriesWatchVideo) is leaner than the watch query: no `parents`
@@ -344,7 +375,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         label: child.label ?? null,
         title:
           resolveVideoDisplayTitle({
-            requestedTitles: [pickFirstLocale(child.locales).title],
+            ...videoDisplayTitleCandidates(child),
             slug: child.slug,
           }) ?? null,
         posterUrl: pickPosterUrl(child.images),
@@ -389,7 +420,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     label: raw.label ?? null,
     title:
       resolveVideoDisplayTitle({
-        requestedTitles: [locale.title],
+        ...videoDisplayTitleCandidates(raw),
         slug: raw.slug,
       }) ?? null,
     description: locale.description,
@@ -433,7 +464,7 @@ function buildChildren(raw: {
         label: rel.child.label ?? null,
         title:
           resolveVideoDisplayTitle({
-            requestedTitles: [locale.title],
+            ...videoDisplayTitleCandidates(rel.child),
             slug: rel.child.slug,
           }) ?? null,
         description: locale.description,

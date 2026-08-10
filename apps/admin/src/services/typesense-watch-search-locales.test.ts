@@ -61,6 +61,82 @@ describe("displayLocale", () => {
       description: null,
     })
   })
+
+  it("accepts an English language row whose locale is not normalized to en", () => {
+    expect(
+      displayLocale(
+        {
+          slug: "miraculous-catch-of-fish",
+          titles: ["The Miraculous Catch of Fish"],
+          localesJson: JSON.stringify([
+            {
+              locale: "en-US",
+              languageSlug: "english",
+              title: "The Miraculous Catch of Fish",
+              description: "English description",
+            },
+          ]),
+        },
+        "ar",
+      ),
+    ).toMatchObject({ title: "The Miraculous Catch of Fish" })
+  })
+
+  it("prefers an exact regional title over the broad language title", () => {
+    const result = displayLocale(
+      {
+        slug: "hope-story",
+        titles: ["EsperanÃ§a", "EsperanÃ§a brasileira"],
+        localesJson: JSON.stringify([
+          {
+            locale: "pt",
+            title: "EsperanÃ§a",
+            description: "DescriÃ§Ã£o ampla",
+          },
+          {
+            locale: "pt-BR",
+            title: "EsperanÃ§a brasileira",
+            description: "DescriÃ§Ã£o brasileira",
+          },
+        ]),
+      },
+      "pt-BR",
+    )
+
+    expect(result).toMatchObject({
+      locale: "pt-BR",
+      title: "EsperanÃ§a brasileira",
+      description: "DescriÃ§Ã£o brasileira",
+    })
+  })
+
+  it("uses a broad title for blank exact copy without replacing exact metadata", () => {
+    const result = displayLocale(
+      {
+        slug: "hope-story",
+        titles: ["EsperanÃ§a"],
+        localesJson: JSON.stringify([
+          {
+            locale: "pt-BR",
+            title: " ",
+            description: "DescriÃ§Ã£o brasileira",
+          },
+          {
+            locale: "pt",
+            title: "EsperanÃ§a",
+            description: "DescriÃ§Ã£o ampla",
+          },
+        ]),
+      },
+      "pt-BR",
+    )
+
+    expect(result).toMatchObject({
+      locale: "pt-BR",
+      title: "EsperanÃ§a",
+      description: "DescriÃ§Ã£o brasileira",
+    })
+  })
 })
 
 function preview(

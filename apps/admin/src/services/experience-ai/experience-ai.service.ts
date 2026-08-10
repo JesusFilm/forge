@@ -5,6 +5,10 @@ import { toPgVector } from "@/db/pgvector"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 
 import type { VideoCandidate } from "@forge/experience-schema"
+import {
+  selectVideoDisplayLocaleCandidates,
+  videoDisplayLocaleFilters,
+} from "./video-display-title-candidates"
 export {
   normalizeExperienceDraft,
   ExperienceAiNormalizationError,
@@ -179,6 +183,7 @@ export async function loadExperienceAiVideoCandidates(
         videoId: { in: videoIds },
         status: "PUBLISHED",
         deletedAt: null,
+        OR: videoDisplayLocaleFilters(locale),
       },
       select: {
         videoId: true,
@@ -186,10 +191,9 @@ export async function loadExperienceAiVideoCandidates(
         languageSlug: true,
         title: true,
         description: true,
-        status: true,
         updatedAt: true,
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     }),
     prisma.videoDub.findMany({
       where: { videoId: { in: videoIds }, deletedAt: null },
@@ -248,12 +252,10 @@ export async function loadExperienceAiVideoCandidates(
 
   const ranked: RankedCandidate[] = videos.flatMap((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
-    const preferredLocale =
-      localeRows.find(
-        (row) => row.locale === locale && row.status === "PUBLISHED",
-      ) ?? null
+    const { preferredRow, requestedTitles, englishTitles } =
+      selectVideoDisplayLocaleCandidates(localeRows, locale)
 
-    if (!preferredLocale) return []
+    if (!preferredRow) return []
 
     const previewImageUrl =
       imagesByVideo.get(video.id)?.find((row) => row.url)?.url ?? null
@@ -281,15 +283,11 @@ export async function loadExperienceAiVideoCandidates(
       slug: video.slug,
       title:
         resolveVideoDisplayTitle({
-          requestedTitles: [preferredLocale?.title],
-          englishTitles: localeRows
-            .filter(
-              (row) => row.locale === "en" || row.languageSlug === "english",
-            )
-            .map((row) => row.title),
+          requestedTitles,
+          englishTitles,
           slug: video.slug,
         }) ?? "Video",
-      description: preferredLocale?.description?.trim() || null,
+      description: preferredRow.description?.trim() || null,
       previewImageUrl,
       previewStreamUrl:
         preferredDub?.hls ?? preferredDub?.dash ?? preferredDub?.share ?? null,

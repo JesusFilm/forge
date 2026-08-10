@@ -1,6 +1,6 @@
 export type DisplayTitleCandidate = string | null | undefined
 
-export interface VideoDisplayTitleInput {
+export type VideoDisplayTitleInput = {
   requestedTitles?: readonly DisplayTitleCandidate[]
   englishTitles?: readonly DisplayTitleCandidate[]
   slug?: string | null
@@ -62,4 +62,22 @@ export function repairLegacyVideoDisplayTitle({
         : [],
     slug,
   })
+}
+
+/**
+ * Normalizes a Watch search result while keeping slug-equality repair scoped
+ * to Video records from the known legacy search projections.
+ */
+export function resolveWatchSearchDisplayTitle({
+  title,
+  slug,
+  isVideo,
+}: {
+  title?: string | null
+  slug?: string | null
+  isVideo: boolean
+}): string | undefined {
+  return isVideo
+    ? repairLegacyVideoDisplayTitle({ title, slug })
+    : firstNonBlankText([title])
 }

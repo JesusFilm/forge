@@ -26,7 +26,10 @@ const GET_DEMO_VIDEO = adminGraphql(`
         title
         description
       }
-      englishTitleLocales: locales(locale: "en", languageSlug: "english") {
+      englishTitleLocales: locales(locale: "en") {
+        title
+      }
+      englishLanguageTitleLocales: locales(languageSlug: "english") {
         title
       }
       variants: dubs {
@@ -93,9 +96,11 @@ const fetchDemoVideo = unstable_cache(
         title:
           resolveVideoDisplayTitle({
             requestedTitles: record.locales?.map((locale) => locale.title),
-            englishTitles: record.englishTitleLocales?.map(
-              (locale) => locale.title,
-            ),
+            englishTitles: [
+              ...(record.englishTitleLocales?.map((row) => row.title) ?? []),
+              ...(record.englishLanguageTitleLocales?.map((row) => row.title) ??
+                []),
+            ],
             slug: record.slug ?? slug,
           }) ?? "Video",
         description: localeRow?.description ?? null,

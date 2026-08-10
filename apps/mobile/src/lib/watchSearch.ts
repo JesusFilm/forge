@@ -1,8 +1,5 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
-import {
-  firstNonBlankText,
-  repairLegacyVideoDisplayTitle,
-} from "@forge/content-display"
+import { resolveWatchSearchDisplayTitle } from "@forge/content-display"
 
 import type {
   SearchResponse,
@@ -100,10 +97,11 @@ export function mapWatchSearchResult(
   item: WatchSearchResultItem,
 ): SearchResult | null {
   if (!item.type || !item.id || !item.slug) return null
-  const title =
-    item.type === "VIDEO"
-      ? repairLegacyVideoDisplayTitle({ title: item.title, slug: item.slug })
-      : firstNonBlankText([item.title])
+  const title = resolveWatchSearchDisplayTitle({
+    title: item.title,
+    slug: item.slug,
+    isVideo: item.type === "VIDEO",
+  })
   if (!title) return null
   return {
     type: item.type,

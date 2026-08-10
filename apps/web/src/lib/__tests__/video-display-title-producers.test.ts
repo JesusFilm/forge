@@ -37,16 +37,22 @@ describe("Web video display-title producers", () => {
   it("uses English for a blank history title without replacing requested image alt", async () => {
     queryMock.mockResolvedValue({
       data: {
-        video: {
-          slug: "miraculous-catch-of-fish",
-          label: "SEGMENT",
-          durationSeconds: 60,
-          images: [],
-          locales: [{ title: "   ", imageAlt: "صورة عربية" }],
-          englishTitleLocales: [{ title: "Miraculous Catch of Fish" }],
-          dubs: [],
-          parents: [],
-        },
+        watchVideosByIds: [
+          {
+            documentId: "video-1",
+            slug: "miraculous-catch-of-fish",
+            label: "SEGMENT",
+            durationSeconds: 60,
+            images: [],
+            locales: [{ title: "   ", imageAlt: "صورة عربية" }],
+            englishTitleLocales: [],
+            englishLanguageTitleLocales: [
+              { title: "Miraculous Catch of Fish" },
+            ],
+            dubs: [],
+            parents: [],
+          },
+        ],
       },
     })
 
@@ -61,6 +67,80 @@ describe("Web video display-title producers", () => {
     })
   })
 
+  it("batches one history request per language instead of per video", async () => {
+    queryMock.mockResolvedValue({
+      data: {
+        watchVideosByIds: [
+          {
+            documentId: "video-1",
+            slug: "first-video",
+            label: "SEGMENT",
+            images: [],
+            locales: [{ title: "First", imageAlt: null }],
+            englishTitleLocales: [],
+            englishLanguageTitleLocales: [],
+            dubs: [],
+            parents: [],
+          },
+          {
+            documentId: "video-2",
+            slug: "second-video",
+            label: "SEGMENT",
+            images: [],
+            locales: [{ title: "Second", imageAlt: null }],
+            englishTitleLocales: [],
+            englishLanguageTitleLocales: [],
+            dubs: [],
+            parents: [],
+          },
+        ],
+      },
+    })
+
+    const { fetchWatchHistoryVideoDetails } = await import("../watch-history")
+    const result = await fetchWatchHistoryVideoDetails([
+      { videoId: "video-1", languageSlug: "french" },
+      { videoId: "video-2", languageSlug: "french" },
+    ])
+
+    expect(result.map((item) => item.title)).toEqual(["First", "Second"])
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock.mock.calls[0]?.[0]?.variables).toEqual({
+      ids: ["video-1", "video-2"],
+      languageSlug: "french",
+    })
+  })
+
+  it("uses the legacy history query only when Admin lacks the batch field", async () => {
+    queryMock
+      .mockRejectedValueOnce(
+        new Error('Cannot query field "watchVideosByIds" on type "Query".'),
+      )
+      .mockResolvedValueOnce({
+        data: {
+          video: {
+            documentId: "video-1",
+            slug: "first-video",
+            label: "SEGMENT",
+            images: [],
+            locales: [{ title: "First", imageAlt: null }],
+            englishTitleLocales: [],
+            englishLanguageTitleLocales: [],
+            dubs: [],
+            parents: [],
+          },
+        },
+      })
+
+    const { fetchWatchHistoryVideoDetails } = await import("../watch-history")
+    const result = await fetchWatchHistoryVideoDetails([
+      { videoId: "video-1", languageSlug: "english" },
+    ])
+
+    expect(result[0]?.title).toBe("First")
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
   it("uses English in demo search while preserving requested description", async () => {
     queryMock.mockResolvedValue({
       data: {
@@ -70,7 +150,8 @@ describe("Web video display-title producers", () => {
           images: [],
           primaryLanguage: null,
           locales: [{ title: " ", description: "وصف عربي" }],
-          englishTitleLocales: [{ title: "Miraculous Catch of Fish" }],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [{ title: "Miraculous Catch of Fish" }],
           variants: [],
         },
       },
@@ -95,7 +176,8 @@ describe("Web video display-title producers", () => {
           images: [],
           primaryLanguage: null,
           locales: [{ title: "\t", description: "وصف عربي" }],
-          englishTitleLocales: [{ title: "Miraculous Catch of Fish" }],
+          englishTitleLocales: [],
+          englishLanguageTitleLocales: [{ title: "Miraculous Catch of Fish" }],
         },
       },
     })

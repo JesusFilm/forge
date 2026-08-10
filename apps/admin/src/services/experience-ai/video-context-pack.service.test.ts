@@ -122,6 +122,46 @@ describe("loadVideoContextPack", () => {
     })
   })
 
+  it("uses a broad requested title while preserving exact requested metadata", async () => {
+    const prisma = makePrisma({
+      videoLocale: [
+        {
+          locale: "pt-BR",
+          title: " ",
+          description: "DescriÃ§Ã£o brasileira",
+        },
+        {
+          locale: "pt",
+          title: "A RessurreiÃ§Ã£o",
+          description: "DescriÃ§Ã£o ampla",
+        },
+        {
+          locale: "en",
+          languageSlug: "english",
+          title: "The Resurrection",
+          description: "English description",
+        },
+      ],
+    })
+
+    const pack = await loadVideoContextPack(prisma, {
+      videoId: "vid1",
+      locale: "pt-BR",
+    })
+
+    expect(pack?.video).toMatchObject({
+      title: "A RessurreiÃ§Ã£o",
+      description: "DescriÃ§Ã£o brasileira",
+    })
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ locale: "pt" }]),
+        }),
+      }),
+    )
+  })
+
   it("returns null when the anchor video is missing or not playable", async () => {
     const pack = await loadVideoContextPack(makePrisma({ video: null }), {
       videoId: "missing",

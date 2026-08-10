@@ -183,13 +183,14 @@ only the carousel would preserve inconsistent and user-visible failures.
   per-Video loads.
   Admin Typesense and publishable Experience-AI Video-title outputs resolve
   titles before publishing their models; the intentionally titleless
-  media-collection resolver remains unchanged. Bounded queries avoid per-card
-  requests. Rejected alternative: a new broad
-  GraphQL field that still would not cover flattened search results, direct
-  service output, or persisted data; it would also introduce cross-service
-  deployment ordering and schema/generated-artifact churn without eliminating
-  client defenses. Query aliases follow the repository's existing locale-field
-  pattern and keep this behavior-only change backward compatible.
+  media-collection resolver remains unchanged. A new public
+  `watchVideosByIds(ids)` query batches existing `Video` projections for Watch
+  history and native linked-video hydration; it does not own title selection.
+  Rejected alternative: a computed display-title field that still would not
+  cover flattened search results, direct service output, or persisted data.
+  Query aliases follow the repository's existing locale-field pattern. Deploy
+  Admin before clients begin using the additive batch query; Web keeps its
+  prior single-video query as a rolling-deploy fallback.
 - **KTD3 — Keep producer correctness plus defensive consumers.** Producer
   boundaries create canonical display values; client mappers still reject
   whitespace and humanize legacy raw slugs. This covers stale Web caches,
@@ -287,9 +288,9 @@ raw Video slug ─────────────────────�
 - **Approach:** Add separate title-only exact-language, broad-locale, and
   published-English aliases to bounded Web GraphQL responses; resolve titles
   with the shared policy while preserving requested metadata. Home parent and
-  child selections each carry that fixed three-tier title shape; history
-  replaces its current incompatible combined English-locale/requested-language
-  filter. Remove
+  child selections each carry that fixed three-tier title shape; history uses
+  `watchVideosByIds` once per requested language and keeps its former
+  single-video query only as a rolling-deploy fallback. Remove
   `coreId` and raw route-slug display fallbacks. Bump only
   `WATCH_HOME_CACHE_VERSION`, `demo-search-video`, and `video-by-slug` when their
   normalized outputs change.
@@ -333,10 +334,11 @@ raw Video slug ─────────────────────�
   `apps/mobile/src/lib/queries.ts`, `apps/mobile/src/lib/normalizeVideo.ts`,
   `apps/mobile/src/lib/watchSearch.ts`, thumbnail/media-collection hydration,
   `DownloadRow.tsx`, and their focused tests.
-- **Approach:** Reuse English data already present in English-only mobile
-  queries, select slug where a generic linked Video currently lacks any
-  fallback input, preserve authored overrides and localized field ownership,
-  and avoid adding dubs or other heavy fields.
+- **Approach:** Add title-only `locale: "en"` and
+  `languageSlug: "english"` aliases to detail, series, home, and linked-video
+  operations. Use `watchVideosByIds` for typed linked-video thumbnail
+  hydration, preserve authored overrides and localized field ownership, and
+  avoid adding dubs or other heavy fields.
 - **Test scenarios:** Root, parent, sibling, episode, home hero/rails, search,
   SDUI override/titleless behavior, legacy snapshot, and offline records whose
   stored title equals the slug; no `coreId` display; unchanged routes and
@@ -389,13 +391,15 @@ raw Video slug ─────────────────────�
 ### System-Wide Impact
 
 - **Data flow:** Additional English title aliases increase only small locale
-  title selections. Admin DataLoaders and existing bounded GraphQL requests
-  remain the loading boundary.
+  title selections. Admin DataLoaders and the bounded `watchVideosByIds`
+  GraphQL request remain the loading boundary.
 - **Caching:** Web normalized Watch home, demo search, and recommendation cache
   identities must change. Typesense and native persisted data can be stale, so
   defensive normalization remains required.
-- **Contracts:** No URL, GraphQL SDL, analytics, storage, or playback contract
-  changes are expected. Query text and internal normalized models do change.
+- **Contracts:** URL, analytics, storage, and playback contracts do not change.
+  GraphQL adds the backward-compatible public
+  `watchVideosByIds(ids: [ID!]!): [Video!]!` query and regenerates Admin SDL plus
+  `@forge/admin-graphql` introspection output.
 - **Localization:** Only title selection crosses from requested language to
   English. Other localized fields retain their current row and precedence.
 - **Accessibility:** Existing accessibility fallbacks may gain readable
@@ -425,6 +429,9 @@ raw Video slug ─────────────────────�
 - **Stale content:** Search/native/Web caches may retain malformed values.
   Mitigation: version normalized Web caches and keep defensive client policy;
   do not require a production backfill for correctness.
+- **Rolling deploy mismatch:** New clients can query an older Admin deployment.
+  Mitigation: deploy Admin first; Web retains its former per-video history
+  query only as an error fallback, and native releases follow backend rollout.
 
 ### Open Questions
 
@@ -478,6 +485,27 @@ raw Video slug ─────────────────────�
 - **Browser:** `/watch/jula.html` shows readable title text, a linked route keeps
   its slug identity, RTL/localized copy remains, client controls work, console
   errors are inspected, and cold/warm loading is recorded.
+
+---
+
+## Implementation Results
+
+- Added `@forge/content-display` as the single runtime-neutral owner of the
+  requested title -> published English title -> humanized slug ladder.
+- Applied the policy at Admin Typesense/Experience-AI producers and at Web,
+  mobile, TV, generated-content, search, history, download, recommendation,
+  detail, series, and home model boundaries.
+- Added the bounded public `watchVideosByIds` transport, regenerated Admin SDL
+  and `@forge/admin-graphql` introspection, and retained a Web old-schema
+  compatibility fallback for rolling deployment.
+- Focused validation passed: 231 Admin tests, 75 Web tests, 98 Mobile tests, 90
+  TV tests, and 14 shared-policy tests, including query/search guards, plus
+  typechecks and lint across every touched package.
+- Browser QA returned HTTP 200, exercised Search open/close, observed no browser
+  errors or raw slug, and measured an 815 ms cold load with 737/705/661 ms warm
+  reloads. The CI-safe local environment could not load upstream Experience
+  data, so exact Jula copy is fixture-proven rather than claimed as live-data
+  browser proof.
 
 ---
 

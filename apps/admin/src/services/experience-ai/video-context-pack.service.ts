@@ -25,6 +25,10 @@ import { videoStudyQuestionsFilter } from "@/graphql/types/video"
 
 import { formatCitationReference } from "./citation-reference"
 import { PLAYABLE_CANDIDATE_VIDEO_WHERE } from "./experience-ai.service"
+import {
+  selectVideoDisplayLocaleCandidates,
+  videoDisplayLocaleFilters,
+} from "./video-display-title-candidates"
 
 const DEFAULT_SCENE_LIMIT = 12
 const DEFAULT_TRANSCRIPT_CHUNK_LIMIT = 24
@@ -108,7 +112,7 @@ async function loadAnchorVideo(
         videoId,
         status: "PUBLISHED",
         deletedAt: null,
-        OR: [{ locale }, { locale: "en" }, { languageSlug: "english" }],
+        OR: videoDisplayLocaleFilters(locale),
       },
       select: {
         locale: true,
@@ -116,7 +120,7 @@ async function loadAnchorVideo(
         title: true,
         description: true,
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     }),
     prisma.videoDub.findMany({
       where: { videoId, deletedAt: null },
@@ -136,10 +140,8 @@ async function loadAnchorVideo(
     }),
   ])
 
-  const preferredLocale = locales.find((row) => row.locale === locale) ?? null
-  const englishLocales = locales.filter(
-    (row) => row.locale === "en" || row.languageSlug === "english",
-  )
+  const { preferredRow, requestedTitles, englishTitles } =
+    selectVideoDisplayLocaleCandidates(locales, locale)
   const previewImageUrl = images.find((row) => row.url)?.url ?? null
 
   // Same dub-preference cascade as loadExperienceAiVideoCandidates: a playable
@@ -161,11 +163,11 @@ async function loadAnchorVideo(
     slug: video.slug,
     title:
       resolveVideoDisplayTitle({
-        requestedTitles: [preferredLocale?.title],
-        englishTitles: englishLocales.map((row) => row.title),
+        requestedTitles,
+        englishTitles,
         slug: video.slug,
       }) ?? "Video",
-    description: preferredLocale?.description?.trim() || null,
+    description: preferredRow?.description?.trim() || null,
     previewImageUrl,
     previewStreamUrl:
       preferredDub?.hls ?? preferredDub?.dash ?? preferredDub?.share ?? null,

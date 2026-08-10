@@ -1,38 +1,20 @@
-/**
- * Smoke tests for the pure functions used by useVideoThumbnails.
- * The hook itself requires a React context and fetch — tested via E2E.
- */
+import { print } from "graphql"
 
-// Re-export the internal functions for testing by importing the module
-// and extracting them. Since they're not exported, we test the observable
-// contract: buildBatchQuery shape and videoId sanitization.
+import { GET_WATCH_VIDEOS_BY_IDS } from "../../lib/queries"
 
-describe("useVideoThumbnails internals", () => {
-  describe("SAFE_ID_RE validation", () => {
-    const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
+describe("useVideoThumbnails query contract", () => {
+  const query = print(GET_WATCH_VIDEOS_BY_IDS)
 
-    it("accepts standard CUID-style videoIds", () => {
-      expect(SAFE_ID_RE.test("cmpbs74n6036v6d819ppuc9fo")).toBe(true)
-    })
+  it("uses the bounded typed Watch batch resolver", () => {
+    expect(query).toContain("query GetWatchVideosByIds($ids: [ID!]!)")
+    expect(query).toContain("watchVideosByIds(ids: $ids)")
+    expect(query).not.toMatch(/v\d+:\s*video\(/)
+  })
 
-    it("accepts IDs with hyphens and underscores", () => {
-      expect(SAFE_ID_RE.test("abc-123_def")).toBe(true)
-    })
-
-    it("rejects IDs with quotes", () => {
-      expect(SAFE_ID_RE.test('abc"def')).toBe(false)
-    })
-
-    it("rejects IDs with spaces", () => {
-      expect(SAFE_ID_RE.test("abc def")).toBe(false)
-    })
-
-    it("rejects IDs with GraphQL injection attempts", () => {
-      expect(SAFE_ID_RE.test('") { __typename } v99: video(id: "x')).toBe(false)
-    })
-
-    it("rejects empty string", () => {
-      expect(SAFE_ID_RE.test("")).toBe(false)
-    })
+  it("loads both public English title identities", () => {
+    expect(query).toContain('locales(locale: "en")')
+    expect(query).toContain(
+      'englishLanguageTitleLocales: locales(languageSlug: "english")',
+    )
   })
 })

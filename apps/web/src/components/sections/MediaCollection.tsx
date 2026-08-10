@@ -4,6 +4,7 @@ import Image from "next/image"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
+import { humanizeContentSlug } from "@forge/content-display"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
@@ -736,7 +737,8 @@ function VideoCard({
   const responsiveImageSizes = compactImageSizes ?? defaultImageSizes
   const [isMuxPreviewLoaded, setIsMuxPreviewLoaded] = useState(false)
   const accessibleTitle =
-    item.title || [item.label, item.videoSlug].filter(Boolean).join(" ")
+    item.title ||
+    [item.label, humanizeContentSlug(item.videoSlug)].filter(Boolean).join(" ")
 
   return (
     <Wrapper

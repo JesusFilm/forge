@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest"
 import {
   firstNonBlankText,
   humanizeContentSlug,
+  repairLegacyVideoDisplayTitle,
   resolveVideoDisplayTitle,
+  resolveWatchSearchDisplayTitle,
   type VideoDisplayTitleInput,
 } from "./index"
 
@@ -98,9 +100,7 @@ describe("content display title policy", () => {
 })
 
 describe("repairLegacyVideoDisplayTitle", () => {
-  it("humanizes a raw slug persisted as a legacy title", async () => {
-    const { repairLegacyVideoDisplayTitle } = await import("./index")
-
+  it("humanizes a raw slug persisted as a legacy title", () => {
     expect(
       repairLegacyVideoDisplayTitle({
         title: "miraculous-catch-of-fish",
@@ -109,14 +109,34 @@ describe("repairLegacyVideoDisplayTitle", () => {
     ).toBe("Miraculous Catch Of Fish")
   })
 
-  it("preserves a distinct authored title", async () => {
-    const { repairLegacyVideoDisplayTitle } = await import("./index")
-
+  it("preserves a distinct authored title", () => {
     expect(
       repairLegacyVideoDisplayTitle({
         title: "A Miraculous Catch",
         slug: "miraculous-catch-of-fish",
       }),
     ).toBe("A Miraculous Catch")
+  })
+})
+
+describe("resolveWatchSearchDisplayTitle", () => {
+  it("repairs a legacy Video slug title", () => {
+    expect(
+      resolveWatchSearchDisplayTitle({
+        title: "miraculous-catch-of-fish",
+        slug: "miraculous-catch-of-fish",
+        isVideo: true,
+      }),
+    ).toBe("Miraculous Catch Of Fish")
+  })
+
+  it("preserves a non-Video title even when it equals its slug", () => {
+    expect(
+      resolveWatchSearchDisplayTitle({
+        title: "authored-experience",
+        slug: "authored-experience",
+        isVideo: false,
+      }),
+    ).toBe("authored-experience")
   })
 })

@@ -572,9 +572,82 @@ describe("TypesenseWatchSearchService", () => {
           videoId: { in: [englishOnlyDocument.id] },
           status: "PUBLISHED",
           deletedAt: null,
+          OR: [{ locale: { in: ["fr", "en"] } }, { languageSlug: "english" }],
         }),
       }),
     )
+  })
+
+  it("does not render locale text that is no longer published", async () => {
+    const prisma = prismaFixture({ videoLocales: [] })
+    const service = new TypesenseWatchSearchService(
+      prisma,
+      typesenseFixture({
+        lexical: [catalogDocument],
+        catalog: [catalogDocument],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      displayLanguageSlug: "french",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      title: "The Fellowship Of The Believers",
+      description: null,
+    })
+  })
+
+  it("projects published locales only for the final result page", async () => {
+    const secondDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-second",
+      coreId: "core-second",
+      slug: "second-video",
+      titles: ["DeuxiÃ¨me vidÃ©o"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "DeuxiÃ¨me vidÃ©o",
+          description: null,
+        },
+      ]),
+    }
+    const prisma = prismaFixture({
+      videoLocales: [
+        {
+          videoId: secondDocument.id,
+          locale: "fr",
+          languageSlug: "french",
+          title: "DeuxiÃ¨me vidÃ©o",
+          description: null,
+        },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prisma,
+      typesenseFixture({
+        lexical: [catalogDocument, secondDocument],
+        catalog: [catalogDocument, secondDocument],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "video",
+      offset: 1,
+      limit: 1,
+    })
+
+    const projectionCall = vi.mocked(prisma.videoLocale.findMany).mock
+      .calls[0]?.[0] as { where?: { videoId?: { in?: string[] } } } | undefined
+    const projectedIds = projectionCall?.where?.videoId?.in ?? []
+    expect(projectedIds).toEqual([secondDocument.id])
+    expect(response.results[0]?.title).toBe("DeuxiÃ¨me vidÃ©o")
   })
 
   it("uses one exact candidate binding for every retrieval lane", async () => {
@@ -1185,7 +1258,24 @@ describe("TypesenseWatchSearchService", () => {
 
   it("returns the French communion title and target audio", async () => {
     const service = new TypesenseWatchSearchService(
-      prismaFixture(),
+      prismaFixture({
+        videoLocales: [
+          {
+            videoId: catalogDocument.id,
+            locale: "fr",
+            languageSlug: "french",
+            title: "La communion des croyants",
+            description: "Les croyants partagent leur vie.",
+          },
+          {
+            videoId: catalogDocument.id,
+            locale: "en",
+            languageSlug: "english",
+            title: "The Fellowship of the Believers",
+            description: "The believers share their lives.",
+          },
+        ],
+      }),
       typesenseFixture({
         lexical: [catalogDocument],
       }) as unknown as TypesenseClient,
@@ -1490,7 +1580,24 @@ describe("TypesenseWatchSearchService", () => {
       catalog: [legacyCatalog],
     })
     const service = new TypesenseWatchSearchService(
-      prismaFixture(),
+      prismaFixture({
+        videoLocales: [
+          {
+            videoId: legacyCatalog.id,
+            locale: "fr",
+            languageSlug: "french",
+            title: "La communion des croyants",
+            description: "Les croyants partagent leur vie.",
+          },
+          {
+            videoId: legacyCatalog.id,
+            locale: "en",
+            languageSlug: "english",
+            title: "The Fellowship of the Believers",
+            description: "The believers share their lives.",
+          },
+        ],
+      }),
       typesense as unknown as TypesenseClient,
       { embedder: vi.fn(async () => embedding) },
     )
