@@ -3,6 +3,7 @@ import { usePathname, useSegments } from "expo-router"
 
 import {
   isDatadogProvisioned,
+  isSheetViewRoute,
   resolveViewName,
   startDatadogView,
 } from "../lib/datadog"
@@ -21,6 +22,10 @@ export function DatadogRouteTracker() {
   useEffect(() => {
     // The view key IS the pathname, so the ref-compare runs before any work.
     if (lastKeyRef.current === pathname) return
+    // Sheets stay inside the view that opened them. lastKeyRef is deliberately
+    // NOT advanced, so dismissing back to that same route is still a no-op and
+    // the underlying view keeps running uninterrupted.
+    if (isSheetViewRoute(segments)) return
     if (!isDatadogProvisioned()) return
     const { key, name } = resolveViewName(segments, pathname)
     lastKeyRef.current = key

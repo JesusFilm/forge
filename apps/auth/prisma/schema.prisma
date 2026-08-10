@@ -74,6 +74,12 @@ enum UserActorType {
   AGENT @map("agent")
 }
 
+enum DeviceCodeStatus {
+  PENDING  @map("pending")
+  APPROVED @map("approved")
+  DENIED   @map("denied")
+}
+
 model User {
   id               String           @id
   name             String
@@ -95,6 +101,7 @@ model User {
   grants      AppGrant[]
   tokens      TokenRecord[]
   auditEvents AuthAuditEvent[]
+  deviceCodes DeviceCode[]
 
   @@unique([email])
   @@index([actorType])
@@ -104,14 +111,16 @@ model User {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime @map("expires_at")
-  token     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  userId    String   @map("user_id")
+  id         String   @id
+  expiresAt  DateTime @map("expires_at")
+  token      String   @unique
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  // "mobile" for sessions created through mobile-only entry points
+  clientKind String?  @map("client_kind")
+  userId     String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   oauthRefreshTokens OauthRefreshToken[]
@@ -396,6 +405,35 @@ model TokenRecord {
   @@index([userId, status])
   @@index([expiresAt])
   @@map("token_record")
+}
+
+/// RFC 8628 device authorization grant. Codes are stored as sha256 hex of the
+/// raw value: a deterministic lookup key, never a password. See
+/// docs/solutions/tooling-decisions/codeql-insufficient-password-hash-false-positive-nonsecret-identifier.md
+model DeviceCode {
+  id                  String           @id @default(cuid())
+  deviceCodeHash      String           @unique @map("device_code_hash")
+  userCodeHash        String           @unique @map("user_code_hash")
+  clientId            String           @map("client_id")
+  scopes              String[]         @default([])
+  codeChallenge       String           @map("code_challenge")
+  codeChallengeMethod String           @map("code_challenge_method")
+  status              DeviceCodeStatus @default(PENDING)
+  userId              String?          @map("user_id")
+  user                User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId           String?          @map("session_id")
+  attemptCount        Int              @default(0) @map("attempt_count")
+  pollingIntervalMs   Int              @map("polling_interval_ms")
+  lastPolledAt        DateTime?        @map("last_polled_at")
+  approvedAt          DateTime?        @map("approved_at")
+  consumedAt          DateTime?        @map("consumed_at")
+  expiresAt           DateTime         @map("expires_at")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("device_code")
 }
 
 model AuthAuditEvent {

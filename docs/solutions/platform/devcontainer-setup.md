@@ -39,6 +39,37 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 - After rebuilding the devcontainer, verify `pg_restore --version`, `pg_dump --version`, and `psql --version` all report PostgreSQL 18 before restoring production backup artifacts.
 - PostgreSQL major-version upgrades cannot reuse an old data directory. Old `pgdata` volumes created with PostgreSQL 16 are intentionally not reused by the PG18 sidecar.
 
+### Resetting a PostgreSQL 16 development volume
+
+The `pgdata18` name deliberately starts PostgreSQL 18 with a new data
+directory; do not rename it back to `pgdata` or mount it at
+`/var/lib/postgresql/data`. Rebuild the devcontainer, apply Admin migrations to
+the new database, and then restore a snapshot.
+
+The old PostgreSQL 16 volume is not removed automatically. To reclaim it, stop
+the development Compose project, list only volumes carrying its old Compose
+volume label, inspect the exact candidate, and remove that exact local-only
+volume after confirming it contains no data you need:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml down
+docker volume ls --filter label=com.docker.compose.volume=pgdata
+docker volume inspect <exact-old-pgdata-volume>
+docker volume rm <exact-old-pgdata-volume>
+```
+
+Never use a broad volume prune for this reset. After rebuilding, verify the
+supported toolchain and sidecar explicitly:
+
+```bash
+pg_restore --version
+pg_dump --version
+psql --version
+docker compose -f .devcontainer/docker-compose.yml exec db \
+  psql -U forge -d forge -Atqc \
+  "select current_setting('server_version'), extversion from pg_extension where extname = 'vector';"
+```
+
 ## Local SSH access
 
 - The devcontainer exposes SSH on host port `127.0.0.1:2222` and disables password authentication.

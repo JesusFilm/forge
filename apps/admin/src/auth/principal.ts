@@ -40,6 +40,11 @@
  * introspects a user-delegated Auth access token issued to apps/web. It is
  * intentionally narrower than editorial roles and exists for watch-event
  * writes, not content reads or admin UI access.
+ *
+ * `MOBILE_USER` is the request-bound human identity minted after Admin
+ * locally verifies an Auth-issued user JWT (JWKS, no introspection round
+ * trip) carrying the mobile client claim. It exists for own-data
+ * watch-progress reads/writes only — never content reads or admin UI access.
  */
 export type Role =
   | "ADMIN"
@@ -51,6 +56,7 @@ export type Role =
   | "MANAGER_BACKEND"
   | "VIDEO_MAPPER"
   | "WEB_USER"
+  | "MOBILE_USER"
   | "CONSUMER_BEARER"
 
 export type Principal = {
@@ -145,6 +151,18 @@ export function WEB_USER_PRINCIPAL({
   return {
     id: subject,
     role: "WEB_USER",
+    rateLimitBucketKey: subject,
+  }
+}
+
+export function MOBILE_USER_PRINCIPAL({
+  subject,
+}: {
+  subject: string
+}): Principal {
+  return {
+    id: subject,
+    role: "MOBILE_USER",
     rateLimitBucketKey: subject,
   }
 }

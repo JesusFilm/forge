@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { searchVideos } from "./search"
+import { resolveWatchSearchRouting, searchVideos } from "./search"
 
 const { adminQuery, semanticSearchAdminQuery } = vi.hoisted(() => ({
   adminQuery: vi.fn(),
@@ -13,6 +13,13 @@ vi.mock("@/lib/admin-client", () => ({
   },
   semanticSearchAdminClient: {
     query: semanticSearchAdminQuery,
+  },
+}))
+
+vi.mock("@/env", () => ({
+  env: {
+    WATCH_SEARCH_PRIMARY_MODE: "MODERN",
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED: true,
   },
 }))
 
@@ -55,6 +62,8 @@ describe("searchVideos", () => {
         variables: {
           input: {
             query: "jesus",
+            mode: "MODERN",
+            shadowMode: "DEFAULT",
             clientRequestId: undefined,
             targetLanguageSlug: undefined,
             queryLanguageSlug: undefined,
@@ -90,6 +99,20 @@ describe("searchVideos", () => {
       nextOffset: 0,
     })
     expect(data.latencyMs).toBe(12)
+  })
+
+  it("keeps DEFAULT as a no-shadow rollback mode", () => {
+    expect(resolveWatchSearchRouting("DEFAULT", true)).toEqual({
+      mode: "DEFAULT",
+      shadowMode: undefined,
+    })
+  })
+
+  it("can disable DEFAULT shadowing without changing the MODERN primary", () => {
+    expect(resolveWatchSearchRouting("MODERN", false)).toEqual({
+      mode: "MODERN",
+      shadowMode: undefined,
+    })
   })
 
   it("canonicalizes a localized UI language without synthesizing route context", async () => {
@@ -253,65 +276,47 @@ describe("searchVideos", () => {
     })
   })
 
-  it("hydrates missing video labels from the catalog slug", async () => {
-    semanticSearchAdminQuery
-      .mockResolvedValueOnce({
-        data: {
-          watchSearch: {
-            results: [
-              {
-                type: "VIDEO",
-                id: "video-collection",
-                slug: "global-football-soccer-event",
-                title: "Global Football Soccer Event",
-                imageUrl: null,
-                imageBlurDataUrl: null,
-                muxThumbnailBlurDataUrl: null,
-                snippet: "",
-                playbackId: null,
-                startSeconds: null,
-                score: 0.9,
-                label: null,
-                durationSeconds: null,
-                childCount: null,
-                languageSlug: "english",
-                languageEnglishName: "English",
-                availability: null,
-                evidence: null,
-                action: {
-                  hrefLanguageSlug: "english",
-                },
+  it("uses watchSearch card fields without a catalog fallback query", async () => {
+    semanticSearchAdminQuery.mockResolvedValueOnce({
+      data: {
+        watchSearch: {
+          results: [
+            {
+              type: "VIDEO",
+              id: "video-collection",
+              slug: "global-football-soccer-event",
+              title: "Global Football Soccer Event",
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              snippet: "",
+              playbackId: null,
+              startSeconds: null,
+              score: 0.9,
+              label: "COLLECTION",
+              durationSeconds: null,
+              childCount: 2,
+              languageSlug: "english",
+              languageEnglishName: "English",
+              availability: null,
+              evidence: null,
+              action: {
+                hrefLanguageSlug: "english",
               },
-            ],
-            hasMore: false,
-            query: "world cup",
-            searchMode: "watch-search",
-            latencyMs: 15,
-            nextOffset: 0,
-          },
+            },
+          ],
+          hasMore: false,
+          query: "world cup",
+          searchMode: "watch-search",
+          latencyMs: 15,
+          nextOffset: 0,
         },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videoBySlug: {
-            label: "COLLECTION",
-            children: [
-              { child: { id: "child-1" } },
-              { child: { id: "child-2" } },
-            ],
-          },
-        },
-      })
+      },
+    })
 
     const data = await searchVideos("world cup")
 
-    expect(semanticSearchAdminQuery).toHaveBeenCalledTimes(2)
-    expect(semanticSearchAdminQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        variables: { slug: "global-football-soccer-event" },
-        fetchPolicy: "no-cache",
-      }),
-    )
+    expect(semanticSearchAdminQuery).toHaveBeenCalledTimes(1)
     expect(data.results[0]).toMatchObject({
       slug: "global-football-soccer-event",
       label: "COLLECTION",

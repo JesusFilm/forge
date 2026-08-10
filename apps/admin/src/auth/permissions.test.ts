@@ -196,6 +196,69 @@ describe("hasPermission — Web user bearer gate", () => {
     expect(hasPermission(WEB_USER, "read:experiences")).toBe(false)
     expect(hasPermission(WEB_USER, "write:experiences")).toBe(false)
     expect(hasPermission(WEB_USER, "admin:all")).toBe(false)
+    // Progress own-data scopes belong to MOBILE_USER, never WEB_USER.
+    expect(hasPermission(WEB_USER, "read:watch-progress:own")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:watch-progress:own")).toBe(false)
+    expect(hasPermission(WEB_USER, "delete:watch-progress:own")).toBe(false)
+  })
+})
+
+describe("hasPermission — Mobile user gate", () => {
+  const MOBILE_USER: Principal = {
+    id: "auth-user-2",
+    role: "MOBILE_USER",
+    rateLimitBucketKey: "auth-user-2",
+  }
+
+  const MOBILE_USER_GRANTS: ReadonlySet<PermissionKey> = new Set([
+    "read:watch-progress:own",
+    "write:watch-progress:own",
+    "delete:watch-progress:own",
+  ])
+
+  it("grants exactly the three own-data watch-progress scopes", () => {
+    const allKeys: PermissionKey[] = [
+      "read:experiences",
+      "read:videos",
+      "read:video-metadata",
+      "read:video-mapper-catalog",
+      "read:reference",
+      "read:media-assets",
+      "access:manager",
+      "read:manager-read-models",
+      "write:experiences",
+      "write:videos",
+      "write:media-assets",
+      "write:transcript-embeddings",
+      "write:experience-embeddings",
+      "write:watch-events",
+      "read:watch-progress:own",
+      "write:watch-progress:own",
+      "delete:watch-progress:own",
+      "write:manager-enrichment-trigger",
+      "write:manager-jobs",
+      "delete:media-assets",
+      "publish:experiences",
+      "archive:experiences",
+      "system:trigger-workflow",
+      "system:write-derived",
+      "admin:all",
+    ]
+    for (const key of allKeys) {
+      expect(hasPermission(MOBILE_USER, key)).toBe(MOBILE_USER_GRANTS.has(key))
+    }
+  })
+
+  it("carries no watch-EVENT write — the analytics log stays WEB_USER-only in v1", () => {
+    expect(hasPermission(MOBILE_USER, "write:watch-events")).toBe(false)
+  })
+
+  it("ADMIN retains the own-data keys as operational override", () => {
+    expect(hasPermission(ADMIN, "read:watch-progress:own")).toBe(true)
+    expect(hasPermission(ADMIN, "write:watch-progress:own")).toBe(true)
+    expect(hasPermission(ADMIN, "delete:watch-progress:own")).toBe(true)
+    expect(hasPermission(VIEWER, "read:watch-progress:own")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "read:watch-progress:own")).toBe(false)
   })
 })
 
@@ -430,6 +493,10 @@ describe("permission matrix completeness", () => {
       "write:media-assets",
       "write:transcript-embeddings",
       "write:experience-embeddings",
+      "write:watch-events",
+      "read:watch-progress:own",
+      "write:watch-progress:own",
+      "delete:watch-progress:own",
       "write:manager-enrichment-trigger",
       "write:manager-jobs",
       "delete:media-assets",
@@ -569,6 +636,9 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:watch-events": true,
+        "read:watch-progress:own": true,
+        "write:watch-progress:own": true,
+        "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -608,6 +678,9 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:watch-events": true,
+        "read:watch-progress:own": true,
+        "write:watch-progress:own": true,
+        "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -650,6 +723,9 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:watch-events": true,
+        "read:watch-progress:own": true,
+        "write:watch-progress:own": true,
+        "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -700,6 +776,9 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:watch-events": true,
+        "read:watch-progress:own": true,
+        "write:watch-progress:own": true,
+        "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,

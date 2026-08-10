@@ -6,6 +6,7 @@
 // for mutations.
 
 import type { PrismaClient } from "@prisma/client"
+import { env } from "@/config/env"
 import { ExperienceService } from "@/services/experience.service"
 import { ExperienceSearchService } from "@/services/experience.search"
 import { ManagerJobService } from "@/services/manager-job.service"
@@ -20,9 +21,163 @@ import { VideoSearchSocialService } from "@/services/video-search-social.service
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSearchEventService } from "@/services/watch-search-events.service"
 import { WatchSearchService } from "@/services/watch-search.service"
+import { TypesenseClient } from "@/services/typesense-client"
+import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import {
+  createCandidateWatchSearchProfile,
+  createCurrentWatchSearchProfile,
+  freezeCurrentWatchSearchProfile,
+  type TypesenseWatchSearchProfile,
+  watchSearchBindingMembers,
+} from "@/services/typesense-watch-search-profile"
+import {
+  createTypesenseWatchSearchService,
+  TypesenseWatchSearchService,
+  TypesenseWatchSearchUnavailableError,
+} from "@/services/typesense-watch-search.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
 
 export type Services = ReturnType<typeof createServices>
+
+type ServingProfileResolver = Pick<
+  TypesenseWatchSearchCandidateGenerationService,
+  "getPointer" | "resolveGeneration"
+>
+
+export async function resolveWatchSearchServingProfile(input: {
+  selector: string
+  applicationRevision: string | null
+  transcriptProjectionRevision: bigint | null
+  qrelsRevision: string | null
+  typesense: Pick<TypesenseClient, "getAlias">
+  generations: ServingProfileResolver
+}): Promise<TypesenseWatchSearchProfile> {
+  if (input.selector === "CURRENT") return createCurrentWatchSearchProfile()
+  const match = /^CANDIDATE:([A-Za-z0-9][A-Za-z0-9._-]{0,127})$/.exec(
+    input.selector,
+  )
+  if (!match) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Invalid Typesense Watch Search serving profile",
+    )
+  }
+  if (!input.applicationRevision) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Candidate serving requires an application revision",
+    )
+  }
+  if (input.transcriptProjectionRevision == null) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Candidate serving requires a transcript projection revision",
+    )
+  }
+  if (!input.qrelsRevision) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Candidate serving requires a qrels revision",
+    )
+  }
+
+  const servingPointer = await input.generations.getPointer("SERVING")
+  if (servingPointer.generationId !== match[1]) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Selected candidate is not pinned by the serving pointer",
+    )
+  }
+
+  const currentProfile = await freezeCurrentWatchSearchProfile(input.typesense)
+  const transcriptCollection = currentProfile.binding.transcript
+
+  const generation = await input.generations.resolveGeneration({
+    generationId: match[1]!,
+    applicationRevision: input.applicationRevision,
+    transcriptCollection,
+    transcriptProjectionRevision: input.transcriptProjectionRevision,
+    requireQualified: true,
+    currentBindings: watchSearchBindingMembers(currentProfile),
+    qrelsRevision: input.qrelsRevision,
+  })
+  return createCandidateWatchSearchProfile(generation)
+}
+
+export const CANDIDATE_SERVING_SERVICE_CACHE_TTL_MS = 30_000
+
+type CandidateServingServiceCacheEntry = {
+  promise: Promise<TypesenseWatchSearchService>
+  expiresAt: number
+}
+
+const candidateServingServices = new WeakMap<
+  PrismaClient,
+  CandidateServingServiceCacheEntry
+>()
+
+export function resolveCachedCandidateServingService(input: {
+  prisma: PrismaClient
+  create(): Promise<TypesenseWatchSearchService>
+  now?: () => number
+}): Promise<TypesenseWatchSearchService> {
+  const now = (input.now ?? Date.now)()
+  const cached = candidateServingServices.get(input.prisma)
+  if (cached && cached.expiresAt > now) return cached.promise
+
+  const entry: CandidateServingServiceCacheEntry = {
+    promise: Promise.resolve().then(input.create),
+    expiresAt: now + CANDIDATE_SERVING_SERVICE_CACHE_TTL_MS,
+  }
+  entry.promise = entry.promise.catch((error) => {
+    if (candidateServingServices.get(input.prisma) === entry) {
+      candidateServingServices.delete(input.prisma)
+    }
+    throw error
+  })
+  candidateServingServices.set(input.prisma, entry)
+  return entry.promise
+}
+
+function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
+  if (env.WATCH_SEARCH_TYPESENSE_PROFILE === "CURRENT") {
+    return createTypesenseWatchSearchService(prisma)
+  }
+
+  const host = process.env.TYPESENSE_HOST
+  const apiKey = env.TYPESENSE_SEARCH_API_KEY
+  if (!host || !apiKey) return null
+  const resolveService = () =>
+    resolveCachedCandidateServingService({
+      prisma,
+      create: async () => {
+        const typesense = new TypesenseClient({
+          host,
+          apiKey,
+          timeoutMs: 2_000,
+        })
+        const generations = new TypesenseWatchSearchCandidateGenerationService(
+          prisma,
+          typesense,
+        )
+        const profile = await resolveWatchSearchServingProfile({
+          selector: env.WATCH_SEARCH_TYPESENSE_PROFILE,
+          applicationRevision:
+            env.NEXT_PUBLIC_DATADOG_VERSION ??
+            process.env.RAILWAY_GIT_COMMIT_SHA ??
+            process.env.VERCEL_GIT_COMMIT_SHA ??
+            process.env.GIT_COMMIT_SHA ??
+            null,
+          transcriptProjectionRevision:
+            env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION ?? null,
+          qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
+          typesense,
+          generations,
+        })
+        return new TypesenseWatchSearchService(prisma, typesense, { profile })
+      },
+    })
+  return {
+    search: async (
+      ...args: Parameters<TypesenseWatchSearchService["search"]>
+    ) => (await resolveService()).search(...args),
+  }
+}
 
 export function createServices(prisma: PrismaClient) {
   return {
@@ -40,6 +195,7 @@ export function createServices(prisma: PrismaClient) {
     watchEvent: new WatchEventService(prisma),
     watchSearchEvent: new WatchSearchEventService(prisma),
     watchSearch: new WatchSearchService(prisma),
+    typesenseWatchSearch: createServingTypesenseWatchSearchService(prisma),
     watchSetting: new WatchSettingService(prisma),
   }
 }

@@ -55,10 +55,10 @@ function emptyToUndefined(value: string | undefined): string | undefined {
   return value === "" ? undefined : value
 }
 
-function productionDefault(
-  productionValue: string,
-  localValue: string,
-): string {
+function productionDefault<T extends string>(
+  productionValue: T,
+  localValue: T,
+): T {
   return process.env.NODE_ENV === "production" ? productionValue : localValue
 }
 
@@ -234,6 +234,14 @@ export const env = createEnv({
     DD_SERVICE: z.string().min(1).optional(),
     DD_VERSION: z.string().min(1).optional(),
     WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT: booleanEnv(true),
+    // Public Watch search rollout controls. MODERN is the Typesense primary;
+    // operators can restore DEFAULT without a code revert. DEFAULT shadowing
+    // is requested only while MODERN is primary and runs after the response in
+    // Admin, so disabling it does not change result selection.
+    WATCH_SEARCH_PRIMARY_MODE: z
+      .enum(["DEFAULT", "MODERN"])
+      .default(productionDefault("MODERN", "DEFAULT")),
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED: booleanEnv(true),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -261,6 +269,25 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
+    // Public Admin GraphQL endpoint used by client-side Watch search reads.
+    // Admin's `watchSearch` query is public; production Admin must allow the
+    // Web origin in `CORS_ALLOWED_ORIGINS` before browser-direct calls work.
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: z
+      .url()
+      .default(
+        productionDefault(
+          "https://admin.jesusfilm.org/api/graphql",
+          "http://localhost:3003/api/graphql",
+        ),
+      )
+      .refine(
+        softHostAllowlistRefine(
+          "NEXT_PUBLIC_ADMIN_GRAPHQL_URL",
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS,
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
+        ),
+        { message: "unreachable" },
+      ),
     // U10 — Environment-specific absolute origin used by the watch-page Share
     // modal to build sharable Copy Link / Copy Embed Code values that DO
     // include `/watch/` (the Next.js basePath). Defaults to
@@ -322,6 +349,9 @@ export const env = createEnv({
     DD_VERSION: datadogServerVersionFallback(),
     WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT:
       process.env.WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT,
+    WATCH_SEARCH_PRIMARY_MODE: process.env.WATCH_SEARCH_PRIMARY_MODE,
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:
@@ -335,6 +365,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID,
     ),
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },
 })

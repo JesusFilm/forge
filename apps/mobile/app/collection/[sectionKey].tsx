@@ -137,7 +137,12 @@ function CollectionPlayerContent({
     return url && validateStreamingUrl(url) ? url : null
   }, [currentIndex, items])
 
-  const { player } = useManagedVideoPlayer(activeStreamingUrl)
+  const activeVideoId = items[currentIndex]?.videoId ?? null
+  const { player } = useManagedVideoPlayer(activeStreamingUrl, undefined, {
+    // KTD5 opt-in: identity re-keys with the active pager item, flushing
+    // the departing episode inside the adapter.
+    progress: activeVideoId ? { videoId: activeVideoId } : null,
+  })
 
   const flatListRef = useRef<FlatList<CollectionItem>>(null)
 

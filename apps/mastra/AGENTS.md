@@ -45,10 +45,16 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Langfuse UI. ONE Langfuse project (`forge-mastra`) holds every agent's
   prompt, with labels `production` / `development` distinguishing
   environments; two key pairs (Railway + local dev) live inside it. The
-  seeker agent is the one consumer (feat-272): its `instructions` resolve
-  through `getManagedPrompt` (prompt `seeker-system`, WHOLE prompt — no
-  composition split) with the full working text as compiled-in fallback.
-  Langfuse tracing is separate unbuilt work (feat-321).
+  seeker agent resolves `seeker-system` by the exact repository-pinned version
+  and content hash in `seeker-production-config.ts` (WHOLE prompt — no
+  composition split), with the full working text as compiled-in degraded
+  fallback. The `production` label is an alert-only deployment marker, not a
+  production traffic selector; label defaults remain for candidate intake.
+  Langfuse tracing shipped separately (feat-321): opt-in, default-off behind
+  `LANGFUSE_TRACING_ENABLED` plus the credential trio, routing seeker turns
+  by a per-process marker to a dedicated observability config that exports
+  RAW conversation content to Langfuse ONLY — no local copy. Every other
+  trace stays on the redacted default config.
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized

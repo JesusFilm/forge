@@ -36,6 +36,18 @@ export const searchVideosInputSchema = z.object({
     .describe("Max results to return."),
 })
 
+/**
+ * Agent-facing output contract of the shared executor. `executeSearchVideos`
+ * is a straight pass-through of the client's parsed rows, so this stays
+ * structurally identical to `searchVideosResponseSchema` in
+ * `../../services/admin-agent-tools-client.ts` — see that schema's docstring
+ * for why each feat-327 field is optional/tolerant. A drift guard in
+ * `agent-tools.test.ts` pins the two row shapes against each other.
+ *
+ * Widening is additive for the experience-authoring agents that already
+ * consume this tool: they read `videoId`/`title`/`snippet`/`slug`/`imageUrl`
+ * and simply ignore the new fields.
+ */
 export const searchVideosOutputSchema = z.object({
   videos: z.array(
     z.object({
@@ -44,6 +56,10 @@ export const searchVideosOutputSchema = z.object({
       snippet: z.string(),
       slug: z.string(),
       imageUrl: z.string().nullable(),
+      playbackId: z.string().optional(),
+      durationSeconds: z.number().nullable().optional(),
+      languageSlug: z.string().nullable().optional(),
+      availability: z.object({ kind: z.string() }).optional(),
     }),
   ),
 })

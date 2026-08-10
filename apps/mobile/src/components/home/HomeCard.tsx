@@ -14,6 +14,11 @@ import {
 } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
+import {
+  WatchProgressBar,
+  progressAccessibilityText,
+} from "../watch/WatchProgressBar"
+import { useWatchProgressEntry } from "../../hooks/useWatchProgressEntry"
 import { useRouter } from "expo-router"
 
 import { BLACK, hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
@@ -93,6 +98,11 @@ export const HomeCard = memo(function HomeCard({
     prefetchHeroStream(card.slug)
   }
 
+  // card.videoId, not card.id: the render key carries an index suffix and
+  // never matches a store entry, which would silently drop progress from the
+  // accessibility label while the visible bar rendered correctly.
+  const progressEntry = useWatchProgressEntry(card.videoId)
+
   const handlePress = () => {
     if (!card.slug) return
     // Carry seed data forward so the detail screen paints instantly.
@@ -121,7 +131,9 @@ export const HomeCard = memo(function HomeCard({
       onPressIn={interactive ? handlePressIn : undefined}
       onPress={interactive ? handlePress : undefined}
       accessibilityRole={interactive ? "button" : "image"}
-      accessibilityLabel={card.title}
+      accessibilityLabel={[card.title, progressAccessibilityText(progressEntry)]
+        .filter(Boolean)
+        .join(", ")}
       // Stable, low-cardinality RUM action name (auto-tracker would leak the
       // title from accessibilityLabel) — KTD10. Spread: Pressable omits the type.
       {...{ "dd-action-name": "home-card" }}
@@ -169,6 +181,7 @@ export const HomeCard = memo(function HomeCard({
           {card.title}
         </Text>
       </View>
+      <WatchProgressBar videoId={card.videoId} />
     </Pressable>
   )
 })

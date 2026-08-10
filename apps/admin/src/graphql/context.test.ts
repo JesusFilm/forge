@@ -6,6 +6,7 @@ const isValidManagerBearer = vi.fn()
 const isValidVideoMapperBearer = vi.fn()
 const isValidConsumerBearer = vi.fn()
 const resolveWebUserPrincipalFromToken = vi.fn()
+const resolveMobileUserPrincipalFromToken = vi.fn()
 
 vi.mock("@/auth/session", () => ({
   resolvePrincipalFromRequest,
@@ -31,6 +32,10 @@ vi.mock("@/auth/web-user-token", () => ({
   resolveWebUserPrincipalFromToken,
 }))
 
+vi.mock("@/auth/mobile-user-token", () => ({
+  resolveMobileUserPrincipalFromToken,
+}))
+
 describe("createContext", () => {
   beforeEach(() => {
     resolvePrincipalFromRequest.mockReset()
@@ -39,11 +44,13 @@ describe("createContext", () => {
     isValidVideoMapperBearer.mockReset()
     isValidConsumerBearer.mockReset()
     resolveWebUserPrincipalFromToken.mockReset()
+    resolveMobileUserPrincipalFromToken.mockReset()
     isValidWorkflowBearer.mockReturnValue(false)
     isValidManagerBearer.mockReturnValue(false)
     isValidVideoMapperBearer.mockReturnValue(false)
     isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
     resolveWebUserPrincipalFromToken.mockResolvedValue(null)
+    resolveMobileUserPrincipalFromToken.mockResolvedValue(null)
   })
 
   it("returns PUBLIC when no session resolves", async () => {
@@ -211,6 +218,54 @@ describe("createContext", () => {
     expect(ctx.user).toEqual({ id: null, role: "VIDEO_MAPPER" })
     expect(isValidVideoMapperBearer).toHaveBeenCalledWith("Bearer mapper-key")
     expect(isValidConsumerBearer).not.toHaveBeenCalled()
+  })
+
+  it("mints MOBILE_USER before the web-user branch, without an introspection call", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    resolveMobileUserPrincipalFromToken.mockResolvedValueOnce({
+      id: "auth-user-456",
+      role: "MOBILE_USER",
+      rateLimitBucketKey: "auth-user-456",
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer mobile-user-jwt" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({
+      id: "auth-user-456",
+      role: "MOBILE_USER",
+      rateLimitBucketKey: "auth-user-456",
+    })
+    // Chain position is load-bearing: a mobile JWT must never spend the
+    // web branch's network introspection round trip.
+    expect(resolveWebUserPrincipalFromToken).not.toHaveBeenCalled()
+  })
+
+  it("falls through to the web-user branch when the bearer is not a mobile JWT", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    resolveMobileUserPrincipalFromToken.mockResolvedValueOnce(null)
+    resolveWebUserPrincipalFromToken.mockResolvedValueOnce({
+      id: "auth-user-123",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-123",
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer jfp_at_opaque" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({
+      id: "auth-user-123",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-123",
+    })
   })
 
   it("mints WEB_USER before falling through to consumer-bearer", async () => {

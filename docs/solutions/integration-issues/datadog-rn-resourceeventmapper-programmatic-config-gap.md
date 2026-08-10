@@ -137,6 +137,14 @@ datadogLog.info("watch_search", {
 })
 ```
 
+> **Superseded 2026-08-04 (mobile search observability parity, feat-335):**
+> the two snippets above show retired shapes. The monotonic counter id was
+> replaced by a UUID (admin's echoed request id adopted on success), and the
+> log now uses the shared cross-client message `watch_search analytics` with
+> `watch_search.*`-prefixed attributes (raw text under `watch_search.query`;
+> no bare `term` field). The Log-not-RUM principle this section illustrates
+> still holds. Runbook: `docs/operations/watch-search-analytics-datadog.md`.
+
 Trace linking (RUM → APM) is a fully independent mechanism that needed no mapper at all — it rides on `firstPartyHosts` + the W3C `traceparent` header:
 
 ```ts

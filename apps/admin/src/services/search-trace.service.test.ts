@@ -6,9 +6,11 @@ const envMock = vi.hoisted(() => ({
     NODE_ENV: "test" as "test" | "development" | "production" | undefined,
   },
 }))
+const afterMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/config/env", () => envMock)
 vi.mock("@/db/client", () => ({ prisma: {} }))
+vi.mock("next/server", () => ({ after: afterMock }))
 vi.mock("@/services/search-trace-retention.service", () => ({
   purgeExpiredSearchTraces: vi.fn(async () => ({
     purgedCount: 0,
@@ -36,8 +38,10 @@ import {
 } from "@/services/search-trace-retention.service"
 import {
   classifyLatencyBucket,
+  enqueueWatchSearchTrace,
   recordAdminVideoLibrarySearchTraceSafely,
   recordSearchTraceSafely,
+  recordWatchSearchTraceToCompletionSafely,
   recordWatchSearchTraceSafely,
   sampleSearchTraces,
   writeSearchTrace,
@@ -91,6 +95,49 @@ describe("search trace service", () => {
     expect(classifyLatencyBucket(100)).toBe("lt_250ms")
     expect(classifyLatencyBucket(249)).toBe("lt_250ms")
     expect(classifyLatencyBucket(2500)).toBe("gte_2500ms")
+  })
+
+  it("registers queued Watch traces with the response lifecycle", async () => {
+    const prisma = buildPrisma()
+
+    expect(
+      enqueueWatchSearchTrace(
+        {
+          input: { query: "Jesus", targetLanguageSlug: "english" },
+          response: {
+            query: "Jesus",
+            requestId: "watch_req_after_123",
+            searchMode: "watch-search-typesense",
+            degraded: false,
+            latencyMs: 80,
+            hasMore: false,
+            nextOffset: 20,
+            languageInterpretation: {
+              queryLanguageSlug: "english",
+              queryNamedLanguageSlug: null,
+              targetLanguageSlug: "english",
+              targetLanguageSource: "explicit_target",
+              displayLanguageSlug: "english",
+              routeLanguageSlug: null,
+              currentWatchLanguageSlug: null,
+              acceptLanguage: null,
+              acceptLanguageSlug: null,
+            },
+            laneStatuses: [],
+            results: [],
+          },
+          startedAt: new Date("2026-05-01T00:00:00.000Z"),
+          completedAt: new Date("2026-05-01T00:00:00.080Z"),
+          now: new Date("2026-05-01T00:00:00.080Z"),
+        },
+        prisma as unknown as Parameters<typeof enqueueWatchSearchTrace>[1],
+      ),
+    ).toBe(true)
+
+    const lifecycleCallback = afterMock.mock.calls[0]?.[0]
+    expect(lifecycleCallback).toBeTypeOf("function")
+    await lifecycleCallback?.()
+    expect(prisma.searchTrace.create).toHaveBeenCalledOnce()
   })
 
   it("stores a raw trace with 29-day expiry and a query-free aggregate", async () => {
@@ -322,15 +369,17 @@ describe("search trace service", () => {
       requestId: "watch_req_123456",
       locale: "russian",
       routeSource: "GRAPHQL",
-      requestedMode: "watch-search",
+      requestedMode: "default",
       searchMode: "watch-search",
       resultCount: 1,
       outcome: "DEGRADED",
       traceClass: expect.stringContaining("semantic_retrieval_degraded"),
     })
     expect(rawData.metadata).toMatchObject({
-      version: "watch-search-analytics/v2",
+      version: "watch-search-analytics/v3",
       requestId: "watch_req_123456",
+      traceRole: "primary",
+      shadowOfRequestId: null,
       queryLength: "Should I pray to God?".length,
       resultCount: 1,
       degraded: true,
@@ -381,6 +430,64 @@ describe("search trace service", () => {
       "Should I pray to God?",
     )
   })
+
+  it.each(["shadow", "comparison_current", "comparison_candidate"] as const)(
+    "stores %s detail without counting it as user traffic in aggregates",
+    async (traceRole) => {
+      const prisma = buildPrisma()
+
+      const result = await recordWatchSearchTraceToCompletionSafely(
+        {
+          input: { query: "Jesus", mode: "default" },
+          response: {
+            query: "Jesus",
+            requestId: "watch_shadow_123456",
+            searchMode: "watch-search",
+            degraded: false,
+            latencyMs: 42,
+            hasMore: false,
+            nextOffset: 20,
+            languageInterpretation: {
+              queryLanguageSlug: "english",
+              queryNamedLanguageSlug: null,
+              targetLanguageSlug: "english",
+              targetLanguageSource: "explicit_target",
+              displayLanguageSlug: "english",
+              routeLanguageSlug: null,
+              currentWatchLanguageSlug: null,
+              acceptLanguage: null,
+              acceptLanguageSlug: null,
+            },
+            laneStatuses: [],
+            results: [],
+          },
+          startedAt: new Date("2026-05-01T00:00:00.000Z"),
+          completedAt: new Date("2026-05-01T00:00:00.042Z"),
+          traceRole,
+          shadowOfRequestId: "watch_primary_123456",
+        },
+        prisma as unknown as Parameters<
+          typeof recordWatchSearchTraceToCompletionSafely
+        >[1],
+      )
+
+      expect(result).toMatchObject({
+        ok: true,
+        aggregateStored: false,
+        rawStored: true,
+      })
+      expect(prisma.searchTraceAggregate.upsert).not.toHaveBeenCalled()
+      expect(
+        prisma.searchTrace.create.mock.calls[0]?.[0]?.data.metadata,
+      ).toMatchObject({
+        traceRole,
+        shadowOfRequestId: "watch_primary_123456",
+      })
+      expect(
+        prisma.searchTrace.create.mock.calls[0]?.[0]?.data.sampleEligible,
+      ).toBe(false)
+    },
+  )
 
   it("derives Watch trace availability score from the availability kind", async () => {
     const prisma = buildPrisma()

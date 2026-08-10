@@ -51,6 +51,8 @@ tags:
 
 ## Context
 
+> **[SCOPED 2026-08-05 — the SDK bar now covers prompt READS only.]** feat-321 adopted **Langfuse tracing** through `@mastra/langfuse` (a Mastra exporter package that transitively installs `@langfuse/client` + `@langfuse/otel`) — exercising exactly the reopening this doc's KTD1 reserved ("revisit only if Langfuse tracing is ever adopted — a separate decision"). What survives of the bar: the **prompt-retrieval path is unchanged** — still the hand-rolled no-throw client below, and no direct `langfuse`/`@langfuse/*` entry in any manifest. Why the rejection reasons don't transplant to tracing: the exporter performs one-way telemetry **writes**, fire-and-forget off the chat-turn path (never blocking a turn), its base URL is covered by the same production host-allowlist boot guard the prompt client uses, and its OTLP transport performs no redirect-following (verified against the installed dist in the feat-321 review). Successor instruction: `apps/mastra/src/mastra/langfuse-tracing.ts` + the Resolution in `docs/roadmap/ai-chat/feat-321-langfuse-tracing.md`; decision rationale (Langfuse vs Mastra-native) in `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
+
 `apps/mastra` gained a two-layer helper for retrieving **Langfuse-managed system prompts** — text authored and versioned in the Langfuse UI, fetched at runtime, with a compiled-in fallback whenever retrieval fails. Layer 1 (`fetchLangfusePrompt`) is a single-attempt no-throw HTTP client over Langfuse's v2 Prompts API. Layer 2 (`getManagedPrompt`) stacks a TTL cache, failure cooldown, serve-stale, single-flight, and fallback-with-provenance on top. **[CODE]** `apps/mastra/CLAUDE.md:708-733`.
 
 Two boundaries define what this is _not_:

@@ -3,10 +3,16 @@
 // callback + terminal discriminated result). Types live in conversations.ts.
 
 import {
+  buildCanonicalWatchVideoPath,
+  DEFAULT_WATCH_LANGUAGE_SLUG,
+} from "@forge/watch-url-policy/routes"
+
+import {
   REPLY_FAILURE_REASONS,
   type MessageEngine,
   type ReplyFailureReason,
   type SeekerSource,
+  type VideoAttachment,
 } from "./conversations"
 import { readSseStream } from "./sse"
 
@@ -26,6 +32,8 @@ export type StreamReplyResult =
       sources: SeekerSource[]
       grounded: boolean
       engine: MessageEngine
+      /** The featured video, when the terminal result carried a valid one. */
+      video?: VideoAttachment
     }
   | { ok: false; reason: ReplyFailureReason; partialText: string }
 
@@ -53,9 +61,13 @@ function toReason(value: unknown): ReplyFailureReason {
     : "generation_failed"
 }
 
-// Defensive projection of the (untrusted) wire sources into typed shape. The
-// render layer additionally enforces the https-only link + text-only guards.
-function toSources(value: unknown): SeekerSource[] {
+/**
+ * Defensive projection of the (untrusted) wire sources into typed shape. The
+ * render layer additionally enforces the https-only link + text-only guards.
+ * Exported since feat-329 so the REPLAY wire is re-validated by exactly this
+ * function — the replay payload is never trusted more than the live one.
+ */
+export function toSources(value: unknown): SeekerSource[] {
   if (!Array.isArray(value)) return []
   const out: SeekerSource[] = []
   for (const raw of value) {
@@ -71,6 +83,105 @@ function toSources(value: unknown): SeekerSource[] {
     })
   }
   return out
+}
+
+// MIRROR of apps/mastra/src/mastra/seeker-video-gates.ts (feat-327; apps can't
+// cross-import). Change all three together — but chat may only TIGHTEN: the
+// slug gate is the sole control over the raw-interpolated watch path.
+
+// Mux playback ids are opaque tokens; anything outside this alphabet cannot be
+// one, and the id is interpolated into the poster/stream URLs (plan D9).
+const PLAYBACK_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/
+
+// Not interpolated into a URL, but it is the one string the model supplies, so
+// it gets a bound rather than being the lone unvalidated hole in a
+// field-by-field allowlist — and feat-329 will persist it.
+const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
+
+// Case-SENSITIVE lowercase-only slug gate (plan D9): the SOLE control over the
+// raw-interpolated watch path, security- AND link-integrity-bearing. All 1,154
+// PUBLISHED slugs conform (2026-08-04); accented wire slugs have no page.
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,80}$/
+
+// Watch-page origin + prefix. The PATH always comes from watch-url-policy.
+const WATCH_URL_BASE = "https://www.jesusfilm.org/watch"
+
+function isSlug(value: unknown): value is string {
+  return typeof value === "string" && SLUG_PATTERN.test(value)
+}
+
+// The closed reason vocabulary for the rejection log. Tokens ONLY — a wire
+// value must never reach a log line (titles are catalog text, and the frame
+// rides a special-category conversation).
+export type VideoRejectReason =
+  | "shape"
+  | "video_id"
+  | "title"
+  | "playback_id"
+  | "slug"
+
+// A silent projection makes a producer/consumer wire drift invisible at the
+// flag flip. Enum-only; lands in the DOGFOODER'S BROWSER CONSOLE, never
+// Railway — chat ships no browser log collector. See apps/chat/CLAUDE.md.
+function warnRejectedVideo(reason: VideoRejectReason): void {
+  console.warn(`[chat-video] event=projection_rejected reason=${reason}`)
+}
+
+/**
+ * Defensive projection of the (untrusted) wire video into `VideoAttachment`
+ * (feat-328). Field-by-field allowlist with pattern gates; any failure on the
+ * REQUIRED fields yields `undefined` so the turn simply renders without a
+ * player. `watchUrl` is built HERE from the validated slugs — a `watchUrl` (or
+ * any other URL) on the wire is ignored, never rendered (plan D9/P7). An
+ * absent or invalid `languageSlug` falls back to the default watch language;
+ * only the CONTENT slug is a rejection vector.
+ *
+ * `onRejected` overrides where a refusal is reported. The default is the live
+ * terminal frame's one-line browser warning; the REPLAY caller (feat-329)
+ * passes a collector instead, because it re-projects every stored turn on
+ * every thread open and would otherwise turn one thread open into a burst.
+ */
+export function toVideo(
+  value: unknown,
+  onRejected: (reason: VideoRejectReason) => void = warnRejectedVideo,
+): VideoAttachment | undefined {
+  const rejectVideo = (reason: VideoRejectReason): undefined => {
+    onRejected(reason)
+    return undefined
+  }
+  // Nothing declared is the NORMAL case — the producer omits the field, and
+  // that is most turns. Never log it: the diagnostic exists for a value that
+  // was actually sent and then failed a gate.
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== "object" || Array.isArray(value))
+    return rejectVideo("shape")
+  const v = value as Record<string, unknown>
+
+  // Bind every wire field ONCE: the value that passes the gate must be the
+  // same value that gets interpolated, never a second read of the source.
+  const { videoId, title, playbackId, slug, durationSeconds: duration } = v
+  const rawLanguageSlug = v.languageSlug
+  if (typeof videoId !== "string" || !VIDEO_ID_PATTERN.test(videoId))
+    return rejectVideo("video_id")
+  if (typeof title !== "string" || title.trim().length === 0)
+    return rejectVideo("title")
+  if (typeof playbackId !== "string" || !PLAYBACK_ID_PATTERN.test(playbackId))
+    return rejectVideo("playback_id")
+  if (!isSlug(slug)) return rejectVideo("slug")
+
+  const languageSlug = isSlug(rawLanguageSlug)
+    ? rawLanguageSlug
+    : DEFAULT_WATCH_LANGUAGE_SLUG
+  return {
+    videoId,
+    title,
+    playbackId,
+    durationSeconds:
+      typeof duration === "number" && Number.isFinite(duration) && duration > 0
+        ? duration
+        : null,
+    watchUrl: `${WATCH_URL_BASE}${buildCanonicalWatchVideoPath(slug, languageSlug)}`,
+  }
 }
 
 // Flag-off path: resolve buildStubReply after a visible delay, abortable.
@@ -162,6 +273,7 @@ async function streamSeekerReply(
           text?: unknown
           sources?: unknown
           grounded?: unknown
+          video?: unknown
         }
         terminal = {
           ok: true,
@@ -169,6 +281,8 @@ async function streamSeekerReply(
           sources: toSources(d.sources),
           grounded: d.grounded === true,
           engine: "seeker",
+          // Terminal-frame only (plan D3) — no mid-stream video callback exists.
+          video: toVideo(d.video),
         }
         return
       }

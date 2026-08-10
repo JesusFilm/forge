@@ -42,6 +42,25 @@ const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
 // misbehaving upstream can claim before the byte-cap aborts the stream. Override
 // via JESUSFILM_RAG_MAX_RESPONSE_BYTES; never required at boot.
 const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
+// 2 MiB ceiling on the buffered admin agent-tools response body (feat-327).
+//
+// This is a POLICY ceiling, not a derived contract bound — say so plainly,
+// because the derivation does not close: admin's search-videos projection
+// truncates neither `snippet` (a raw catalog description) nor `title`, and the
+// shared client's own input schema admits `limit` up to 20, not just the
+// seeker's pinned 8. So no upstream invariant caps the honest worst case.
+//
+// What the number IS sized against, in BYTES: a plausible large legitimate
+// response — 20 rows × a generous 8,000 UTF-16 units of snippet at the repo's
+// 3-bytes-per-unit worst case ≈ 480 kB plus envelope. 2 MiB leaves ~4x headroom
+// over that while still bounding what a misbehaving upstream can push onto the
+// heap of the single process running every Mastra agent and workflow. Over-cap
+// is not an outage: it aborts the stream and rides the existing
+// `parse_error` → empty-result path. Raise the knob if a real payload ever
+// trips it; do not remove the cap.
+//
+// Override via ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES; never required at boot.
+const DEFAULT_ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES = 2_097_152
 const DEFAULT_LANGFUSE_USER_AGENT = "forge-mastra-langfuse/1.0"
 const DEFAULT_LANGFUSE_TIMEOUT_MS = 3_000
 // 256 KiB ceiling on the buffered Langfuse prompt response body. Prompt
@@ -151,6 +170,18 @@ const envSchema = z.object({
   // `redirect:"error"` still blocks off-host hops. Mirrors the chat relay's
   // MASTRA_CHAT_ALLOWED_HOSTS.
   ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: z.string().min(1).optional(),
+  // Byte-cap on the buffered agent-tools response body (feat-327). `.optional()`
+  // with a runtime fallback in `getAdminAgentToolsConfig()` — mirrors
+  // JESUSFILM_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing` list
+  // while the 16 MiB `.max()` ceiling fails LOUD (boot-time parse error) on an
+  // over-range operator typo rather than silently widening the cap and defeating
+  // the OOM guard this var exists to provide.
+  ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(16_777_216)
+    .optional(),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -413,6 +444,13 @@ const envSchema = z.object({
   // Basic auth (`base64(public:secret)`) — Langfuse's documented auth scheme.
   LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
   LANGFUSE_SECRET_KEY: z.string().min(1).optional(),
+  // Default-off gate for Langfuse tracing (feat-321). Unlike the prompt
+  // helper (a read), tracing WRITES raw seeker conversation content to
+  // Langfuse, so credential presence alone must never turn it on — the
+  // key pair was provisioned for prompt reads (feat-296) and already
+  // exists in Railway. Only the literal string "true" enables the
+  // exporter; unset/"false" keeps today's local-DuckDB-only posture.
+  LANGFUSE_TRACING_ENABLED: z.string().optional(),
   // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
   // this single-attempt prompt-fetch timeout must stay strictly inside any
   // future chat-turn budget. The 10_000 cap keeps even the widest override
@@ -438,10 +476,10 @@ const envSchema = z.object({
     .positive()
     .max(5_242_880)
     .optional(),
-  // Optional label the helper resolves prompts against when the caller does
-  // not pass one. No schema default — the helper's own resolution order is
-  // call parameter > this var > "production" (KTD3), so unset here still
-  // resolves to an explicit "production" label, never an implicit `latest`.
+  // Optional default for label-based candidate intake and health comparison.
+  // Production Seeker traffic never reads this selector: it resolves the
+  // exact repository pin in seeker-production-config.ts. The `production`
+  // label is an alert-only deployment marker.
   LANGFUSE_PROMPT_DEFAULT_LABEL: z.string().min(1).optional(),
   LANGFUSE_PROMPT_CACHE_TTL_MS: z.coerce
     .number()
@@ -468,6 +506,18 @@ const envSchema = z.object({
   // (`=== "true"`, see AI_GATEWAY_CHAT_ENABLED), NOT JS truthiness, so
   // `SEEKER_ROUTE_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_ROUTE_ENABLED: z.string().optional(),
+  // Default-off gate for the seeker's video capability (feat-327, plan D6):
+  // the `searchVideos` + `featureVideo` tools and — through them — the
+  // declared-video projection on the `/forge-seeker` terminal result frame.
+  // Since feat-330 it gates the TOOLS ONLY: the video-featuring guidance is
+  // durable content in the Langfuse-managed `seeker-system` prompt and in
+  // SEEKER_SYSTEM_PROMPT_FALLBACK, served in BOTH flag states and phrased
+  // tool-conditionally, so unset means the resolved TOOL SET matches the
+  // pre-feat-327 agent while the resolved PROMPT does not. Optional + no
+  // default. Read via the repo's string-boolean convention (`=== "true"`,
+  // matching SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
+  // `SEEKER_VIDEO_ENABLED="false"` stays disabled. No new required-at-boot var.
+  SEEKER_VIDEO_ENABLED: z.string().optional(),
   SUBTITLE_ENRICHMENT_MODEL: z
     .string()
     .min(1)
@@ -567,6 +617,9 @@ export const env = envSchema.parse({
   ),
   ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS,
+  ),
+  ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES,
   ),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS,
@@ -779,6 +832,9 @@ export const env = envSchema.parse({
   LANGFUSE_BASE_URL: emptyToUndefined(process.env.LANGFUSE_BASE_URL),
   LANGFUSE_PUBLIC_KEY: emptyToUndefined(process.env.LANGFUSE_PUBLIC_KEY),
   LANGFUSE_SECRET_KEY: emptyToUndefined(process.env.LANGFUSE_SECRET_KEY),
+  LANGFUSE_TRACING_ENABLED: emptyToUndefined(
+    process.env.LANGFUSE_TRACING_ENABLED,
+  ),
   LANGFUSE_TIMEOUT_MS: emptyToUndefined(process.env.LANGFUSE_TIMEOUT_MS),
   LANGFUSE_USER_AGENT: emptyToUndefined(process.env.LANGFUSE_USER_AGENT),
   LANGFUSE_MAX_RESPONSE_BYTES: emptyToUndefined(
@@ -800,6 +856,7 @@ export const env = envSchema.parse({
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
   SEEKER_ROUTE_ENABLED: emptyToUndefined(process.env.SEEKER_ROUTE_ENABLED),
+  SEEKER_VIDEO_ENABLED: emptyToUndefined(process.env.SEEKER_VIDEO_ENABLED),
   SUBTITLE_ENRICHMENT_MODEL: emptyToUndefined(
     process.env.SUBTITLE_ENRICHMENT_MODEL,
   ),
@@ -899,6 +956,51 @@ function assertJesusfilmRagBaseUrlAllowedForProduction() {
   if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
     throw new Error(
       "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
+function assertAdminAgentToolsBaseUrlAllowedForProduction() {
+  // feat-327. Conditional on the base URL being set: an unprovisioned
+  // agent-tools pair is valid by design (every tool degrades to an empty
+  // result at runtime, never a boot failure). When the URL IS set, fail-closed
+  // — https AND a non-empty allowlist containing the hostname, else throw.
+  //
+  // Why the enforcement point moved here NOW (repo law: the fail-closed
+  // enforcement point follows ROLLBACK CAPABILITY, not severity): this pair is
+  // a credentialed egress that feat-327 puts on a user-facing conversational
+  // path for the first time. The rollout runbook already sets
+  // ADMIN_AGENT_TOOLS_ALLOWED_HOSTS in the same step it sets the URL and key,
+  // so no planned deploy path acquires a new prerequisite — an env that has
+  // the URL without the allowlist was already misconfigured, it just failed
+  // silently.
+  //
+  // ROLLBACK CAPABILITY — the premise, stated as a premise. This assert runs at
+  // module load, BEFORE the server is constructed, so a throw means the port
+  // never opens; `apps/mastra/railway.toml` declares
+  // `healthcheckPath = "/health"`, which would turn that into a REFUSED
+  // PROMOTION (old deployment keeps serving) rather than an outage. But that
+  // toml's own header says Railway reads it only when the service's
+  // Config-as-code Path points at it — otherwise the dashboard is canonical and
+  // this file is inert. Nothing in this repo can observe which is true, and the
+  // repo has a recorded instance of dashboard config shadowing a railway.toml
+  // (docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md).
+  // So: OPERATOR PRECONDITION, not a code guarantee — before this ships,
+  // confirm the mastra service actually has a healthcheck path configured, and
+  // that ADMIN_AGENT_TOOLS_URL is either unset in production or already paired
+  // with a matching allowlist. The three sibling guards below/above carry the
+  // same unstated dependency; this one names it because it is new.
+  //
+  // BLAST RADIUS, stated: this also covers the experience-authoring agents,
+  // which share the same pair. That tightening is intended.
+  if (!env.ADMIN_AGENT_TOOLS_URL) return
+  const baseUrl = new URL(env.ADMIN_AGENT_TOOLS_URL)
+  const allowedHosts = env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS
+    ? csvSet(env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS)
+    : new Set<string>()
+  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+    throw new Error(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
@@ -1025,6 +1127,7 @@ export function assertMastraRuntimeEnv() {
   // state degrades at runtime via the client's `config_missing` short-circuit,
   // honoring the ticket's "never a boot failure" rule.
   assertJesusfilmRagBaseUrlAllowedForProduction()
+  assertAdminAgentToolsBaseUrlAllowedForProduction()
   // Same posture for Langfuse (U1, R9): the host guard is the only
   // Langfuse-driven boot throw. Missing keys are deliberately NOT in `missing`
   // above — an unconfigured helper degrades to the caller-supplied fallback
@@ -1161,6 +1264,27 @@ export function isSeekerRouteEnabled(): boolean {
 }
 
 /**
+ * Whether the seeker's video capability is armed (feat-327, plan D6). Since
+ * feat-330 this gates the `searchVideos` + `featureVideo` tools on
+ * `seekerAgent` and NOTHING ELSE — the video-featuring guidance moved into the
+ * durable prompt (Langfuse-managed `seeker-system` + the compiled-in fallback),
+ * so flipping this off removes the tools while the tool-conditional guidance is
+ * still served. That is deliberate: it makes this flag a clean rollout/rollback
+ * lever whose flip cannot change what `/api/agents*` serves. Default-off: the
+ * capability stays inert unless this is explicitly set to the string `"true"`.
+ * Uses the repo's string-boolean convention (matching `SEEKER_ROUTE_ENABLED`),
+ * NOT JS truthiness — `"false"` (or any other value) keeps the tools off.
+ *
+ * The `/forge-seeker` route deliberately does NOT read this flag: with the
+ * tools unregistered there are no `searchVideos`/`featureVideo` tool results
+ * to resolve, so the declared-video projection is inert by construction rather
+ * than by a second gate that could drift from this one.
+ */
+export function isSeekerVideoEnabled(): boolean {
+  return env.SEEKER_VIDEO_ENABLED === "true"
+}
+
+/**
  * Whether the seeker agent prepends the JesusFilm gateway chat model to its
  * fallback chain (feat-237). Default-off: the seeker stays on today's
  * free-Gemma OpenRouter chain unless this is explicitly set to the string
@@ -1172,6 +1296,18 @@ export function isSeekerRouteEnabled(): boolean {
  */
 export function isAiGatewaySeekerEnabled(): boolean {
   return env.AI_GATEWAY_SEEKER_ENABLED === "true"
+}
+
+/**
+ * Whether seeker traces are exported to Langfuse (feat-321). Default-off:
+ * tracing writes RAW conversation content off the box, so it must be an
+ * explicit operator decision — the Langfuse key pair already present for
+ * prompt reads (feat-296) must never enable it by itself. Uses the repo's
+ * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * truthiness — `"false"` (or any other value) keeps tracing off.
+ */
+export function isLangfuseTracingEnabled(): boolean {
+  return env.LANGFUSE_TRACING_ENABLED === "true"
 }
 
 /**
@@ -1352,6 +1488,11 @@ export type AdminAgentToolsConfig = {
   timeoutMs: number
   userAgent: string
   allowedHosts?: string
+  /**
+   * Max bytes buffered from an agent-tools response body before the read
+   * aborts the stream (feat-327).
+   */
+  maxResponseBytes: number
 }
 
 /**
@@ -1366,6 +1507,11 @@ export function getAdminAgentToolsConfig(): AdminAgentToolsConfig {
     timeoutMs: env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
     userAgent: env.ADMIN_AGENT_TOOLS_USER_AGENT,
     allowedHosts: env.ADMIN_AGENT_TOOLS_ALLOWED_HOSTS,
+    // `.optional()` schema + runtime fallback: keeps the knob out of the
+    // boot-time `missing` list while always handing the client a concrete cap.
+    maxResponseBytes:
+      env.ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES ??
+      DEFAULT_ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES,
   }
 }
 

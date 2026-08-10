@@ -18,6 +18,10 @@ import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
 import { datadogLog } from "../../src/lib/datadog"
+import {
+  consumeDeepLinkEntry,
+  whenDeepLinkOriginsReady,
+} from "../../src/lib/deepLinkOrigin"
 import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
@@ -42,6 +46,12 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
+import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
+import {
+  progressBarState,
+  resumePositionSeconds,
+} from "../../src/lib/watchProgress/thresholds"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -246,6 +256,18 @@ export default function WatchVideoPage() {
   // "Off"/the active name, falling back to the persisted preferred name while the
   // lazy media loads — so a cold load paints it, not a "Subtitles" placeholder.
   const languageActionLabel = activeVariant?.languageName ?? null
+
+  // Continue watching (KTD6): resume eligibility for the player's
+  // auto-seek and autostart.
+  const progressEntry = useWatchProgressEntry(video?.documentId)
+  const progressState = progressBarState(progressEntry)
+  const resumeAtSeconds =
+    progressEntry && progressState.resumeEligible
+      ? resumePositionSeconds(
+          progressEntry.positionSeconds,
+          progressEntry.durationSeconds,
+        )
+      : null
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
@@ -311,14 +333,46 @@ export default function WatchVideoPage() {
 
   const hasVideo = video != null
 
-  // Cold external arrival (forgemobile://) carries no seed — in-app navigation
-  // always seeds. Fire once so it's distinct from in-app pushes (R32).
-  const deepLinkEmittedRef = useRef(false)
+  // Slug-keyed, NOT a boolean: expo-router reuses this route object for a
+  // same-name NAVIGATE, which is what a warm deep link dispatches, so a boolean
+  // would swallow the second slug's event.
+  const deepLinkEmittedRef = useRef<Set<string>>(new Set())
+
+  // External arrivals only. "No seed" over-counts (Library opens rows unseeded)
+  // and stack shape under-counts (the tabs anchor makes canGoBack() always
+  // true), so this awaits the registry that records the opening URL.
   useEffect(() => {
-    if (deepLinkEmittedRef.current || !decodedSlug || seedParam != null) return
-    deepLinkEmittedRef.current = true
-    datadogLog.info("content.deep_link_open", { content_id: decodedSlug })
-  }, [decodedSlug, seedParam])
+    if (!decodedSlug || deepLinkEmittedRef.current.has(decodedSlug)) return
+    let cancelled = false
+    void whenDeepLinkOriginsReady().then(() => {
+      if (cancelled || deepLinkEmittedRef.current.has(decodedSlug)) return
+      const entry = consumeDeepLinkEntry(decodedSlug)
+      if (entry == null) return
+      deepLinkEmittedRef.current.add(decodedSlug)
+      datadogLog.info("content.deep_link_open", {
+        content_id: decodedSlug,
+        entry,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [decodedSlug])
+
+  // A half-rendered page ("Couldn't load full details") used to reach Datadog
+  // only as an abort-shaped network warn, indistinguishable from a healthy one.
+  // Deduped per slug so Retry loops can't flood.
+  const detailFailureEmittedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (hasVideo || error == null || !decodedSlug) return
+    if (detailFailureEmittedRef.current.has(decodedSlug)) return
+    detailFailureEmittedRef.current.add(decodedSlug)
+    datadogLog.warn("content.detail_load_failed", {
+      content_id: decodedSlug,
+      // Seeded => partial page with a Retry; unseeded => the "Video Not Found" screen.
+      surface: seed != null || offlineSource != null ? "partial" : "empty",
+    })
+  }, [hasVideo, error, decodedSlug, seed, offlineSource])
 
   // Detail-route resolution outcome (R34), deduped per slug+outcome so a
   // re-render or a skeleton→hydrated transition each emit at most once. Series
@@ -454,6 +508,20 @@ export default function WatchVideoPage() {
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             horizontalInset={PLAYER_SIDE_PADDING}
+            progressIdentity={
+              // Offline playback may predate the record load — the slug is
+              // the on-device key admin resolves server-side (KTD8).
+              video?.documentId
+                ? {
+                    videoId: video.documentId,
+                    languageSlug: activeVariant?.languageSlug ?? null,
+                  }
+                : offlineSource
+                  ? { videoSlug: decodedSlug, languageSlug: null }
+                  : null
+            }
+            resumeAtSeconds={resumeAtSeconds}
+            autostart
           />
         )}
       </View>
@@ -549,6 +617,8 @@ export default function WatchVideoPage() {
               subtitleLabel={subtitleActionLabel}
               subtitleActive={subtitleActive}
             />
+
+            <SignInPrompt />
 
             <VideoDescription description={video.description} />
 

@@ -70,6 +70,10 @@ function VideoDetailContent({
 }) {
   const s = section as Record<string, unknown>
   const streamingUrl = s.streamingUrl as string | null
+  const blockVideoId =
+    typeof s.videoId === "string" && s.videoId.length > 0
+      ? s.videoId
+      : undefined
   const hasValidStream = validateStreamingUrl(streamingUrl)
 
   const title = (s.title as string | null) ?? "Untitled"
@@ -120,6 +124,9 @@ function VideoDetailContent({
   // called play() unconditionally, starting videos the user paused/never played.
   const { player, isPlaying } = useManagedVideoPlayer(
     hasValidStream ? streamingUrl : null,
+    undefined,
+    // KTD5 opt-in: this SDUI block carries the admin video id.
+    { progress: blockVideoId ? { videoId: blockVideoId } : null },
   )
 
   useEffect(() => {

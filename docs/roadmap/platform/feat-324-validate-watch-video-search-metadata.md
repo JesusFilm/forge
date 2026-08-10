@@ -10,7 +10,7 @@ depends_on:
   - "feat-323"
   - "feat-325"
 blocks:
-  - "feat-326"
+  - "feat-344"
 tags:
   - "platform"
   - "web"

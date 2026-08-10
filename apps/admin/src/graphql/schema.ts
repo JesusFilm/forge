@@ -17,6 +17,7 @@ import "@/graphql/types/managerReadModels"
 import "@/graphql/types/managerJob"
 import "@/graphql/types/managerSeo"
 import "@/graphql/types/watch-events"
+import "@/graphql/types/watch-progress"
 // Block union types must register before experience.ts since
 // ExperienceLocale.blocks consumes the ExperienceBlock union.
 import "@/graphql/types/blocks"

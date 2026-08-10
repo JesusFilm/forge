@@ -1201,6 +1201,7 @@ WatchRouteSnapshotChildRef.implement({
 
 WatchRouteSnapshotChildRelationRef.implement({
   fields: (t) => ({
+    order: t.exposeInt("order", { nullable: true }),
     child: t.field({
       type: WatchRouteSnapshotChildRef,
       nullable: true,

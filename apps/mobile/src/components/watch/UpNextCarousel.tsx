@@ -10,6 +10,7 @@ import {
 } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
+import { WatchProgressBar } from "./WatchProgressBar"
 import { useRouter } from "expo-router"
 
 import {
@@ -106,6 +107,8 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
+
+          <WatchProgressBar videoId={item.documentId} />
 
           {isCurrent && (
             <View style={styles.playingPill} pointerEvents="none">

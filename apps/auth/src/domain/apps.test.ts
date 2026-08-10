@@ -12,6 +12,12 @@ import {
   MASTRA_STUDIO_APP_SEED,
   MANAGER_APP_KEY,
   MANAGER_APP_SEED,
+  MOBILE_APP_KEY,
+  MOBILE_APP_SEED,
+  TV_APP_KEY,
+  TV_APP_SEED,
+  TV_DEFAULT_SCOPES,
+  TV_DEVICE_CLIENT_IDS,
   WEB_APP_KEY,
   WEB_APP_SEED,
 } from "./apps"
@@ -26,6 +32,8 @@ describe("first-party app seeds", () => {
       MASTRA_STUDIO_APP_KEY,
       CHAT_APP_KEY,
       ADMIN_MCP_APP_KEY,
+      MOBILE_APP_KEY,
+      TV_APP_KEY,
     ])
     expect(MANAGER_APP_SEED).toEqual(
       expect.objectContaining({
@@ -365,6 +373,96 @@ describe("first-party app seeds", () => {
     )
   })
 
+  it("registers the TV OAuth clients for local, preview, staging, and production", () => {
+    expect(TV_APP_SEED).toEqual(
+      expect.objectContaining({
+        key: "tv",
+        displayName: "Jesus Film TV",
+        trustTier: "first_party",
+        ownerType: "jesus_film",
+      }),
+    )
+    expect(TV_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "preview",
+      "staging",
+      "production",
+    ])
+    expect(TV_APP_SEED.environments).toEqual([
+      expect.objectContaining({
+        key: "local",
+        kind: "local",
+        clientId: "jfp_tv_local",
+        // Sentinel only: bound into the authorization code and re-compared at
+        // the token endpoint. A TV never navigates it.
+        redirectUris: ["http://localhost:3004/device/callback"],
+        postLogoutRedirectUris: [],
+        allowedOrigins: [],
+        autoApprove: true,
+      }),
+      expect.objectContaining({
+        key: "preview",
+        kind: "preview",
+        clientId: "jfp_tv_preview",
+        redirectUris: ["https://auth-preview.jesusfilm.org/device/callback"],
+        postLogoutRedirectUris: [],
+        allowedOrigins: [],
+        autoApprove: true,
+      }),
+      expect.objectContaining({
+        key: "staging",
+        kind: "staging",
+        clientId: "jfp_tv_staging",
+        redirectUris: ["https://auth-stage.jesusfilm.org/device/callback"],
+        postLogoutRedirectUris: [],
+        allowedOrigins: [],
+        autoApprove: true,
+      }),
+      expect.objectContaining({
+        key: "production",
+        kind: "production",
+        clientId: "jfp_tv_production",
+        redirectUris: ["https://auth.jesusfilm.org/device/callback"],
+        postLogoutRedirectUris: [],
+        allowedOrigins: [],
+        autoApprove: true,
+      }),
+    ])
+  })
+
+  it("grants the TV exactly identity, offline access, and watch-event write", () => {
+    expect(TV_DEFAULT_SCOPES).toEqual([
+      "openid",
+      "profile:read",
+      "email:read",
+      "offline_access",
+      "web:watch-events:write",
+    ])
+    // Admin-introspection contract: usableWebUserSubject
+    // (apps/admin/src/auth/web-user-token.ts) rejects any token whose scope
+    // list omits this, whatever the client id allowlist says. Dropping it here
+    // makes every TV token useless to admin.
+    expect(TV_DEFAULT_SCOPES).toContain("web:watch-events:write")
+    // The TV performs no authorization.
+    expect(TV_DEFAULT_SCOPES).not.toContain("membership:read")
+    expect(
+      TV_DEFAULT_SCOPES.filter((scope) => scope.endsWith(":access")),
+    ).toEqual([])
+
+    for (const environment of TV_APP_SEED.environments) {
+      expect(environment.defaultScopes).toEqual([...TV_DEFAULT_SCOPES])
+    }
+  })
+
+  it("keeps TV_DEVICE_CLIENT_IDS aligned with the seeded TV client ids", () => {
+    // The device plugin and the app-environment policy exemption both read this
+    // list; a client id added to the seed but not here is a client that seeds
+    // fine and then cannot use the grant it exists for.
+    expect([...TV_DEVICE_CLIENT_IDS]).toEqual(
+      TV_APP_SEED.environments.map((env) => env.clientId),
+    )
+  })
+
   it("registers Web OAuth clients for public watch sign-in", () => {
     expect(WEB_APP_SEED).toEqual(
       expect.objectContaining({
@@ -416,5 +514,51 @@ describe("first-party app seeds", () => {
         }),
       ]),
     )
+  })
+})
+
+describe("mobile app seed", () => {
+  it("registers mobile with https self-RP callbacks only — never a custom-scheme redirect", () => {
+    expect(MOBILE_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "production",
+    ])
+    expect(MOBILE_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "local",
+          clientId: "jfp_mobile_local",
+          redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+          allowedOrigins: ["http://localhost:3004"],
+          autoApprove: true,
+        }),
+        expect.objectContaining({
+          key: "production",
+          clientId: "jfp_mobile_production",
+          redirectUris: [
+            "https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp",
+          ],
+          allowedOrigins: ["https://auth.jesusfilm.org"],
+          autoApprove: true,
+        }),
+      ]),
+    )
+
+    for (const environment of MOBILE_APP_SEED.environments) {
+      for (const redirectUri of environment.redirectUris) {
+        expect(redirectUri).toMatch(/^https?:\/\//)
+      }
+    }
+  })
+
+  it("grants mobile identity-only scopes — progress permissions ride admin's MOBILE_USER principal", () => {
+    for (const environment of MOBILE_APP_SEED.environments) {
+      expect(environment.defaultScopes).toEqual([
+        "openid",
+        "profile:read",
+        "email:read",
+      ])
+      expect(assertKnownScopes(environment.defaultScopes)).toBeTruthy()
+    }
   })
 })
