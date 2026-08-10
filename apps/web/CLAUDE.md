@@ -28,6 +28,7 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 - `src/lib/fragments/watch-experience.ts` — re-exports `adminWatchExperienceFragment` from `@forge/admin-graphql/fragments` (the root composition over admin's 17 block fragments).
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
 - `src/lib/{search,recommendations,demo-search,enrichment,experience-metadata}.ts` — all read from admin.
+- `src/lib/watch-search-client.ts` is the one deliberate browser-direct exception: the global search modal calls the public GraphQL gateway without an Admin bearer. Its handwritten operation and mapping must stay aligned with `src/lib/search.ts` via colocated parity tests; this exception is not precedent for other clients.
 
 Production floating Watch search calls Admin directly from the browser through
 `src/lib/watch-search-client.ts` to avoid a Web server hop. The client omits mode

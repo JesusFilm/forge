@@ -104,6 +104,7 @@ describe("Typesense Watch Search indexer", () => {
         dubs: [
           {
             id: "dub-fr-long",
+            videoEditionId: "edition-1",
             duration: 180,
             language: {
               id: "language-fr",
@@ -114,6 +115,7 @@ describe("Typesense Watch Search indexer", () => {
           },
           {
             id: "dub-fr-short",
+            videoEditionId: "edition-1",
             duration: 90,
             language: {
               id: "language-fr",
@@ -140,8 +142,15 @@ describe("Typesense Watch Search indexer", () => {
       {
         id: "subtitle-fr",
         videoId: "video-1",
+        videoEditionId: "edition-1",
         languageId: "language-fr",
         languageSlug: "french",
+        languageName: { en: "French" },
+        hrefLanguageSlug: "french",
+        playbackId: "playback-fr",
+        durationSeconds: 180,
+        actionVideoDubId: "dub-fr-long",
+        actionPriority: 0,
       },
     ])
     const prisma = {
@@ -174,11 +183,21 @@ describe("Typesense Watch Search indexer", () => {
     const subtitleSql = (
       queryRaw.mock.calls[0]?.[0] as unknown as { strings: string[] }
     ).strings.join(" ")
-    expect(subtitleSql).toContain("v.no_index = false")
-    expect(subtitleSql).toContain("vl.status = 'published'")
+    expect(subtitleSql).toContain("video.no_index = FALSE")
+    expect(subtitleSql).toContain("published_locale.status = 'published'")
+    expect(subtitleSql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
+    expect(subtitleSql).not.toContain("vs.srt_src")
     expect(subtitleSql).toContain(
-      "vs.vtt_src IS NOT NULL OR vs.srt_src IS NOT NULL",
+      "vs.video_id IS NULL OR vs.video_id = preferred_dub.video_id",
     )
+    expect(subtitleSql).toContain(
+      "preferred_dub.video_edition_id = vs.video_edition_id",
+    )
+    expect(subtitleSql).toContain("video.primary_language_id")
+    expect(subtitleSql).toContain("fallback_language.slug = 'english'")
+    expect(subtitleSql).toContain("video_dub.duration DESC NULLS LAST")
+    expect(subtitleSql).toContain("fallback_language.slug ASC")
+    expect(subtitleSql).toContain("video_dub.id ASC")
     expect(documents).toEqual([
       expect.objectContaining({
         id: "video-1",
@@ -197,6 +216,7 @@ describe("Typesense Watch Search indexer", () => {
         audioOptionsJson: JSON.stringify([
           {
             id: "dub-fr-long",
+            videoEditionId: "edition-1",
             languageId: "language-fr",
             languageSlug: "french",
             languageEnglishName: "French",
@@ -207,8 +227,15 @@ describe("Typesense Watch Search indexer", () => {
         subtitleOptionsJson: JSON.stringify([
           {
             id: "subtitle-fr",
+            videoEditionId: "edition-1",
             languageId: "language-fr",
             languageSlug: "french",
+            languageEnglishName: "French",
+            hrefLanguageSlug: "french",
+            playbackId: "playback-fr",
+            durationSeconds: 180,
+            actionVideoDubId: "dub-fr-long",
+            actionPriority: 0,
           },
         ]),
       }),
@@ -216,8 +243,9 @@ describe("Typesense Watch Search indexer", () => {
 
     expect(buildAvailabilityDocuments(documents)).toEqual([
       {
-        id: "video-1:language-fr",
+        id: "video-1:edition-1:language-fr",
         videoId: "video-1",
+        videoEditionId: "edition-1",
         languageId: "language-fr",
         languageSlug: "french",
         languageEnglishName: "French",
@@ -225,8 +253,71 @@ describe("Typesense Watch Search indexer", () => {
         subtitles: true,
         playbackId: "playback-fr",
         durationSeconds: 180,
+        hrefLanguageSlug: "french",
+        actionVideoDubId: "dub-fr-long",
+        actionPriority: null,
       },
     ])
+  })
+
+  it("stores a same-edition playable action on compact subtitle availability", () => {
+    const documents = buildAvailabilityDocuments([
+      {
+        ...viewerSafeVideo("Mary"),
+        titles: ["Mary"],
+        localeCodes: ["en"],
+        descriptions: [],
+        localesJson: JSON.stringify([
+          { locale: "en", title: "Mary", description: null },
+        ]),
+        childCount: 0,
+        imageUrl: null,
+        imageBlurDataUrl: null,
+        audioLanguageSlugs: ["english"],
+        subtitleLanguageSlugs: ["russian"],
+        audioOptionsJson: JSON.stringify([
+          {
+            id: "dub-en",
+            videoEditionId: "edition-1",
+            languageId: "language-en",
+            languageSlug: "english",
+            languageEnglishName: "English",
+            playbackId: "playback-en",
+            durationSeconds: 181,
+          },
+        ]),
+        subtitleOptionsJson: JSON.stringify([
+          {
+            id: "subtitle-ru",
+            videoEditionId: "edition-1",
+            languageId: "language-ru",
+            languageSlug: "russian",
+            languageEnglishName: "Russian",
+            hrefLanguageSlug: "english",
+            playbackId: "playback-en",
+            durationSeconds: 181,
+            actionVideoDubId: "dub-en",
+            actionPriority: 1,
+          },
+        ]),
+      },
+    ])
+
+    expect(documents).toContainEqual({
+      id: "video-1:edition-1:language-ru",
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      languageId: "language-ru",
+      languageSlug: "russian",
+      languageEnglishName: "Russian",
+      audio: false,
+      subtitles: true,
+      playbackId: "playback-en",
+      durationSeconds: 181,
+      hrefLanguageSlug: "english",
+      actionVideoDubId: "dub-en",
+      actionPriority: 1,
+    })
   })
 
   it("derives deterministic candidate projections from one repeatable-read snapshot", async () => {
@@ -323,6 +414,7 @@ describe("Typesense Watch Search indexer", () => {
         {
           id: "chunk-private",
           videoId: "video-private",
+          videoEditionId: "edition-private",
           coreId: "private-core",
           language: "en",
           text: "Private transcript",
@@ -333,6 +425,7 @@ describe("Typesense Watch Search indexer", () => {
         {
           id: "chunk-public",
           videoId: "video-public",
+          videoEditionId: "edition-public",
           coreId: "public-core",
           language: "fr",
           text: "Public transcript",
@@ -399,12 +492,14 @@ describe("Typesense Watch Search indexer", () => {
         expect.objectContaining({
           id: "chunk-private",
           documentKind: "transcript",
+          videoEditionId: "edition-private",
           canonicalVideoId: "core:private-core",
           publiclyVisible: false,
         }),
         expect.objectContaining({
           id: "chunk-public",
           documentKind: "transcript",
+          videoEditionId: "edition-public",
           canonicalVideoId: "core:public-core",
           publiclyVisible: true,
           embedding: expect.any(Array),
@@ -428,7 +523,10 @@ describe("Typesense Watch Search indexer", () => {
         { name: "watch_search_catalog_previous", fields: [] },
         { name: "watch_search_availability_previous", fields: [] },
         { name: "watch_search_lexical_previous", fields: [] },
-        { name: "watch_search_transcripts_active", fields: [] },
+        {
+          name: "watch_search_transcripts_active",
+          fields: [{ name: "videoEditionId", type: "string" }],
+        },
         { name: "watch_search_transcripts_old", fields: [] },
         { name: "watch_search_transcripts_partial", fields: [] },
         { name: "unrelated_collection", fields: [] },
@@ -512,6 +610,42 @@ describe("Typesense Watch Search indexer", () => {
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
   })
 
+  it("requires an explicit rebuild when reused transcripts lack edition IDs", async () => {
+    const prisma = {
+      video: { findMany: vi.fn(async () => []) },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+    const typesense = {
+      listCollections: vi.fn(async () => [
+        {
+          name: "watch_search_transcripts_active",
+          fields: [
+            { name: "documentKind", type: "string" },
+            { name: "canonicalVideoId", type: "string" },
+            { name: "titles", type: "string[]" },
+          ],
+        },
+      ]),
+      getAlias: vi.fn(async (alias: string) => ({
+        name: alias,
+        collection_name:
+          alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
+            ? "watch_search_transcripts_active"
+            : `${alias}_previous`,
+      })),
+      createCollection: vi.fn(async () => ({})),
+    } as unknown as TypesenseClient
+
+    await expect(
+      rebuildTypesenseWatchSearchIndex({
+        prisma,
+        typesense,
+        buildId: "missing-edition-id",
+      }),
+    ).rejects.toThrow("rerun with --rebuild-transcripts")
+    expect(typesense.createCollection).not.toHaveBeenCalled()
+  })
+
   it("publishes the lexical projection without mutating reused transcripts", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => [viewerSafeVideo("Current")]) },
@@ -525,6 +659,7 @@ describe("Typesense Watch Search indexer", () => {
             { name: "documentKind", type: "string" },
             { name: "canonicalVideoId", type: "string" },
             { name: "titles", type: "string[]" },
+            { name: "videoEditionId", type: "string" },
           ],
         },
       ]),
@@ -634,6 +769,7 @@ describe("Typesense Watch Search indexer", () => {
             { name: "documentKind" },
             { name: "canonicalVideoId" },
             { name: "titles" },
+            { name: "videoEditionId" },
           ],
         },
       ]),
@@ -728,6 +864,7 @@ describe("Typesense Watch Search indexer", () => {
             { name: "documentKind", type: "string" },
             { name: "canonicalVideoId", type: "string" },
             { name: "titles", type: "string[]" },
+            { name: "videoEditionId", type: "string" },
           ],
         },
       ]),
@@ -797,7 +934,12 @@ describe("Typesense Watch Search indexer", () => {
       $queryRaw: vi.fn(async () => []),
     } as unknown as PrismaClient
     const typesense = {
-      listCollections: vi.fn(async () => []),
+      listCollections: vi.fn(async () => [
+        {
+          name: "transcripts_active",
+          fields: [{ name: "videoEditionId", type: "string" }],
+        },
+      ]),
       getAlias: vi.fn(async (alias: string) => ({
         name: alias,
         collection_name:

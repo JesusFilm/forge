@@ -134,6 +134,7 @@ function watchabilityForKind(videoId: string, kind: WatchabilityKind) {
   const { languageSlug, languageEnglishName } = WATCHABILITY_LANGUAGE[kind]
   const audio = kind === "target_audio" || kind === "related_language"
   const subtitles = kind === "target_subtitle"
+  const playable = kind !== "unavailable"
 
   return {
     videoId,
@@ -142,11 +143,11 @@ function watchabilityForKind(videoId: string, kind: WatchabilityKind) {
     languageEnglishName,
     audio,
     subtitles,
-    playbackId: audio ? `mux-${videoId}` : null,
-    videoDubId: audio ? `dub-${videoId}` : null,
+    playbackId: playable ? `mux-${videoId}` : null,
+    videoDubId: playable ? `dub-${videoId}` : null,
     videoSubtitleId: subtitles ? `sub-${videoId}` : null,
     durationSeconds: kind === "unavailable" ? null : 120,
-    hrefLanguageSlug: languageSlug,
+    hrefLanguageSlug: subtitles ? "english" : languageSlug,
   }
 }
 
@@ -181,10 +182,12 @@ function semanticResult(
   resultId: string,
   videoTitle: string,
   similarity: number,
+  videoEditionId = `edition-${resultId}`,
 ) {
   return {
     resultType: "video",
     resultId,
+    videoEditionId,
     videoCoreId: `core-${resultId}`,
     videoSlug: resultId,
     videoTitle,
@@ -1092,6 +1095,7 @@ describe("WatchSearchService", () => {
             {
               resultType: "video",
               resultId: "video-exact",
+              videoEditionId: "edition-exact",
               videoCoreId: "core-exact",
               videoSlug: "jesus",
               videoTitle: "JESUS",
@@ -1105,6 +1109,7 @@ describe("WatchSearchService", () => {
             {
               resultType: "video",
               resultId: "video-semantic",
+              videoEditionId: "edition-semantic",
               videoCoreId: "core-semantic",
               videoSlug: "forgiven",
               videoTitle: "Forgiven",
@@ -1164,7 +1169,10 @@ describe("WatchSearchService", () => {
       targetLanguageSlug: "russian",
     })
     expect(hydrateMock).toHaveBeenNthCalledWith(2, {
-      candidates: [{ videoId: "video-exact" }, { videoId: "video-semantic" }],
+      candidates: [
+        { videoId: "video-exact", editionId: "edition-exact" },
+        { videoId: "video-semantic", editionId: "edition-semantic" },
+      ],
       targetLanguageSlug: "russian",
     })
   })
@@ -1769,7 +1777,7 @@ describe("WatchSearchService", () => {
     ).toEqual([...WATCH_SEARCH_STARTER_QUERIES])
   })
 
-  it("marks subtitle-only exact-title matches as subtitle fallbacks", async () => {
+  it("keeps subtitle-only availability while returning the fallback audio action", async () => {
     mockLexicalResultsOnce(
       lexicalResults({
         exactTitle: [
@@ -1797,11 +1805,11 @@ describe("WatchSearchService", () => {
             languageEnglishName: "Russian",
             audio: false,
             subtitles: true,
-            playbackId: null,
-            videoDubId: null,
+            playbackId: "mux-english",
+            videoDubId: "dub-english",
             videoSubtitleId: "sub-russian",
-            durationSeconds: null,
-            hrefLanguageSlug: "russian",
+            durationSeconds: 7100,
+            hrefLanguageSlug: "english",
           },
         ],
       ]),
@@ -1815,8 +1823,15 @@ describe("WatchSearchService", () => {
     expect(result.results[0]).toMatchObject({
       availability: {
         kind: "target_subtitle",
+        languageSlug: "russian",
         audio: false,
         subtitles: true,
+      },
+      playbackId: "mux-english",
+      durationSeconds: 7100,
+      action: {
+        kind: "watch",
+        hrefLanguageSlug: "english",
       },
       fallback: {
         kind: "subtitle",

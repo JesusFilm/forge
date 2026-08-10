@@ -15,6 +15,7 @@ import { NextResponse } from "next/server"
 
 import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
 import { resolveWatchDownloadTarget } from "@/lib/download-target"
+import { resolveWatchSubtitleTarget } from "@/lib/subtitle-target"
 import {
   isWatchDownloadAccountGateEnabled,
   watchDownloadAccountGateFlagContext,
@@ -33,6 +34,7 @@ const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
 const INLINE_SUBTITLE_TIMEOUT_MS = 30_000
 const DOWNLOAD_CACHE_CONTROL = "private, no-cache, no-store, must-revalidate"
+const INLINE_SUBTITLE_ORIGIN = "https://api-media-core.jesusfilm.org"
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g
@@ -43,18 +45,39 @@ function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
-function isAuthExemptInlineSubtitleRequest(
+function isAnonymousInlineSubtitleRequest(
   searchParams: URLSearchParams,
 ): boolean {
   if (searchParams.get("disposition") !== "inline") return false
+  return Boolean(
+    searchParams.get("subtitleId") && searchParams.get("variantId"),
+  )
+}
 
-  const target = searchParams.get("url")
-  if (!target || !isAllowedDownloadOrigin(target)) return false
-
+function buildInlineSubtitleFetchUrl(target: string): string | null {
   try {
-    return new URL(target).pathname.toLowerCase().endsWith(".vtt")
+    const parsed = new URL(target)
+    if (parsed.origin !== INLINE_SUBTITLE_ORIGIN || parsed.search) return null
+
+    const encodedSegments: string[] = []
+    for (const rawSegment of parsed.pathname.split("/")) {
+      const segment = decodeURIComponent(rawSegment)
+      if (
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("/") ||
+        segment.includes("\\")
+      ) {
+        return null
+      }
+      encodedSegments.push(encodeURIComponent(segment))
+    }
+    const encodedPath = encodedSegments.join("/")
+    if (!encodedPath.toLowerCase().endsWith(".vtt")) return null
+
+    return `${INLINE_SUBTITLE_ORIGIN}${encodedPath}`
   } catch {
-    return false
+    return null
   }
 }
 
@@ -345,6 +368,7 @@ async function proxyInlineSubtitle(
     // codeql[js/request-forgery]
     upstream = await fetch(safeUrl, {
       headers: { Accept: "text/vtt" },
+      method: request.method === "HEAD" ? "HEAD" : "GET",
       redirect: "manual",
       signal,
     })
@@ -390,17 +414,24 @@ async function proxyInlineSubtitle(
     return jsonError("Upstream subtitle response was not VTT", 502)
   }
 
-  if (!upstream.body) {
-    clearSubtitleTimeout()
-    return jsonError("Upstream subtitle had no body", 502)
-  }
-
   const headers = new Headers({
     "Cache-Control": DOWNLOAD_CACHE_CONTROL,
     "Content-Disposition": "inline",
     "Content-Type": contentType ?? "text/vtt",
     "X-Content-Type-Options": "nosniff",
   })
+
+  if (request.method === "HEAD") {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    return new NextResponse(null, { status: upstream.status, headers })
+  }
+
+  if (!upstream.body) {
+    clearSubtitleTimeout()
+    return jsonError("Upstream subtitle had no body", 502)
+  }
+
   return new NextResponse(
     streamResponseBody(upstream.body, clearSubtitleTimeout),
     {
@@ -461,50 +492,71 @@ function attachmentRedirectUrl(input: {
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
-  const authExemptInlineSubtitleRequest =
-    isAuthExemptInlineSubtitleRequest(searchParams)
+  const anonymousInlineSubtitleRequest =
+    isAnonymousInlineSubtitleRequest(searchParams)
   const disposition =
     searchParams.get("disposition") === "inline" ? "inline" : "attachment"
   const authGate = await resolveDownloadAccountGate(
     request,
-    authExemptInlineSubtitleRequest,
+    anonymousInlineSubtitleRequest,
   )
   if (!authGate.ok) return authGate.response
 
-  const allowLegacyTarget =
-    authExemptInlineSubtitleRequest || authGate.accountGateEnabled
+  let target: string
+  let downloadEvent:
+    | { videoId: string; videoDubId: string; languageId: string | null }
+    | undefined
 
-  const resolvedTarget = await resolveRequestedTarget(searchParams, {
-    allowLegacyTarget,
-  })
-  if (!resolvedTarget.ok) {
-    return resolvedTarget.errorResponse
+  if (anonymousInlineSubtitleRequest) {
+    const subtitleTarget = await resolveWatchSubtitleTarget({
+      subtitleId: searchParams.get("subtitleId"),
+      variantId: searchParams.get("variantId"),
+    })
+    if (!subtitleTarget.ok) {
+      if (subtitleTarget.reason === "missing-params") {
+        return jsonError("Subtitle identifiers required", 400)
+      }
+      if (subtitleTarget.reason === "unavailable") {
+        return jsonError("Subtitle lookup unavailable", 503)
+      }
+      return jsonError("Subtitle unavailable", 404)
+    }
+    target = subtitleTarget.target
+  } else {
+    const downloadTarget = await resolveRequestedTarget(searchParams, {
+      allowLegacyTarget: authGate.accountGateEnabled,
+    })
+    if (!downloadTarget.ok) return downloadTarget.errorResponse
+    target = downloadTarget.target
+    downloadEvent = downloadTarget.event
   }
 
-  const validation = await validateTarget(resolvedTarget.target)
+  const validation = await validateTarget(target)
   if (!validation.ok) {
     return validation.errorResponse
   }
   const { safeUrl } = validation
 
-  if (authExemptInlineSubtitleRequest) {
-    return proxyInlineSubtitle(request, safeUrl)
+  if (anonymousInlineSubtitleRequest) {
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(request, inlineSubtitleUrl)
   }
 
-  if (authGate.session?.accessToken && resolvedTarget.event) {
+  if (authGate.session?.accessToken && downloadEvent) {
     const result = await recordWatchEventWithAccessToken(
       authGate.session.accessToken,
       {
         eventType: "download",
-        videoId: resolvedTarget.event.videoId,
-        videoDubId: resolvedTarget.event.videoDubId,
-        languageId: resolvedTarget.event.languageId,
+        videoId: downloadEvent.videoId,
+        videoDubId: downloadEvent.videoDubId,
+        languageId: downloadEvent.languageId,
       },
     )
     if (!result.ok) {
       console.warn("[api/download] failed to record download watch event", {
-        videoId: resolvedTarget.event.videoId,
-        videoDubId: resolvedTarget.event.videoDubId,
+        videoId: downloadEvent.videoId,
+        videoDubId: downloadEvent.videoDubId,
         reason: result.reason,
       })
     }
@@ -521,6 +573,28 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function HEAD(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
+
+  if (isAnonymousInlineSubtitleRequest(searchParams)) {
+    const subtitleTarget = await resolveWatchSubtitleTarget({
+      subtitleId: searchParams.get("subtitleId"),
+      variantId: searchParams.get("variantId"),
+    })
+    if (!subtitleTarget.ok) {
+      if (subtitleTarget.reason === "missing-params") {
+        return jsonError("Subtitle identifiers required", 400)
+      }
+      if (subtitleTarget.reason === "unavailable") {
+        return jsonError("Subtitle lookup unavailable", 503)
+      }
+      return jsonError("Subtitle unavailable", 404)
+    }
+
+    const validation = await validateTarget(subtitleTarget.target)
+    if (!validation.ok) return validation.errorResponse
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(validation.safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(request, inlineSubtitleUrl)
+  }
 
   const resolvedTarget = await resolveRequestedTarget(searchParams)
   if (!resolvedTarget.ok) {

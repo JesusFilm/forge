@@ -351,4 +351,55 @@ describe("searchVideos", () => {
 
     expect(data.results[0]?.title).toBe("Miraculous Catch Of Fish")
   })
+
+  it("keeps subtitle availability separate from the playable audio action", async () => {
+    semanticSearchAdminQuery.mockResolvedValueOnce({
+      data: {
+        watchSearch: {
+          results: [
+            {
+              type: "VIDEO",
+              id: "video-perfect-2",
+              slug: "perfect-2",
+              title: "Perfect?",
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              snippet: "Russian subtitle match",
+              playbackId: "playback-en",
+              startSeconds: null,
+              score: 0.8,
+              label: "COLLECTION",
+              durationSeconds: 120,
+              childCount: 1,
+              languageSlug: "russian",
+              languageEnglishName: "Russian",
+              availability: {
+                kind: "TARGET_SUBTITLE",
+                languageSlug: "russian",
+                languageEnglishName: "Russian",
+              },
+              evidence: null,
+              action: { hrefLanguageSlug: "english" },
+            },
+          ],
+          hasMore: false,
+          query: "мария",
+          searchMode: "watch-search",
+          latencyMs: 12,
+          nextOffset: 0,
+        },
+      },
+    })
+
+    const data = await searchVideos("мария")
+
+    expect(data.results[0]).toMatchObject({
+      languageSlug: "english",
+      languageEnglishName: null,
+      availabilityKind: "target_subtitle",
+      subtitleLanguageSlug: "russian",
+      availabilityLanguageEnglishName: "Russian",
+    })
+  })
 })

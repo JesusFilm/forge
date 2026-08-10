@@ -59,7 +59,12 @@ export const searchVideosOutputSchema = z.object({
       playbackId: z.string().optional(),
       durationSeconds: z.number().nullable().optional(),
       languageSlug: z.string().nullable().optional(),
-      availability: z.object({ kind: z.string() }).optional(),
+      availability: z
+        .object({
+          kind: z.string(),
+          languageSlug: z.string().nullable().optional(),
+        })
+        .optional(),
     }),
   ),
 })
@@ -92,7 +97,7 @@ export async function executeSearchVideos(
 export const searchVideosTool = createTool({
   id: "searchVideos",
   description:
-    "Search the JesusFilm video library for videos matching the editor's intent. Returns videoIds, titles, descriptions, and slugs. Use the returned videoId values verbatim in block videoId fields — never invent ids.",
+    'Search the JesusFilm video library for videos matching the editor\'s intent. Returns videoIds, titles, descriptions, slugs, and availability metadata. `languageSlug` is the playable audio language. For `availability.kind === "target_subtitle"`, `availability.languageSlug` is the requested subtitle language and can differ from the audio language. Use returned videoId values verbatim in block videoId fields — never invent ids.',
   inputSchema: searchVideosInputSchema,
   outputSchema: searchVideosOutputSchema,
   execute: async (inputData) => executeSearchVideos(inputData),

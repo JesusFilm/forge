@@ -75,6 +75,13 @@ describe("searchVideosTool", () => {
           snippet: "Easter video.",
           startSeconds: 0,
           playbackId: "pb-1",
+          durationSeconds: 312,
+          languageSlug: "russian",
+          action: { kind: "watch", hrefLanguageSlug: "english" },
+          availability: {
+            kind: "target_subtitle",
+            languageSlug: "russian",
+          },
           score: 0.8,
         },
       ],
@@ -109,6 +116,13 @@ describe("searchVideosTool", () => {
         snippet: "Easter video.",
         slug: "easter",
         imageUrl: null,
+        playbackId: "pb-1",
+        durationSeconds: 312,
+        languageSlug: "english",
+        availability: {
+          kind: "target_subtitle",
+          languageSlug: "russian",
+        },
       },
     ])
   })

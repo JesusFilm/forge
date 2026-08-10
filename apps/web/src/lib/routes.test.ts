@@ -162,6 +162,17 @@ describe("watchVideoPath", () => {
       }),
     ).toBe("/jesus.html?t=42&autoplay=1&_lr=1")
   })
+
+  it("serializes subtitle intent after existing one-shot parameters", () => {
+    expect(
+      watchVideoPath(jesus, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+        subtitleLanguage: russian,
+      }),
+    ).toBe("/jesus.html?t=42&autoplay=1&_lr=1&subtitles=russian")
+  })
 })
 
 describe("watchVideoExplicitLanguagePath", () => {
@@ -177,8 +188,9 @@ describe("watchVideoExplicitLanguagePath", () => {
         t: 42,
         autoplay: true,
         reason: "locale-resolved",
+        subtitleLanguage: russian,
       }),
-    ).toBe("/jesus.html/english.html?t=42&autoplay=1&_lr=1")
+    ).toBe("/jesus.html/english.html?t=42&autoplay=1&_lr=1&subtitles=russian")
   })
 })
 
@@ -189,9 +201,14 @@ describe("watchEpisodePath", () => {
     )
   })
 
-  it("keeps international contextual routes explicit", () => {
-    expect(watchEpisodePath(lumo, wedding, russian, { t: 10 })).toBe(
-      "/lumo-the-gospel-of-john.html/wedding-in-cana/russian.html?t=10",
+  it("keeps international contextual routes explicit with locale options", () => {
+    expect(
+      watchEpisodePath(lumo, wedding, russian, {
+        t: 10,
+        subtitleLanguage: spanishCastilian,
+      }),
+    ).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/russian.html?t=10&subtitles=spanish-castilian",
     )
     expect(watchEpisodePath(lumo, wedding, romanian)).toBe(
       "/lumo-the-gospel-of-john.html/wedding-in-cana/romanian.html",

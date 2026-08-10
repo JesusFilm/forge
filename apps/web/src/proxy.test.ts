@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   WATCH_INTERNAL_REWRITE_HEADER,
+  WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
   config,
   proxy,
   type ProxyRequest,
@@ -20,8 +21,9 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "jesus",
     "lumo-the-gospel-of-john",
     "parable-of-the-sower-and-the-seed",
+    "perfect-2",
   ],
-  oneSegmentSlugs: ["easter", "jesus", "new-collection"],
+  oneSegmentSlugs: ["easter", "jesus", "new-collection", "perfect-2"],
   homepageLocales: ["en", "es"],
   episodePairsByParent: {
     "lumo-the-gospel-of-john": [
@@ -42,6 +44,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
   ],
   audioLanguageIndexesByContent: {
     jesus: [0, 1, 2, 3, 4, 5, 6, 7],
+    "perfect-2": [2],
   },
   audioLanguageIndexesByEpisode: {
     "lumo-the-gospel-of-john": {
@@ -697,6 +700,81 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/ru/ru/jesus.html/russian.html")
   })
 
+  it("encodes valid subtitle intent in a trusted internal segment without changing the browser URL", async () => {
+    const response = await proxy(
+      makeRequest(
+        "/jesus.html/english.html?subtitles=russian&utm_source=search",
+      ),
+    )
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewrite.pathname).toBe(
+      "/en/en/jesus.html/english.html/__subtitle-russian",
+    )
+    expect(rewrite.search).toBe("?subtitles=russian&utm_source=search")
+    expect(
+      rewrittenRequestHeaders(response).get(
+        WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+      ),
+    ).toBe("russian")
+
+    const admitted = await proxy(
+      makeRequest(`${rewrite.pathname}${rewrite.search}`, {
+        headers: rewrittenRequestHeaders(response),
+      }),
+    )
+    expect(admitted.status).toBe(200)
+    expect(rewritePath(admitted)).toBeNull()
+  })
+
+  it("keeps subtitle intent when canonical English one-segment admission expands to an internal video route", async () => {
+    const response = await proxy(
+      makeRequest("/perfect-2.html?subtitles=russian"),
+    )
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewrite.pathname).toBe(
+      "/en/en/perfect-2.html/english.html/__subtitle-russian",
+    )
+    expect(rewrite.search).toBe("?subtitles=russian")
+    expect(
+      rewrittenRequestHeaders(response).get(
+        WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+      ),
+    ).toBe("russian")
+  })
+
+  it.each(["?subtitles=Russian!", "?subtitles=russian&subtitles=spanish"])(
+    "does not encode malformed subtitle intent %s",
+    async (search) => {
+      const response = await proxy(
+        makeRequest(`/jesus.html/english.html${search}`),
+      )
+
+      expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
+      expect(
+        rewrittenRequestHeaders(response).get(
+          WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+        ),
+      ).toBeNull()
+    },
+  )
+
+  it("does not encode a well-formed unknown subtitle slug into the ISR path", async () => {
+    const response = await proxy(
+      makeRequest("/jesus.html/english.html?subtitles=made-up-language"),
+    )
+
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
+    expect(
+      rewrittenRequestHeaders(response).get(
+        WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+      ),
+    ).toBeNull()
+  })
+
   it("uses the imported Bangla UI catalog for Bangla public audio URLs", async () => {
     const response = await proxy(makeRequest("/jesus.html/bangla-2.html"))
     expect(rewritePath(response)).toBe("/bn/bn/jesus.html/bangla-2.html")
@@ -1033,6 +1111,21 @@ describe("proxy — visible internal-prefix policy", () => {
           [WATCH_INTERNAL_REWRITE_HEADER, "/new-collection.html"],
         ]),
       }),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("rejects hidden subtitle segments without the dedicated rewrite claim", async () => {
+    const response = await proxy(
+      makeRequest(
+        "/en/en/jesus.html/english.html/__subtitle-russian?subtitles=russian",
+        {
+          headers: new Headers([
+            [WATCH_INTERNAL_REWRITE_HEADER, "/jesus.html/english.html"],
+          ]),
+        },
+      ),
     )
 
     expectNotFoundRewrite(response)

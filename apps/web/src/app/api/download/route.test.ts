@@ -8,8 +8,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { isWatchDownloadAccountGateEnabledMock } = vi.hoisted(() => ({
+const {
+  isWatchDownloadAccountGateEnabledMock,
+  resolveWatchSubtitleTargetMock,
+} = vi.hoisted(() => ({
   isWatchDownloadAccountGateEnabledMock: vi.fn(async () => true),
+  resolveWatchSubtitleTargetMock: vi.fn(),
 }))
 
 vi.mock("node:dns", () => ({
@@ -37,6 +41,10 @@ vi.mock("@/lib/feature-flags", () => ({
   },
 }))
 
+vi.mock("@/lib/subtitle-target", () => ({
+  resolveWatchSubtitleTarget: resolveWatchSubtitleTargetMock,
+}))
+
 import { promises as dns } from "node:dns"
 
 import { GET, HEAD } from "./route"
@@ -56,6 +64,7 @@ function makeRequest(
 
 afterEach(() => {
   isWatchDownloadAccountGateEnabledMock.mockResolvedValue(true)
+  resolveWatchSubtitleTargetMock.mockReset()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -237,6 +246,10 @@ describe("GET /watch/api/download - redirect path", () => {
 describe("GET /watch/api/download - inline subtitles", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
+    resolveWatchSubtitleTargetMock.mockResolvedValue({
+      ok: true,
+      target: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
+    })
   })
 
   it("streams alternate-language VTT subtitles through the same-origin proxy", async () => {
@@ -256,8 +269,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -272,6 +286,125 @@ describe("GET /watch/api/download - inline subtitles", () => {
     expect(await res.text()).toBe(vtt)
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
+      expect.objectContaining({ redirect: "manual" }),
+    )
+    expect(resolveWatchSubtitleTargetMock).toHaveBeenCalledWith({
+      subtitleId: "subtitle-1",
+      variantId: "variant-1",
+    })
+  })
+
+  it("does not proxy legacy raw URLs as anonymous inline subtitles", async () => {
+    isWatchDownloadAccountGateEnabledMock.mockResolvedValueOnce(false)
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
+        disposition: "inline",
+      }),
+    )
+
+    expect(res.status).toBe(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(resolveWatchSubtitleTargetMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects resolved subtitle URLs outside the exact Core VTT origin", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target: "https://subtitles.jesusfilm.org/example.vtt",
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["missing-params", 400, "Subtitle identifiers required"],
+    ["unavailable", 503, "Subtitle lookup unavailable"],
+    ["not-found", 404, "Subtitle unavailable"],
+  ] as const)(
+    "maps subtitle lookup %s failures to HTTP %s",
+    async (reason, status, message) => {
+      resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+        ok: false,
+        reason,
+      })
+      const fetchMock = vi.fn()
+      vi.stubGlobal("fetch", fetchMock)
+
+      const res = await GET(
+        makeRequest({
+          disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
+        }),
+      )
+
+      expect(res.status).toBe(status)
+      await expect(res.json()).resolves.toEqual({ error: message })
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it("rejects resolved subtitle URLs with query strings", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target:
+        "https://api-media-core.jesusfilm.org/subtitles/example.vtt?redirect=1",
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("canonicalizes each resolved Core VTT path segment before fetching", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target:
+        "https://api-media-core.jesusfilm.org/subtitles/russian%20captions/example.vtt",
+    })
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("WEBVTT\n\n", {
+          headers: { "content-type": "text/vtt" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/russian%20captions/example.vtt",
       expect.objectContaining({ redirect: "manual" }),
     )
   })
@@ -299,8 +432,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
     try {
       const res = await GET(
         makeRequest({
-          url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
           disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
         }),
       )
       const bodyResult = expect(res.text()).rejects.toThrow()
@@ -328,8 +462,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -353,8 +488,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -372,8 +508,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -398,8 +535,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
     const response = GET(
       makeRequest(
         {
-          url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
           disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
         },
         { signal: controller.signal },
       ),
@@ -418,8 +556,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -441,8 +580,9 @@ describe("GET /watch/api/download - inline subtitles", () => {
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
@@ -473,6 +613,45 @@ describe("HEAD /watch/api/download", () => {
     expect(res.headers.get("cache-control")).toContain("no-store")
     expect(await res.text()).toBe("")
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("resolves and proxies opaque inline subtitle requests", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target: "https://api-media-core.jesusfilm.org/subtitles/russian.vtt",
+    })
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { "Content-Type": "text/vtt; charset=utf-8" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await HEAD(
+      makeRequest(
+        {
+          disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
+        },
+        { method: "HEAD" },
+      ),
+    )
+
+    expect(resolveWatchSubtitleTargetMock).toHaveBeenCalledWith({
+      subtitleId: "subtitle-1",
+      variantId: "variant-1",
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/russian.vtt",
+      expect.objectContaining({ method: "HEAD", redirect: "manual" }),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-type")).toBe("text/vtt; charset=utf-8")
+    expect(res.headers.get("content-disposition")).toBe("inline")
+    expect(await res.text()).toBe("")
   })
 
   it("rejects non-allowlisted URLs", async () => {

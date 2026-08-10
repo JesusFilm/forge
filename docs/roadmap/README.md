@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 10, 2026)
 
-- **Total tickets:** 500
-- **Complete:** 381
+- **Total tickets:** 501
+- **Complete:** 382
 - **In progress:** 36
 - **Not started:** 32
 - **Blocked:** 51
@@ -102,6 +102,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-311](content-discovery/feat-311-admin-fireworks-query-embeddings.md)                                     | Admin Fireworks query embedding provider                                                        | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-326](content-discovery/feat-326-admin-search-results-pagination.md)                                      | Admin search results pagination                                                                 | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-312](content-discovery/feat-312-admin-query-embedding-fast-fail.md)                                      | Admin query embedding one-second fast fail                                                      | codex      | P1       | 2026-08-03 | 1    | 2026-08-03 | complete    |
+| [feat-346](content-discovery/feat-346-watch-search-subtitle-audio-routing.md)                                  | Watch search subtitle-only audio routing                                                        | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-335](content-discovery/feat-335-watch-language-inventory-english-assist.md)                              | Watch language inventory English assistance                                                     | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-335](content-discovery/feat-335-watch-search-han-query-trigger.md)                                       | Remove Web Watch search frontend language detection                                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-336](content-discovery/feat-336-watch-localized-title-fallback.md)                                       | Watch localized title fallback                                                                  | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
@@ -412,6 +413,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-337](platform/feat-337-watch-language-inventory-direct-catalog.md)               | Focus Watch language inventory on the dubbed catalog                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-343](platform/feat-343-watch-sibling-language-availability.md)                   | Watch sibling selected-language availability                                     | codex      | P1       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-345](platform/feat-345-mastra-seo-sealed-google-credentials.md)                  | Support sealed Google credentials for Mastra SEO                                 | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
+| [feat-347](platform/feat-347-mastra-seo-openrouter-provider.md)                        | Reuse Mastra OpenRouter access for SEO                                           | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
 | [feat-336](platform/feat-336-admin-multi-client-token-introspection.md)                | Admin introspection for more than one client id                                  | unassigned | P1       | 2026-08-11 | 2    | 2026-08-12 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |

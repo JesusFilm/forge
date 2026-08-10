@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { getSeoCapabilities, getSeoConfig } from "./seo"
+import {
+  getSeoCapabilities,
+  getSeoConfig,
+  getSeoLlmProviderConfig,
+} from "./seo"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -54,5 +58,48 @@ describe("SEO Google credential configuration", () => {
       gsc: true,
       ga4: true,
     })
+  })
+})
+
+describe("SEO model provider configuration", () => {
+  it("prefers the paid OpenRouter key and normalizes the default model", () => {
+    const config = getSeoConfig({
+      OPENROUTER_API_PAID_KEY: "paid-key",
+      OPENROUTER_API_KEY: "standard-key",
+      SEO_OPENAI_API_KEY: "direct-key",
+      SEO_OPENAI_MODEL: "gpt-5.4-mini",
+      SEO_OPENROUTER_MODEL: "gpt-5.4-mini",
+    })
+
+    expect(config).toMatchObject({
+      openRouterApiKey: "paid-key",
+      openRouterModel: "openai/gpt-5.4-mini",
+      openAiApiKey: "direct-key",
+      openAiModel: "gpt-5.4-mini",
+    })
+    expect(getSeoLlmProviderConfig(config)).toEqual({
+      id: "openrouter",
+      apiKey: "paid-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/gpt-5.4-mini",
+    })
+    expect(getSeoCapabilities(config, false).groundedSearch).toBe(true)
+  })
+
+  it("retains an explicitly configured direct OpenAI fallback", () => {
+    const config = getSeoConfig({
+      SEO_OPENAI_API_KEY: "direct-key",
+      SEO_OPENAI_MODEL: "openai/gpt-5.4-mini",
+    })
+
+    expect(config.openRouterApiKey).toBeUndefined()
+    expect(config.openAiModel).toBe("gpt-5.4-mini")
+    expect(getSeoLlmProviderConfig(config)).toEqual({
+      id: "openai",
+      apiKey: "direct-key",
+      baseUrl: "https://api.openai.com/v1",
+      model: "gpt-5.4-mini",
+    })
+    expect(getSeoCapabilities(config, false).groundedSearch).toBe(true)
   })
 })

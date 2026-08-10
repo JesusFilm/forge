@@ -8,6 +8,7 @@ import {
   publicSlugForLocale,
   type SearchLanguageResolution,
 } from "./search-language"
+import { resolveSearchResultLanguages } from "./search-result-language"
 
 export type SearchContentType = "video" | "experience"
 export type SearchAvailabilityKind =
@@ -64,6 +65,9 @@ export type SearchResult = {
   languageEnglishName?: string | null
   /** Admin-owned watchability classification for this result. */
   availabilityKind?: SearchAvailabilityKind | null
+  /** Requested subtitle language for a subtitle-only result. The public path
+   * continues to use `languageSlug` as its playable audio language. */
+  subtitleLanguageSlug?: string | null
   /** Human-readable availability language label, e.g. Russian. */
   availabilityLanguageEnglishName?: string | null
   /** Safe evidence label, e.g. Title match. */
@@ -167,6 +171,18 @@ function mapWatchSearchResult(
   })
   if (!title) return null
 
+  const availabilityKind = mapWatchSearchAvailabilityKind(
+    result.availability?.kind,
+  )
+  const resultLanguages = resolveSearchResultLanguages({
+    availabilityKind,
+    resultLanguageSlug: result.languageSlug,
+    resultLanguageEnglishName: result.languageEnglishName,
+    actionLanguageSlug: result.action?.hrefLanguageSlug,
+    availabilityLanguageSlug: result.availability?.languageSlug,
+    availabilityLanguageEnglishName: result.availability?.languageEnglishName,
+  })
+
   return {
     type: result.type.toLowerCase() as SearchContentType,
     id: result.id,
@@ -183,11 +199,12 @@ function mapWatchSearchResult(
     durationSeconds: result.durationSeconds,
     childCount: result.childCount,
     source: "watch-search",
-    languageSlug: result.action?.hrefLanguageSlug ?? result.languageSlug,
-    languageEnglishName: result.languageEnglishName,
-    availabilityKind: mapWatchSearchAvailabilityKind(result.availability?.kind),
+    languageSlug: resultLanguages.languageSlug,
+    languageEnglishName: resultLanguages.languageEnglishName,
+    availabilityKind,
+    subtitleLanguageSlug: resultLanguages.subtitleLanguageSlug,
     availabilityLanguageEnglishName:
-      result.availability?.languageEnglishName ?? result.languageEnglishName,
+      resultLanguages.availabilityLanguageEnglishName,
     evidenceLabel: result.evidence?.label ?? null,
     evidenceLanguageSlug: result.evidence?.languageSlug ?? null,
   }

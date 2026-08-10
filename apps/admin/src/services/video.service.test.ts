@@ -8,6 +8,85 @@ import {
   WATCH_VIDEOS_BY_IDS_MAX,
 } from "./video.service"
 
+describe("getWatchRouteSnapshotBySlug", () => {
+  it("selects a requested-subtitle edition in the one preferred-variant query", async () => {
+    const preferredVariant = {
+      id: "dub-english-russian-edition",
+      slug: "english",
+      published: true,
+      hls: "https://cdn.example/english-russian.m3u8",
+      duration: 120,
+      languageCoreId: "529",
+      languageBcp47: "en",
+      languageSlug: "english",
+      languageName: { en: "English" },
+      muxVideoId: null,
+      playbackId: null,
+    }
+    const queryRaw = vi.fn((strings: TemplateStringsArray) => {
+      const sql = strings.join(" ")
+      if (sql.includes("WITH requested AS")) {
+        return Promise.resolve([preferredVariant])
+      }
+      if (sql.includes("COUNT(DISTINCT vd.language_id)")) {
+        return Promise.resolve([{ count: 1 }])
+      }
+      if (sql.includes('AS "videoId"')) {
+        return Promise.resolve([{ videoId: "video-1", duration: 120 }])
+      }
+      return Promise.resolve([])
+    })
+    const prisma = {
+      video: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "video-1",
+          slug: "perfect-2",
+          publishedAt: new Date("2026-08-05T00:00:00.000Z"),
+          noIndex: false,
+          label: "FEATURE_FILM",
+          primaryLanguageId: "language-en",
+          primaryLanguage: { coreId: "529", bcp47: "en" },
+        }),
+      },
+      videoRelation: { findMany: vi.fn().mockResolvedValue([]) },
+      bibleCitation: { findMany: vi.fn().mockResolvedValue([]) },
+      videoImage: { findMany: vi.fn().mockResolvedValue([]) },
+      videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+      videoStudyQuestion: { findMany: vi.fn().mockResolvedValue([]) },
+      $queryRaw: queryRaw,
+    }
+    const service = new VideoService(prisma as never)
+
+    const result = await service.getWatchRouteSnapshotBySlug({
+      slug: "perfect-2",
+      locale: "en",
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      user: null,
+    })
+
+    expect(result?.preferredVariant?.documentId).toBe(
+      "dub-english-russian-edition",
+    )
+    const preferredCalls = queryRaw.mock.calls.filter(([strings]) =>
+      strings.join(" ").includes("WITH requested AS"),
+    )
+    expect(preferredCalls).toHaveLength(1)
+    const [strings, ...values] = preferredCalls[0]!
+    const sql = strings.join(" ")
+    expect(values).toEqual(["english", "russian", "video-1"])
+    expect(sql).toContain("vs.video_edition_id = vd.video_edition_id")
+    expect(sql).toContain("vs.video_id IS NULL OR vs.video_id = vd.video_id")
+    expect(sql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
+    expect(sql.indexOf("audio_language_slug")).toBeLessThan(
+      sql.indexOf("subtitle_language_slug"),
+    )
+    expect(sql.indexOf("subtitle_language_slug")).toBeLessThan(
+      sql.indexOf("vd.duration DESC NULLS LAST"),
+    )
+  })
+})
+
 describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
   it("hydrates deduplicated public social images in one bounded root-only batch", async () => {
     const prisma = {

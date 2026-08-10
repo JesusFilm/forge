@@ -12,6 +12,7 @@ import {
   publicSlugForLocale,
   type SearchLanguageResolution,
 } from "./search-language"
+import { resolveSearchResultLanguages } from "./search-result-language"
 import type {
   AdminVideoLabel,
   SearchAvailabilityKind,
@@ -149,6 +150,18 @@ function mapWatchSearchResult(
   })
   if (!title) return null
 
+  const availabilityKind = mapWatchSearchAvailabilityKind(
+    result.availability?.kind,
+  )
+  const resultLanguages = resolveSearchResultLanguages({
+    availabilityKind,
+    resultLanguageSlug: result.languageSlug,
+    resultLanguageEnglishName: result.languageEnglishName,
+    actionLanguageSlug: result.action?.hrefLanguageSlug,
+    availabilityLanguageSlug: result.availability?.languageSlug,
+    availabilityLanguageEnglishName: result.availability?.languageEnglishName,
+  })
+
   return {
     type: result.type.toLowerCase() as SearchContentType,
     id: result.id,
@@ -165,13 +178,12 @@ function mapWatchSearchResult(
     durationSeconds: result.durationSeconds ?? null,
     childCount: result.childCount ?? null,
     source: "watch-search",
-    languageSlug: result.action?.hrefLanguageSlug ?? result.languageSlug,
-    languageEnglishName: result.languageEnglishName ?? null,
-    availabilityKind: mapWatchSearchAvailabilityKind(result.availability?.kind),
+    languageSlug: resultLanguages.languageSlug,
+    languageEnglishName: resultLanguages.languageEnglishName,
+    availabilityKind,
+    subtitleLanguageSlug: resultLanguages.subtitleLanguageSlug,
     availabilityLanguageEnglishName:
-      result.availability?.languageEnglishName ??
-      result.languageEnglishName ??
-      null,
+      resultLanguages.availabilityLanguageEnglishName,
     evidenceLabel: result.evidence?.label ?? null,
     evidenceLanguageSlug: result.evidence?.languageSlug ?? null,
   }
@@ -203,7 +215,12 @@ function withResolvedLanguageSlug(
   result: SearchResult,
   resolvedLanguage: SearchLanguageResolution,
 ): SearchResult {
-  if (result.type !== "video") return result
+  if (
+    result.type !== "video" ||
+    result.availabilityKind === "target_subtitle"
+  ) {
+    return result
+  }
   return {
     ...result,
     languageSlug: result.languageSlug ?? resolvedLanguage.publicSlug,

@@ -1222,7 +1222,7 @@ type Query {
   """
   Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.
   """
-  watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!): WatchRouteSnapshot
+  watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!, subtitleLanguageSlug: String): WatchRouteSnapshot
   """
   Fetch ordered public Watch Video records by Admin id. Max 200 ids per call; unknown ids are omitted and duplicate ids are preserved.
   """

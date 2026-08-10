@@ -1488,12 +1488,14 @@ builder.queryFields((t) => ({
       slug: t.arg.string({ required: true }),
       locale: t.arg.string({ required: true }),
       languageSlug: t.arg.string({ required: false }),
+      subtitleLanguageSlug: t.arg.string({ required: false }),
     },
     resolve: (_root, args, ctx) =>
       ctx.services.video.getWatchRouteSnapshotBySlug({
         slug: args.slug,
         locale: args.locale,
         languageSlug: args.languageSlug,
+        subtitleLanguageSlug: args.subtitleLanguageSlug,
         user: ctx.user,
       }),
   }),

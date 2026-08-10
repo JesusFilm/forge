@@ -84,6 +84,12 @@ chunks, read stored vectors, or call an embedding provider. This separation is
 what lets routine catalog releases finish without an hour-long 280k-vector
 import or a duplicate HNSW generation in memory.
 
+Reuse is allowed only when the active transcript schema contains
+`videoEditionId`. If an older alias lacks that field, the command fails before
+publishing any catalog, availability, or lexical alias and directs the operator
+to rerun with `--rebuild-transcripts`; it never publishes a mixed generation
+that cannot preserve edition-scoped subtitle routing.
+
 The command holds a dedicated-session PostgreSQL advisory lock from before the
 build starts through alias publication and old-collection retirement. A
 concurrent release fails fast instead of racing aliases or cleanup.

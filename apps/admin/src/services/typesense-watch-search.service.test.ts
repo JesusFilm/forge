@@ -7,6 +7,7 @@ import type {
 } from "./typesense-client"
 import { TypesenseRequestError } from "./typesense-client"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
+import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
 import { buildTypesenseWatchLexicalDocuments } from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -204,48 +205,7 @@ function candidateProfile() {
 function availabilityDocumentsForCatalog(
   catalog: TypesenseWatchCatalogDocument[],
 ): TypesenseWatchAvailabilityDocument[] {
-  return catalog.flatMap((document) => {
-    const byLanguage = new Map<string, TypesenseWatchAvailabilityDocument>()
-    const audio = JSON.parse(document.audioOptionsJson) as Array<{
-      languageId: string
-      languageSlug: string
-      languageEnglishName: string | null
-      playbackId: string | null
-      durationSeconds: number | null
-    }>
-    const subtitles = JSON.parse(document.subtitleOptionsJson) as Array<{
-      languageId: string
-      languageSlug: string
-    }>
-    for (const option of audio) {
-      byLanguage.set(option.languageId, {
-        id: `${document.id}:${option.languageId}`,
-        videoId: document.id,
-        ...option,
-        audio: true,
-        subtitles: false,
-      })
-    }
-    for (const option of subtitles) {
-      const existing = byLanguage.get(option.languageId)
-      if (existing) {
-        existing.subtitles = true
-      } else {
-        byLanguage.set(option.languageId, {
-          id: `${document.id}:${option.languageId}`,
-          videoId: document.id,
-          languageId: option.languageId,
-          languageSlug: option.languageSlug,
-          languageEnglishName: null,
-          audio: false,
-          subtitles: true,
-          playbackId: null,
-          durationSeconds: null,
-        })
-      }
-    }
-    return [...byLanguage.values()]
-  })
+  return buildAvailabilityDocuments(catalog)
 }
 
 function prismaFixture({
@@ -299,6 +259,7 @@ function typesenseFixture({
   hybridError,
   catalog = lexical.length > 0 ? lexical : [catalogDocument],
   availability = availabilityDocumentsForCatalog(catalog),
+  availabilityFound,
   availabilityError,
   binding = {
     catalog: TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -320,6 +281,7 @@ function typesenseFixture({
   hybridError?: Error
   catalog?: TypesenseWatchCatalogDocument[]
   availability?: TypesenseWatchAvailabilityDocument[]
+  availabilityFound?: number
   availabilityError?: Error
   binding?: TypesenseWatchSearchCollectionBinding
 }) {
@@ -444,14 +406,23 @@ function typesenseFixture({
           const documents = availability.filter(
             (document) =>
               requestedValues.includes(document.videoId) &&
-              requestedValues.includes(document.languageId),
+              requestedValues.includes(document.languageId) &&
+              (request.filter_by?.toString().includes("audio:=true")
+                ? document.audio
+                : true),
+          )
+          const perPage = Number(request.per_page ?? documents.length)
+          const page = Number(request.page ?? 1)
+          const pageDocuments = documents.slice(
+            (page - 1) * perPage,
+            page * perPage,
           )
           return {
-            found: documents.length,
-            out_of: documents.length,
-            page: 1,
+            found: availabilityFound ?? documents.length,
+            out_of: availabilityFound ?? documents.length,
+            page,
             search_time_ms: 1,
-            hits: documents.map((document) => ({
+            hits: pageDocuments.map((document) => ({
               document: projectDocument(document, request),
             })),
           } satisfies TypesenseSearchResult<TypesenseWatchAvailabilityDocument>
@@ -1488,7 +1459,7 @@ describe("TypesenseWatchSearchService", () => {
     expect(availabilityRequest).toMatchObject({
       q: "*",
       include_fields:
-        "id,videoId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds",
+        "id,videoId,videoEditionId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds,hrefLanguageSlug,actionVideoDubId,actionPriority",
     })
     expect(availabilityRequest?.filter_by).toContain(
       "languageId:=[`language-fr`]",
@@ -1555,6 +1526,192 @@ describe("TypesenseWatchSearchService", () => {
     expect(logger.warn).toHaveBeenCalledWith(
       "[typesense-watch-search] event=availability_alias_fallback",
     )
+  })
+
+  it("retries legacy hydration once for an old availability action projection", async () => {
+    const logger = { warn: vi.fn() }
+    const legacySubtitleDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleLanguageSlugs: ["french"],
+      subtitleOptionsJson: JSON.stringify([
+        {
+          id: "subtitle-fr",
+          languageId: "language-fr",
+          languageSlug: "french",
+        },
+      ]),
+    }
+    const typesense = typesenseFixture({
+      lexical: [legacySubtitleDocument],
+      catalog: [legacySubtitleDocument],
+      availabilityError: new TypesenseRequestError(
+        "Typesense search failed: Could not find a field named `videoEditionId` in the schema.",
+        400,
+      ),
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding), logger },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: null,
+      availability: { kind: "target_subtitle" },
+      action: { hrefLanguageSlug: null },
+    })
+    const calls = typesense.multiSearch.mock.calls.flatMap(
+      ([searches]) => searches,
+    )
+    expect(
+      calls.filter(
+        (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+      ),
+    ).toHaveLength(1)
+    expect(
+      calls.filter((request) =>
+        request.include_fields?.toString().includes("audioOptionsJson"),
+      ),
+    ).toHaveLength(1)
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[typesense-watch-search] event=availability_projection_fallback",
+    )
+  })
+
+  it("paginates edition-scoped availability instead of truncating hydration", async () => {
+    const availability = Array.from({ length: 251 }, (_, index) => ({
+      id: `video-communion:edition-${index}:language-fr`,
+      videoId: "video-communion",
+      videoEditionId: `edition-${index}`,
+      languageId: "language-fr",
+      languageSlug: "french",
+      languageEnglishName: "French",
+      audio: false,
+      subtitles: true,
+      playbackId: "playback-en",
+      durationSeconds: 175,
+      hrefLanguageSlug: "english",
+      actionVideoDubId: "dub-en",
+      actionPriority: 1,
+    }))
+    const typesense = typesenseFixture({ availability })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      availability: { kind: "target_subtitle" },
+      action: { hrefLanguageSlug: "english" },
+    })
+    expect(
+      typesense.multiSearch.mock.calls
+        .flatMap(([searches]) => searches)
+        .filter(
+          (request) =>
+            request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+        )
+        .map((request) => request.page ?? 1),
+    ).toEqual([1, 2])
+  })
+
+  it("falls back without scheduling unbounded availability overflow searches", async () => {
+    const logger = { warn: vi.fn() }
+    const typesense = typesenseFixture({ availabilityFound: 12_751 })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding), logger },
+    )
+
+    const response = await service.search({
+      query: "communion",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: "playback-fr",
+      availability: { kind: "target_audio" },
+    })
+    const calls = typesense.multiSearch.mock.calls.flatMap(
+      ([searches]) => searches,
+    )
+    expect(
+      calls.filter(
+        (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+      ),
+    ).toHaveLength(1)
+    expect(
+      calls.filter((request) =>
+        request.include_fields?.toString().includes("audioOptionsJson"),
+      ),
+    ).toHaveLength(1)
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[typesense-watch-search] event=availability_overflow_fallback",
+    )
+  })
+
+  it("does not retry unrelated availability failures", async () => {
+    const typesense = typesenseFixture({
+      availabilityError: new TypesenseRequestError(
+        "Typesense search failed: request timed out",
+        500,
+      ),
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    await expect(
+      service.search({ query: "communion", targetLanguageSlug: "french" }),
+    ).rejects.toThrow("request timed out")
+    expect(
+      typesense.multiSearch.mock.calls
+        .flatMap(([searches]) => searches)
+        .some((request) =>
+          request.include_fields?.toString().includes("audioOptionsJson"),
+        ),
+    ).toBe(false)
+  })
+
+  it("does not treat an alias-tagged 400 as a missing availability alias", async () => {
+    const typesense = typesenseFixture({
+      availabilityError: new TypesenseRequestError(
+        `Typesense search failed for ${TYPESENSE_WATCH_AVAILABILITY_ALIAS}: invalid filter_by expression`,
+        400,
+      ),
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    await expect(
+      service.search({ query: "communion", targetLanguageSlug: "french" }),
+    ).rejects.toThrow("invalid filter_by expression")
+    expect(
+      typesense.multiSearch.mock.calls
+        .flatMap(([searches]) => searches)
+        .some((request) =>
+          request.include_fields?.toString().includes("audioOptionsJson"),
+        ),
+    ).toBe(false)
   })
 
   it("falls back to legacy locale JSON until the active index has locale codes", async () => {
@@ -1990,8 +2147,15 @@ describe("TypesenseWatchSearchService", () => {
       subtitleOptionsJson: JSON.stringify([
         {
           id: "subtitle-fr",
+          videoEditionId: "edition-1",
           languageId: "language-fr",
           languageSlug: "french",
+          languageEnglishName: "French",
+          hrefLanguageSlug: "english",
+          playbackId: "playback-en",
+          durationSeconds: 175,
+          actionVideoDubId: "dub-en",
+          actionPriority: 1,
         },
       ]),
     }
@@ -2014,9 +2178,327 @@ describe("TypesenseWatchSearchService", () => {
         kind: "target_subtitle",
         audio: false,
         subtitles: true,
+        languageSlug: "french",
       },
       fallback: { kind: "subtitle" },
-      action: { hrefLanguageSlug: "french" },
+      playbackId: "playback-en",
+      durationSeconds: 175,
+      action: { hrefLanguageSlug: "english" },
+    })
+  })
+
+  it("does not hydrate semantic subtitle evidence from another edition", async () => {
+    const subtitleDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleLanguageSlugs: ["french"],
+      subtitleOptionsJson: "[]",
+    }
+    const typesense = typesenseFixture({
+      lexical: [],
+      catalog: [subtitleDocument],
+      availability: [
+        {
+          id: "video-communion:edition-b:language-fr",
+          videoId: "video-communion",
+          videoEditionId: "edition-b",
+          languageId: "language-fr",
+          languageSlug: "french",
+          languageEnglishName: "French",
+          audio: false,
+          subtitles: true,
+          playbackId: "playback-en-b",
+          durationSeconds: 175,
+          hrefLanguageSlug: "english",
+          actionVideoDubId: "dub-en-b",
+          actionPriority: 1,
+        },
+      ],
+      hybrid: [
+        {
+          vectorDistance: 0.1,
+          document: {
+            id: "chunk-edition-a",
+            documentKind: "transcript",
+            videoId: "video-communion",
+            videoEditionId: "edition-a",
+            canonicalVideoId: "core:core-communion",
+            language: "fr",
+            publiclyVisible: true,
+            text: "Semantic evidence from edition A",
+            startSeconds: 12,
+          },
+        },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: null,
+      availability: { kind: "unavailable" },
+      action: { hrefLanguageSlug: null },
+    })
+    const semanticRequest = typesense.multiSearch.mock.calls
+      .flatMap(([searches]) => searches)
+      .find(
+        (request) => request.collection === TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      )
+    expect(semanticRequest?.include_fields).toContain("videoEditionId")
+  })
+
+  it("keeps the winning semantic edition and evidence tuple together", async () => {
+    const subtitleDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleLanguageSlugs: ["french"],
+      subtitleOptionsJson: "[]",
+    }
+    const typesense = typesenseFixture({
+      lexical: [],
+      catalog: [subtitleDocument],
+      availability: [
+        {
+          id: "video-communion:edition-a:language-fr",
+          videoId: "video-communion",
+          videoEditionId: "edition-a",
+          languageId: "language-fr",
+          languageSlug: "french",
+          languageEnglishName: "French",
+          audio: false,
+          subtitles: true,
+          playbackId: "playback-en-a",
+          durationSeconds: 175,
+          hrefLanguageSlug: "english",
+          actionVideoDubId: "dub-en-a",
+          actionPriority: 1,
+        },
+        {
+          id: "video-communion:edition-b:language-fr",
+          videoId: "video-communion",
+          videoEditionId: "edition-b",
+          languageId: "language-fr",
+          languageSlug: "french",
+          languageEnglishName: "French",
+          audio: false,
+          subtitles: true,
+          playbackId: "playback-en-b",
+          durationSeconds: 176,
+          hrefLanguageSlug: "spanish-castilian",
+          actionVideoDubId: "dub-en-b",
+          actionPriority: 1,
+        },
+      ],
+      hybrid: [
+        {
+          vectorDistance: 0.1,
+          document: {
+            id: "chunk-edition-a",
+            documentKind: "transcript",
+            videoId: "video-communion",
+            videoEditionId: "edition-a",
+            canonicalVideoId: "core:core-communion",
+            language: "fr",
+            publiclyVisible: true,
+            text: "Winning semantic evidence",
+            startSeconds: 12,
+          },
+        },
+        {
+          vectorDistance: 0.2,
+          document: {
+            id: "chunk-edition-b",
+            documentKind: "transcript",
+            videoId: "video-communion",
+            videoEditionId: "edition-b",
+            canonicalVideoId: "core:core-communion",
+            language: "fr",
+            publiclyVisible: true,
+            text: "Lower-ranked semantic evidence",
+            startSeconds: 24,
+          },
+        },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      snippet: "Winning semantic evidence",
+      startSeconds: 12,
+      playbackId: "playback-en-a",
+      availability: { kind: "target_subtitle" },
+      evidence: {
+        kind: "transcript_semantic",
+        languageSlug: "french",
+      },
+      action: { hrefLanguageSlug: "english" },
+    })
+  })
+
+  it("fails closed for target subtitles when semantic evidence has no edition", async () => {
+    const subtitleDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleLanguageSlugs: ["french"],
+      subtitleOptionsJson: JSON.stringify([
+        {
+          id: "subtitle-fr",
+          videoEditionId: "edition-a",
+          languageId: "language-fr",
+          languageSlug: "french",
+          hrefLanguageSlug: "english",
+          playbackId: "playback-en",
+          durationSeconds: 175,
+          actionVideoDubId: "dub-en",
+          actionPriority: 1,
+        },
+      ]),
+    }
+    const typesense = typesenseFixture({
+      lexical: [],
+      catalog: [subtitleDocument],
+      hybrid: [
+        {
+          vectorDistance: 0.1,
+          document: {
+            id: "chunk-without-edition",
+            documentKind: "transcript",
+            videoId: "video-communion",
+            canonicalVideoId: "core:core-communion",
+            language: "fr",
+            publiclyVisible: true,
+            text: "Editionless semantic evidence",
+            startSeconds: 12,
+          },
+        },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: null,
+      availability: { kind: "unavailable" },
+      action: { hrefLanguageSlug: null },
+    })
+  })
+
+  it("keeps target audio available for editionless semantic evidence", async () => {
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: [],
+        catalog: [catalogDocument],
+        hybrid: [
+          {
+            vectorDistance: 0.1,
+            document: {
+              id: "chunk-without-edition",
+              documentKind: "transcript",
+              videoId: "video-communion",
+              canonicalVideoId: "core:core-communion",
+              language: "fr",
+              publiclyVisible: true,
+              text: "Editionless semantic evidence",
+              startSeconds: 12,
+            },
+          },
+        ],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: "playback-fr",
+      availability: { kind: "target_audio" },
+    })
+  })
+
+  it("keeps related audio available for editionless semantic evidence", async () => {
+    const relatedDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: ["english"],
+      audioOptionsJson: JSON.stringify([
+        {
+          id: "dub-en",
+          languageId: "language-en",
+          languageSlug: "english",
+          languageEnglishName: "English",
+          playbackId: "playback-en",
+          durationSeconds: 175,
+        },
+      ]),
+    }
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        fallbackLanguages: [{ id: "language-en", slug: "english" }],
+      }),
+      typesenseFixture({
+        lexical: [],
+        catalog: [relatedDocument],
+        hybrid: [
+          {
+            vectorDistance: 0.1,
+            document: {
+              id: "chunk-without-edition",
+              documentKind: "transcript",
+              videoId: "video-communion",
+              canonicalVideoId: "core:core-communion",
+              language: "fr",
+              publiclyVisible: true,
+              text: "Editionless semantic evidence",
+              startSeconds: 12,
+            },
+          },
+        ],
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      playbackId: "playback-en",
+      availability: {
+        kind: "related_language",
+        languageSlug: "english",
+      },
     })
   })
 
