@@ -218,6 +218,65 @@ describe("cited-source-names-grounded (hard-fail — the wired names half)", () 
     )
   })
 
+  it("accepts a URL-scoped alias assembled from served brand and locale words", () => {
+    const localized: RagFixtureFile = {
+      ...fixtures,
+      fixtures: [
+        {
+          ...fixtures.fixtures[0],
+          result: {
+            status: "ok",
+            sources: [
+              {
+                ...fixtures.fixtures[0].result.sources[0],
+                sourceName: "EveryStudent — Vietnamese (EveryVietStudent.com)",
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const results = runAnswerChecks(
+      answer(`[EveryVietStudent — Vietnamese](${SERVED_URL})`),
+      localized,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "pass",
+    )
+  })
+
+  it("rejects a served name paired with a different served URL", () => {
+    const otherUrl = "https://example.org/other"
+    const twoSources: RagFixtureFile = {
+      ...fixtures,
+      fixtures: [
+        {
+          ...fixtures.fixtures[0],
+          result: {
+            status: "ok",
+            sources: [
+              ...fixtures.fixtures[0].result.sources,
+              {
+                text: "Other source text",
+                sourceName: "EveryStudent",
+                title: "Another article",
+                url: otherUrl,
+                score: 0.6,
+              },
+            ],
+          },
+        },
+      ],
+    }
+    const results = runAnswerChecks(
+      answer(`[EveryStudent](${SERVED_URL})`),
+      twoSources,
+    )
+    expect(checkById(results, "cited-source-names-grounded").status).toBe(
+      "violated",
+    )
+  })
+
   it("ignores a protocol-less URL used as link text — no name claim to check", () => {
     const bare = SERVED_URL.replace(/^https:\/\//, "")
     const results = runAnswerChecks(

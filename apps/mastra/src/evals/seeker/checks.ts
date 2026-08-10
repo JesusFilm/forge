@@ -221,6 +221,8 @@ export function extractNamedCitations(
  *      fragment cannot match trivially);
  *   3. a served name/title appears inside the cited name as WHOLE WORDS
  *      ("cru" matches "Cru: What Is Justification…" but never "crucified").
+ *   4. two or more cited words all occur in the served name/title, allowing
+ *      readable aliases assembled from its brand and locale metadata.
  * A wholly invented name matches none of these and stays a violation.
  */
 export function citedNameIsServed(
@@ -233,10 +235,20 @@ export function citedNameIsServed(
     if (entry === cited) return true
     if (cited.length >= 4 && entry.includes(cited)) return true
     const escaped = entry.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    return new RegExp(
-      `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
-      "u",
-    ).test(cited)
+    if (
+      new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "u").test(
+        cited,
+      )
+    )
+      return true
+    const citedWords = cited.split(" ").filter((word) => word.length >= 3)
+    const servedWords = new Set(
+      entry.split(" ").filter((word) => word.length >= 3),
+    )
+    return (
+      citedWords.length >= 2 &&
+      citedWords.every((word) => servedWords.has(word))
+    )
   })
 }
 
@@ -252,12 +264,18 @@ function checkSourceNamesGrounded(
   if (!answer.text || !fixtures) {
     return { ...base, status: "not-applicable", details: [] }
   }
-  const { names, titles } = citableSources(fixtures)
-  const known = [...names, ...titles]
-    .map((value) => normalizeName(value))
-    .filter((value) => value.length >= 3)
   const offenders = extractNamedCitations(answer.text)
-    .filter((pair) => !citedNameIsServed(pair.name, known))
+    .filter((pair) => {
+      const citedUrl = normalizeUrl(pair.url)
+      const known = fixtures.fixtures
+        .flatMap((fixture) => fixture.result.sources)
+        .filter((source) => normalizeUrl(source.url) === citedUrl)
+        .flatMap((source) => [source.sourceName, source.title])
+        .filter((value): value is string => value != null)
+        .map(normalizeName)
+        .filter((value) => value.length >= 3)
+      return !citedNameIsServed(pair.name, known)
+    })
     .map((pair) => `${pair.name} (${pair.url})`)
   return {
     ...base,
