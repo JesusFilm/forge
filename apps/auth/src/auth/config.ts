@@ -133,6 +133,9 @@ const socialProviders = {
     : {}),
   ...(appleCredentials
     ? {
+        // App Store guideline 4.8: the hosted page is mobile's ONLY login,
+        // so Apple must stay enabled here while the app is in the store.
+        // An expired Apple secret now breaks mobile login compliance.
         apple: {
           ...appleCredentials,
           audience: appleAudience,
@@ -155,6 +158,9 @@ const jfpMobileSelfProvider = {
   scopes: [...MOBILE_DEFAULT_SCOPES],
   redirectURI: `${getAuthBaseUrl()}/api/auth/oauth2/callback/${JFP_MOBILE_PROVIDER_ID}`,
   pkce: true,
+  // R5 (feat-349): always show the login form, even with a live browser
+  // session — sign-out must allow account switching on a shared device.
+  prompt: "login",
 }
 
 const upstreamProviderPlugins = [

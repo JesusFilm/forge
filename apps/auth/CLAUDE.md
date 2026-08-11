@@ -90,6 +90,15 @@ document the dashboard as canonical.
 - Stdout logs must not include raw credentials, bearer tokens, refresh tokens,
   client secrets, or unnecessary PII.
 
+## Sign in with Apple — App Store constraint (guideline 4.8)
+
+The hosted login page is the ONLY sign-in surface for `apps/mobile`
+(feat-349). App Store guideline 4.8 requires Sign in with Apple to stay
+enabled on the hosted page while the mobile app is live in the App Store.
+Do not disable or let the Apple provider lapse: an expired Apple client
+secret now takes down mobile's App Store compliance, not only Apple
+sign-in itself.
+
 ## Sign in with Apple — client-secret rotation
 
 Apple's "client secret" is an ES256 JWT signed with a Sign in with Apple

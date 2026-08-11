@@ -3,7 +3,7 @@ id: "feat-349"
 title: "Mobile login via hosted auth page"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-12"
 duration: 5
 depends_on: []
