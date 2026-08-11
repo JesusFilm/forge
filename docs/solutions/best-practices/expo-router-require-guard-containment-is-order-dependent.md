@@ -1,5 +1,5 @@
 ---
-title: "A require()-in-try/catch root-layout guard does not contain module-scope throws in an expo-router app"
+title: "A require()-in-try/catch root-layout guard contains module-scope throws only by import-graph luck"
 date: 2026-08-07
 category: best-practices
 module: apps/mobile
@@ -9,11 +9,12 @@ severity: high
 root_cause: scope_issue
 resolution_type: documentation_update
 symptoms:
-  - "A module-scope throw in `src/env.ts` surfaced as the React Native dev error overlay, not the `_layout.tsx` Startup Error panel that a plan, a CLAUDE.md, and a roadmap ticket all claimed would render it"
+  - "The same module-scope throw in `src/env.ts` surfaced as the React Native dev error overlay on one tree and as the `_layout.tsx` Startup Error panel on another, four days apart, with neither file changed"
+  - "An unrelated PR that touched the root layout require block silently flipped which surface displays a startup failure"
   - "The call stack reaches `env.ts` through a static import chain from a screen module (env.ts <- config.ts <- apolloClient.ts <- useWatchHome.ts) that never passes through the guarded require"
   - "Unit tests stayed green while the prose claim was false -- they asserted the thrown message, never which surface displayed it"
   - "The claim survived three independent plan-review rounds because every reviewer reasoned inside it rather than testing it"
-  - "Whether the same escape produces a silent white screen in a release bundle is still unverified"
+  - "Whether the escape can produce a silent white screen in a release bundle, where there is no dev overlay to fall back on, is still unverified"
 applies_when:
   - "Relying on a hand-rolled try/catch around require() in a root layout to convert module-scope throws into a readable error screen"
   - "Adding a module-scope throw (env validation, a fail-closed refusal) to a module reachable by static import from any route or screen"
@@ -33,15 +34,17 @@ tags:
   - "metro"
 ---
 
-# A `require()`-in-try/catch guard does not contain a module-scope throw in an expo-router app
+# A `require()`-in-try/catch guard contains a module-scope throw only by import-graph luck
 
 ## Context
 
 `apps/mobile/app/_layout.tsx` wraps every one of its imports in a `require()` inside a `try/catch` and renders a full-screen "Startup Error" panel when that catch fires. Three prose surfaces claimed that a module-scope `throw` in `apps/mobile/src/env.ts` therefore reaches the developer as that panel.
 
-It does not. On the iOS simulator the throw surfaced as the React Native dev error overlay instead.
+Sometimes it does. Sometimes it does not, and the throw surfaces as the React Native dev error overlay instead. **Which one you get depends on the import graph, not on the guard** — and the graph changes with ordinary feature work.
 
-The guard is not useless — it is narrower than it reads. It contains a throw only from a module whose **every** evaluation path runs inside it. Once a second importer exists anywhere in the route graph, the guard is bypassed, and nothing in the repo notices.
+The guard is not useless; it is _conditional_ while reading as unconditional. It contains a throw only when its guarded `require` is the **first** evaluation path into the throwing module. Once a second path exists anywhere in the route graph and happens to run first, the guard is bypassed, and nothing in the repo notices.
+
+This document was itself wrong about that at first. Written 2026-08-07 from a single observation, it asserted flatly that the guard _does not_ catch the refusal. Re-running the identical check on 2026-08-11 — after an unrelated PR touched the root layout's require block — produced the opposite surface. The order-dependence is the finding; either flat claim is a mis-generalisation from one run.
 
 The corollary matters more than the specific bug: the wrong claim lived only in prose and in a diagram, and every automated test for the feature sat one layer below it. The tests asserted the message a pure function returns. The claim was about which surface displays it. No test could have gone red.
 
@@ -51,7 +54,7 @@ Putting the throw at env module scope was deliberate (KTD1 of `docs/plans/2026-0
 
 > `apps/mobile/app/_layout.tsx` already wraps that require in a try/catch that renders a full-screen selectable Startup Error panel showing the thrown message verbatim. R2 therefore needs no new UI.
 
-The conclusion — no new UI needed — happens to survive. The mechanism does not.
+The conclusion — no new UI needed — survives, because both surfaces show the message verbatim and selectable. What does not survive is treating the panel as a _guaranteed_ surface.
 
 ## Guidance
 
@@ -84,11 +87,17 @@ apolloClient.ts:15   <global>
 useWatchHome.ts:4    <global>
 ```
 
-Every frame is `<global>` — module-scope evaluation, not a render. The chain terminates at a hook reached only from a screen module, which is what makes the bypass unambiguous.
+Every frame is `<global>` — module-scope evaluation, not a render. The chain terminates at a hook reached only from a screen module, which is what makes _that_ bypass unambiguous.
+
+**The opposite outcome, 2026-08-11.** Same check, same command, same simulator; the branch had since merged `origin/main`, whose #1876 added `AuthProvider` to `_layout.tsx`'s require block. This time the guard caught it: the app's own Startup Error panel rendered, with zero LogBox/uncaught indicators in the Metro log. Nothing in `env.ts`, `config.ts`, or the guard changed between the two runs — only which module reached `env.ts` first.
+
+Two runs, two surfaces, one conclusion: **the guard's coverage is a property of the import graph at that moment.** Treat a single observation of either surface as a fact about that tree, not about the pattern.
 
 ### What we did not verify
 
-**Whether the Startup Error panel also rendered behind the overlay.** Attempts to dismiss or minimize the dev overlay via `idb ui tap` did not land, so what sits underneath was never seen. Both readings stay live.
+**On the 2026-08-07 run, whether the Startup Error panel also rendered behind the overlay.** Attempts to dismiss or minimise the dev overlay via `idb ui tap` did not land, so what sat underneath was never seen. That specific question stays open; it does not affect the order-dependence conclusion, which rests on the 2026-08-11 run rendering the panel with no overlay at all.
+
+**What decides the order.** Both outcomes are recorded; the precise rule that picks a winner between expo-router's route-module evaluation and the root layout's guarded require is not established here. Do not infer one from the two data points.
 
 **Whether the same reasoning defeats the guard in a release bundle.** This is the consequential open question and it is a hypothesis, not a finding. It could not be tested through this feature, because the refusal is `__DEV__`-gated.
 
@@ -104,13 +113,13 @@ To settle it: pick a module `_layout.tsx` requires that is _also_ statically imp
 
 ## Why This Matters
 
-### The guard decayed on a datable event
+### The guard's coverage drifts on ordinary feature work
 
-The guard was written 2026-04-10 against that day's import graph. `apps/mobile/src/hooks/useWatchHome.ts` was added 2026-06-11 — two months later — and with it a second static path from a screen module into `env.ts`. Nothing flagged it, because nothing encodes "`apps/mobile/src/env.ts` must only be reachable through the guarded require."
+The guard was written 2026-04-10 against that day's import graph. `apps/mobile/src/hooks/useWatchHome.ts` was added 2026-06-11 — two months later — and with it a second static path from a screen module into `env.ts`. On 2026-08-11 a third change, #1876's `AuthProvider`, moved the balance back the other way. None of the three touched `_layout.tsx`'s catch or `env.ts`'s throw; none was flagged, because nothing encodes "`apps/mobile/src/env.ts` must only be reachable through the guarded require."
 
-That is the general shape: **a `try/catch` around one require is a claim about the whole module graph, enforced at exactly one point in it.** Ordinary feature work invalidates the claim without touching the file that makes it.
+That is the general shape: **a `try/catch` around one require is a claim about the whole module graph, enforced at exactly one point in it.** Ordinary feature work moves the claim's truth value in either direction without touching the file that makes it — which is worse than a guard that fails consistently, because a passing manual check proves only that day's graph.
 
-Second-order: `apps/mobile/app/_layout.tsx` reports the caught module-init failure to Datadog, gated on `moduleError` being set. A throw that bypasses the guard also bypasses the only telemetry meant to observe boot failures.
+Second-order, and the reason this is more than cosmetic: `apps/mobile/app/_layout.tsx` reports the caught module-init failure to Datadog, gated on `moduleError` being set. On a tree where the throw bypasses the guard, it also bypasses the only telemetry meant to observe boot failures — so boot-failure observability silently depends on import order too.
 
 ### How the claim survived three review rounds
 

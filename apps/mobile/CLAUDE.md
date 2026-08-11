@@ -94,17 +94,19 @@ All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
   traces into the production database, and opening Discover fires six searches
   before anyone types. The throw happens at `src/env.ts` module scope, and the
   message names the resolved host and the override.
-  **Do not assume it renders the Startup Error panel in `app/_layout.tsx`.**
-  route-module evaluation runs through expo-router's own graph, never inside
-  that file's `try` — in development it calls `loadRoute()` on every route node
-  (`getRoutesCore.js`, `NODE_ENV === 'development'`-gated) — and `useWatchHome.ts`
-  reaches `env.ts` through a static import chain from a screen, so the throw
-  escapes as an uncaught error. Observed on the simulator 2026-08-07 as the dev
-  error overlay, with this stack:
-  `env.ts -> config.ts -> apolloClient.ts -> useWatchHome.ts`. That overlay
-  shows the message verbatim and selectable, which is why R2 still needs no new
-  UI. This only ever matters in development: the refusal is `__DEV__`-gated, so
-  a release bundle never reaches it.
+  **Which surface shows it is not guaranteed — do not build on either.**
+  `app/_layout.tsx`'s `require`-in-`try/catch` catches the throw only when its
+  guarded require is the first evaluation path into `env.ts`. That is a property
+  of the current import graph, not of the guard, and ordinary feature work
+  changes it. Both surfaces have been observed on this app:
+  the RN dev error overlay (2026-08-07, stack
+  `env.ts -> config.ts -> apolloClient.ts -> useWatchHome.ts` — a screen's static
+  import chain reaching `env.ts` outside the guard), and the Startup Error panel
+  (2026-08-11, after an unrelated PR changed `_layout.tsx`'s require block).
+  Either way the message is verbatim and selectable, which is why R2 needs no new
+  UI. This only matters in development: the refusal is `__DEV__`-gated, so a
+  release bundle never reaches it. Full mechanism:
+  `docs/solutions/best-practices/expo-router-require-guard-containment-is-order-dependent.md`.
 - **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
   visibly — the startup line then names production on every launch.
 - **Only the known production host refuses.** A LAN address, a tunnel, or an

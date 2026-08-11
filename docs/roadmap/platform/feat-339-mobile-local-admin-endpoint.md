@@ -47,11 +47,13 @@ fallback.
    app-owned code, and the only seam guaranteed to run before all three
    `getGraphQLUrl()` callers.
 3. `apps/mobile/app/_layout.tsx` — the `__DEV__`-gated require and mount of
-   `DevEndpointNotice`, and the pre-existing require try/catch. Note that the
-   try/catch does **not** reliably catch the endpoint refusal: expo-router
-   evaluates route modules eagerly and `useWatchHome.ts` reaches `env.ts`
-   outside it, so the throw surfaces as the dev error overlay instead
-   (observed 2026-08-07). The message is verbatim and selectable either way.
+   `DevEndpointNotice`, and the pre-existing require try/catch. That try/catch
+   catches the endpoint refusal **only when its guarded require is the first
+   evaluation path into `env.ts`** — a property of the import graph, not of the
+   guard. Both surfaces have been observed: the RN dev error overlay
+   (2026-08-07, via a screen's static import chain) and the Startup Error panel
+   (2026-08-11, after an unrelated PR changed the require block). The message is
+   verbatim and selectable either way; do not depend on which one appears.
 4. `apps/mobile/src/lib/apolloClient.ts` — `isUnreachableEndpointError` plus the
    dev-gated emit riding `createErrorLink`.
 5. `apps/mobile/CLAUDE.md` — § Admin endpoint resolution, § Publishing an EAS
