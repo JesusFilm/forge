@@ -4,6 +4,9 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject var viewModel: HomeViewModel
     @State private var presentedPlayback: PlayerPresentation?
+    /// Scopes default focus to the hero, so arriving on Home lands on the
+    /// CTA rather than wherever the engine's geometry search happens to fall.
+    @Namespace private var heroNamespace
 
     var body: some View {
         // No fullscreen background INSIDE the tab content: an ignoresSafeArea
@@ -35,20 +38,39 @@ struct HomeView: View {
 
     // MARK: - Content
 
+    /// The focus contract, and why this is not a LazyVStack from the top.
+    ///
+    /// tvOS resolves a swipe GEOMETRICALLY: it looks for a focusable view
+    /// along the path of travel. `.focusSection()` is documented to do
+    /// NOTHING when the region has no focusable descendants — and a lazy
+    /// container has materialized none at the moment of the swipe. That is
+    /// what made this screen unreachable from the tab bar on real hardware:
+    /// the first rail happened to hold zero playable items, so the hero had
+    /// no Play button, every card was non-focusable, and every later rail
+    /// was still unborn inside the LazyVStack. Zero focusable descendants,
+    /// so every `.focusSection()` was inert and every swipe dead-ended.
+    ///
+    /// The fix is structural: the hero and the FIRST rail are eager, so the
+    /// screen always offers focus somewhere the moment it appears. Rails
+    /// beyond the first stay lazy — by then a focused element exists and
+    /// the engine has somewhere to travel from.
     private func content(_ model: HomeModel) -> some View {
         ScrollView(.vertical) {
-            LazyVStack(alignment: .leading, spacing: 56) {
-
+            VStack(alignment: .leading, spacing: 56) {
                 if let firstRail = model.rails.first, let featured = firstRail.items.first {
                     hero(featured, rail: firstRail)
+                    railView(firstRail)
                 }
-                ForEach(model.rails) { rail in
-                    railView(rail)
+
+                LazyVStack(alignment: .leading, spacing: 56) {
+                    ForEach(model.rails.dropFirst()) { rail in
+                        railView(rail)
+                    }
                 }
             }
             .padding(.bottom, 80)
         }
-
+        .focusSection()
     }
 
     // MARK: - Hero
@@ -90,22 +112,29 @@ struct HomeView: View {
                         .frame(maxWidth: 900, alignment: .leading)
                 }
 
-                if let playbackID = card.playbackID {
-                    // Native prominent button, red via tint — the brand color
-                    // rides a system style instead of a re-implemented one.
-                    Button {
+                // ALWAYS rendered, playable or not. A conditional CTA was half
+                // of why this screen had no focusable descendant at first
+                // layout; a hero that silently drops its only button leaves
+                // the focus engine nothing to aim at.
+                Button {
+                    if let playbackID = card.playbackID {
                         presentedPlayback = PlayerPresentation(playbackID: playbackID)
-                    } label: {
-                        Label("Play", systemImage: "play.fill")
-                            .font(.system(size: 30, weight: .semibold))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
+                } label: {
+                    Label(
+                        card.playbackID == nil ? "Explore" : "Play",
+                        systemImage: card.playbackID == nil ? "square.stack" : "play.fill"
+                    )
+                    .font(.system(size: 30, weight: .semibold))
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .prefersDefaultFocus(in: heroNamespace)
             }
             .padding(.horizontal, 80)
             .padding(.bottom, 70)
         }
+        .focusScope(heroNamespace)
     }
 
     // MARK: - Rails
@@ -135,6 +164,11 @@ struct HomeView: View {
                 .padding(.vertical, 24)
             }
             .scrollClipDisabled()
+            // Each rail is its own directional target. Apple's own example
+            // for `focusSection()` is exactly this shape: without it, a
+            // swipe toward a row whose cards sit outside the projected
+            // corridor finds nothing and does nothing.
+            .focusSection()
         }
     }
 
