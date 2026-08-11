@@ -29,7 +29,12 @@ describe("CircularSpinner", () => {
     // build. The frozen ring still renders, so nothing looks broken in a
     // screenshot — only live frames reveal it.
     expect(SOURCE).toContain("Animated.loop(")
-    expect(SOURCE).toContain("Animated.timing(")
+    // Anchored on the SHARED identifier, not on the two calls existing
+    // separately: timing a different Animated.Value than the one `rotate`
+    // interpolates satisfies every other assertion here while the ring never
+    // moves — the same silent failure this suite exists to catch.
+    expect(SOURCE).toMatch(/Animated\.timing\(progress,/)
+    expect(SOURCE).toMatch(/rotate = useRef\(\s*progress\.interpolate/)
     // Match the CALL, not the name: the component's own comment explains the
     // trap by naming Animated.sequence, and a bare name check flags that prose.
     expect(SOURCE).not.toContain("Animated.sequence(")

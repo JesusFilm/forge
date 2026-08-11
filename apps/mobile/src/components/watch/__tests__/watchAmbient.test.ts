@@ -52,6 +52,10 @@ describe("WatchAmbient", () => {
     const m = SOURCE.match(/AMBIENT_MAX_OPACITY = ([0-9.]+)/)
     expect(m).not.toBeNull()
     expect(Number(m![1])).toBeLessThanOrEqual(0.5)
+    // The ceiling only binds if the constant actually drives the rendered
+    // opacity. Without this, inlining `opacity: 0.9` leaves the constant
+    // untouched and this test green while the ceiling is breached.
+    expect(SOURCE).toMatch(/opacity: AMBIENT_MAX_OPACITY/)
   })
 
   it("blurs the art, and keeps iOS well above Android", () => {
@@ -74,11 +78,38 @@ describe("WatchAmbient", () => {
     // The dock carries paddingTop: insets.top. An absolutely-positioned child
     // is laid out against the padding box, so top:0 would land BELOW the strip
     // this layer exists to paint.
-    const ambient = ROUTE.indexOf("<WatchAmbient")
-    const dock = ROUTE.indexOf("Player pinned at route root")
-    expect(ambient).toBeGreaterThan(-1)
-    expect(dock).toBeGreaterThan(-1)
-    expect(ambient).toBeLessThan(dock)
+    //
+    // Compares INDENTATION, not string offsets. Offsets only prove which text
+    // comes first, so nesting the layer inside a new wrapper emitted above the
+    // dock would keep an ordering assertion green while breaking this rule.
+    const lines = ROUTE.split("\n")
+    const indent = (i: number) => lines[i].length - lines[i].trimStart().length
+
+    const ambientAt = lines.findIndex((l: string) =>
+      l.includes("<WatchAmbient"),
+    )
+    expect(ambientAt).toBeGreaterThan(-1)
+    let guardAt = ambientAt
+    while (guardAt >= 0 && !lines[guardAt].includes("{!isFullscreen && (")) {
+      guardAt -= 1
+    }
+    expect(guardAt).toBeGreaterThan(-1)
+
+    const dockCommentAt = lines.findIndex((l: string) =>
+      l.includes("Player pinned at route root"),
+    )
+    expect(dockCommentAt).toBeGreaterThan(-1)
+    let dockTagAt = dockCommentAt
+    while (
+      dockTagAt < lines.length &&
+      !lines[dockTagAt].trimStart().startsWith("<View")
+    ) {
+      dockTagAt += 1
+    }
+    expect(dockTagAt).toBeLessThan(lines.length)
+
+    // Same nesting depth == siblings.
+    expect(indent(guardAt)).toBe(indent(dockTagAt))
   })
 
   it("is dropped in fullscreen", () => {

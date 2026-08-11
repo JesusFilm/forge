@@ -76,10 +76,16 @@ export default function MissionScreen() {
     (event: LayoutChangeEvent) => {
       if (section !== "roadmap" || didScrollToSectionRef.current) return
       didScrollToSectionRef.current = true
-      const y = Math.max(0, event.nativeEvent.layout.y - 12)
+      // layout.y includes the content padding. With no native header the
+      // viewport top is screen y=0, so subtract the padding back off or the
+      // heading lands under the status bar and the floating back button.
+      const y = Math.max(
+        0,
+        event.nativeEvent.layout.y - (insets.top + BACK_BUTTON_CLEARANCE),
+      )
       scrollRef.current?.scrollTo({ y, animated: false })
     },
-    [section],
+    [section, insets.top],
   )
 
   const handleBetaPress = () => {

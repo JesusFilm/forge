@@ -10,6 +10,8 @@ const TRACK_ALPHA = 0.25
 
 type CircularSpinnerProps = {
   size?: number
+  /** Hex only — the dim track is derived from it via hexToRgba, which yields
+   *  rgba(NaN, ...) for a named colour or an rgb() string. */
   color?: string
 }
 

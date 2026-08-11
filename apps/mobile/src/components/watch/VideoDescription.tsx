@@ -23,8 +23,10 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
   const typography = useTypography()
   const [expanded, setExpanded] = useState(false)
 
-  // null until measured. Start hidden rather than shown: a short description
-  // is the case being fixed, and it must never flash a toggle it does not need.
+  // Tri-state: null until measured, so a short description never flashes a
+  // toggle it does not need. The explicit `=== true` at the render site is for
+  // readability against that tri-state — null and false are both falsy, so it
+  // is not what hides the unmeasured state.
   const [overflows, setOverflows] = useState<boolean | null>(null)
 
   const handleToggle = useCallback(() => {

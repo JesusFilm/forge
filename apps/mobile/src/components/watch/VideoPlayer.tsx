@@ -44,6 +44,9 @@ const SUBTITLE_OFFSET_FS_CHROME_VISIBLE = 92
 const SUBTITLE_OFFSET_FS_CHROME_HIDDEN = 12
 const SUBTITLE_OFFSET_INLINE = 14
 
+// How long the pre-autostart veil may hold before it gives the chrome back.
+const AUTOSTART_VEIL_TIMEOUT_MS = 12000
+
 type VideoPlayerProps = {
   streamingUrl: string | null
   posterUrl: string | null
@@ -131,12 +134,19 @@ export function VideoPlayer({
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
 
-  // Release the pre-autostart chrome suppression below if the source fails:
-  // playback never starts, so without this the viewer is left on a spinner
-  // with no controls and no way to retry.
+  // Both release the pre-autostart chrome suppression below. Without them a
+  // viewer whose playback never starts is stranded on a spinner with no
+  // controls: `loadFailed` covers a source that errors, `loadTimedOut` covers
+  // one that simply wedges (no watchdog upstream arms before playback).
   const [loadFailed, setLoadFailed] = useState(false)
+  const [loadTimedOut, setLoadTimedOut] = useState(false)
+
+  // Subscribed once per PLAYER, not per source. Resubscribing on every
+  // streamingUrl change tears down and rebuilds across the seed -> canonical
+  // swap while replaceAsync is still in flight, which can attribute a
+  // pre-swap error to the new source (the adapter's QoE listener avoids this
+  // the same way).
   useEffect(() => {
-    setLoadFailed(false)
     const sub = player.addListener(
       "statusChange",
       ({ status }: { status: VideoPlayerStatus }) => {
@@ -150,6 +160,20 @@ export function VideoPlayer({
         // Player already released
       }
     }
+  }, [player])
+
+  // New source: clear both stop conditions. Seeding from the CURRENT status
+  // rather than a bare false covers a source that already failed before this
+  // effect ran, which a listener alone never sees.
+  useEffect(() => {
+    let current: VideoPlayerStatus | null = null
+    try {
+      current = player.status
+    } catch {
+      // Player already released
+    }
+    setLoadFailed(current === "error")
+    setLoadTimedOut(false)
   }, [player, streamingUrl])
 
   // An autostarting player opens on its poster, not on transport chrome: a play
@@ -158,7 +182,20 @@ export function VideoPlayer({
   // resets, so this covers the initial load only — a later language swap keeps
   // the chrome it already had.
   const awaitingAutostart =
-    autostart && !hasStarted && streamingUrl != null && !loadFailed
+    autostart &&
+    !hasStarted &&
+    streamingUrl != null &&
+    !loadFailed &&
+    !loadTimedOut
+
+  // Backstop for a load that neither starts nor errors. Releasing early only
+  // reveals chrome sooner, so a false positive on a slow network is harmless —
+  // being stuck with no controls is not.
+  useEffect(() => {
+    if (!awaitingAutostart) return
+    const t = setTimeout(() => setLoadTimedOut(true), AUTOSTART_VEIL_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [awaitingAutostart])
 
   const controls = useControlsVisibility(player)
 
@@ -187,9 +224,13 @@ export function VideoPlayer({
   // seek and let playback from 0 overwrite the saved position.
   const autoPlayedRef = useRef(false)
   const resumeSeekedRef = useRef(false)
+  // Gates the foreground retry below: retrying before the source has loaded
+  // would call play() on an item that is not ready.
+  const sourceLoadedRef = useRef(false)
   useEffect(() => {
     autoPlayedRef.current = false
     resumeSeekedRef.current = false
+    sourceLoadedRef.current = false
   }, [streamingUrl])
   useEffect(() => {
     if (!autostart) return
@@ -228,15 +269,29 @@ export function VideoPlayer({
     }
 
     const onSourceLoad = () => {
+      sourceLoadedRef.current = true
       applySeek()
       applyPlay()
     }
     const sub = player.addListener("sourceLoad", onSourceLoad)
+    // applyPlay bails without latching while backgrounded, sourceLoad fires
+    // once per source, and the adapter's foreground resume only replays a
+    // video that was ALREADY playing — so nothing else retries this. Without
+    // the retry, backgrounding through the load window leaves the veil up for
+    // good.
+    const appSub = AppState.addEventListener("change", (next) => {
+      if (next !== "active" || !sourceLoadedRef.current) return
+      applySeek()
+      applyPlay()
+    })
     // A resume position can hydrate after the source already loaded — seek
     // then, rather than losing it. Guarded on having played so this never
     // fires against a previous, still-loaded source mid-swap.
     if (autoPlayedRef.current) applySeek()
-    return () => sub.remove()
+    return () => {
+      sub.remove()
+      appSub.remove()
+    }
   }, [player, resumeAtSeconds, streamingUrl, autostart])
 
   useEffect(() => {
@@ -297,10 +352,14 @@ export function VideoPlayer({
         singleTapTimerRef.current = null
         // Single tap resolved: hide only if chrome was already up; if it was
         // hidden it was just revealed on press-in, so leave it visible (R3).
+        // Skipped while the veil is up: the chrome is unmounted, so this would
+        // hide something invisible and playback would then start with no
+        // controls until the viewer taps again.
+        if (awaitingAutostart) return
         if (singleTapAction(wasVisible) === "hide") controls.hide()
       }, DOUBLE_TAP_MS)
     },
-    [controls, doSideSeek],
+    [awaitingAutostart, controls, doSideSeek],
   )
 
   // Caption offset: inline = fixed on the button row; fullscreen = lifts above

@@ -49,8 +49,9 @@ export function WatchAmbient({ posterUrl, topInset }: WatchAmbientProps) {
       style={[styles.root, { height }]}
     >
       <Image
-        // No recyclingKey: this is a singleton layer, and the blank-on-key-
-        // change it exists for would fight the cross-fade below.
+        // Static key: this layer is a singleton and is never recycled, so the
+        // value never changes and cannot blank the view mid-cross-fade.
+        recyclingKey="watch-ambient"
         source={posterUrl}
         style={[StyleSheet.absoluteFill, styles.art]}
         contentFit="cover"
