@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3100",
     "lint": "eslint .",
+    "test": "vitest run",
     "generate:readme": "node ./scripts/generate-roadmap-readme.js"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "eslint": "^9.0.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "3.2.4"
   }
 }

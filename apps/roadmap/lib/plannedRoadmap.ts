@@ -69,6 +69,11 @@ export type PlannedTrackBar = {
   overdueStartWeek?: number
 }
 
+type FutureWorkPriority = Pick<
+  PlannedTrackBar,
+  "id" | "title" | "summary" | "startWeek" | "details"
+>
+
 export type PlannedMilestone = {
   id: string
   label: string
@@ -87,6 +92,7 @@ type PlannedWeek = {
   label: string
   dateLabel: string
   isoDate: string
+  endIsoDate: string
 }
 
 const DAY_MS = 86400000
@@ -130,6 +136,17 @@ function formatDateRangeLabel(
   return `${startMonth} ${startDay}${separator}${endMonth} ${endDay}`
 }
 
+export function formatRoadmapCalendarRange(
+  startIsoDate: string,
+  endIsoDate: string,
+): string {
+  return formatDateRangeLabel(
+    new Date(`${startIsoDate}T00:00:00Z`),
+    new Date(`${endIsoDate}T00:00:00Z`),
+    " - ",
+  )
+}
+
 export const PLANNED_WEEK_COUNT = Math.ceil(
   (PLANNED_END_DATE.getTime() - PLANNED_START_DATE.getTime() + DAY_MS) /
     WEEK_MS,
@@ -148,6 +165,7 @@ export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
       label: `Week ${index + 1}`,
       dateLabel: formatDateRangeLabel(date, endDate),
       isoDate: date.toISOString().slice(0, 10),
+      endIsoDate: endDate.toISOString().slice(0, 10),
     }
   },
 )
@@ -473,9 +491,9 @@ const FUTURE_WORK_PRIORITIES = [
     summary: "Improve recommendations, ranking, and dead-result discovery.",
     startWeek: 19,
     details: [
-      "Nisal: bring proven Algolia ranking rules into Typesense",
-      "Add programmatic query-language detection and index all available subtitles",
-      "Discover and resolve dead-result patterns; keep search responses under one second",
+      "Nisal: improve recommendations and bring proven Algolia ranking rules into Typesense",
+      "Nisal: add programmatic query-language detection, index all available subtitles, and discover dead-result patterns",
+      "Keep search responses under one second",
       "Vlad: give every search result a static, shareable URL",
     ],
   },
@@ -512,12 +530,12 @@ const FUTURE_WORK_PRIORITIES = [
     startWeek: 31,
     details: [
       "Create continuous agent loops to monitor, maintain, and improve services",
-      "Vlad: run always-on Mastra agents for SEO and maintenance, support, and finishing and improving translations",
+      "Vlad: run always-on Mastra agents for SEO and maintenance, support, and translation completion and quality",
       "Tatai: connect crawler-crash and service-performance signals to those loops",
       "Vlad: filter Google bot traffic before agents prioritize analytics work",
     ],
   },
-]
+] satisfies FutureWorkPriority[]
 
 export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
   {

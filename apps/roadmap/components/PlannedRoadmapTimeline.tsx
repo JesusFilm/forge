@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react"
 
 import {
+  PLANNED_RANGE_LABEL,
   PLANNED_PHASES,
   PLANNED_END_ISO,
   PLANNED_START_ISO,
+  PLANNED_TITLE,
   PLANNED_TIMELINE_ROWS,
   PLANNED_TRACK_BARS,
   PLANNED_TRACKS,
   PLANNED_WEEK_COUNT,
   PLANNED_WEEKS,
+  formatRoadmapCalendarRange,
   type PlannedPhase,
   type PlannedTrackId,
   type PlannedTimelineRow,
@@ -91,21 +94,6 @@ function weekWidthPct(spanWeeks: number): number {
   return (spanWeeks / PLANNED_WEEK_COUNT) * 100
 }
 
-function formatCalendarRange(startIsoDate: string, endIsoDate: string): string {
-  const startDate = new Date(`${startIsoDate}T00:00:00`)
-  const endDate = new Date(`${endIsoDate}T00:00:00`)
-  const startMonth = startDate.toLocaleDateString("en-US", { month: "short" })
-  const startDay = startDate.toLocaleDateString("en-US", { day: "numeric" })
-  const endMonth = endDate.toLocaleDateString("en-US", { month: "short" })
-  const endDay = endDate.toLocaleDateString("en-US", { day: "numeric" })
-
-  if (startMonth === endMonth) {
-    return `${startMonth} ${startDay} - ${endDay}`
-  }
-
-  return `${startMonth} ${startDay} - ${endMonth} ${endDay}`
-}
-
 function getPhaseCalendarRangeLabel(phase: PlannedPhase): string {
   const startWeek = PLANNED_WEEKS[phase.startWeek]
   const endWeek = PLANNED_WEEKS[phase.startWeek + phase.spanWeeks - 1]
@@ -114,12 +102,9 @@ function getPhaseCalendarRangeLabel(phase: PlannedPhase): string {
     return phase.rangeLabel
   }
 
-  const endDate = new Date(`${endWeek.isoDate}T00:00:00`)
-  endDate.setDate(endDate.getDate() + 6)
-
-  return `${phase.badge} | ${formatCalendarRange(
+  return `${phase.badge} | ${formatRoadmapCalendarRange(
     startWeek.isoDate,
-    endDate.toISOString().slice(0, 10),
+    endWeek.endIsoDate,
   )}`
 }
 
@@ -423,6 +408,13 @@ export default function PlannedRoadmapTimeline() {
 
   return (
     <div className="space-y-6">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-end justify-between gap-2 px-4 md:px-8">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-stone-300">
+          {PLANNED_TITLE}
+        </h2>
+        <p className="text-sm text-stone-500">{PLANNED_RANGE_LABEL}</p>
+      </div>
+
       <div className="pr-0">
         <div className="-mr-4 overflow-hidden md:-mr-8">
           <div className="-mb-6 overflow-x-auto pb-6">

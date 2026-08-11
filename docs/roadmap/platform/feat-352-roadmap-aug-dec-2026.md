@@ -1,9 +1,9 @@
 ---
-id: "feat-336"
+id: "feat-352"
 title: "Extend 2026 roadmap with year-end priorities"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-01"
 duration: 1
 depends_on: []
@@ -82,10 +82,12 @@ roadmap.
 ## Verification
 
 - `pnpm --filter roadmap lint`
+- `pnpm --filter roadmap test`
 - `pnpm --filter roadmap build`
 - `pnpm --filter roadmap generate:readme`
 - `git diff --check`
 - Browser smoke on `http://127.0.0.1:3100/roadmap` confirms one timeline spans
   April through December, every original item remains visible, all five
   four-week priorities appear after August 10, and `/contributions` remains
-  linked.
+  linked. Record reload-to-visible timing, rendered element count, horizontal
+  overflow behavior, and console errors for the expanded timeline.
