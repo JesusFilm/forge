@@ -41,7 +41,7 @@ src/
     session-cookie.ts    signed identity cookie create/read + option helpers (session / transient / feat-240 force-login marker) + readRequestCookie; fail-closed to anonymous without a real secret
     origins.ts           resolveChatReturnToURL — post-login return-target validated against chat's own origin (R10)
     identity.ts          getChatIdentity() server reader (next/headers); never redirects; display-only
-    anon-id.ts           feat-208: anonymous continuity id — resolveSeekerResource (user:/anon: namespacing, prefix-check only), UUID validation, rolling 30-day hardened cookie serialization
+    anon-id.ts           feat-208: anonymous continuity id — resolveSeekerResource (user:/anon: namespacing, prefix-check only), UUID validation, rolling 25-day hardened cookie serialization (flat retention window, feat-336)
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
@@ -260,8 +260,8 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
 - **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
   (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
   signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is
-  minted on first send and re-issued with a fresh 30-day Max-Age on EVERY send
-  (rolling, aligned with the anonymous retention window). The subject is a
+  minted on first send and re-issued with a fresh 25-day Max-Age on EVERY send
+  (rolling, aligned with the flat ai-chat retention window, feat-336). The subject is a
   memory PARTITION KEY only in this path — the one authorization-adjacent use
   of identity is the separate feat-233 seeker gate (R13 carve-out).
   Prefix-check resources (`startsWith`) — never split on `:`. Known accepted behaviors: a
@@ -581,8 +581,8 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   the cap remains the open prerequisite before the audience widens
 - No chat-side database (the auth session is a cookie, not a DB row; chat
   writes no user record). Since feat-208 the SERVER side does persist: Seeker
-  threads/messages live in Mastra's `ai_chat` Postgres schema (30d anon / 180d
-  signed-in retention), and since feat-241 signed-in gate-granted users get
+  threads/messages live in Mastra's `ai_chat` Postgres schema (flat 25-day
+  retention for everyone, feat-336), and since feat-241 signed-in gate-granted users get
   sidebar history + replay/resume back from it (see "Server-side conversation
   history"). Still absent: per-conversation URLs / deep-link restore
   (feat-209), thread delete/rename (feat-247), and anonymous ephemerality

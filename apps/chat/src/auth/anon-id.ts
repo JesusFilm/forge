@@ -11,8 +11,8 @@ import { chatAuthCookiePrefix } from "@/config/env"
  * The cookie is minted on first message send (never on page view), value
  * validated as a UUID on every read (anything else is discarded + re-minted),
  * and RE-SET with a fresh Max-Age on every send so its lifetime rolls with the
- * 30-day anonymous retention window — an anonymous user active past day 30
- * keeps both threads and cookie. NOTE: this identity is a memory partition
+ * flat 25-day ai-chat retention window (feat-336) — an anonymous user active
+ * past day 25 keeps both threads and cookie. NOTE: this identity is a memory partition
  * key only and must never gate authorization (R7). Unlike the session's
  * claims — which since feat-233 carry ONE bounded carve-out (the seeker
  * dogfood gate, R13; see src/lib/seeker-gate.ts) — the anon id has no
@@ -22,8 +22,8 @@ import { chatAuthCookiePrefix } from "@/config/env"
 const prefix = chatAuthCookiePrefix()
 export const CHAT_ANON_ID_COOKIE = `${prefix}_anon_id`
 
-/** Aligned with the ai-chat anonymous retention window (30 days). */
-export const ANON_ID_TTL_SECONDS = 30 * 24 * 60 * 60
+/** Aligned with the flat ai-chat retention window (25 days, feat-336). */
+export const ANON_ID_TTL_SECONDS = 25 * 24 * 60 * 60
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -61,7 +61,7 @@ export function getCookieValue(
 /**
  * Serialize the anon-id Set-Cookie header: the session cookie's hardening
  * (HttpOnly, SameSite=Lax, Secure in prod, host-only, Path=/) with the rolling
- * 30-day Max-Age.
+ * 25-day Max-Age.
  */
 export function serializeAnonIdCookie(value: string): string {
   const opts = chatSessionCookieOptions()

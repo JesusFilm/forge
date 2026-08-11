@@ -170,6 +170,7 @@ import {
 } from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
+import { startLangfuseTraceRetention } from "./langfuse-trace-retention"
 import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
 import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
 import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
@@ -976,4 +977,14 @@ setInstructionResolver(async (agentId) => {
 if (env.NODE_ENV === "production") {
   startAiChatRetentionPurge()
   startSeekerPromptHealthMonitor()
+  // Langfuse trace retention (feat-336): arms the once-daily 08:00 UTC
+  // wall-clock sweep deleting seeker traces older than the flat 25-day
+  // window from the forge-mastra project. Boot only ARMS the timer — never
+  // sweeps — so restarts cannot add runs (the per-run delete budget equals
+  // the per-day quota allocation on that premise). Gated on the Langfuse
+  // credential trio inside — deliberately NOT on LANGFUSE_TRACING_ENABLED:
+  // the flag stops NEW exports, but already-exported traces still need
+  // retention (kill-switch completeness follows data lifetime). Same
+  // single-instance assumption as above.
+  startLangfuseTraceRetention()
 }

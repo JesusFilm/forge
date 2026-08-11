@@ -265,6 +265,7 @@ of the defaults and validation contract.
 | `LANGFUSE_PROMPT_CACHE_TTL_MS`               | TTL for the in-process managed-prompt cache. Defaults to `60000`, schema-capped at `3600000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS`        | Failure cooldown that suppresses refetch attempts while serving stale/fallback. Defaults to `10000`, schema-capped at `300000`; `getLangfuseConfig()` clamps the effective cooldown to ≤ the effective TTL (the smaller value wins).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `LANGFUSE_TRACE_RETENTION_SMOKE_TEST`        | Opt-in gate for the feat-336 trace-retention smoke suite (`langfuse-trace-retention.smoke.test.ts` — list/delete/requery on a backdated sentinel; NOTE each run spends one of the org's 50/day Hobby trace-delete requests). Same posture as `LANGFUSE_PROMPT_SMOKE_TEST`: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
@@ -734,8 +735,36 @@ availability_missing= shape_dropped=`. Read the two discriminators together:
   guarantee also needs `@mastra/memory` to keep delegating these methods
   without its own try/catch.
 - **Retention:** `src/mastra/ai-chat-retention.ts` purges threads by rolling
-  last-activity (`updatedAt` — bumped transactionally by saveMessages): 30
-  days for non-`user:` resources, 180 days for `user:*`. Boot drain + daily
+  last-activity (`updatedAt` — bumped transactionally by saveMessages): a
+  flat **25 days for every resource** (`AI_CHAT_RETENTION_DAYS` — owner
+  decision 2026-08-10, feat-336; supersedes the original 30/180 anon/user
+  split). The feat-336 Langfuse trace sweep
+  (`src/mastra/langfuse-trace-retention.ts`) imports the same constant, so
+  one number governs both stores — with deliberately different semantics:
+  Postgres purges on ROLLING last-activity, Langfuse deletes on FIXED
+  per-trace event time (accepted 2026-08-09; traces are operator-facing
+  observability, so the divergence errs privacy-safe). The Langfuse sweep
+  gates on the credential trio only — NEVER on `LANGFUSE_TRACING_ENABLED`
+  (the flag stops new exports; already-exported traces still need
+  retention), runs ONCE per UTC day on a fixed 08:00 UTC wall-clock timer
+  (boot only ARMS the timer and logs `sweep_scheduled next_fire=<iso>` —
+  never sweeps — so restarts re-aim at the same firing hour and cannot add
+  runs; the hour sits in the observed deploy trough, 2026-08-11 decision),
+  lists via `GET /api/public/v2/observations` with
+  `fields=core` (never `io`; each row's own `startTime` is re-checked
+  client-side so an inert server filter degrades to a loud no-op, never a
+  project-wide delete), deletes ≤50 ids/request under a ≤40 requests/RUN
+  budget (= the full 40/day retention allocation of the org's 50/day Hobby
+  delete quota, honest because runs/day = 1 by construction; ≥10/day
+  feat-337 erasure headroom preserved), and reports
+  `oldest_age_days` + a `retention_wall_risk` warning as the restart-proof
+  liveness backstop before the Hobby 30-day visibility wall — the outcome
+  metric IS the deletion-completion verification (the in-memory
+  verify-by-requery mechanism was removed 2026-08-11: inert at the repo's
+  deploy cadence; failed deletions self-heal by re-listing, and the opt-in
+  smoke is the direct API-level convergence observation — reported, not
+  asserted).
+  Boot drain + daily
   timer (production runtime only — `NODE_ENV=production`): each run drains
   the expired backlog in bounded sweeps (500/sweep, ≤20 sweeps/run, oldest-
   first scan with early stop, recency re-check before every delete),
@@ -1123,8 +1152,8 @@ set `LANGFUSE_MEDIA_UPLOAD_ENABLED=false`, then run one live seeker-turn
 smoke and confirm the trace lands in `forge-mastra` carrying session, user,
 and prompt-version stamps. Dogfood enablement does NOT wait on the
 retention sweep
-(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, 30/180
-days) or per-user erasure
+(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, flat 25
+days — see the ai-chat retention bullet above) or per-user erasure
 (`docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`): those two
 gate AUDIENCE WIDENING, not the first flip — the dogfood audience is
 allowlisted and tiny, manual Langfuse deletion covers the interim, and the

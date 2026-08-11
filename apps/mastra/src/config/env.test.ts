@@ -1741,6 +1741,18 @@ describe("Mastra env", () => {
     await expect(import("./env")).rejects.toThrow()
   })
 
+  it('accepts LANGFUSE_TRACE_RETENTION_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as the prompt smoke gate (feat-336).
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.LANGFUSE_TRACE_RETENTION_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
   it("defaults the devotional Workspace to a local directory and bounded SQL pool", async () => {
     vi.stubEnv("NODE_ENV", "test")
     vi.stubEnv("MASTRA_STORAGE_DIR", ".tmp/mastra")

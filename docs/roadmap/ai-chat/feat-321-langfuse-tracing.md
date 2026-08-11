@@ -38,7 +38,9 @@ Decisions taken beyond the brief, all 2026-08-05 unless noted:
   enabled, and a Langfuse outage drops those spans.
 - **Retention 30/180 days** mirroring the ai-chat Postgres windows, to be
   enforced by a DIY sweep (feat-336, NOT yet shipped) rather than the paid
-  configurable-retention tier.
+  configurable-retention tier. _(Superseded 2026-08-10, feat-336: retention
+  flattened to 25 days for every resource in BOTH stores; the sweep shipped
+  with that flat window. The DIY-not-paid-tier decision stands.)_
 - **Per-user erasure across both stores** (Langfuse traces + `ai_chat`
   Postgres) tracked in feat-337; the existing runbook covered Postgres only.
 - **`LANGFUSE_MEDIA_UPLOAD_ENABLED` code-defaulted to `"false"`** on the
