@@ -21,6 +21,10 @@ const mockSessionStore = {
 jest.mock("../authSession", () => ({
   getAuthClient: () => mockAuthClient,
   getAuthSession: () => mockSessionStore,
+  // The REAL helper: the timeout-wiring test below pins the actual value.
+  authFetchOptions:
+    jest.requireActual<typeof import("../authSession")>("../authSession")
+      .authFetchOptions,
 }))
 
 jest.mock("../datadog", () => ({ reportDatadogAction: jest.fn() }))
@@ -43,6 +47,8 @@ describe("signInWithHostedPage", () => {
   // an implementation that let the device clock into the new-account check
   // would fail the marked/unmarked cases below.
   const SERVER_NOW = 1_800_000_000_000
+  // A session minted days ago: valid in SecureStore, stale for deletion.
+  const STALE_STAMP = new Date(SERVER_NOW - 3 * 24 * 3600 * 1000).toISOString()
   const OAUTH_OK = {
     data: { url: "https://auth", redirect: true },
     error: null,
@@ -79,11 +85,11 @@ describe("signInWithHostedPage", () => {
 
   it("classifies a signed-out session read as a quiet cancel (AE2)", async () => {
     mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
-    // A stale signed-in snapshot must not read as success; the fresh
-    // read's null is the truth.
+    // The pre-flight snapshot now feeds the unchanged-session classifier;
+    // a null read is still a cancel regardless of what it holds.
     mockSessionStore.getSnapshot.mockReturnValue({
       status: "signedIn",
-      user: { id: "user-stale" },
+      user: { id: "user-stale", sessionCreatedAt: STALE_STAMP },
     } as never)
     mockSessionStore.readSession.mockResolvedValue(null)
 
@@ -92,6 +98,76 @@ describe("signInWithHostedPage", () => {
     })
     expect(reportDatadogAction).not.toHaveBeenCalled()
     expect(getNewAccountNotice()).toBeNull()
+  })
+
+  it("classifies an unchanged session read-back as a cancel — deletion re-auth sheet dismissed", async () => {
+    // The stale-but-valid session survives a dismissed sheet in SecureStore;
+    // reading it back must NOT count as a completed re-auth.
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.getSnapshot.mockReturnValue({
+      status: "signedIn",
+      user: { id: "user-1", sessionCreatedAt: STALE_STAMP },
+    } as never)
+    mockSessionStore.readSession.mockResolvedValue({
+      id: "user-1",
+      sessionCreatedAt: STALE_STAMP,
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "cancelled",
+    })
+    expect(reportDatadogAction).not.toHaveBeenCalled()
+    expect(getNewAccountNotice()).toBeNull()
+  })
+
+  it("classifies a NEW session stamp for the same user as a completed re-auth", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.getSnapshot.mockReturnValue({
+      status: "signedIn",
+      user: { id: "user-1", sessionCreatedAt: STALE_STAMP },
+    } as never)
+    mockSessionStore.readSession.mockResolvedValue({
+      id: "user-1",
+      sessionCreatedAt: new Date(SERVER_NOW).toISOString(),
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(reportDatadogAction).toHaveBeenCalledWith("sign_in_completed", {})
+  })
+
+  it("classifies a different user signing in as success — the caller handles wrong-account", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.getSnapshot.mockReturnValue({
+      status: "signedIn",
+      user: { id: "user-1", sessionCreatedAt: STALE_STAMP },
+    } as never)
+    mockSessionStore.readSession.mockResolvedValue({
+      id: "user-2",
+      sessionCreatedAt: new Date(SERVER_NOW).toISOString(),
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(reportDatadogAction).toHaveBeenCalledWith("sign_in_completed", {})
+  })
+
+  it("bounds the pre-browser authorize-URL fetch with the shared auth timeout", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
+
+    await signInWithHostedPage()
+
+    const { authFetchOptions } =
+      jest.requireActual<typeof import("../authSession")>("../authSession")
+    expect(authFetchOptions().fetchOptions.timeout).toBeGreaterThan(0)
+    expect(mockAuthClient.signIn.oauth2).toHaveBeenCalledWith({
+      providerId: "jfp",
+      callbackURL: "/",
+      ...authFetchOptions(),
+    })
   })
 
   it("retries a thrown session read once — a network fault is not a cancel", async () => {

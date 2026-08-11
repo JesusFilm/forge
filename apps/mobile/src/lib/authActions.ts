@@ -15,7 +15,12 @@ import {
   type DeleteAccountOutcome,
 } from "./accountDeletion"
 import { classifySignInFailure, type SignInFailureKind } from "./authFlows"
-import { getAuthClient, getAuthSession, type AuthUser } from "./authSession"
+import {
+  authFetchOptions,
+  getAuthClient,
+  getAuthSession,
+  type AuthUser,
+} from "./authSession"
 import { reportDatadogAction } from "./datadog"
 import {
   noteAccountCreated,
@@ -44,16 +49,21 @@ function toSignInOutcome(error: unknown): SignInOutcome {
  * (KTD6) determines who — if anyone — signed in.
  */
 async function runHostedSignIn(): Promise<SignInOutcome> {
+  const store = getAuthSession()
+  const before = store.getSnapshot()
   try {
     const result = await getAuthClient().signIn.oauth2({
       providerId: "jfp",
       callbackURL: "/",
+      // Bounds only the pre-browser authorize-URL POST: better-fetch clears
+      // its abort timer before onSuccess, where the expo plugin opens the
+      // sheet (dists verified 2026-08-11, expo 1.6.2 + better-fetch 1.1.21).
+      ...authFetchOptions(),
     })
     if (result.error) return { status: "error" }
   } catch (error) {
     return toSignInOutcome(error)
   }
-  const store = getAuthSession()
   let user: AuthUser | null
   try {
     user = await store.readSession()
@@ -70,9 +80,25 @@ async function runHostedSignIn(): Promise<SignInOutcome> {
     // expo client returns identically for both; quiet cancel by design.
     return { status: "cancelled" }
   }
-  // R15 on the hosted path: both stamps are server clocks (KTD3).
-  if (wasAccountCreatedThisSignIn(user.createdAt, user.sessionCreatedAt)) {
-    noteAccountCreated(user.id)
+  // A cancel is an UNCHANGED session, not only an absent one: prompt=login
+  // mints a NEW sessionCreatedAt on every real sign-in, so the pre-flight
+  // stamp surviving the read-back means no sign-in happened (deletion re-auth).
+  if (
+    before.status === "signedIn" &&
+    user.id === before.user.id &&
+    user.sessionCreatedAt === before.user.sessionCreatedAt
+  ) {
+    return { status: "cancelled" }
+  }
+  try {
+    // R15 on the hosted path: both stamps are server clocks (KTD3).
+    if (wasAccountCreatedThisSignIn(user.createdAt, user.sessionCreatedAt)) {
+      noteAccountCreated(user.id)
+    }
+  } catch {
+    // Total-catch: a throwing notice subscriber must not reject the shared
+    // single-flight promise the UI awaits without .catch — the sign-in itself
+    // succeeded (async-single-flight-slot-release-hazards.md).
   }
   reportDatadogAction("sign_in_completed", {})
   return { status: "success" }

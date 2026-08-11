@@ -276,7 +276,11 @@ type BetterAuthExpoClient = {
   signIn: {
     /** Hosted-page sign-in: the jfp self-RP flow (browser sheet + expo
      *  cookie handoff land the session in SecureStore). */
-    oauth2: (options: { providerId: string; callbackURL: string }) => Promise<{
+    oauth2: (options: {
+      providerId: string
+      callbackURL: string
+      fetchOptions?: { timeout?: number }
+    }) => Promise<{
       data: unknown
       error?: { message?: string } | null
     }>
@@ -387,7 +391,7 @@ let store: AuthSessionStore | null = null
  */
 const AUTH_FETCH_TIMEOUT_MS = 5000
 
-function authFetchOptions() {
+export function authFetchOptions() {
   return { fetchOptions: { timeout: AUTH_FETCH_TIMEOUT_MS } }
 }
 

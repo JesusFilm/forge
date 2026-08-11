@@ -103,8 +103,11 @@ sign-in itself.
 
 Apple's "client secret" is an ES256 JWT signed with a Sign in with Apple
 `.p8` key, and Apple caps its lifetime at **6 months**. It is therefore a
-recurring operator task: when it expires, native Apple sign-in on
-`apps/mobile` stops working.
+recurring operator task: when it expires, Sign in with Apple stops working
+on the hosted login page. That now breaks mobile's App Store compliance
+(guideline 4.8, see the section above), not just one sign-in button. Native
+Apple token verification also stops, but only for installed pre-hosted app
+versions, until they drain.
 
 ```bash
 pnpm --filter @forge/auth mint:apple-client-secret \
@@ -112,8 +115,9 @@ pnpm --filter @forge/auth mint:apple-client-secret \
 ```
 
 - `client-id` must equal the value presented to Apple's token endpoint. For
-  the native sheet that is the app bundle id, `org.jesusfilm.forgewatch` —
-  not the web Service ID.
+  the surviving native token exchange — used only by installed pre-hosted
+  app versions — that is the app bundle id, `org.jesusfilm.forgewatch`, not
+  the web Service ID.
 - The JWT prints on **stdout**; everything else (including the expiry date to
   diary) goes to stderr, so a pipe stays clean.
 - Store it as `APPLE_NATIVE_CLIENT_SECRET` on the `forge-auth` Doppler
