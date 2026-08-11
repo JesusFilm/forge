@@ -116,25 +116,45 @@ struct HomeView: View {
                 // of why this screen had no focusable descendant at first
                 // layout; a hero that silently drops its only button leaves
                 // the focus engine nothing to aim at.
-                Button {
-                    if let playbackID = card.playbackID {
-                        presentedPlayback = PlayerPresentation(playbackID: playbackID)
-                    }
-                } label: {
-                    Label(
-                        card.playbackID == nil ? "Explore" : "Play",
-                        systemImage: card.playbackID == nil ? "square.stack" : "play.fill"
-                    )
-                    .font(.system(size: 30, weight: .semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .prefersDefaultFocus(in: heroNamespace)
+                heroCTA(card)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
+                    .prefersDefaultFocus(in: heroNamespace)
             }
             .padding(.horizontal, 80)
             .padding(.bottom, 70)
         }
         .focusScope(heroNamespace)
+    }
+
+    /// The hero's call to action. Always present — a hero that drops its only
+    /// button when the featured item is a collection was half of why this
+    /// screen had no focusable descendant at first layout.
+    @ViewBuilder
+    private func heroCTA(_ card: VideoCard) -> some View {
+        if let slug = card.slug {
+            NavigationLink(value: Route.video(slug: slug)) {
+                heroCTALabel(card)
+            }
+        } else if let playbackID = card.playbackID {
+            Button {
+                presentedPlayback = PlayerPresentation(playbackID: playbackID)
+            } label: {
+                heroCTALabel(card)
+            }
+        } else {
+            // Focusable but inert: the focus engine needs a target here even
+            // when there is nowhere to go.
+            Button {} label: { heroCTALabel(card) }
+        }
+    }
+
+    private func heroCTALabel(_ card: VideoCard) -> some View {
+        Label(
+            card.playbackID == nil ? "Explore" : "Play",
+            systemImage: card.playbackID == nil ? "square.stack" : "play.fill"
+        )
+        .font(.system(size: 30, weight: .semibold))
     }
 
     // MARK: - Rails
@@ -174,16 +194,25 @@ struct HomeView: View {
 
     private func cardView(_ card: VideoCard) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let playbackID = card.playbackID {
+            if let slug = card.slug {
+                // Routes to the DETAIL screen, matching RN — a card press
+                // opens /watch, where the viewer picks language and
+                // subtitles, rather than jumping straight into playback.
+                NavigationLink(value: Route.video(slug: slug)) {
+                    cardPoster(for: card)
+                }
+                // The system card style: it owns tvOS focus movement and
+                // visuals end to end. Browsing must never depend on a custom
+                // style whose focus read could silently stop firing.
+                .buttonStyle(.card)
+            } else if let playbackID = card.playbackID {
+                // No slug but playable — open the player directly rather than
+                // stranding a watchable video behind a missing route.
                 Button {
                     presentedPlayback = PlayerPresentation(playbackID: playbackID)
                 } label: {
                     cardPoster(for: card)
                 }
-                // The system card style, not the custom one: it owns tvOS
-                // focus movement + visuals end to end. The custom style is
-                // reserved for chrome (pill, hero CTA) where its focus read
-                // is verified working; browsing must never depend on it.
                 .buttonStyle(.card)
             } else {
                 // No playback id — select is deliberately inert (no detail
@@ -263,7 +292,7 @@ struct HomeView: View {
 
 /// `fullScreenCover(item:)` needs Identifiable; the playback id is the
 /// identity.
-private struct PlayerPresentation: Identifiable {
+struct PlayerPresentation: Identifiable {
     let playbackID: String
     var id: String { playbackID }
 }

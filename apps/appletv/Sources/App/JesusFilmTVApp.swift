@@ -33,15 +33,46 @@ struct RootView: View {
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house.fill") {
-                HomeView(viewModel: homeViewModel)
+                NavigationStack {
+                    HomeView(viewModel: homeViewModel)
+                        .navigationDestination(for: Route.self, destination: destination)
+                }
             }
             Tab("Search", systemImage: "magnifyingglass") {
-                SearchView(viewModel: searchViewModel)
+                NavigationStack {
+                    SearchView(viewModel: searchViewModel)
+                        .navigationDestination(for: Route.self, destination: destination)
+                }
             }
             Tab("Profile", systemImage: "person.fill") {
                 SignInView(model: signInViewModel)
             }
         }
         .background(Theme.background.ignoresSafeArea())
+    }
+
+    /// One destination table shared by every stack, so a route means the same
+    /// thing wherever it is pushed from.
+    @ViewBuilder
+    private func destination(for route: Route) -> some View {
+        switch route {
+        case .video(let slug):
+            WatchView(slug: slug)
+        case .series(let slug):
+            // Series lands in PR3. Routing to the video detail is wrong for a
+            // collection, so this states the gap rather than showing
+            // something misleading.
+            ContentUnavailableView {
+                Label("Series coming soon", systemImage: "square.stack")
+            } description: {
+                Text(slug)
+            }
+        case .experience(let slug):
+            ContentUnavailableView {
+                Label("Experience coming soon", systemImage: "sparkles")
+            } description: {
+                Text(slug)
+            }
+        }
     }
 }

@@ -35,6 +35,7 @@ struct WireCollectionItem: Decodable {
     let videoImage: WirePreview?
     let videoDub: WireDub?
     let videoId: String?
+    let videoSlug: String?
 }
 
 struct WirePreview: Decodable {
@@ -96,6 +97,9 @@ struct VideoCard: Equatable, Identifiable {
     let posterURL: URL?
     /// Present when the card is directly playable.
     let playbackID: String?
+    /// Canonical Watch slug; absent means the card cannot open a detail
+    /// screen, so it stays focusable but inert rather than routing nowhere.
+    let slug: String?
 }
 
 enum HomeProjection {
@@ -134,7 +138,8 @@ enum HomeProjection {
             id: id,
             title: title,
             posterURL: poster.flatMap(URL.init(string:)),
-            playbackID: playbackID
+            playbackID: playbackID,
+            slug: item.videoSlug
         )
     }
 }

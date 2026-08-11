@@ -80,6 +80,14 @@ enum Queries {
               videoImage { previewUrl }
               videoDub { muxVideo { playbackId } }
               videoId
+              # Canonical public Watch slug — what the detail route needs.
+              # NOTE: the item carries no LABEL, so series-vs-video shape
+              # routing is not possible from this query alone; RN gets it
+              # from the watchHomeVideos pool. Until that lands (PR4) every
+              # card routes to /watch. `collectionSize` is deliberately NOT
+              # used as a proxy — RN's rule is explicit that a film's
+              # chapter clips must not route it to /series.
+              videoSlug
             }
           }
         }
