@@ -73,7 +73,7 @@ export type PlannedTrackBar = {
 
 type FutureWorkPriority = Pick<
   PlannedTrackBar,
-  "id" | "title" | "summary" | "startWeek" | "details"
+  "id" | "title" | "summary" | "startWeek" | "badge" | "details"
 > & {
   lane: number
 }
@@ -455,7 +455,8 @@ export const PLANNED_PHASES: PlannedPhase[] = [
 const FUTURE_WORK_PRIORITIES = [
   {
     id: "future-work-caleb-china-streaming",
-    title: "Caleb: Explore China streaming",
+    title: "Explore China streaming",
+    badge: "Caleb",
     summary: "Assess how Forge media could stream reliably into China.",
     startWeek: 15,
     lane: 0,
@@ -466,7 +467,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-urim-up-mobile-tv-mvp",
-    title: "Urim + Up: Define Mobile + TV MVP",
+    title: "Define Mobile + TV MVP",
+    badge: "Urim + Up",
     summary: "Set the minimum releasable criteria for both applications.",
     startWeek: 15,
     lane: 1,
@@ -478,7 +480,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-nisal-search-quality",
-    title: "Nisal: Improve search quality",
+    title: "Improve search quality",
+    badge: "Nisal",
     summary: "Advance recommendations, ranking, and dead-result discovery.",
     startWeek: 15,
     lane: 2,
@@ -491,7 +494,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-jaco-jian-components",
-    title: "Jaco + Jian Wei: Decompose components",
+    title: "Decompose components",
+    badge: "Jaco + Jian Wei",
     summary: "Define components that can integrate across products.",
     startWeek: 15,
     lane: 3,
@@ -502,7 +506,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-jaco-jian-present",
-    title: "Jaco + Jian Wei: Present to Miheret",
+    title: "Present to Miheret",
+    badge: "Jaco + Jian Wei",
     summary: "Present the reusable-component plan and decisions needed.",
     startWeek: 15,
     lane: 4,
@@ -513,7 +518,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-tatai-lyuba-video-agents",
-    title: "Tatai + Lyuba: Advance video agents",
+    title: "Advance video agents",
+    badge: "Tatai + Lyuba",
     summary: "Help Lyuba move video-generation agents toward reliable use.",
     startWeek: 19,
     lane: 0,
@@ -524,7 +530,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-tatai-experience-generation",
-    title: "Tatai: Run experience generation",
+    title: "Run experience generation",
+    badge: "Tatai",
     summary: "Keep experience generation progressing in the background.",
     startWeek: 19,
     lane: 1,
@@ -536,6 +543,7 @@ const FUTURE_WORK_PRIORITIES = [
   {
     id: "future-work-service-agent-loops",
     title: "Build service-improvement loops",
+    badge: "Owner TBD",
     summary: "Use agents to maintain and continuously improve services.",
     startWeek: 19,
     lane: 2,
@@ -547,7 +555,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-caleb-language-support",
-    title: "Caleb: Expand language support",
+    title: "Expand language support",
+    badge: "Caleb",
     summary: "Improve metadata, translation, and multilingual coverage.",
     startWeek: 19,
     lane: 3,
@@ -558,7 +567,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-siyang-zy-nextsteps",
-    title: "Siyang + ZY: Ship NextSteps",
+    title: "Ship NextSteps",
+    badge: "Siyang + ZY",
     summary: "Deliver the core NextSteps product surface and integrations.",
     startWeek: 19,
     lane: 4,
@@ -569,7 +579,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-core-translation",
-    title: "Vlad: Translate Core content",
+    title: "Translate Core content",
+    badge: "Vlad",
     summary: "Finish every untranslated Core content field.",
     startWeek: 23,
     lane: 0,
@@ -580,7 +591,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-bible-translation",
-    title: "Vlad: Translate Bible quotations",
+    title: "Translate Bible quotations",
+    badge: "Vlad",
     summary: "Complete translation coverage for all Bible quotations.",
     startWeek: 23,
     lane: 1,
@@ -591,7 +603,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-accounts-notifications",
-    title: "Vlad: Add accounts + notifications",
+    title: "Add accounts + notifications",
+    badge: "Vlad",
     summary: "Add accounts and cross-channel user notifications.",
     startWeek: 23,
     lane: 2,
@@ -602,7 +615,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-mission-stories",
-    title: "Vlad: Collect mission stories",
+    title: "Collect mission stories",
+    badge: "Vlad",
     summary: "Ask how media is used and follow up for mission-trip stories.",
     startWeek: 23,
     lane: 3,
@@ -613,7 +627,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-next-step-actions",
-    title: "Vlad: Clarify next-step actions",
+    title: "Clarify next-step actions",
+    badge: "Vlad",
     summary: "Make ministry calls to action clearer and more useful.",
     startWeek: 27,
     lane: 0,
@@ -624,7 +639,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-shareable-search",
-    title: "Vlad: Make search shareable",
+    title: "Make search shareable",
+    badge: "Vlad",
     summary: "Give every search result set a stable, shareable URL.",
     startWeek: 27,
     lane: 1,
@@ -635,7 +651,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-verse-pages",
-    title: "Vlad: Create verse video pages",
+    title: "Create verse video pages",
+    badge: "Vlad",
     summary: "Create a unique video experience for every Bible verse.",
     startWeek: 27,
     lane: 2,
@@ -646,7 +663,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-video-faqs",
-    title: "Vlad: Generate video FAQs",
+    title: "Generate video FAQs",
+    badge: "Vlad",
     summary: "Create an AI-generated FAQ for every video.",
     startWeek: 27,
     lane: 3,
@@ -657,7 +675,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-seo-agent",
-    title: "Vlad: Operate SEO agent",
+    title: "Operate SEO agent",
+    badge: "Vlad",
     summary: "Run an always-on SEO and maintenance agent in Mastra.",
     startWeek: 31,
     lane: 0,
@@ -669,7 +688,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-support-agent",
-    title: "Vlad: Operate support agent",
+    title: "Operate support agent",
+    badge: "Vlad",
     summary: "Run an always-on support-learning agent in Mastra.",
     startWeek: 31,
     lane: 1,
@@ -680,7 +700,8 @@ const FUTURE_WORK_PRIORITIES = [
   },
   {
     id: "future-work-vlad-translation-agent",
-    title: "Vlad: Operate translation agent",
+    title: "Operate translation agent",
+    badge: "Vlad",
     summary: "Finish and improve the always-on translation agent in Mastra.",
     startWeek: 31,
     lane: 2,
@@ -794,7 +815,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
       track: "future-work",
       tone: "stone",
       spanWeeks: 4,
-      badge: "4-week focus",
     }),
   ),
   {

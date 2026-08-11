@@ -56,6 +56,8 @@ roadmap.
 7. Continue the year-end priority blocks in the Delivery Planned row, stack
    simultaneous work so no bars overlap, and mark the completed April-August
    phases with a clear completion treatment.
+8. Show each priority owner in the timeline badge and keep the title focused on
+   the work itself.
 
 ## Year-End Blocks
 
@@ -89,6 +91,7 @@ service monitoring, and the existing SEO/support agent direction.
 - Keep each priority concise while preserving its concrete deliverables in the
   detail cards. Detail bullets may clarify one responsibility but must not hide
   another responsibility inside the same timeline block.
+- Use owner names for year-end badges rather than repeating names in titles.
 
 ## Verification
 
@@ -103,5 +106,6 @@ service monitoring, and the existing SEO/support agent direction.
   priorities continue in Delivery Planned without overlap, actual-history detail cards remain available,
   and `/contributions` remains linked. Confirm the track labels remain pinned
   during horizontal scrolling and the initial view includes the current week.
+  Confirm each year-end block shows its owner badge and an action-only title.
   Record reload-to-visible timing, rendered element count, horizontal overflow
   behavior, and console errors for the expanded timeline.
