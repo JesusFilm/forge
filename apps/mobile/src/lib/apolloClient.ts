@@ -5,9 +5,14 @@ import {
   InMemoryCache,
   Observable,
 } from "@apollo/client"
-import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import {
+  CombinedGraphQLErrors,
+  ServerError,
+  ServerParseError,
+} from "@apollo/client/errors"
 import { ErrorLink } from "@apollo/client/link/error"
 import { getMainDefinition } from "@apollo/client/utilities"
+import { noteAdminEndpointUnreachable } from "./adminEndpoint"
 import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation, isProgressOperation } from "./authHeaders"
 // Safe as a static import: authSession's native-adjacent deps load lazily
@@ -245,11 +250,30 @@ export function reportGraphqlOperationError(
   reportDatadogError(error, { origin: "graphql_network_error", operation })
 }
 
+// R12. RN's fetch exposes no connection-refused discriminator, so the test is
+// negative — but an HTTP status proves the endpoint answered, so those are out.
+export function isUnreachableEndpointError(error: unknown): boolean {
+  if (CombinedGraphQLErrors.is(error)) return false
+  if (ServerError.is(error) || ServerParseError.is(error)) return false
+  if (isClientAbortError(error)) return false
+  return true
+}
+
+// The gate is the first line: this runs in the link chain of every build. It
+// cannot gate the whole handler — release needs the Datadog report above it.
+function noteUnreachableEndpointInDev(error: unknown): void {
+  if (!__DEV__) return
+  if (!isUnreachableEndpointError(error)) return
+  noteAdminEndpointUnreachable(getGraphQLUrl())
+}
+
 // onError-style link (v4 ErrorLink): every operation's downstream failure routes
 // through the pure reporter. Self-gates on provisioning, so always safe in-chain.
-function createErrorLink(): ErrorLink {
+// Exported so the R12 wiring — not just its classifier — is under test.
+export function createErrorLink(): ErrorLink {
   return new ErrorLink(({ error, operation }) => {
     reportGraphqlOperationError(error, operation.operationName)
+    noteUnreachableEndpointInDev(error)
   })
 }
 
