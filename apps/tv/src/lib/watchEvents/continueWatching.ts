@@ -190,6 +190,26 @@ export async function getResumePosition(
 }
 
 /**
+ * Erase the shelf, inside the lock.
+ *
+ * The lock is the whole point. A bare `removeItem` can land in the middle of
+ * a queued `saveResumeSnapshot`'s read-modify-write, whose pending write then
+ * re-materializes the shelf it just erased — resurrecting the PREVIOUS
+ * viewer's history moments after sign-out wiped it. Returns whether the shelf
+ * is confirmed gone, so callers can fail closed instead of assuming.
+ */
+export async function clearContinueWatching(): Promise<boolean> {
+  return withShelfLock(async () => {
+    try {
+      await getStorage().removeItem(CONTINUE_WATCHING_STORAGE_KEY)
+      return true
+    } catch {
+      return false
+    }
+  })
+}
+
+/**
  * Locked read-modify-write over the WHOLE shelf, for bulk folds (the account
  * hydrate in `watchProgressSync.ts`). `mutate` must be pure; it runs inside
  * the shelf lock so a concurrent `saveResumeSnapshot` cannot interleave

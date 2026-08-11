@@ -65,6 +65,12 @@ export type AccountWatchProgressRow = {
   videoId: string
   positionSeconds: number
   durationSeconds: number
+  /**
+   * Admin's own completion verdict, derived at its 0.90 threshold. Parsed
+   * because it is part of the wire shape and worth having in hand, but
+   * deliberately NOT consulted by `mergeAccountRowsIntoShelf` — see the
+   * threshold comment there.
+   */
   completed: boolean
   updatedAt: string | null
 }
@@ -99,18 +105,60 @@ export function parseAccountProgressRows(
   return parsed
 }
 
-/** True when the account row is strictly further along than the local entry —
- *  ratio first (what the UI shows), seconds when the local duration is
- *  unknown. Same semantic as anonymousMerge's reconciliation. */
-function accountRowIsFurtherAlong(
+/**
+ * Which side wins for one video.
+ *
+ * NEWEST-wins, matching the server's own guard (`newestByVideoId` +
+ * `last_watched_at <= EXCLUDED` in watch-progress.service.ts) — NOT
+ * furthest-wins. The distinction is load-bearing and cost us a review
+ * finding: under furthest-wins a deliberate REWIND on another device never
+ * converges, because the TV keeps its further-but-older position, pushes it
+ * up, and the server's staleness guard rejects it — forever, on every visit.
+ *
+ * Furthest-along is only the TIE-BREAK, for when neither side carries a
+ * usable stamp (`anonymousMerge`'s reconciliation rule, which applies where
+ * no authoritative ordering exists).
+ */
+function accountRowWins(
   row: AccountWatchProgressRow,
   local: ContinueWatchingEntry,
 ): boolean {
+  const rowMs = row.updatedAt != null ? Date.parse(row.updatedAt) : Number.NaN
+  const localMs = Date.parse(local.updatedAt)
+  if (Number.isFinite(rowMs) && Number.isFinite(localMs) && rowMs !== localMs) {
+    return rowMs > localMs
+  }
+  // No usable ordering — fall back to furthest-along: ratio first (what the
+  // UI shows), seconds when the local duration is unknown (comparing a ratio
+  // against seconds would make a 40-minute position lose to a 0.9).
   const rowRatio = row.positionSeconds / row.durationSeconds
   if (local.progress != null && Number.isFinite(local.progress)) {
     return rowRatio > local.progress
   }
   return row.positionSeconds > local.positionSeconds
+}
+
+/**
+ * Whether the local shelf may be exported into `userId`'s account.
+ *
+ * The shelf is a SHARED bucket on a living-room TV, so "there is data here"
+ * never implies "it belongs to the viewer signing out". Only a marker that
+ * NAMES this account authorizes the export; unowned (`null`) and
+ * someone-else's both refuse.
+ *
+ * Refusing on `null` is the counter-intuitive half and the one that matters:
+ * an unowned shelf is precisely the state a failed/interrupted sign-out
+ * leaves behind, so treating it as "safe to upload" is what would put the
+ * previous viewer's history into the next viewer's account.
+ */
+export function mayFlushShelfToAccount(
+  markerUserId: string | null,
+  userId: string | null | undefined,
+): boolean {
+  if (markerUserId == null || userId == null || userId.length === 0) {
+    return false
+  }
+  return markerUserId === userId
 }
 
 /**
@@ -141,9 +189,15 @@ export function mergeAccountRowsIntoShelf(
       merged.push(entry)
       continue
     }
+    // Deliberately the TV's OWN threshold, never the server's `completed`
+    // flag: admin marks a row complete at 0.90 while the shelf keeps a card
+    // resume-worthy until 0.95. Trusting the flag deletes every entry in the
+    // 90–95% band — including ones this TV just pushed up itself — so the
+    // shelf would silently lose the film you are 92% through on every sync.
+    // The client owns what is on the client's shelf.
     const rowRatio = row.positionSeconds / row.durationSeconds
-    if (row.completed || rowRatio >= RESUME_FINISHED_PROGRESS) continue
-    if (!accountRowIsFurtherAlong(row, entry)) {
+    if (rowRatio >= RESUME_FINISHED_PROGRESS) continue
+    if (!accountRowWins(row, entry)) {
       merged.push(entry)
       continue
     }

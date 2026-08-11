@@ -33,6 +33,40 @@ const MANAGER_OPERATOR_ADMIN: Principal = {
   managerRole: "OPERATOR",
 }
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
+
+/**
+ * Every permission key, for the exhaustive per-principal grant walks. Shared
+ * so the two bearer-principal suites cannot drift into checking different key
+ * sets — and so adding a key to `PermissionKey` is one edit here rather than
+ * a silently-missing column in each walk.
+ */
+const ALL_PERMISSION_KEYS: PermissionKey[] = [
+  "read:experiences",
+  "read:videos",
+  "read:video-metadata",
+  "read:video-mapper-catalog",
+  "read:reference",
+  "read:media-assets",
+  "access:manager",
+  "read:manager-read-models",
+  "write:experiences",
+  "write:videos",
+  "write:media-assets",
+  "write:transcript-embeddings",
+  "write:experience-embeddings",
+  "write:watch-events",
+  "read:watch-progress:own",
+  "write:watch-progress:own",
+  "delete:watch-progress:own",
+  "write:manager-enrichment-trigger",
+  "write:manager-jobs",
+  "delete:media-assets",
+  "publish:experiences",
+  "archive:experiences",
+  "system:trigger-workflow",
+  "system:write-derived",
+  "admin:all",
+]
 const WEB_USER: Principal = {
   id: "auth-user-1",
   role: "WEB_USER",
@@ -190,23 +224,36 @@ describe("hasPermission — Manager backend bearer gate", () => {
 })
 
 describe("hasPermission — Web user bearer gate", () => {
-  it("grants watch-event writes and the own-data progress scopes", () => {
-    expect(hasPermission(WEB_USER, "write:watch-events")).toBe(true)
+  const WEB_USER_GRANTS: ReadonlySet<PermissionKey> = new Set([
+    "write:watch-events",
     // feat-322: TV device-grant tokens introspect as WEB_USER, so the
-    // own-data progress scopes are granted here too (subject comes from
-    // the verified token, never from arguments — own rows only).
-    expect(hasPermission(WEB_USER, "read:watch-progress:own")).toBe(true)
-    expect(hasPermission(WEB_USER, "write:watch-progress:own")).toBe(true)
-    expect(hasPermission(WEB_USER, "delete:watch-progress:own")).toBe(true)
+    // own-data progress scopes are granted here too (subject comes from the
+    // verified token, never from arguments — own rows only).
+    "read:watch-progress:own",
+    "write:watch-progress:own",
+    "delete:watch-progress:own",
+  ])
+
+  it("grants exactly the watch-event write and the three own-data scopes", () => {
+    // Exhaustive walk, matching MOBILE_USER's: an assertion list that only
+    // names the granted keys pins the NARROWING direction and says nothing
+    // about widening — the direction that actually matters when a future key
+    // is added to WEB_USER_PERMISSIONS.
+    for (const key of ALL_PERMISSION_KEYS) {
+      expect(hasPermission(WEB_USER, key)).toBe(WEB_USER_GRANTS.has(key))
+    }
   })
 
-  it("grants nothing beyond those four keys", () => {
-    expect(hasPermission(WEB_USER, "read:videos")).toBe(false)
-    expect(hasPermission(WEB_USER, "read:experiences")).toBe(false)
-    expect(hasPermission(WEB_USER, "write:experiences")).toBe(false)
-    expect(hasPermission(WEB_USER, "admin:all")).toBe(false)
-    expect(hasPermission(WEB_USER, "write:transcript-embeddings")).toBe(false)
-    expect(hasPermission(WEB_USER, "write:manager-jobs")).toBe(false)
+  it("shares the own-data scopes with MOBILE_USER but keeps its own event write", () => {
+    // The two user principals are no longer disjoint (they were before
+    // feat-322); this pins WHERE they overlap and where they still differ.
+    expect(hasPermission(WEB_USER, "write:watch-events")).toBe(true)
+    expect(
+      hasPermission(
+        { id: "m", role: "MOBILE_USER", rateLimitBucketKey: "m" },
+        "write:watch-events",
+      ),
+    ).toBe(false)
   })
 })
 
@@ -224,34 +271,7 @@ describe("hasPermission — Mobile user gate", () => {
   ])
 
   it("grants exactly the three own-data watch-progress scopes", () => {
-    const allKeys: PermissionKey[] = [
-      "read:experiences",
-      "read:videos",
-      "read:video-metadata",
-      "read:video-mapper-catalog",
-      "read:reference",
-      "read:media-assets",
-      "access:manager",
-      "read:manager-read-models",
-      "write:experiences",
-      "write:videos",
-      "write:media-assets",
-      "write:transcript-embeddings",
-      "write:experience-embeddings",
-      "write:watch-events",
-      "read:watch-progress:own",
-      "write:watch-progress:own",
-      "delete:watch-progress:own",
-      "write:manager-enrichment-trigger",
-      "write:manager-jobs",
-      "delete:media-assets",
-      "publish:experiences",
-      "archive:experiences",
-      "system:trigger-workflow",
-      "system:write-derived",
-      "admin:all",
-    ]
-    for (const key of allKeys) {
+    for (const key of ALL_PERMISSION_KEYS) {
       expect(hasPermission(MOBILE_USER, key)).toBe(MOBILE_USER_GRANTS.has(key))
     }
   })

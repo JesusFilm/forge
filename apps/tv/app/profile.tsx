@@ -40,11 +40,12 @@ import {
 import { releaseLocalUserOnSignOut } from "../src/lib/auth/anonymousMerge"
 import { submitQueuedWatchEvent } from "../src/lib/watchEvents/recordWatchEvent"
 import {
+  flushOwnedShelfOnSignOut,
   hydrateContinueWatchingFromAccount,
+  purgeAccountProgressCache,
   submitContinueWatchingToAccount,
   syncContinueWatchingWithAccount,
 } from "../src/lib/watchEvents/watchProgressSync"
-import { loadContinueWatching } from "../src/lib/watchEvents/continueWatching"
 import { getDeviceGrantConfig } from "../src/lib/auth/deviceGrantClient"
 
 type Identity = { name: string; email: string; userId: string }
@@ -187,17 +188,17 @@ export default function ProfileRoute() {
       try {
         // Final flush BEFORE the token is revoked: sign-out wipes the local
         // shelf (privacy on a shared TV), so anything not yet in the account
-        // would be lost. Best-effort — a failure must not block sign-out.
-        try {
-          await submitContinueWatchingToAccount(await loadContinueWatching())
-        } catch {
-          // The wipe below is still the right call; the account keeps
-          // whatever the last successful sync delivered.
-        }
+        // would be lost. Gated on the ownership marker AND time-bounded
+        // inside `flushOwnedShelfOnSignOut`, which never throws — an unowned
+        // or someone-else's shelf is skipped rather than uploaded here.
+        await flushOwnedShelfOnSignOut(identity?.userId)
         await signOut()
         // The account marker is released so the NEXT viewer starts clean
         // rather than being treated as an already-merged returning user.
         await releaseLocalUserOnSignOut()
+        // Third copy of the departing viewer's history — see the purge's own
+        // comment. Never throws, so it cannot unwind a completed sign-out.
+        await purgeAccountProgressCache()
         reportDeviceGrantSignedOut("revoked")
       } catch {
         reportDeviceGrantSignedOut("local_only")
@@ -206,7 +207,10 @@ export default function ProfileRoute() {
         setSession({ kind: "signed_out" })
       }
     })()
-  }, [])
+    // `identity?.userId` is a real dependency, not ceremony: it is the account
+    // the flush is authorized against, and an empty array would pin this
+    // callback to the first render's `null` — refusing every flush.
+  }, [identity?.userId])
 
   if (!enabled) return null
 

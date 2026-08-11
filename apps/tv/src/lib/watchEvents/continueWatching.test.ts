@@ -5,12 +5,14 @@ import {
   RESUME_FINISHED_PROGRESS,
   RESUME_MIN_SECONDS,
   applyResumeSnapshot,
+  clearContinueWatching,
   getResumePosition,
   isFinished,
   isResumeWorthy,
   loadContinueWatching,
   parseContinueWatching,
   saveResumeSnapshot,
+  updateContinueWatching,
   type ContinueWatchingEntry,
 } from "./continueWatching"
 
@@ -173,5 +175,98 @@ describe("locked reads", () => {
     expect(entries).toHaveLength(1)
     expect(entries[0]!.positionSeconds).toBe(62)
     await save
+  })
+})
+
+describe("updateContinueWatching", () => {
+  it("applies the mutation to the stored shelf", async () => {
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 60,
+      durationSeconds: 600,
+    })
+    await updateContinueWatching((entries) =>
+      entries.map((e) => ({ ...e, positionSeconds: 300 })),
+    )
+    expect((await loadContinueWatching())[0]!.positionSeconds).toBe(300)
+  })
+
+  it("clears storage when the mutation empties the shelf", async () => {
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 60,
+      durationSeconds: 600,
+    })
+    await updateContinueWatching(() => [])
+    expect(await loadContinueWatching()).toEqual([])
+    expect(await getStorage().getItem(CONTINUE_WATCHING_STORAGE_KEY)).toBeNull()
+  })
+
+  it("re-caps a mutation that returns more than the maximum", async () => {
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 60,
+      durationSeconds: 600,
+    })
+    await updateContinueWatching(() =>
+      Array.from({ length: MAX_CONTINUE_WATCHING + 5 }, (_, i) =>
+        entry({ videoId: `video-${i}` }),
+      ),
+    )
+    expect(await loadContinueWatching()).toHaveLength(MAX_CONTINUE_WATCHING)
+  })
+
+  it("runs INSIDE the shelf lock — an un-awaited save is not lost", async () => {
+    // The interleave this lock exists to prevent: without it the update's
+    // read would predate the save and its write would erase it.
+    const save = saveResumeSnapshot(CARD, {
+      positionSeconds: 62,
+      durationSeconds: 600,
+    })
+    await updateContinueWatching((entries) =>
+      entries.map((e) => ({ ...e, title: "Folded" })),
+    )
+    await save
+    const entries = await loadContinueWatching()
+    expect(entries).toHaveLength(1)
+    expect(entries[0]!.positionSeconds).toBe(62)
+    expect(entries[0]!.title).toBe("Folded")
+  })
+
+  it("swallows a mutation that throws, leaving the shelf intact", async () => {
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 60,
+      durationSeconds: 600,
+    })
+    await expect(
+      updateContinueWatching(() => {
+        throw new Error("boom")
+      }),
+    ).resolves.toBeUndefined()
+    expect(await loadContinueWatching()).toHaveLength(1)
+  })
+})
+
+describe("clearContinueWatching", () => {
+  it("erases the shelf and reports success", async () => {
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 60,
+      durationSeconds: 600,
+    })
+    expect(await clearContinueWatching()).toBe(true)
+    expect(await loadContinueWatching()).toEqual([])
+  })
+
+  it("reports FALSE when storage refuses, so callers can fail closed", async () => {
+    // The signal `releaseLocalUserOnSignOut` needs: a shelf that survived the
+    // wipe must not have its ownership marker released.
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 60,
+      durationSeconds: 600,
+    })
+    const storage = getStorage()
+    const spy = jest
+      .spyOn(storage, "removeItem")
+      .mockRejectedValueOnce(new Error("storage full"))
+    expect(await clearContinueWatching()).toBe(false)
+    spy.mockRestore()
+    expect(await loadContinueWatching()).toHaveLength(1)
   })
 })
