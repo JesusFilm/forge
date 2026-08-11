@@ -17,7 +17,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** TBD via PR #TBD (pending owner ship decision).
+**Shipped:** 2026-08-11 via [PR #1904](https://github.com/JesusFilm/forge/pull/1904) (`feat(mastra): langfuse trace retention sweep + flat 25-day retention (ai-chat feat-336)`).
 
 **What landed.** Retention is now a flat 25 days across BOTH stores
 (`AI_CHAT_RETENTION_DAYS`, one constant): the ai-chat Postgres purge was
