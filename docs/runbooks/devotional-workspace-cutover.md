@@ -24,32 +24,43 @@ code through the normal pull-request-to-main flow.
 
 ## Stage and verify
 
-1. Run the database migration and confirm the expected schema version.
-2. Validate source bytes and the manifest without changing readiness:
+1. Deploy the corrected reader through the normal pull-request-to-main flow,
+   then verify that the active Railway Mastra commit contains that correction.
+2. Run `pnpm --filter @forge/mastra migrate:database`, then confirm the ledger
+   contains the exact immutable identity of `001-devotional-workspace.sql`; do
+   not compare devotional readiness to the newest global Mastra migration
+   version. The legacy devotional alias applies the same complete pending
+   migration set, including `002`, so it is not a devotional-only alternative.
+   From the deployed Mastra service, run
+   `pnpm --filter @forge/mastra check:devotional-database-readiness` and require
+   `{"ready":true,"version":1}`. This proves only the devotional migration
+   predicate; PgVector, Workspace objects, reconciliation, and the cutover row
+   remain separate gates.
+3. Validate source bytes and the manifest without changing readiness:
    `pnpm --filter @forge/mastra devo:workspace:migrate -- <manifest.json> --dry-run`.
-3. Require exactly one ledger entry under `/_system/migration/`, with no live
+4. Require exactly one ledger entry under `/_system/migration/`, with no live
    `reservationId` or `pendingUntil`. Authored inputs target `/inputs/`, media
    `/source-media/`, and retained artifacts `/runs/`.
-4. Copy into a unique immutable `/_migrations/<runId>/...` prefix. Never overwrite or delete a
+5. Copy into a unique immutable `/_migrations/<runId>/...` prefix. Never overwrite or delete a
    conflicting destination. Reruns must report existing identical objects as
    unchanged.
-5. Compare source, staging, and canonical counts, sizes, and streamed SHA-256 values.
-6. Reconcile the Workspace catalog. Required scripture, reflections, and safety
+6. Compare source, staging, and canonical counts, sizes, and streamed SHA-256 values.
+7. Reconcile the Workspace catalog. Required scripture, reflections, and safety
    configuration must be eligible; BM25, vector storage, and the embedder must
    all report ready.
-7. Verify Mastra can issue signed attempt inputs/uploads, Shorts Worker can
+8. Verify Mastra can issue signed attempt inputs/uploads, Shorts Worker can
    stream them without permanent bucket credentials, Mastra can verify and
    finalize immutable outputs, authenticated playback supports Range, and
    wrong-attempt/private-host/expired capabilities are rejected.
-8. Create a separate restore-attestation JSON containing the manifest digest,
+9. Create a separate restore-attestation JSON containing the manifest digest,
    backup reference, completion time, verifier, and all six true checks:
    Workspace CRUD/search, hybrid search, signed Worker transfer, one Mastra
    replica, drained runs, and readable legacy refs.
-9. Import the ledger and atomically record readiness with
-   `pnpm --filter @forge/mastra devo:workspace:migrate -- <manifest.json> --restore-attestation <attestation.json>`.
-   The command rejects a mismatched attestation or conflicting ledger row.
-   `_system/readiness/latest.json` is an editor-facing projection, not the
-   authority.
+10. Import the ledger and atomically record readiness with
+    `pnpm --filter @forge/mastra devo:workspace:migrate -- <manifest.json> --restore-attestation <attestation.json>`.
+    The command rejects a mismatched attestation or conflicting ledger row.
+    `_system/readiness/latest.json` is an editor-facing projection, not the
+    authority.
 
 ## Canary and enable
 

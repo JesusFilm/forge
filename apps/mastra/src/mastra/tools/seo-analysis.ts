@@ -6,7 +6,10 @@ import {
   minimizeSeoText,
   minimizeSeoUrl,
 } from "../../services/seo-data-minimization"
-import { digestSeoValue } from "../../services/seo-digest"
+import {
+  digestSeoProposalPayload,
+  digestSeoValue,
+} from "../../services/seo-digest"
 import { SeoEvidenceObservationSchema } from "../../services/seo-evidence"
 
 export const SeoTargetSchema = z
@@ -281,7 +284,7 @@ function editorialProposal(candidate: GscCandidate): SeoProposal {
     rollbackSnapshot: candidate.target.preChangeSnapshot,
   }
   const semanticConflictKey = `${candidate.target.targetId}:${candidate.target.locale}:editorial:title`
-  const payloadDigest = digestSeoValue(draft)
+  const payloadDigest = digestSeoProposalPayload(draft)
   return {
     ...draft,
     proposalId: `seo-${digestSeoValue(semanticConflictKey).slice(0, 24)}`,
@@ -340,7 +343,7 @@ function engineeringProposal(
     deploymentProbe: finding.probe ?? null,
   }
   const semanticConflictKey = `${target.targetId}:${target.locale}:engineering:${finding.kind}`
-  const payloadDigest = digestSeoValue(draft)
+  const payloadDigest = digestSeoProposalPayload(draft)
   return {
     ...draft,
     proposalId: `seo-${digestSeoValue(semanticConflictKey).slice(0, 24)}`,
