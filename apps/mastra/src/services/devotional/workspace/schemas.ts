@@ -162,7 +162,7 @@ export function validateWorkspaceDocument(options: {
   if (options.path === DEVOTIONAL_AUTHORED_PATHS.videoPassages) {
     parseJesusFilmPassagesDocument({ path: options.path, content })
   }
-  if (options.category === "scripture" && extension === ".json") {
+  if (options.category === "scripture") {
     parseWebBibleDocument({ path: options.path, content })
   }
   if (options.category === "reflections") {

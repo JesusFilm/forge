@@ -62,4 +62,61 @@ describe("parseWebBibleDocument", () => {
       }),
     ).toEqual({ verses })
   })
+
+  it("accepts generated provenance and returns only the operational verse map", () => {
+    expect(
+      parseWebBibleDocument({
+        path: "/inputs/scripture/web-bible.json",
+        content: JSON.stringify({
+          translation: "World English Bible",
+          abbreviation: "WEB",
+          license: "public-domain",
+          sourceUrl: "https://api.getbible.net/v2/web",
+          books: ["John"],
+          verseCount: 1,
+          verses: { "John.3.16": "For God so loved the world" },
+        }),
+      }),
+    ).toEqual({
+      verses: { "John.3.16": "For God so loved the world" },
+    })
+  })
+
+  it("loads content-only scripture from its canonical single-verse path", () => {
+    expect(
+      parseWebBibleDocument({
+        path: "/inputs/scripture/john/3-16.md",
+        content: "For God so loved the world",
+      }),
+    ).toEqual({
+      verses: { "John.3.16": "For God so loved the world" },
+    })
+  })
+
+  it("rejects invalid generated metadata and noncanonical prose paths", () => {
+    expect(() =>
+      parseWebBibleDocument({
+        path: "/inputs/scripture/web-bible.json",
+        content: JSON.stringify({
+          verseCount: 2,
+          verses: { "John.3.16": "For God so loved the world" },
+        }),
+      }),
+    ).toThrow(/invalid WEB scripture source/)
+    expect(() =>
+      parseWebBibleDocument({
+        path: "/inputs/scripture/web-bible.json",
+        content: JSON.stringify({
+          verses: { "John.3.16": "For God so loved the world" },
+          unexpected: true,
+        }),
+      }),
+    ).toThrow(/invalid WEB scripture source/)
+    expect(() =>
+      parseWebBibleDocument({
+        path: "/inputs/scripture/john/3.md",
+        content: "For God so loved the world",
+      }),
+    ).toThrow(/invalid WEB scripture source/)
+  })
 })

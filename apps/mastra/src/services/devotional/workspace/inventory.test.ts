@@ -154,6 +154,53 @@ describe("inventoryDevotionalInputs", () => {
     expect(result.eligibleByCategory.reflections).toHaveLength(1)
   })
 
+  it("accepts generated scripture and reflection envelopes", async () => {
+    const result = await inventoryDevotionalInputs(
+      filesystem({
+        ...REQUIRED_FILES,
+        "/inputs/scripture/web-bible.json": JSON.stringify({
+          translation: "World English Bible",
+          abbreviation: "WEB",
+          license: "public-domain",
+          sourceUrl: "https://api.getbible.net/v2/web",
+          books: ["John"],
+          verseCount: 1,
+          verses: { "John.3.16": "For God so loved the world." },
+        }),
+        "/inputs/reflections/ryle-matthew.json": JSON.stringify({
+          source: "J.C. Ryle, Expository Thoughts",
+          sourceUrl: "https://ccel.org/ccel/ryle/matthew.xml",
+          license: "public-domain",
+          ingestedFrom: "CCEL ThML",
+          count: 1,
+          entries: [
+            {
+              id: "Matt.3.1-Matt.3.2",
+              book: "Matthew",
+              chapter: 3,
+              reference: "Matthew 3:1-2",
+              osisRef: "Matt.3.1-Matt.3.2",
+              text: "Repent and prepare.",
+              source: "J.C. Ryle, Expository Thoughts",
+            },
+          ],
+        }),
+      }),
+    )
+
+    expect(result.excluded).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: "invalid-content" }),
+      ]),
+    )
+    expect(result.eligible.map(({ path: sourcePath }) => sourcePath)).toEqual(
+      expect.arrayContaining([
+        "/inputs/scripture/web-bible.json",
+        "/inputs/reflections/ryle-matthew.json",
+      ]),
+    )
+  })
+
   it("fails closed when required config or a required corpus is invalid", async () => {
     await expect(
       inventoryDevotionalInputs(

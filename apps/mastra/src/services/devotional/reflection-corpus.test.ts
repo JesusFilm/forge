@@ -84,6 +84,89 @@ describe("parseReflectionDocument", () => {
       },
     ])
   })
+
+  it("accepts the legacy minimal reflection JSON shape", () => {
+    const entries = [
+      {
+        source: "Trusted source",
+        reference: "John 3",
+        osisRef: "John.3",
+        text: "God's love reaches the world.",
+      },
+    ]
+
+    expect(
+      parseReflectionDocument({
+        path: "/inputs/reflections/trusted.json",
+        content: JSON.stringify({ entries }),
+      }),
+    ).toEqual(entries)
+  })
+
+  it("accepts generated provenance and returns operational entry fields", () => {
+    expect(
+      parseReflectionDocument({
+        path: "/inputs/reflections/spurgeon.json",
+        content: JSON.stringify({
+          source: "Charles Spurgeon, Morning and Evening",
+          sourceUrl: "https://ccel.org/ccel/spurgeon/morneve.xml",
+          license: "public-domain",
+          ingestedFrom: "CCEL ThML",
+          count: 1,
+          entries: [
+            {
+              id: "0101am",
+              month: 1,
+              monthName: "January",
+              day: 1,
+              session: "morning",
+              source: "Charles Spurgeon, Morning and Evening",
+              reference: "Genesis 1:1",
+              osisRef: "Gen.1.1",
+              verse: "In the beginning",
+              text: "Begin the year with the Lord.",
+            },
+          ],
+        }),
+      }),
+    ).toEqual([
+      {
+        source: "Charles Spurgeon, Morning and Evening",
+        reference: "Genesis 1:1",
+        osisRef: "Gen.1.1",
+        verse: "In the beginning",
+        text: "Begin the year with the Lord.",
+      },
+    ])
+  })
+
+  it("rejects incorrect counts and unknown generated fields", () => {
+    const entry = {
+      id: "John.3",
+      book: "John",
+      chapter: 3,
+      source: "Matthew Henry",
+      reference: "John 3",
+      osisRef: "John.3",
+      text: "Commentary",
+    }
+
+    expect(() =>
+      parseReflectionDocument({
+        path: "/inputs/reflections/henry.json",
+        content: JSON.stringify({ count: 2, entries: [entry] }),
+      }),
+    ).toThrow(/invalid reflection corpus/)
+    expect(() =>
+      parseReflectionDocument({
+        path: "/inputs/reflections/henry.json",
+        content: JSON.stringify({
+          count: 1,
+          entries: [{ ...entry, unexpected: true }],
+        }),
+      }),
+    ).toThrow(/invalid reflection corpus/)
+  })
 })
 
 describe("matchReflection", () => {

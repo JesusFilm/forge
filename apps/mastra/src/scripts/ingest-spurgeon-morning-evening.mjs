@@ -8,21 +8,23 @@
  * Source: https://ccel.org/ccel/spurgeon/morneve.xml (CCEL ThML). Spurgeon died
  * 1892 — the work is public domain. CCEL's digital text is likewise free.
  *
- * Output: devo/corpus/spurgeon-morning-evening.json — 732 entries (366 days ×
- * Morning + Evening), each: { id, month, day, session, reference, osisRef,
- * verse, text, source }. Committed to the repo so it ships wherever the app
- * runs (Railway included) — never fetched at devotional-run time.
+ * Output: <workspace-root>/inputs/reflections/spurgeon-morning-evening.json —
+ * local, create-only migration staging data. It is never read from the
+ * repository at devotional-run time and must not be committed as a full
+ * generated corpus.
  *
- *   node apps/mastra/src/scripts/ingest-spurgeon-morning-evening.mjs
+ *   node apps/mastra/src/scripts/ingest-spurgeon-morning-evening.mjs --workspace-root=/tmp/devotional-workspace [--file=/tmp/morneve.xml]
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = path.resolve(HERE, "../../../..")
+import {
+  resolveWorkspaceStagingRoot,
+  writeCorpusDocument,
+} from "./devotional-corpus-staging.mjs"
+
 const SOURCE_URL = "https://ccel.org/ccel/spurgeon/morneve.xml"
-const OUT = path.join(REPO_ROOT, "devo/corpus/spurgeon-morning-evening.json")
 
 const MONTHS = [
   "January",
@@ -97,8 +99,7 @@ async function loadSource() {
   return r.text()
 }
 
-async function main() {
-  const xml = await loadSource()
+export function buildSpurgeonMorningEveningCorpus(xml) {
   const entries = []
   const re =
     /<div2\b[^>]*\bid="d(\d{2})(\d{2})(am|pm)"[^>]*>([\s\S]*?)<\/div2>/g
@@ -129,7 +130,7 @@ async function main() {
     })
   }
 
-  const corpus = {
+  return {
     source: "Charles Spurgeon, Morning and Evening",
     sourceUrl: SOURCE_URL,
     license: "public-domain",
@@ -137,14 +138,26 @@ async function main() {
     count: entries.length,
     entries,
   }
-  await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
+}
 
-  const withOsis = entries.filter((e) => e.osisRef).length
+async function main() {
+  const workspaceRoot = resolveWorkspaceStagingRoot()
+  const corpus = buildSpurgeonMorningEveningCorpus(await loadSource())
+  const outputPath = await writeCorpusDocument({
+    workspaceRoot,
+    category: "reflections",
+    filename: "spurgeon-morning-evening.json",
+    document: corpus,
+  })
+
+  const withOsis = corpus.entries.filter((entry) => entry.osisRef).length
   const avgLen = Math.round(
-    entries.reduce((s, e) => s + e.text.length, 0) / (entries.length || 1),
+    corpus.entries.reduce((sum, entry) => sum + entry.text.length, 0) /
+      (corpus.entries.length || 1),
   )
-  console.log(`✅ ${entries.length} entries → ${path.relative(REPO_ROOT, OUT)}`)
+  console.log(
+    `✅ ${corpus.entries.length} entries → ${path.relative(process.cwd(), outputPath)}`,
+  )
   console.log(`   ${withOsis} with osisRef · avg reflection ${avgLen} chars`)
 }
 

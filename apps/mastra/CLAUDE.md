@@ -1482,6 +1482,13 @@ devotional-owned migrations. Migration 2 creates the isolated
 `support_research` evidence, report, cursor, lease, and Linear outbox schema.
 Deploy it before enabling `SUPPORT_RESEARCH_ENABLED=true`.
 
+Public-domain devotional corpus generators require an explicit external
+`--workspace-root` and create files beneath `inputs/scripture` or
+`inputs/reflections`. Never use the ignored repository `devo/corpus` tree as a
+runtime input or commit generated full corpora. Content-only scripture follows
+`/inputs/scripture/<book>/<chapter>-<verse>.<ext>`; dropping a supported file in
+that shape makes it eligible for a newly-created attempt after reconciliation.
+
 Only the Mastra Railway service receives `DEVOTIONAL_WORKSPACE_S3_*`. Signed
 URLs are transient job capabilities and must never enter workflow state or
 logs. Shorts Worker pins them to the configured exact Workspace HTTPS origin

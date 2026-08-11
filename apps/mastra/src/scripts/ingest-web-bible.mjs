@@ -5,20 +5,20 @@
  * Gospels + Acts into a flat verse map, so devotional scripture is the EXACT
  * verse text — not model-recalled. WEB is public domain (free to use).
  *
- * Source: getbible.net v2 (whole-book JSON per book).
- * Output: devo/corpus/web-bible.json — { verses: { "Luke.8.24": "…" } }, keyed
- * in osis form so it matches reflection-corpus routing. Committed → ships with
- * the app, read at runtime.
+ * Source: getbible.net v2 (whole-book JSON per book). Output:
+ * <workspace-root>/inputs/scripture/web-bible.json — local, create-only
+ * migration staging data. It is never read from the repository at
+ * devotional-run time and must not be committed as a full generated corpus.
  *
- *   node apps/mastra/src/scripts/ingest-web-bible.mjs
+ *   node apps/mastra/src/scripts/ingest-web-bible.mjs --workspace-root=/tmp/devotional-workspace
  */
-import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = path.resolve(HERE, "../../../..")
-const OUT = path.join(REPO_ROOT, "devo/corpus/web-bible.json")
+import {
+  resolveWorkspaceStagingRoot,
+  writeCorpusDocument,
+} from "./devotional-corpus-staging.mjs"
 
 // getbible book number → osis code. Gospels + Acts (where JESUS-film clips live).
 const BOOKS = {
@@ -29,41 +29,72 @@ const BOOKS = {
   44: "Acts",
 }
 
-async function main() {
+export function buildWebBibleCorpus(bookDocuments) {
   const verses = {}
-  for (const [nr, osis] of Object.entries(BOOKS)) {
-    const r = await fetch(`https://api.getbible.net/v2/web/${nr}.json`)
-    if (!r.ok) throw new Error(`getbible ${nr}: HTTP ${r.status}`)
-    const book = await r.json()
-    let n = 0
-    for (const ch of book.chapters ?? []) {
-      for (const v of ch.verses ?? []) {
-        verses[`${osis}.${v.chapter}.${v.verse}`] = String(v.text)
+  const books = []
+  for (const { osis, book } of bookDocuments) {
+    books.push(osis)
+    for (const chapter of book.chapters ?? []) {
+      for (const verse of chapter.verses ?? []) {
+        verses[`${osis}.${verse.chapter}.${verse.verse}`] = String(verse.text)
           .replace(/\s+/g, " ")
           .trim()
-        n++
       }
     }
-    console.log(`  ✓ ${osis} (${book.name}): ${n} verses`)
   }
 
-  const corpus = {
+  return {
     translation: "World English Bible",
     abbreviation: "WEB",
     license: "public-domain",
     sourceUrl: "https://api.getbible.net/v2/web",
-    books: Object.values(BOOKS),
+    books,
     verseCount: Object.keys(verses).length,
     verses,
   }
-  await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
+}
+
+async function main() {
+  const workspaceRoot = resolveWorkspaceStagingRoot()
+  const bookDocuments = await Promise.all(
+    Object.entries(BOOKS).map(async ([nr, osis]) => {
+      const response = await fetch(`https://api.getbible.net/v2/web/${nr}.json`)
+      if (!response.ok) {
+        throw new Error(`getbible ${nr}: HTTP ${response.status}`)
+      }
+      return { osis, book: await response.json() }
+    }),
+  )
+
+  for (const { osis, book } of bookDocuments) {
+    const verseCount = (book.chapters ?? []).reduce(
+      (count, chapter) => count + (chapter.verses?.length ?? 0),
+      0,
+    )
+    console.log(`  ✓ ${osis} (${book.name}): ${verseCount} verses`)
+  }
+
+  const corpus = buildWebBibleCorpus(bookDocuments)
+  const outputPath = await writeCorpusDocument({
+    workspaceRoot,
+    category: "scripture",
+    filename: "web-bible.json",
+    document: corpus,
+  })
   console.log(
-    `\n✅ ${corpus.verseCount} WEB verses → ${path.relative(REPO_ROOT, OUT)}`,
+    `\n✅ ${corpus.verseCount} WEB verses → ${path.relative(process.cwd(), outputPath)}`,
   )
 }
 
-main().catch((e) => {
-  console.error("ingest-web-bible failed:", e instanceof Error ? e.message : e)
-  process.exitCode = 1
-})
+if (
+  process.argv[1] != null &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((e) => {
+    console.error(
+      "ingest-web-bible failed:",
+      e instanceof Error ? e.message : e,
+    )
+    process.exitCode = 1
+  })
+}

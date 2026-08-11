@@ -9,20 +9,22 @@
  * hosts Ryle's Matthew volume in this form; Mark/Luke/John are covered by
  * Matthew Henry (see ingest-matthew-henry-gospels.mjs).
  *
- * Output: devo/corpus/ryle-matthew.json — one entry per passage section
- * (e.g. "Matthew 8:23-27"), each: { id, book, chapter, reference, osisRef,
- * text, source }. Committed so it ships wherever the app runs.
+ * Output: <workspace-root>/inputs/reflections/ryle-matthew.json — local,
+ * create-only migration staging data. It is never read from the repository at
+ * devotional-run time and must not be committed as a full generated corpus.
  *
- *   node apps/mastra/src/scripts/ingest-ryle-matthew.mjs [--file=/tmp/ryle-matthew.xml]
+ *   node apps/mastra/src/scripts/ingest-ryle-matthew.mjs --workspace-root=/tmp/devotional-workspace [--file=/tmp/ryle-matthew.xml]
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = path.resolve(HERE, "../../../..")
+import {
+  resolveWorkspaceStagingRoot,
+  writeCorpusDocument,
+} from "./devotional-corpus-staging.mjs"
+
 const SOURCE_URL = "https://ccel.org/ccel/ryle/matthew.xml"
-const OUT = path.join(REPO_ROOT, "devo/corpus/ryle-matthew.json")
 
 const NAMED_ENTITIES = {
   amp: "&",
@@ -53,8 +55,7 @@ async function loadSource() {
   return r.text()
 }
 
-async function main() {
-  const xml = await loadSource()
+export function buildRyleMatthewCorpus(xml) {
   const entries = []
   // Each passage section is a <div2 title="Matthew C:V-V" id="...">…</div2>.
   const re =
@@ -80,7 +81,7 @@ async function main() {
     })
   }
 
-  const corpus = {
+  return {
     source: "J.C. Ryle, Expository Thoughts on the Gospels: Matthew",
     sourceUrl: SOURCE_URL,
     license: "public-domain",
@@ -88,15 +89,25 @@ async function main() {
     count: entries.length,
     entries,
   }
-  await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
+}
 
-  const chapters = new Set(entries.map((e) => e.chapter))
+async function main() {
+  const workspaceRoot = resolveWorkspaceStagingRoot()
+  const corpus = buildRyleMatthewCorpus(await loadSource())
+  const outputPath = await writeCorpusDocument({
+    workspaceRoot,
+    category: "reflections",
+    filename: "ryle-matthew.json",
+    document: corpus,
+  })
+
+  const chapters = new Set(corpus.entries.map((entry) => entry.chapter))
   const avg = Math.round(
-    entries.reduce((s, e) => s + e.text.length, 0) / (entries.length || 1),
+    corpus.entries.reduce((sum, entry) => sum + entry.text.length, 0) /
+      (corpus.entries.length || 1),
   )
   console.log(
-    `✅ ${entries.length} sections → ${path.relative(REPO_ROOT, OUT)}`,
+    `✅ ${corpus.entries.length} sections → ${path.relative(process.cwd(), outputPath)}`,
   )
   console.log(
     `   chapters ${Math.min(...chapters)}–${Math.max(...chapters)} (${chapters.size}) · avg ${avg} chars`,
