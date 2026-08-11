@@ -61,7 +61,7 @@ import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
-import { fetchWatchSearchSuggestions } from "@/lib/watch-search-suggestions-client"
+import { fetchWatchSearchSuggestions } from "@/lib/watch-search-client"
 
 const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
 const SEARCH_SUGGESTIONS_MAX_HEIGHT = 220
@@ -179,6 +179,12 @@ export function SearchOverlay() {
     useState<SuggestionListPosition | null>(null)
   const suggestionGenerationRef = useRef(0)
   const activeSubmissionKeyRef = useRef<string | null>(null)
+  const suggestionTouchGestureRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    moved: boolean
+  } | null>(null)
   const clearSuggestionRows = useCallback(() => {
     setSuggestionResult((current) => (current == null ? current : null))
   }, [])
@@ -222,6 +228,10 @@ export function SearchOverlay() {
   )
   const visibleSuggestionsLoading =
     suggestionRequestKey != null && suggestionsLoading
+
+  useEffect(() => {
+    activeSubmissionKeyRef.current = null
+  }, [query, suggestionLanguageSlug])
 
   useLayoutEffect(() => {
     suggestionGenerationRef.current += 1
@@ -472,6 +482,11 @@ export function SearchOverlay() {
     invalidateSuggestionRequest()
   }, [invalidateSuggestionRequest, query])
 
+  const handleInputBlur = useCallback(() => {
+    if (suggestionTouchGestureRef.current != null) return
+    dismissSuggestions()
+  }, [dismissSuggestions])
+
   const selectSuggestion = useCallback(
     (suggestion: string) => {
       setQuery(suggestion)
@@ -575,30 +590,27 @@ export function SearchOverlay() {
   const handleSemanticLanguageClick = useCallback(
     (language: SearchLanguageOption, regionName?: string) => {
       if (!language.publicSlug) return
-      dismissSuggestions()
+      setSuppressedSuggestionValue(null)
+      invalidateSuggestionRequest()
       setLanguageAutocompleteOpen(false)
       selectSearchLanguage(language, regionName)
-      if (query.trim().length > 0) {
-        void search(query, {
-          languageEnglishNames: [language.englishName],
-          languageSlug: language.publicSlug,
-        })
-      }
     },
-    [dismissSuggestions, query, search, selectSearchLanguage],
+    [invalidateSuggestionRequest, selectSearchLanguage],
   )
 
   const handleResetSearchLanguage = useCallback(() => {
-    dismissSuggestions()
+    setSuppressedSuggestionValue(null)
+    invalidateSuggestionRequest()
     setLanguageAutocompleteOpen(false)
     resetSearchLanguageToDefault()
-  }, [dismissSuggestions, resetSearchLanguageToDefault])
+  }, [invalidateSuggestionRequest, resetSearchLanguageToDefault])
 
   const closeAfterResultNavigation = useCallback(() => {
     window.setTimeout(() => setOpen(false), 0)
   }, [setOpen])
 
   const handleClearInput = useCallback(() => {
+    activeSubmissionKeyRef.current = null
     dismissSuggestions()
     void search("")
     inputRef.current?.focus()
@@ -699,7 +711,7 @@ export function SearchOverlay() {
             onSubmit={handleSearchSubmit}
             onClear={handleClearInput}
             onKeyDown={handleInputKeyDown}
-            onBlur={dismissSuggestions}
+            onBlur={handleInputBlur}
             onCompositionStart={() => {
               setIsComposing(true)
               invalidateSuggestionRequest()
@@ -799,8 +811,41 @@ export function SearchOverlay() {
                   dir="auto"
                   onMouseEnter={() => setActiveSuggestionIndex(index)}
                   onPointerDown={(event) => {
-                    event.preventDefault()
-                    selectSuggestion(suggestion)
+                    if (!event.pointerType || event.pointerType === "mouse") {
+                      event.preventDefault()
+                      selectSuggestion(suggestion)
+                      return
+                    }
+                    suggestionTouchGestureRef.current = {
+                      pointerId: event.pointerId,
+                      startX: event.clientX,
+                      startY: event.clientY,
+                      moved: false,
+                    }
+                  }}
+                  onPointerMove={(event) => {
+                    const gesture = suggestionTouchGestureRef.current
+                    if (gesture?.pointerId !== event.pointerId) return
+                    if (
+                      Math.hypot(
+                        event.clientX - gesture.startX,
+                        event.clientY - gesture.startY,
+                      ) > 8
+                    ) {
+                      gesture.moved = true
+                    }
+                  }}
+                  onPointerUp={(event) => {
+                    const gesture = suggestionTouchGestureRef.current
+                    if (gesture?.pointerId !== event.pointerId) return
+                    suggestionTouchGestureRef.current = null
+                    if (!gesture.moved) {
+                      event.preventDefault()
+                      selectSuggestion(suggestion)
+                    }
+                  }}
+                  onPointerCancel={() => {
+                    suggestionTouchGestureRef.current = null
                   }}
                   className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 py-2.5 text-base leading-6 outline-none transition-colors ${
                     active ? "bg-stone-100" : "hover:bg-stone-50"

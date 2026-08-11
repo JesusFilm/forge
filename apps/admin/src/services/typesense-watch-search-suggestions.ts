@@ -19,6 +19,7 @@ import {
 export const MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS = 200
 export const MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS = 200
 export const MAX_WATCH_SEARCH_SUGGESTIONS = 5
+export const MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS = 24
 
 const TITLE_WORD_SEPARATOR = /[\s,.;:!?()[\]{}"'/\\|_-]+/u
 const LANGUAGE_LOCALE_CACHE_TTL_MS = 5 * 60 * 1_000
@@ -38,7 +39,7 @@ type ResolvedSuggestionLanguage = {
   languageIdentity: string
 }
 type CachedSuggestionLanguage = {
-  value: ResolvedSuggestionLanguage | null
+  promise: Promise<ResolvedSuggestionLanguage | null>
   expiresAt: number
 }
 
@@ -62,33 +63,42 @@ async function resolveSuggestionLanguage(
   if (cached && cached.expiresAt > now) {
     cache.delete(languageSlug)
     cache.set(languageSlug, cached)
-    return cached.value
+    return cached.promise
   }
   if (cached) cache.delete(languageSlug)
 
-  const language = await prisma.language.findFirst({
-    where: { deletedAt: null, slug: languageSlug },
-    select: { bcp47: true },
-  })
-  const candidateLocale = language?.bcp47?.normalize("NFC").trim() || null
-  const locale =
-    candidateLocale && SAFE_BCP47_PATTERN.test(candidateLocale)
-      ? candidateLocale
-      : null
-  const languageIdentity = locale
-    ? typesenseWatchLanguageIdentity({ languageSlug, locale })
-    : null
-  const value = locale && languageIdentity ? { locale, languageIdentity } : null
+  const promise = prisma.language
+    .findFirst({
+      where: { deletedAt: null, slug: languageSlug },
+      select: { bcp47: true },
+    })
+    .then((language) => {
+      const candidateLocale = language?.bcp47?.normalize("NFC").trim() || null
+      const locale =
+        candidateLocale && SAFE_BCP47_PATTERN.test(candidateLocale)
+          ? candidateLocale
+          : null
+      const languageIdentity = locale
+        ? typesenseWatchLanguageIdentity({ languageSlug, locale })
+        : null
+      return locale && languageIdentity ? { locale, languageIdentity } : null
+    })
 
   if (cache.size >= MAX_CACHED_LANGUAGE_LOCALES) {
     const oldestKey = cache.keys().next().value
     if (oldestKey != null) cache.delete(oldestKey)
   }
-  cache.set(languageSlug, {
-    value,
+  const entry: CachedSuggestionLanguage = {
+    promise,
     expiresAt: now + LANGUAGE_LOCALE_CACHE_TTL_MS,
-  })
-  return value
+  }
+  cache.set(languageSlug, entry)
+  try {
+    return await promise
+  } catch (error) {
+    if (cache.get(languageSlug) === entry) cache.delete(languageSlug)
+    throw error
+  }
 }
 
 function normalizedPrefix(query: string): string {
@@ -205,6 +215,9 @@ function groupedHits(
 }
 
 export class TypesenseWatchSearchSuggestionsService {
+  private readonly inFlight = new Map<string, Promise<string[]>>()
+  private activeRequests = 0
+
   constructor(
     private readonly prisma: SuggestionPrisma,
     private readonly typesense: SuggestionTypesense,
@@ -217,6 +230,30 @@ export class TypesenseWatchSearchSuggestionsService {
     const languageSlug = normalizedLanguageSlug(input.languageSlug)
     if (!languageSlug) return []
 
+    const requestKey = `${languageSlug}\0${query}`
+    const existing = this.inFlight.get(requestKey)
+    if (existing) return existing
+    if (this.activeRequests >= MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS) {
+      return []
+    }
+
+    this.activeRequests += 1
+    const request = this.fetchSuggestions(query, languageSlug)
+    this.inFlight.set(requestKey, request)
+    try {
+      return await request
+    } finally {
+      if (this.inFlight.get(requestKey) === request) {
+        this.inFlight.delete(requestKey)
+      }
+      this.activeRequests -= 1
+    }
+  }
+
+  private async fetchSuggestions(
+    query: string,
+    languageSlug: string,
+  ): Promise<string[]> {
     try {
       const language = await resolveSuggestionLanguage(
         this.prisma,

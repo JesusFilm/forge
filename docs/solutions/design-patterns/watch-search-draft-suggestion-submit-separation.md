@@ -122,7 +122,24 @@ Without that suppression, filling a suggestion immediately schedules the same
 request and reopens the list. A later user edit removes the suppression.
 
 Repeated full-search submissions for the same active query and language are
-coalesced, while a different draft remains eligible.
+coalesced. Draft edits, language changes, Clear, and reset invalidate that lock
+so an obsolete unresolved request cannot block a later explicit submission.
+
+### Bound public fan-out below the structural GraphQL ceiling
+
+A per-minute field rate is not an operation burst limit. A caller can alias a
+public suggestion field many times in one GraphQL document, and sibling
+resolvers execute concurrently. Keep a small request-context occurrence cap,
+coalesce identical in-flight `(languageSlug, prefix)` work, cache the in-flight
+language lookup rather than only its settled value, and fail empty above a
+service-wide concurrency ceiling. This prevents one document from turning into
+hundreds of simultaneous Prisma and Typesense calls while preserving the
+optional suggestion contract.
+
+The serving client prefers `TYPESENSE_SEARCH_API_KEY`; legacy
+`TYPESENSE_API_KEY` is only the bounded current-profile compatibility fallback.
+Otherwise a production environment correctly provisioned with the search-only
+credential can silently disable suggestions.
 
 ### Use a manual-selection editable combobox
 
@@ -136,7 +153,9 @@ The interaction contract is:
   `aria-controls`, `aria-busy`, and a mounted-only `aria-activedescendant` on
   the input;
 - stable listbox and option IDs with `aria-selected` on options;
-- pointer selection on `pointerdown` with its focus-changing default prevented;
+- mouse selection on `pointerdown` with its focus-changing default prevented;
+- touch and pen selection only after a stationary pointer gesture, so a drag
+  can scroll an overflowed list before choosing a row;
 - Escape closes suggestions before it can close the modal;
 - Tab closes suggestions without selecting;
 - IME composition and the candidate-commit Enter cannot submit; and

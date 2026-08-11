@@ -636,9 +636,9 @@ export function FloatingSearchController({
       const nextQuery = selected
         ? query
         : stripLanguageFromSearchQuery(option.englishName, query)
-      void search(nextQuery, { languageEnglishNames: nextLanguages })
+      setQuery(nextQuery)
     },
-    [query, search],
+    [query],
   )
 
   const selectSearchLanguage = useCallback(
@@ -665,23 +665,13 @@ export function FloatingSearchController({
     setSelectedSearchLanguageOption(null)
     setSelectedLanguageEnglishNames([])
     setSelectedLanguageRegionByName({})
-    if (query.trim().length > 0) {
-      void search(query, {
-        languageEnglishNames: [],
-        languageSlug: null,
-        languageSlugIsExplicit: false,
-      })
-    }
-  }, [query, search])
+  }, [])
 
   const clearSearchLanguages = useCallback((): void => {
     selectedLanguageEnglishNamesRef.current = []
     setSelectedLanguageEnglishNames([])
     setSelectedLanguageRegionByName({})
-    if (query.trim().length > 0) {
-      void search(query, { languageEnglishNames: [] })
-    }
-  }, [query, search])
+  }, [])
 
   const consumedSubmitIntentIdRef = useRef(0)
   useEffect(() => {

@@ -4,7 +4,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resolveWatchSearchInputForRequest } from "@/graphql/queries/watch-search"
+import {
+  MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION,
+  resolveWatchSearchInputForRequest,
+} from "@/graphql/queries/watch-search"
 import { schema } from "@/graphql/schema"
 
 const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
@@ -190,6 +193,38 @@ describe("watchSearchSuggestions resolver", () => {
     await expect(
       invokeSuggestions({ query: "je", languageSlug: "english" }, null),
     ).resolves.toEqual([])
+  })
+
+  it("bounds aliased suggestion fields within one GraphQL request", async () => {
+    const resolver = getResolver("watchSearchSuggestions")
+    const context: ResolverCtx = {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql"),
+      prisma: {},
+      services: {
+        watchSearch: { search: searchMock },
+        typesenseWatchSearch: { search: typesenseSearchMock },
+        typesenseWatchSearchSuggestions: { suggest: suggestMock },
+      },
+    }
+
+    const results = await Promise.all(
+      Array.from(
+        { length: MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION + 1 },
+        () =>
+          resolver(
+            null,
+            { input: { query: "je", languageSlug: "english" } },
+            context,
+            {},
+          ),
+      ),
+    )
+
+    expect(suggestMock).toHaveBeenCalledTimes(
+      MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION,
+    )
+    expect(results.at(-1)).toEqual([])
   })
 })
 

@@ -45,8 +45,10 @@ import {
   recordWatchSearchResultsViewed,
 } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
-import { searchWatchDirect } from "@/lib/watch-search-client"
-import { fetchWatchSearchSuggestions } from "@/lib/watch-search-suggestions-client"
+import {
+  fetchWatchSearchSuggestions,
+  searchWatchDirect,
+} from "@/lib/watch-search-client"
 import {
   __resetWatchInteractionLoaderForTests,
   __setWatchInteractionLoadersForTests,
@@ -92,11 +94,8 @@ vi.mock("@/lib/search-actions", () => ({
 }))
 
 vi.mock("@/lib/watch-search-client", () => ({
-  searchWatchDirect: vi.fn(),
-}))
-
-vi.mock("@/lib/watch-search-suggestions-client", () => ({
   fetchWatchSearchSuggestions: vi.fn(),
+  searchWatchDirect: vi.fn(),
 }))
 
 vi.mock("@/lib/search-language-actions", () => ({
@@ -2518,6 +2517,42 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     })
   })
 
+  it("allows the same query to resubmit after clear supersedes a pending search", async () => {
+    const pendingSearch = deferred<MockSearchResponse>()
+    mockedRunSearch
+      .mockReturnValueOnce(pendingSearch.promise)
+      .mockResolvedValueOnce(searchResult("watch-search"))
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jesus"))
+    await act(async () => {
+      input.form?.requestSubmit()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          'button[aria-label="Clear search"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      setInputValue(input, "jesus")
+      input.form?.requestSubmit()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      pendingSearch.resolve(searchResult("watch-search"))
+      await pendingSearch.promise
+      await Promise.resolve()
+    })
+  })
+
   it("debounces title suggestions after two meaningful characters in the selected language", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
@@ -2560,6 +2595,66 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         (option) => option.textContent,
       ),
     ).toEqual(["Jesus", "Jesus Wept"])
+  })
+
+  it("discards stale suggestions when the selected language changes", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [englishSearchLanguage, japaneseSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    const englishSuggestions = deferred<string[]>()
+    mockedFetchSuggestions
+      .mockReturnValueOnce(englishSuggestions.promise)
+      .mockResolvedValueOnce(["Japanese Jesus"])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "je"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="language-combobox-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      ;(
+        document.querySelector(
+          '[data-language-slug="japanese"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      englishSuggestions.resolve(["English Jesus"])
+      await englishSuggestions.promise
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ languageSlug: "english" }),
+    )
+    expect(mockedFetchSuggestions).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ languageSlug: "japanese" }),
+    )
+    expect(document.body.textContent).toContain("Japanese Jesus")
+    expect(document.body.textContent).not.toContain("English Jesus")
+    expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
   it("fills the draft from a keyboard suggestion without searching until explicit submit", async () => {
@@ -2813,6 +2908,55 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(pointerDown.defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(input)
     expect(input.value).toBe("Jesus")
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+  })
+
+  it("lets touch users scroll suggestions before selecting a stationary tap", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus", "Jesus Wept"])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "je"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const options = document.querySelectorAll('[role="option"]')
+    const dispatchTouchPointer = (
+      target: Element,
+      type: string,
+      clientY: number,
+    ) => {
+      const event = new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: 10,
+        clientY,
+      })
+      Object.defineProperties(event, {
+        pointerId: { value: 7 },
+        pointerType: { value: "touch" },
+      })
+      target.dispatchEvent(event)
+      return event
+    }
+
+    act(() => {
+      dispatchTouchPointer(options[0]!, "pointerdown", 10)
+      dispatchTouchPointer(options[0]!, "pointermove", 40)
+      dispatchTouchPointer(options[0]!, "pointerup", 40)
+    })
+    expect(input.value).toBe("je")
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+
+    act(() => {
+      dispatchTouchPointer(options[1]!, "pointerdown", 60)
+      dispatchTouchPointer(options[1]!, "pointerup", 60)
+    })
+    expect(input.value).toBe("Jesus Wept")
     expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
@@ -3533,6 +3677,55 @@ describe("FloatingSearchProvider — search language selection", () => {
       }),
     )
     expect(document.body.textContent).toContain("Japanese Result")
+  })
+
+  it("keeps language changes draft-only until explicit submit", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [englishSearchLanguage, japaneseSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jesus"))
+    const languageTrigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageTrigger.click()
+      await Promise.resolve()
+    })
+    const japaneseOption = document.querySelector(
+      '[data-language-slug="japanese"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      japaneseOption.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(input.value).toBe("jesus")
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      input.form?.requestSubmit()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        languageContext: expect.objectContaining({
+          targetLanguageSlug: "japanese",
+        }),
+        query: "jesus",
+      }),
+    )
   })
 })
 

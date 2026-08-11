@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { fetchWatchSearchSuggestions } from "./watch-search-suggestions-client"
+import {
+  fetchWatchSearchSuggestions,
+  WatchSearchSuggestionsError,
+} from "./watch-search-client"
 
 const fetchMock = vi.fn()
 
@@ -118,6 +121,6 @@ describe("fetchWatchSearchSuggestions", () => {
         query: "je",
         languageSlug: "english",
       }),
-    ).rejects.toBeInstanceOf(Error)
+    ).rejects.toBeInstanceOf(WatchSearchSuggestionsError)
   })
 })

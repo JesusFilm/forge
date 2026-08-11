@@ -13,16 +13,14 @@ import {
   watchSearchBindingMembers,
 } from "./typesense-watch-search-profile"
 import { TypesenseClient } from "./typesense-client"
+import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
 } from "./search-trace.service"
 import type { TypesenseWatchSearchDiagnostics } from "./typesense-watch-search.service"
-import {
-  resolveTypesenseWatchSearchApiKey,
-  TypesenseWatchSearchService,
-} from "./typesense-watch-search.service"
+import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 import type {
   WatchSearchInput,
   WatchSearchResponse,

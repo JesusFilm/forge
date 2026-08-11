@@ -5,12 +5,28 @@ import { TypesenseClient } from "./typesense-client"
 export function createConfiguredTypesenseClient(
   timeoutMs = 2_000,
 ): TypesenseClient | null {
-  if (!env.TYPESENSE_HOST || !env.TYPESENSE_API_KEY) return null
+  const apiKey = resolveTypesenseWatchSearchApiKey({
+    searchApiKey: env.TYPESENSE_SEARCH_API_KEY,
+    legacyApiKey: env.TYPESENSE_API_KEY,
+    allowLegacyFallback: true,
+  })
+  if (!env.TYPESENSE_HOST || !apiKey) return null
   return new TypesenseClient({
     host: env.TYPESENSE_HOST,
-    apiKey: env.TYPESENSE_API_KEY,
+    apiKey,
     timeoutMs,
   })
+}
+
+export function resolveTypesenseWatchSearchApiKey(input: {
+  searchApiKey?: string
+  legacyApiKey?: string
+  allowLegacyFallback: boolean
+}): string | undefined {
+  return (
+    input.searchApiKey ??
+    (input.allowLegacyFallback ? input.legacyApiKey : undefined)
+  )
 }
 
 export function watchSearchSuggestionsEnabled(): boolean {

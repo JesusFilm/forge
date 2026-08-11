@@ -26,6 +26,17 @@ type WatchSearchWebRoutingPolicy = {
   defaultShadowEnabled: boolean
 }
 
+export const MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION = 10
+
+const suggestionFieldCountByRequest = new WeakMap<object, number>()
+
+export function admitWatchSearchSuggestionField(requestContext: object) {
+  const count = suggestionFieldCountByRequest.get(requestContext) ?? 0
+  if (count >= MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION) return false
+  suggestionFieldCountByRequest.set(requestContext, count + 1)
+  return true
+}
+
 function isCanonicalWebBrowserRequest(ctx: WatchSearchRequestContext): boolean {
   return (
     ctx.user == null &&
@@ -342,6 +353,7 @@ builder.queryFields((t) => ({
       input: t.arg({ type: WatchSearchSuggestionsInput, required: true }),
     },
     resolve: (_root, args, ctx) => {
+      if (!admitWatchSearchSuggestionField(ctx)) return []
       const service = ctx.services.typesenseWatchSearchSuggestions
       if (!service) return []
       return service.suggest(args.input as WatchSearchSuggestionInput)

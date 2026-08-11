@@ -6,6 +6,7 @@ import type {
   TypesenseSearchRequest,
 } from "./typesense-client"
 import { TypesenseRequestError } from "./typesense-client"
+import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
 import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
 import { buildTypesenseWatchLexicalDocuments } from "./typesense-watch-search-lexical"
@@ -23,10 +24,7 @@ import {
   createCandidateWatchSearchProfile,
   type TypesenseWatchSearchCollectionBinding,
 } from "./typesense-watch-search-profile"
-import {
-  resolveTypesenseWatchSearchApiKey,
-  TypesenseWatchSearchService,
-} from "./typesense-watch-search.service"
+import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 
 vi.mock("./search-language-resolution", async (importOriginal) => {
   const actual =

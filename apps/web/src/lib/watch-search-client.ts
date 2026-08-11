@@ -4,6 +4,8 @@ import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
   adminWatchSearchOperation,
   adminWatchSearchQuery,
+  adminWatchSearchSuggestionsOperation,
+  adminWatchSearchSuggestionsQuery,
 } from "@forge/admin-graphql/operations"
 
 import { env } from "@/env"
@@ -23,6 +25,8 @@ import type {
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
+const MAX_WATCH_SEARCH_SUGGESTIONS = 5
+const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
 
 type WatchSearchGraphqlResult = AdminResultOf<typeof adminWatchSearchOperation>
 type WatchSearchGraphqlItem = NonNullable<
@@ -31,6 +35,9 @@ type WatchSearchGraphqlItem = NonNullable<
 type WatchSearchResultType = NonNullable<
   AdminVariablesOf<typeof adminWatchSearchOperation>["input"]["resultTypes"]
 >[number]
+type WatchSearchSuggestionsResult = AdminResultOf<
+  typeof adminWatchSearchSuggestionsOperation
+>
 
 type GraphqlResponse<TData> = {
   data?: TData
@@ -45,6 +52,105 @@ export type DirectWatchSearchInput = {
   locale?: string
   languageContext?: SearchVideosLanguageContext
   resolvedLanguage?: SearchLanguageResolution
+}
+
+export type FetchWatchSearchSuggestionsInput = {
+  query: string
+  languageSlug: string
+  signal?: AbortSignal
+  timeoutMs?: number
+}
+
+export class WatchSearchSuggestionsError extends Error {
+  constructor(
+    message: string,
+    readonly code: "http" | "graphql" | "malformed_response",
+  ) {
+    super(message)
+    this.name = "WatchSearchSuggestionsError"
+  }
+}
+
+function parseSuggestionTitles(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new WatchSearchSuggestionsError(
+      "Watch search suggestion response was empty",
+      "malformed_response",
+    )
+  }
+
+  const seen = new Set<string>()
+  const titles: string[] = []
+  for (const item of value) {
+    if (typeof item !== "string") {
+      throw new WatchSearchSuggestionsError(
+        "Watch search suggestion response was malformed",
+        "malformed_response",
+      )
+    }
+    const title = item.trim()
+    if (!title) continue
+    const key = title.normalize("NFC").toLocaleLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    titles.push(item)
+    if (titles.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
+  }
+  return titles
+}
+
+export async function fetchWatchSearchSuggestions({
+  query,
+  languageSlug,
+  signal,
+  timeoutMs = WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS,
+}: FetchWatchSearchSuggestionsInput): Promise<string[]> {
+  const controller = new AbortController()
+  const abortFromCaller = () => controller.abort()
+  if (signal?.aborted) controller.abort()
+  else signal?.addEventListener("abort", abortFromCaller, { once: true })
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const variables: AdminVariablesOf<
+    typeof adminWatchSearchSuggestionsOperation
+  > = {
+    input: {
+      query: normalizeWatchSearchQuery(query),
+      languageSlug,
+    },
+  }
+
+  try {
+    const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
+      method: "POST",
+      credentials: "omit",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: adminWatchSearchSuggestionsQuery,
+        variables,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      throw new WatchSearchSuggestionsError(
+        `Watch search suggestions failed with HTTP ${response.status}`,
+        "http",
+      )
+    }
+
+    const payload =
+      (await response.json()) as GraphqlResponse<WatchSearchSuggestionsResult>
+    if (payload.errors?.length) {
+      throw new WatchSearchSuggestionsError(
+        payload.errors[0]?.message ?? "Watch search suggestions failed",
+        "graphql",
+      )
+    }
+    return parseSuggestionTitles(payload.data?.watchSearchSuggestions)
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener("abort", abortFromCaller)
+  }
 }
 
 export async function searchWatchDirect({
