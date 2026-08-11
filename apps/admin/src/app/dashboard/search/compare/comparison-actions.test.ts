@@ -102,6 +102,25 @@ describe("runWatchSearchComparison", () => {
     expect(result).toEqual({ status: "success", result: comparison })
   })
 
+  it("accepts Next.js action metadata added to browser form submissions", async () => {
+    const result = await runWatchSearchComparison(
+      { status: "idle" },
+      form({
+        query: "Jesus",
+        languageSelection: "",
+        page: "1",
+        perPage: "10",
+        contentType: "video",
+        $ACTION_REF_0: "",
+        "$ACTION_0:0": "framework-owned",
+        $ACTION_KEY: "comparison",
+      }),
+    )
+
+    expect(compare).toHaveBeenCalledOnce()
+    expect(result).toEqual({ status: "success", result: comparison })
+  })
+
   it("blocks a demoted or deleted session principal", async () => {
     findUnique.mockResolvedValueOnce({ id: "admin-1", role: "EDITOR" })
     await expect(
@@ -136,6 +155,7 @@ describe("runWatchSearchComparison", () => {
     mockEnv.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED = true
     for (const values of [
       { query: "Jesus", generationId: "forged" },
+      { query: "Jesus", $ACTIONX_metadata: "forged" },
       { query: "x".repeat(201) },
       { query: "Jesus", targetLanguageSlug: "japanese|ja-JP" },
       { query: "Jesus", targetLanguageSlug: "../secret" },

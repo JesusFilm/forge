@@ -66,6 +66,12 @@ function comparisonEnabled() {
   return env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED
 }
 
+function comparisonFormValues(formData: FormData) {
+  return Object.fromEntries(
+    [...formData.entries()].filter(([key]) => !key.startsWith("$ACTION_")),
+  )
+}
+
 function actorFingerprint(id: string) {
   return createHmac("sha256", env.ADMIN_SESSION_SECRET)
     .update("watch-search-comparison-actor\0")
@@ -98,9 +104,7 @@ export async function runWatchSearchComparison(
     }
   }
 
-  const parsed = ComparisonFormSchema.safeParse(
-    Object.fromEntries(formData.entries()),
-  )
+  const parsed = ComparisonFormSchema.safeParse(comparisonFormValues(formData))
   if (!parsed.success) {
     return {
       status: "error",
