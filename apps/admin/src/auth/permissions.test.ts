@@ -190,16 +190,23 @@ describe("hasPermission — Manager backend bearer gate", () => {
 })
 
 describe("hasPermission — Web user bearer gate", () => {
-  it("grants only watch-event writes", () => {
+  it("grants watch-event writes and the own-data progress scopes", () => {
     expect(hasPermission(WEB_USER, "write:watch-events")).toBe(true)
+    // feat-322: TV device-grant tokens introspect as WEB_USER, so the
+    // own-data progress scopes are granted here too (subject comes from
+    // the verified token, never from arguments — own rows only).
+    expect(hasPermission(WEB_USER, "read:watch-progress:own")).toBe(true)
+    expect(hasPermission(WEB_USER, "write:watch-progress:own")).toBe(true)
+    expect(hasPermission(WEB_USER, "delete:watch-progress:own")).toBe(true)
+  })
+
+  it("grants nothing beyond those four keys", () => {
     expect(hasPermission(WEB_USER, "read:videos")).toBe(false)
     expect(hasPermission(WEB_USER, "read:experiences")).toBe(false)
     expect(hasPermission(WEB_USER, "write:experiences")).toBe(false)
     expect(hasPermission(WEB_USER, "admin:all")).toBe(false)
-    // Progress own-data scopes belong to MOBILE_USER, never WEB_USER.
-    expect(hasPermission(WEB_USER, "read:watch-progress:own")).toBe(false)
-    expect(hasPermission(WEB_USER, "write:watch-progress:own")).toBe(false)
-    expect(hasPermission(WEB_USER, "delete:watch-progress:own")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:transcript-embeddings")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:manager-jobs")).toBe(false)
   })
 })
 
