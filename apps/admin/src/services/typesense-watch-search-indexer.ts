@@ -497,6 +497,8 @@ export type TypesenseWatchCandidateProjectionSnapshot = {
   lexicalMemory: ReturnType<typeof estimateTypesenseKeywordMemory>
 }
 
+const CANDIDATE_SNAPSHOT_TRANSACTION_TIMEOUT_MS = 60_000
+
 function stableJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableJsonValue)
   if (value && typeof value === "object") {
@@ -559,7 +561,10 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
         lexicalMemory: estimateTypesenseKeywordMemory(lexical),
       }
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: CANDIDATE_SNAPSHOT_TRANSACTION_TIMEOUT_MS,
+    },
   )
 }
 
