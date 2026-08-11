@@ -21,10 +21,13 @@ const mockSessionStore = {
 jest.mock("../authSession", () => ({
   getAuthClient: () => mockAuthClient,
   getAuthSession: () => mockSessionStore,
-  // The REAL helper: the timeout-wiring test below pins the actual value.
+  // The REAL helpers: the timeout-wiring tests below pin the actual values.
   authFetchOptions:
     jest.requireActual<typeof import("../authSession")>("../authSession")
       .authFetchOptions,
+  deleteFetchOptions:
+    jest.requireActual<typeof import("../authSession")>("../authSession")
+      .deleteFetchOptions,
 }))
 
 jest.mock("../datadog", () => ({ reportDatadogAction: jest.fn() }))
@@ -276,6 +279,36 @@ describe("deleteAccount", () => {
 
     await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
     expect(mockSessionStore.signOut).toHaveBeenCalled()
+  })
+
+  it("bounds the destructive mutation with the dedicated delete timeout", async () => {
+    mockAuthClient.deleteUser.mockResolvedValue({})
+
+    await deleteAccount()
+
+    const { authFetchOptions, deleteFetchOptions } =
+      jest.requireActual<typeof import("../authSession")>("../authSession")
+    // The delete ceiling must sit ABOVE the shared 5s so a legitimate slow
+    // server delete (Apple revoke + admin erasure, ~10s) is not aborted —
+    // reverting to authFetchOptions() (5s) fails this comparison.
+    expect(deleteFetchOptions().fetchOptions.timeout).toBeGreaterThan(
+      authFetchOptions().fetchOptions.timeout,
+    )
+    expect(deleteFetchOptions().fetchOptions.timeout).toBeGreaterThanOrEqual(
+      15000,
+    )
+    expect(mockAuthClient.deleteUser).toHaveBeenCalledWith(deleteFetchOptions())
+  })
+
+  it("classifies a deleteUser timeout as a retryable error, never fresh-session-required", async () => {
+    // KTD5 guard: a timeout/abort must NOT route to fresh-session-required,
+    // or the auto-retry would mis-fire re-auth on a hung (not stale) session.
+    mockAuthClient.deleteUser.mockRejectedValue(
+      Object.assign(new Error("timeout"), { name: "TimeoutError" }),
+    )
+
+    await expect(deleteAccount()).resolves.toEqual({ status: "error" })
+    expect(mockSessionStore.signOut).not.toHaveBeenCalled()
   })
 
   it("keeps the user signed in when deletion needs a fresh session", async () => {

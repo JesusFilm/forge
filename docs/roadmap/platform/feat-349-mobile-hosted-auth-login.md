@@ -24,7 +24,7 @@ The full Product Contract (requirements R1-R9, flows, acceptance examples, settl
 1. `docs/plans/2026-08-11-001-feat-mobile-hosted-auth-login-plan.md` — the Product Contract; read before any code.
 2. `apps/mobile/src/lib/authActions.ts` — `signInWithHostedPage()` is the flow to promote; `signInWithApple`/`signInWithGoogle`/`signInWithEmail` are the flows to delete.
 3. `apps/mobile/app/sign-in.tsx` — the native sheet route to remove.
-4. `apps/mobile/src/lib/authSession.ts` — Better Auth Expo client + SecureStore session store; gained `readSession()` and the session/user creation stamps additively (plan KTD3/KTD6); its store, SecureStore adapter, and JWT single-flight contract are otherwise unchanged.
+4. `apps/mobile/src/lib/authSession.ts` — Better Auth Expo client + SecureStore session store; gained `readSession()` and the session/user creation stamps additively (plan KTD3/KTD6) and dropped the unused `applySignedIn` store method (no production caller); its store, SecureStore adapter, and JWT single-flight contract are otherwise unchanged.
 5. `apps/mobile/src/lib/accountDeletion.ts` — fresh-session re-auth must reroute through the hosted sheet.
 6. `apps/auth/src/auth/config.ts` — the `jfp` self-RP provider carrying the flow; context only, do not edit.
 
@@ -40,13 +40,13 @@ The full Product Contract (requirements R1-R9, flows, acceptance examples, settl
 
 - Point every sign-in entry at `signInWithHostedPage` directly (no landing screen); delete the `sign-in.tsx` route and handle stale deep links to it.
 - Delete the native Apple, Google, and email flows, `EmailAuthForm`, and the `expo-apple-authentication` / `@react-native-google-signin/google-signin` dependencies and plugin entries.
-- Guarantee a fresh login form after sign-out (mechanism per plan Outstanding Questions: ephemeral session vs `prompt=login`; Android Custom Tabs share Chrome cookies, so a prompt-style mechanism is likely required).
+- Guarantee a fresh login form after sign-out via `prompt=login` on the `jfp` provider (plan KTD1/KTD2); Android Custom Tabs share Chrome cookies, so a prompt-style mechanism is required.
 - Reroute account-deletion re-auth through the hosted sheet and keep its fresh-session contract.
 
 ## Constraints
 
 - `apps/auth` edits are limited to the approved carve-out (plan KTD1): `prompt: "login"` on the `jfp` provider in `apps/auth/src/auth/config.ts`, its config-test pin, and the R9 guideline-4.8 note in `apps/auth/CLAUDE.md`. Auth-side cleanup of orphaned native-mobile entry points is a separate follow-up.
-- The additions to `authSession.ts` (`readSession()`, the session/user creation stamps) are additive only, per plan KTD3/KTD6. Do not otherwise change its store, SecureStore adapter, or JWT single-flight contract. Keep the operation-scoped JWT gate in `authHeaders.ts` unchanged.
+- The changes to `authSession.ts` add `readSession()` and the session/user creation stamps (plan KTD3/KTD6) and drop the unused `applySignedIn` store method (no production caller). Do not otherwise change its store, SecureStore adapter, or JWT single-flight contract. Keep the operation-scoped JWT gate in `authHeaders.ts` unchanged.
 - No dormant native fallback may remain (plan Key Decisions: no kill switch is accepted).
 - The hosted page must keep Sign in with Apple enabled (App Store guideline 4.8); record this with auth operators.
 

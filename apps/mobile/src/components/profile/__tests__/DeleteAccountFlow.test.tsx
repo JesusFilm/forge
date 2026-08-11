@@ -9,18 +9,9 @@
  * react-test-renderer (KTD11: no new test dependencies).
  */
 
-// No @types/node here (KTD11 forbids new test deps) — type locally. A
-// `declare const require` binding would trip babel-plugin-jest-hoist, so
-// the ambient global is cast at each use instead.
-type NodeRequireLike = {
-  (id: string): unknown
-  resolve: (request: string, options?: { paths?: string[] }) => string
-}
-type NodePath = {
-  dirname: (p: string) => string
-  join: (...parts: string[]) => string
-}
-
+// No @types/node here (KTD11 forbids new test deps). A `declare const require`
+// binding would trip babel-plugin-jest-hoist, so the ambient global is cast at
+// each use to a shared type-only import (erased at runtime — hoist-safe).
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath
@@ -77,6 +68,8 @@ import {
   press,
   pressableByLabel,
   unmount,
+  type NodePath,
+  type NodeRequireLike,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 

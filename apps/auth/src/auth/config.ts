@@ -145,9 +145,10 @@ const socialProviders = {
     : {}),
 }
 
-// Mobile's hosted-page fallback: Auth acts as OAuth client toward its own
-// oauth-provider (self-RP), so any hosted sign-in method ends in a real
-// Better Auth session the Expo plugin can hand back to the app.
+// Mobile's hosted-page sign-in (the only mobile login since feat-349): Auth
+// acts as OAuth client toward its own oauth-provider (self-RP), so any
+// hosted sign-in method ends in a real Better Auth session the Expo plugin
+// can hand back to the app.
 const jfpMobileSelfProvider = {
   providerId: JFP_MOBILE_PROVIDER_ID,
   discoveryUrl: `${getAuthBaseUrl()}/.well-known/openid-configuration`,

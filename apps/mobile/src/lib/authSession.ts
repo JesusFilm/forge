@@ -269,7 +269,7 @@ type BetterAuthExpoClient = {
   signOut: (options?: {
     fetchOptions?: { timeout?: number }
   }) => Promise<unknown>
-  deleteUser: () => Promise<{
+  deleteUser: (options?: { fetchOptions?: { timeout?: number } }) => Promise<{
     data?: unknown
     error?: { code?: string | null; message?: string | null } | null
   }>
@@ -393,6 +393,21 @@ const AUTH_FETCH_TIMEOUT_MS = 5000
 
 export function authFetchOptions() {
   return { fetchOptions: { timeout: AUTH_FETCH_TIMEOUT_MS } }
+}
+
+/**
+ * Account deletion needs its OWN, larger ceiling: auth's beforeDelete hook
+ * runs two serial best-effort legs — Apple revoke (5s) then admin watch-data
+ * erasure (5s) — plus the DB delete, a compound worst-case near 10s. The
+ * outbound-timeout law requires the client budget strictly ABOVE the
+ * downstream worst-case, so the shared 5s (one leg) would abort a legitimate
+ * slow-but-succeeding deletion and falsely report "nothing was changed". 20s
+ * clears the compound budget while still bounding a genuinely hung connection.
+ */
+const AUTH_DELETE_TIMEOUT_MS = 20_000
+
+export function deleteFetchOptions() {
+  return { fetchOptions: { timeout: AUTH_DELETE_TIMEOUT_MS } }
 }
 
 /** The app-wide session store, wired to the real Better Auth client. */

@@ -8,9 +8,14 @@
 import { act, type ReactElement } from "react"
 
 // No @types/node (no new test deps) — type the ambient require locally.
-type NodeRequireLike = {
+// Shared by the render suites' `jest.mock("react", …)` re-point factories.
+export type NodeRequireLike = {
   (id: string): unknown
   resolve: (request: string, options?: { paths?: string[] }) => string
+}
+export type NodePath = {
+  dirname: (p: string) => string
+  join: (...parts: string[]) => string
 }
 
 export type RenderedNode = {

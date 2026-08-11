@@ -76,6 +76,87 @@ describe("session snapshot lifecycle", () => {
   })
 })
 
+describe("commitSessionRead re-commits on a changed creation stamp (KTD3)", () => {
+  it("re-commits and notifies when only sessionCreatedAt changed", async () => {
+    // Same subject, same profile, but prompt=login mints a NEW session stamp.
+    // Removing the sessionCreatedAt OR-clause makes this a no-op — the stamp
+    // stays "T1" and the listener never fires a second time.
+    const fetchSession = jest
+      .fn<
+        Promise<{
+          id: string
+          email?: string
+          name?: string
+          sessionCreatedAt?: string
+        } | null>,
+        []
+      >()
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        sessionCreatedAt: "T1",
+      })
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        sessionCreatedAt: "T2",
+      })
+    const { store } = buildStore({ fetchSession })
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    await store.refresh()
+    await store.refresh()
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: "signedIn",
+      user: { id: "user-1", sessionCreatedAt: "T2" },
+    })
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  it("re-commits and notifies when only createdAt changed", async () => {
+    // Guards the sibling OR-clause: same subject/profile/session stamp, only
+    // the account createdAt differs. It must re-commit and notify.
+    const fetchSession = jest
+      .fn<
+        Promise<{
+          id: string
+          email?: string
+          name?: string
+          createdAt?: string
+        } | null>,
+        []
+      >()
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        createdAt: "C1",
+      })
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        createdAt: "C2",
+      })
+    const { store } = buildStore({ fetchSession })
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    await store.refresh()
+    await store.refresh()
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: "signedIn",
+      user: { id: "user-1", createdAt: "C2" },
+    })
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe("JWT fetch and refresh (KTD9/KTD10)", () => {
   it("returns null when signed out — public traffic never fetches a token", async () => {
     const { store, deps } = buildStore()

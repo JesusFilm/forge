@@ -17,6 +17,7 @@ import {
 import { classifySignInFailure, type SignInFailureKind } from "./authFlows"
 import {
   authFetchOptions,
+  deleteFetchOptions,
   getAuthClient,
   getAuthSession,
   type AuthUser,
@@ -136,7 +137,13 @@ export async function signOut(): Promise<void> {
 export async function deleteAccount(): Promise<DeleteAccountOutcome> {
   let outcome: DeleteAccountOutcome
   try {
-    outcome = outcomeFromDeleteResult(await getAuthClient().deleteUser())
+    // A 20s ceiling (deleteFetchOptions) bounds the destructive mutation
+    // ABOVE auth's ~10s serial delete hook, so a hung deleteUser surfaces
+    // as a retryable error instead of wedging the panel — without aborting
+    // a legitimate slow-but-succeeding deletion.
+    outcome = outcomeFromDeleteResult(
+      await getAuthClient().deleteUser(deleteFetchOptions()),
+    )
   } catch {
     return { status: "error" }
   }
