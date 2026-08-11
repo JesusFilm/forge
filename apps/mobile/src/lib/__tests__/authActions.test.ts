@@ -23,6 +23,7 @@ const mockSessionStore = {
   applySignedIn: jest.fn(),
   signOut: jest.fn(async () => {}),
   refresh: jest.fn(async () => {}),
+  readSession: jest.fn(async (): Promise<unknown> => null),
   getSnapshot: jest.fn(() => ({ status: "signedOut", user: null })),
 }
 
@@ -34,10 +35,12 @@ jest.mock("../authSession", () => ({
 jest.mock("../datadog", () => ({ reportDatadogAction: jest.fn() }))
 
 import { clearNewAccountNotice, getNewAccountNotice } from "../newAccountNotice"
+import { reportDatadogAction } from "../datadog"
 import {
   deleteAccount,
   lookupLoginMethod,
   signInWithEmail,
+  signInWithHostedPage,
   signOut,
   signUpWithEmail,
 } from "../authActions"
@@ -170,6 +173,162 @@ describe("lookupLoginMethod", () => {
     await expect(lookupLoginMethod("p@example.com")).resolves.toEqual({
       kind: "password",
     })
+  })
+})
+
+describe("signInWithHostedPage", () => {
+  // A fixed SERVER clock, deliberately far from the device's Date.now():
+  // an implementation that let the device clock into the new-account check
+  // would fail the marked/unmarked cases below.
+  const SERVER_NOW = 1_800_000_000_000
+  const OAUTH_OK = {
+    data: { url: "https://auth", redirect: true },
+    error: null,
+  }
+
+  it("joins a concurrent second call — only one browser session opens (AE2)", async () => {
+    let release: (value: typeof OAUTH_OK) => void = () => {}
+    mockAuthClient.signIn.oauth2.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = resolve
+        }),
+    )
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
+
+    const first = signInWithHostedPage()
+    const second = signInWithHostedPage()
+
+    expect(mockAuthClient.signIn.oauth2).toHaveBeenCalledTimes(1)
+    release(OAUTH_OK)
+    await expect(first).resolves.toEqual({ status: "success" })
+    await expect(second).resolves.toEqual({ status: "success" })
+  })
+
+  it("launches a fresh browser session once the previous attempt settled", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue(null)
+
+    await signInWithHostedPage()
+    await signInWithHostedPage()
+
+    expect(mockAuthClient.signIn.oauth2).toHaveBeenCalledTimes(2)
+  })
+
+  it("classifies a signed-out session read as a quiet cancel (AE2)", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    // A stale signed-in snapshot must not read as success; the fresh
+    // read's null is the truth.
+    mockSessionStore.getSnapshot.mockReturnValue({
+      status: "signedIn",
+      user: { id: "user-stale" },
+    } as never)
+    mockSessionStore.readSession.mockResolvedValue(null)
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "cancelled",
+    })
+    expect(reportDatadogAction).not.toHaveBeenCalled()
+    expect(getNewAccountNotice()).toBeNull()
+  })
+
+  it("retries a thrown session read once — a network fault is not a cancel", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValueOnce({ id: "user-1" })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(mockSessionStore.readSession).toHaveBeenCalledTimes(2)
+    expect(reportDatadogAction).toHaveBeenCalledWith("sign_in_completed", {})
+  })
+
+  it("reports a retryable error — never a cancel — when the read fails twice (AE6)", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockRejectedValue(new Error("network down"))
+
+    await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
+    expect(mockSessionStore.readSession).toHaveBeenCalledTimes(2)
+    expect(reportDatadogAction).not.toHaveBeenCalled()
+  })
+
+  it("classifies a thrown browser open through the failure classifier", async () => {
+    mockAuthClient.signIn.oauth2.mockRejectedValueOnce({
+      code: "ERR_REQUEST_CANCELED",
+    })
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "cancelled",
+    })
+
+    mockAuthClient.signIn.oauth2.mockRejectedValueOnce(new TypeError("network"))
+    await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
+    expect(mockSessionStore.readSession).not.toHaveBeenCalled()
+  })
+
+  it("reports an error when the sign-in request itself is rejected", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue({
+      data: null,
+      error: { message: "provider misconfigured" },
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
+    expect(mockSessionStore.readSession).not.toHaveBeenCalled()
+  })
+
+  it("marks the R15 notice for an account this sign-in created (server clocks only)", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue({
+      id: "user-hosted",
+      createdAt: new Date(SERVER_NOW - 2_000).toISOString(),
+      sessionCreatedAt: new Date(SERVER_NOW).toISOString(),
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(getNewAccountNotice()).toBe("user-hosted")
+    expect(reportDatadogAction).toHaveBeenCalledWith("sign_in_completed", {})
+  })
+
+  it("does not mark the notice for an established account", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue({
+      id: "user-old",
+      createdAt: new Date(SERVER_NOW - 400 * 24 * 3600 * 1000).toISOString(),
+      sessionCreatedAt: new Date(SERVER_NOW).toISOString(),
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(getNewAccountNotice()).toBeNull()
+  })
+
+  it("does not mark the notice when the timestamps are absent — and does not crash", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(getNewAccountNotice()).toBeNull()
+  })
+
+  it("does not substitute the device clock when the session stamp is missing", async () => {
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    // createdAt is fresh relative to the DEVICE clock; without a session
+    // stamp the check must stay silent, not fall back to Date.now().
+    mockSessionStore.readSession.mockResolvedValue({
+      id: "user-1",
+      createdAt: new Date().toISOString(),
+    })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(getNewAccountNotice()).toBeNull()
   })
 })
 

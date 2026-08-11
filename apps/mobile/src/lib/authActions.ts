@@ -18,6 +18,7 @@ import { appleNameForIdToken, classifySignInFailure } from "./authFlows"
 import {
   getAuthClient,
   getAuthSession,
+  type AuthUser,
   type SignedInUserPayload,
 } from "./authSession"
 import { env } from "../env"
@@ -29,7 +30,11 @@ import {
   type EmailAuthFailure,
   type LoginMethod,
 } from "./emailAuth"
-import { noteAccountCreated, wasAccountJustCreated } from "./newAccountNotice"
+import {
+  noteAccountCreated,
+  wasAccountCreatedThisSignIn,
+  wasAccountJustCreated,
+} from "./newAccountNotice"
 
 export type SignInOutcome =
   | { status: "success" }
@@ -222,12 +227,12 @@ export function signUpWithEmail(
 }
 
 /**
- * Hosted-page fallback (F2): the jfp self-RP flow. The Expo client opens
+ * Hosted-page sign-in (F2): the jfp self-RP flow. The Expo client opens
  * the browser sheet itself and captures the session cookie from the
- * forgemobile:// callback; afterwards the session refresh reads who
- * signed in.
+ * forgemobile:// callback; afterwards an outcome-reporting session read
+ * (KTD6) determines who — if anyone — signed in.
  */
-export async function signInWithHostedPage(): Promise<SignInOutcome> {
+async function runHostedSignIn(): Promise<SignInOutcome> {
   try {
     const result = await getAuthClient().signIn.oauth2({
       providerId: "jfp",
@@ -238,14 +243,46 @@ export async function signInWithHostedPage(): Promise<SignInOutcome> {
     return toSignInOutcome(error)
   }
   const store = getAuthSession()
-  await store.refresh()
-  const snapshot = store.getSnapshot()
-  if (snapshot.status !== "signedIn") {
-    // The browser sheet was dismissed without completing — a quiet cancel.
+  let user: AuthUser | null
+  try {
+    user = await store.readSession()
+  } catch {
+    // The cookie may already be stored; one retry before giving up (KTD6).
+    try {
+      user = await store.readSession()
+    } catch {
+      return { status: "error" }
+    }
+  }
+  if (user == null) {
+    // Sheet dismissed OR a cookie-less callback failure — the installed
+    // expo client returns identically for both; quiet cancel by design.
     return { status: "cancelled" }
+  }
+  // R15 on the hosted path: both stamps are server clocks (KTD3).
+  if (wasAccountCreatedThisSignIn(user.createdAt, user.sessionCreatedAt)) {
+    noteAccountCreated(user.id)
   }
   reportDatadogAction("sign_in_completed", {})
   return { status: "success" }
+}
+
+let hostedSignInFlight: Promise<SignInOutcome> | null = null
+
+/**
+ * Single-flight (KTD4): iOS rejects a second concurrent auth session, so a
+ * call while one is in flight JOINS it. Caller-side identity-checked release
+ * per docs/solutions/design-patterns/async-single-flight-slot-release-hazards.md.
+ */
+export function signInWithHostedPage(): Promise<SignInOutcome> {
+  if (hostedSignInFlight) return hostedSignInFlight
+  const flight = runHostedSignIn()
+  hostedSignInFlight = flight
+  const release = () => {
+    if (hostedSignInFlight === flight) hostedSignInFlight = null
+  }
+  void flight.then(release, release)
+  return flight
 }
 
 /** Sign out: revoke at auth then clear local session (R4). The progress

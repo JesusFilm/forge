@@ -365,6 +365,118 @@ describe("userFromSessionResult (outage is not a sign-out)", () => {
   })
 })
 
+describe("readSession (KTD6 outcome-reporting read)", () => {
+  it("returns the user and commits the signed-in snapshot", async () => {
+    const { store } = buildStore()
+
+    await expect(store.readSession()).resolves.toEqual({ id: "user-1" })
+    expect(store.getSnapshot()).toEqual({
+      status: "signedIn",
+      user: { id: "user-1" },
+    })
+  })
+
+  it("returns null and signs out locally on a definitive signed-out read", async () => {
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce(null)
+    const { store } = buildStore({ fetchSession })
+
+    await store.readSession()
+    await expect(store.readSession()).resolves.toBeNull()
+    expect(store.getSnapshot()).toEqual({ status: "signedOut", user: null })
+  })
+
+  it("PROPAGATES a thrown read and keeps the last snapshot", async () => {
+    // The one contract difference from refresh(): the hosted sign-in needs
+    // to SEE the failure to classify it, but local state still degrades.
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockRejectedValueOnce(new SessionFetchError(503))
+    const { store } = buildStore({ fetchSession })
+
+    await store.readSession()
+    await expect(store.readSession()).rejects.toThrow(SessionFetchError)
+    expect(store.getSnapshot()).toMatchObject({
+      status: "signedIn",
+      user: { id: "user-1" },
+    })
+  })
+
+  it("re-mints the JWT when the read reveals a different subject (R10)", async () => {
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce({ id: "user-2" })
+    const fetchToken = jest
+      .fn<Promise<string | null>, []>()
+      .mockResolvedValueOnce(fakeJwt(2_000_000_000))
+      .mockResolvedValueOnce(fakeJwt(2_000_000_001))
+    const { store } = buildStore({ fetchSession, fetchToken })
+
+    await store.readSession()
+    const first = await store.getFreshJwt()
+    await store.readSession()
+    const second = await store.getFreshJwt()
+
+    expect(first).not.toBeNull()
+    expect(second).not.toBe(first)
+  })
+})
+
+describe("userFromSessionResult creation stamps (KTD3)", () => {
+  it("maps the user and session createdAt when the payload carries them", () => {
+    expect(
+      userFromSessionResult({
+        data: {
+          user: { id: "user-1", createdAt: "2026-08-11T01:00:00.000Z" },
+          session: { createdAt: "2026-08-11T01:00:05.000Z" },
+        },
+      }),
+    ).toMatchObject({
+      id: "user-1",
+      createdAt: "2026-08-11T01:00:00.000Z",
+      sessionCreatedAt: "2026-08-11T01:00:05.000Z",
+    })
+  })
+
+  it("normalizes Date instances to ISO strings", () => {
+    const user = userFromSessionResult({
+      data: {
+        user: {
+          id: "user-1",
+          createdAt: new Date("2026-08-11T01:00:00.000Z"),
+        },
+        session: { createdAt: new Date("2026-08-11T01:00:05.000Z") },
+      },
+    })
+
+    expect(user?.createdAt).toBe("2026-08-11T01:00:00.000Z")
+    expect(user?.sessionCreatedAt).toBe("2026-08-11T01:00:05.000Z")
+  })
+
+  it("omits the stamps when the payload lacks them", () => {
+    const user = userFromSessionResult({ data: { user: { id: "user-1" } } })
+
+    expect(user?.createdAt).toBeUndefined()
+    expect(user?.sessionCreatedAt).toBeUndefined()
+  })
+
+  it("drops an invalid Date rather than throwing", () => {
+    const user = userFromSessionResult({
+      data: {
+        user: { id: "user-1", createdAt: new Date(Number.NaN) },
+        session: { createdAt: new Date(Number.NaN) },
+      },
+    })
+
+    expect(user?.createdAt).toBeUndefined()
+    expect(user?.sessionCreatedAt).toBeUndefined()
+  })
+})
+
 describe("refresh() keeps the session through an outage", () => {
   it("does not sign out when the session read throws", async () => {
     const fetchSession = jest
