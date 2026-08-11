@@ -57,59 +57,23 @@ jest.mock("../../../lib/authSession", () => {
   }
 })
 
-import { act, type ReactElement } from "react"
+import { act } from "react"
 
 import { AccountSection } from "../AccountSection"
 import {
   signInWithHostedPage,
   type SignInOutcome,
 } from "../../../lib/authActions"
-
-type RenderedNode = {
-  props: {
-    onPress?: () => void
-    accessibilityLabel?: string
-    disabled?: boolean
-    children?: unknown
-    [key: string]: unknown
-  }
-}
-type TestInstance = {
-  root: { findAll(predicate: (node: RenderedNode) => boolean): RenderedNode[] }
-  unmount(): void
-}
-type TestRendererModule = {
-  create(element: ReactElement): TestInstance
-}
-
-const nodeRequire = require as unknown as NodeRequireLike
-const TestRenderer = nodeRequire(
-  nodeRequire.resolve("react-test-renderer", {
-    paths: [nodeRequire.resolve("jest-expo/package.json")],
-  }),
-) as TestRendererModule
+import {
+  TestRenderer,
+  hasText,
+  press,
+  pressableByLabel,
+  unmount,
+  type TestInstance,
+} from "../../../test-utils/rnTestRenderer"
 
 const mockedSignIn = jest.mocked(signInWithHostedPage)
-
-function pressableByLabel(renderer: TestInstance, label: string) {
-  const matches = renderer.root.findAll(
-    (node) =>
-      node.props.accessibilityLabel === label &&
-      typeof node.props.onPress === "function",
-  )
-  expect(matches.length).toBeGreaterThan(0)
-  return matches[0]
-}
-
-function hasText(renderer: TestInstance, needle: string): boolean {
-  return (
-    renderer.root.findAll(
-      (node) =>
-        typeof node.props.children === "string" &&
-        node.props.children.includes(needle),
-    ).length > 0
-  )
-}
 
 async function renderSignedOut(): Promise<TestInstance> {
   let renderer!: TestInstance
@@ -118,18 +82,6 @@ async function renderSignedOut(): Promise<TestInstance> {
   })
   expect(hasText(renderer, "Sign in")).toBe(true)
   return renderer
-}
-
-async function unmount(renderer: TestInstance) {
-  await act(async () => {
-    renderer.unmount()
-  })
-}
-
-async function press(node: RenderedNode) {
-  await act(async () => {
-    node.props.onPress?.()
-  })
 }
 
 beforeEach(() => {

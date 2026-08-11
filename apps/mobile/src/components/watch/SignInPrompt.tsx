@@ -4,12 +4,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { signInWithHostedPage } from "../../lib/authActions"
+import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { getAuthSession } from "../../lib/authSession"
 import {
   ACCENT,
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
+  WARNING_COLOR,
 } from "../../lib/color"
 import {
   SIGN_IN_PROMPT_COPY,
@@ -22,8 +24,6 @@ import {
   subscribeToSignInPrompt,
 } from "../../lib/watchProgress/signInPrompt"
 import { feedback } from "../../styles/shared"
-
-const WARNING = "#fbbf24"
 
 type PromptPhase = "idle" | "busy" | "error"
 
@@ -110,11 +110,8 @@ export function SignInPrompt() {
   if (phase === "error") {
     return (
       <View style={styles.banner}>
-        <Ionicons name="warning" size={20} color={WARNING} />
-        <Text style={styles.copy}>
-          Something went wrong finishing sign-in. You are not signed in yet —
-          please try again.
-        </Text>
+        <Ionicons name="warning" size={20} color={WARNING_COLOR} />
+        <Text style={styles.copy}>{SIGN_IN_ERROR_MESSAGE}</Text>
         <Pressable
           onPress={() => setPhase("idle")}
           hitSlop={12}

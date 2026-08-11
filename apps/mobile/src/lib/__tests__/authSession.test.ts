@@ -74,16 +74,6 @@ describe("session snapshot lifecycle", () => {
     await store.refresh()
     expect(listener).toHaveBeenCalledTimes(1)
   })
-
-  it("applySignedIn commits immediately after a completed sign-in flow", () => {
-    const { store } = buildStore()
-    store.applySignedIn({ id: "user-2", email: "p@example.com" })
-
-    expect(store.getSnapshot()).toEqual({
-      status: "signedIn",
-      user: { id: "user-2", email: "p@example.com" },
-    })
-  })
 })
 
 describe("JWT fetch and refresh (KTD9/KTD10)", () => {

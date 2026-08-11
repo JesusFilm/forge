@@ -158,12 +158,6 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
       return commitSessionRead(await deps.fetchSession())
     },
 
-    /** Commit a completed sign-in immediately (U6 calls after the flow). */
-    applySignedIn(user: AuthUser) {
-      invalidateJwt()
-      commit({ status: "signedIn", user })
-    },
-
     /**
      * The short-lived user JWT for progress operations, refreshed when
      * missing or within the expiry skew. Null when signed out or when the

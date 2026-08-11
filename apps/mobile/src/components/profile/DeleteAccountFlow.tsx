@@ -5,11 +5,10 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { decidePostReauth } from "../../lib/accountDeletion"
 import { deleteAccount, signInWithHostedPage } from "../../lib/authActions"
 import { getAuthSession } from "../../lib/authSession"
-import { TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { TEXT_PRIMARY, TEXT_SECONDARY, WARNING_COLOR } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 
 const DANGER = "#ef4444"
-const WARNING = "#fbbf24"
 /** Placeholder until the team names a deletion-support address. */
 const SUPPORT_EMAIL = "help@jesusfilm.org"
 
@@ -172,7 +171,7 @@ export function DeleteAccountFlow() {
         <>
           <View style={styles.noticeRow}>
             {state.phase === "needsReauth" && state.signInFailed ? (
-              <Ionicons name="warning" size={18} color={WARNING} />
+              <Ionicons name="warning" size={18} color={WARNING_COLOR} />
             ) : (
               <Ionicons
                 name="shield-checkmark"
@@ -208,7 +207,7 @@ export function DeleteAccountFlow() {
       {state.phase === "wrongAccount" ? (
         <>
           <View style={styles.noticeRow}>
-            <Ionicons name="warning" size={18} color={WARNING} />
+            <Ionicons name="warning" size={18} color={WARNING_COLOR} />
             <Text style={styles.panelBody}>{WRONG_ACCOUNT_MESSAGE}</Text>
           </View>
           <View style={styles.actionRow}>
@@ -236,7 +235,7 @@ export function DeleteAccountFlow() {
       {state.phase === "error" ? (
         <>
           <View style={styles.noticeRow}>
-            <Ionicons name="warning" size={18} color={WARNING} />
+            <Ionicons name="warning" size={18} color={WARNING_COLOR} />
             <Text style={styles.panelBody}>{DELETE_FAILED_MESSAGE}</Text>
           </View>
           <View style={styles.actionRow}>

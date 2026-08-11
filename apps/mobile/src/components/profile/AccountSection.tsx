@@ -6,6 +6,7 @@ import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
 import { useTypography } from "../../hooks/useTypography"
 import { DeleteAccountFlow } from "./DeleteAccountFlow"
 import { signInWithHostedPage, signOut } from "../../lib/authActions"
+import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { getAuthSession } from "../../lib/authSession"
 import {
   clearNewAccountNotice,
@@ -17,6 +18,7 @@ import {
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
+  WARNING_COLOR,
 } from "../../lib/color"
 import {
   CARD_BORDER_RADIUS,
@@ -34,8 +36,6 @@ function useAuthSnapshot() {
     () => getAuthSession().getSnapshot(),
   )
 }
-
-const WARNING = "#fbbf24"
 
 type SignInPhase = "idle" | "busy" | "error"
 
@@ -58,11 +58,8 @@ export function AccountSection() {
       <View style={styles.container}>
         {signInPhase === "error" ? (
           <View style={styles.errorCard}>
-            <Ionicons name="warning" size={20} color={WARNING} />
-            <Text style={styles.errorText}>
-              Something went wrong finishing sign-in. You are not signed in yet
-              — please try again.
-            </Text>
+            <Ionicons name="warning" size={20} color={WARNING_COLOR} />
+            <Text style={styles.errorText}>{SIGN_IN_ERROR_MESSAGE}</Text>
             <Pressable
               onPress={() => setSignInPhase("idle")}
               hitSlop={12}
