@@ -64,7 +64,9 @@ import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
 import { fetchWatchSearchSuggestions } from "@/lib/watch-search-client"
 
 const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
-const SEARCH_SUGGESTIONS_MAX_HEIGHT = 220
+const SEARCH_SUGGESTIONS_MAX_HEIGHT = 232
+const SEARCH_SUGGESTIONS_MAX_WIDTH = 560
+const SEARCH_SUGGESTIONS_HORIZONTAL_INSET = 8
 const SEARCH_SUGGESTIONS_MIN_ROW_HEIGHT = 44
 const SEARCH_SUGGESTIONS_VIEWPORT_GAP = 8
 const SEARCH_SUGGESTIONS_VIEWPORT_PADDING = 16
@@ -313,12 +315,16 @@ export function SearchOverlay() {
       const width = Math.max(
         0,
         Math.min(
-          rect.width,
+          Math.max(0, rect.width - SEARCH_SUGGESTIONS_HORIZONTAL_INSET * 2),
+          SEARCH_SUGGESTIONS_MAX_WIDTH,
           viewportWidth - SEARCH_SUGGESTIONS_VIEWPORT_PADDING * 2,
         ),
       )
       const left = Math.min(
-        Math.max(rect.left, viewportLeft + SEARCH_SUGGESTIONS_VIEWPORT_PADDING),
+        Math.max(
+          rect.left + SEARCH_SUGGESTIONS_HORIZONTAL_INSET,
+          viewportLeft + SEARCH_SUGGESTIONS_VIEWPORT_PADDING,
+        ),
         viewportRight - width - SEARCH_SUGGESTIONS_VIEWPORT_PADDING,
       )
       const top =
@@ -622,12 +628,12 @@ export function SearchOverlay() {
     languageOptions.length > 0 ||
     languageOptionsError != null
   const searchOverlayScrollTopClass = searchLanguageControlVisible
-    ? "top-60 md:top-48"
+    ? "top-56 md:top-44"
     : "top-44 md:top-32"
   const semanticLanguageOverrideActive =
     selectedSearchLanguageOption?.publicSlug != null
   const semanticLanguageTriggerClassName = [
-    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20",
+    "!h-12 !min-h-12 !rounded-xl !border !border-white/15 !bg-white/[0.07] !px-3 !text-stone-100 !shadow-none backdrop-blur-md hover:!border-white/25 hover:!bg-white/[0.11] focus-visible:!ring-white/35",
     semanticLanguageOverrideActive ? "pr-14" : null,
   ]
     .filter(Boolean)
@@ -735,7 +741,7 @@ export function SearchOverlay() {
             wrapperClassName="w-full"
           />
           {searchLanguageControlVisible && (
-            <div className="relative mt-3 w-full md:w-72 lg:w-80">
+            <div className="relative mt-2 w-56 max-w-full md:w-60">
               <LanguageCombobox
                 options={semanticLanguageComboboxOptions}
                 value={semanticLanguageComboboxValue}
@@ -753,7 +759,7 @@ export function SearchOverlay() {
                   type="button"
                   aria-label={t("useWebsiteDefaultLanguage")}
                   onClick={handleResetSearchLanguage}
-                  className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
+                  className="absolute right-0.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                 >
                   <X size={16} aria-hidden />
                 </button>
@@ -791,7 +797,11 @@ export function SearchOverlay() {
             role="listbox"
             aria-label={t("searchSuggestions")}
             data-placement={suggestionListPosition.placement}
-            className="fixed z-[1000] m-0 overflow-y-auto rounded-2xl border border-stone-200/80 bg-white p-1.5 text-stone-950 shadow-2xl"
+            className={`fixed z-[1000] m-0 overflow-y-auto rounded-xl border border-white/15 bg-stone-950/90 p-1 text-stone-100 shadow-xl shadow-black/30 backdrop-blur-xl [scrollbar-width:none] duration-150 animate-in fade-in-0 zoom-in-95 [&::-webkit-scrollbar]:hidden ${
+              suggestionListPosition.placement === "below"
+                ? "origin-top-left"
+                : "origin-bottom-left"
+            }`}
             style={{
               left: suggestionListPosition.left,
               top: suggestionListPosition.top,
@@ -847,8 +857,10 @@ export function SearchOverlay() {
                   onPointerCancel={() => {
                     suggestionTouchGestureRef.current = null
                   }}
-                  className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 py-2.5 text-base leading-6 outline-none transition-colors ${
-                    active ? "bg-stone-100" : "hover:bg-stone-50"
+                  className={`flex min-h-11 cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-medium leading-5 outline-none transition-colors ${
+                    active
+                      ? "bg-white/[0.12] text-white"
+                      : "text-stone-200 hover:bg-white/[0.08] hover:text-white"
                   }`}
                 >
                   <bdi>{suggestion}</bdi>

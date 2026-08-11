@@ -184,6 +184,12 @@ compact English copy.
 Use a dedicated compact submit message rather than shortening the descriptive
 search-region label shared by the form landmark.
 
+Keep the active search field as the modal's only bright surface. Render the
+language selector as a smaller dark-glass chip and the title suggestions as an
+inset, width-bounded dark menu with quieter type. The menu stays keyboard and
+touch scrollable, but hides its visual scrollbar so it reads as supporting
+guidance rather than a second content panel.
+
 ### Measure the viewport the viewer actually has
 
 The suggestion list is portaled so it is not clipped by overlay stacking

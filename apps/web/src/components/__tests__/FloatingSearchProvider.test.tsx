@@ -2596,7 +2596,18 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(input.getAttribute("aria-expanded")).toBe("true")
     expect(input.getAttribute("aria-controls")).toBeTruthy()
     expect(input.getAttribute("aria-busy")).toBe("false")
-    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    const suggestionList = document.querySelector(
+      '[role="listbox"][aria-label="Search Suggestions"]',
+    )
+    const languageTrigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    expect(suggestionList).not.toBeNull()
+    expect(suggestionList?.className).toContain("bg-stone-950/90")
+    expect(suggestionList?.className).toContain("[scrollbar-width:none]")
+    expect(suggestionList?.className).toContain("[&::-webkit-scrollbar]:hidden")
+    expect(languageTrigger?.className).toContain("!bg-white/[0.07]")
+    expect(languageTrigger?.className.split(/\s+/)).not.toContain("!bg-white")
     expect(
       Array.from(document.querySelectorAll('[role="option"]')).map(
         (option) => option.textContent,
