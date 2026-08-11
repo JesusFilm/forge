@@ -5,6 +5,7 @@ export const TYPESENSE_WATCH_CATALOG_ALIAS = "watch_search_catalog"
 export const TYPESENSE_WATCH_AVAILABILITY_ALIAS = "watch_search_availability"
 export const TYPESENSE_WATCH_LEXICAL_ALIAS = "watch_search_lexical"
 export const TYPESENSE_WATCH_TRANSCRIPT_ALIAS = "watch_search_transcripts"
+export const TYPESENSE_WATCH_CANDIDATE_PREFIX = "watch_search_candidate"
 export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
 
 export type TypesenseWatchLocale = {
@@ -16,6 +17,7 @@ export type TypesenseWatchLocale = {
 
 export type TypesenseWatchAudioOption = {
   id: string
+  videoEditionId?: string | null
   languageId: string
   languageSlug: string
   languageEnglishName: string | null
@@ -25,8 +27,15 @@ export type TypesenseWatchAudioOption = {
 
 export type TypesenseWatchSubtitleOption = {
   id: string
+  videoEditionId?: string | null
   languageId: string
   languageSlug: string
+  languageEnglishName?: string | null
+  hrefLanguageSlug?: string | null
+  playbackId?: string | null
+  durationSeconds?: number | null
+  actionVideoDubId?: string | null
+  actionPriority?: number | null
 }
 
 export type TypesenseWatchCatalogDocument = {
@@ -50,6 +59,7 @@ export type TypesenseWatchCatalogDocument = {
 export type TypesenseWatchAvailabilityDocument = {
   id: string
   videoId: string
+  videoEditionId?: string | null
   languageId: string
   languageSlug: string
   languageEnglishName: string | null
@@ -57,12 +67,16 @@ export type TypesenseWatchAvailabilityDocument = {
   subtitles: boolean
   playbackId: string | null
   durationSeconds: number | null
+  hrefLanguageSlug?: string | null
+  actionVideoDubId?: string | null
+  actionPriority?: number | null
 }
 
 export type TypesenseWatchTranscriptDocument = {
   id: string
   documentKind: "video" | "transcript"
   videoId: string
+  videoEditionId?: string
   canonicalVideoId: string
   language: string
   publiclyVisible: boolean
@@ -76,6 +90,49 @@ export type TypesenseWatchTranscriptDocument = {
 
 function physicalName(alias: string, buildId: string): string {
   return `${alias}_${buildId.replace(/[^A-Za-z0-9_-]/g, "_")}`
+}
+
+function candidateGenerationId(generationId: string): string {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(generationId)) {
+    throw new Error(
+      "Typesense Watch candidate generation id must be a collision-proof safe token",
+    )
+  }
+  return generationId
+}
+
+export function candidateWatchCollectionNames(generationId: string) {
+  const id = candidateGenerationId(generationId)
+  const prefix = `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_${id}`
+  return {
+    catalog: `${prefix}_catalog`,
+    availability: `${prefix}_availability`,
+    lexical: `${prefix}_lexical`,
+  } as const
+}
+
+export function candidateWatchCollectionSchemas(
+  generationId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+) {
+  const names = candidateWatchCollectionNames(generationId)
+  return {
+    catalog: {
+      ...watchCatalogCollectionSchema("candidate"),
+      name: names.catalog,
+    },
+    availability: {
+      ...watchAvailabilityCollectionSchema("candidate"),
+      name: names.availability,
+    },
+    lexical: {
+      ...watchLexicalCollectionSchema("candidate", tokenizerLocales),
+      name: names.lexical,
+    },
+  } satisfies Record<
+    keyof ReturnType<typeof candidateWatchCollectionNames>,
+    TypesenseCollectionSchema
+  >
 }
 
 export function watchCatalogCollectionSchema(
@@ -107,10 +164,42 @@ export function watchAvailabilityCollectionSchema(
     name: physicalName(TYPESENSE_WATCH_AVAILABILITY_ALIAS, buildId),
     fields: [
       { name: "videoId", type: "string", facet: true },
+      { name: "videoEditionId", type: "string", facet: true, optional: true },
       { name: "languageId", type: "string", facet: true },
       { name: "languageSlug", type: "string", facet: true },
       { name: "audio", type: "bool", facet: true },
       { name: "subtitles", type: "bool", facet: true },
+      {
+        name: "languageEnglishName",
+        type: "string",
+        optional: true,
+        index: false,
+      },
+      { name: "playbackId", type: "string", optional: true, index: false },
+      {
+        name: "durationSeconds",
+        type: "int32",
+        optional: true,
+        index: false,
+      },
+      {
+        name: "hrefLanguageSlug",
+        type: "string",
+        optional: true,
+        index: false,
+      },
+      {
+        name: "actionVideoDubId",
+        type: "string",
+        optional: true,
+        index: false,
+      },
+      {
+        name: "actionPriority",
+        type: "int32",
+        optional: true,
+        index: false,
+      },
     ],
   }
 }
@@ -149,6 +238,12 @@ export function watchTranscriptCollectionSchema(
     fields: [
       { name: "documentKind", type: "string", facet: true },
       { name: "videoId", type: "string", facet: true },
+      {
+        name: "videoEditionId",
+        type: "string",
+        optional: true,
+        index: false,
+      },
       { name: "canonicalVideoId", type: "string", facet: true },
       { name: "language", type: "string", facet: true },
       { name: "publiclyVisible", type: "bool", facet: true },

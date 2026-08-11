@@ -10,6 +10,8 @@ import { parseVideoLibraryQuery } from "@/app/dashboard/video-library-utils"
 import { ForbiddenError } from "@/services/errors"
 import {
   parseVideoSearchSocialLocaleId,
+  toSeoDraft,
+  type VideoSearchSocialSeoDraft,
   VideoSearchSocialLocaleNotFoundError,
 } from "@/services/video-search-social.service"
 
@@ -40,11 +42,16 @@ export type VideoSearchSocialLocaleData = {
   searchDescription: string | null
   socialImageAssetId: string | null
   socialImage: MediaLibraryBrowserData["images"][number] | null
+  seoDraft?: VideoSearchSocialSeoDraft | null
 }
 
 type VideoSearchSocialPrisma = Pick<
   PrismaClient,
-  "mediaAsset" | "mediaFolder" | "videoLocale"
+  | "contentRevision"
+  | "mediaAsset"
+  | "mediaFolder"
+  | "seoProposalMaterialization"
+  | "videoLocale"
 >
 
 function assertCanReadVideoSearchSocial(user: Principal | null) {
@@ -148,9 +155,11 @@ const localeDetailSelect = {
   title: true,
   description: true,
   snippet: true,
+  imageAlt: true,
   searchTitle: true,
   searchDescription: true,
   socialImageAssetId: true,
+  updatedAt: true,
   video: { select: { slug: true } },
   language: {
     select: { bcp47: true, iso3: true, name: true, slug: true },
@@ -290,6 +299,38 @@ export async function loadVideoSearchSocialLocale({
     throw new VideoSearchSocialLocaleNotFoundError()
   }
 
+  const revision = await client.contentRevision.findFirst({
+    where: {
+      entityType: "VideoLocale",
+      entityId: row.id,
+      status: "DRAFT",
+    },
+    select: {
+      id: true,
+      snapshot: true,
+      revisedByKind: true,
+      reason: true,
+      revisedAt: true,
+    },
+    orderBy: { revisedAt: "desc" },
+  })
+  const missingMaterialization = revision
+    ? null
+    : await client.seoProposalMaterialization.findFirst({
+        where: {
+          contentRevisionId: null,
+          proposalVersion: {
+            proposal: { targetType: "VideoLocale", targetId: row.id },
+          },
+        },
+        select: { id: true },
+      })
+  const seoDraft: VideoSearchSocialSeoDraft | null = revision
+    ? toSeoDraft({ revision, canonical: row })
+    : missingMaterialization
+      ? { state: "draft_missing" }
+      : null
+
   const option = localeOption(row)
   const selectedAsset =
     row.socialImageAsset &&
@@ -320,6 +361,7 @@ export async function loadVideoSearchSocialLocale({
     languageName: option.languageName,
     languageCode: option.languageCode,
     socialImage: selectedImage,
+    seoDraft,
   }
 }
 

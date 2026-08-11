@@ -79,6 +79,9 @@ describe("WatchVideo split GraphQL operations", () => {
     expect(printed).toMatch(
       /\bvideoEdition\s*\{[\s\S]*?subtitles\s*\{[\s\S]*?vttSrc[\s\S]*?srtSrc[\s\S]*?primary[\s\S]*?aiGenerated/,
     )
+    expect(printed).toMatch(
+      /\bsubtitles\s*\{[\s\S]*?\bvideo\s*\{[\s\S]*?documentId\s*:\s*\bid\b/,
+    )
   })
 })
 
@@ -109,7 +112,7 @@ describe("WatchVideo split operation documents", () => {
     const printed = print(getWatchVideoRouteSnapshotBySlugOperation)
 
     expect(printed).toMatch(
-      /watchVideoRouteSnapshotBySlug\(\s*slug:\s*\$videoSlug\s*locale:\s*\$locale\s*languageSlug:\s*\$languageSlug\s*\)/,
+      /watchVideoRouteSnapshotBySlug\(\s*slug:\s*\$videoSlug\s*locale:\s*\$locale\s*languageSlug:\s*\$languageSlug\s*subtitleLanguageSlug:\s*\$subtitleLanguageSlug\s*\)/,
     )
     expect(printed).toMatch(/\bpublishedAt\b/)
     expect(printed).toMatch(/\bexactLocales\b/)

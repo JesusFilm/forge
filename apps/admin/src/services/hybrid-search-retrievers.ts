@@ -86,6 +86,7 @@ export type KeywordSearchParams = {
 export type VideoSemanticResult = RankedItem & {
   resultType: "video"
   resultId: string
+  videoEditionId: string
   videoCoreId: string | null
   videoSlug: string
   videoTitle: string
@@ -143,6 +144,7 @@ export type ExperienceKeywordResult = RankedItem & {
 
 type VideoSemanticRow = {
   video_id: string
+  video_edition_id: string
   video_core_id: string | null
   video_slug: string | null
   video_title: string | null
@@ -217,6 +219,7 @@ export function mixVideoSemanticEvidenceRows(
     const bestSourceScore = Math.max(...sourceScores)
     mixed.push({
       video_id: winner.video_id,
+      video_edition_id: winner.video_edition_id,
       video_core_id: winner.video_core_id,
       video_slug: winner.video_slug,
       video_title: winner.video_title,
@@ -281,6 +284,7 @@ function mapVideoSemanticEvidenceRows(
     .map((row) => ({
       resultType: "video" as const,
       resultId: row.video_id,
+      videoEditionId: row.video_edition_id,
       videoCoreId: row.video_core_id,
       videoSlug: row.video_slug ?? "",
       videoTitle: row.video_title ?? "",
@@ -423,6 +427,7 @@ export async function searchVideoSemantic(
       )
       SELECT
         ts.video_id                      AS video_id,
+        ts.video_edition_id              AS video_edition_id,
         ts.video_core_id                 AS video_core_id,
         ts.video_slug                    AS video_slug,
         display_locale.title             AS video_title,

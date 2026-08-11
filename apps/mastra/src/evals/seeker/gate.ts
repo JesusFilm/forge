@@ -57,6 +57,7 @@ import { hardFailViolations, runAnswerChecks } from "./checks"
 import type { RagFixtureFile } from "./rag"
 import { scoreJudgeRun } from "./score"
 import {
+  experimentIdentityMismatch,
   identityMismatch,
   stampedCorpusSha,
   type AnswerRun,
@@ -219,6 +220,8 @@ export function evaluateGate(input: {
    *  flips exist — without it the gate refuses rather than guessing. */
   confirmJudged?: JudgeRun | null
   scoreTolerance?: number
+  /** Experiment comparisons exempt only their predeclared causal axis. */
+  experimentAxis?: "prompt" | "model"
 }): GateReport {
   const tolerance = input.scoreTolerance ?? DEFAULT_SCORE_TOLERANCE
   const { current, baseline, fixtures } = input
@@ -275,11 +278,17 @@ export function evaluateGate(input: {
   }
 
   // Cross-run comparability — the prompt is exempt (it is the subject).
-  const mismatch = identityMismatch(
-    current.judged.identity,
-    baseline.judged.identity,
-    "gate",
-  )
+  const mismatch = input.experimentAxis
+    ? experimentIdentityMismatch(
+        current.judged.identity,
+        baseline.judged.identity,
+        input.experimentAxis,
+      )
+    : identityMismatch(
+        current.judged.identity,
+        baseline.judged.identity,
+        "gate",
+      )
   if (mismatch.length > 0) {
     return { ...empty, refusedOn: mismatch }
   }
@@ -326,25 +335,30 @@ export function evaluateGate(input: {
   // cells — invalid/answer-error cells carry zero verdict weight, so without
   // this check a judge outage plus a prompt regression gates green on zero
   // evidence. Refused, never green.
-  const gridKeys = new Set(
-    current.judged.identity.questionIds.flatMap((questionId) =>
-      current.judged.identity.answeringModels.map((model) =>
-        cellKey(questionId, model),
+  const gridKeysFor = (run: JudgeRun) =>
+    new Set(
+      run.identity.questionIds.flatMap((questionId) =>
+        run.identity.answeringModels.map((model) => cellKey(questionId, model)),
       ),
-    ),
-  )
+    )
   const cellStats = (run: JudgeRun) => {
+    const expectedKeys = gridKeysFor(run)
     const judgedKeys = new Set<string>()
     let invalid = 0
     let answerError = 0
     for (const cell of run.judged) {
       const key = cellKey(cell.questionId, cell.model)
-      if (cell.status === "judged" && cell.verdicts && gridKeys.has(key)) {
+      if (cell.status === "judged" && cell.verdicts && expectedKeys.has(key)) {
         judgedKeys.add(key)
       } else if (cell.status === "invalid") invalid += 1
       else if (cell.status === "answer-error") answerError += 1
     }
-    return { judgedCount: judgedKeys.size, invalid, answerError }
+    return {
+      judgedCount: judgedKeys.size,
+      expectedCount: expectedKeys.size,
+      invalid,
+      answerError,
+    }
   }
   const currentStats = cellStats(current.judged)
   const baselineStats = cellStats(baseline.judged)
@@ -363,9 +377,9 @@ export function evaluateGate(input: {
     ["current", currentStats],
     ["baseline", baselineStats],
   ] as const) {
-    if (stats.judgedCount < gridKeys.size) {
+    if (stats.judgedCount < stats.expectedCount) {
       coverageProblems.push(
-        `${label} coverage: only ${stats.judgedCount}/${gridKeys.size} grid cells judged (${stats.invalid} invalid, ${stats.answerError} answer-error) — cannot gate on partial evidence`,
+        `${label} coverage: only ${stats.judgedCount}/${stats.expectedCount} grid cells judged (${stats.invalid} invalid, ${stats.answerError} answer-error) — cannot gate on partial evidence`,
       )
     }
   }
@@ -551,9 +565,9 @@ export function evaluateGate(input: {
         confirmationProblems = pairing.map(
           (problem) => `confirm run: ${problem}`,
         )
-      } else if (confirmStats.judgedCount < gridKeys.size) {
+      } else if (confirmStats.judgedCount < confirmStats.expectedCount) {
         confirmationProblems = [
-          `confirm run coverage: only ${confirmStats.judgedCount}/${gridKeys.size} grid cells judged (${confirmStats.invalid} invalid, ${confirmStats.answerError} answer-error) — cannot confirm flips on partial evidence`,
+          `confirm run coverage: only ${confirmStats.judgedCount}/${confirmStats.expectedCount} grid cells judged (${confirmStats.invalid} invalid, ${confirmStats.answerError} answer-error) — cannot confirm flips on partial evidence`,
         ]
       } else {
         const confirmVerdicts = verdictsByCell(confirm)

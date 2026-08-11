@@ -12,7 +12,11 @@ import type {
 } from "./audited-filesystem"
 
 export const DEVOTIONAL_WORKSPACE_SCHEMA = "devotional_workspace"
-export const EXPECTED_DEVOTIONAL_SCHEMA_VERSION = 1
+export const REQUIRED_DEVOTIONAL_MIGRATION = {
+  version: 1,
+  name: "001-devotional-workspace.sql",
+  sha256: "7e2d729677d829756ac6dc3980cc2bb78dd211b56b47db66feb752c1ce971dcf",
+} as const
 export const MAX_DEVOTIONAL_DATABASE_POOL_SIZE = 3
 
 export type QueryExecutor = {
@@ -111,15 +115,22 @@ export async function getDevotionalSchemaReadiness(
     const result = await database.query<{ version: number | string }>(
       `select version
          from ${DEVOTIONAL_WORKSPACE_SCHEMA}.schema_migrations
-        order by version desc
+        where version = $1
+          and name = $2
+          and sha256 = $3
         limit 1`,
+      [
+        REQUIRED_DEVOTIONAL_MIGRATION.version,
+        REQUIRED_DEVOTIONAL_MIGRATION.name,
+        REQUIRED_DEVOTIONAL_MIGRATION.sha256,
+      ],
     )
     const version = Number(result.rows[0]?.version ?? 0)
-    if (version !== EXPECTED_DEVOTIONAL_SCHEMA_VERSION) {
+    if (version !== REQUIRED_DEVOTIONAL_MIGRATION.version) {
       return {
         ready: false,
         version,
-        reason: `expected devotional schema version ${EXPECTED_DEVOTIONAL_SCHEMA_VERSION}, found ${version}`,
+        reason: `required devotional migration ${REQUIRED_DEVOTIONAL_MIGRATION.version} is unavailable`,
       }
     }
     return { ready: true, version }

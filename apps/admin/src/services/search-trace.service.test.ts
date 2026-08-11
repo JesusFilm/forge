@@ -431,60 +431,63 @@ describe("search trace service", () => {
     )
   })
 
-  it("stores shadow detail without counting it as user traffic in aggregates", async () => {
-    const prisma = buildPrisma()
+  it.each(["shadow", "comparison_current", "comparison_candidate"] as const)(
+    "stores %s detail without counting it as user traffic in aggregates",
+    async (traceRole) => {
+      const prisma = buildPrisma()
 
-    const result = await recordWatchSearchTraceToCompletionSafely(
-      {
-        input: { query: "Jesus", mode: "default" },
-        response: {
-          query: "Jesus",
-          requestId: "watch_shadow_123456",
-          searchMode: "watch-search",
-          degraded: false,
-          latencyMs: 42,
-          hasMore: false,
-          nextOffset: 20,
-          languageInterpretation: {
-            queryLanguageSlug: "english",
-            queryNamedLanguageSlug: null,
-            targetLanguageSlug: "english",
-            targetLanguageSource: "explicit_target",
-            displayLanguageSlug: "english",
-            routeLanguageSlug: null,
-            currentWatchLanguageSlug: null,
-            acceptLanguage: null,
-            acceptLanguageSlug: null,
+      const result = await recordWatchSearchTraceToCompletionSafely(
+        {
+          input: { query: "Jesus", mode: "default" },
+          response: {
+            query: "Jesus",
+            requestId: "watch_shadow_123456",
+            searchMode: "watch-search",
+            degraded: false,
+            latencyMs: 42,
+            hasMore: false,
+            nextOffset: 20,
+            languageInterpretation: {
+              queryLanguageSlug: "english",
+              queryNamedLanguageSlug: null,
+              targetLanguageSlug: "english",
+              targetLanguageSource: "explicit_target",
+              displayLanguageSlug: "english",
+              routeLanguageSlug: null,
+              currentWatchLanguageSlug: null,
+              acceptLanguage: null,
+              acceptLanguageSlug: null,
+            },
+            laneStatuses: [],
+            results: [],
           },
-          laneStatuses: [],
-          results: [],
+          startedAt: new Date("2026-05-01T00:00:00.000Z"),
+          completedAt: new Date("2026-05-01T00:00:00.042Z"),
+          traceRole,
+          shadowOfRequestId: "watch_primary_123456",
         },
-        startedAt: new Date("2026-05-01T00:00:00.000Z"),
-        completedAt: new Date("2026-05-01T00:00:00.042Z"),
-        traceRole: "shadow",
-        shadowOfRequestId: "watch_primary_123456",
-      },
-      prisma as unknown as Parameters<
-        typeof recordWatchSearchTraceToCompletionSafely
-      >[1],
-    )
+        prisma as unknown as Parameters<
+          typeof recordWatchSearchTraceToCompletionSafely
+        >[1],
+      )
 
-    expect(result).toMatchObject({
-      ok: true,
-      aggregateStored: false,
-      rawStored: true,
-    })
-    expect(prisma.searchTraceAggregate.upsert).not.toHaveBeenCalled()
-    expect(
-      prisma.searchTrace.create.mock.calls[0]?.[0]?.data.metadata,
-    ).toMatchObject({
-      traceRole: "shadow",
-      shadowOfRequestId: "watch_primary_123456",
-    })
-    expect(
-      prisma.searchTrace.create.mock.calls[0]?.[0]?.data.sampleEligible,
-    ).toBe(false)
-  })
+      expect(result).toMatchObject({
+        ok: true,
+        aggregateStored: false,
+        rawStored: true,
+      })
+      expect(prisma.searchTraceAggregate.upsert).not.toHaveBeenCalled()
+      expect(
+        prisma.searchTrace.create.mock.calls[0]?.[0]?.data.metadata,
+      ).toMatchObject({
+        traceRole,
+        shadowOfRequestId: "watch_primary_123456",
+      })
+      expect(
+        prisma.searchTrace.create.mock.calls[0]?.[0]?.data.sampleEligible,
+      ).toBe(false)
+    },
+  )
 
   it("derives Watch trace availability score from the availability kind", async () => {
     const prisma = buildPrisma()

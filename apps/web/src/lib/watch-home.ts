@@ -10,7 +10,6 @@ import {
   asLocaleSlug,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
 import {
@@ -336,10 +335,7 @@ function buildHref(args: {
   const slug = args.slug ? tryAsContentSlug(args.slug) : null
   if (!lang || !slug) return null
 
-  const parentSlug = args.parentSlug ? tryAsContentSlug(args.parentSlug) : null
-  return parentSlug
-    ? watchEpisodePath(parentSlug, slug, lang)
-    : watchVideoPath(slug, lang)
+  return watchVideoPath(slug, lang)
 }
 
 function selectSubtitleTrack(

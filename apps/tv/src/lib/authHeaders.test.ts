@@ -127,7 +127,13 @@ describe("credential separation", () => {
   it("keeps the two allowlists disjoint", () => {
     expect(overlappingAllowlistOperations()).toEqual([])
     expect(FLEET_TOKEN_OPERATIONS).toEqual([SEARCH_OPERATION_NAME])
-    expect(USER_TOKEN_OPERATIONS).toEqual([WATCH_EVENT_OPERATION_NAME])
+    // feat-322 Continue Watching merge: the user bearer now also rides the
+    // two viewer-scoped watch-progress ops — still the viewer's OWN data only.
+    expect(USER_TOKEN_OPERATIONS).toEqual([
+      WATCH_EVENT_OPERATION_NAME,
+      "MyWatchProgress",
+      "UpsertMyWatchProgress",
+    ])
   })
 
   it("sends only the fleet bearer on search, even fully signed in", () => {

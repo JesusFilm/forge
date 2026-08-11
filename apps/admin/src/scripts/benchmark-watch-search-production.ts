@@ -93,6 +93,10 @@ function latencySummary(samples: readonly ProductionProbeSample[]) {
         samples.map((sample) => sample.serverMs),
         0.95,
       ),
+      p99Ms: percentile(
+        samples.map((sample) => sample.serverMs),
+        0.99,
+      ),
     },
     roundTrip: {
       p50Ms: percentile(
@@ -102,6 +106,10 @@ function latencySummary(samples: readonly ProductionProbeSample[]) {
       p95Ms: percentile(
         samples.map((sample) => sample.roundTripMs),
         0.95,
+      ),
+      p99Ms: percentile(
+        samples.map((sample) => sample.roundTripMs),
+        0.99,
       ),
     },
   }
@@ -148,6 +156,10 @@ export function summarizeProductionProbe(
             p95Ms: percentile(
               entries.map((entry) => entry.elapsedMs),
               0.95,
+            ),
+            p99Ms: percentile(
+              entries.map((entry) => entry.elapsedMs),
+              0.99,
             ),
             degraded: entries.filter((entry) => entry.status === "degraded")
               .length,

@@ -55,6 +55,15 @@ Origin documents:
   tools, `webResearchAgent`, the `firecrawl-web-data` workflow, and the
   `/forge-firecrawl-web-data` service route. Keep direct Firecrawl credentials
   and API calls out of Admin and Manager.
+- Daily support and user research is Mastra-owned through the
+  `supportResearchAgent` and `daily-support-research` workflow. Help Scout is
+  a read-only evidence source. Sanitize and minimize every conversation before
+  model use or persistence, exclude attachments, and keep the agent tool-free.
+  Only code-extracted URLs on `SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS` may reach
+  the bounded validator. All Linear creates use the PostgreSQL
+  `support_research` outbox, fingerprint reconciliation, configured project and
+  labels, a product-action budget per UTC day, and a separate one-summary
+  budget; the model never selects routing or priority.
 - Subtitle enrichment execution is Mastra-owned through the
   `/forge-subtitle-enrichment` service route. Mastra reads Manager transcript
   artifacts, translates and retimes subtitles, writes
@@ -199,6 +208,9 @@ of the defaults and validation contract.
 | `API_BIBLE_API_KEY`                          | Optional API.Bible key used only when subtitle validation is configured to fetch target-language Bible passage text.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `API_BIBLE_BASE_URL`                         | Optional API.Bible-compatible base URL. Defaults to `https://api.scripture.api.bible/v1`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `API_BIBLE_ALLOWED_HOSTS`                    | Production allowlist for API.Bible credential egress. Defaults to `api.scripture.api.bible`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `SUPPORT_RESEARCH_*`                         | Default-off daily support research gate, provider-approval gate, model, exact Watch hosts, conversation/action/response/time bounds, and minimized-data retention. Missing values never block Mastra boot; the workflow returns a typed disabled report.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `HELP_SCOUT_*`                               | OAuth client credentials, comma-separated mailbox IDs, and fixed `api.helpscout.net/v2` API/auth endpoints for GET-only support ingestion. Never use these from a generic request helper or add mailbox mutations in v1.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `LINEAR_SUPPORT_RESEARCH_*`                  | Dedicated Linear service API key plus fixed GraphQL endpoint, team, rolling project, confirmed-bug, `Needs validation`, and UX label IDs. Live workflow readiness requires the complete tuple; dry runs do not send this key.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `RAILWAY_S3_ENDPOINT`                        | Railway Object Storage endpoint used for Manager-compatible subtitle artifacts when `RAILWAY_S3_BUCKET` is set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `RAILWAY_S3_REGION`                          | Railway Object Storage region. Defaults to `auto`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `RAILWAY_S3_BUCKET`                          | Shared artifact bucket. Required with access keys for production subtitle enrichment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -253,6 +265,7 @@ of the defaults and validation contract.
 | `LANGFUSE_PROMPT_CACHE_TTL_MS`               | TTL for the in-process managed-prompt cache. Defaults to `60000`, schema-capped at `3600000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS`        | Failure cooldown that suppresses refetch attempts while serving stale/fallback. Defaults to `10000`, schema-capped at `300000`; `getLangfuseConfig()` clamps the effective cooldown to ≤ the effective TTL (the smaller value wins).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `LANGFUSE_TRACE_RETENTION_SMOKE_TEST`        | Opt-in gate for the feat-336 trace-retention smoke suite (`langfuse-trace-retention.smoke.test.ts` — list/delete/requery on a backdated sentinel; NOTE each run spends one of the org's 50/day Hobby trace-delete requests). Same posture as `LANGFUSE_PROMPT_SMOKE_TEST`: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
@@ -506,6 +519,36 @@ Firecrawl MCP as the production path unless a later plan proves a real
 multi-tool MCP server need; MCP can be useful for local operator convenience but
 is not the deterministic product contract here.
 
+## SEO Marketing Agent
+
+`seoMarketingAgent` is a reusable, read-only Mastra agent for daily SEO
+opportunity analysis. The `seo-daily-audit` workflow runs at `0 2 * * *`, the
+experiment evaluator at `30 2 * * *`, and the approved Linear outbox sweep at
+`*/10 * * * *`. `SEO_AUTOMATION_MODE` defaults to `off`; use `dry_run` before
+`live`. Live mode may persist immutable proposals in Admin but still cannot
+approve, publish, deploy, or roll back content.
+
+Evidence lanes remain distinct: GSC describes Google Search performance, GA4
+is an engagement/mission guardrail, Firecrawl and direct fetches describe page
+state, and OpenAI Responses web search is a grounded observation. Missing GSC
+rows remain unknown. Other Mastra workflows should resolve the registered agent
+and structured tools in-process; do not add an internal MCP or public agent
+route without a concrete authenticated caller.
+
+Google access prefers Application Default Credentials or Workload Identity.
+Railway may instead provide a sealed service-account JSON through
+`SEO_GOOGLE_CREDENTIALS_JSON` together with the exact expected
+`SEO_GOOGLE_PROJECT_ID`; Mastra validates the service-account type, project,
+email, and private-key shape only when Google access is requested and never
+writes the credential to disk or logs it. `SEO_GOOGLE_ACCESS_TOKEN` remains a
+short-lived diagnostic escape hatch and takes precedence when present.
+Property lists, allowed page/Admin hosts, provider caps, thresholds, and the
+optional Linear destination use the remaining `SEO_*` variables documented in
+`.env.example`. Workload calls to Admin carry a short-lived Ed25519 assertion
+in `x-forge-seo-assertion`, bound to environment, endpoint capability, exact
+request digest, and a replay-protected identifier. Provider configuration is
+optional at boot and unavailable lanes must remain explicit.
+
 ## Seeker agent
 
 `seekerAgent` (feat-198, feat-199) is the first conversational agent of the
@@ -692,8 +735,36 @@ availability_missing= shape_dropped=`. Read the two discriminators together:
   guarantee also needs `@mastra/memory` to keep delegating these methods
   without its own try/catch.
 - **Retention:** `src/mastra/ai-chat-retention.ts` purges threads by rolling
-  last-activity (`updatedAt` — bumped transactionally by saveMessages): 30
-  days for non-`user:` resources, 180 days for `user:*`. Boot drain + daily
+  last-activity (`updatedAt` — bumped transactionally by saveMessages): a
+  flat **25 days for every resource** (`AI_CHAT_RETENTION_DAYS` — owner
+  decision 2026-08-10, feat-336; supersedes the original 30/180 anon/user
+  split). The feat-336 Langfuse trace sweep
+  (`src/mastra/langfuse-trace-retention.ts`) imports the same constant, so
+  one number governs both stores — with deliberately different semantics:
+  Postgres purges on ROLLING last-activity, Langfuse deletes on FIXED
+  per-trace event time (accepted 2026-08-09; traces are operator-facing
+  observability, so the divergence errs privacy-safe). The Langfuse sweep
+  gates on the credential trio only — NEVER on `LANGFUSE_TRACING_ENABLED`
+  (the flag stops new exports; already-exported traces still need
+  retention), runs ONCE per UTC day on a fixed 08:00 UTC wall-clock timer
+  (boot only ARMS the timer and logs `sweep_scheduled next_fire=<iso>` —
+  never sweeps — so restarts re-aim at the same firing hour and cannot add
+  runs; the hour sits in the observed deploy trough, 2026-08-11 decision),
+  lists via `GET /api/public/v2/observations` with
+  `fields=core` (never `io`; each row's own `startTime` is re-checked
+  client-side so an inert server filter degrades to a loud no-op, never a
+  project-wide delete), deletes ≤50 ids/request under a ≤40 requests/RUN
+  budget (= the full 40/day retention allocation of the org's 50/day Hobby
+  delete quota, honest because runs/day = 1 by construction; ≥10/day
+  feat-337 erasure headroom preserved), and reports
+  `oldest_age_days` + a `retention_wall_risk` warning as the restart-proof
+  liveness backstop before the Hobby 30-day visibility wall — the outcome
+  metric IS the deletion-completion verification (the in-memory
+  verify-by-requery mechanism was removed 2026-08-11: inert at the repo's
+  deploy cadence; failed deletions self-heal by re-listing, and the opt-in
+  smoke is the direct API-level convergence observation — reported, not
+  asserted).
+  Boot drain + daily
   timer (production runtime only — `NODE_ENV=production`): each run drains
   the expired backlog in bounded sweeps (500/sweep, ≤20 sweeps/run, oldest-
   first scan with early stop, recency re-check before every delete),
@@ -983,6 +1054,15 @@ could harden this into a real check later (deferred, not built).
 
 ## Langfuse prompt management
 
+Official Seeker prompt/model experiments are repository-native under
+`evals/experiments/`; the operator workflow and manifest template live
+in that directory's `README.md`. Experiment attempts resolve exact managed
+prompt versions before generation, retain every terminal outcome, and exclude
+managed prompt bodies and secrets. Promotion is always a separate PR that
+consumes committed eligible evidence and updates the exact code pin plus
+canonical benchmark together. The Langfuse `production` label remains an
+alert-only marker and never selects traffic.
+
 `src/services/langfuse-prompt-client.ts` (plan
 `docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md`) is the
 retrieval helper for Langfuse-managed system prompts — two layers in one
@@ -1014,13 +1094,15 @@ prompts or labels — authoring and versioning stay in the Langfuse UI.
 **Project posture (2026-07-28; supersedes plan KTD8's per-environment
 projects):** ONE Langfuse project, **`forge-mastra`**, in the same Langfuse
 organisation as `JesusFilm/core`'s Journeys project. Environments are
-distinguished by **labels** on prompt versions — `production` (Railway, the
-default when `LANGFUSE_PROMPT_DEFAULT_LABEL` is unset) and `development`
+distinguished by **labels** on prompt versions — `production` (a deployment
+marker) and `development`
 (local). Additional agents become additional prompt names in this project,
 never additional projects. Two key pairs live inside it — one for Railway, one
 for local dev — so a leaked local key is revoked without rotating production's;
-never copy the Railway key onto a laptop. **Moving the `production` label IS
-the release mechanism** — it changes agent behaviour with no PR, CI or deploy —
+never copy the Railway key onto a laptop. **Moving the `production` label is
+not the release mechanism.** Production traffic resolves the exact version and
+SHA-256 hash reviewed in `seeker-production-config.ts`; label drift creates an
+actionable alert but does not fail deployment or change served behavior —
 and there is **no technical control over who may move it**: protected labels
 are a Team/Enterprise feature this organisation is not on, and they work by
 blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
@@ -1070,8 +1152,8 @@ set `LANGFUSE_MEDIA_UPLOAD_ENABLED=false`, then run one live seeker-turn
 smoke and confirm the trace lands in `forge-mastra` carrying session, user,
 and prompt-version stamps. Dogfood enablement does NOT wait on the
 retention sweep
-(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, 30/180
-days) or per-user erasure
+(`docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md`, flat 25
+days — see the ai-chat retention bullet above) or per-user erasure
 (`docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`): those two
 gate AUDIENCE WIDENING, not the first flip — the dogfood audience is
 allowlisted and tiny, manual Langfuse deletion covers the interim, and the
@@ -1080,13 +1162,14 @@ covers Postgres only. Platform rationale and
 flip triggers:
 `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
 
-**The seeker agent is the helper's one consumer (feat-272, 2026-07-29).**
-`seeker-agent.ts` backs its `instructions` with `getManagedPrompt` — prompt
-name `seeker-system` (compile-time constant `SEEKER_SYSTEM_PROMPT_NAME`), no
-label pinned in code (env resolution: `LANGFUSE_PROMPT_DEFAULT_LABEL` >
-`production`) — through the exported `createSeekerInstructionsResolver`
-factory; `SEEKER_SYSTEM_PROMPT_FALLBACK` is the full working prompt served
-byte-identically whenever Langfuse is unconfigured or unreachable. The WHOLE
+**The seeker agent is the helper's production consumer.** `seeker-agent.ts`
+backs its `instructions` with strict exact-version resolution of the provider,
+name, immutable revision, and expected content hash in
+`seeker-production-config.ts`; `LANGFUSE_PROMPT_DEFAULT_LABEL` remains only for
+candidate intake and label health checks. `SEEKER_SYSTEM_PROMPT_FALLBACK` is
+the full working prompt served byte-identically whenever exact resolution is
+unavailable or mismatched, stamped as degraded fallback with one critical
+alert per resolver. The WHOLE
 prompt is Langfuse-managed (no composition split — see the whole-prompt
 decision above), so editing the fallback, `retrieve-answer.ts`'s status
 literals, or its message constants requires updating the `seeker-system`
@@ -1412,11 +1495,21 @@ local storage. The Workspace keeps native Studio CRUD/search available, but
 its inherited agent tools are disabled; workflows read it programmatically
 through typed devotional repository code. Native search is an eventual Studio
 browsing aid. Devotional generation remains fail-closed until filesystem,
-embedder, PgVector, migration version 1, and the authoritative PostgreSQL
-cutover row are all ready. Apply the idempotent
+embedder, PgVector, the exact immutable identity of
+`001-devotional-workspace.sql`, and the authoritative PostgreSQL cutover row
+are all ready. Later shared-ledger migrations do not replace that component-
+scoped requirement. Apply the idempotent
 schema with `pnpm --filter @forge/mastra migrate:devotional-database` before
 enabling new starts. Existing `RAILWAY_S3_*` variables continue to serve only
 the legacy subtitle/general artifact path.
+
+Apply all Mastra SQL migrations with
+`pnpm --filter @forge/mastra migrate:database`. The legacy
+`migrate:devotional-database` command remains a compatibility alias over the
+same checksum metadata and complete migration set; it does not apply only
+devotional-owned migrations. Migration 2 creates the isolated
+`support_research` evidence, report, cursor, lease, and Linear outbox schema.
+Deploy it before enabling `SUPPORT_RESEARCH_ENABLED=true`.
 
 Only the Mastra Railway service receives `DEVOTIONAL_WORKSPACE_S3_*`. Signed
 URLs are transient job capabilities and must never enter workflow state or

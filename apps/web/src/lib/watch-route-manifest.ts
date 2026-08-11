@@ -26,6 +26,11 @@ export type WatchRouteManifestRoute =
       audioLanguageSlug: string
     }
 
+type WatchEpisodeManifestRoute = Extract<
+  WatchRouteManifestRoute,
+  { kind: "episode" }
+>
+
 type WatchRouteManifestIndex = {
   contentSlugs: ReadonlySet<string>
   oneSegmentSlugs: ReadonlySet<string>
@@ -306,6 +311,36 @@ export function isWatchRouteAdmittedByManifest(
       route.childSlug,
       route.audioLanguageSlug,
     )
+  )
+}
+
+/** Whether the manifest proves the exact parent-child relationship. */
+export function isWatchEpisodePairAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: WatchEpisodeManifestRoute,
+): boolean {
+  return (
+    getManifestIndex(manifest)
+      .episodePairsByParent.get(route.parentSlug)
+      ?.has(route.childSlug) ?? false
+  )
+}
+
+/**
+ * Whether the manifest's per-episode audio index explicitly proves this route.
+ * Unlike the compatibility admission helper, this never falls back to the
+ * global audio-language corpus when an older manifest lacks exact indexes.
+ */
+export function isWatchEpisodeRouteExactlyAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: WatchEpisodeManifestRoute,
+): boolean {
+  if (!isWatchEpisodePairAdmittedByManifest(manifest, route)) return false
+  return (
+    getManifestIndex(manifest)
+      .audioLanguageSlugsByEpisode.get(route.parentSlug)
+      ?.get(route.childSlug)
+      ?.has(route.audioLanguageSlug) ?? false
   )
 }
 

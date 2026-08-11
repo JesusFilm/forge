@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-06
+last_updated: 2026-08-10
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -114,6 +114,93 @@ rebuildable projection. On Railway, the stateful process belongs in the
 dedicated `@forge/admin/search` service with its own persistent volume. Do not
 attach that volume to replicated `@forge/admin`; doing so couples API
 availability and deploys to index memory, disk, and restart behavior.
+
+## Private Candidate Generation Lifecycle
+
+Treat a native-language search improvement as another immutable profile of the
+same search service, not as a second search product. The current profile binds
+to the four serving aliases. A candidate profile binds to one generation's
+exact physical catalog, availability, lexical, and transcript collections and
+rejects current aliases or collections owned by another generation
+(`apps/admin/src/services/typesense-watch-search-profile.ts:28-43`,
+`apps/admin/src/services/typesense-watch-search-profile.ts:111-180`). Freeze the
+current aliases to physical collections before comparison so an alias move
+cannot change the selected baseline after it is resolved
+(`apps/admin/src/services/typesense-watch-search-profile.ts:205-230`).
+
+Deployment, private evaluation, and public serving are separate controls:
+
+- `EVALUATION` names the candidate used by the private Admin comparison.
+- `SERVING` authorizes a generation for a later public selection.
+- `WATCH_SEARCH_TYPESENSE_PROFILE` is the server-owned selector beneath
+  `MODERN`; it defaults to `CURRENT`, while the comparison flag defaults off
+  (`apps/admin/src/config/env.ts:672-686`).
+- Candidate serving requires the selector and `SERVING` pointer to name the
+  same generation, then revalidates the exact application revision, transcript
+  projection, current physical bindings, qrels revision, and passing
+  qualification (`apps/admin/src/services/index.ts:46-98`).
+
+The private page at `/dashboard/search/compare` runs one normalized query
+against frozen current and candidate profiles. Each side records its own result
+or error, so candidate failure cannot hide the current result. Candidate work
+is separately admitted through a renewable deployment-wide lease and an actor
+rate limit; the current side still runs when candidate setup or admission fails
+(`apps/admin/src/services/typesense-watch-search-comparison.service.ts:166-257`).
+The public browser and GraphQL contract cannot name a generation, so publishing
+a candidate or moving `EVALUATION` does not add candidate work to a public
+request.
+
+For native-language recall, do not turn a script guess into a lexical hard
+filter. Short strings and shared scripts often support several languages. The
+candidate queries every title and metadata field in its immutable lexical
+manifest and allows the semantic lane to search globally
+(`apps/admin/src/services/typesense-watch-search.service.ts:1157-1267`). Existing
+slugs, BCP-47 labels, localized language names, explicit target, script,
+browser, route, and current-Watch context still build at most three language
+candidates as ranking and playback evidence, not admission filters
+(`apps/admin/src/services/typesense-watch-search-query-plan.ts:12-24`,
+`apps/admin/src/services/typesense-watch-search-query-plan.ts:337-360`). This
+keeps recall global without multiplying requests by every supported language.
+
+Qualification belongs to one exact identity: generation, application
+revision, transcript physical collection and projection revision, qrels
+revision, frozen current bindings, and candidate bindings
+(`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:40-48`). The paired
+benchmark fails closed on identity drift, errors, degradation, incomplete
+quotas, or lease loss. It rejects any p50, p95, or p99 latency regression and
+caps retrieval calls, logical subsearches, query fields, query bytes, request
+bytes, candidate windows, hydration, response bytes, and retries
+(`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:332-399`,
+`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:402-465`). Passing
+evidence must also bind the same qrels and current-baseline identity before it
+can be stored or used for serving promotion
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:130-175`,
+`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:739-790`).
+
+Coordinate mutation and evaluation in the database, not by operator timing.
+Current publication holds one PostgreSQL advisory lock across the external
+Typesense operation. Lease acquisition, lease renewal, and `SERVING` promotion
+probe that same lock transactionally; current publication also refuses active
+candidate leases or a serving candidate
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:799-912`,
+`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1157-1205`,
+`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1207-1275`).
+Candidate runtime, comparison, and qualification require a dedicated search
+key, while publication and deletion use a separate operator key.
+
+Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
+resolution is coalesced and cached for at most 30 seconds, with immediate
+eviction after rejection (`apps/admin/src/services/index.ts:101-133`). The
+operator must return traffic to current, disable comparison, and then wait at
+least 35 seconds before removal
+(`docs/plans/2026-08-09-001-feat-native-language-watch-search-candidate-plan.md:351`).
+Retirement then atomically rejects serving or leased
+generations, clears the exact `EVALUATION` pointer, and moves the generation to
+`RETIRING` before deleting only its owned catalog, availability, and lexical
+collections with persisted progress
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:941-1045`,
+`apps/admin/src/scripts/index-typesense-watch-search-candidate.ts:434-528`). The
+shared transcript projection and current aliases are never retirement targets.
 
 ## Why This Matters
 
@@ -373,4 +460,8 @@ traces so comparisons do not double-count users or query intent.
 - [Result-preserving search latency optimization](../performance-issues/admin-search-result-preserving-latency-optimization.md)
 - [Admin semantic HNSW prototype parity gate](../performance-issues/admin-semantic-hnsw-prototype-parity-gate.md)
 - [Mastra offline search eval orchestration](../architecture-patterns/mastra-offline-search-eval-orchestration-boundary-pattern.md)
+- [Internal diagnostic search modes need mode-aware eval identity](../architecture-patterns/internal-diagnostic-search-modes-need-mode-aware-eval-identity.md)
+- [Atomic database claim instead of split check-and-write](../database-issues/db-lock-must-be-atomic-update-not-select-for-update.md)
+- [Async single-flight slot release hazards](../design-patterns/async-single-flight-slot-release-hazards.md)
+- [Producer-consumer report file contract](producer-consumer-report-file-contract-pattern-20260506.md)
 - [Universal multilingual Watch Search roadmap](../../roadmap/platform/feat-254-watch-universal-multilingual-search.md)

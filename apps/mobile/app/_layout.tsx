@@ -22,6 +22,11 @@ let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCa
 let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
 let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
 let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
+// Dev-only surface: the require itself is gated so Metro drops it from a
+// release bundle rather than shipping a component nothing can render.
+let DevEndpointNotice:
+  | typeof import("../src/components/DevEndpointNotice").DevEndpointNotice
+  | undefined
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -63,6 +68,10 @@ try {
   restoreApolloCache = cachePersistence.restoreApolloCache
   startCachePersistence = cachePersistence.startCachePersistence
   lockPortrait = require("../src/lib/orientation").lockPortrait
+  if (__DEV__) {
+    DevEndpointNotice =
+      require("../src/components/DevEndpointNotice").DevEndpointNotice
+  }
   MobileDatadogProvider =
     require("../src/components/DatadogRum").MobileDatadogProvider
   DatadogRouteTracker =
@@ -367,6 +376,7 @@ export default function RootLayout() {
           </ApolloProvider>
         </MobileDatadogProvider>
       </ErrorBoundary>
+      {DevEndpointNotice ? <DevEndpointNotice /> : null}
     </View>
   )
 }

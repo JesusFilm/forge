@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
-  AI_CHAT_ANON_RETENTION_DAYS,
-  AI_CHAT_USER_RETENTION_DAYS,
+  AI_CHAT_RETENTION_DAYS,
   retentionWindowMsFor,
   runAiChatRetentionPurge,
   startAiChatRetentionPurge,
@@ -78,49 +77,59 @@ afterEach(() => {
 })
 
 describe("retentionWindowMsFor", () => {
-  it("gives user:* resources the long window and everything else the short one", () => {
-    expect(retentionWindowMsFor("user:abc")).toBe(
-      AI_CHAT_USER_RETENTION_DAYS * DAY_MS,
-    )
+  it("pins the flat policy to exactly 25 days (feat-336 owner decision)", () => {
+    // Literal, not derived from the constant — a drifted constant fails here.
+    expect(AI_CHAT_RETENTION_DAYS).toBe(25)
+  })
+
+  it("gives EVERY resource shape the same flat window (anti-vacuous: a reintroduced user:/anon: split fails here)", () => {
     for (const resource of [
+      // The three production shapes — user:* was the long-window (180d) shape
+      // under the pre-feat-336 split, so it is the discriminating fixture.
+      "user:abc",
       "anon:0f6d3f1e-0000-4000-8000-000000000000",
       "seeker-dogfood",
       undefined,
       null,
-      // Prefix-check only — a sub CONTAINING "user:" mid-string is not a user
-      // resource. Never split on ":".
       "anon:user:trick",
     ]) {
       expect(retentionWindowMsFor(resource)).toBe(
-        AI_CHAT_ANON_RETENTION_DAYS * DAY_MS,
+        AI_CHAT_RETENTION_DAYS * DAY_MS,
       )
     }
   })
 })
 
 describe("runAiChatRetentionPurge", () => {
-  it("deletes threads past their window and keeps the rest (boundary-exact)", async () => {
+  it("deletes threads past the flat 25-day window and keeps the rest (boundary-exact)", async () => {
     const { memory, deleted } = fakeMemory([
-      // Anonymous: 30d window.
-      { id: "anon-old", resourceId: "anon:a", updatedAt: daysAgo(31) },
-      { id: "anon-live", resourceId: "anon:a", updatedAt: daysAgo(29) },
+      { id: "anon-old", resourceId: "anon:a", updatedAt: daysAgo(26) },
+      { id: "anon-live", resourceId: "anon:a", updatedAt: daysAgo(24) },
       // Exactly AT the boundary is NOT past it (strict >).
-      { id: "anon-edge", resourceId: "anon:a", updatedAt: daysAgo(30) },
-      // Signed-in: 180d window.
+      { id: "anon-edge", resourceId: "anon:a", updatedAt: daysAgo(25) },
+      // Signed-in threads share the SAME window — user-mid (40d) is the
+      // anti-vacuous discriminator: the pre-feat-336 180-day user window
+      // would have KEPT it, so a reintroduced split fails this fixture.
+      { id: "user-mid", resourceId: "user:u1", updatedAt: daysAgo(40) },
       { id: "user-old", resourceId: "user:u1", updatedAt: daysAgo(181) },
-      { id: "user-live", resourceId: "user:u1", updatedAt: daysAgo(179) },
-      // The dogfood fallback resource gets the anonymous window.
+      { id: "user-live", resourceId: "user:u1", updatedAt: daysAgo(24) },
+      // The dogfood fallback resource shares the flat window too.
       {
         id: "dogfood-old",
         resourceId: "seeker-dogfood",
-        updatedAt: daysAgo(31),
+        updatedAt: daysAgo(26),
       },
     ])
     const result = await runAiChatRetentionPurge({ memory, now: () => NOW })
-    expect(deleted.sort()).toEqual(["anon-old", "dogfood-old", "user-old"])
-    // ASC scan early-stops at anon-edge (exactly 30d — inside the shortest
-    // window), so anon-live is never even scanned.
-    expect(result).toEqual({ scanned: 5, deleted: 3, sweeps: 1 })
+    expect(deleted.sort()).toEqual([
+      "anon-old",
+      "dogfood-old",
+      "user-mid",
+      "user-old",
+    ])
+    // ASC scan early-stops at anon-edge (exactly 25d — inside the window), so
+    // the two 24d rows are never even scanned.
+    expect(result).toEqual({ scanned: 5, deleted: 4, sweeps: 1 })
   })
 
   it("scans oldest-first and stops early at the shortest window", async () => {

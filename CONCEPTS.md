@@ -102,7 +102,21 @@ groups even when they share the same underlying language coverage.
 
 A public Watch URL that identifies a parent collection, child Video, and
 Language together so navigation can preserve the child's collection context
-when that exact relationship is valid.
+when that exact relationship is valid. An eligible English episode uses
+`/watch/{parent-slug}.html/{episode-slug}.html`; non-English episodes use
+`/watch/{parent-slug}.html/{episode-slug}/{language-slug}.html`. Explicit
+`/english.html` remains a direct compatibility/internal route. Episode slugs
+that collide with a current or legacy public language slug also keep explicit
+English so the second segment retains language-route precedence.
+
+A Contextual Watch Route owns playback and collection-navigation context, not
+search, social, or sharing identity. Its corresponding Standalone Watch Route
+owns canonical, Open Graph, structured-data URL, Share, and sitemap identity:
+eligible English resolves to the language-less standalone route, while every
+other Language resolves to that Language's explicit standalone route. Prominent
+discovery surfaces such as Watch homepage and search thumbnails link to the
+Standalone Watch Route; contextual links are reserved for navigation inside an
+opened collection.
 
 ### Standalone Watch Route
 
@@ -112,8 +126,7 @@ collection relationship. Eligible English uses
 `/watch/{video-slug}.html/{language-slug}.html`. Explicit
 `/english.html` remains a direct compatibility/internal route. If the Video
 slug is also a public language-home slug, English stays explicit so the
-language home retains the one-segment URL. Contextual Watch Routes keep their
-parent, child, and explicit language segments in the browser.
+language home retains the one-segment URL.
 
 ### Watch Route Manifest
 
@@ -257,6 +270,36 @@ a high-strength source attribution on their own.
 
 ## Search & embeddings
 
+### SEO Evidence Observation
+
+A bounded, timestamped record from one measurement surface used by the SEO
+Marketing Agent. Google Search Console observations describe Google Search
+performance; GA4 observations describe on-site behavior; Firecrawl and direct
+page checks describe fetched page state; grounded LLM responses describe only
+what that provider returned for a versioned prompt. These evidence classes are
+never collapsed into a single source of truth, and a missing row is not a zero.
+
+### SEO Proposal
+
+An immutable, versioned recommendation produced from SEO Evidence Observations
+for one canonical page and locale. Editorial proposals carry an exact
+field-level draft diff; engineering proposals carry an exact ticket brief.
+Approval authorizes only that bounded materialization and never publication.
+
+### SEO Experiment Ledger
+
+The Admin-owned durable history that connects an SEO Proposal to its evidence,
+human decision, draft or engineering ticket, verified production activation,
+matched measurement windows, confounders, outcome, rollback proposal, and any
+reviewed lesson. Mastra orchestrates the work, but the ledger remains the
+authoritative record rather than agent conversation memory.
+
+Its execution claims are reclaimable leases: expiry permits another worker to
+take ownership, while generation and token fencing determine who may complete.
+Experiments become measuring only after objective activation, overlap becomes a
+confounder only when treatments are simultaneously live, and canonical drift
+forces an inconclusive outcome rather than a lesson or rollback.
+
 ### Search Pipeline Mode
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
@@ -294,6 +337,39 @@ A Search Serving Index may retain a broader semantic corpus than one caller can
 return. Each serving surface applies its own explicit visibility policy, while
 publication or availability changes update the projection without redefining
 the underlying embedding.
+
+### Search Candidate Generation
+
+An immutable, lifecycle-managed set of Search Serving Index projections built
+for private evaluation and possible later promotion without replacing the
+current serving indexes.
+
+A generation owns only the projections created for it and may share an
+explicitly versioned projection such as the transcript corpus. Evaluation,
+serving, and retirement authority remain separate so publishing a generation
+does not itself make it public.
+
+### Search Evaluation Pointer
+
+The server-owned reference that selects one ready Search Candidate Generation
+for private comparison and qualification without changing public search.
+
+### Search Serving Pointer
+
+The server-owned authorization that permits one qualified Search Candidate
+Generation to serve when the deployment selector independently names the same
+generation.
+
+The pointer is necessary but not sufficient for promotion: the candidate must
+still match its reviewed Search Candidate Identity and current baseline.
+
+### Search Qualification Lease
+
+A bounded, renewable claim that freezes one candidate and current-baseline
+identity while comparison or qualification work is active.
+
+Publication fails closed while a lease is active, and lease admission or
+renewal fails closed while publication owns the shared mutation boundary.
 
 ### Public Search Visibility
 
@@ -334,13 +410,14 @@ become a baseline.
 
 ### Search Candidate Identity
 
-The immutable identity of one search release candidate: the Admin application
-revision plus the physical catalog, availability, lexical, and transcript
-Search Serving Index generations evaluated with it.
+The immutable identity under which one search release candidate was evaluated:
+its Search Candidate Generation, Admin application revision, transcript
+projection, reviewed relevance-set revision, and exact current baseline
+bindings.
 
 Release evidence fails closed when this identity is absent or when responses
-show more than one application revision, so a deploy or index publication
-cannot silently mix candidates inside one Absolute Search Gate.
+do not match it, so a deploy, relevance-set update, or index publication cannot
+silently reuse qualification from another candidate or baseline.
 
 ### Watch Search Analytics
 
@@ -423,7 +500,7 @@ Search Language identity should travel as the public language slug selected or c
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
 
-Only the target-audio and related-language states can carry a playable Dub; the target-subtitle and no-option states name what exists (subtitles in the target language, or nothing) without one.
+Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action.
 
 ### Query Language Suggestion
 
@@ -816,8 +893,23 @@ A system prompt whose tunable text lives in Langfuse — versioned, label-addres
 
 During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
 
+### Seeker Eval Experiment
+
+A predeclared comparison of Seeker behavior against a declared production benchmark, changing exactly one causal axis while holding every other execution identity dimension constant.
+
+Its manifest is an executable contract: supported identity dimensions control the run, every declared dimension is attested by the evidence, unsupported configurations refuse, and any reused evidence must match the declared identity and eligibility policy.
+
+### Experiment Attempt
+
+One append-only execution record within a Seeker Eval Experiment, preserving either complete benchmark evidence or a diagnostic refusal or failure without rewriting earlier attempts.
+
+An attempt is complete only after its required inventoried evidence has passed aggregate-schema, identity, sensitive-content, and inventory checks and its immutable completion record has been published; package eligibility additionally requires rejecting untracked sidecars.
+
+Once attempt bytes reach the repository's base branch they are historical evidence: later changes create a new attempt or experiment rather than modifying, deleting, renaming, or completing those bytes in place. A terminal verdict seals its whole experiment.
+
 ## Flagged ambiguities
 
+- "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.

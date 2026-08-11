@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "seeker-verdict/v1",
+  "experimentId": "2026-08-10-003-seeker-video-prompt-citation-normalization",
+  "attemptId": "attempt-002",
+  "candidateId": "video-prompt-v2",
+  "verdict": "deferred",
+  "actor": "codex",
+  "recordedAt": "2026-08-10T01:50:00.300Z",
+  "reasoning": "Haiku returned an unknown criterion ID after the single protocol retry, leaving 9/10 judged coverage; the fail-closed gate correctly refused partial evidence.",
+  "evidence": [
+    "attempts/attempt-002/gate-report.json",
+    "attempts/attempt-002/score.json",
+    "attempts/attempt-002/comparison.md"
+  ],
+  "eligibility": {
+    "gate": {
+      "outcome": "refused"
+    },
+    "criterion": {
+      "id": "minimum-run-score",
+      "version": "1",
+      "outcome": "passed"
+    },
+    "eligible": false,
+    "evidence": [
+      "attempts/attempt-002/gate-report.json",
+      "attempts/attempt-002/score.json",
+      "attempts/attempt-002/comparison.md"
+    ]
+  }
+}

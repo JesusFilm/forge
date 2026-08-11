@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createHash } from "node:crypto"
 
 import {
   createManagedPromptCache,
   fetchLangfusePrompt,
   getManagedPrompt,
+  resolveExactManagedPrompt,
   resetManagedPromptStateForTests,
   type LangfuseConfig,
 } from "./langfuse-prompt-client"
@@ -80,6 +82,145 @@ const chatPromptFixture = {
 }
 
 describe("langfuse prompt client", () => {
+  it("retrieves an exact immutable version without following a moved label", async () => {
+    const version42 = { ...textPromptFixture, version: 42, labels: [] }
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(version42))
+
+    const result = await fetchLangfusePrompt({
+      name: "seeker/system-prompt",
+      version: 42,
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      text: version42.prompt,
+      version: 42,
+      labels: [],
+    })
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
+      "https://langfuse.internal/api/public/v2/prompts/seeker%2Fsystem-prompt?version=42",
+    )
+  })
+
+  it("rejects conflicting label and version selectors before fetch", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+
+    const result = await fetchLangfusePrompt({
+      name: "seeker/system-prompt",
+      label: "experiment",
+      version: 42,
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+      detail: "selector_conflict",
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("resolves a fresh exact version to provider-neutral immutable identity", async () => {
+    const version42 = { ...textPromptFixture, version: 42, labels: [] }
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(version42))
+    const expectedHash = createHash("sha256")
+      .update(version42.prompt)
+      .digest("hex")
+
+    const result = await resolveExactManagedPrompt({
+      name: "seeker/system-prompt",
+      version: 42,
+      expectedContentHash: expectedHash,
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      text: version42.prompt,
+      identity: {
+        provider: "langfuse",
+        name: "seeker/system-prompt",
+        revision: "42",
+        contentHash: expectedHash,
+      },
+    })
+  })
+
+  it.each([
+    [
+      "wrong version",
+      { ...textPromptFixture, version: 41 },
+      "version_mismatch",
+    ],
+    [
+      "wrong content hash",
+      { ...textPromptFixture, version: 42 },
+      "content_hash_mismatch",
+    ],
+  ] as const)(
+    "fails closed for %s without returning prompt text",
+    async (_case, body, detail) => {
+      const result = await resolveExactManagedPrompt({
+        name: "seeker/system-prompt",
+        version: 42,
+        expectedContentHash: "0".repeat(64),
+        config: testConfig,
+        fetchImpl: vi.fn<typeof fetch>(() => jsonResponse(body)),
+      })
+
+      expect(result).toEqual({
+        ok: false,
+        reason: "rejected",
+        retryable: false,
+        detail,
+      })
+      expect(result).not.toHaveProperty("text")
+    },
+  )
+
+  it.each([
+    [
+      "missing",
+      () => jsonResponse({ message: "missing" }, { status: 404 }),
+      "rejected",
+    ],
+    [
+      "unauthorized",
+      () => jsonResponse({ message: "denied" }, { status: 401 }),
+      "auth_failed",
+    ],
+    ["timed out", () => Promise.reject({ name: "TimeoutError" }), "timeout"],
+    [
+      "malformed",
+      () => Promise.resolve(new Response("not-json")),
+      "parse_error",
+    ],
+    [
+      "empty",
+      () => jsonResponse({ ...textPromptFixture, version: 42, prompt: "   " }),
+      "parse_error",
+    ],
+  ] as const)(
+    "official exact resolution fails closed when the prompt is %s",
+    async (_case, response, reason) => {
+      const result = await resolveExactManagedPrompt({
+        name: "seeker/system-prompt",
+        version: 42,
+        config: testConfig,
+        fetchImpl: vi.fn<typeof fetch>(response),
+      })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.reason).toBe(reason)
+      expect(result).not.toHaveProperty("text")
+    },
+  )
+
   it("returns the prompt and issues the exact contract request (encoded name, label param, Basic auth)", async () => {
     const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
 

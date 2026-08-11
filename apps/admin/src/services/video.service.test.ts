@@ -7,6 +7,85 @@ import {
   VIDEOS_BY_CORE_IDS_MAX,
 } from "./video.service"
 
+describe("getWatchRouteSnapshotBySlug", () => {
+  it("selects a requested-subtitle edition in the one preferred-variant query", async () => {
+    const preferredVariant = {
+      id: "dub-english-russian-edition",
+      slug: "english",
+      published: true,
+      hls: "https://cdn.example/english-russian.m3u8",
+      duration: 120,
+      languageCoreId: "529",
+      languageBcp47: "en",
+      languageSlug: "english",
+      languageName: { en: "English" },
+      muxVideoId: null,
+      playbackId: null,
+    }
+    const queryRaw = vi.fn((strings: TemplateStringsArray) => {
+      const sql = strings.join(" ")
+      if (sql.includes("WITH requested AS")) {
+        return Promise.resolve([preferredVariant])
+      }
+      if (sql.includes("COUNT(DISTINCT vd.language_id)")) {
+        return Promise.resolve([{ count: 1 }])
+      }
+      if (sql.includes('AS "videoId"')) {
+        return Promise.resolve([{ videoId: "video-1", duration: 120 }])
+      }
+      return Promise.resolve([])
+    })
+    const prisma = {
+      video: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "video-1",
+          slug: "perfect-2",
+          publishedAt: new Date("2026-08-05T00:00:00.000Z"),
+          noIndex: false,
+          label: "FEATURE_FILM",
+          primaryLanguageId: "language-en",
+          primaryLanguage: { coreId: "529", bcp47: "en" },
+        }),
+      },
+      videoRelation: { findMany: vi.fn().mockResolvedValue([]) },
+      bibleCitation: { findMany: vi.fn().mockResolvedValue([]) },
+      videoImage: { findMany: vi.fn().mockResolvedValue([]) },
+      videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+      videoStudyQuestion: { findMany: vi.fn().mockResolvedValue([]) },
+      $queryRaw: queryRaw,
+    }
+    const service = new VideoService(prisma as never)
+
+    const result = await service.getWatchRouteSnapshotBySlug({
+      slug: "perfect-2",
+      locale: "en",
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      user: null,
+    })
+
+    expect(result?.preferredVariant?.documentId).toBe(
+      "dub-english-russian-edition",
+    )
+    const preferredCalls = queryRaw.mock.calls.filter(([strings]) =>
+      strings.join(" ").includes("WITH requested AS"),
+    )
+    expect(preferredCalls).toHaveLength(1)
+    const [strings, ...values] = preferredCalls[0]!
+    const sql = strings.join(" ")
+    expect(values).toEqual(["english", "russian", "video-1"])
+    expect(sql).toContain("vs.video_edition_id = vd.video_edition_id")
+    expect(sql).toContain("vs.video_id IS NULL OR vs.video_id = vd.video_id")
+    expect(sql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
+    expect(sql.indexOf("audio_language_slug")).toBeLessThan(
+      sql.indexOf("subtitle_language_slug"),
+    )
+    expect(sql.indexOf("subtitle_language_slug")).toBeLessThan(
+      sql.indexOf("vd.duration DESC NULLS LAST"),
+    )
+  })
+})
+
 describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
   it("hydrates deduplicated public social images in one bounded root-only batch", async () => {
     const prisma = {
@@ -234,6 +313,33 @@ describe("VideoService", () => {
       await expect(
         service.list({ input: {}, query: {} }),
       ).resolves.not.toThrow()
+    })
+
+    it("does not exclude watch-restricted videos by default (dashboard caller)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: {}, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("NOT")
+      expect(call.where).not.toHaveProperty("AND")
+    })
+
+    it("excludes watch-restricted videos when excludeWatchRestricted is set (public resolver)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { excludeWatchRestricted: true },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toEqual({
+        AND: [
+          { deletedAt: null },
+          { NOT: { restrictViewPlatforms: { has: "watch" } } },
+        ],
+      })
     })
 
     it("filters across video identifiers and localized metadata when search is present", async () => {
@@ -986,6 +1092,22 @@ describe("VideoService", () => {
         null,
       )
     })
+
+    // U2's "sole gate is the resolver's authScopes" contract (see file header)
+    // means getById never takes a `user` param, so this exclusion is
+    // unconditional — this is the public-only lookup path (never called by
+    // the dashboard), so there's no editor/admin case to special-case here.
+    it("excludes videos restricted from the watch platform", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getById({ id: "v-1", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        id: "v-1",
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
+    })
   })
 
   describe("getBySlug", () => {
@@ -995,6 +1117,18 @@ describe("VideoService", () => {
       const result = await service.getBySlug({ slug: "jf", query: {} })
 
       expect(result).toEqual({ id: "v-1", slug: "jf" })
+    })
+
+    it("excludes videos restricted from the watch platform", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({ slug: "jf", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        slug: "jf",
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
     })
   })
 
@@ -1008,13 +1142,14 @@ describe("VideoService", () => {
     })
 
     // NOTE: this asserts the WHERE-clause SHAPE the resolver hands Prisma — the
-    // dub itself and its parent video must both be non-deleted, mirroring what
-    // `videoBySlug { dubs }` exposes. A mock cannot prove Prisma actually emits
-    // the parent-video relation filter in SQL (the mocked-vs-real-contract gap);
-    // that negative case (live dub under a soft-deleted video -> null) was
-    // verified empirically against a real DB during review. There is no real-DB
+    // dub itself and its parent video must both be non-deleted and not
+    // restricted from the "watch" platform, mirroring what `videoBySlug { dubs }`
+    // exposes. A mock cannot prove Prisma actually emits the parent-video
+    // relation filter in SQL (the mocked-vs-real-contract gap); that negative
+    // case (live dub under a soft-deleted video -> null) was verified
+    // empirically against a real DB during review. There is no real-DB
     // integration harness in CI, so getBySlug/getById are gated the same way.
-    it("gates on the dub id AND both the dub and its parent video being non-deleted", async () => {
+    it("gates on the dub id AND both the dub and its parent video being non-deleted and unrestricted", async () => {
       prisma.videoDub.findFirst.mockResolvedValueOnce(null)
 
       await service.getDubById({ id: "dub-1", query: {} })
@@ -1022,7 +1157,10 @@ describe("VideoService", () => {
       const where = prisma.videoDub.findFirst.mock.calls[0][0].where
       expect(where.id).toBe("dub-1")
       expect(where).toHaveProperty("deletedAt", null)
-      expect(where.video).toEqual({ deletedAt: null })
+      expect(where.video).toEqual({
+        deletedAt: null,
+        NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
     })
 
     it("threads the resolver's prisma query selection through", async () => {
@@ -1530,6 +1668,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1", "core-missing", "core-2"] },
           deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
     })
@@ -1559,6 +1698,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1"] },
           deletedAt: null,
+          NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
     })
@@ -1618,6 +1758,7 @@ describe("VideoService", () => {
       expect(call.where.video).toMatchObject({
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" } },
+        NOT: { restrictViewPlatforms: { has: "watch" } },
       })
     })
 
@@ -1629,6 +1770,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("flattens each distinct dub's language into the minimal picker shape", async () => {
@@ -1705,6 +1847,7 @@ describe("VideoService", () => {
             deletedAt: null,
             locales: { some: { status: "PUBLISHED", deletedAt: null } },
             parents: { some: { parentId: "series-1" } },
+            NOT: { restrictViewPlatforms: { has: "watch" } },
           },
         },
         distinct: ["videoId"],
@@ -1725,6 +1868,7 @@ describe("VideoService", () => {
       const call = prisma.videoDub.findMany.mock.calls[0][0]
       expect(call.where.video.deletedAt).toBeNull()
       expect(call.where.video.locales).toBeUndefined()
+      expect(call.where.video.NOT).toBeUndefined()
     })
 
     it("returns the selected Dub rows unchanged", async () => {

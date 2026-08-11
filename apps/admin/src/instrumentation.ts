@@ -54,6 +54,7 @@ function errorText(error: unknown) {
 }
 
 function startWatchSearchPrewarm(): void {
+  // Prewarm once per process; requests remain independent of this best-effort path.
   const global = workflowStartupGlobal()
   const state = global.__forgeAdminWatchSearchPrewarm ?? { started: false }
   global.__forgeAdminWatchSearchPrewarm = state

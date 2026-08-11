@@ -188,3 +188,51 @@ export async function getResumePosition(
   const entry = entries.find((e) => e.videoId === videoId)
   return entry ? entry.positionSeconds : null
 }
+
+/**
+ * Erase the shelf, inside the lock.
+ *
+ * The lock is the whole point. A bare `removeItem` can land in the middle of
+ * a queued `saveResumeSnapshot`'s read-modify-write, whose pending write then
+ * re-materializes the shelf it just erased — resurrecting the PREVIOUS
+ * viewer's history moments after sign-out wiped it. Returns whether the shelf
+ * is confirmed gone, so callers can fail closed instead of assuming.
+ */
+export async function clearContinueWatching(): Promise<boolean> {
+  return withShelfLock(async () => {
+    try {
+      await getStorage().removeItem(CONTINUE_WATCHING_STORAGE_KEY)
+      return true
+    } catch {
+      return false
+    }
+  })
+}
+
+/**
+ * Locked read-modify-write over the WHOLE shelf, for bulk folds (the account
+ * hydrate in `watchProgressSync.ts`). `mutate` must be pure; it runs inside
+ * the shelf lock so a concurrent `saveResumeSnapshot` cannot interleave
+ * between the read and the write. The result is re-capped defensively.
+ */
+export async function updateContinueWatching(
+  mutate: (entries: ContinueWatchingEntry[]) => ContinueWatchingEntry[],
+): Promise<void> {
+  await withShelfLock(async () => {
+    try {
+      const storage = getStorage()
+      const next = mutate(
+        parseContinueWatching(
+          await storage.getItem(CONTINUE_WATCHING_STORAGE_KEY),
+        ),
+      ).slice(0, MAX_CONTINUE_WATCHING)
+      if (next.length === 0) {
+        await storage.removeItem(CONTINUE_WATCHING_STORAGE_KEY)
+        return
+      }
+      await storage.setItem(CONTINUE_WATCHING_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Best-effort only.
+    }
+  })
+}

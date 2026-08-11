@@ -88,6 +88,8 @@ export type RunIdentity = {
    * only when BOTH sides carry it.
    */
   weightsSha256?: string
+  /** Experiment/runtime configuration identity. Legacy artifacts omit it. */
+  runtimeConfigurationHash?: string
 }
 
 /**
@@ -184,7 +186,31 @@ export function identityMismatch(
   )
     problems.push("weights")
 
+  if (
+    left.runtimeConfigurationHash != null &&
+    right.runtimeConfigurationHash != null &&
+    left.runtimeConfigurationHash !== right.runtimeConfigurationHash
+  )
+    problems.push("runtime configuration")
+
   return problems
+}
+
+/**
+ * Experiment-only comparison policy. It is deliberately additive: existing
+ * full/generation/gate call sites retain their established behavior.
+ */
+export function experimentIdentityMismatch(
+  left: RunIdentity,
+  right: RunIdentity,
+  axis: "prompt" | "model",
+): string[] {
+  const problems = identityMismatch(left, right, "full")
+  const allowed =
+    axis === "prompt"
+      ? new Set(["prompt", "langfuse prompt version"])
+      : new Set(["answering models"])
+  return problems.filter((problem) => !allowed.has(problem))
 }
 
 /**

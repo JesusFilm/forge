@@ -64,6 +64,29 @@ sim work, as this guide does).
 
 ### 1. Point the worktree at the running admin, not stale Strapi
 
+> **Superseded for `apps/mobile` — 2026-08-07 (feat-339).** This step is no
+> longer needed there: a development bundle now resolves to local admin
+> (`http://localhost:3003/api/graphql`) **with no env file at all**, so a fresh
+> worktree is already pointed correctly. Three specifics below are now wrong for
+> mobile:
+>
+> 1. **Do not append the endpoint to `.env.local`.** That file is replaced
+>    wholesale by `fetch-secrets`, and production-mode bundling can read it — it
+>    is the leak path feat-339 closed. If you need a non-default endpoint (a LAN
+>    IP for a physical device, a tunnel), put it in
+>    `apps/mobile/.env.development.local` instead.
+> 2. **`localhost` is fine.** The auth-host-proxy warning below no longer
+>    reproduces — measured 2026-08-07 against a running local admin, both
+>    spellings return HTTP 200 and `apps/admin` has no `middleware.ts`. Either
+>    spelling is rewritten to `10.0.2.2` on the Android emulator.
+> 3. **`DEFAULT_ADMIN_GRAPHQL_URL` no longer exists** — resolution moved to
+>    `resolveAdminGraphqlUrl()` in `apps/mobile/src/lib/adminEndpoint.ts`, and a
+>    development bundle pointed at production admin now refuses to start.
+>
+> See `apps/mobile/CLAUDE.md` § Admin endpoint resolution. **`apps/tv` is
+> unaffected** — it still requires `EXPO_PUBLIC_GRAPHQL_URL`, so the rest of this
+> step still applies there, as does the Metro-restart rule for both apps.
+
 The mobile app resolves its GraphQL endpoint in `apps/mobile/src/lib/config.ts`
 via `getGraphQLUrl()` → `env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL ?? DEFAULT_…`. The
 **`EXPO_PUBLIC_GRAPHQL_URL_IOS=http://localhost:1337/graphql`** you'll see in the

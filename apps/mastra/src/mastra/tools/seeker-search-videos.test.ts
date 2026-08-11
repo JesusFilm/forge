@@ -100,6 +100,12 @@ describe("seeker search tool — identity pins", () => {
     )
     expect(SEEKER_SEARCH_VIDEOS_TOOL_NAME).toBe("searchVideos")
   })
+
+  it("tells the model subtitle-only results are excluded", () => {
+    expect(createSeekerSearchVideosTool().description).toContain(
+      "subtitle-only matches are intentionally excluded",
+    )
+  })
 })
 
 describe("executeSeekerSearchVideos — pinned call shape (plan D5/P4)", () => {

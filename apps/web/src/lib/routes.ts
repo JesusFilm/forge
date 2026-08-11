@@ -6,13 +6,15 @@
 import type { Route } from "next"
 
 import {
+  DEFAULT_WATCH_LANGUAGE_SLUG,
   buildCanonicalWatchVideoPath,
   buildExplicitWatchVideoPath,
 } from "@forge/watch-url-policy/routes"
 
 import { env } from "@/env"
 
-import { LOCALE_RESOLVED_PARAM } from "./locale"
+import { tryResolveLanguageAlias } from "./language-aliases"
+import { LOCALE_RESOLVED_PARAM, isPublicWatchLanguageSlug } from "./locale"
 import {
   RESERVED_PREFIXES,
   appendHtmlSuffix,
@@ -67,10 +69,26 @@ export type BuildOptions = {
   t?: number
   autoplay?: boolean
   reason?: "locale-resolved"
+  subtitleLanguage?: LocaleSlug
 }
 
 const ONE_SHOT_TIMESTAMP_PARAM = "t"
 const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
+export const SUBTITLE_INTENT_PARAM = "subtitles"
+export const WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX = "__subtitle-"
+
+export function watchSubtitleIntentSegment(lang: LocaleSlug): string {
+  return `${WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX}${lang}`
+}
+
+export function parseWatchSubtitleIntentSegment(
+  segment: string,
+): LocaleSlug | null {
+  if (!segment.startsWith(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX)) return null
+  return tryAsLocaleSlug(
+    segment.slice(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX.length),
+  )
+}
 
 /**
  * Per-builder template-literal Route shapes. typedRoutes validates `<Link href>`
@@ -84,7 +102,11 @@ type WatchVideoPathname = `/${string}.html` | `/${string}.html/${string}.html`
 type WatchVideoRoute = `${WatchVideoPathname}${"" | `?${string}`}`
 type WatchVideoExplicitLanguageRoute =
   `/${string}.html/${string}.html${"" | `?${string}`}`
-type WatchEpisodeRoute =
+type WatchEpisodePathname =
+  | `/${string}.html/${string}.html`
+  | `/${string}.html/${string}/${string}.html`
+type WatchEpisodeRoute = `${WatchEpisodePathname}${"" | `?${string}`}`
+type WatchEpisodeExplicitLanguageRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type LanguagesIndexRoute = "/languages"
 type LanguageVideosIndexRoute = `/${string}.html/videos`
@@ -98,6 +120,9 @@ function appendQueryString(path: string, opts?: BuildOptions): string {
   if (opts.t != null) params.set(ONE_SHOT_TIMESTAMP_PARAM, String(opts.t))
   if (opts.autoplay) params.set(ONE_SHOT_AUTOPLAY_PARAM, "1")
   if (opts.reason != null) params.set(LOCALE_RESOLVED_PARAM, "1")
+  if (opts.subtitleLanguage != null) {
+    params.set(SUBTITLE_INTENT_PARAM, opts.subtitleLanguage)
+  }
   const qs = params.toString()
   return qs ? `${path}?${qs}` : path
 }
@@ -142,15 +167,53 @@ export function watchVideoExplicitLanguagePath(
     Route
 }
 
-/** Build the three-segment series-episode path `/{series}.html/{episode}/{lang}.html` (episode segment is bare by production contract). */
+/**
+ * Whether an English contextual episode can use the two-segment public form
+ * without colliding with the existing `/{video}.html/{language}.html` grammar.
+ */
+export function isLanguageLessWatchEpisodePathEligible(
+  episode: ContentSlug,
+): boolean {
+  return (
+    !isPublicWatchLanguageSlug(episode) &&
+    tryResolveLanguageAlias(episode) == null
+  )
+}
+
+/**
+ * Build the public series-episode path. Eligible English uses
+ * `/{series}.html/{episode}.html`; international and ambiguous English episode
+ * slugs keep `/{series}.html/{episode}/{lang}.html`.
+ */
 export function watchEpisodePath(
   series: ContentSlug,
   episode: ContentSlug,
   lang: LocaleSlug,
   opts?: BuildOptions,
 ): WatchEpisodeRoute & Route {
+  if (
+    lang === DEFAULT_WATCH_LANGUAGE_SLUG &&
+    isLanguageLessWatchEpisodePathEligible(episode)
+  ) {
+    const path = `/${appendHtmlSuffix(series)}/${appendHtmlSuffix(episode)}`
+    return appendQueryString(path, opts) as WatchEpisodeRoute & Route
+  }
+  return watchEpisodeExplicitLanguagePath(series, episode, lang, opts)
+}
+
+/**
+ * Build the explicit `/{series}.html/{episode}/{lang}.html` contextual path
+ * used by compatibility URLs and internal rewrites.
+ */
+export function watchEpisodeExplicitLanguagePath(
+  series: ContentSlug,
+  episode: ContentSlug,
+  lang: LocaleSlug,
+  opts?: BuildOptions,
+): WatchEpisodeExplicitLanguageRoute & Route {
   const path = `/${appendHtmlSuffix(series)}/${episode}/${appendHtmlSuffix(lang)}`
-  return appendQueryString(path, opts) as WatchEpisodeRoute & Route
+  return appendQueryString(path, opts) as WatchEpisodeExplicitLanguageRoute &
+    Route
 }
 
 /** Build the all-languages index path `/languages` (no `.html` suffix). */
@@ -195,8 +258,8 @@ export function searchPath(): SearchRoute & Route {
  *
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
- * - `video` — `/{slug}.html/{lang}.html` (two segments)
- * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
+ * - `video` — `/{slug}.html/{lang}.html` (two segments whose second token is a public language or legacy language alias)
+ * - `episode` — eligible English `/{series}.html/{episode}.html` or explicit `/{series}.html/{episode}/{lang}.html`
  * - `languages` — `/languages`
  * - `localized-languages` — `/{lang}.html/languages`
  * - `history` — `/history`
@@ -265,10 +328,24 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
       }
     }
 
+    const firstSegment = stripHtmlSuffix(segments[0])
+    const secondSegment = stripHtmlSuffix(segments[1])
+    if (
+      isPublicWatchLanguageSlug(secondSegment) ||
+      tryResolveLanguageAlias(secondSegment) != null
+    ) {
+      return {
+        kind: "video",
+        slug: firstSegment,
+        lang: secondSegment,
+      }
+    }
+
     return {
-      kind: "video",
-      slug: stripHtmlSuffix(segments[0]),
-      lang: stripHtmlSuffix(segments[1]),
+      kind: "episode",
+      series: firstSegment,
+      episode: secondSegment,
+      lang: DEFAULT_WATCH_LANGUAGE_SLUG,
     }
   }
 
@@ -308,7 +385,7 @@ export function watchVideoAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
 }
 
-/** Build an environment-specific absolute URL for a series episode (origin + basePath + 3-segment path). */
+/** Build an environment-specific absolute URL for a public series episode. */
 export function watchEpisodeAbsolute(
   series: ContentSlug,
   episode: ContentSlug,
