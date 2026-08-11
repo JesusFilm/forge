@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 10, 2026)
 
-- **Total tickets:** 502
-- **Complete:** 383
+- **Total tickets:** 503
+- **Complete:** 384
 - **In progress:** 36
 - **Not started:** 32
 - **Blocked:** 51
@@ -118,6 +118,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-250](content-discovery/feat-250-watch-search-close-reset.md)                                             | Reset Watch search when the modal closes                                                        | unassigned | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-302](content-discovery/feat-302-watch-search-logo-close.md)                                              | Close Watch search from the header logo                                                         | codex      | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-310](content-discovery/feat-310-watch-header-search-field-width.md)                                      | Watch header search field width                                                                 | urim       | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
+| [feat-349](content-discovery/feat-349-admin-search-language-dropdown.md)                                       | Add one language dropdown to Admin search comparison                                            | nisal      | P2       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-331](content-discovery/feat-331-devotional-video-matcher-dead-endpoint.md)                               | Devotional video matcher calls a deleted admin search endpoint                                  | unassigned | P2       | 2026-09-01 | 2    | 2026-09-02 | not-started |
 | [feat-333](content-discovery/feat-333-stale-search-api-docs-supersession.md)                                   | Stale docs: /api/search + Query.search documented as live after #1622 removal                   | unassigned | P2       | 2026-09-01 | 1    | 2026-09-01 | not-started |
 | [feat-332](content-discovery/feat-332-consolidate-transcript-chunk-retrievers.md)                              | Consolidate the two video_transcript_chunk semantic retrievers                                  | unassigned | P2       | 2026-09-08 | 3    | 2026-09-10 | not-started |

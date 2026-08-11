@@ -10,36 +10,17 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { projectWatchSearchComparisonResult } from "@/services/search-trace-privacy"
 import { createTypesenseWatchSearchComparisonService } from "@/services/typesense-watch-search-comparison.service"
+import { resolveWatchSearchLanguageSelection } from "@/services/watch-search-language-options.service"
 
-const optionalLocale = z
-  .union([
-    z.literal(""),
-    z
-      .string()
-      .trim()
-      .max(32)
-      .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/),
-  ])
-  .optional()
-  .transform((value) => value || undefined)
-
-const optionalLanguageSlug = z
-  .union([
-    z.literal(""),
-    z
-      .string()
-      .trim()
-      .max(128)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  ])
+const optionalLanguageSelection = z
+  .union([z.literal(""), z.string().trim().min(1)])
   .optional()
   .transform((value) => value || undefined)
 
 const ComparisonFormSchema = z
   .object({
     query: z.string().trim().min(1).max(200),
-    locale: optionalLocale,
-    targetLanguageSlug: optionalLanguageSlug,
+    languageSelection: optionalLanguageSelection,
     page: z.coerce.number().int().min(1).max(1_000).default(1),
     perPage: z.coerce.number().int().min(1).max(50).default(10),
     contentType: z.enum(["all", "video", "experience"]).default("all"),
@@ -104,14 +85,23 @@ export async function runWatchSearchComparison(
   const values = parsed.data
   const actorKey = actorFingerprint(principal.id!)
   try {
+    const languageSelection = values.languageSelection
+      ? await resolveWatchSearchLanguageSelection(values.languageSelection)
+      : undefined
+    if (values.languageSelection && languageSelection === null) {
+      return {
+        status: "error",
+        message: "Check the comparison inputs and try again",
+      }
+    }
     const comparison =
       await createTypesenseWatchSearchComparisonService().compare({
         actorKey,
         input: {
           query: values.query,
-          targetLanguageSlug: values.targetLanguageSlug,
-          displayLanguageSlug: values.targetLanguageSlug,
-          acceptLanguage: values.locale,
+          targetLanguageSlug: languageSelection?.targetLanguageSlug,
+          displayLanguageSlug: languageSelection?.targetLanguageSlug,
+          acceptLanguage: languageSelection?.locale,
           limit: values.perPage,
           offset: (values.page - 1) * values.perPage,
           resultTypes:
