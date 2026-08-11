@@ -8,20 +8,25 @@
  *
  * Granularity: ONE entry per chapter (commentary flows as paragraphs within a
  * chapter with no sub-verse divs). The pipeline pulls the chapter for a clip's
- * passage and the reflection step excerpts the relevant verses. Output:
- * devo/corpus/matthew-henry-gospels.json — { id, book, chapter, reference,
- * osisRef, text, source }. Committed so it ships wherever the app runs.
+ * passage and the reflection step excerpts the relevant verses.
  *
- *   node apps/mastra/src/scripts/ingest-matthew-henry-gospels.mjs [--file=/tmp/mhc5.xml]
+ * Output: <workspace-root>/inputs/reflections/matthew-henry-gospels.json —
+ * local, create-only migration staging data. It is never read from the
+ * repository at devotional-run time and must not be committed as a full
+ * generated corpus.
+ *
+ *   node apps/mastra/src/scripts/ingest-matthew-henry-gospels.mjs --workspace-root=/tmp/devotional-workspace [--file=/tmp/mhc5.xml]
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = path.resolve(HERE, "../../../..")
+import {
+  resolveWorkspaceStagingRoot,
+  writeCorpusDocument,
+} from "./devotional-corpus-staging.mjs"
+
 const SOURCE_URL = "https://ccel.org/ccel/henry/mhc5.xml"
-const OUT = path.join(REPO_ROOT, "devo/corpus/matthew-henry-gospels.json")
 const BOOKS = ["Matthew", "Mark", "Luke", "John"]
 const TARGET = new Set(["Mark", "Luke", "John"]) // Matthew → Ryle
 
@@ -74,8 +79,7 @@ async function loadSource() {
   return r.text()
 }
 
-async function main() {
-  const xml = await loadSource()
+export function buildMatthewHenryGospelsCorpus(xml) {
   const entries = []
   for (const book of BOOKS) {
     if (!TARGET.has(book)) continue
@@ -106,7 +110,7 @@ async function main() {
     }
   }
 
-  const corpus = {
+  return {
     source:
       "Matthew Henry, Commentary on the Whole Bible (Gospels: Mark, Luke, John)",
     sourceUrl: SOURCE_URL,
@@ -115,16 +119,28 @@ async function main() {
     count: entries.length,
     entries,
   }
-  await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
+}
+
+async function main() {
+  const workspaceRoot = resolveWorkspaceStagingRoot()
+  const corpus = buildMatthewHenryGospelsCorpus(await loadSource())
+  const outputPath = await writeCorpusDocument({
+    workspaceRoot,
+    category: "reflections",
+    filename: "matthew-henry-gospels.json",
+    document: corpus,
+  })
 
   const byBook = {}
-  for (const e of entries) byBook[e.book] = (byBook[e.book] || 0) + 1
+  for (const entry of corpus.entries) {
+    byBook[entry.book] = (byBook[entry.book] || 0) + 1
+  }
   const avg = Math.round(
-    entries.reduce((s, e) => s + e.text.length, 0) / (entries.length || 1),
+    corpus.entries.reduce((sum, entry) => sum + entry.text.length, 0) /
+      (corpus.entries.length || 1),
   )
   console.log(
-    `✅ ${entries.length} chapters → ${path.relative(REPO_ROOT, OUT)}`,
+    `✅ ${corpus.entries.length} chapters → ${path.relative(process.cwd(), outputPath)}`,
   )
   console.log(
     `   ${Object.entries(byBook)

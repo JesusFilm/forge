@@ -22,7 +22,7 @@ function fixture(workspacePath: string): string {
   )
 }
 
-function harness() {
+function harness(overrides: Record<string, string> = {}) {
   const values = new Map<string, Buffer>()
   for (const workspacePath of Object.values(DEVOTIONAL_AUTHORED_PATHS)) {
     values.set(workspacePath.slice(1), Buffer.from(fixture(workspacePath)))
@@ -30,6 +30,15 @@ function harness() {
   values.set(
     "inputs/reflections/new-source.md",
     Buffer.from("Grace meets a fearful heart with steady hope."),
+  )
+  for (const [nativePath, content] of Object.entries(overrides)) {
+    values.set(nativePath, Buffer.from(content))
+  }
+  values.set(
+    "inputs/scripture/john/3-16.md",
+    Buffer.from(
+      "For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.",
+    ),
   )
   const sources: DevotionalSourceRef[] = [...values.entries()].map(
     ([nativePath, content]) => {
@@ -75,6 +84,72 @@ describe("attempt-scoped authored data", () => {
       expect.arrayContaining([
         expect.objectContaining({ source: "new-source" }),
       ]),
+    )
+  })
+
+  it("loads a canonical content-only scripture source without a JSON corpus", async () => {
+    const { filesystem, sources, values } = harness()
+    values.delete("inputs/scripture/web-bible.json")
+    const selected = sources.filter(
+      ({ path: sourcePath }) =>
+        sourcePath !== "/inputs/scripture/web-bible.json",
+    )
+
+    const loaded = await loadDevotionalAttemptAuthoredData({
+      filesystem,
+      sources: selected,
+    })
+
+    expect(loaded.scripture.verses).toEqual({
+      "John.3.16":
+        "For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.",
+    })
+  })
+
+  it("loads generated corpus envelopes through verified Workspace reads", async () => {
+    const { filesystem, sources } = harness({
+      "inputs/scripture/web-bible.json": JSON.stringify({
+        translation: "World English Bible",
+        abbreviation: "WEB",
+        license: "public-domain",
+        sourceUrl: "https://api.getbible.net/v2/web",
+        books: ["John"],
+        verseCount: 1,
+        verses: { "John.3.16": "For God so loved the world." },
+      }),
+      "inputs/reflections/ryle-matthew.json": JSON.stringify({
+        source: "J.C. Ryle, Expository Thoughts",
+        sourceUrl: "https://ccel.org/ccel/ryle/matthew.xml",
+        license: "public-domain",
+        ingestedFrom: "CCEL ThML",
+        count: 1,
+        entries: [
+          {
+            id: "Matt.3.1-Matt.3.2",
+            book: "Matthew",
+            chapter: 3,
+            reference: "Matthew 3:1-2",
+            osisRef: "Matt.3.1-Matt.3.2",
+            text: "Repent and prepare.",
+            source: "J.C. Ryle, Expository Thoughts",
+          },
+        ],
+      }),
+    })
+
+    const loaded = await loadDevotionalAttemptAuthoredData({
+      filesystem,
+      sources,
+    })
+
+    expect(loaded.scripture.verses["John.3.16"]).toBe(
+      "For God so loved the world.",
+    )
+    expect(loaded.corpora.ryleMatthew).toContainEqual(
+      expect.objectContaining({
+        osisRef: "Matt.3.1-Matt.3.2",
+        text: "Repent and prepare.",
+      }),
     )
   })
 

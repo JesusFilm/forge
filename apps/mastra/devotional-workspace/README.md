@@ -37,6 +37,13 @@ The singleton configuration paths are part of the runtime contract. Renaming one
 
 Supported v1 text formats are UTF-8 `.md`, `.txt`, `.json`, `.yaml`, and `.yml`. Content-only files require no frontmatter. Their immediate parent folder defines their category. A supported file dropped into `scripture/` or `reflections/` becomes eligible when the next newly-created attempt reconciles the Workspace; no process restart or code change is required.
 
+Content-only scripture uses the canonical path
+`/inputs/scripture/<book>/<chapter>-<verse>.<ext>`, for example
+`/inputs/scripture/john/3-16.md`. Supported book folders are Matthew (or Matt),
+Mark, Luke, John, and Acts. The path supplies the OSIS verse key and the file
+body supplies the exact scripture text. JSON scripture corpora may instead
+provide a strict `verses` map plus the documented provenance fields.
+
 Unsupported extensions, invalid UTF-8, malformed singleton JSON, unsafe paths, and files that exceed inventory limits are excluded and reported. PDF, DOCX, and automatic binary media ingestion are not supported in v1. Studio file search may still show an unsupported stored file; that does not make it eligible for devotional retrieval.
 
 ## Editing and trust
@@ -48,3 +55,21 @@ Edits are live for the next newly-created attempt. A file changed after selectio
 ## Seeding and cutover
 
 The migration copies these fixtures plus the owner-supplied scripture/reflection corpora into an immutable migration prefix, verifies SHA-256 digests, and commits readiness only after catalog validation and an independent backup/restore drill. Do not enable new devotional runs while required corpus files or singleton configuration are absent.
+
+Generate public-domain source corpora into a local staging tree outside the
+repository. Every generator requires an explicit `--workspace-root` and writes
+create-only files to the canonical Workspace input folders:
+
+```bash
+node apps/mastra/src/scripts/ingest-web-bible.mjs --workspace-root=/tmp/devotional-workspace
+node apps/mastra/src/scripts/ingest-ryle-matthew.mjs --workspace-root=/tmp/devotional-workspace
+node apps/mastra/src/scripts/ingest-matthew-henry-gospels.mjs --workspace-root=/tmp/devotional-workspace
+node apps/mastra/src/scripts/ingest-spurgeon-morning-evening.mjs --workspace-root=/tmp/devotional-workspace
+```
+
+Review the staged files, then supply that staging root to the guarded Workspace
+migration. The repository contains contracts and compact fixtures only; it is
+not a runtime corpus fallback. Apply the current database schema first with
+`pnpm --filter @forge/mastra migrate:database`. Readiness verifies every
+required devotional migration by version, immutable filename, and SHA-256,
+independently of later non-devotional migrations in the shared ledger.

@@ -30,8 +30,9 @@ export type ReflectionCorpora = {
   spurgeon: ReflectionEntry[]
 }
 
-const ReflectionEntrySchema = z
+const ReflectionSourceEntrySchema = z
   .object({
+    id: z.string().trim().min(1).max(256).optional(),
     source: z.string().trim().min(1),
     reference: z.string().trim().min(1),
     osisRef: z.string().trim().min(1).nullable(),
@@ -39,12 +40,46 @@ const ReflectionEntrySchema = z
     verse: z.string().trim().min(1).optional(),
     book: z.string().trim().min(1).optional(),
     chapter: z.number().int().positive().optional(),
+    month: z.number().int().min(1).max(12).optional(),
+    monthName: z.string().trim().min(1).max(32).optional(),
+    day: z.number().int().min(1).max(31).optional(),
+    session: z.enum(["morning", "evening"]).optional(),
   })
   .strict()
 
 const ReflectionEntriesSchema = z
-  .object({ entries: z.array(ReflectionEntrySchema).min(1) })
+  .object({
+    source: z.string().trim().min(1).max(500).optional(),
+    sourceUrl: z.string().trim().url().max(2_048).optional(),
+    license: z.string().trim().min(1).max(100).optional(),
+    ingestedFrom: z.string().trim().min(1).max(200).optional(),
+    count: z.number().int().positive().optional(),
+    entries: z.array(ReflectionSourceEntrySchema).min(1),
+  })
   .strict()
+  .superRefine((document, context) => {
+    if (document.count != null && document.count !== document.entries.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["count"],
+        message: "count must equal entries length",
+      })
+    }
+  })
+
+function toReflectionEntry(
+  sourceEntry: z.infer<typeof ReflectionSourceEntrySchema>,
+): ReflectionEntry {
+  return {
+    source: sourceEntry.source,
+    reference: sourceEntry.reference,
+    osisRef: sourceEntry.osisRef,
+    text: sourceEntry.text,
+    ...(sourceEntry.verse == null ? {} : { verse: sourceEntry.verse }),
+    ...(sourceEntry.book == null ? {} : { book: sourceEntry.book }),
+    ...(sourceEntry.chapter == null ? {} : { chapter: sourceEntry.chapter }),
+  }
+}
 
 /** Parse a selected JSON corpus file. Content-only prose is a single eligible
  * entry whose source/reference come from the selected Workspace path. */
@@ -56,7 +91,9 @@ export function parseReflectionDocument(options: {
   if (!content) throw new Error(`${options.path}: reflection source is empty`)
   if (options.path.toLowerCase().endsWith(".json")) {
     try {
-      return ReflectionEntriesSchema.parse(JSON.parse(content)).entries
+      return ReflectionEntriesSchema.parse(JSON.parse(content)).entries.map(
+        toReflectionEntry,
+      )
     } catch (error) {
       throw new Error(`${options.path}: invalid reflection corpus`, {
         cause: error,
