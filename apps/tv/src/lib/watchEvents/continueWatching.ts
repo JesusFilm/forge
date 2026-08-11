@@ -188,3 +188,31 @@ export async function getResumePosition(
   const entry = entries.find((e) => e.videoId === videoId)
   return entry ? entry.positionSeconds : null
 }
+
+/**
+ * Locked read-modify-write over the WHOLE shelf, for bulk folds (the account
+ * hydrate in `watchProgressSync.ts`). `mutate` must be pure; it runs inside
+ * the shelf lock so a concurrent `saveResumeSnapshot` cannot interleave
+ * between the read and the write. The result is re-capped defensively.
+ */
+export async function updateContinueWatching(
+  mutate: (entries: ContinueWatchingEntry[]) => ContinueWatchingEntry[],
+): Promise<void> {
+  await withShelfLock(async () => {
+    try {
+      const storage = getStorage()
+      const next = mutate(
+        parseContinueWatching(
+          await storage.getItem(CONTINUE_WATCHING_STORAGE_KEY),
+        ),
+      ).slice(0, MAX_CONTINUE_WATCHING)
+      if (next.length === 0) {
+        await storage.removeItem(CONTINUE_WATCHING_STORAGE_KEY)
+        return
+      }
+      await storage.setItem(CONTINUE_WATCHING_STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Best-effort only.
+    }
+  })
+}
