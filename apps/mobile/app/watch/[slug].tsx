@@ -64,7 +64,6 @@ import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
 import {
   BACK_BUTTON_PROPS,
   PLAYER_HEIGHT_RATIO,
-  PLAYER_SIDE_PADDING,
 } from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
@@ -295,10 +294,9 @@ export default function WatchVideoPage() {
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
       const screenWidth = e.nativeEvent.layoutMeasurement.width
-      // The inline player is inset PLAYER_SIDE_PADDING per side, so its real
-      // 16:9 height is shorter than the full screen width would imply.
-      const playerHeight =
-        (screenWidth - PLAYER_SIDE_PADDING * 2) * PLAYER_HEIGHT_RATIO
+      // The inline player is full-bleed, so its 16:9 height comes from the
+      // whole measured width.
+      const playerHeight = screenWidth * PLAYER_HEIGHT_RATIO
       setShowScrollTop(scrollY > playerHeight)
     },
     [],
@@ -409,12 +407,9 @@ export default function WatchVideoPage() {
     return (
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
-        {/* Match the loaded player's dock (top safe edge + side inset) so the
-            player block doesn't jump when canonical data lands. */}
-        <VideoDetailSkeleton
-          playerTopInset={insets.top}
-          playerHorizontalInset={PLAYER_SIDE_PADDING}
-        />
+        {/* Match the loaded player's dock (top safe edge, full-bleed sides) so
+            the player block doesn't jump when canonical data lands. */}
+        <VideoDetailSkeleton playerTopInset={insets.top} />
         <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
@@ -476,7 +471,7 @@ export default function WatchVideoPage() {
 
       {/* Player pinned at route root (outside ScrollView) so its fullscreen can
           expand to an absolute-fill overlay without reparenting (which would
-          release the expo-video player). Inline: top safe edge + side inset. */}
+          release the expo-video player). Inline: top safe edge, full-bleed. */}
       <View
         style={
           isFullscreen
@@ -485,10 +480,7 @@ export default function WatchVideoPage() {
               // is sibling-scoped, so the player's own zIndex can't escape this
               // wrapper to clear the later-painted ScrollView on its own.
               styles.playerDockFullscreen
-            : {
-                paddingTop: insets.top,
-                paddingHorizontal: PLAYER_SIDE_PADDING,
-              }
+            : { paddingTop: insets.top }
         }
       >
         {playerSource == null ? (
@@ -497,7 +489,6 @@ export default function WatchVideoPage() {
           // something unplayable.
           <PlayerPoster
             posterUrl={displayPoster}
-            horizontalInset={PLAYER_SIDE_PADDING}
             // Spin only while the stream is still being resolved — once the
             // query settles, a null source means unplayable, not pending.
             loading={loading && error == null}
@@ -510,7 +501,6 @@ export default function WatchVideoPage() {
             onPlayingChange={undefined}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            horizontalInset={PLAYER_SIDE_PADDING}
             progressIdentity={
               // Offline playback may predate the record load — the slug is
               // the on-device key admin resolves server-side (KTD8).
