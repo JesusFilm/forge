@@ -17,6 +17,19 @@ function displayToken(value: string | null | undefined) {
   return value?.replaceAll("_", " ").replaceAll("-", " ") ?? "None"
 }
 
+export function comparisonThumbnailUrl(result: {
+  type: "video" | "experience"
+  imageUrl: string | null
+  playbackId: string | null
+  startSeconds: number | null
+}) {
+  if (result.imageUrl) return result.imageUrl
+  if (result.type !== "video" || !result.playbackId) return null
+
+  const time = result.startSeconds != null ? `&time=${result.startSeconds}` : ""
+  return `https://image.mux.com/${encodeURIComponent(result.playbackId)}/thumbnail.jpg?width=640&height=360&fit_mode=smartcrop${time}`
+}
+
 function ResultPane({
   label,
   side,
@@ -133,46 +146,71 @@ function ResultPane({
             No results
           </div>
         ) : (
-          response.results.map((result, index) => (
-            <article key={`${result.type}-${result.id}`} className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="mono-meta text-[var(--color-text-muted)]">
-                    #{index + 1} / {result.type} / video ID {result.id}
+          response.results.map((result, index) => {
+            const thumbnailUrl = comparisonThumbnailUrl(result)
+            return (
+              <article key={`${result.type}-${result.id}`} className="p-4">
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="aspect-video w-full shrink-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] sm:w-40">
+                    {thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumbnailUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center font-mono text-2xl text-[var(--color-text-muted)]">
+                        {result.title.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
                   </div>
-                  <h4 className="mt-1 truncate font-medium">{result.title}</h4>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="mono-meta text-[var(--color-text-muted)]">
+                          #{index + 1} / {result.type} / video ID {result.id}
+                        </div>
+                        <h4 className="mt-1 truncate font-medium">
+                          {result.title}
+                        </h4>
+                      </div>
+                      <div className="font-mono text-xs">
+                        {result.score.toFixed(3)}
+                      </div>
+                    </div>
+                    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                      <Metric
+                        label="Content language"
+                        value={
+                          result.languageEnglishName ??
+                          displayToken(result.languageSlug)
+                        }
+                      />
+                      <Metric
+                        label="Evidence"
+                        value={`${displayToken(result.evidence.kind)} / ${displayToken(result.evidence.languageSlug)}`}
+                      />
+                      <Metric
+                        label="Playback"
+                        value={`${displayToken(result.availability.kind)} / ${displayToken(result.availability.languageSlug)}`}
+                      />
+                      <Metric
+                        label="Action language"
+                        value={displayToken(result.action.hrefLanguageSlug)}
+                      />
+                      <Metric
+                        label="Playback ID"
+                        value={result.playbackId ?? "Unavailable"}
+                      />
+                    </dl>
+                  </div>
                 </div>
-                <div className="font-mono text-xs">
-                  {result.score.toFixed(3)}
-                </div>
-              </div>
-              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                <Metric
-                  label="Content language"
-                  value={
-                    result.languageEnglishName ??
-                    displayToken(result.languageSlug)
-                  }
-                />
-                <Metric
-                  label="Evidence"
-                  value={`${displayToken(result.evidence.kind)} / ${displayToken(result.evidence.languageSlug)}`}
-                />
-                <Metric
-                  label="Playback"
-                  value={`${displayToken(result.availability.kind)} / ${displayToken(result.availability.languageSlug)}`}
-                />
-                <Metric
-                  label="Action language"
-                  value={displayToken(result.action.hrefLanguageSlug)}
-                />
-                <Metric
-                  label="Playback ID"
-                  value={result.playbackId ?? "Unavailable"}
-                />
-              </dl>
-            </article>
-          ))
+              </article>
+            )
+          })
         )}
       </div>
     </div>
