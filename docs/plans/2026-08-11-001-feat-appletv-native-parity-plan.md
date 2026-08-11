@@ -127,6 +127,28 @@ compositing). Two tvOS-platform facts survive framework change and bind us:
 
 ---
 
+## 🔴 Finding 4 — collections have no playable dubs (found on device, PR2)
+
+Verified in the simulator against production: `lumo-the-gospel-of-matthew`
+returns **56 published dubs, 0 with `hls`, 0 with a `playbackId`**. The
+playable media lives on its CHILD episodes; the collection record itself is
+metadata. The language sheet correctly showed every row as "Unavailable" —
+the app was right, the routing was wrong.
+
+This upgrades the PR1 known-gap (no label on `MediaCollectionItem`, so every
+card routes to `/watch`) from cosmetic to **blocking**: opening a collection
+on the watch screen is a dead end with a disabled Play button and 56
+unusable languages.
+
+Two fixes, both already in the plan, now sequenced earlier:
+
+- **R7 series screen** (PR3) is the real destination for these records.
+- **A redirect guard on the watch screen**: `videoBySlug.label` IS available
+  on the record once loaded (it renders as the eyebrow — "COLLECTION"), so
+  the watch screen can detect a series-shaped record and redirect, exactly
+  as RN does with its redirect frame. This does not need the pool query and
+  should land with PR3 rather than waiting for PR4's label plumbing.
+
 ## Technical Approach
 
 ### Architecture
