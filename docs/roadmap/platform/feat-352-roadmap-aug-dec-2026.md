@@ -37,14 +37,14 @@ roadmap.
 ## Grep These
 
 - `PLANNED_WEEK_COUNT|PLANNED_PHASES|PLANNED_TRACK_BARS` in `apps/roadmap/`
-- `Delivery Planned|Delivery Actual|Research` in `apps/roadmap/`
+- `Delivery Planned|Research|future-work` in `apps/roadmap/`
 - `Open Task View` in `apps/roadmap/`
 
 ## What To Build
 
 1. Extend the existing weekly calendar from August 10 through December 31, 2026.
-2. Preserve every April-August planned, actual, agent, mobile, TV, and milestone
-   item in the same timeline.
+2. Preserve every April-August planned phase and keep actual-delivery history in
+   the detail cards while removing the standalone actual-delivery timeline row.
 3. Populate five four-week blocks after August 10 with the agreed owner-led
    workstreams: access and app release; search quality and discovery; reusable
    components and NextSteps; media and language generation; and always-on agent
@@ -54,6 +54,8 @@ roadmap.
    scrolled horizontally.
 6. On first load, position the calendar around the current week without
    overriding later manual scrolling.
+7. Continue the five year-end priority blocks in the Delivery Planned row and
+   mark the completed April-August phases with a clear completion treatment.
 
 ## Year-End Workstreams
 
@@ -77,8 +79,8 @@ roadmap.
 
 - Keep the strategic roadmap as explicit editorial content; do not infer it
   from task status.
-- Historical roadmap content is append-only and must remain in its original
-  timeline.
+- Retain historical roadmap detail data while consolidating the timeline into a
+  simpler delivery view.
 - Do not change the filesystem-backed task data model.
 - Keep each priority concise while preserving its concrete deliverables in the
   detail cards.
@@ -91,9 +93,10 @@ roadmap.
 - `pnpm --filter roadmap generate:readme`
 - `git diff --check`
 - Browser smoke on `http://127.0.0.1:3100/roadmap` confirms one timeline spans
-  April through December, every original item remains visible, all five
-  four-week priorities appear after August 10, and `/contributions` remains
-  linked. Confirm the track labels remain pinned during horizontal scrolling
-  and the initial view includes the current week. Record reload-to-visible
-  timing, rendered element count, horizontal overflow behavior, and console
-  errors for the expanded timeline.
+  April through December with only Delivery Planned and Research rows. Confirm
+  the historical delivery bars show completion, the five four-week priorities
+  continue in Delivery Planned, actual-history detail cards remain available,
+  and `/contributions` remains linked. Confirm the track labels remain pinned
+  during horizontal scrolling and the initial view includes the current week.
+  Record reload-to-visible timing, rendered element count, horizontal overflow
+  behavior, and console errors for the expanded timeline.

@@ -32,7 +32,6 @@ const TRACK_ROW_VERTICAL_INSET_PX = 10
 const TRACK_SUBLANE_GAP_PX = 8
 const TRACK_ROW_HEIGHT_PX = 116
 const STACKED_TRACK_ROW_HEIGHT_PX = 168
-const ACTUAL_DELIVERY_ROW_HEIGHT_PX = 144
 
 const TONE_STYLES: Record<
   PlannedTone,
@@ -85,6 +84,18 @@ const TONE_STYLES: Record<
     card: "border-red-500/30 bg-red-500/8",
     accent: "text-red-200",
   },
+}
+
+function CompletionCheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="h-3 w-3 fill-none stroke-current stroke-[2.25]"
+    >
+      <path d="m3.5 8 3 3 6-6" />
+    </svg>
+  )
 }
 
 function weekLeftPct(startWeek: number): number {
@@ -142,16 +153,6 @@ function getTimelineTargetId(item: PlannedPhase | PlannedTrackBar) {
     : getTrackSectionId(item.id)
 }
 
-function getOverdueLeftPct(item: PlannedPhase | PlannedTrackBar) {
-  if (!("overdueStartWeek" in item) || item.overdueStartWeek === undefined) {
-    return null
-  }
-
-  const overdueOffsetWeeks = item.overdueStartWeek - item.startWeek
-
-  return Math.max(0, Math.min(100, (overdueOffsetWeeks / item.spanWeeks) * 100))
-}
-
 function TimelineBar({
   item,
   topPx,
@@ -165,38 +166,33 @@ function TimelineBar({
   const leftPct = weekLeftPct(item.startWeek)
   const widthPct = weekWidthPct(item.spanWeeks)
   const isCompact = heightPx <= 52
-  const isActualDelivery = item.track.startsWith("actual-")
-  const overdueLeftPct = getOverdueLeftPct(item)
+  const isCompleted = isPlannedPhase(item) && item.completed
   const showBadge = Boolean(item.badge) && !isCompact
   const targetId = getTimelineTargetId(item)
   return (
     <a
       href={`#${targetId}`}
+      data-completed={isCompleted ? "true" : undefined}
       className={`absolute overflow-hidden rounded-xl shadow-[0_10px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm transition-[transform,filter,box-shadow] duration-150 hover:-translate-y-0.5 hover:brightness-125 hover:saturate-140 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-white/30 ${tone.bar} ${
         isCompact ? "px-4 py-1.5" : "px-3 py-2"
-      } ${isActualDelivery ? "flex items-center" : ""}`}
+      } ${isCompleted ? "ring-1 ring-inset ring-emerald-400/30" : ""}`}
       style={{
         left: `calc(${leftPct}% + ${TIMELINE_BAR_GAP_PX / 2}px)`,
         width: `calc(${widthPct}% - ${TIMELINE_BAR_GAP_PX}px)`,
         top: `${topPx}px`,
         height: `${heightPx}px`,
       }}
-      aria-label={`Jump to ${item.title} details`}
+      aria-label={`Jump to ${isCompleted ? "completed " : ""}${item.title} details`}
     >
       <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-white/6" />
-      {overdueLeftPct !== null && (
-        <div
-          className="pointer-events-none absolute top-0 right-0 bottom-0"
-          style={{
-            left: `${overdueLeftPct}%`,
-            backgroundImage:
-              "repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 5px)",
-          }}
-        >
-          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-semibold tracking-[0.18em] whitespace-nowrap text-white/45">
-            DELAYED
-          </span>
-        </div>
+      {isCompleted && (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-emerald-400/12 via-transparent to-transparent" />
+          <div className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-full border border-emerald-300/25 bg-emerald-400/15 px-2 py-0.5 text-[9px] font-semibold tracking-wide text-emerald-100 uppercase">
+            <CompletionCheckIcon />
+            Done
+          </div>
+        </>
       )}
       {showBadge && (
         <div className="flex items-center gap-2">
@@ -209,24 +205,20 @@ function TimelineBar({
       )}
       <div
         className={`relative z-10 truncate font-semibold text-white ${
-          isCompact || isActualDelivery
-            ? "text-[13px] leading-4"
-            : "mt-1 text-sm leading-5"
+          isCompact ? "text-[13px] leading-4" : "mt-1 text-sm leading-5"
         }`}
       >
         {item.title}
       </div>
-      {!isActualDelivery && (
-        <div
-          className={`relative z-10 text-stone-300 ${
-            isCompact
-              ? "mt-0.5 line-clamp-2 text-[10px] leading-3.5"
-              : "line-clamp-2 text-[11px] leading-4"
-          }`}
-        >
-          {item.summary}
-        </div>
-      )}
+      <div
+        className={`relative z-10 text-stone-300 ${
+          isCompact
+            ? "mt-0.5 line-clamp-2 text-[10px] leading-3.5"
+            : "line-clamp-2 text-[11px] leading-4"
+        }`}
+      >
+        {item.summary}
+      </div>
     </a>
   )
 }
@@ -251,13 +243,8 @@ function TrackRow({
         bars: getBarsForTrackIds(sublane.trackIds),
       }))
     : [{ id: row.id, bars: getBarsForTrackIds(row.trackIds) }]
-  const isActualDeliveryRow = row.id === "delivery-actual"
   const rowHeightPx =
-    lanes.length > 1
-      ? isActualDeliveryRow
-        ? ACTUAL_DELIVERY_ROW_HEIGHT_PX
-        : STACKED_TRACK_ROW_HEIGHT_PX
-      : TRACK_ROW_HEIGHT_PX
+    lanes.length > 1 ? STACKED_TRACK_ROW_HEIGHT_PX : TRACK_ROW_HEIGHT_PX
   const laneHeightPx =
     (rowHeightPx -
       TRACK_ROW_VERTICAL_INSET_PX * 2 -
@@ -286,7 +273,6 @@ function TrackRow({
         <div className="absolute inset-0">{renderWeekGuides()}</div>
         <div className="absolute top-0 right-0 bottom-0 border-r border-stone-800" />
         {lanes.length > 1 &&
-          !isActualDeliveryRow &&
           lanes.slice(0, -1).map((lane, index) => (
             <div
               key={`${row.id}-${lane.id}-divider`}
@@ -323,7 +309,8 @@ function PhaseCard({ phase }: { phase: PlannedPhase }) {
   return (
     <div
       id={getPhaseSectionId(phase.id)}
-      className={`scroll-mt-24 rounded-2xl border p-4 ${tone.card}`}
+      data-completed={phase.completed ? "true" : undefined}
+      className={`scroll-mt-24 rounded-2xl border p-4 ${tone.card} ${phase.completed ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <span
@@ -333,6 +320,12 @@ function PhaseCard({ phase }: { phase: PlannedPhase }) {
         </span>
         {track && (
           <span className="text-[11px] text-stone-500">{track.label}</span>
+        )}
+        {phase.completed && (
+          <span className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-200 uppercase">
+            <CompletionCheckIcon />
+            Completed
+          </span>
         )}
       </div>
       <h3 className="mt-3 text-base font-semibold text-white">{phase.title}</h3>
@@ -531,6 +524,12 @@ export default function PlannedRoadmapTimeline() {
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-sm bg-stone-700" />{" "}
             Year-end priorities
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400/20 text-[10px] font-bold text-emerald-200">
+              <CompletionCheckIcon />
+            </span>
+            Completed
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />{" "}

@@ -46,6 +46,7 @@ export type PlannedPhase = {
   id: string
   title: string
   shortTitle: string
+  completed: boolean
   track: PlannedTrackId
   tone: PlannedTone
   startWeek: number
@@ -66,7 +67,6 @@ export type PlannedTrackBar = {
   spanWeeks: number
   badge?: string
   details?: string[]
-  overdueStartWeek?: number
 }
 
 type FutureWorkPriority = Pick<
@@ -248,33 +248,8 @@ export const PLANNED_TIMELINE_ROWS: PlannedTimelineRow[] = [
   {
     id: "delivery-planned",
     label: "Delivery Planned",
-    description: "Original migration release plan",
-    trackIds: ["foundation", "surface", "search"],
-  },
-  {
-    id: "delivery-actual",
-    label: "Delivery Actual",
-    description: "Current delivery reality and shifted forecast",
-    trackIds: [
-      "actual-foundation",
-      "actual-player",
-      "actual-surface",
-      "actual-search",
-    ],
-    sublanes: [
-      {
-        id: "actual-foundation",
-        trackIds: ["actual-foundation"],
-      },
-      {
-        id: "actual-player",
-        trackIds: ["actual-player"],
-      },
-      {
-        id: "actual-follow-on",
-        trackIds: ["actual-surface", "actual-search"],
-      },
-    ],
+    description: "Completed releases and year-end priorities",
+    trackIds: ["foundation", "surface", "search", "future-work"],
   },
   {
     id: "experimentation",
@@ -292,12 +267,6 @@ export const PLANNED_TIMELINE_ROWS: PlannedTimelineRow[] = [
       },
     ],
   },
-  {
-    id: "future-work",
-    label: "Future Work",
-    description: "Four-week priorities from August through December",
-    trackIds: ["future-work"],
-  },
 ]
 
 export const PLANNED_PHASES: PlannedPhase[] = [
@@ -305,6 +274,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-0",
     title: "Foundation",
     shortTitle: "Foundation",
+    completed: true,
     track: "foundation",
     tone: "stone",
     startWeek: 0,
@@ -337,6 +307,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-1",
     title: "Replace Player Page",
     shortTitle: "Replace Player Page",
+    completed: true,
     track: "surface",
     tone: "amber",
     startWeek: 2,
@@ -359,6 +330,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-2",
     title: "Experiences Rollout",
     shortTitle: "Experiences Rollout",
+    completed: true,
     track: "surface",
     tone: "amber",
     startWeek: 4,
@@ -381,6 +353,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-3",
     title: "Search Rollout",
     shortTitle: "Search Rollout",
+    completed: true,
     track: "search",
     tone: "sky",
     startWeek: 6,
@@ -407,6 +380,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-4",
     title: "Watch Homepage",
     shortTitle: "Watch Homepage",
+    completed: true,
     track: "surface",
     tone: "amber",
     startWeek: 8,
@@ -429,6 +403,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-5",
     title: "i18n + Stability",
     shortTitle: "i18n + Stability",
+    completed: true,
     track: "foundation",
     tone: "stone",
     startWeek: 10,
@@ -451,6 +426,7 @@ export const PLANNED_PHASES: PlannedPhase[] = [
     id: "phase-6",
     title: "Old Watch Shutdown",
     shortTitle: "Old Watch Shutdown",
+    completed: true,
     track: "foundation",
     tone: "stone",
     startWeek: 12,
@@ -547,7 +523,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 0,
     spanWeeks: 5,
     badge: "Actual W1-5",
-    overdueStartWeek: 2,
     details: [
       "Foundation work ran from W1 through the end of W5",
       "Kept CMS, data, infrastructure, stability, and migration base visible as actual delivery",
@@ -562,7 +537,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 2,
     spanWeeks: 4,
     badge: "Actual W3-6",
-    overdueStartWeek: 4,
     details: [
       "Player page replacement moved from the planned W3-W4 window to W3-W6",
       "Keeps the player release connected to the extended foundation work",
@@ -578,7 +552,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 5,
     spanWeeks: 2,
     badge: "Actual W6-7",
-    overdueStartWeek: 6,
     details: ["Experiences rollout starts in W6", "Duration remains two weeks"],
   },
   {
@@ -590,7 +563,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 7,
     spanWeeks: 2,
     badge: "Actual W8-9",
-    overdueStartWeek: 8,
     details: [
       "Search rollout keeps the planned two-week duration",
       "Starts after the shifted experiences rollout",
@@ -605,7 +577,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 9,
     spanWeeks: 2,
     badge: "Actual W10-11",
-    overdueStartWeek: 10,
     details: [
       "Homepage rollout keeps the planned two-week duration",
       "Follows the shifted search rollout",
@@ -620,7 +591,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 11,
     spanWeeks: 2,
     badge: "Actual W12-13",
-    overdueStartWeek: 12,
     details: [
       "Internationalization and stability keep the planned two-week duration",
       "Moves with the shifted delivery forecast",
@@ -635,7 +605,6 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
     startWeek: 13,
     spanWeeks: 2,
     badge: "Actual W14-15",
-    overdueStartWeek: 14,
     details: [
       "Old Watch shutdown keeps the planned two-week duration",
       "Moves to W14-W15 after the shifted stability block",

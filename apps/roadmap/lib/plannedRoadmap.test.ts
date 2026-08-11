@@ -4,6 +4,7 @@ import {
   PLANNED_END_ISO,
   PLANNED_PHASES,
   PLANNED_START_ISO,
+  PLANNED_TIMELINE_ROWS,
   PLANNED_TRACK_BARS,
   PLANNED_WEEK_COUNT,
   PLANNED_WEEKS,
@@ -87,6 +88,20 @@ describe("planned roadmap", () => {
       { startWeek: 27, spanWeeks: 4 },
       { startWeek: 31, spanWeeks: 4 },
     ])
+  })
+
+  it("uses one delivery row for completed releases and future priorities", () => {
+    expect(PLANNED_TIMELINE_ROWS.map(({ id }) => id)).toEqual([
+      "delivery-planned",
+      "experimentation",
+    ])
+    expect(PLANNED_TIMELINE_ROWS[0]?.trackIds).toEqual([
+      "foundation",
+      "surface",
+      "search",
+      "future-work",
+    ])
+    expect(PLANNED_PHASES.every(({ completed }) => completed)).toBe(true)
   })
 
   it("keeps every timeline item unique and within the calendar", () => {
