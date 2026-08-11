@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
+import type { WatchSearchComparisonView } from "./comparison-actions"
+
 const requireCurrentAdminEvaluator = vi.fn()
 const loadWatchSearchLanguageOptions = vi.fn()
 const notFound = vi.fn(() => {
@@ -22,8 +24,11 @@ vi.mock("@/services/watch-search-language-options.service", () => ({
 vi.mock("next/navigation", () => ({ notFound }))
 
 const { default: ComparePage } = await import("./page")
-const { WatchSearchComparison, WatchSearchComparisonPanes } =
-  await import("./watch-search-comparison")
+const {
+  WatchSearchComparison,
+  WatchSearchComparisonPanes,
+  comparisonThumbnailUrl,
+} = await import("./watch-search-comparison")
 
 const previousServerFormSchema = z
   .object({
@@ -51,6 +56,47 @@ function renderedFormValues(html: string) {
       exampleValues[name!],
     ]),
   )
+}
+
+type SuccessfulComparisonSide = Extract<
+  WatchSearchComparisonView["current"],
+  { status: "success" }
+>
+type ComparisonResult = SuccessfulComparisonSide["response"]["results"][number]
+
+function comparisonResult(
+  overrides: Partial<ComparisonResult> = {},
+): ComparisonResult {
+  return {
+    type: "video",
+    id: "video-current",
+    slug: "jesus",
+    title: "JESUS",
+    imageUrl: "https://images.example.com/jesus.jpg",
+    playbackId: "playback-current",
+    startSeconds: null,
+    score: 1,
+    label: "FEATURE_FILM",
+    durationSeconds: 120,
+    childCount: null,
+    languageSlug: "japanese",
+    languageEnglishName: "Japanese",
+    availability: {
+      kind: "target_audio",
+      languageSlug: "japanese",
+      languageEnglishName: "Japanese",
+      audio: true,
+      subtitles: false,
+    },
+    evidence: {
+      kind: "exact_title",
+      languageSlug: "japanese",
+      label: "イエス",
+    },
+    action: { kind: "watch", hrefLanguageSlug: "japanese" },
+    fallback: { kind: "none", message: null },
+    ...overrides,
+  }
 }
 
 describe("search comparison page", () => {
@@ -137,6 +183,35 @@ describe("search comparison page", () => {
     expect(markupBytes).toBeLessThan(300_000)
   })
 
+  it("uses curated thumbnails before a Mux playback fallback", () => {
+    expect(
+      comparisonThumbnailUrl({
+        type: "video",
+        imageUrl: "https://images.example.com/curated.jpg",
+        playbackId: "playback-1",
+        startSeconds: 12,
+      }),
+    ).toBe("https://images.example.com/curated.jpg")
+    expect(
+      comparisonThumbnailUrl({
+        type: "video",
+        imageUrl: null,
+        playbackId: "playback-1",
+        startSeconds: 12,
+      }),
+    ).toBe(
+      "https://image.mux.com/playback-1/thumbnail.jpg?width=640&height=360&fit_mode=smartcrop&time=12",
+    )
+    expect(
+      comparisonThumbnailUrl({
+        type: "experience",
+        imageUrl: null,
+        playbackId: null,
+        startSeconds: null,
+      }),
+    ).toBeNull()
+  })
+
   it("keeps the successful pane visible beside an independently failed pane", () => {
     const html = renderToStaticMarkup(
       <WatchSearchComparisonPanes
@@ -149,34 +224,19 @@ describe("search comparison page", () => {
               response: {
                 query: "Jesus",
                 results: [
-                  {
-                    type: "video",
-                    id: "video-current",
-                    slug: "jesus",
-                    title: "JESUS",
-                    playbackId: "playback-current",
-                    startSeconds: null,
-                    score: 1,
-                    label: "FEATURE_FILM",
-                    durationSeconds: 120,
-                    childCount: null,
-                    languageSlug: "japanese",
-                    languageEnglishName: "Japanese",
-                    availability: {
-                      kind: "target_audio",
-                      languageSlug: "japanese",
-                      languageEnglishName: "Japanese",
-                      audio: true,
-                      subtitles: false,
-                    },
-                    evidence: {
-                      kind: "exact",
-                      languageSlug: "japanese",
-                      label: "イエス",
-                    },
-                    action: { kind: "watch", hrefLanguageSlug: "japanese" },
-                    fallback: { kind: "none", message: null },
-                  },
+                  comparisonResult(),
+                  comparisonResult({
+                    id: "video-fallback",
+                    title: "Hope",
+                    imageUrl: null,
+                    playbackId: "playback-fallback",
+                  }),
+                  comparisonResult({
+                    id: "video-placeholder",
+                    title: "Hope",
+                    imageUrl: null,
+                    playbackId: null,
+                  }),
                 ],
                 hasMore: false,
                 nextOffset: 10,
@@ -226,7 +286,7 @@ describe("search comparison page", () => {
               status: "error",
               error: { code: "search_failed", errorClass: "Error" },
             },
-          } as never
+          } satisfies WatchSearchComparisonView
         }
       />,
     )
@@ -234,6 +294,14 @@ describe("search comparison page", () => {
     expect(html).toContain("Candidate")
     expect(html).toContain("JESUS")
     expect(html).toContain("video-current")
+    expect(html).toContain('src="https://images.example.com/jesus.jpg"')
+    expect(html).toContain(
+      'src="https://image.mux.com/playback-fallback/thumbnail.jpg?width=640&amp;height=360&amp;fit_mode=smartcrop"',
+    )
+    expect(html.match(/<img/g)).toHaveLength(2)
+    expect(html).toContain(">H</div>")
+    expect(html).toContain('loading="lazy"')
+    expect(html).toContain('decoding="async"')
     expect(html).toContain("Japanese")
     expect(html).toContain("target audio")
     expect(html).toContain("Candidate search failed")
