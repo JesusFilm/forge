@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const requireAdminSession = vi.fn()
 const findUnique = vi.fn()
 const compare = vi.fn()
+const resolveWatchSearchLanguageSelection = vi.fn()
 const createTypesenseWatchSearchComparisonService = vi.fn(() => ({ compare }))
 const projectWatchSearchComparisonResult = vi.fn((value) => value)
 const redirect = vi.fn((path: string) => {
@@ -24,6 +25,9 @@ vi.mock("@/services/typesense-watch-search-comparison.service", () => ({
 }))
 vi.mock("@/services/search-trace-privacy", () => ({
   projectWatchSearchComparisonResult,
+}))
+vi.mock("@/services/watch-search-language-options.service", () => ({
+  resolveWatchSearchLanguageSelection,
 }))
 
 const { runWatchSearchComparison } = await import("./comparison-actions")
@@ -53,6 +57,12 @@ describe("runWatchSearchComparison", () => {
     requireAdminSession.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
     findUnique.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
     compare.mockResolvedValue(comparison)
+    resolveWatchSearchLanguageSelection.mockImplementation(
+      async (slug: string) =>
+        slug === "japanese"
+          ? { targetLanguageSlug: "japanese", locale: "ja-JP" }
+          : null,
+    )
   })
 
   it("revalidates the live Admin and runs one bounded comparison", async () => {
@@ -60,8 +70,7 @@ describe("runWatchSearchComparison", () => {
       { status: "idle" },
       form({
         query: "  Jesus Japanese  ",
-        locale: "ja-JP",
-        targetLanguageSlug: "japanese",
+        languageSelection: "japanese",
         page: "2",
         perPage: "10",
         contentType: "video",
@@ -73,6 +82,7 @@ describe("runWatchSearchComparison", () => {
       where: { id: "admin-1" },
       select: { id: true, role: true },
     })
+    expect(resolveWatchSearchLanguageSelection).toHaveBeenCalledWith("japanese")
     expect(compare).toHaveBeenCalledWith({
       actorKey: createHmac("sha256", mockEnv.ADMIN_SESSION_SECRET)
         .update("watch-search-comparison-actor\0")
@@ -127,7 +137,7 @@ describe("runWatchSearchComparison", () => {
     for (const values of [
       { query: "Jesus", generationId: "forged" },
       { query: "x".repeat(201) },
-      { query: "Jesus", locale: "not a locale" },
+      { query: "Jesus", targetLanguageSlug: "japanese|ja-JP" },
       { query: "Jesus", targetLanguageSlug: "../secret" },
       { query: "Jesus", page: "0" },
       { query: "Jesus", perPage: "51" },
@@ -139,6 +149,124 @@ describe("runWatchSearchComparison", () => {
         message: "Check the comparison inputs and try again",
       })
     }
+    expect(compare).not.toHaveBeenCalled()
+  })
+
+  it("keeps language hints empty when automatic detection is selected", async () => {
+    await runWatchSearchComparison(
+      { status: "idle" },
+      form({ query: "Jesus", targetLanguageSlug: "" }),
+    )
+
+    expect(resolveWatchSearchLanguageSelection).not.toHaveBeenCalled()
+    expect(compare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          targetLanguageSlug: undefined,
+          displayLanguageSlug: undefined,
+          acceptLanguage: undefined,
+        }),
+      }),
+    )
+  })
+
+  it("rejects a language slug that is not in the canonical catalog", async () => {
+    resolveWatchSearchLanguageSelection.mockResolvedValueOnce(null)
+
+    await expect(
+      runWatchSearchComparison(
+        { status: "idle" },
+        form({ query: "Jesus", targetLanguageSlug: "unknown-language" }),
+      ),
+    ).resolves.toEqual({
+      status: "error",
+      message: "Check the comparison inputs and try again",
+    })
+    expect(compare).not.toHaveBeenCalled()
+  })
+
+  it("uses catalog membership instead of guessing the canonical slug shape", async () => {
+    resolveWatchSearchLanguageSelection.mockResolvedValueOnce({
+      targetLanguageSlug: "Japanese_Variant",
+      locale: "ja-JP",
+    })
+
+    await runWatchSearchComparison(
+      { status: "idle" },
+      form({ query: "Jesus", targetLanguageSlug: "Japanese_Variant" }),
+    )
+
+    expect(resolveWatchSearchLanguageSelection).toHaveBeenCalledWith(
+      "Japanese_Variant",
+    )
+    expect(compare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          targetLanguageSlug: "Japanese_Variant",
+          acceptLanguage: "ja-JP",
+        }),
+      }),
+    )
+  })
+
+  it("does not silently auto-detect when explicit language resolution fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    resolveWatchSearchLanguageSelection.mockRejectedValueOnce(
+      new Error("database details must not be logged"),
+    )
+
+    await expect(
+      runWatchSearchComparison(
+        { status: "idle" },
+        form({ query: "Jesus", targetLanguageSlug: "japanese" }),
+      ),
+    ).resolves.toEqual({
+      status: "error",
+      message: "Candidate comparison is temporarily unavailable",
+    })
+    expect(compare).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("error_class=Error"),
+    )
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("database details")
+  })
+
+  it("accepts the pre-dropdown field and ignores its legacy locale", async () => {
+    await runWatchSearchComparison(
+      { status: "idle" },
+      form({
+        query: "Jesus",
+        targetLanguageSlug: "japanese",
+        locale: "forged-locale",
+      }),
+    )
+
+    expect(resolveWatchSearchLanguageSelection).toHaveBeenCalledWith("japanese")
+    expect(compare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          targetLanguageSlug: "japanese",
+          acceptLanguage: "ja-JP",
+        }),
+      }),
+    )
+  })
+
+  it("rejects conflicting stable and transitional language fields", async () => {
+    await expect(
+      runWatchSearchComparison(
+        { status: "idle" },
+        form({
+          query: "Jesus",
+          targetLanguageSlug: "japanese",
+          languageSelection: "russian",
+        }),
+      ),
+    ).resolves.toEqual({
+      status: "error",
+      message: "Check the comparison inputs and try again",
+    })
+    expect(resolveWatchSearchLanguageSelection).not.toHaveBeenCalled()
     expect(compare).not.toHaveBeenCalled()
   })
 

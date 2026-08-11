@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 const requireCurrentAdminEvaluator = vi.fn()
+const loadWatchSearchLanguageOptions = vi.fn()
 const notFound = vi.fn(() => {
   throw new Error("not-found")
 })
@@ -14,10 +16,42 @@ vi.mock("./comparison-actions", () => ({
   requireCurrentAdminEvaluator,
   runWatchSearchComparison: vi.fn(),
 }))
+vi.mock("@/services/watch-search-language-options.service", () => ({
+  loadWatchSearchLanguageOptions,
+}))
 vi.mock("next/navigation", () => ({ notFound }))
 
 const { default: ComparePage } = await import("./page")
-const { WatchSearchComparisonPanes } = await import("./watch-search-comparison")
+const { WatchSearchComparison, WatchSearchComparisonPanes } =
+  await import("./watch-search-comparison")
+
+const previousServerFormSchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    languageSelection: z
+      .union([z.literal(""), z.string().trim().min(1)])
+      .optional(),
+    page: z.coerce.number().int().min(1).max(1_000).default(1),
+    perPage: z.coerce.number().int().min(1).max(50).default(10),
+    contentType: z.enum(["all", "video", "experience"]).default("all"),
+  })
+  .strict()
+
+function renderedFormValues(html: string) {
+  const exampleValues: Record<string, string> = {
+    query: "Jesus",
+    languageSelection: "japanese",
+    perPage: "10",
+    page: "1",
+    contentType: "video",
+  }
+  return Object.fromEntries(
+    [...html.matchAll(/\bname="([^"]+)"/g)].map(([, name]) => [
+      name,
+      exampleValues[name!],
+    ]),
+  )
+}
 
 describe("search comparison page", () => {
   beforeEach(() => {
@@ -27,6 +61,12 @@ describe("search comparison page", () => {
       id: "admin-1",
       role: "ADMIN",
     })
+    loadWatchSearchLanguageOptions.mockResolvedValue([
+      {
+        label: "Japanese — ja-JP",
+        value: "japanese",
+      },
+    ])
   })
 
   it("requires a live Admin and hides the route while disabled", async () => {
@@ -47,7 +87,54 @@ describe("search comparison page", () => {
     expect(html).toContain("Compare Watch search")
     expect(html).toContain("Current and candidate")
     expect(html).toContain('name="query"')
-    expect(html).toContain('name="targetLanguageSlug"')
+    expect(html).toContain('name="languageSelection"')
+    expect(html).toContain(
+      '<option value="" selected="">Auto-detect from query</option>',
+    )
+    expect(html).toContain('<option value="japanese">Japanese — ja-JP</option>')
+    expect(html).toContain("Japanese — ja-JP")
+    expect(html).not.toContain('name="targetLanguageSlug"')
+    expect(html).not.toContain('name="locale"')
+    expect(loadWatchSearchLanguageOptions).toHaveBeenCalledOnce()
+  })
+
+  it("keeps auto-detect available when the language catalog fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    loadWatchSearchLanguageOptions.mockRejectedValueOnce(
+      new Error("database details must not be logged"),
+    )
+
+    const html = renderToStaticMarkup(await ComparePage())
+
+    expect(html).toContain('name="languageSelection"')
+    expect(html).toContain("Auto-detect from query")
+    expect(html).not.toContain("Japanese — ja-JP")
+    expect(warn).toHaveBeenCalledWith(
+      "[watch-search] event=language_options_load_failed error_class=Error",
+    )
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("database details")
+  })
+
+  it("keeps this deployment's form compatible with the previous strict action", async () => {
+    const html = renderToStaticMarkup(await ComparePage())
+
+    expect(
+      previousServerFormSchema.safeParse(renderedFormValues(html)).success,
+    ).toBe(true)
+  })
+
+  it("keeps a representative full language catalog within its markup budget", () => {
+    const languageOptions = Array.from({ length: 2_300 }, (_, index) => ({
+      label: `Language ${index} — lng-${index}`,
+      value: `language-${index}`,
+    }))
+
+    const html = renderToStaticMarkup(
+      <WatchSearchComparison languageOptions={languageOptions} />,
+    )
+    const markupBytes = Buffer.byteLength(html, "utf8")
+
+    expect(markupBytes).toBeLessThan(300_000)
   })
 
   it("keeps the successful pane visible beside an independently failed pane", () => {
