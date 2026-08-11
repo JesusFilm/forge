@@ -638,7 +638,7 @@ export function FloatingSearchController({
         : stripLanguageFromSearchQuery(option.englishName, query)
       setQuery(nextQuery)
     },
-    [query],
+    [query, setQuery],
   )
 
   const selectSearchLanguage = useCallback(
