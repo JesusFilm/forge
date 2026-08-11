@@ -122,11 +122,11 @@ export const FloatingSearchFieldInput = forwardRef<
   return (
     <form
       role="search"
-      aria-label={t("searchRegion")}
+      aria-label={t("openSearch")}
       onSubmit={handleSubmit}
       className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} !gap-1 !px-2 !py-1 ${wrapperClassName ?? ""}`}
     >
-      <span className="inline-flex h-11 w-10 shrink-0 items-center justify-center text-stone-400">
+      <span className="inline-flex h-11 w-10 shrink-0 items-center justify-center text-stone-400 max-[359px]:w-0 max-[359px]:overflow-hidden">
         <Search
           aria-hidden
           data-testid={iconTestId}
@@ -144,20 +144,20 @@ export const FloatingSearchFieldInput = forwardRef<
       />
       <button
         type="submit"
-        aria-label={t("searchRegion")}
+        aria-label={t("openSearch")}
         aria-hidden={!hasValue}
         disabled={!hasValue}
         tabIndex={hasValue ? 0 : -1}
-        className={`inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-xl bg-stone-950 text-white transition-[width,opacity,padding,background-color,color,transform] duration-200 hover:bg-stone-700 active:scale-95 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2 ${
+        className={`inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-transparent text-stone-600 transition-[width,opacity,padding,background-color,border-color,color,transform] duration-200 hover:border-stone-400 hover:bg-stone-950/5 hover:text-stone-950 active:scale-95 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2 ${
           hasValue
-            ? "min-w-11 px-2 opacity-100"
+            ? "min-w-11 px-3 opacity-100"
             : "w-0 overflow-hidden px-0 opacity-0"
         }`}
       >
         <CornerDownLeft aria-hidden className="h-5 w-5 shrink-0" />
         <span
           aria-hidden
-          className="hidden whitespace-nowrap text-sm font-semibold sm:inline"
+          className="max-w-[6ch] truncate whitespace-nowrap text-sm font-medium sm:max-w-none"
         >
           {t("searchRegion")}
         </span>

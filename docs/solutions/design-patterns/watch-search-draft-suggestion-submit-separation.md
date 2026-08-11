@@ -168,14 +168,19 @@ The form remains native:
   <input type="search" enterKeyHint="search" />
   <button type="submit" disabled={!hasValue}>
     <CornerDownLeft aria-hidden />
-    <span>Search videos</span>
+    <span>Search</span>
   </button>
 </form>
 ```
 
-On narrow screens, the submit action may keep only the Enter icon visually, but
-its accessible name remains “Search videos.” Both submit and suggestion rows
-retain at least a 44 CSS-pixel touch target.
+On narrow screens, keep the short Search label beside the Enter icon so the
+action is discoverable without becoming a dominant CTA. Both submit and
+suggestion rows retain at least a 44 CSS-pixel touch target.
+Below 360 CSS pixels, the decorative leading magnifier may collapse so the
+editable query keeps usable space without shrinking either action target.
+Keep the full localized action as the accessible name and cap only the visible
+mobile label; this preserves meaning when a translation runs longer than the
+compact English copy.
 
 ### Measure the viewport the viewer actually has
 

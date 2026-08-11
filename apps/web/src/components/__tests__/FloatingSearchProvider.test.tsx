@@ -2469,17 +2469,24 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
     expect(mockedRunSearch).not.toHaveBeenCalled()
 
+    expect(form?.getAttribute("aria-label")).toBe("Search videos")
     expect(submitButton?.getAttribute("aria-label")).toBe("Search videos")
     expect(submitButton?.getAttribute("aria-hidden")).toBe("false")
     expect(submitButton?.className).toContain("h-11")
     expect(submitButton?.className).toContain("min-w-11")
     expect(submitButton?.className).toContain("opacity-100")
+    expect(submitButton?.className).toContain("border-stone-300")
+    expect(submitButton?.className).toContain("bg-transparent")
+    expect(submitButton?.className).not.toContain("bg-stone-950 text-white")
     expect(submitButton?.disabled).toBe(false)
-    expect(submitButton?.textContent).toContain("Search videos")
+    expect(submitButton?.textContent).toContain("Search")
     expect(submitButton?.querySelector("svg")).not.toBeNull()
-    expect(submitButton?.querySelector("span")?.className).toContain("hidden")
+    expect(leadingIcon?.parentElement?.className).toContain("max-[359px]:w-0")
+    expect(submitButton?.querySelector("span")?.className).not.toContain(
+      "hidden",
+    )
     expect(submitButton?.querySelector("span")?.className).toContain(
-      "sm:inline",
+      "max-w-[6ch]",
     )
 
     await act(async () => {

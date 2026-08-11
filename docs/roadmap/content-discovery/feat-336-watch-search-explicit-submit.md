@@ -5,7 +5,7 @@ owner: "urim"
 priority: "P1"
 status: "complete"
 start_date: "2026-08-05"
-completed_date: "2026-08-05"
+completed_date: "2026-08-11"
 duration: 1
 depends_on:
   - "feat-244"
@@ -60,7 +60,7 @@ rg -n "submitDebouncedSearch|instant shell|search input" apps/web/src/components
 4. Route Enter, the mobile Search key, and icon activation through the same
    submit event so one action starts at most one initial-page request.
 5. Reveal a localized Enter-key search label only for a non-empty draft, using
-   an icon-only action on phones to preserve the compact field and clear action.
+   a quiet outlined action with a visible label on desktop and phones.
 6. Preserve an exact submitted query snapshot across the instant-shell lazy
    handoff and consume the intent once; shell typing alone must not search.
 7. Preserve category, language, retry, reset, stale-request, and pagination
