@@ -1,9 +1,9 @@
 ---
 id: "feat-336"
-title: "August-December 2026 Strategic Roadmap"
+title: "Extend 2026 roadmap with year-end priorities"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-08-01"
 duration: 1
 depends_on: []
@@ -16,11 +16,10 @@ tags:
 
 ## Problem
 
-The strategic roadmap at `/roadmap` still presents the April-August migration
-plan and ends on August 10. The team has since shipped most of that foundation,
-and recent product meetings and Slack discussions have established a different
-set of priorities for the rest of 2026. Leaving the old plan in place makes the
-stakeholder view stale even though the task tracker continues to move.
+The strategic roadmap at `/roadmap` ends on August 10 even though the team needs
+calendar space to plan through the rest of 2026. The April-August plan is useful
+delivery history and must remain unchanged rather than being replaced by a new
+roadmap.
 
 ## Entry Points - Read These First
 
@@ -43,35 +42,42 @@ stakeholder view stale even though the task tracker continues to move.
 
 ## What To Build
 
-1. Add an August-December 2026 plan without removing the original April-August
-   delivery timeline.
-2. Organize the plan around evidence-backed outcomes:
-   - Watch reliability and operability
-   - optional accounts, playback continuity, and manual partner handoff
-   - YouTube-to-Watch/NextSteps journey validation
-   - human-reviewed devotional production and distribution
-   - multilingual translation quality and reviewer operations
-   - alternating mobile and TV delivery
-   - monthly demos, metrics review, and year-end 2027 planning
-3. Keep every phase concrete enough to expose its deliverable, safety boundary,
-   and exit criteria.
-4. Update the route framing and legend to match the new tracks.
-5. Preserve the original planned, actual, agent, mobile, and TV bars as a
-   clearly labeled delivery-history section.
-6. Preserve `/contributions` as the operational, file-backed task view.
+1. Extend the existing weekly calendar from August 10 through December 31, 2026.
+2. Preserve every April-August planned, actual, agent, mobile, TV, and milestone
+   item in the same timeline.
+3. Populate five four-week blocks after August 10 with the agreed owner-led
+   workstreams: access and app release; search quality and discovery; reusable
+   components and NextSteps; media and language generation; and always-on agent
+   operations.
+4. Preserve `/contributions` as the operational, file-backed task view.
+
+## Year-End Workstreams
+
+1. **Access + app release (Caleb, Urim, Up):** explore streaming delivery to
+   China, define the minimum releasable Mobile and TV MVP, and validate optional
+   QR-code TV sign-in plus player trade-offs.
+2. **Search quality + discovery (Nisal, Vlad):** improve recommendations,
+   Typesense ranking, language and subtitle indexing, dead-result discovery,
+   sub-second performance, and shareable search URLs.
+3. **Reusable components + NextSteps (Jaco, Jian Wei, Siyang, ZY, Vlad):**
+   define shared product components, present the plan to Miheret, deliver
+   ministry next steps, and add account, notification, usage, and story flows.
+4. **Media + language generation (Tatai, Lyuba, Caleb, Vlad):** keep video and
+   experience generation running, improve language support, complete Core and
+   Bible translation, and create verse pages and per-video FAQs.
+5. **Always-on agent operations (Tatai, Vlad):** create service-improvement
+   loops and operate SEO, maintenance, support, translation, crawler, and
+   performance agents in Mastra.
 
 ## Constraints
 
 - Keep the strategic roadmap as explicit editorial content; do not infer it
   from task status.
-- Historical roadmap content is append-only: future planning may relabel it as
-  history, but must not replace or silently remove it.
+- Historical roadmap content is append-only and must remain in its original
+  timeline.
 - Do not change the filesystem-backed task data model.
-- Do not publish private meeting excerpts, names, or sensitive Slack context;
-  only publish synthesized priorities authorized by the user.
-- Keep public Watch browsing and playback anonymous-first.
-- Keep human approval in the publication path for ministry-facing AI content.
-- Do not imply that an experiment is validated before its measures are reviewed.
+- Keep each priority concise while preserving its concrete deliverables in the
+  detail cards.
 
 ## Verification
 
@@ -79,7 +85,7 @@ stakeholder view stale even though the task tracker continues to move.
 - `pnpm --filter roadmap build`
 - `pnpm --filter roadmap generate:readme`
 - `git diff --check`
-- Browser smoke on `http://127.0.0.1:3100/roadmap` confirms the timeline spans
-  August through December, the original April-August timeline and its planned
-  and actual bars remain visible, all new bars have detail cards, and
-  `/contributions` remains linked.
+- Browser smoke on `http://127.0.0.1:3100/roadmap` confirms one timeline spans
+  April through December, every original item remains visible, all five
+  four-week priorities appear after August 10, and `/contributions` remains
+  linked.

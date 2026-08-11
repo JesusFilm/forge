@@ -12,6 +12,7 @@ export type PlannedTrackId =
   | "foundation"
   | "surface"
   | "search"
+  | "future-work"
   | "actual-foundation"
   | "actual-player"
   | "actual-surface"
@@ -90,33 +91,57 @@ type PlannedWeek = {
 
 const DAY_MS = 86400000
 const WEEK_MS = 7 * 86400000
-const PLANNED_START_DATE = new Date("2026-04-28T00:00:00")
+export const PLANNED_START_ISO = "2026-04-28"
+export const PLANNED_END_ISO = "2026-12-31"
+
+const PLANNED_START_DATE = new Date(`${PLANNED_START_ISO}T00:00:00Z`)
+const PLANNED_END_DATE = new Date(`${PLANNED_END_ISO}T00:00:00Z`)
 
 function addWeeks(date: Date, weeks: number): Date {
   return new Date(date.getTime() + weeks * WEEK_MS)
 }
 
-function formatDateRangeLabel(startDate: Date, endDate: Date): string {
-  const startMonth = startDate.toLocaleDateString("en-US", { month: "short" })
-  const startDay = startDate.toLocaleDateString("en-US", { day: "numeric" })
-  const endMonth = endDate.toLocaleDateString("en-US", { month: "short" })
-  const endDay = endDate.toLocaleDateString("en-US", { day: "numeric" })
+function formatDateRangeLabel(
+  startDate: Date,
+  endDate: Date,
+  separator = "-",
+): string {
+  const startMonth = startDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const startDay = startDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
+  const endMonth = endDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const endDay = endDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
 
   if (startMonth === endMonth) {
-    return `${startMonth} ${startDay}-${endDay}`
+    return `${startMonth} ${startDay}${separator}${endDay}`
   }
 
-  return `${startMonth} ${startDay}-${endMonth} ${endDay}`
+  return `${startMonth} ${startDay}${separator}${endMonth} ${endDay}`
 }
 
-export const PLANNED_WEEK_COUNT = 15
-export const PLANNED_START_ISO = "2026-04-28"
+export const PLANNED_WEEK_COUNT = Math.ceil(
+  (PLANNED_END_DATE.getTime() - PLANNED_START_DATE.getTime() + DAY_MS) /
+    WEEK_MS,
+)
 
 export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
   { length: PLANNED_WEEK_COUNT },
   (_, index) => {
     const date = addWeeks(PLANNED_START_DATE, index)
-    const endDate = new Date(date.getTime() + 6 * DAY_MS)
+    const naturalEndDate = new Date(date.getTime() + 6 * DAY_MS)
+    const endDate =
+      naturalEndDate > PLANNED_END_DATE ? PLANNED_END_DATE : naturalEndDate
     return {
       index,
       shortLabel: `W${index + 1}`,
@@ -127,9 +152,13 @@ export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
   },
 )
 
-export const PLANNED_TITLE = "FORGE ROADMAP - Next 3 Months"
+export const PLANNED_TITLE = "FORGE ROADMAP - 2026"
 export const PLANNED_SUBTITLE = "Starting Apr 28, 2026"
-export const PLANNED_RANGE_LABEL = "Apr 28 - Aug 10, 2026"
+export const PLANNED_RANGE_LABEL = `${formatDateRangeLabel(
+  PLANNED_START_DATE,
+  PLANNED_END_DATE,
+  " - ",
+)}, ${PLANNED_END_DATE.getUTCFullYear()}`
 export const PLANNED_GOAL =
   "Migrate to Forge while shipping real user value, prepare Demo Day, and set up the future AI and creator ecosystem."
 
@@ -159,6 +188,11 @@ export const PLANNED_TRACKS: PlannedTrack[] = [
     id: "search",
     label: "Search",
     description: "Hybrid and multilingual search",
+  },
+  {
+    id: "future-work",
+    label: "Future Work",
+    description: "Four-week priorities for the rest of 2026",
   },
   {
     id: "actual-foundation",
@@ -239,6 +273,12 @@ export const PLANNED_TIMELINE_ROWS: PlannedTimelineRow[] = [
         trackIds: ["mobile-tv"],
       },
     ],
+  },
+  {
+    id: "future-work",
+    label: "Future Work",
+    description: "Four-week priorities from August through December",
+    trackIds: ["future-work"],
   },
 ]
 
@@ -413,6 +453,72 @@ export const PLANNED_PHASES: PlannedPhase[] = [
   },
 ]
 
+const FUTURE_WORK_PRIORITIES = [
+  {
+    id: "future-work-access-release",
+    title: "Access + app release",
+    summary:
+      "Define the Mobile and TV MVP and test access in constrained markets.",
+    startWeek: 15,
+    details: [
+      "Caleb: explore viable streaming delivery to China",
+      "Urim + Up: establish minimum releasable MVP criteria for Mobile and TV",
+      "Validate optional mobile QR-code TV sign-in without forcing account creation",
+      "Document custom-player trade-offs and run Mobile regression checks",
+    ],
+  },
+  {
+    id: "future-work-discovery-search",
+    title: "Search quality + discovery",
+    summary: "Improve recommendations, ranking, and dead-result discovery.",
+    startWeek: 19,
+    details: [
+      "Nisal: bring proven Algolia ranking rules into Typesense",
+      "Add programmatic query-language detection and index all available subtitles",
+      "Discover and resolve dead-result patterns; keep search responses under one second",
+      "Vlad: give every search result a static, shareable URL",
+    ],
+  },
+  {
+    id: "future-work-integrations-next-steps",
+    title: "Reusable components + NextSteps",
+    summary: "Create shared building blocks and clearer ministry actions.",
+    startWeek: 23,
+    details: [
+      "Jaco + Jian Wei: break work into components that integrate across products",
+      "Jaco + Jian Wei: present the integration plan to Miheret",
+      "Siyang + ZY: deliver NextSteps for chat, questions, Bible studies, and church connections",
+      "Vlad: add accounts plus email and messaging notifications",
+      "Vlad: collect usage context and automatically follow up for mission-trip stories",
+    ],
+  },
+  {
+    id: "future-work-generation-language",
+    title: "Media + language generation",
+    summary: "Keep media generation running while closing language gaps.",
+    startWeek: 27,
+    details: [
+      "Tatai: help Lyuba advance video-generation agents",
+      "Tatai: keep experience generation running in the background",
+      "Caleb: improve metadata, translation, and language support",
+      "Vlad: translate all untranslated Core content and Bible quotations",
+      "Vlad: create a video/experience page for every Bible verse and an AI FAQ—not discussion questions—for every video",
+    ],
+  },
+  {
+    id: "future-work-agent-operations",
+    title: "Always-on agent operations",
+    summary: "Build loops that maintain and improve production services.",
+    startWeek: 31,
+    details: [
+      "Create continuous agent loops to monitor, maintain, and improve services",
+      "Vlad: run always-on Mastra agents for SEO and maintenance, support, and finishing and improving translations",
+      "Tatai: connect crawler-crash and service-performance signals to those loops",
+      "Vlad: filter Google bot traffic before agents prioritize analytics work",
+    ],
+  },
+]
+
 export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
   {
     id: "actual-foundation-track",
@@ -517,6 +623,15 @@ export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
       "Moves to W14-W15 after the shifted stability block",
     ],
   },
+  ...FUTURE_WORK_PRIORITIES.map(
+    (priority): PlannedTrackBar => ({
+      ...priority,
+      track: "future-work",
+      tone: "stone",
+      spanWeeks: 4,
+      badge: "4-week focus",
+    }),
+  ),
   {
     id: "agentic-track",
     title: "Agentic Framework",
