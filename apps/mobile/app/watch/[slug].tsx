@@ -44,6 +44,7 @@ import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresenta
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
+import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
@@ -468,6 +469,13 @@ export default function WatchVideoPage() {
   return (
     <View style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
+
+      {/* Sibling of the player dock, NOT a child: the dock carries
+          paddingTop, which an absolutely-positioned child would be inset by,
+          missing the safe-area strip this exists to paint. */}
+      {!isFullscreen && (
+        <WatchAmbient posterUrl={displayPoster} topInset={insets.top} />
+      )}
 
       {/* Player pinned at route root (outside ScrollView) so its fullscreen can
           expand to an absolute-fill overlay without reparenting (which would
