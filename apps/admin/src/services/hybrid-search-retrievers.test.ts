@@ -96,6 +96,7 @@ describe("searchVideoSemantic", () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {
         video_id: "vid-1",
+        video_edition_id: "edition-scene-1",
         video_core_id: "1_Jesus",
         video_slug: "jesus",
         video_title: "Jesus",
@@ -121,6 +122,7 @@ describe("searchVideoSemantic", () => {
     expect(rows[0]).toMatchObject({
       resultType: "video",
       resultId: "vid-1",
+      videoEditionId: "edition-scene-1",
       videoCoreId: "1_Jesus",
       videoSlug: "jesus",
       videoTitle: "Jesus",
@@ -161,6 +163,7 @@ describe("searchVideoSemantic", () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {
         video_id: "vid-transcript",
+        video_edition_id: "edition-transcript",
         video_core_id: "core-transcript",
         video_slug: "spoken-story",
         video_title: "Spoken Story",
@@ -185,6 +188,7 @@ describe("searchVideoSemantic", () => {
     expect(rows[0]).toMatchObject({
       resultType: "video",
       resultId: "vid-transcript",
+      videoEditionId: "edition-transcript",
       sceneDescription: "The exact spoken phrase from the transcript",
       startSeconds: 123.25,
       playbackId: "mux-transcript",
@@ -365,6 +369,9 @@ describe("searchVideoSemantic", () => {
     )
     expect(hydratedTail).toContain(
       "vd.language_id IN (SELECT id FROM requested_language)",
+    )
+    expect(hydratedTail).toContain(
+      "ts.video_edition_id              AS video_edition_id",
     )
     expect(hydratedTail).toContain("vtc_final.embedding::text")
   })
@@ -567,6 +574,7 @@ describe("semantic retriever provenance gates", () => {
 
 describe("mixVideoSemanticEvidenceRows", () => {
   const base = {
+    video_edition_id: "edition-default",
     video_core_id: null,
     video_slug: "video",
     video_title: "Video",
@@ -614,6 +622,7 @@ describe("mixVideoSemanticEvidenceRows", () => {
       {
         ...base,
         video_id: "vid-1",
+        video_edition_id: "edition-scene",
         evidence_id: "scene-1",
         evidence_source: "scene",
         scene_description: "Scene evidence",
@@ -626,6 +635,7 @@ describe("mixVideoSemanticEvidenceRows", () => {
       {
         ...base,
         video_id: "vid-1",
+        video_edition_id: "edition-transcript",
         evidence_id: "chunk-1",
         evidence_source: "transcript",
         scene_description: "Transcript evidence",
@@ -642,6 +652,7 @@ describe("mixVideoSemanticEvidenceRows", () => {
       start_seconds: 15,
       playback_id: "transcript-playback",
       embedding_text: "[transcript]",
+      video_edition_id: "edition-transcript",
     })
   })
 

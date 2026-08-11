@@ -200,15 +200,19 @@ afterEach(() => {
 })
 
 function renderWatchPage({
+  downloadSequence,
   image,
   languageSlug = "english",
   playbackId = "playback-1",
+  subtitleLanguageSlug = null,
   subtitles = [],
   videoSlug = "jesus-is-brought-to-pilate",
 }: {
+  downloadSequence?: { position: number; total: number } | null
   image?: { mobileCinematicHigh?: string | null }
   languageSlug?: string
   playbackId?: string | null
+  subtitleLanguageSlug?: string | null
   subtitles?: unknown[]
   videoSlug?: string
 } = {}) {
@@ -246,9 +250,11 @@ function renderWatchPage({
   act(() => {
     root.render(
       <WatchPageClient
+        downloadSequence={downloadSequence}
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
+        subtitleLanguageSlug={subtitleLanguageSlug}
       />,
     )
   })
@@ -337,13 +343,26 @@ describe("WatchPageClient download boundary", () => {
     expect(renderer?.getAttribute("data-share-href")).toContain("jesus")
   })
 
+  it("prefixes the default download filename with its ordered position", () => {
+    renderWatchPage({ downloadSequence: { position: 7, total: 61 } })
+
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-download-href")).toContain(
+      `filename=${encodeURIComponent(
+        "07_Jesus-Is-Brought-to-Pilate_English_eng_360p.mp4",
+      )}`,
+    )
+  })
+
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
       accountGateEnabled: false,
       authenticated: true,
     })
-    renderWatchPage()
+    renderWatchPage({ downloadSequence: { position: 7, total: 61 } })
 
     await act(async () => {
       document
@@ -363,8 +382,10 @@ describe("WatchPageClient download boundary", () => {
       variantId: string
       videoSlug: string
       accountGateEnabled: boolean
+      downloadSequence: { position: number; total: number } | null
     }
     expect(latestProps.accountGateEnabled).toBe(false)
+    expect(latestProps.downloadSequence).toEqual({ position: 7, total: 61 })
     expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
     expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.languageCode).toBe("eng")
@@ -800,6 +821,198 @@ describe("WatchPageClient download boundary", () => {
     expect(renderer?.getAttribute("data-subtitle-language-code")).toBe("ES")
   })
 
+  it("consumes a valid one-shot subtitle intent ahead of the stored preference", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=russian&t=12",
+    )
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+
+    renderWatchPage({
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      videoSlug: "perfect-2",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+        {
+          documentId: "sub-ru",
+          language: {
+            slug: "russian",
+            name: "Russian",
+            nativeName: "Русский",
+            bcp47: "ru",
+          },
+          vttSrc: "https://cdn.test/russian.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-testid="watch-section-renderer"]')
+          ?.getAttribute("data-subtitle-language-code"),
+      ).toBe("RU")
+    })
+    expect(window.location.search).toBe("?t=12")
+    expect(decodeURIComponent(document.cookie)).toContain(
+      "forge_watch_subs=v2:russian",
+    )
+  })
+
+  it("cleans an invalid subtitle intent without overwriting a stored preference", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=Russian!&t=12",
+    )
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+
+    renderWatchPage({
+      languageSlug: "english",
+      videoSlug: "perfect-2",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await vi.waitFor(() => {
+      expect(window.location.search).toBe("?t=12")
+    })
+    expect(
+      document
+        .querySelector('[data-testid="watch-section-renderer"]')
+        ?.getAttribute("data-subtitle-language-code"),
+    ).toBe("ES")
+    expect(decodeURIComponent(document.cookie)).toContain(
+      "forge_watch_subs=v2:spanish",
+    )
+  })
+
+  it("cleans an unclaimed subtitle intent without overwriting a stored preference", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=unknown-language&t=12",
+    )
+    document.cookie = `forge_watch_subs=${encodeURIComponent(
+      "v2:spanish",
+    )}; path=/watch; max-age=31536000`
+
+    renderWatchPage({
+      languageSlug: "english",
+      videoSlug: "perfect-2",
+      subtitles: [
+        {
+          documentId: "sub-es",
+          language: {
+            slug: "spanish",
+            name: "Spanish",
+            nativeName: "Espanol",
+            bcp47: "es",
+          },
+          vttSrc: "https://cdn.test/spanish.vtt",
+          primary: false,
+          aiGenerated: false,
+        },
+      ],
+    })
+
+    await vi.waitFor(() => {
+      expect(window.location.search).toBe("?t=12")
+    })
+    expect(
+      document
+        .querySelector('[data-testid="watch-section-renderer"]')
+        ?.getAttribute("data-subtitle-language-code"),
+    ).toBe("ES")
+    expect(decodeURIComponent(document.cookie)).toContain(
+      "forge_watch_subs=v2:spanish",
+    )
+  })
+
+  it("consumes subtitle intent added by same-path query-only navigation", async () => {
+    window.history.replaceState({}, "", "/watch/perfect-2.html?t=12")
+    const subtitles = [
+      {
+        documentId: "sub-ru",
+        language: {
+          slug: "russian",
+          name: "Russian",
+          nativeName: "Русский",
+          bcp47: "ru",
+        },
+        vttSrc: "https://cdn.test/russian.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ]
+
+    renderWatchPage({
+      languageSlug: "english",
+      videoSlug: "perfect-2",
+      subtitles,
+    })
+
+    window.history.pushState(
+      {},
+      "",
+      "/watch/perfect-2.html?subtitles=russian&t=12",
+    )
+    renderWatchPage({
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      videoSlug: "perfect-2",
+      subtitles,
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        document
+          .querySelector('[data-testid="watch-section-renderer"]')
+          ?.getAttribute("data-subtitle-language-code"),
+      ).toBe("RU")
+    })
+    expect(window.location.search).toBe("?t=12")
+
+    renderWatchPage({
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      videoSlug: "perfect-2",
+      subtitles,
+    })
+    expect(window.location.search).toBe("?t=12")
+  })
+
   it("passes selected subtitle VTTs through the same-origin media proxy", () => {
     document.cookie = `forge_watch_subs=${encodeURIComponent(
       "v2:spanish",
@@ -826,7 +1039,7 @@ describe("WatchPageClient download boundary", () => {
       '[data-testid="watch-section-renderer"]',
     )
     expect(renderer?.getAttribute("data-subtitle-vtt-src")).toBe(
-      "/watch/api/download?url=https%3A%2F%2Fcdn.test%2Fspanish.vtt&disposition=inline",
+      "/watch/api/download?subtitleId=sub-es&variantId=5fc705b9-1b3b-4a58-abef-755b98457de6&disposition=inline",
     )
   })
 

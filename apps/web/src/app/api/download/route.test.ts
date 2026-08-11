@@ -2,14 +2,18 @@
  * @vitest-environment node
  *
  * Route handler tests for the same-origin download resolver.
- * Downloads validate the target and redirect to the CDN so Web does not proxy
- * media or subtitle bytes.
+ * Downloads validate the target and redirect to the CDN. Inline VTT tracks
+ * remain same-origin through a narrow streaming proxy.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { isWatchDownloadAccountGateEnabledMock } = vi.hoisted(() => ({
+const {
+  isWatchDownloadAccountGateEnabledMock,
+  resolveWatchSubtitleTargetMock,
+} = vi.hoisted(() => ({
   isWatchDownloadAccountGateEnabledMock: vi.fn(async () => true),
+  resolveWatchSubtitleTargetMock: vi.fn(),
 }))
 
 vi.mock("node:dns", () => ({
@@ -37,6 +41,10 @@ vi.mock("@/lib/feature-flags", () => ({
   },
 }))
 
+vi.mock("@/lib/subtitle-target", () => ({
+  resolveWatchSubtitleTarget: resolveWatchSubtitleTargetMock,
+}))
+
 import { promises as dns } from "node:dns"
 
 import { GET, HEAD } from "./route"
@@ -56,6 +64,7 @@ function makeRequest(
 
 afterEach(() => {
   isWatchDownloadAccountGateEnabledMock.mockResolvedValue(true)
+  resolveWatchSubtitleTargetMock.mockReset()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -237,26 +246,350 @@ describe("GET /watch/api/download - redirect path", () => {
 describe("GET /watch/api/download - inline subtitles", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
+    resolveWatchSubtitleTargetMock.mockResolvedValue({
+      ok: true,
+      target: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
+    })
   })
 
-  it("redirects allowlisted VTT subtitles inline without fetching upstream", async () => {
-    const fetchMock = vi.fn(async () => new Response("should not happen"))
+  it("streams alternate-language VTT subtitles through the same-origin proxy", async () => {
+    const vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nChinese cue\n"
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(vtt, {
+          status: 200,
+          headers: {
+            "content-encoding": "gzip",
+            "content-length": "23",
+            "content-type": "text/vtt",
+          },
+        }),
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     const res = await GET(
       makeRequest({
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-type")).toBe("text/vtt")
+    expect(res.headers.get("content-disposition")).toBe("inline")
+    expect(res.headers.get("content-encoding")).toBeNull()
+    expect(res.headers.get("content-length")).toBeNull()
+    expect(res.headers.get("cache-control")).toContain("no-store")
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff")
+    expect(res.headers.get("location")).toBeNull()
+    expect(await res.text()).toBe(vtt)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
+      expect.objectContaining({ redirect: "manual" }),
+    )
+    expect(resolveWatchSubtitleTargetMock).toHaveBeenCalledWith({
+      subtitleId: "subtitle-1",
+      variantId: "variant-1",
+    })
+  })
+
+  it("does not proxy legacy raw URLs as anonymous inline subtitles", async () => {
+    isWatchDownloadAccountGateEnabledMock.mockResolvedValueOnce(false)
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/chinese.vtt",
         disposition: "inline",
       }),
     )
 
-    expect(res.status).toBe(302)
-    expect(res.headers.get("location")).toBe(
-      "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
-    )
-    expect(res.headers.get("cache-control")).toContain("no-store")
-    expect(await res.text()).toBe("")
+    expect(res.status).toBe(400)
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(resolveWatchSubtitleTargetMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects resolved subtitle URLs outside the exact Core VTT origin", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target: "https://subtitles.jesusfilm.org/example.vtt",
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["missing-params", 400, "Subtitle identifiers required"],
+    ["unavailable", 503, "Subtitle lookup unavailable"],
+    ["not-found", 404, "Subtitle unavailable"],
+  ] as const)(
+    "maps subtitle lookup %s failures to HTTP %s",
+    async (reason, status, message) => {
+      resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+        ok: false,
+        reason,
+      })
+      const fetchMock = vi.fn()
+      vi.stubGlobal("fetch", fetchMock)
+
+      const res = await GET(
+        makeRequest({
+          disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
+        }),
+      )
+
+      expect(res.status).toBe(status)
+      await expect(res.json()).resolves.toEqual({ error: message })
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it("rejects resolved subtitle URLs with query strings", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target:
+        "https://api-media-core.jesusfilm.org/subtitles/example.vtt?redirect=1",
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("canonicalizes each resolved Core VTT path segment before fetching", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target:
+        "https://api-media-core.jesusfilm.org/subtitles/russian%20captions/example.vtt",
+    })
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("WEBVTT\n\n", {
+          headers: { "content-type": "text/vtt" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/russian%20captions/example.vtt",
+      expect.objectContaining({ redirect: "manual" }),
+    )
+  })
+
+  it("keeps the timeout active until the subtitle body finishes", async () => {
+    vi.useFakeTimers()
+    const abortSpy = vi.fn()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        init?.signal?.addEventListener("abort", abortSpy)
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              init?.signal?.addEventListener("abort", () => {
+                controller.error(new DOMException("Aborted", "AbortError"))
+              })
+            },
+          }),
+          { headers: { "content-type": "text/vtt" } },
+        )
+      }),
+    )
+
+    try {
+      const res = await GET(
+        makeRequest({
+          disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
+        }),
+      )
+      const bodyResult = expect(res.text()).rejects.toThrow()
+
+      await vi.advanceTimersByTimeAsync(30_000)
+
+      expect(abortSpy).toHaveBeenCalledOnce()
+      await bodyResult
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("rejects redirected inline subtitle responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(null, {
+            status: 302,
+            headers: { location: "https://evil.example/subtitles.vtt" },
+          }),
+      ),
+    )
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(502)
+    await expect(res.json()).resolves.toEqual({
+      error: "Upstream subtitle redirected; refusing to follow",
+    })
+  })
+
+  it("rejects inline subtitle responses that are not VTT", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("video bytes", {
+            status: 200,
+            headers: { "content-type": "video/mp4" },
+          }),
+      ),
+    )
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(502)
+    await expect(res.json()).resolves.toEqual({
+      error: "Upstream subtitle response was not VTT",
+    })
+  })
+
+  it("returns a controlled error when the upstream fetch fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Promise.reject(new Error("down"))),
+    )
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(502)
+    await expect(res.json()).resolves.toEqual({
+      error: "Upstream subtitle fetch failed",
+    })
+  })
+
+  it("returns 499 when the client aborts the upstream fetch", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"))
+          })
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const controller = new AbortController()
+
+    const response = GET(
+      makeRequest(
+        {
+          disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
+        },
+        { signal: controller.signal },
+      ),
+    )
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    controller.abort()
+
+    expect((await response).status).toBe(499)
+  })
+
+  it("preserves an upstream subtitle error status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("missing", { status: 404 })),
+    )
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(404)
+    await expect(res.json()).resolves.toEqual({ error: "Upstream 404" })
+  })
+
+  it("rejects an upstream VTT response without a body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(null, {
+            status: 200,
+            headers: { "content-type": "text/vtt" },
+          }),
+      ),
+    )
+
+    const res = await GET(
+      makeRequest({
+        disposition: "inline",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
+      }),
+    )
+
+    expect(res.status).toBe(502)
+    await expect(res.json()).resolves.toEqual({
+      error: "Upstream subtitle had no body",
+    })
   })
 })
 
@@ -280,6 +613,45 @@ describe("HEAD /watch/api/download", () => {
     expect(res.headers.get("cache-control")).toContain("no-store")
     expect(await res.text()).toBe("")
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("resolves and proxies opaque inline subtitle requests", async () => {
+    resolveWatchSubtitleTargetMock.mockResolvedValueOnce({
+      ok: true,
+      target: "https://api-media-core.jesusfilm.org/subtitles/russian.vtt",
+    })
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { "Content-Type": "text/vtt; charset=utf-8" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const res = await HEAD(
+      makeRequest(
+        {
+          disposition: "inline",
+          subtitleId: "subtitle-1",
+          variantId: "variant-1",
+        },
+        { method: "HEAD" },
+      ),
+    )
+
+    expect(resolveWatchSubtitleTargetMock).toHaveBeenCalledWith({
+      subtitleId: "subtitle-1",
+      variantId: "variant-1",
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api-media-core.jesusfilm.org/subtitles/russian.vtt",
+      expect.objectContaining({ method: "HEAD", redirect: "manual" }),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-type")).toBe("text/vtt; charset=utf-8")
+    expect(res.headers.get("content-disposition")).toBe("inline")
+    expect(await res.text()).toBe("")
   })
 
   it("rejects non-allowlisted URLs", async () => {

@@ -138,6 +138,45 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/jesus.html/spanish-castilian.html")
   })
 
+  it("routes subtitle-only results through playable audio with subtitle intent", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "perfect-2",
+          languageSlug: "english",
+          availabilityKind: "target_subtitle",
+          subtitleLanguageSlug: "russian",
+        }),
+      ),
+    ).toBe("/perfect-2.html?subtitles=russian")
+  })
+
+  it("fails closed when a subtitle-only result lacks a valid audio action", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "perfect-2",
+          languageSlug: null,
+          availabilityKind: "target_subtitle",
+          subtitleLanguageSlug: "russian",
+        }),
+      ),
+    ).toBe("/")
+  })
+
+  it("fails closed when subtitle intent is malformed", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "perfect-2",
+          languageSlug: "english",
+          availabilityKind: "target_subtitle",
+          subtitleLanguageSlug: "Russian!",
+        }),
+      ),
+    ).toBe("/")
+  })
+
   it("keeps English explicit for a public language-home collision", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "russian" }))).toBe(
       "/russian.html/english.html",

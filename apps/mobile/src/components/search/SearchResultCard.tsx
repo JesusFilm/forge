@@ -7,6 +7,7 @@ import type { SearchResult } from "../../lib/queries"
 import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { ExperienceFallback } from "./ExperienceFallback"
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import { ENTRANCE_DURATION_MS } from "./searchEntrance"
 
 type SearchResultCardProps = {
@@ -98,6 +99,10 @@ export function SearchResultCard({
             locations={[0, 0.5, 1]}
             style={StyleSheet.absoluteFill}
           />
+
+          {result.type === "VIDEO" ? (
+            <WatchProgressBar videoId={result.id} />
+          ) : null}
 
           <View style={styles.textOverlay}>
             <Text style={styles.title} numberOfLines={2}>

@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { notRestrictedFromWatchWhere } from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
@@ -30,13 +32,21 @@ const TYPESENSE_VECTOR_BYTES_PER_DIMENSION = 7
 type SubtitleIndexRow = {
   id: string
   videoId: string
+  videoEditionId: string
   languageId: string
   languageSlug: string
+  languageName: unknown
+  hrefLanguageSlug: string
+  playbackId: string | null
+  durationSeconds: number | null
+  actionVideoDubId: string
+  actionPriority: number
 }
 
 type TranscriptIndexRow = {
   id: string
   videoId: string
+  videoEditionId: string
   coreId: string | null
   language: string
   publiclyVisible: boolean
@@ -88,6 +98,14 @@ function isHybridTranscriptCollection(
     fields.has("documentKind") &&
     fields.has("canonicalVideoId") &&
     fields.has("titles")
+  )
+}
+
+function hasTranscriptEditionField(
+  collection: { fields: Array<{ name: string }> } | undefined,
+): boolean {
+  return (
+    collection?.fields.some((field) => field.name === "videoEditionId") ?? false
   )
 }
 
@@ -162,13 +180,18 @@ function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
   const result = new Map<string, TypesenseWatchSubtitleOption[]>()
   for (const row of rows) {
     const options = result.get(row.videoId) ?? []
-    if (!options.some((option) => option.languageId === row.languageId)) {
-      options.push({
-        id: row.id,
-        languageId: row.languageId,
-        languageSlug: row.languageSlug,
-      })
-    }
+    options.push({
+      id: row.id,
+      videoEditionId: row.videoEditionId,
+      languageId: row.languageId,
+      languageSlug: row.languageSlug,
+      languageEnglishName: englishName(row.languageName),
+      hrefLanguageSlug: row.hrefLanguageSlug,
+      playbackId: row.playbackId,
+      durationSeconds: row.durationSeconds,
+      actionVideoDubId: row.actionVideoDubId,
+      actionPriority: row.actionPriority,
+    })
     result.set(row.videoId, options)
   }
   return result
@@ -178,35 +201,90 @@ async function loadSubtitleRows(
   prisma: PrismaClient,
 ): Promise<SubtitleIndexRow[]> {
   return prisma.$queryRaw<SubtitleIndexRow[]>(Prisma.sql`
-    SELECT DISTINCT ON (vd.video_id, vs.language_id)
+    WITH preferred_dub AS (
+      SELECT DISTINCT ON (video_dub.video_id, video_dub.video_edition_id)
+        video_dub.id,
+        video_dub.video_id,
+        video_dub.video_edition_id,
+        video_dub.duration,
+        fallback_language.slug AS language_slug,
+        mux_video.playback_id,
+        CASE
+          WHEN video.primary_language_id = fallback_language.id THEN 0
+          WHEN fallback_language.slug = 'english' THEN 1
+          ELSE 2
+        END AS action_priority
+      FROM video_dub
+      JOIN video
+        ON video.id = video_dub.video_id
+       AND video.deleted_at IS NULL
+       AND video.no_index = FALSE
+       AND EXISTS (
+         SELECT 1
+         FROM video_locale published_locale
+         WHERE published_locale.video_id = video.id
+           AND published_locale.status = 'published'
+           AND published_locale.deleted_at IS NULL
+       )
+      JOIN language fallback_language
+        ON fallback_language.id = video_dub.language_id
+       AND fallback_language.deleted_at IS NULL
+       AND fallback_language.slug IS NOT NULL
+       AND fallback_language.slug ~ '^[a-z0-9-]+$'
+      LEFT JOIN mux_video
+        ON mux_video.id = video_dub.mux_video_id
+       AND mux_video.deleted_at IS NULL
+      WHERE video_dub.deleted_at IS NULL
+        AND video_dub.published = TRUE
+        AND NULLIF(BTRIM(video_dub.hls), '') IS NOT NULL
+      ORDER BY
+        video_dub.video_id,
+        video_dub.video_edition_id,
+        CASE
+          WHEN video.primary_language_id = fallback_language.id THEN 0
+          WHEN fallback_language.slug = 'english' THEN 1
+          ELSE 2
+        END ASC,
+        video_dub.duration DESC NULLS LAST,
+        fallback_language.slug ASC,
+        video_dub.id ASC
+    )
+    SELECT DISTINCT ON (
+      preferred_dub.video_id,
+      vs.video_edition_id,
+      vs.language_id
+    )
       vs.id,
-      vd.video_id AS "videoId",
-      l.id AS "languageId",
-      l.slug AS "languageSlug"
+      preferred_dub.video_id AS "videoId",
+      vs.video_edition_id AS "videoEditionId",
+      target_language.id AS "languageId",
+      target_language.slug AS "languageSlug",
+      target_language.name AS "languageName",
+      preferred_dub.language_slug AS "hrefLanguageSlug",
+      preferred_dub.playback_id AS "playbackId",
+      preferred_dub.duration AS "durationSeconds",
+      preferred_dub.id AS "actionVideoDubId",
+      preferred_dub.action_priority AS "actionPriority"
     FROM video_subtitle vs
     JOIN video_edition ve
       ON ve.id = vs.video_edition_id
      AND ve.deleted_at IS NULL
-    JOIN video_dub vd
-      ON vd.video_edition_id = vs.video_edition_id
-     AND vd.deleted_at IS NULL
-    JOIN video v
-      ON v.id = vd.video_id
-     AND v.deleted_at IS NULL
-     AND v.no_index = false
-    JOIN language l
-      ON l.id = vs.language_id
-     AND l.deleted_at IS NULL
-     AND l.slug IS NOT NULL
+    JOIN preferred_dub
+      ON preferred_dub.video_edition_id = vs.video_edition_id
+    JOIN language target_language
+      ON target_language.id = vs.language_id
+     AND target_language.deleted_at IS NULL
+     AND target_language.slug IS NOT NULL
+     AND target_language.slug ~ '^[a-z0-9-]+$'
     WHERE vs.deleted_at IS NULL
-      AND (vs.vtt_src IS NOT NULL OR vs.srt_src IS NOT NULL)
-      AND EXISTS (
-        SELECT 1 FROM video_locale vl
-        WHERE vl.video_id = v.id
-          AND vl.status = 'published'
-          AND vl.deleted_at IS NULL
-      )
-    ORDER BY vd.video_id, vs.language_id, vs.id
+      AND (vs.video_id IS NULL OR vs.video_id = preferred_dub.video_id)
+      AND NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
+    ORDER BY
+      preferred_dub.video_id,
+      vs.video_edition_id,
+      vs.language_id,
+      CASE WHEN vs.video_id = preferred_dub.video_id THEN 0 ELSE 1 END ASC,
+      vs.id ASC
   `)
 }
 
@@ -219,6 +297,7 @@ export async function buildCatalogDocuments(
         deletedAt: null,
         noIndex: false,
         locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
       },
       orderBy: { id: "asc" },
       select: {
@@ -254,6 +333,7 @@ export async function buildCatalogDocuments(
           orderBy: [{ duration: "desc" }, { id: "asc" }],
           select: {
             id: true,
+            videoEditionId: true,
             duration: true,
             language: { select: { id: true, slug: true, name: true } },
             muxVideo: { select: { playbackId: true } },
@@ -305,6 +385,7 @@ export async function buildCatalogDocuments(
       }
       audioOptions.push({
         id: dub.id,
+        videoEditionId: dub.videoEditionId,
         languageId: language.id,
         languageSlug: language.slug,
         languageEnglishName: englishName(language.name),
@@ -331,9 +412,9 @@ export async function buildCatalogDocuments(
         imageUrl: firstImage ? bestImageUrl(firstImage) : null,
         imageBlurDataUrl: firstImage?.blurDataUrl ?? null,
         audioLanguageSlugs: audioOptions.map((option) => option.languageSlug),
-        subtitleLanguageSlugs: subtitleOptions.map(
-          (option) => option.languageSlug,
-        ),
+        subtitleLanguageSlugs: [
+          ...new Set(subtitleOptions.map((option) => option.languageSlug)),
+        ],
         audioOptionsJson: JSON.stringify(audioOptions),
         subtitleOptionsJson: JSON.stringify(subtitleOptions),
       },
@@ -345,7 +426,10 @@ export function buildAvailabilityDocuments(
   catalog: readonly TypesenseWatchCatalogDocument[],
 ): TypesenseWatchAvailabilityDocument[] {
   return catalog.flatMap((document) => {
-    const byLanguage = new Map<string, TypesenseWatchAvailabilityDocument>()
+    const byEditionAndLanguage = new Map<
+      string,
+      TypesenseWatchAvailabilityDocument
+    >()
     const audioOptions = JSON.parse(
       document.audioOptionsJson,
     ) as TypesenseWatchAudioOption[]
@@ -354,9 +438,11 @@ export function buildAvailabilityDocuments(
     ) as TypesenseWatchSubtitleOption[]
 
     for (const option of audioOptions) {
-      byLanguage.set(option.languageId, {
-        id: `${document.id}:${option.languageId}`,
+      const key = `${option.videoEditionId ?? "unscoped"}:${option.languageId}`
+      byEditionAndLanguage.set(key, {
+        id: `${document.id}:${key}`,
         videoId: document.id,
+        videoEditionId: option.videoEditionId ?? null,
         languageId: option.languageId,
         languageSlug: option.languageSlug,
         languageEnglishName: option.languageEnglishName,
@@ -364,28 +450,117 @@ export function buildAvailabilityDocuments(
         subtitles: false,
         playbackId: option.playbackId,
         durationSeconds: option.durationSeconds,
+        hrefLanguageSlug: option.languageSlug,
+        actionVideoDubId: option.id,
+        actionPriority: null,
       })
     }
     for (const option of subtitleOptions) {
-      const existing = byLanguage.get(option.languageId)
+      const key = `${option.videoEditionId ?? "unscoped"}:${option.languageId}`
+      const existing = byEditionAndLanguage.get(key)
       if (existing) {
         existing.subtitles = true
       } else {
-        byLanguage.set(option.languageId, {
-          id: `${document.id}:${option.languageId}`,
+        byEditionAndLanguage.set(key, {
+          id: `${document.id}:${key}`,
           videoId: document.id,
+          videoEditionId: option.videoEditionId ?? null,
           languageId: option.languageId,
           languageSlug: option.languageSlug,
-          languageEnglishName: null,
+          languageEnglishName: option.languageEnglishName ?? null,
           audio: false,
           subtitles: true,
-          playbackId: null,
-          durationSeconds: null,
+          playbackId: option.playbackId ?? null,
+          durationSeconds: option.durationSeconds ?? null,
+          hrefLanguageSlug: option.hrefLanguageSlug ?? null,
+          actionVideoDubId: option.actionVideoDubId ?? null,
+          actionPriority: option.actionPriority ?? null,
         })
       }
     }
-    return [...byLanguage.values()]
+    return [...byEditionAndLanguage.values()]
   })
+}
+
+export type TypesenseWatchCandidateProjectionSnapshot = {
+  catalog: TypesenseWatchCatalogDocument[]
+  availability: TypesenseWatchAvailabilityDocument[]
+  lexical: ReturnType<typeof buildTypesenseWatchLexicalDocuments>
+  tokenizerLocales: string[]
+  counts: { catalog: number; availability: number; lexical: number }
+  digests: {
+    catalog: string
+    availability: string
+    lexical: string
+    combined: string
+  }
+  lexicalMemory: ReturnType<typeof estimateTypesenseKeywordMemory>
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJsonValue)
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, child]) => child !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, stableJsonValue(child)]),
+    )
+  }
+  return value
+}
+
+function projectionDigest(value: unknown): string {
+  const digest = createHash("sha256")
+    .update(JSON.stringify(stableJsonValue(value)))
+    .digest("hex")
+  return `sha256:${digest}`
+}
+
+export async function buildTypesenseWatchCandidateProjectionSnapshot(
+  prisma: PrismaClient,
+): Promise<TypesenseWatchCandidateProjectionSnapshot> {
+  return prisma.$transaction(
+    async (tx) => {
+      const catalog = (await buildCatalogDocuments(tx as PrismaClient)).sort(
+        (left, right) => left.id.localeCompare(right.id),
+      )
+      const availability = buildAvailabilityDocuments(catalog).sort(
+        (left, right) => left.id.localeCompare(right.id),
+      )
+      const lexical = buildTypesenseWatchLexicalDocuments(catalog).sort(
+        (left, right) => left.id.localeCompare(right.id),
+      )
+      const tokenizerLocales = typesenseWatchTokenizerLocales(lexical)
+      const catalogDigest = projectionDigest(catalog)
+      const availabilityDigest = projectionDigest(availability)
+      const lexicalDigest = projectionDigest(lexical)
+      const digests = {
+        catalog: catalogDigest,
+        availability: availabilityDigest,
+        lexical: lexicalDigest,
+        combined: projectionDigest({
+          catalog: catalogDigest,
+          availability: availabilityDigest,
+          lexical: lexicalDigest,
+        }),
+      }
+      return {
+        catalog,
+        availability,
+        lexical,
+        tokenizerLocales,
+        counts: {
+          catalog: catalog.length,
+          availability: availability.length,
+          lexical: lexical.length,
+        },
+        digests,
+        lexicalMemory: estimateTypesenseKeywordMemory(lexical),
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+  )
 }
 
 async function loadTranscriptBatch(
@@ -397,6 +572,7 @@ async function loadTranscriptBatch(
     SELECT
       vtc.id,
       vt.video_id AS "videoId",
+      vt.video_edition_id AS "videoEditionId",
       v.core_id AS "coreId",
       vtc.language,
       COALESCE(
@@ -487,12 +663,21 @@ export async function rebuildTypesenseWatchSearchIndex({
   const transcriptCollection = transcriptReused
     ? previousTranscriptAlias.collection_name
     : transcriptSchema.name
-  const hybridReady = transcriptReused
-    ? isHybridTranscriptCollection(
-        existingCollections.find(
-          (collection) => collection.name === transcriptCollection,
-        ),
+  const reusedTranscriptCollection = transcriptReused
+    ? existingCollections.find(
+        (collection) => collection.name === transcriptCollection,
       )
+    : undefined
+  if (
+    transcriptReused &&
+    !hasTranscriptEditionField(reusedTranscriptCollection)
+  ) {
+    throw new TypesenseWatchSearchIndexError(
+      "The active Typesense transcript collection lacks videoEditionId; rerun with --rebuild-transcripts",
+    )
+  }
+  const hybridReady = transcriptReused
+    ? isHybridTranscriptCollection(reusedTranscriptCollection)
     : true
   const catalog = await buildCatalogDocuments(prisma)
   const availability = buildAvailabilityDocuments(catalog)
@@ -596,6 +781,7 @@ export async function rebuildTypesenseWatchSearchIndex({
             id: row.id,
             documentKind: "transcript",
             videoId: row.videoId,
+            videoEditionId: row.videoEditionId,
             canonicalVideoId: canonicalTypesenseVideoId(
               row.videoId,
               row.coreId,

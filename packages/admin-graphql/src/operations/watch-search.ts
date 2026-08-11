@@ -32,6 +32,7 @@ export const adminWatchSearchQuery = `
         languageEnglishName
         availability {
           kind
+          languageSlug
           languageEnglishName
         }
         evidence {

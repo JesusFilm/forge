@@ -26,6 +26,10 @@ vi.mock("@/lib/admin-client", () => ({
   },
 }))
 
+vi.mock("next/cache", () => ({
+  unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+}))
+
 vi.mock("@/lib/watch-event-actions", () => ({
   recordWatchEventWithAccessToken: recordWatchEventWithAccessTokenMock,
 }))
@@ -60,6 +64,16 @@ function adminVideoDub() {
       ],
       published: true,
       slug: "jesus/english",
+      videoEdition: {
+        subtitles: [
+          {
+            documentId: "subtitle-1",
+            vttSrc:
+              "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+            video: { documentId: "video-1" },
+          },
+        ],
+      },
     },
   }
 }
@@ -186,24 +200,33 @@ describe("GET /watch/api/download - account gate", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("redirects allowlisted inline VTT subtitles without an auth cookie", async () => {
-    const fetchMock = vi.fn(async () => new Response("should not happen"))
+  it("streams allowlisted inline VTT subtitles without an auth cookie", async () => {
+    queryMock.mockResolvedValueOnce({ data: adminVideoDub() })
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("WEBVTT\n\n", {
+          headers: { "content-type": "text/vtt" },
+        }),
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     const { GET } = await importRoute()
     const response = await GET(
       makeRequest({
         disposition: "inline",
-        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        subtitleId: "subtitle-1",
+        variantId: "variant-1",
       }),
     )
 
-    expect(response.status).toBe(302)
-    expect(response.headers.get("location")).toBe(
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("text/vtt")
+    expect(response.headers.get("location")).toBeNull()
+    expect(await response.text()).toBe("WEBVTT\n\n")
+    expect(fetchMock).toHaveBeenCalledWith(
       "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      expect.objectContaining({ redirect: "manual" }),
     )
-    expect(await response.text()).toBe("")
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("keeps anonymous non-VTT inline requests behind the account gate", async () => {

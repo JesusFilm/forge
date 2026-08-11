@@ -228,6 +228,7 @@ export async function queryScenesSimilar(
         AND vt.language = ${locale}
       JOIN video v ON v.id = vt.video_id
         AND v.deleted_at IS NULL
+        AND NOT ('watch' = ANY(v.restrict_view_platforms))
       JOIN video_locale vl
         ON vl.video_id = v.id
         AND vl.locale  = ${locale}

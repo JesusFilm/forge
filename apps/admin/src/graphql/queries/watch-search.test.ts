@@ -194,6 +194,18 @@ describe("watchSearchSuggestions resolver", () => {
 })
 
 describe("watchSearch mode routing", () => {
+  it("does not expose candidate profile or generation selectors publicly", () => {
+    const input = schema.getType("WatchSearchInput")
+    const fields = "getFields" in input! ? input.getFields() : {}
+    expect(fields).not.toHaveProperty("profile")
+    expect(fields).not.toHaveProperty("generationId")
+    expect(fields).not.toHaveProperty("candidate")
+
+    const mode = schema.getType("WatchSearchMode")
+    const values =
+      "getValues" in mode! ? mode.getValues().map((row) => row.name) : []
+    expect(values).toEqual(["DEFAULT", "MODERN"])
+  })
   it("uses the modern service when mode is MODERN", async () => {
     const input = {
       query: "communion",

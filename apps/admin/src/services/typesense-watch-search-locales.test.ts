@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   displayPreviewLocale,
+  watchLexicalManifestQueryFields,
   watchLexicalQueryFields,
   type TypesenseWatchCatalogPreviewDocument,
 } from "./typesense-watch-search-locales"
@@ -78,5 +79,29 @@ describe("watchLexicalQueryFields", () => {
     ["unknown", "metadata", ["metadata_fallback"]],
   ] as const)("bounds %s %s retrieval fields", (locale, lane, expected) => {
     expect(watchLexicalQueryFields(locale, lane)).toEqual(expected)
+  })
+
+  it("uses every searchable manifest field for a candidate lane", () => {
+    const fields = [
+      { name: "languageIdentity", type: "string", facet: true },
+      { name: "title_en", type: "string[]" },
+      { name: "title_ja", type: "string[]" },
+      { name: "title_zh", type: "string[]" },
+      { name: "title_fallback", type: "string[]" },
+      { name: "metadata_en", type: "string[]" },
+      { name: "metadata_fallback", type: "string[]" },
+      { name: "title_legacy", type: "string[]", index: false },
+    ]
+
+    expect(watchLexicalManifestQueryFields(fields, "title")).toEqual([
+      "title_en",
+      "title_ja",
+      "title_zh",
+      "title_fallback",
+    ])
+    expect(watchLexicalManifestQueryFields(fields, "metadata")).toEqual([
+      "metadata_en",
+      "metadata_fallback",
+    ])
   })
 })

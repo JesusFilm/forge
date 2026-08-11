@@ -93,8 +93,8 @@ describe("searchVideosForAgent", () => {
     // populated fixture fields so the playback-field projection is really
     // pinned (toEqual ignores undefined-valued keys). The fixture's
     // availability carries the FULL upstream object so this also pins the
-    // { kind }-only projection — passing result.availability through whole
-    // would leak languageSlug/audio/subtitles and fail here.
+    // kind+language allowlist projection — passing the whole object through
+    // would leak audio/subtitles and fail here.
     expect(result.videos).toStrictEqual([
       {
         videoId: "vid-2",
@@ -105,15 +105,15 @@ describe("searchVideosForAgent", () => {
         playbackId: "pb-1",
         durationSeconds: 312,
         languageSlug: "english",
-        availability: { kind: "target_audio" },
+        availability: { kind: "target_audio", languageSlug: "english" },
       },
     ])
   })
 
   it("projects fallback availability kinds verbatim — admin reports kind, it never filters by it (feat-326/P6)", async () => {
-    // A playable target_subtitle row is the E10 blind spot: an
-    // all-target_audio fixture set leaves a kind filter vacuously green.
-    // Seeker's target_audio-only policy lives in mastra (feat-327), NOT here.
+    // A playable target_subtitle row keeps this no-kind-filter contract
+    // non-vacuous. Seeker's target_audio-only policy lives in mastra
+    // (feat-327), NOT here.
     searchMock.mockResolvedValue({
       results: [
         {
@@ -141,18 +141,15 @@ describe("searchVideosForAgent", () => {
           title: "Easter",
           imageUrl: null,
           snippet: "Easter video.",
-          // Playable FALLBACK row. Deliberately synthetic:
-          // watchabilityFromSubtitle (search-watchability.ts) hardcodes
-          // playbackId null (verified by hand 2026-08-03; re-check if
-          // watchability changes), so a playable target_subtitle row cannot
-          // reach this projection in production today. The fixture pins the
-          // no-kind-filter contract for ALL kinds — including ones only a
-          // future upstream change could make playable. playbackId is the
-          // single deliberate synthetic divergence; every other field pair
-          // stays producer-consistent.
+          // Production-reachable subtitle fallback: requested French
+          // availability is preserved while the action uses playable English.
           playbackId: "pb-2",
           durationSeconds: 312,
           languageSlug: "french",
+          action: {
+            kind: "watch",
+            hrefLanguageSlug: "english",
+          },
           availability: {
             kind: "target_subtitle",
             languageSlug: "french",
@@ -186,7 +183,7 @@ describe("searchVideosForAgent", () => {
         playbackId: "pb-1",
         durationSeconds: 7674,
         languageSlug: "english",
-        availability: { kind: "target_audio" },
+        availability: { kind: "target_audio", languageSlug: "english" },
       },
       {
         videoId: "vid-2",
@@ -196,8 +193,8 @@ describe("searchVideosForAgent", () => {
         imageUrl: null,
         playbackId: "pb-2",
         durationSeconds: 312,
-        languageSlug: "french",
-        availability: { kind: "target_subtitle" },
+        languageSlug: "english",
+        availability: { kind: "target_subtitle", languageSlug: "french" },
       },
     ])
   })
@@ -248,7 +245,7 @@ describe("searchVideosForAgent", () => {
         playbackId: "pb-3",
         durationSeconds: null,
         languageSlug: null,
-        availability: { kind: "related_language" },
+        availability: { kind: "related_language", languageSlug: "french" },
       },
     ])
   })

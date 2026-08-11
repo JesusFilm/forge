@@ -29,6 +29,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Incomplete website configuration disables only that integration and must
   never block Mastra startup; outbound clients require HTTPS before sending
   the shared bearer and reject redirects.
+- Owns the default-off daily Help Scout support-research workflow. Help Scout
+  is GET-only in v1; customer text is minimized and redacted before model use
+  or persistence; the agent has no tools; Watch validation is bounded to exact
+  configured public hosts; and Linear writes pass through the durable
+  `support_research` outbox with explicit confirmed/inferred labels and budgets.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.
@@ -45,10 +50,16 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   Langfuse UI. ONE Langfuse project (`forge-mastra`) holds every agent's
   prompt, with labels `production` / `development` distinguishing
   environments; two key pairs (Railway + local dev) live inside it. The
-  seeker agent is the one consumer (feat-272): its `instructions` resolve
-  through `getManagedPrompt` (prompt `seeker-system`, WHOLE prompt — no
-  composition split) with the full working text as compiled-in fallback.
-  Langfuse tracing is separate unbuilt work (feat-321).
+  seeker agent resolves `seeker-system` by the exact repository-pinned version
+  and content hash in `seeker-production-config.ts` (WHOLE prompt — no
+  composition split), with the full working text as compiled-in degraded
+  fallback. The `production` label is an alert-only deployment marker, not a
+  production traffic selector; label defaults remain for candidate intake.
+  Langfuse tracing shipped separately (feat-321): opt-in, default-off behind
+  `LANGFUSE_TRACING_ENABLED` plus the credential trio, routing seeker turns
+  by a per-process marker to a dedicated observability config that exports
+  RAW conversation content to Langfuse ONLY — no local copy. Every other
+  trace stays on the redacted default config.
 - Owns subtitle scripture accuracy validation for Bible-story results:
   runs model-knowledge checks by default, can optionally compare against a
   configured target-language Bible text source, and writes sanitized
@@ -90,6 +101,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   `apps/auth`.
 - Do not log bearer tokens, model provider keys, cookies, or raw prompts that
   may contain sensitive data.
+- Do not add Help Scout mailbox mutations, attachments, raw ticket persistence,
+  arbitrary validation URLs, or model-selected Linear routing to the support
+  research workflow. Keep it disabled until model-provider data processing is
+  approved and use a Studio dry run before live Linear dispatch.
 - Runtime storage uses Postgres via `DATABASE_URL`; Studio-visible logs and
   observability use DuckDB files under `MASTRA_STORAGE_DIR` on the Railway
   volume.

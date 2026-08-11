@@ -66,7 +66,10 @@ export type AgentVideoResult = {
   playbackId: string
   durationSeconds: number | null
   languageSlug: string | null
-  availability: { kind: WatchSearchAvailabilityKind }
+  availability: {
+    kind: WatchSearchAvailabilityKind
+    languageSlug: string | null
+  }
 }
 
 export async function searchVideosForAgent(
@@ -100,16 +103,21 @@ export async function searchVideosForAgent(
             imageUrl: result.imageUrl,
             playbackId: result.playbackId,
             durationSeconds: result.durationSeconds,
-            languageSlug: result.languageSlug,
-            // kind only, never the whole availability object (allowlist
-            // projection). Fallback kinds (target_subtitle/related_language)
+            languageSlug:
+              result.action?.hrefLanguageSlug ?? result.languageSlug,
+            // Allowlist the availability discriminator plus requested-language
+            // identity; never pass the whole upstream object. Fallback kinds
+            // (target_subtitle/related_language)
             // are REPORTED, never filtered — this endpoint serves multiple
             // agent consumers; the seeker's target_audio-only rule is mastra
             // policy (feat-327). Note: the playability filter above bounds
-            // today's reachable kinds to target_audio | related_language
-            // (target_subtitle/unavailable watchability always carries
-            // playbackId null — search-watchability.ts).
-            availability: { kind: result.availability.kind },
+            // playable target_subtitle rows now carry a same-edition Dub action;
+            // languageSlug above follows that action while availability keeps
+            // reporting the requested subtitle language.
+            availability: {
+              kind: result.availability.kind,
+              languageSlug: result.availability.languageSlug,
+            },
           },
         ]
       : [],

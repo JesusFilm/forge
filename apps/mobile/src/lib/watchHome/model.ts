@@ -77,7 +77,12 @@ export type WatchHomeMissingData = {
 }
 
 export type WatchHomeCard = {
+  /** Render key only — carries an index suffix so a repeated video in one
+   *  collection stays unique. Never a progress-store key. */
   id: string
+  /** Admin Video id, the key the progress store is built on. Null when the
+   *  item has no linked video, which renders no bar. */
+  videoId: string | null
   sourceId: string
   coreId: string
   slug: string | null
@@ -195,6 +200,7 @@ function normalizeCard(args: {
 
   return {
     id: args.video.documentId,
+    videoId: args.video.documentId,
     sourceId: args.sourceId,
     coreId: args.video.coreId,
     slug: args.video.slug ?? null,

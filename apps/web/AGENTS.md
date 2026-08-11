@@ -15,6 +15,7 @@ Scope: `apps/web`.
 - Export route metadata where relevant.
 - For any user-visible `/watch` link in a button, card, carousel, modal, or component, pass the public audio language slug to the route builders in `src/lib/routes.ts`. Eligible English content canonically omits `english.html`; non-English stays explicit. A content slug that is also a public language home stays explicit-English.
 - Keep search in the global modal surface. Do not add buttons, cards, or generated links to `/watch/search`, `/watch/search.html/search.html`, or query-driven search URLs; use the root modal fallback instead.
+- Treat `src/lib/watch-search-client.ts` as the single narrow exception to the generated-client rule: the global modal calls the public browser-safe GraphQL gateway directly, without an Admin bearer. Keep its operation and result mapping aligned with `src/lib/search.ts` through colocated parity tests; do not copy this pattern to other clients.
 
 ## Do not
 

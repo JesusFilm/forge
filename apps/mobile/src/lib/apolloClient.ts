@@ -3,12 +3,21 @@ import {
   ApolloLink,
   HttpLink,
   InMemoryCache,
+  Observable,
 } from "@apollo/client"
-import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import {
+  CombinedGraphQLErrors,
+  ServerError,
+  ServerParseError,
+} from "@apollo/client/errors"
 import { ErrorLink } from "@apollo/client/link/error"
 import { getMainDefinition } from "@apollo/client/utilities"
+import { noteAdminEndpointUnreachable } from "./adminEndpoint"
 import { getApiToken, getGraphQLUrl } from "./config"
-import { authHeadersForOperation } from "./authHeaders"
+import { authHeadersForOperation, isProgressOperation } from "./authHeaders"
+// Safe as a static import: authSession's native-adjacent deps load lazily
+// inside its own getters, so this pulls no native module into jest.
+import { getAuthSession } from "./authSession"
 import { WATCH_SEARCH_EVENT_OPERATION_NAME } from "./queries"
 import { getViewerId } from "./viewer-id"
 import {
@@ -113,10 +122,51 @@ function mergeContextHeaders(
 }
 
 /**
+ * User-JWT link (KTD10): for exactly the three progress operations, awaits
+ * the session module's refresh-if-expired JWT and merges the Bearer header.
+ * Every other operation forwards SYNCHRONOUSLY and untouched — public
+ * queries never carry the user token (the fleet-bearer law), and the
+ * existing sync header links stay sync. A failed or absent mint forwards
+ * without the header (the server denies; the caller fails open, R11).
+ */
+export function createUserJwtLink(
+  getJwt: () => Promise<string | null>,
+): ApolloLink {
+  return new ApolloLink((operation, forward) => {
+    if (!isProgressOperation(operation.operationName)) {
+      return forward(operation)
+    }
+    return new Observable<ApolloLink.Result>((subscriber) => {
+      let innerSubscription: { unsubscribe: () => void } | undefined
+      let cancelled = false
+      const proceed = (jwt: string | null) => {
+        if (cancelled) return
+        if (jwt) {
+          mergeContextHeaders(operation, { Authorization: `Bearer ${jwt}` })
+        }
+        innerSubscription = forward(operation).subscribe(subscriber)
+      }
+      getJwt().then(proceed, () => proceed(null))
+      return () => {
+        cancelled = true
+        innerSubscription?.unsubscribe()
+      }
+    })
+  })
+}
+
+/**
  * The request chain minus transport (auth + Datadog attribution). Exported so
  * tests can prove the Search bearer survives the attribution merge (R9).
  */
 export function createRequestChain(): ApolloLink {
+  // Async user-JWT link sits AHEAD of the sync header links (KTD10):
+  // a sync extension could not await the session module's refresh.
+  const userJwtLink = createUserJwtLink(() => getAuthSession().getFreshJwt())
+  return userJwtLink.concat(createHeaderChain())
+}
+
+function createHeaderChain(): ApolloLink {
   // Bearer + x-viewer-id ride ONLY on the Search op: admin buckets a fleet key
   // per device (consumer:<key>:v:<viewer_id> from x-viewer-id, else per IP).
   // On public ops the bearer would pool the whole fleet into one bucket.
@@ -200,11 +250,30 @@ export function reportGraphqlOperationError(
   reportDatadogError(error, { origin: "graphql_network_error", operation })
 }
 
+// R12. RN's fetch exposes no connection-refused discriminator, so the test is
+// negative — but an HTTP status proves the endpoint answered, so those are out.
+export function isUnreachableEndpointError(error: unknown): boolean {
+  if (CombinedGraphQLErrors.is(error)) return false
+  if (ServerError.is(error) || ServerParseError.is(error)) return false
+  if (isClientAbortError(error)) return false
+  return true
+}
+
+// The gate is the first line: this runs in the link chain of every build. It
+// cannot gate the whole handler — release needs the Datadog report above it.
+function noteUnreachableEndpointInDev(error: unknown): void {
+  if (!__DEV__) return
+  if (!isUnreachableEndpointError(error)) return
+  noteAdminEndpointUnreachable(getGraphQLUrl())
+}
+
 // onError-style link (v4 ErrorLink): every operation's downstream failure routes
 // through the pure reporter. Self-gates on provisioning, so always safe in-chain.
-function createErrorLink(): ErrorLink {
+// Exported so the R12 wiring — not just its classifier — is under test.
+export function createErrorLink(): ErrorLink {
   return new ErrorLink(({ error, operation }) => {
     reportGraphqlOperationError(error, operation.operationName)
+    noteUnreachableEndpointInDev(error)
   })
 }
 

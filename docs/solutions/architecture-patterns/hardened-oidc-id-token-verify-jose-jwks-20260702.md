@@ -320,6 +320,7 @@ export function resolveChatReturnToURL(
 - `docs/solutions/auth/better-auth-secret-must-not-fallback-to-hardcoded-value.md` — the fail-closed signing-secret guard; same posture as chat's `isRealSessionSecret`.
 - `docs/solutions/auth/spike-auth-header-must-be-env-gated.md` — runtime env-gate discipline for optional auth paths.
 - `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md` — why chat's auth env is all-`.optional()` with a runtime gate rather than required-at-schema-load.
+- `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md` — the BYTE axis of the same `createRemoteJWKSet` fetch this doc details. jose performs that fetch through its own client and buffers it uncapped; see that doc's Rule 1 corollary (2026-08-10) for the injection seam.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — the META framework for the cookie-decode and jsdom-crypto traps (and "every typed-discriminator branch needs a test where only it matches" — which is why `id_token_alg_not_allowed` de-vacuumed the allowlist test).
 - `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md` — the outbound-timeout discipline applied to the token-exchange and JWKS fetches.
 - `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md` — the inbound-auth pattern NOT yet applied to chat's world-reachable, un-rate-limited auth routes (a documented v1 accepted risk; prerequisite before the audience widens).

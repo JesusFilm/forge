@@ -19,6 +19,7 @@ import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
+import { buildSubtitleProxyUrl } from "@/components/watch/download-link"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
@@ -31,7 +32,16 @@ import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { resolveSeriesLanguageIdentity } from "@/lib/series-language"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  SUBTITLE_INTENT_PARAM,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import {
+  readSubtitlePreference,
+  writeSubtitlePreference,
+} from "@/lib/subtitle-preference-client"
 import { resolvePosterUrl } from "@/lib/url"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -60,12 +70,14 @@ type SeriesPageClientProps = {
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
+  subtitleLanguageSlug?: string | null
 }
 
 export function SeriesPageClient({
   series,
   selectedVariant,
   locale,
+  subtitleLanguageSlug = null,
 }: SeriesPageClientProps) {
   const t = useTranslations("SeriesPage")
   const router = useRouter()
@@ -131,6 +143,83 @@ export function SeriesPageClient({
   const episodeLabel = t("episodeCount", { count: episodes.length })
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
+  const subtitles = useMemo(() => series.subtitles ?? [], [series.subtitles])
+  const [selectedSubtitleSlug, setSelectedSubtitleSlug] = useState<
+    string | null
+  >(null)
+
+  useEffect(() => {
+    const preference = readSubtitlePreference()
+    const preferredSlug =
+      preference.enabled &&
+      preference.languageSlug != null &&
+      subtitles.some(
+        (subtitle) => subtitle.language.slug === preference.languageSlug,
+      )
+        ? preference.languageSlug
+        : null
+    setSelectedSubtitleSlug(preferredSlug)
+  }, [selectedVariant?.documentId, subtitles])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const rawIntent = url.searchParams.get(SUBTITLE_INTENT_PARAM)
+    if (rawIntent == null) return
+
+    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+
+    const intent = tryAsLocaleSlug(rawIntent)
+    if (subtitleLanguageSlug == null && intent != null) return
+    if (subtitleLanguageSlug != null && intent !== subtitleLanguageSlug) return
+    const availableIntent =
+      intent != null &&
+      subtitles.some((subtitle) => subtitle.language.slug === intent)
+        ? intent
+        : null
+
+    if (!availableIntent) return
+    setSelectedSubtitleSlug(availableIntent)
+    writeSubtitlePreference(true, availableIntent)
+  }, [subtitleLanguageSlug, subtitles])
+
+  const selectedSubtitle = useMemo(
+    () =>
+      selectedSubtitleSlug == null
+        ? null
+        : (subtitles.find(
+            (subtitle) => subtitle.language.slug === selectedSubtitleSlug,
+          ) ?? null),
+    [selectedSubtitleSlug, subtitles],
+  )
+  const subtitleVttSrc =
+    selectedSubtitle?.vttSrc && selectedVariant
+      ? buildSubtitleProxyUrl({
+          subtitleId: selectedSubtitle.documentId,
+          variantId: selectedVariant.documentId,
+        })
+      : null
+  const subtitleLanguageCode = selectedSubtitle
+    ? languageCodeFor(selectedSubtitle.language)
+    : null
+  const handleSubtitleChange = useCallback(
+    (enabled: boolean, languageSlug: string | null) => {
+      const validatedSlug = languageSlug ? tryAsLocaleSlug(languageSlug) : null
+      if (enabled && !validatedSlug) return
+      if (
+        validatedSlug &&
+        !subtitles.some((subtitle) => subtitle.language.slug === validatedSlug)
+      ) {
+        return
+      }
+
+      const nextSlug = enabled ? validatedSlug : null
+      setSelectedSubtitleSlug(nextSlug)
+      writeSubtitlePreference(enabled, nextSlug)
+    },
+    [subtitles],
+  )
 
   // `series.childDubLanguages` is the distinct dub-language union across all
   // episodes, aggregated + deduped server-side (DISTINCT ON) and guaranteed
@@ -317,6 +406,9 @@ export function SeriesPageClient({
         onLanguageClick={openLanguage}
         languageSlug={currentLanguageSlug}
         playableLanguageCount={variantsForLanguagePicker.length}
+        hasSubtitleOptions={subtitles.length > 0}
+        subtitleLanguageCode={subtitleLanguageCode}
+        subtitleVttSrc={subtitleVttSrc}
         overlay={
           // Stack the label on top, then a horizontal row with the title
           // on the left and the share pill on the right. Using
@@ -448,6 +540,7 @@ export function SeriesPageClient({
           collectionTitle={series.title}
           episodes={episodes.map((episode) => ({
             documentId: episode.documentId,
+            order: episode.order ?? null,
             slug: episode.slug,
             title: episode.title,
             thumbnailUrl: resolveEpisodeImageUrl(episode),
@@ -468,6 +561,10 @@ export function SeriesPageClient({
         playerRef={playerRef}
         onClose={closeModal}
         kind="series"
+        subtitles={subtitles}
+        currentSubtitleEnabled={selectedSubtitle != null}
+        currentSubtitleSlug={selectedSubtitleSlug}
+        onSubtitleChange={handleSubtitleChange}
       />
 
       <ShareModal

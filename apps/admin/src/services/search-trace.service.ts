@@ -122,7 +122,11 @@ export type RecordWatchSearchTraceInput = {
   response: WatchSearchResponse
   startedAt: Date
   completedAt: Date
-  traceRole?: "primary" | "shadow"
+  traceRole?:
+    | "primary"
+    | "shadow"
+    | "comparison_current"
+    | "comparison_candidate"
   shadowOfRequestId?: string | null
   now?: Date
   timeoutMs?: number
@@ -323,7 +327,11 @@ function safeResultMetadata(row: WatchSearchResult): Prisma.InputJsonObject {
 function watchSearchTraceMetadata(
   input: WatchSearchInput,
   response: WatchSearchResponse,
-  traceRole: "primary" | "shadow",
+  traceRole:
+    | "primary"
+    | "shadow"
+    | "comparison_current"
+    | "comparison_candidate",
   shadowOfRequestId: string | null,
 ): Prisma.InputJsonObject {
   const language = response.languageInterpretation
@@ -636,8 +644,8 @@ function watchSearchTraceInput(
     now: input.now,
     timeoutMs: input.timeoutMs,
     retentionHealthy: input.retentionHealthy,
-    storeAggregate: traceRole !== "shadow",
-    sampleEligible: traceRole === "shadow" ? false : undefined,
+    storeAggregate: traceRole === "primary",
+    sampleEligible: traceRole === "primary" ? undefined : false,
   }
 }
 

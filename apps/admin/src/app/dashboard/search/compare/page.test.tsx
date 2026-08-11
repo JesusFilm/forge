@@ -1,0 +1,241 @@
+import { renderToStaticMarkup } from "react-dom/server"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
+
+const requireCurrentAdminEvaluator = vi.fn()
+const loadWatchSearchLanguageOptions = vi.fn()
+const notFound = vi.fn(() => {
+  throw new Error("not-found")
+})
+const mockEnv = vi.hoisted(() => ({
+  WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED: true,
+}))
+
+vi.mock("@/config/env", () => ({ env: mockEnv }))
+vi.mock("./comparison-actions", () => ({
+  requireCurrentAdminEvaluator,
+  runWatchSearchComparison: vi.fn(),
+}))
+vi.mock("@/services/watch-search-language-options.service", () => ({
+  loadWatchSearchLanguageOptions,
+}))
+vi.mock("next/navigation", () => ({ notFound }))
+
+const { default: ComparePage } = await import("./page")
+const { WatchSearchComparison, WatchSearchComparisonPanes } =
+  await import("./watch-search-comparison")
+
+const previousServerFormSchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    languageSelection: z
+      .union([z.literal(""), z.string().trim().min(1)])
+      .optional(),
+    page: z.coerce.number().int().min(1).max(1_000).default(1),
+    perPage: z.coerce.number().int().min(1).max(50).default(10),
+    contentType: z.enum(["all", "video", "experience"]).default("all"),
+  })
+  .strict()
+
+function renderedFormValues(html: string) {
+  const exampleValues: Record<string, string> = {
+    query: "Jesus",
+    languageSelection: "japanese",
+    perPage: "10",
+    page: "1",
+    contentType: "video",
+  }
+  return Object.fromEntries(
+    [...html.matchAll(/\bname="([^"]+)"/g)].map(([, name]) => [
+      name,
+      exampleValues[name!],
+    ]),
+  )
+}
+
+describe("search comparison page", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockEnv.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED = true
+    requireCurrentAdminEvaluator.mockResolvedValue({
+      id: "admin-1",
+      role: "ADMIN",
+    })
+    loadWatchSearchLanguageOptions.mockResolvedValue([
+      {
+        label: "Japanese — ja-JP",
+        value: "japanese",
+      },
+    ])
+  })
+
+  it("requires a live Admin and hides the route while disabled", async () => {
+    mockEnv.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED = false
+    await expect(ComparePage()).rejects.toThrow("not-found")
+    expect(requireCurrentAdminEvaluator).toHaveBeenCalledOnce()
+  })
+
+  it("propagates authorization rejection before rendering", async () => {
+    requireCurrentAdminEvaluator.mockRejectedValueOnce(
+      new Error("redirect:/dashboard"),
+    )
+    await expect(ComparePage()).rejects.toThrow("redirect:/dashboard")
+  })
+
+  it("renders the private comparison form when enabled", async () => {
+    const html = renderToStaticMarkup(await ComparePage())
+    expect(html).toContain("Compare Watch search")
+    expect(html).toContain("Current and candidate")
+    expect(html).toContain('name="query"')
+    expect(html).toContain('name="languageSelection"')
+    expect(html).toContain(
+      '<option value="" selected="">Auto-detect from query</option>',
+    )
+    expect(html).toContain('<option value="japanese">Japanese — ja-JP</option>')
+    expect(html).toContain("Japanese — ja-JP")
+    expect(html).not.toContain('name="targetLanguageSlug"')
+    expect(html).not.toContain('name="locale"')
+    expect(loadWatchSearchLanguageOptions).toHaveBeenCalledOnce()
+  })
+
+  it("keeps auto-detect available when the language catalog fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    loadWatchSearchLanguageOptions.mockRejectedValueOnce(
+      new Error("database details must not be logged"),
+    )
+
+    const html = renderToStaticMarkup(await ComparePage())
+
+    expect(html).toContain('name="languageSelection"')
+    expect(html).toContain("Auto-detect from query")
+    expect(html).not.toContain("Japanese — ja-JP")
+    expect(warn).toHaveBeenCalledWith(
+      "[watch-search] event=language_options_load_failed error_class=Error",
+    )
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("database details")
+  })
+
+  it("keeps this deployment's form compatible with the previous strict action", async () => {
+    const html = renderToStaticMarkup(await ComparePage())
+
+    expect(
+      previousServerFormSchema.safeParse(renderedFormValues(html)).success,
+    ).toBe(true)
+  })
+
+  it("keeps a representative full language catalog within its markup budget", () => {
+    const languageOptions = Array.from({ length: 2_300 }, (_, index) => ({
+      label: `Language ${index} — lng-${index}`,
+      value: `language-${index}`,
+    }))
+
+    const html = renderToStaticMarkup(
+      <WatchSearchComparison languageOptions={languageOptions} />,
+    )
+    const markupBytes = Buffer.byteLength(html, "utf8")
+
+    expect(markupBytes).toBeLessThan(300_000)
+  })
+
+  it("keeps the successful pane visible beside an independently failed pane", () => {
+    const html = renderToStaticMarkup(
+      <WatchSearchComparisonPanes
+        result={
+          {
+            comparisonId: "comparison-1",
+            input: { query: "Jesus" },
+            current: {
+              status: "success",
+              response: {
+                query: "Jesus",
+                results: [
+                  {
+                    type: "video",
+                    id: "video-current",
+                    slug: "jesus",
+                    title: "JESUS",
+                    playbackId: "playback-current",
+                    startSeconds: null,
+                    score: 1,
+                    label: "FEATURE_FILM",
+                    durationSeconds: 120,
+                    childCount: null,
+                    languageSlug: "japanese",
+                    languageEnglishName: "Japanese",
+                    availability: {
+                      kind: "target_audio",
+                      languageSlug: "japanese",
+                      languageEnglishName: "Japanese",
+                      audio: true,
+                      subtitles: false,
+                    },
+                    evidence: {
+                      kind: "exact",
+                      languageSlug: "japanese",
+                      label: "イエス",
+                    },
+                    action: { kind: "watch", hrefLanguageSlug: "japanese" },
+                    fallback: { kind: "none", message: null },
+                  },
+                ],
+                hasMore: false,
+                nextOffset: 10,
+                searchMode: "watch-search-typesense",
+                requestId: "request-current",
+                degraded: false,
+                latencyMs: 20,
+                laneStatuses: [],
+                languageInterpretation: {
+                  targetLanguageSlug: "japanese",
+                  targetLanguageSource: "explicit_target",
+                  queryLanguageSlug: "japanese",
+                  queryNamedLanguageSlug: null,
+                  displayLanguageSlug: "japanese",
+                  routeLanguageSlug: null,
+                  currentWatchLanguageSlug: null,
+                  acceptLanguage: "ja",
+                  acceptLanguageSlug: "japanese",
+                },
+              },
+              diagnostics: {
+                profile: "CURRENT",
+                generationId: null,
+                applicationRevision: null,
+                transcriptProjectionRevision: null,
+                binding: {
+                  catalog: "current-catalog",
+                  availability: "current-availability",
+                  lexical: "current-lexical",
+                  transcript: "current-transcript",
+                },
+                retrievalCalls: 2,
+                logicalSubsearches: 5,
+                queryFieldCount: 6,
+                queryByBytes: 100,
+                requestBytes: 200,
+                parsedResponseBytes: 300,
+                typesenseSearchTimeMs: 10,
+                typesenseWallTimeMs: 12,
+                retryCount: 0,
+                groupedHits: 2,
+                candidates: 4,
+                hydratedRecords: 1,
+              },
+            },
+            candidate: {
+              status: "error",
+              error: { code: "search_failed", errorClass: "Error" },
+            },
+          } as never
+        }
+      />,
+    )
+    expect(html).toContain("Current")
+    expect(html).toContain("Candidate")
+    expect(html).toContain("JESUS")
+    expect(html).toContain("video-current")
+    expect(html).toContain("Japanese")
+    expect(html).toContain("target audio")
+    expect(html).toContain("Candidate search failed")
+  })
+})

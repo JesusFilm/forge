@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   parseTypesenseWatchSearchIndexArgs,
+  runGuardedTypesenseWatchSearchPublication,
   type TypesenseWatchSearchIndexLockClient,
   withTypesenseWatchSearchIndexLock,
 } from "./index-typesense-watch-search"
@@ -30,6 +31,19 @@ describe("Typesense Watch Search index CLI", () => {
     expect(
       parseTypesenseWatchSearchIndexArgs(["--rebuild-transcripts"]),
     ).toEqual({ transcriptStrategy: "rebuild" })
+  })
+
+  it("does not start publication when the candidate guard rejects", async () => {
+    const publish = vi.fn(async () => "published")
+    await expect(
+      runGuardedTypesenseWatchSearchPublication("reuse", {
+        assertCurrentPublicationAllowed: vi.fn(async () => {
+          throw new Error("active candidate lease")
+        }),
+        publish,
+      }),
+    ).rejects.toThrow("active candidate lease")
+    expect(publish).not.toHaveBeenCalled()
   })
 
   it.each([

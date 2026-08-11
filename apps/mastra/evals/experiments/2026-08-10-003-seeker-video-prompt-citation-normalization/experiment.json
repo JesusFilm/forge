@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "seeker-experiment/v1",
+  "id": "2026-08-10-003-seeker-video-prompt-citation-normalization",
+  "owner": "jaco-brink",
+  "hypothesis": "Langfuse seeker-system version 2 preserves or improves the established Seeker evaluation score relative to exact managed version 1 when readable shortened citation titles are normalized across structural punctuation, both prompts are answered by paid Claude Sonnet 5, and both are judged by paid Claude Haiku 4.5.",
+  "criterion": {
+    "id": "minimum-run-score",
+    "version": "1",
+    "parameters": {
+      "minimum": 0.95
+    }
+  },
+  "comparisonAxis": "prompt",
+  "productionBenchmark": {
+    "path": "apps/mastra/evals/results/seeker-baseline/answers.json",
+    "captureExactManaged": true,
+    "identity": {
+      "prompt": {
+        "provider": "langfuse",
+        "name": "seeker-system",
+        "revision": "1",
+        "contentHash": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5"
+      },
+      "model": {
+        "routing": "ordered-fallback",
+        "routes": [
+          {
+            "provider": "openrouter",
+            "model": "anthropic/claude-sonnet-5",
+            "endpoint": "model-router",
+            "maxRetries": 1
+          }
+        ]
+      },
+      "decoding": {
+        "mode": "provider-default"
+      },
+      "questionSet": {
+        "id": "seeker-eval/v1",
+        "questionIds": [
+          "q-suffering",
+          "q-grief-father",
+          "q-trinity",
+          "q-living-together",
+          "q-python-pdf",
+          "q-islam-jesus",
+          "q-verse-exact-words",
+          "q-links-to-verify",
+          "q-bible-changed",
+          "q-theotokos"
+        ]
+      },
+      "criteria": {
+        "contentHash": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213"
+      },
+      "judge": {
+        "model": "anthropic/claude-haiku-4.5",
+        "rubricHash": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+      },
+      "retrieval": {
+        "mode": "fixtures",
+        "corpusHash": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+        "topK": 5
+      },
+      "runtime": {
+        "configurationHash": "76fd63ddd840f51547f7212fe97a86544cb47901bbd02dad6d911597d9e45153"
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "video-prompt-v2",
+      "identity": {
+        "prompt": {
+          "provider": "langfuse",
+          "name": "seeker-system",
+          "revision": "2",
+          "contentHash": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+          "provenance": {
+            "intakeSelector": {
+              "kind": "label",
+              "value": "production"
+            }
+          }
+        },
+        "model": {
+          "routing": "ordered-fallback",
+          "routes": [
+            {
+              "provider": "openrouter",
+              "model": "anthropic/claude-sonnet-5",
+              "endpoint": "model-router",
+              "maxRetries": 1
+            }
+          ]
+        },
+        "decoding": {
+          "mode": "provider-default"
+        },
+        "questionSet": {
+          "id": "seeker-eval/v1",
+          "questionIds": [
+            "q-suffering",
+            "q-grief-father",
+            "q-trinity",
+            "q-living-together",
+            "q-python-pdf",
+            "q-islam-jesus",
+            "q-verse-exact-words",
+            "q-links-to-verify",
+            "q-bible-changed",
+            "q-theotokos"
+          ]
+        },
+        "criteria": {
+          "contentHash": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213"
+        },
+        "judge": {
+          "model": "anthropic/claude-haiku-4.5",
+          "rubricHash": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+        },
+        "retrieval": {
+          "mode": "fixtures",
+          "corpusHash": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+          "topK": 5
+        },
+        "runtime": {
+          "configurationHash": "76fd63ddd840f51547f7212fe97a86544cb47901bbd02dad6d911597d9e45153"
+        }
+      }
+    }
+  ],
+  "lifecycle": "executing"
+}

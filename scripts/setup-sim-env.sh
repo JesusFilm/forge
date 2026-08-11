@@ -35,10 +35,24 @@ src="$main/apps/$app/.env.local"
 dst="$here/apps/$app/.env.local"
 
 # Seed a missing worktree env from the main checkout (skip when already in main).
+#
+# mobile: the admin endpoint is deliberately NOT propagated. Copying it spread
+# whatever the main checkout happened to carry into every new worktree, which is
+# how a session ends up on production admin without deciding to. Mobile's code
+# default already resolves to local admin in a development bundle; a per-machine
+# override belongs in apps/mobile/.env.development.local, which this never
+# touches. (apps/tv still requires its own EXPO_PUBLIC_GRAPHQL_URL.)
 if [ "$src" != "$dst" ] && [ ! -f "$dst" ]; then
   if [ -f "$src" ]; then
-    cp "$src" "$dst"
-    echo "[setup-sim-env] seeded apps/$app/.env.local from the main checkout."
+    if [ "$app" = mobile ]; then
+      # `|| true`: grep exits 1 when it filters everything out, which set -e
+      # would otherwise treat as a failure.
+      grep -vE '^[[:space:]]*EXPO_PUBLIC_ADMIN_GRAPHQL_URL=' "$src" >"$dst" || true
+      echo "[setup-sim-env] seeded apps/$app/.env.local from the main checkout (admin endpoint omitted — the code default resolves to local admin)."
+    else
+      cp "$src" "$dst"
+      echo "[setup-sim-env] seeded apps/$app/.env.local from the main checkout."
+    fi
   else
     echo "[setup-sim-env] WARN: no $src to copy from." >&2
   fi
