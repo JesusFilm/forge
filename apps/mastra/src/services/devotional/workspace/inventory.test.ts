@@ -201,6 +201,17 @@ describe("inventoryDevotionalInputs", () => {
     )
   })
 
+  it("accepts canonical content-only scripture without web-bible.json", async () => {
+    const contentOnlyFiles = { ...REQUIRED_FILES }
+    delete contentOnlyFiles[DEVOTIONAL_AUTHORED_PATHS.webBible]
+
+    const result = await inventoryDevotionalInputs(filesystem(contentOnlyFiles))
+
+    expect(result.eligibleByCategory.scripture).toEqual([
+      expect.objectContaining({ path: "/inputs/scripture/john/3-16.md" }),
+    ])
+  })
+
   it("fails closed when required config or a required corpus is invalid", async () => {
     await expect(
       inventoryDevotionalInputs(

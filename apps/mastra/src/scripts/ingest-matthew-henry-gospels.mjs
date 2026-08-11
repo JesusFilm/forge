@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global fetch */
 /**
  * Ingest Matthew Henry's Commentary — Gospels volume (public domain) from CCEL,
  * for Mark / Luke / John (Matthew is covered by Ryle). Matthew Henry died 1714.
@@ -22,6 +21,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import {
+  fetchCorpusText,
   resolveWorkspaceStagingRoot,
   writeCorpusDocument,
 } from "./devotional-corpus-staging.mjs"
@@ -74,9 +74,7 @@ function bookSlice(xml, book) {
 async function loadSource() {
   const local = process.argv.find((a) => a.startsWith("--file="))
   if (local) return readFile(local.slice("--file=".length), "utf8")
-  const r = await fetch(SOURCE_URL)
-  if (!r.ok) throw new Error(`fetch ${SOURCE_URL} failed: HTTP ${r.status}`)
-  return r.text()
+  return fetchCorpusText(SOURCE_URL)
 }
 
 export function buildMatthewHenryGospelsCorpus(xml) {

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import type { UsedClipsStore } from "../used-clips-ledger"
-import { DEVOTIONAL_AUTHORED_PATHS } from "../authored-data"
+import { DEVOTIONAL_REQUIRED_AUTHORED_PATHS } from "../authored-data"
 import { MastraGenerationVectorIndex } from "./catalog"
 import {
   assertDevotionalWorkspaceReadyForStarts,
@@ -171,7 +171,7 @@ export function createDevotionalDataPlaneRuntime(
           string,
           z.infer<typeof DevotionalSourceRefSchema>
         >()
-        for (const requiredPath of Object.values(DEVOTIONAL_AUTHORED_PATHS)) {
+        for (const requiredPath of DEVOTIONAL_REQUIRED_AUTHORED_PATHS) {
           const required = refsByPath.get(requiredPath)
           if (!required) {
             throw new Error(

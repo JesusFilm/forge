@@ -1,7 +1,7 @@
 ---
 title: "fix: Align devotional readiness and corpus contracts"
 type: fix
-status: active
+status: completed
 date: 2026-08-11
 deepened: 2026-08-11
 ---
@@ -11,6 +11,11 @@ deepened: 2026-08-11
 ## Summary
 
 Remove the known code blockers to the guarded Devotional Workspace migration by isolating devotional schema readiness from unrelated Mastra migrations and aligning the public-domain corpus generators with the strict runtime document parsers. Add regression coverage at both integration seams while leaving the separate operator prerequisites unsatisfied and production unchanged.
+
+During implementation, PR #1901 landed the migration-readiness repair on
+`origin/main`. This work preserves and validates that newer implementation and
+delivers the remaining corpus, Workspace, and producer-consumer contract
+repairs without introducing a competing readiness path.
 
 ---
 
@@ -31,7 +36,7 @@ This blocks the guarded production cutover described in `docs/plans/2026-07-31-0
 - R1. Devotional readiness succeeds when the required immutable devotional migration is recorded, even when later unrelated Mastra migrations are also recorded.
 - R2. Devotional readiness fails closed when the required migration row is missing, malformed, or unavailable.
 - R3. The generalized migrator continues to apply and checksum-verify every Mastra migration without rewriting existing migration history.
-- R12. Required devotional migration identity includes version, filename, and SHA-256; future devotional schema migrations extend the required identity list.
+- R12. Required devotional migration identity includes version, filename, and SHA-256; future devotional schema changes must extend the component-scoped readiness contract explicitly.
 
 ### Corpus contracts
 
@@ -61,7 +66,7 @@ This blocks the guarded production cutover described in `docs/plans/2026-07-31-0
 
 ## Key Technical Decisions
 
-- KTD1. Check every required devotional migration by capability-specific version, filename, and SHA-256 rather than the maximum global version. A small required-identity list makes future devotional migrations an explicit readiness change while unrelated migrations compose safely.
+- KTD1. Check the required devotional migration by capability-specific version, filename, and SHA-256 rather than the maximum global version. Future devotional migrations remain an explicit readiness change while unrelated migrations compose safely.
 - KTD2. Keep Zod documents strict, enumerate bounded provenance and navigation fields, and refine declared counts against payload sizes. Using passthrough schemas would hide future generator drift; stripping or trusting metadata would discard or misstate source evidence.
 - KTD3. Export pure document-building seams from the ingestion scripts and validate their exact results through runtime parsers in tests. This exercises the producer-consumer contract without network access or writing full corpora during CI.
 - KTD4. Preserve the parser return types used by business logic. Runtime callers receive `verses` or normalized reflection entries while the source document retains its richer editorial envelope.
@@ -77,7 +82,7 @@ This blocks the guarded production cutover described in `docs/plans/2026-07-31-0
 
 ```mermaid
 flowchart TB
-  A["Mastra migration ledger"] --> B{"Every required devotional migration matches version, filename, and checksum"}
+  A["Mastra migration ledger"] --> B{"Required devotional migration matches version, filename, and checksum"}
   B -->|yes| C["Devotional schema ready"]
   B -->|no or query error| D["Fail closed"]
   E["Later unrelated migrations"] --> A
@@ -101,11 +106,14 @@ flowchart TB
 
 ### U1. Make devotional migration readiness capability-specific
 
+**Integration outcome:** Completed on the rebased base by PR #1901 and retained
+unchanged after conflict review.
+
 - **Goal:** Detect the required devotional schema migration independently from later Mastra migrations.
 - **Requirements:** R1, R2, R3, R10, R12.
 - **Dependencies:** None.
 - **Files:** `apps/mastra/src/services/devotional/workspace/database.ts`, `apps/mastra/src/services/devotional/workspace/database.test.ts`, `apps/mastra/src/scripts/migrate-devotional-database.test.ts`.
-- **Approach:** Query the shared migration ledger for every required devotional identity and validate version, immutable filename, and SHA-256. Keep query errors and missing or mismatched rows fail-closed. Preserve the generalized migrator and migration SQL unchanged, and prove the identity list matches the immutable migration file.
+- **Approach:** Query the shared migration ledger for the required devotional identity and validate version, immutable filename, and SHA-256. Keep query errors and missing or mismatched rows fail-closed. Preserve the generalized migrator and migration SQL unchanged, and prove the identity matches the immutable migration file.
 - **Execution note:** Start with the regression where migration versions `1` and `2` are present but devotional readiness must still succeed.
 - **Patterns to follow:** Immutable filename and checksum validation in `apps/mastra/src/scripts/migrate-mastra-database.ts`; result-union readiness handling in `apps/mastra/src/services/devotional/workspace/database.ts`.
 - **Test scenarios:**

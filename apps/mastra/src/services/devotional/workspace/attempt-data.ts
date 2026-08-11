@@ -134,7 +134,9 @@ function addReflection(
   entry: ReflectionEntry,
 ): void {
   const identity = `${sourcePath}\n${entry.source}`.toLowerCase()
-  if (identity.includes("ryle") || entry.osisRef?.startsWith("Matt.")) {
+  if (identity.includes("spurgeon")) {
+    corpora.spurgeon.push(entry)
+  } else if (identity.includes("ryle") || entry.osisRef?.startsWith("Matt.")) {
     corpora.ryleMatthew.push(entry)
   } else if (
     identity.includes("henry") ||
@@ -153,32 +155,42 @@ async function loadScripture(options: {
   sources: readonly DevotionalSourceRef[]
 }): Promise<WebBible> {
   const verses: Record<string, string> = {}
-  const errors: string[] = []
   for (const source of options.sources) {
     if (source.category !== "scripture" || isDocumentation(source)) continue
+    let parsed: WebBible
     try {
-      const parsed = parseWebBibleDocument({
+      parsed = parseWebBibleDocument({
         path: source.path,
         content: await readVerified(options.filesystem, source),
       })
-      for (const [reference, text] of Object.entries(parsed.verses)) {
-        const previous = verses[reference]
-        if (previous != null && previous !== text) {
-          throw new Error(`conflicting scripture text for ${reference}`)
-        }
-        verses[reference] = text
-      }
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error))
+      const message = error instanceof Error ? error.message : String(error)
+      throw new DevotionalAuthoredDataError(
+        "invalid",
+        source.path,
+        `selected scripture source could not be loaded: ${message}`,
+        error,
+      )
+    }
+    for (const [reference, text] of Object.entries(parsed.verses)) {
+      const previous = verses[reference]
+      if (previous != null && previous !== text) {
+        throw new DevotionalAuthoredDataError(
+          "invalid",
+          source.path,
+          `conflicting scripture text for ${reference}`,
+        )
+      }
+    }
+    for (const [reference, text] of Object.entries(parsed.verses)) {
+      verses[reference] = text
     }
   }
   if (Object.keys(verses).length === 0) {
     throw new DevotionalAuthoredDataError(
       "invalid",
       "/inputs/scripture",
-      `no valid WEB scripture corpus was selected${
-        errors.length > 0 ? `: ${errors.join("; ")}` : ""
-      }`,
+      "no valid WEB scripture corpus was selected",
     )
   }
   return { verses }

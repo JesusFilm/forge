@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global fetch */
 /**
  * Ingest Charles Spurgeon's "Morning and Evening" (public domain) from CCEL's
  * ThML source into a clean JSON corpus the devotional pipeline reads for
@@ -20,6 +19,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import {
+  fetchCorpusText,
   resolveWorkspaceStagingRoot,
   writeCorpusDocument,
 } from "./devotional-corpus-staging.mjs"
@@ -94,9 +94,7 @@ async function loadSource() {
   // Prefer a locally cached copy (for offline re-runs); else fetch from CCEL.
   const local = process.argv.find((a) => a.startsWith("--file="))
   if (local) return readFile(local.slice("--file=".length), "utf8")
-  const r = await fetch(SOURCE_URL)
-  if (!r.ok) throw new Error(`fetch ${SOURCE_URL} failed: HTTP ${r.status}`)
-  return r.text()
+  return fetchCorpusText(SOURCE_URL)
 }
 
 export function buildSpurgeonMorningEveningCorpus(xml) {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import type { UsedClipsStore } from "../used-clips-ledger"
-import { DEVOTIONAL_AUTHORED_PATHS } from "../authored-data"
+import { DEVOTIONAL_REQUIRED_AUTHORED_PATHS } from "../authored-data"
 import type { DevotionalWorkspaceRuntime } from "./config"
 import type { DevotionalDatabase, QueryExecutor } from "./database"
 import type { EligibleDevotionalInput } from "./inventory"
@@ -30,7 +30,10 @@ function databaseFixture(events: string[]): DevotionalDatabase {
 }
 
 function requiredEligible(): EligibleDevotionalInput[] {
-  return Object.values(DEVOTIONAL_AUTHORED_PATHS).map((path, index) => ({
+  return [
+    ...DEVOTIONAL_REQUIRED_AUTHORED_PATHS,
+    "/inputs/scripture/john/3-16.md",
+  ].map((path, index) => ({
     path,
     category: path.split("/")[2] as EligibleDevotionalInput["category"],
     digest: index.toString(16).padStart(64, "a").slice(-64),
