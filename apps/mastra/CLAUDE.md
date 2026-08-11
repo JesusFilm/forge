@@ -1466,8 +1466,10 @@ local storage. The Workspace keeps native Studio CRUD/search available, but
 its inherited agent tools are disabled; workflows read it programmatically
 through typed devotional repository code. Native search is an eventual Studio
 browsing aid. Devotional generation remains fail-closed until filesystem,
-embedder, PgVector, migration version 1, and the authoritative PostgreSQL
-cutover row are all ready. Apply the idempotent
+embedder, PgVector, the exact immutable identity of
+`001-devotional-workspace.sql`, and the authoritative PostgreSQL cutover row
+are all ready. Later shared-ledger migrations do not replace that component-
+scoped requirement. Apply the idempotent
 schema with `pnpm --filter @forge/mastra migrate:devotional-database` before
 enabling new starts. Existing `RAILWAY_S3_*` variables continue to serve only
 the legacy subtitle/general artifact path.
@@ -1475,7 +1477,8 @@ the legacy subtitle/general artifact path.
 Apply all Mastra SQL migrations with
 `pnpm --filter @forge/mastra migrate:database`. The legacy
 `migrate:devotional-database` command remains a compatibility alias over the
-same checksum metadata and migration set. Migration 2 creates the isolated
+same checksum metadata and complete migration set; it does not apply only
+devotional-owned migrations. Migration 2 creates the isolated
 `support_research` evidence, report, cursor, lease, and Linear outbox schema.
 Deploy it before enabling `SUPPORT_RESEARCH_ENABLED=true`.
 
