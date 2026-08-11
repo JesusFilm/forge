@@ -337,6 +337,10 @@ export function VideoPlayer({
         player={player}
         style={StyleSheet.absoluteFill}
         nativeControls={false}
+        // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
+        // over a paused/ended frame that contains text — a system control we
+        // do not own, inside chrome we do.
+        allowsVideoFrameAnalysis={false}
         contentFit="contain"
         allowsPictureInPicture
         // textureView composites in the RN view hierarchy on Android so the
