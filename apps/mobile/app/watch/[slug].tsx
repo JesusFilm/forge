@@ -498,6 +498,9 @@ export default function WatchVideoPage() {
           <PlayerPoster
             posterUrl={displayPoster}
             horizontalInset={PLAYER_SIDE_PADDING}
+            // Spin only while the stream is still being resolved — once the
+            // query settles, a null source means unplayable, not pending.
+            loading={loading && error == null}
           />
         ) : (
           <VideoPlayer

@@ -14,7 +14,7 @@ import {
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
-import { VideoView } from "expo-video"
+import { VideoView, type VideoPlayerStatus } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -34,6 +34,7 @@ import {
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { PlayerControls } from "./PlayerControls"
+import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
 // Caption distance above the bottom edge (px). In fullscreen the caption lifts
@@ -129,6 +130,35 @@ export function VideoPlayer({
     if (isPlaying && !hasStarted) setHasStarted(true)
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
+
+  // Release the pre-autostart chrome suppression below if the source fails:
+  // playback never starts, so without this the viewer is left on a spinner
+  // with no controls and no way to retry.
+  const [loadFailed, setLoadFailed] = useState(false)
+  useEffect(() => {
+    setLoadFailed(false)
+    const sub = player.addListener(
+      "statusChange",
+      ({ status }: { status: VideoPlayerStatus }) => {
+        setLoadFailed(status === "error")
+      },
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
+  }, [player, streamingUrl])
+
+  // An autostarting player opens on its poster, not on transport chrome: a play
+  // button and a 0:00 scrubber for a video about to start itself reads as
+  // broken. Suppress chrome until the first frame plays. `hasStarted` never
+  // resets, so this covers the initial load only — a later language swap keeps
+  // the chrome it already had.
+  const awaitingAutostart =
+    autostart && !hasStarted && streamingUrl != null && !loadFailed
 
   const controls = useControlsVisibility(player)
 
@@ -325,6 +355,8 @@ export function VideoPlayer({
         />
       )}
 
+      {awaitingAutostart && <PlayerLoadingVeil />}
+
       {/* Full-bleed tap target behind the chrome (controls layer is box-none,
           subtitle overlay is pointerEvents none, so empty-area taps fall here).
           Tap toggles controls; double tap on a side seeks ±10s. */}
@@ -360,7 +392,7 @@ export function VideoPlayer({
 
       {/* Chrome scrim — fades with the chrome and sits BELOW the subtitle so it
           never dims the caption. */}
-      {controls.mounted && (
+      {controls.mounted && !awaitingAutostart && (
         <Animated.View
           pointerEvents="none"
           style={[styles.chromeScrim, { opacity: controls.opacityAnim }]}
@@ -394,7 +426,7 @@ export function VideoPlayer({
       {/* Chrome controls — fade with the chrome and layer OVER the subtitle, so
           the timeline/buttons are always on top of the captions (R: timeline
           must stay visible). */}
-      {controls.mounted && (
+      {controls.mounted && !awaitingAutostart && (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
           pointerEvents="box-none"

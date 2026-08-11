@@ -93,6 +93,54 @@ describe("autostart / auto-resume", () => {
     expect(EFFECT).not.toContain("player.duration > 0")
   })
 
+  it("suppresses chrome only while an AUTOSTART player waits for its first frame", () => {
+    // Gating on !hasStarted alone would strip the play button from every
+    // non-autostart surface (the series trailer dock), leaving it unplayable.
+    expect(SOURCE).toContain(
+      "autostart && !hasStarted && streamingUrl != null && !loadFailed",
+    )
+  })
+
+  it("gates BOTH chrome layers, not just one", () => {
+    // The scrim and the controls layer are separate `controls.mounted` blocks.
+    // Gating one leaves the other painting over the loading veil, which is the
+    // exact bug being fixed — so count them rather than matching once.
+    const gated = SOURCE.match(/controls\.mounted && !awaitingAutostart/g) ?? []
+    expect(gated).toHaveLength(2)
+    // And no ungated `controls.mounted &&` block survives.
+    expect(SOURCE).not.toMatch(/controls\.mounted && \(/)
+  })
+
+  it("shows the shared loading veil while it waits", () => {
+    expect(SOURCE).toContain("{awaitingAutostart && <PlayerLoadingVeil />}")
+    expect(SOURCE).toContain('from "./PlayerLoadingVeil"') // actually imported
+  })
+
+  it("shares one veil with the pre-stream poster", () => {
+    // Two loading states run back to back on this screen (poster while the
+    // stream resolves, then poster while autostart spins up). Two separately
+    // styled veils would make one navigation look like two screens.
+    const veil = fs.readFileSync(
+      path.join(__dirname, "..", "PlayerLoadingVeil.tsx"),
+      "utf8",
+    )
+    expect(veil).toContain("<CircularSpinner />")
+    const poster = fs.readFileSync(
+      path.join(__dirname, "..", "PlayerPoster.tsx"),
+      "utf8",
+    )
+    expect(poster).toContain("{loading && <PlayerLoadingVeil />}")
+    // The poster must NOT spin whenever its source is null — that state also
+    // means "resolved, nothing playable", where a spinner never resolves.
+    expect(poster).toContain("loading = false")
+  })
+
+  it("releases the suppression when the source errors", () => {
+    // Playback never starts on an error, so without this the viewer is stuck
+    // on a spinner with no controls and no way to retry.
+    expect(SOURCE).toContain('setLoadFailed(status === "error")')
+  })
+
   it("reports the adoption metric only once playback actually started", () => {
     // Reporting before/independently of play() lets a released player count
     // as a successful autostart and quietly inflates the metric.
