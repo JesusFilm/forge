@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-08-10"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-350"
 tags:
   - "admin"
   - "watch"
@@ -31,7 +32,9 @@ misleading.
 
 ## Grep These
 
-- `languageSelection` — the combined dropdown field and server-action input.
+- `languageSelection` — the combined dropdown field introduced by this feature.
+- `targetLanguageSlug` — the long-term field accepted during the follow-up
+  compatibility migration.
 - `loadWatchSearchLanguageOptions` — the cached language option loader.
 - `resolveWatchSearchLanguageSelection` — canonical server-side slug resolution.
 
