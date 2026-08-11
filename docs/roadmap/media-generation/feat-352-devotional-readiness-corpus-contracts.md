@@ -18,11 +18,13 @@ tags:
 
 ## Problem
 
-The generalized Mastra database migrator records later non-devotional
-migrations in the shared immutable ledger, but devotional readiness assumes the
-latest ledger version must equal migration 1. The public-domain corpus
-generators also emit strict provenance fields that their Workspace parsers
-reject, and their CLIs still write to the obsolete ignored `devo/corpus` tree.
+At planning time, the generalized Mastra database migrator recorded later
+non-devotional migrations in the shared immutable ledger while devotional
+readiness assumed the latest ledger version must equal migration 1. PR #1901
+repaired that readiness contract while this work was in progress. The remaining
+public-domain corpus generators emit provenance fields that their Workspace
+parsers reject, and their CLIs still write to the obsolete ignored
+`devo/corpus` tree.
 
 ## Entry Points — Read These First
 
@@ -32,10 +34,19 @@ reject, and their CLIs still write to the obsolete ignored `devo/corpus` tree.
 4. `apps/mastra/src/services/devotional/web-bible.ts`
 5. `apps/mastra/src/scripts/ingest-web-bible.mjs`
 
+## Grep These
+
+- `REQUIRED_DEVOTIONAL_MIGRATIONS`
+- `DEVOTIONAL_REQUIRED_AUTHORED_PATHS`
+- `parseWebBibleDocument`
+- `parseReflectionDocument`
+- `resolveWorkspaceStagingRoot`
+- `writeCorpusDocument`
+
 ## What To Build
 
-1. Verify every required devotional migration by version, filename, and
-   checksum without treating unrelated later migrations as devotional schema
+1. Preserve and validate the component-scoped migration readiness merged in PR
+   #1901 without treating unrelated later migrations as devotional schema
    versions.
 2. Define strict, bounded scripture and reflection document envelopes that
    accept the provenance emitted by all four corpus generators.

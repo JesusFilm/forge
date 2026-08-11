@@ -3,7 +3,7 @@ import path from "node:path"
 
 import type { WorkspaceFilesystem } from "@mastra/core/workspace"
 
-import { DEVOTIONAL_AUTHORED_PATHS } from "../authored-data"
+import { DEVOTIONAL_REQUIRED_AUTHORED_PATHS } from "../authored-data"
 import { DevotionalWorkspaceError, isDevotionalWorkspaceError } from "./errors"
 import {
   DEVOTIONAL_INPUT_CATEGORIES,
@@ -364,7 +364,7 @@ export async function inventoryDevotionalInputs(
       { details: { count: eligibleByCategory.safety.length } },
     )
   }
-  for (const requiredPath of Object.values(DEVOTIONAL_AUTHORED_PATHS)) {
+  for (const requiredPath of DEVOTIONAL_REQUIRED_AUTHORED_PATHS) {
     if (!eligible.some((entry) => entry.path === requiredPath)) {
       throw new DevotionalWorkspaceError(
         "required-input-invalid",

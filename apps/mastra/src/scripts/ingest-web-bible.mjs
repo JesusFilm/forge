@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global fetch */
+/* global AbortController */
 /**
  * Ingest the World English Bible (WEB, public domain, modern English) for the
  * Gospels + Acts into a flat verse map, so devotional scripture is the EXACT
@@ -16,6 +16,8 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import {
+  DevotionalCorpusStagingError,
+  fetchCorpusJson,
   resolveWorkspaceStagingRoot,
   writeCorpusDocument,
 } from "./devotional-corpus-staging.mjs"
@@ -33,14 +35,51 @@ export function buildWebBibleCorpus(bookDocuments) {
   const verses = {}
   const books = []
   for (const { osis, book } of bookDocuments) {
+    if (typeof osis !== "string" || !Array.isArray(book?.chapters)) {
+      throw new DevotionalCorpusStagingError(
+        "invalid-upstream-corpus",
+        "getbible book document is missing its OSIS code or chapters",
+      )
+    }
     books.push(osis)
-    for (const chapter of book.chapters ?? []) {
-      for (const verse of chapter.verses ?? []) {
-        verses[`${osis}.${verse.chapter}.${verse.verse}`] = String(verse.text)
-          .replace(/\s+/g, " ")
-          .trim()
+    for (const chapter of book.chapters) {
+      if (!Array.isArray(chapter?.verses) || chapter.verses.length === 0) {
+        throw new DevotionalCorpusStagingError(
+          "invalid-upstream-corpus",
+          `getbible ${osis} chapter is missing verses`,
+        )
+      }
+      for (const verse of chapter.verses) {
+        if (
+          !Number.isInteger(verse?.chapter) ||
+          verse.chapter < 1 ||
+          !Number.isInteger(verse?.verse) ||
+          verse.verse < 1 ||
+          typeof verse?.text !== "string" ||
+          verse.text.trim() === ""
+        ) {
+          throw new DevotionalCorpusStagingError(
+            "invalid-upstream-corpus",
+            `getbible ${osis} contains an invalid verse`,
+          )
+        }
+        const reference = `${osis}.${verse.chapter}.${verse.verse}`
+        if (Object.hasOwn(verses, reference)) {
+          throw new DevotionalCorpusStagingError(
+            "duplicate-scripture-reference",
+            `getbible corpus contains duplicate reference ${reference}`,
+          )
+        }
+        verses[reference] = verse.text.replace(/\s+/g, " ").trim()
       }
     }
+  }
+
+  if (books.length === 0 || Object.keys(verses).length === 0) {
+    throw new DevotionalCorpusStagingError(
+      "invalid-upstream-corpus",
+      "getbible corpus must contain at least one book and verse",
+    )
   }
 
   return {
@@ -56,15 +95,22 @@ export function buildWebBibleCorpus(bookDocuments) {
 
 async function main() {
   const workspaceRoot = resolveWorkspaceStagingRoot()
-  const bookDocuments = await Promise.all(
-    Object.entries(BOOKS).map(async ([nr, osis]) => {
-      const response = await fetch(`https://api.getbible.net/v2/web/${nr}.json`)
-      if (!response.ok) {
-        throw new Error(`getbible ${nr}: HTTP ${response.status}`)
-      }
-      return { osis, book: await response.json() }
-    }),
-  )
+  const controller = new AbortController()
+  let bookDocuments
+  try {
+    bookDocuments = await Promise.all(
+      Object.entries(BOOKS).map(async ([nr, osis]) => ({
+        osis,
+        book: await fetchCorpusJson(
+          `https://api.getbible.net/v2/web/${nr}.json`,
+          { signal: controller.signal },
+        ),
+      })),
+    )
+  } catch (error) {
+    controller.abort(error)
+    throw error
+  }
 
   for (const { osis, book } of bookDocuments) {
     const verseCount = (book.chapters ?? []).reduce(

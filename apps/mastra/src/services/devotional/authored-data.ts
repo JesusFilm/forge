@@ -24,6 +24,24 @@ export const DEVOTIONAL_AUTHORED_PATHS = {
 export type DevotionalAuthoredPath =
   (typeof DEVOTIONAL_AUTHORED_PATHS)[keyof typeof DEVOTIONAL_AUTHORED_PATHS]
 
+/**
+ * Fixed configuration documents that every devotional attempt requires.
+ * Scripture is intentionally excluded: any eligible source beneath
+ * /inputs/scripture may provide the corpus for an attempt.
+ */
+export const DEVOTIONAL_REQUIRED_AUTHORED_PATHS = [
+  DEVOTIONAL_AUTHORED_PATHS.prompts,
+  DEVOTIONAL_AUTHORED_PATHS.safety,
+  DEVOTIONAL_AUTHORED_PATHS.holidays,
+  DEVOTIONAL_AUTHORED_PATHS.voices,
+  DEVOTIONAL_AUTHORED_PATHS.music,
+  DEVOTIONAL_AUTHORED_PATHS.render,
+  DEVOTIONAL_AUTHORED_PATHS.narration,
+  DEVOTIONAL_AUTHORED_PATHS.brand,
+  DEVOTIONAL_AUTHORED_PATHS.videoCatalog,
+  DEVOTIONAL_AUTHORED_PATHS.videoPassages,
+] as const satisfies readonly DevotionalAuthoredPath[]
+
 export type DevotionalAuthoredDocument = {
   path: string
   text: string

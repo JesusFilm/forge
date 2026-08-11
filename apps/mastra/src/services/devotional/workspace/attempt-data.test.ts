@@ -31,15 +31,15 @@ function harness(overrides: Record<string, string> = {}) {
     "inputs/reflections/new-source.md",
     Buffer.from("Grace meets a fearful heart with steady hope."),
   )
-  for (const [nativePath, content] of Object.entries(overrides)) {
-    values.set(nativePath, Buffer.from(content))
-  }
   values.set(
     "inputs/scripture/john/3-16.md",
     Buffer.from(
       "For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.",
     ),
   )
+  for (const [nativePath, content] of Object.entries(overrides)) {
+    values.set(nativePath, Buffer.from(content))
+  }
   const sources: DevotionalSourceRef[] = [...values.entries()].map(
     ([nativePath, content]) => {
       const workspacePath = `/${nativePath}`
@@ -117,6 +117,7 @@ describe("attempt-scoped authored data", () => {
         verseCount: 1,
         verses: { "John.3.16": "For God so loved the world." },
       }),
+      "inputs/scripture/john/3-16.md": "For God so loved the world.",
       "inputs/reflections/ryle-matthew.json": JSON.stringify({
         source: "J.C. Ryle, Expository Thoughts",
         sourceUrl: "https://ccel.org/ccel/ryle/matthew.xml",
@@ -149,6 +150,58 @@ describe("attempt-scoped authored data", () => {
       expect.objectContaining({
         osisRef: "Matt.3.1-Matt.3.2",
         text: "Repent and prepare.",
+      }),
+    )
+  })
+
+  it("fails closed when selected scripture sources conflict", async () => {
+    const { filesystem, sources } = harness({
+      "inputs/scripture/john/3-16.md": "A conflicting editor transcription.",
+    })
+
+    await expect(
+      loadDevotionalAttemptAuthoredData({ filesystem, sources }),
+    ).rejects.toMatchObject({
+      code: "invalid",
+      path: "/inputs/scripture/john/3-16.md",
+      message: expect.stringContaining(
+        "conflicting scripture text for John.3.16",
+      ),
+    })
+  })
+
+  it("keeps explicitly identified Spurgeon Gospel entries in Spurgeon", async () => {
+    const { filesystem, sources } = harness({
+      "inputs/reflections/spurgeon-gospel.json": JSON.stringify({
+        source: "Charles H. Spurgeon, Morning and Evening",
+        count: 1,
+        entries: [
+          {
+            id: "spurgeon-matthew",
+            reference: "Matthew 11:28",
+            osisRef: "Matt.11.28",
+            text: "Come to Christ for rest.",
+            source: "Charles H. Spurgeon, Morning and Evening",
+          },
+        ],
+      }),
+    })
+
+    const loaded = await loadDevotionalAttemptAuthoredData({
+      filesystem,
+      sources,
+    })
+
+    expect(loaded.corpora.spurgeon).toContainEqual(
+      expect.objectContaining({
+        source: "Charles H. Spurgeon, Morning and Evening",
+        osisRef: "Matt.11.28",
+      }),
+    )
+    expect(loaded.corpora.ryleMatthew).not.toContainEqual(
+      expect.objectContaining({
+        source: "Charles H. Spurgeon, Morning and Evening",
+        osisRef: "Matt.11.28",
       }),
     )
   })
