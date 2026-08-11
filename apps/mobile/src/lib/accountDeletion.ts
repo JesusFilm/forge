@@ -41,3 +41,32 @@ export function outcomeFromDeleteResult(result: {
     ? { status: "fresh-session-required" }
     : { status: "error" }
 }
+
+export type PostReauthNext =
+  | "retry-deletion"
+  | "wrong-account"
+  | "needs-reauth"
+  | "needs-reauth-sign-in-failed"
+
+/**
+ * KTD5: decide the deletion flow's next step after the re-auth sheet
+ * settles. Deletion re-runs ONLY for a verified same-subject session;
+ * anything unverifiable lands in a non-destructive state.
+ */
+export function decidePostReauth(input: {
+  /** Snapshot user id captured when deleteUser reported a stale session. */
+  capturedUserId: string | null
+  outcome: "success" | "cancelled" | "error"
+  /** The refreshed snapshot's user id; null when signed out. */
+  signedInUserId: string | null
+}): PostReauthNext {
+  if (input.outcome === "cancelled") return "needs-reauth"
+  if (input.outcome === "error") return "needs-reauth-sign-in-failed"
+  // Success without a signed-in snapshot: nobody verifiable signed in, so
+  // the deletion never ran — surface the sign-in failure copy (R2).
+  if (input.signedInUserId == null) return "needs-reauth-sign-in-failed"
+  return input.capturedUserId != null &&
+    input.signedInUserId === input.capturedUserId
+    ? "retry-deletion"
+    : "wrong-account"
+}
