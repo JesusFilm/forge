@@ -29,6 +29,7 @@ struct RootView: View {
     @StateObject private var homeViewModel = HomeViewModel()
     @StateObject private var searchViewModel = SearchViewModel()
     @StateObject private var signInViewModel = SignInViewModel()
+    @StateObject private var settings = AppSettings()
 
     @State private var homePath = NavigationPath()
     @State private var searchPath = NavigationPath()
@@ -36,21 +37,23 @@ struct RootView: View {
     var body: some View {
         TabView {
             // `.focusSection()` on each tab's content ROOT, not just inside
-            // it: adding NavigationStack re-broke descent from the tab bar
-            // (UIFocusDebugger showed focus stuck on UITabBarButton), because
-            // the stack becomes the container the engine must aim at and a
-            // plain container is not itself a directional target.
+            // it: the stack becomes the container the engine must aim at, and
+            // a plain container is not itself a directional target.
             Tab("Home", systemImage: "house.fill") {
                 NavigationStack(path: $homePath) {
                     HomeView(viewModel: homeViewModel) { homePath.append($0) }
-                        .navigationDestination(for: Route.self, destination: destination)
+                        .navigationDestination(for: Route.self) { route in
+                            destination(route) { homePath.append($0) }
+                        }
                 }
                 .focusSection()
             }
             Tab("Search", systemImage: "magnifyingglass") {
                 NavigationStack(path: $searchPath) {
                     SearchView(viewModel: searchViewModel)
-                        .navigationDestination(for: Route.self, destination: destination)
+                        .navigationDestination(for: Route.self) { route in
+                            destination(route) { searchPath.append($0) }
+                        }
                 }
                 .focusSection()
             }
@@ -58,32 +61,31 @@ struct RootView: View {
                 SignInView(model: signInViewModel)
                     .focusSection()
             }
+            Tab("Settings", systemImage: "gearshape.fill") {
+                SettingsView(settings: settings)
+                    .focusSection()
+            }
         }
         .background(Theme.background.ignoresSafeArea())
     }
 
     /// One destination table shared by every stack, so a route means the same
-    /// thing wherever it is pushed from.
+    /// thing wherever it is pushed from. `push` is THREADED IN rather than
+    /// captured, because the table cannot know which stack it is rendering
+    /// inside — and a screen pushing onto the wrong stack strands the viewer
+    /// in a tab they never navigated from.
     @ViewBuilder
-    private func destination(for route: Route) -> some View {
+    private func destination(
+        _ route: Route,
+        push: @escaping (Route) -> Void
+    ) -> some View {
         switch route {
         case .video(let slug):
-            WatchView(slug: slug)
+            WatchView(slug: slug, navigate: push)
         case .series(let slug):
-            // Series lands in PR3. Routing to the video detail is wrong for a
-            // collection, so this states the gap rather than showing
-            // something misleading.
-            ContentUnavailableView {
-                Label("Series coming soon", systemImage: "square.stack")
-            } description: {
-                Text(slug)
-            }
+            SeriesView(slug: slug, navigate: push)
         case .experience(let slug):
-            ContentUnavailableView {
-                Label("Experience coming soon", systemImage: "sparkles")
-            } description: {
-                Text(slug)
-            }
+            ExperienceView(slug: slug, navigate: push)
         }
     }
 }

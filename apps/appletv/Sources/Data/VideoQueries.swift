@@ -17,7 +17,7 @@ enum VideoQueries {
         id
         slug
         label
-        images { url thumbnail mobileCinematicHigh }
+        images { url thumbnail mobileCinematicHigh mobileCinematicLow }
         primaryLanguage { bcp47 }
         locales(locale: $locale) { title description snippet }
         variants: dubs {
@@ -72,6 +72,9 @@ struct WireImage: Decodable {
     let url: String?
     let thumbnail: String?
     let mobileCinematicHigh: String?
+    /// Defaulted so adding a poster rung does not invalidate every existing
+    /// fixture — in production this type is decoded, never constructed.
+    var mobileCinematicLow: String? = nil
 }
 
 struct WireLanguageRef: Decodable {

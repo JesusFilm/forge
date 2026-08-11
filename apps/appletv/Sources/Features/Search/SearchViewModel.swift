@@ -27,6 +27,15 @@ final class SearchViewModel: ObservableObject {
 
     @Published private(set) var state: State = .idle
 
+    /// The trimmed query the CURRENTLY VISIBLE results answer for.
+    ///
+    /// Published in the same statement group as `state` so a consumer reacting
+    /// to `.results` records the query the viewer actually saw results for —
+    /// never the newer one they have since typed past, which `query` would
+    /// report by the time SwiftUI runs the change handler. RN keeps
+    /// `lastSubmittedQuery` for exactly this reason.
+    @Published private(set) var submittedQuery = ""
+
     private let client: GraphQLClient
     private var searchTask: Task<Void, Never>?
 
@@ -105,6 +114,7 @@ final class SearchViewModel: ObservableObject {
                 variables: ["input": ["query": q]]
             )
             guard isCurrent(q) else { return }
+            submittedQuery = q
             state = .results(SearchProjection.project(data))
         } catch {
             // Also reached by our own cancelled URLSession call; isCurrent

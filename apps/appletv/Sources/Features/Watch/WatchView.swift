@@ -8,6 +8,9 @@ import SwiftUI
 /// about section, and share/download land in PR2 (U4–U7).
 struct WatchView: View {
     let slug: String
+    /// Lets the screen hand a series-shaped record to the series route
+    /// instead of rendering it as an unplayable video (see below).
+    var navigate: (Route) -> Void = { _ in }
     @StateObject private var viewModel = WatchViewModel()
     @State private var isPlaying = false
     @State private var showLanguages = false
@@ -31,6 +34,24 @@ struct WatchView: View {
                 }
             case .loaded(let video):
                 content(video)
+                    // A collection's playable media lives on its CHILD
+                    // episodes, so the record itself has dubs with no `hls`
+                    // and no playback id — verified in production, where
+                    // `lumo-the-gospel-of-matthew` returns 56 published dubs
+                    // and zero playable ones. Rendered as a video this is a
+                    // dead end: a disabled Play button over 56 unusable
+                    // languages. Hand it to the series route instead, the
+                    // same redirect the React Native watch screen performs.
+                    //
+                    // The label is the ONLY predicate, deliberately. Counting
+                    // children instead once billed ten feature films as
+                    // series, because a film carries its own chapter clips
+                    // (JESUS has 61).
+                    .onAppear {
+                        if SeriesShape.isSeriesLabel(video.label) {
+                            navigate(.series(slug: video.slug))
+                        }
+                    }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -51,6 +51,18 @@ struct Subtitle: Equatable, Identifiable {
 }
 
 enum WatchProjection {
+    /// Poster precedence, mirroring RN's `cardImage.ts`: cinematic high, then
+    /// cinematic low, then thumbnail, then the bare url as a last resort.
+    /// Field-major so a single image lacking the best field cannot force the
+    /// whole chain down to a broken URL.
+    static func posterURL(from images: [WireImage]?) -> String? {
+        guard let images, !images.isEmpty else { return nil }
+        return images.compactMap(\.mobileCinematicHigh).first
+            ?? images.compactMap(\.mobileCinematicLow).first
+            ?? images.compactMap(\.thumbnail).first
+            ?? images.compactMap(\.url).first
+    }
+
     /// Resolve a JSONB locale map to a display string, preferring English.
     static func displayName(_ map: [String: String]?, fallback: String?) -> String {
         map?["en"] ?? map?.values.sorted().first ?? fallback ?? "Unknown"
@@ -61,7 +73,14 @@ enum WatchProjection {
             return nil
         }
         let locale = v.locales?.first
-        let poster = v.images?.compactMap { $0.mobileCinematicHigh ?? $0.url ?? $0.thumbnail }.first
+        // FIELD-major, not image-major, and `url` is LAST.
+        //
+        // The bare `url` is Cloudflare's variant-less delivery base and
+        // returns HTTP 400 — confirmed against production 2026-08-12. Ranking
+        // it above `thumbnail` (as the first cut did) means a record whose
+        // cinematic art is absent shows nothing at all, while a perfectly
+        // good thumbnail sits unused one rung below.
+        let poster = WatchProjection.posterURL(from: v.images)
 
         // Only published dubs, matching RN. Server order is preserved here;
         // display sorting happens at the view layer so the underlying
