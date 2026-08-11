@@ -1,5 +1,5 @@
 ---
-id: "feat-352"
+id: "feat-355"
 title: "Extend 2026 roadmap with year-end priorities"
 owner: "vlad"
 priority: "P1"
