@@ -3,7 +3,7 @@ id: "feat-352"
 title: "Align live SEO proposal digest with Admin persistence"
 owner: "codex"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-11"
 duration: 1
 depends_on:
