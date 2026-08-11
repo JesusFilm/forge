@@ -26,6 +26,7 @@
 import { getStorage } from "../safeStorage"
 import {
   CONTINUE_WATCHING_STORAGE_KEY,
+  clearContinueWatching,
   parseContinueWatching,
   type ContinueWatchingEntry,
 } from "../watchEvents/continueWatching"
@@ -202,17 +203,35 @@ export async function writeLocalUserMarker(
   }
 }
 
-/** Removes every anonymous bucket. The fixed key list above is the whole
- *  enumeration; nothing here scans storage. */
-export async function clearAnonymousWatchState(): Promise<void> {
+/**
+ * Removes every anonymous bucket. The fixed key list above is the whole
+ * enumeration; nothing here scans storage.
+ *
+ * Returns whether EVERY bucket is confirmed gone. Callers must not advance
+ * the marker on a false: the marker is the only thing standing between a
+ * surviving shelf and the next account, and since feat-322's account sync a
+ * surviving shelf is uploaded, not merely displayed.
+ *
+ * Continue Watching clears through its own module so the erase takes the
+ * shelf lock — a bare `removeItem` can land mid-`saveResumeSnapshot`, whose
+ * pending write then restores what was just erased.
+ */
+export async function clearAnonymousWatchState(): Promise<boolean> {
   const storage = getStorage()
+  let cleared = true
   for (const key of ANONYMOUS_STATE_KEYS) {
+    if (key === CONTINUE_WATCHING_STORAGE_KEY) {
+      if (!(await clearContinueWatching())) cleared = false
+      continue
+    }
     try {
       await storage.removeItem(key)
     } catch {
       // Best-effort per key: one failure must not skip the rest.
+      cleared = false
     }
   }
+  return cleared
 }
 
 /**
@@ -224,10 +243,16 @@ export async function clearAnonymousWatchState(): Promise<void> {
  * without the other is the bug in both directions: keep the marker and the next
  * viewer's own history is thrown away; keep the buckets and it is handed to the
  * wrong account.
+ *
+ * So the release is CONDITIONAL on the wipe. If a bucket survives, the marker
+ * keeps naming the departing viewer, which makes the next sign-in take the
+ * `reset` branch and wipe again — the shelf is stranded for one session
+ * instead of being handed to (and now uploaded into) somebody else's account.
  */
 export async function releaseLocalUserOnSignOut(): Promise<void> {
-  await clearAnonymousWatchState()
-  await writeLocalUserMarker(null)
+  if (await clearAnonymousWatchState()) {
+    await writeLocalUserMarker(null)
+  }
 }
 
 async function readAnonymousPayload(
@@ -282,7 +307,15 @@ export async function promoteAnonymousStateToAccount(input: {
     if (action === "reset") {
       // Somebody else's history. It is not promoted, not read, and not left
       // lying around for the next signed-in session to inherit.
-      await clearAnonymousWatchState()
+      //
+      // The marker advances only if the wipe is confirmed. Advancing it after
+      // a failed wipe would tell the NEXT sign-in the surviving buckets belong
+      // to this account — turning the other viewer's history into ours, which
+      // the sync then uploads. Leaving the old marker keeps this branch armed
+      // so the next attempt wipes again.
+      if (!(await clearAnonymousWatchState())) {
+        return { status: "failed" }
+      }
       await writeLocalUserMarker(userId)
       return { status: "reset_for_other_user" }
     }

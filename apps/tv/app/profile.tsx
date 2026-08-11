@@ -39,6 +39,13 @@ import {
 } from "../src/lib/auth/session"
 import { releaseLocalUserOnSignOut } from "../src/lib/auth/anonymousMerge"
 import { submitQueuedWatchEvent } from "../src/lib/watchEvents/recordWatchEvent"
+import {
+  flushOwnedShelfOnSignOut,
+  hydrateContinueWatchingFromAccount,
+  purgeAccountProgressCache,
+  submitContinueWatchingToAccount,
+  syncContinueWatchingWithAccount,
+} from "../src/lib/watchEvents/watchProgressSync"
 import { getDeviceGrantConfig } from "../src/lib/auth/deviceGrantClient"
 
 type Identity = { name: string; email: string; userId: string }
@@ -111,15 +118,26 @@ export default function ProfileRoute() {
         // whoever signs in next on a shared TV.
         const outcome = await promoteAnonymousStateToAccount({
           userId: subject,
-          // Continue Watching is device-local today — admin exposes no
-          // promotion mutation for it, only `recordWatchEvent`. Claiming it
-          // for this account locally is what stops the next family member
-          // inheriting it; server-side sync is follow-up work, not something
-          // to fake a success for here.
-          submitProgress: async () => true,
+          // The real account submit (feat-322 U4.6): shelf entries land in
+          // admin's `upsertMyWatchProgress` — the same rows mobile writes. A
+          // false return maps onto the `failed` outcome, which leaves every
+          // bucket untouched for the next sign-in to retry.
+          submitProgress: (payload) =>
+            submitContinueWatchingToAccount(payload.continueWatching),
           submitWatchEvent: submitQueuedWatchEvent,
         })
         reportAnonymousMergeOutcome({ status: outcome.status })
+
+        // Cross-device pull. After a fresh promotion the account may hold
+        // positions from other devices that are further along; on a repeat
+        // visit (`already_merged`) also push positions recorded since the
+        // last visit before pulling. `failed` skips — the network already
+        // declined once, and promotion will retry the whole pass next time.
+        if (outcome.status === "already_merged") {
+          void syncContinueWatchingWithAccount()
+        } else if (outcome.status !== "failed") {
+          void hydrateContinueWatchingFromAccount()
+        }
       } catch {
         // Sign-in has already succeeded. Nothing in the aftermath is allowed
         // to unwind it or surface as a failure to the viewer.
@@ -168,10 +186,19 @@ export default function ProfileRoute() {
   const handleSignOut = useCallback(() => {
     void (async () => {
       try {
+        // Final flush BEFORE the token is revoked: sign-out wipes the local
+        // shelf (privacy on a shared TV), so anything not yet in the account
+        // would be lost. Gated on the ownership marker AND time-bounded
+        // inside `flushOwnedShelfOnSignOut`, which never throws — an unowned
+        // or someone-else's shelf is skipped rather than uploaded here.
+        await flushOwnedShelfOnSignOut(identity?.userId)
         await signOut()
         // The account marker is released so the NEXT viewer starts clean
         // rather than being treated as an already-merged returning user.
         await releaseLocalUserOnSignOut()
+        // Third copy of the departing viewer's history — see the purge's own
+        // comment. Never throws, so it cannot unwind a completed sign-out.
+        await purgeAccountProgressCache()
         reportDeviceGrantSignedOut("revoked")
       } catch {
         reportDeviceGrantSignedOut("local_only")
@@ -180,7 +207,10 @@ export default function ProfileRoute() {
         setSession({ kind: "signed_out" })
       }
     })()
-  }, [])
+    // `identity?.userId` is a real dependency, not ceremony: it is the account
+    // the flush is authorized against, and an empty array would pin this
+    // callback to the first render's `null` — refusing every flush.
+  }, [identity?.userId])
 
   if (!enabled) return null
 

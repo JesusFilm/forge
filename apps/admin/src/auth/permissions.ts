@@ -128,7 +128,8 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:experience-embeddings": "ADMIN",
   "write:watch-events": "ADMIN",
   // ADMIN-only on the editorial ladder (operational override); the
-  // intended caller is MOBILE_USER via its per-key allowlist below.
+  // intended callers are MOBILE_USER and WEB_USER (TV device-grant
+  // tokens introspect as WEB_USER) via their per-key allowlists below.
   "read:watch-progress:own": "ADMIN",
   "write:watch-progress:own": "ADMIN",
   "delete:watch-progress:own": "ADMIN",
@@ -282,17 +283,32 @@ const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:video-mapper-catalog",
 ])
 
+/**
+ * WEB_USER is minted by Auth-token introspection for BOTH web watch
+ * sessions and TV device-grant sessions (the `jfp_tv_*` client ids in
+ * `web-user-token.ts`). The three own-data watch-progress scopes joined
+ * `write:watch-events` for feat-322's TV Continue Watching account merge
+ * — own-data only: the subject comes from the introspected token (R13),
+ * never from arguments, so this grants a signed-in viewer access to
+ * exactly their own rows. Adding any NON-own-data key here widens what a
+ * verified user token can reach; the enumerating test in
+ * `permissions.test.ts` pins the set.
+ */
 const WEB_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:watch-events",
+  "read:watch-progress:own",
+  "write:watch-progress:own",
+  "delete:watch-progress:own",
 ])
 
 /**
  * Permission keys the request-bound `MOBILE_USER` principal is allowed
  * to satisfy — exactly the three own-data watch-progress scopes.
- * Deliberately disjoint from WEB_USER's `write:watch-events` (mobile
- * carries no event-write permission in v1) and from every content or
- * editorial scope. Adding a key here widens what a verified mobile JWT
- * can reach; the enumerating test in `permissions.test.ts` pins the set.
+ * Mobile still carries no event-write permission in v1 and no content
+ * or editorial scope. (Until feat-322's TV merge these three scopes
+ * were MOBILE_USER-exclusive; WEB_USER now shares them — see above.)
+ * Adding a key here widens what a verified mobile JWT can reach; the
+ * enumerating test in `permissions.test.ts` pins the set.
  */
 const MOBILE_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:watch-progress:own",
