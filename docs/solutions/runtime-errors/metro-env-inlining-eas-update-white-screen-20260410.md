@@ -2,7 +2,7 @@
 title: "EAS Update white screen: Metro env var inlining fails inside nested function args"
 date: 2026-04-10
 category: runtime-errors
-module: apps/mobile-v2
+module: apps/mobile
 problem_type: runtime_error
 component: tooling
 severity: high
@@ -107,6 +107,8 @@ export { env }
 
 When `createEnv()` throws at module evaluation time, static ES `import` statements cause the entire module graph to fail silently — producing a white screen with zero diagnostic information. Using `require()` inside try/catch catches these module-level crashes and displays a visible error screen.
 
+> **Scope qualification — added 2026-08-11.** This catches a throw only when the guarded `require` is the **first** evaluation path into the throwing module. In an expo-router app that is a property of the current import graph, not of the pattern: route modules are evaluated through expo-router's own graph, and a static import chain from any screen can reach the throwing module without passing through this block. Both outcomes have been observed on `apps/mobile` four days apart, with neither `_layout.tsx` nor the throwing module changed in between. The guard is still worth having — it just is not a guarantee. See `../best-practices/expo-router-require-guard-containment-is-order-dependent.md`.
+
 ```typescript
 let moduleError: string | null = null
 let Stack: typeof import("expo-router").Stack
@@ -164,18 +166,19 @@ Key elements:
 
 **Metro's cache** is keyed by source file mtime. Swapping `.env.local` changes the env values but doesn't change any `.ts` file, so Metro serves a cached bundle with old values. `touch src/env.ts` forces cache invalidation.
 
-**Static ES imports** evaluate eagerly at module load time. If any module in the import chain throws, the entire module graph fails with no recovery path. In Expo Go's production mode, this manifests as a white screen with no error. Using `require()` defers evaluation into a try/catch, letting us catch the throw and display a diagnostic error screen.
+**Static ES imports** evaluate eagerly at module load time. If any module in the import chain throws, the entire module graph fails with no recovery path. In production mode this manifests as a white screen with no error. Using `require()` defers evaluation into a try/catch, letting us catch the throw and display a diagnostic error screen — _when that require is the first path into the throwing module_. Where another importer reaches it first, the throw escapes the block (see the scope qualification in section 2).
 
 ## Prevention
 
 1. **Always add top-level `process.env.EXPO_PUBLIC_*` references** in any module that uses `@t3-oss/env-core` with `createEnv()`. Don't rely on Metro inlining references inside nested function arguments.
-2. **Use `require()` with try/catch** in root layout files for Expo apps distributed via EAS Update. This prevents silent white screens from module-level throws.
+2. **Use `require()` with try/catch** in root layout files for Expo apps distributed via EAS Update. This converts a silent white screen into a visible error **for throws in the root layout's own require chain**. It is not a general containment guarantee — see the scope qualification in section 2. If the guarantee has to hold, encode the module-graph precondition as a test rather than assuming it.
 3. **Use `trap` in scripts** that temporarily modify env files to guarantee restore on any exit.
 4. **Use `touch` to invalidate Metro cache** when swapping env files — Metro keys on source file mtime, not env file content.
-5. **Test EAS Update bundles on a real device** via Expo Go before sharing with stakeholders. Simulator behavior (via `expo start` or `expo run:ios`) does not match EAS Update behavior.
+5. **Test EAS Update bundles on a real device** before sharing with stakeholders — simulator behaviour (via `expo start` or `expo run:ios`) does not match EAS Update behaviour. _Updated 2026-08-11:_ use a **dev client or an internal-distribution build**, not Expo Go. `apps/mobile` now depends on native modules Expo Go does not bundle (background-downloader, Datadog RUM, Google/Apple sign-in, secure-store), so Expo Go cannot run this app at all.
 
 ## Related Issues
 
-- [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — Original EAS Update setup for legacy `apps/mobile`; does not cover the Metro inlining bug
+- [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — the original EAS Update setup; does not cover the Metro inlining bug. (Written before `apps/mobile-v2` was renamed to `apps/mobile`, so its "legacy vs v2" framing predates the current layout.)
+- [expo-router require-guard containment is order-dependent](../best-practices/expo-router-require-guard-containment-is-order-dependent.md) — bounds section 2's guard: it contains a module-scope throw only when its require is the first path into the throwing module
 - [Expo Env File Handling](../mobile/expo-env-file-handling.md) — Env file priority, shell env vars vs Metro, and `@expo/env` behavior
 - [Metro pnpm Symlink Resolution](../mobile/metro-pnpm-symlink-react-duplicate-resolution.md) — Another Metro bundling quirk in the monorepo
