@@ -257,13 +257,6 @@ export function createSecureStorageAdapter(
   }
 }
 
-export type SignedInUserPayload = {
-  id: string
-  email?: string | null
-  name?: string | null
-  createdAt?: string | Date | null
-}
-
 type BetterAuthExpoClient = {
   /** better-fetch returns a {data,error} envelope and does NOT throw on a
    *  non-2xx, so `error` is the only way to tell an outage from a sign-out. */
@@ -287,35 +280,11 @@ type BetterAuthExpoClient = {
     error?: { code?: string | null; message?: string | null } | null
   }>
   signIn: {
-    /** Native sheets: verify the provider identity token server-side. */
-    social: (options: {
-      provider: "apple" | "google"
-      idToken: { token: string }
-    }) => Promise<{
-      data: { user: SignedInUserPayload } | null
-      error?: { message?: string } | null
-    }>
-    /** Native email/password (F2). The expo client stamps every request
-     *  with `expo-origin`, which is what marks the session as mobile. */
-    email: (options: { email: string; password: string }) => Promise<{
-      data: { user: SignedInUserPayload } | null
-      error?: { code?: string | null; message?: string | null } | null
-    }>
-    /** Hosted-page fallback: the jfp self-RP flow (browser sheet + expo
+    /** Hosted-page sign-in: the jfp self-RP flow (browser sheet + expo
      *  cookie handoff land the session in SecureStore). */
     oauth2: (options: { providerId: string; callbackURL: string }) => Promise<{
       data: unknown
       error?: { message?: string } | null
-    }>
-  }
-  signUp: {
-    email: (options: {
-      email: string
-      password: string
-      name: string
-    }) => Promise<{
-      data: { user: SignedInUserPayload } | null
-      error?: { code?: string | null; message?: string | null } | null
     }>
   }
   $fetch: (
@@ -349,7 +318,7 @@ export function getAuthClient(): BetterAuthExpoClient {
             keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
           }),
         }),
-        // signIn.oauth2 for the hosted-page fallback (jfp self-RP).
+        // signIn.oauth2 for the hosted-page sign-in (jfp self-RP).
         genericOAuthClient(),
       ],
     }) as unknown as BetterAuthExpoClient

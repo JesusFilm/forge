@@ -165,6 +165,16 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 
 ## Auth + watch progress (feat: mobile login & continue watching)
 
+- **Login is hosted-only (feat-349)**: every sign-in entry point calls
+  `signInWithHostedPage()` in `src/lib/authActions.ts`. It opens the hosted
+  auth login page in a system browser sheet (the Better Auth `jfp` self-RP
+  flow) and is single-flight — a second call joins the in-flight attempt.
+  The app renders no credential UI of its own; a new auth method reaches
+  mobile when the auth platform enables it, with no app release. The auth
+  side sets `prompt: "login"` on the `jfp` provider, so the sheet always
+  shows the login form after sign-out. A user cancel settles session-less —
+  the expo plugin never throws for it — so a thrown browser open always
+  classifies as a retryable error (`src/lib/authFlows.ts`).
 - **Session**: `src/lib/authSession.ts` owns the Better Auth Expo client
   (lazy getter, never module-scope) and a subscribable snapshot readable
   WITHOUT React — the Apollo link and recorder read it directly. Credentials
@@ -192,3 +202,13 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
+
+## Component render tests
+
+Component render tests use the in-file react re-point pattern — see
+`src/components/profile/__tests__/AccountSection.test.tsx`. The app's
+tsconfig maps `react` to its `.d.ts`, and jest-expo mirrors tsconfig paths
+into jest's `moduleNameMapper`, so each render suite re-points `react` and
+`react/jsx-runtime` at the real package via `jest.mock`. No new test
+dependencies are needed; the renderer is jest-expo's own transitive
+react-test-renderer.

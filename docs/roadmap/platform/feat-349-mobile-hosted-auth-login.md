@@ -34,7 +34,7 @@ The full Product Contract (requirements R1-R9, flows, acceptance examples, settl
 - `signInWithApple|signInWithGoogle|signInWithEmail|signUpWithEmail` — flows to remove
 - `/sign-in` — router pushes to the sheet route; every hit becomes a direct hosted-flow launch
 - `expo-apple-authentication|@react-native-google-signin` — dependencies and `app.json` plugin entries to drop
-- `CANCEL_CODES` — native provider cancel codes in `authFlows.ts`; browser-cancel handling stays
+- `CANCEL_CODES` — native provider cancel codes in `authFlows.ts`, removed with the native flows. A hosted-flow cancel never throws: the expo plugin settles without a session, so cancel = session-less settle, and a thrown browser open classifies retryable.
 
 ## What To Build
 
@@ -45,7 +45,7 @@ The full Product Contract (requirements R1-R9, flows, acceptance examples, settl
 
 ## Constraints
 
-- Do not edit `apps/auth` in this ticket. Auth-side cleanup of orphaned native-mobile entry points is a separate follow-up.
+- `apps/auth` edits are limited to the approved carve-out (plan KTD1): `prompt: "login"` on the `jfp` provider in `apps/auth/src/auth/config.ts`, its config-test pin, and the R9 guideline-4.8 note in `apps/auth/CLAUDE.md`. Auth-side cleanup of orphaned native-mobile entry points is a separate follow-up.
 - Keep `authSession.ts` (store, SecureStore adapter, JWT single-flight) and the operation-scoped JWT gate in `authHeaders.ts` unchanged.
 - No dormant native fallback may remain (plan Key Decisions: no kill switch is accepted).
 - The hosted page must keep Sign in with Apple enabled (App Store guideline 4.8); record this with auth operators.
