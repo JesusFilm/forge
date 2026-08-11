@@ -6,6 +6,7 @@ import {
   isPromptCooldownActive,
   markSignInPromptShown,
   noteSignedOutPlaybackStop,
+  rearmSignInPromptAfterCancel,
   serializePromptDismissal,
   shouldShowSignInPrompt,
   isSignInPromptArmed,
@@ -155,5 +156,60 @@ describe("arming is observable (R17 renders on the current screen)", () => {
     noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
 
     expect(listener).not.toHaveBeenCalled()
+  })
+})
+
+describe("cancelled hosted attempt re-arms in-session (U3/R2)", () => {
+  it("re-arms after the session shot was burned, so the banner can show again", () => {
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+    markSignInPromptShown()
+    expect(
+      shouldShowSignInPrompt({
+        signedIn: false,
+        dismissedAtRaw: null,
+        nowMs: NOW,
+      }),
+    ).toBe(false)
+
+    rearmSignInPromptAfterCancel()
+
+    expect(isSignInPromptArmed()).toBe(true)
+    expect(
+      shouldShowSignInPrompt({
+        signedIn: false,
+        dismissedAtRaw: null,
+        nowMs: NOW,
+      }),
+    ).toBe(true)
+  })
+
+  it("notifies listeners so useSyncExternalStore re-renders", () => {
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+    markSignInPromptShown()
+    const listener = jest.fn()
+    const unsubscribe = subscribeToSignInPrompt(listener)
+
+    rearmSignInPromptAfterCancel()
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    unsubscribe()
+  })
+
+  it("does not override a persisted dismissal cooldown", () => {
+    // An explicit dismiss persists the cooldown; a later cancel-driven
+    // re-arm must not resurface the banner inside that window.
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+    markSignInPromptShown()
+    const dismissedAtRaw = serializePromptDismissal(NOW)
+
+    rearmSignInPromptAfterCancel()
+
+    expect(
+      shouldShowSignInPrompt({
+        signedIn: false,
+        dismissedAtRaw,
+        nowMs: NOW + 1_000,
+      }),
+    ).toBe(false)
   })
 })

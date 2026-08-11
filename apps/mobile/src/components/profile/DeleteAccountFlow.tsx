@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { useRouter } from "expo-router"
 
-import { deleteAccount } from "../../lib/authActions"
+import { deleteAccount, signInWithHostedPage } from "../../lib/authActions"
 import { TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 
@@ -26,7 +25,6 @@ type FlowState =
  * (KTD12); locally the signed-out transition clears everything.
  */
 export function DeleteAccountFlow() {
-  const router = useRouter()
   const [state, setState] = useState<FlowState>({ phase: "idle" })
 
   const runDelete = () => {
@@ -112,8 +110,10 @@ export function DeleteAccountFlow() {
           <View style={styles.actionRow}>
             <Pressable
               onPress={() => {
+                // Opens the hosted sheet directly (R2); idle lets the user
+                // retry deletion after re-auth. U4 adds the auto-retry.
                 setState({ phase: "idle" })
-                router.push("/sign-in")
+                void signInWithHostedPage()
               }}
               style={({ pressed }) => [
                 styles.cancelButton,

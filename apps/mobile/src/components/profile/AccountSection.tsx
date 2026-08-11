@@ -2,11 +2,10 @@ import { useState, useSyncExternalStore } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
-import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
 import { DeleteAccountFlow } from "./DeleteAccountFlow"
-import { signOut } from "../../lib/authActions"
+import { signInWithHostedPage, signOut } from "../../lib/authActions"
 import { getAuthSession } from "../../lib/authSession"
 import {
   clearNewAccountNotice,
@@ -36,24 +35,56 @@ function useAuthSnapshot() {
   )
 }
 
+const WARNING = "#fbbf24"
+
+type SignInPhase = "idle" | "busy" | "error"
+
 /**
- * Profile-tab account section (U6): signed-out CTA opening the sign-in
- * sheet; signed-in identity + sign out. Sign-out revokes at auth then
- * clears local state (R4); the progress lifecycle reacts to the session
- * transition (store/snapshot/queue reset).
+ * Profile-tab account section: signed-out CTA opening the hosted auth
+ * sheet directly (R2); signed-in identity + sign out. Sign-out revokes at
+ * auth then clears local state (R4); the progress lifecycle reacts to the
+ * session transition (store/snapshot/queue reset).
  */
 export function AccountSection() {
   const typography = useTypography()
-  const router = useRouter()
   const snapshot = useAuthSnapshot()
   const newAccountNotice = useNewAccountNotice()
   const [signingOut, setSigningOut] = useState(false)
+  const [signInPhase, setSignInPhase] = useState<SignInPhase>("idle")
 
   if (snapshot.status !== "signedIn") {
+    const signingIn = signInPhase === "busy"
     return (
       <View style={styles.container}>
+        {signInPhase === "error" ? (
+          <View style={styles.errorCard}>
+            <Ionicons name="warning" size={20} color={WARNING} />
+            <Text style={styles.errorText}>
+              Something went wrong finishing sign-in. You are not signed in yet
+              — please try again.
+            </Text>
+            <Pressable
+              onPress={() => setSignInPhase("idle")}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+              style={({ pressed }) => [pressed && feedback.pressed]}
+            >
+              <Ionicons name="close" size={20} color={TEXT_SECONDARY} />
+            </Pressable>
+          </View>
+        ) : null}
         <Pressable
-          onPress={() => router.push("/sign-in")}
+          onPress={() => {
+            if (signInPhase === "busy") return
+            setSignInPhase("busy")
+            // Cancel returns quietly to the idle CTA (R2); success flips the
+            // section via the session snapshot.
+            void signInWithHostedPage().then((outcome) => {
+              setSignInPhase(outcome.status === "error" ? "error" : "idle")
+            })
+          }}
+          disabled={signingIn}
           style={({ pressed }) => [
             styles.signInCta,
             pressed && feedback.pressed,
@@ -65,7 +96,7 @@ export function AccountSection() {
           <Ionicons name="person-circle-outline" size={28} color={ACCENT} />
           <View style={styles.signInTextBlock}>
             <Text style={[styles.signInTitle, typography.titleSmall]}>
-              Sign in
+              {signingIn ? "Signing in…" : "Sign in"}
             </Text>
             <Text style={styles.signInSubtitle}>
               Keep your place across devices
@@ -171,6 +202,22 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 24,
+  },
+  errorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: SURFACE_COLOR,
+    borderRadius: CARD_BORDER_RADIUS,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    flex: 1,
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    fontSize: 13,
+    lineHeight: 18,
   },
   signInCta: {
     flexDirection: "row",

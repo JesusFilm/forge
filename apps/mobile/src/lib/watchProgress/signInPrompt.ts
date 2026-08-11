@@ -109,6 +109,16 @@ export function markSignInPromptShown() {
   setArmed(false)
 }
 
+/**
+ * A cancelled hosted attempt is a quiet return (R2), not a dismissal — give
+ * the session its shot back so the banner can show again. The persisted
+ * dismissal cooldown still gates in shouldShowSignInPrompt.
+ */
+export function rearmSignInPromptAfterCancel() {
+  shownThisSession = false
+  setArmed(true)
+}
+
 /** Serialize the dismissal timestamp for the device-local cooldown flag. */
 export function serializePromptDismissal(nowMs: number): string {
   return String(nowMs)
