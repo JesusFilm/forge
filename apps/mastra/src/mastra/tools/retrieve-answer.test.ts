@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type {
@@ -8,10 +10,26 @@ import type {
 import {
   RETRIEVE_ANSWER_EMPTY_MESSAGE,
   RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+  buildRetrieveAnswerTool,
   executeRetrieveAnswer,
   retrieveAnswerInputSchema,
   retrieveAnswerOutputSchema,
+  retrieveAnswerTool,
 } from "./retrieve-answer"
+
+// Mock ONLY the module-default client binding the factory seam routes around.
+// Every pre-existing test in this file injects `search` explicitly and never
+// reaches this binding; the default-source discriminating test below asserts
+// the zero-option factory reaches EXACTLY this import (the feat-283
+// default-source half of the seam guard). Types from the module are erased at
+// runtime, so the single-export factory is complete.
+const ragClientMock = vi.hoisted(() => ({
+  searchJesusfilmRag: vi.fn(),
+}))
+
+vi.mock("../../services/jesusfilm-rag-client", () => ({
+  searchJesusfilmRag: ragClientMock.searchJesusfilmRag,
+}))
 
 // Contract-shaped client passages (consumed fields the client already mapped).
 const passageWithTitle = {
@@ -298,5 +316,104 @@ describe("retrieve-answer tool", () => {
       "[seeker] event=rag_retrieval_unavailable reason=auth_failed",
     )
     expect(line).not.toContain(UPSTREAM_SECRET)
+  })
+})
+
+describe("buildRetrieveAnswerTool factory seam (chat-eval PR B)", () => {
+  afterEach(() => {
+    ragClientMock.searchJesusfilmRag.mockReset()
+  })
+
+  /**
+   * The wrapped tool execute organizes its own default RequestContext when
+   * the runtime context is omitted (verified against the @mastra/core 1.55
+   * Tool wrapper: `if (!context) organizedContext = { requestContext: new
+   * RequestContext(), ... }`), and this tool's callback reads no context
+   * member at all. The declared signature still requires the parameter, so
+   * tests cast the omission instead of fabricating a full Mastra invocation
+   * context.
+   */
+  const omittedToolContext = undefined as unknown as Parameters<
+    NonNullable<typeof retrieveAnswerTool.execute>
+  >[1]
+
+  function strippedToolSource(): string {
+    // Comments stripped first so a commented-out registration can neither
+    // satisfy nor spoil the pins — the seeker-agent.test.ts call-site-pin
+    // technique.
+    const source = readFileSync(
+      new URL("./retrieve-answer.ts", import.meta.url),
+      "utf8",
+    )
+    return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+  }
+
+  it("call-site source pin: the production singleton is buildRetrieveAnswerTool() with NO options", () => {
+    // feat-283 corollary: the factory's `search` option is a one-line revert
+    // surface at the production call site — an injected search here would
+    // silently swap the live tool's data source with every other test green.
+    const code = strippedToolSource()
+    expect(code).toMatch(
+      /export const retrieveAnswerTool = buildRetrieveAnswerTool\(\)/,
+    )
+    // Exactly one singleton assignment and exactly one tool construction, so
+    // a competing assignment or a second createTool() bypassing the factory
+    // cannot slip past the zero-option pin above.
+    expect(code.match(/\bretrieveAnswerTool\s*=/g)).toHaveLength(1)
+    expect(code.match(/\bcreateTool\(/g)).toHaveLength(1)
+  })
+
+  it("default source: the zero-option build reaches the real RAG client binding", async () => {
+    // Discriminating default-source test (feat-283 pattern): with NO injected
+    // search, the built tool's execute must consult searchJesusfilmRag — the
+    // module import — not some other default.
+    ragClientMock.searchJesusfilmRag.mockResolvedValue({
+      ok: true,
+      results: [passageWithTitle],
+    })
+
+    const tool = buildRetrieveAnswerTool()
+    const output = await tool.execute?.(
+      { query: "who is Jesus?" },
+      omittedToolContext,
+    )
+
+    expect(ragClientMock.searchJesusfilmRag).toHaveBeenCalledTimes(1)
+    expect(ragClientMock.searchJesusfilmRag).toHaveBeenCalledWith({
+      query: "who is Jesus?",
+    })
+    expect(output).toMatchObject({ status: "ok" })
+  })
+
+  it("anti-vacuous companion: a supplied search reaches the built tool's execute and fully replaces the client", async () => {
+    let receivedQuery = ""
+    const tool = buildRetrieveAnswerTool({
+      search: ({ query }) => {
+        receivedQuery = query
+        return Promise.resolve({ ok: true, results: [passageNullTitle] })
+      },
+    })
+
+    const output = await tool.execute?.(
+      { query: "grief and suffering" },
+      omittedToolContext,
+    )
+
+    expect(receivedQuery).toBe("grief and suffering")
+    // The injected search is the ONLY data source: the module-default client
+    // binding is never consulted.
+    expect(ragClientMock.searchJesusfilmRag).not.toHaveBeenCalled()
+    expect(output).toMatchObject({
+      status: "ok",
+      sources: [
+        expect.objectContaining({ url: passageNullTitle.citation.url }),
+      ],
+    })
+  })
+
+  it("default build matches the production singleton's public surface", () => {
+    const built = buildRetrieveAnswerTool()
+    expect(built.id).toBe(retrieveAnswerTool.id)
+    expect(built.description).toBe(retrieveAnswerTool.description)
   })
 })

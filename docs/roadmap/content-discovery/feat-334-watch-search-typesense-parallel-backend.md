@@ -3,7 +3,7 @@ id: "feat-334"
 title: "Watch Search Typesense parallel backend"
 owner: "codex"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-03"
 duration: 2
 depends_on:
@@ -57,7 +57,11 @@ compared directly without changing the production path.
    existing `WatchSearchResponse` contract. Lexical-only degradation remains
    available when query embedding misses its deadline.
 4. Add an optional `mode: DEFAULT | MODERN` input to `watchSearch`; omitted or
-   `DEFAULT` keeps the current backend and `MODERN` selects Typesense.
+   `DEFAULT` keeps the current backend and `MODERN` selects Typesense. The
+   production browser omits routing fields, while Admin recognizes the
+   canonical Web origin and applies MODERN plus a bounded DEFAULT shadow per
+   request. Omitted-mode compatibility remains unchanged for every other
+   caller.
 5. Add local setup and benchmark commands that restore the latest full
    `video-search` snapshot, run Typesense, build all three indexes, and compare
    latency/result overlap over representative multilingual queries.
@@ -70,9 +74,9 @@ compared directly without changing the production path.
 - Apply the same public publication, deletion, and `noIndex` gates as current
   Watch Search through catalog eligibility and the transcript
   `publiclyVisible` filter.
-- Do not provision production infrastructure from this code branch. After the
-  normal PR merge, the shadow Typesense Railway service is named exactly
-  `@forge/admin/search` and receives no user traffic until rollout gates pass.
+- Do not mutate production infrastructure from a workstation. The Typesense
+  Railway service is named exactly `@forge/admin/search`; application rollout
+  continues through the normal reviewed PR-to-main process.
 - Keep Typesense optional so Admin starts normally when it is not configured.
 - Regenerate Admin schema and `packages/admin-graphql` outputs for the new field.
 
@@ -99,10 +103,12 @@ design, capacity estimate, HA topology, backup, monitoring, rollout, and
 rollback requirements are recorded in
 `docs/operations/typesense-watch-search-production-readiness.md`.
 
-The 2026-08-04 production audit found 280,107 accepted native vectors and 1,175
-viewer-visible catalog documents. The transcript-reusing multilingual lexical
-refresh and benchmark on the isolated `@forge/admin/search` shadow service
-remain rollout gates. `DEFAULT`
-must remain unchanged until that run, production-shaped load evidence,
-synchronization evidence, and the documented sub-200 ms full-round-trip gate
-all pass.
+The production index contains 280,107 accepted native vectors and reuses that
+generation during routine metadata releases. After stale generations were
+retired, Typesense settled at approximately 4.69 GiB RSS on its 16 GiB service.
+A correlated 100-request GraphQL MODERN probe measured 87.48 ms server p50,
+193.69 ms server p95, and 526.43 ms full-round-trip p95 with zero degradation.
+The guarded promotion keeps the GraphQL `DEFAULT` behavior intact, makes
+Admin's canonical-browser MODERN selection explicit per request, records
+DEFAULT as bounded post-response shadow work, and retains the Admin service's
+`WATCH_SEARCH_PRIMARY_MODE=DEFAULT` as the independent traffic rollback.

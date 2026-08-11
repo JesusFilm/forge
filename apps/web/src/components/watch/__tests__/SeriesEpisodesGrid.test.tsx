@@ -80,6 +80,19 @@ describe("SeriesEpisodesGrid", () => {
         slug: "storyclubs-birth-of-jesus",
       }),
     ]
+    act(() => {
+      root.render(
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
+      )
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/storyclubs.html/storyclubs-birth-of-jesus.html",
+    )
 
     act(() => {
       root.render(

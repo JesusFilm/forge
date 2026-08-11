@@ -123,6 +123,9 @@ describe("SeriesHero — trailer mode (AE1)", () => {
           selectedVariant={makeVariant()}
           onLanguageClick={onLanguageClick}
           playableLanguageCount={2}
+          hasSubtitleOptions
+          subtitleLanguageCode="RU"
+          subtitleVttSrc="/watch/api/download?subtitle=russian"
         />,
       )
     })
@@ -135,6 +138,11 @@ describe("SeriesHero — trailer mode (AE1)", () => {
     const heroPlayerProps = vi.mocked(HeroPlayer).mock.calls.at(-1)?.[0]
     expect(heroPlayerProps?.onLanguageClick).toBe(onLanguageClick)
     expect(heroPlayerProps?.playableLanguageCount).toBe(2)
+    expect(heroPlayerProps?.hasSubtitleOptions).toBe(true)
+    expect(heroPlayerProps?.subtitleLanguageCode).toBe("RU")
+    expect(heroPlayerProps?.subtitleVttSrc).toBe(
+      "/watch/api/download?subtitle=russian",
+    )
   })
 })
 

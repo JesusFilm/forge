@@ -1,10 +1,13 @@
-import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import type { AdminResultOf } from "@forge/admin-graphql"
+import { adminWatchSearchOperation } from "@forge/admin-graphql/operations"
 
 import { semanticSearchAdminClient } from "@/lib/admin-client"
+import { env } from "@/env"
 import {
   publicSlugForLocale,
   type SearchLanguageResolution,
 } from "./search-language"
+import { resolveSearchResultLanguages } from "./search-result-language"
 
 export type SearchContentType = "video" | "experience"
 export type SearchAvailabilityKind =
@@ -61,6 +64,9 @@ export type SearchResult = {
   languageEnglishName?: string | null
   /** Admin-owned watchability classification for this result. */
   availabilityKind?: SearchAvailabilityKind | null
+  /** Requested subtitle language for a subtitle-only result. The public path
+   * continues to use `languageSlug` as its playable audio language. */
+  subtitleLanguageSlug?: string | null
   /** Human-readable availability language label, e.g. Russian. */
   availabilityLanguageEnglishName?: string | null
   /** Safe evidence label, e.g. Title match. */
@@ -119,58 +125,24 @@ export type SearchActionResult =
 
 const MAX_QUERY_LENGTH = 200
 
-const watchSearchOperation = adminGraphql(`
-  query WatchSearch($input: WatchSearchInput!) {
-    watchSearch(input: $input) {
-      requestId
-      query
-      degraded
-      laneStatuses {
-        lane
-        status
-        elapsedMs
-        resultCount
-        reason
-      }
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        snippet
-        playbackId
-        startSeconds
-        score
-        label
-        durationSeconds
-        childCount
-        languageSlug
-        languageEnglishName
-        availability {
-          kind
-          languageEnglishName
-        }
-        evidence {
-          label
-          languageSlug
-        }
-        action {
-          hrefLanguageSlug
-        }
-      }
-      hasMore
-      searchMode
-      latencyMs
-      nextOffset
-    }
+export type WatchSearchPrimaryMode = "DEFAULT" | "MODERN"
+
+export function resolveWatchSearchRouting(
+  mode: WatchSearchPrimaryMode,
+  defaultShadowEnabled: boolean,
+): {
+  mode: WatchSearchPrimaryMode
+  shadowMode: "DEFAULT" | undefined
+} {
+  return {
+    mode,
+    shadowMode:
+      mode === "MODERN" && defaultShadowEnabled ? "DEFAULT" : undefined,
   }
-`)
+}
 
 type WatchSearchResult = AdminResultOf<
-  typeof watchSearchOperation
+  typeof adminWatchSearchOperation
 >["watchSearch"]
 
 type WatchSearchResultItem = NonNullable<
@@ -192,6 +164,18 @@ function mapWatchSearchResult(
     return null
   }
 
+  const availabilityKind = mapWatchSearchAvailabilityKind(
+    result.availability?.kind,
+  )
+  const resultLanguages = resolveSearchResultLanguages({
+    availabilityKind,
+    resultLanguageSlug: result.languageSlug,
+    resultLanguageEnglishName: result.languageEnglishName,
+    actionLanguageSlug: result.action?.hrefLanguageSlug,
+    availabilityLanguageSlug: result.availability?.languageSlug,
+    availabilityLanguageEnglishName: result.availability?.languageEnglishName,
+  })
+
   return {
     type: result.type.toLowerCase() as SearchContentType,
     id: result.id,
@@ -208,11 +192,12 @@ function mapWatchSearchResult(
     durationSeconds: result.durationSeconds,
     childCount: result.childCount,
     source: "watch-search",
-    languageSlug: result.action?.hrefLanguageSlug ?? result.languageSlug,
-    languageEnglishName: result.languageEnglishName,
-    availabilityKind: mapWatchSearchAvailabilityKind(result.availability?.kind),
+    languageSlug: resultLanguages.languageSlug,
+    languageEnglishName: resultLanguages.languageEnglishName,
+    availabilityKind,
+    subtitleLanguageSlug: resultLanguages.subtitleLanguageSlug,
     availabilityLanguageEnglishName:
-      result.availability?.languageEnglishName ?? result.languageEnglishName,
+      resultLanguages.availabilityLanguageEnglishName,
     evidenceLabel: result.evidence?.label ?? null,
     evidenceLanguageSlug: result.evidence?.languageSlug ?? null,
   }
@@ -265,11 +250,16 @@ export async function searchVideos(
   languageContext: SearchVideosLanguageContext = {},
 ): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
+  const routing = resolveWatchSearchRouting(
+    env.WATCH_SEARCH_PRIMARY_MODE,
+    env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+  )
   const result = await semanticSearchAdminClient.query({
-    query: watchSearchOperation,
+    query: adminWatchSearchOperation,
     variables: {
       input: {
         query: truncatedQuery,
+        ...routing,
         clientRequestId: languageContext.clientRequestId,
         targetLanguageSlug: languageContext.targetLanguageSlug,
         queryLanguageSlug: languageContext.queryLanguageSlug,

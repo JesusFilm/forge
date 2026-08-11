@@ -23,6 +23,7 @@ import {
   getOrScheduleWatchHeroPosterMuxBlurDataUrl,
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
+import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 
 export type Loaders = ReturnType<typeof createLoaders>
 
@@ -828,6 +829,7 @@ async function loadVideoRelationsByVideoId({
                   locales: {
                     some: { status: "PUBLISHED" as const, deletedAt: null },
                   },
+                  ...notRestrictedFromWatchWhere(),
                 },
               }
             : {}),

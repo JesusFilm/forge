@@ -3,6 +3,7 @@ import {
   DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER,
   DdLogs,
   DdRum,
+  DdSdkReactNative,
   ErrorSource,
   PropagatorType,
   RumActionType,
@@ -273,6 +274,19 @@ export function reportDatadogError(
 /** Reports a custom RUM action to Datadog — fire-and-forget, never throws. */
 export function reportDatadogAction(name: string, context: object = {}): void {
   safeDatadogCall(() => DdRum.addAction(RumActionType.CUSTOM, name, context))
+}
+
+/**
+ * Identify (or clear, with null) the RUM user. Callers pass the OPAQUE auth
+ * subject id only — never email or display name — since viewing history in
+ * this product associates a person with religious content.
+ */
+export function setDatadogRumUser(user: { id: string } | null): void {
+  safeDatadogCall(() =>
+    user
+      ? DdSdkReactNative.setUserInfo({ id: user.id })
+      : DdSdkReactNative.clearUserInfo(),
+  )
 }
 
 /** Thin Datadog Logs wrapper — fire-and-forget, never throws into the caller. */

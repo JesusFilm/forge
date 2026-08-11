@@ -40,6 +40,12 @@ export type VideoSearchSocialSaveResult =
   | { ok: true; data: VideoSearchSocialMetadata }
   | VideoSearchSocialPublicError
 
+export type VideoSearchSocialDraftResult = VideoSearchSocialSaveResult
+
+export type VideoSearchSocialDiscardResult =
+  | { ok: true; revisionId: string; status: "DISCARDED" }
+  | VideoSearchSocialPublicError
+
 function loadFailure(error: unknown): LoadFailure {
   const mapped = mapVideoSearchSocialError(error)
   if (
@@ -57,7 +63,13 @@ function loadFailure(error: unknown): LoadFailure {
 }
 
 function logActionFailure(
-  operation: "load" | "load_media_library" | "save" | "search",
+  operation:
+    | "discard_draft"
+    | "load"
+    | "load_media_library"
+    | "publish_draft"
+    | "save"
+    | "search",
   error: unknown,
 ) {
   console.error(
@@ -112,6 +124,7 @@ export async function saveVideoSearchSocialAction(input: {
   searchTitle: string | null
   searchDescription: string | null
   socialImageAssetId: string | null
+  revisionId?: string | null
 }): Promise<VideoSearchSocialSaveResult> {
   try {
     const user = await requireSession()
@@ -123,6 +136,42 @@ export async function saveVideoSearchSocialAction(input: {
     return { ok: true, data }
   } catch (error) {
     logActionFailure("save", error)
+    return mapVideoSearchSocialError(error)
+  }
+}
+
+export async function publishVideoSearchSocialDraftAction(input: {
+  videoLocaleId: string
+  revisionId: string
+}): Promise<VideoSearchSocialDraftResult> {
+  try {
+    const user = await requireSession()
+    const data = await createServices(prisma).videoSearchSocial.publishDraft({
+      user,
+      input,
+    })
+    revalidatePath("/dashboard/videos")
+    return { ok: true, data }
+  } catch (error) {
+    logActionFailure("publish_draft", error)
+    return mapVideoSearchSocialError(error)
+  }
+}
+
+export async function discardVideoSearchSocialDraftAction(input: {
+  videoLocaleId: string
+  revisionId: string
+}): Promise<VideoSearchSocialDiscardResult> {
+  try {
+    const user = await requireSession()
+    const result = await createServices(prisma).videoSearchSocial.discardDraft({
+      user,
+      input,
+    })
+    revalidatePath("/dashboard/videos")
+    return { ok: true, ...result }
+  } catch (error) {
+    logActionFailure("discard_draft", error)
     return mapVideoSearchSocialError(error)
   }
 }

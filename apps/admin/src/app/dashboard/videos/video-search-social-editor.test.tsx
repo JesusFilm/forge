@@ -5,8 +5,10 @@ import { createRoot, type Root } from "react-dom/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("./video-search-social-actions", () => ({
+  discardVideoSearchSocialDraftAction: vi.fn(),
   loadVideoSearchSocialLocaleAction: vi.fn(),
   loadVideoSearchSocialMediaLibraryAction: vi.fn(),
+  publishVideoSearchSocialDraftAction: vi.fn(),
   saveVideoSearchSocialAction: vi.fn(),
   searchVideoSearchSocialLocalesAction: vi.fn(),
 }))
@@ -17,6 +19,8 @@ vi.mock("next/navigation", () => ({
 import { VideoSearchSocialEditor } from "./video-search-social-editor"
 import type { VideoSearchSocialLocaleData } from "./video-search-social-data"
 import type {
+  VideoSearchSocialDiscardResult,
+  VideoSearchSocialDraftResult,
   VideoSearchSocialLoadResult,
   VideoSearchSocialSaveResult,
 } from "./video-search-social-actions"
@@ -447,6 +451,83 @@ describe("VideoSearchSocialEditor", () => {
         await Promise.resolve()
       })
       expect(loadAction).toHaveBeenCalledWith({ videoLocaleId: "locale-fr" })
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows approved SEO provenance and publishes only the selected revision", async () => {
+    const publishDraftAction = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        videoLocaleId: "locale-en",
+        videoId: "video-1",
+        slug: "jesus",
+        locale: "en",
+        languageSlug: "english",
+        status: "PUBLISHED",
+        sourceTitle: "JESUS — Watch",
+        sourceDescription: "Visible video description",
+        searchTitle: "Watch JESUS",
+        searchDescription: "Watch the JESUS film.",
+        socialImageAssetId: "asset-1",
+        seoDraft: null,
+      },
+    } satisfies VideoSearchSocialDraftResult)
+    const discardDraftAction = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          revisionId: "revision-1",
+          status: "DISCARDED",
+        }) satisfies VideoSearchSocialDiscardResult,
+    )
+    const view = renderEditor({
+      initialLocale: locale({
+        seoDraft: {
+          state: "ready",
+          revisionId: "revision-1",
+          revisedByKind: "AI",
+          reason: "Approved SEO proposal",
+          revisedAt: "2026-08-01T12:00:00.000Z",
+          stale: false,
+          changedFields: ["title", "searchTitle", "searchDescription"],
+          after: {
+            id: "locale-en",
+            videoId: "video-1",
+            locale: "en",
+            updatedAt: "2026-08-01T11:00:00.000Z",
+            title: "JESUS — Watch",
+            description: "Visible video description",
+            snippet: null,
+            imageAlt: null,
+            searchTitle: "Watch JESUS",
+            searchDescription: "Watch the JESUS film.",
+            socialImageAssetId: "asset-1",
+          },
+        },
+      }),
+      publishDraftAction,
+      discardDraftAction,
+    })
+
+    try {
+      expect(view.container.textContent).toContain("Approved SEO draft")
+      expect(view.container.textContent).toContain("AI · Approved SEO proposal")
+      expect(
+        view.container.querySelector<HTMLInputElement>("#search-title")?.value,
+      ).toBe("Watch JESUS")
+
+      await act(async () => button(view.container, "Publish draft").click())
+
+      expect(publishDraftAction).toHaveBeenCalledWith({
+        videoLocaleId: "locale-en",
+        revisionId: "revision-1",
+      })
+      expect(view.container.textContent).not.toContain("Approved SEO draft")
+      expect(view.container.textContent).toContain(
+        "SEO draft published and queued for page revalidation.",
+      )
     } finally {
       view.cleanup()
     }

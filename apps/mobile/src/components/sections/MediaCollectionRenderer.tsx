@@ -1,3 +1,4 @@
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import {
   FlatList,
   StyleSheet,
@@ -140,6 +141,7 @@ export function MediaCollectionRenderer({
             {title}
           </Text>
         </View>
+        <WatchProgressBar videoId={item.videoId} />
       </PressableCard>
     )
   }

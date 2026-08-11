@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "seeker-verdict/v1",
+  "experimentId": "2026-08-10-005-seeker-video-prompt-corrective-judge-retry",
+  "attemptId": "attempt-001",
+  "candidateId": "video-prompt-v2",
+  "verdict": "failed",
+  "actor": "codex",
+  "recordedAt": "2026-08-10T02:05:21.502Z",
+  "reasoning": "The corrective judge retry restored complete 10/10 coverage, but the candidate produced one valid source-misattribution failure, one deterministic source-alias false positive, and a score delta beyond tolerance.",
+  "evidence": [
+    "attempts/attempt-001/gate-report.json",
+    "attempts/attempt-001/score.json",
+    "attempts/attempt-001/comparison.md"
+  ],
+  "eligibility": {
+    "gate": {
+      "outcome": "red"
+    },
+    "criterion": {
+      "id": "minimum-run-score",
+      "version": "1",
+      "outcome": "failed"
+    },
+    "eligible": false,
+    "evidence": [
+      "attempts/attempt-001/gate-report.json",
+      "attempts/attempt-001/score.json",
+      "attempts/attempt-001/comparison.md"
+    ]
+  }
+}

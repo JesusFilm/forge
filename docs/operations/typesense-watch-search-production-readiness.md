@@ -1,8 +1,10 @@
 # Typesense Watch Search Production Readiness
 
 This report evaluates the parallel `MODERN` Watch Search backend and defines a
-reversible shadow deployment. It does not change the `DEFAULT` PostgreSQL
-backend or authorize frontend traffic before the rollout gates pass.
+reversible frontend promotion. The GraphQL compatibility default remains the
+PostgreSQL `DEFAULT` backend. The production browser omits mode selection;
+Admin recognizes the canonical Web origin and applies `MODERN` plus a bounded
+`DEFAULT` shadow on every request after the rollout evidence below passes.
 Admin remains the public search gateway and owns language interpretation,
 query embeddings, visibility, watchability, analytics, degradation, and the
 GraphQL contract. Typesense is a private serving index for lexical and semantic
@@ -10,29 +12,34 @@ retrieval.
 
 ## Decision
 
-Provisioning a private, single-node shadow service is safe after the normal PR
-is reviewed, merged, and deployed. Name that Railway service exactly
-`@forge/admin/search`. Do not send user traffic to it yet. Frontend rollout is
-**not ready** until all of these gates pass:
+The private, single-node `@forge/admin/search` service has now passed the scoped
+capacity and production-latency gates for a guarded frontend promotion. The
+promotion still ships through the normal reviewed PR-to-main path; it is not a
+direct production mutation from a workstation. The evidence is:
 
-1. Refresh catalog, availability, and localized lexical projections on the
-   isolated `@forge/admin/search` service while reusing and recounting the
-   active 280,107-vector transcript collection. Rebuild transcripts only when
-   the active schema is incompatible.
-2. Pass the relevance suite, including broad exact-title queries such as
-   `JESUS`, with no viewer-visibility regressions.
-3. Demonstrate Typesense retrieval p95 below 50 ms and Admin MODERN server p95
-   at or below 250 ms under production-shaped read traffic and a routine
-   metadata refresh.
-4. Demonstrate hybrid Watch Search full-round-trip p95 at or below 550 ms. A
-   later rollout may tighten this toward 200 ms after the public Web-to-Admin
-   hop is separately corrected.
-5. Operate synchronization, reconciliation, backup restore, and rollback in
-   the shadow service before any user traffic is enabled.
+1. The active transcript generation contains 280,107 existing vectors. Routine
+   catalog, availability, and lexical releases reuse it; they do not call an
+   embedding provider or rebuild HNSW.
+2. The single active generation settles at approximately 4.69 GiB RSS and
+   peaked at approximately 5.34 GiB on the 16 GiB service after stale
+   generations were retired.
+3. The production 100-request GraphQL probe measured MODERN server p50 87.48 ms
+   and p95 193.69 ms, with full-round-trip p50 341.50 ms and p95 526.43 ms.
+   A separate 100-request internal probe measured server p50 90.30 ms and p95
+   208.17 ms. All 200 requests were trace-correlated and none degraded.
+4. The 83-case directional judge found more useful-or-excellent MODERN lists
+   (49 versus 44) and fewer unacceptable lists (14 versus 15) than DEFAULT.
+   The reviewed qrel set is still empty, so this supports guarded promotion and
+   shadow observation, not declaration of a new absolute relevance baseline.
 
-`MODERN` must remain explicit opt-in. Omitted mode and `DEFAULT` continue to use
-PostgreSQL. Do not expose Typesense directly to Web or ship a write/admin key to
-a browser.
+Production Web must reach `MODERN` through Admin's canonical-browser policy
+rather than by changing the public GraphQL compatibility default. Omitted mode
+continues to mean PostgreSQL `DEFAULT` for every noncanonical caller. The
+browser receives neither a Typesense endpoint nor a write/admin key. Local,
+preview, API, AI-agent, and other callers whose `Origin` is not the canonical
+Web origin retain the omitted-mode `DEFAULT` behavior. Admin defaults canonical
+production Web requests to MODERN unless its service environment explicitly
+sets `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`.
 
 ## Comparison And Corpus Status
 
@@ -61,6 +68,11 @@ normal PR merge, run the initial broad rebuild inside the isolated
 missing transcript alias and bootstraps it. Later routine releases reuse that
 physical transcript collection and rebuild only catalog, availability, and
 localized lexical projections.
+Reuse is allowed only when the active transcript schema contains
+`videoEditionId`. If it does not, the index command fails before publishing any
+alias and requires the explicit `--rebuild-transcripts` operation below. Do not
+override that guard: a mixed generation cannot preserve edition-scoped
+subtitle routing.
 Record the physical collection names, catalog count, availability count,
 transcript count, public transcript count, estimated vector bytes, per-case
 rankings, overlap, lane timings, disk use, and Typesense `/metrics.json` before
@@ -377,12 +389,13 @@ replicas, while Railway services with volumes cannot use replicas and volume
 deployments cannot run old and new containers simultaneously. Colocation would
 remove Admin redundancy and introduce Admin downtime during Typesense deploys.
 
-A single shadow node is acceptable because it serves no user traffic and
-`DEFAULT` remains available. Before Typesense becomes the default user path,
-either prove that immediate PostgreSQL fallback satisfies the availability
-objective or move to Typesense Cloud HA / three independently persisted
-Typesense nodes. Each HA node stores the complete index; RAM is replicated, not
-split across nodes.
+The guarded promotion accepts one Typesense node because PostgreSQL `DEFAULT`
+remains an independent, one-setting traffic rollback. This is not automatic
+failover: a Typesense outage can fail MODERN requests until the Web setting is
+rolled back and the deployment completes. If that recovery interval does not
+satisfy the availability objective, move to Typesense Cloud HA or three
+independently persisted Typesense nodes before increasing the objective. Each
+HA node stores the complete index; RAM is replicated, not split across nodes.
 
 ### RAM estimate
 
@@ -474,32 +487,149 @@ Monitor and page on:
 
 ## Rollout and Rollback
 
-1. Merge through the normal PR process, then provision the private
-   `@forge/admin/search` shadow service. Keep `DEFAULT` unchanged and do not
-   route user traffic during initial indexing and soak monitoring.
-2. Replay a privacy-safe sample of real query shapes and the fixed multilingual
-   suite against both backends. Review top results, availability, evidence,
-   overlap, zero-result rate, and click/play outcomes.
-3. Once all gates pass, canary Modern behind Admin at 1%, 5%, then 25%. Stop on
-   visibility mismatch, relevance regression, synchronization lag, memory
-   pressure, error-rate increase, or the 550 ms full-round-trip p95 gate
-   failing.
-4. Roll back traffic by disabling the Modern flag or removing the Typesense
-   connection variables from Admin; omitted/`DEFAULT` requests already use
-   PostgreSQL. The 16 GiB experiment does not retain an inactive broad vector
-   generation, so index recovery uses the latest external snapshot or a manual
-   rebuild from canonical PostgreSQL data. During the availability migration,
-   application code retries legacy bounded catalog hydration only when that
-   alias is missing. The transcript documents remain compatible with the
-   previous vector-only query, so an application rollback does not require a
-   corpus rebuild.
-5. A failed shadow service cannot break `DEFAULT`. Stop its deployment if it
-   exceeds memory/disk thresholds; retain its volume until diagnosis. Deleting
-   the service or volume is a separate destructive action and is never part of
-   the immediate rollback.
-6. Never deploy from a workstation. Ship application/config changes through
-   the normal pull-request merge and main deployment process after review and
-   CI; provision Railway only after that merge is live.
+1. Merge the application changes through the normal PR process. The production
+   browser continues to omit `mode` and `shadowMode`. Admin recognizes an
+   anonymous request whose `Origin` exactly matches `WEB_CANONICAL_ORIGIN` and
+   applies its primary/shadow policy per request. The GraphQL omitted-mode
+   behavior does not change for every other caller.
+2. While MODERN is primary, Admin adds `shadowMode: DEFAULT` to the effective
+   canonical-browser input, returns the MODERN response, and schedules DEFAULT
+   through `after()` with concurrency 1 and a capacity of 64 per Admin process.
+   Trusted non-fleet consumer bearers may still request shadow explicitly.
+   Saturation and failures are logged but cannot change or delay the primary
+   response. `Origin` is a spoofable surface discriminator, never an
+   authentication or authorization boundary.
+3. Primary and shadow traces share the primary request ID and carry explicit
+   `primary`/`shadow` roles. Product request/click analytics, long-lived
+   aggregates, and eval sampling exclude shadows so user counts and query
+   intent are not doubled; raw Admin traces retain both executions for
+   comparison.
+4. Immediate traffic rollback is an Admin service configuration change:
+   `WATCH_SEARCH_PRIMARY_MODE=DEFAULT`, followed by the normal Admin service
+   restart/redeploy that applies environment changes. Admin overwrites any
+   stale canonical-browser mode on every request, so cached and already-open
+   Watch pages cannot retain MODERN. This stops requesting shadows as well and
+   does not move Typesense aliases or delete indexes. To retain MODERN while
+   stopping only comparison load, set
+   `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED=false` on Admin.
+5. Stop promotion on visibility mismatch, relevance regression,
+   synchronization lag, sustained memory pressure, elevated search errors, or
+   the 550 ms full-round-trip p95 gate failing. A failed Typesense service does
+   not corrupt DEFAULT, but there is no automatic request fallback in this
+   release; operators must apply the rollback setting.
+6. The 16 GiB service does not retain an inactive broad vector generation.
+   Index recovery uses the latest external snapshot or a deliberate rebuild
+   from canonical PostgreSQL data. Deleting a service, collection, or volume is
+   a separate destructive action and is never part of traffic rollback.
+7. Never deploy from a workstation. Application and configuration changes ship
+   only through review, CI, merge to main, and the normal deployment process.
+8. The production acceptance smoke must use the browser's actual contract: an
+   anonymous GraphQL request with canonical Web `Origin`, no `mode`, and no
+   `shadowMode`. It passes only when the response reports
+   `searchMode: "watch-search-typesense"`. Repeat without the canonical origin
+   to confirm the public compatibility path still reports `watch-search`.
+
+## Native-language candidate operations
+
+All settings below live on Railway's `@forge/admin` service. Deploying the
+code does not replace public search: keep
+`WATCH_SEARCH_TYPESENSE_PROFILE=CURRENT` and
+`WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED=false`. The browser and public
+GraphQL contract cannot select a candidate.
+
+### Publish, enable, and compare
+
+1. Give the indexing job `TYPESENSE_OPERATOR_API_KEY`; give runtime Admin only
+   `TYPESENSE_SEARCH_API_KEY`. Keep both keys disjoint. Publish with
+   `pnpm --filter @forge/admin index:typesense-watch-search-candidate`. Record
+   the immutable generation ID, application revision, transcript collection
+   and revision, physical members, counts, digests, and capacity prechecks.
+2. Publishing moves only the Admin evaluation pointer. Confirm public
+   `MODERN` still resolves `CURRENT` before enabling comparison.
+3. Configure a dedicated `CANDIDATE_SEARCH_EVAL_API_KEYS` value, then set
+   `WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED=true`. Use the private Admin
+   comparison page. A busy/lease/rate-limit failure is expected to reject
+   candidate work without queueing.
+4. Set `WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED=false` immediately if public
+   current-search latency, errors, CPU, memory, or pool wait changes. This is
+   the comparison kill switch and does not move any index.
+
+### Qualify without hiding latency regressions
+
+Run three separate matched production experiments against the same frozen
+identity. Do not substitute UI timings or local unit tests for these results.
+
+1. Run alternating single-flight latency pairs from the Admin production
+   region. The command acquires and renews the exact `EVALUATION` lease, fails
+   on lease or diagnostic identity drift, retains every attempt (including
+   errors), and reports p50/p95/p99, result signatures, fields, bytes, calls,
+   retries, subsearches, candidates, and hydration work:
+
+   ```bash
+   WATCH_SEARCH_CANDIDATE_PAIRS_PER_CASE=1000 \
+     pnpm --filter @forge/admin benchmark:watch-search-candidate \
+     > /secure-evidence/watch-search-candidate-paired.json
+   ```
+
+2. Run equal-duration, equal-offered-load current-only and candidate-only
+   epochs. Export per-replica Admin CPU/RSS and throughput/errors plus
+   single-node Typesense CPU/RSS, disk/free space, swap, and build peak. Keep
+   current-search canaries active during build. Candidate incremental
+   non-vector storage must be at most 1 GiB; steady memory/disk must stay below
+   70%, peak below 80%, free disk at least 10 GiB, and swap zero. Confirm only
+   one transcript-vector generation is resident.
+3. Measure public-current p50/p95/p99, errors, degradation, timeouts,
+   throughput, CPU, and database-pool wait first without comparison and then at
+   maximum comparison admission. Any worse point estimate or one-sided 95%
+   bound above 5% fails the run and requires exercising the kill switch.
+
+Run the reviewed `public-watch-absolute/v2` Mastra gate against that same
+application/index identity. Missing or unreviewed qrels, missing operator
+review, language errors, duplicates, any non-warmup failure/degradation,
+candidate p50/p95/p99 worse than current, a 95% upper bound above 5%, extra
+retries/work, capacity pressure, or current-search interference means **not
+qualified**. Append samples under the same lease when confidence is
+inconclusive; never restart to discard bad attempts.
+
+The benchmark defaults every external evidence gate to `NOT_RUN` and exits
+non-zero. `WATCH_SEARCH_CANDIDATE_EVIDENCE_JSON` may describe reviewed gate
+statuses and artifact references only after those experiments exist. A report
+is evidence for an operator review; it is not itself permission to promote.
+
+### Promote and roll back
+
+After an exact `PASSED` qualification record has been reviewed and stored,
+promote by setting
+`WATCH_SEARCH_TYPESENSE_PROFILE=CANDIDATE:<qualified-generation-id>` on
+`@forge/admin`. A missing, stale, incompatible, unqualified, or
+transcript-drifted pin fails closed. Publishing a newer candidate does not move
+this serving pin.
+
+- Normal rollback: set `WATCH_SEARCH_TYPESENSE_PROFILE=CURRENT` and redeploy
+  Admin. Current physical indexes are retained throughout the experiment.
+- Emergency independent rollback: set `WATCH_SEARCH_PRIMARY_MODE=DEFAULT` and
+  redeploy Admin. This returns Watch to PostgreSQL without moving or rebuilding
+  Typesense.
+
+### Transcript changes and removal
+
+Before replacing or mutating transcript projections, disable comparison,
+invalidate every referencing candidate, and verify no serving pin or live
+evaluation lease refers to the transcript. Drain all Admin replicas for the
+maximum request/cache lifetime before moving an alias or deleting anything.
+Revision drift invalidates old qualification evidence.
+
+Candidate removal is resumable:
+
+1. Return the public selector to `CURRENT` (or `DEFAULT` in an emergency),
+   verify every live replica, and disable comparison.
+2. Move the generation to `RETIRING`; reject new candidate work; wait for zero
+   executions, references, and leases across the drain window.
+3. Delete only exact candidate-owned catalog, availability, and lexical
+   members, one at a time, persisting deletion progress after each success.
+   Resume from that ledger after interruption.
+4. Mark `RETIRED`. Never delete the generation tombstone, shared transcript,
+   current aliases, or current physical collections.
 
 ## Vendor References
 

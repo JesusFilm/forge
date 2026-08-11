@@ -28,6 +28,7 @@ import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { normalizeWatchRootHref } from "@/lib/watch-paths"
+import { resolveWatchShareUrlFromPathname } from "@/lib/share"
 import {
   Carousel,
   CarouselContent,
@@ -324,8 +325,16 @@ function WatchHomeMediaCollection({
   const [hoverBackdropLayers, setHoverBackdropLayers] = useState<
     HoverBackdropLayer[]
   >([])
-  const watchHref =
-    normalizeWatchRootHref(ctaLink) ?? `${WATCH_BASE_PATH}${videosIndexPath()}`
+  const normalizedCtaLink = normalizeWatchRootHref(ctaLink)
+  const standaloneCtaUrl = normalizedCtaLink?.startsWith(`${WATCH_BASE_PATH}/`)
+    ? resolveWatchShareUrlFromPathname({
+        origin: "https://www.jesusfilm.org",
+        pathname: normalizedCtaLink,
+      })
+    : null
+  const watchHref = standaloneCtaUrl
+    ? new URL(standaloneCtaUrl).pathname
+    : (normalizedCtaLink ?? `${WATCH_BASE_PATH}${videosIndexPath()}`)
   const sectionBackgroundColor =
     backgroundColor ?? (isRail ? "#5b1537" : "#050505")
   const tintStyle = tintOverlayStyle(backgroundColor, isRail)

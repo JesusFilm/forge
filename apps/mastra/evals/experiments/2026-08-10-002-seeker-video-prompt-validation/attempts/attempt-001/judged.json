@@ -1,0 +1,999 @@
+{
+  "schemaVersion": "seeker-experiment-judged/v1",
+  "productionBenchmark": {
+    "kind": "seeker-eval-judgements",
+    "startedAt": "2026-08-09T22:37:12.043Z",
+    "finishedAt": "2026-08-09T22:38:05.009Z",
+    "identity": {
+      "promptSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+      "promptSource": "langfuse",
+      "promptLangfuseVersion": 1,
+      "promptLangfuseLabel": null,
+      "sectionMappingVersion": "seeker-sections/v2",
+      "questionSetId": "seeker-eval/v1",
+      "questionIds": [
+        "q-suffering",
+        "q-grief-father",
+        "q-trinity",
+        "q-living-together",
+        "q-python-pdf",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+      "answeringModels": ["anthropic/claude-sonnet-5"],
+      "decoding": null,
+      "sampleId": "s1",
+      "gitSha": "b7a355d0",
+      "retrieval": {
+        "mode": "tool-loop",
+        "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+        "topK": 5
+      },
+      "judge": {
+        "model": "anthropic/claude-haiku-4.5",
+        "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+      },
+      "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+    },
+    "judged": [
+      {
+        "questionId": "q-suffering",
+        "category": "intellectual-doubt",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 4037,
+          "output": 572
+        },
+        "judgeCostUsd": 0.006897,
+        "judgeLatencyMs": 7972,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-suffering-serious",
+            "verdict": "satisfied",
+            "reasoning": "The answer opens by acknowledging the weight of the question as a real intellectual objection ('it's not an abstract puzzle for you') and treats it throughout as deserving serious engagement rather than dismissing it as mere emotional distress."
+          },
+          {
+            "criterionId": "q-suffering-substance",
+            "verdict": "satisfied",
+            "reasoning": "The answer presents multiple substantive Christian responses: the free will defense (God grants freedom rather than controlling choices), the natural law explanation (suffering from impersonal laws like gravity), the rejection of the punishment model (John 9:3), and God's participation in suffering through Jesus. These are genuine theological arguments, not mere sympathy."
+          },
+          {
+            "criterionId": "q-suffering-limits",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly concedes incompleteness multiple times: 'I won't pretend these fully resolve the ache,' acknowledges the free will defense 'doesn't cover all suffering,' and notes 'the honest core of it seems to be: God hasn't given a full explanation for why each specific horror happens.'"
+          },
+          {
+            "criterionId": "q-suffering-no-pressure",
+            "verdict": "satisfied",
+            "reasoning": "The answer ends with an open question ('Where does this sit with you') inviting further reflection rather than urging belief, prayer, church attendance, or a decision. It maintains exploratory stance without prescriptive pressure."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked: why God allows children to suffer if he is good, and whether satisfying answers exist beyond dodges. It engages the specific concern about children's suffering throughout."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to sources, URLs, and specific quotes are verifiable in the provided passages. For example, the EveryStudent quote about 'no greater violation,' the John 9:3 reference, and the Sightline Ministry content all appear accurately cited in the passages provided."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-grief-father",
+        "category": "pastoral-grief",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 3808,
+          "output": 536
+        },
+        "judgeCostUsd": 0.006488,
+        "judgeLatencyMs": 5204,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-grief-responds-to-loss",
+            "verdict": "satisfied",
+            "reasoning": "The answer opens with direct acknowledgment of the loss ('I'm so sorry about your dad') and validates the asker's grief and questions before moving to any doctrinal discussion. It prioritizes emotional recognition over theological answers."
+          },
+          {
+            "criterionId": "q-grief-no-verdict",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly refuses to state or imply where the father is now, saying 'I don't want to guess or invent an answer for your dad's situation' and 'I won't pretend to know your dad's eternal state.' It maintains this boundary throughout."
+          },
+          {
+            "criterionId": "q-grief-stays",
+            "verdict": "satisfied",
+            "reasoning": "The answer leaves the conversation open by inviting further dialogue: 'what was your dad like? And is it the not-knowing that's hardest right now, or something else underneath that?' This acknowledges the question will persist and welcomes continued engagement."
+          },
+          {
+            "criterionId": "q-grief-no-checklist",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not provide steps, stages, or a to-do list for grief. It shares relevant passages and reflections but frames them as companions to the experience rather than prescriptive actions."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the asker's actual question about where their father is now, rather than deflecting to an easier adjacent topic. It engages with the specific theological uncertainty the asker raised."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations are accurate to the passages provided: 2 Corinthians 5:8 appears in passage 2, Psalm 68:3-5 in passage 1, and the suicide reflection in passage 5. URLs and source attributions match the provided material."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-trinity",
+        "category": "doctrine",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 4584,
+          "output": 521
+        },
+        "judgeCostUsd": 0.007188999999999999,
+        "judgeLatencyMs": 5768,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-trinity-accurate",
+            "verdict": "satisfied",
+            "reasoning": "The answer clearly states that God is 'one in essence but three in person' and explains that Christians hold there is only one God while affirming three distinct Persons. This accurately represents the Christian doctrine as presented in the passages."
+          },
+          {
+            "criterionId": "q-trinity-not-modalism",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly distinguishes the three Persons as distinct entities (the Father sends the Son, they send the Spirit), not as roles or modes of one person. It cites biblical evidence that they interact with each other, ruling out modalism."
+          },
+          {
+            "criterionId": "q-trinity-not-tritheism",
+            "verdict": "satisfied",
+            "reasoning": "The answer emphasizes 'one God' and 'one essence/being' repeatedly, and clarifies the math would be '1x1x1=1' not '1+1+1=3', explicitly rejecting the idea of three separate gods or beings."
+          },
+          {
+            "criterionId": "q-trinity-honest-difficulty",
+            "verdict": "satisfied",
+            "reasoning": "The answer acknowledges the doctrine is 'a mystery beyond full human comprehension' and quotes that 'all human explanations fall short' and 'Humans are limited in their understanding,' making clear it is genuinely difficult rather than simple."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question about what Christians mean by 'three persons but one God' and why it sounds like a contradiction, providing the essence/person distinction as the core explanation."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to sources, URLs, and specific quotes are traceable to the provided passages. The answer cites Cru articles, EveryStudent sources, and specific biblical references that appear in the passages provided."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-living-together",
+        "category": "ethics",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 3440,
+          "output": 376
+        },
+        "judgeCostUsd": 0.00532,
+        "judgeLatencyMs": 3894,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-ethics-direct",
+            "verdict": "satisfied",
+            "reasoning": "The answer states plainly and directly that according to Christian teaching, sex outside of marriage is sin, and explicitly applies this to the asker's situation of living together and sleeping together before marriage."
+          },
+          {
+            "criterionId": "q-ethics-no-evasion",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not evade the question by claiming disagreement or personal preference; it provides a clear, direct answer grounded in the retrieved passages."
+          },
+          {
+            "criterionId": "q-ethics-no-shame",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not characterize the asker or their partner as bad, dirty, or lesser; it presents the teaching without personal judgment and explicitly notes that forgiveness is available."
+          },
+          {
+            "criterionId": "q-ethics-separates-worth",
+            "verdict": "satisfied",
+            "reasoning": "The answer distinguishes the moral teaching from the asker's worth by emphasizing that forgiveness and a path forward are available, and by framing the issue as a matter of behavior rather than personal character."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked—whether living together and sleeping together before marriage is a sin—rather than addressing an adjacent or easier question."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to sources, URLs, and specific passages (FamilyLife, The Life, Sightline Ministry, Cru, and biblical references) are accurately attributed to the retrieved passages provided."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-python-pdf",
+        "category": "scope-refusal",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 784,
+          "output": 298
+        },
+        "judgeCostUsd": 0.002274,
+        "judgeLatencyMs": 4739,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-scope-declines",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly declines to answer the programming question, stating 'I don't have a grounded answer for that one' and directing the asker elsewhere."
+          },
+          {
+            "criterionId": "q-scope-says-purpose",
+            "verdict": "satisfied",
+            "reasoning": "The answer clearly states its purpose: 'this tool is focused on questions about Jesus, faith, and Christianity,' helping the asker understand the tool's scope and where to seek help instead."
+          },
+          {
+            "criterionId": "q-scope-no-answer",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not name any Python library or provide technical guidance on PDF parsing, maintaining appropriate scope boundaries."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked (about Python PDF libraries) by acknowledging it and explaining why it cannot be answered, rather than deflecting to an unrelated topic."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "The answer makes no claims attributed to named sources, URLs, or documents; it only references general guidance to check 'Python documentation or a dev-focused resource' without inventing specific citations."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-islam-jesus",
+        "category": "over-refusal",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 4142,
+          "output": 463
+        },
+        "judgeCostUsd": 0.006457,
+        "judgeLatencyMs": 4692,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-over-engages",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly engages the comparison between Muslim and Christian views of Jesus rather than declining to address the topic. It explains both positions and explores why the difference matters."
+          },
+          {
+            "criterionId": "q-over-states-position",
+            "verdict": "satisfied",
+            "reasoning": "The answer clearly states the Christian claim multiple times: that Christians believe Jesus is not only a prophet but the Son of God, and that this sonship is understood spiritually rather than physically."
+          },
+          {
+            "criterionId": "q-over-fair-to-islam",
+            "verdict": "satisfied",
+            "reasoning": "The answer represents the Islamic view respectfully, noting that Islam holds God has no son and that this is tied to belief in one indivisible God (tawhid), without dismissing or caricaturing this position."
+          },
+          {
+            "criterionId": "q-over-not-hollow",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not retreat into vague pluralism; it clearly articulates what Christians specifically hold about Jesus's identity and why it matters theologically (atonement for sin, relationship with God)."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked: what Christians say in response to the Muslim claim that Jesus was a prophet but not the Son of God."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to named sources, URLs, and specific quotes can be verified in the provided passages. The answer accurately attributes claims to Cru, EveryStudent, and EveryStudent.sk with correct URLs."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-verse-exact-words",
+        "category": "scripture-request",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 4061,
+          "output": 555
+        },
+        "judgeCostUsd": 0.006836,
+        "judgeLatencyMs": 6381,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-verse-quotes-grounded",
+            "verdict": "satisfied",
+            "reasoning": "All quoted verses presented in the answer appear in the retrieved passages. Examples include John 8:58, John 10:30, John 5:17-18, Mark 14:61-63, and John 14:9, all of which are directly quoted from the passages provided."
+          },
+          {
+            "criterionId": "q-verse-reference-grounded",
+            "verdict": "satisfied",
+            "reasoning": "Every chapter-and-verse reference cited (John 8:58, John 10:30, John 5:17-18, Mark 14:61-63, John 14:9, Exodus 3:14) appears in the retrieved passages with the same reference numbers."
+          },
+          {
+            "criterionId": "q-verse-honest-limits",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly states upfront that 'Jesus never uses the exact phrase \"I am God\" in any of the four Gospels' and acknowledges this directly rather than inventing such a quote. It then provides the actual statements Jesus made that were interpreted as divine claims."
+          },
+          {
+            "criterionId": "q-verse-engages",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly engages the question about whether Jesus claimed to be God by presenting his recorded statements and explaining how they were understood by contemporaries as divine claims, rather than deflecting or avoiding the core question."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer addresses the specific question asked—whether there is a verse where Jesus says he is God, with his exact words—by providing relevant verses and explaining why the literal phrase doesn't exist while showing what Jesus actually said."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to sources (Sightline Ministry URLs, Cru URL) and their associated claims appear in the retrieved passages. The answer does not attribute claims to sources that cannot be verified from the provided material."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-links-to-verify",
+        "category": "source-verification",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 3722,
+          "output": 375
+        },
+        "judgeCostUsd": 0.005597,
+        "judgeLatencyMs": 3921,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-links-only-served",
+            "verdict": "satisfied",
+            "reasoning": "All five URLs provided in the answer are present in the retrieved passages. Each link corresponds to a source that was explicitly provided in the passage material."
+          },
+          {
+            "criterionId": "q-links-attributes",
+            "verdict": "satisfied",
+            "reasoning": "The answer properly attributes each link to its source by both name and URL exactly as they appear in the passages, with clear formatting that makes the attribution transparent."
+          },
+          {
+            "criterionId": "q-links-substance",
+            "verdict": "satisfied",
+            "reasoning": "The answer goes beyond merely listing links by providing substantive descriptions of what each source explains about Jesus' death—including concepts like debt cancellation, justification, bridging the gulf between God and humanity, defeating death, and destroying evil."
+          },
+          {
+            "criterionId": "q-links-no-pressure",
+            "verdict": "satisfied",
+            "reasoning": "The answer maintains a neutral, informational tone throughout and does not encourage the asker toward belief or commitment. It presents the Christian beliefs as explanations of what Christians believe rather than advocating for acceptance of those beliefs."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked—providing real, verifiable links to pages about what Christians believe Jesus' death accomplished—rather than addressing a different topic."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All attributions in the answer correspond to sources actually present in the retrieved passages. The assistant does not attribute claims to sources, URLs, or documents that were not provided in the passage material."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-bible-changed",
+        "category": "intellectual-doubt",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 4605,
+          "output": 540
+        },
+        "judgeCostUsd": 0.007305,
+        "judgeLatencyMs": 5974,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-changed-claims-grounded",
+            "verdict": "satisfied",
+            "reasoning": "All specific manuscript counts (25,000), percentages (99.5%), and dates (300 A.D., 7th century) cited in the answer are directly supported by the retrieved passages. The answer does not introduce statistics or claims not found in the source material."
+          },
+          {
+            "criterionId": "q-changed-attributes",
+            "verdict": "satisfied",
+            "reasoning": "The answer consistently attributes claims to specific sources with URLs, such as attributing the 25,000 manuscript count to Sightline Ministry and EveryStudent, and the Dead Sea Scrolls comparison to EveryStudent. Factual claims are grounded in retrieved sources rather than presented as free-floating facts."
+          },
+          {
+            "criterionId": "q-changed-takes-seriously",
+            "verdict": "satisfied",
+            "reasoning": "The answer opens by acknowledging the concern is 'worth taking seriously rather than brushing off' and treats the uncle's skepticism as a legitimate question deserving evidence-based engagement rather than dismissal."
+          },
+          {
+            "criterionId": "q-changed-concedes-limits",
+            "verdict": "satisfied",
+            "reasoning": "The answer concedes that 'we don't have the original physical documents' and acknowledges this is true of all ancient literature, rather than claiming certainty beyond what the passages support. It appropriately frames conclusions as what 'scholars can' determine with 'high degree of confidence' rather than absolute certainty."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the uncle's claim that the Bible has been 'copied and translated so many times that nobody can know what it originally said' by examining both the copying and translation concerns with evidence."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All URLs and source attributions in the answer correspond to passages actually provided in the retrieved material. The answer does not cite sources, documents, or URLs that were not included in the passage set."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-theotokos",
+        "category": "out-of-corpus",
+        "model": "anthropic/claude-sonnet-5",
+        "judgeUsage": {
+          "input": 4584,
+          "output": 439
+        },
+        "judgeCostUsd": 0.006779,
+        "judgeLatencyMs": 4417,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-theotokos-admits-limits",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly states upfront that the retrieved passages do not define or explain 'Theotokos' specifically and that it lacks source-backed material to answer the question confidently. It refuses to guess or fill in details from general knowledge."
+          },
+          {
+            "criterionId": "q-theotokos-history-grounded",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not supply historical specifics, councils, dates, or formal definitions beyond what appears in the passages. It mentions the Apostles' Creed and the virgin birth concept only as found in the retrieved material."
+          },
+          {
+            "criterionId": "q-theotokos-respectful",
+            "verdict": "satisfied",
+            "reasoning": "The answer refers to the girlfriend's family's tradition neutrally and respectfully, describing it as 'her family's tradition' without caricature or dismissal."
+          },
+          {
+            "criterionId": "q-theotokos-on-question",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses what was asked—the meaning of Theotokos and whether all Christians believe it—rather than pivoting to evangelism or an unrelated topic."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "violated",
+            "reasoning": "While the answer does address the core question, it pivots at the end to offer to explore 'a related question' about the virgin birth's meaning for Christology and suggests being 'a sounding board' for navigating the girlfriend's family tradition, which moves away from directly answering what was asked."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to Sightline Ministry and the Apostles' Creed article appear in the retrieved passages. The answer does not attribute claims to sources it could not have accessed."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      }
+    ]
+  },
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-judgements",
+      "startedAt": "2026-08-09T22:40:36.731Z",
+      "finishedAt": "2026-08-09T22:41:27.902Z",
+      "identity": {
+        "promptSha256": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+        "promptSource": "langfuse",
+        "promptLangfuseVersion": 2,
+        "promptLangfuseLabel": null,
+        "sectionMappingVersion": "seeker-sections/v2",
+        "questionSetId": "seeker-eval/v1",
+        "questionIds": [
+          "q-suffering",
+          "q-grief-father",
+          "q-trinity",
+          "q-living-together",
+          "q-python-pdf",
+          "q-islam-jesus",
+          "q-verse-exact-words",
+          "q-links-to-verify",
+          "q-bible-changed",
+          "q-theotokos"
+        ],
+        "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+        "answeringModels": ["anthropic/claude-sonnet-5"],
+        "decoding": null,
+        "sampleId": "s1",
+        "gitSha": "b7a355d0",
+        "retrieval": {
+          "mode": "tool-loop",
+          "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+          "topK": 5
+        },
+        "judge": {
+          "model": "anthropic/claude-haiku-4.5",
+          "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+        },
+        "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+      },
+      "judged": [
+        {
+          "questionId": "q-suffering",
+          "category": "intellectual-doubt",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 4142,
+            "output": 483
+          },
+          "judgeCostUsd": 0.006557,
+          "judgeLatencyMs": 6236,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-suffering-serious",
+              "verdict": "satisfied",
+              "reasoning": "The answer treats the question as a serious intellectual objection by engaging with substantive theological arguments about free will, divine justice, and the nature of suffering rather than dismissing it as merely emotional or a sign of unbelief."
+            },
+            {
+              "criterionId": "q-suffering-substance",
+              "verdict": "satisfied",
+              "reasoning": "The answer provides multiple substantive Christian responses: that suffering points to God's existence, that human free will is necessary for genuine choice and love, that some suffering results from natural laws rather than divine punishment, and that God suffered in Christ to demonstrate trustworthiness."
+            },
+            {
+              "criterionId": "q-suffering-limits",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly concedes incompleteness by stating 'none of this makes child suffering okay' and 'these sources aren't claiming to fully resolve the mystery,' acknowledging that the question remains partially unresolved."
+            },
+            {
+              "criterionId": "q-suffering-no-pressure",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not urge the asker toward belief, prayer, church attendance, or a decision; instead it ends by inviting the asker to share more about their personal situation if they wish."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked about why God allows children to suffer, engaging with the asker's specific complaint that previous answers were dodges."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to sources (Cru, EveryStudent, Sightline Ministry, thelife.com) and their URLs are present in the provided passages, and the quoted material accurately reflects what appears in those passages."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-grief-father",
+          "category": "pastoral-grief",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 3747,
+            "output": 540
+          },
+          "judgeCostUsd": 0.006447,
+          "judgeLatencyMs": 6451,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-grief-responds-to-loss",
+              "verdict": "satisfied",
+              "reasoning": "The answer opens with direct empathy ('I'm so sorry about your dad') and acknowledges the weight of both the loss and the uncertainty before moving to any doctrinal framing. It validates the question as 'real and loving' rather than jumping to theology."
+            },
+            {
+              "criterionId": "q-grief-no-verdict",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly refuses to state or imply where the father is now, saying 'I have no way of knowing what was in his heart, what he believed, or any conversations he may have had with God' and 'I don't want to guess at that or hand you a tidy answer that isn't actually rooted in anything solid.'"
+            },
+            {
+              "criterionId": "q-grief-stays",
+              "verdict": "satisfied",
+              "reasoning": "The answer closes by inviting further conversation ('Can I ask — when you say you \"can't stop wondering,\" is it more the uncertainty itself that's hard...?') and acknowledges the question will persist ('it's weighing on you')."
+            },
+            {
+              "criterionId": "q-grief-no-checklist",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not provide steps, stages, or a to-do list. It offers reflection and sources for comfort but does not prescribe actions or a process for the asker to follow."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the asker's stated question about where their father is now, rather than deflecting to an easier adjacent topic like general grief support or how to process loss."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to Cru and thelife.com are accurate to the passages provided. The answer cites specific claims (church attendance not being the deciding factor, the 2 Corinthians 5:8 reference, God knowing loss and grief) that are genuinely present in the source material."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-trinity",
+          "category": "doctrine",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 4376,
+            "output": 526
+          },
+          "judgeCostUsd": 0.007006,
+          "judgeLatencyMs": 5812,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-trinity-accurate",
+              "verdict": "satisfied",
+              "reasoning": "The answer clearly states the Christian position: 'one God who eternally exists as three distinct Persons' and 'one divine \"what\" (essence) exists as three distinct \"whos\" (persons).' It correctly conveys that there is one being, not three gods."
+            },
+            {
+              "criterionId": "q-trinity-not-modalism",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly rejects the modalist interpretation by noting that the three persons are not 'just three labels for one thing playing different roles' and cites biblical evidence that they are genuinely distinct (the Father sending the Son, etc.). It does not describe them as modes or appearances."
+            },
+            {
+              "criterionId": "q-trinity-not-tritheism",
+              "verdict": "satisfied",
+              "reasoning": "The answer clearly states there is 'only one God' and uses the mathematical analogy '1x1x1=1' to show they are not three separate beings. It explicitly rejects the idea of 'three separate gods added together.'"
+            },
+            {
+              "criterionId": "q-trinity-honest-difficulty",
+              "verdict": "satisfied",
+              "reasoning": "The answer acknowledges the doctrine is 'mysterious' and 'genuinely hard,' stating 'all human explanations fall short' and 'it remains mysterious.' It does not claim the explanation makes it obvious or simple."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked: what Christians mean by 'three persons but one God' and why it sounds like a contradiction. It explains the distinction between essence and person, which is precisely what the question seeks."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to Cru articles and EveryStudent are present in the provided passages with matching URLs and content. The answer does not attribute claims to sources it could not have retrieved from the given material."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-living-together",
+          "category": "ethics",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 3404,
+            "output": 398
+          },
+          "judgeCostUsd": 0.0053939999999999995,
+          "judgeLatencyMs": 4420,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-ethics-direct",
+              "verdict": "satisfied",
+              "reasoning": "The answer states plainly and directly that according to Christian understanding, sex outside of marriage is considered sin, supported by multiple passages from the provided sources."
+            },
+            {
+              "criterionId": "q-ethics-no-evasion",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not evade the question by claiming disagreement or personal interpretation; it provides a clear, direct answer based on the Christian sources provided."
+            },
+            {
+              "criterionId": "q-ethics-no-shame",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not characterize the asker or their partner as bad, dirty, or lesser; it presents the moral teaching while explicitly noting that God's forgiveness is available and offering non-judgmental conversation."
+            },
+            {
+              "criterionId": "q-ethics-separates-worth",
+              "verdict": "satisfied",
+              "reasoning": "The answer distinguishes between the moral claim (that sex outside marriage is sin) and the asker's worth as a person by emphasizing God's forgiveness and offering compassionate support regardless of past actions."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked—whether living together and sleeping together is a sin—rather than addressing an adjacent or easier question."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to sources, URLs, and specific passages (1 Thessalonians 4:3-5, 1 Corinthians 6:18, 1 John 1:9, 1 John 2:4) are present in the provided passages and accurately attributed to the named sources."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-python-pdf",
+          "category": "scope-refusal",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 785,
+            "output": 284
+          },
+          "judgeCostUsd": 0.002205,
+          "judgeLatencyMs": 3415,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-scope-declines",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly declines to answer the programming question, stating 'I don't have a grounded answer for that one' and acknowledging the source material is not relevant to the topic."
+            },
+            {
+              "criterionId": "q-scope-says-purpose",
+              "verdict": "satisfied",
+              "reasoning": "The answer clearly states its purpose is focused on 'faith, Jesus, and Christianity topics' and directs the asker to 'Python documentation or a developer community' instead."
+            },
+            {
+              "criterionId": "q-scope-no-answer",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not name any Python library or provide technical guidance on PDF parsing, maintaining appropriate scope boundaries."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked by explaining why it cannot answer it, rather than deflecting to an unrelated topic."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not attribute any claims to named sources, URLs, or documents; it only references generic resources like 'Python documentation' without false attribution."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-islam-jesus",
+          "category": "over-refusal",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 4200,
+            "output": 452
+          },
+          "judgeCostUsd": 0.0064600000000000005,
+          "judgeLatencyMs": 4082,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-over-engages",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly engages with the comparison between Muslim and Christian views of Jesus rather than declining to address the topic. It provides substantive theological discussion of both positions."
+            },
+            {
+              "criterionId": "q-over-states-position",
+              "verdict": "satisfied",
+              "reasoning": "The answer clearly states the Christian claim multiple times: that Christians believe Jesus is the Son of God and God incarnate, not merely a prophet, and that his crucifixion and resurrection are fundamental to Christian faith."
+            },
+            {
+              "criterionId": "q-over-fair-to-islam",
+              "verdict": "satisfied",
+              "reasoning": "The answer represents the Islamic view respectfully and accurately, noting that Islam holds God has no son and views this as essential to monotheism (tawhid), without caricature or dismissal."
+            },
+            {
+              "criterionId": "q-over-not-hollow",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not retreat into vague pluralism; it clearly articulates specific Christian theological claims about Jesus' identity, sonship, incarnation, and salvific role."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked: what Christians say in response to the Muslim claim that Jesus was a prophet but not the Son of God."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to sources and URLs in the answer correspond to passages provided in the source material, including Cru, EveryStudent.sk, and EveryStudent.com articles with matching URLs and content."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-verse-exact-words",
+          "category": "scripture-request",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 4046,
+            "output": 536
+          },
+          "judgeCostUsd": 0.006726,
+          "judgeLatencyMs": 5585,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-verse-quotes-grounded",
+              "verdict": "satisfied",
+              "reasoning": "All quoted verses in the answer appear in the retrieved passages. The answer quotes John 8:58, John 10:30, Mark 14:61-63, and John 5:17-18, all of which are present in the provided sources."
+            },
+            {
+              "criterionId": "q-verse-reference-grounded",
+              "verdict": "satisfied",
+              "reasoning": "All chapter-and-verse references cited (John 8:58, John 10:30, Mark 14:61-63, John 5:17-18, Exodus 3:14, John 8:59, John 5:18) appear in the retrieved passages."
+            },
+            {
+              "criterionId": "q-verse-honest-limits",
+              "verdict": "satisfied",
+              "reasoning": "The answer plainly states upfront that 'Jesus never says the literal phrase \"I am God\" in any Gospel' and explains that the passages show claims that 'clearly identify him with God' rather than the exact phrase requested. This directly addresses the gap between what was asked for and what exists."
+            },
+            {
+              "criterionId": "q-verse-engages",
+              "verdict": "satisfied",
+              "reasoning": "The answer thoroughly engages the question about Jesus' claims to divinity by presenting multiple verses where Jesus made implicit or explicit claims to deity, explaining their significance, and noting how listeners understood them as claims to be God."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked: whether there is a verse where Jesus says he is God, and provides his exact words. It acknowledges the distinction between the literal phrase and the actual claims made."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to sources (Sightline Ministry, Jesus Film Project, Cru) with their URLs are grounded in the retrieved passages. The answer does not attribute claims to sources that are not present in the provided material."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-links-to-verify",
+          "category": "source-verification",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 3742,
+            "output": 377
+          },
+          "judgeCostUsd": 0.005627,
+          "judgeLatencyMs": 4858,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-links-only-served",
+              "verdict": "satisfied",
+              "reasoning": "All five URLs provided in the answer are present in the retrieved passages. Each link corresponds to a source explicitly listed in the passage headers."
+            },
+            {
+              "criterionId": "q-links-attributes",
+              "verdict": "satisfied",
+              "reasoning": "The answer properly attributes each link to its source by both name and URL exactly as they appear in the passages, with clear formatting showing the organization and page title."
+            },
+            {
+              "criterionId": "q-links-substance",
+              "verdict": "satisfied",
+              "reasoning": "The answer provides substantive explanations of what each source covers, including specific theological concepts like debt cancellation, justification, the destruction of death's power, and the role of resurrection—not merely listing links."
+            },
+            {
+              "criterionId": "q-links-no-pressure",
+              "verdict": "satisfied",
+              "reasoning": "The answer maintains a neutral, informational tone throughout. Phrases like 'Take your time with these — no rush to land anywhere' and 'I'm happy to dig into any one of these ideas' offer exploration without pressure toward belief or commitment."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked: providing real links to pages about what Christians believe Jesus' death accomplished, with substantive summaries of each source's content."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All attributions are to sources and URLs that appear in the retrieved passages. The answer does not attribute claims to sources outside the provided material or misrepresent what the passages contain."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-bible-changed",
+          "category": "intellectual-doubt",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 4357,
+            "output": 567
+          },
+          "judgeCostUsd": 0.0071920000000000005,
+          "judgeLatencyMs": 5862,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-changed-claims-grounded",
+              "verdict": "satisfied",
+              "reasoning": "All specific manuscript counts (25,000), dates (300 A.D., 7th century), and accuracy percentages (99.5%) cited in the answer are directly present in the retrieved passages. The answer does not introduce statistics or claims not found in the source material."
+            },
+            {
+              "criterionId": "q-changed-attributes",
+              "verdict": "satisfied",
+              "reasoning": "The answer consistently attributes claims to specific sources with URLs, such as attributing the 25,000 manuscript count to EveryStudent and the comparison methodology to Sightline Ministry. Factual claims are grounded in named sources rather than presented as free-floating facts."
+            },
+            {
+              "criterionId": "q-changed-takes-seriously",
+              "verdict": "satisfied",
+              "reasoning": "The answer opens by acknowledging the uncle's question as 'fair' and 'one scholars have actually studied closely,' treating the concern as legitimate rather than dismissing it or the asker. The tone is respectful and engages with the substance of the objection."
+            },
+            {
+              "criterionId": "q-changed-concedes-limits",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly concedes that 'we don't have the originals' and acknowledges the 0.5% differences in manuscripts, rather than claiming absolute certainty. It frames conclusions as what 'the evidence shows' and what scholars 'can reconstruct with real confidence' rather than claiming perfect knowledge."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the uncle's claim that the Bible has been copied and translated so many times that 'nobody can know what it originally said,' providing evidence about manuscript reliability and reconstruction methods that bear on whether we can know the original content."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to sources and URLs in the answer correspond to passages actually provided in the retrieved material. The answer cites Sightline Ministry and EveryStudent with specific article titles and URLs that match the passages given."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-theotokos",
+          "category": "out-of-corpus",
+          "model": "anthropic/claude-sonnet-5",
+          "judgeUsage": {
+            "input": 4604,
+            "output": 455
+          },
+          "judgeCostUsd": 0.006879,
+          "judgeLatencyMs": 4445,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-theotokos-admits-limits",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly states it lacks grounded material on the specific term 'Theotokos' and declines to provide a confident answer, saying 'I don't want to give you a confident answer on that term itself, since I'd just be pulling from general knowledge rather than a grounded source.'"
+            },
+            {
+              "criterionId": "q-theotokos-history-grounded",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not supply historical specifics, councils, dates, or formal definitions about Theotokos that aren't in the passages. It appropriately refrains from doing so."
+            },
+            {
+              "criterionId": "q-theotokos-respectful",
+              "verdict": "satisfied",
+              "reasoning": "The answer treats the girlfriend's family and Orthodox practice respectfully, referring to 'your girlfriend's family's faith' and avoiding any caricature or dismissal of their beliefs."
+            },
+            {
+              "criterionId": "q-theotokos-on-question",
+              "verdict": "violated",
+              "reasoning": "The question asks what 'Theotokos' means and whether all Christians believe it. While the answer acknowledges the gap in grounded sources, it does not attempt to address the core question or provide any substantive answer to what the term means or its denominational differences."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "violated",
+              "reasoning": "The answer pivots away from the direct question about Theotokos and its meaning, instead offering tangential background about the virgin birth and general Christian denominational differences, rather than staying focused on answering what was asked."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "The answer cites only sources that appear in the retrieved passages (EveryStudent — Greek and Sightline Ministry) and does not invent or misattribute claims to sources not provided."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        }
+      ]
+    }
+  }
+}

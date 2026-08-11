@@ -148,6 +148,8 @@ export type WatchChildLanguage = {
 
 export type WatchChild = {
   documentId: string
+  /** One-based canonical position from VideoRelation.order; null is unsequenced. */
+  order?: number | null
   slug: string | null
   title: string | null
   label: string | null
@@ -213,6 +215,7 @@ export type WatchVariant = {
       srtSrc: string | null
       primary: boolean | null
       aiGenerated: boolean | null
+      video: { documentId: string } | null
       language: WatchVariantLanguage | null
     }[]
   } | null
@@ -522,6 +525,7 @@ type AdminSubtitleRaw = {
   srtSrc?: string | null
   primary?: boolean | null
   aiGenerated?: boolean | null
+  video?: { documentId?: string | null } | null
   language?: AdminLanguageRaw | null
 }
 
@@ -546,6 +550,7 @@ type AdminVideoVariantRaw = {
 }
 
 type AdminChildRelationRaw = {
+  order?: number | null
   child: {
     documentId: string | null
     slug?: string | null
@@ -632,6 +637,7 @@ type AdminVideoRouteSnapshotStudyQuestionAliases = {
 }
 
 type AdminVideoRouteSnapshotChildRelation = {
+  order?: number | null
   child:
     | (NonNullable<AdminChildRelationRaw["child"]> &
         AdminVideoRouteSnapshotAliases)
@@ -783,11 +789,13 @@ function normalizeChild(
 ): WatchChild | null {
   const child = rel.child
   if (!child || !child.documentId) return null
-  const localeRow = child.locales?.[0] ?? null
   return {
     documentId: child.documentId,
+    ...(rel.order === undefined ? {} : { order: rel.order }),
     slug: child.slug ?? null,
-    title: localeRow?.title ?? null,
+    title:
+      firstNonBlankLocaleTitle(child.locales) ??
+      humanizeContentSlug(child.slug),
     label: child.label ?? null,
     images: normalizeImages(child.images),
     durationSeconds: child.durationSeconds ?? null,
@@ -802,11 +810,12 @@ function normalizeParent(
 ): WatchParent | null {
   const parent = rel.parent
   if (!parent || !parent.documentId) return null
-  const localeRow = parent.locales?.[0] ?? null
   return {
     documentId: parent.documentId,
     slug: parent.slug ?? null,
-    title: localeRow?.title ?? null,
+    title:
+      firstNonBlankLocaleTitle(parent.locales) ??
+      humanizeContentSlug(parent.slug),
     noIndex: parent.noIndex ?? null,
     label: parent.label ?? null,
     images: normalizeImages(parent.images),
@@ -814,11 +823,12 @@ function normalizeParent(
       .map((childRel): WatchChild | null => {
         const c = childRel.child
         if (!c || !c.documentId) return null
-        const cLocale = c.locales?.[0] ?? null
         return {
           documentId: c.documentId,
+          ...(childRel.order === undefined ? {} : { order: childRel.order }),
           slug: c.slug ?? null,
-          title: cLocale?.title ?? null,
+          title:
+            firstNonBlankLocaleTitle(c.locales) ?? humanizeContentSlug(c.slug),
           label: c.label ?? null,
           images: normalizeImages(c.images),
           muxPlaybackId: c.muxPlaybackId ?? null,
@@ -876,6 +886,9 @@ function normalizeVariant(
             srtSrc: subtitle.srtSrc ?? null,
             primary: subtitle.primary ?? null,
             aiGenerated: subtitle.aiGenerated ?? null,
+            video: subtitle.video?.documentId
+              ? { documentId: subtitle.video.documentId }
+              : null,
             language: subtitle.language
               ? {
                   coreId: subtitle.language.coreId ?? null,
@@ -894,6 +907,7 @@ function normalizeVariant(
 
 function normalizeSubtitlesFromVariants(
   variants: WatchVariant[],
+  videoDocumentId: string,
 ): WatchSubtitle[] {
   const edition = variants.find(
     (variant) => (variant.videoEdition?.subtitles?.length ?? 0) > 0,
@@ -902,6 +916,17 @@ function normalizeSubtitlesFromVariants(
 
   const seen = new Set<string>()
   return edition.subtitles
+    .map((subtitle, index) => ({ subtitle, index }))
+    .filter(
+      ({ subtitle }) =>
+        subtitle.video == null || subtitle.video.documentId === videoDocumentId,
+    )
+    .sort((left, right) => {
+      const leftDirect = left.subtitle.video != null ? 1 : 0
+      const rightDirect = right.subtitle.video != null ? 1 : 0
+      return rightDirect - leftDirect || left.index - right.index
+    })
+    .map(({ subtitle }) => subtitle)
     .filter((s) => {
       if (!s.documentId || !s.vttSrc || !s.language?.slug) return false
       if (seen.has(s.language.slug)) return false
@@ -936,7 +961,8 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     slug: raw.slug ?? null,
     publishedAt: raw.publishedAt ?? null,
     localePublishedAt: localeRow?.publishedAt ?? null,
-    title: localeRow?.title ?? null,
+    title:
+      firstNonBlankLocaleTitle(raw.locales) ?? humanizeContentSlug(raw.slug),
     snippet: localeRow?.snippet ?? null,
     description: localeRow?.description ?? null,
     noIndex: raw.noIndex ?? null,
@@ -980,7 +1006,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     variants,
     playableLanguageCount:
       raw.playableDubLanguageCount ?? countPlayableWatchVariants(variants),
-    subtitles: normalizeSubtitlesFromVariants(variants),
+    subtitles: normalizeSubtitlesFromVariants(variants, raw.documentId),
     studyQuestions: (raw.studyQuestions ?? [])
       .map((q): WatchStudyQuestion | null => {
         if (!q.documentId) return null
@@ -1351,11 +1377,45 @@ function hasItems<T>(items: readonly T[] | null | undefined): boolean {
   return (items?.length ?? 0) > 0
 }
 
+function nonBlankText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+function humanizeContentSlug(slug: string | null | undefined): string | null {
+  const words = slug
+    ?.trim()
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+  return words && words.length > 0 ? words.join(" ") : null
+}
+
+function firstNonBlankLocaleTitle(
+  locales: readonly AdminLocaleRaw[] | null | undefined,
+): string | null {
+  for (const locale of locales ?? []) {
+    const title = nonBlankText(locale.title)
+    if (title) return title
+  }
+  return null
+}
+
+function mergeLocaleTitleFallback(
+  localized: readonly AdminLocaleRaw[] | null | undefined,
+  fallback: readonly AdminLocaleRaw[] | null | undefined,
+): AdminLocaleRaw[] {
+  const localizedRows = [...(localized ?? [])]
+  if (firstNonBlankLocaleTitle(localizedRows)) return localizedRows
+  return [...localizedRows, ...(fallback ?? [])]
+}
+
 type ChildRelationWithLocales = {
+  order?: number | null
   child:
     | ({
         documentId: string | null
-        locales?: readonly unknown[] | null
+        locales?: readonly AdminLocaleRaw[] | null
       } & Record<string, unknown>)
     | null
 }
@@ -1375,12 +1435,12 @@ function mergeChildRelationLocales<
     const fallbackChild = child?.documentId
       ? fallbackByChildId.get(child.documentId)?.child
       : null
-    if (!child || !fallbackChild || hasItems(child.locales)) return relation
+    if (!child || !fallbackChild) return relation
     return {
       ...relation,
       child: {
         ...child,
-        locales: fallbackChild.locales,
+        locales: mergeLocaleTitleFallback(child.locales, fallbackChild.locales),
       },
     }
   }) as unknown as T
@@ -1408,9 +1468,10 @@ function mergeParentRelationLocales(
       ...relation,
       parent: {
         ...parent,
-        locales: hasItems(parent.locales)
-          ? parent.locales
-          : fallbackParent.locales,
+        locales: mergeLocaleTitleFallback(
+          parent.locales,
+          fallbackParent.locales,
+        ),
         children: mergeChildRelationLocales(
           parent.children,
           fallbackParent.children,
@@ -1426,7 +1487,7 @@ function mergeContentFallback(
 ): AdminVideoLocalizedCopyRaw {
   return {
     ...localized,
-    locales: hasItems(localized.locales) ? localized.locales : fallback.locales,
+    locales: mergeLocaleTitleFallback(localized.locales, fallback.locales),
     studyQuestions: hasItems(localized.studyQuestions)
       ? localized.studyQuestions
       : fallback.studyQuestions,
@@ -1439,7 +1500,9 @@ function childRelationLocalesMissing(
   relations: readonly ChildRelationWithLocales[] | null | undefined,
 ): boolean {
   return (relations ?? []).some(
-    (relation) => relation.child != null && !hasItems(relation.child.locales),
+    (relation) =>
+      relation.child != null &&
+      firstNonBlankLocaleTitle(relation.child.locales) == null,
   )
 }
 
@@ -1450,14 +1513,15 @@ function parentRelationLocalesMissing(
     const parent = relation.parent
     if (!parent) return false
     return (
-      !hasItems(parent.locales) || childRelationLocalesMissing(parent.children)
+      firstNonBlankLocaleTitle(parent.locales) == null ||
+      childRelationLocalesMissing(parent.children)
     )
   })
 }
 
 function needsContentFallback(raw: AdminVideoLocalizedCopyRaw): boolean {
   return (
-    !hasItems(raw.locales) ||
+    firstNonBlankLocaleTitle(raw.locales) == null ||
     !hasItems(raw.studyQuestions) ||
     parentRelationLocalesMissing(raw.parents) ||
     childRelationLocalesMissing(raw.children)
@@ -1470,14 +1534,19 @@ function snapshotLocalesForLayer(
 ): AdminLocaleRaw[] {
   if (!node) return []
   const legacyLocales = (node as { locales?: AdminLocaleRaw[] | null }).locales
+  let locales: AdminLocaleRaw[]
   switch (layer) {
     case "exact":
-      return node.exactLocales ?? legacyLocales ?? []
+      locales = node.exactLocales ?? legacyLocales ?? []
+      break
     case "broad":
-      return node.broadLocales ?? []
+      locales = node.broadLocales ?? []
+      break
     case "english":
-      return node.englishLocales ?? []
+      locales = node.englishLocales ?? []
+      break
   }
+  return locales
 }
 
 function snapshotStudyQuestionsForLayer(
@@ -1502,6 +1571,7 @@ function snapshotChildRelationsForLayer(
   layer: AdminVideoRouteSnapshotCopyLayer,
 ): AdminVideoLocalizedCopyRaw["children"] {
   return (relations ?? []).map((relation) => ({
+    ...relation,
     child: relation.child
       ? {
           ...relation.child,
@@ -1553,7 +1623,7 @@ function snapshotLocalizedCopyWithFallback({
 }): AdminVideoLocalizedCopyRaw {
   let merged = snapshotCopyForLayer(snapshot, "exact")
 
-  if (locale !== "en" && languageSlug != null && needsContentFallback(merged)) {
+  if (languageSlug != null && needsContentFallback(merged)) {
     merged = mergeContentFallback(
       merged,
       snapshotCopyForLayer(snapshot, "broad"),
@@ -1589,13 +1659,20 @@ async function queryWatchLanguagePickerVariantsBySlug(
 
 async function queryWatchVideoRouteSnapshotBySlug(
   videoSlug: string,
-  variables: { locale: string; languageSlug: string | null },
+  variables: {
+    locale: string
+    languageSlug: string | null
+    subtitleLanguageSlug?: string | null
+  },
 ): Promise<AdminVideoRouteSnapshotRaw | null> {
   const result = await client.query({
     query: getWatchVideoRouteSnapshotBySlugOperation,
     variables: {
       locale: variables.locale,
       languageSlug: variables.languageSlug,
+      ...(variables.subtitleLanguageSlug
+        ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
+        : {}),
       videoSlug,
     },
     fetchPolicy: "no-cache",
@@ -1828,7 +1905,7 @@ async function hydrateSelectedVariant(
   const hydratedRecord = {
     ...record,
     variants,
-    subtitles: normalizeSubtitlesFromVariants(variants),
+    subtitles: normalizeSubtitlesFromVariants(variants, record.documentId),
   }
   return {
     record: hydratedRecord,
@@ -1841,10 +1918,12 @@ async function fetchWatchVideoRecord(
   videoSlug: string,
   contentLocale: string,
   languageSlug: string | null,
+  subtitleLanguageSlug: string | null = null,
 ): Promise<WatchVideoRecord | null> {
   const snapshot = await fetchWatchVideoRouteSnapshot(videoSlug, {
     locale: contentLocale,
     languageSlug,
+    subtitleLanguageSlug,
   })
   if (!snapshot) return null
 
@@ -2017,6 +2096,7 @@ const fetchWatchVideoBySlug = cache(
   async (
     videoSlug: string,
     languageSlug: string,
+    subtitleLanguageSlug: string | null = null,
   ): Promise<WatchVideoRecord | null> => {
     const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
     return fetchWatchVideoRecord(
@@ -2024,6 +2104,7 @@ const fetchWatchVideoBySlug = cache(
       videoSlug,
       contentIdentity.locale,
       contentIdentity.languageSlug,
+      subtitleLanguageSlug,
     )
   },
 )
@@ -2147,8 +2228,13 @@ type ResolvedWatchRouteBySlugHit = Exclude<
 async function tryResolveWatchRouteBySlug(
   videoSlug: string,
   languageSlug: string,
+  subtitleLanguageSlug: string | null,
 ): Promise<ResolvedWatchRouteBySlugHit> {
-  const record = await fetchWatchVideoBySlug(videoSlug, languageSlug)
+  const record = await fetchWatchVideoBySlug(
+    videoSlug,
+    languageSlug,
+    subtitleLanguageSlug,
+  )
   if (!record) throw new Error(WATCH_ROUTE_BY_SLUG_NOT_FOUND)
   const playableVariants = playableVariantsForRecord(record)
   const selectedVariant = selectPlayableVariant(
@@ -2197,10 +2283,15 @@ export const resolveWatchRouteBySlug = cache(
   async (
     videoSlug: string,
     locale: string,
+    subtitleLanguageSlug: string | null = null,
   ): Promise<ResolvedWatchRouteBySlug> => {
     let resolved: ResolvedWatchRouteBySlugHit
     try {
-      resolved = await fetchResolvedWatchRouteBySlug(videoSlug, locale)
+      resolved = await fetchResolvedWatchRouteBySlug(
+        videoSlug,
+        locale,
+        subtitleLanguageSlug,
+      )
     } catch (error) {
       if (
         error instanceof Error &&
@@ -2227,8 +2318,13 @@ export const resolveWatchVideoBySlug = cache(
   async (
     videoSlug: string,
     locale: string,
+    subtitleLanguageSlug: string | null = null,
   ): Promise<ResolvedWatchVideoBySlug | null> => {
-    const resolved = await resolveWatchRouteBySlug(videoSlug, locale)
+    const resolved = await resolveWatchRouteBySlug(
+      videoSlug,
+      locale,
+      subtitleLanguageSlug,
+    )
     if (resolved.kind === "video") return resolved
     if (resolved.kind === "series" && resolved.selectedVariant) {
       return {
@@ -2281,8 +2377,13 @@ export const resolveSeriesEpisodeBySlug = cache(
     seriesSlug: string,
     episodeSlug: string,
     locale: string,
+    subtitleLanguageSlug: string | null = null,
   ): Promise<ResolvedSeriesEpisodeBySlug | null> => {
-    const resolved = await resolveWatchVideoBySlug(episodeSlug, locale)
+    const resolved = await resolveWatchVideoBySlug(
+      episodeSlug,
+      locale,
+      subtitleLanguageSlug,
+    )
     if (!resolved) return null
     const series = findSeriesParent(resolved.video, seriesSlug)
     if (!series) return null

@@ -92,6 +92,7 @@ export type WatchSearchLaneName =
 export type WatchSearchInput = {
   query: string
   mode?: "default" | "modern" | null
+  shadowMode?: "default" | "modern" | null
   clientRequestId?: string | null
   targetLanguageSlug?: string | null
   queryLanguageSlug?: string | null
@@ -483,6 +484,9 @@ export class WatchSearchService {
             : await this.watchability.hydrate({
                 candidates: semanticCandidates.map((candidate) => ({
                   videoId: candidate.resultId,
+                  ...(candidate.videoEditionId
+                    ? { editionId: candidate.videoEditionId }
+                    : {}),
                 })),
                 targetLanguageSlug: languageInterpretation.targetLanguageSlug,
               })

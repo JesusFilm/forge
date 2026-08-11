@@ -48,6 +48,7 @@ export type PermissionKey =
   | "read:reference"
   | "access:manager"
   | "read:manager-read-models"
+  | "read:manager-seo"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -55,6 +56,12 @@ export type PermissionKey =
   | "write:transcript-embeddings"
   | "write:experience-embeddings"
   | "write:watch-events"
+  // Own-data watch-progress scopes for the MOBILE_USER principal. "own"
+  // is enforced at the service layer: identity comes from the verified
+  // token subject, never from arguments (R13).
+  | "read:watch-progress:own"
+  | "write:watch-progress:own"
+  | "delete:watch-progress:own"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
@@ -103,6 +110,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // the editorial role ladder.
   "access:manager": "PUBLIC",
   "read:manager-read-models": "PUBLIC",
+  "read:manager-seo": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -119,6 +127,12 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // session-cookie auth flow).
   "write:experience-embeddings": "ADMIN",
   "write:watch-events": "ADMIN",
+  // ADMIN-only on the editorial ladder (operational override); the
+  // intended callers are MOBILE_USER and WEB_USER (TV device-grant
+  // tokens introspect as WEB_USER) via their per-key allowlists below.
+  "read:watch-progress:own": "ADMIN",
+  "write:watch-progress:own": "ADMIN",
+  "delete:watch-progress:own": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -185,6 +199,7 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // permission granting.
   if (role === "CONSUMER_BEARER") return false
   if (role === "WEB_USER") return false
+  if (role === "MOBILE_USER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -260,6 +275,7 @@ const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
 const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
+  "read:manager-seo",
   "write:manager-jobs",
 ])
 
@@ -267,8 +283,37 @@ const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:video-mapper-catalog",
 ])
 
+/**
+ * WEB_USER is minted by Auth-token introspection for BOTH web watch
+ * sessions and TV device-grant sessions (the `jfp_tv_*` client ids in
+ * `web-user-token.ts`). The three own-data watch-progress scopes joined
+ * `write:watch-events` for feat-322's TV Continue Watching account merge
+ * — own-data only: the subject comes from the introspected token (R13),
+ * never from arguments, so this grants a signed-in viewer access to
+ * exactly their own rows. Adding any NON-own-data key here widens what a
+ * verified user token can reach; the enumerating test in
+ * `permissions.test.ts` pins the set.
+ */
 const WEB_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:watch-events",
+  "read:watch-progress:own",
+  "write:watch-progress:own",
+  "delete:watch-progress:own",
+])
+
+/**
+ * Permission keys the request-bound `MOBILE_USER` principal is allowed
+ * to satisfy — exactly the three own-data watch-progress scopes.
+ * Mobile still carries no event-write permission in v1 and no content
+ * or editorial scope. (Until feat-322's TV merge these three scopes
+ * were MOBILE_USER-exclusive; WEB_USER now shares them — see above.)
+ * Adding a key here widens what a verified mobile JWT can reach; the
+ * enumerating test in `permissions.test.ts` pins the set.
+ */
+const MOBILE_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:watch-progress:own",
+  "write:watch-progress:own",
+  "delete:watch-progress:own",
 ])
 
 const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
@@ -304,6 +349,9 @@ export function hasPermission(
   }
   if (role === "WEB_USER") {
     return WEB_USER_PERMISSIONS.has(key)
+  }
+  if (role === "MOBILE_USER") {
+    return MOBILE_USER_PERMISSIONS.has(key)
   }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a

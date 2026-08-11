@@ -730,7 +730,6 @@ describe("FloatingSearchProvider — search mode", () => {
 
   it.each([
     "/not-a-language.html",
-    "/jesus.html/not-a-language.html",
     "/lumo.html/episode/not-a-language.html",
     "/not-a-language.html/languages",
     "/not-a-language.html/history",
@@ -761,6 +760,37 @@ describe("FloatingSearchProvider — search mode", () => {
       expect.objectContaining({
         languageContext: expect.objectContaining({
           routeLanguageSlug: null,
+        }),
+      }),
+    )
+  })
+
+  it("uses English for a two-segment contextual candidate", async () => {
+    navigationMocks.pathname = "/jesus.html/not-a-language.html"
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+    act(() => {
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="search-mode-harness-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        languageContext: expect.objectContaining({
+          routeLanguageSlug: "english",
         }),
       }),
     )
@@ -2854,11 +2884,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
       ),
     ).toBeNull()
-    expect(bottomBackdrop).not.toBeNull()
-    expect(bottomBackdrop?.className).toContain("absolute")
-    expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")
-    expect(bottomBackdrop?.className).toContain("bg-black/85")
-    expect(bottomBackdrop?.className).toContain("backdrop-blur-[14px]")
+    expect(bottomBackdrop).toBeNull()
     expect(scrollBody?.className).toContain("z-1")
     expect(scrollBody?.className).toContain("top-44")
     expect(scrollBody?.className).toContain("md:top-32")

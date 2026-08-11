@@ -572,6 +572,74 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.localePublishedAt).toBeNull()
   })
 
+  it("hydrates the same-audio edition selected for requested subtitles", async () => {
+    const selectedEditionVariant = {
+      ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+      documentId: "variant-english-edition-with-russian",
+      duration: 110,
+    }
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchVideoRouteSnapshotBySlug: makeAdminVideo({
+            slug: "perfect-2",
+            // Admin has already preferred this edition over a longer English
+            // dub whose edition does not contain the requested Russian VTT.
+            variants: [selectedEditionVariant],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({
+            ...selectedEditionVariant,
+            videoEdition: {
+              subtitles: [
+                {
+                  documentId: "sub-russian-edition-wide",
+                  vttSrc: "https://cdn.example/russian.vtt",
+                  srtSrc: null,
+                  primary: false,
+                  aiGenerated: false,
+                  video: null,
+                  language: {
+                    coreId: "3934",
+                    bcp47: "ru",
+                    slug: "russian",
+                    name: "Russian",
+                  },
+                },
+              ],
+            },
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug(
+      "perfect-2",
+      "english",
+      "russian",
+    )
+
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      {
+        locale: "en",
+        languageSlug: "english",
+        subtitleLanguageSlug: "russian",
+        videoSlug: "perfect-2",
+      },
+      { id: "variant-english-edition-with-russian" },
+    ])
+    expect(result?.selectedVariant.documentId).toBe(
+      "variant-english-edition-with-russian",
+    )
+    expect(result?.video.subtitles).toEqual([
+      expect.objectContaining({ documentId: "sub-russian-edition-wide" }),
+    ])
+  })
+
   it("does not re-fetch when the primary fetch already returns a locale row", async () => {
     queryMock
       .mockResolvedValueOnce({
@@ -600,6 +668,79 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock).toHaveBeenCalledTimes(2)
     expect(result?.video.title).toBe("Jesus")
+  })
+
+  it("keeps edition-wide and current-Video subtitles while excluding sibling-owned tracks", async () => {
+    const subtitleLanguage = (slug: string, bcp47: string) => ({
+      coreId: slug,
+      bcp47,
+      slug,
+      name: slug,
+    })
+    const subtitle = ({
+      documentId,
+      languageSlug,
+      ownerId,
+    }: {
+      documentId: string
+      languageSlug: string
+      ownerId: string | null
+    }) => ({
+      documentId,
+      vttSrc: `https://cdn.example/${documentId}.vtt`,
+      srtSrc: null,
+      primary: false,
+      aiGenerated: false,
+      video: ownerId ? { documentId: ownerId } : null,
+      language: subtitleLanguage(
+        languageSlug,
+        languageSlug === "russian" ? "ru" : "en",
+      ),
+    })
+
+    queryMock
+      .mockResolvedValueOnce({
+        data: { videoBySlug: makeAdminVideo() },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({
+            videoEdition: {
+              subtitles: [
+                subtitle({
+                  documentId: "sub-sibling-ru",
+                  languageSlug: "russian",
+                  ownerId: "video-2",
+                }),
+                subtitle({
+                  documentId: "sub-global-ru",
+                  languageSlug: "russian",
+                  ownerId: null,
+                }),
+                subtitle({
+                  documentId: "sub-current-ru",
+                  languageSlug: "russian",
+                  ownerId: "video-1",
+                }),
+                subtitle({
+                  documentId: "sub-global-en",
+                  languageSlug: "english",
+                  ownerId: null,
+                }),
+              ],
+            },
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "en")
+
+    expect(result?.video.subtitles.map((track) => track.documentId)).toEqual([
+      "sub-global-en",
+      "sub-current-ru",
+    ])
   })
 
   it("queries admin content with BCP-47 when the watch URL uses an audio slug", async () => {
@@ -789,6 +930,52 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     ])
   })
 
+  it("uses broad English content when the exact English-slug title is blank", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [],
+            exactLocales: [
+              {
+                documentId: "loc-en-slug",
+                title: "  ",
+                description: "Exact English-slug description",
+                snippet: "Exact English-slug snippet",
+                imageAlt: "Exact English-slug still",
+              },
+            ],
+            broadLocales: [
+              {
+                documentId: "loc-en-broad",
+                title: "  Jesus from broad English  ",
+                description: "Broad English description",
+              },
+            ],
+            englishLocales: [],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub(),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "english")
+
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      { locale: "en", languageSlug: "english", videoSlug: "jesus" },
+      { id: "variant-1" },
+    ])
+    expect(result?.video.title).toBe("Jesus from broad English")
+    expect(result?.video.description).toBe("Exact English-slug description")
+    expect(result?.video.snippet).toBe("Exact English-slug snippet")
+    expect(result?.video.imageAlt).toBe("Exact English-slug still")
+  })
+
   it("uses broad BCP-47 content when exact child titles are missing", async () => {
     queryMock
       .mockResolvedValueOnce({
@@ -847,6 +1034,263 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.video.children[0]?.title).toBe("The Beginning RU")
     expect(result?.video.children[0]?.muxPlaybackId).toBe("mux-child-1")
+  })
+
+  it("falls back blank localized titles to English without replacing localized copy", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            slug: "lumo-the-gospel-of-mark",
+            label: "featureFilm",
+            variants: [makeRussianVariant()],
+            locales: [],
+            exactLocales: [
+              {
+                documentId: "loc-ru",
+                title: "   ",
+                description: "Russian description",
+                snippet: "Russian snippet",
+                imageAlt: "Russian still",
+              },
+            ],
+            broadLocales: [
+              {
+                documentId: "loc-ru-broad",
+                title: "\n\t",
+                description: "Broad Russian description",
+              },
+            ],
+            englishLocales: [
+              {
+                documentId: "loc-en",
+                title: "  LUMO – The Gospel of Mark  ",
+                description: "English description",
+              },
+            ],
+            parents: [
+              {
+                parent: {
+                  documentId: "parent-1",
+                  slug: "lumo-gospels",
+                  noIndex: false,
+                  label: "SERIES",
+                  images: [],
+                  children: [],
+                  exactLocales: [{ documentId: "parent-loc-ru", title: " " }],
+                  broadLocales: [],
+                  englishLocales: [
+                    {
+                      documentId: "parent-loc-en",
+                      title: "  LUMO Gospels  ",
+                    },
+                  ],
+                },
+              },
+            ],
+            children: [
+              {
+                child: {
+                  documentId: "child-1",
+                  slug: "the-beginning",
+                  label: "SEGMENT",
+                  images: [],
+                  durationSeconds: 120,
+                  muxPlaybackId: "mux-child-1",
+                  exactLocales: [{ documentId: "child-loc-ru", title: "" }],
+                  broadLocales: [],
+                  englishLocales: [
+                    {
+                      documentId: "child-loc-en",
+                      title: "  The Beginning  ",
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub(),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug(
+      "lumo-the-gospel-of-mark",
+      "russian",
+    )
+
+    expect(result?.video.title).toBe("LUMO – The Gospel of Mark")
+    expect(result?.video.description).toBe("Russian description")
+    expect(result?.video.snippet).toBe("Russian snippet")
+    expect(result?.video.imageAlt).toBe("Russian still")
+    expect(result?.video.parents[0]?.title).toBe("LUMO Gospels")
+    expect(result?.video.children[0]?.title).toBe("The Beginning")
+  })
+
+  it("uses a later nonblank requested-language title before English", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            variants: [makeRussianVariant()],
+            locales: [],
+            exactLocales: [
+              {
+                documentId: "loc-ru-blank",
+                title: " ",
+                description: "Russian description",
+              },
+              {
+                documentId: "loc-ru-titled",
+                title: "  Иисус  ",
+                description: "Secondary Russian description",
+              },
+            ],
+            broadLocales: [],
+            englishLocales: [
+              { documentId: "loc-en", title: "Jesus in English" },
+            ],
+            studyQuestions: [
+              { documentId: "sq-ru", value: "Question?", order: 1 },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub(),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "russian")
+
+    expect(result?.video.title).toBe("Иисус")
+    expect(result?.video.description).toBe("Russian description")
+  })
+
+  it("humanizes the slug when localized and English titles are blank", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            slug: "lumo_the--gospel-of-mark",
+            variants: [makeRussianVariant()],
+            locales: [],
+            exactLocales: [
+              {
+                documentId: "loc-ru",
+                title: " ",
+                description: "Russian description",
+                snippet: "Russian snippet",
+                imageAlt: "Russian still",
+              },
+            ],
+            broadLocales: [],
+            englishLocales: [
+              {
+                documentId: "loc-en",
+                title: "\t",
+                description: "English description",
+                snippet: "English snippet",
+                imageAlt: "English still",
+              },
+            ],
+            parents: [
+              {
+                parent: {
+                  documentId: "parent-1",
+                  slug: "lumo__gospel--collection",
+                  noIndex: false,
+                  label: "SERIES",
+                  images: [],
+                  exactLocales: [{ documentId: "parent-loc-ru", title: " " }],
+                  broadLocales: [],
+                  englishLocales: [
+                    { documentId: "parent-loc-en", title: "\n" },
+                  ],
+                  children: [
+                    {
+                      order: 7,
+                      child: {
+                        documentId: "nested-child-1",
+                        slug: "episode__one--begins",
+                        label: "SEGMENT",
+                        images: [],
+                        muxPlaybackId: "mux-nested-child-1",
+                        exactLocales: [
+                          {
+                            documentId: "nested-child-loc-ru",
+                            title: " ",
+                          },
+                        ],
+                        broadLocales: [],
+                        englishLocales: [
+                          {
+                            documentId: "nested-child-loc-en",
+                            title: "\t",
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            children: [
+              {
+                order: 11,
+                child: {
+                  documentId: "child-1",
+                  slug: "the__first--chapter",
+                  label: "SEGMENT",
+                  images: [],
+                  durationSeconds: 120,
+                  muxPlaybackId: "mux-child-1",
+                  exactLocales: [{ documentId: "child-loc-ru", title: " " }],
+                  broadLocales: [],
+                  englishLocales: [{ documentId: "child-loc-en", title: "\t" }],
+                },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: { childDubLanguages: [] },
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug(
+      "lumo_the--gospel-of-mark",
+      "russian",
+    )
+
+    expect(result?.video.title).toBe("Lumo The Gospel Of Mark")
+    expect(result?.video.description).toBe("Russian description")
+    expect(result?.video.snippet).toBe("Russian snippet")
+    expect(result?.video.imageAlt).toBe("Russian still")
+    expect(result?.video.parents[0]?.title).toBe("Lumo Gospel Collection")
+    expect(result?.video.parents[0]?.children[0]?.title).toBe(
+      "Episode One Begins",
+    )
+    expect(result?.video.parents[0]?.children[0]?.order).toBe(7)
+    expect(result?.video.children[0]?.title).toBe("The First Chapter")
+    expect(result?.video.children[0]?.order).toBe(11)
   })
 
   it("falls back to English questions without losing localized title or dub selection", async () => {

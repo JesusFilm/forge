@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  candidateWatchCollectionSchemas,
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+  TYPESENSE_WATCH_CANDIDATE_PREFIX,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_LEXICAL_ALIAS,
   watchAvailabilityCollectionSchema,
@@ -13,6 +15,42 @@ describe("Typesense Watch Search schemas", () => {
   it("uses isolated physical collection names", () => {
     expect(watchCatalogCollectionSchema("2026-08-03T12:00:00Z").name).toBe(
       "watch_search_catalog_2026-08-03T12_00_00Z",
+    )
+  })
+
+  it("uses candidate-only collision-proof physical names and all tokenizer fields", () => {
+    const schemas = candidateWatchCollectionSchemas("candidate_01", [
+      "en",
+      "zh",
+    ])
+
+    expect(schemas.catalog.name).toBe(
+      `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_catalog`,
+    )
+    expect(schemas.availability.name).toBe(
+      `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_availability`,
+    )
+    expect(schemas.lexical.name).toBe(
+      `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_lexical`,
+    )
+    expect(schemas.lexical.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "title_en", locale: "en" }),
+        expect.objectContaining({ name: "metadata_zh", locale: "zh" }),
+        expect.objectContaining({ name: "title_fallback" }),
+        expect.objectContaining({ name: "metadata_fallback" }),
+      ]),
+    )
+    expect(
+      Object.values(schemas).every(
+        (schema) => !schema.name.startsWith("watch_search_catalog_"),
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects candidate generation ids that could collide after sanitization", () => {
+    expect(() => candidateWatchCollectionSchemas("unsafe:id", ["en"])).toThrow(
+      "candidate generation id",
     )
   })
 
@@ -45,10 +83,22 @@ describe("Typesense Watch Search schemas", () => {
     expect(schema.fields).toEqual(
       expect.arrayContaining([
         { name: "videoId", type: "string", facet: true },
+        {
+          name: "videoEditionId",
+          type: "string",
+          facet: true,
+          optional: true,
+        },
         { name: "languageId", type: "string", facet: true },
         { name: "languageSlug", type: "string", facet: true },
         { name: "audio", type: "bool", facet: true },
         { name: "subtitles", type: "bool", facet: true },
+        {
+          name: "hrefLanguageSlug",
+          type: "string",
+          optional: true,
+          index: false,
+        },
       ]),
     )
   })
@@ -108,6 +158,12 @@ describe("Typesense Watch Search schemas", () => {
       expect.arrayContaining([
         { name: "documentKind", type: "string", facet: true },
         { name: "videoId", type: "string", facet: true },
+        {
+          name: "videoEditionId",
+          type: "string",
+          optional: true,
+          index: false,
+        },
         { name: "canonicalVideoId", type: "string", facet: true },
         { name: "language", type: "string", facet: true },
         { name: "publiclyVisible", type: "bool", facet: true },

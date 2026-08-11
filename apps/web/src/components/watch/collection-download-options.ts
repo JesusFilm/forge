@@ -1,6 +1,8 @@
 import {
   buildDownloadFilename,
   buildDownloadProxyUrl,
+  resolveDownloadSequence,
+  type DownloadSequence,
 } from "@/components/watch/download-link"
 import {
   bucketDownloads,
@@ -11,6 +13,7 @@ import type { WatchCollectionDownloadDub } from "@/lib/watch-collection-download
 
 export type CollectionDownloadEpisode = {
   documentId: string
+  order?: number | null
   slug: string | null
   title: string | null
   thumbnailUrl?: string | null
@@ -18,6 +21,7 @@ export type CollectionDownloadEpisode = {
 
 export type CollectionDownloadCandidate = {
   documentId: string
+  sequence: DownloadSequence | null
   slug: string
   title: string
   thumbnailUrl: string | null
@@ -71,6 +75,7 @@ export function buildCollectionDownloadOptions(
   const dubByVideoId = new Map(dubs.map((dub) => [dub.videoId, dub]))
   const candidates: CollectionDownloadCandidate[] = []
   const skipped: CollectionDownloadEpisode[] = []
+  const sequenceParent = { children: episodes }
 
   for (const episode of episodes) {
     const dub = dubByVideoId.get(episode.documentId)
@@ -85,6 +90,7 @@ export function buildCollectionDownloadOptions(
     }
     candidates.push({
       documentId: episode.documentId,
+      sequence: resolveDownloadSequence(sequenceParent, episode.documentId),
       slug: episode.slug,
       title: episode.title ?? episode.slug,
       thumbnailUrl: episode.thumbnailUrl ?? null,
@@ -119,7 +125,7 @@ export function buildCollectionDownloadQueue(input: {
   languageSlug: string
 }): CollectionDownloadQueueItem[] {
   const usedFilenames = new Set<string>()
-  return input.candidates.flatMap((candidate, index) => {
+  return input.candidates.flatMap((candidate, candidateIndex) => {
     const download = candidate.tiers[input.tier]
     if (!download) return []
     const filename = uniqueCollectionDownloadFilename(
@@ -128,11 +134,12 @@ export function buildCollectionDownloadQueue(input: {
         languageName: input.languageName,
         languageSlug: input.languageSlug,
         renditionHeight: download.height,
+        sequence: candidate.sequence,
         tier: input.tier,
         videoSlug: candidate.slug,
         videoTitle: candidate.title,
       }),
-      index + 1,
+      candidate.sequence?.position ?? candidateIndex + 1,
       usedFilenames,
     )
     return [

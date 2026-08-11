@@ -33,6 +33,7 @@ import {
   ListChecks,
   LogOut,
   PanelLeft,
+  SearchCheck,
   Settings2,
   ShieldCheck,
   UserRound,
@@ -126,6 +127,12 @@ const navItems: Array<{
     icon: Clapperboard,
   },
   {
+    key: "seo",
+    href: "/dashboard/seo",
+    label: "SEO",
+    icon: SearchCheck,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
@@ -179,6 +186,10 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/agents")) {
     return ["Studio", "Agents"]
+  }
+
+  if (pathname.startsWith("/dashboard/seo")) {
+    return ["Studio", "SEO"]
   }
 
   if (pathname.startsWith("/dashboard/smart-crop")) {

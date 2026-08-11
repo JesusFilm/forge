@@ -1,10 +1,17 @@
 "use client"
 
+import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
+import {
+  adminWatchSearchOperation,
+  adminWatchSearchQuery,
+} from "@forge/admin-graphql/operations"
+
 import { env } from "@/env"
 import {
   publicSlugForLocale,
   type SearchLanguageResolution,
 } from "./search-language"
+import { resolveSearchResultLanguages } from "./search-result-language"
 import type {
   AdminVideoLabel,
   SearchAvailabilityKind,
@@ -17,107 +24,13 @@ import type {
 const MAX_QUERY_LENGTH = 200
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
 
-const watchSearchQuery = `
-  query WatchSearch($input: WatchSearchInput!) {
-    watchSearch(input: $input) {
-      requestId
-      query
-      degraded
-      laneStatuses {
-        lane
-        status
-        elapsedMs
-        resultCount
-        reason
-      }
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        snippet
-        playbackId
-        startSeconds
-        score
-        label
-        durationSeconds
-        childCount
-        languageSlug
-        languageEnglishName
-        availability {
-          kind
-          languageEnglishName
-        }
-        evidence {
-          label
-          languageSlug
-        }
-        action {
-          hrefLanguageSlug
-        }
-      }
-      hasMore
-      searchMode
-      latencyMs
-      nextOffset
-    }
-  }
-`
-
-type WatchSearchResultType = "VIDEO" | "EXPERIENCE"
-
-type WatchSearchGraphqlResult = {
-  watchSearch?: {
-    requestId?: string | null
-    query?: string | null
-    degraded?: boolean | null
-    laneStatuses?: Array<{
-      lane?: string | null
-      status?: string | null
-      elapsedMs?: number | null
-      resultCount?: number | null
-      reason?: string | null
-    }> | null
-    results?: WatchSearchGraphqlItem[] | null
-    hasMore?: boolean | null
-    searchMode?: string | null
-    latencyMs?: number | null
-    nextOffset?: number | null
-  } | null
-}
-
-type WatchSearchGraphqlItem = {
-  type?: WatchSearchResultType | null
-  id?: string | null
-  slug?: string | null
-  title?: string | null
-  imageUrl?: string | null
-  imageBlurDataUrl?: string | null
-  muxThumbnailBlurDataUrl?: string | null
-  snippet?: string | null
-  playbackId?: string | null
-  startSeconds?: number | null
-  score?: number | null
-  label?: string | null
-  durationSeconds?: number | null
-  childCount?: number | null
-  languageSlug?: string | null
-  languageEnglishName?: string | null
-  availability?: {
-    kind?: string | null
-    languageEnglishName?: string | null
-  } | null
-  evidence?: {
-    label?: string | null
-    languageSlug?: string | null
-  } | null
-  action?: {
-    hrefLanguageSlug?: string | null
-  } | null
-}
+type WatchSearchGraphqlResult = AdminResultOf<typeof adminWatchSearchOperation>
+type WatchSearchGraphqlItem = NonNullable<
+  NonNullable<WatchSearchGraphqlResult["watchSearch"]>["results"]
+>[number]
+type WatchSearchResultType = NonNullable<
+  AdminVariablesOf<typeof adminWatchSearchOperation>["input"]["resultTypes"]
+>[number]
 
 type GraphqlResponse<TData> = {
   data?: TData
@@ -145,30 +58,31 @@ export async function searchWatchDirect({
 }: DirectWatchSearchInput): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
   const resultTypes = toWatchSearchResultType(type)
+  const variables: AdminVariablesOf<typeof adminWatchSearchOperation> = {
+    input: {
+      query: truncatedQuery,
+      clientRequestId: languageContext.clientRequestId,
+      targetLanguageSlug: languageContext.targetLanguageSlug,
+      queryLanguageSlug: languageContext.queryLanguageSlug,
+      queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
+      displayLanguageSlug:
+        languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
+      routeLanguageSlug: languageContext.routeLanguageSlug,
+      currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
+      acceptLanguage: languageContext.acceptLanguage,
+      limit,
+      offset,
+      resultTypes,
+    },
+  }
   const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      query: watchSearchQuery,
-      variables: {
-        input: {
-          query: truncatedQuery,
-          clientRequestId: languageContext.clientRequestId,
-          targetLanguageSlug: languageContext.targetLanguageSlug,
-          queryLanguageSlug: languageContext.queryLanguageSlug,
-          queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
-          displayLanguageSlug:
-            languageContext.displayLanguageSlug ?? publicSlugForLocale(locale),
-          routeLanguageSlug: languageContext.routeLanguageSlug,
-          currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
-          acceptLanguage: languageContext.acceptLanguage,
-          limit,
-          offset,
-          resultTypes,
-        },
-      },
+      query: adminWatchSearchQuery,
+      variables,
     }),
     signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
   })
@@ -229,6 +143,18 @@ function mapWatchSearchResult(
     return null
   }
 
+  const availabilityKind = mapWatchSearchAvailabilityKind(
+    result.availability?.kind,
+  )
+  const resultLanguages = resolveSearchResultLanguages({
+    availabilityKind,
+    resultLanguageSlug: result.languageSlug,
+    resultLanguageEnglishName: result.languageEnglishName,
+    actionLanguageSlug: result.action?.hrefLanguageSlug,
+    availabilityLanguageSlug: result.availability?.languageSlug,
+    availabilityLanguageEnglishName: result.availability?.languageEnglishName,
+  })
+
   return {
     type: result.type.toLowerCase() as SearchContentType,
     id: result.id,
@@ -245,13 +171,12 @@ function mapWatchSearchResult(
     durationSeconds: result.durationSeconds ?? null,
     childCount: result.childCount ?? null,
     source: "watch-search",
-    languageSlug: result.action?.hrefLanguageSlug ?? result.languageSlug,
-    languageEnglishName: result.languageEnglishName ?? null,
-    availabilityKind: mapWatchSearchAvailabilityKind(result.availability?.kind),
+    languageSlug: resultLanguages.languageSlug,
+    languageEnglishName: resultLanguages.languageEnglishName,
+    availabilityKind,
+    subtitleLanguageSlug: resultLanguages.subtitleLanguageSlug,
     availabilityLanguageEnglishName:
-      result.availability?.languageEnglishName ??
-      result.languageEnglishName ??
-      null,
+      resultLanguages.availabilityLanguageEnglishName,
     evidenceLabel: result.evidence?.label ?? null,
     evidenceLanguageSlug: result.evidence?.languageSlug ?? null,
   }
@@ -283,7 +208,12 @@ function withResolvedLanguageSlug(
   result: SearchResult,
   resolvedLanguage: SearchLanguageResolution,
 ): SearchResult {
-  if (result.type !== "video") return result
+  if (
+    result.type !== "video" ||
+    result.availabilityKind === "target_subtitle"
+  ) {
+    return result
+  }
   return {
     ...result,
     languageSlug: result.languageSlug ?? resolvedLanguage.publicSlug,

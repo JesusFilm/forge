@@ -277,7 +277,12 @@ const searchVideosResponseSchema = z.object({
       playbackId: z.string().optional(),
       durationSeconds: z.number().nullable().optional(),
       languageSlug: z.string().nullable().optional(),
-      availability: z.object({ kind: z.string() }).optional(),
+      availability: z
+        .object({
+          kind: z.string(),
+          languageSlug: z.string().nullable().optional(),
+        })
+        .optional(),
     }),
   ),
 })

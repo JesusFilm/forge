@@ -1,4 +1,23 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import type { Principal } from "@/auth/principal"
+import { isEditorOrAdmin } from "@/auth/principal"
+
+// Core's per-platform view restriction (`Video.restrictViewPlatforms`,
+// synced read-only — see core-sync/phases/sync-videos.ts). Only the "watch"
+// platform is checked: Forge's web/mobile/tv apps all consume the one
+// `apps/admin` GraphQL schema (no per-forge-client granularity exists or is
+// needed), so Core's single "watch" restriction correctly maps to "hide from
+// all three." EDITOR/ADMIN callers always bypass this — the dashboard needs
+// to keep showing restricted videos so editors can review/manage them.
+export function notRestrictedFromWatchWhere(): Prisma.VideoWhereInput {
+  return { NOT: { restrictViewPlatforms: { has: "watch" } } }
+}
+
+export function watchVisibilityWhere(
+  user: Principal | null,
+): Prisma.VideoWhereInput {
+  return isEditorOrAdmin(user) ? {} : notRestrictedFromWatchWhere()
+}
 
 export type SearchWatchabilityKind =
   | "target_audio"
@@ -42,13 +61,20 @@ type TargetDubRow = {
 type SubtitleRow = {
   id: string
   videoId: string
+  editionId: string
+  videoDubId: string
+  playbackId: string | null
+  durationSeconds: number | null
   language: LanguageRow | null
+  audioLanguage: LanguageRow | null
 }
 
 type FallbackLanguageRow = {
   id: string
   priority: number
 }
+
+const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
 
 const EMPTY_WATCHABILITY: Omit<SearchWatchability, "videoId"> = {
   kind: "unavailable",
@@ -71,10 +97,26 @@ function englishNameFromLanguageName(value: unknown): string | null {
   return null
 }
 
+function publicLanguageSlug(value: string | null | undefined): string | null {
+  return value && PUBLIC_LANGUAGE_SLUG_PATTERN.test(value) ? value : null
+}
+
 function uniqueVideoIds(
   candidates: readonly SearchWatchabilityCandidate[],
 ): string[] {
   return [...new Set(candidates.map((candidate) => candidate.videoId))]
+}
+
+function uniqueCandidates(
+  candidates: readonly SearchWatchabilityCandidate[],
+): SearchWatchabilityCandidate[] {
+  const seen = new Set<string>()
+  return candidates.filter((candidate) => {
+    const key = `${candidate.videoId}\u0000${candidate.editionId ?? ""}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function playableDubWhere(videoIds: readonly string[]) {
@@ -87,6 +129,7 @@ function playableDubWhere(videoIds: readonly string[]) {
       deletedAt: null,
       noIndex: false,
       locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
+      ...notRestrictedFromWatchWhere(),
     },
     OR: [{ videoEditionId: null }, { videoEdition: { deletedAt: null } }],
   }
@@ -106,6 +149,8 @@ function firstFallbackByVideoId(
 ) {
   const byVideoId = new Map<string, TargetDubRow>()
   for (const row of rows) {
+    if (!publicLanguageSlug(row.language?.slug)) continue
+
     const existing = byVideoId.get(row.videoId)
     if (!existing) {
       byVideoId.set(row.videoId, row)
@@ -138,7 +183,9 @@ function watchabilityFromDub(
   row: TargetDubRow,
   kind: Extract<SearchWatchabilityKind, "target_audio" | "related_language">,
 ): SearchWatchability {
-  const languageSlug = row.language?.slug ?? null
+  const languageSlug = publicLanguageSlug(row.language?.slug)
+  if (!languageSlug) return { videoId: row.videoId, ...EMPTY_WATCHABILITY }
+
   return {
     videoId: row.videoId,
     kind,
@@ -154,23 +201,21 @@ function watchabilityFromDub(
   }
 }
 
-function watchabilityFromSubtitle(
-  row: SubtitleRow,
-  videoId: string,
-): SearchWatchability {
-  const languageSlug = row.language?.slug ?? null
+function watchabilityFromSubtitle(row: SubtitleRow): SearchWatchability {
+  const languageSlug = publicLanguageSlug(row.language?.slug)
+  const hrefLanguageSlug = publicLanguageSlug(row.audioLanguage?.slug)
   return {
-    videoId,
+    videoId: row.videoId,
     kind: "target_subtitle",
     languageSlug,
     languageEnglishName: englishNameFromLanguageName(row.language?.name),
     audio: false,
     subtitles: true,
-    playbackId: null,
-    videoDubId: null,
+    playbackId: row.playbackId,
+    videoDubId: row.videoDubId,
     videoSubtitleId: row.id,
-    durationSeconds: null,
-    hrefLanguageSlug: languageSlug,
+    durationSeconds: row.durationSeconds,
+    hrefLanguageSlug,
   }
 }
 
@@ -192,37 +237,114 @@ export class SearchWatchabilityService {
     `)
   }
 
-  private async targetSubtitlesForVideos(
-    videoIds: readonly string[],
+  private async targetSubtitlesForCandidates(
+    candidates: readonly SearchWatchabilityCandidate[],
     languageId: string,
   ): Promise<SubtitleRow[]> {
-    if (videoIds.length === 0) return []
+    const unique = uniqueCandidates(candidates)
+    if (unique.length === 0) return []
+
+    const candidateRows = Prisma.join(
+      unique.map(
+        (candidate) =>
+          Prisma.sql`(${candidate.videoId}::text, ${candidate.editionId ?? null}::text)`,
+      ),
+    )
 
     return this.prisma.$queryRaw<SubtitleRow[]>(Prisma.sql`
-      SELECT DISTINCT ON (COALESCE(vs.video_id, vd.video_id))
+      WITH candidate(video_id, video_edition_id) AS (
+        VALUES ${candidateRows}
+      )
+      SELECT DISTINCT ON (candidate.video_id)
         vs.id,
-        COALESCE(vs.video_id, vd.video_id) AS "videoId",
+        candidate.video_id AS "videoId",
+        vs.video_edition_id AS "editionId",
+        fallback_action.id AS "videoDubId",
+        fallback_action.duration AS "durationSeconds",
+        fallback_action.playback_id AS "playbackId",
         jsonb_build_object(
-          'id', l.id,
-          'slug', l.slug,
-          'name', l.name
-        ) AS language
-      FROM video_subtitle vs
+          'id', target_language.id,
+          'slug', target_language.slug,
+          'name', target_language.name
+        ) AS language,
+        fallback_action.language AS "audioLanguage"
+      FROM candidate
+      JOIN video video
+        ON video.id = candidate.video_id
+       AND video.deleted_at IS NULL
+       AND video.no_index = FALSE
+       AND EXISTS (
+         SELECT 1
+         FROM video_locale published_locale
+         WHERE published_locale.video_id = video.id
+           AND published_locale.deleted_at IS NULL
+           AND published_locale.status = 'published'
+       )
+      JOIN video_subtitle vs
+        ON (candidate.video_edition_id IS NULL
+          OR vs.video_edition_id = candidate.video_edition_id)
+       AND (vs.video_id IS NULL OR vs.video_id = candidate.video_id)
+       AND vs.deleted_at IS NULL
+       AND vs.language_id = ${languageId}
+       AND NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL
       JOIN video_edition ve
         ON ve.id = vs.video_edition_id
        AND ve.deleted_at IS NULL
-      JOIN video_dub vd
-        ON vd.video_edition_id = vs.video_edition_id
-       AND vd.deleted_at IS NULL
-       AND vd.video_id IN (${Prisma.join(videoIds)})
-      LEFT JOIN language l
-        ON l.id = vs.language_id
-       AND l.deleted_at IS NULL
-       AND l.slug IS NOT NULL
-      WHERE vs.deleted_at IS NULL
-        AND vs.language_id = ${languageId}
-        AND (vs.vtt_src IS NOT NULL OR vs.srt_src IS NOT NULL)
-      ORDER BY COALESCE(vs.video_id, vd.video_id), vs.id ASC
+      JOIN language target_language
+        ON target_language.id = vs.language_id
+       AND target_language.deleted_at IS NULL
+       AND target_language.slug IS NOT NULL
+       AND target_language.slug ~ '^[a-z0-9-]+$'
+      JOIN LATERAL (
+        SELECT
+          fallback_dub.id,
+          fallback_dub.duration,
+          mux_video.playback_id,
+          CASE
+            WHEN video.primary_language_id = fallback_language.id THEN 0
+            WHEN fallback_language.slug = 'english' THEN 1
+            ELSE 2
+          END AS action_priority,
+          fallback_language.slug AS language_slug,
+          jsonb_build_object(
+            'id', fallback_language.id,
+            'slug', fallback_language.slug,
+            'name', fallback_language.name
+          ) AS language
+        FROM video_dub fallback_dub
+        JOIN language fallback_language
+          ON fallback_language.id = fallback_dub.language_id
+         AND fallback_language.deleted_at IS NULL
+         AND fallback_language.slug IS NOT NULL
+         AND fallback_language.slug ~ '^[a-z0-9-]+$'
+        LEFT JOIN mux_video
+          ON mux_video.id = fallback_dub.mux_video_id
+         AND mux_video.deleted_at IS NULL
+        WHERE fallback_dub.video_id = candidate.video_id
+          AND fallback_dub.video_edition_id = vs.video_edition_id
+          AND fallback_dub.deleted_at IS NULL
+          AND fallback_dub.published = TRUE
+          AND NULLIF(BTRIM(fallback_dub.hls), '') IS NOT NULL
+        ORDER BY
+          CASE
+            WHEN video.primary_language_id = fallback_language.id THEN 0
+            WHEN fallback_language.slug = 'english' THEN 1
+            ELSE 2
+          END ASC,
+          fallback_dub.duration DESC NULLS LAST,
+          fallback_language.slug ASC,
+          fallback_dub.id ASC
+        LIMIT 1
+      ) fallback_action ON TRUE
+      ORDER BY
+        candidate.video_id,
+        fallback_action.action_priority ASC,
+        fallback_action.duration DESC NULLS LAST,
+        fallback_action.language_slug ASC,
+        fallback_action.id ASC,
+        vs.video_edition_id ASC,
+        CASE WHEN vs.video_id = candidate.video_id THEN 0 ELSE 1 END ASC,
+        vs.id ASC
     `)
   }
 
@@ -263,14 +385,17 @@ export class SearchWatchabilityService {
       },
     })
 
-    for (const [videoId, row] of firstByVideoId(targetDubs as TargetDubRow[])) {
+    const publicTargetDubs = (targetDubs as TargetDubRow[]).filter((row) =>
+      publicLanguageSlug(row.language?.slug),
+    )
+    for (const [videoId, row] of firstByVideoId(publicTargetDubs)) {
       result.set(videoId, watchabilityFromDub(row, "target_audio"))
     }
 
-    const unresolvedAfterTargetAudio = videoIds.filter(
-      (videoId) => result.get(videoId)?.kind === "unavailable",
+    const unresolvedAfterTargetAudio = candidates.filter(
+      (candidate) => result.get(candidate.videoId)?.kind === "unavailable",
     )
-    const targetSubtitles = await this.targetSubtitlesForVideos(
+    const targetSubtitles = await this.targetSubtitlesForCandidates(
       unresolvedAfterTargetAudio,
       targetLanguage.id,
     )
@@ -279,7 +404,7 @@ export class SearchWatchabilityService {
       const videoId = row.videoId
       const current = result.get(videoId)
       if (current?.kind === "target_audio") continue
-      result.set(videoId, watchabilityFromSubtitle(row, videoId))
+      result.set(videoId, watchabilityFromSubtitle(row))
     }
 
     const unresolvedVideoIds = videoIds.filter(

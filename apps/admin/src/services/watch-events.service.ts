@@ -75,6 +75,21 @@ export class WatchEventService {
   }
 }
 
+/**
+ * Account-deletion erasure (R5): removes the subject's analytics log.
+ * Standalone (not on WatchEventService) because the caller is the internal
+ * server-to-server route, which imports functions rather than services.
+ */
+export async function deleteWatchEventsForUser(
+  prisma: Pick<PrismaClient, "watchEvent">,
+  authSubject: string,
+) {
+  const result = await prisma.watchEvent.deleteMany({
+    where: { authSubject },
+  })
+  return { deletedCount: result.count }
+}
+
 function boundedNonNegativeInt(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return null
   return Math.max(0, Math.floor(value))

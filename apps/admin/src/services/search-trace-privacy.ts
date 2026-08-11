@@ -1,3 +1,5 @@
+import type { WatchSearchComparisonResult } from "./typesense-watch-search-comparison.service"
+
 export const SEARCH_TRACE_RULE_LABEL_SOURCE = "rules"
 export const SEARCH_TRACE_RULE_LABEL_VERSION = "search-query-labels/v1"
 
@@ -296,5 +298,59 @@ export function classifySearchTraceQuery(
     labelSource: SEARCH_TRACE_RULE_LABEL_SOURCE,
     labelVersion: SEARCH_TRACE_RULE_LABEL_VERSION,
     labeledAt: now,
+  }
+}
+
+/** JSON-safe, bounded projection for the dedicated comparison endpoint. */
+export function projectWatchSearchComparisonResult(
+  comparison: WatchSearchComparisonResult,
+) {
+  const privacy = classifySearchTraceQuery(comparison.input.query)
+  const projectSide = (side: WatchSearchComparisonResult["current"]) => {
+    if (side.status === "error") return side
+    return {
+      status: side.status,
+      response: {
+        query: privacy.queryText,
+        results: side.response.results.slice(0, 50).map((result) => ({
+          type: result.type,
+          id: result.id,
+          slug: result.slug,
+          title: result.title,
+          playbackId: result.playbackId,
+          startSeconds: result.startSeconds,
+          score: result.score,
+          label: result.label,
+          durationSeconds: result.durationSeconds,
+          childCount: result.childCount,
+          languageSlug: result.languageSlug,
+          languageEnglishName: result.languageEnglishName,
+          availability: result.availability,
+          evidence: result.evidence,
+          action: result.action,
+          fallback: result.fallback,
+        })),
+        hasMore: side.response.hasMore,
+        nextOffset: side.response.nextOffset,
+        searchMode: side.response.searchMode,
+        requestId: side.response.requestId,
+        degraded: side.response.degraded,
+        latencyMs: side.response.latencyMs,
+        laneStatuses: side.response.laneStatuses,
+        languageInterpretation: side.response.languageInterpretation,
+      },
+      diagnostics: {
+        ...side.diagnostics,
+        transcriptProjectionRevision:
+          side.diagnostics.transcriptProjectionRevision?.toString() ?? null,
+      },
+    }
+  }
+
+  return {
+    comparisonId: comparison.comparisonId,
+    input: { ...comparison.input, query: privacy.queryText },
+    current: projectSide(comparison.current),
+    candidate: projectSide(comparison.candidate),
   }
 }

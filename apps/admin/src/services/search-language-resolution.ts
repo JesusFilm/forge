@@ -40,6 +40,16 @@ export type SearchLanguageResolution = {
   acceptLanguageSlug: string | null
 }
 
+export type SearchQueryLexicalContext = {
+  tokenizerLocale: string
+  languageSlugs: readonly string[]
+}
+
+export type SearchQueryScriptContext = {
+  targetLanguageSlug: string
+  lexicalContext: SearchQueryLexicalContext | null
+}
+
 const FALLBACK_TARGET_LANGUAGE_SLUG = "english"
 const MAX_ACCEPT_LANGUAGE_CANDIDATES = 8
 const LANGUAGE_IDENTITY_CACHE_TTL_MS = 5 * 60 * 1_000
@@ -58,23 +68,44 @@ const languageIdentityCaches = new WeakMap<
 
 const QUERY_SCRIPT_LANGUAGE_HINTS: ReadonlyArray<{
   pattern: RegExp
-  slug: string
+  targetLanguageSlug: string
   minimumCharacters: number
+  lexicalContext?: SearchQueryLexicalContext
 }> = Object.freeze([
-  { pattern: /\p{Script=Cyrillic}/u, slug: "russian", minimumCharacters: 2 },
+  {
+    pattern: /\p{Script=Cyrillic}/u,
+    targetLanguageSlug: "russian",
+    minimumCharacters: 2,
+  },
   {
     pattern: /\p{Script=Arabic}/u,
-    slug: "arabic-modern-standard",
+    targetLanguageSlug: "arabic-modern-standard",
     minimumCharacters: 1,
   },
-  { pattern: /\p{Script=Han}/u, slug: "mandarin-china", minimumCharacters: 1 },
+  {
+    pattern: /\p{Script=Han}/u,
+    targetLanguageSlug: "mandarin-china",
+    minimumCharacters: 1,
+    lexicalContext: {
+      tokenizerLocale: "zh",
+      languageSlugs: ["chinese-simplified", "chinese-traditional"],
+    },
+  },
   {
     pattern: /\p{Script=Hiragana}|\p{Script=Katakana}/u,
-    slug: "japanese",
+    targetLanguageSlug: "japanese",
     minimumCharacters: 1,
   },
-  { pattern: /\p{Script=Hangul}/u, slug: "korean", minimumCharacters: 1 },
-  { pattern: /\p{Script=Devanagari}/u, slug: "hindi", minimumCharacters: 1 },
+  {
+    pattern: /\p{Script=Hangul}/u,
+    targetLanguageSlug: "korean",
+    minimumCharacters: 1,
+  },
+  {
+    pattern: /\p{Script=Devanagari}/u,
+    targetLanguageSlug: "hindi",
+    minimumCharacters: 1,
+  },
 ])
 
 function normalizeSlug(value: string | null | undefined): string | null {
@@ -276,11 +307,16 @@ function scriptCharacterCount(
   return count
 }
 
-function slugForQueryScript(query: string | null): string | null {
+export function resolveSearchQueryScriptContext(
+  query: string | null,
+): SearchQueryScriptContext | null {
   if (!query) return null
   for (const hint of QUERY_SCRIPT_LANGUAGE_HINTS) {
     if (scriptCharacterCount(query, hint) >= hint.minimumCharacters) {
-      return hint.slug
+      return {
+        targetLanguageSlug: hint.targetLanguageSlug,
+        lexicalContext: hint.lexicalContext ?? null,
+      }
     }
   }
   return null
@@ -326,7 +362,8 @@ export async function resolveSearchLanguageSignals({
       : null)
   const queryScriptLanguage =
     explicitTarget == null && queryNamedLanguage == null
-      ? slugForQueryScript(normalizeSlug(input.query))
+      ? (resolveSearchQueryScriptContext(normalizeSlug(input.query))
+          ?.targetLanguageSlug ?? null)
       : null
   const currentWatch = canonicalLanguageSlug(suppliedCurrentWatch, languages)
   const route = canonicalLanguageSlug(suppliedRoute, languages)
