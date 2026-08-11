@@ -315,6 +315,10 @@ export function getAuthClient(): BetterAuthExpoClient {
           storage: createSecureStorageAdapter(SecureStore, {
             keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
           }),
+          // Ephemeral iOS auth session (iOS-only): no Safari cookie sharing,
+          // so no per-sign-in consent alert and no shared-device residual.
+          // Cost: no one-tap reuse of an existing Safari IdP login.
+          webBrowserOptions: { preferEphemeralSession: true },
         }),
         // signIn.oauth2 for the hosted-page sign-in (jfp self-RP).
         genericOAuthClient(),

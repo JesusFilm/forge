@@ -565,3 +565,37 @@ describe("refresh() keeps the session through an outage", () => {
     })
   })
 })
+
+describe("getAuthClient native wiring", () => {
+  // The ephemeral flag's EFFECT (no iOS consent alert / no shared-cookie
+  // residual) is only observable at iOS runtime; this pins the config so a
+  // getAuthClient refactor cannot silently drop it back to non-ephemeral.
+  it("configures the expo client for an ephemeral iOS auth session", () => {
+    jest.isolateModules(() => {
+      const expoClient = jest.fn(() => ({ id: "expo" }))
+      jest.doMock("@better-auth/expo/client", () => ({ expoClient }))
+      jest.doMock("better-auth/client", () => ({
+        createAuthClient: jest.fn(() => ({})),
+      }))
+      jest.doMock("better-auth/client/plugins", () => ({
+        genericOAuthClient: jest.fn(() => ({})),
+      }))
+      jest.doMock("expo-secure-store", () => ({
+        getItem: jest.fn(),
+        setItem: jest.fn(),
+        WHEN_UNLOCKED_THIS_DEVICE_ONLY: "device-only",
+      }))
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs the mocked graph at require time
+      const required = require("../authSession")
+      const authSessionModule = required as typeof import("../authSession")
+      authSessionModule.getAuthClient()
+
+      expect(expoClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          webBrowserOptions: { preferEphemeralSession: true },
+        }),
+      )
+    })
+  })
+})

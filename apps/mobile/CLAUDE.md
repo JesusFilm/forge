@@ -175,6 +175,13 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   shows the login form after sign-out. A user cancel settles session-less —
   the expo plugin never throws for it — so a thrown browser open always
   classifies as a retryable error (`src/lib/authFlows.ts`).
+- **iOS auth session is EPHEMERAL** (`webBrowserOptions.preferEphemeralSession`
+  on the expo client, iOS-only): no Safari cookie sharing, so no per-sign-in
+  "Wants to Use…to Sign In" consent alert and no hosted-session residual on a
+  shared device. This reverses the July KTD2 non-ephemeral choice; the accepted
+  cost is no one-tap reuse of an existing Safari IdP login (social users
+  re-authenticate with the provider each sign-in). Android (Custom Tabs) is
+  unaffected. Only observable at iOS runtime — verify in the simulator, not jest.
 - **Session**: `src/lib/authSession.ts` owns the Better Auth Expo client
   (lazy getter, never module-scope) and a subscribable snapshot readable
   WITHOUT React — the Apollo link and recorder read it directly. Credentials

@@ -49,6 +49,7 @@ The full Product Contract (requirements R1-R9, flows, acceptance examples, settl
 - The changes to `authSession.ts` add `readSession()` and the session/user creation stamps (plan KTD3/KTD6) and drop the unused `applySignedIn` store method (no production caller). Do not otherwise change its store, SecureStore adapter, or JWT single-flight contract. Keep the operation-scoped JWT gate in `authHeaders.ts` unchanged.
 - No dormant native fallback may remain (plan Key Decisions: no kill switch is accepted).
 - The hosted page must keep Sign in with Apple enabled (App Store guideline 4.8); record this with auth operators.
+- **iOS auth session is ephemeral** (`webBrowserOptions.preferEphemeralSession: true` on the expo client). This is a user-directed reversal of plan KTD2 (which chose non-ephemeral for one-tap IdP SSO): it removes the per-sign-in iOS consent alert and the shared-device hosted-session residual, at the cost of one-tap reuse of an existing Safari IdP login. Android (Custom Tabs) is unaffected.
 
 ## Verification
 
