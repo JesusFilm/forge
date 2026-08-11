@@ -36,31 +36,8 @@ enum Theme {
     }
 }
 
-/// The RN app's focus behavior: 1.05x lift + white ring, 180ms. SwiftUI's
-/// `.card` button style does a heavier lift with parallax; this custom style
-/// matches the RN look instead.
-struct WatchCardButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-    }
-}
-
-struct WatchFocusModifier: ViewModifier {
-    @Environment(\.isFocused) private var isFocused
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isFocused ? 1.05 : 1.0)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.cardRadius)
-                    .stroke(Color.white.opacity(isFocused ? 0.9 : 0), lineWidth: 4)
-            )
-            .animation(.easeOut(duration: 0.18), value: isFocused)
-    }
-}
-
-extension View {
-    func watchFocus() -> some View {
-        modifier(WatchFocusModifier())
-    }
-}
+// No custom ButtonStyle lives here anymore, deliberately: every interactive
+// element rides a system style (.card for posters, .borderedProminent +
+// tint for the hero CTA, .borderless for text actions). The hand-rolled
+// focus style this file once carried cost a full day of dead-focus
+// debugging across two input paths — chrome is the platform's job.

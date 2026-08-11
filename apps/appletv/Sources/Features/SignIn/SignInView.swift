@@ -3,7 +3,7 @@ import SwiftUI
 /// Profile tab: RFC 8628 device sign-in (feat-322), or the signed-in
 /// placeholder once tokens are stored.
 struct SignInView: View {
-    @StateObject private var model = SignInViewModel()
+    @ObservedObject var model: SignInViewModel
 
     var body: some View {
         Group {
@@ -147,22 +147,14 @@ private struct TerminalContent: View {
     let action: () -> Void
 
     var body: some View {
-        VStack(spacing: 28) {
-            Image(systemName: icon)
-                .font(.system(size: 80))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.title.weight(.bold))
+        // Native ContentUnavailableView — the same state component Home and
+        // Search use, so every screen's terminal states read identically.
+        ContentUnavailableView {
+            Label(title, systemImage: icon)
+        } description: {
             Text(message)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 800)
-                .fixedSize(horizontal: false, vertical: true)
+        } actions: {
             Button(buttonTitle, action: action)
-                .buttonStyle(.borderless)
-                .font(.title3)
-                .padding(.top, 12)
         }
     }
 }

@@ -2,13 +2,15 @@ import SwiftUI
 
 /// Home: hero banner + horizontal rails off the `watch-home` Experience.
 struct HomeView: View {
-    @StateObject private var viewModel = HomeViewModel()
+    @ObservedObject var viewModel: HomeViewModel
     @State private var presentedPlayback: PlayerPresentation?
 
     var body: some View {
-        ZStack {
-            Theme.background.ignoresSafeArea()
-
+        // No fullscreen background INSIDE the tab content: an ignoresSafeArea
+        // Color as the subtree root gave the focus container bar-overlapping
+        // bounds, and the bar then refused to hand focus down (RootView owns
+        // the ground color instead).
+        Group {
             switch viewModel.state {
             case .loading:
                 ProgressView()
@@ -24,6 +26,7 @@ struct HomeView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await viewModel.load() }
         .fullScreenCover(item: $presentedPlayback) { presentation in
             PlayerView(playbackID: presentation.playbackID)
@@ -35,6 +38,7 @@ struct HomeView: View {
     private func content(_ model: HomeModel) -> some View {
         ScrollView(.vertical) {
             LazyVStack(alignment: .leading, spacing: 56) {
+
                 if let firstRail = model.rails.first, let featured = firstRail.items.first {
                     hero(featured, rail: firstRail)
                 }
@@ -44,9 +48,7 @@ struct HomeView: View {
             }
             .padding(.bottom, 80)
         }
-        // The hero bleeds to the screen edge; per-row padding is applied
-        // inside each rail instead of on the scroll view.
-        .ignoresSafeArea(edges: .top)
+
     }
 
     // MARK: - Hero
@@ -58,7 +60,7 @@ struct HomeView: View {
         ZStack(alignment: .bottomLeading) {
             poster(for: card, heroWidth: true)
                 .frame(maxWidth: .infinity)
-                .frame(height: 760)
+                .frame(height: 620)
                 .clipped()
 
             LinearGradient(
@@ -89,18 +91,16 @@ struct HomeView: View {
                 }
 
                 if let playbackID = card.playbackID {
+                    // Native prominent button, red via tint — the brand color
+                    // rides a system style instead of a re-implemented one.
                     Button {
                         presentedPlayback = PlayerPresentation(playbackID: playbackID)
                     } label: {
                         Label("Play", systemImage: "play.fill")
                             .font(.system(size: 30, weight: .semibold))
-                            .foregroundStyle(Theme.text)
-                            .padding(.horizontal, 44)
-                            .padding(.vertical, 18)
-                            .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
                     }
-                    .buttonStyle(WatchCardButtonStyle())
-                    .watchFocus()
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
                 }
             }
             .padding(.horizontal, 80)
@@ -145,14 +145,21 @@ struct HomeView: View {
                     presentedPlayback = PlayerPresentation(playbackID: playbackID)
                 } label: {
                     cardPoster(for: card)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
                 }
-                .buttonStyle(WatchCardButtonStyle())
-                .watchFocus()
+                // The system card style, not the custom one: it owns tvOS
+                // focus movement + visuals end to end. The custom style is
+                // reserved for chrome (pill, hero CTA) where its focus read
+                // is verified working; browsing must never depend on it.
+                .buttonStyle(.card)
             } else {
-                // No playback id — nothing to open, so nothing to focus.
-                cardPoster(for: card)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                // No playback id — select is deliberately inert (no detail
+                // screen yet), but the card stays FOCUSABLE: skipping holes
+                // makes D-pad browsing feel broken, and focus targets are
+                // what directional descent navigates by.
+                Button {} label: {
+                    cardPoster(for: card)
+                }
+                .buttonStyle(.card)
             }
 
             Text(card.title)
@@ -194,11 +201,15 @@ struct HomeView: View {
 
     // MARK: - Error / empty
 
+    // Native ContentUnavailableView, matching Search's state screens — every
+    // section reports loading/empty/failure through the same system component.
+
     private var errorView: some View {
-        VStack(spacing: 32) {
-            Text("Something went wrong loading Home.")
-                .font(.title3)
-                .foregroundStyle(.white.opacity(0.85))
+        ContentUnavailableView {
+            Label("Can't load Home", systemImage: "wifi.exclamationmark")
+        } description: {
+            Text("Something went wrong reaching the library.")
+        } actions: {
             Button("Retry") {
                 Task { await viewModel.load() }
             }
@@ -206,10 +217,9 @@ struct HomeView: View {
     }
 
     private var emptyView: some View {
-        VStack(spacing: 32) {
-            Text("Nothing to show yet.")
-                .font(.title3)
-                .foregroundStyle(.white.opacity(0.85))
+        ContentUnavailableView {
+            Label("Nothing to show yet", systemImage: "film.stack")
+        } actions: {
             Button("Retry") {
                 Task { await viewModel.load() }
             }

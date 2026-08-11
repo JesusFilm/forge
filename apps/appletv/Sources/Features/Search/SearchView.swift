@@ -3,7 +3,7 @@ import SwiftUI
 /// Search tab: native tvOS keyboard via `.searchable`, results as a poster
 /// grid, playable rows straight into the player.
 struct SearchView: View {
-    @StateObject private var viewModel = SearchViewModel()
+    @ObservedObject var viewModel: SearchViewModel
     @State private var playing: Playback?
 
     var body: some View {
