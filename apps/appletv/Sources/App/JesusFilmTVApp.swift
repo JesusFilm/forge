@@ -30,22 +30,33 @@ struct RootView: View {
     @StateObject private var searchViewModel = SearchViewModel()
     @StateObject private var signInViewModel = SignInViewModel()
 
+    @State private var homePath = NavigationPath()
+    @State private var searchPath = NavigationPath()
+
     var body: some View {
         TabView {
+            // `.focusSection()` on each tab's content ROOT, not just inside
+            // it: adding NavigationStack re-broke descent from the tab bar
+            // (UIFocusDebugger showed focus stuck on UITabBarButton), because
+            // the stack becomes the container the engine must aim at and a
+            // plain container is not itself a directional target.
             Tab("Home", systemImage: "house.fill") {
-                NavigationStack {
-                    HomeView(viewModel: homeViewModel)
+                NavigationStack(path: $homePath) {
+                    HomeView(viewModel: homeViewModel) { homePath.append($0) }
                         .navigationDestination(for: Route.self, destination: destination)
                 }
+                .focusSection()
             }
             Tab("Search", systemImage: "magnifyingglass") {
-                NavigationStack {
+                NavigationStack(path: $searchPath) {
                     SearchView(viewModel: searchViewModel)
                         .navigationDestination(for: Route.self, destination: destination)
                 }
+                .focusSection()
             }
             Tab("Profile", systemImage: "person.fill") {
                 SignInView(model: signInViewModel)
+                    .focusSection()
             }
         }
         .background(Theme.background.ignoresSafeArea())

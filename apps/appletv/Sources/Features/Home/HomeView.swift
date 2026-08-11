@@ -3,10 +3,13 @@ import SwiftUI
 /// Home: hero banner + horizontal rails off the `watch-home` Experience.
 struct HomeView: View {
     @ObservedObject var viewModel: HomeViewModel
+    /// Programmatic navigation instead of NavigationLink. A NavigationLink
+    /// card would not take focus in this composition — descent from the tab
+    /// bar died the moment cards became links, and returned when they went
+    /// back to Buttons. Buttons + an explicit path keep both the routing and
+    /// the focus behavior the platform actually gives us.
+    var navigate: (Route) -> Void = { _ in }
     @State private var presentedPlayback: PlayerPresentation?
-    /// Scopes default focus to the hero, so arriving on Home lands on the
-    /// CTA rather than wherever the engine's geometry search happens to fall.
-    @Namespace private var heroNamespace
 
     var body: some View {
         // No fullscreen background INSIDE the tab content: an ignoresSafeArea
@@ -119,12 +122,16 @@ struct HomeView: View {
                 heroCTA(card)
                     .buttonStyle(.borderedProminent)
                     .tint(Theme.accent)
-                    .prefersDefaultFocus(in: heroNamespace)
             }
             .padding(.horizontal, 80)
             .padding(.bottom, 70)
         }
-        .focusScope(heroNamespace)
+        // No `.focusScope` here, deliberately. Scoping the hero DID bound
+        // default focus as intended, but it also constrained directional
+        // movement: focus landed on the CTA and DOWN could no longer reach
+        // the rail beneath it. The screen only ever needed a focusable
+        // element to exist at first layout — which the eager hero and first
+        // rail now guarantee — not a scope telling focus where to start.
     }
 
     /// The hero's call to action. Always present — a hero that drops its only
@@ -133,7 +140,9 @@ struct HomeView: View {
     @ViewBuilder
     private func heroCTA(_ card: VideoCard) -> some View {
         if let slug = card.slug {
-            NavigationLink(value: Route.video(slug: slug)) {
+            Button {
+                navigate(.video(slug: slug))
+            } label: {
                 heroCTALabel(card)
             }
         } else if let playbackID = card.playbackID {
@@ -198,7 +207,9 @@ struct HomeView: View {
                 // Routes to the DETAIL screen, matching RN — a card press
                 // opens /watch, where the viewer picks language and
                 // subtitles, rather than jumping straight into playback.
-                NavigationLink(value: Route.video(slug: slug)) {
+                Button {
+                    navigate(.video(slug: slug))
+                } label: {
                     cardPoster(for: card)
                 }
                 // The system card style: it owns tvOS focus movement and

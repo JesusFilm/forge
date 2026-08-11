@@ -9,7 +9,10 @@ import SwiftUI
 struct WatchView: View {
     let slug: String
     @StateObject private var viewModel = WatchViewModel()
-    @State private var playing: PlayerPresentation?
+    @State private var isPlaying = false
+    @State private var showLanguages = false
+    @State private var showSubtitles = false
+    @State private var activeSubtitle: Subtitle?
 
     var body: some View {
         Group {
@@ -33,8 +36,35 @@ struct WatchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background.ignoresSafeArea())
         .task { await viewModel.load(slug: slug) }
-        .fullScreenCover(item: $playing) { presentation in
-            PlayerView(playbackID: presentation.playbackID)
+        .fullScreenCover(isPresented: $isPlaying) {
+            if case .loaded(let video) = viewModel.state, let dub = viewModel.activeDub {
+                WatchPlayerView(
+                    video: video,
+                    initialDub: dub,
+                    subtitle: activeSubtitle,
+                    subtitleCues: viewModel.cues(for: activeSubtitle)
+                )
+            }
+        }
+        .sheet(isPresented: $showLanguages) {
+            if case .loaded(let video) = viewModel.state {
+                LanguageSheet(dubs: video.dubs, active: viewModel.activeDub) { dub in
+                    // Changing the dub invalidates the subtitle choice:
+                    // subtitles belong to a dub's edition, so the previous
+                    // selection may not exist for the new audio.
+                    activeSubtitle = nil
+                    viewModel.setActiveDub(dub)
+                }
+            }
+        }
+        .sheet(isPresented: $showSubtitles) {
+            SubtitleSheet(
+                subtitles: viewModel.subtitles,
+                active: activeSubtitle
+            ) { chosen in
+                activeSubtitle = chosen
+                if let chosen { viewModel.loadCues(for: chosen) }
+            }
         }
     }
 
@@ -72,16 +102,39 @@ struct WatchView: View {
 
                 HStack(spacing: 24) {
                     Button {
-                        if let id = viewModel.activeDub?.playbackID {
-                            playing = PlayerPresentation(playbackID: id)
-                        }
+                        isPlaying = true
                     } label: {
                         Label("Play", systemImage: "play.fill")
-                            .font(.system(size: 30, weight: .semibold))
+                            .font(.system(size: 28, weight: .semibold))
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(Theme.accent)
                     .disabled(viewModel.activeDub?.playbackID == nil)
+
+                    Button {
+                        showLanguages = true
+                    } label: {
+                        Label(
+                            viewModel.activeDub?.displayName ?? "Language",
+                            systemImage: "globe"
+                        )
+                        .font(.system(size: 28, weight: .semibold))
+                    }
+                    .disabled(video.dubs.isEmpty)
+
+                    Button {
+                        showSubtitles = true
+                    } label: {
+                        Label(
+                            activeSubtitle?.displayName ?? "Subtitles",
+                            systemImage: "captions.bubble"
+                        )
+                        .font(.system(size: 28, weight: .semibold))
+                    }
+                    // Subtitles arrive from a second, per-dub request; the
+                    // control stays visible but inert until they land so the
+                    // row does not reflow under the viewer's focus.
+                    .disabled(viewModel.subtitles.isEmpty)
                 }
                 .padding(.top, 8)
             }

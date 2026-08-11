@@ -17,8 +17,13 @@ final class WatchViewModel: ObservableObject {
     /// block playback, so it is surfaced separately from `state`.
     @Published private(set) var subtitlesFailed = false
 
+    /// Parsed cues per subtitle id. Cached because a viewer toggling between
+    /// two languages should not re-download and re-parse each time.
+    @Published private(set) var cuesBySubtitleID: [String: [VttCue]] = [:]
+
     private let repository: VideoRepository
     private var subtitleTask: Task<Void, Never>?
+    private var cueTask: Task<Void, Never>?
 
     init(repository: VideoRepository = VideoRepository()) {
         self.repository = repository
@@ -49,6 +54,33 @@ final class WatchViewModel: ObservableObject {
         setActiveDub(dub)
     }
 
+    /// Cues for a chosen subtitle, if already fetched. Returns empty rather
+    /// than blocking: playback must never wait on captions.
+    func cues(for subtitle: Subtitle?) -> [VttCue] {
+        guard let subtitle else { return [] }
+        return cuesBySubtitleID[subtitle.id] ?? []
+    }
+
+    /// Download and parse one subtitle's WebVTT.
+    func loadCues(for subtitle: Subtitle) {
+        guard cuesBySubtitleID[subtitle.id] == nil else { return }
+        cueTask?.cancel()
+        cueTask = Task { [weak self] in
+            do {
+                let (data, _) = try await URLSession.shared.data(from: subtitle.vttURL)
+                guard !Task.isCancelled, let text = String(data: data, encoding: .utf8) else {
+                    return
+                }
+                let parsed = Vtt.parse(text)
+                await MainActor.run { self?.cuesBySubtitleID[subtitle.id] = parsed }
+            } catch {
+                // Captions are best-effort. A failed fetch leaves the entry
+                // absent so a later selection can retry, and playback is
+                // untouched either way.
+            }
+        }
+    }
+
     /// Switching dubs replaces the subtitle set, because subtitles belong to
     /// a dub's edition — carrying the previous dub's cues over would caption
     /// the new audio with the old language's timings.
@@ -56,6 +88,8 @@ final class WatchViewModel: ObservableObject {
         activeDub = dub
         subtitles = []
         subtitlesFailed = false
+        cuesBySubtitleID = [:]
+        cueTask?.cancel()
         subtitleTask?.cancel()
         guard let dub else { return }
         subtitleTask = Task { [repository] in
