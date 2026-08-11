@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 10, 2026)
+## Status (August 11, 2026)
 
-- **Total tickets:** 503
-- **Complete:** 384
+- **Total tickets:** 505
+- **Complete:** 385
 - **In progress:** 36
-- **Not started:** 32
+- **Not started:** 33
 - **Blocked:** 51
 - **Overdue and not complete:** 96
 
@@ -107,6 +107,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-335](content-discovery/feat-335-watch-search-han-query-trigger.md)                                       | Remove Web Watch search frontend language detection                                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-336](content-discovery/feat-336-watch-localized-title-fallback.md)                                       | Watch localized title fallback                                                                  | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-336](content-discovery/feat-336-watch-search-overlay-backdrop-continuity.md)                             | Watch search overlay backdrop continuity                                                        | vlad       | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-350](content-discovery/feat-350-admin-search-comparison-form-compatibility.md)                           | Keep Admin search comparison forms compatible during deploys                                    | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
@@ -119,6 +120,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-302](content-discovery/feat-302-watch-search-logo-close.md)                                              | Close Watch search from the header logo                                                         | codex      | P2       | 2026-07-23 | 1    | 2026-07-23 | complete    |
 | [feat-310](content-discovery/feat-310-watch-header-search-field-width.md)                                      | Watch header search field width                                                                 | urim       | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-349](content-discovery/feat-349-admin-search-language-dropdown.md)                                       | Add one language dropdown to Admin search comparison                                            | nisal      | P2       | 2026-08-10 | 1    | 2026-08-10 | complete    |
+| [feat-351](content-discovery/feat-351-finish-admin-search-language-field-migration.md)                         | Finish Admin search comparison language field migration                                         | codex      | P2       | 2026-08-12 | 2    | 2026-08-13 | not-started |
 | [feat-331](content-discovery/feat-331-devotional-video-matcher-dead-endpoint.md)                               | Devotional video matcher calls a deleted admin search endpoint                                  | unassigned | P2       | 2026-09-01 | 2    | 2026-09-02 | not-started |
 | [feat-333](content-discovery/feat-333-stale-search-api-docs-supersession.md)                                   | Stale docs: /api/search + Query.search documented as live after #1622 removal                   | unassigned | P2       | 2026-09-01 | 1    | 2026-09-01 | not-started |
 | [feat-332](content-discovery/feat-332-consolidate-transcript-chunk-retrievers.md)                              | Consolidate the two video_transcript_chunk semantic retrievers                                  | unassigned | P2       | 2026-09-08 | 3    | 2026-09-10 | not-started |

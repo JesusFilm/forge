@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 const requireCurrentAdminEvaluator = vi.fn()
 const loadWatchSearchLanguageOptions = vi.fn()
@@ -23,6 +24,34 @@ vi.mock("next/navigation", () => ({ notFound }))
 const { default: ComparePage } = await import("./page")
 const { WatchSearchComparison, WatchSearchComparisonPanes } =
   await import("./watch-search-comparison")
+
+const previousServerFormSchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    languageSelection: z
+      .union([z.literal(""), z.string().trim().min(1)])
+      .optional(),
+    page: z.coerce.number().int().min(1).max(1_000).default(1),
+    perPage: z.coerce.number().int().min(1).max(50).default(10),
+    contentType: z.enum(["all", "video", "experience"]).default("all"),
+  })
+  .strict()
+
+function renderedFormValues(html: string) {
+  const exampleValues: Record<string, string> = {
+    query: "Jesus",
+    languageSelection: "japanese",
+    perPage: "10",
+    page: "1",
+    contentType: "video",
+  }
+  return Object.fromEntries(
+    [...html.matchAll(/\bname="([^"]+)"/g)].map(([, name]) => [
+      name,
+      exampleValues[name!],
+    ]),
+  )
+}
 
 describe("search comparison page", () => {
   beforeEach(() => {
@@ -84,6 +113,14 @@ describe("search comparison page", () => {
       "[watch-search] event=language_options_load_failed error_class=Error",
     )
     expect(warn.mock.calls.flat().join(" ")).not.toContain("database details")
+  })
+
+  it("keeps this deployment's form compatible with the previous strict action", async () => {
+    const html = renderToStaticMarkup(await ComparePage())
+
+    expect(
+      previousServerFormSchema.safeParse(renderedFormValues(html)).success,
+    ).toBe(true)
   })
 
   it("keeps a representative full language catalog within its markup budget", () => {

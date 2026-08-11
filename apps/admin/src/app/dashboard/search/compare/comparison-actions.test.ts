@@ -137,8 +137,8 @@ describe("runWatchSearchComparison", () => {
     for (const values of [
       { query: "Jesus", generationId: "forged" },
       { query: "x".repeat(201) },
-      { query: "Jesus", languageSelection: "japanese|ja-JP" },
-      { query: "Jesus", languageSelection: "../secret" },
+      { query: "Jesus", targetLanguageSlug: "japanese|ja-JP" },
+      { query: "Jesus", targetLanguageSlug: "../secret" },
       { query: "Jesus", page: "0" },
       { query: "Jesus", perPage: "51" },
     ]) {
@@ -155,7 +155,7 @@ describe("runWatchSearchComparison", () => {
   it("keeps language hints empty when automatic detection is selected", async () => {
     await runWatchSearchComparison(
       { status: "idle" },
-      form({ query: "Jesus", languageSelection: "" }),
+      form({ query: "Jesus", targetLanguageSlug: "" }),
     )
 
     expect(resolveWatchSearchLanguageSelection).not.toHaveBeenCalled()
@@ -176,7 +176,7 @@ describe("runWatchSearchComparison", () => {
     await expect(
       runWatchSearchComparison(
         { status: "idle" },
-        form({ query: "Jesus", languageSelection: "unknown-language" }),
+        form({ query: "Jesus", targetLanguageSlug: "unknown-language" }),
       ),
     ).resolves.toEqual({
       status: "error",
@@ -193,7 +193,7 @@ describe("runWatchSearchComparison", () => {
 
     await runWatchSearchComparison(
       { status: "idle" },
-      form({ query: "Jesus", languageSelection: "Japanese_Variant" }),
+      form({ query: "Jesus", targetLanguageSlug: "Japanese_Variant" }),
     )
 
     expect(resolveWatchSearchLanguageSelection).toHaveBeenCalledWith(
@@ -218,7 +218,7 @@ describe("runWatchSearchComparison", () => {
     await expect(
       runWatchSearchComparison(
         { status: "idle" },
-        form({ query: "Jesus", languageSelection: "japanese" }),
+        form({ query: "Jesus", targetLanguageSlug: "japanese" }),
       ),
     ).resolves.toEqual({
       status: "error",
@@ -229,6 +229,45 @@ describe("runWatchSearchComparison", () => {
       expect.stringContaining("error_class=Error"),
     )
     expect(warn.mock.calls.flat().join(" ")).not.toContain("database details")
+  })
+
+  it("accepts the pre-dropdown field and ignores its legacy locale", async () => {
+    await runWatchSearchComparison(
+      { status: "idle" },
+      form({
+        query: "Jesus",
+        targetLanguageSlug: "japanese",
+        locale: "forged-locale",
+      }),
+    )
+
+    expect(resolveWatchSearchLanguageSelection).toHaveBeenCalledWith("japanese")
+    expect(compare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          targetLanguageSlug: "japanese",
+          acceptLanguage: "ja-JP",
+        }),
+      }),
+    )
+  })
+
+  it("rejects conflicting stable and transitional language fields", async () => {
+    await expect(
+      runWatchSearchComparison(
+        { status: "idle" },
+        form({
+          query: "Jesus",
+          targetLanguageSlug: "japanese",
+          languageSelection: "russian",
+        }),
+      ),
+    ).resolves.toEqual({
+      status: "error",
+      message: "Check the comparison inputs and try again",
+    })
+    expect(resolveWatchSearchLanguageSelection).not.toHaveBeenCalled()
+    expect(compare).not.toHaveBeenCalled()
   })
 
   it("audits identities and outcomes without query or result documents", async () => {
