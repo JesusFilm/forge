@@ -17,10 +17,14 @@ tags:
   - testability
   - copy-not-extract
   - leak-control
+last_updated: 2026-08-10
 related_components:
   - apps/mastra/src/services/firecrawl-client.ts
   - apps/mastra/src/services/jesusfilm-rag-client.ts
   - apps/mastra/src/services/admin-search-eval-client.ts
+  - apps/mastra/src/services/langfuse-prompt-client.ts
+  - apps/mastra/src/services/devotional/bounded-response.ts
+  - apps/mastra/src/mastra/langfuse-trace-retention.ts
 related:
   - docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md
   - docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md
@@ -159,6 +163,66 @@ frozen (no churn since firecrawl), so a second copy currently costs little.
 > paragraph instead of counting. A fifth `endpoint` copy is pending in PR #1621.
 > See `docs/solutions/workflow-issues/deferred-verification-belongs-in-consuming-ticket-entry-conditions.md`.
 
+> **Count correction (2026-08-10, feat-336).** The trigger fired AGAIN — counted
+> on the feat-336 tree, not recited. Count by SHAPE (a streamed reader + byte
+> counter + `reader.cancel()`), never by grepping one helper NAME: the
+> devotional copy below is named `readResponseJsonCapped`, so a
+> `readJsonBodyCapped` grep misses it — the recite-instead-of-count failure in
+> miniature:
+>
+> | Helper                  | Files (count)                                                                                                                                                          |
+> | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | `endpoint`              | **6** — firecrawl, jesusfilm-rag, admin-agent-tools, youtube-search, langfuse-prompt, and `apps/mastra/src/mastra/langfuse-trace-retention.ts` (feat-336)              |
+> | byte-capped body reader | **6** — jesusfilm-rag, langfuse-prompt, admin-agent-tools, the devotional bounded-response module (fact 2 below), the evals read-body helper, langfuse-trace-retention |
+>
+> Two facts sharpen the extraction case beyond mere count:
+>
+> 1. **A defect now diverges the copies.** PR #1621's correctness review
+>    documented that the byte-capped reader's bare `catch { return undefined }`
+>    swallows a `TimeoutError` thrown MID-body-read, so a genuine
+>    upstream-latency incident is misclassified as `parse_error` — steering an
+>    operator at the wrong root cause. That finding was suppressed then and
+>    never fixed. feat-336's copy in `langfuse-trace-retention.ts` FIXES it —
+>    and the fix is a PAIR, not a helper edit: the helper rethrows
+>    `TimeoutError`/`AbortError`, AND its call site wraps the read in its own
+>    `try/catch` that classifies on the typed surface (a mid-body-read test
+>    pins both halves). The other FIVE capped-reader copies —
+>    `jesusfilm-rag-client.ts`, `langfuse-prompt-client.ts`,
+>    `admin-agent-tools-client.ts`, the devotional bounded-response module,
+>    and the evals read-body helper — still carry the defect. Divergence is no
+>    longer hypothetical drift; it is a fixed bug on one branch of the lineage
+>    and a live bug on five.
+> 2. **A production shared home already exists — the extraction target should
+>    be it, not a new file.** `apps/mastra/src/services/devotional/bounded-response.ts`
+>    is already a shared, services-level capped-reader module
+>    (`readResponseJsonCapped`/`readResponseTextCapped`/`discardResponseBody`,
+>    six devotional consumers) — with the same swallow defect. A second
+>    extracted instance lives in the evals tree
+>    (`apps/mastra/src/evals/seeker/read-body.ts`, offline tooling — which is
+>    why the production feat-336 module copied rather than imported it). Both
+>    prove the helper extracts cleanly; a follow-up that mints a THIRD shared
+>    home in `http-client-util.ts` would end with two services-level capped
+>    readers instead of one — generalize the existing devotional module
+>    instead.
+>
+> Follow-up (not done in feat-336's branch, deliberately — and now an ENTRY
+> CONDITION on the next consumer per the deferred-verification learning cited
+> above, rather than an unowned paragraph): before the NEXT client lands (the
+> seventh `endpoint` copy; feat-337's erasure client is the named candidate),
+> either extract — generalize the devotional bounded-response module into the
+> shared services-level home, carrying the feat-336 timeout-rethrow semantics —
+> or at minimum backport the fix to the five stale copies. **The backport is
+> only safe as a pair:** in all of `jesusfilm-rag-client.ts`,
+> `langfuse-prompt-client.ts`, `admin-agent-tools-client.ts`, and the evals
+> callers (`apps/mastra/src/evals/seeker/rag.ts`,
+> `apps/mastra/src/evals/seeker/openrouter.ts`), the capped
+> read sits OUTSIDE the fetch `try/catch`, so a rethrowing helper alone would
+> convert a documented no-throw client into one that throws mid-request-path —
+> defeating the union this convention exists for. Each call site must gain its
+> own `try/catch` classifying `TimeoutError`/`AbortError` as `timeout` (never
+> logging the caught error) in the same commit, with
+> `langfuse-trace-retention.ts`'s read call site as the reference shape.
+
 We deliberately did **not** add "keep in sync" breadcrumb comments to the copies.
 A prose comment with no test behind it is the weakest form of coupling and tends
 to rot — it asserts an invariant it cannot enforce. If these helpers ever need to
@@ -166,8 +230,9 @@ stay identical _under change_, the honest fix is one of:
 
 - **Extract** the pure, divergence-free helpers (`endpoint`, `safeReason`,
   `readUpstreamReason`) into a shared `apps/mastra/src/services/http-client-util.ts`
-  — they know nothing about retry, redirect, or status, so sharing them couples
-  nothing. This deletes the drift problem outright.
+  (a proposed file — it deliberately does not exist yet) — they know nothing
+  about retry, redirect, or status, so sharing them couples nothing. This
+  deletes the drift problem outright.
 - **Bind** them with a parity test if they must stay separate for some reason —
   enforcement a comment can't provide.
 

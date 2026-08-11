@@ -505,6 +505,10 @@ const envSchema = z.object({
   // Opt-in live smoke gate: only the literal "1" enables it. Any other
   // non-empty value fails loud at parse rather than silently half-enabling.
   LANGFUSE_PROMPT_SMOKE_TEST: z.enum(["1"]).optional(),
+  // Same posture for the feat-336 trace-retention smoke (list/delete/requery
+  // against the live API on a backdated sentinel — see
+  // langfuse-trace-retention.smoke.test.ts).
+  LANGFUSE_TRACE_RETENTION_SMOKE_TEST: z.enum(["1"]).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -917,6 +921,9 @@ export const env = envSchema.parse({
   ),
   LANGFUSE_PROMPT_SMOKE_TEST: emptyToUndefined(
     process.env.LANGFUSE_PROMPT_SMOKE_TEST,
+  ),
+  LANGFUSE_TRACE_RETENTION_SMOKE_TEST: emptyToUndefined(
+    process.env.LANGFUSE_TRACE_RETENTION_SMOKE_TEST,
   ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
