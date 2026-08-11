@@ -149,6 +149,19 @@ describe("SignInPrompt hosted-auth wiring (U3)", () => {
     await unmount(renderer)
   })
 
+  it("a successful sign-in does NOT re-arm the session shot", async () => {
+    mockedSignIn.mockResolvedValue({ status: "success" })
+    const renderer = await renderArmedBanner()
+    expect(isSignInPromptArmed()).toBe(false) // shown → shot burned
+
+    await press(pressableByLabel(renderer, "Sign in"))
+
+    // Unlike a cancel, success must leave the shot burned — a later
+    // remount in this session must not renudge a signed-in user.
+    expect(isSignInPromptArmed()).toBe(false)
+    await unmount(renderer)
+  })
+
   it("a retryable error renders a dismissible inline message (AE6)", async () => {
     mockedSignIn.mockResolvedValue({ status: "error" })
     const renderer = await renderArmedBanner()
