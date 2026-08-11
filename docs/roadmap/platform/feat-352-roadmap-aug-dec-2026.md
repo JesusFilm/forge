@@ -50,6 +50,10 @@ roadmap.
    components and NextSteps; media and language generation; and always-on agent
    operations.
 4. Preserve `/contributions` as the operational, file-backed task view.
+5. Keep the timeline's track labels pinned to the left while its calendar is
+   scrolled horizontally.
+6. On first load, position the calendar around the current week without
+   overriding later manual scrolling.
 
 ## Year-End Workstreams
 
@@ -89,5 +93,7 @@ roadmap.
 - Browser smoke on `http://127.0.0.1:3100/roadmap` confirms one timeline spans
   April through December, every original item remains visible, all five
   four-week priorities appear after August 10, and `/contributions` remains
-  linked. Record reload-to-visible timing, rendered element count, horizontal
-  overflow behavior, and console errors for the expanded timeline.
+  linked. Confirm the track labels remain pinned during horizontal scrolling
+  and the initial view includes the current week. Record reload-to-visible
+  timing, rendered element count, horizontal overflow behavior, and console
+  errors for the expanded timeline.

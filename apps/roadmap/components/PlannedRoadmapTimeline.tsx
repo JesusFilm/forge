@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import {
   PLANNED_RANGE_LABEL,
@@ -20,6 +20,7 @@ import {
   type PlannedTone,
   type PlannedTrackBar,
 } from "@/lib/plannedRoadmap"
+import { getTimelineScrollLeft } from "@/lib/plannedRoadmapScroll"
 
 const DAY_MS = 86400000
 const TRACK_LABEL_WIDTH_PX = 220
@@ -270,7 +271,10 @@ function TrackRow({
         gridTemplateColumns: `${TRACK_LABEL_WIDTH_PX}px minmax(0, 1fr)`,
       }}
     >
-      <div className="flex items-center gap-3 px-4 py-4">
+      <div
+        data-track-label={row.id}
+        className="sticky left-0 z-40 flex items-center gap-3 border-r border-stone-800 bg-stone-950 px-4 py-4"
+      >
         <div>
           <div className="text-sm font-semibold text-white">{row.label}</div>
           {row.description && (
@@ -383,6 +387,7 @@ function TrackBarCard({ bar }: { bar: PlannedTrackBar }) {
 export default function PlannedRoadmapTimeline() {
   const minWidthPx = TRACK_LABEL_WIDTH_PX + PLANNED_WEEK_COUNT * WEEK_WIDTH_PX
   const [todayPct, setTodayPct] = useState<number | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const plannedStartDate = new Date(`${PLANNED_START_ISO}T00:00:00`)
@@ -404,6 +409,17 @@ export default function PlannedRoadmapTimeline() {
           )
 
     setTodayPct(nextTodayPct)
+    const scrollContainer = scrollContainerRef.current
+    if (scrollContainer === null) {
+      return
+    }
+
+    scrollContainer.scrollLeft = getTimelineScrollLeft({
+      markerPct: nextTodayPct,
+      viewportWidth: scrollContainer.clientWidth,
+      scrollWidth: scrollContainer.scrollWidth,
+      stickyWidth: TRACK_LABEL_WIDTH_PX,
+    })
   }, [])
 
   return (
@@ -417,7 +433,11 @@ export default function PlannedRoadmapTimeline() {
 
       <div className="pr-0">
         <div className="-mr-4 overflow-hidden md:-mr-8">
-          <div className="-mb-6 overflow-x-auto pb-6">
+          <div
+            ref={scrollContainerRef}
+            data-testid="planned-roadmap-scroller"
+            className="-mb-6 overflow-x-auto pb-6"
+          >
             <div
               className="relative"
               style={{
@@ -435,6 +455,7 @@ export default function PlannedRoadmapTimeline() {
               >
                 {todayPct !== null && (
                   <div
+                    data-testid="planned-roadmap-today-marker"
                     className="absolute inset-y-0 z-30 w-px bg-red-500/70"
                     style={{ left: `${todayPct}%` }}
                   >
@@ -458,7 +479,7 @@ export default function PlannedRoadmapTimeline() {
                   gridTemplateColumns: `${TRACK_LABEL_WIDTH_PX}px repeat(${PLANNED_WEEK_COUNT}, minmax(${WEEK_WIDTH_PX}px, 1fr))`,
                 }}
               >
-                <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+                <div className="sticky left-0 z-40 border-r border-stone-800 bg-stone-950 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
                   Track
                 </div>
                 {PLANNED_WEEKS.map((week) => (
