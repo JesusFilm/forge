@@ -31,6 +31,7 @@ export type PlannedTimelineRow = {
   label: string
   description: string
   trackIds: PlannedTrackId[]
+  stackByLane?: boolean
   sublanes?: Array<{
     id: string
     trackIds: PlannedTrackId[]
@@ -65,6 +66,7 @@ export type PlannedTrackBar = {
   tone: PlannedTone
   startWeek: number
   spanWeeks: number
+  lane?: number
   badge?: string
   details?: string[]
 }
@@ -72,7 +74,9 @@ export type PlannedTrackBar = {
 type FutureWorkPriority = Pick<
   PlannedTrackBar,
   "id" | "title" | "summary" | "startWeek" | "details"
->
+> & {
+  lane: number
+}
 
 export type PlannedMilestone = {
   id: string
@@ -250,6 +254,7 @@ export const PLANNED_TIMELINE_ROWS: PlannedTimelineRow[] = [
     label: "Delivery Planned",
     description: "Completed releases and year-end priorities",
     trackIds: ["foundation", "surface", "search", "future-work"],
+    stackByLane: true,
   },
   {
     id: "experimentation",
@@ -449,66 +454,239 @@ export const PLANNED_PHASES: PlannedPhase[] = [
 
 const FUTURE_WORK_PRIORITIES = [
   {
-    id: "future-work-access-release",
-    title: "Access + app release",
-    summary:
-      "Define the Mobile and TV MVP and test access in constrained markets.",
+    id: "future-work-caleb-china-streaming",
+    title: "Caleb: Explore China streaming",
+    summary: "Assess how Forge media could stream reliably into China.",
     startWeek: 15,
+    lane: 0,
     details: [
-      "Caleb: explore viable streaming delivery to China",
-      "Urim + Up: establish minimum releasable MVP criteria for Mobile and TV",
-      "Validate optional mobile QR-code TV sign-in without forcing account creation",
-      "Document custom-player trade-offs and run Mobile regression checks",
+      "Explore platform, delivery, and regulatory constraints",
+      "Identify a viable test path for video streaming in China",
     ],
   },
   {
-    id: "future-work-discovery-search",
-    title: "Search quality + discovery",
-    summary: "Improve recommendations, ranking, and dead-result discovery.",
-    startWeek: 19,
+    id: "future-work-urim-up-mobile-tv-mvp",
+    title: "Urim + Up: Define Mobile + TV MVP",
+    summary: "Set the minimum releasable criteria for both applications.",
+    startWeek: 15,
+    lane: 1,
     details: [
-      "Nisal: improve recommendations and bring proven Algolia ranking rules into Typesense",
-      "Nisal: add programmatic query-language detection, index all available subtitles, and discover dead-result patterns",
+      "Decide what must ship versus what can follow later",
+      "Evaluate optional mobile QR-code TV sign-in without forcing accounts",
+      "Include regression quality and custom-player trade-offs in the release bar",
+    ],
+  },
+  {
+    id: "future-work-nisal-search-quality",
+    title: "Nisal: Improve search quality",
+    summary: "Advance recommendations, ranking, and dead-result discovery.",
+    startWeek: 15,
+    lane: 2,
+    details: [
+      "Bring proven Algolia ranking rules into Typesense",
+      "Replace hardcoded query-language maps with programmatic detection",
+      "Index available subtitles and surface dead-result patterns",
       "Keep search responses under one second",
-      "Vlad: give every search result a static, shareable URL",
     ],
   },
   {
-    id: "future-work-integrations-next-steps",
-    title: "Reusable components + NextSteps",
-    summary: "Create shared building blocks and clearer ministry actions.",
+    id: "future-work-jaco-jian-components",
+    title: "Jaco + Jian Wei: Decompose components",
+    summary: "Define components that can integrate across products.",
+    startWeek: 15,
+    lane: 3,
+    details: [
+      "Break the current work into reusable product building blocks",
+      "Define integration boundaries and contracts for each component",
+    ],
+  },
+  {
+    id: "future-work-jaco-jian-present",
+    title: "Jaco + Jian Wei: Present to Miheret",
+    summary: "Present the reusable-component plan and decisions needed.",
+    startWeek: 15,
+    lane: 4,
+    details: [
+      "Show how the components connect to the wider product portfolio",
+      "Confirm decisions, ownership, and next integration steps with Miheret",
+    ],
+  },
+  {
+    id: "future-work-tatai-lyuba-video-agents",
+    title: "Tatai + Lyuba: Advance video agents",
+    summary: "Help Lyuba move video-generation agents toward reliable use.",
+    startWeek: 19,
+    lane: 0,
+    details: [
+      "Improve the video-generation agent workflow",
+      "Define reliability checks and a repeatable operating path",
+    ],
+  },
+  {
+    id: "future-work-tatai-experience-generation",
+    title: "Tatai: Run experience generation",
+    summary: "Keep experience generation progressing in the background.",
+    startWeek: 19,
+    lane: 1,
+    details: [
+      "Operate generation without blocking foreground product work",
+      "Surface failures and quality gaps for follow-up",
+    ],
+  },
+  {
+    id: "future-work-service-agent-loops",
+    title: "Build service-improvement loops",
+    summary: "Use agents to maintain and continuously improve services.",
+    startWeek: 19,
+    lane: 2,
+    details: [
+      "Connect Datadog and Railway performance signals to agent workflows",
+      "Detect crawler-related crashes and recurring production regressions",
+      "Turn repeated findings into verified maintenance work",
+    ],
+  },
+  {
+    id: "future-work-caleb-language-support",
+    title: "Caleb: Expand language support",
+    summary: "Improve metadata, translation, and multilingual coverage.",
+    startWeek: 19,
+    lane: 3,
+    details: [
+      "Strengthen multilingual metadata coverage",
+      "Improve translation and language-support workflows across products",
+    ],
+  },
+  {
+    id: "future-work-siyang-zy-nextsteps",
+    title: "Siyang + ZY: Ship NextSteps",
+    summary: "Deliver the core NextSteps product surface and integrations.",
+    startWeek: 19,
+    lane: 4,
+    details: [
+      "Connect the NextSteps experience to relevant product journeys",
+      "Prepare the surface for chat, questions, studies, and church connections",
+    ],
+  },
+  {
+    id: "future-work-vlad-core-translation",
+    title: "Vlad: Translate Core content",
+    summary: "Finish every untranslated Core content field.",
     startWeek: 23,
+    lane: 0,
     details: [
-      "Jaco + Jian Wei: break work into components that integrate across products",
-      "Jaco + Jian Wei: present the integration plan to Miheret",
-      "Siyang + ZY: deliver NextSteps for chat, questions, Bible studies, and church connections",
-      "Vlad: add accounts plus email and messaging notifications",
-      "Vlad: collect usage context and automatically follow up for mission-trip stories",
+      "Translate titles, descriptions, questions, and metadata",
+      "Track completion and quality across every supported language",
     ],
   },
   {
-    id: "future-work-generation-language",
-    title: "Media + language generation",
-    summary: "Keep media generation running while closing language gaps.",
+    id: "future-work-vlad-bible-translation",
+    title: "Vlad: Translate Bible quotations",
+    summary: "Complete translation coverage for all Bible quotations.",
+    startWeek: 23,
+    lane: 1,
+    details: [
+      "Find Bible quotations without localized text",
+      "Generate, review, and publish the missing translations",
+    ],
+  },
+  {
+    id: "future-work-vlad-accounts-notifications",
+    title: "Vlad: Add accounts + notifications",
+    summary: "Add accounts and cross-channel user notifications.",
+    startWeek: 23,
+    lane: 2,
+    details: [
+      "Support user accounts without forcing sign-in for basic viewing",
+      "Deliver notifications through email and messaging channels",
+    ],
+  },
+  {
+    id: "future-work-vlad-mission-stories",
+    title: "Vlad: Collect mission stories",
+    summary: "Ask how media is used and follow up for mission-trip stories.",
+    startWeek: 23,
+    lane: 3,
+    details: [
+      "Create forms that capture how people use Jesus Film media",
+      "Automatically follow up to collect the resulting mission stories",
+    ],
+  },
+  {
+    id: "future-work-vlad-next-step-actions",
+    title: "Vlad: Clarify next-step actions",
+    summary: "Make ministry calls to action clearer and more useful.",
     startWeek: 27,
+    lane: 0,
     details: [
-      "Tatai: help Lyuba advance video-generation agents",
-      "Tatai: keep experience generation running in the background",
-      "Caleb: improve metadata, translation, and language support",
-      "Vlad: translate all untranslated Core content and Bible quotations",
-      "Vlad: create a video/experience page for every Bible verse and an AI FAQ—not discussion questions—for every video",
+      "Create clear paths to chat, questions, Bible studies, and churches",
+      "Measure which actions people understand and complete",
     ],
   },
   {
-    id: "future-work-agent-operations",
-    title: "Always-on agent operations",
-    summary: "Build loops that maintain and improve production services.",
-    startWeek: 31,
+    id: "future-work-vlad-shareable-search",
+    title: "Vlad: Make search shareable",
+    summary: "Give every search result set a stable, shareable URL.",
+    startWeek: 27,
+    lane: 1,
     details: [
-      "Create continuous agent loops to monitor, maintain, and improve services",
-      "Vlad: run always-on Mastra agents for SEO and maintenance, support, and translation completion and quality",
-      "Tatai: connect crawler-crash and service-performance signals to those loops",
-      "Vlad: filter Google bot traffic before agents prioritize analytics work",
+      "Represent search state in a static URL",
+      "Keep shared result pages usable across languages and devices",
+    ],
+  },
+  {
+    id: "future-work-vlad-verse-pages",
+    title: "Vlad: Create verse video pages",
+    summary: "Create a unique video experience for every Bible verse.",
+    startWeek: 27,
+    lane: 2,
+    details: [
+      "Publish one stable page per verse",
+      "Connect each verse to relevant video and experience content",
+    ],
+  },
+  {
+    id: "future-work-vlad-video-faqs",
+    title: "Vlad: Generate video FAQs",
+    summary: "Create an AI-generated FAQ for every video.",
+    startWeek: 27,
+    lane: 3,
+    details: [
+      "Generate frequently asked questions rather than discussion prompts",
+      "Review answer quality and connect FAQs to the source video",
+    ],
+  },
+  {
+    id: "future-work-vlad-seo-agent",
+    title: "Vlad: Operate SEO agent",
+    summary: "Run an always-on SEO and maintenance agent in Mastra.",
+    startWeek: 31,
+    lane: 0,
+    details: [
+      "Use Search Console and analytics to find high-impact improvements",
+      "Filter bot traffic before prioritizing analytics-driven work",
+      "Propose and verify recurring maintenance changes",
+    ],
+  },
+  {
+    id: "future-work-vlad-support-agent",
+    title: "Vlad: Operate support agent",
+    summary: "Run an always-on support-learning agent in Mastra.",
+    startWeek: 31,
+    lane: 1,
+    details: [
+      "Monitor Watch feedback and support tickets",
+      "Turn repeated user problems into reviewed learning work",
+    ],
+  },
+  {
+    id: "future-work-vlad-translation-agent",
+    title: "Vlad: Operate translation agent",
+    summary: "Finish and improve the always-on translation agent in Mastra.",
+    startWeek: 31,
+    lane: 2,
+    details: [
+      "Complete missing translations continuously",
+      "Detect weak output and keep translation quality improving",
     ],
   },
 ] satisfies FutureWorkPriority[]

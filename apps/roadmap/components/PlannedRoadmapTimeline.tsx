@@ -31,7 +31,7 @@ const TIMELINE_BAR_GAP_PX = 8
 const TRACK_ROW_VERTICAL_INSET_PX = 10
 const TRACK_SUBLANE_GAP_PX = 8
 const TRACK_ROW_HEIGHT_PX = 116
-const STACKED_TRACK_ROW_HEIGHT_PX = 168
+const STACKED_TRACK_LANE_HEIGHT_PX = 64
 
 const TONE_STYLES: Record<
   PlannedTone,
@@ -230,6 +230,30 @@ function getBarsForTrackIds(trackIds: PlannedTrackId[]) {
   ]
 }
 
+function getVisualLane(item: PlannedPhase | PlannedTrackBar): number {
+  return isPlannedPhase(item) ? 0 : (item.lane ?? 0)
+}
+
+function getTimelineLanes(row: PlannedTimelineRow) {
+  if (row.sublanes) {
+    return row.sublanes.map((sublane) => ({
+      id: sublane.id,
+      bars: getBarsForTrackIds(sublane.trackIds),
+    }))
+  }
+
+  const rowBars = getBarsForTrackIds(row.trackIds)
+  if (!row.stackByLane) {
+    return [{ id: row.id, bars: rowBars }]
+  }
+
+  const highestVisualLane = Math.max(0, ...rowBars.map(getVisualLane))
+  return Array.from({ length: highestVisualLane + 1 }, (_, lane) => ({
+    id: `${row.id}-${lane}`,
+    bars: rowBars.filter((bar) => getVisualLane(bar) === lane),
+  }))
+}
+
 function TrackRow({
   row,
   showTopBorder = true,
@@ -237,14 +261,13 @@ function TrackRow({
   row: PlannedTimelineRow
   showTopBorder?: boolean
 }) {
-  const lanes = row.sublanes
-    ? row.sublanes.map((sublane) => ({
-        id: sublane.id,
-        bars: getBarsForTrackIds(sublane.trackIds),
-      }))
-    : [{ id: row.id, bars: getBarsForTrackIds(row.trackIds) }]
+  const lanes = getTimelineLanes(row)
   const rowHeightPx =
-    lanes.length > 1 ? STACKED_TRACK_ROW_HEIGHT_PX : TRACK_ROW_HEIGHT_PX
+    lanes.length > 1
+      ? TRACK_ROW_VERTICAL_INSET_PX * 2 +
+        lanes.length * STACKED_TRACK_LANE_HEIGHT_PX +
+        (lanes.length - 1) * TRACK_SUBLANE_GAP_PX
+      : TRACK_ROW_HEIGHT_PX
   const laneHeightPx =
     (rowHeightPx -
       TRACK_ROW_VERTICAL_INSET_PX * 2 -

@@ -73,20 +73,47 @@ describe("planned roadmap", () => {
     ).toEqual(HISTORICAL_TRACK_BAR_IDS)
   })
 
-  it("adds five sequential four-week year-end priorities", () => {
+  it("adds each year-end priority as its own four-week block", () => {
     const futureWork = PLANNED_TRACK_BARS.filter(
       ({ track }) => track === "future-work",
     )
 
-    expect(futureWork).toHaveLength(5)
+    expect(futureWork).toHaveLength(21)
     expect(
-      futureWork.map(({ startWeek, spanWeeks }) => ({ startWeek, spanWeeks })),
-    ).toEqual([
-      { startWeek: 15, spanWeeks: 4 },
-      { startWeek: 19, spanWeeks: 4 },
-      { startWeek: 23, spanWeeks: 4 },
-      { startWeek: 27, spanWeeks: 4 },
-      { startWeek: 31, spanWeeks: 4 },
+      futureWork.reduce<Record<number, number>>((counts, { startWeek }) => {
+        counts[startWeek] = (counts[startWeek] ?? 0) + 1
+        return counts
+      }, {}),
+    ).toEqual({ 15: 5, 19: 5, 23: 4, 27: 4, 31: 3 })
+    expect(futureWork.every(({ spanWeeks }) => spanWeeks === 4)).toBe(true)
+
+    for (const startWeek of [15, 19, 23, 27, 31]) {
+      const cycle = futureWork.filter((bar) => bar.startWeek === startWeek)
+      expect(new Set(cycle.map(({ lane }) => lane)).size).toBe(cycle.length)
+    }
+
+    expect(futureWork.map(({ title }) => title)).toEqual([
+      "Caleb: Explore China streaming",
+      "Urim + Up: Define Mobile + TV MVP",
+      "Nisal: Improve search quality",
+      "Jaco + Jian Wei: Decompose components",
+      "Jaco + Jian Wei: Present to Miheret",
+      "Tatai + Lyuba: Advance video agents",
+      "Tatai: Run experience generation",
+      "Build service-improvement loops",
+      "Caleb: Expand language support",
+      "Siyang + ZY: Ship NextSteps",
+      "Vlad: Translate Core content",
+      "Vlad: Translate Bible quotations",
+      "Vlad: Add accounts + notifications",
+      "Vlad: Collect mission stories",
+      "Vlad: Clarify next-step actions",
+      "Vlad: Make search shareable",
+      "Vlad: Create verse video pages",
+      "Vlad: Generate video FAQs",
+      "Vlad: Operate SEO agent",
+      "Vlad: Operate support agent",
+      "Vlad: Operate translation agent",
     ])
   })
 
@@ -101,6 +128,7 @@ describe("planned roadmap", () => {
       "search",
       "future-work",
     ])
+    expect(PLANNED_TIMELINE_ROWS[0]?.stackByLane).toBe(true)
     expect(PLANNED_PHASES.every(({ completed }) => completed)).toBe(true)
   })
 
