@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
+import { isIP } from "node:net"
 import {
   Prisma,
   type PrismaClient,
@@ -318,17 +319,36 @@ function inputJson(value: unknown): Prisma.InputJsonValue {
 }
 
 const SECRET_KEY =
-  /token|secret|password|authorization|cookie|header|credential|api[_-]?key|ip(?:address)?/i
+  /token|secret|password|authorization|cookie|header|credential|api[_-]?key/i
 const CREDENTIAL_VALUE =
   /\b(?:bearer\s+[a-z0-9._~+/=-]{12,}|(?:sk|ghp|github_pat|xox[baprs])-?[a-z0-9_-]{12,}|(?:token|secret|password|api[_-]?key)\s*[:=]\s*[^\s,;]{8,})\b/giu
 const EMAIL_VALUE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu
 const IP_VALUE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/gu
+const IPV6_CANDIDATE =
+  /\[[0-9A-Fa-f:.]{2,64}\]|(?<![0-9A-Fa-f:.])[0-9A-Fa-f:.]{2,64}(?![0-9A-Fa-f:.])/gu
+
+function redactIpv6Candidate(value: string): string {
+  const bracketed = value.startsWith("[") && value.endsWith("]")
+  const candidate = bracketed ? value.slice(1, -1) : value.replace(/\.+$/u, "")
+  const suffix = bracketed ? "" : value.slice(candidate.length)
+  return isIP(candidate) === 6 ? `[redacted-ip]${suffix}` : value
+}
+
+function isSensitiveSeoKey(key: string): boolean {
+  if (SECRET_KEY.test(key)) return true
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .split(/[^A-Za-z0-9]+/u)
+    .map((word) => word.toLowerCase())
+  return words.some((word) => word === "ip" || word === "ipaddress")
+}
 
 function redactSeoText(value: string): string {
   return value
     .slice(0, 10_000)
     .replace(CREDENTIAL_VALUE, "[redacted]")
     .replace(EMAIL_VALUE, "[redacted-email]")
+    .replace(IPV6_CANDIDATE, redactIpv6Candidate)
     .replace(IP_VALUE, "[redacted-ip]")
 }
 
@@ -360,7 +380,7 @@ export function redactSeoJson(value: unknown, depth = 0): unknown {
         .slice(0, 100)
         .map(([key, nested]) => [
           key,
-          SECRET_KEY.test(key)
+          isSensitiveSeoKey(key)
             ? "[redacted]"
             : redactSeoJson(nested, depth + 1),
         ]),

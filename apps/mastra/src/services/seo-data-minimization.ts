@@ -1,25 +1,18 @@
+import { isIP } from "node:net"
+
 import { parse, type DefaultTreeAdapterTypes } from "parse5"
 
 const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu
 const PHONE = /(?<!\w)(?:\+?\d[\d ().-]{7,}\d)(?!\w)/gu
 const IPV4 = /\b(?:\d{1,3}\.){3}\d{1,3}\b/gu
+const IPV6_CANDIDATE =
+  /\[[0-9A-Fa-f:.]{2,64}\]|(?<![0-9A-Fa-f:.])[0-9A-Fa-f:.]{2,64}(?![0-9A-Fa-f:.])/gu
 const SECRET =
-  /\b(?:bearer\s+\S+|(?:api[_ -]?key|token|secret|password|cookie)\s*[:=]\s*\S+)/giu
+  /\b(?:bearer\s+\S+|(?:sk|ghp|github_pat|xox[baprs])-?[a-z0-9_-]{12,}|(?:api[_ -]?key|token|secret|password|cookie)\s*[:=]\s*\S+)/giu
 const CANARY = /\b(?:canary|honeytoken)[-_:\w]*/giu
 
-const SENSITIVE_KEYS = new Set([
-  "authorization",
-  "cookie",
-  "cookies",
-  "headers",
-  "ip",
-  "ipaddress",
-  "password",
-  "prompt",
-  "rawbody",
-  "secret",
-  "token",
-])
+const SENSITIVE_KEY =
+  /token|secret|password|authorization|cookie|header|credential|api[_-]?key|prompt|rawbody/i
 
 const NON_CONTENT_ELEMENTS = new Set([
   "noscript",
@@ -27,6 +20,22 @@ const NON_CONTENT_ELEMENTS = new Set([
   "style",
   "template",
 ])
+
+function redactIpv6Candidate(value: string): string {
+  const bracketed = value.startsWith("[") && value.endsWith("]")
+  const candidate = bracketed ? value.slice(1, -1) : value.replace(/\.+$/u, "")
+  const suffix = bracketed ? "" : value.slice(candidate.length)
+  return isIP(candidate) === 6 ? `[REDACTED_IP]${suffix}` : value
+}
+
+function isSensitiveSeoKey(key: string): boolean {
+  if (SENSITIVE_KEY.test(key)) return true
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .split(/[^A-Za-z0-9]+/u)
+    .map((word) => word.toLowerCase())
+  return words.some((word) => word === "ip" || word === "ipaddress")
+}
 
 function collectVisibleHtmlText(
   root: DefaultTreeAdapterTypes.Node,
@@ -50,6 +59,7 @@ function collectVisibleHtmlText(
 export function minimizeSeoText(value: string, maxCharacters = 4_000): string {
   const redacted = value
     .replace(EMAIL, "[REDACTED_EMAIL]")
+    .replace(IPV6_CANDIDATE, redactIpv6Candidate)
     .replace(PHONE, "[REDACTED_PHONE]")
     .replace(IPV4, "[REDACTED_IP]")
     .replace(SECRET, "[REDACTED_CREDENTIAL]")
@@ -73,6 +83,24 @@ export function minimizeSeoUrl(value: string): string | null {
   }
 }
 
+function minimizeSeoPersistenceUrl(value: string): string | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null
+    url.username = ""
+    url.password = ""
+    if (minimizeSeoText(url.hostname) !== url.hostname) {
+      url.hostname = "redacted.invalid"
+    }
+    url.pathname = minimizeSeoText(url.pathname)
+    url.search = ""
+    url.hash = ""
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
 export function minimizeSeoValue(
   value: unknown,
   options: { depth?: number; maxArray?: number; maxKeys?: number } = {},
@@ -80,9 +108,9 @@ export function minimizeSeoValue(
   const depth = options.depth ?? 0
   const maxArray = options.maxArray ?? 50
   const maxKeys = options.maxKeys ?? 50
-  if (depth > 6) return "[TRUNCATED_DEPTH]"
+  if (depth > 6) return "[depth_limit]"
   if (typeof value === "string") {
-    return minimizeSeoUrl(value) ?? minimizeSeoText(value)
+    return minimizeSeoPersistenceUrl(value) ?? minimizeSeoText(value)
   }
   if (typeof value === "number") return Number.isFinite(value) ? value : null
   if (typeof value === "boolean" || value == null) return value
@@ -96,7 +124,7 @@ export function minimizeSeoValue(
   if (typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value)
-        .filter(([key]) => !SENSITIVE_KEYS.has(key.toLowerCase()))
+        .filter(([key]) => !isSensitiveSeoKey(key))
         .slice(0, maxKeys)
         .map(([key, item]) => [
           key,

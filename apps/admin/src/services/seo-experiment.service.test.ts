@@ -168,6 +168,42 @@ describe("SEO ledger boundaries", () => {
     })
   })
 
+  it("retains descriptions while redacting actual IP-address keys", () => {
+    expect(
+      redactSeoJson({
+        description: "A complete treatment description",
+        ip: "10.0.0.1",
+        ipAddress: "10.0.0.2",
+        clientIp: "10.0.0.3",
+        source_ip_address: "10.0.0.4",
+      }),
+    ).toEqual({
+      description: "A complete treatment description",
+      ip: "[redacted]",
+      ipAddress: "[redacted]",
+      clientIp: "[redacted]",
+      source_ip_address: "[redacted]",
+    })
+  })
+
+  it("redacts IPv6 values without changing ordinary colon-delimited text", () => {
+    expect(
+      redactSeoJson({
+        full: "2001:0db8:0000:0000:0000:ff00:0042:8329",
+        compressed: "2001:db8::1",
+        mapped: "::ffff:192.0.2.128",
+        url: "https://[2001:db8::1]/private",
+        ordinary: "chapter 12:30 remains text",
+      }),
+    ).toEqual({
+      full: "[redacted-ip]",
+      compressed: "[redacted-ip]",
+      mapped: "[redacted-ip]",
+      url: "https://[redacted-ip]/private",
+      ordinary: "chapter 12:30 remains text",
+    })
+  })
+
   it("stores only the bounded report when persisted mode is dry-run", async () => {
     const original = run("DRY_RUN")
     const createMany = vi.fn()

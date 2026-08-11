@@ -7,7 +7,11 @@ import {
   type SeoWorkloadCapability,
 } from "./admin-seo-assertion"
 import { minimizeSeoValue } from "./seo-data-minimization"
-import { digestSeoValue, seoProposalPayload } from "./seo-digest"
+import {
+  digestSeoProposalPayload,
+  digestSeoValue,
+  seoPersistenceProposalPayload,
+} from "./seo-digest"
 import type { SeoEvidenceObservation } from "./seo-evidence"
 import { classifySeoHttpStatus, readSeoJson, validateSeoUrl } from "./seo-http"
 
@@ -393,8 +397,8 @@ export function toAdminSeoProposal(
   proposal: SeoProposal,
   now = new Date(),
 ): z.infer<typeof AdminProposalSchema> {
-  const immutablePayload = seoProposalPayload(proposal)
-  const immutablePayloadDigest = digestSeoValue(immutablePayload)
+  const immutablePayload = seoPersistenceProposalPayload(proposal)
+  const immutablePayloadDigest = digestSeoProposalPayload(proposal)
   const common = {
     proposalId: proposal.proposalId,
     version: 1,
