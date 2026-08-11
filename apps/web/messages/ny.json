@@ -179,7 +179,8 @@
     "clearSearch": "Chotsani kusaka",
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
     "home": "Tsamba loyambira la JesusFilm",
-    "closeSearch": "Tsekani kusaka"
+    "closeSearch": "Tsekani kusaka",
+    "submitSearch": "Sakani"
   },
   "SearchOverlay": {
     "dialogLabel": "Sakani ndi kufufuza mavidiyo",

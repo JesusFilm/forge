@@ -179,7 +179,8 @@
     "clearSearch": "Glan cuardach",
     "changeAudioLanguage": "Athraigh teanga an fhuaime",
     "home": "Baile JesusFilm",
-    "closeSearch": "Dún an cuardach"
+    "closeSearch": "Dún an cuardach",
+    "submitSearch": "Cuardaigh"
   },
   "SearchOverlay": {
     "dialogLabel": "Cuardaigh agus brabhsáil físeáin",

@@ -179,7 +179,8 @@
     "clearSearch": "Halinon ang search",
     "changeAudioLanguage": "Suksua ang idioma sang audio",
     "home": "Panguna nga pahina sang JesusFilm",
-    "closeSearch": "Sirad-an ang search"
+    "closeSearch": "Sirad-an ang search",
+    "submitSearch": "Pangitaa"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa kag i-browse ang mga video",

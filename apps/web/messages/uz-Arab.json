@@ -179,7 +179,8 @@
     "clearSearch": "پاک کردن جست‌وجو",
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
-    "closeSearch": "بستن جست‌وجو"
+    "closeSearch": "بستن جست‌وجو",
+    "submitSearch": "جست‌وجو"
   },
   "SearchOverlay": {
     "dialogLabel": "جست‌وجو و مرور ویدیوها",

@@ -179,7 +179,8 @@
     "clearSearch": "Momtu ceɗɗitugol",
     "changeAudioLanguage": "Soppi ɗemngal ngal",
     "home": "JesusFilm keɓe",
-    "closeSearch": "Uddu ceɗɗitugol"
+    "closeSearch": "Uddu ceɗɗitugol",
+    "submitSearch": "Yiylo"
   },
   "SearchOverlay": {
     "dialogLabel": "Yiylo e naatnu videeji",

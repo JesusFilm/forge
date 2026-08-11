@@ -179,7 +179,8 @@
     "clearSearch": "Search e kar",
     "changeAudioLanguage": "Audio language bu",
     "home": "JesusFilm home eo",
-    "closeSearch": "Search e kar"
+    "closeSearch": "Search e kar",
+    "submitSearch": "Buok search"
   },
   "SearchOverlay": {
     "dialogLabel": "Video ae buata me bika",

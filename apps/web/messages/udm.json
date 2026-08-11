@@ -179,7 +179,8 @@
     "clearSearch": "Утчалонез вань",
     "changeAudioLanguage": "Аудио кылез воштӥл",
     "home": "JesusFilm шӧр",
-    "closeSearch": "Утчалонез пыдӥл"
+    "closeSearch": "Утчалонез пыдӥл",
+    "submitSearch": "Утчалы"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоос утчалы но выжыты",

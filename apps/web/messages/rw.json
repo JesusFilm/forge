@@ -179,7 +179,8 @@
     "clearSearch": "Kuraho ubushakatsi",
     "changeAudioLanguage": "Hindura ururimi rw'amajwi",
     "home": "Urupapuro rwa JesusFilm rwa mbere",
-    "closeSearch": "Funga ubushakatsi"
+    "closeSearch": "Funga ubushakatsi",
+    "submitSearch": "Shakisha"
   },
   "SearchOverlay": {
     "dialogLabel": "Shakisha kandi urebe video",

@@ -179,7 +179,8 @@
     "clearSearch": "Search mɛ",
     "changeAudioLanguage": "Audio language kɛ",
     "home": "JesusFilm sa",
-    "closeSearch": "Search mɛ"
+    "closeSearch": "Search mɛ",
+    "submitSearch": "Search kɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video search o browse kɛ",

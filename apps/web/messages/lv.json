@@ -179,7 +179,8 @@
     "clearSearch": "Notīrīt meklēšanu",
     "changeAudioLanguage": "Mainīt audio valodu",
     "home": "JesusFilm sākumlapa",
-    "closeSearch": "Aizvērt meklēšanu"
+    "closeSearch": "Aizvērt meklēšanu",
+    "submitSearch": "Meklēt"
   },
   "SearchOverlay": {
     "dialogLabel": "Meklēt un pārlūkot video",

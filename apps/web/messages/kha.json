@@ -179,7 +179,8 @@
     "clearSearch": "Pynlait ia ka search",
     "changeAudioLanguage": "Pynkylla ka ktien sur",
     "home": "Ka home JesusFilm",
-    "closeSearch": "Pynkhap ia ka search"
+    "closeSearch": "Pynkhap ia ka search",
+    "submitSearch": "Wad"
   },
   "SearchOverlay": {
     "dialogLabel": "Wad bad peit ia ki video",

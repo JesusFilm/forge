@@ -179,7 +179,8 @@
     "clearSearch": "I-clear ang paghahanap",
     "changeAudioLanguage": "Palitan ang wika ng audio",
     "home": "Tahanan ng JesusFilm",
-    "closeSearch": "Isara ang paghahanap"
+    "closeSearch": "Isara ang paghahanap",
+    "submitSearch": "Maghanap"
   },
   "SearchOverlay": {
     "dialogLabel": "Maghanap at mag-browse ng mga video",

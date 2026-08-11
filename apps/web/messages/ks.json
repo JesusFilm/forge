@@ -179,7 +179,8 @@
     "clearSearch": "تلاش صاف کرو",
     "changeAudioLanguage": "آڈیو زبان بدلیو",
     "home": "JesusFilm ہوم",
-    "closeSearch": "تلاش بند کرو"
+    "closeSearch": "تلاش بند کرو",
+    "submitSearch": "تلاش کرو"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیو تلاش کرو اَور براؤز کرو",

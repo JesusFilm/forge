@@ -179,7 +179,8 @@
     "clearSearch": "Rausim painim",
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom pes",
-    "closeSearch": "Pasim painim"
+    "closeSearch": "Pasim painim",
+    "submitSearch": "Painim"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na browseim ol video",

@@ -179,7 +179,8 @@
     "clearSearch": "Εκκαθάριση αναζήτησης",
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
     "home": "Αρχική JesusFilm",
-    "closeSearch": "Κλείσιμο αναζήτησης"
+    "closeSearch": "Κλείσιμο αναζήτησης",
+    "submitSearch": "Αναζήτηση"
   },
   "SearchOverlay": {
     "dialogLabel": "Αναζήτηση και περιήγηση σε βίντεο",

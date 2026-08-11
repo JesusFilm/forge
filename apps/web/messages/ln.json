@@ -179,7 +179,8 @@
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
-    "closeSearch": "Kanga boluki"
+    "closeSearch": "Kanga boluki",
+    "submitSearch": "Sosa"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",

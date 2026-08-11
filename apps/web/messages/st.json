@@ -179,7 +179,8 @@
     "clearSearch": "Hlakola patlo",
     "changeAudioLanguage": "Fetola puo ea molumo",
     "home": "Lehae la JesusFilm",
-    "closeSearch": "Koala patlo"
+    "closeSearch": "Koala patlo",
+    "submitSearch": "Batla"
   },
   "SearchOverlay": {
     "dialogLabel": "Batla le ho sheba livideo",

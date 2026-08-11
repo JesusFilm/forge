@@ -179,7 +179,8 @@
     "clearSearch": "Пок кардани ҷустуҷӯ",
     "changeAudioLanguage": "Тағйири забони аудио",
     "home": "Саҳифаи асосии JesusFilm",
-    "closeSearch": "Пӯшидани ҷустуҷӯ"
+    "closeSearch": "Пӯшидани ҷустуҷӯ",
+    "submitSearch": "Ҷустуҷӯ"
   },
   "SearchOverlay": {
     "dialogLabel": "Ҷустуҷӯ ва бозрасии видеоҳо",

@@ -179,7 +179,8 @@
     "clearSearch": "Корсьӧмӧс таскасны",
     "changeAudioLanguage": "Аудио кывсӧ вӧвны",
     "home": "JesusFilm оланнин",
-    "closeSearch": "Корсьӧмӧс вӧчны"
+    "closeSearch": "Корсьӧмӧс вӧчны",
+    "submitSearch": "Корсьны"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоӧс корсьны да лыддьыны",

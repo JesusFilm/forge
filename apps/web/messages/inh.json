@@ -179,7 +179,8 @@
     "clearSearch": "Къахьа д1аяккха",
     "changeAudioLanguage": "Аудио мотт хулашха",
     "home": "JesusFilm хана",
-    "closeSearch": "Къахьа хьаяккха"
+    "closeSearch": "Къахьа хьаяккха",
+    "submitSearch": "Къахьа"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къахьа я browse хийла",

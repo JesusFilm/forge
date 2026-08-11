@@ -2470,7 +2470,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).not.toHaveBeenCalled()
 
     expect(form?.getAttribute("aria-label")).toBe("Search videos")
-    expect(submitButton?.getAttribute("aria-label")).toBe("Search videos")
+    expect(submitButton?.getAttribute("aria-label")).toBe("Search")
     expect(submitButton?.getAttribute("aria-hidden")).toBe("false")
     expect(submitButton?.className).toContain("h-11")
     expect(submitButton?.className).toContain("min-w-11")

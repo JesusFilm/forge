@@ -179,7 +179,8 @@
     "clearSearch": "Tøm søk",
     "changeAudioLanguage": "Bytt lydspråk",
     "home": "JesusFilm-hjem",
-    "closeSearch": "Lukk søk"
+    "closeSearch": "Lukk søk",
+    "submitSearch": "Søk"
   },
   "SearchOverlay": {
     "dialogLabel": "Søk og bla gjennom videoer",

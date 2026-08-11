@@ -179,7 +179,8 @@
     "clearSearch": "Tso se la me",
     "changeAudioLanguage": "Tɔ audio ƒe gbegblẽ",
     "home": "JesusFilm ƒe home",
-    "closeSearch": "Tso se la ŋu"
+    "closeSearch": "Tso se la ŋu",
+    "submitSearch": "Se"
   },
   "SearchOverlay": {
     "dialogLabel": "Se eye kpɔ video",

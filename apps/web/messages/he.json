@@ -179,7 +179,8 @@
     "clearSearch": "ניקוי חיפוש",
     "changeAudioLanguage": "שנו שפת שמע",
     "home": "דף הבית של JesusFilm",
-    "closeSearch": "סגירת החיפוש"
+    "closeSearch": "סגירת החיפוש",
+    "submitSearch": "חיפוש"
   },
   "SearchOverlay": {
     "dialogLabel": "חיפוש ועיון בסרטונים",

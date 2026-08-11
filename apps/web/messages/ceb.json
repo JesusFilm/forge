@@ -179,7 +179,8 @@
     "clearSearch": "Panghinlo sa pagpangita",
     "changeAudioLanguage": "Usba ang pinulongan sa audio",
     "home": "Panid sa balay sa JesusFilm",
-    "closeSearch": "Sirad-i ang pagpangita"
+    "closeSearch": "Sirad-i ang pagpangita",
+    "submitSearch": "Pangitaa"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa ug i-browse ang mga video",

@@ -179,7 +179,8 @@
     "clearSearch": "Obriši pretragu",
     "changeAudioLanguage": "Promijeni jezik zvuka",
     "home": "Početna stranica JesusFilm",
-    "closeSearch": "Zatvori pretragu"
+    "closeSearch": "Zatvori pretragu",
+    "submitSearch": "Pretraži"
   },
   "SearchOverlay": {
     "dialogLabel": "Pretraži i pregledaj videozapise",

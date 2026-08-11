@@ -179,7 +179,8 @@
     "clearSearch": "Хайлтыг цэвэрлэх",
     "changeAudioLanguage": "Дууны хэлийг солих",
     "home": "JesusFilm нүүр хуудас",
-    "closeSearch": "Хайлт хаах"
+    "closeSearch": "Хайлт хаах",
+    "submitSearch": "Хайх"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайж үзэх",

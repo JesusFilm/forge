@@ -179,7 +179,8 @@
     "clearSearch": "Издөөнү тазалоо",
     "changeAudioLanguage": "Аудио тилин өзгөртүү",
     "home": "JesusFilm баш бети",
-    "closeSearch": "Издөөнү жабуу"
+    "closeSearch": "Издөөнү жабуу",
+    "submitSearch": "Изде"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолорду издөө жана карап чыгуу",

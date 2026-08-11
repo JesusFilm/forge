@@ -179,7 +179,8 @@
     "clearSearch": "Borrar busca",
     "changeAudioLanguage": "Cambiar idioma do audio",
     "home": "Inicio de JesusFilm",
-    "closeSearch": "Pechar busca"
+    "closeSearch": "Pechar busca",
+    "submitSearch": "Buscar"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar e explorar vídeos",

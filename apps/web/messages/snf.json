@@ -179,7 +179,8 @@
     "clearSearch": "Effacer la recherche",
     "changeAudioLanguage": "Changer la langue audio",
     "home": "Accueil de JesusFilm",
-    "closeSearch": "Fermer la recherche"
+    "closeSearch": "Fermer la recherche",
+    "submitSearch": "Sëri"
   },
   "SearchOverlay": {
     "dialogLabel": "Rechercher et parcourir des vidéos",

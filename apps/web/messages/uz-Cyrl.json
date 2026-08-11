@@ -179,7 +179,8 @@
     "clearSearch": "Қидирувни тозалаш",
     "changeAudioLanguage": "Овоз тилини ўзгартириш",
     "home": "JesusFilm бош саҳифаси",
-    "closeSearch": "Қидирувни ёпиш"
+    "closeSearch": "Қидирувни ёпиш",
+    "submitSearch": "Қидириш"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларни қидириш ва кўриб чиқиш",

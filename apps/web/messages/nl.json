@@ -179,7 +179,8 @@
     "clearSearch": "Zoekopdracht wissen",
     "changeAudioLanguage": "Audiotaal wijzigen",
     "home": "JesusFilm-startpagina",
-    "closeSearch": "Zoeken sluiten"
+    "closeSearch": "Zoeken sluiten",
+    "submitSearch": "Zoeken"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's zoeken en doorbladeren",

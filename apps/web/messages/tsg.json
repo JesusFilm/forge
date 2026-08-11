@@ -179,7 +179,8 @@
     "clearSearch": "Haw-ani an search",
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Homan han JesusFilm",
-    "closeSearch": "Isira an search"
+    "closeSearch": "Isira an search",
+    "submitSearch": "Pamiling"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamiling ngan mag-browse hin mga video",

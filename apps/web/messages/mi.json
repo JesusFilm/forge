@@ -179,7 +179,8 @@
     "clearSearch": "Ūkuia te rapu",
     "changeAudioLanguage": "Panoni i te reo oro",
     "home": "Kainga JesusFilm",
-    "closeSearch": "Katia te rapu"
+    "closeSearch": "Katia te rapu",
+    "submitSearch": "Rapu"
   },
   "SearchOverlay": {
     "dialogLabel": "Rapu me te tirotiro ataata",

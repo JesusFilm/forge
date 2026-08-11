@@ -179,7 +179,8 @@
     "clearSearch": "ئىزدەشنى تازىلاش",
     "changeAudioLanguage": "ئاۋاز تىلىنى ئۆزگەرتىش",
     "home": "JesusFilm باش بېتى",
-    "closeSearch": "ئىزدەشنى يېپىش"
+    "closeSearch": "ئىزدەشنى يېپىش",
+    "submitSearch": "ئىزدەش"
   },
   "SearchOverlay": {
     "dialogLabel": "سىنلارنى ئىزدەش ۋە كۆرۈش",

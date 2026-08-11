@@ -179,7 +179,8 @@
     "clearSearch": "Pastro kërkimin",
     "changeAudioLanguage": "Ndrysho gjuhën e audios",
     "home": "Faqja kryesore e JesusFilm",
-    "closeSearch": "Mbyll kërkimin"
+    "closeSearch": "Mbyll kërkimin",
+    "submitSearch": "Kërko"
   },
   "SearchOverlay": {
     "dialogLabel": "Kërko dhe shfleto videot",

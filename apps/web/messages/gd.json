@@ -179,7 +179,8 @@
     "clearSearch": "Falamhaich an rannsachadh",
     "changeAudioLanguage": "Atharraich cànan na fuaime",
     "home": "Duilleag-dhachaigh JesusFilm",
-    "closeSearch": "Dùin an rannsachadh"
+    "closeSearch": "Dùin an rannsachadh",
+    "submitSearch": "Lorg"
   },
   "SearchOverlay": {
     "dialogLabel": "Lorg is brobhs bhideothan",

@@ -179,7 +179,8 @@
     "clearSearch": "Kōjbarok search",
     "changeAudioLanguage": "Kāāl language in audio",
     "home": "Jikin jinoin JesusFilm",
-    "closeSearch": "Māake search"
+    "closeSearch": "Māake search",
+    "submitSearch": "Jibed"
   },
   "SearchOverlay": {
     "dialogLabel": "Jibed im browse videos",

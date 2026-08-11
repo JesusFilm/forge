@@ -179,7 +179,8 @@
     "clearSearch": "Вешемась чистомс",
     "changeAudioLanguage": "Audio language-ть вастомс",
     "home": "JesusFilm прявт лопа",
-    "closeSearch": "Вешемась питнемс"
+    "closeSearch": "Вешемась питнемс",
+    "submitSearch": "Вешемс"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-ть вешемс и вановтомс",

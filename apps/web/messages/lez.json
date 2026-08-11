@@ -179,7 +179,8 @@
     "clearSearch": "Гъарун кьатӏ",
     "changeAudioLanguage": "Аудио чӏал эгечӏ",
     "home": "JesusFilm ксар",
-    "closeSearch": "Гъарун кьепь"
+    "closeSearch": "Гъарун кьепь",
+    "submitSearch": "Гъарун"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолар гъарун ва къарагъун",

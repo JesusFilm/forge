@@ -179,7 +179,8 @@
     "clearSearch": "ล้างการค้นหา",
     "changeAudioLanguage": "เปลี่ยนภาษาเสียง",
     "home": "หน้าแรก JesusFilm",
-    "closeSearch": "ปิดการค้นหา"
+    "closeSearch": "ปิดการค้นหา",
+    "submitSearch": "ค้นหา"
   },
   "SearchOverlay": {
     "dialogLabel": "ค้นหาและเลือกดูวิดีโอ",

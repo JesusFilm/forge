@@ -179,7 +179,8 @@
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
-    "closeSearch": "Kokanga boluki"
+    "closeSearch": "Kokanga boluki",
+    "submitSearch": "Luka"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala ba vidéo",

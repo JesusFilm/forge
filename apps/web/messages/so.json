@@ -179,7 +179,8 @@
     "clearSearch": "Nadiifi raadinta",
     "changeAudioLanguage": "Beddel luqadda codka",
     "home": "Bogga hore ee JesusFilm",
-    "closeSearch": "Xir raadinta"
+    "closeSearch": "Xir raadinta",
+    "submitSearch": "Raadi"
   },
   "SearchOverlay": {
     "dialogLabel": "Raadi oo dhex-dhaqaaq fiidiyowyo",

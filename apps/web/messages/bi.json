@@ -179,7 +179,8 @@
     "clearSearch": "Kliarem search",
     "changeAudioLanguage": "Jenisem lanwis blong audio",
     "home": "JesusFilm hom",
-    "closeSearch": "Satem search"
+    "closeSearch": "Satem search",
+    "submitSearch": "Sokem"
   },
   "SearchOverlay": {
     "dialogLabel": "Sokem mo browse ol video",

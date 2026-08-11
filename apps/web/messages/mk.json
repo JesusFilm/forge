@@ -179,7 +179,8 @@
     "clearSearch": "Исчисти пребарување",
     "changeAudioLanguage": "Промени јазик на аудио",
     "home": "Почетна страница на JesusFilm",
-    "closeSearch": "Затвори пребарување"
+    "closeSearch": "Затвори пребарување",
+    "submitSearch": "Пребарај"
   },
   "SearchOverlay": {
     "dialogLabel": "Пребарувај и прелистувај видеа",

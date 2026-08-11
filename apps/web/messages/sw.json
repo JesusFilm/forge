@@ -179,7 +179,8 @@
     "clearSearch": "Futa utafutaji",
     "changeAudioLanguage": "Badilisha lugha ya sauti",
     "home": "Nyumbani kwa JesusFilm",
-    "closeSearch": "Funga utafutaji"
+    "closeSearch": "Funga utafutaji",
+    "submitSearch": "Tafuta"
   },
   "SearchOverlay": {
     "dialogLabel": "Tafuta na vinjari video",

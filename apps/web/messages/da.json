@@ -179,7 +179,8 @@
     "clearSearch": "Ryd søgning",
     "changeAudioLanguage": "Skift lydsprog",
     "home": "JesusFilm forside",
-    "closeSearch": "Luk søgning"
+    "closeSearch": "Luk søgning",
+    "submitSearch": "Søg"
   },
   "SearchOverlay": {
     "dialogLabel": "Søg og browse videoer",

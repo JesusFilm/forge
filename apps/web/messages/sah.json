@@ -179,7 +179,8 @@
     "clearSearch": "Көрдөөһүөнү сот",
     "changeAudioLanguage": "Аудио тылын уларыт",
     "home": "JesusFilm бастыҥ сирэйи",
-    "closeSearch": "Көрдөһүүни сап"
+    "closeSearch": "Көрдөһүүни сап",
+    "submitSearch": "Көрдөө"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолары көрдө уонна көр",

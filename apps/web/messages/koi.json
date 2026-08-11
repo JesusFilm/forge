@@ -179,7 +179,8 @@
     "clearSearch": "Поиск вӧтчыны",
     "changeAudioLanguage": "Аудиоязык вӧтлыны",
     "home": "JesusFilm главная",
-    "closeSearch": "Поисксӧ вӧтчыны"
+    "closeSearch": "Поисксӧ вӧтчыны",
+    "submitSearch": "Поиск"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоэзӧс вӧтлыны да вуҗӧтны",

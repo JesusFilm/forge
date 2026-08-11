@@ -122,7 +122,7 @@ export const FloatingSearchFieldInput = forwardRef<
   return (
     <form
       role="search"
-      aria-label={t("openSearch")}
+      aria-label={t("searchRegion")}
       onSubmit={handleSubmit}
       className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} !gap-1 !px-2 !py-1 ${wrapperClassName ?? ""}`}
     >
@@ -144,7 +144,7 @@ export const FloatingSearchFieldInput = forwardRef<
       />
       <button
         type="submit"
-        aria-label={t("openSearch")}
+        aria-label={t("submitSearch")}
         aria-hidden={!hasValue}
         disabled={!hasValue}
         tabIndex={hasValue ? 0 : -1}
@@ -159,7 +159,7 @@ export const FloatingSearchFieldInput = forwardRef<
           aria-hidden
           className="max-w-[6ch] truncate whitespace-nowrap text-sm font-medium sm:max-w-none"
         >
-          {t("searchRegion")}
+          {t("submitSearch")}
         </span>
       </button>
       {hasValue && onClear ? (

@@ -179,7 +179,8 @@
     "clearSearch": "Ларх дӀахьа",
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
-    "closeSearch": "Ларх дӀакхахьа"
+    "closeSearch": "Ларх дӀакхахьа",
+    "submitSearch": "Лаьц"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",

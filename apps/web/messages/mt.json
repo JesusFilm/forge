@@ -179,7 +179,8 @@
     "clearSearch": "Neħħi t-tfittxija",
     "changeAudioLanguage": "Ibdel il-lingwa tal-awdjo",
     "home": "Dar JesusFilm",
-    "closeSearch": "Agħlaq it-tfittxija"
+    "closeSearch": "Agħlaq it-tfittxija",
+    "submitSearch": "Fittex"
   },
   "SearchOverlay": {
     "dialogLabel": "Fittex u ibrawżja videos",

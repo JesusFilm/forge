@@ -179,7 +179,8 @@
     "clearSearch": "Sihko ohcama",
     "changeAudioLanguage": "Rievdat jietna gielat",
     "home": "JesusFilm ruovttusiidu",
-    "closeSearch": "Gidde ohcan"
+    "closeSearch": "Gidde ohcan",
+    "submitSearch": "Oza"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",

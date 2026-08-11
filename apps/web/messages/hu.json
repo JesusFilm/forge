@@ -179,7 +179,8 @@
     "clearSearch": "Keresés törlése",
     "changeAudioLanguage": "Hang nyelvének módosítása",
     "home": "JesusFilm kezdőlap",
-    "closeSearch": "Keresés bezárása"
+    "closeSearch": "Keresés bezárása",
+    "submitSearch": "Keresés"
   },
   "SearchOverlay": {
     "dialogLabel": "Videók keresése és böngészése",

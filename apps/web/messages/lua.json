@@ -179,7 +179,8 @@
     "clearSearch": "Katula kusaka",
     "changeAudioLanguage": "Sakula lulaka lwa audio",
     "home": "Tshikupu tsha JesusFilm",
-    "closeSearch": "Vuala kusaka"
+    "closeSearch": "Vuala kusaka",
+    "submitSearch": "Saka"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",

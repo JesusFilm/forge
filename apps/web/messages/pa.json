@@ -179,7 +179,8 @@
     "clearSearch": "ਖੋਜ ਸਾਫ਼ ਕਰੋ",
     "changeAudioLanguage": "ਆਡੀਓ ਭਾਸ਼ਾ ਬਦਲੋ",
     "home": "JesusFilm ਹੋਮ",
-    "closeSearch": "ਖੋਜ ਬੰਦ ਕਰੋ"
+    "closeSearch": "ਖੋਜ ਬੰਦ ਕਰੋ",
+    "submitSearch": "ਖੋਜੋ"
   },
   "SearchOverlay": {
     "dialogLabel": "ਵੀਡੀਓਜ਼ ਖੋਜੋ ਅਤੇ ਬ੍ਰਾਊਜ਼ ਕਰੋ",

@@ -179,7 +179,8 @@
     "clearSearch": "Tz'aku' sa'j",
     "changeAudioLanguage": "Tjalpa' rutzij ta audio",
     "home": "Ruwotot JesusFilm",
-    "closeSearch": "Tatz'apka' sa'j"
+    "closeSearch": "Tatz'apka' sa'j",
+    "submitSearch": "Sa'j"
   },
   "SearchOverlay": {
     "dialogLabel": "Sa'j y k'axpa' videos",

@@ -179,7 +179,8 @@
     "clearSearch": "Garbitu bilaketa",
     "changeAudioLanguage": "Aldatu audio-hizkuntza",
     "home": "JesusFilm hasiera",
-    "closeSearch": "Itxi bilaketa"
+    "closeSearch": "Itxi bilaketa",
+    "submitSearch": "Bilatu"
   },
   "SearchOverlay": {
     "dialogLabel": "Bilatu eta arakatu bideoak",

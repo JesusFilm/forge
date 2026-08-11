@@ -179,7 +179,8 @@
     "clearSearch": "Thaqhaña q’umachaña",
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
-    "closeSearch": "Thaqhaña llawuña"
+    "closeSearch": "Thaqhaña llawuña",
+    "submitSearch": "Thaqhaña"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",

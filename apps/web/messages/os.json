@@ -179,7 +179,8 @@
     "clearSearch": "Æрхæссын æфæлдис",
     "changeAudioLanguage": "Аудио æвзаг æрхæсс",
     "home": "JesusFilm æрмæст",
-    "closeSearch": "Æрхæссын сæйгæ"
+    "closeSearch": "Æрхæссын сæйгæ",
+    "submitSearch": "Æрхæсс"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео æрхæсс æмæ куыд æрхæсс",

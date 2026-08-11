@@ -179,7 +179,8 @@
     "clearSearch": "Kita buskeda limpi",
     "changeAudioLanguage": "Muda idioma di audio",
     "home": "Página prome di JesusFilm",
-    "closeSearch": "Sera buskeda"
+    "closeSearch": "Sera buskeda",
+    "submitSearch": "Buska"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i eksplora video",

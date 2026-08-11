@@ -179,7 +179,8 @@
     "clearSearch": "Embogue jeheka",
     "changeAudioLanguage": "Emoambue ñe'ẽ ayvu",
     "home": "JesusFilm óga",
-    "closeSearch": "Emboty jeheka"
+    "closeSearch": "Emboty jeheka",
+    "submitSearch": "Eheka"
   },
   "SearchOverlay": {
     "dialogLabel": "Eheka ha ehora videos",

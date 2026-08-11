@@ -179,7 +179,8 @@
     "clearSearch": "Hapus pencarian",
     "changeAudioLanguage": "Ubah bahasa audio",
     "home": "Beranda JesusFilm",
-    "closeSearch": "Tutup pencarian"
+    "closeSearch": "Tutup pencarian",
+    "submitSearch": "Cari"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan jelajahi video",

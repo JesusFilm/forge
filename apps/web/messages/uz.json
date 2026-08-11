@@ -179,7 +179,8 @@
     "clearSearch": "Qidiruvni tozalash",
     "changeAudioLanguage": "Audio tilini o‘zgartirish",
     "home": "JesusFilm bosh sahifasi",
-    "closeSearch": "Qidiruvni yopish"
+    "closeSearch": "Qidiruvni yopish",
+    "submitSearch": "Qidirish"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarni qidirish va ko‘rish",

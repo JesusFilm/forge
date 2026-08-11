@@ -7,6 +7,7 @@ import {
 } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+import { catalogPolicyFor } from "./ui-catalog-policy.mjs"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appDir = join(scriptDir, "..")
@@ -23,11 +24,6 @@ const DEFAULT_MANIFEST_PATH = join(
 )
 const DEFAULT_SOURCE_LOCALE = "en"
 const LOCALE_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
-const PROVISIONAL_POLICY =
-  "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed."
-const COMPLETED_CATALOG_POLICY =
-  "Every shipped UI catalog contains locale-specific copy. Existing authored translations are preserved; machineTranslatedLocales identifies catalogs completed with approved contextual AI translation and recommended for native-speaker review."
-
 function argValue(name, fallback) {
   const index = process.argv.indexOf(name)
   if (index === -1) return fallback
@@ -162,10 +158,7 @@ export function buildManifest({
       generatedOn,
       sourceInventory: "docs/i18n/watch-ui-official-language-inventory.json",
       sourceCatalog: `apps/web/messages/${sourceLocale}.json`,
-      policy:
-        plan.provisionalLocales.length > 0
-          ? PROVISIONAL_POLICY
-          : COMPLETED_CATALOG_POLICY,
+      policy: catalogPolicyFor(plan.provisionalLocales.length),
       inventorySource: inventory.metadata?.source ?? null,
       cldrVersion: inventory.metadata?.cldrVersion ?? null,
       ...(existingManifest?.metadata?.translation

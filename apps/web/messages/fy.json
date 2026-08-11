@@ -179,7 +179,8 @@
     "clearSearch": "Sykjen wiskje",
     "changeAudioLanguage": "Audio-taal feroarje",
     "home": "JesusFilm-startside",
-    "closeSearch": "Sykjen slute"
+    "closeSearch": "Sykjen slute",
+    "submitSearch": "Sykje"
   },
   "SearchOverlay": {
     "dialogLabel": "Fideo's sykje en blêdzje",

@@ -179,7 +179,8 @@
     "clearSearch": "Sook leegd maken",
     "changeAudioLanguage": "Audiosprak ännern",
     "home": "JesusFilm-hooftside",
-    "closeSearch": "Sook sluten"
+    "closeSearch": "Sook sluten",
+    "submitSearch": "Sooken"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's soken un bruken",

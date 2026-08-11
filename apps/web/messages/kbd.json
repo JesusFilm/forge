@@ -179,7 +179,8 @@
     "clearSearch": "КъэщIэн къыхэу",
     "changeAudioLanguage": "Аудио бызэм къэщIэн",
     "home": "JesusFilm IэIэ",
-    "closeSearch": "КъыщIэн къэгъэпщыкIын"
+    "closeSearch": "КъыщIэн къэгъэпщыкIын",
+    "submitSearch": "КъыщIэн"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къыщIэн да зэбгъэзэхъуэжь",

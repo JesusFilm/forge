@@ -179,7 +179,8 @@
     "clearSearch": "Ujartorneq piiaruk",
     "changeAudioLanguage": "Oqalussinermut oqaatsit allanngortigit",
     "home": "JesusFilm aallartiffia",
-    "closeSearch": "Ujarlerfik matuuk"
+    "closeSearch": "Ujarlerfik matuuk",
+    "submitSearch": "Ujarlerit"
   },
   "SearchOverlay": {
     "dialogLabel": "Videonik ujarlerit takusaqarlutillu",

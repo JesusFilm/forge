@@ -179,7 +179,8 @@
     "clearSearch": "Gözlegi arassala",
     "changeAudioLanguage": "Ses dilini üýtget",
     "home": "JesusFilm baş sahypasy",
-    "closeSearch": "Gözlegi ýap"
+    "closeSearch": "Gözlegi ýap",
+    "submitSearch": "Gözle"
   },
   "SearchOverlay": {
     "dialogLabel": "Wideolary gözläň we gözden geçiriň",

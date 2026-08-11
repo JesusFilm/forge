@@ -179,7 +179,8 @@
     "clearSearch": "శోధనను క్లియర్ చేయండి",
     "changeAudioLanguage": "ఆడియో భాషను మార్చండి",
     "home": "JesusFilm హోమ్",
-    "closeSearch": "శోధనను మూసివేయండి"
+    "closeSearch": "శోధనను మూసివేయండి",
+    "submitSearch": "శోధించండి"
   },
   "SearchOverlay": {
     "dialogLabel": "వీడియోలను శోధించి బ్రౌజ్ చేయండి",

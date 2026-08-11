@@ -179,7 +179,8 @@
     "clearSearch": "Tühjenda otsing",
     "changeAudioLanguage": "Muuda heli keelt",
     "home": "JesusFilmi avaleht",
-    "closeSearch": "Sulge otsing"
+    "closeSearch": "Sulge otsing",
+    "submitSearch": "Otsi"
   },
   "SearchOverlay": {
     "dialogLabel": "Otsi ja sirvi videoid",

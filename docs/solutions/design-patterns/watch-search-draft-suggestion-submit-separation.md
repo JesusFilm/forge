@@ -181,6 +181,8 @@ editable query keeps usable space without shrinking either action target.
 Keep the full localized action as the accessible name and cap only the visible
 mobile label; this preserves meaning when a translation runs longer than the
 compact English copy.
+Use a dedicated compact submit message rather than shortening the descriptive
+search-region label shared by the form landmark.
 
 ### Measure the viewport the viewer actually has
 

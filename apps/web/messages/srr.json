@@ -179,7 +179,8 @@
     "clearSearch": "Effas seet bi",
     "changeAudioLanguage": "Waññi làkk bu baat bi",
     "home": "JesusFilm kër",
-    "closeSearch": "Tëj seet bi"
+    "closeSearch": "Tëj seet bi",
+    "submitSearch": "Seet"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak xool videos",

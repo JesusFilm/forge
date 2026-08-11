@@ -179,7 +179,8 @@
     "clearSearch": "Esborra la cerca",
     "changeAudioLanguage": "Canvia l’idioma de l’àudio",
     "home": "Inici de JesusFilm",
-    "closeSearch": "Tanca la cerca"
+    "closeSearch": "Tanca la cerca",
+    "submitSearch": "Cerca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca i navega pels vídeos",

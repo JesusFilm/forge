@@ -179,7 +179,8 @@
     "clearSearch": "Limpa buska",
     "changeAudioLanguage": "Muda língua di áudio",
     "home": "Inisiu di JesusFilm",
-    "closeSearch": "Fixa buska"
+    "closeSearch": "Fixa buska",
+    "submitSearch": "Buska"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i navega vídeus",

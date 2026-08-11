@@ -21,6 +21,10 @@ import {
   isSourceEquivalent,
   requestTranslations,
 } from "./openai-catalog-translator.mjs"
+import {
+  COMPLETED_CATALOG_POLICY,
+  PROVISIONAL_CATALOG_POLICY,
+} from "./ui-catalog-policy.mjs"
 
 const MODEL = "gpt-5.4-mini-2026-03-17"
 const temporaryDirectories = []
@@ -824,6 +828,7 @@ describe("translate UI catalogs", () => {
     expect(noFetch).not.toHaveBeenCalled()
     expect(manifest.machineTranslatedLocales).toEqual(["es"])
     expect(manifest.provisionalLocales).toEqual(["fr"])
+    expect(manifest.metadata.policy).toBe(PROVISIONAL_CATALOG_POLICY)
   })
 
   it("rejects drifted completed provisional catalogs before promotion", async () => {
@@ -881,6 +886,7 @@ describe("translate UI catalogs", () => {
     )
     expect(promotedManifest.provisionalLocales).toEqual([])
     expect(promotedManifest.machineTranslatedLocales).toEqual(["es", "fr"])
+    expect(promotedManifest.metadata.policy).toBe(COMPLETED_CATALOG_POLICY)
   })
 
   it("translates only newly added source keys and restores catalog parity", async () => {

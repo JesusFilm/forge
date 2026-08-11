@@ -179,7 +179,8 @@
     "clearSearch": "Ujarlerneq piiaruk",
     "changeAudioLanguage": "Oqaatsit allanngortikkit",
     "home": "JesusFilm-imi angerlarsimaffik",
-    "closeSearch": "Ujarlerneq matuuk"
+    "closeSearch": "Ujarlerneq matuuk",
+    "submitSearch": "Ujarligit"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-t ujarlerlugillu tamanut takuguk",

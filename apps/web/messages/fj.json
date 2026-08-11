@@ -179,7 +179,8 @@
     "clearSearch": "Culuma na vakasaqaqara",
     "changeAudioLanguage": "Veisautaka na vagalalataka ni domo",
     "home": "Tabana levu ni JesusFilm",
-    "closeSearch": "Tauri na vakasaqaqara"
+    "closeSearch": "Tauri na vakasaqaqara",
+    "submitSearch": "Vakasaqara"
   },
   "SearchOverlay": {
     "dialogLabel": "Vakasaqara ka vakadikeva na vidio",

@@ -179,7 +179,8 @@
     "clearSearch": "தேடலை அழிக்கவும்",
     "changeAudioLanguage": "ஒலி மொழியை மாற்றவும்",
     "home": "JesusFilm முகப்பு",
-    "closeSearch": "தேடலை மூடு"
+    "closeSearch": "தேடலை மூடு",
+    "submitSearch": "தேடு"
   },
   "SearchOverlay": {
     "dialogLabel": "வீடியோக்களைத் தேடவும் மற்றும் உலாவவும்",

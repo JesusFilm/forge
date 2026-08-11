@@ -184,7 +184,8 @@
   "FloatingSearch": {
     "placeholder": "Search or browse topics…",
     "openSearch": "Search videos",
-    "searchRegion": "Search",
+    "searchRegion": "Search videos",
+    "submitSearch": "Search",
     "clearSearch": "Clear search",
     "changeAudioLanguage": "Change audio language",
     "closeSearch": "Close search",

@@ -179,7 +179,8 @@
     "clearSearch": "Kuraho ubushakashatsi",
     "changeAudioLanguage": "Hindura ururimi rw’amajwi",
     "home": "Urugo rwa JesusFilm",
-    "closeSearch": "Funga ubushakashatsi"
+    "closeSearch": "Funga ubushakashatsi",
+    "submitSearch": "Rondera"
   },
   "SearchOverlay": {
     "dialogLabel": "Rondera kandi ucukure muri videwo",

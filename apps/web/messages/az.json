@@ -179,7 +179,8 @@
     "clearSearch": "Axtarışı təmizlə",
     "changeAudioLanguage": "Səs dilini dəyiş",
     "home": "JesusFilm ana səhifəsi",
-    "closeSearch": "Axtarışı bağla"
+    "closeSearch": "Axtarışı bağla",
+    "submitSearch": "Axtar"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoları axtarın və gözdən keçirin",

@@ -179,7 +179,8 @@
     "clearSearch": "Pura an search",
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Home han JesusFilm",
-    "closeSearch": "Sirad-i an search"
+    "closeSearch": "Sirad-i an search",
+    "submitSearch": "Pamilnga"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamilnga ngan usisa an mga video",

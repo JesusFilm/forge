@@ -179,7 +179,8 @@
     "clearSearch": "Thuthani ṱhoḓisiso",
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
-    "closeSearch": "Valani ṱhoḓisiso"
+    "closeSearch": "Valani ṱhoḓisiso",
+    "submitSearch": "Ṱolani"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",

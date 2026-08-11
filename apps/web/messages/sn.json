@@ -179,7 +179,8 @@
     "clearSearch": "Bvisa kutsvaga",
     "changeAudioLanguage": "Chinja mutauro wekuteerera",
     "home": "Peji guru reJesusFilm",
-    "closeSearch": "Vhara kutsvaga"
+    "closeSearch": "Vhara kutsvaga",
+    "submitSearch": "Tsvaga"
   },
   "SearchOverlay": {
     "dialogLabel": "Tsvaga uye browse mavhidhiyo",

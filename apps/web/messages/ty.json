@@ -179,7 +179,8 @@
     "clearSearch": "Tamâ i te imiraa",
     "changeAudioLanguage": "Taui i te reo oro",
     "home": "Te fare JésusFilm",
-    "closeSearch": "A tapiri i te imiraa"
+    "closeSearch": "A tapiri i te imiraa",
+    "submitSearch": "A imi"
   },
   "SearchOverlay": {
     "dialogLabel": "A imi e a hi'o i te mau video",

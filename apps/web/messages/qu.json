@@ -179,7 +179,8 @@
     "clearSearch": "Maskayta pichay",
     "changeAudioLanguage": "Maqt’a rimay simita tikray",
     "home": "JesusFilm wasin",
-    "closeSearch": "Maskayta wichq’ay"
+    "closeSearch": "Maskayta wichq’ay",
+    "submitSearch": "Maskay"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-kunata maskay y qhaway",

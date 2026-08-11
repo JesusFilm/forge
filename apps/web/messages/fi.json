@@ -179,7 +179,8 @@
     "clearSearch": "Tyhjennä haku",
     "changeAudioLanguage": "Vaihda äänikieltä",
     "home": "JesusFilm-etusivu",
-    "closeSearch": "Sulje haku"
+    "closeSearch": "Sulje haku",
+    "submitSearch": "Hae"
   },
   "SearchOverlay": {
     "dialogLabel": "Hae ja selaa videoita",

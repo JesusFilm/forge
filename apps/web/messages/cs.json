@@ -179,7 +179,8 @@
     "clearSearch": "Vymazat hledání",
     "changeAudioLanguage": "Změnit jazyk zvuku",
     "home": "Domovská stránka JesusFilm",
-    "closeSearch": "Zavřít hledání"
+    "closeSearch": "Zavřít hledání",
+    "submitSearch": "Hledat"
   },
   "SearchOverlay": {
     "dialogLabel": "Hledat a procházet videa",

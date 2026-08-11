@@ -179,7 +179,8 @@
     "clearSearch": "Maak soektog skoon",
     "changeAudioLanguage": "Verander oudiotaal",
     "home": "JesusFilm-tuis",
-    "closeSearch": "Sluit soektog"
+    "closeSearch": "Sluit soektog",
+    "submitSearch": "Soek"
   },
   "SearchOverlay": {
     "dialogLabel": "Soek en blaai deur video’s",

@@ -179,7 +179,8 @@
     "clearSearch": "সার্চ মুছুন",
     "changeAudioLanguage": "অডিও ভাষা পরিবর্তন করুন",
     "home": "JesusFilm হোম",
-    "closeSearch": "সার্চ বন্ধ করুন"
+    "closeSearch": "সার্চ বন্ধ করুন",
+    "submitSearch": "সার্চ করুন"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিও সার্চ ও ব্রাউজ করুন",

@@ -179,7 +179,8 @@
     "clearSearch": "Efase rechèch la",
     "changeAudioLanguage": "Chanje lang odyo a",
     "home": "Akèy JesusFilm",
-    "closeSearch": "Fèmen rechèch la"
+    "closeSearch": "Fèmen rechèch la",
+    "submitSearch": "Chèche"
   },
   "SearchOverlay": {
     "dialogLabel": "Chèche epi browse videyo yo",

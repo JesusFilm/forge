@@ -179,7 +179,8 @@
     "clearSearch": "Sfeḍ anadi",
     "changeAudioLanguage": "Snifel tutlayt n uslaw",
     "home": "Tazwara n JesusFilm",
-    "closeSearch": "Mdel anadi"
+    "closeSearch": "Mdel anadi",
+    "submitSearch": "Nadi"
   },
   "SearchOverlay": {
     "dialogLabel": "Nadi akked brows tividyo",

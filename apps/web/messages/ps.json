@@ -179,7 +179,8 @@
     "clearSearch": "لټون پاک کړئ",
     "changeAudioLanguage": "د غږ ژبه بدله کړئ",
     "home": "د JesusFilm کورپاڼه",
-    "closeSearch": "لټون وتړئ"
+    "closeSearch": "لټون وتړئ",
+    "submitSearch": "ولټوئ"
   },
   "SearchOverlay": {
     "dialogLabel": "ویډیوګانې ولټوئ او وپلټئ",

@@ -179,7 +179,8 @@
     "clearSearch": "खोज साफ मे",
     "changeAudioLanguage": "ऑडियो ञेरेन बदल मे",
     "home": "JesusFilm होम",
-    "closeSearch": "खोज बोंद मे"
+    "closeSearch": "खोज बोंद मे",
+    "submitSearch": "खोज मे"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोज आर ब्राउज़ मे",

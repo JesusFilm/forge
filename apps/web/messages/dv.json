@@ -179,7 +179,8 @@
     "clearSearch": "ހޯދާން ކްލީއާ ކުރާ",
     "changeAudioLanguage": "އަޑުގެ ބަސް ބަދަލު ކުރާ",
     "home": "JesusFilm ހޯމް",
-    "closeSearch": "ހޯދާން ބާންދާ"
+    "closeSearch": "ހޯދާން ބާންދާ",
+    "submitSearch": "ހޯދާ"
   },
   "SearchOverlay": {
     "dialogLabel": "ވީޑިއޯތައް ހޯދާ އަދި ބްރައުޒް ކުރާ",

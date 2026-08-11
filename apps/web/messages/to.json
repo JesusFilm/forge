@@ -179,7 +179,8 @@
     "clearSearch": "Tamateʻi ʻa e fekumí",
     "changeAudioLanguage": "Liliu ʻa e lea ʻo e ongo",
     "home": "Peesi kamata ʻo e JesusFilm",
-    "closeSearch": "Katia ʻa e fekumí"
+    "closeSearch": "Katia ʻa e fekumí",
+    "submitSearch": "Fekumi"
   },
   "SearchOverlay": {
     "dialogLabel": "Fekumi mo vakaiʻi ngaahi vitio",
