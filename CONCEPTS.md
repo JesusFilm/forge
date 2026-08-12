@@ -912,6 +912,12 @@ The soft blurred wash of colour that bleeds from the video's edges into the surr
 
 It is derived from the video's still artwork rather than from the moving picture, so it is one colour field for the whole video and does not follow the footage from scene to scene. It sits behind every other layer, takes no touches, and fades in rather than appearing at once, so a slow artwork load never flashes.
 
+### Mini Player
+
+The small floating window that keeps a video playing while the viewer browses other screens in the mobile app — draggable between screen corners, tappable to return to the full player, and dismissible. It is an in-app surface the app draws and positions itself.
+
+It is not Picture-in-Picture, and the two are routinely confused because people ask for the behaviour by the wrong name. Picture-in-Picture is the operating system's own floating window: it appears when the viewer _leaves_ the app, the app cannot position or style it, and on Android it shrinks the whole app and blanks its interface, so there is no app left to browse behind it. The Mini Player is for browsing inside the app; Picture-in-Picture is for playback continuing outside it. A third, older sense of "mini player" also survives in the tree — a bar that appears on the video screen itself once the viewer scrolls past the player — which is a same-screen affordance and neither of the above.
+
 ### Watch Session
 
 The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
