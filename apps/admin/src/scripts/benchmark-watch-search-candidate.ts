@@ -23,6 +23,7 @@ const MAX_CANDIDATE_LOGICAL_SUBSEARCHES = 5
 const MAX_CANDIDATE_QUERY_FIELDS = 64
 const MAX_CANDIDATE_QUERY_BY_BYTES = 4_096
 const MAX_CANDIDATE_REQUEST_BYTES = 32 * 1_024
+const MAX_CANDIDATE_CALLER_P95_MS = 1_000
 
 const REQUIRED_SLICES = [
   "exact-title",
@@ -72,6 +73,8 @@ type CandidateDiagnostics = {
   groupedHits: number
   candidates: number
   hydratedRecords: number
+  rankingImplementation: "legacy-rrf" | "title-and-brand-v1"
+  rankingMode: "TITLE_AND_BRAND" | "SEMANTIC"
 }
 
 type CandidateCompareSuccess = {
@@ -113,6 +116,8 @@ export type CandidateBenchmarkAttempt = {
   outcome: "success" | "error"
   callerObservedMs: number
   serverMs: number | null
+  typesenseWallMs: number | null
+  typesenseServerMs: number | null
   degraded: boolean | null
   error: { code: string; errorClass: string } | null
   resultSignature: string | null
@@ -189,12 +194,14 @@ function sideIdentityMatches(
   if (expectedSide === "current") {
     return (
       side.diagnostics.profile === "CURRENT" &&
+      side.diagnostics.rankingImplementation === "legacy-rrf" &&
       side.diagnostics.generationId == null &&
       sameBindings(side.diagnostics.binding, identity.currentBindings)
     )
   }
   return (
     side.diagnostics.profile === "CANDIDATE" &&
+    side.diagnostics.rankingImplementation === "title-and-brand-v1" &&
     side.diagnostics.generationId === identity.generationId &&
     side.diagnostics.applicationRevision === identity.applicationRevision &&
     side.diagnostics.transcriptProjectionRevision ===
@@ -225,6 +232,8 @@ function attemptFromSide(input: {
       outcome: "error",
       callerObservedMs: input.side.callerObservedMs ?? 0,
       serverMs: null,
+      typesenseWallMs: null,
+      typesenseServerMs: null,
       degraded: null,
       error: input.side.error,
       resultSignature: null,
@@ -237,6 +246,8 @@ function attemptFromSide(input: {
       outcome: "error",
       callerObservedMs: input.side.callerObservedMs ?? 0,
       serverMs: input.side.response.latencyMs,
+      typesenseWallMs: input.side.diagnostics.typesenseWallTimeMs,
+      typesenseServerMs: input.side.diagnostics.typesenseSearchTimeMs,
       degraded: input.side.response.degraded,
       error: { code: "identity_mismatch", errorClass: "IdentityDriftError" },
       resultSignature: null,
@@ -249,6 +260,8 @@ function attemptFromSide(input: {
     callerObservedMs:
       input.side.callerObservedMs ?? input.side.response.latencyMs,
     serverMs: input.side.response.latencyMs,
+    typesenseWallMs: input.side.diagnostics.typesenseWallTimeMs,
+    typesenseServerMs: input.side.diagnostics.typesenseSearchTimeMs,
     degraded: input.side.response.degraded,
     error: null,
     resultSignature: resultSignature(input.side.response.results),
@@ -277,6 +290,16 @@ function latencyFor(attempts: readonly CandidateBenchmarkAttempt[]) {
           entry.serverMs == null ? [] : [entry.serverMs],
         ),
       ),
+      typesenseWall: percentiles(
+        entries.flatMap((entry) =>
+          entry.typesenseWallMs == null ? [] : [entry.typesenseWallMs],
+        ),
+      ),
+      typesenseServer: percentiles(
+        entries.flatMap((entry) =>
+          entry.typesenseServerMs == null ? [] : [entry.typesenseServerMs],
+        ),
+      ),
     }
   }
   return {
@@ -301,7 +324,11 @@ function completePairCount(attempts: readonly CandidateBenchmarkAttempt[]) {
 
 function pairedUpperRatio95(
   attempts: readonly CandidateBenchmarkAttempt[],
-  metric: "callerObservedMs" | "serverMs",
+  metric:
+    | "callerObservedMs"
+    | "serverMs"
+    | "typesenseWallMs"
+    | "typesenseServerMs",
 ) {
   const pairs = new Map<
     string,
@@ -334,7 +361,12 @@ function latencyRegressionReasons(
 ) {
   const reasons: string[] = []
   const summary = latencyFor(attempts)
-  for (const surface of ["callerObserved", "server"] as const) {
+  for (const surface of [
+    "callerObserved",
+    "server",
+    "typesenseWall",
+    "typesenseServer",
+  ] as const) {
     for (const quantile of ["p50Ms", "p95Ms", "p99Ms"] as const) {
       if (
         summary.candidate[surface][quantile] >
@@ -344,13 +376,24 @@ function latencyRegressionReasons(
       }
     }
   }
+  if (summary.candidate.callerObserved.p95Ms >= MAX_CANDIDATE_CALLER_P95_MS) {
+    reasons.push(`${label}_callerObserved_p95Ms_budget_exceeded`)
+  }
   const callerUpper = pairedUpperRatio95(attempts, "callerObservedMs")
   const serverUpper = pairedUpperRatio95(attempts, "serverMs")
+  const typesenseWallUpper = pairedUpperRatio95(attempts, "typesenseWallMs")
+  const typesenseServerUpper = pairedUpperRatio95(attempts, "typesenseServerMs")
   if (callerUpper == null || callerUpper > 1.05) {
     reasons.push(`${label}_callerObserved_confidence_regressed`)
   }
   if (serverUpper == null || serverUpper > 1.05) {
     reasons.push(`${label}_server_confidence_regressed`)
+  }
+  if (typesenseWallUpper == null || typesenseWallUpper > 1.05) {
+    reasons.push(`${label}_typesenseWall_confidence_regressed`)
+  }
+  if (typesenseServerUpper == null || typesenseServerUpper > 1.05) {
+    reasons.push(`${label}_typesenseServer_confidence_regressed`)
   }
   return reasons
 }
@@ -388,6 +431,12 @@ function boundedWorkReasons(attempts: readonly CandidateBenchmarkAttempt[]) {
     const current = pair.current?.diagnostics
     const candidate = pair.candidate?.diagnostics
     if (!current || !candidate) continue
+    if (candidate.retrievalCalls !== current.retrievalCalls) {
+      reasons.add("candidate_retrieval_calls_mismatch")
+    }
+    if (candidate.logicalSubsearches !== current.logicalSubsearches) {
+      reasons.add("candidate_logical_subsearches_mismatch")
+    }
     if (candidate.parsedResponseBytes > current.parsedResponseBytes) {
       reasons.add("candidate_response_bytes")
     }
@@ -437,6 +486,8 @@ export function evaluateCandidateQualification(input: {
           pairedUpperRatio95: {
             callerObserved: pairedUpperRatio95(attempts, "callerObservedMs"),
             server: pairedUpperRatio95(attempts, "serverMs"),
+            typesenseWall: pairedUpperRatio95(attempts, "typesenseWallMs"),
+            typesenseServer: pairedUpperRatio95(attempts, "typesenseServerMs"),
           },
         },
       ]
@@ -485,6 +536,11 @@ export function evaluateCandidateQualification(input: {
             "callerObservedMs",
           ),
           server: pairedUpperRatio95(input.attempts, "serverMs"),
+          typesenseWall: pairedUpperRatio95(input.attempts, "typesenseWallMs"),
+          typesenseServer: pairedUpperRatio95(
+            input.attempts,
+            "typesenseServerMs",
+          ),
         },
       },
       slices,
@@ -654,15 +710,32 @@ function evidenceFromEnvironment(): CandidateQualificationEvidence {
   return parsed
 }
 
-function normalizeDiagnostics(
+export function normalizeCandidateBenchmarkDiagnostics(
   diagnostics: Awaited<
     ReturnType<TypesenseWatchSearchService["searchWithDiagnostics"]>
   >["diagnostics"],
 ): CandidateDiagnostics {
   return {
-    ...diagnostics,
+    profile: diagnostics.profile,
+    generationId: diagnostics.generationId,
+    applicationRevision: diagnostics.applicationRevision,
     transcriptProjectionRevision:
       diagnostics.transcriptProjectionRevision?.toString() ?? null,
+    binding: diagnostics.binding,
+    retrievalCalls: diagnostics.retrievalCalls,
+    logicalSubsearches: diagnostics.logicalSubsearches,
+    queryFieldCount: diagnostics.queryFieldCount,
+    queryByBytes: diagnostics.queryByBytes,
+    requestBytes: diagnostics.requestBytes,
+    parsedResponseBytes: diagnostics.parsedResponseBytes,
+    typesenseSearchTimeMs: diagnostics.typesenseSearchTimeMs,
+    typesenseWallTimeMs: diagnostics.typesenseWallTimeMs,
+    retryCount: diagnostics.retryCount,
+    groupedHits: diagnostics.groupedHits,
+    candidates: diagnostics.candidates,
+    hydratedRecords: diagnostics.hydratedRecords,
+    rankingImplementation: diagnostics.rankingImplementation,
+    rankingMode: diagnostics.rankingMode,
   }
 }
 
@@ -685,7 +758,7 @@ async function executeProfile(
           playbackId: entry.playbackId,
         })),
       },
-      diagnostics: normalizeDiagnostics(result.diagnostics),
+      diagnostics: normalizeCandidateBenchmarkDiagnostics(result.diagnostics),
     }
   } catch (error) {
     return {

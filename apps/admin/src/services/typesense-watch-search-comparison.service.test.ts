@@ -87,6 +87,10 @@ function searchResult(profile: "CURRENT" | "CANDIDATE") {
       groupedHits: 3,
       candidates: 3,
       hydratedRecords: 1,
+      rankingImplementation: "legacy-rrf" as const,
+      rankingMode: "SEMANTIC" as const,
+      rankingAnchor: null,
+      rankingTrace: [],
     },
   }
 }
@@ -142,13 +146,13 @@ describe("TypesenseWatchSearchComparisonService", () => {
       })),
       getGeneration: vi.fn(async () => ({
         id: "generation-1",
-        applicationRevision: "watch-search-candidate/v1",
+        applicationRevision: "watch-search-candidate/v2",
         transcriptCollection: "watch_search_transcripts_physical",
         transcriptProjectionRevision: 7n,
       })),
       resolveGeneration: vi.fn(async () => ({
         generationId: "generation-1",
-        applicationRevision: "watch-search-candidate/v1",
+        applicationRevision: "watch-search-candidate/v2",
         transcriptProjectionRevision: 7n,
         fieldManifests: candidateProfile.fieldManifests,
         collections: candidateProfile.binding,
@@ -160,11 +164,11 @@ describe("TypesenseWatchSearchComparisonService", () => {
     ).resolves.toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v1",
+      applicationRevision: "watch-search-candidate/v2",
     })
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v1",
+      applicationRevision: "watch-search-candidate/v2",
       transcriptCollection: "watch_search_transcripts_physical",
       transcriptProjectionRevision: 7n,
       requireQualified: false,

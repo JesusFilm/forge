@@ -6,7 +6,7 @@
  * requalified candidate generation.
  */
 export const TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION =
-  "watch-search-candidate/v1"
+  "watch-search-candidate/v2"
 
 export function candidateWatchSearchApplicationRevision(): string {
   return TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION

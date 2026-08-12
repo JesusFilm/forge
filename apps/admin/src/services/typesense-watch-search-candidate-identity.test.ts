@@ -14,7 +14,7 @@ describe("candidateWatchSearchApplicationRevision", () => {
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-b")
 
     expect(candidateWatchSearchApplicationRevision()).toBe(firstRevision)
-    expect(firstRevision).toBe("watch-search-candidate/v1")
+    expect(firstRevision).toBe("watch-search-candidate/v2")
   })
 
   it("is the only revision source used by every candidate boundary", () => {

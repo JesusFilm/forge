@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   evaluateCandidateQualification,
+  normalizeCandidateBenchmarkDiagnostics,
   parseCandidateBenchmarkEnvironment,
   runPairedCandidateBenchmark,
   type CandidateBenchmarkAttempt,
@@ -75,6 +76,11 @@ function successResponse(
       groupedHits: 3,
       candidates: 10,
       hydratedRecords: 1,
+      rankingImplementation:
+        profile === "CANDIDATE"
+          ? ("title-and-brand-v1" as const)
+          : ("legacy-rrf" as const),
+      rankingMode: "SEMANTIC" as const,
     },
   })
   return {
@@ -101,6 +107,8 @@ function successfulAttempt(
     outcome: "success",
     callerObservedMs: candidate ? 99 : 100,
     serverMs: candidate ? 49 : 50,
+    typesenseWallMs: candidate ? 19 : 20,
+    typesenseServerMs: candidate ? 9 : 10,
     degraded: false,
     error: null,
     resultSignature: "a".repeat(64),
@@ -126,6 +134,8 @@ function successfulAttempt(
       groupedHits: 3,
       candidates: 10,
       hydratedRecords: 1,
+      rankingImplementation: candidate ? "title-and-brand-v1" : "legacy-rrf",
+      rankingMode: "SEMANTIC",
       ...diagnostics,
     },
     identity,
@@ -322,6 +332,8 @@ describe("paired candidate qualification benchmark", () => {
       outcome: "success" as const,
       callerObservedMs: index % 2 === 0 ? 100 : 99,
       serverMs: index % 2 === 0 ? 50 : 49,
+      typesenseWallMs: index % 2 === 0 ? 20 : 19,
+      typesenseServerMs: index % 2 === 0 ? 10 : 9,
       degraded: false,
       error: null,
       resultSignature: "a".repeat(64),
@@ -354,6 +366,11 @@ describe("paired candidate qualification benchmark", () => {
       p95Ms: 100,
       p99Ms: 100,
     })
+    expect(evaluation.latency.aggregate.candidate.typesenseWall).toEqual({
+      p50Ms: 19,
+      p95Ms: 19,
+      p99Ms: 19,
+    })
     expect(evaluation.status).toBe("NOT_QUALIFIED")
     expect(evaluation.reasons).toEqual(
       expect.arrayContaining([
@@ -376,6 +393,91 @@ describe("paired candidate qualification benchmark", () => {
 
     expect(evaluation.status).toBe("QUALIFIED")
     expect(evaluation.reasons).toEqual([])
+  })
+
+  it("rejects Typesense p95 regressions even when application latency improves", () => {
+    const current = successfulAttempt("current")
+    const candidate = {
+      ...successfulAttempt("candidate"),
+      typesenseWallMs: 21,
+      typesenseServerMs: 11,
+    }
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [current, candidate],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("NOT_QUALIFIED")
+    expect(evaluation.reasons).toEqual(
+      expect.arrayContaining([
+        "aggregate_typesenseWall_p95Ms_regressed",
+        "aggregate_typesenseServer_p95Ms_regressed",
+      ]),
+    )
+  })
+
+  it("rejects a Candidate p95 at or above the one-second budget", () => {
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [
+        { ...successfulAttempt("current"), callerObservedMs: 1_100 },
+        { ...successfulAttempt("candidate"), callerObservedMs: 1_000 },
+      ],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("NOT_QUALIFIED")
+    expect(evaluation.reasons).toContain(
+      "aggregate_callerObserved_p95Ms_budget_exceeded",
+    )
+  })
+
+  it("allowlists benchmark diagnostics and excludes query-derived ranking evidence", () => {
+    const normalized = normalizeCandidateBenchmarkDiagnostics({
+      ...successfulAttempt("candidate").diagnostics!,
+      transcriptProjectionRevision: 7n,
+      rankingAnchor: {
+        normalized: "private sentinel query",
+        core: "private sentinel query",
+        compactCore: "privatesentinelquery",
+        coreTokens: ["private", "sentinel", "query"],
+        sourceCanonicalVideoId: "core:sentinel",
+        matchKind: "NORMALIZED_WHOLE_TITLE",
+      },
+      rankingTrace: [],
+    })
+
+    expect(normalized).not.toHaveProperty("rankingAnchor")
+    expect(normalized).not.toHaveProperty("rankingTrace")
+    expect(JSON.stringify(normalized)).not.toContain("private sentinel query")
+  })
+
+  it("requires candidate calls and logical subsearches to match Current", () => {
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [
+        successfulAttempt("current"),
+        successfulAttempt("candidate", {
+          retrievalCalls: 1,
+          logicalSubsearches: 4,
+        }),
+      ],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.reasons).toEqual(
+      expect.arrayContaining([
+        "candidate_retrieval_calls_mismatch",
+        "candidate_logical_subsearches_mismatch",
+      ]),
+    )
   })
 
   it.each([
