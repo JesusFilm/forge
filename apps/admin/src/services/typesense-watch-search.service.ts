@@ -74,6 +74,9 @@ const RRF_RANK_CONSTANT = 60
 const TITLE_LANE_WEIGHT = 0.56
 const METADATA_LANE_WEIGHT = 0.14
 const SEMANTIC_LANE_WEIGHT = 0.3
+const TYPESENSE_MATCHED_TOKEN_CAP = 15
+const DROPPED_TOKEN_QUALITY_FACTOR = 0.2
+const TYPO_PREFIX_QUALITY_COST = 0.25
 const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
@@ -98,6 +101,27 @@ const AVAILABILITY_ACTION_FIELDS = [
 ] as const
 
 type TypesenseSearchClient = Pick<TypesenseClient, "multiSearch">
+
+function nonNegativeInteger(value: number | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : 0
+}
+
+export function typesenseLexicalMatchQuality(
+  matchInfo: TypesenseSearchHit<unknown>["text_match_info"],
+): number {
+  const tokensMatched = nonNegativeInteger(matchInfo?.tokens_matched)
+  const reportedDrops = nonNegativeInteger(matchInfo?.num_tokens_dropped)
+  const typoPrefixScore = nonNegativeInteger(matchInfo?.typo_prefix_score)
+  const effectiveDrops =
+    tokensMatched === TYPESENSE_MATCHED_TOKEN_CAP && reportedDrops > 0
+      ? 0
+      : reportedDrops
+  const droppedTokenQuality = DROPPED_TOKEN_QUALITY_FACTOR ** effectiveDrops
+  const typoPrefixQuality = 1 / (1 + TYPO_PREFIX_QUALITY_COST * typoPrefixScore)
+  return droppedTokenQuality * typoPrefixQuality
+}
 
 type TypesenseWatchSearchDeps = {
   embedder?: WatchSearchQueryEmbedder
@@ -392,7 +416,6 @@ function lexicalLaneRequest(
   languageIdentities: readonly string[] | null,
   candidateLimit: number,
   offset: number,
-  lane: "title" | "metadata",
 ): TypesenseSearchRequest {
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
   const isFallbackField = (field: string) => field.endsWith("_fallback")
@@ -417,11 +440,7 @@ function lexicalLaneRequest(
     split_join_tokens: "always",
     text_match_type: "max_weight",
     prioritize_exact_match: true,
-    // Title hits must cover every query token: a dropped-token retry lets
-    // single-token title hits (lane weight 0.56) outrank full-phrase
-    // description matches (0.14) — the "World Cup" regression. The metadata
-    // lane keeps the retry as the long-query recall safety net.
-    drop_tokens_threshold: lane === "title" ? 0 : 1,
+    drop_tokens_threshold: 1,
     include_fields: [
       "id",
       "videoId",
@@ -1361,7 +1380,6 @@ export class TypesenseWatchSearchService {
         globalCandidateRecall ? null : lexicalLanguageIdentities,
         candidateLimit,
         offset,
-        "title",
       ),
       lexicalLaneRequest(
         this.profile.binding.lexical,
@@ -1370,7 +1388,6 @@ export class TypesenseWatchSearchService {
         globalCandidateRecall ? null : lexicalLanguageIdentities,
         candidateLimit,
         offset,
-        "metadata",
       ),
       ...(embedding
         ? [
@@ -1619,37 +1636,64 @@ export class TypesenseWatchSearchService {
       laneGroups.forEach((group, rank) => {
         const canonicalVideoId = group.group_key[0]
         if (!canonicalVideoId) return
-        const contribution = weight / (RRF_RANK_CONSTANT + rank + 1)
+        const baseContribution = weight / (RRF_RANK_CONSTANT + rank + 1)
         const state = groups.get(canonicalVideoId) ?? {
           canonicalVideoId,
           fusedScore: 0,
           wholeTitleMatch: false,
           members: new Map<string, Candidate>(),
         }
-        state.fusedScore += contribution
+        const winningHitByVideoId = new Map<
+          string,
+          { candidate: Candidate; quality: number }
+        >()
+        let bestGroupQuality = 0
         for (const hit of group.hits) {
+          const quality = typesenseLexicalMatchQuality(hit.text_match_info)
+          bestGroupQuality = Math.max(bestGroupQuality, quality)
           const values = lexicalValues(hit.document, fields)
           const { exact, wholeTitleMatch } =
             lane === "title"
               ? classifyTitleMatch(values)
               : { exact: false, wholeTitleMatch: false }
           state.wholeTitleMatch ||= wholeTitleMatch
-          addCandidate(
-            state,
-            {
-              videoId: hit.document.videoId,
-              videoEditionId: null,
-              kind: exact ? "exact" : "metadata",
-              wholeTitleMatch,
-              sourceScore: 0,
-              evidenceLanguageSlug: lexicalEvidenceLanguageSlug(
-                hit.document.languageIdentity,
-              ),
-              snippet: lane === "metadata" ? (values[0] ?? null) : null,
-              startSeconds: null,
+          const candidate: Candidate = {
+            videoId: hit.document.videoId,
+            videoEditionId: null,
+            kind: exact ? "exact" : "metadata",
+            wholeTitleMatch,
+            sourceScore: 0,
+            evidenceLanguageSlug: lexicalEvidenceLanguageSlug(
+              hit.document.languageIdentity,
+            ),
+            snippet: lane === "metadata" ? (values[0] ?? null) : null,
+            startSeconds: null,
+          }
+          const existing = winningHitByVideoId.get(candidate.videoId)
+          if (!existing) {
+            winningHitByVideoId.set(candidate.videoId, { candidate, quality })
+            continue
+          }
+          const winner =
+            quality > existing.quality ? { candidate, quality } : existing
+          winningHitByVideoId.set(candidate.videoId, {
+            ...winner,
+            candidate: {
+              ...winner.candidate,
+              kind:
+                existing.candidate.kind === "exact" ||
+                candidate.kind === "exact"
+                  ? "exact"
+                  : "metadata",
+              wholeTitleMatch:
+                existing.candidate.wholeTitleMatch || candidate.wholeTitleMatch,
             },
-            contribution,
-          )
+          })
+        }
+        if (winningHitByVideoId.size === 0) return
+        state.fusedScore += baseContribution * bestGroupQuality
+        for (const { candidate, quality } of winningHitByVideoId.values()) {
+          addCandidate(state, candidate, baseContribution * quality)
         }
         groups.set(canonicalVideoId, state)
       })

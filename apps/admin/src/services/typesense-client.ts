@@ -40,6 +40,9 @@ export type TypesenseSearchHit<T> = {
   text_match?: number
   text_match_info?: {
     score?: string
+    tokens_matched?: number
+    num_tokens_dropped?: number
+    typo_prefix_score?: number
   }
   vector_distance?: number
 }
