@@ -67,6 +67,8 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
    another backend request. Align the panel to the search field, stretch it to
    the remaining visual viewport, and move Search language into the panel as a
    quiet "Searching in" context control.
+7. Return up to six extracted query phrases before the existing six direct
+   content matches.
 
 ## Constraints
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS,
+  MAX_WATCH_SEARCH_QUERY_SUGGESTIONS,
   MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS,
   MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS,
   TypesenseWatchSearchSuggestionsService,
@@ -302,7 +303,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     expect(findFirstMock).toHaveBeenCalledTimes(1)
   })
 
-  it("returns stable unique raw titles capped at five", async () => {
+  it("returns stable unique direct matches within the configured caps", async () => {
     findFirstMock.mockResolvedValue({ bcp47: "en" })
     multiSearchMock.mockResolvedValue([
       {
@@ -345,7 +346,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     expect(result[0]).toEqual(querySuggestion("Jesus"))
     expect(
       result.filter((row) => row.kind === "query").length,
-    ).toBeLessThanOrEqual(3)
+    ).toBeLessThanOrEqual(MAX_WATCH_SEARCH_QUERY_SUGGESTIONS)
     expect(result.filter((row) => row.kind === "content")).toHaveLength(6)
     expect(
       result.filter((row) => row.kind === "content").map((row) => row.title),
