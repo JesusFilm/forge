@@ -765,6 +765,28 @@ describe("module constants", () => {
     expect(RETENTION_WALL_WARN_AGE_DAYS).toBeLessThan(30)
     expect(RETENTION_WALL_WARN_AGE_DAYS).toBeGreaterThan(AI_CHAT_RETENTION_DAYS)
   })
+
+  it("defaults both entry points to the retention config, never the prompt-tuned one (timeout seam pin)", () => {
+    // Reverting either default back to getLangfuseConfig() reinstates the 3s
+    // prompt timeout the live batch-DELETE was MEASURED to exceed (~3.4s,
+    // 2026-08-11) — a one-line revert that compiles and leaves every mocked
+    // test green, so pin the seam at the source level.
+    const source = readFileSync(
+      new URL("./langfuse-trace-retention.ts", import.meta.url),
+      "utf8",
+    )
+    // Strip comments first (mirroring the tracing-flag sibling test) so the
+    // pins match CODE, not prose that may legitimately name the old accessor.
+    const stripped = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "")
+    expect(stripped).toContain("getConfig = getLangfuseTraceRetentionConfig")
+    expect(stripped).toContain("config = getLangfuseTraceRetentionConfig()")
+    // Total ban: since the review-driven gate-default swap, NO code path in
+    // this module may reference the prompt-tuned accessor at all. (The
+    // retention accessor's name does not contain this substring.)
+    expect(stripped).not.toContain("getLangfuseConfig")
+  })
 })
 
 describe("msUntilNextUtcFireHour", () => {
