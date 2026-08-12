@@ -104,6 +104,12 @@ type SuggestionSection = {
   rows: Array<{ suggestion: WatchSearchSuggestion; index: number }>
 }
 
+type SuggestionGroup = {
+  id: "suggestions" | "direct-matches"
+  label: string | null
+  sections: SuggestionSection[]
+}
+
 function suggestionContentSection(
   label: WatchSearchSuggestion["label"],
 ): Exclude<SuggestionSection["id"], "query"> {
@@ -365,6 +371,27 @@ export function SearchOverlay() {
     ]
     return sections.filter((section) => section.rows.length > 0)
   }, [suggestions, t, videoLabels])
+  const suggestionGroups = useMemo<SuggestionGroup[]>(() => {
+    const querySections = suggestionSections.filter(
+      (section) => section.id === "query",
+    )
+    const directMatchSections = suggestionSections.filter(
+      (section) => section.id !== "query",
+    )
+
+    return [
+      {
+        id: "suggestions",
+        label: t("searchSuggestions"),
+        sections: querySections,
+      },
+      {
+        id: "direct-matches",
+        label: null,
+        sections: directMatchSections,
+      },
+    ].filter((group) => group.sections.length > 0) as SuggestionGroup[]
+  }, [suggestionSections, t])
   const suggestionNavigationOrder = useMemo(
     () =>
       suggestionSections.flatMap((section) =>
@@ -1041,139 +1068,157 @@ export function SearchOverlay() {
                 aria-label={t("searchSuggestions")}
                 className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {suggestionSections.map((section, sectionIndex) => {
-                  const SectionIcon = section.icon
-                  return (
-                    <div
-                      key={section.id}
-                      role="group"
-                      aria-labelledby={`${suggestionListId}-${section.id}-heading`}
-                      className={
-                        sectionIndex === 0
-                          ? ""
-                          : "mt-1 border-t border-white/[0.08] pt-1"
-                      }
-                    >
+                {suggestionGroups.map((group, groupIndex) => (
+                  <div
+                    key={group.id}
+                    role="presentation"
+                    data-testid={`search-suggestion-group-${group.id}`}
+                    className={
+                      groupIndex === 0
+                        ? ""
+                        : "mt-2 border-t border-white/[0.12] pt-2"
+                    }
+                  >
+                    {group.label && (
                       <div
-                        id={`${suggestionListId}-${section.id}-heading`}
-                        className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-500"
+                        id={`${suggestionListId}-${group.id}-heading`}
+                        className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-400"
                       >
-                        {section.label}
+                        {group.label}
                       </div>
-                      <div role="presentation">
-                        {section.rows.map(({ suggestion, index }) => {
-                          const active = activeSuggestionIndex === index
-                          const descriptionParts = suggestion.description
-                            ? suggestionDescriptionParts(
-                                suggestion.description,
-                                normalizedSuggestionQuery,
-                              )
-                            : null
-                          return (
-                            <div
-                              key={`${suggestion.kind}-${suggestion.id ?? suggestion.title}-${index}`}
-                              id={`${suggestionListId}-option-${index}`}
-                              role="option"
-                              aria-selected={active}
-                              data-suggestion-index={index}
-                              dir="auto"
-                              onMouseEnter={() =>
-                                setActiveSuggestionIndex(index)
-                              }
-                              onPointerDown={(event) => {
-                                if (
-                                  !event.pointerType ||
-                                  event.pointerType === "mouse"
-                                ) {
-                                  event.preventDefault()
-                                  activateSuggestion(suggestion)
-                                  return
-                                }
-                                suggestionTouchGestureRef.current = {
-                                  pointerId: event.pointerId,
-                                  startX: event.clientX,
-                                  startY: event.clientY,
-                                  moved: false,
-                                }
-                              }}
-                              onPointerMove={(event) => {
-                                const gesture =
-                                  suggestionTouchGestureRef.current
-                                if (gesture?.pointerId !== event.pointerId)
-                                  return
-                                if (
-                                  Math.hypot(
-                                    event.clientX - gesture.startX,
-                                    event.clientY - gesture.startY,
-                                  ) > 8
-                                ) {
-                                  gesture.moved = true
-                                }
-                              }}
-                              onPointerUp={(event) => {
-                                const gesture =
-                                  suggestionTouchGestureRef.current
-                                if (gesture?.pointerId !== event.pointerId)
-                                  return
-                                suggestionTouchGestureRef.current = null
-                                if (!gesture.moved) {
-                                  event.preventDefault()
-                                  activateSuggestion(suggestion)
-                                }
-                              }}
-                              onPointerCancel={() => {
-                                suggestionTouchGestureRef.current = null
-                              }}
-                              className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors ${
-                                active
-                                  ? "bg-white/[0.11] text-white"
-                                  : "text-stone-200 hover:bg-white/[0.07] hover:text-white"
-                              }`}
-                            >
-                              <SectionIcon
-                                size={17}
-                                strokeWidth={1.8}
-                                aria-hidden="true"
-                                className={`mt-0.5 shrink-0 ${
-                                  active ? "text-stone-200" : "text-stone-500"
-                                }`}
-                              />
-                              <span className="min-w-0 flex-1">
-                                <bdi className="block truncate text-sm font-medium leading-5">
-                                  {suggestion.title}
-                                </bdi>
-                                {suggestion.kind === "content" && (
-                                  <span className="block truncate text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-stone-500">
-                                    {videoLabels(
-                                      videoLabelMessageKey(suggestion.label),
-                                    )}
-                                  </span>
-                                )}
-                                {descriptionParts && (
-                                  <bdi
-                                    className={`line-clamp-1 text-xs leading-4 ${
-                                      active
-                                        ? "text-stone-300"
-                                        : "text-stone-500"
-                                    }`}
-                                  >
-                                    {descriptionParts.before}
-                                    {descriptionParts.match && (
-                                      <mark className="bg-transparent font-medium text-stone-200">
-                                        {descriptionParts.match}
-                                      </mark>
-                                    )}
-                                    {descriptionParts.after}
-                                  </bdi>
-                                )}
-                              </span>
+                    )}
+                    {group.sections.map((section, sectionIndex) => {
+                      const SectionIcon = section.icon
+                      return (
+                        <div
+                          key={section.id}
+                          role="group"
+                          aria-label={section.label}
+                          className={
+                            sectionIndex === 0
+                              ? ""
+                              : "mt-1 border-t border-white/[0.06] pt-1"
+                          }
+                        >
+                          {group.id === "direct-matches" && (
+                            <div className="px-3 pb-1 pt-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-stone-600">
+                              {section.label}
                             </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+                          )}
+                          {section.rows.map(({ suggestion, index }) => {
+                            const active = activeSuggestionIndex === index
+                            const descriptionParts = suggestion.description
+                              ? suggestionDescriptionParts(
+                                  suggestion.description,
+                                  normalizedSuggestionQuery,
+                                )
+                              : null
+                            return (
+                              <div
+                                key={`${suggestion.kind}-${suggestion.id ?? suggestion.title}-${index}`}
+                                id={`${suggestionListId}-option-${index}`}
+                                role="option"
+                                aria-selected={active}
+                                data-suggestion-index={index}
+                                dir="auto"
+                                onMouseEnter={() =>
+                                  setActiveSuggestionIndex(index)
+                                }
+                                onPointerDown={(event) => {
+                                  if (
+                                    !event.pointerType ||
+                                    event.pointerType === "mouse"
+                                  ) {
+                                    event.preventDefault()
+                                    activateSuggestion(suggestion)
+                                    return
+                                  }
+                                  suggestionTouchGestureRef.current = {
+                                    pointerId: event.pointerId,
+                                    startX: event.clientX,
+                                    startY: event.clientY,
+                                    moved: false,
+                                  }
+                                }}
+                                onPointerMove={(event) => {
+                                  const gesture =
+                                    suggestionTouchGestureRef.current
+                                  if (gesture?.pointerId !== event.pointerId)
+                                    return
+                                  if (
+                                    Math.hypot(
+                                      event.clientX - gesture.startX,
+                                      event.clientY - gesture.startY,
+                                    ) > 8
+                                  ) {
+                                    gesture.moved = true
+                                  }
+                                }}
+                                onPointerUp={(event) => {
+                                  const gesture =
+                                    suggestionTouchGestureRef.current
+                                  if (gesture?.pointerId !== event.pointerId)
+                                    return
+                                  suggestionTouchGestureRef.current = null
+                                  if (!gesture.moved) {
+                                    event.preventDefault()
+                                    activateSuggestion(suggestion)
+                                  }
+                                }}
+                                onPointerCancel={() => {
+                                  suggestionTouchGestureRef.current = null
+                                }}
+                                className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors ${
+                                  active
+                                    ? "bg-white/[0.11] text-white"
+                                    : "text-stone-200 hover:bg-white/[0.07] hover:text-white"
+                                }`}
+                              >
+                                <SectionIcon
+                                  size={17}
+                                  strokeWidth={1.8}
+                                  aria-hidden="true"
+                                  className={`mt-0.5 shrink-0 ${
+                                    active ? "text-stone-200" : "text-stone-500"
+                                  }`}
+                                />
+                                <span className="min-w-0 flex-1">
+                                  <bdi className="block truncate text-sm font-medium leading-5">
+                                    {suggestion.title}
+                                  </bdi>
+                                  {suggestion.kind === "content" && (
+                                    <span className="block truncate text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-stone-500">
+                                      {videoLabels(
+                                        videoLabelMessageKey(suggestion.label),
+                                      )}
+                                    </span>
+                                  )}
+                                  {descriptionParts && (
+                                    <bdi
+                                      className={`line-clamp-1 text-xs leading-4 ${
+                                        active
+                                          ? "text-stone-300"
+                                          : "text-stone-500"
+                                      }`}
+                                    >
+                                      {descriptionParts.before}
+                                      {descriptionParts.match && (
+                                        <mark className="bg-transparent font-medium text-stone-200">
+                                          {descriptionParts.match}
+                                        </mark>
+                                      )}
+                                      {descriptionParts.after}
+                                    </bdi>
+                                  )}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </div>,
