@@ -1,6 +1,6 @@
 // Factory returns literals only (no outer refs) to avoid jest hoist/TDZ issues;
 // tests mutate the mocked `env` object, which datadog.ts (and config.ts) read by
-// reference. DEFAULT_ADMIN_GRAPHQL_URL is exported because config.ts imports it.
+// reference. The endpoint constants live in the unmocked `lib/adminEndpoint`.
 jest.mock("../env", () => ({
   env: {
     EXPO_PUBLIC_ADMIN_GRAPHQL_URL: "https://admin.jesusfilm.org/api/graphql",
@@ -13,7 +13,6 @@ jest.mock("../env", () => ({
     EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE: undefined,
     EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE: undefined,
   },
-  DEFAULT_ADMIN_GRAPHQL_URL: "https://admin.jesusfilm.org/api/graphql",
 }))
 
 // The native module only exists in a prebuilt dev-client; mock it so the pure

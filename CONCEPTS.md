@@ -148,6 +148,25 @@ An absent overlay inherits the selected locale's canonical copy and existing
 image fallback. Managed social art remains promotional: it does not become the
 Video's thumbnail truth.
 
+### Watch Search Candidate Generation
+
+An immutable set of candidate-owned search projections, with qualification
+evidence bound to it, built for private evaluation before it can become the
+public Watch search implementation.
+
+A Candidate Generation is recorded before its external collections are built,
+then moves through a guarded lifecycle. Failed or retired generations retain
+enough ownership evidence for safe cleanup without changing their identity.
+
+### Watch Search Candidate Pointer
+
+A versioned control-plane reference that selects one Watch Search Candidate
+Generation for either private evaluation or public serving.
+
+The Evaluation pointer can move without changing public Watch traffic. The
+Serving pointer is separate, so publishing a test candidate never promotes it
+implicitly.
+
 ## Video source mapper
 
 ### Video Source Mapper
@@ -299,6 +318,18 @@ take ownership, while generation and token fencing determine who may complete.
 Experiments become measuring only after objective activation, overlap becomes a
 confounder only when treatments are simultaneously live, and canonical drift
 forces an inconclusive outcome rather than a lesson or rollback.
+
+### SEO Run Audit Report
+
+The bounded, versioned explanation of one SEO Marketing Agent job: which safe
+provider scope reached evaluation, how candidates moved through the decision
+funnel, which actions were selected or rejected, and which proposal identities
+resulted.
+
+Unlike the SEO Experiment Ledger, the report freezes the machine decision at
+job completion and carries only short-lived provider/query detail. Later human
+decisions and experiment outcomes remain canonical in the ledger and are
+composed with the report when an operator reads it.
 
 ### Search Pipeline Mode
 
@@ -826,6 +857,20 @@ Activity begins when the first owner opens and ends only after the final owner r
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
+
+A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
+
+### Autostart Veil
+
+The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
+
+The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+### Ambient Backdrop
+
+The soft blurred wash of colour that bleeds from the video's edges into the surrounding screen, filling what would otherwise be flat letterboxing around the player.
+
+It is derived from the video's still artwork rather than from the moving picture, so it is one colour field for the whole video and does not follow the footage from scene to scene. It sits behind every other layer, takes no touches, and fades in rather than appearing at once, so a slow artwork load never flashes.
 
 ### Watch Session
 

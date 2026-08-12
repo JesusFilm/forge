@@ -279,7 +279,7 @@ describe("Typesense Watch Search indexer", () => {
     const transaction = vi.fn(
       async (
         run: (tx: unknown) => Promise<unknown>,
-        options: { isolationLevel: string },
+        options: { isolationLevel: string; timeout: number },
       ) => {
         const capturedTitle = sourceTitle
         const tx = {
@@ -291,7 +291,10 @@ describe("Typesense Watch Search indexer", () => {
           },
           $queryRaw: vi.fn(async () => []),
         }
-        expect(options).toEqual({ isolationLevel: "RepeatableRead" })
+        expect(options).toEqual({
+          isolationLevel: "RepeatableRead",
+          timeout: 60_000,
+        })
         return run(tx)
       },
     )

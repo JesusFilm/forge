@@ -18,8 +18,8 @@ type HomeHeaderProps = {
   title: string | null
   titleOpacity: number
   /**
-   * Home-tab variant: search + profile grouped right, left slot empty. Default
-   * (Experience screens) keeps the original layout — search left, profile right.
+   * Home-tab variant: profile left, search right. Default (Experience screens)
+   * keeps the original layout — search left, profile right.
    */
   homeVariant?: boolean
 }
@@ -71,7 +71,7 @@ export function HomeHeader({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {homeVariant ? <View /> : searchButton}
+      {homeVariant ? profileButton : searchButton}
 
       {title != null && titleOpacity > 0 && (
         <GlassView
@@ -85,14 +85,7 @@ export function HomeHeader({
         </GlassView>
       )}
 
-      {homeVariant ? (
-        <View style={styles.buttonRow}>
-          {searchButton}
-          {profileButton}
-        </View>
-      ) : (
-        profileButton
-      )}
+      {homeVariant ? searchButton : profileButton}
     </View>
   )
 }
@@ -109,11 +102,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
   glassPill: {
     flexShrink: 1,

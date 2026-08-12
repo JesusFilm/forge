@@ -1268,11 +1268,16 @@ describe("TypesenseWatchSearchService", () => {
       filter_by: "languageIdentity:=[`slug:french`,`locale:fr`]",
       group_limit: 3,
       prioritize_exact_match: true,
-      drop_tokens_threshold: 1,
+      // Disabled on the title lane only: dropped-token title hits outrank
+      // full-phrase description matches (the "World Cup" regression).
+      drop_tokens_threshold: 0,
     })
     expect(metadataRequest).toMatchObject({
       query_by: "metadata_fr,metadata_fallback",
       group_limit: 3,
+      // The metadata lane keeps the dropped-token retry as the long-query
+      // recall safety net.
+      drop_tokens_threshold: 1,
     })
     expect(titleRequest).not.toHaveProperty("validate_field_names")
     expect(semanticRequest?.q).toBe("*")

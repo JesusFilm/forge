@@ -52,7 +52,7 @@ describe("getCookieValue", () => {
 })
 
 describe("serializeAnonIdCookie", () => {
-  it("carries the hardened attributes and the rolling 30-day Max-Age", () => {
+  it("carries the hardened attributes and the rolling 25-day Max-Age", () => {
     const cookie = serializeAnonIdCookie(VALID_UUID)
     expect(cookie).toContain(`${CHAT_ANON_ID_COOKIE}=${VALID_UUID}`)
     expect(cookie).toContain("Path=/")
@@ -61,8 +61,8 @@ describe("serializeAnonIdCookie", () => {
     expect(cookie).toContain("SameSite=Lax")
     // Host-only by construction: no Domain attribute, ever.
     expect(cookie).not.toContain("Domain")
-    // 30 days — aligned with the ai-chat anonymous retention window.
-    expect(ANON_ID_TTL_SECONDS).toBe(30 * 24 * 60 * 60)
+    // 25 days — aligned with the flat ai-chat retention window (feat-336).
+    expect(ANON_ID_TTL_SECONDS).toBe(25 * 24 * 60 * 60)
   })
 })
 

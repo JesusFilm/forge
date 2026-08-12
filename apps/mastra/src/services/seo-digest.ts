@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto"
 
+import { minimizeSeoValue } from "./seo-data-minimization"
+
 export function stableSeoJson(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(stableSeoJson).join(",")}]`
@@ -25,6 +27,12 @@ export function seoProposalPayload(value: object): Record<string, unknown> {
   return immutablePayload
 }
 
+export function seoPersistenceProposalPayload(
+  value: object,
+): Record<string, unknown> {
+  return minimizeSeoValue(seoProposalPayload(value)) as Record<string, unknown>
+}
+
 export function digestSeoProposalPayload(value: object): string {
-  return digestSeoValue(seoProposalPayload(value))
+  return digestSeoValue(seoPersistenceProposalPayload(value))
 }

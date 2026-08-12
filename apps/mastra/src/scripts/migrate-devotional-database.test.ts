@@ -11,6 +11,7 @@ import {
   runDevotionalDatabaseMigrations,
   type MigrationClient,
 } from "./migrate-devotional-database"
+import { REQUIRED_DEVOTIONAL_MIGRATION } from "../services/devotional/workspace/database"
 
 function result<T extends QueryResultRow>(rows: T[] = []): QueryResult<T> {
   return {
@@ -111,5 +112,18 @@ describe("devotional database migrator", () => {
   it("accepts only version-prefixed SQL filenames", () => {
     expect(parseVersion("001-devotional-workspace.sql")).toBe(1)
     expect(() => parseVersion("devotional.sql")).toThrow(/invalid Mastra/)
+  })
+
+  it("pins readiness to the immutable devotional migration bytes", async () => {
+    const sql = await readFile(
+      resolve(DEFAULT_MIGRATIONS_DIRECTORY, REQUIRED_DEVOTIONAL_MIGRATION.name),
+      "utf8",
+    )
+
+    expect(REQUIRED_DEVOTIONAL_MIGRATION).toEqual({
+      version: 1,
+      name: "001-devotional-workspace.sql",
+      sha256: createHash("sha256").update(sql).digest("hex"),
+    })
   })
 })

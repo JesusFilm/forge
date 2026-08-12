@@ -80,6 +80,52 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 
+## Admin endpoint resolution (feat-339)
+
+**A development bundle defaults to local admin** —
+`http://localhost:3003/api/graphql`, rewritten to `10.0.2.2` on the Android
+emulator. No env file required: a fresh clone or a fresh worktree is already
+pointed at local admin. Release bundles are unchanged and default to production.
+All of this lives in `src/lib/adminEndpoint.ts`, a dependency-free leaf that
+`src/env.ts` and `src/lib/config.ts` both consume.
+
+- **A development bundle resolving to `admin.jesusfilm.org` refuses to start.**
+  A local session writes `RecordWatchSearchEvent` rows plus admin-side search
+  traces into the production database, and opening Discover fires six searches
+  before anyone types. The throw happens at `src/env.ts` module scope, and the
+  message names the resolved host and the override.
+  **Which surface shows it is not guaranteed — do not build on either.**
+  `app/_layout.tsx`'s `require`-in-`try/catch` catches the throw only when its
+  guarded require is the first evaluation path into `env.ts`. That is a property
+  of the current import graph, not of the guard, and ordinary feature work
+  changes it. Both surfaces have been observed on this app:
+  the RN dev error overlay (2026-08-07, stack
+  `env.ts -> config.ts -> apolloClient.ts -> useWatchHome.ts` — a screen's static
+  import chain reaching `env.ts` outside the guard), and the Startup Error panel
+  (2026-08-11, after an unrelated PR changed `_layout.tsx`'s require block).
+  Either way the message is verbatim and selectable, which is why R2 needs no new
+  UI. This only matters in development: the refusal is `__DEV__`-gated, so a
+  release bundle never reaches it. Full mechanism:
+  `docs/solutions/best-practices/expo-router-require-guard-containment-is-order-dependent.md`.
+- **`EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN=1` opts back in**, deliberately and
+  visibly — the startup line then names production on every launch.
+- **Only the known production host refuses.** A LAN address, a tunnel, or an
+  emulator alias boots normally, so physical-device work is unaffected.
+- **Every development launch prints its endpoint**:
+  `[admin-endpoint] admin_endpoint.url=… admin_endpoint.kind=…`.
+- **An endpoint that refuses connections raises a dev-only banner** over Home
+  (`src/components/DevEndpointNotice.tsx`) instead of letting the frozen
+  `fallbackConfig` masquerade as loaded content.
+
+**Per-machine overrides go in `apps/mobile/.env.development.local`** — never
+`.env.local`. `fetch-secrets` replaces `.env.local` wholesale, so a hand-added
+line there is lost on the next run; and `.env.development.local` is never loaded
+in production mode, so it cannot be inlined into a published bundle.
+
+Local admin needs `pnpm --filter @forge/admin dev` on port 3003 against a
+pgvector-capable Postgres. Getting production-shaped content into it is tracked
+under `feat-328`; until then Home falls through to its frozen fallback.
+
 ## App icon
 
 Every icon asset is generated from one vector source by
@@ -131,11 +177,52 @@ inherit `.env.local` (gitignored), so `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (the
 to the shared anonymous rate-limit bucket until it's seeded.
 
 The script is idempotent: it seeds `apps/mobile/.env.local` from the main
-checkout with the search token. It's a shortcut — the canonical way to populate
-the full env (and the fallback on a fresh solo clone with no other checkout) is
+checkout with the search token. It deliberately does NOT copy
+`EXPO_PUBLIC_ADMIN_GRAPHQL_URL` — the code default covers it, and propagating
+whatever the main checkout carried is how a worktree ends up on production admin
+without anyone deciding to. It's a shortcut — the canonical way to populate the
+full env (and the fallback on a fresh solo clone with no other checkout) is
 `pnpm --filter @forge/mobile fetch-secrets` (Doppler `forge-mobile`). Run either
 BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
 change made after boot needs a Metro restart to take effect.
+
+## Publishing an EAS Update
+
+Use the scripts. Both name their EAS environment and disable dotenv, so a
+developer's local env files cannot reach a published bundle:
+
+```bash
+pnpm --filter @forge/mobile update:preview     # preview channel
+pnpm --filter @forge/mobile update:production  # production channel — every beta tester
+```
+
+Each element is load-bearing:
+
+- `--environment <name>` pulls the EAS Environment values AND makes `eas-cli`
+  inject `EXPO_NO_DOTENV=1` into the export subprocess. Without it, `expo export`
+  runs in production mode and reads `.env.local`.
+- `EXPO_NO_DOTENV=1` is set explicitly too, so the guarantee does not rest on a
+  CLI internal that `eas.json` floors only at `>= 16.0.0`.
+- `--message` stops a fire-and-forget script prompting on stdin.
+- `touch src/env.ts` is belt-and-braces against the stale-Metro-cache white
+  screen recorded in
+  `docs/solutions/runtime-errors/metro-env-inlining-eas-update-white-screen-20260410.md`.
+
+The old preview script copied `.env.production` over `.env.local` and restored
+it on exit. That file is dead Strapi-era configuration with no admin endpoint,
+no search bearer, and no Datadog variables, so the swap that prevented the leak
+also stripped published previews of telemetry. Delete your local copy; nothing
+reads it. The Strapi token inside it is a separate rotation task — deleting a
+local file does not revoke it.
+
+Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
+once on preview before you ever need it on production.
+
+**Never set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in an EAS environment.** With dotenv
+disabled, resolution falls through to the in-code production default, which is
+already correct and already reviewed. A dashboard-typed URL runs zod on the
+device — a scheme-less host or stray whitespace would throw at module scope and
+hard-fail startup for every beta tester.
 
 ## Observability (Datadog)
 
@@ -161,6 +248,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
+- Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
 
 ## Auth + watch progress (feat: mobile login & continue watching)

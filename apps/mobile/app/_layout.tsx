@@ -22,6 +22,11 @@ let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCa
 let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
 let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
 let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
+// Dev-only surface: the require itself is gated so Metro drops it from a
+// release bundle rather than shipping a component nothing can render.
+let DevEndpointNotice:
+  | typeof import("../src/components/DevEndpointNotice").DevEndpointNotice
+  | undefined
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -63,6 +68,10 @@ try {
   restoreApolloCache = cachePersistence.restoreApolloCache
   startCachePersistence = cachePersistence.startCachePersistence
   lockPortrait = require("../src/lib/orientation").lockPortrait
+  if (__DEV__) {
+    DevEndpointNotice =
+      require("../src/components/DevEndpointNotice").DevEndpointNotice
+  }
   MobileDatadogProvider =
     require("../src/components/DatadogRum").MobileDatadogProvider
   DatadogRouteTracker =
@@ -332,28 +341,11 @@ export default function RootLayout() {
                           />
                           <Stack.Screen
                             name="mission"
-                            options={{
-                              headerShown: true,
-                              headerTintColor: ACCENT,
-                              headerTitle: "",
-                              headerStyle: { backgroundColor: BG_COLOR },
-                              headerShadowVisible: false,
-                              headerTitleAlign: "center",
-                              headerLeft: () => (
-                                <Pressable
-                                  onPress={() => router.back()}
-                                  accessibilityRole="button"
-                                  accessibilityLabel="Go back"
-                                  hitSlop={12}
-                                >
-                                  <Ionicons
-                                    name="chevron-back"
-                                    size={28}
-                                    color={ACCENT}
-                                  />
-                                </Pressable>
-                              ),
-                            }}
+                            // Full-bleed, same as experience/[slug]: an opaque
+                            // header would cap the screen's gradient with a
+                            // flat band. The screen renders its own floating
+                            // back button instead.
+                            options={{ headerShown: false }}
                           />
                           <Stack.Screen
                             name="watch"
@@ -373,6 +365,7 @@ export default function RootLayout() {
           </ApolloProvider>
         </MobileDatadogProvider>
       </ErrorBoundary>
+      {DevEndpointNotice ? <DevEndpointNotice /> : null}
     </View>
   )
 }

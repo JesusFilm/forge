@@ -1,7 +1,7 @@
 ---
 title: "Mastra SEO automation: keep evidence and orchestration separate from approval and durable experiment truth"
 date: 2026-08-01
-last_updated: 2026-08-10
+last_updated: 2026-08-11
 category: architecture-patterns
 module: "apps/mastra + apps/admin + apps/manager"
 problem_type: architecture_pattern
@@ -92,6 +92,18 @@ If the registered agent refines allowed explanatory fields after deterministic
 proposal generation, recompute the digest before persistence. Admin recomputes
 the same projection at ingestion rather than trusting the supplied digest. This
 keeps retries on one stable proposal while rejecting any payload drift.
+
+Hash the exact persistence-safe wire object, not the richer in-memory proposal.
+That projection must be idempotent under Admin's defensive redaction contract,
+including nested-depth markers, credential-shaped keys and values, and both
+HTTP and HTTPS URL normalization. Otherwise Admin will correctly transform the
+payload before recomputing its digest and fail the whole live run closed with
+`proposal_digest_mismatch`.
+
+Sensitive-key matching must operate on key tokens, not arbitrary substrings.
+In particular, an unbounded `ip` pattern also matches ordinary content keys
+such as `description`, silently removing the treatment the digest is meant to
+bind. Preserve content keys and redact only actual IP-address key forms.
 
 ### Make mutation authority narrow and provable
 
@@ -205,6 +217,9 @@ windows, and confounders that produced it.
   a different requested status returns `run_fence_lost`.
 - Pass an agent-refined proposal through the wire serializer and assert its
   payload digest matches Admin's immutable projection.
+- Pass a deeply nested Experience payload with credential-shaped values and an
+  HTTP URL through Mastra's persistence projection, then prove Admin redaction
+  leaves the transmitted object byte-identical before hashing.
 - Change volatile snapshot metadata without changing the activation hash, then
   change an editable SEO field and prove the hash changes.
 - Activate overlapping treatments and prove both become confounded only then;

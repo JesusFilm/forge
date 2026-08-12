@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   Beaker,
   BookOpenCheck,
   Check,
@@ -24,14 +23,13 @@ import {
   Sparkles,
   TicketCheck,
   TriangleAlert,
+  type LucideIcon,
   X,
   XCircle,
-  type LucideIcon,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { apiFetch } from "@/lib/api-fetch"
 import {
-  SEO_WORKSPACE_VIEWS,
   isSafeExternalUrl,
   type SeoCandidateTicket,
   type SeoEvidenceObservation,
@@ -43,6 +41,7 @@ import {
   type SeoWorkspace,
   type SeoWorkspaceView,
 } from "./seo-contract"
+import { SEO_WORKSPACE_VIEW_META, SeoWorkspaceTabs } from "./seo-workspace-tabs"
 import {
   buildSeoOverviewQueue,
   formatSeoDate,
@@ -72,37 +71,6 @@ type ProposalActionState =
   | { kind: "submitting"; action: "approve" | "reject" }
   | { kind: "success"; result: SeoProposalDecisionResult }
   | { kind: "error"; message: string; retryable: boolean }
-
-const VIEW_META: Record<
-  SeoWorkspaceView,
-  { label: string; icon: LucideIcon; description: string }
-> = {
-  overview: {
-    label: "Overview",
-    icon: BarChart3,
-    description: "Action queue and run health",
-  },
-  proposals: {
-    label: "Proposals",
-    icon: FileDiff,
-    description: "Exact editorial and engineering actions",
-  },
-  experiments: {
-    label: "Experiments",
-    icon: Beaker,
-    description: "Activation and measurement",
-  },
-  learnings: {
-    label: "Learnings",
-    icon: BookOpenCheck,
-    description: "Reviewed reusable outcomes",
-  },
-  reconciliation: {
-    label: "Reconciliation",
-    icon: Link2,
-    description: "Ambiguous ticket delivery",
-  },
-}
 
 const TONE_ICONS: Record<SeoTone, LucideIcon> = {
   danger: XCircle,
@@ -1593,33 +1561,20 @@ export function SeoWorkspace({
     string | undefined
   >(initialWorkspace.proposals[0]?.id)
   const [csrfToken, setCsrfToken] = useState(initialCsrfToken)
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   function navigate(nextView: SeoWorkspaceView, proposalId?: string) {
+    if (nextView === "runs" || view === "runs") {
+      const url = new URL(window.location.href)
+      url.searchParams.set("view", nextView)
+      url.searchParams.delete("cursor")
+      window.location.assign(`${url.pathname}?${url.searchParams.toString()}`)
+      return
+    }
     setView(nextView)
     if (proposalId) setSelectedProposalId(proposalId)
     const url = new URL(window.location.href)
     url.searchParams.set("view", nextView)
     window.history.replaceState(null, "", url)
-  }
-
-  function onTabKeyDown(
-    event: React.KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) {
-    let nextIndex: number | null = null
-    if (event.key === "ArrowRight")
-      nextIndex = (index + 1) % SEO_WORKSPACE_VIEWS.length
-    if (event.key === "ArrowLeft")
-      nextIndex =
-        (index - 1 + SEO_WORKSPACE_VIEWS.length) % SEO_WORKSPACE_VIEWS.length
-    if (event.key === "Home") nextIndex = 0
-    if (event.key === "End") nextIndex = SEO_WORKSPACE_VIEWS.length - 1
-    if (nextIndex == null) return
-    event.preventDefault()
-    const nextView = SEO_WORKSPACE_VIEWS[nextIndex]
-    navigate(nextView)
-    tabRefs.current[nextIndex]?.focus()
   }
 
   function applyDecisionResult(result: SeoProposalDecisionResult) {
@@ -1656,7 +1611,7 @@ export function SeoWorkspace({
     }))
   }
 
-  const viewContent = useMemo(() => {
+  const viewContent = (() => {
     switch (view) {
       case "overview":
         return (
@@ -1718,15 +1673,10 @@ export function SeoWorkspace({
             }
           />
         )
+      case "runs":
+        return null
     }
-  }, [
-    csrfToken,
-    loadError,
-    readOnlyReason,
-    selectedProposalId,
-    view,
-    workspace,
-  ])
+  })()
 
   return (
     <section className="seo-workspace" aria-labelledby="seo-workspace-title">
@@ -1756,38 +1706,7 @@ export function SeoWorkspace({
         </div>
       </header>
 
-      <nav className="seo-view-tabs" aria-label="SEO workspace views">
-        <div role="tablist" aria-orientation="horizontal">
-          {SEO_WORKSPACE_VIEWS.map((candidate, index) => {
-            const meta = VIEW_META[candidate]
-            const Icon = meta.icon
-            const selected = candidate === view
-            return (
-              <button
-                type="button"
-                key={candidate}
-                ref={(node) => {
-                  tabRefs.current[index] = node
-                }}
-                role="tab"
-                id={`seo-tab-${candidate}`}
-                aria-selected={selected}
-                aria-controls={`seo-panel-${candidate}`}
-                tabIndex={selected ? 0 : -1}
-                className={selected ? "is-active" : undefined}
-                onClick={() => navigate(candidate)}
-                onKeyDown={(event) => onTabKeyDown(event, index)}
-              >
-                <Icon aria-hidden="true" size={18} />
-                <span>
-                  <strong>{meta.label}</strong>
-                  <small>{meta.description}</small>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </nav>
+      <SeoWorkspaceTabs view={view} onSelect={navigate} />
 
       <div
         className="seo-view-panel"
@@ -1798,7 +1717,7 @@ export function SeoWorkspace({
         {viewContent}
       </div>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {VIEW_META[view].label} view selected.
+        {SEO_WORKSPACE_VIEW_META[view].label} view selected.
       </div>
     </section>
   )

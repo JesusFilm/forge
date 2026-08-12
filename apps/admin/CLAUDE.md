@@ -2605,6 +2605,20 @@ conflict check. Engineering materialization persists an outbox entry before a
 provider call. Approval is not activation, and direct HTTP evidence is not
 Google indexing proof.
 
+`SeoRun.report` is also the single audit record for each SEO job. Admin mirrors
+the strict Mastra v1 schema, recursively minimizes and redacts it, canonicalizes
+persisted proposal references, and fits it below 220 KiB before storage. Run
+summary queries project trusted scalar columns and small report discriminators
+only; they must not load report bodies. The Manager-only detail query exposes a
+typed report union and current human/proposal outcomes, never raw JSON. Query
+and request evidence is compacted after 29 days by the existing search-trace
+retention job. Reads enforce expiry too, and unhealthy production retention
+causes new completions to store a summary-only
+`detail_suppressed_retention_unhealthy` report instead of durable query text.
+Legacy, malformed, unsupported, expired, and retention-suppressed reports stay
+visible as typed availability states rather than crashing or passing arbitrary
+JSON through GraphQL.
+
 ## Admin MCP (JFP Admin MCP — feat-276 + feat-320)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,

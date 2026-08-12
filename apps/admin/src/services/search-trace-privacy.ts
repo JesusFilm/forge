@@ -317,6 +317,7 @@ export function projectWatchSearchComparisonResult(
           id: result.id,
           slug: result.slug,
           title: result.title,
+          imageUrl: result.imageUrl,
           playbackId: result.playbackId,
           startSeconds: result.startSeconds,
           score: result.score,
