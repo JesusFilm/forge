@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Leitismál",
     "allLanguages": "Øll mál",
     "searchSuggestions": "Leititilboð",
+    "directMatches": "Direct match",
     "languages": "Mál",
     "recommendedLanguage": "Mælt mál",
     "searchSuggestion": "Leita eftir {suggestion}",

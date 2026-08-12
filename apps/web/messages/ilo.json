@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Pagsasao ti panagsapul",
     "allLanguages": "Amin a pagsasao",
     "searchSuggestions": "Dagiti suhestyon ti panagsapul",
+    "directMatches": "Direct match",
     "languages": "Dagiti pagsasao",
     "recommendedLanguage": "Naidalan a pagsasao",
     "searchSuggestion": "Sapulen ti {suggestion}",

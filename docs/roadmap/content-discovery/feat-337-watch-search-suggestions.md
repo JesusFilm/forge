@@ -5,7 +5,7 @@ owner: "urim"
 priority: "P1"
 status: "complete"
 start_date: "2026-08-06"
-completed_date: "2026-08-11"
+completed_date: "2026-08-12"
 duration: 1
 depends_on:
   - "feat-334"

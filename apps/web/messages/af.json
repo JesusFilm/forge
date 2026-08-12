@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Soektaal",
     "allLanguages": "Alle tale",
     "searchSuggestions": "Soekvoorstelle",
+    "directMatches": "Direct match",
     "languages": "Tale",
     "recommendedLanguage": "Aanbevole taal",
     "searchSuggestion": "Soek {suggestion}",

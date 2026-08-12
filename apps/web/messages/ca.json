@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Idioma de cerca",
     "allLanguages": "Tots els idiomes",
     "searchSuggestions": "Suggeriments de cerca",
+    "directMatches": "Direct match",
     "languages": "Idiomes",
     "recommendedLanguage": "Idioma recomanat",
     "searchSuggestion": "Cerca {suggestion}",

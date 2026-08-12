@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Meklēšanas valoda",
     "allLanguages": "Visas valodas",
     "searchSuggestions": "Meklēšanas ieteikumi",
+    "directMatches": "Direct match",
     "languages": "Valodas",
     "recommendedLanguage": "Ieteicamā valoda",
     "searchSuggestion": "Meklēt {suggestion}",

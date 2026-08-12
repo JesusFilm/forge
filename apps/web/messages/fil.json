@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Wika ng paghahanap",
     "allLanguages": "Lahat ng wika",
     "searchSuggestions": "Mga Mungkahi sa Paghahanap",
+    "directMatches": "Direct match",
     "languages": "Mga Wika",
     "recommendedLanguage": "Inirerekomendang wika",
     "searchSuggestion": "Maghanap ng {suggestion}",

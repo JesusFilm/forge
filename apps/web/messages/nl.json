@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Zoektaal",
     "allLanguages": "Alle talen",
     "searchSuggestions": "Zoeksuggesties",
+    "directMatches": "Direct match",
     "languages": "Talen",
     "recommendedLanguage": "Aanbevolen taal",
     "searchSuggestion": "Zoek {suggestion}",

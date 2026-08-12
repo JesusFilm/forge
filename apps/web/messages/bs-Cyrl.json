@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Језик претраге",
     "allLanguages": "Сви језици",
     "searchSuggestions": "Приједлози претраге",
+    "directMatches": "Direct match",
     "languages": "Језици",
     "recommendedLanguage": "Препоручени језик",
     "searchSuggestion": "Претражи {suggestion}",

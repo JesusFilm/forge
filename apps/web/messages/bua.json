@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Хайлтын хэл",
     "allLanguages": "Бүх хэл",
     "searchSuggestions": "Хайлтын санал",
+    "directMatches": "Direct match",
     "languages": "Хэлнүүд",
     "recommendedLanguage": "Зөвлөмж болгосон хэл",
     "searchSuggestion": "{suggestion}-г хайх",

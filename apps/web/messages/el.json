@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Γλώσσα αναζήτησης",
     "allLanguages": "Όλες οι γλώσσες",
     "searchSuggestions": "Προτάσεις αναζήτησης",
+    "directMatches": "Direct match",
     "languages": "Γλώσσες",
     "recommendedLanguage": "Προτεινόμενη γλώσσα",
     "searchSuggestion": "Αναζήτηση {suggestion}",

@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Bilaketa-hizkuntza",
     "allLanguages": "Hizkuntza guztiak",
     "searchSuggestions": "Bilaketa-iradokizunak",
+    "directMatches": "Direct match",
     "languages": "Hizkuntzak",
     "recommendedLanguage": "Gomendatutako hizkuntza",
     "searchSuggestion": "Bilatu {suggestion}",

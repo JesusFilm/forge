@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Søkjespråk",
     "allLanguages": "Alle språk",
     "searchSuggestions": "Søkeframlegg",
+    "directMatches": "Direct match",
     "languages": "Språk",
     "recommendedLanguage": "Tilrådd språk",
     "searchSuggestion": "Søk etter {suggestion}",

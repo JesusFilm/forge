@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Ulwimi lokukhangela",
     "allLanguages": "Zonke iilwimi",
     "searchSuggestions": "Iingcebiso zokukhangela",
+    "directMatches": "Direct match",
     "languages": "Iilwimi",
     "recommendedLanguage": "Ulwimi olucetyiswayo",
     "searchSuggestion": "Khangela {suggestion}",

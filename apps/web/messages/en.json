@@ -218,6 +218,7 @@
     "browseMode": "Search browse mode",
     "allLanguages": "All languages",
     "searchSuggestions": "Search Suggestions",
+    "directMatches": "Direct match",
     "languages": "Languages",
     "recommendedLanguage": "Recommended language",
     "searchSuggestion": "Search {suggestion}",

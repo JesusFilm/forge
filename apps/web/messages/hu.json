@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Keresési nyelv",
     "allLanguages": "Minden nyelv",
     "searchSuggestions": "Keresési javaslatok",
+    "directMatches": "Direct match",
     "languages": "Nyelvek",
     "recommendedLanguage": "Ajánlott nyelv",
     "searchSuggestion": "Keresés erre: {suggestion}",

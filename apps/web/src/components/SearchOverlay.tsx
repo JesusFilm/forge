@@ -106,7 +106,7 @@ type SuggestionSection = {
 
 type SuggestionGroup = {
   id: "suggestions" | "direct-matches"
-  label: string | null
+  label: string
   sections: SuggestionSection[]
 }
 
@@ -387,7 +387,7 @@ export function SearchOverlay() {
       },
       {
         id: "direct-matches",
-        label: null,
+        label: t("directMatches"),
         sections: directMatchSections,
       },
     ].filter((group) => group.sections.length > 0) as SuggestionGroup[]
@@ -1079,21 +1079,30 @@ export function SearchOverlay() {
                         : "mt-2 border-t border-white/[0.12] pt-2"
                     }
                   >
-                    {group.label && (
-                      <div
-                        id={`${suggestionListId}-${group.id}-heading`}
-                        className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-400"
-                      >
-                        {group.label}
-                      </div>
-                    )}
+                    <div
+                      id={`${suggestionListId}-${group.id}-heading`}
+                      className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-400"
+                    >
+                      {group.label}
+                    </div>
                     {group.sections.map((section, sectionIndex) => {
                       const SectionIcon = section.icon
+                      const groupHeadingId = `${suggestionListId}-${group.id}-heading`
+                      const sectionHeadingId = `${suggestionListId}-${section.id}-heading`
                       return (
                         <div
                           key={section.id}
                           role="group"
-                          aria-label={section.label}
+                          aria-label={
+                            group.id === "direct-matches"
+                              ? undefined
+                              : section.label
+                          }
+                          aria-labelledby={
+                            group.id === "direct-matches"
+                              ? `${groupHeadingId} ${sectionHeadingId}`
+                              : undefined
+                          }
                           className={
                             sectionIndex === 0
                               ? ""
@@ -1101,7 +1110,10 @@ export function SearchOverlay() {
                           }
                         >
                           {group.id === "direct-matches" && (
-                            <div className="px-3 pb-1 pt-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-stone-600">
+                            <div
+                              id={sectionHeadingId}
+                              className="px-3 pb-1 pt-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-stone-600"
+                            >
                               {section.label}
                             </div>
                           )}

@@ -206,6 +206,7 @@
     "searchLanguageLabel": "搜索语言",
     "allLanguages": "所有语言",
     "searchSuggestions": "搜索建议",
+    "directMatches": "Direct match",
     "languages": "语言",
     "recommendedLanguage": "推荐语言",
     "searchSuggestion": "搜索 {suggestion}",

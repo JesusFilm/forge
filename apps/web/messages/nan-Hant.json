@@ -206,6 +206,7 @@
     "searchLanguageLabel": "搜尋語言",
     "allLanguages": "所有語言",
     "searchSuggestions": "搜尋建議",
+    "directMatches": "Direct match",
     "languages": "語言",
     "recommendedLanguage": "推薦語言",
     "searchSuggestion": "搜尋 {suggestion}",

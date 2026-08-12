@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Hakukieli",
     "allLanguages": "Kaikki kielet",
     "searchSuggestions": "Hakuehdotukset",
+    "directMatches": "Direct match",
     "languages": "Kielet",
     "recommendedLanguage": "Suositeltu kieli",
     "searchSuggestion": "Hae: {suggestion}",

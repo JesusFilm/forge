@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Gjuha e kërkimit",
     "allLanguages": "Të gjitha gjuhët",
     "searchSuggestions": "Sugjerime kërkimi",
+    "directMatches": "Direct match",
     "languages": "Gjuhë",
     "recommendedLanguage": "Gjuha e rekomanduar",
     "searchSuggestion": "Kërko {suggestion}",

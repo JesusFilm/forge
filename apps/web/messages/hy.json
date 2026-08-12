@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Որոնման լեզու",
     "allLanguages": "Բոլոր լեզուները",
     "searchSuggestions": "Որոնման առաջարկներ",
+    "directMatches": "Direct match",
     "languages": "Լեզուներ",
     "recommendedLanguage": "Առաջարկվող լեզու",
     "searchSuggestion": "Որոնել {suggestion}",

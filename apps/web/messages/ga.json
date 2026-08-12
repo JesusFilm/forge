@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Teanga chuardaigh",
     "allLanguages": "Gach teanga",
     "searchSuggestions": "Moltaí cuardaigh",
+    "directMatches": "Direct match",
     "languages": "Teangacha",
     "recommendedLanguage": "Teanga mholta",
     "searchSuggestion": "Cuardaigh {suggestion}",

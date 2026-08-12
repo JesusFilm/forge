@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Wad ktien",
     "allLanguages": "Ki ktien baroh",
     "searchSuggestions": "Ki jingai jingmut ban wad",
+    "directMatches": "Direct match",
     "languages": "Ki ktien",
     "recommendedLanguage": "Ktien ba la ai jingmut",
     "searchSuggestion": "Wad {suggestion}",

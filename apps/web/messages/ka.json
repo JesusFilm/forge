@@ -206,6 +206,7 @@
     "searchLanguageLabel": "საძიებო ენა",
     "allLanguages": "ყველა ენა",
     "searchSuggestions": "ძიების შემოთავაზებები",
+    "directMatches": "Direct match",
     "languages": "ენები",
     "recommendedLanguage": "რეკომენდებული ენა",
     "searchSuggestion": "ძებნა: {suggestion}",

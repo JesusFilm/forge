@@ -206,6 +206,7 @@
     "searchLanguageLabel": "検索言語",
     "allLanguages": "すべての言語",
     "searchSuggestions": "検索候補",
+    "directMatches": "Direct match",
     "languages": "言語",
     "recommendedLanguage": "推奨言語",
     "searchSuggestion": "{suggestion}を検索",

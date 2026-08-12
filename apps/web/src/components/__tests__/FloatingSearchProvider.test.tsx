@@ -2820,17 +2820,30 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
     const list = document.querySelector('[role="listbox"]')
     const sectionLabels = Array.from(
-      list?.querySelectorAll('div[id$="-heading"]') ?? [],
+      list?.querySelectorAll(
+        '[data-testid^="search-suggestion-group-"] > div[id$="-heading"]',
+      ) ?? [],
     ).map((heading) => heading.textContent)
-    expect(sectionLabels).toEqual(["Search Suggestions"])
+    expect(sectionLabels).toEqual(["Search Suggestions", "Direct match"])
     const directMatches = list?.querySelector(
       '[data-testid="search-suggestion-group-direct-matches"]',
     )
+    const directMatchGroups = Array.from(
+      directMatches?.querySelectorAll(':scope > [role="group"]') ?? [],
+    )
     expect(
-      Array.from(
-        directMatches?.querySelectorAll(':scope > [role="group"]') ?? [],
-      ).map((section) => section.getAttribute("aria-label")),
-    ).toEqual(["Video", "Collection", "Segment"])
+      directMatchGroups.map((section) =>
+        section
+          .getAttribute("aria-labelledby")
+          ?.split(" ")
+          .map((id) => document.getElementById(id)?.textContent)
+          .join(" "),
+      ),
+    ).toEqual([
+      "Direct match Video",
+      "Direct match Collection",
+      "Direct match Segment",
+    ])
     expect(
       Array.from(list?.querySelectorAll('[role="option"] bdi') ?? []).map(
         (row) => row.textContent,

@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Arama dili",
     "allLanguages": "Tüm diller",
     "searchSuggestions": "Arama önerileri",
+    "directMatches": "Direct match",
     "languages": "Diller",
     "recommendedLanguage": "Önerilen dil",
     "searchSuggestion": "{suggestion} ara",

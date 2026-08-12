@@ -206,6 +206,7 @@
     "searchLanguageLabel": "검색 언어",
     "allLanguages": "모든 언어",
     "searchSuggestions": "검색 제안",
+    "directMatches": "Direct match",
     "languages": "언어",
     "recommendedLanguage": "추천 언어",
     "searchSuggestion": "{suggestion} 검색",

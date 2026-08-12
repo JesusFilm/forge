@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Otsingukeel",
     "allLanguages": "Kõik keeled",
     "searchSuggestions": "Otsingusoovitused",
+    "directMatches": "Direct match",
     "languages": "Keeled",
     "recommendedLanguage": "Soovitatud keel",
     "searchSuggestion": "Otsi {suggestion}",

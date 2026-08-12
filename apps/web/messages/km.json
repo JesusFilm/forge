@@ -206,6 +206,7 @@
     "searchLanguageLabel": "ភាសាស្វែងរក",
     "allLanguages": "ភាសាទាំងអស់",
     "searchSuggestions": "ការណែនាំស្វែងរក",
+    "directMatches": "Direct match",
     "languages": "ភាសា",
     "recommendedLanguage": "ភាសាដែលបានណែនាំ",
     "searchSuggestion": "ស្វែងរក {suggestion}",

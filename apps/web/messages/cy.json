@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Iaith chwilio",
     "allLanguages": "Pob iaith",
     "searchSuggestions": "Awgrymiadau chwilio",
+    "directMatches": "Direct match",
     "languages": "Ieithoedd",
     "recommendedLanguage": "Iaith a argymhellir",
     "searchSuggestion": "Chwilio {suggestion}",

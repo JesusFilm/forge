@@ -206,6 +206,7 @@
     "searchLanguageLabel": "Lingua di ricerca",
     "allLanguages": "Tutte le lingue",
     "searchSuggestions": "Suggerimenti di ricerca",
+    "directMatches": "Direct match",
     "languages": "Lingue",
     "recommendedLanguage": "Lingua consigliata",
     "searchSuggestion": "Cerca {suggestion}",
