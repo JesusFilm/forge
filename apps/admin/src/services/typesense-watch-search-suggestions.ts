@@ -6,6 +6,10 @@ import type {
   TypesenseSearchRequest,
 } from "./typesense-client"
 import {
+  cachedBoundedTtlBatchValues,
+  type BoundedTtlCache,
+} from "./bounded-ttl-promise-cache"
+import {
   createConfiguredTypesenseClient,
   watchSearchSuggestionsEnabled,
 } from "./typesense-client-config"
@@ -21,10 +25,14 @@ export const MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS = 200
 export const MAX_WATCH_SEARCH_QUERY_SUGGESTIONS = 6
 export const MAX_WATCH_SEARCH_CONTENT_MATCHES = 6
 export const MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS = 24
+const WATCH_SEARCH_PHRASE_VALIDATION_TIMEOUT_MS = 750
 
 const TITLE_WORD_SEPARATOR = /[\s,.;:!?()[\]{}"'/\\|_-]+/u
 const LANGUAGE_LOCALE_CACHE_TTL_MS = 5 * 60 * 1_000
 const MAX_CACHED_LANGUAGE_LOCALES = 256
+const PHRASE_VALIDATION_CACHE_TTL_MS = 60 * 1_000
+const MAX_CACHED_PHRASE_VALIDATIONS = 512
+const PHRASE_VALIDATION_CONTRACT_VERSION = "v1"
 const TYPESENSE_SUGGESTION_CANDIDATE_LIMIT = 25
 const SAFE_BCP47_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 const PHRASE_WORD = /[\p{L}\p{N}]+(?:['’’-][\p{L}\p{N}]+)*/gu
@@ -85,10 +93,19 @@ type CachedSuggestionLanguage = {
   promise: Promise<ResolvedSuggestionLanguage | null>
   expiresAt: number
 }
+type SuggestionRequestState = {
+  activeRequests: number
+  inFlight: Map<string, Promise<WatchSearchSuggestion[]>>
+}
 
 const languageLocaleCacheByPrisma = new WeakMap<
   SuggestionPrisma,
   Map<string, CachedSuggestionLanguage>
+>()
+const phraseValidationCaches = new WeakMap<object, BoundedTtlCache<boolean>>()
+const suggestionRequestStateByPrisma = new WeakMap<
+  SuggestionPrisma,
+  SuggestionRequestState
 >()
 
 async function resolveSuggestionLanguage(
@@ -362,6 +379,29 @@ function suggestionRequest(
 ): TypesenseSearchRequest {
   const fields = [...titleFields, ...metadataFields]
   return {
+    ...lexicalSuggestionRequestBase(
+      query,
+      titleFields,
+      metadataFields,
+      languageIdentity,
+    ),
+    page: 1,
+    per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
+    group_by: "canonicalVideoId",
+    group_limit: 1,
+    prefix: true,
+    include_fields: ["videoId", "canonicalVideoId", ...fields].join(","),
+  }
+}
+
+function lexicalSuggestionRequestBase(
+  query: string,
+  titleFields: readonly string[],
+  metadataFields: readonly string[],
+  languageIdentity: string,
+): TypesenseSearchRequest {
+  const fields = [...titleFields, ...metadataFields]
+  return {
     collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
     q: query,
     query_by: fields.join(","),
@@ -369,18 +409,107 @@ function suggestionRequest(
       ...titleFields.map((_field, index) => (index === 0 ? 8 : 4)),
       ...metadataFields.map((_field, index) => (index === 0 ? 2 : 1)),
     ].join(","),
-    page: 1,
-    per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
-    group_by: "canonicalVideoId",
-    group_limit: 1,
-    prefix: true,
     num_typos: fields.map(() => 0).join(","),
     text_match_type: "max_weight",
     prioritize_exact_match: true,
     drop_tokens_threshold: 0,
     filter_by: `languageIdentity:=[\`${languageIdentity}\`]`,
-    include_fields: ["videoId", "canonicalVideoId", ...fields].join(","),
   }
+}
+
+function phraseValidationRequest(
+  phrase: string,
+  titleFields: readonly string[],
+  metadataFields: readonly string[],
+  languageIdentity: string,
+): TypesenseSearchRequest {
+  return {
+    ...lexicalSuggestionRequestBase(
+      phrase,
+      titleFields,
+      metadataFields,
+      languageIdentity,
+    ),
+    page: 1,
+    per_page: 1,
+    prefix: false,
+    include_fields: "id",
+  }
+}
+
+function phraseValidationCacheKey(
+  suggestion: WatchSearchSuggestion,
+  languageIdentity: string,
+  fields: readonly string[],
+): string {
+  return [
+    PHRASE_VALIDATION_CONTRACT_VERSION,
+    languageIdentity,
+    fields.join(","),
+    comparablePhrase(suggestion.title),
+  ].join("\0")
+}
+
+async function validateQuerySuggestions(
+  prisma: SuggestionPrisma,
+  typesense: SuggestionTypesense,
+  suggestions: readonly WatchSearchSuggestion[],
+  titleFields: readonly string[],
+  metadataFields: readonly string[],
+  languageIdentity: string,
+): Promise<WatchSearchSuggestion[]> {
+  if (suggestions.length === 0) return []
+
+  const fields = [...titleFields, ...metadataFields]
+  const keys = suggestions.map((suggestion) =>
+    phraseValidationCacheKey(suggestion, languageIdentity, fields),
+  )
+  const suggestionByKey = new Map(
+    suggestions.map((suggestion, index) => [keys[index], suggestion]),
+  )
+  const values = await cachedBoundedTtlBatchValues({
+    cacheByOwner: phraseValidationCaches,
+    owner: prisma,
+    keys,
+    ttlMs: PHRASE_VALIDATION_CACHE_TTL_MS,
+    maxEntries: MAX_CACHED_PHRASE_VALIDATIONS,
+    loader: async (missingKeys) => {
+      const results = await typesense.multiSearch(
+        missingKeys.map((key) => {
+          const suggestion = suggestionByKey.get(key)
+          if (!suggestion) {
+            throw new Error("Missing phrase validation suggestion")
+          }
+          return phraseValidationRequest(
+            suggestion.title,
+            titleFields,
+            metadataFields,
+            languageIdentity,
+          )
+        }),
+        { timeoutMs: WATCH_SEARCH_PHRASE_VALIDATION_TIMEOUT_MS },
+      )
+      if (results.length !== missingKeys.length) {
+        throw new Error("Typesense phrase validation result count mismatch")
+      }
+      return results.map((result) => {
+        if (!result || !Number.isFinite(result.found) || result.found < 0) {
+          throw new Error("Typesense phrase validation result is malformed")
+        }
+        return result.found > 0
+      })
+    },
+  })
+  return suggestions.filter((_suggestion, index) => values[index])
+}
+
+function suggestionRequestState(prisma: SuggestionPrisma) {
+  let state = suggestionRequestStateByPrisma.get(prisma)
+  if (!state) {
+    state = { activeRequests: 0, inFlight: new Map() }
+    suggestionRequestStateByPrisma.set(prisma, state)
+  }
+  return state
 }
 
 type DirectMatchCandidate = {
@@ -477,12 +606,6 @@ async function hydrateDirectMatches(
 }
 
 export class TypesenseWatchSearchSuggestionsService {
-  private readonly inFlight = new Map<
-    string,
-    Promise<WatchSearchSuggestion[]>
-  >()
-  private activeRequests = 0
-
   constructor(
     private readonly prisma: SuggestionPrisma,
     private readonly typesense: SuggestionTypesense,
@@ -497,23 +620,26 @@ export class TypesenseWatchSearchSuggestionsService {
     const languageSlug = normalizedLanguageSlug(input.languageSlug)
     if (!languageSlug) return []
 
+    const requestState = suggestionRequestState(this.prisma)
     const requestKey = `${languageSlug}\0${query}`
-    const existing = this.inFlight.get(requestKey)
+    const existing = requestState.inFlight.get(requestKey)
     if (existing) return existing
-    if (this.activeRequests >= MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS) {
+    if (
+      requestState.activeRequests >= MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS
+    ) {
       return []
     }
 
-    this.activeRequests += 1
+    requestState.activeRequests += 1
     const request = this.fetchSuggestions(query, languageSlug)
-    this.inFlight.set(requestKey, request)
+    requestState.inFlight.set(requestKey, request)
     try {
       return await request
     } finally {
-      if (this.inFlight.get(requestKey) === request) {
-        this.inFlight.delete(requestKey)
+      if (requestState.inFlight.get(requestKey) === request) {
+        requestState.inFlight.delete(requestKey)
       }
-      this.activeRequests -= 1
+      requestState.activeRequests -= 1
     }
   }
 
@@ -555,16 +681,29 @@ export class TypesenseWatchSearchSuggestionsService {
       const directTitles = new Set(
         directMatches.map((match) => comparablePhrase(match.title)),
       )
-      return [
-        ...extractedQuerySuggestions(
-          result.grouped_hits,
+      const extractedSuggestions = extractedQuerySuggestions(
+        result.grouped_hits,
+        titleFields,
+        metadataFields,
+        query,
+        directTitles,
+      )
+      let querySuggestions: WatchSearchSuggestion[] = []
+      try {
+        querySuggestions = await validateQuerySuggestions(
+          this.prisma,
+          this.typesense,
+          extractedSuggestions,
           titleFields,
           metadataFields,
-          query,
-          directTitles,
-        ),
-        ...directMatches,
-      ]
+          language.languageIdentity,
+        )
+      } catch {
+        this.logger.warn(
+          "[watch-search-suggestions] event=phrase_validation_unavailable",
+        )
+      }
+      return [...querySuggestions, ...directMatches]
     } catch {
       this.logger.warn("[watch-search-suggestions] event=typesense_unavailable")
       return []

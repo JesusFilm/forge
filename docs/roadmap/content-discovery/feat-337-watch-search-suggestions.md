@@ -10,7 +10,8 @@ duration: 1
 depends_on:
   - "feat-334"
   - "feat-336"
-blocks: []
+blocks:
+  - "feat-352"
 tags:
   - "admin"
   - "web"

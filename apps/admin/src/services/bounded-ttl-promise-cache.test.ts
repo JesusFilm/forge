@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
+  cachedBoundedTtlBatchValues,
   cachedBoundedTtlValue,
   type BoundedTtlCache,
 } from "./bounded-ttl-promise-cache"
@@ -135,5 +136,132 @@ describe("cachedBoundedTtlValue", () => {
         loader: async () => "unexpected",
       }),
     ).resolves.toBe("replacement")
+  })
+})
+
+describe("cachedBoundedTtlBatchValues", () => {
+  afterEach(() => vi.useRealTimers())
+
+  it("loads misses once while preserving cached and requested order", async () => {
+    const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
+    const owner = {}
+    const loader = vi.fn(async (keys: readonly string[]) =>
+      keys.map((key) => `value:${key}`),
+    )
+
+    await expect(
+      cachedBoundedTtlBatchValues({
+        cacheByOwner,
+        owner,
+        keys: ["one"],
+        ttlMs: 1_000,
+        maxEntries: 3,
+        loader,
+      }),
+    ).resolves.toEqual(["value:one"])
+    await expect(
+      cachedBoundedTtlBatchValues({
+        cacheByOwner,
+        owner,
+        keys: ["one", "two", "three"],
+        ttlMs: 1_000,
+        maxEntries: 3,
+        loader,
+      }),
+    ).resolves.toEqual(["value:one", "value:two", "value:three"])
+
+    expect(loader).toHaveBeenNthCalledWith(2, ["two", "three"])
+  })
+
+  it("coalesces overlapping in-flight batches", async () => {
+    const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
+    const owner = {}
+    let resolveFirst!: (values: readonly string[]) => void
+    const firstLoad = new Promise<readonly string[]>((resolve) => {
+      resolveFirst = resolve
+    })
+    const loader = vi
+      .fn<(keys: readonly string[]) => Promise<readonly string[]>>()
+      .mockReturnValueOnce(firstLoad)
+      .mockImplementationOnce(async (keys) => keys.map((key) => `value:${key}`))
+
+    const first = cachedBoundedTtlBatchValues({
+      cacheByOwner,
+      owner,
+      keys: ["one", "two"],
+      ttlMs: 1_000,
+      maxEntries: 3,
+      loader,
+    })
+    const second = cachedBoundedTtlBatchValues({
+      cacheByOwner,
+      owner,
+      keys: ["two", "three"],
+      ttlMs: 1_000,
+      maxEntries: 3,
+      loader,
+    })
+    resolveFirst(["value:one", "value:two"])
+
+    await expect(first).resolves.toEqual(["value:one", "value:two"])
+    await expect(second).resolves.toEqual(["value:two", "value:three"])
+    expect(loader).toHaveBeenNthCalledWith(2, ["three"])
+  })
+
+  it("expires, evicts, and removes every failed batch miss", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-12T12:00:00.000Z"))
+    const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
+    const owner = {}
+    const loader = vi
+      .fn<(keys: readonly string[]) => Promise<readonly string[]>>()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockImplementation(async (keys) => keys.map((key) => `value:${key}`))
+
+    const load = (keys: readonly string[]) =>
+      cachedBoundedTtlBatchValues({
+        cacheByOwner,
+        owner,
+        keys,
+        ttlMs: 1_000,
+        maxEntries: 2,
+        loader,
+      })
+    await expect(load(["one", "two"])).rejects.toThrow("offline")
+    await expect(load(["one", "two"])).resolves.toEqual([
+      "value:one",
+      "value:two",
+    ])
+    await expect(load(["three"])).resolves.toEqual(["value:three"])
+    await expect(load(["one"])).resolves.toEqual(["value:one"])
+    vi.advanceTimersByTime(1_001)
+    await expect(load(["three"])).resolves.toEqual(["value:three"])
+
+    expect(loader).toHaveBeenCalledTimes(5)
+  })
+
+  it("rejects and evicts a batch with the wrong result count", async () => {
+    const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
+    const owner = {}
+    const loader = vi
+      .fn<(keys: readonly string[]) => Promise<readonly string[]>>()
+      .mockResolvedValueOnce(["only-one"])
+      .mockImplementationOnce(async (keys) => keys.map((key) => `value:${key}`))
+    const options = {
+      cacheByOwner,
+      owner,
+      keys: ["one", "two"],
+      ttlMs: 1_000,
+      maxEntries: 2,
+      loader,
+    }
+
+    await expect(cachedBoundedTtlBatchValues(options)).rejects.toThrow(
+      "result count mismatch",
+    )
+    await expect(cachedBoundedTtlBatchValues(options)).resolves.toEqual([
+      "value:one",
+      "value:two",
+    ])
   })
 })

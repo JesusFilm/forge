@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS,
@@ -14,11 +14,15 @@ const multiSearchMock = vi.fn()
 const warnMock = vi.fn()
 
 function createService() {
+  return createServiceWithPrisma({
+    language: { findFirst: findFirstMock },
+    video: { findMany: videoFindManyMock },
+  })
+}
+
+function createServiceWithPrisma(prisma: unknown) {
   return new TypesenseWatchSearchSuggestionsService(
-    {
-      language: { findFirst: findFirstMock },
-      video: { findMany: videoFindManyMock },
-    } as never,
+    prisma as never,
     { multiSearch: multiSearchMock } as never,
     { warn: warnMock },
   )
@@ -75,6 +79,8 @@ beforeEach(() => {
       ),
   )
 })
+
+afterEach(() => vi.useRealTimers())
 
 describe("TypesenseWatchSearchSuggestionsService", () => {
   it.each(["", " ", "j", "!?"])(
@@ -229,10 +235,19 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     const pendingSearch = new Promise<never>(() => undefined)
     findFirstMock.mockResolvedValue({ bcp47: "en" })
     multiSearchMock.mockReturnValue(pendingSearch)
-    const service = createService()
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
 
-    void service.suggest({ query: "je", languageSlug: "english" })
-    void service.suggest({ query: "je", languageSlug: "english" })
+    void createServiceWithPrisma(prisma).suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+    void createServiceWithPrisma(prisma).suggest({
+      query: "je",
+      languageSlug: "english",
+    })
 
     await vi.waitFor(() => {
       expect(findFirstMock).toHaveBeenCalledTimes(1)
@@ -275,11 +290,17 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
           releases.push(resolve)
         }),
     )
-    const service = createService()
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
     const requests = Array.from(
       { length: MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS + 1 },
       (_, index) =>
-        service.suggest({ query: `je${index}`, languageSlug: "english" }),
+        createServiceWithPrisma(prisma).suggest({
+          query: `je${index}`,
+          languageSlug: "english",
+        }),
     )
 
     await expect(requests.at(-1)).resolves.toEqual([])
@@ -362,7 +383,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
 
   it("filters by exact public language identity when slugs share a locale", async () => {
     findFirstMock.mockResolvedValue({ bcp47: "ko" })
-    multiSearchMock.mockResolvedValue([
+    multiSearchMock.mockResolvedValueOnce([
       {
         found: 1,
         out_of: 1,
@@ -386,6 +407,15 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         ],
       },
     ])
+    multiSearchMock.mockImplementationOnce(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        hits: [{ document: { id: "validated" } }],
+      })),
+    )
 
     const result = await createService().suggest({
       query: "je",
@@ -417,7 +447,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
 
   it("returns description matches after title matches with localized context", async () => {
     findFirstMock.mockResolvedValue({ bcp47: "en" })
-    multiSearchMock.mockResolvedValue([
+    multiSearchMock.mockResolvedValueOnce([
       {
         found: 2,
         out_of: 2,
@@ -457,6 +487,15 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         ],
       },
     ])
+    multiSearchMock.mockImplementationOnce(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        hits: [{ document: { id: "validated" } }],
+      })),
+    )
 
     const result = await createService().suggest({
       query: "jes",
@@ -507,5 +546,404 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     expect(warnMock).toHaveBeenCalledWith(
       "[watch-search-suggestions] event=typesense_unavailable",
     )
+  })
+
+  it("validates ranked phrases in one bounded batch and preserves positive order", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-1",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["Jesus Heals the Blind Man"],
+                  metadata_en: ["Jesus brings sight and hope"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+    multiSearchMock.mockImplementationOnce(
+      async (searches: Array<{ q: string }>) =>
+        searches.map((search, index) => ({
+          found: index === 1 ? 0 : 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          hits:
+            index === 1 ? [] : [{ document: { id: `validated-${search.q}` } }],
+        })),
+    )
+
+    const result = await createService().suggest({
+      query: "jes",
+      languageSlug: "english",
+    })
+
+    const queryTitles = result
+      .filter((row) => row.kind === "query")
+      .map((row) => row.title)
+    const validationCall = multiSearchMock.mock.calls[1]
+    expect(queryTitles).not.toContain(validationCall?.[0]?.[1]?.q)
+    expect(queryTitles).toEqual(
+      validationCall?.[0]
+        ?.filter((_request: unknown, index: number) => index !== 1)
+        .map((request: { q: string }) => request.q),
+    )
+    expect(validationCall?.[1]).toEqual({ timeoutMs: 750 })
+    expect(validationCall?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: "watch_search_lexical",
+          q: "Jesus",
+          query_by: "title_en,title_fallback,metadata_en,metadata_fallback",
+          query_by_weights: "8,4,2,1",
+          filter_by: "languageIdentity:=[`slug:english`]",
+          page: 1,
+          per_page: 1,
+          prefix: false,
+          num_typos: "0,0,0,0",
+          drop_tokens_threshold: 0,
+          include_fields: "id",
+        }),
+      ]),
+    )
+    expect(validationCall?.[0]).toHaveLength(
+      result.filter((row) => row.kind === "query").length + 1,
+    )
+  })
+
+  it("reuses positive phrase verdicts across service instances and revalidates after expiry", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-12T12:00:00.000Z"))
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+    const typesense = { multiSearch: multiSearchMock }
+    const createSharedService = () =>
+      new TypesenseWatchSearchSuggestionsService(
+        prisma as never,
+        typesense as never,
+        { warn: warnMock },
+      )
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockImplementation(
+      async (searches: Array<{ per_page?: number }>) =>
+        searches[0]?.per_page === 25
+          ? [
+              {
+                found: 1,
+                out_of: 1,
+                page: 1,
+                search_time_ms: 1,
+                grouped_hits: [
+                  {
+                    group_key: ["canonical-1"],
+                    found: 1,
+                    hits: [
+                      {
+                        document: {
+                          videoId: "video-1",
+                          canonicalVideoId: "canonical-1",
+                          title_en: ["Jesus Film"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ]
+          : searches.map(() => ({
+              found: 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              hits: [{ document: { id: "validated" } }],
+            })),
+    )
+
+    await createSharedService().suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+    await createSharedService().suggest({
+      query: "jes",
+      languageSlug: "english",
+    })
+    expect(multiSearchMock).toHaveBeenCalledTimes(3)
+
+    vi.setSystemTime(new Date("2026-08-12T12:01:01.000Z"))
+    await createSharedService().suggest({
+      query: "jesu",
+      languageSlug: "english",
+    })
+    expect(multiSearchMock).toHaveBeenCalledTimes(5)
+  })
+
+  it("caches negative verdicts but does not cache validation failures", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    let validationAttempts = 0
+    multiSearchMock.mockImplementation(
+      async (searches: Array<{ per_page?: number }>) => {
+        if (searches[0]?.per_page === 25) {
+          return [
+            {
+              found: 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              grouped_hits: [
+                {
+                  group_key: ["canonical-1"],
+                  found: 1,
+                  hits: [
+                    {
+                      document: {
+                        videoId: "video-1",
+                        canonicalVideoId: "canonical-1",
+                        title_en: ["Jesus Film"],
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
+        }
+        validationAttempts += 1
+        if (validationAttempts === 1) {
+          return searches.map(() => ({
+            found: 0,
+            out_of: 0,
+            page: 1,
+            search_time_ms: 1,
+            hits: [],
+          }))
+        }
+        throw new Error("validation offline")
+      },
+    )
+    const service = createService()
+
+    await expect(
+      service.suggest({ query: "je", languageSlug: "english" }),
+    ).resolves.toEqual([
+      contentSuggestion("Jesus Film", null, "title", "video-1"),
+    ])
+    await service.suggest({ query: "jes", languageSlug: "english" })
+    expect(validationAttempts).toBe(1)
+
+    const freshService = createService()
+    await expect(
+      freshService.suggest({ query: "jesu", languageSlug: "english" }),
+    ).resolves.toEqual([
+      contentSuggestion("Jesus Film", null, "title", "video-1"),
+    ])
+    await freshService.suggest({ query: "jesus", languageSlug: "english" })
+    expect(validationAttempts).toBe(3)
+    expect(warnMock).toHaveBeenCalledWith(
+      "[watch-search-suggestions] event=phrase_validation_unavailable",
+    )
+  })
+
+  it.each([
+    ["wrong result count", []],
+    [
+      "malformed result",
+      [
+        {
+          found: Number.NaN,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          hits: [],
+        },
+      ],
+    ],
+  ])("preserves direct matches for a %s", async (_label, validationResult) => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock
+      .mockResolvedValueOnce([
+        {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-1"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-1",
+                    canonicalVideoId: "canonical-1",
+                    title_en: ["Jesus Film"],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ])
+      .mockResolvedValueOnce(validationResult)
+
+    await expect(
+      createService().suggest({ query: "je", languageSlug: "english" }),
+    ).resolves.toEqual([
+      contentSuggestion("Jesus Film", null, "title", "video-1"),
+    ])
+    expect(warnMock).toHaveBeenCalledWith(
+      "[watch-search-suggestions] event=phrase_validation_unavailable",
+    )
+  })
+
+  it("times out validation, preserves direct matches, and retries cleanly", async () => {
+    vi.useFakeTimers()
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    const candidateResult = {
+      found: 1,
+      out_of: 1,
+      page: 1,
+      search_time_ms: 1,
+      grouped_hits: [
+        {
+          group_key: ["canonical-1"],
+          found: 1,
+          hits: [
+            {
+              document: {
+                videoId: "video-1",
+                canonicalVideoId: "canonical-1",
+                title_en: ["Jesus Film"],
+              },
+            },
+          ],
+        },
+      ],
+    }
+    let validationAttempts = 0
+    multiSearchMock.mockImplementation(
+      (
+        searches: Array<{ per_page?: number }>,
+        options?: { timeoutMs?: number },
+      ) => {
+        if (searches[0]?.per_page === 25)
+          return Promise.resolve([candidateResult])
+        validationAttempts += 1
+        if (validationAttempts > 1) {
+          return Promise.resolve(
+            searches.map(() => ({
+              found: 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              hits: [{ document: { id: "validated" } }],
+            })),
+          )
+        }
+        return new Promise((_resolve, reject) => {
+          setTimeout(
+            () => reject(new Error("validation timed out")),
+            options?.timeoutMs,
+          )
+        })
+      },
+    )
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+    const first = createServiceWithPrisma(prisma).suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+    await vi.advanceTimersByTimeAsync(750)
+    await expect(first).resolves.toEqual([
+      contentSuggestion("Jesus Film", null, "title", "video-1"),
+    ])
+    await expect(
+      createServiceWithPrisma(prisma).suggest({
+        query: "jes",
+        languageSlug: "english",
+      }),
+    ).resolves.toEqual([
+      querySuggestion("Jesus"),
+      contentSuggestion("Jesus Film", null, "title", "video-1"),
+    ])
+    expect(validationAttempts).toBe(2)
+  })
+
+  it("isolates phrase verdicts by exact public language identity", async () => {
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockImplementation(
+      async (searches: Array<{ per_page?: number; filter_by?: string }>) =>
+        searches[0]?.per_page === 25
+          ? [
+              {
+                found: 1,
+                out_of: 1,
+                page: 1,
+                search_time_ms: 1,
+                grouped_hits: [
+                  {
+                    group_key: ["canonical-1"],
+                    found: 1,
+                    hits: [
+                      {
+                        document: {
+                          videoId: "video-1",
+                          canonicalVideoId: "canonical-1",
+                          title_en: ["Jesus Film"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ]
+          : searches.map((search) => ({
+              found: search.filter_by?.includes("slug:english-two") ? 0 : 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              hits: [],
+            })),
+    )
+
+    const first = await createServiceWithPrisma(prisma).suggest({
+      query: "je",
+      languageSlug: "english-one",
+    })
+    const second = await createServiceWithPrisma(prisma).suggest({
+      query: "jes",
+      languageSlug: "english-two",
+    })
+
+    expect(first.some((row) => row.kind === "query")).toBe(true)
+    expect(second.some((row) => row.kind === "query")).toBe(false)
+    expect(
+      multiSearchMock.mock.calls.filter(([searches]) =>
+        searches.every(
+          (search: { per_page?: number }) => search.per_page === 1,
+        ),
+      ),
+    ).toHaveLength(2)
   })
 })

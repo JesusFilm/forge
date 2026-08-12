@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 11, 2026)
+## Status (August 12, 2026)
 
-- **Total tickets:** 505
-- **Complete:** 385
-- **In progress:** 36
+- **Total tickets:** 511
+- **Complete:** 389
+- **In progress:** 38
 - **Not started:** 33
 - **Blocked:** 51
-- **Overdue and not complete:** 96
+- **Overdue and not complete:** 97
 
 ## Feature Index
 
@@ -102,12 +102,15 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-311](content-discovery/feat-311-admin-fireworks-query-embeddings.md)                                     | Admin Fireworks query embedding provider                                                        | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-326](content-discovery/feat-326-admin-search-results-pagination.md)                                      | Admin search results pagination                                                                 | codex      | P1       | 2026-08-02 | 1    | 2026-08-02 | complete    |
 | [feat-312](content-discovery/feat-312-admin-query-embedding-fast-fail.md)                                      | Admin query embedding one-second fast fail                                                      | codex      | P1       | 2026-08-03 | 1    | 2026-08-03 | complete    |
-| [feat-346](content-discovery/feat-346-watch-search-subtitle-audio-routing.md)                                  | Watch search subtitle-only audio routing                                                        | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-335](content-discovery/feat-335-watch-language-inventory-english-assist.md)                              | Watch language inventory English assistance                                                     | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-335](content-discovery/feat-335-watch-search-han-query-trigger.md)                                       | Remove Web Watch search frontend language detection                                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-336](content-discovery/feat-336-watch-localized-title-fallback.md)                                       | Watch localized title fallback                                                                  | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-336](content-discovery/feat-336-watch-search-explicit-submit.md)                                         | Require explicit Watch search submission                                                        | urim       | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-336](content-discovery/feat-336-watch-search-overlay-backdrop-continuity.md)                             | Watch search overlay backdrop continuity                                                        | vlad       | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-346](content-discovery/feat-346-watch-search-subtitle-audio-routing.md)                                  | Watch search subtitle-only audio routing                                                        | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-337](content-discovery/feat-337-watch-search-suggestions.md)                                             | Add language-aware Watch search suggestions                                                     | urim       | P1       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-350](content-discovery/feat-350-admin-search-comparison-form-compatibility.md)                           | Keep Admin search comparison forms compatible during deploys                                    | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
+| [feat-352](content-discovery/feat-352-watch-search-suggestion-result-validation.md)                            | Guarantee Watch query suggestion results                                                        | urim       | P1       | 2026-08-12 | 1    | 2026-08-12 | in-progress |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
@@ -400,8 +403,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-318](platform/feat-318-watch-language-less-english-canonical.md)                 | Make language-less Watch URLs canonical for English                              | codex      | P1       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-315](platform/feat-315-datadog-railway-release-sha-stamp.md)                     | Datadog Railway release SHA stamping                                             | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-319](platform/feat-319-datadog-syslog-structured-tags.md)                        | Datadog syslog structured log tags                                               | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
-| [feat-321](platform/feat-321-watch-language-less-contextual-english.md)                | Add language-less English contextual Watch routes                                | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-320](platform/feat-320-datadog-server-apm-sourcemaps.md)                         | Datadog server APM source maps                                                   | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
+| [feat-321](platform/feat-321-watch-language-less-contextual-english.md)                | Add language-less English contextual Watch routes                                | codex      | P1       | 2026-07-27 | 1    | 2026-07-27 | complete    |
 | [feat-322](platform/feat-322-language-picker-aria-combobox.md)                         | Language-picker ARIA combobox                                                    | unassigned | P1       | 2026-07-28 | 1    | 2026-07-28 | complete    |
 | [feat-322](platform/feat-322-tv-auth-sign-in-profile.md)                               | TV Sign-In and Profile (device authorization)                                    | ekkasit    | P1       | 2026-07-29 | 12   | 2026-08-09 | blocked     |
 | [feat-322](platform/feat-322-update-mastra-runtime-dependencies.md)                    | Update Mastra runtime dependencies                                               | codex      | P1       | 2026-07-31 | 1    | 2026-07-31 | complete    |
@@ -414,6 +417,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-334](platform/feat-334-web-redis-isr-cache.md)                                   | Web Redis-backed ISR cache                                                       | codex      | P1       | 2026-08-04 | 1    | 2026-08-04 | complete    |
 | [feat-335](platform/feat-335-watch-language-inventory-experience-section.md)           | Watch language inventory Experience section                                      | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | blocked     |
 | [feat-337](platform/feat-337-watch-language-inventory-direct-catalog.md)               | Focus Watch language inventory on the dubbed catalog                             | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
+| [feat-339](platform/feat-339-mobile-local-admin-endpoint.md)                           | Mobile local admin endpoint by default                                           | urim       | P1       | 2026-08-07 | 1    | 2026-08-07 | in-progress |
 | [feat-343](platform/feat-343-watch-sibling-language-availability.md)                   | Watch sibling selected-language availability                                     | codex      | P1       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-345](platform/feat-345-mastra-seo-sealed-google-credentials.md)                  | Support sealed Google credentials for Mastra SEO                                 | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |
 | [feat-347](platform/feat-347-mastra-seo-openrouter-provider.md)                        | Reuse Mastra OpenRouter access for SEO                                           | codex      | P1       | 2026-08-10 | 2    | 2026-08-11 | complete    |

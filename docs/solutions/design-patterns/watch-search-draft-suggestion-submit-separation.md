@@ -53,22 +53,36 @@ suggestion lane, not to the full search action.
 ### Keep the suggestion lane structurally cheaper than search
 
 Admin exposes a separate additive `watchSearchSuggestions` query backed only by
-the lexical title projection. The service should:
+the lexical title and description projection. The service should:
 
 - normalize the prefix with NFC, trim it, and cap it by Unicode code points
   before cache, database, or Typesense work;
 - require at least two Unicode letters or numbers;
-- query only localized `title_*` fields plus `title_fallback`;
+- query only localized `title_*` and `metadata_*` fields plus their fallback
+  fields;
 - use prefix matching, zero typo tolerance, exact-first ranking, canonical-video
   grouping, a small candidate pool, and a hard response cap;
-- return unique raw title strings, keeping document IDs internal; and
+- extract bounded query phrases, validate that each displayed phrase has a
+  lexical hit in the exact selected language, and hydrate only the bounded
+  direct matches needed for links; and
 - fail to an empty list without blocking normal search.
 
 Do not call the full Watch search service from this path. Suggestions must not
-run metadata or transcript lanes, query embeddings, result-card hydration,
-availability lookup, submitted-search traces, or prefix analytics. Popular,
+run transcript or semantic lanes, query embeddings, watchability lookup,
+submitted-search traces, or prefix analytics. Direct-match hydration is limited
+to indexed video IDs and link/group metadata. Popular,
 recent, personalized, or history-based suggestions require separate product,
 privacy, and retention decisions and are not a fallback for lexical failure.
+
+Phrase extraction is not itself a result guarantee. After ranking and capping
+the phrase candidates, validate uncached phrases through one dependent
+Typesense multi-search request with `per_page: 1` per phrase, a minimal
+projection, and the same exact `languageIdentity` filter. Preserve candidate
+order and keep only confirmed positives. Cache positive and negative verdicts
+briefly in a bounded process-local cache owned by the stable Prisma client so
+the cache survives per-request service construction. Transport, sub-search, or
+malformed-batch failures are not cached and suppress only query phrases;
+already-hydrated direct matches and explicit search submission remain usable.
 
 The public schema, generated Admin GraphQL types, and typed operation ship
 together. Web consumes the operation from
@@ -79,7 +93,7 @@ an inline GraphQL contract.
 
 The viewer-selected public language slug is the exact identity across the Web,
 GraphQL, and Typesense boundaries. Admin resolves its BCP-47 value only to pick
-the tokenizer-specific title field.
+the tokenizer-specific title and metadata fields.
 
 Each lexical document carries a faceted `languageIdentity`, and suggestion
 requests filter it before grouping:
@@ -88,12 +102,13 @@ requests filter it before grouping:
 {
   collection: "watch_search_lexical",
   q: normalizedPrefix,
-  query_by: "title_en,title_fallback",
+  query_by: "title_en,title_fallback,metadata_en,metadata_fallback",
+  query_by_weights: "8,4,2,1",
   filter_by: "languageIdentity:=[`slug:english`]",
   group_by: "canonicalVideoId",
   group_limit: 1,
   prefix: true,
-  num_typos: "0,0",
+  num_typos: "0,0,0,0",
 }
 ```
 

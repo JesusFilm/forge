@@ -72,6 +72,12 @@ type TypesenseMultiSearchResponse<T> = {
   results: Array<TypesenseSearchResult<T> | { error: string; code?: number }>
 }
 
+type TypesenseRequestOptions = {
+  acceptedStatuses?: readonly number[]
+  responseType?: "json" | "text"
+  timeoutMs?: number
+}
+
 export class TypesenseRequestError extends Error {
   constructor(
     message: string,
@@ -111,11 +117,15 @@ export class TypesenseClient {
   private async request<T>(
     path: string,
     init: RequestInit = {},
-    acceptedStatuses: readonly number[] = [],
-    responseType: "json" | "text" = "json",
+    options: TypesenseRequestOptions = {},
   ): Promise<T> {
+    const {
+      acceptedStatuses = [],
+      responseType = "json",
+      timeoutMs = this.timeoutMs,
+    } = options
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
     try {
       const response = await this.fetchImpl(`${this.host}${path}`, {
         ...init,
@@ -142,7 +152,7 @@ export class TypesenseClient {
       if (error instanceof TypesenseRequestError) throw error
       if (controller.signal.aborted) {
         throw new TypesenseRequestError(
-          `Typesense ${init.method ?? "GET"} ${path} timed out after ${this.timeoutMs}ms`,
+          `Typesense ${init.method ?? "GET"} ${path} timed out after ${timeoutMs}ms`,
         )
       }
       throw new TypesenseRequestError(
@@ -177,7 +187,7 @@ export class TypesenseClient {
     return this.request(
       `/collections/${encodeURIComponent(name)}`,
       { method: "DELETE" },
-      [404],
+      { acceptedStatuses: [404] },
     )
   }
 
@@ -190,14 +200,20 @@ export class TypesenseClient {
   }
 
   getAlias(alias: string): Promise<TypesenseAlias | undefined> {
-    return this.request(`/aliases/${encodeURIComponent(alias)}`, {}, [404])
+    return this.request(
+      `/aliases/${encodeURIComponent(alias)}`,
+      {},
+      {
+        acceptedStatuses: [404],
+      },
+    )
   }
 
   deleteAlias(alias: string): Promise<void> {
     return this.request(
       `/aliases/${encodeURIComponent(alias)}`,
       { method: "DELETE" },
-      [404],
+      { acceptedStatuses: [404] },
     )
   }
 
@@ -214,8 +230,7 @@ export class TypesenseClient {
         headers: { "content-type": "text/plain" },
         body: documents.map((document) => JSON.stringify(document)).join("\n"),
       },
-      [],
-      "text",
+      { responseType: "text" },
     )
     const response = responseText
       .split("\n")
@@ -266,6 +281,7 @@ export class TypesenseClient {
 
   async multiSearch<T>(
     searches: readonly TypesenseSearchRequest[],
+    options: { timeoutMs?: number } = {},
   ): Promise<TypesenseSearchResult<T>[]> {
     const response = await this.request<TypesenseMultiSearchResponse<T>>(
       "/multi_search",
@@ -274,6 +290,7 @@ export class TypesenseClient {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ searches }),
       },
+      { timeoutMs: options.timeoutMs },
     )
     const failed = response.results.find(
       (result): result is { error: string; code?: number } => "error" in result,
