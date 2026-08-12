@@ -355,17 +355,6 @@ export default function RootLayout() {
                             name="series"
                             options={{ headerShown: false }}
                           />
-                          <Stack.Screen
-                            name="sign-in"
-                            options={{
-                              headerShown: false,
-                              presentation: "formSheet",
-                              sheetInitialDetentIndex: 0,
-                              sheetAllowedDetents: [0.65, 1],
-                              sheetGrabberVisible: true,
-                              sheetCornerRadius: 16,
-                            }}
-                          />
                         </Stack>
                       </ExperienceShell>
                     </DownloadsProvider>

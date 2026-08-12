@@ -4,6 +4,7 @@ import {
   getNewAccountNotice,
   noteAccountCreated,
   subscribeToNewAccountNotice,
+  wasAccountCreatedThisSignIn,
   wasAccountJustCreated,
 } from "../newAccountNotice"
 
@@ -54,6 +55,55 @@ describe("wasAccountJustCreated", () => {
     expect(wasAccountJustCreated(undefined, NOW)).toBe(false)
     expect(wasAccountJustCreated(null, NOW)).toBe(false)
     expect(wasAccountJustCreated("not a date", NOW)).toBe(false)
+  })
+})
+
+describe("wasAccountCreatedThisSignIn (hosted path, KTD3)", () => {
+  // Both stamps come from the SERVER clock; NOW here is deliberately far
+  // from the device's Date.now() so a device-clock leak fails these cases.
+  const SESSION = new Date(NOW).toISOString()
+
+  it("treats a user created moments before this session as new", () => {
+    expect(
+      wasAccountCreatedThisSignIn(new Date(NOW - 2_000).toISOString(), SESSION),
+    ).toBe(true)
+  })
+
+  it("does not treat a long-standing account as new", () => {
+    const lastYear = new Date(NOW - 365 * 24 * 3600 * 1000).toISOString()
+    expect(wasAccountCreatedThisSignIn(lastYear, SESSION)).toBe(false)
+  })
+
+  it("shares the single declared window, bounded on both sides", () => {
+    const past = new Date(NOW - NEW_ACCOUNT_WINDOW_MS - 1).toISOString()
+    const inside = new Date(NOW - NEW_ACCOUNT_WINDOW_MS + 1).toISOString()
+    const future = new Date(NOW + NEW_ACCOUNT_WINDOW_MS + 1).toISOString()
+    expect(wasAccountCreatedThisSignIn(past, SESSION)).toBe(false)
+    expect(wasAccountCreatedThisSignIn(inside, SESSION)).toBe(true)
+    expect(wasAccountCreatedThisSignIn(future, SESSION)).toBe(false)
+  })
+
+  it("accepts Date instances on both sides", () => {
+    expect(
+      wasAccountCreatedThisSignIn(new Date(NOW - 1_000), new Date(NOW)),
+    ).toBe(true)
+  })
+
+  it("never marks without a session stamp — the device clock does not substitute", () => {
+    const freshOnDeviceClock = new Date().toISOString()
+    expect(wasAccountCreatedThisSignIn(freshOnDeviceClock, undefined)).toBe(
+      false,
+    )
+    expect(wasAccountCreatedThisSignIn(freshOnDeviceClock, null)).toBe(false)
+    expect(wasAccountCreatedThisSignIn(freshOnDeviceClock, "not a date")).toBe(
+      false,
+    )
+  })
+
+  it("says no when the user stamp is absent or unparseable", () => {
+    expect(wasAccountCreatedThisSignIn(undefined, SESSION)).toBe(false)
+    expect(wasAccountCreatedThisSignIn(null, SESSION)).toBe(false)
+    expect(wasAccountCreatedThisSignIn("not a date", SESSION)).toBe(false)
   })
 })
 

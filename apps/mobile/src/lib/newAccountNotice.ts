@@ -31,6 +31,23 @@ export function wasAccountJustCreated(
   return Math.abs(nowMs - createdMs) <= NEW_ACCOUNT_WINDOW_MS
 }
 
+/**
+ * Hosted-path variant (KTD3): both stamps are the SERVER's clock, so the
+ * device clock never participates. Absent or unparseable → not new.
+ */
+export function wasAccountCreatedThisSignIn(
+  userCreatedAt: string | Date | null | undefined,
+  sessionCreatedAt: string | Date | null | undefined,
+): boolean {
+  if (sessionCreatedAt == null) return false
+  const sessionMs =
+    sessionCreatedAt instanceof Date
+      ? sessionCreatedAt.getTime()
+      : Date.parse(sessionCreatedAt)
+  if (!Number.isFinite(sessionMs)) return false
+  return wasAccountJustCreated(userCreatedAt, sessionMs)
+}
+
 type Listener = () => void
 
 let accountId: string | null = null

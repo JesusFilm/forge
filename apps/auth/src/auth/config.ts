@@ -133,6 +133,9 @@ const socialProviders = {
     : {}),
   ...(appleCredentials
     ? {
+        // App Store guideline 4.8: the hosted page is mobile's ONLY login,
+        // so Apple must stay enabled here while the app is in the store.
+        // An expired Apple secret now breaks mobile login compliance.
         apple: {
           ...appleCredentials,
           audience: appleAudience,
@@ -142,9 +145,10 @@ const socialProviders = {
     : {}),
 }
 
-// Mobile's hosted-page fallback: Auth acts as OAuth client toward its own
-// oauth-provider (self-RP), so any hosted sign-in method ends in a real
-// Better Auth session the Expo plugin can hand back to the app.
+// Mobile's hosted-page sign-in (the only mobile login since feat-349): Auth
+// acts as OAuth client toward its own oauth-provider (self-RP), so any
+// hosted sign-in method ends in a real Better Auth session the Expo plugin
+// can hand back to the app.
 const jfpMobileSelfProvider = {
   providerId: JFP_MOBILE_PROVIDER_ID,
   discoveryUrl: `${getAuthBaseUrl()}/.well-known/openid-configuration`,
@@ -155,6 +159,11 @@ const jfpMobileSelfProvider = {
   scopes: [...MOBILE_DEFAULT_SCOPES],
   redirectURI: `${getAuthBaseUrl()}/api/auth/oauth2/callback/${JFP_MOBILE_PROVIDER_ID}`,
   pkce: true,
+  // R5 (feat-349): always show the login form, even with a live browser
+  // session — sign-out must allow account switching on a shared device.
+  // `as const` keeps the literal from widening to `string`, which fails the
+  // GenericOAuthConfig.prompt union and breaks `@forge/auth` typecheck.
+  prompt: "login" as const,
 }
 
 const upstreamProviderPlugins = [
