@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Audio gwich’in tr’ahłii",
     "home": "JesusFilm ch’àn gwik’it",
     "closeSearch": "Search nąįį",
-    "submitSearch": "Search nąįį"
+    "submitSearch": "Nah’in"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos search k’eejìi nah’in",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Christmas gwandak",
     "searchLanguageLabel": "Search gwich’in",
     "allLanguages": "Gwich’in zhìi ahzho",
-    "searchSuggestions": "Search Nits’àt Ginjik",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Search k’eejìi shòh ahłii",
+    "directMatches": "T’ejùu results",
     "languages": "Gwich’in zhìi",
     "recommendedLanguage": "Gwich’in shòh ahłii",
-    "searchSuggestion": "{suggestion} search",
-    "searchSuggestionWithLanguage": "{language}: {suggestion} search",
+    "searchSuggestion": "“{suggestion}” search",
+    "searchSuggestionWithLanguage": "{language} k’it “{suggestion}” search",
     "inLanguage": "{language} k’it",
     "browseByRegion": "Nan t’ąįį k’it nah’in",
     "clearLanguages": "Nąįį",
     "queryLanguageDetected": "{language} gwiłtsąįį",
-    "searchInLanguage": "{language}: search",
+    "searchInLanguage": "{language} k’it search",
     "tryDifferentKeywordsOrLanguage": "Ginjik łyaa search k’eejìi search gwich’in łyaa ch’ihłii",
     "useWebsiteDefaultLanguage": "Website default search gwich’in gwitr’it",
     "removeLanguage": "{language} nąįį",
-    "browseMode": "Search ts’àt nah’in mode"
+    "browseMode": "Search ts’àt nah’in mode",
+    "searchingInLanguage": "{language} k’it results"
   },
   "HeroPlayer": {
     "playWithSound": "Jùu nah’in",

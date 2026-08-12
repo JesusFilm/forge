@@ -228,6 +228,7 @@
     "clearLanguages": "Clear",
     "queryLanguageDetected": "{language} detected",
     "searchInLanguage": "Search in {language}",
+    "searchingInLanguage": "Searching in {language}",
     "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {

@@ -205,12 +205,12 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "Tikanöx ch'ab'äl",
     "allLanguages": "Konojel taq ch'ab'äl",
-    "searchSuggestions": "Tz'onob'äl k'utunem",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Taq chilab'enïk richin k'utunem",
+    "directMatches": "Taq resultados ri kijunam",
     "languages": "Taq ch'ab'äl",
     "recommendedLanguage": "Ch'ab'äl etamanem",
     "searchSuggestion": "Tikanöx {suggestion}",
-    "searchSuggestionWithLanguage": "Tikanöx {suggestion} pa {language}",
+    "searchSuggestionWithLanguage": "Tikanöx \"{suggestion}\" pa {language}",
     "inLanguage": "pa {language}",
     "browseByRegion": "Tik'ut pa región",
     "clearLanguages": "Tijach",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tatojtob'ej ch'aqa' chik taq no'jib'äl o tacha' jun chik ch'ab'äl richin k'utunem",
     "useWebsiteDefaultLanguage": "Titz'et ri default ch'ab'äl re sitio re'",
     "removeLanguage": "Tijach {language}",
-    "browseMode": "Ruwäch k'utunem yanïk"
+    "browseMode": "Ruwäch k'utunem yanïk",
+    "searchingInLanguage": "Taq resultados pa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Titz'et wakami",

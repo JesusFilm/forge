@@ -180,7 +180,7 @@
     "changeAudioLanguage": "ଅଡିଓ ଭାଷା ବଦଳାନ୍ତୁ",
     "home": "JesusFilm ହୋମ୍",
     "closeSearch": "ସନ୍ଧାନ ବନ୍ଦ କରନ୍ତୁ",
-    "submitSearch": "ସନ୍ଧାନ"
+    "submitSearch": "ଖୋଜନ୍ତୁ"
   },
   "SearchOverlay": {
     "dialogLabel": "ଭିଡିଓଗୁଡ଼ିକୁ ଖୋଜନ୍ତୁ ଓ ବ୍ରାଉଜ୍ କରନ୍ତୁ",
@@ -205,12 +205,12 @@
     "categoryChristmas": "ବଡ଼ଦିନ",
     "searchLanguageLabel": "ସନ୍ଧାନ ଭାଷା",
     "allLanguages": "ସମସ୍ତ ଭାଷା",
-    "searchSuggestions": "ସନ୍ଧାନ ପ୍ରସ୍ତାବ",
-    "directMatches": "Direct match",
+    "searchSuggestions": "ପ୍ରସ୍ତାବିତ ସନ୍ଧାନ",
+    "directMatches": "ସିଧାସଳଖ ମେଳ",
     "languages": "ଭାଷାଗୁଡ଼ିକ",
     "recommendedLanguage": "ସୁପାରିଶକୃତ ଭାଷା",
-    "searchSuggestion": "{suggestion} ଖୋଜନ୍ତୁ",
-    "searchSuggestionWithLanguage": "{language}ରେ {suggestion} ଖୋଜନ୍ତୁ",
+    "searchSuggestion": "“{suggestion}” ଖୋଜନ୍ତୁ",
+    "searchSuggestionWithLanguage": "{language}ରେ “{suggestion}” ଖୋଜନ୍ତୁ",
     "inLanguage": "{language}ରେ",
     "browseByRegion": "ଅଞ୍ଚଳ ଅନୁଯାୟୀ ବ୍ରାଉଜ୍ କରନ୍ତୁ",
     "clearLanguages": "ସଫା କରନ୍ତୁ",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "ଅନ୍ୟ କୀୱାର୍ଡ୍ ଚେଷ୍ଟା କରନ୍ତୁ କିମ୍ବା ଅନ୍ୟ ଏକ ସନ୍ଧାନ ଭାଷା ବାଛନ୍ତୁ",
     "useWebsiteDefaultLanguage": "ୱେବସାଇଟ୍‌ର ଡିଫଲ୍ଟ ସନ୍ଧାନ ଭାଷା ବ୍ୟବହାର କରନ୍ତୁ",
     "removeLanguage": "{language} କାଢ଼ନ୍ତୁ",
-    "browseMode": "ସନ୍ଧାନ ବ୍ରାଉଜ୍ ମୋଡ୍"
+    "browseMode": "ସନ୍ଧାନ ବ୍ରାଉଜ୍ ମୋଡ୍",
+    "searchingInLanguage": "{language}ରେ ଫଳାଫଳ"
   },
   "HeroPlayer": {
     "playWithSound": "ଏବେ ଦେଖନ୍ତୁ",

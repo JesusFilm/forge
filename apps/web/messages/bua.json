@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Дууны хэлийг солих",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлт хаах",
-    "submitSearch": "Хайх"
+    "submitSearch": "Бэдэрхэ"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайж үзэх",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Зул сар",
     "searchLanguageLabel": "Хайлтын хэл",
     "allLanguages": "Бүх хэл",
-    "searchSuggestions": "Хайлтын санал",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Бэдэрэлгын дурадхалнууд",
+    "directMatches": "Сэхэ таараһан үрэ дүнгүүд",
     "languages": "Хэлнүүд",
     "recommendedLanguage": "Зөвлөмж болгосон хэл",
-    "searchSuggestion": "{suggestion}-г хайх",
-    "searchSuggestionWithLanguage": "{language} дээр {suggestion}-г хайх",
+    "searchSuggestion": "«{suggestion}» гэжэ бэдэрхэ",
+    "searchSuggestionWithLanguage": "{language} хэлээр «{suggestion}» гэжэ бэдэрхэ",
     "inLanguage": "{language}-ээр",
     "browseByRegion": "Бүс нутгаар үзэх",
     "clearLanguages": "Арилгах",
     "queryLanguageDetected": "{language} илэрлээ",
-    "searchInLanguage": "{language}-ээр хайх",
+    "searchInLanguage": "{language} хэлээр бэдэрхэ",
     "tryDifferentKeywordsOrLanguage": "Өөр түлхүүр үг эсвэл өөр хайлтын хэл сонгоно уу",
     "useWebsiteDefaultLanguage": "Вэбсайтын үндсэн хайлтын хэлийг ашиглах",
     "removeLanguage": "{language}-г устгах",
-    "browseMode": "Хайж үзэх горим"
+    "browseMode": "Хайж үзэх горим",
+    "searchingInLanguage": "Үрэ дүнгүүд: {language} хэлээр"
   },
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",

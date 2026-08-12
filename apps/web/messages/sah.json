@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Аудио тылын уларыт",
     "home": "JesusFilm бастыҥ сирэйи",
     "closeSearch": "Көрдөһүүни сап",
-    "submitSearch": "Көрдөө"
+    "submitSearch": "Көрдө"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолары көрдө уонна көр",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Ыһыах",
     "searchLanguageLabel": "Тыл көрдө",
     "allLanguages": "Бары тыллар",
-    "searchSuggestions": "Көрдөһүү санаалара",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Сүбэлэнэр көрдөөһүннэр",
+    "directMatches": "Туура түбэһии",
     "languages": "Тыллар",
     "recommendedLanguage": "Көрдөстөр тыл",
-    "searchSuggestion": "{suggestion} көрдө",
-    "searchSuggestionWithLanguage": "{suggestion}-ны {language}-та көрдө",
+    "searchSuggestion": "«{suggestion}» көрдө",
+    "searchSuggestionWithLanguage": "{language} тылынан «{suggestion}» көрдө",
     "inLanguage": "{language}-та",
     "browseByRegion": "Улусаҕынан көр",
     "clearLanguages": "Сот",
     "queryLanguageDetected": "{language} биллибит",
-    "searchInLanguage": "{language}-та көрдө",
+    "searchInLanguage": "{language} тылынан көрдө",
     "tryDifferentKeywordsOrLanguage": "Атын тыллары туһан эбэтэр бүтүн атын көрдө тылын тал",
     "useWebsiteDefaultLanguage": "Сайттың көдьүүс тылын тут",
     "removeLanguage": "{language} сот",
-    "browseMode": "Көрүү режимэ"
+    "browseMode": "Көрүү режимэ",
+    "searchingInLanguage": "Түмүктэр тыллара: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Быһа көр",

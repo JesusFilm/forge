@@ -205,12 +205,12 @@
     "categoryChristmas": "ຄຣິດສະມາດ",
     "searchLanguageLabel": "ພາສາທີ່ຄົ້ນຫາ",
     "allLanguages": "ທຸກພາສາ",
-    "searchSuggestions": "ຄຳແນະນຳການຄົ້ນຫາ",
-    "directMatches": "Direct match",
+    "searchSuggestions": "ຄຳຄົ້ນຫາທີ່ແນະນຳ",
+    "directMatches": "ຜົນລັບທີ່ກົງກັນ",
     "languages": "ພາສາ",
     "recommendedLanguage": "ພາສາທີ່ແນະນຳ",
-    "searchSuggestion": "ຄົ້ນຫາ {suggestion}",
-    "searchSuggestionWithLanguage": "ຄົ້ນຫາ {suggestion} ໃນ {language}",
+    "searchSuggestion": "ຄົ້ນຫາ “{suggestion}”",
+    "searchSuggestionWithLanguage": "ຄົ້ນຫາ “{suggestion}” ໃນ {language}",
     "inLanguage": "ໃນ {language}",
     "browseByRegion": "ຊອກຫາຕາມພາກພື້ນ",
     "clearLanguages": "ລ້າງ",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "ລອງຄຳສຳຄັນອື່ນ ຫຼື ເລືອກພາສາຄົ້ນຫາອື່ນ",
     "useWebsiteDefaultLanguage": "ໃຊ້ພາສາຄົ້ນຫາເລີ່ມຕົ້ນຂອງເວັບໄຊ",
     "removeLanguage": "ລຶບ {language}",
-    "browseMode": "ໂໝດຄົ້ນຫາ"
+    "browseMode": "ໂໝດຄົ້ນຫາ",
+    "searchingInLanguage": "ຜົນການຄົ້ນຫາໃນ {language}"
   },
   "HeroPlayer": {
     "playWithSound": "ຮັບຊົມຕອນນີ້",

@@ -180,7 +180,7 @@
     "changeAudioLanguage": "ஒலி மொழியை மாற்றவும்",
     "home": "JesusFilm முகப்பு",
     "closeSearch": "தேடலை மூடு",
-    "submitSearch": "தேடு"
+    "submitSearch": "தேடவும்"
   },
   "SearchOverlay": {
     "dialogLabel": "வீடியோக்களைத் தேடவும் மற்றும் உலாவவும்",
@@ -206,20 +206,21 @@
     "searchLanguageLabel": "தேடல் மொழி",
     "allLanguages": "அனைத்து மொழிகள்",
     "searchSuggestions": "தேடல் பரிந்துரைகள்",
-    "directMatches": "Direct match",
+    "directMatches": "நேரடிப் பொருத்தங்கள்",
     "languages": "மொழிகள்",
     "recommendedLanguage": "பரிந்துரைக்கப்பட்ட மொழி",
-    "searchSuggestion": "{suggestion}-ஐத் தேடு",
-    "searchSuggestionWithLanguage": "{suggestion}-ஐ {language}-இல் தேடு",
+    "searchSuggestion": "“{suggestion}” என்பதைத் தேடவும்",
+    "searchSuggestionWithLanguage": "{language}-இல் “{suggestion}” என்பதைத் தேடவும்",
     "inLanguage": "{language}-இல்",
     "browseByRegion": "பகுதியின்படி உலாவவும்",
     "clearLanguages": "அழிக்கவும்",
     "queryLanguageDetected": "{language} கண்டறியப்பட்டது",
-    "searchInLanguage": "{language}-இல் தேடு",
+    "searchInLanguage": "{language}-இல் தேடவும்",
     "tryDifferentKeywordsOrLanguage": "வேறு முக்கியச் சொற்களை முயற்சிக்கவும் அல்லது வேறு தேடல் மொழியைத் தேர்ந்தெடுக்கவும்",
     "useWebsiteDefaultLanguage": "வலைத்தளத்தின் இயல்புநிலை தேடல் மொழியைப் பயன்படுத்தவும்",
     "removeLanguage": "{language}-ஐ அகற்று",
-    "browseMode": "தேடல் உலாவல் முறை"
+    "browseMode": "தேடல் உலாவல் முறை",
+    "searchingInLanguage": "முடிவுகள் {language}-இல் உள்ளன"
   },
   "HeroPlayer": {
     "playWithSound": "இப்போது பார்க்கவும்",

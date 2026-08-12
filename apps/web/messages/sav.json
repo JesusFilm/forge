@@ -205,12 +205,12 @@
     "categoryChristmas": "Noël",
     "searchLanguageLabel": "Seet làkk",
     "allLanguages": "Làkk yépp",
-    "searchSuggestions": "Digal yu seet",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Tégtali seet",
+    "directMatches": "Li méngoo ci seet bi",
     "languages": "Làkk yi",
     "recommendedLanguage": "Làkk bu tànneef",
     "searchSuggestion": "Seet {suggestion}",
-    "searchSuggestionWithLanguage": "Seet {suggestion} ci {language}",
+    "searchSuggestionWithLanguage": "Seet « {suggestion} » ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Dëkkuwaay ci réew",
     "clearLanguages": "Fey",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Jéemal beneen baat yi walla tànnal beneen làkk bu seet",
     "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu website bi ci seet",
     "removeLanguage": "Sànni {language}",
-    "browseMode": "Mode bu dëkkuwaay"
+    "browseMode": "Mode bu dëkkuwaay",
+    "searchingInLanguage": "Njariñ yi ci {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Xool léegi",

@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Sökspråk",
     "allLanguages": "Alla språk",
     "searchSuggestions": "Sökförslag",
-    "directMatches": "Direct match",
+    "directMatches": "Direkta träffar",
     "languages": "Språk",
     "recommendedLanguage": "Rekommenderat språk",
-    "searchSuggestion": "Sök {suggestion}",
-    "searchSuggestionWithLanguage": "Sök {suggestion} på {language}",
+    "searchSuggestion": "Sök efter {suggestion}",
+    "searchSuggestionWithLanguage": "Sök efter ”{suggestion}” på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Bläddra efter region",
     "clearLanguages": "Rensa",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Prova andra nyckelord eller välj ett annat sökspråk",
     "useWebsiteDefaultLanguage": "Använd webbplatsens standardsökspråk",
     "removeLanguage": "Ta bort {language}",
-    "browseMode": "Bläddringsläge för sökning"
+    "browseMode": "Bläddringsläge för sökning",
+    "searchingInLanguage": "Resultat på {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Titta nu",

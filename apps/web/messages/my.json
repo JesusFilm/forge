@@ -205,12 +205,12 @@
     "categoryChristmas": "ခရစ္စမတ်",
     "searchLanguageLabel": "ရှာဖွေမှု ဘာသာစကား",
     "allLanguages": "ဘာသာစကားအားလုံး",
-    "searchSuggestions": "ရှာဖွေမှု အကြံပြုချက်များ",
-    "directMatches": "Direct match",
+    "searchSuggestions": "ရှာဖွေရန် အကြံပြုချက်များ",
+    "directMatches": "တိုက်ရိုက်ကိုက်ညီသော ရလဒ်များ",
     "languages": "ဘာသာစကားများ",
     "recommendedLanguage": "အကြံပြုထားသော ဘာသာစကား",
     "searchSuggestion": "{suggestion} ကို ရှာဖွေပါ",
-    "searchSuggestionWithLanguage": "{language} တွင် {suggestion} ကို ရှာဖွေပါ",
+    "searchSuggestionWithLanguage": "“{suggestion}” ကို {language} ဖြင့် ရှာဖွေပါ",
     "inLanguage": "{language} တွင်",
     "browseByRegion": "ဒေသအလိုက် လေ့လာပါ",
     "clearLanguages": "ရှင်းလင်းပါ",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "အခြားသော့ချက်စကားလုံးများကို စမ်းပါ သို့မဟုတ် အခြားရှာဖွေမှု ဘာသာစကားကို ရွေးပါ",
     "useWebsiteDefaultLanguage": "ဝက်ဘ်ဆိုက်၏ မူရင်း ရှာဖွေမှု ဘာသာစကားကို အသုံးပြုပါ",
     "removeLanguage": "{language} ကို ဖယ်ရှားပါ",
-    "browseMode": "ရှာဖွေ လေ့လာမှု မုဒ်"
+    "browseMode": "ရှာဖွေ လေ့လာမှု မုဒ်",
+    "searchingInLanguage": "ရလဒ်များကို {language} ဖြင့် ပြသထားသည်"
   },
   "HeroPlayer": {
     "playWithSound": "ယခု ကြည့်ပါ",

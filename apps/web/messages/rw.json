@@ -205,12 +205,12 @@
     "categoryChristmas": "Noheli",
     "searchLanguageLabel": "Ururimi rwo gushakisha",
     "allLanguages": "Indimi zose",
-    "searchSuggestions": "Ibitekerezo byo gushakisha",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Ibyifuzo byo gushakisha",
+    "directMatches": "Ibihuye neza",
     "languages": "Indimi",
     "recommendedLanguage": "Ururimi rusabwa",
-    "searchSuggestion": "Shakisha {suggestion}",
-    "searchSuggestionWithLanguage": "Shakisha {suggestion} mu {language}",
+    "searchSuggestion": "Shakisha «{suggestion}»",
+    "searchSuggestionWithLanguage": "Shakisha «{suggestion}» mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Reba ukurikije akarere",
     "clearLanguages": "Siba",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Gerageza andi magambo cyangwa uhitemo urundi rurimi rwo gushakisha",
     "useWebsiteDefaultLanguage": "Koresha ururimi rusanzwe rwa website rwo gushakisha",
     "removeLanguage": "Kuraho {language}",
-    "browseMode": "Uburyo bwo kureba ubushakatsi"
+    "browseMode": "Uburyo bwo kureba ubushakatsi",
+    "searchingInLanguage": "Ibisubizo byo mu {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Reba ubu",

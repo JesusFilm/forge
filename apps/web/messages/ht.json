@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Lang rechèch",
     "allLanguages": "Tout lang",
     "searchSuggestions": "Sijesyon rechèch",
-    "directMatches": "Direct match",
+    "directMatches": "Rezilta dirèk",
     "languages": "Lang yo",
     "recommendedLanguage": "Lang rekòmande",
     "searchSuggestion": "Chèche {suggestion}",
-    "searchSuggestionWithLanguage": "Chèche {suggestion} an {language}",
+    "searchSuggestionWithLanguage": "Chèche « {suggestion} » an {language}",
     "inLanguage": "an {language}",
     "browseByRegion": "Browse pa rejyon",
     "clearLanguages": "Efase",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Eseye lòt mo kle oswa chwazi yon lòt lang rechèch",
     "useWebsiteDefaultLanguage": "Sèvi ak lang rechèch default sit la",
     "removeLanguage": "Retire {language}",
-    "browseMode": "Mòd browse rechèch"
+    "browseMode": "Mòd browse rechèch",
+    "searchingInLanguage": "Rezilta an {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Gade kounye a",

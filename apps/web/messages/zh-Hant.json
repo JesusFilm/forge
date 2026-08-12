@@ -206,11 +206,11 @@
     "searchLanguageLabel": "搜尋語言",
     "allLanguages": "所有語言",
     "searchSuggestions": "搜尋建議",
-    "directMatches": "Direct match",
+    "directMatches": "直接符合的內容",
     "languages": "語言",
     "recommendedLanguage": "建議語言",
-    "searchSuggestion": "搜尋 {suggestion}",
-    "searchSuggestionWithLanguage": "以{language}搜尋{suggestion}",
+    "searchSuggestion": "搜尋「{suggestion}」",
+    "searchSuggestionWithLanguage": "以{language}搜尋「{suggestion}」",
     "inLanguage": "以{language}",
     "browseByRegion": "依地區瀏覽",
     "clearLanguages": "清除",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "請試試不同關鍵字，或選擇其他搜尋語言",
     "useWebsiteDefaultLanguage": "使用網站預設搜尋語言",
     "removeLanguage": "移除{language}",
-    "browseMode": "搜尋瀏覽模式"
+    "browseMode": "搜尋瀏覽模式",
+    "searchingInLanguage": "結果範圍：{language}"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",

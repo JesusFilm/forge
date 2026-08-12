@@ -205,12 +205,12 @@
     "categoryChristmas": "کرسمس",
     "searchLanguageLabel": "تلاش زبان",
     "allLanguages": "سارۍ زبانہٕ",
-    "searchSuggestions": "تلاش تجاویز",
-    "directMatches": "Direct match",
+    "searchSuggestions": "تلاش خٲطرٕ تجویزہٕ",
+    "directMatches": "سیدھا میل",
     "languages": "زبانہٕ",
     "recommendedLanguage": "تجویز شدہ زبان",
     "searchSuggestion": "{suggestion} تلاش کرو",
-    "searchSuggestionWithLanguage": "{suggestion} {language} منز تلاش کرو",
+    "searchSuggestionWithLanguage": "{language} منز ”{suggestion}“ تلاش کرو",
     "inLanguage": "{language} منز",
     "browseByRegion": "علاقہ سۭتۍ براؤز کرو",
     "clearLanguages": "صاف کرو",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "مختلف کلیدی لفظ آزمائیو یا ٻی تلاش زبان چُنئیو",
     "useWebsiteDefaultLanguage": "ویب سائٹ کی ڈیفالٹ تلاش زبان استعمال کرو",
     "removeLanguage": "{language} ہٹاؤ",
-    "browseMode": "تلاش براؤز موڈ"
+    "browseMode": "تلاش براؤز موڈ",
+    "searchingInLanguage": "نتیجہٕ {language} منز چھِ"
   },
   "HeroPlayer": {
     "playWithSound": "ہنٛز دیکھیو",

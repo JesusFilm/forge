@@ -205,12 +205,12 @@
     "categoryChristmas": "ક્રિસમસ",
     "searchLanguageLabel": "શોધની ભાષા",
     "allLanguages": "બધી ભાષાઓ",
-    "searchSuggestions": "શોધ સૂચનો",
-    "directMatches": "Direct match",
+    "searchSuggestions": "સૂચવેલી શોધો",
+    "directMatches": "સીધા મેળ ખાતાં પરિણામો",
     "languages": "ભાષાઓ",
     "recommendedLanguage": "ભલામણ કરેલી ભાષા",
-    "searchSuggestion": "{suggestion} શોધો",
-    "searchSuggestionWithLanguage": "{language} માં {suggestion} શોધો",
+    "searchSuggestion": "“{suggestion}” શોધો",
+    "searchSuggestionWithLanguage": "{language} માં “{suggestion}” શોધો",
     "inLanguage": "{language} માં",
     "browseByRegion": "પ્રદેશ મુજબ બ્રાઉઝ કરો",
     "clearLanguages": "સાફ કરો",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "અન્ય કીવર્ડ્સ અજમાવો અથવા બીજી શોધ ભાષા પસંદ કરો",
     "useWebsiteDefaultLanguage": "વેબસાઇટની ડિફૉલ્ટ શોધ ભાષાનો ઉપયોગ કરો",
     "removeLanguage": "{language} દૂર કરો",
-    "browseMode": "બ્રાઉઝ શોધ મોડ"
+    "browseMode": "બ્રાઉઝ શોધ મોડ",
+    "searchingInLanguage": "{language} માં શોધનાં પરિણામો"
   },
   "HeroPlayer": {
     "playWithSound": "હમણાં જુઓ",

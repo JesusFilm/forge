@@ -205,12 +205,12 @@
     "categoryChristmas": "Khisimusi",
     "searchLanguageLabel": "Ulimi lokusesha",
     "allLanguages": "Zonke izilimi",
-    "searchSuggestions": "Iziphakamiso zokusesha",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Iimphakamiso zokusesha",
+    "directMatches": "Okukhambelana bunqopha",
     "languages": "Izilimi",
     "recommendedLanguage": "Ulimi olunconywayo",
     "searchSuggestion": "Sesha {suggestion}",
-    "searchSuggestionWithLanguage": "Sesha {suggestion} ngesi-{language}",
+    "searchSuggestionWithLanguage": "Sesha “{suggestion}” ngesi-{language}",
     "inLanguage": "ngesi-{language}",
     "browseByRegion": "Phequlula ngokwesifunda",
     "clearLanguages": "Sula",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Zama amagama angukhiye ahlukile noma khetha olunye ulimi lokusesha",
     "useWebsiteDefaultLanguage": "Sebenzisa ulimi lokusesha oluzenzakalelayo lwewebhusayithi",
     "removeLanguage": "Susa {language}",
-    "browseMode": "Imodi yokuphequlula usesho"
+    "browseMode": "Imodi yokuphequlula usesho",
+    "searchingInLanguage": "Imiphumela yokusesha ngesi-{language}"
   },
   "HeroPlayer": {
     "playWithSound": "Buka manje",

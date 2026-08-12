@@ -180,7 +180,7 @@
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
     "closeSearch": "بستن جستجو",
-    "submitSearch": "جستجو"
+    "submitSearch": "آختار"
   },
   "SearchOverlay": {
     "dialogLabel": "جستجو و مرور ویدیوها",
@@ -205,21 +205,22 @@
     "categoryChristmas": "کریسمس",
     "searchLanguageLabel": "زبان جستجو",
     "allLanguages": "همهٔ زبان‌ها",
-    "searchSuggestions": "پیشنهادهای جستجو",
-    "directMatches": "Direct match",
+    "searchSuggestions": "آختاریش تکلیف‌لری",
+    "directMatches": "بیر‌باشا اویغونلوق",
     "languages": "زبان‌ها",
     "recommendedLanguage": "زبان پیشنهادی",
-    "searchSuggestion": "جستجوی {suggestion}",
-    "searchSuggestionWithLanguage": "جستجوی {suggestion} در {language}",
+    "searchSuggestion": "«{suggestion}» آختار",
+    "searchSuggestionWithLanguage": "{language} دیلینده «{suggestion}» آختار",
     "inLanguage": "به {language}",
     "browseByRegion": "مرور بر اساس منطقه",
     "clearLanguages": "پاک کردن",
     "queryLanguageDetected": "{language} شناسایی شد",
-    "searchInLanguage": "جستجو به {language}",
+    "searchInLanguage": "{language} دیلینده آختار",
     "tryDifferentKeywordsOrLanguage": "واژه‌های کلیدی دیگر را امتحان کنید یا یک زبان جستجوی دیگر برگزینید",
     "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جستجوی وب‌سایت",
     "removeLanguage": "حذف {language}",
-    "browseMode": "حالت مرور جستجو"
+    "browseMode": "حالت مرور جستجو",
+    "searchingInLanguage": "نتیجه‌لرین دیلی: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",

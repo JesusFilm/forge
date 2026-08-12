@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Oqaatsit allanngortikkit",
     "home": "JesusFilm-imi angerlarsimaffik",
     "closeSearch": "Ujarlerneq matuuk",
-    "submitSearch": "Ujarligit"
+    "submitSearch": "Ujarlerit"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-t ujarlerlugillu tamanut takuguk",
@@ -205,12 +205,12 @@
     "categoryChristmas": "Juullimi",
     "searchLanguageLabel": "Oqaatsit ujarlugillu",
     "allLanguages": "Oqaatsit tamakkerlugit",
-    "searchSuggestions": "Ujaqqissutissat",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Ujarlerutissatut siunnersuutit",
+    "directMatches": "Toqqaannartumik naleqquttut",
     "languages": "Oqaatsit",
     "recommendedLanguage": "Oqaatsit innersuussutigineqartoq",
-    "searchSuggestion": "{suggestion} ujartuk",
-    "searchSuggestionWithLanguage": "{suggestion} oqaatsit {language}-imi ujartuk",
+    "searchSuggestion": "“{suggestion}” ujaruk",
+    "searchSuggestionWithLanguage": "{language}-imi “{suggestion}” ujaruk",
     "inLanguage": "{language}-imi",
     "browseByRegion": "Sumiiffik naapertorlugu ujarliuk",
     "clearLanguages": "Piiaruk",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Oqaatsit allaanerusut imaluunniit oqaatsit allanik toqqarit",
     "useWebsiteDefaultLanguage": "Nittartakkami toqqarneqarsimasoq oqaatsit atorneqassapput",
     "removeLanguage": "{language} piiaruk",
-    "browseMode": "Ujarliup qanoq ingerlanera"
+    "browseMode": "Ujarliup qanoq ingerlanera",
+    "searchingInLanguage": "Inernerit {language}-imiittut"
   },
   "HeroPlayer": {
     "playWithSound": "Maanna isigiuk",

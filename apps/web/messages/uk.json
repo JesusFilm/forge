@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Змінити мову аудіо",
     "home": "Головна JesusFilm",
     "closeSearch": "Закрити пошук",
-    "submitSearch": "Пошук"
+    "submitSearch": "Шукати"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і перегляд відео",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Різдво",
     "searchLanguageLabel": "Мова пошуку",
     "allLanguages": "Усі мови",
-    "searchSuggestions": "Підказки пошуку",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Пошукові підказки",
+    "directMatches": "Точні збіги",
     "languages": "Мови",
     "recommendedLanguage": "Рекомендована мова",
-    "searchSuggestion": "Шукати {suggestion}",
-    "searchSuggestionWithLanguage": "Шукати {suggestion} мовою {language}",
+    "searchSuggestion": "Шукати «{suggestion}»",
+    "searchSuggestionWithLanguage": "Шукати «{suggestion}» — мова: {language}",
     "inLanguage": "мовою {language}",
     "browseByRegion": "Переглянути за регіоном",
     "clearLanguages": "Очистити",
     "queryLanguageDetected": "Виявлено {language}",
-    "searchInLanguage": "Шукати мовою {language}",
+    "searchInLanguage": "Мова пошуку: {language}",
     "tryDifferentKeywordsOrLanguage": "Спробуйте інші ключові слова або виберіть іншу мову пошуку",
     "useWebsiteDefaultLanguage": "Використовувати мову пошуку за замовчуванням сайту",
     "removeLanguage": "Видалити {language}",
-    "browseMode": "Режим перегляду пошуку"
+    "browseMode": "Режим перегляду пошуку",
+    "searchingInLanguage": "Мова результатів: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Дивитися зараз",

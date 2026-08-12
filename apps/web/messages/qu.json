@@ -205,12 +205,12 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "Simi maskay",
     "allLanguages": "Llapan simikuna",
-    "searchSuggestions": "Maskay yuyaykuna",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Maskaypaq yuyaykuna",
+    "directMatches": "Chiqan tupaqkuna",
     "languages": "Simikuna",
     "recommendedLanguage": "Munaq simi",
-    "searchSuggestion": "{suggestion} maskay",
-    "searchSuggestionWithLanguage": "{suggestion} {language}-pi maskay",
+    "searchSuggestion": "“{suggestion}” nisqata maskay",
+    "searchSuggestionWithLanguage": "{language}-pi “{suggestion}” nisqata maskay",
     "inLanguage": "{language}-pi",
     "browseByRegion": "Suyuyninman qhaway",
     "clearLanguages": "Pichay",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Huk palabras clavekuna utaq huk maskana simi akllay",
     "useWebsiteDefaultLanguage": "Sitio webpa ñawpa siminwan maskayta llamk’achiy",
     "removeLanguage": "{language} hurqoy",
-    "browseMode": "Maskay qhaway modo"
+    "browseMode": "Maskay qhaway modo",
+    "searchingInLanguage": "Resultados: {language}-pi"
   },
   "HeroPlayer": {
     "playWithSound": "Kunan qhawariy",

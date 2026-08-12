@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Language o te search",
     "allLanguages": "Languages katoa",
     "searchSuggestions": "Fautuaga mō te search",
-    "directMatches": "Direct match",
+    "directMatches": "Mea e fetaui tonu",
     "languages": "Gagana",
     "recommendedLanguage": "Language fakatonu",
-    "searchSuggestion": "Saili {suggestion}",
-    "searchSuggestionWithLanguage": "Saili {suggestion} i te {language}",
+    "searchSuggestion": "Saili ki te {suggestion}",
+    "searchSuggestionWithLanguage": "Saili ki te \"{suggestion}\" i te {language}",
     "inLanguage": "i te {language}",
     "browseByRegion": "Browse mā te region",
     "clearLanguages": "Tamā",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Fakamolemole fakaaoga nisi keywords io me filifili se isi language o te search",
     "useWebsiteDefaultLanguage": "Fakamalosi te language o te search default a te website",
     "removeLanguage": "Tukuese {language}",
-    "browseMode": "Auala browse o te search"
+    "browseMode": "Auala browse o te search",
+    "searchingInLanguage": "Results i te {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Matamata nei",

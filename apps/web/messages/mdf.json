@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Изменить язык звука",
     "home": "Главная JesusFilm",
     "closeSearch": "Закрыть поиск",
-    "submitSearch": "Искать"
+    "submitSearch": "Вешендомс"
   },
   "SearchOverlay": {
     "dialogLabel": "Поиск и просмотр видео",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Язык поиска",
     "allLanguages": "Все языки",
-    "searchSuggestions": "Подсказки поиска",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Вешендемань вариантт",
+    "directMatches": "Виде муемат",
     "languages": "Языки",
     "recommendedLanguage": "Рекомендуемый язык",
-    "searchSuggestion": "Искать {suggestion}",
-    "searchSuggestionWithLanguage": "Искать {suggestion} на {language}",
+    "searchSuggestion": "Вешендомс «{suggestion}»",
+    "searchSuggestionWithLanguage": "«{suggestion}» вешендомс кяльса: {language}",
     "inLanguage": "на {language}",
     "browseByRegion": "Просмотр по региону",
     "clearLanguages": "Очистить",
     "queryLanguageDetected": "Обнаружен язык: {language}",
-    "searchInLanguage": "Искать на {language}",
+    "searchInLanguage": "Вешендомс кяльса: {language}",
     "tryDifferentKeywordsOrLanguage": "Попробуйте другие ключевые слова или выберите другой язык поиска",
     "useWebsiteDefaultLanguage": "Использовать язык поиска по умолчанию сайта",
     "removeLanguage": "Удалить {language}",
-    "browseMode": "Режим просмотра поиска"
+    "browseMode": "Режим просмотра поиска",
+    "searchingInLanguage": "Вешендемань результатт кяльса: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Смотреть сейчас",

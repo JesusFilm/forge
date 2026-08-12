@@ -205,12 +205,12 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Кыллысь утчало",
     "allLanguages": "Вань кылъёс",
-    "searchSuggestions": "Утчалон пум",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Утчалонлы сӥземъёс",
+    "directMatches": "Тупась материалъёс",
     "languages": "Кылъёс",
     "recommendedLanguage": "Сӥньыл кыл",
-    "searchSuggestion": "{suggestion} утчалы",
-    "searchSuggestionWithLanguage": "{language} вылын {suggestion} утчалы",
+    "searchSuggestion": "«{suggestion}» утчалы",
+    "searchSuggestionWithLanguage": "{language} кылын «{suggestion}» утчалы",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр выжыты",
     "clearLanguages": "Вань",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Башка кылъёсез нырыз пукты яа мумык кылез суйыл",
     "useWebsiteDefaultLanguage": "Сайтлысь тӧлкызык кылез пайдаланыл",
     "removeLanguage": "{language} вань",
-    "browseMode": "Утчало режим"
+    "browseMode": "Утчало режим",
+    "searchingInLanguage": "{language} кылын результатъёс"
   },
   "HeroPlayer": {
     "playWithSound": "Тагьыр ӧтӥл",

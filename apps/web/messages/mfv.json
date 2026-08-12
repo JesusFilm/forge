@@ -205,12 +205,12 @@
     "categoryChristmas": "Natal",
     "searchLanguageLabel": "Língua di buska",
     "allLanguages": "Todus línguas",
-    "searchSuggestions": "Sugestons di Buska",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Sugestons di buska",
+    "directMatches": "Resultadus diretus",
     "languages": "Línguas",
     "recommendedLanguage": "Língua rekomendadu",
     "searchSuggestion": "Buska {suggestion}",
-    "searchSuggestionWithLanguage": "Buska {suggestion} na {language}",
+    "searchSuggestionWithLanguage": "Buska \"{suggestion}\" na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Navega pa região",
     "clearLanguages": "Limpa",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tenta palavras-chavi diferenti ou skolhi otu língua di buska",
     "useWebsiteDefaultLanguage": "Uza língua padrãu di buska di site",
     "removeLanguage": "Tira {language}",
-    "browseMode": "Modu di navega buska"
+    "browseMode": "Modu di navega buska",
+    "searchingInLanguage": "Resultadus na {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Odja agora",

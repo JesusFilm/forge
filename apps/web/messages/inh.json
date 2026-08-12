@@ -205,12 +205,12 @@
     "categoryChristmas": "Куранта",
     "searchLanguageLabel": "Къахьа мотт",
     "allLanguages": "Бархьи мотт",
-    "searchSuggestions": "Къахьа ұсыныш",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Къахьа хьехамаш",
+    "directMatches": "Нийса нийсденнараш",
     "languages": "Мотташ",
     "recommendedLanguage": "Хьехар мотт",
-    "searchSuggestion": "{suggestion} къахьа",
-    "searchSuggestionWithLanguage": "{suggestion} {language} т1а къахьа",
+    "searchSuggestion": "«{suggestion}» къахьа",
+    "searchSuggestionWithLanguage": "{language} т1а «{suggestion}» къахьа",
     "inLanguage": "{language} т1а",
     "browseByRegion": "Регионца browse хийла",
     "clearLanguages": "Къахьа",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Кхы ключевой сөзаш къахьа я цхьа кхы къахьа мотт хьада",
     "useWebsiteDefaultLanguage": "Сайтца стандартный search мотт хьада",
     "removeLanguage": "{language} д1аяккха",
-    "browseMode": "Къахьа browse режим"
+    "browseMode": "Къахьа browse режим",
+    "searchingInLanguage": "{language} т1а нәтижаташ"
   },
   "HeroPlayer": {
     "playWithSound": "Хьалха йахьа",

@@ -205,12 +205,12 @@
     "categoryChristmas": "Jul",
     "searchLanguageLabel": "Søkjespråk",
     "allLanguages": "Alle språk",
-    "searchSuggestions": "Søkeframlegg",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Søkeforslag",
+    "directMatches": "Direkte treff",
     "languages": "Språk",
     "recommendedLanguage": "Tilrådd språk",
     "searchSuggestion": "Søk etter {suggestion}",
-    "searchSuggestionWithLanguage": "Søk etter {suggestion} på {language}",
+    "searchSuggestionWithLanguage": "Søk etter «{suggestion}» på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Bla etter region",
     "clearLanguages": "Tøm",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Prøv andre nøkkelord eller vel eit anna søkjespråk",
     "useWebsiteDefaultLanguage": "Bruk standard søkjespråk for nettstaden",
     "removeLanguage": "Fjern {language}",
-    "browseMode": "Søkje- og bla-modus"
+    "browseMode": "Søkje- og bla-modus",
+    "searchingInLanguage": "Treff på {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Sjå no",

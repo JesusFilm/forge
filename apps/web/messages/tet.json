@@ -205,12 +205,12 @@
     "categoryChristmas": "Natal",
     "searchLanguageLabel": "Buka língua",
     "allLanguages": "Língua hotu-hotu",
-    "searchSuggestions": "Sugestaun peskiza",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Sugestaun peskiza sira",
+    "directMatches": "Rezultadu exatu",
     "languages": "Língua sira",
     "recommendedLanguage": "Língua rekomendadu",
     "searchSuggestion": "Buka {suggestion}",
-    "searchSuggestionWithLanguage": "Buka {suggestion} iha {language}",
+    "searchSuggestionWithLanguage": "Buka “{suggestion}” iha {language}",
     "inLanguage": "iha {language}",
     "browseByRegion": "Haree tuir rejiaun",
     "clearLanguages": "Hamoos",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tenta liafuan chave seluk ka hili língua peskiza seluk",
     "useWebsiteDefaultLanguage": "Uza língua peskiza padraun husi website",
     "removeLanguage": "Hasai {language}",
-    "browseMode": "Modo peskiza"
+    "browseMode": "Modo peskiza",
+    "searchingInLanguage": "Rezultadu iha {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Haree agora",

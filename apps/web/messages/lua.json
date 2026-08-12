@@ -205,12 +205,12 @@
     "categoryChristmas": "Noeli",
     "searchLanguageLabel": "Saka lulaka",
     "allLanguages": "Malulaka onso",
-    "searchSuggestions": "Mayele a kusaka",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Mifuango ya kusaka",
+    "directMatches": "Bikwata sebele",
     "languages": "Malulaka",
     "recommendedLanguage": "Lulaka lwa kuludila",
     "searchSuggestion": "Saka {suggestion}",
-    "searchSuggestionWithLanguage": "Saka {suggestion} mu {language}",
+    "searchSuggestionWithLanguage": "Saka “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Selebula na ekanda",
     "clearLanguages": "Katula",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Linga mfuango wina todi sankula lulaka lukwata",
     "useWebsiteDefaultLanguage": "Sebedisha lulaka lwa kusaka lwa website",
     "removeLanguage": "Katula {language}",
-    "browseMode": "Lulengo lwa kusebula kusaka"
+    "browseMode": "Lulengo lwa kusebula kusaka",
+    "searchingInLanguage": "Mayele a mu {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Talala sikila",

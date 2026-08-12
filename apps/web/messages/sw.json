@@ -205,12 +205,12 @@
     "categoryChristmas": "Krismasi",
     "searchLanguageLabel": "Lugha ya utafutaji",
     "allLanguages": "Lugha zote",
-    "searchSuggestions": "Mapendekezo ya Utafutaji",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Mapendekezo ya utafutaji",
+    "directMatches": "Matokeo yanayolingana moja kwa moja",
     "languages": "Lugha",
     "recommendedLanguage": "Lugha iliyopendekezwa",
     "searchSuggestion": "Tafuta {suggestion}",
-    "searchSuggestionWithLanguage": "Tafuta {suggestion} katika {language}",
+    "searchSuggestionWithLanguage": "Tafuta “{suggestion}” katika {language}",
     "inLanguage": "katika {language}",
     "browseByRegion": "Vinjari kwa eneo",
     "clearLanguages": "Futa",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Jaribu maneno tofauti au chagua lugha nyingine ya utafutaji",
     "useWebsiteDefaultLanguage": "Tumia lugha chaguomsingi ya utafutaji ya tovuti",
     "removeLanguage": "Ondoa {language}",
-    "browseMode": "Hali ya kuvinjari ya utafutaji"
+    "browseMode": "Hali ya kuvinjari ya utafutaji",
+    "searchingInLanguage": "Matokeo katika {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tazama sasa",

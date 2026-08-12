@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Otsingukeel",
     "allLanguages": "Kõik keeled",
     "searchSuggestions": "Otsingusoovitused",
-    "directMatches": "Direct match",
+    "directMatches": "Täpsed vasted",
     "languages": "Keeled",
     "recommendedLanguage": "Soovitatud keel",
-    "searchSuggestion": "Otsi {suggestion}",
-    "searchSuggestionWithLanguage": "Otsi {suggestion} keeles {language}",
+    "searchSuggestion": "Otsi „{suggestion}”",
+    "searchSuggestionWithLanguage": "Otsi keeles {language}: „{suggestion}”",
     "inLanguage": "keeles {language}",
     "browseByRegion": "Sirvi piirkonna järgi",
     "clearLanguages": "Tühjenda",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Proovi teisi märksõnu või vali teine otsingukeel",
     "useWebsiteDefaultLanguage": "Kasuta veebisaidi vaikimisi otsingukeelt",
     "removeLanguage": "Eemalda {language}",
-    "browseMode": "Sirvimisrežiim"
+    "browseMode": "Sirvimisrežiim",
+    "searchingInLanguage": "Tulemused keeles {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Vaata nüüd",

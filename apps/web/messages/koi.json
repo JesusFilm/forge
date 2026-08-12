@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Аудиоязык вӧтлыны",
     "home": "JesusFilm главная",
     "closeSearch": "Поисксӧ вӧтчыны",
-    "submitSearch": "Поиск"
+    "submitSearch": "Вӧтлыны"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоэзӧс вӧтлыны да вуҗӧтны",
@@ -205,12 +205,12 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Поиск язык",
     "allLanguages": "Пӧскӧд языкэз",
-    "searchSuggestions": "Поиск кәңәшэз",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Поиск понда сӧветэз",
+    "directMatches": "Веськыта лӧсялӧм",
     "languages": "Языкэз",
     "recommendedLanguage": "Рекомендуемӧй язык",
-    "searchSuggestion": "{suggestion} вӧтлыны",
-    "searchSuggestionWithLanguage": "{suggestion} {language} йылӧн вӧтлыны",
+    "searchSuggestion": "«{suggestion}» вӧтлыны",
+    "searchSuggestionWithLanguage": "{language} йылӧн «{suggestion}» вӧтлыны",
     "inLanguage": "{language} йылӧн",
     "browseByRegion": "Регион йылӧн вуҗӧтны",
     "clearLanguages": "Вӧтчыны",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Мында ключевӧй словаэз либӧ мӧд язык юр",
     "useWebsiteDefaultLanguage": "Сайтӧн по умолчанию поиск языксӧ пользуйтчыны",
     "removeLanguage": "{language} кежӧтны",
-    "browseMode": "Поиск вуҗӧтӧм режим"
+    "browseMode": "Поиск вуҗӧтӧм режим",
+    "searchingInLanguage": "Результатэз: {language} йылӧн"
   },
   "HeroPlayer": {
     "playWithSound": "Пыдӧт",

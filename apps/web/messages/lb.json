@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Sichsprooch",
     "allLanguages": "All Sproochen",
     "searchSuggestions": "Sichvirschléi",
-    "directMatches": "Direct match",
+    "directMatches": "Direkt Treffer",
     "languages": "Sproochen",
     "recommendedLanguage": "Recommandéiert Sprooch",
-    "searchSuggestion": "{suggestion} sichen",
-    "searchSuggestionWithLanguage": "{suggestion} op {language} sichen",
+    "searchSuggestion": "No „{suggestion}“ sichen",
+    "searchSuggestionWithLanguage": "Op {language} no „{suggestion}“ sichen",
     "inLanguage": "op {language}",
     "browseByRegion": "No Regioun duerchkucken",
     "clearLanguages": "Läschen",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Probéiert aner Schlësselwierder oder wielt eng aner Sichsprooch",
     "useWebsiteDefaultLanguage": "Standard-Sichsprooch vun der Websäit benotzen",
     "removeLanguage": "{language} ewechhuelen",
-    "browseMode": "Sich-Duerchkuckmodus"
+    "browseMode": "Sich-Duerchkuckmodus",
+    "searchingInLanguage": "Resultater op {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Elo kucken",

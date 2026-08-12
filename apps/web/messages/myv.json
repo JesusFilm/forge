@@ -205,12 +205,12 @@
     "categoryChristmas": "Роштува",
     "searchLanguageLabel": "Вешемань кель",
     "allLanguages": "Весе languages",
-    "searchSuggestions": "Вешемань мельть яволявтомат",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Вешемань мельмаксомат",
+    "directMatches": "Виде вастовома",
     "languages": "Кельть",
     "recommendedLanguage": "Кельсэ лемдевсь",
-    "searchSuggestion": "{suggestion} вешемс",
-    "searchSuggestionWithLanguage": "{suggestion} {language}-са вешемс",
+    "searchSuggestion": "«{suggestion}» вешемс",
+    "searchSuggestionWithLanguage": "«{suggestion}» {language}-са вешемс",
     "inLanguage": "{language}-са",
     "browseByRegion": "Region-ть коряс вановтомс",
     "clearLanguages": "Чистомс",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Лия keyword-тнэ вешемс эли лият search language-ть венемс",
     "useWebsiteDefaultLanguage": "Website default search language-ть пайдаломс",
     "removeLanguage": "{language}-ть онксемс",
-    "browseMode": "Вешемань вановтома режим"
+    "browseMode": "Вешемань вановтома режим",
+    "searchingInLanguage": "{language}-са муевть результатт"
   },
   "HeroPlayer": {
     "playWithSound": "СЫ ТЕ",
