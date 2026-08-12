@@ -562,6 +562,18 @@ primary search action.
 
 A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
 
+### Title-and-Brand Mode
+
+The automatic final-ranking behavior used when a strong normalized title-lane anchor identifies a known title, brand, series, or collection. It keeps hybrid retrieval active but places strong title and metadata evidence before unrelated transcript-only matches; a query that also includes a concept may use semantic evidence to order the strongly matched content before generic semantic fill.
+
+Title-and-Brand Mode is inferred from the existing query evidence. It is not a Search Pipeline Mode, a user-facing selector, or a separate search surface.
+
+### Semantic Mode
+
+The automatic final-ranking behavior used when a Watch search query has no eligible normalized title-lane anchor. It preserves transcript-driven hybrid discovery for themes, feelings, and natural-language questions.
+
+Semantic Mode retains the normal hybrid Typesense retrieval lanes and is distinct from the separately defined Semantic-Only Search concept.
+
 ### Semantic-Only Search
 
 A diagnostic Search Pipeline Mode for eval runs that isolates semantic/vector retrieval by excluding keyword, title, and full-text candidate retrieval.

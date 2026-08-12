@@ -342,6 +342,14 @@ export function projectWatchSearchComparisonResult(
       },
       diagnostics: {
         ...side.diagnostics,
+        rankingAnchor:
+          side.diagnostics.rankingAnchor == null
+            ? null
+            : {
+                sourceCanonicalVideoId:
+                  side.diagnostics.rankingAnchor.sourceCanonicalVideoId,
+                matchKind: side.diagnostics.rankingAnchor.matchKind,
+              },
         transcriptProjectionRevision:
           side.diagnostics.transcriptProjectionRevision?.toString() ?? null,
       },

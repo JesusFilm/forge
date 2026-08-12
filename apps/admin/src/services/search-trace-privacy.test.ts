@@ -237,6 +237,17 @@ describe("projectWatchSearchComparisonResult", () => {
         groupedHits: 2,
         candidates: 2,
         hydratedRecords: 1,
+        rankingImplementation: "legacy-rrf" as const,
+        rankingMode: "SEMANTIC" as const,
+        rankingAnchor: {
+          normalized: "token supersecret123",
+          core: "token supersecret123",
+          compactCore: "tokensupersecret123",
+          coreTokens: ["token", "supersecret123"],
+          sourceCanonicalVideoId: "core:safe-id",
+          matchKind: "NORMALIZED_WHOLE_TITLE" as const,
+        },
+        rankingTrace: [],
       },
     }
     const result: WatchSearchComparisonResult = {
@@ -257,7 +268,13 @@ describe("projectWatchSearchComparisonResult", () => {
       },
     })
     expect(projected.candidate).toMatchObject({
-      diagnostics: { transcriptProjectionRevision: "7" },
+      diagnostics: {
+        transcriptProjectionRevision: "7",
+        rankingAnchor: {
+          sourceCanonicalVideoId: "core:safe-id",
+          matchKind: "NORMALIZED_WHOLE_TITLE",
+        },
+      },
     })
   })
 })

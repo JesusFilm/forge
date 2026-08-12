@@ -280,6 +280,10 @@ describe("search comparison page", () => {
                 groupedHits: 2,
                 candidates: 4,
                 hydratedRecords: 1,
+                rankingImplementation: "legacy-rrf",
+                rankingMode: "SEMANTIC",
+                rankingAnchor: null,
+                rankingTrace: [],
               },
             },
             candidate: {

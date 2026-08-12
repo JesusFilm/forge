@@ -87,6 +87,10 @@ function searchResult(profile: "CURRENT" | "CANDIDATE") {
       groupedHits: 3,
       candidates: 3,
       hydratedRecords: 1,
+      rankingImplementation: "legacy-rrf" as const,
+      rankingMode: "SEMANTIC" as const,
+      rankingAnchor: null,
+      rankingTrace: [],
     },
   }
 }
