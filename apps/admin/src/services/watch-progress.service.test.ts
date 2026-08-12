@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const prismaMock = vi.hoisted(() => ({
@@ -283,6 +285,28 @@ describe("watch-progress service", () => {
     expect(userId).toBe("user-1")
     // No pre-read of the current row: that read is what created the race.
     expect(prismaMock.watchProgress.findMany).not.toHaveBeenCalled()
+  })
+
+  it("preserves an existing language_slug when the writer sends none", () => {
+    // SHAPE assertion only — it pins the clause, not Postgres's behaviour;
+    // the preservation itself needs a real-DB smoke (repo law: mocked SQL
+    // tests catch clause shape, never resolution).
+    //
+    // The clause matters because a bare `= EXCLUDED."language_slug"` treats a
+    // writer that does not KNOW the language as one asserting it has none. TV
+    // is that writer — its shelf carries no dub language — so every signed-in
+    // TV sync erased what mobile recorded, for every device, permanently.
+    const source = readFileSync(
+      new URL("./watch-progress.service.ts", import.meta.url),
+      "utf8",
+    )
+    expect(source).toContain(
+      `"language_slug"    = COALESCE(EXCLUDED."language_slug", "watch_progress"."language_slug")`,
+    )
+    // Falsify the pin: the bare overwrite this replaced must be gone.
+    expect(source).not.toMatch(
+      /"language_slug"\s*=\s*EXCLUDED\."language_slug"\s*,/,
+    )
   })
 
   it("writes one statement for the whole batch, not one per entry", async () => {
