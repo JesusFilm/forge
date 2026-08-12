@@ -7,8 +7,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (August 12, 2026)
 
 - **Total tickets:** 511
-- **Complete:** 389
-- **In progress:** 38
+- **Complete:** 390
+- **In progress:** 37
 - **Not started:** 33
 - **Blocked:** 51
 - **Overdue and not complete:** 97
@@ -110,7 +110,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-346](content-discovery/feat-346-watch-search-subtitle-audio-routing.md)                                  | Watch search subtitle-only audio routing                                                        | codex      | P1       | 2026-08-05 | 1    | 2026-08-05 | complete    |
 | [feat-337](content-discovery/feat-337-watch-search-suggestions.md)                                             | Add language-aware Watch search suggestions                                                     | urim       | P1       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-350](content-discovery/feat-350-admin-search-comparison-form-compatibility.md)                           | Keep Admin search comparison forms compatible during deploys                                    | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
-| [feat-352](content-discovery/feat-352-watch-search-suggestion-result-validation.md)                            | Guarantee Watch query suggestion results                                                        | urim       | P1       | 2026-08-12 | 1    | 2026-08-12 | in-progress |
+| [feat-352](content-discovery/feat-352-watch-search-suggestion-result-validation.md)                            | Guarantee Watch query suggestion results                                                        | urim       | P1       | 2026-08-12 | 1    | 2026-08-12 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |

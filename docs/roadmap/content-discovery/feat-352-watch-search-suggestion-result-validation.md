@@ -3,7 +3,8 @@ id: "feat-352"
 title: "Guarantee Watch query suggestion results"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
+completed_date: "2026-08-12"
 start_date: "2026-08-12"
 duration: 1
 depends_on:
@@ -63,3 +64,11 @@ pnpm exec prettier --check apps/admin/src/services/bounded-ttl-promise-cache.ts 
 ```
 
 Use the local Watch modal at `http://localhost:3000/watch` with Admin and Typesense running. Verify a validated phrase appears before direct matches on desktop and narrow mobile, refocusing restores the existing panel without another browser request, and Enter/Search remains the only full-search submission path.
+
+## Completion Evidence
+
+- Local GraphQL returned six validated English query phrases before video and collection direct matches for `jesu`.
+- The cold local request completed in 62 ms; the repeated warm-cache request completed in 32 ms and returned the same ordered six phrases.
+- Browser smoke showed the six suggestions-first/direct-matches-second layout against the running Watch, Admin, and Typesense stack.
+- The focused Web interaction suite passed 109 tests, including narrow-layout scrolling, refocus cache restoration, language-panel replacement, grouping, and explicit-submit behavior.
+- Focused Admin validation, cache, client, resolver, typecheck, lint, and format checks passed.

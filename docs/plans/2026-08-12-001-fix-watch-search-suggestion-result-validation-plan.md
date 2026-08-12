@@ -1,7 +1,7 @@
 ---
 title: "Guarantee Watch query suggestion results"
 type: fix
-status: active
+status: completed
 date: 2026-08-12
 ---
 
