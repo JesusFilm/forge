@@ -50,6 +50,11 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   gate report from `docs/search-eval-reports/`.
 - Live user search query embedding generation stays in Admin's search services;
   do not move live search orchestration into Mastra.
+- Candidate Watch Search compatibility uses
+  `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`, not the Admin deploy
+  commit. Indexing, private comparison, qualification, and candidate serving
+  must use that one source. Bump it only when the candidate query, ranking, or
+  index contract changes; a bump requires a fresh generation and qualification.
 - Video snapshots have two scheduled products: `video-core` is the default
   local restore, while explicit `--profile=video-search` adds the stored scene
   and transcript/vector tables. Snapshot publication copies existing vectors;
